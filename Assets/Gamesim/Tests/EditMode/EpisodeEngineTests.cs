@@ -119,6 +119,52 @@ namespace Gamesim.Tests.EditMode
             Assert.That(engine.Apply(bad).accepted, Is.False); AssertEquivalent(state, engine.Snapshot);
         }
 
+        /// <summary>
+        /// A houseguest who holds the veto from the block saves themselves, and the meeting says so
+        /// in their own reflexive: "Emma Brown saves herself", never "Emma Brown saves Emma Brown"
+        /// (the owner's screenshot 75, PACK8-PASS-PLAN B3). The log line and the relationship note
+        /// the same sentence would write both go through the one object form; a houseguest has no
+        /// relationship with themselves, so the note is never written at all. The player's own
+        /// "yourself" and the replacement's name are what they were.
+        /// </summary>
+        [Test]
+        public void VetoMeeting_AHouseguestSavingThemselvesIsHerselfHimselfOrThemselves()
+        {
+            foreach (var (pronouns, reflexive) in new[] { ("she/her", "herself"), ("he/him", "himself"), ("they/them", "themselves"), ("ze/zir", "themselves") })
+            {
+                var state = ContentCatalog.Create(57);
+                var npcs = state.Active.Where(c => !c.isPlayer).Select(c => c.id).ToList();
+                state.phase = EpisodePhase.VetoMeeting;
+                state.hohId = npcs[0];
+                state.nominees = new System.Collections.Generic.List<string> { npcs[1], npcs[2] };
+                state.vetoHolderId = npcs[1];
+                state.vetoPlayers = state.Active.Select(c => c.id).ToList();
+                state.Find(npcs[1]).pronouns = pronouns;
+                string holder = state.Find(npcs[1]).name;
+                Assert.That(EpisodeEngine.NpcVetoSave(state), Is.EqualTo(npcs[1]), "A holder on the block saves themselves.");
+
+                var engine = new EpisodeEngine(state);
+                var result = engine.Apply(Command(state, EpisodeCommandKind.Advance));
+                Assert.That(result.accepted, Is.True, result.reason);
+                var after = engine.Snapshot;
+                Assert.That(after.vetoResolved, Is.True);
+                Assert.That(after.nominees, Does.Not.Contain(npcs[1]));
+                // The Head of Household may name the player, who is "you" in both sentences.
+                string replacementId = after.nominees.Single(id => id != npcs[2]);
+                bool you = replacementId == after.playerId;
+                string replacement = you ? "you" : after.Find(replacementId).name;
+
+                var veto = after.events.Last(e => e.kind == "veto");
+                Assert.That(veto.text, Is.EqualTo(holder + " saves " + reflexive + "; " + (you ? "You are" : replacement + " is") + " the replacement nominee."),
+                    pronouns + ": the log says the holder's own reflexive.");
+                var notes = after.relationships.SelectMany(r => r.notes).Concat(after.memories.Select(m => m.text)).ToList();
+                Assert.That(notes.Where(note => note.Contains("save " + holder)), Is.Empty, pronouns + ": nothing says the holder saved themselves by name.");
+                Assert.That(notes.Where(note => note.Contains(" used POV to save ")), Is.Empty, pronouns + ": and no note of a save is written to the holder about themselves.");
+                Assert.That(notes.Any(note => note.Contains(" named " + replacement + " as replacement nominee")), Is.True,
+                    "The Head of Household's note still names the replacement.");
+            }
+        }
+
         private static void AssertEquivalent(EpisodeState a, EpisodeState b)
         {
             Assert.That(b.revision, Is.EqualTo(a.revision)); Assert.That(b.randomState, Is.EqualTo(a.randomState));

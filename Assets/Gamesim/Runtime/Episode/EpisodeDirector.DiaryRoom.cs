@@ -744,28 +744,20 @@ namespace Gamesim.Episode
             if (state.phase == EpisodePhase.VetoMeeting && !state.vetoResolved
                 && (state.vetoHolderId == state.playerId || state.hohId == state.playerId))
             {
+                // On the episode screen the meeting is a screen of its own (EpisodeDirector.VetoMeeting,
+                // PACK8-PASS-PLAN B3); the diary keeps its column of rows, below.
+                if (!privateRoom) return VetoMeetingDecision(state);
                 if (state.vetoHolderId == state.playerId)
                 {
-                    // Nominees who asked for it, answered where the decision is made.
-                    if (!privateRoom) VetoOffers(state);
                     hud.Action("Do not use the veto", () => OfferPlayerDecision(state, privateRoom,
                         EpisodeCommandKind.ResolveVeto, "Decline to use the veto. Both current nominees remain nominated."));
-                    if (EpisodeEngine.VetoIsLockedAtFinalFour(state))
-                    {
-                        hud.Paragraph("At the final four a veto holder who is not on the block cannot use the veto. "
-                            + "Nominations stand.");
-                        return true;
-                    }
-                    if (!EpisodeEngine.ReplacementCandidates(state).Any())
-                    { hud.Paragraph("No legal replacement exists at the final four, so the veto cannot be used."); return true; }
-                    // On the episode screen the nominees are peers, side by side; the diary keeps
-                    // its column of rows.
-                    var saves = privateRoom ? null : hud.Pairs();
+                    if (EpisodeEngine.VetoIsLockedAtFinalFour(state)) { hud.Paragraph(VetoLockedLine); return true; }
+                    if (!EpisodeEngine.ReplacementCandidates(state).Any()) { hud.Paragraph(VetoNoReplacementLine); return true; }
                     foreach (var nominee in state.nominees)
                     {
                         string saved = nominee;
                         if (state.hohId == state.playerId) VetoReplacements(state, saved, privateRoom);
-                        else hud.PairedActionFor(saves, saved, "Save " + state.Find(saved).name + " (HoH chooses replacement)", () =>
+                        else hud.PairedActionFor(null, saved, "Save " + state.Find(saved).name + " (HoH chooses replacement)", () =>
                             OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.ResolveVeto,
                                 "Use the veto to save " + state.Find(saved).name + ". The HoH chooses the replacement.", saved, useVeto: true));
                     }
@@ -818,7 +810,10 @@ namespace Gamesim.Episode
 
         private void VetoReplacements(EpisodeState state, string saved, bool privateRoom)
         {
-            hud.Heading("Save " + state.Find(saved).name + " and nominate:");
+            // The Head of Household naming the replacement for a houseguest's save is told whose
+            // save it is: "Save X and nominate:" read as if the player were saving X.
+            hud.Heading(state.vetoHolderId == state.playerId ? "Save " + state.Find(saved).name + " and nominate:"
+                : VetoReplacementLine(state, saved));
             var replacements = privateRoom ? null : hud.Pairs();
             foreach (var candidate in EpisodeEngine.ReplacementCandidates(state))
             {

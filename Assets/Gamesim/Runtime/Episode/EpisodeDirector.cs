@@ -1554,7 +1554,8 @@ namespace Gamesim.Episode
             // which stay in state until the window closes and can name a juror as a nominee.
             bool finalChoice = state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId;
             if (finalChoice) FinalTwoHead();
-            else
+            // The veto meeting says it in a strip across the stage's header (PACK8-PASS-PLAN B3).
+            else if (!VetoMeetingStatus(state))
             {
                 string houseStatus = ViewOverPreparation(state) ? null : HouseStatus(state);
                 if (houseStatus != null) hud.Paragraph(houseStatus);
@@ -1601,6 +1602,8 @@ namespace Gamesim.Episode
                 if (unused != null) hud.PinnedNote(unused);
             }
             else hud.Action(advance, () => Commit(state, EpisodeCommandKind.Advance));
+            // The veto meeting's row of cards, in the height the step leaves it, and its words on the way on.
+            VetoMeetingWayOn(state);
         }
 
         /// <summary>What a Have-Not player reads beside their interactions: what it costs, and until when.</summary>

@@ -67,27 +67,9 @@ namespace Gamesim.Episode
                     VetoDrawScreen(s);
                     break;
                 case EpisodePhase.VetoMeeting:
-                {
-                    var holder = s.Find(s.vetoHolderId);
-                    if (holder == null) return;
-                    var veto = Face(holder.id, "VETO", UiTheme.Gold);
-                    if (!s.vetoResolved)
-                    {
-                        hud.CeremonyTitle(week, "Power of Veto Meeting",
-                            holder.name + " holds the Golden Power of Veto and must decide whether to use it.", UiTheme.Gold);
-                        var meeting = new List<EpisodeHud.CeremonyFace> { veto };
-                        meeting.AddRange(block);
-                        hud.CeremonyFaces("Holding the veto, and on the block", meeting, 150f);
-                    }
-                    else
-                    {
-                        var decision = s.events.LastOrDefault(e => e.kind == "veto" && e.week == s.week);
-                        hud.CeremonyTitle(week, "The Veto Meeting Is Over", decision?.text, UiTheme.Gold);
-                        var after = new List<EpisodeHud.CeremonyFace>(block) { veto };
-                        hud.CeremonyFaces("The final nominees, and the veto", after, 150f);
-                    }
+                    // The meeting's own screens, before and after it (EpisodeDirector.VetoMeeting).
+                    VetoMeetingScreen(s);
                     break;
-                }
             }
         }
     }

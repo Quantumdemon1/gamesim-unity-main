@@ -22,9 +22,13 @@ namespace Gamesim.Simulation
     /// the final choice are run through a throwaway engine on a copy of the season, so a warning and
     /// the verdict the commit then reaches cannot disagree; nothing is written to the season the
     /// copy came from, nothing is committed, and the only random stream advanced is the copy's. The
-    /// ballot is judged by the rules instead (<see cref="ByTheRules"/>): the engine settles a ballot
-    /// only at the reveal, after drawing every other houseguest's private ballot, and a warning that
-    /// waited for those would be one built from ballots the player cannot see.</para>
+    /// ballot is judged by the rules instead (<see cref="ByTheRules(EpisodeState, Decision)"/>): the
+    /// engine settles a ballot only at the reveal, after drawing every other houseguest's private
+    /// ballot, and a warning that waited for those would be one built from ballots the player
+    /// cannot see. So is a sweep of every replacement a screen offers, on one copy for them all,
+    /// where an engine run each would be one a name. And nothing is run at all when the player has
+    /// nothing standing that the decision settles (<see cref="AtStake"/>), which is most of the
+    /// time.</para>
     /// </summary>
     public static class CommitmentsRead
     {
@@ -121,6 +125,9 @@ namespace Gamesim.Simulation
         private static bool Waiting(Commitment c) =>
             c.kind == Kinds.Deal && (c.status == "waiting on you" || c.status == "waiting on them");
 
+        /// <summary>A houseguest a commitment names, as the player reads it: "you" for the player, a first name for anybody else.</summary>
+        private static string Named(EpisodeState s, string id) => s != null && id == s.playerId ? "you" : First(s, id);
+
         private static void AddPromises(EpisodeState s, List<Commitment> into)
         {
             string player = s.playerId;
@@ -176,36 +183,39 @@ namespace Gamesim.Simulation
 
         /// <summary>The words an oath's breach is recorded under on the player's arc with the other party (<see cref="WebLoyaltyOaths"/>).</summary>
         private const string OathBreachReason = "Broke loyalty oath by ";
+        /// <summary>The note a declaration leaves on the player's own edge with the one they declared to (EpisodeSocialHistory).</summary>
+        private const string OathNote = "loyalty-oath";
 
+        /// <summary>
+        /// The player's loyalty oaths: those standing, those kept because one of the two left the
+        /// house, and those broken. Every oath is the player's own declaration - the season's
+        /// validation holds every record to the player (EpisodeSocialHistoryValidation) - so each is
+        /// "Your loyalty oath" and there is no oath of theirs to read.
+        /// </summary>
         private static void AddOaths(EpisodeState s, List<Commitment> into)
         {
             string player = s.playerId;
-            bool playerIn = s.Find(player)?.status == ContestantStatus.Active;
+            bool playerIn = s.Find(player).status == ContestantStatus.Active;
+            var listed = new HashSet<string>(StringComparer.Ordinal);
             foreach (var o in s.loyaltyOaths)
             {
-                if (o == null || (o.playerId != player && o.targetId != player)) continue;
-                string other = o.playerId == player ? o.targetId : o.playerId;
-                var them = s.Find(other);
-                if (them == null || other == player) continue;
+                if (o == null || o.playerId != player || o.targetId == player) continue;
+                var them = s.Find(o.targetId);
+                if (them == null) continue;
+                listed.Add(o.targetId);
                 // An oath binds while both are in the house to nominate or vote: once either has
                 // left without it breaking, it was never broken, and it never will be.
                 bool live = playerIn && them.status == ContestantStatus.Active;
-                var c = new Commitment
-                {
-                    kind = Kinds.Oath, id = OathId(o), withId = other, yours = o.playerId == player,
-                    title = o.playerId == player ? "Your loyalty oath" : "Their loyalty oath",
-                    binds = OathBinds, week = o.week, untilWeek = 0,
-                    outcome = live ? Outcomes.Open : Outcomes.Kept,
-                    status = live ? "standing" : "never broken",
-                };
-                c.term = Term(s, c);
-                into.Add(c);
+                string leaver = live ? null : them.status != ContestantStatus.Active ? o.targetId : player;
+                into.Add(live ? Oath(o.targetId, OathId(o), o.week, Outcomes.Open, "standing", "never expires", 0)
+                    : Oath(o.targetId, OathId(o), o.week, Outcomes.Kept, "never broken", UntilLeft(s, leaver), LeftWeek(s, leaver)));
             }
             // A broken oath leaves the list. Its breach stays on the player's own arc with the other
             // party, in the words the oath's rule wrote it: "Broke loyalty oath by nominating you in
-            // week 4" when they broke it, the player's victim named when the player did.
-            if (s.relationshipArcs == null) return;
-            foreach (var arc in s.relationshipArcs)
+            // week 4" when they broke it, the player's victim named when the player did. It held
+            // until the week it broke, and its term says that rather than "never expires".
+            var broken = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var arc in s.relationshipArcs ?? new List<RelationshipArcState>())
             {
                 if (arc?.weeklyHistory == null || arc.npcId == player || s.Find(arc.npcId) == null) continue;
                 foreach (var entry in arc.weeklyHistory)
@@ -213,21 +223,54 @@ namespace Gamesim.Simulation
                     if (entry?.reason == null || !entry.reason.StartsWith(OathBreachReason, StringComparison.Ordinal)) continue;
                     bool theirs = entry.reason.EndsWith(" you in week " + entry.week, StringComparison.Ordinal);
                     bool vote = entry.reason.StartsWith(OathBreachReason + "voting", StringComparison.Ordinal);
-                    var c = new Commitment
-                    {
-                        kind = Kinds.Oath, id = "oath-broken:" + arc.npcId + ":" + entry.week, withId = arc.npcId, yours = true,
-                        title = "Your loyalty oath", binds = OathBinds, week = 0, untilWeek = 0,
-                        outcome = Outcomes.Broken, brokenById = theirs ? arc.npcId : player, settledWeek = entry.week,
-                        status = (theirs ? "broken by them" : "broken by you") + (vote ? " with a vote" : " with a nomination")
-                            + " in week " + entry.week,
-                    };
-                    c.term = Term(s, c);
+                    broken.Add(arc.npcId);
+                    var c = Oath(arc.npcId, "oath-broken:" + arc.npcId + ":" + entry.week, 0, Outcomes.Broken,
+                        (theirs ? "broken by them" : "broken by you") + (vote ? " with a vote" : " with a nomination"),
+                        "held until week " + entry.week, entry.week);
+                    c.brokenById = theirs ? arc.npcId : player;
                     into.Add(c);
                 }
+            }
+            // Production's removal takes every oath naming whoever it removes off the list, unbroken
+            // (EpisodeEngine.Expel), and nothing else ever does. The declaration stays on the
+            // player's own edge with them, so an oath with somebody removed - or an oath of a player
+            // who was removed - still shows, settled: never broken, until they left.
+            foreach (var edge in s.relationships)
+            {
+                if (edge == null || edge.fromId != player || edge.notes == null || !edge.notes.Contains(OathNote)) continue;
+                var them = s.Find(edge.toId);
+                if (them == null || them.isPlayer || listed.Contains(them.id) || broken.Contains(them.id)) continue;
+                string leaver = them.status == ContestantStatus.Expelled ? them.id
+                    : s.Find(player).status == ContestantStatus.Expelled ? player : null;
+                if (leaver == null) continue;
+                into.Add(Oath(them.id, "oath:" + player + ":" + them.id, 0, Outcomes.Kept, "never broken", UntilLeft(s, leaver), LeftWeek(s, leaver)));
             }
         }
 
         private const string OathBinds = "never to nominate or vote out each other";
+
+        /// <summary>One of the player's oaths: settled in <paramref name="settled"/>, the last week it bound, or 0 while it stands or where the record cannot say.</summary>
+        private static Commitment Oath(string with, string id, int week, string outcome, string status, string term, int settled) => new Commitment
+        {
+            kind = Kinds.Oath, id = id, withId = with, yours = true, title = "Your loyalty oath", binds = OathBinds,
+            week = week, untilWeek = settled, outcome = outcome, status = status, term = term, settledWeek = settled,
+        };
+
+        /// <summary>The week a houseguest left the house, as the house was told it: their eviction, or production's removal. 0 where the record cannot say.</summary>
+        private static int LeftWeek(EpisodeState s, string id)
+        {
+            var evicted = s.ledger?.power?.LastOrDefault(p => p != null && p.evicteeId == id);
+            if (evicted != null) return evicted.week;
+            var removed = s.story?.removals?.LastOrDefault(r => r != null && r.contestantId == id);
+            return removed != null ? removed.week : 0;
+        }
+
+        /// <summary>"until they left in week 5", "until you left": the term of an oath that ended with one of the two leaving.</summary>
+        private static string UntilLeft(EpisodeState s, string leaver)
+        {
+            int week = LeftWeek(s, leaver);
+            return (leaver == s.playerId ? "until you left" : "until they left") + (week > 0 ? " in week " + week : "");
+        }
 
         /// <summary>An oath's id on this page: the declaration it is, by who made it and to whom.</summary>
         public static string OathId(WebOathRecord o) => o == null ? null : "oath:" + o.playerId + ":" + o.targetId;
@@ -253,7 +296,7 @@ namespace Gamesim.Simulation
                         kind = Kinds.Call, id = "call:" + call.allianceId + ":" + call.week + ":" + member,
                         withId = member, aboutId = s.Find(call.targetId) != null ? call.targetId : null, yours = true,
                         title = "Your call in " + pactName,
-                        binds = "their vote to evict " + First(s, call.targetId),
+                        binds = "their vote to evict " + Named(s, call.targetId),
                         week = call.week, untilWeek = call.week,
                         outcome = !followed ? Outcomes.Broken : revealed ? Outcomes.Kept : Outcomes.Open,
                         brokenById = followed ? null : member,
@@ -310,7 +353,7 @@ namespace Gamesim.Simulation
                 case PromiseKind.Safety: return yours ? "not to nominate them" : "not to nominate you";
                 case PromiseKind.Vote:
                     string whose = yours ? "your vote" : "their vote";
-                    return s.Find(p.targetId) != null ? whose + " to evict " + First(s, p.targetId) : whose;
+                    return s.Find(p.targetId) != null ? whose + " to evict " + Named(s, p.targetId) : whose;
                 case PromiseKind.FinalTwo: return yours ? "to take them to the final two" : "to take you to the final two";
                 case PromiseKind.AllianceLoyalty: return "not to nominate an ally";
                 case PromiseKind.Information: return "to share information";
@@ -336,18 +379,20 @@ namespace Gamesim.Simulation
             }
         }
 
+        /// <summary>What a deal binds, in words, with the houseguest it names - "you" when that is the player.</summary>
         private static string DealBinds(EpisodeState s, DealState d)
         {
             bool named = s.Find(d.targetId) != null;
             switch (d.type)
             {
-                case DealKind.TargetAgreement: return named ? "to put " + First(s, d.targetId) + " up, not each other" : "to put the same person up";
+                case DealKind.TargetAgreement: return named ? "to put " + Named(s, d.targetId) + " up, not each other" : "to put the same person up";
                 case DealKind.SafetyAgreement: return "not to nominate each other";
                 case DealKind.VoteTogether: return "to vote the same way";
-                case DealKind.VoteSave: return named ? "to vote to keep " + First(s, d.targetId) : "to vote to keep somebody";
-                case DealKind.VoteEvict: return named ? "to vote to evict " + First(s, d.targetId) : "to vote to evict somebody";
-                // The recipient is the one asked, and the veto is asked of whoever holds it.
-                case DealKind.VetoUse: return d.recipientId == s.playerId ? "to use the veto on them" : "to use the veto on you";
+                case DealKind.VoteSave: return named ? "to vote to keep " + Named(s, d.targetId) : "to vote to keep somebody";
+                case DealKind.VoteEvict: return named ? "to vote to evict " + Named(s, d.targetId) : "to vote to evict somebody";
+                // Either of the two can hold the veto, and the rule binds whichever does
+                // (DealResolution.Veto): nobody is assumed to hold it.
+                case DealKind.VetoUse: return "whichever of you holds the veto uses it on the other";
                 case DealKind.InformationSharing: return "to share what you each hear";
                 case DealKind.FinalTwo: return "to take each other to the final two";
                 case DealKind.AllianceInvite: return "to join forces in an alliance";
@@ -424,14 +469,59 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
+        /// Whether the player has anything standing that a decision of <paramref name="decisionKind"/>
+        /// settles: a deal, a promise of theirs or an oath that the engine judges on it. A
+        /// nomination settles safety and target deals, promises of safety and of alliance loyalty,
+        /// and oaths; the veto, its own deals as well; the ballot, vote deals, vote promises and
+        /// oaths; the final choice, Final 2 deals and promises. When nothing is standing - the
+        /// common case - there is nothing a dry run could find, so none is made.
+        /// </summary>
+        public static bool AtStake(EpisodeState s, string decisionKind)
+        {
+            if (s == null || string.IsNullOrEmpty(s.playerId)) return false;
+            switch (decisionKind)
+            {
+                case DecisionKinds.Nominate:
+                    return DealStanding(s, DealKind.SafetyAgreement, DealKind.TargetAgreement)
+                        || PromiseStanding(s, PromiseKind.Safety, PromiseKind.AllianceLoyalty) || OathStanding(s);
+                case DecisionKinds.Veto:
+                    return DealStanding(s, DealKind.VetoUse, DealKind.SafetyAgreement, DealKind.TargetAgreement)
+                        || PromiseStanding(s, PromiseKind.Safety, PromiseKind.AllianceLoyalty) || OathStanding(s);
+                case DecisionKinds.Vote:
+                    return DealStanding(s, DealKind.VoteSave, DealKind.VoteEvict) || PromiseStanding(s, PromiseKind.Vote) || OathStanding(s);
+                case DecisionKinds.FinalEviction:
+                    return DealStanding(s, DealKind.FinalTwo) || PromiseStanding(s, PromiseKind.FinalTwo);
+                default:
+                    return false;
+            }
+        }
+
+        private static bool DealStanding(EpisodeState s, params string[] types) =>
+            s.deals != null && s.deals.Any(d => d != null && d.status == DealStatus.Active
+                && (d.proposerId == s.playerId || d.recipientId == s.playerId) && Array.IndexOf(types, d.type) >= 0);
+
+        private static bool PromiseStanding(EpisodeState s, params PromiseKind[] kinds) =>
+            s.promises != null && s.promises.Any(p => p != null && p.status == PromiseStatus.Active
+                && p.fromId == s.playerId && Array.IndexOf(kinds, p.kind) >= 0);
+
+        private static bool OathStanding(EpisodeState s) =>
+            s.loyaltyOaths != null && s.loyaltyOaths.Any(o => o != null && (o.playerId == s.playerId || o.targetId == s.playerId));
+
+        /// <summary>How many of the player's commitments the breaches name: each once, however many choices break it.</summary>
+        public static int CountOf(IEnumerable<Breach> breaches) =>
+            breaches == null ? 0 : breaches.Where(b => b != null).Select(b => b.kind + ":" + b.id).Distinct(StringComparer.Ordinal).Count();
+
+        /// <summary>
         /// Every commitment of the player's that <paramref name="decision"/> would break, judged as
         /// the engine judges it. Empty when it breaks nothing, and when the decision is not one the
-        /// player can make now. Never writes to <paramref name="state"/>.
+        /// player can make now. Never writes to <paramref name="state"/>, and makes no copy of it
+        /// when the player has nothing standing that the decision settles.
         /// </summary>
         public static List<Breach> WouldBreak(EpisodeState state, Decision decision)
         {
             var none = new List<Breach>();
             if (state == null || decision == null || state.Find(state.playerId) == null) return none;
+            if (!AtStake(state, decision.kind)) return none;
             if (decision.kind == DecisionKinds.Vote) return ByTheRules(state, decision);
             var command = CommandFor(state, decision);
             if (command == null) return none;
@@ -528,15 +618,34 @@ namespace Gamesim.Simulation
         /// The same judgement made by the rules the engine applies, on a copy: the nomination's,
         /// the veto's and the final choice's verdicts from <see cref="DealResolution"/>, the promise
         /// checks of the nomination, the reveal and the final eviction, and the oath's. The ballot
-        /// is judged only on the player's own ballot: a voting block is settled by both partners'
-        /// ballots at once, and the partner's is private until the reveal, so the dry run never
-        /// warns about one.
+        /// is judged only on the player's own ballot, and only while the player can cast one: a
+        /// voting block is settled by both partners' ballots at once, and the partner's is private
+        /// until the reveal, so the dry run never warns about one.
         /// </summary>
-        public static List<Breach> ByTheRules(EpisodeState state, Decision decision)
+        public static List<Breach> ByTheRules(EpisodeState state, Decision decision) =>
+            ByTheRules(state, new[] { decision });
+
+        /// <summary>
+        /// The same judgement for several decisions on the one season - a screen's sweep of every
+        /// replacement it offers - on one copy of it: everything any of them would break, each
+        /// breach with the part of its own decision that breaks it. No copy when the player has
+        /// nothing standing that any of them settles.
+        /// </summary>
+        public static List<Breach> ByTheRules(EpisodeState state, IEnumerable<Decision> decisions)
         {
             var breaches = new List<Breach>();
-            if (state == null || decision == null || state.Find(state.playerId) == null) return breaches;
-            var s = state.Clone();
+            if (state == null || decisions == null || state.Find(state.playerId) == null) return breaches;
+            var judged = decisions.Where(d => d != null && AtStake(state, d.kind)).ToList();
+            if (judged.Count == 0) return breaches;
+            var copy = state.Clone();
+            foreach (var decision in judged) breaches.AddRange(Judge(copy, decision));
+            return breaches;
+        }
+
+        /// <summary>One decision by the rules, on a copy the caller made: what it breaks, each record once.</summary>
+        private static List<Breach> Judge(EpisodeState s, Decision decision)
+        {
+            var breaches = new List<Breach>();
             string player = s.playerId;
             switch (decision.kind)
             {
@@ -611,11 +720,12 @@ namespace Gamesim.Simulation
         /// The ballot, judged on the player's own: every standing vote promise of theirs that names
         /// somebody else, an oath with the nominee, and - under the levers - a vote deal the
         /// player's ballot alone breaks (DealResolution.VoteDeal reads only the ballots it is given).
+        /// Nothing unless it is a ballot the player can cast now (<see cref="CanCast"/>).
         /// </summary>
         private static List<Breach> BallotRules(EpisodeState s, Decision decision, List<Breach> breaches)
         {
             string player = s.playerId, target = decision.firstId;
-            if (string.IsNullOrEmpty(target) || !s.nominees.Contains(target) || target == player) return breaches;
+            if (!CanCast(s) || string.IsNullOrEmpty(target) || !s.nominees.Contains(target) || target == player) return breaches;
             foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.Vote && p.fromId == player))
                 if (promise.targetId != target) breaches.Add(PromiseBreach(s, promise, decision));
             var oath = s.loyaltyOaths.FirstOrDefault(o => (o.playerId == player && o.targetId == target) || (o.playerId == target && o.targetId == player));
@@ -629,6 +739,20 @@ namespace Gamesim.Simulation
                     breaches.Add(DealBreach(s, deal, decision));
             }
             return breaches;
+        }
+
+        /// <summary>
+        /// Whether the player can cast an eviction ballot now, as the engine takes one: still in the
+        /// house, the house voting and the eviction not yet over, no ballot of theirs recorded, and
+        /// a voter - or the Head of Household who breaks a tie.
+        /// </summary>
+        private static bool CanCast(EpisodeState s)
+        {
+            var you = s.Find(s.playerId);
+            return you != null && you.status == ContestantStatus.Active && s.phase == EpisodePhase.Eviction && !s.evictionResolved
+                && (s.evictionStage == EvictionStage.Voting || s.evictionStage == EvictionStage.Tiebreaker)
+                && !s.votes.Any(v => v.voterId == s.playerId)
+                && (EpisodeEngine.Voters(s).Any(v => v.id == s.playerId) || EpisodeEngine.NeedsPlayerTieBreak(s));
         }
 
         /// <summary>The finalist the final Head of Household takes by evicting <paramref name="evicted"/>: the third of the three.</summary>
@@ -768,11 +892,12 @@ namespace Gamesim.Simulation
             }
         }
 
-        /// <summary>A houseguest as a warning says them: by the pronoun when the choice is about them alone, by first name otherwise.</summary>
+        /// <summary>A houseguest as a warning says them: "you" for the player, by the pronoun when the choice is about them alone, by first name otherwise.</summary>
         private static string Who(EpisodeState s, string id, string them)
         {
             var who = s.Find(id);
             if (who == null) return "somebody";
+            if (id == s.playerId) return "you";
             if (id == them) return StoryPeople.Pronouns(who).them;
             return First(s, id);
         }

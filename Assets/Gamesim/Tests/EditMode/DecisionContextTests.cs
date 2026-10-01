@@ -87,6 +87,11 @@ namespace Gamesim.Tests.EditMode
                 + "Deal: Safety deal you proposed · this week · agreed"), "Newest first, each with its term and where it stands.");
             Assert.That(context.Promises, Is.EqualTo("No promises recorded between you."), "The promises read as they always did.");
             Assert.That(DecisionContext.ForCandidate(state, guests[1].id).Deals, Is.Null, "A deal between two houseguests is theirs.");
+
+            // A deal that names the player says "you", never the player's own name in the third person.
+            state.deals.Add(new DealState { id = "deal-keep-you", type = DealKind.VoteSave, proposerId = guests[2].id, recipientId = state.playerId,
+                targetId = state.playerId, status = DealStatus.Active, week = state.week, expiresWeek = state.week, trustImpact = DealKind.DefaultTrust(DealKind.VoteSave) });
+            Assert.That(DecisionContext.ForCandidate(state, guests[2].id).Deals, Is.EqualTo("Deal: Vote-to-save deal they offered (you) · this week · agreed"));
         }
     }
 }

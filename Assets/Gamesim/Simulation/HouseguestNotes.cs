@@ -24,6 +24,11 @@ namespace Gamesim.Simulation
         {
             public int week;
             public string kind, text, brief;
+            /// <summary>
+            /// The line for a row with room for one short line - the campaign's Recent Intel - where
+            /// <see cref="text"/> says more than that row holds; null where the text is short already.
+            /// </summary>
+            public string compact;
             public override string ToString() => "Week " + week + " · " + text;
         }
 
@@ -55,11 +60,14 @@ namespace Gamesim.Simulation
                 string title = DealKind.Title(deal.type).ToLowerInvariant();
                 string standing = DealStanding(deal.status, theirs);
                 // Whom it is about, where it names somebody, and how it ended where the record can say.
+                // The campaign's one-line row keeps the offer and where it stands, as it always read.
                 string about = DealKind.NamesATarget(deal.type) && s.Find(deal.targetId) != null ? " (about " + Name(deal.targetId) + ")" : "";
+                string offer = theirs ? first + " put a " + title + " to you" : "You put a " + title + " to " + first;
                 notes.Add(new Note
                 {
                     week = deal.week, kind = Kinds.Offer,
-                    text = (theirs ? first + " put a " + title + " to you" : "You put a " + title + " to " + first) + about + " · " + DealEnding(s, deal, theirs),
+                    text = offer + about + " · " + DealEnding(s, deal, theirs),
+                    compact = offer + " · " + standing,
                     brief = theirs && deal.status == DealStatus.Proposed ? "An offer waiting on you" : (theirs ? "Their offer: " : "Your offer: ") + standing,
                 });
             }

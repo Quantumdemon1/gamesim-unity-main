@@ -44,7 +44,8 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// "Deal: Safety deal you proposed · this week · agreed", the newest two and a count of the
-        /// rest: only deals the player is a party to, read as the Your word page reads them.
+        /// rest: only deals the player is a party to, read as the Your word page reads them, with
+        /// whom a deal names - "(you)" when it names the player.
         /// </summary>
         private static string Deals(EpisodeState state, string id)
         {
@@ -54,7 +55,8 @@ namespace Gamesim.Presentation
             string Line(CommitmentsRead.Commitment deal)
             {
                 var about = state.Find(deal.aboutId);
-                return "Deal: " + deal.title + (about != null ? " (" + FinalistRead.FirstName(about.name) + ")" : "")
+                string named = about == null ? null : about.id == state.playerId ? "you" : FinalistRead.FirstName(about.name);
+                return "Deal: " + deal.title + (named != null ? " (" + named + ")" : "")
                     + " · " + deal.term + " · " + deal.status;
             }
             return string.Join("\n", Enumerable.Reverse(deals).Take(2).Select(Line))

@@ -125,21 +125,115 @@ namespace Gamesim.Tests.EditMode
             Oath(s, npc[0].id, 2);
             Oath(s, npc[1].id, 3);
             npc[1].status = ContestantStatus.Jury;
+            s.ledger.power.Add(new PowerRow { week = 5, hohId = npc[5].id, nominees = new List<string> { npc[1].id, npc[6].id },
+                evicteeId = npc[1].id, tally = new List<int> { 4, 1 } });
             // An oath breach removes the oath and writes the arc the oath's rule writes.
             s.relationshipArcs.Add(new RelationshipArcState { npcId = npc[2].id, npcName = npc[2].name, weeklyHistory = new List<ArcHistory>
                 { new ArcHistory { week = 4, delta = -25, reason = "Broke loyalty oath by nominating you in week 4" } } });
             s.relationshipArcs.Add(new RelationshipArcState { npcId = npc[3].id, npcName = npc[3].name, weeklyHistory = new List<ArcHistory>
                 { new ArcHistory { week = 5, delta = -20, reason = "Broke loyalty oath by voting to evict " + npc[3].name + " in week 5" } } });
+            // Production removed somebody the player had declared to: the removal takes every oath
+            // naming them off the list, unbroken, and leaves the declaration on the player's edge
+            // (EpisodeEngine.Expel).
+            Oath(s, npc[4].id, 2);
+            s.loyaltyOaths.RemoveAll(o => o.targetId == npc[4].id);
+            npc[4].status = ContestantStatus.Expelled;
+            s.story.removals.Add(new RemovalState { contestantId = npc[4].id, week = 4, reasonId = "conduct" });
 
             var oaths = CommitmentsRead.Of(s).Where(c => c.kind == CommitmentsRead.Kinds.Oath).ToList();
-            Assert.That(oaths.Single(c => c.withId == npc[0].id).outcome, Is.EqualTo(CommitmentsRead.Outcomes.Open));
+            Assert.That(oaths.Select(c => c.withId), Is.EquivalentTo(new[] { npc[0].id, npc[1].id, npc[2].id, npc[3].id, npc[4].id }),
+                "Every oath the player declared, standing, kept, broken or ended by a removal, once each.");
+            Assert.That(oaths.Select(c => c.title).Distinct(), Is.EqualTo(new[] { "Your loyalty oath" }), "Every oath is the player's own declaration.");
+            var standing = oaths.Single(c => c.withId == npc[0].id);
+            Assert.That((standing.outcome, standing.term), Is.EqualTo((CommitmentsRead.Outcomes.Open, "never expires")));
             var left = oaths.Single(c => c.withId == npc[1].id);
-            Assert.That((left.outcome, left.status), Is.EqualTo((CommitmentsRead.Outcomes.Kept, "never broken")));
+            Assert.That((left.outcome, left.status, left.term, left.settledWeek),
+                Is.EqualTo((CommitmentsRead.Outcomes.Kept, "never broken", "until they left in week 5", 5)));
             var theirs = oaths.Single(c => c.withId == npc[2].id);
-            Assert.That((theirs.outcome, theirs.brokenById, theirs.settledWeek, theirs.status),
-                Is.EqualTo((CommitmentsRead.Outcomes.Broken, npc[2].id, 4, "broken by them with a nomination in week 4")));
+            Assert.That((theirs.outcome, theirs.brokenById, theirs.settledWeek, theirs.status, theirs.term),
+                Is.EqualTo((CommitmentsRead.Outcomes.Broken, npc[2].id, 4, "broken by them with a nomination", "held until week 4")));
+            Assert.That(CommitmentsRead.Line(theirs),
+                Is.EqualTo("Your loyalty oath: never to nominate or vote out each other · held until week 4 · broken by them with a nomination"));
             var yours = oaths.Single(c => c.withId == npc[3].id);
-            Assert.That((yours.brokenById, yours.status), Is.EqualTo((s.playerId, "broken by you with a vote in week 5")));
+            Assert.That((yours.brokenById, yours.status, yours.term), Is.EqualTo((s.playerId, "broken by you with a vote", "held until week 5")));
+            var removed = oaths.Single(c => c.withId == npc[4].id);
+            Assert.That((removed.outcome, removed.status, removed.term, removed.IsOpen),
+                Is.EqualTo((CommitmentsRead.Outcomes.Kept, "never broken", "until they left in week 4", false)),
+                "An oath with somebody production removed still shows, settled.");
+            Assert.That(oaths.Where(c => !c.IsOpen).Select(c => c.term), Has.None.EqualTo("never expires"), "An oath that has ended never reads as one that never expires.");
+
+            // The player removed: every oath of theirs went with them, and each still shows, settled.
+            var gone = Season();
+            var others = Npcs(gone);
+            Oath(gone, others[0].id, 1);
+            gone.week = 3;
+            gone.loyaltyOaths.Clear();
+            gone.Find(gone.playerId).status = ContestantStatus.Expelled;
+            gone.story.removals.Add(new RemovalState { contestantId = gone.playerId, week = 3, reasonId = "conduct" });
+            var own = CommitmentsRead.Of(gone).Single(c => c.kind == CommitmentsRead.Kinds.Oath);
+            Assert.That((own.withId, own.outcome, own.term), Is.EqualTo((others[0].id, CommitmentsRead.Outcomes.Kept, "until you left in week 3")));
+        }
+
+        [Test]
+        public void ADealThatNamesThePlayerSaysYouAndAVetoDealAssumesNobodyHoldsIt()
+        {
+            var s = Season();
+            var npc = Npcs(s);
+            s.week = 3;
+            Deal(s, "d-keep", DealKind.VoteSave, npc[0].id, s.playerId, about: s.playerId, week: 3, expires: 3);
+            Deal(s, "d-veto-asked", DealKind.VetoUse, npc[1].id, s.playerId, week: 3, expires: 3);
+            Deal(s, "d-veto-offered", DealKind.VetoUse, s.playerId, npc[2].id, week: 3, expires: 3);
+            var read = CommitmentsRead.Of(s);
+            var keep = read.Single(c => c.id == "d-keep");
+            Assert.That((keep.aboutId, keep.binds), Is.EqualTo((s.playerId, "to vote to keep you")), "A deal about the player says you.");
+            Assert.That(CommitmentsRead.Line(keep), Is.EqualTo("Vote-to-save deal they offered: to vote to keep you · this week · agreed"),
+                "never the player's own name in the third person.");
+            foreach (var id in new[] { "d-veto-asked", "d-veto-offered" })
+                Assert.That(read.Single(c => c.id == id).binds, Is.EqualTo("whichever of you holds the veto uses it on the other"),
+                    "Either party can hold the veto, and the deal binds whichever does: " + id + ".");
+        }
+
+        [Test]
+        public void NothingIsRunForADecisionWhenNothingItSettlesIsStanding()
+        {
+            var s = AtNominations();
+            var npc = EpisodeEngine.NominationCandidates(s).ToList();
+            string player = s.playerId;
+            foreach (var kind in new[] { CommitmentsRead.DecisionKinds.Nominate, CommitmentsRead.DecisionKinds.Veto,
+                         CommitmentsRead.DecisionKinds.Vote, CommitmentsRead.DecisionKinds.FinalEviction })
+                Assert.That(CommitmentsRead.AtStake(s, kind), Is.False, "A fresh season has nothing at stake: " + kind + ".");
+
+            // Words the player is not a party to, or is owed rather than gave, or of a kind no decision settles.
+            Deal(s, "d-npc", DealKind.SafetyAgreement, npc[0].id, npc[1].id);
+            Promise(s, "p-owed", PromiseKind.Safety, npc[2].id, player, expires: 2);
+            Deal(s, "d-info", DealKind.InformationSharing, player, npc[3].id);
+            Deal(s, "d-block", DealKind.VoteTogether, player, npc[4].id);
+            Deal(s, "d-asked", DealKind.SafetyAgreement, npc[5].id, player, status: DealStatus.Proposed);
+            foreach (var kind in new[] { CommitmentsRead.DecisionKinds.Nominate, CommitmentsRead.DecisionKinds.Veto,
+                         CommitmentsRead.DecisionKinds.Vote, CommitmentsRead.DecisionKinds.FinalEviction })
+                Assert.That(CommitmentsRead.AtStake(s, kind), Is.False, "Nothing the player gave that a decision settles: " + kind + ".");
+            Assert.That(CommitmentsRead.WouldBreak(s, CommitmentsRead.Decision.Nominate(npc[0].id, npc[1].id)), Is.Empty);
+
+            // Each kind of decision, and what it settles.
+            Deal(s, "d-safety", DealKind.SafetyAgreement, player, npc[6].id);
+            Assert.That((CommitmentsRead.AtStake(s, CommitmentsRead.DecisionKinds.Nominate), CommitmentsRead.AtStake(s, CommitmentsRead.DecisionKinds.Veto),
+                CommitmentsRead.AtStake(s, CommitmentsRead.DecisionKinds.Vote), CommitmentsRead.AtStake(s, CommitmentsRead.DecisionKinds.FinalEviction)),
+                Is.EqualTo((true, true, false, false)), "A safety deal is settled by a nomination, a replacement among them.");
+            var v = Season();
+            var w = Npcs(v);
+            Deal(v, "d-veto", DealKind.VetoUse, w[0].id, v.playerId);
+            Assert.That((CommitmentsRead.AtStake(v, CommitmentsRead.DecisionKinds.Veto), CommitmentsRead.AtStake(v, CommitmentsRead.DecisionKinds.Nominate)),
+                Is.EqualTo((true, false)), "A veto deal, by the veto alone.");
+            var b = Season();
+            Promise(b, "p-vote", PromiseKind.Vote, b.playerId, Npcs(b)[0].id, about: Npcs(b)[1].id);
+            Assert.That(CommitmentsRead.AtStake(b, CommitmentsRead.DecisionKinds.Vote), Is.True, "A vote promise, by the ballot.");
+            var o = Season();
+            Oath(o, Npcs(o)[0].id, 1);
+            Assert.That((CommitmentsRead.AtStake(o, CommitmentsRead.DecisionKinds.Nominate), CommitmentsRead.AtStake(o, CommitmentsRead.DecisionKinds.Vote),
+                CommitmentsRead.AtStake(o, CommitmentsRead.DecisionKinds.FinalEviction)), Is.EqualTo((true, true, false)), "An oath, by a nomination or a ballot.");
+            var f = Season();
+            Promise(f, "p-final", PromiseKind.FinalTwo, f.playerId, Npcs(f)[0].id);
+            Assert.That(CommitmentsRead.AtStake(f, CommitmentsRead.DecisionKinds.FinalEviction), Is.True, "A Final 2 promise, by the final choice.");
         }
 
         [Test]
@@ -190,6 +284,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Fingerprint(s), Is.EqualTo(before), "The dry run writes nothing to the season it read, and draws nothing from its stream.");
             Assert.That(Ids(warned), Is.EquivalentTo(new[] { "deal:d-safety", "deal:d-target", "promise:p-safety", OathKey(s, npc[0].id) }),
                 "The safety deal and the oath with the first, the target deal and the promise with the second; nothing of anybody else's.");
+            Assert.That(CommitmentsRead.CountOf(warned), Is.EqualTo(4), "Four commitments, each counted once.");
             Assert.That(Ids(CommitmentsRead.ByTheRules(s, decision)), Is.EquivalentTo(Ids(warned)), "The rules and the engine's run agree.");
 
             var after = Commit(s, Nominate(s, npc[0].id, npc[1].id));
@@ -279,6 +374,90 @@ namespace Gamesim.Tests.EditMode
             }
             Assert.That(CommitmentsRead.Warning(s, CommitmentsRead.WouldBreak(s, CommitmentsRead.Decision.Veto(true, first, candidates[0]))), Is.EqualTo(
                 "Naming " + First(s, candidates[0]) + " as the replacement breaks your safety deal with " + Them(s.Find(candidates[0])) + "."));
+        }
+
+        /// <summary>
+        /// The screens sweep every replacement they offer by the rules on one copy of the season,
+        /// where an engine run each would be one a name: the sweep says exactly what each name
+        /// alone would break - an oath among them, which a shared record of what was broken could
+        /// have swallowed - and the engine, committing each name, agrees.
+        /// </summary>
+        [Test]
+        public void ASweepOfEveryReplacementIsJudgedOnOneCopyAsEachNameIsAlone()
+        {
+            var s = AtTheVetoMeeting(playerHoh: true);
+            string first = s.nominees[0];
+            var candidates = EpisodeEngine.ReplacementCandidates(s).Select(c => c.id).ToList();
+            Assert.That(candidates.Count, Is.GreaterThanOrEqualTo(3));
+            Deal(s, "d-safety", DealKind.SafetyAgreement, candidates[0], s.playerId);
+            Promise(s, "p-safety", PromiseKind.Safety, s.playerId, candidates[1], expires: 2);
+            Oath(s, candidates[2], 1);
+            Valid(s);
+            var before = Fingerprint(s);
+
+            var sweep = candidates.Select(replacement => CommitmentsRead.Decision.Veto(true, first, replacement)).ToList();
+            var swept = CommitmentsRead.ByTheRules(s, sweep);
+            Assert.That(Fingerprint(s), Is.EqualTo(before), "The sweep writes nothing to the season it read.");
+            Assert.That(Ids(swept), Is.EquivalentTo(sweep.SelectMany(decision => Ids(CommitmentsRead.ByTheRules(s, decision)))),
+                "One copy for them all says what each name alone says.");
+            Assert.That(Ids(swept), Is.EquivalentTo(new[] { "deal:d-safety", "promise:p-safety", OathKey(s, candidates[2]) }));
+            foreach (var decision in sweep.Take(3))
+            {
+                var command = EpisodeEngineTests.Command(s, EpisodeCommandKind.ResolveVeto);
+                command.useVeto = true; command.targetId = first; command.secondTargetId = decision.secondId;
+                Assert.That(BrokenOfThePlayers(s, Commit(s, command)), Is.EquivalentTo(Ids(swept.Where(b => b.causeId == decision.secondId))),
+                    "The engine agrees on naming " + decision.secondId + ".");
+            }
+            Assert.That(CommitmentsRead.Warning(s, swept), Is.EqualTo(
+                "Naming " + First(s, candidates[0]) + " as the replacement breaks your safety deal with " + Them(s.Find(candidates[0])) + ". "
+                + "Naming " + First(s, candidates[1]) + " as the replacement breaks your promise of safety to " + Them(s.Find(candidates[1])) + ". "
+                + "Naming " + First(s, candidates[2]) + " as the replacement breaks your loyalty oath to " + Them(s.Find(candidates[2])) + "."));
+            Assert.That(CommitmentsRead.ByTheRules(s, new CommitmentsRead.Decision[0]), Is.Empty, "No decisions, nothing to judge.");
+        }
+
+        /// <summary>
+        /// The ballot is warned of only while it is the player's to cast, as the engine takes one:
+        /// not before the house votes, not once theirs is in, not when the eviction is over, not
+        /// from the block or the Head of Household's chair - except to break a tie.
+        /// </summary>
+        [Test]
+        public void ABallotIsWarnedOfOnlyWhileThePlayerCanCastIt()
+        {
+            var s = AtTheVote();
+            string keep = s.nominees[0], evict = s.nominees[1];
+            var voters = EpisodeEngine.Voters(s).Where(v => !v.isPlayer).Select(v => v.id).ToList();
+            Promise(s, "p-vote", PromiseKind.Vote, s.playerId, voters[0], about: evict, expires: s.week);
+            Valid(s);
+            Assert.That(Ids(CommitmentsRead.WouldBreak(s, CommitmentsRead.Decision.Vote(keep))), Is.EqualTo(new[] { "promise:p-vote" }),
+                "Voting against the promise breaks it.");
+
+            EpisodeState Shaped(System.Action<EpisodeState> shape) { var copy = s.Clone(); shape(copy); return copy; }
+            var closed = new Dictionary<string, EpisodeState>
+            {
+                ["before the house votes"] = Shaped(x => x.evictionStage = EvictionStage.Speeches),
+                ["once the player's ballot is in"] = Shaped(x => x.votes.Add(new VoteState { voterId = x.playerId, targetId = evict, reason = "test" })),
+                ["once the eviction is over"] = Shaped(x => x.evictionResolved = true),
+                ["outside the eviction"] = Shaped(x => x.phase = EpisodePhase.Campaign),
+                ["from the block"] = Shaped(x => x.nominees = new List<string> { x.playerId, evict }),
+                ["from the Head of Household's chair"] = Shaped(x => x.hohId = x.playerId),
+            };
+            foreach (var pair in closed)
+            {
+                Assert.That(CommitmentsRead.WouldBreak(pair.Value, CommitmentsRead.Decision.Vote(keep)), Is.Empty, "No ballot to warn of " + pair.Key + ".");
+                Assert.That(CommitmentsRead.WouldBreak(pair.Value, CommitmentsRead.Decision.Vote(evict)), Is.Empty, "Nor the other way, " + pair.Key + ".");
+            }
+
+            // The Head of Household breaks a tie with a ballot the reveal judges like any other.
+            var tie = AtTheVote(size: 9);
+            tie.hohId = tie.playerId;
+            var tied = EpisodeEngine.Voters(tie).Select(v => v.id).ToList();
+            Assert.That(tied.Count % 2, Is.EqualTo(0), "Precondition: an even house of voters.");
+            for (int i = 0; i < tied.Count; i++)
+                tie.votes.Add(new VoteState { voterId = tied[i], targetId = tie.nominees[i % 2], reason = "test" });
+            tie.evictionStage = EvictionStage.Tiebreaker;
+            Promise(tie, "p-tie", PromiseKind.Vote, tie.playerId, tied[0], about: tie.nominees[1], expires: tie.week);
+            Assert.That(EpisodeEngine.NeedsPlayerTieBreak(tie), Is.True, "Precondition: the tie is the player's to break.");
+            Assert.That(Ids(CommitmentsRead.WouldBreak(tie, CommitmentsRead.Decision.Vote(tie.nominees[0]))), Is.EqualTo(new[] { "promise:p-tie" }));
         }
 
         /// <summary>
@@ -444,6 +623,12 @@ namespace Gamesim.Tests.EditMode
             var texts = HouseguestNotes.For(s, npc[0].id).Select(n => n.text).ToList();
             Assert.That(texts, Has.Some.EqualTo("You put a target agreement to " + first + " (about " + npc[1].name + ") · broken by you"));
             Assert.That(texts, Has.Some.EqualTo(first + " put a vote to save to you (about " + npc[2].name + ") · agreed"));
+
+            // The campaign's Recent Intel row holds one short line: the offer and where it stands, as it always read.
+            var intel = CampaignBrief.RecentIntel(s, 20).Select(line => line.text).ToList();
+            Assert.That(intel, Has.Some.EqualTo("You put a target agreement to " + first + " · broken"));
+            Assert.That(intel, Has.Some.EqualTo(first + " put a vote to save to you · agreed"));
+            Assert.That(intel.Any(line => line.Contains("(about ")), Is.False, "Whom an offer was about stays on the notes page, where there is room for it.");
         }
 
         // ---------------------------------------------------------------- fixtures
@@ -485,12 +670,17 @@ namespace Gamesim.Tests.EditMode
             return promise;
         }
 
-        /// <summary>The player's loyalty declaration to a houseguest, with the milestone validation asks for.</summary>
+        /// <summary>
+        /// The player's loyalty declaration to a houseguest as the engine records one: the oath, the
+        /// milestone validation asks for, and the note on the player's own edge with them.
+        /// </summary>
         private static WebOathRecord Oath(EpisodeState s, string npcId, int week)
         {
             if (!s.shownOathMilestones.Contains(npcId)) s.shownOathMilestones.Add(npcId);
             var oath = new WebOathRecord { playerId = s.playerId, targetId = npcId, week = week, timestamp = s.nextSequence++ };
             s.loyaltyOaths.Add(oath);
+            var edge = s.relationships.Single(r => r.fromId == s.playerId && r.toId == npcId);
+            edge.notes.Add("loyalty-oath");
             return oath;
         }
 
@@ -569,9 +759,9 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>Eviction night at the vote, under the levers: a houseguest at the head of the house, two on the block, the player voting.</summary>
-        private static EpisodeState AtTheVote(uint seed = 9)
+        private static EpisodeState AtTheVote(uint seed = 9, int size = 8)
         {
-            var s = Season(seed, 8);
+            var s = Season(seed, size);
             var npc = Npcs(s);
             s.phase = EpisodePhase.Eviction;
             s.evictionStage = EvictionStage.Voting;

@@ -63,7 +63,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Vector3.Distance(cameraRig.DesiredFocus, focusBefore), Is.LessThan(0.05f), "back to where the viewer was");
             Assert.That(cameraRig.DesiredDistance, Is.EqualTo(distanceBefore).Within(0.05f));
             Assert.That(EpisodeDirector.CeremonyRoom("eviction"), Is.EqualTo("Living"));
-            Assert.That(EpisodeDirector.CeremonyRoom("veto"), Is.EqualTo("Games"));
+            // The veto meeting is held in the living room (PACK8-PASS-PLAN decision 5), staged or on the HUD frame.
+            Assert.That(EpisodeDirector.CeremonyRoom("veto"), Is.EqualTo("Living"));
             Assert.That(EpisodeDirector.CeremonyRoom("arrival"), Is.Null, "A kind without a set frames nothing.");
             cameraRig.ControlsEnabled = true;
         }

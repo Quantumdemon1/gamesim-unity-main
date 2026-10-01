@@ -21,6 +21,10 @@ namespace Gamesim.Presentation
         TieBroken,
         /// <summary>The result read: <see cref="CeremonyBeat.SubjectId"/> is who is leaving, or who won.</summary>
         ResultShown,
+        /// <summary>The veto meeting's decision on the screen: <see cref="CeremonyBeat.SubjectId"/> is who the veto saved, or null when it was not used.</summary>
+        VetoDecided,
+        /// <summary>The Head of Household's replacement on the screen: <see cref="CeremonyBeat.SubjectId"/> is who went up.</summary>
+        ReplacementNamed,
         /// <summary>The card is down, on its own clock or skipped.</summary>
         Closed,
     }

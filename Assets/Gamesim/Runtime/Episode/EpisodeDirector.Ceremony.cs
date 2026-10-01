@@ -142,9 +142,12 @@ namespace Gamesim.Episode
                 + Spelled(drawn).ToLowerInvariant() + " drawn from the house.";
         }
 
-        /// <summary>The veto meeting card's line, as the mockup's VETO USED and VETO NOT USED say it.</summary>
-        public const string VetoUsedLine = "Veto used: a nominee is removed and a replacement is named.",
-            VetoNotUsedLine = "Veto not used: the nominations stay the same.";
+        /// <summary>
+        /// The veto meeting card's line, as the mockup's VETO USED and VETO NOT USED say it: the
+        /// simulation's own, so the staged meeting's screen (VetoMeetingRead) says the same words.
+        /// </summary>
+        public const string VetoUsedLine = VetoMeetingRead.UsedLine,
+            VetoNotUsedLine = VetoMeetingRead.NotUsedLine;
 
         /// <summary>
         /// Which way the veto meeting went, read from the block before the commit and after it: a

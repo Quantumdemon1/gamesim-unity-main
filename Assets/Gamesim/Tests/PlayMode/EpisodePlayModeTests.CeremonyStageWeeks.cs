@@ -87,7 +87,15 @@ namespace Gamesim.Tests.PlayMode
                 var ceremony = director.Snapshot.events.Skip(before.events.Count).LastOrDefault(entry =>
                     (entry.kind == CeremonySting.NominationKind || entry.kind == CeremonySting.EvictionKind)
                     && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(before.playerId)));
-                if (ceremony == null) { yield return null; continue; }
+                if (ceremony == null)
+                {
+                    // The veto meeting is staged on the way (PACK8-PASS-PLAN C1): skipped as a player
+                    // skips it, before the walk commits the next decision under it.
+                    if (director.IsCeremonyStaged && director.CeremonyStageKind == CeremonySting.VetoKind)
+                        yield return SkipTheStagedVetoMeeting(what + ", the veto meeting on the way");
+                    else yield return null;
+                    continue;
+                }
 
                 stagedKind = ceremony.kind;
                 Assert.That(director.IsCeremonyStaged, Is.True, what + " (week " + before.week + ") is staged in the house, not played on the HUD."

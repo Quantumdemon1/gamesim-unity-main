@@ -307,5 +307,105 @@ namespace Gamesim.Presentation
         public const string Pack8VoteLeanEvict = "Pack8_CampaignVetoNomination/Campaign/Voting/vote_lean_evict_9slice";
         public const string Pack8VoteLikelyEvict = "Pack8_CampaignVetoNomination/Campaign/Voting/vote_likely_evict_9slice";
         public const string Pack8VoteUnknown = "Pack8_CampaignVetoNomination/Campaign/Voting/vote_unknown_9slice";
+
+        // Pack 9: the ceremony and finale pack.
+        // The GameSim Ceremony + Finale Asset Pack (UI-UX-PASS-PLAN P0; its README is under
+        // ArtSource/ui-packs/Pack9_CeremonyFinale): white, tintable sprites for the live eviction, the
+        // nomination ceremony and the season finale. A frame is an *_edge over a *_fill of the same
+        // size (as Kit 6's chrome), so a state changes a tint or a layer, never a rect; the edges and
+        // fills are sliced, with the border measured from their pixels (the README's 24 / 18 / 30 are
+        // nominal), and everything else is drawn whole, Simple with Preserve Aspect, never a raycast
+        // target. Every one of the 62 files is named, the pack's byte-for-byte twins included - Icons/
+        // repeats eleven of the per-screen icons, and a Shared/ frame or ring repeats under each screen
+        // that draws it - because the wave's slices are built in parallel, each against its own screen's
+        // folder; PackArtTests lists the twins, so a later pass can fold them.
+        /// <summary>
+        /// What every screen shares: a panel and a card, each a resting or focus edge over a fill, a
+        /// pill, the portrait ring and its glowing twin, and the focus halo drawn out past a lit card.
+        /// </summary>
+        public const string Pack9SharedCardEdgeFocus = "Pack9_CeremonyFinale/Shared/card_edge_focus";
+        public const string Pack9SharedCardEdgeRest = "Pack9_CeremonyFinale/Shared/card_edge_rest";
+        public const string Pack9SharedCardFill = "Pack9_CeremonyFinale/Shared/card_fill";
+        public const string Pack9SharedFocusHalo = "Pack9_CeremonyFinale/Shared/focus_halo";
+        public const string Pack9SharedPanelEdgeFocus = "Pack9_CeremonyFinale/Shared/panel_edge_focus";
+        public const string Pack9SharedPanelEdgeRest = "Pack9_CeremonyFinale/Shared/panel_edge_rest";
+        public const string Pack9SharedPanelFill = "Pack9_CeremonyFinale/Shared/panel_fill";
+        public const string Pack9SharedPillEdge = "Pack9_CeremonyFinale/Shared/pill_edge";
+        public const string Pack9SharedPillFill = "Pack9_CeremonyFinale/Shared/pill_fill";
+        public const string Pack9SharedPortraitRing = "Pack9_CeremonyFinale/Shared/portrait_ring";
+        public const string Pack9SharedPortraitRingGlow = "Pack9_CeremonyFinale/Shared/portrait_ring_glow";
+        /// <summary>
+        /// The live eviction (B0): the CURRENT TALLY card, the anonymous badge and its icon, the ballot
+        /// and lock icons, the nominee ring and the reveal's progress dots. The README's rule: only the
+        /// running tally and the reveal's progress, never a voter's identity.
+        /// </summary>
+        public const string Pack9LiveEvictionAnonymousBadgeEdge = "Pack9_CeremonyFinale/LiveEviction/anonymous_badge_edge";
+        public const string Pack9LiveEvictionAnonymousBadgeFill = "Pack9_CeremonyFinale/LiveEviction/anonymous_badge_fill";
+        public const string Pack9LiveEvictionAnonymousIcon = "Pack9_CeremonyFinale/LiveEviction/anonymous_icon";
+        public const string Pack9LiveEvictionBallotIcon = "Pack9_CeremonyFinale/LiveEviction/ballot_icon";
+        public const string Pack9LiveEvictionLockIcon = "Pack9_CeremonyFinale/LiveEviction/lock_icon";
+        public const string Pack9LiveEvictionNomineeRing = "Pack9_CeremonyFinale/LiveEviction/nominee_ring";
+        public const string Pack9LiveEvictionProgressDotActive = "Pack9_CeremonyFinale/LiveEviction/progress_dot_active";
+        public const string Pack9LiveEvictionProgressDotInactive = "Pack9_CeremonyFinale/LiveEviction/progress_dot_inactive";
+        public const string Pack9LiveEvictionTallyCardEdge = "Pack9_CeremonyFinale/LiveEviction/tally_card_edge";
+        public const string Pack9LiveEvictionTallyCardFill = "Pack9_CeremonyFinale/LiveEviction/tally_card_fill";
+        /// <summary>
+        /// The nomination ceremony (N0, N1): the ceremony panel (the card's opaque ground on the screen
+        /// frame), the SAFE / NOMINATED status tag, the key and the HoH's crown, the safe and nominee
+        /// rings, and the pedestal mask the key stands on. The title stays clean text: the key and the
+        /// crown go in the stage and the roster, never inside it.
+        /// </summary>
+        public const string Pack9NominationCeremonyCeremonyPanelEdge = "Pack9_CeremonyFinale/NominationCeremony/ceremony_panel_edge";
+        public const string Pack9NominationCeremonyCeremonyPanelFill = "Pack9_CeremonyFinale/NominationCeremony/ceremony_panel_fill";
+        public const string Pack9NominationCeremonyHohCrownIcon = "Pack9_CeremonyFinale/NominationCeremony/hoh_crown_icon";
+        public const string Pack9NominationCeremonyKeyIcon = "Pack9_CeremonyFinale/NominationCeremony/key_icon";
+        public const string Pack9NominationCeremonyKeyPedestalMask = "Pack9_CeremonyFinale/NominationCeremony/key_pedestal_mask";
+        public const string Pack9NominationCeremonyNomineeRing = "Pack9_CeremonyFinale/NominationCeremony/nominee_ring";
+        public const string Pack9NominationCeremonySafeRing = "Pack9_CeremonyFinale/NominationCeremony/safe_ring";
+        public const string Pack9NominationCeremonyStatusTagEdge = "Pack9_CeremonyFinale/NominationCeremony/status_tag_edge";
+        public const string Pack9NominationCeremonyStatusTagFill = "Pack9_CeremonyFinale/NominationCeremony/status_tag_fill";
+        /// <summary>
+        /// The season finale (F0): the WINNER card and its halo, the FINAL TWO finalist cards, the JURY
+        /// panel, the stat tiles of the highlights strip, the action tiles of the three ways on (a
+        /// resting and a focus edge over one fill), and the icons they carry: crown, trophy, star,
+        /// jury, people, report, replay and home.
+        /// </summary>
+        public const string Pack9SeasonFinaleActionTileEdge = "Pack9_CeremonyFinale/SeasonFinale/action_tile_edge";
+        public const string Pack9SeasonFinaleActionTileFill = "Pack9_CeremonyFinale/SeasonFinale/action_tile_fill";
+        public const string Pack9SeasonFinaleActionTileFocusEdge = "Pack9_CeremonyFinale/SeasonFinale/action_tile_focus_edge";
+        public const string Pack9SeasonFinaleCrownIcon = "Pack9_CeremonyFinale/SeasonFinale/crown_icon";
+        public const string Pack9SeasonFinaleFinalistCardEdge = "Pack9_CeremonyFinale/SeasonFinale/finalist_card_edge";
+        public const string Pack9SeasonFinaleFinalistCardFill = "Pack9_CeremonyFinale/SeasonFinale/finalist_card_fill";
+        public const string Pack9SeasonFinaleHomeIcon = "Pack9_CeremonyFinale/SeasonFinale/home_icon";
+        public const string Pack9SeasonFinaleJuryIcon = "Pack9_CeremonyFinale/SeasonFinale/jury_icon";
+        public const string Pack9SeasonFinaleJuryPanelEdge = "Pack9_CeremonyFinale/SeasonFinale/jury_panel_edge";
+        public const string Pack9SeasonFinaleJuryPanelFill = "Pack9_CeremonyFinale/SeasonFinale/jury_panel_fill";
+        public const string Pack9SeasonFinalePeopleIcon = "Pack9_CeremonyFinale/SeasonFinale/people_icon";
+        public const string Pack9SeasonFinaleReplayIcon = "Pack9_CeremonyFinale/SeasonFinale/replay_icon";
+        public const string Pack9SeasonFinaleReportIcon = "Pack9_CeremonyFinale/SeasonFinale/report_icon";
+        public const string Pack9SeasonFinaleStarIcon = "Pack9_CeremonyFinale/SeasonFinale/star_icon";
+        public const string Pack9SeasonFinaleStatTileEdge = "Pack9_CeremonyFinale/SeasonFinale/stat_tile_edge";
+        public const string Pack9SeasonFinaleStatTileFill = "Pack9_CeremonyFinale/SeasonFinale/stat_tile_fill";
+        public const string Pack9SeasonFinaleTrophyIcon = "Pack9_CeremonyFinale/SeasonFinale/trophy_icon";
+        public const string Pack9SeasonFinaleWinnerCardEdge = "Pack9_CeremonyFinale/SeasonFinale/winner_card_edge";
+        public const string Pack9SeasonFinaleWinnerCardFill = "Pack9_CeremonyFinale/SeasonFinale/winner_card_fill";
+        public const string Pack9SeasonFinaleWinnerCardHalo = "Pack9_CeremonyFinale/SeasonFinale/winner_card_halo";
+        /// <summary>
+        /// The twelve icons once more under one folder (the pack's Icons_PNG), 128 px each: eleven are
+        /// byte for byte the per-screen icons above; ic_key is the key at 128, where
+        /// <see cref="Pack9NominationCeremonyKeyIcon"/> is a 256 px drawing of its own.
+        /// </summary>
+        public const string Pack9IconsIcAnonymous = "Pack9_CeremonyFinale/Icons/ic_anonymous";
+        public const string Pack9IconsIcBallot = "Pack9_CeremonyFinale/Icons/ic_ballot";
+        public const string Pack9IconsIcCrown = "Pack9_CeremonyFinale/Icons/ic_crown";
+        public const string Pack9IconsIcHome = "Pack9_CeremonyFinale/Icons/ic_home";
+        public const string Pack9IconsIcJury = "Pack9_CeremonyFinale/Icons/ic_jury";
+        public const string Pack9IconsIcKey = "Pack9_CeremonyFinale/Icons/ic_key";
+        public const string Pack9IconsIcLock = "Pack9_CeremonyFinale/Icons/ic_lock";
+        public const string Pack9IconsIcPeople = "Pack9_CeremonyFinale/Icons/ic_people";
+        public const string Pack9IconsIcReplay = "Pack9_CeremonyFinale/Icons/ic_replay";
+        public const string Pack9IconsIcReport = "Pack9_CeremonyFinale/Icons/ic_report";
+        public const string Pack9IconsIcStar = "Pack9_CeremonyFinale/Icons/ic_star";
+        public const string Pack9IconsIcTrophy = "Pack9_CeremonyFinale/Icons/ic_trophy";
     }
 }

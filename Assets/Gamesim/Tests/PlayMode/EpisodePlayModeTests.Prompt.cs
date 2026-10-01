@@ -56,6 +56,51 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// Within reach of the screen, the rail's "Go to episode screen" is the screen: a press
+        /// opens it instead of walking a player who is already there and leaving them to find E.
+        /// The owner stood at the screen on the first night with the status line saying "E to
+        /// open", pressed E to no effect, and had no other way in.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Prompt_TheRailsButtonOpensTheScreenFromWithinReach()
+        {
+            director.ClosePanels();
+            WarpPlayer(director.StationPosition);
+            yield return null;
+            Assert.That(director.IsPhasePanelOpen, Is.False, "Standing at the screen opens nothing by itself.");
+            director.GoToStation();
+            yield return null;
+            Assert.That(director.IsPhasePanelOpen, Is.True, "At the screen, the rail's button opens it.");
+            Assert.That(director.IsConversationOpen, Is.False, "And nothing else, whoever idles beside it.");
+            director.ClosePanels();
+            yield return null;
+        }
+
+        /// <summary>
+        /// A card the last play session showed holds nothing in this one. The editor can start play
+        /// without reloading the domain, so the stamp outlives the session that wrote it; play's
+        /// start forgets it, and the prompt is back on the next frame.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Prompt_ACardShownLastSessionHoldsNothingThisOne()
+        {
+            director.ClosePanels();
+            WarpPlayer(director.StationPosition);
+            yield return null;
+            yield return null;
+            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.InteractCaption), Is.Not.Null, "At the screen, the prompt offers something to press.");
+            Gamesim.Presentation.CeremonyOverlays.Showing();
+            yield return null;
+            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.InteractCaption), Is.Null, "Under a card, the prompt stands down.");
+            Gamesim.Presentation.CeremonyOverlays.Forget();
+            yield return null;
+            yield return null;
+            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.InteractCaption), Is.Not.Null, "What play's start forgets holds nothing: the prompt is back.");
+            director.ClosePanels();
+            yield return null;
+        }
+
+        /// <summary>
         /// Nothing to press under a ceremony card. The card takes the pointer by reading the mouse,
         /// not through a raycaster, so a prompt left up beneath it took the click that dismissed
         /// the card as a press of its own - and got the player out of bed.

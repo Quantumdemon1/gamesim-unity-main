@@ -628,6 +628,10 @@ namespace Gamesim.Episode
             CancelTravel();
             EndDiaryVisit(true);CloseHouseActivities(true);
             if (projected.Find(projected.playerId).status != ContestantStatus.Active) { TryOpenPhasePanel(); return; }
+            // Already within reach of the screen - warped there by the last press, or standing at
+            // it - the button is the screen: the mouse's own way in, beside E and the prompt's
+            // button, so no player is left at the screen with a key they did not know to press.
+            if (CanUseStation() && TryOpenPhasePanel()) return;
             if (!TryTravel(StationPosition)) message = "The episode screen is not reachable from here.";
             else
             {

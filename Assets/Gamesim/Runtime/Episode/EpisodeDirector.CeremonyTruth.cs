@@ -87,7 +87,21 @@ namespace Gamesim.Episode
                 .OrderBy(entry => entry.rank).ThenBy(entry => entry.index)
                 .Select(entry => entry.id).ToList();
 
-        private static uint KeyRank(uint seed, int week, string id)
+        private static uint KeyRank(uint seed, int week, string id) => Rank(seed, week, 0x6B657973u, id); // "keys"
+
+        /// <summary>
+        /// The order the house's ballots go on the board in: shuffled like the keys, the same way for
+        /// the same week of the same season, under a salt of its own so the votes do not come out in
+        /// the keys' order. The engine casts ballots in the cast's order, and a count that climbed in
+        /// that order would say whose vote each was (UI-UX-PASS-PLAN B0). Presentation only.
+        /// </summary>
+        public static List<string> VoteOrder(IEnumerable<string> ids, uint seed, int week) =>
+            (ids ?? Enumerable.Empty<string>())
+                .Select((id, index) => (id, index, rank: Rank(seed, week, 0x766F7465u, id))) // "vote"
+                .OrderBy(entry => entry.rank).ThenBy(entry => entry.index)
+                .Select(entry => entry.id).ToList();
+
+        private static uint Rank(uint seed, int week, uint salt, string id)
         {
             unchecked
             {
@@ -96,7 +110,7 @@ namespace Gamesim.Episode
                 {
                     for (int shift = 0; shift < 32; shift += 8) { hash ^= (value >> shift) & 0xFF; hash *= 16777619u; }
                 }
-                Mix(seed); Mix((uint)week); Mix(0x6B657973u); // "keys"
+                Mix(seed); Mix((uint)week); Mix(salt);
                 foreach (char c in id ?? string.Empty) Mix(c);
                 return hash;
             }

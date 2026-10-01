@@ -38,13 +38,14 @@ namespace Gamesim.Presentation
     /// card at the screen's shape with the two faces and their counts large enough to read from
     /// the sofa. Every child keeps its name in both.</para>
     ///
-    /// <para>The screen's frame is a broadcast's vote board as well (MOCKUP-PASS-PLAN M18): the
-    /// faces and counts stand at the sides, and between them a roster of the voters fills in a row
-    /// a vote, each row naming the nominee that voter evicts. No row says EVICT or KEEP against
-    /// whoever is leaving: a row's colour is the side of the nominee it names, fixed when the card
-    /// opens, so the board reads the same whoever the result turns out to be. At the result the
-    /// board gives way to three lines read like the host's - the count, the name, and that they are
-    /// evicted. The HUD's card has none of this and is drawn as it always was.</para>
+    /// <para>The screen's frame is a broadcast's vote board as well (UI-UX-PASS-PLAN B0, the
+    /// owner's mockup): the faces and counts stand at the sides, and between them a CURRENT TALLY
+    /// card says the votes are revealed anonymously, that the identity of each voter remains a
+    /// secret, and fills in one anonymous slot a vote - no face, no name, no EVICT chip, in an order
+    /// that is not the cast's. Only the count carries the vote; the Head of Household's deciding
+    /// vote is the one row with a name on it, since the format reads that live (decision 1). At the
+    /// result the board gives way to three lines read like the host's - the count, the name, and
+    /// that they are evicted. The HUD's card has none of this and is drawn as it always was.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class VoteReveal : MonoBehaviour
@@ -55,12 +56,13 @@ namespace Gamesim.Presentation
         /// </summary>
         private const float ReadDelay = 0.35f;
 
-        /// <summary>One committed ballot, as the card needs it.</summary>
+        /// <summary>
+        /// One committed ballot, as the card needs it: whom it went against, and whether it is the
+        /// deciding vote. It carries no voter - no id, no name, no look - because the card never
+        /// says who cast a vote (UI-UX-PASS-PLAN B0): the count is read, the ballots are not.
+        /// </summary>
         public readonly struct Ballot
         {
-            /// <summary>Who cast it, by id; null where the caller did not say.</summary>
-            public readonly string VoterId;
-            public readonly string VoterName;
             public readonly string TargetId;
 
             /// <summary>
@@ -69,19 +71,9 @@ namespace Gamesim.Presentation
             /// </summary>
             public readonly bool TieBreak;
 
-            /// <summary>
-            /// The voter as they look, for their face on the screen's roster; null draws the row's
-            /// plain ground where the face would be. The HUD's card draws no voters' faces.
-            /// </summary>
-            public readonly ContestantState Character;
-
-            public Ballot(string voterName, string targetId, bool tieBreak = false)
-                : this(null, voterName, targetId, tieBreak, null) { }
-
-            public Ballot(string voterId, string voterName, string targetId, bool tieBreak, ContestantState character)
+            public Ballot(string targetId, bool tieBreak = false)
             {
-                VoterId = voterId; VoterName = voterName; TargetId = targetId; TieBreak = tieBreak;
-                Character = character?.Clone();
+                TargetId = targetId; TieBreak = tieBreak;
             }
         }
 
@@ -132,14 +124,15 @@ namespace Gamesim.Presentation
         private Frame frame;
         private ScreenSurface surface;
 
-        // The screen's board (MOCKUP-PASS-PLAN M18), null on the HUD: the layer the tally and the
-        // roster stand on, a row per ballot the house cast and one for the deciding vote, and the
-        // result block that takes the board's place when the count is read.
+        // The screen's board (UI-UX-PASS-PLAN B0), null on the HUD: the layer the tally and the
+        // tally card stand on, an anonymous slot per ballot the house cast and one row for the
+        // deciding vote, and the result block that takes the board's place when the count is read.
         private RectTransform board, tieRow, resultBlock, resultTally, resultGlow;
         private CanvasGroup boardGroup, blockGroup;
-        private readonly List<RectTransform> ballotRows = new List<RectTransform>();
+        private readonly List<RectTransform> ballotSlots = new List<RectTransform>();
         private TMP_Text resultLead, resultCount, resultOther, resultName, resultLine;
         private float resultShownAt;
+        private Sprite dotActive, dotInactive;
 
         public float FontScale { get; set; } = 1f;
         public bool IsPlaying => playing;
@@ -429,11 +422,17 @@ namespace Gamesim.Presentation
                 counts[i].text = HouseVotes(nominees[i].Id, count).ToString();
 
             for (int i = 0; i < dots.Count; i++)
-                dots[i].GetComponent<Image>().color = i < count ? UiTheme.Danger
-                    : pending && i == dots.Count - 1 ? UiTheme.Gold : UiTheme.Outline;
+            {
+                var dot = dots[i].GetComponent<Image>();
+                bool lit = i < count;
+                dot.color = lit ? UiTheme.Danger : pending && i == dots.Count - 1 ? UiTheme.Gold : UiTheme.Outline;
+                // The pack's progress dots where it has them: the lit one filled, the rest a ring.
+                var sprite = lit ? dotActive : dotInactive;
+                if (sprite != null) dot.sprite = sprite;
+            }
 
-            // The screen's roster: a row for every ballot on the board, none for the one held back.
-            for (int b = 0; b < ballotRows.Count; b++) ballotRows[b].gameObject.SetActive(b < count);
+            // The screen's slots: one for every ballot on the board, none for the one held back.
+            for (int b = 0; b < ballotSlots.Count; b++) ballotSlots[b].gameObject.SetActive(b < count);
 
             progress.text = pending ? "One vote left"
                 : count == 0 ? (house.Count == 1 ? "1 vote to reveal" : house.Count + " votes to reveal")
@@ -478,7 +477,7 @@ namespace Gamesim.Presentation
                 tiePip.GetComponent<Image>().color = UiTheme.Gold;
             }
             if (tieMark != null) tieMark.gameObject.SetActive(true);
-            // And the roster's gold row, under the house's: nothing held a place for it until now.
+            // And the board's gold row, under the slots: nothing held a place for it until now.
             if (tieRow != null) tieRow.gameObject.SetActive(true);
             progress.text = hohIsPlayer ? "You have cast the deciding vote."
                 : "The Head of Household has cast the deciding vote.";
@@ -509,7 +508,8 @@ namespace Gamesim.Presentation
         /// <summary>
         /// The host's line, the way the format reads it: the house's count and the name, or whose vote
         /// decided it. The count is the house's alone - a tie-break says so instead of adding itself
-        /// to it - and an evicted player is spoken to rather than named.
+        /// to it - a single vote is "by a single vote", naming nobody, and an evicted player is spoken
+        /// to rather than named.
         /// </summary>
         private string Verdict()
         {
@@ -518,11 +518,7 @@ namespace Gamesim.Presentation
                 : evictedName + ", you have been evicted.";
             if (evictee == null) return "The house has voted.";
             if (tieBreak.HasValue) return "By the Head of Household's tie-breaking vote, " + evictee;
-            if (house.Count == 1)
-            {
-                string voter = string.IsNullOrEmpty(house[0].VoterName) ? "One houseguest" : house[0].VoterName;
-                return voter + " cast the sole vote to evict. " + char.ToUpperInvariant(evictee[0]) + evictee.Substring(1);
-            }
+            if (house.Count == 1) return "By a single vote, " + evictee;
             string otherId = nominees[0].Id == evictedId ? nominees[1].Id : nominees[0].Id;
             return "By a vote of " + HouseVotes(evictedId, house.Count) + " to " + HouseVotes(otherId, house.Count)
                 + ", " + evictee;
@@ -594,19 +590,19 @@ namespace Gamesim.Presentation
         /// eviction's red, which is kept for the result, so nothing on the board is coloured by who
         /// is leaving.
         ///
-        /// <para>The colour is also the word on a roster row's chip ('EVICT CASEY'), which is body
-        /// text on the pack's dark red evict chip. The jury's pink reads at 4.2:1 there, under the
-        /// 4.5 floor, so the right side is lifted until it clears the floor on the art and on the
-        /// drawn chip alike (UiThemeContrastTests). It is one colour a side, so a chip still wears
-        /// exactly the colour of the figure it names.</para>
+        /// <para>The colour is also the word on the deciding row's chip ('EVICT CASEY'), which is
+        /// body text on the pack's dark red evict chip. The jury's pink reads at 4.2:1 there, under
+        /// the 4.5 floor, so the right side is lifted until it clears the floor on the art and on
+        /// the drawn chip alike (UiThemeContrastTests). It is one colour a side, so the chip still
+        /// wears exactly the colour of the figure it names.</para>
         /// </summary>
         public static Color Side(int nominee) => nominee == 0 ? UiTheme.Accent : RightSide;
 
         private static readonly Color RightSide = Color.Lerp(UiTheme.Flirt, UiTheme.Paper, 0.35f);
 
         /// <summary>
-        /// The ground of a roster row's chip when the pack's art is missing: the eviction's red, faint.
-        /// The chip's word is measured on it as well as on the art (UiThemeContrastTests).
+        /// The ground of the deciding row's chip when the pack's art is missing: the eviction's red,
+        /// faint. The chip's word is measured on it as well as on the art (UiThemeContrastTests).
         /// </summary>
         public static Color DrawnChipGround => new Color(UiTheme.Danger.r, UiTheme.Danger.g, UiTheme.Danger.b, 0.22f);
 
@@ -682,11 +678,13 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
-        /// The screen's vote board (MOCKUP-PASS-PLAN M18), in canvas units on the 1200 × 800 face.
-        /// The band under the title runs from the top of the faces to the pips; the roster fills its
-        /// middle under the VS disc, one column up to seven rows and two past that - thirteen at a
-        /// full house - and the result block is centred in the whole band once the board has gone.
-        /// Every label box is at least 1.3 times its type: Inter draws nothing in a box under 1.21.
+        /// The screen's vote board (UI-UX-PASS-PLAN B0), in canvas units on the 1200 × 800 face.
+        /// The band under the title runs from the top of the faces to the pips; the tally card
+        /// stands in its middle under the VS disc - the ballot mark, CURRENT TALLY, the line, the
+        /// anonymous badge, the slots in rows of eight (two rows at a full house's thirteen) and the
+        /// deciding row when there is one - and the result block is centred in the whole band once
+        /// the board has gone. Every label box is at least 1.3 times its type: Inter draws nothing in
+        /// a box under 1.21.
         /// </summary>
         private static class ScreenBoard
         {
@@ -696,18 +694,27 @@ namespace Gamesim.Presentation
             /// <summary>The band the board stands in, and the result block after it.</summary>
             public const float BandTop = -176f, BandBottom = -584f;
 
-            /// <summary>The roster: its top, its rows, and one column or two.</summary>
-            public const float RosterY = -242f, Row = 44f, Gap = 5f, OneWide = 520f, TwoWide = 322f, Between = 16f;
-            public const int RowsInAColumn = 7;
+            /// <summary>The tally card: its top, its width, its padding, and the pack art's corners in canvas units (the catalogue's 16-17 px on a 128 px sprite).</summary>
+            public const float CardY = -190f, CardWidth = 520f, CardPad = 18f, CardBorder = 16f;
 
-            /// <summary>A row's parts: the face at its left, the voter's name, the chip at its right.</summary>
-            public const float Inset = 8f, Face = 32f, VoterPt = 19f, VoterH = 28f, ChipOne = 180f, ChipTwo = 140f,
-                ChipH = 30f, ChipPt = 15f;
+            /// <summary>The card's parts, top down: the ballot mark, CURRENT TALLY, the line under it, the badge.</summary>
+            public const float IconY = -204f, Icon = 28f, HeadingY = -238f, HeadingH = 34f, HeadingPt = 24f,
+                TallyLineY = -276f, TallyLineH = 28f, TallyLinePt = 19f;
+            public const float BadgeY = -312f, BadgeWidth = 440f, BadgeH = 56f, BadgePt = 17f, BadgeBorder = 24f, BadgeIcon = 26f, BadgeInset = 16f;
+
+            /// <summary>The slots: a small tally card each with the ballot mark, in rows of eight.</summary>
+            public const float SlotsY = -386f, Slot = 40f, SlotGap = 10f, SlotIcon = 24f, SlotBorder = 10f;
+            public const int SlotsInARow = 8;
+
+            /// <summary>The deciding row under the slots: the HOH chip, the Head of Household's name, the chip naming whom they evict.</summary>
+            public const float DecidingGap = 14f, DecidingH = 44f, DecidingPt = 19f, DecidingTextH = 28f, Inset = 8f,
+                HohChipW = 54f, ChipW = 160f, ChipH = 30f, ChipPt = 15f;
 
             /// <summary>
-            /// The pack art's corners in canvas units, and how deep the art's glow sits inside its
+            /// The older pack art's corners in canvas units, and how deep its glow sits inside its
             /// image in pixels (UiPackCatalogue's body inset: 40 for the strip, 8 for the chip), so a
             /// frame is drawn out past its rect by that much and the visible edge lands on the rect.
+            /// Pack 9's cards sit 1-2 px in, which is nothing to draw out for.
             /// </summary>
             public const float StripBorder = 16f, StripInset = 40f, ChipBorder = 12f, ChipInset = 8f;
 
@@ -730,7 +737,9 @@ namespace Gamesim.Presentation
             board = null; tieRow = null; resultBlock = null; resultTally = null; resultGlow = null;
             boardGroup = null; blockGroup = null;
             resultLead = null; resultCount = null; resultOther = null; resultName = null; resultLine = null;
-            ballotRows.Clear();
+            ballotSlots.Clear();
+            dotActive = UiTheme.Pack(PackArt.Pack9LiveEvictionProgressDotActive);
+            dotInactive = UiTheme.Pack(PackArt.Pack9LiveEvictionProgressDotInactive);
 
             if (column != null)
             {
@@ -871,6 +880,8 @@ namespace Gamesim.Presentation
                 dot.anchorMin = new Vector2(.5f, .5f); dot.anchorMax = new Vector2(.5f, .5f); dot.pivot = new Vector2(.5f, .5f);
                 dot.anchoredPosition = new Vector2(first + i * step, 0f);
                 dot.sizeDelta = new Vector2(pip, pip);
+                // The pack's ring for a vote still to come; Tally swaps in the filled dot as each is read.
+                if (dotInactive != null) { var image = dot.GetComponent<Image>(); image.sprite = dotInactive; image.preserveAspect = true; }
                 dots.Add(dot);
             }
 
@@ -910,7 +921,7 @@ namespace Gamesim.Presentation
 
             if (f.Screen)
             {
-                BuildRoster(board, bold);
+                BuildTallyCard(board, bold);
                 BuildResultBlock(column, bold);
             }
 
@@ -944,83 +955,129 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
-        /// The screen's roster: a row for each of the house's ballots in the order they were cast,
-        /// and a gold one for the Head of Household's deciding vote after them. Every row is built
-        /// hidden and put up as its vote is read. The shape comes from the house's ballots alone -
-        /// one column up to seven rows, two past that - and the deciding vote takes the next free
-        /// place, so neither the columns nor a place held open say a tie is coming.
+        /// The screen's tally card (UI-UX-PASS-PLAN B0, the owner's mockup): the pack's tally card
+        /// with the ballot mark over CURRENT TALLY, "Votes are revealed anonymously.", the anonymous
+        /// badge with the lock, then one anonymous slot per ballot the house cast, in rows of eight,
+        /// each built hidden and put up as its vote is read, and under them the deciding row, built
+        /// hidden too. Nothing on the card says who cast what: the slots are alike, the count is at
+        /// the sides. The card is as tall as what it holds, so a card with no tie to break holds no
+        /// place for one and says nothing of a tie coming.
         /// </summary>
-        private void BuildRoster(RectTransform parent, TMP_FontAsset bold)
+        private void BuildTallyCard(RectTransform parent, TMP_FontAsset bold)
         {
-            int rows = house.Count;
-            bool split = rows > ScreenBoard.RowsInAColumn;
-            int perColumn = split ? (rows + 1) / 2 : ScreenBoard.RowsInAColumn;
-            float rowWidth = split ? ScreenBoard.TwoWide : ScreenBoard.OneWide;
-            float chipWidth = split ? ScreenBoard.ChipTwo : ScreenBoard.ChipOne;
+            var card = new GameObject("Tally card", typeof(RectTransform)).GetComponent<RectTransform>();
+            card.SetParent(parent, false);
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            float width = ScreenBoard.CardWidth;
 
-            var roster = new GameObject("Roster", typeof(RectTransform)).GetComponent<RectTransform>();
-            roster.SetParent(parent, false);
-            Place(roster, split ? 2f * rowWidth + ScreenBoard.Between : rowWidth,
-                ScreenBoard.RowsInAColumn * (ScreenBoard.Row + ScreenBoard.Gap) - ScreenBoard.Gap, ScreenBoard.RosterY);
+            PackCard("Tally card art", card, PackArt.Pack9LiveEvictionTallyCardFill, PackArt.Pack9LiveEvictionTallyCardEdge,
+                ScreenBoard.CardBorder, UiTheme.SurfaceRaised, UiTheme.Glow);
 
-            int total = rows + (tieBreak.HasValue ? 1 : 0);
-            for (int b = 0; b < total; b++)
+            // The ballot mark, where the mockup draws its bars; the pack has none, so nothing without it.
+            var mark = Icon("Tally icon", card, PackArt.Pack9LiveEvictionBallotIcon, UiTheme.Glow, ScreenBoard.Icon);
+            if (mark != null) Place(mark, ScreenBoard.Icon, ScreenBoard.Icon, ScreenBoard.IconY - ScreenBoard.CardY);
+
+            var heading = HudPrimitives.Label("Tally heading", card, ScreenBoard.HeadingPt, UiTheme.Paper, TextAlignmentOptions.Center);
+            heading.text = "CURRENT TALLY";
+            heading.characterSpacing = 10f;
+            if (semibold != null) heading.font = semibold;
+            Place(heading.rectTransform, width - ScreenBoard.CardPad * 2f, ScreenBoard.HeadingH, ScreenBoard.HeadingY - ScreenBoard.CardY);
+
+            var line = HudPrimitives.Label("Tally line", card, ScreenBoard.TallyLinePt, UiTheme.Muted, TextAlignmentOptions.Center);
+            line.text = "Votes are revealed anonymously.";
+            line.fontStyle = FontStyles.Italic;
+            Place(line.rectTransform, width - ScreenBoard.CardPad * 2f, ScreenBoard.TallyLineH, ScreenBoard.TallyLineY - ScreenBoard.CardY);
+
+            // The badge: the pack's pill with the lock, and the sentence the owner asked for.
+            var badge = new GameObject("Anonymous badge", typeof(RectTransform)).GetComponent<RectTransform>();
+            badge.SetParent(card, false);
+            Place(badge, ScreenBoard.BadgeWidth, ScreenBoard.BadgeH, ScreenBoard.BadgeY - ScreenBoard.CardY);
+            PackCard("Anonymous badge art", badge, PackArt.Pack9LiveEvictionAnonymousBadgeFill, PackArt.Pack9LiveEvictionAnonymousBadgeEdge,
+                ScreenBoard.BadgeBorder, UiTheme.Surface, UiTheme.Hairline);
+            var lockIcon = Icon("Lock icon", badge, PackArt.Pack9LiveEvictionLockIcon, UiTheme.Glow, ScreenBoard.BadgeIcon);
+            float textX = ScreenBoard.BadgeInset + (lockIcon != null ? ScreenBoard.BadgeIcon + 10f : 0f);
+            if (lockIcon != null) Pin(lockIcon, 0f, ScreenBoard.BadgeInset, ScreenBoard.BadgeIcon, ScreenBoard.BadgeIcon);
+            var secret = HudPrimitives.Label("Anonymous badge text", badge, ScreenBoard.BadgePt, UiTheme.Paper, TextAlignmentOptions.Left);
+            secret.text = "The identity of each voter remains a secret.";
+            Pin(secret.rectTransform, 0f, textX, ScreenBoard.BadgeWidth - textX - ScreenBoard.BadgeInset, ScreenBoard.BadgeH - 8f);
+
+            // The slots, in rows of eight, centred.
+            int count = house.Count;
+            int perRow = Mathf.Min(ScreenBoard.SlotsInARow, Mathf.Max(1, count));
+            int rows = count == 0 ? 0 : (count + perRow - 1) / perRow;
+            float step = ScreenBoard.Slot + ScreenBoard.SlotGap;
+            for (int b = 0; b < count; b++)
             {
-                bool deciding = b == rows;
-                var ballot = deciding ? tieBreak.Value : house[b];
-                // The house's rows fill the first column and then the second; the deciding vote goes
-                // under the last of them, in the second column when there are two.
-                int lane = !split ? 0 : deciding ? 1 : b / perColumn;
-                int place = !split ? b : deciding ? rows - perColumn : b % perColumn;
-                float x = split ? (lane == 0 ? -1f : 1f) * (rowWidth + ScreenBoard.Between) * 0.5f : 0f;
-
-                var row = BallotRow(roster, ballot, rowWidth, chipWidth, deciding, bold);
-                Place(row, rowWidth, ScreenBoard.Row, -place * (ScreenBoard.Row + ScreenBoard.Gap), x);
-                if (deciding) tieRow = row;
-                else ballotRows.Add(row);
+                int row = b / perRow, place = b % perRow;
+                int inThisRow = Mathf.Min(perRow, count - row * perRow);
+                float x = (place - (inThisRow - 1) * 0.5f) * step;
+                var slot = Slot(card);
+                Place(slot, ScreenBoard.Slot, ScreenBoard.Slot, ScreenBoard.SlotsY - ScreenBoard.CardY - row * step, x);
+                ballotSlots.Add(slot);
             }
+            float bottom = ScreenBoard.SlotsY - (rows == 0 ? 0f : rows * step - ScreenBoard.SlotGap);
+
+            // The deciding row, under the slots, hidden until the tie is broken.
+            if (tieBreak.HasValue)
+            {
+                float y = bottom - ScreenBoard.DecidingGap;
+                tieRow = DecidingRow(card, tieBreak.Value, width - ScreenBoard.CardPad * 2f, bold);
+                Place(tieRow, width - ScreenBoard.CardPad * 2f, ScreenBoard.DecidingH, y - ScreenBoard.CardY);
+                bottom = y - ScreenBoard.DecidingH;
+            }
+
+            Place(card, width, ScreenBoard.CardY - bottom + ScreenBoard.CardPad, ScreenBoard.CardY);
         }
 
         /// <summary>
-        /// One roster row, hidden: the strip, the voter's face and name, and a chip naming the nominee
-        /// they evict in that nominee's side colour. The chip is the pack's evict chip on every row -
-        /// every ballot here is a vote to evict somebody - and the name on it says whom.
+        /// One anonymous slot, hidden: a small tally card with the ballot mark. Every slot is the
+        /// same: a slot says a vote was read, never whose or against whom.
         /// </summary>
-        private RectTransform BallotRow(RectTransform parent, Ballot ballot, float width, float chipWidth, bool deciding,
-            TMP_FontAsset bold)
+        private static RectTransform Slot(RectTransform parent)
         {
-            var row = new GameObject("Ballot", typeof(RectTransform)).GetComponent<RectTransform>();
+            var slot = new GameObject("Ballot", typeof(RectTransform)).GetComponent<RectTransform>();
+            slot.SetParent(parent, false);
+            PackCard("Ballot slot art", slot, PackArt.Pack9LiveEvictionTallyCardFill, PackArt.Pack9LiveEvictionTallyCardEdge,
+                ScreenBoard.SlotBorder, UiTheme.Surface, UiTheme.Danger);
+            Icon("Ballot mark", slot, PackArt.Pack9LiveEvictionBallotIcon, UiTheme.Danger, ScreenBoard.SlotIcon);
+            slot.gameObject.SetActive(false);
+            return slot;
+        }
+
+        /// <summary>
+        /// The deciding row, hidden: the strip edged in gold, the HOH chip, the Head of Household's
+        /// name in gold, and the chip naming whom they evict in that nominee's side colour. The one
+        /// row on the board with a name on it: the format reads the tie-break live (decision 1).
+        /// </summary>
+        private RectTransform DecidingRow(RectTransform parent, Ballot ballot, float width, TMP_FontAsset bold)
+        {
+            var row = new GameObject("Deciding vote", typeof(RectTransform)).GetComponent<RectTransform>();
             row.SetParent(parent, false);
-            Framed("Ballot strip", row, PackArt.VoteRevealStrip, ScreenBoard.StripBorder, ScreenBoard.StripInset,
+            Framed("Deciding strip", row, PackArt.VoteRevealStrip, ScreenBoard.StripBorder, ScreenBoard.StripInset,
                 UiTheme.SurfaceRaised, UiTheme.Hairline);
-            // The deciding vote's row is edged in gold, the Head of Household's colour on this card,
-            // over the strip's own edge.
-            if (deciding) UiTheme.AddBorder(row, UiTheme.ControlRadius, UiTheme.Gold);
+            UiTheme.AddBorder(row, UiTheme.ControlRadius, UiTheme.Gold);
 
-            var face = HudPrimitives.RectPortrait(row, "Ballot face", null, ballot.Character,
-                new Vector2(ScreenBoard.Face, ScreenBoard.Face), 6);
-            Pin(face, 0f, ScreenBoard.Inset, ScreenBoard.Face, ScreenBoard.Face);
-            // With no look to bind there is no face to draw: the frame's ground shows, not a white square.
-            if (ballot.Character == null)
-            {
-                var blank = face.GetComponentInChildren<RawImage>();
-                if (blank != null) blank.enabled = false;
-            }
+            var mark = HudPrimitives.Fill("Deciding mark", row, UiTheme.Gold, UiTheme.ControlRadius);
+            Pin(mark, 0f, ScreenBoard.Inset, ScreenBoard.HohChipW, ScreenBoard.ChipH);
+            var hoh = HudPrimitives.Label("Deciding chip", mark, ScreenBoard.ChipPt, UiTheme.OnColor(UiTheme.Gold), TextAlignmentOptions.Center);
+            if (bold != null) hoh.font = bold;
+            hoh.text = "HOH";
+            hoh.rectTransform.anchorMin = Vector2.zero; hoh.rectTransform.anchorMax = Vector2.one;
+            hoh.rectTransform.offsetMin = Vector2.zero; hoh.rectTransform.offsetMax = Vector2.zero;
 
-            float nameX = ScreenBoard.Inset * 2f + ScreenBoard.Face;
-            var voter = HudPrimitives.Label("Ballot voter", row, ScreenBoard.VoterPt, deciding ? UiTheme.Gold : UiTheme.Paper,
-                TextAlignmentOptions.Left);
-            voter.text = ballot.VoterName ?? string.Empty;
-            SmallerThenShortened(voter, ScreenBoard.VoterPt * 0.7f);
-            Pin(voter.rectTransform, 0f, nameX, width - nameX - chipWidth - ScreenBoard.Inset * 2f, ScreenBoard.VoterH);
+            float nameX = ScreenBoard.Inset * 2f + ScreenBoard.HohChipW;
+            var voter = HudPrimitives.Label("Deciding voter", row, ScreenBoard.DecidingPt, UiTheme.Gold, TextAlignmentOptions.Left);
+            voter.text = hohName ?? string.Empty;
+            SmallerThenShortened(voter, ScreenBoard.DecidingPt * 0.7f);
+            Pin(voter.rectTransform, 0f, nameX, width - nameX - ScreenBoard.ChipW - ScreenBoard.Inset * 2f, ScreenBoard.DecidingTextH);
 
             int named = nominees.FindIndex(n => n.Id == ballot.TargetId);
-            var chip = new GameObject("Ballot chip", typeof(RectTransform)).GetComponent<RectTransform>();
+            var chip = new GameObject("Deciding target chip", typeof(RectTransform)).GetComponent<RectTransform>();
             chip.SetParent(row, false);
-            Pin(chip, 1f, -ScreenBoard.Inset, chipWidth, ScreenBoard.ChipH);
-            Framed("Ballot chip art", chip, PackArt.VoteChipEvict, ScreenBoard.ChipBorder, ScreenBoard.ChipInset,
+            Pin(chip, 1f, -ScreenBoard.Inset, ScreenBoard.ChipW, ScreenBoard.ChipH);
+            Framed("Deciding chip art", chip, PackArt.VoteChipEvict, ScreenBoard.ChipBorder, ScreenBoard.ChipInset,
                 DrawnChipGround, UiTheme.Danger);
-            var target = HudPrimitives.Label("Ballot target", chip, ScreenBoard.ChipPt, named >= 0 ? Side(named) : UiTheme.Paper,
+            var target = HudPrimitives.Label("Deciding target", chip, ScreenBoard.ChipPt, named >= 0 ? Side(named) : UiTheme.Paper,
                 TextAlignmentOptions.Center);
             if (bold != null) target.font = bold;
             target.characterSpacing = 4f;
@@ -1033,6 +1090,61 @@ namespace Gamesim.Presentation
 
             row.gameObject.SetActive(false);
             return row;
+        }
+
+        /// <summary>
+        /// A Pack 9 card behind <paramref name="host"/>'s other children: the fill under the edge,
+        /// each sliced at <paramref name="border"/> units a side and tinted, flush with the rect
+        /// (the pack's bodies sit a pixel or two in, nothing to draw out for). Without the pack, the
+        /// drawn card in <paramref name="fallback"/> with an <paramref name="edge"/> hairline.
+        /// </summary>
+        private static void PackCard(string name, RectTransform host, string fillPath, string edgePath, float border, Color fallback, Color edge)
+        {
+            var fill = new GameObject(name, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            Stretch(fill.rectTransform, host);
+            fill.raycastTarget = false;
+            if (UiTheme.PackSliced(fill, fillPath, border, fallback))
+            {
+                var rim = new GameObject(name + " edge", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                Stretch(rim.rectTransform, host);
+                rim.raycastTarget = false;
+                rim.transform.SetSiblingIndex(1);
+                if (!UiTheme.PackSliced(rim, edgePath, border, edge)) Destroy(rim.gameObject);
+                return;
+            }
+            UiTheme.Style(fill, fallback, UiTheme.ControlRadius);
+            UiTheme.AddBorder(fill.rectTransform, UiTheme.ControlRadius, edge);
+        }
+
+        /// <summary>A pack icon drawn whole and tinted, <paramref name="side"/> square in the middle of its parent; the caller moves it. Null without the pack.</summary>
+        private static RectTransform Icon(string name, RectTransform parent, string path, Color tint, float side)
+        {
+            var sprite = UiTheme.Pack(path);
+            if (sprite == null) return null;
+            var image = new GameObject(name, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            var rect = image.rectTransform;
+            rect.SetParent(parent, false);
+            image.sprite = sprite;
+            image.color = tint;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            rect.anchorMin = rect.anchorMax = new Vector2(.5f, .5f);
+            rect.pivot = new Vector2(.5f, .5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = new Vector2(side, side);
+            return rect;
+        }
+
+        /// <summary>Stretches <paramref name="rect"/> over <paramref name="host"/>, first among its children.</summary>
+        private static void Stretch(RectTransform rect, RectTransform host)
+        {
+            rect.SetParent(host, false);
+            rect.SetAsFirstSibling();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.pivot = new Vector2(.5f, .5f);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
         }
 
         /// <summary>

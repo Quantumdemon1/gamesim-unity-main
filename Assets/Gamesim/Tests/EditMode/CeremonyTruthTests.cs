@@ -226,23 +226,45 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The screen's roster (MOCKUP-PASS-PLAN M18) needs to know who cast each ballot and how they
-        /// look: every ballot carries its voter's id, name and a copy of their look, in the order cast.
+        /// No ballot carries its voter (UI-UX-PASS-PLAN B0): the card is handed whom each went
+        /// against and nothing else - no id, no name, no look - in an order that is not the cast's,
+        /// the same on every reload of the same week, with the deciding vote last.
         /// </summary>
         [Test]
-        public void EachBallotCarriesItsVoterForTheScreensRoster()
+        public void NoBallotCarriesItsVoterAndTheOrderIsNotTheCasts()
         {
-            var state = new EpisodeState { playerId = "p", hohId = "h" };
-            foreach (var id in new[] { "p", "h", "a", "b", "c" })
+            var state = new EpisodeState { playerId = "p", hohId = "h", seed = 1234u, week = 2 };
+            foreach (var id in new[] { "p", "h", "a", "b", "c", "d", "e" })
                 state.contestants.Add(new ContestantState { id = id, name = id.ToUpperInvariant(), status = ContestantStatus.Active });
-            state.votes.Add(new VoteState { voterId = "c", targetId = "a" });
-            state.votes.Add(new VoteState { voterId = "p", targetId = "b" });
+            state.votes.Add(new VoteState { voterId = "p", targetId = "a" });
+            state.votes.Add(new VoteState { voterId = "c", targetId = "b" });
+            state.votes.Add(new VoteState { voterId = "d", targetId = "a" });
+            state.votes.Add(new VoteState { voterId = "e", targetId = "b" });
+            state.votes.Add(new VoteState { voterId = "h", targetId = "a", reason = "HoH tie-break" });
             var ballots = EpisodeDirector.EvictionBallots(state);
-            Assert.That(ballots.Select(ballot => ballot.VoterId), Is.EqualTo(new[] { "c", "p" }), "Who cast each, in the order cast,");
-            Assert.That(ballots.Select(ballot => ballot.VoterName), Is.EqualTo(new[] { "C", "P" }), "by name,");
-            Assert.That(ballots.Select(ballot => ballot.Character.id), Is.EqualTo(new[] { "c", "p" }), "with their look for the face,");
-            Assert.That(ballots[0].Character, Is.Not.SameAs(state.Find("c")), "copied, as the nominees' are.");
-            Assert.That(ballots.Select(ballot => ballot.TargetId), Is.EqualTo(new[] { "a", "b" }));
+            Assert.That(typeof(VoteReveal.Ballot).GetFields().Select(field => field.Name), Is.EquivalentTo(new[] { "TargetId", "TieBreak" }),
+                "A ballot has no voter, no name and no look to hand to a card.");
+            Assert.That(ballots, Has.Count.EqualTo(5));
+            Assert.That(ballots.Take(4).Select(ballot => ballot.TargetId).OrderBy(id => id), Is.EqualTo(new[] { "a", "a", "b", "b" }), "Every house ballot's target,");
+            Assert.That(ballots.Take(4).Select(ballot => ballot.TieBreak), Is.All.False);
+            Assert.That((ballots[4].TargetId, ballots[4].TieBreak), Is.EqualTo(("a", true)), "and the deciding vote last.");
+            Assert.That(EpisodeDirector.EvictionBallots(state).Select(ballot => ballot.TargetId), Is.EqualTo(ballots.Select(ballot => ballot.TargetId)),
+                "The same order on a reload of the same week.");
+
+            // The engine casts in the cast's order; the card is handed another, or the climbing count would say whose vote each was.
+            var castOrder = state.votes.Where(vote => vote.voterId != "h").Select(vote => vote.targetId).ToList();
+            bool shuffled = false;
+            for (int week = 1; week <= 12 && !shuffled; week++)
+            {
+                state.week = week;
+                shuffled = !EpisodeDirector.EvictionBallots(state).Take(4).Select(ballot => ballot.TargetId).SequenceEqual(castOrder);
+            }
+            Assert.That(shuffled, Is.True, "Across twelve weeks the order leaves the cast's at least once.");
+            var ids = new[] { "a", "b", "c", "d", "e" };
+            Assert.That(Enumerable.Range(1, 20).Any(seed => !EpisodeDirector.VoteOrder(ids, (uint)seed, 3).SequenceEqual(EpisodeDirector.KeyOrder(ids, (uint)seed, 3))),
+                Is.True, "and it is not the keys' order either.");
+            Assert.That(EpisodeDirector.VoteOrder(ids, 7u, 3), Is.EquivalentTo(ids), "Everybody's ballot is on the board, once.");
+            Assert.That(EpisodeDirector.EvictionBallots(null), Is.Empty);
         }
 
         /// <summary>

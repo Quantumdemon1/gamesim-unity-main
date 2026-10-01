@@ -995,16 +995,17 @@ namespace Gamesim.Episode
                         Cut(Screen.Shot(CutSeconds));
                         float hold = card != null ? card.VoteHoldSeconds : 1.8f;
                         string against = beat.SubjectId;
-                        bool voterBeat = beat.Index % 3 == 2;
-                        string voter = voterBeat ? VoterOf(beat.Index) : null;
+                        // The cuts between votes land on the nominees and, every third vote, on the
+                        // Head of Household watching the count: never on a voter's seat, which would
+                        // say whose vote was just read (UI-UX-PASS-PLAN B0). The nominee the vote
+                        // went against flinches, since the count against them is public.
+                        bool hohBeat = beat.Index % 3 == 2 && state.hohId != null && placeOf.ContainsKey(state.hohId);
+                        string hoh = hohBeat ? state.hohId : null;
                         Schedule(hold * 0.35f / speed, () =>
                         {
-                            if (voter != null && placeOf.ContainsKey(voter)) { Cut(SeatShot(voter)); LookDown(voter, 1.2f); }
-                            else
-                            {
-                                Cut(nominees.Count == 2 ? PairShot(nominees[0], nominees[1]) : SeatShot(against));
-                                if (against != null) LookDown(against, 0.8f);
-                            }
+                            if (hoh != null) Cut(SeatShot(hoh));
+                            else Cut(nominees.Count == 2 ? PairShot(nominees[0], nominees[1]) : SeatShot(against));
+                            if (against != null) LookDown(against, 0.8f);
                         });
                         Schedule(hold * 0.9f / speed, () => Cut(Screen.Shot(CutSeconds)));
                         break;
@@ -1031,20 +1032,22 @@ namespace Gamesim.Episode
                         string leaving = beat.SubjectId;
                         string staying = nominees.FirstOrDefault(id => id != leaving);
                         leavingId = leaving; survivorId = staying;
-                        // The room takes the result as it is (MOCKUP-PASS-PLAN M19): whoever voted
-                        // to keep the evicted looks down, and everyone else turns to them. The
-                        // survivor stays seated with no fist pump in front of the one going, and
-                        // the evicted takes it in the chair, head down: they stand for the goodbye.
-                        var losers = Losers(staying);
-                        director.TurnHeads(state, leaving, losers);
+                        // The room takes the result as it is (MOCKUP-PASS-PLAN M19): everyone turns
+                        // to the one going. Nobody looks down for a ballot they cast - the result
+                        // never says who voted to keep the evicted (UI-UX-PASS-PLAN B0). The survivor
+                        // stays seated with no fist pump in front of the one going, and the evicted
+                        // takes it in the chair, head down: they stand for the goodbye. The cuts go
+                        // to the pair and then to the Head of Household, whose seat is nobody's ballot.
+                        director.TurnHeads(state, leaving, null);
                         float resultHold = card != null ? card.ResultHoldSeconds : 3.6f;
+                        string watching = state.hohId != null && placeOf.ContainsKey(state.hohId) ? state.hohId : null;
                         Schedule(Mathf.Min(1.5f, resultHold * 0.4f) / speed, () =>
                         {
                             if (nominees.Count == 2) Cut(PairShot(nominees[0], nominees[1]));
                             else if (leaving != null) Cut(SeatShot(leaving));
                             if (leaving != null) LookDownAt(leaving, 2f);
-                            foreach (var loser in losers) LookDownAt(loser, 2f);
                         });
+                        if (watching != null) Schedule(Mathf.Min(2.6f, resultHold * 0.7f) / speed, () => Cut(SeatShot(watching)));
                         break;
                     case CeremonyBeatKind.Closed:
                         ClearCues();
@@ -1072,19 +1075,6 @@ namespace Gamesim.Episode
                         Release();
                         break;
                 }
-            }
-
-            /// <summary>Who cast the house's vote at this index: the committed ballot's voter, by name.</summary>
-            private string VoterOf(int index)
-            {
-                if (state.votes == null) return null;
-                int house = 0;
-                foreach (var vote in state.votes)
-                {
-                    if (!string.IsNullOrEmpty(state.hohId) && vote.voterId == state.hohId) continue;
-                    if (house++ == index) return vote.voterId;
-                }
-                return null;
             }
 
             // ------------------------------------------------------------ the bodies
@@ -1254,14 +1244,6 @@ namespace Gamesim.Episode
             }
 
             private readonly HashSet<string> stoodUp = new HashSet<string>();
-
-            /// <summary>
-            /// The houseguests whose ballot named the survivor: they voted to keep the evicted, and
-            /// lost. The ballots are the card's own - it has just shown every one of them.
-            /// </summary>
-            private List<string> Losers(string staying) => staying == null || state.votes == null ? new List<string>()
-                : state.votes.Where(vote => vote.targetId == staying && !string.IsNullOrEmpty(vote.voterId))
-                    .Select(vote => vote.voterId).Distinct().ToList();
 
             /// <summary>
             /// <see cref="LookDown"/> with a mark of its own for each houseguest, so several can look

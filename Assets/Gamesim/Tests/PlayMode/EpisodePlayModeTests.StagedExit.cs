@@ -73,15 +73,14 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(survivorSeat != null && survivorSeat.Active, Is.True, "The survivor stays seated,");
             Assert.That(Presentation(staying).LastReaction, Is.Not.EqualTo(CharacterPresentation.Reaction.Won),
                 "with no fist pump in front of the one going.");
-            var losers = committed.votes.Where(ballot => ballot.targetId == survivor).Select(ballot => ballot.voterId).ToList();
+            // Nobody looks down for a ballot they cast: the result never says who voted to keep the
+            // evicted (UI-UX-PASS-PLAN B0). Every other houseguest turns to the one going, whatever
+            // their ballot was.
             foreach (var npc in SceneComponents<HouseNpc>().Where(each => each.gameObject.activeInHierarchy && each.Id != evicted && each.Id != survivor))
             {
                 var look = Presentation(npc).LookTarget;
-                if (losers.Contains(npc.Id))
-                    Assert.That(look != null && look.name.StartsWith("Ceremony look mark"), Is.True,
-                        npc.Id + " voted to keep them, and looks down: looking at " + (look != null ? look.name : "nothing") + ".");
-                else
-                    Assert.That(look, Is.SameAs(leaving.transform), npc.Id + " turns to the one going.");
+                Assert.That(look, Is.SameAs(leaving.transform),
+                    npc.Id + " turns to the one going, whatever they voted: looking at " + (look != null ? look.name : "nothing") + ".");
             }
 
             // The card down: the goodbye.

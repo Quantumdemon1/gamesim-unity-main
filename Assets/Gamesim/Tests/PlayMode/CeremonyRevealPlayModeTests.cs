@@ -86,14 +86,14 @@ namespace Gamesim.Tests.PlayMode
                     keys.Cancel();
                 }
 
-                var counted = Reveal(new[] { Vote(0, Jordan), Vote(1, Jordan), Vote(2, Casey) }, Jordan, pace);
+                var counted = Reveal(new[] { Vote(Jordan), Vote(Jordan), Vote(Casey) }, Jordan, pace);
                 float three = CeremonyPacing.FadeIn + CeremonyPacing.VoteIntro(pace)
                     + 3 * CeremonyPacing.PerVote(pace, 3) + CeremonyPacing.LastVoteBeat(pace);
                 Assert.That(counted.Duration, Is.EqualTo(three + CeremonyPacing.ResultHold(pace) + CeremonyPacing.FadeOut).Within(0.0005f),
                     pace + ", three votes: the fade, the block, a hold on every vote, the beat before the last, the result and the fade out.");
                 counted.Cancel();
 
-                var tied = Reveal(new[] { Vote(0, Jordan), Vote(1, Casey), TieBreak(Jordan) }, Jordan, pace);
+                var tied = Reveal(new[] { Vote(Jordan), Vote(Casey), TieBreak(Jordan) }, Jordan, pace);
                 float two = CeremonyPacing.FadeIn + CeremonyPacing.VoteIntro(pace)
                     + 2 * CeremonyPacing.PerVote(pace, 2) + CeremonyPacing.LastVoteBeat(pace);
                 Assert.That(tied.Duration, Is.EqualTo(two + CeremonyPacing.TieBeat(pace) + CeremonyPacing.PerVote(pace, 2)
@@ -105,7 +105,7 @@ namespace Gamesim.Tests.PlayMode
 
             // Played through untouched, with the fades, they end when Duration says they will.
             var timedKeys = Keys(3, CeremonyPace.Quick, reducedMotion: false);
-            var timedVotes = Reveal(new[] { Vote(0, Jordan), Vote(1, Jordan) }, Jordan, CeremonyPace.Quick, reducedMotion: false);
+            var timedVotes = Reveal(new[] { Vote(Jordan), Vote(Jordan) }, Jordan, CeremonyPace.Quick, reducedMotion: false);
             float started = Time.realtimeSinceStartup, keysRan = -1f, votesRan = -1f;
             float limit = started + Mathf.Max(timedKeys.Duration, timedVotes.Duration) + 5f;
             while ((timedKeys.IsPlaying || timedVotes.IsPlaying) && Time.realtimeSinceStartup < limit)
@@ -137,7 +137,7 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator VoteReveal_SpaceRunsTheCountThreeTimesFasterAndBackAgain()
         {
             // Nine of the house's votes at the suspenseful pace: 1.4 s a vote.
-            var ballots = Enumerable.Range(0, 9).Select(i => Vote(i, i % 2 == 0 ? Jordan : Casey)).ToArray();
+            var ballots = Enumerable.Range(0, 9).Select(i => Vote(i % 2 == 0 ? Jordan : Casey)).ToArray();
             var reveal = Reveal(ballots, Jordan, CeremonyPace.Suspenseful);
             var rhythm = new Rhythm();
             yield return TimeTheSpeedUp(() => reveal.VotesShown, () => reveal.SpeedMultiplier, reveal, rhythm);
@@ -206,7 +206,7 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator VoteReveal_EnterSkipsToTheResultAndASecondEnterCloses()
         {
             var cues = new List<HouseAudio.Cue>();
-            var reveal = Reveal(new[] { Vote(0, Jordan), Vote(1, Jordan), Vote(2, Casey) }, Jordan, CeremonyPace.Suspenseful, cues: cues);
+            var reveal = Reveal(new[] { Vote(Jordan), Vote(Jordan), Vote(Casey) }, Jordan, CeremonyPace.Suspenseful, cues: cues);
             yield return PastTheReadDelay();
             Assert.That(reveal.VotesShown, Is.Zero, "Still on the block.");
             Assert.That(reveal.ShowingResult, Is.False);
@@ -227,7 +227,7 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator EscapeAndThePadsFaceButtonsSkipAndCloseTheRevealsToo()
         {
             var keys = Keys(3, CeremonyPace.Suspenseful);
-            var reveal = Reveal(new[] { Vote(0, Jordan), Vote(1, Jordan), Vote(2, Casey) }, Jordan, CeremonyPace.Suspenseful);
+            var reveal = Reveal(new[] { Vote(Jordan), Vote(Jordan), Vote(Casey) }, Jordan, CeremonyPace.Suspenseful);
             yield return PastTheReadDelay();
             yield return Press(Key.Escape);
             Assert.That(keys.ShowingBlock, Is.True, "Escape skips the keys to the block,");
@@ -237,7 +237,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(reveal.IsPlaying, Is.False, "and on its result.");
 
             keys = Keys(3, CeremonyPace.Suspenseful);
-            reveal = Reveal(new[] { Vote(0, Jordan), Vote(1, Jordan), Vote(2, Casey) }, Jordan, CeremonyPace.Suspenseful);
+            reveal = Reveal(new[] { Vote(Jordan), Vote(Jordan), Vote(Casey) }, Jordan, CeremonyPace.Suspenseful);
             yield return PastTheReadDelay();
             yield return Press(GamepadButton.South);
             Assert.That(keys.ShowingBlock, Is.True, "The pad's A skips to the block,");
@@ -273,7 +273,7 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator VoteReveal_ATieIsCalledAtTwoAllAndTheHeadOfHouseholdsVoteIsItsOwnMark()
         {
             // Two all in the house; then Maya Hassan, Head of Household, evicts Jordan.
-            var reveal = Reveal(new[] { Vote(0, Jordan), Vote(1, Casey), Vote(2, Casey), Vote(3, Jordan), TieBreak(Jordan) },
+            var reveal = Reveal(new[] { Vote(Jordan), Vote(Casey), Vote(Casey), Vote(Jordan), TieBreak(Jordan) },
                 Jordan, CeremonyPace.Quick);
 
             yield return Until(() => reveal.VotesShown >= 1, 10f);
@@ -314,25 +314,27 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator VoteReveal_ReadsTheCountAsTheHousesVotes()
         {
-            var reveal = Reveal(new[] { Vote(0, Jordan), Vote(1, Casey), Vote(2, Jordan), Vote(3, Jordan) }, Jordan, CeremonyPace.Suspenseful);
+            var reveal = Reveal(new[] { Vote(Jordan), Vote(Casey), Vote(Jordan), Vote(Jordan) }, Jordan, CeremonyPace.Suspenseful);
             yield return SkipToTheResult(reveal);
             Assert.That(Text(reveal, "Host").text, Is.EqualTo("By a vote of 3 to 1, Jordan Taylor, you have been evicted."));
             Assert.That(Text(reveal, "Result").text, Is.EqualTo("JORDAN TAYLOR  ·  EVICTED"), "and the banner still stamps it.");
         }
 
+        /// <summary>A single vote is read as one: the card never says who cast it (UI-UX-PASS-PLAN B0).</summary>
         [UnityTest]
-        public IEnumerator VoteReveal_NamesASoleVoter()
+        public IEnumerator VoteReveal_ASingleVoteNamesNobody()
         {
-            var reveal = Reveal(new[] { Vote(0, Casey) }, Casey, CeremonyPace.Suspenseful);
+            var reveal = Reveal(new[] { Vote(Casey) }, Casey, CeremonyPace.Suspenseful);
             yield return SkipToTheResult(reveal);
-            Assert.That(Text(reveal, "Host").text,
-                Is.EqualTo("Emma Brown cast the sole vote to evict. Casey Wilson, you have been evicted."));
+            Assert.That(Text(reveal, "Host").text, Is.EqualTo("By a single vote, Casey Wilson, you have been evicted."));
+            foreach (var name in Names)
+                Assert.That(reveal.GetComponentsInChildren<TMP_Text>(true).Select(label => label.text), Has.None.Contains(name), name);
         }
 
         [UnityTest]
         public IEnumerator VoteReveal_CreditsATieToTheHeadOfHouseholdsVote()
         {
-            var reveal = Reveal(new[] { Vote(0, Jordan), Vote(1, Casey), TieBreak(Casey) }, Casey, CeremonyPace.Suspenseful);
+            var reveal = Reveal(new[] { Vote(Jordan), Vote(Casey), TieBreak(Casey) }, Casey, CeremonyPace.Suspenseful);
             yield return SkipToTheResult(reveal);
             Assert.That(Text(reveal, "Host").text,
                 Is.EqualTo("By the Head of Household's tie-breaking vote, Casey Wilson, you have been evicted."));
@@ -344,24 +346,24 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator VoteReveal_SpeaksToAnEvictedPlayer()
         {
-            var counted = Reveal(new[] { Vote(0, Jordan), Vote(1, Casey), Vote(2, Jordan), Vote(3, Jordan) }, Jordan,
+            var counted = Reveal(new[] { Vote(Jordan), Vote(Casey), Vote(Jordan), Vote(Jordan) }, Jordan,
                 CeremonyPace.Suspenseful, evictedIsPlayer: true);
-            var sole = Reveal(new[] { Vote(0, Jordan) }, Jordan, CeremonyPace.Suspenseful, evictedIsPlayer: true);
-            var tied = Reveal(new[] { Vote(0, Jordan), Vote(1, Casey), TieBreak(Jordan) }, Jordan,
+            var sole = Reveal(new[] { Vote(Jordan) }, Jordan, CeremonyPace.Suspenseful, evictedIsPlayer: true);
+            var tied = Reveal(new[] { Vote(Jordan), Vote(Casey), TieBreak(Jordan) }, Jordan,
                 CeremonyPace.Suspenseful, evictedIsPlayer: true);
             yield return PastTheReadDelay();
             yield return Press(Key.Enter);
             Assert.That(counted.ShowingResult && sole.ShowingResult && tied.ShowingResult, Is.True, "Enter skips each to its result.");
             Assert.That(Text(counted, "Host").text, Is.EqualTo("By a vote of 3 to 1, you have been evicted."),
                 "The player is spoken to, not named,");
-            Assert.That(Text(sole, "Host").text, Is.EqualTo("Emma Brown cast the sole vote to evict. You have been evicted."));
+            Assert.That(Text(sole, "Host").text, Is.EqualTo("By a single vote, you have been evicted."));
             Assert.That(Text(tied, "Host").text, Is.EqualTo("By the Head of Household's tie-breaking vote, you have been evicted."));
         }
 
         [UnityTest]
         public IEnumerator VoteReveal_AsksAPlayerHeadOfHouseholdToBreakTheTie()
         {
-            var reveal = Reveal(new[] { Vote(0, Jordan), Vote(1, Casey), TieBreak(Casey) }, Casey, CeremonyPace.Quick, hohIsPlayer: true);
+            var reveal = Reveal(new[] { Vote(Jordan), Vote(Casey), TieBreak(Casey) }, Casey, CeremonyPace.Quick, hohIsPlayer: true);
             yield return Until(() => Text(reveal, "Progress").text.StartsWith("The vote is tied", System.StringComparison.Ordinal), 10f);
             Assert.That(Text(reveal, "Progress").text, Is.EqualTo("The vote is tied, 1 to 1."));
             Assert.That(Text(reveal, "Host").text, Is.EqualTo("As Head of Household, you must break the tie."),
@@ -379,7 +381,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(CeremonyOverlays.OnScreen, Is.False, "Nothing is on screen before the reveal.");
 
-            var reveal = Reveal(new[] { Vote(0, Jordan), Vote(1, Jordan), Vote(2, Casey) }, Jordan, CeremonyPace.Suspenseful);
+            var reveal = Reveal(new[] { Vote(Jordan), Vote(Jordan), Vote(Casey) }, Jordan, CeremonyPace.Suspenseful);
             yield return null;
             yield return null;
             Assert.That(CeremonyOverlays.OnScreen, Is.True,
@@ -413,7 +415,7 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator VoteReveal_SoundsEachBallotAndTheResultOnce()
         {
             var cues = new List<HouseAudio.Cue>();
-            var reveal = Reveal(new[] { Vote(0, Jordan), Vote(1, Casey), TieBreak(Jordan) }, Jordan, CeremonyPace.Quick, cues: cues);
+            var reveal = Reveal(new[] { Vote(Jordan), Vote(Casey), TieBreak(Jordan) }, Jordan, CeremonyPace.Quick, cues: cues);
             yield return Until(() => reveal.ShowingResult, 10f);
             yield return null;
             Assert.That(cues, Is.EqualTo(new[] { HouseAudio.Cue.Vote, HouseAudio.Cue.Vote, HouseAudio.Cue.Vote, HouseAudio.Cue.Eviction }),
@@ -431,7 +433,7 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator TheNewLinesDrawTheirCopy()
         {
             var keys = Keys(3, CeremonyPace.Suspenseful);
-            var reveal = Reveal(new[] { Vote(0, Jordan), Vote(1, Casey), TieBreak(Jordan) }, Jordan, CeremonyPace.Suspenseful);
+            var reveal = Reveal(new[] { Vote(Jordan), Vote(Casey), TieBreak(Jordan) }, Jordan, CeremonyPace.Suspenseful);
             yield return PastTheReadDelay();
             Assert.That(Text(keys, "Controls").text, Is.EqualTo(CeremonyTakeover.ControlsCaption), "The keys the card answers to,");
             Assert.That(Text(keys, "Dismiss").text, Is.EqualTo(CeremonyTakeover.DismissCaption), "beside the line other code knows it by.");
@@ -450,42 +452,66 @@ namespace Gamesim.Tests.PlayMode
             AssertEveryLabelDraws(reveal, "The live eviction's result, after a tie");
         }
 
-        // ------------------------------------------------------------------ the screen's board (MOCKUP-PASS-PLAN M18)
+        // ------------------------------------------------------------------ the screen's board (UI-UX-PASS-PLAN B0)
 
         /// <summary>The pieces only the screen's frame has; the HUD's card is drawn as it always was.</summary>
-        private static readonly string[] ScreenOnly = { "Vote heading", "Board", "Roster", "Ballot", "Result block" };
+        private static readonly string[] ScreenOnly = { "Vote heading", "Board", "Tally card", "Ballot", "Result block" };
+
+        /// <summary>The tally card's copy: the owner's mockup, verbatim.</summary>
+        private const string Anonymously = "Votes are revealed anonymously.", Secret = "The identity of each voter remains a secret.";
+
+        /// <summary>The children the old roster named a voter by; none may exist on the board.</summary>
+        private static readonly string[] VoterChildren = { "Ballot voter", "Ballot face", "Ballot target", "Roster" };
 
         /// <summary>
-        /// On the living room's screen the voters fill in a roster between the two faces, a row a
-        /// vote in the order cast, each naming the nominee that voter evicts in that nominee's side
-        /// colour - the colour of the nominee's own figure. The title, the pips and the figures stay.
+        /// Nothing on the board names a voter: no child the old roster had, and no label carrying a
+        /// voter's name - the Head of Household's only on the deciding row and in the host's line,
+        /// where the format reads it.
+        /// </summary>
+        private static void AssertNamesNobody(Component card)
+        {
+            foreach (var name in VoterChildren) Assert.That(Rect(card, name), Is.Null, "The board has no '" + name + "'.");
+            var labels = card.GetComponentsInChildren<TMP_Text>(true).Where(label => label.name != "Deciding voter" && label.name != "Host").ToArray();
+            foreach (var voter in Names.Concat(new[] { "Maya Hassan" }))
+                Assert.That(labels.Select(label => label.text), Has.None.Contains(voter), "No label on the board names " + voter + ".");
+        }
+
+        /// <summary>
+        /// On the living room's screen the tally card stands between the two faces: CURRENT TALLY,
+        /// the line, the badge, and one anonymous slot a vote - no face, no name, no chip - each put
+        /// up as its vote is read, every slot alike. The title, the pips and the figures stay, and
+        /// the figures are the only thing on the board that moves with a vote.
         /// </summary>
         [UnityTest]
-        public IEnumerator VoteReveal_OnTheScreenTheRosterFillsInAVoteAtATime()
+        public IEnumerator VoteReveal_OnTheScreenTheSlotsFillInAVoteAtATimeAndNameNobody()
         {
             var screen = LivingScreen();
-            var reveal = Reveal(new[] { Vote(0, Jordan), Vote(1, Casey), Vote(2, Jordan) }, Jordan, CeremonyPace.Quick, screen: screen);
+            var reveal = Reveal(new[] { Vote(Jordan), Vote(Casey), Vote(Jordan) }, Jordan, CeremonyPace.Quick, screen: screen);
             Assert.That(reveal.Surface, Is.SameAs(screen), "The card plays on the screen.");
             Assert.That(Text(reveal, "Title").text, Is.EqualTo("LIVE EVICTION"), "The title stays,");
             Assert.That(Text(reveal, "Vote heading").text, Is.EqualTo("THE VOTE"), "with the vote under it.");
             Assert.That(Rects(reveal, "Pip"), Has.Length.EqualTo(3), "The pip row stays: one per vote the house cast.");
-            Assert.That(Rects(reveal, "Ballot"), Has.Length.EqualTo(3), "A row is built for every ballot,");
+            Assert.That(Text(reveal, "Tally heading").text, Is.EqualTo("CURRENT TALLY"), "The card says what it is,");
+            Assert.That(Text(reveal, "Tally line").text, Is.EqualTo(Anonymously), "how the votes are read,");
+            Assert.That(Text(reveal, "Anonymous badge text").text, Is.EqualTo(Secret), "and what stays secret.");
+            Assert.That(Rects(reveal, "Ballot"), Has.Length.EqualTo(3), "A slot is built for every ballot,");
             Assert.That(RowsUp(reveal), Is.Empty, "and none is up before the first vote is read.");
+            Assert.That(IsUp(reveal, "Deciding vote"), Is.False, "With no tie to break there is no deciding row at all.");
+            AssertNamesNobody(reveal);
 
             yield return Until(() => reveal.VotesShown >= 1, 10f);
-            Assert.That(RowsUp(reveal).Select(row => Part(row, "Ballot voter").text), Is.EqualTo(new[] { "Emma Brown" }));
-            Assert.That(RowsUp(reveal).Select(row => Part(row, "Ballot target").text), Is.EqualTo(new[] { "EVICT JORDAN" }));
-
+            Assert.That(RowsUp(reveal), Has.Length.EqualTo(1), "A slot a vote,");
             yield return Until(() => reveal.VotesShown >= 2, 10f);
-            var rows = RowsUp(reveal);
-            Assert.That(rows.Select(row => Part(row, "Ballot voter").text), Is.EqualTo(new[] { "Emma Brown", "Riley Johnson" }),
-                "A row a vote, in the order the house cast them.");
-            Assert.That(rows.Select(row => Part(row, "Ballot target").text), Is.EqualTo(new[] { "EVICT JORDAN", "EVICT CASEY" }));
-            Assert.That(Texts(reveal, "Votes"), Is.EqualTo(new[] { "1", "1" }), "The figures count as they did.");
+            var slots = RowsUp(reveal);
+            Assert.That(slots, Has.Length.EqualTo(2));
+            Assert.That(Texts(reveal, "Votes"), Is.EqualTo(new[] { "1", "1" }), "and the figures count as they did.");
+            Assert.That(Drawn(slots[0]), Is.EqualTo(Drawn(slots[1])), "Every slot is alike: a slot says a vote was read, never whose or against whom.");
+            Assert.That(slots[0].GetComponentsInChildren<TMP_Text>(true), Is.Empty, "A slot carries no words.");
+            AssertNamesNobody(reveal);
 
             var figures = reveal.GetComponentsInChildren<TMP_Text>(true).Where(label => label.name == "Votes").ToArray();
-            Assert.That(Part(rows[0], "Ballot target").color, Is.EqualTo(figures[0].color), "A chip is in its nominee's colour:");
-            Assert.That(Part(rows[1], "Ballot target").color, Is.EqualTo(figures[1].color), "Jordan's on the left, Casey's on the right,");
+            Assert.That(figures[0].color, Is.EqualTo(VoteReveal.Side(0)), "Each figure is in its side's colour:");
+            Assert.That(figures[1].color, Is.EqualTo(VoteReveal.Side(1)), "Jordan's on the left, Casey's on the right,");
             Assert.That(figures[0].color, Is.Not.EqualTo(figures[1].color), "and the two sides differ.");
             Assert.That(figures.Select(figure => figure.color), Has.None.EqualTo(UiTheme.Danger),
                 "Neither side is the eviction's red: that is kept for the result.");
@@ -494,14 +520,14 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// Decision 5 A's rule: the board never says who is leaving before the result. Given the same
-        /// ballots and told a different evictee, two cards draw the same board - every row, chip,
-        /// figure and colour - at every step of the count.
+        /// ballots and told a different evictee, two cards draw the same board - every slot, figure
+        /// and colour - at every step of the count.
         /// </summary>
         [UnityTest]
         public IEnumerator VoteReveal_OnTheScreenTheBoardIsTheSameWhoeverIsLeaving()
         {
             var screen = LivingScreen();
-            var ballots = new[] { Vote(0, Jordan), Vote(1, Casey), Vote(2, Jordan), Vote(3, Casey), Vote(4, Jordan) };
+            var ballots = new[] { Vote(Jordan), Vote(Casey), Vote(Jordan), Vote(Casey), Vote(Jordan) };
             var jordanLeaves = Reveal(ballots, Jordan, CeremonyPace.Quick, screen: screen);
             var caseyLeaves = Reveal(ballots, Casey, CeremonyPace.Quick, screen: screen);
 
@@ -528,7 +554,7 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// At the result the board - faces, names, figures, the VS disc, the pips and the roster -
+        /// At the result the board - faces, names, figures, the VS disc, the pips and the tally card -
         /// fades, every piece of it kept, and the result is read in lines: the count, the evictee's
         /// figure in red and the other in its side's colour, the first name, and that they are
         /// evicted. The Host line and the banner keep their words.
@@ -536,21 +562,20 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator VoteReveal_OnTheScreenTheResultIsReadInLinesOverTheBoard()
         {
-            var reveal = Reveal(new[] { Vote(0, Jordan), Vote(1, Casey), Vote(2, Jordan), Vote(3, Jordan) }, Jordan,
+            var reveal = Reveal(new[] { Vote(Jordan), Vote(Casey), Vote(Jordan), Vote(Jordan) }, Jordan,
                 CeremonyPace.Suspenseful, screen: LivingScreen());
             Assert.That(IsUp(reveal, "Result block"), Is.False, "Nothing of the result is up before it is read.");
             yield return SkipToTheResult(reveal);
 
-            var rows = RowsUp(reveal);
-            Assert.That(rows.Select(row => Part(row, "Ballot voter").text),
-                Is.EqualTo(new[] { "Emma Brown", "Riley Johnson", "Alex Chen", "Sam Patel" }), "A skip puts every row up at once.");
+            Assert.That(RowsUp(reveal), Has.Length.EqualTo(4), "A skip puts every slot up at once.");
+            AssertNamesNobody(reveal);
             Assert.That(IsUp(reveal, "Result block"), Is.True);
             Assert.That(Text(reveal, "Result lead").text, Is.EqualTo("BY A VOTE OF"));
             Assert.That(Text(reveal, "Result count").text, Is.EqualTo("3"), "The evictee's votes,");
             Assert.That(Text(reveal, "Result count").color, Is.EqualTo(UiTheme.Danger), "in red,");
             Assert.That(Text(reveal, "Result to").text, Is.EqualTo("TO"));
             Assert.That(Text(reveal, "Result other count").text, Is.EqualTo("1"), "and the other nominee's,");
-            Assert.That(Text(reveal, "Result other count").color, Is.EqualTo(Part(rows[1], "Ballot target").color), "in Casey's colour.");
+            Assert.That(Text(reveal, "Result other count").color, Is.EqualTo(VoteReveal.Side(1)), "in Casey's colour.");
             Assert.That(Text(reveal, "Result name").text, Is.EqualTo("JORDAN"));
             Assert.That(Text(reveal, "Result name").color, Is.EqualTo(UiTheme.Danger));
             Assert.That(Text(reveal, "Result line").text, Is.EqualTo("IS EVICTED."));
@@ -563,29 +588,36 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Rect(reveal, "Result block").GetComponent<CanvasGroup>().alpha, Is.EqualTo(1f), "to the result.");
             Assert.That(Texts(reveal, "Votes"), Is.EqualTo(new[] { "3", "1" }), "The board's pieces are kept:");
             Assert.That(Rects(reveal, "Pip"), Has.Length.EqualTo(4), "the pips,");
-            Assert.That(IsUp(reveal, "Versus disc") && IsUp(reveal, "Roster"), Is.True, "the disc and the roster.");
+            Assert.That(IsUp(reveal, "Versus disc") && IsUp(reveal, "Tally card"), Is.True, "the disc and the tally card.");
             AssertEveryLabelDraws(reveal, "The screen's result");
         }
 
         /// <summary>
         /// The result's variants: a tie is credited to the Head of Household with no count - the
-        /// house's was level - and their gold row joins the roster only once the tie is called and
-        /// broken; an evicted player is told; a sole vote reads one to nothing.
+        /// house's was level - and their gold deciding row, the one row with a name on it, joins the
+        /// card only once the tie is called and broken (decision 1); an evicted player is told; a
+        /// sole vote reads one to nothing, and names nobody.
         /// </summary>
         [UnityTest]
         public IEnumerator VoteReveal_OnTheScreenTheResultReadsATieASoleVoteAndThePlayer()
         {
             var screen = LivingScreen();
-            var tied = Reveal(new[] { Vote(0, Jordan), Vote(1, Casey), TieBreak(Jordan) }, Jordan, CeremonyPace.Quick, screen: screen);
-            Assert.That(Rects(tied, "Ballot"), Has.Length.EqualTo(3), "Two of the house's rows and the deciding vote's,");
+            var tied = Reveal(new[] { Vote(Jordan), Vote(Casey), TieBreak(Jordan) }, Jordan, CeremonyPace.Quick, screen: screen);
+            Assert.That(Rects(tied, "Ballot"), Has.Length.EqualTo(2), "Two slots for the house's two votes,");
+            Assert.That(Rect(tied, "Deciding vote"), Is.Not.Null, "and the deciding row built,");
+            Assert.That(IsUp(tied, "Deciding vote"), Is.False, "hidden.");
             yield return Until(() => Text(tied, "Progress").text.StartsWith("The vote is tied", System.StringComparison.Ordinal), 10f);
-            Assert.That(RowsUp(tied), Has.Length.EqualTo(2), "which is not up when the tie is called.");
+            Assert.That(RowsUp(tied), Has.Length.EqualTo(2));
+            Assert.That(IsUp(tied, "Deciding vote"), Is.False, "Not up when the tie is called.");
             yield return Until(() => tied.VotesShown >= 3, 10f);
-            var deciding = RowsUp(tied);
-            Assert.That(deciding, Has.Length.EqualTo(3), "The Head of Household's vote goes on the roster,");
-            Assert.That(Part(deciding[2], "Ballot voter").text, Is.EqualTo("Maya Hassan"));
-            Assert.That(Part(deciding[2], "Ballot voter").color, Is.EqualTo(UiTheme.Gold), "in gold,");
-            Assert.That(Part(deciding[2], "Ballot target").text, Is.EqualTo("EVICT JORDAN"), "naming who they evict.");
+            var deciding = Rect(tied, "Deciding vote");
+            Assert.That(deciding.gameObject.activeInHierarchy, Is.True, "The Head of Household's vote goes on the card,");
+            Assert.That(Part(deciding, "Deciding chip").text, Is.EqualTo("HOH"));
+            Assert.That(Part(deciding, "Deciding voter").text, Is.EqualTo("Maya Hassan"), "named,");
+            Assert.That(Part(deciding, "Deciding voter").color, Is.EqualTo(UiTheme.Gold), "in gold,");
+            Assert.That(Part(deciding, "Deciding target").text, Is.EqualTo("EVICT JORDAN"), "naming who they evict,");
+            Assert.That(Part(deciding, "Deciding target").color, Is.EqualTo(VoteReveal.Side(0)), "in that nominee's colour.");
+            AssertNamesNobody(tied);
             yield return Until(() => tied.ShowingResult, 10f);
             Assert.That(Text(tied, "Result lead").text, Is.EqualTo("BY THE HEAD OF HOUSEHOLD'S VOTE"));
             Assert.That(IsUp(tied, "Result tally"), Is.False, "A tie-break gives no count: the house's was level.");
@@ -594,9 +626,9 @@ namespace Gamesim.Tests.PlayMode
             AssertEveryLabelDraws(tied, "The screen's result, after a tie");
             tied.Cancel();
 
-            var player = Reveal(new[] { Vote(0, Jordan), Vote(1, Casey), Vote(2, Jordan) }, Jordan, CeremonyPace.Suspenseful,
+            var player = Reveal(new[] { Vote(Jordan), Vote(Casey), Vote(Jordan) }, Jordan, CeremonyPace.Suspenseful,
                 evictedIsPlayer: true, screen: screen);
-            var sole = Reveal(new[] { Vote(0, Casey) }, Casey, CeremonyPace.Suspenseful, screen: screen);
+            var sole = Reveal(new[] { Vote(Casey) }, Casey, CeremonyPace.Suspenseful, screen: screen);
             yield return PastTheReadDelay();
             yield return Press(Key.Enter);
             Assert.That(player.ShowingResult && sole.ShowingResult, Is.True, "Enter skips each to its result.");
@@ -604,101 +636,101 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Text(player, "Host").text, Is.EqualTo("By a vote of 2 to 1, you have been evicted."), "as the host tells them.");
             Assert.That(Text(sole, "Result lead").text, Is.EqualTo("BY A VOTE OF"));
             Assert.That(new[] { Text(sole, "Result count").text, Text(sole, "Result other count").text }, Is.EqualTo(new[] { "1", "0" }),
-                "A sole vote is one to nothing.");
+                "A sole vote is one to nothing,");
+            Assert.That(Text(sole, "Host").text, Is.EqualTo("By a single vote, Casey Wilson, you have been evicted."), "and names nobody.");
             Assert.That(Text(sole, "Result name").text, Is.EqualTo("CASEY"));
+            AssertNamesNobody(sole);
         }
 
         /// <summary>
-        /// The roster holds from one vote to a full house's thirteen: one column up to seven rows and
-        /// two past that, every row on the face, clear of the others and of the faces, names and
-        /// figures at the sides. A deciding vote takes the next place without moving the house's
-        /// rows, so the columns do not say a tie is coming. A name too long for its row ends in an
-        /// ellipsis instead of being cut with no mark.
+        /// The card holds from one vote to a full house's thirteen: slots in rows of eight, every one
+        /// on the face, clear of the others and of the faces, names and figures at the sides, and the
+        /// whole card clear of the pips. A card with no tie to break holds no place for one; the
+        /// deciding row goes under the slots. A Head of Household's name too long for the deciding
+        /// row ends in an ellipsis instead of being cut with no mark, and so does a first name too long
+        /// for its chip.
         /// </summary>
         [UnityTest]
-        public IEnumerator VoteReveal_OnTheScreenTheRosterFitsTheFaceFromOneVoteToAFullHouse()
+        public IEnumerator VoteReveal_OnTheScreenTheSlotsFitTheFaceFromOneVoteToAFullHouse()
         {
             var screen = LivingScreen();
             foreach (int count in new[] { 1, 7, 8, 13 })
             {
-                var ballots = Enumerable.Range(0, count)
-                    .Select(i => new VoteReveal.Ballot("v" + i, "Houseguest " + (i + 1), i % 3 == 1 ? Casey : Jordan, false, null))
-                    .ToArray();
+                var ballots = Enumerable.Range(0, count).Select(i => Vote(i % 3 == 1 ? Casey : Jordan)).ToArray();
                 var reveal = Reveal(ballots, Jordan, CeremonyPace.Suspenseful, screen: screen);
                 yield return SkipToTheResult(reveal);
-                var rows = RowsUp(reveal).Select(row => OnTheCard(reveal, row)).ToArray();
-                Assert.That(rows, Has.Length.EqualTo(count), count + " votes: a row each, all up.");
+                var slots = RowsUp(reveal).Select(slot => OnTheCard(reveal, slot)).ToArray();
+                Assert.That(slots, Has.Length.EqualTo(count), count + " votes: a slot each, all up.");
 
-                var lanes = rows.GroupBy(row => Mathf.RoundToInt(row.center.x)).ToArray();
-                Assert.That(lanes, Has.Length.EqualTo(count > 7 ? 2 : 1), count + " votes: one column up to seven, two past that.");
-                Assert.That(lanes.Max(lane => lane.Count()), Is.LessThanOrEqualTo(7), count + " votes: seven rows to a column at most.");
+                var rows = slots.GroupBy(slot => Mathf.RoundToInt(slot.center.y)).ToArray();
+                Assert.That(rows, Has.Length.EqualTo(count > 8 ? 2 : 1), count + " votes: one row up to eight, two past that.");
+                Assert.That(rows.Max(row => row.Count()), Is.LessThanOrEqualTo(8), count + " votes: eight slots to a row at most.");
 
                 var face = UnityEngine.Rect.MinMaxRect(-600f, -400f, 600f, 400f);
                 var sides = new[] { "Ring", "Nominee", "Votes", "Versus disc", "Dots", "Vote heading" }
                     .SelectMany(name => Rects(reveal, name)).Select(rect => (rect.name, OnTheCard(reveal, rect))).ToArray();
-                for (int i = 0; i < rows.Length; i++)
+                var card = OnTheCard(reveal, Rect(reveal, "Tally card"));
+                Assert.That(face.Contains(card.min) && face.Contains(card.max), Is.True, count + " votes: the card " + card + " is on the face,");
+                foreach (var (name, rect) in sides)
+                    Assert.That(card.Overlaps(rect), Is.False, count + " votes: the card " + card + " covers '" + name + "' " + rect + ".");
+                for (int i = 0; i < slots.Length; i++)
                 {
-                    Assert.That(face.Contains(rows[i].min) && face.Contains(rows[i].max), Is.True, count + " votes: row " + i + " " + rows[i] + " is on the face.");
-                    for (int j = i + 1; j < rows.Length; j++)
-                        Assert.That(rows[i].Overlaps(rows[j]), Is.False, count + " votes: rows " + i + " and " + j + " overlap.");
-                    foreach (var (name, rect) in sides)
-                        Assert.That(rows[i].Overlaps(rect), Is.False, count + " votes: row " + i + " " + rows[i] + " covers '" + name + "' " + rect + ".");
+                    Assert.That(card.Contains(slots[i].min) && card.Contains(slots[i].max), Is.True, count + " votes: slot " + i + " " + slots[i] + " is on the card.");
+                    for (int j = i + 1; j < slots.Length; j++)
+                        Assert.That(slots[i].Overlaps(slots[j]), Is.False, count + " votes: slots " + i + " and " + j + " overlap.");
                 }
+                Assert.That(Rect(reveal, "Deciding vote"), Is.Null, count + " votes, no tie: no deciding row is built.");
                 AssertEveryLabelDraws(reveal, count + " votes on the screen");
                 reveal.Cancel();
             }
 
-            // Twelve of the house's votes, tied, and the Head of Household's: the house's rows sit where
-            // they would with no tie to break, and the deciding row takes the second column's seventh place.
-            var twelve = Enumerable.Range(0, 12).Select(i => Vote(i, i % 2 == 0 ? Jordan : Casey)).ToArray();
+            // Twelve of the house's votes, tied, and the Head of Household's: the slots sit where they
+            // would with no tie to break, and the deciding row goes under them, clear of the pips.
+            var twelve = Enumerable.Range(0, 12).Select(i => Vote(i % 2 == 0 ? Jordan : Casey)).ToArray();
             var untied = Reveal(twelve, Jordan, CeremonyPace.Suspenseful, screen: screen);
             var tied = Reveal(twelve.Concat(new[] { TieBreak(Jordan) }).ToArray(), Jordan, CeremonyPace.Suspenseful, screen: screen);
             yield return null;
-            var house = Rects(untied, "Ballot").Select(row => row.anchoredPosition).ToArray();
-            var withTie = Rects(tied, "Ballot").Select(row => row.anchoredPosition).ToArray();
-            Assert.That(withTie.Take(12), Is.EqualTo(house), "The house's rows do not move for a tie that is coming.");
-            Assert.That(withTie[12].x, Is.EqualTo(house[11].x), "The deciding row is in the second column,");
-            Assert.That(withTie[12].y, Is.LessThan(house[11].y), "under the house's last.");
+            var house = Rects(untied, "Ballot").Select(slot => slot.anchoredPosition).ToArray();
+            var withTie = Rects(tied, "Ballot").Select(slot => slot.anchoredPosition).ToArray();
+            Assert.That(withTie, Is.EqualTo(house), "The slots do not move for a tie that is coming.");
             yield return SkipToTheResult(tied);
-            var deciding = OnTheCard(tied, RowsUp(tied).Last());
-            Assert.That(deciding.yMin, Is.GreaterThan(OnTheCard(tied, Rect(tied, "Dots")).yMax), "and clear of the pips.");
+            var deciding = OnTheCard(tied, Rect(tied, "Deciding vote"));
+            Assert.That(deciding.yMax, Is.LessThan(RowsUp(tied).Select(slot => OnTheCard(tied, slot).yMin).Min()), "The deciding row sits under the slots,");
+            Assert.That(deciding.yMin, Is.GreaterThan(OnTheCard(tied, Rect(tied, "Dots")).yMax), "and clear of the pips,");
+            var tiedCard = OnTheCard(tied, Rect(tied, "Tally card"));
+            Assert.That(tiedCard.Contains(deciding.min) && tiedCard.Contains(deciding.max), Is.True, "on the card.");
+            Assert.That(tiedCard.yMin, Is.GreaterThan(OnTheCard(tied, Rect(tied, "Dots")).yMax), "The card at its tallest is clear of the pips too.");
             untied.Cancel();
             tied.Cancel();
 
-            // Long names where the rows are narrowest, a full house in two columns. A name can run to a
+            // A long name on the deciding row, and a long first name on its chip. A name can run to a
             // hundred characters (CharacterDraft.NameLimit): one too wide even at the floor ends in an
-            // ellipsis rather than losing its tail with no mark, and a name that fits is drawn whole.
-            const string longVoter = "Alexandra Montgomery-Fitzwilliam";
+            // ellipsis rather than losing its tail with no mark.
+            const string longHoh = "Alexandra Montgomery-Fitzwilliam-Castellanos";
             var longBlock = new[]
             {
                 new VoteReveal.Nominee(Jordan, "Christopherson Taylor", null),
                 new VoteReveal.Nominee(Casey, "Casey Wilson", null),
             };
-            var longBallots = Enumerable.Range(0, 13)
-                .Select(i => new VoteReveal.Ballot("v" + i, i == 0 || i == 12 ? longVoter : "Houseguest " + (i + 1),
-                    i % 3 == 1 ? Casey : Jordan, false, null))
-                .ToArray();
             var named = VoteReveal.Attach(owner);
             cards.Add(named.gameObject);
-            Assert.That(named.Play(4, longBlock, longBallots, Jordan, true, CeremonyPace.Suspenseful, "Maya Hassan", screen: screen), Is.True);
+            Assert.That(named.Play(4, longBlock, twelve.Concat(new[] { TieBreak(Jordan) }).ToArray(), Jordan, true, CeremonyPace.Suspenseful, longHoh, screen: screen), Is.True);
             yield return SkipToTheResult(named);
             Canvas.ForceUpdateCanvases();
-            var words = RowsUp(named).SelectMany(row => new[] { Part(row, "Ballot voter"), Part(row, "Ballot target") }).ToArray();
-            Assert.That(words, Has.Length.EqualTo(26), "Thirteen rows, a name and a chip each.");
-            foreach (var word in words)
+            var row = Rect(named, "Deciding vote");
+            var voter = Part(row, "Deciding voter");
+            var chip = Part(row, "Deciding target");
+            foreach (var word in new[] { voter, chip })
             {
                 word.ForceMeshUpdate(true);
                 Assert.That(!word.isTextTruncated || Ellipsised(word), Is.True,
                     "'" + word.text + "' (" + word.name + ", " + word.fontSize.ToString("0.#") + " in a box "
                     + word.rectTransform.rect.width.ToString("0") + " wide) loses its tail with no ellipsis.");
             }
-            Assert.That(words.Where(word => word.text == longVoter).Select(word => Ellipsised(word)), Is.EqualTo(new[] { true, true }),
-                "A voter's name too long for a row, in either column, is marked as shortened,");
-            var chips = words.Where(word => word.text == "EVICT CHRISTOPHERSON").ToArray();
-            Assert.That(chips, Is.Not.Empty);
-            Assert.That(chips.Select(chip => Ellipsised(chip)), Is.All.True, "and so is a first name too long for the chip.");
-            Assert.That(words.Where(word => word.text.StartsWith("Houseguest", System.StringComparison.Ordinal))
-                .Select(word => word.isTextTruncated), Is.All.False, "A name that fits is drawn whole.");
+            Assert.That(voter.text, Is.EqualTo(longHoh));
+            Assert.That(Ellipsised(voter), Is.True, "A Head of Household's name too long for the row is marked as shortened,");
+            Assert.That(chip.text, Is.EqualTo("EVICT CHRISTOPHERSON"));
+            Assert.That(Ellipsised(chip), Is.True, "and so is a first name too long for the chip.");
             var result = Text(named, "Result name");
             result.ForceMeshUpdate(true);
             Assert.That(result.text, Is.EqualTo("CHRISTOPHERSON"));
@@ -713,7 +745,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator VoteReveal_TheHudCardHasNoBoard()
         {
-            var ballots = new[] { Vote(0, Jordan), Vote(1, Jordan), Vote(2, Casey) };
+            var ballots = new[] { Vote(Jordan), Vote(Jordan), Vote(Casey) };
             var reveal = Reveal(ballots, Jordan, CeremonyPace.Suspenseful);
             yield return null;
             foreach (var name in ScreenOnly) Assert.That(Rect(reveal, name), Is.Null, "The HUD's card has no '" + name + "'.");
@@ -786,7 +818,7 @@ namespace Gamesim.Tests.PlayMode
             return screen;
         }
 
-        /// <summary>The roster's rows that are up, in the order they were cast.</summary>
+        /// <summary>The card's slots that are up, in the order their votes were read.</summary>
         private static RectTransform[] RowsUp(Component card) =>
             Rects(card, "Ballot").Where(row => row.gameObject.activeSelf).ToArray();
 
@@ -822,11 +854,11 @@ namespace Gamesim.Tests.PlayMode
                     + " #" + ColorUtility.ToHtmlStringRGBA(graphic.color) + (graphic.gameObject.activeInHierarchy ? " up" : " down"))
                 .ToArray();
 
-        /// <summary>One of the house's ballots, cast by the named houseguest.</summary>
-        private static VoteReveal.Ballot Vote(int voter, string target) => new VoteReveal.Ballot(Names[voter], target);
+        /// <summary>One of the house's ballots: whom it went against, and nothing of who cast it.</summary>
+        private static VoteReveal.Ballot Vote(string target) => new VoteReveal.Ballot(target);
 
         /// <summary>The Head of Household's deciding vote.</summary>
-        private static VoteReveal.Ballot TieBreak(string target) => new VoteReveal.Ballot("Maya Hassan", target, tieBreak: true);
+        private static VoteReveal.Ballot TieBreak(string target) => new VoteReveal.Ballot(target, tieBreak: true);
 
         private sealed class Rhythm
         {

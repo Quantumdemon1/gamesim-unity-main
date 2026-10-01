@@ -3,6 +3,7 @@ using System.Linq;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Gamesim.Episode
 {
@@ -37,7 +38,8 @@ namespace Gamesim.Episode
         /// <summary>
         /// A plea, in the conversation with whoever is deciding: first what to ask, then how to put
         /// it, each approach with its chance beside it. Drawn above the dial, because in a window the
-        /// plea is what the player came for.
+        /// plea is what the player came for. The chance is the player's read of the houseguest
+        /// (<see cref="KnownOdds.Plea"/>), never the roll's own number, and the panel says so.
         /// </summary>
         private void LobbyPanel(EpisodeState state, ContestantState npc)
         {
@@ -57,11 +59,12 @@ namespace Gamesim.Episode
             {
                 string ask = lobbyAsk, subject = lobbySubjectId, decider = npc.id;
                 hud.Paragraph(EpisodeHud.LobbyAskCaption(state, npc.name, ask, subject) + ". How do you put it?");
+                OddsAreYourRead(state, npc);
                 bool forYourself = subject == state.playerId;
                 foreach (string approach in LobbyApproach.All)
                 {
                     string how = approach;
-                    string tag = ChanceWord(StrategyRules.Chance(state, decider, ask, subject, how))
+                    string tag = KnownOdds.Plea(state, decider, ask, subject, how).word
                         + (how == LobbyApproach.Deal ? " · binds you next week" : how == LobbyApproach.Pressure ? " · can backfire" : "");
                     hud.Tag(hud.Action(EpisodeHud.LobbyApproachCaption(how, forYourself), () =>
                     {
@@ -84,16 +87,6 @@ namespace Gamesim.Episode
                 else hud.Tag(hud.ActionFor(subject, caption, choose), Category(EpisodeCommandKind.Lobby),
                     subject == state.playerId ? EpisodeHud.TagSeat.RowEnd : EpisodeHud.TagSeat.PastReading);
             }
-        }
-
-        /// <summary>"about even" rather than "51%", the deal table's words for a chance.</summary>
-        private static string ChanceWord(double chance)
-        {
-            if (chance >= 75) return "likely";
-            if (chance >= 55) return "favourable";
-            if (chance >= 45) return "about even";
-            if (chance >= 25) return "a stretch";
-            return "unlikely";
         }
 
         /// <summary>
@@ -129,12 +122,46 @@ namespace Gamesim.Episode
                 if (from == null || from.status != ContestantStatus.Active) continue;
                 hud.Heading("AN OFFER FROM " + from.name.ToUpperInvariant());
                 hud.Paragraph(DealSentence(state, offer));
-                hud.ActionFor(id, EpisodeHud.DealAcceptCaption,
-                    () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: EpisodeEngine.AcceptDeal));
+                OfferAccept(state, offer);
                 hud.ActionFor(id, EpisodeHud.DealDeclineCaption,
                     () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: "decline"));
             }
         }
+
+        /// <summary>
+        /// An offer's accept. For a nominee's veto ask once the player has given another nominee
+        /// their word on the veto this week, the same control greyed under a line saying why: the
+        /// veto saves one of them, so a second yes is a word that cannot be kept (X13). Nothing is
+        /// answered for the player - the decline beside it stays as it was, and the greyed control
+        /// commits nothing even if something presses it.
+        /// </summary>
+        private Button OfferAccept(EpisodeState state, DealState offer)
+        {
+            string id = offer.id;
+            string promised = offer.type == DealKind.VetoUse ? VetoPromisedTo(state, offer.proposerId) : null;
+            if (promised == null)
+                return hud.ActionFor(id, EpisodeHud.DealAcceptCaption,
+                    () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: EpisodeEngine.AcceptDeal));
+            hud.Paragraph(VetoSavesOneLine(state.Find(promised).name));
+            var greyed = hud.ActionFor(id, EpisodeHud.DealAcceptCaption, () => { });
+            greyed.interactable = false;
+            return greyed;
+        }
+
+        /// <summary>
+        /// The nominee on this week's block the player has already given their word on the veto
+        /// to, other than <paramref name="askingId"/>, or null. Read from the player's own deals.
+        /// </summary>
+        public static string VetoPromisedTo(EpisodeState state, string askingId) =>
+            state == null ? null
+                : state.deals.Where(d => d.type == DealKind.VetoUse && d.recipientId == state.playerId && d.proposerId != askingId
+                        && d.week == state.week && (d.status == DealStatus.Active || d.status == DealStatus.Accepted)
+                        && state.nominees.Contains(d.proposerId))
+                    .Select(d => d.proposerId).FirstOrDefault();
+
+        /// <summary>Above the other nominee's greyed accept, once the player has said yes to one veto ask.</summary>
+        public static string VetoSavesOneLine(string promisedName) =>
+            "The veto can only save one of them, and you have already given " + promisedName + " your word.";
 
         /// <summary>
         /// A houseguest who came to the player, waiting on an answer. Drawn before the week's

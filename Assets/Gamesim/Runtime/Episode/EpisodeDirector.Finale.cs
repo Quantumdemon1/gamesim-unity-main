@@ -7,8 +7,9 @@ namespace Gamesim.Episode
 {
     /// <summary>
     /// The finale on screen: the jury's vote read one juror at a time (<see cref="JuryReveal"/>),
-    /// and, once the season is over, two ways back into that night from the finale's panel: the
-    /// vote read again, and what each juror asked and gave as their reason (MOCKUP-PASS-PLAN M4).
+    /// and, once the season is over, two ways back into that night from the finale's page: the
+    /// vote read again, and what each juror asked and gave as their reason (MOCKUP-PASS-PLAN M4;
+    /// the page itself is EpisodeDirector.FinalePage.cs).
     /// </summary>
     public sealed partial class EpisodeDirector
     {
@@ -62,23 +63,13 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// The finale panel's two ways back into the night, after its four ways on: the replay,
-        /// when there is a vote to replay, and the jury's questions, folded until asked for.
-        /// </summary>
-        private void FinaleRecordControls(EpisodeState state)
-        {
-            if (CanReplayJuryReveal(state)) hud.Action(WatchFinaleReplayCaption, ReplayJuryReveal);
-            hud.Disclosure(JuryQuestionsCaption, juryQuestionsOpen, () => { juryQuestionsOpen = !juryQuestionsOpen; Render(); });
-            if (juryQuestionsOpen) JuryQuestionsRecord(state);
-        }
-
-        /// <summary>
         /// What each juror asked at the finale, both finalists' answers, and the reason each gave
         /// with their vote, from the record: the questions and answers as <c>juryExchanges</c> saved
         /// them, and the reasons as the ballots carry them, in full. The truthful stand-in for
         /// mockup 53's jury roundtable - what the jurors said among themselves was never recorded,
         /// so it is not here. Nor is anything a question was scored by: never the catalogue's
-        /// answer key, the answer the player passed over, or whether an answer landed.
+        /// answer key, the answer the player passed over, or whether an answer landed. Opened as the
+        /// finale page's step by "The jury's questions" (EpisodeDirector.FinalePage.cs).
         /// </summary>
         private void JuryQuestionsRecord(EpisodeState state)
         {

@@ -30,7 +30,7 @@ namespace Gamesim.Presentation
     public sealed partial class SeasonReport
     {
         /// <summary>The runner-up's steel: not the gold of the win, and not the cyan the controls wear.</summary>
-        private static readonly Color Steel = new Color(.68f, .77f, .86f);
+        private static readonly Color Steel = EndScreenKit.Steel;
         /// <summary>The Game Sense card's teal, and the social card's violet, as the pack draws those cards.</summary>
         private static readonly Color Teal = new Color(.33f, .87f, .86f);
         private static readonly Color Violet = new Color(.66f, .49f, 1f);
@@ -374,7 +374,11 @@ namespace Gamesim.Presentation
                 at += EndScreenKit.Wrapped(words, width) + 2f;
             }
             if (ballots.Count > 0) at += 10f + JurorStrip(verdict, state, portrait, ballots, winner, 0f, at + 10f, width);
-            if (runnerUp != null && forWinner + forRunnerUp > 0) at += 14f + Tally(verdict, winner, runnerUp, forWinner, forRunnerUp, 0f, at + 14f, width);
+            // The count as a bar between the two finalists' numbers, with their full names under the
+            // ends (EndScreenKit.Tally; the finale page draws the same tiles and bar without the names).
+            if (runnerUp != null && forWinner + forRunnerUp > 0)
+                at += 14f + EndScreenKit.Tally(verdict, TallyName, HudPrimitives.WithYou(winner.name, winner.isPlayer),
+                    HudPrimitives.WithYou(runnerUp.name, runnerUp.isPlayer), forWinner, forRunnerUp, UiTheme.Gold, Steel, 0f, at + 14f, width);
             verdict.sizeDelta = new Vector2(width, at);
             return at;
         }
@@ -426,41 +430,6 @@ namespace Gamesim.Presentation
             float height = rows * cardHeight + (rows - 1) * gap;
             strip.sizeDelta = new Vector2(width, height);
             return height;
-        }
-
-        /// <summary>
-        /// The count as a bar between the two finalists' numbers, each in a tile of its colour, and
-        /// their full names under the ends. A tie draws equal halves. Returns the tally's height.
-        /// </summary>
-        private static float Tally(RectTransform parent, ContestantState winner, ContestantState runnerUp, int forWinner, int forRunnerUp,
-            float x, float y, float width)
-        {
-            var tally = EndScreenKit.Box(TallyName, parent, x, y, width, 10f);
-            const float tile = 48f, tileHeight = 40f, barHeight = 28f, gap = 10f;
-            NumberTile(tally, "Winner tally", forWinner, UiTheme.Gold, 0f, 0f, tile, tileHeight);
-            NumberTile(tally, "Runner-up tally", forRunnerUp, Steel, width - tile, 0f, tile, tileHeight);
-            EndScreenKit.SplitBar(tally, tile + gap, (tileHeight - barHeight) * .5f, Mathf.Max(20f, width - (tile + gap) * 2f), barHeight,
-                forWinner, forRunnerUp, UiTheme.Gold, Steel);
-            float half = width * .5f - 6f;
-            var first = EndScreenKit.Text("Winner name", tally, HudPrimitives.WithYou(winner.name, winner.isPlayer), 13f, UiTheme.Gold,
-                0f, tileHeight + 6f, half, 18f, TextAlignmentOptions.Left, UiTheme.Weight.Medium);
-            first.enableAutoSizing = true; first.fontSizeMax = 13f; first.fontSizeMin = 10f;
-            var second = EndScreenKit.Text("Runner-up name", tally, HudPrimitives.WithYou(runnerUp.name, runnerUp.isPlayer), 13f, Steel,
-                width - half, tileHeight + 6f, half, 18f, TextAlignmentOptions.Right, UiTheme.Weight.Medium);
-            second.enableAutoSizing = true; second.fontSizeMax = 13f; second.fontSizeMin = 10f;
-            float height = tileHeight + 6f + 18f;
-            tally.sizeDelta = new Vector2(width, height);
-            return height;
-        }
-
-        /// <summary>One end of the tally: the count in 26 pt, in a tile of the finalist's colour.</summary>
-        private static void NumberTile(RectTransform parent, string name, int count, Color tint, float x, float y, float width, float height)
-        {
-            var tile = HudPrimitives.Fill(name, parent, new Color(tint.r, tint.g, tint.b, .18f), 8);
-            EndScreenKit.Place(tile, x, y, width, height);
-            UiTheme.AddBorder(tile, 8, new Color(tint.r, tint.g, tint.b, .8f));
-            EndScreenKit.Text("Number", tile, count.ToString(), 26f, tint, 0f, (height - 34f) * .5f, width, 34f,
-                TextAlignmentOptions.Center, UiTheme.Weight.SemiBold);
         }
 
         /// <summary>How many sparkles the winner's well carries.</summary>

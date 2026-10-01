@@ -197,6 +197,24 @@ namespace Gamesim.Episode
             return people;
         }
 
+        /// <summary>
+        /// Everyone in the house for the key card's roster on the set's screen (UI-UX-PASS-PLAN N1):
+        /// the Head of Household first, then the rest still playing in cast order - the keys' holders
+        /// and the block alike, since the roster says who is which only as the keys do.
+        /// </summary>
+        private List<KeyCeremony.Person> RosterHouseguests(EpisodeState state)
+        {
+            var people = new List<KeyCeremony.Person>();
+            if (state?.contestants == null) return people;
+            if (!string.IsNullOrEmpty(state.hohId) && state.Find(state.hohId) != null) people.Add(Person(state, state.hohId));
+            foreach (var actor in state.contestants)
+            {
+                if (actor.status != ContestantStatus.Active || actor.id == state.hohId) continue;
+                people.Add(Person(state, actor.id));
+            }
+            return people;
+        }
+
         private static KeyCeremony.Person Person(EpisodeState state, string id)
         {
             var actor = state.Find(id);

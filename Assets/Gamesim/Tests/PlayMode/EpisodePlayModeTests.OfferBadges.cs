@@ -18,8 +18,9 @@ namespace Gamesim.Tests.PlayMode
     /// Offers announce themselves (ACTIONS-DEALS-ALLIANCES-PLAN V2). A weekly offer wrote no log line
     /// and waited inside one houseguest's conversation until the house's next round wrote it off.
     /// These hold the three places it is said now - a badge on its sender's chip, a line in the
-    /// objective, and what moving on costs in the strategy screens' footer - each read from what
-    /// is pending and gone with it, and never for anything between two houseguests.
+    /// objective, and what moving on costs in the strategy screens' footer, under what comes next -
+    /// each read from what is pending and gone with it, and never for anything between two
+    /// houseguests.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
@@ -66,12 +67,14 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Last week's offer at the veto meeting after the decision: its sender's chip wears the
-        /// badge, the footer says the offer expires when the campaign opens, and continuing writes it
-        /// off - and the badge goes with it.
+        /// Last week's offer at the veto meeting after the decision, under the week's windows: its
+        /// sender's chip wears the badge, and the footer's strip says what continuing costs - the
+        /// offer, which expires as the campaign opens, and the window's seat - beside the way on with
+        /// its "CONTINUE TO EVICTION CAMPAIGN". Strip and way on both fit at both text sizes, on the
+        /// 16:9 frame and the 4:3. Continuing writes the offer off, and the badge goes with it.
         /// </summary>
         [UnityTest]
-        public IEnumerator OfferBadges_LastWeeksOfferExpiresAsTheCampaignOpensAndItsBadgeGoes()
+        public IEnumerator OfferBadges_AtTheVetoMeetingLastWeeksOfferSaysItExpiresAndGoesAsTheCampaignOpens()
         {
             HoldTheHouseForTheFixture();
             string from = null;
@@ -80,6 +83,7 @@ namespace Gamesim.Tests.PlayMode
                 AtVetoMeeting(state, false);
                 state.vetoResolved = true;
                 state.week = 2;
+                EpisodeEngine.EnableWeek(state, state.week);
                 // Nothing else lapses on the advance, so the strip is the offer's; and a cold house
                 // puts nothing new to the player as the campaign opens.
                 state.houseEvents.RemoveAll(item => item.IsStory && !item.resolved);
@@ -94,15 +98,34 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             yield return null;
             var before = director.Snapshot;
-            Assert.That(WaitingBadges(LiveRail(), before.Find(from)), Is.EqualTo(new[] { CastRail.OfferWaitingName }));
+            Assert.That(WaitingBadges(LiveRail(), before.Find(from)), Is.EqualTo(new[] { CastRail.OfferWaitingName }), "Its sender's chip wears the badge.");
+            string costs = First(before, from) + "'s offer expires when the campaign opens. 1 unused action will be lost.";
+            Assert.That(EpisodeEngine.AfterNominationsSeats, Is.EqualTo(1), "The window after the nominations has the one seat.");
+            Assert.That(WaitingOnYou.AdvanceNote(before), Is.EqualTo(costs), "The offer and the window's seat go as the campaign opens.");
+            Assert.That(EpisodeEngine.LapsingOnAdvance(before), Is.Empty, "The fixture lets no storyline pass.");
+
+            foreach (bool larger in new[] { false, true })
+            {
+                if (larger)
+                {
+                    director.ClosePanels();
+                    yield return ApplyTextSize(true);
+                }
+                string where = "The meeting's end" + (larger ? " at the larger text" : "");
+                yield return OpenStation();
+                yield return null;
+                AssertOnTheStrategyStage("Continue episode", where);
+                Assert.That(MeetingHeadlineOn("Continue episode"), Is.EqualTo(EpisodeDirector.ToTheCampaignHeadline), where + ": the way on wears its headline.");
+                // The meeting has no Up next: what continuing costs is the strip's one line.
+                yield return AtBothFrames(frame => AssertFooterSays("Continue episode", where + " on the " + frame + " frame",
+                    (EpisodeDirector.MovingOnCostsName, costs)));
+                if (Application.isBatchMode && !larger) yield return CaptureFraming("offer-costs-veto-meeting");
+            }
+            director.ClosePanels();
+            yield return ApplyTextSize(false);
 
             yield return OpenStation();
             yield return null;
-            var words = FooterWords();
-            Assert.That(words.name, Is.EqualTo(EpisodeDirector.MovingOnCostsName), "What continuing costs holds the strip.");
-            Assert.That(words.text, Is.EqualTo(First(before, from) + "'s offer expires when the campaign opens."));
-            Assert.That(words.color, Is.EqualTo(UiTheme.Warning), "in the warning colour.");
-
             ButtonWithCaption("Continue episode").onClick.Invoke();
             yield return null; yield return null;
             var after = director.Snapshot;
@@ -116,8 +139,8 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// The objective says who has an offer for the player over the next stop it always had, and
-        /// how many once there are several; at both text sizes it fits its one line.
+        /// Before anything is put to the player the objective says what it always said; then who has
+        /// an offer for them, over the next stop it always had, and how many once there are several.
         /// </summary>
         [UnityTest]
         public IEnumerator OfferBadges_TheObjectiveSaysWhoHasAnOfferAndHowMany()
@@ -126,8 +149,9 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             yield return null;
             var quiet = director.Snapshot;
-            Assert.That(ObjectiveFirstLine().text, Is.EqualTo(EpisodeHud.WaitingLine(quiet) ?? EpisodeHud.ObjectiveTitle(quiet)),
-                "Before anything is put to the player, the objective says what it always said.");
+            Assert.That(EpisodeHud.WaitingLine(quiet), Is.Null, "Nothing is put to the player yet.");
+            Assert.That(ObjectiveFirstLine().text, Is.EqualTo(EpisodeHud.ObjectiveTitle(quiet)),
+                "So the objective says what it always said.");
 
             var maya = quiet.Find(ContentCatalog.MayaId);
             var jamie = quiet.contestants.First(actor => actor.name != null && actor.name.StartsWith("Jamie"));
@@ -145,22 +169,94 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             yield return null;
             Assert.That(ObjectiveFirstLine().text, Is.EqualTo("2 offers waiting"));
-
-            yield return ApplyTextSize(true);
-            director.ClosePanels();
-            yield return null;
-            AssertFitsItsLine(ObjectiveFirstLine(), "The objective's line at the larger text");
-            yield return ApplyTextSize(false);
         }
 
         /// <summary>
-        /// The campaign's footer says what closing it costs - the plea that goes unanswered and the
-        /// window's seats - in the warning colour beside the way on, outranking what comes next, at
-        /// both text sizes. Then the strip's rank, on the open stage in one frame: the storylines'
-        /// warning still takes the strip, and an Up next line never does.
+        /// The objective's longest lines - all fifteen others in a house of sixteen waiting on the
+        /// player, and the widest first name in any cast waiting alone - each fit their one line, on
+        /// the chip and in the compact HUD's card, at the larger text and the resting. In a batch run
+        /// the second is captured on each: 'offer-objective' and 'offer-objective-compact'.
         /// </summary>
         [UnityTest]
-        public IEnumerator OfferBadges_TheCampaignsFooterSaysWhatClosingItCosts()
+        public IEnumerator OfferBadges_TheLongestObjectiveLinesFitTheChipAndTheCompactCard()
+        {
+            yield return InstallNomination(16, false, NominationBlock.Open);
+            var npcs = director.Snapshot.Active.Where(actor => !actor.isPlayer).Select(actor => actor.id).ToList();
+            Assert.That(npcs, Has.Count.EqualTo(15), "A house of sixteen: the player and fifteen others.");
+            // Everybody but one with an offer, and that one confronting the player: fifteen waiting.
+            string confronting = npcs[npcs.Count - 1];
+            PutBeforeThePlayer(live =>
+            {
+                foreach (var id in npcs.Where(id => id != confronting))
+                    live.deals.Add(WaitingOffer(live, id, DealKind.Partnership, "deal-ask-" + id));
+                live.replyCards.Add(new ReplyCardState { id = "reply-longest", week = live.week, kind = ReplyCards.Confrontation, fromId = confronting });
+            });
+            const string everyone = "15 houseguests are waiting on you";
+            try
+            {
+                director.ClosePanels();
+                yield return null;
+                AssertObjectiveSays(everyone, "The chip, with everyone waiting");
+                // The widest name a houseguest can have - any cast's, or this house's - as the
+                // objective's own type draws it, alone on the line.
+                var line = ObjectiveFirstLine();
+                string widest = System.Enum.GetValues(typeof(CastTemplates.Roster)).Cast<CastTemplates.Roster>()
+                    .SelectMany(CastTemplates.In).Select(template => template.Name)
+                    .Concat(director.Snapshot.Active.Where(actor => !actor.isPlayer).Select(actor => actor.name))
+                    .OrderByDescending(name => line.GetPreferredValues(AloneLine(name)).x)
+                    .ThenBy(name => name, System.StringComparer.Ordinal).First();
+                string alone = AloneLine(widest);
+
+                yield return ApplyTextSize(true);
+                director.ClosePanels();
+                yield return null;
+                AssertObjectiveSays(everyone, "The chip, with everyone waiting, at the larger text");
+                director.SetCompactHud(true);
+                yield return null;
+                AssertObjectiveSays(everyone, "The compact card, with everyone waiting, at the larger text");
+
+                // The one who came to the player, alone, under the widest name.
+                PutBeforeThePlayer(live =>
+                {
+                    live.deals.RemoveAll(deal => deal.id.StartsWith("deal-ask-"));
+                    var already = live.Active.FirstOrDefault(actor => !actor.isPlayer && actor.name == widest);
+                    if (already != null) live.replyCards.Single(card => card.id == "reply-longest").fromId = already.id;
+                    else live.Find(confronting).name = widest;
+                });
+                director.ClosePanels();
+                yield return null;
+                AssertObjectiveSays(alone, "The compact card, with the widest name, at the larger text");
+                director.SetCompactHud(false);
+                yield return null;
+                AssertObjectiveSays(alone, "The chip, with the widest name, at the larger text");
+                yield return ApplyTextSize(false);
+                director.SetCompactHud(true);
+                yield return null;
+                AssertObjectiveSays(alone, "The compact card, with the widest name");
+                if (Application.isBatchMode) yield return CaptureFraming("offer-objective-compact");
+                director.SetCompactHud(false);
+                yield return null;
+                AssertObjectiveSays(alone, "The chip, with the widest name");
+                if (Application.isBatchMode) yield return CaptureFraming("offer-objective");
+            }
+            finally
+            {
+                if (director.CompactHud) director.SetCompactHud(false);
+            }
+        }
+
+        /// <summary>The objective's line for one houseguest waiting on the player's answer, as <see cref="WaitingOnYou.ObjectiveLine(EpisodeState)"/> says it.</summary>
+        private static string AloneLine(string name) => FinalistRead.FirstName(name) + " is waiting on your answer";
+
+        /// <summary>
+        /// The campaign's footer, under the week's windows with a plea waiting: what comes next on the
+        /// strip's first line, and under it what closing costs - the plea that goes unanswered and the
+        /// window's seats - beside the way on, at both text sizes, on the 16:9 frame and the 4:3. Then
+        /// the strip's ranks, on the open stage in one frame: a later Up next takes the first line,
+        /// the storylines' warning takes the strip alone, and nothing covers it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator OfferBadges_TheCampaignsFooterSaysWhatComesNextOverWhatClosingItCosts()
         {
             HoldTheHouseForTheFixture();
             string pleading = null;
@@ -175,44 +271,85 @@ namespace Gamesim.Tests.PlayMode
                 state.replyCards.Add(new ReplyCardState { id = "reply-8", week = state.week, kind = ReplyCards.Plea, fromId = pleading, aboutId = state.nominees[1] });
             });
             HoldTheHouseForTheFixture();
-            yield return AtBothTextSizes(larger =>
+            var before = director.Snapshot;
+            string costs = First(before, pleading) + "'s plea goes unanswered when campaigning closes. "
+                + EpisodeEngine.AfterVetoSeats + " unused actions will be lost.";
+            Assert.That(WaitingOnYou.AdvanceNote(before), Is.EqualTo(costs), "The plea and the window's seats go when campaigning closes.");
+            Assert.That(EpisodeEngine.LapsingOnAdvance(before), Is.Empty, "The fixture lets no storyline pass.");
+
+            foreach (bool larger in new[] { false, true })
             {
-                var state = director.Snapshot;
+                if (larger)
+                {
+                    director.ClosePanels();
+                    yield return ApplyTextSize(true);
+                }
                 string where = "The campaign" + (larger ? " at the larger text" : "");
-                string costs = WaitingOnYou.AdvanceNote(state);
-                Assert.That(costs, Is.EqualTo(First(state, pleading) + "'s plea goes unanswered when campaigning closes. "
-                    + EpisodeEngine.AfterVetoSeats + " unused actions will be lost."), where + ": the plea and the window's seats go with it.");
-                Assert.That(EpisodeEngine.LapsingOnAdvance(state), Is.Empty, "The fixture lets no storyline pass.");
-                var words = FooterWords();
-                Assert.That(words.name, Is.EqualTo(EpisodeDirector.MovingOnCostsName), where + ": what closing costs outranks what comes next.");
-                Assert.That(words.text, Is.EqualTo(costs), where);
-                Assert.That(words.color, Is.EqualTo(UiTheme.Warning), where + ": in the warning colour.");
-                var strip = ActiveRect(EpisodeHud.StrategyStripName);
-                Assert.That(strip.parent, Is.SameAs(ActiveRect("Episode panel")), where + ": beside the way on, outside the scroll.");
-                Assert.That(ScreenRect(strip).Overlaps(ScreenRect((RectTransform)FindButton(CloseCampaigning).transform)), Is.False,
-                    where + ": the strip and the way on share the row without meeting.");
-                AssertEveryLabelDraws(strip, where + "'s strip");
-            });
+                yield return OpenStation();
+                yield return null;
+                AssertOnTheStrategyStage(CloseCampaigning, where);
+                yield return AtBothFrames(frame => AssertFooterSays(CloseCampaigning, where + " on the " + frame + " frame",
+                    (EpisodeHud.UpNextName, EpisodeDirector.CampaignUpNext), (EpisodeDirector.MovingOnCostsName, costs)));
+                if (Application.isBatchMode && !larger) yield return CaptureFraming("offer-costs-campaign");
+            }
+            director.ClosePanels();
+            yield return ApplyTextSize(false);
 
             yield return OpenStation();
             yield return null;
             var hud = director.GetComponentInChildren<EpisodeHud>();
-            var line = ActiveRect(EpisodeHud.StrategyStripName).GetComponentsInChildren<TMP_Text>().Single();
-            Assert.That(line.name, Is.EqualTo(EpisodeDirector.MovingOnCostsName));
             hud.PinnedNote("Up next: the probe's next step.", null, false);
-            Assert.That(line.name, Is.EqualTo(EpisodeDirector.MovingOnCostsName), "An Up next line never covers what moving on costs,");
+            Assert.That(FooterLines(), Is.EqualTo(new[] { (EpisodeHud.UpNextName, "Up next: the probe's next step."), (EpisodeDirector.MovingOnCostsName, costs) }),
+                "A later Up next takes the first line, and the cost keeps the second.");
             hud.PinnedNote("Moving on lets the probe pass.", EpisodeDirector.AdvanceWarningName, true);
-            Assert.That(line.name, Is.EqualTo(EpisodeDirector.AdvanceWarningName), "the storylines' warning takes the strip,");
+            Assert.That(FooterLines(), Is.EqualTo(new[] { (EpisodeDirector.AdvanceWarningName, "Moving on lets the probe pass.") }),
+                "The storylines' warning takes the strip alone,");
             hud.PinnedNote("A probe's cost.", EpisodeDirector.MovingOnCostsName, EpisodeHud.FooterRank.Notice, true);
-            Assert.That(line.text, Is.EqualTo("Moving on lets the probe pass."), "and what moving on costs never covers it.");
+            hud.PinnedNote("Up next: something else.", null, false);
+            Assert.That(FooterLines(), Is.EqualTo(new[] { (EpisodeDirector.AdvanceWarningName, "Moving on lets the probe pass.") }),
+                "and neither a cost nor an Up next covers it.");
             director.ClosePanels();
             yield return null;
         }
 
         /// <summary>
+        /// The nomination's outcome in a house of sixteen - the longest Up next the strip carries over
+        /// a cost - says what comes next on the first line and what continuing costs under it, and
+        /// both fit at both text sizes, on the 16:9 frame and the 4:3. In a batch run the frame is
+        /// captured as 'offer-costs-nomination'.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator OfferBadges_TheNominationsOutcomeSaysWhatComesNextOverWhatContinuingCosts()
+        {
+            yield return InstallNomination(16, false, NominationBlock.Houseguests);
+            var state = director.Snapshot;
+            string next = EpisodeDirector.NominationUpNext(state, state.Find(state.hohId));
+            Assert.That(next, Is.EqualTo("Up next: the Power of Veto player selection. The Head of Household and both nominees play by right."),
+                "The longest Up next the strip carries over a cost.");
+            string costs = EpisodeEngine.AfterHoHSeats + " unused actions will be lost.";
+            Assert.That(WaitingOnYou.AdvanceNote(state), Is.EqualTo(costs));
+            foreach (bool larger in new[] { false, true })
+            {
+                if (larger)
+                {
+                    director.ClosePanels();
+                    yield return ApplyTextSize(true);
+                }
+                string where = "The outcome in a house of sixteen" + (larger ? " at the larger text" : "");
+                yield return OpenStation();
+                yield return null;
+                yield return AtBothFrames(frame => AssertFooterSays("Continue episode", where + " on the " + frame + " frame",
+                    (EpisodeHud.UpNextName, next), (EpisodeDirector.MovingOnCostsName, costs)));
+                if (Application.isBatchMode && !larger) yield return CaptureFraming("offer-costs-nomination");
+            }
+            director.ClosePanels();
+            yield return ApplyTextSize(false);
+        }
+
+        /// <summary>
         /// An offer one houseguest put to another, and a deal two of them struck, are theirs: no chip
-        /// wears a badge for either, nothing is waiting on the player, and the objective names no
-        /// offer.
+        /// wears a badge for either, nothing is waiting on the player, and the objective keeps its
+        /// own words.
         /// </summary>
         [UnityTest]
         public IEnumerator OfferBadges_NoBadgeForAnOfferBetweenTwoHouseguests()
@@ -240,7 +377,8 @@ namespace Gamesim.Tests.PlayMode
             var rail = LiveRail();
             foreach (var actor in after.contestants)
                 Assert.That(WaitingBadges(rail, actor), Is.Empty, actor.name + "'s chip says nothing of a deal between houseguests.");
-            Assert.That(ObjectiveFirstLine().text, Does.Not.Contain("offer"), "The objective names no offer.");
+            Assert.That(EpisodeHud.WaitingLine(after), Is.Null, "The objective has nobody waiting on the player to name,");
+            Assert.That(ObjectiveFirstLine().text, Is.EqualTo(EpisodeHud.ObjectiveTitle(after)), "so it says what it always said.");
         }
 
         /// <summary>
@@ -362,7 +500,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(badge.GetComponentsInChildren<TMP_Text>(true), Is.Empty, what + " carries no copy; its name and the objective say it.");
         }
 
-        /// <summary>The objective chip's first line - its title, or the waiting line in its place - in the frame's live chrome.</summary>
+        /// <summary>The objective's first line - its title, or the waiting line in its place - on the chip or the compact card, in the frame's live chrome.</summary>
         private TMP_Text ObjectiveFirstLine()
         {
             var objective = LastActive("Objective");
@@ -371,6 +509,15 @@ namespace Gamesim.Tests.PlayMode
         }
 
         private string ObjectiveWords() => string.Join("\n", LastActive("Objective").GetComponentsInChildren<TMP_Text>().Select(label => label.text));
+
+        /// <summary>The objective's waiting line says <paramref name="words"/>, on one line, every character drawn.</summary>
+        private void AssertObjectiveSays(string words, string where)
+        {
+            var line = ObjectiveFirstLine();
+            Assert.That(line.name, Is.EqualTo(EpisodeHud.ObjectiveWaitingName), where + ": the waiting line is up.");
+            Assert.That(line.text, Is.EqualTo(words), where);
+            AssertFitsItsLine(line, where);
+        }
 
         /// <summary>One line, every word drawn, nothing cut, and a box Inter draws in at the size the fit chose.</summary>
         private static void AssertFitsItsLine(TMP_Text line, string what)
@@ -381,6 +528,147 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(line.textInfo.lineCount, Is.EqualTo(1), what + " stays on one line.");
             Assert.That(line.textInfo.characterInfo.Take(line.textInfo.characterCount).Count(glyph => glyph.isVisible),
                 Is.EqualTo(line.text.Count(ch => !char.IsWhiteSpace(ch))), what + " draws every character.");
+        }
+
+        /// <summary>The footer strip of the frame's live chrome: a render's rebuilt strip, never the copy on its way out.</summary>
+        private RectTransform LiveStrip()
+        {
+            var strip = LastActive(EpisodeHud.StrategyStripName);
+            Assert.That(strip, Is.Not.Null, "The footer has its strip.");
+            return strip;
+        }
+
+        /// <summary>The control with this caption in the frame's live chrome, found as <see cref="LiveStrip"/> is.</summary>
+        private Button LiveButton(string caption)
+        {
+            var button = director.GetComponentsInChildren<Button>(true)
+                .LastOrDefault(item => item.IsActive() && item.GetComponentsInChildren<TMP_Text>(true).Any(text => text.text == caption));
+            Assert.That(button, Is.Not.Null, "'" + caption + "' is up.");
+            return button;
+        }
+
+        /// <summary>
+        /// A part's bounds in the HUD canvas's own units. Unlike <see cref="ScreenRect"/> this holds
+        /// with the canvas drawn through a camera as well as over the screen, which is how
+        /// <see cref="AtFrame"/> shapes it.
+        /// </summary>
+        private Rect OnTheHud(RectTransform rect) => LocalBounds((RectTransform)HudCanvas().transform, rect);
+
+        /// <summary>Whether <paramref name="inner"/> stands inside <paramref name="outer"/>, give or take half a unit.</summary>
+        private static void AssertWithin(Rect outer, Rect inner, string what, string of)
+        {
+            Assert.That(inner.xMin >= outer.xMin - .5f && inner.xMax <= outer.xMax + .5f && inner.yMin >= outer.yMin - .5f && inner.yMax <= outer.yMax + .5f,
+                Is.True, what + " " + inner + " stands inside " + of + " " + outer + ".");
+        }
+
+        /// <summary>The footer strip's lines, top to bottom, as (name, words).</summary>
+        private (string, string)[] FooterLines()
+        {
+            Canvas.ForceUpdateCanvases();
+            return LiveStrip().GetComponentsInChildren<TMP_Text>()
+                .OrderByDescending(label => OnTheHud(label.rectTransform).yMax)
+                .Select(label => (label.name, label.text)).ToArray();
+        }
+
+        /// <summary>
+        /// The strategy stage's footer as the player reads it: the strip's lines top to bottom with
+        /// the names and words given, what comes next in the accent and what moving on costs in the
+        /// warning colour, each saying all of its words in a box Inter draws in, inside the strip, the
+        /// second under the first; the strip and the way on side by side on the row without meeting,
+        /// both inside the panel, and every word on the way on said.
+        /// </summary>
+        private void AssertFooterSays(string wayOn, string where, params (string Name, string Words)[] lines)
+        {
+            Assert.That(FooterLines(), Is.EqualTo(lines.Select(line => (line.Name, line.Words)).ToArray()), where + ": the strip's lines, top to bottom.");
+            var strip = LiveStrip();
+            var row = OnTheHud(strip);
+            var labels = strip.GetComponentsInChildren<TMP_Text>().OrderByDescending(label => OnTheHud(label.rectTransform).yMax).ToArray();
+            for (int i = 0; i < labels.Length; i++)
+            {
+                var label = labels[i];
+                string said = where + ": '" + label.text + "'";
+                Assert.That(label.color, Is.EqualTo(label.name == EpisodeHud.UpNextName ? UiTheme.Accent : UiTheme.Warning), said + " in its rank's colour.");
+                label.ForceMeshUpdate(true);
+                Assert.That(label.isTextOverflowing, Is.False,
+                    said + " says all of its words, at " + label.fontSize.ToString("0.#") + " in " + label.rectTransform.rect.size + ".");
+                Assert.That(label.rectTransform.rect.height, Is.GreaterThanOrEqualTo(label.fontSizeMax * 1.21f - .5f), said + " has a box Inter draws in.");
+                AssertWithin(row, OnTheHud(label.rectTransform), said, "the strip");
+                if (i > 0)
+                    Assert.That(OnTheHud(label.rectTransform).yMax, Is.LessThanOrEqualTo(OnTheHud(labels[i - 1].rectTransform).yMin + .5f),
+                        said + " on its own line under '" + labels[i - 1].text + "'.");
+            }
+            AssertEveryLabelDraws(strip, where + "'s strip");
+            var panel = OnTheHud(LastActive("Episode panel"));
+            var onward = (RectTransform)LiveButton(wayOn).transform;
+            AssertWithin(panel, row, where + "'s strip", "the panel");
+            AssertWithin(panel, OnTheHud(onward), where + "'s way on", "the panel");
+            Assert.That(row.Overlaps(OnTheHud(onward)), Is.False, where + ": the strip and the way on share the row without meeting.");
+            foreach (var label in onward.GetComponentsInChildren<TMP_Text>())
+            {
+                label.ForceMeshUpdate(true);
+                Assert.That(label.isTextOverflowing, Is.False, where + ": the way on's '" + label.text + "' fits its box.");
+            }
+            AssertEveryLabelDraws(onward, where + "'s way on");
+        }
+
+        /// <summary>
+        /// Runs <paramref name="check"/> on the HUD laid out for the 16:9 frame (1600x900) and then
+        /// for the 4:3 (1024x768, the 1386x1039 canvas a batch run renders at). The HUD is put back
+        /// afterwards.
+        /// </summary>
+        private IEnumerator AtBothFrames(System.Action<string> check)
+        {
+            yield return AtFrame(1600, 900, () => check("16:9"));
+            yield return AtFrame(1024, 768, () => check("4:3"));
+        }
+
+        /// <summary>
+        /// Runs <paramref name="check"/> on the HUD laid out for a frame of this shape, as a capture
+        /// lays it out: the overlays drawn through the view camera into a target of that size, a
+        /// frame for the canvas to take its shape, then the HUD rendered for it and read once the
+        /// render's replaced parts are gone. Measure with <see cref="OnTheHud"/> inside it.
+        /// </summary>
+        private IEnumerator AtFrame(int width, int height, System.Action check)
+        {
+            var camera = cameraRig.ViewCamera;
+            var overlays = Object.FindObjectsByType<Canvas>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
+                .Where(canvas => canvas.renderMode == RenderMode.ScreenSpaceOverlay).ToArray();
+            var texture = new RenderTexture(width, height, 24);
+            var previousTarget = camera.targetTexture;
+            try
+            {
+                camera.targetTexture = texture;
+                foreach (var canvas in overlays)
+                {
+                    canvas.renderMode = RenderMode.ScreenSpaceCamera;
+                    canvas.worldCamera = camera;
+                    canvas.planeDistance = Mathf.Max(camera.nearClipPlane + 0.1f, 1f);
+                }
+                Canvas.ForceUpdateCanvases();
+                yield return null; yield return null;
+                Canvas.ForceUpdateCanvases();
+                RenderHudForTheCurrentCanvas();
+                yield return null;
+                Canvas.ForceUpdateCanvases();
+                var root = ((RectTransform)HudCanvas().transform).rect;
+                Assert.That(root.width / root.height, Is.EqualTo((float)width / height).Within(.01f),
+                    "The HUD is laid out for the " + width + "x" + height + " frame: " + root.size + ".");
+                check();
+            }
+            finally
+            {
+                camera.targetTexture = previousTarget;
+                foreach (var canvas in overlays)
+                    if (canvas != null) canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                texture.Release();
+                Object.Destroy(texture);
+            }
+            // And back to the screen's own shape, for whatever the test reads next.
+            Canvas.ForceUpdateCanvases();
+            yield return null; yield return null;
+            Canvas.ForceUpdateCanvases();
+            RenderHudForTheCurrentCanvas();
+            yield return null;
         }
 
         /// <summary>

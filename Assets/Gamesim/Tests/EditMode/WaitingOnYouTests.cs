@@ -23,7 +23,6 @@ namespace Gamesim.Tests.EditMode
             var s = Season(51);
             var reading = WaitingOnYou.Read(s);
             Assert.That(reading.items, Is.Empty);
-            Assert.That(reading.storyBeats, Is.Zero);
             Assert.That(reading.Any, Is.False);
             Assert.That(WaitingOnYou.ObjectiveLine(s), Is.Null, "Nothing waits, so the objective keeps its own words.");
             Assert.That(WaitingOnYou.AdvanceNote(s), Is.Null, "and moving on lets nothing go.");
@@ -78,7 +77,8 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// Last week's offers are written off as the campaign opens. The reader says so on the veto
-        /// meeting after the decision, and the advance that opens the campaign does it.
+        /// meeting after the decision, under the week's windows - where anybody has time for a word
+        /// there - and the advance that opens the campaign does it.
         /// </summary>
         [Test]
         public void LastWeeksOffersLapseAsTheCampaignOpens()
@@ -86,6 +86,7 @@ namespace Gamesim.Tests.EditMode
             var s = AtMeeting(Season(55), holder: 3);
             s.vetoResolved = true;
             s.week = 2;
+            EpisodeEngine.EnableWeek(s, s.week);
             // Cold toward the player, so the round the campaign opens with puts nothing new to them.
             foreach (var npc in Npcs(s)) Set(s, npc.id, s.playerId, 0);
             string from = Npcs(s).Select(c => c.id).First(id => id != s.hohId && id != s.vetoHolderId && !s.nominees.Contains(id));
@@ -95,7 +96,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(offer.kind, Is.EqualTo(WaitingOnYou.Kind.Offer));
             Assert.That(offer.lapses, Is.EqualTo(WaitingOnYou.Lapse.CampaignOpens));
             Assert.That(offer.lapsesOnAdvance, Is.True, "Continuing to the campaign is what writes it off.");
-            Assert.That(WaitingOnYou.AdvanceNote(s), Is.EqualTo(FirstName(s, from) + "'s offer expires when the campaign opens."));
+            Assert.That(WaitingOnYou.AdvanceNote(s), Is.EqualTo(FirstName(s, from) + "'s offer expires when the campaign opens. "
+                + EpisodeEngine.AfterNominationsSeats + " unused action will be lost."));
 
             var before = s.Clone();
             before.vetoResolved = false;
@@ -248,26 +250,150 @@ namespace Gamesim.Tests.EditMode
 
         // ---------------------------------------------------------------- story beats
 
+        /// <summary>
+        /// A story beat, and the Diary Room's call, are the episode screen's and the diary's to put
+        /// in front of the player, and no answer owed to anybody: they make no line, so move-in
+        /// night's objective keeps the words the tutorial points at.
+        /// </summary>
         [Test]
-        public void StoryBeatsAreCountedNotListed()
+        public void AStoryBeatOrTheDiaryRoomsCallMakesNoLine()
         {
             var s = Season(61);
-            s.houseEvents.Add(Beat("beat-1", s.week));
-            var reading = WaitingOnYou.Read(s);
-            Assert.That(reading.storyBeats, Is.EqualTo(1));
-            Assert.That(reading.items, Is.Empty, "A beat is a count, never an item with a sender.");
-            Assert.That(WaitingOnYou.ObjectiveLine(s), Is.EqualTo("A story is waiting on you"));
-
-            s.houseEvents.Add(Beat("beat-2", s.week));
-            Assert.That(WaitingOnYou.ObjectiveLine(s), Is.EqualTo("2 stories are waiting on you"));
+            s.houseEvents.Add(Beat("beat-1", s.week, StorySurfaces.Approach));
+            s.houseEvents.Add(Beat("summons-2", s.week, StorySurfaces.Summons));
+            Assert.That(EpisodeEngine.OpenStoryBeats(s), Has.Count.EqualTo(2), "The fixture has a beat and a summons open.");
+            Assert.That(WaitingOnYou.Read(s).Any, Is.False, "Neither is somebody waiting on an answer.");
+            Assert.That(WaitingOnYou.ObjectiveLine(s), Is.Null);
 
             string from = Npcs(s)[0].id;
             s.deals.Add(Offer(from, s.playerId, DealKind.Partnership, "deal-ask-1", s.week));
             Assert.That(WaitingOnYou.ObjectiveLine(s), Is.EqualTo(FirstName(s, from) + " has an offer for you"),
-                "Somebody waiting comes before a story.");
+                "An offer still says itself beside them.");
+        }
 
-            s.houseEvents[0].resolved = true; s.houseEvents[1].resolved = true;
-            Assert.That(WaitingOnYou.Read(s).storyBeats, Is.Zero, "An answered beat waits no more.");
+        // ---------------------------------------------------------------- past answering
+
+        /// <summary>
+        /// An offer the house files as the Final 3's window opens waits on the player through that
+        /// window, and is no longer waiting once the final Head of Household begins: nothing after it
+        /// gives a word with anybody, and nothing writes the offer off, so the engine would leave it
+        /// on the table for ever. Nor is anything waiting in any phase after that.
+        /// </summary>
+        [Test]
+        public void AnOfferFiledAsTheFinalThreesWindowOpensIsNoLongerWaitingAtTheFinalHeadOfHousehold()
+        {
+            var s = Warm(FinalThreeWindow(), 60);
+            NpcDeals.Propose(s);
+            var filed = NpcDeals.Pending(s).Select(deal => deal.id).ToList();
+            Assert.That(filed, Is.Not.Empty, "A warm Final 3 puts something to the player as its window opens.");
+            Assert.That(WaitingOnYou.Read(s).items.Select(item => item.id), Is.EquivalentTo(filed),
+                "Through the window, every one of them waits on the player.");
+
+            var part1 = Run(s, EpisodeCommandKind.Advance);
+            Assert.That(part1.accepted, Is.True, part1.reason);
+            Assert.That(part1.state.phase, Is.EqualTo(EpisodePhase.FinalHoHPart1));
+            Assert.That(NpcDeals.Pending(part1.state).Select(deal => deal.id), Is.EquivalentTo(filed),
+                "The engine writes none of them off: no round of the house's runs again.");
+            Assert.That(WaitingOnYou.Read(part1.state).Any, Is.False, "But none can be answered any more, so none is waiting.");
+            Assert.That(WaitingOnYou.ObjectiveLine(part1.state), Is.Null);
+
+            foreach (var phase in new[] { EpisodePhase.FinalHoHPart2, EpisodePhase.FinalHoHPart3, EpisodePhase.FinalEviction,
+                         EpisodePhase.JuryQuestioning, EpisodePhase.FinalSpeeches, EpisodePhase.Jury, EpisodePhase.Finished })
+            {
+                var later = part1.state.Clone();
+                later.phase = phase;
+                later.replyCards.Add(Card(ReplyCards.Confrontation, Npcs(later).First().id, null, "reply-late", later.week));
+                Assert.That(WaitingOnYou.Read(later).Any, Is.False, "Nothing, offer or card, is waiting at " + phase + ".");
+            }
+        }
+
+        /// <summary>
+        /// Without the week's windows, only the people deciding have time for a word between the
+        /// Head of Household and the campaign. At the veto meeting that is the last chance before the
+        /// campaign's opening writes last week's offers off: the holder's can still be answered while
+        /// the veto is undecided, nobody else's can, and after the decision none is. Under the week's
+        /// windows everybody has time for a word, so every one of them is still waiting.
+        /// </summary>
+        [Test]
+        public void WithoutTheWeeksWindowsLastWeeksOfferIsPastAnsweringAtTheVetoMeeting()
+        {
+            var s = AtMeeting(Season(66), holder: 3);
+            s.week = 2;
+            string holder = s.vetoHolderId;
+            string bystander = Npcs(s).Select(c => c.id).First(id => id != s.hohId && id != holder && !s.nominees.Contains(id));
+            s.deals.Add(Offer(bystander, s.playerId, DealKind.Partnership, "deal-ask-1", 1));
+            s.deals.Add(Offer(holder, s.playerId, DealKind.SafetyAgreement, "deal-ask-2", 1));
+            Assert.That(EpisodeEngine.WeekRulesOn(s), Is.False, "The fixture's season has no week windows.");
+
+            var undecided = WaitingOnYou.Read(s);
+            Assert.That(undecided.OfferFrom(holder), Is.True, "The holder has time for a word before deciding.");
+            Assert.That(undecided.OfferFrom(bystander), Is.False, "Nobody else does, and the campaign writes the offer off first.");
+
+            s.vetoResolved = true;
+            Assert.That(WaitingOnYou.Read(s).Any, Is.False, "After the decision nobody has time for a word before the campaign.");
+
+            EpisodeEngine.EnableWeek(s, s.week);
+            var windows = WaitingOnYou.Read(s);
+            Assert.That(windows.OfferFrom(bystander) && windows.OfferFrom(holder), Is.True,
+                "Under the week's windows everybody has time for a word at the meeting.");
+        }
+
+        // ---------------------------------------------------------------- the lapse rule
+
+        /// <summary>
+        /// The rule the footer's words rest on, pinned on the engine itself: an offer filed in a
+        /// week's free time outlives the week's turn and the next week's nominations and veto, and is
+        /// written off as that week's campaign opens - by the advance out of the veto meeting, which
+        /// the reader says beforehand.
+        /// </summary>
+        [Test]
+        public void AnOfferOutlivesTheWeeksTurnAndTheNextNominationsAndLapsesAsTheNextCampaignOpens()
+        {
+            var start = Season(64);
+            EpisodeEngine.EnableWeek(start, start.week);
+            var engine = new EpisodeEngine(start);
+            for (int guard = 0; guard < 200; guard++)
+            {
+                var now = engine.Snapshot;
+                if (now.phase == EpisodePhase.Social && now.evictionResolved) break;
+                Assert.That(engine.Apply(Next(now)).accepted, Is.True, "Week one plays to its free time.");
+            }
+            var free = engine.Snapshot;
+            Assert.That(free.phase == EpisodePhase.Social && free.evictionResolved, Is.True, "The week reached its free time after the eviction.");
+            Assert.That(free.Find(free.playerId).status, Is.EqualTo(ContestantStatus.Active), "The player is still in the house.");
+            int week = free.week;
+            string from = Npcs(free).First().id;
+            free.deals.Add(Offer(from, free.playerId, DealKind.Partnership, "deal-ask-pin", week));
+            engine = new EpisodeEngine(free);
+            Assert.That(WaitingOnYou.Read(free).OfferFrom(from), Is.True, "It waits on the player in its own week's free time.");
+
+            bool turned = false, nominated = false, warned = false;
+            for (int guard = 0; guard < 200; guard++)
+            {
+                var before = engine.Snapshot;
+                if (before.phase == EpisodePhase.VetoMeeting && before.vetoResolved && before.week == week + 1)
+                {
+                    var waiting = WaitingOnYou.Read(before).items.SingleOrDefault(item => item.id == "deal-ask-pin");
+                    Assert.That(waiting, Is.Not.Null, "Still waiting at the end of the veto meeting.");
+                    Assert.That(waiting.lapsesOnAdvance, Is.True, "and the reader says the next advance lets it go.");
+                    warned = true;
+                }
+                var result = engine.Apply(Next(before));
+                Assert.That(result.accepted, Is.True, result.reason);
+                var after = engine.Snapshot;
+                var offer = after.deals.Single(deal => deal.id == "deal-ask-pin");
+                if (after.week == week + 1 && after.phase == EpisodePhase.Campaign)
+                {
+                    Assert.That(before.phase, Is.EqualTo(EpisodePhase.VetoMeeting), "The campaign opens out of the veto meeting.");
+                    Assert.That(offer.status, Is.EqualTo(DealStatus.Expired), "It is written off as the next week's campaign opens.");
+                    Assert.That(turned && nominated && warned, Is.True, "It outlived the week's turn and the nominations first, and the reader said it was going.");
+                    return;
+                }
+                Assert.That(offer.status, Is.EqualTo(DealStatus.Proposed), "Still on the table at " + after.phase + " in week " + after.week + ".");
+                if (after.week == week + 1) turned = true;
+                if (after.week == week + 1 && after.phase == EpisodePhase.VetoSelection) nominated = true;
+            }
+            Assert.Fail("The next week's campaign never opened.");
         }
 
         // ---------------------------------------------------------------- unused actions
@@ -374,11 +500,36 @@ namespace Gamesim.Tests.EditMode
         private static ReplyCardState Card(string kind, string from, string about, string id, int week) =>
             new ReplyCardState { id = id, week = week, kind = kind, fromId = from, aboutId = about };
 
-        private static HouseEventState Beat(string id, int week) => new HouseEventState
+        private static HouseEventState Beat(string id, int week, string surface = null) => new HouseEventState
         {
-            id = id, kind = HouseEventKind.Story, title = "A Word", week = week,
+            id = id, kind = HouseEventKind.Story, title = "A Word", week = week, surface = surface ?? StorySurfaces.Approach,
             narrative = "Somebody wants a word with you.", closesAnchor = StoryAnchors.SocialClose,
         };
+
+        /// <summary>
+        /// The Final 3's window, as the final four's eviction leaves it: three in the house, free
+        /// time open on the eviction's week, the rest on the jury.
+        /// </summary>
+        private static EpisodeState FinalThreeWindow()
+        {
+            var s = ContentCatalog.Create(337);
+            s.strategyRulesStartWeek = 1;
+            if (s.npcSocial == null) s.npcSocial = NpcSocialState.Create(337);
+            s.week = 4;
+            foreach (var actor in s.contestants.Skip(3)) actor.status = ContestantStatus.Jury;
+            s.phase = EpisodePhase.Social;
+            s.evictionResolved = true;
+            return s;
+        }
+
+        /// <summary>The engine's next command as a walk plays it, the player giving everything in a competition so they stay in the house.</summary>
+        private static EpisodeCommand Next(EpisodeState s)
+        {
+            var command = EpisodeEngineTests.NextCommand(s);
+            command.id = Guid.NewGuid().ToString("N");
+            if (command.kind == EpisodeCommandKind.Compete) command.performance = 1.0;
+            return command;
+        }
 
         /// <summary>The veto meeting: the first houseguest at the head of the house, the next two nominated, the holder the fourth, a nominee (0, 1) or the player (-1).</summary>
         private static EpisodeState AtMeeting(EpisodeState s, int holder = 3)

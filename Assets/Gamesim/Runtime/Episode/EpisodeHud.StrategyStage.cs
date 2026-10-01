@@ -45,25 +45,40 @@ namespace Gamesim.Episode
         private const float StrategyShellBorder = 16f;
 
         private RectTransform strategyHeader, footerStrip, footerSecondary;
-        private float strategyHeaderUsed;
-        private TMP_Text footerWords;
-        private FooterRank footerRank;
+        private float strategyHeaderUsed, footerInset;
+        /// <summary>The strip's first line, and the second it has under what comes next for what moving on costs.</summary>
+        private TMP_Text footerWords, footerCost;
+        /// <summary>The strip's lines this render, one per <see cref="FooterRank"/>; a later line of a rank takes its place.</summary>
+        private readonly FooterLine[] footerLines = new FooterLine[3];
 
         /// <summary>
-        /// What the footer strip may say, lowest first: what comes next; what moving on costs (the
-        /// offers it lets lapse, the window's unused actions); and what moving on lets pass, the
-        /// storylines' warning. The strip says one line a render: a line never takes it from a
-        /// higher rank, and a later line of the same rank does.
+        /// What the footer strip may say: what comes next (mockup 72's Up next); what moving on costs
+        /// (the offers it lets lapse, the window's unused actions); and what moving on lets pass, the
+        /// storylines' warning. The warning takes the strip alone. Without one, what comes next is the
+        /// first line and what moving on costs the second under it, or whichever of the two there is
+        /// is the strip's one line. A later line of the same rank takes its rank's place.
         /// </summary>
         public enum FooterRank { UpNext, Notice, Warning }
+
+        /// <summary>One of the strip's lines: its words, the name a test finds it by, and whether it is in the warning colour.</summary>
+        private sealed class FooterLine
+        {
+            public readonly string Words, Name;
+            public readonly bool Warns;
+
+            public FooterLine(string words, string name, bool warns)
+            {
+                Words = words; Name = name; Warns = warns;
+            }
+        }
 
         /// <summary>What a rebuild throws away with the panel.</summary>
         private void ForgetStrategyStage()
         {
             strategyHeader = footerStrip = footerSecondary = null;
-            strategyHeaderUsed = 0f;
-            footerWords = null;
-            footerRank = FooterRank.UpNext;
+            strategyHeaderUsed = footerInset = 0f;
+            footerWords = footerCost = null;
+            System.Array.Clear(footerLines, 0, footerLines.Length);
         }
 
         /// <summary>
@@ -354,9 +369,9 @@ namespace Gamesim.Episode
             PinnedNote(words, name, warning ? FooterRank.Warning : FooterRank.UpNext, warning);
 
         /// <summary>
-        /// A line for the footer's strip at its <paramref name="rank"/> (<see cref="FooterRank"/>):
-        /// it takes the strip unless a line of a higher rank already holds it this render, in the
-        /// warning colour when <paramref name="warningColour"/>, in the accent otherwise.
+        /// A line for the footer's strip at its <paramref name="rank"/> (<see cref="FooterRank"/>), in
+        /// the warning colour when <paramref name="warningColour"/> and the accent otherwise. Off the
+        /// strategy stage it is a paragraph in the column, as <see cref="PinnedNote(string, string, bool)"/>'s are.
         /// </summary>
         public void PinnedNote(string words, string name, FooterRank rank, bool warningColour)
         {
@@ -366,8 +381,27 @@ namespace Gamesim.Episode
                 NamedParagraph(name ?? UpNextName, words, warningColour ? UiTheme.Warning : Accent);
                 return;
             }
-            if (footerStrip != null && rank < footerRank) return;
+            footerLines[(int)rank] = new FooterLine(words, name ?? UpNextName, warningColour);
+            DrawFooterStrip();
+            LayoutStrategyFooter();
+            ApplyPinnedInset();
+        }
+
+        /// <summary>
+        /// The strip's words from its lines: the storylines' warning alone when there is one, its
+        /// words free to wrap over the strip's height, as the one line always was; otherwise what
+        /// comes next over what moving on costs, each on a line of its own in a box 1.3 times its
+        /// type that may shrink to fit its width; or whichever of the two there is, alone.
+        /// </summary>
+        private void DrawFooterStrip()
+        {
             float s = FontScale, height = PinnedHeight * s;
+            var warning = footerLines[(int)FooterRank.Warning];
+            var next = footerLines[(int)FooterRank.UpNext];
+            var cost = footerLines[(int)FooterRank.Notice];
+            var first = warning ?? next ?? cost;
+            var second = warning == null && next != null ? cost : null;
+            if (first == null) return;
             if (footerStrip == null)
             {
                 footerStrip = new GameObject(StrategyStripName, typeof(RectTransform)).GetComponent<RectTransform>();
@@ -376,17 +410,63 @@ namespace Gamesim.Episode
                 float side = Mathf.Min(26f * s, height - 16f * s);
                 var glyph = EndScreenKit.Picture("Icon", footerStrip, PackArt.Pack8IconInfo, "bulb", Accent,
                     new Vector2(14f * s + side * .5f, -height * .5f), side);
-                footerWords = NewText(footerStrip, words, 13, Accent);
+                footerInset = 14f * s + (glyph != null ? side + 12f * s : 0f);
+                footerWords = NewText(footerStrip, first.Words, 13, Accent);
                 footerWords.alignment = TextAlignmentOptions.MidlineLeft;
-                AutoSize(footerWords, 11);
-                Stretch(footerWords.rectTransform, 14f * s + (glyph != null ? side + 12f * s : 0f), 6f * s, 14f * s, 6f * s);
             }
-            footerWords.text = Localisation.Text(words);
-            footerWords.color = warningColour ? UiTheme.Warning : Accent;
-            footerWords.name = name ?? UpNextName;
-            footerRank = rank;
-            LayoutStrategyFooter();
-            ApplyPinnedInset();
+            FooterWrite(footerWords, first);
+            if (second != null && footerCost == null)
+            {
+                footerCost = NewText(footerStrip, second.Words, 13, UiTheme.Warning);
+                footerCost.alignment = TextAlignmentOptions.MidlineLeft;
+            }
+            if (footerCost != null) footerCost.gameObject.SetActive(second != null);
+            if (second == null)
+            {
+                // One line, as the strip always had: free to wrap over the strip's height.
+                footerWords.textWrappingMode = TextWrappingModes.Normal;
+                footerWords.overflowMode = TextOverflowModes.Truncate;
+                FooterSize(footerWords);
+                Stretch(footerWords.rectTransform, footerInset, 6f * s, 14f * s, 6f * s);
+                return;
+            }
+            FooterWrite(footerCost, second);
+            // Two lines, each in a box 1.3 times its type - Inter draws nothing in a box under 1.21 -
+            // centred down the strip, which holds them at both text sizes: 2 x 16.9 + 2 in 57 at the
+            // resting size, 2 x 20.8 + 2.4 in 68.4 at the larger.
+            float box = Mathf.RoundToInt(13 * s) * 1.3f, gap = 2f * s;
+            float top = Mathf.Max(0f, (height - 2f * box - gap) * .5f);
+            FooterLineAt(footerWords, top, box);
+            FooterLineAt(footerCost, top + box + gap, box);
+        }
+
+        /// <summary>A line's words, colour and name, as its rank gave them.</summary>
+        private static void FooterWrite(TMP_Text label, FooterLine line)
+        {
+            label.text = Localisation.Text(line.Words);
+            label.color = line.Warns ? UiTheme.Warning : Accent;
+            label.name = line.Name;
+        }
+
+        /// <summary>The strip's type: 13 at the player's text size, down to 11 where the words need it.</summary>
+        private void FooterSize(TMP_Text label)
+        {
+            label.enableAutoSizing = false;
+            label.fontSize = Mathf.RoundToInt(13 * FontScale);
+            AutoSize(label, 11);
+        }
+
+        /// <summary>One of the two lines: one line of words in a box of its own, <paramref name="top"/> down the strip.</summary>
+        private void FooterLineAt(TMP_Text label, float top, float box)
+        {
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.overflowMode = TextOverflowModes.Ellipsis;
+            FooterSize(label);
+            var rect = label.rectTransform;
+            rect.anchorMin = new Vector2(0f, 1f); rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(.5f, 1f);
+            rect.offsetMin = new Vector2(footerInset, -(top + box));
+            rect.offsetMax = new Vector2(-14f * FontScale, -top);
         }
 
         /// <summary>

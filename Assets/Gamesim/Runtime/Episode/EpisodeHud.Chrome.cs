@@ -256,11 +256,13 @@ namespace Gamesim.Episode
         public const string ObjectiveWaitingName = "Objective waiting";
 
         /// <summary>
-        /// What the objective says in its title's place while something waits on the player
-        /// (ACTIONS-DEALS-ALLIANCES-PLAN V2): "Alex has an offer for you", "2 offers waiting", or how
-        /// many stories wait (<see cref="WaitingOnYou.ObjectiveLine(EpisodeState)"/>). Null when
-        /// nothing does, and at the endgame, whose titles are the season's own and keep their words.
-        /// Only what was put to the player: never anything between two houseguests.
+        /// What the objective says in its title's place while somebody waits on the player's answer
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN V2): "Alex has an offer for you", "2 offers waiting", "Sam is
+        /// waiting on your answer" (<see cref="WaitingOnYou.ObjectiveLine(EpisodeState)"/>). Offers,
+        /// questions about the veto and the houseguests who came to the player only: a story beat or
+        /// the Diary Room's call leaves the objective its own words, which the tutorial points at.
+        /// Null when nobody waits, and at the endgame, whose titles are the season's own. Only what
+        /// was put to the player: never anything between two houseguests.
         /// </summary>
         public static string WaitingLine(EpisodeState state) =>
             state == null || IsEndgame(state) ? null : WaitingOnYou.ObjectiveLine(state);

@@ -9,14 +9,14 @@ namespace Gamesim.Episode
     /// its own way on and nowhere else, and an offer lapsed without a word anywhere.
     ///
     /// <para>The words are <see cref="WaitingOnYou.AdvanceNote(EpisodeState)"/>'s, read from pending
-    /// state: nothing is written to say them. They take the footer's strip below the storylines'
-    /// warning and above what comes next (<see cref="EpisodeHud.FooterRank"/>), so a storyline the
-    /// press lets pass is still the line on the strip, and a cost is never covered by an Up next.
-    /// Free time's way on is its own screen's to dress, and is left to it.</para>
+    /// state: nothing is written to say them. They are the footer strip's second line, under what
+    /// comes next, which keeps the line it always had (<see cref="EpisodeHud.FooterRank"/>); the
+    /// storylines' warning still takes the strip alone, so a storyline the press lets pass is the
+    /// one thing it says. Free time's way on is its own screen's to dress, and is left to it.</para>
     /// </summary>
     public sealed partial class EpisodeDirector
     {
-        /// <summary>The name the footer strip's words carry when they say what moving on costs, so a test can find them.</summary>
+        /// <summary>The name the footer strip's line carries when it says what moving on costs, so a test can find it.</summary>
         public const string MovingOnCostsName = "Moving on costs";
 
         /// <summary>Puts what moving on costs on the strategy stage's footer strip; nothing anywhere else, nor when it costs nothing.</summary>

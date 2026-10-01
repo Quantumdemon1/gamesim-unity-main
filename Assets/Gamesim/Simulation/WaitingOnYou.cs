@@ -11,14 +11,17 @@ namespace Gamesim.Simulation
     /// what the cast strip's badges, the objective's line and the strategy screens' footer read.
     ///
     /// <para><b>Pending state only.</b> The offers the house put to the player that they have not
-    /// answered (<see cref="NpcDeals.Pending"/>), the houseguests who came to them and wait on a reply
-    /// (<see cref="EpisodeState.replyCards"/>), and how many story beats are open. Nothing here writes,
-    /// rolls or logs, so reading a season changes nothing in it and no later event id moves.</para>
+    /// answered (<see cref="NpcDeals.Pending"/>) and the houseguests who came to them and wait on a
+    /// reply (<see cref="EpisodeState.replyCards"/>). Nothing here writes, rolls or logs, so reading a
+    /// season changes nothing in it and no later event id moves. A story beat is not on the list: it
+    /// is the episode screen's to put in front of the player, and not somebody waiting on an answer.</para>
     ///
-    /// <para><b>Only what was put to the player.</b> An offer between two houseguests is theirs, and a
-    /// deal the player struck is waiting on nobody; neither is listed. Nor is anything from somebody
-    /// who has left the house, whom the engine would refuse an answer, nor anything at all once the
-    /// player is out of the game.</para>
+    /// <para><b>Only what was put to the player, and only while it can be answered.</b> An offer
+    /// between two houseguests is theirs, and a deal the player struck is waiting on nobody; neither
+    /// is listed. Nor is anything from somebody who has left the house, whom the engine would refuse
+    /// an answer; anything at all once the player is out of the game; anything from the final Head of
+    /// Household on, when no window for a word comes again; or an offer the player has no way left to
+    /// answer before it goes (<see cref="StillAnswerable"/>).</para>
     /// </summary>
     public static class WaitingOnYou
     {
@@ -59,18 +62,12 @@ namespace Gamesim.Simulation
                 kind + " " + type + " from " + fromId + " (" + lapses + (lapsesOnAdvance ? ", on this advance)" : ")");
         }
 
-        /// <summary>
-        /// Everything waiting on the player: the offers in the order the deal table lists them, then
-        /// the cards oldest first; and the open story beats, counted.
-        /// </summary>
+        /// <summary>Everything waiting on the player: the offers in the order the deal table lists them, then the cards oldest first.</summary>
         public sealed class Reading
         {
             public readonly List<Item> items = new List<Item>();
 
-            /// <summary>Open story beats waiting on the player. A count only: the episode screen draws each one.</summary>
-            public int storyBeats;
-
-            public bool Any => items.Count > 0 || storyBeats > 0;
+            public bool Any => items.Count > 0;
 
             /// <summary>Whether this houseguest has an offer, or a question about the veto, waiting on the player.</summary>
             public bool OfferFrom(string id) => id != null && items.Any(item => item.fromId == id && item.kind != Kind.Card);
@@ -79,15 +76,19 @@ namespace Gamesim.Simulation
             public bool AnswerFrom(string id) => id != null && items.Any(item => item.fromId == id && item.kind == Kind.Card);
         }
 
-        /// <summary>Everything waiting on the player in this state. Empty for no state, and for a player out of the game.</summary>
+        /// <summary>
+        /// Everything waiting on the player in this state. Empty for no state, for a player out of
+        /// the game, and from the final Head of Household on.
+        /// </summary>
         public static Reading Read(EpisodeState s)
         {
             var reading = new Reading();
-            if (s == null || !Answers(s)) return reading;
+            if (s == null || !Answers(s) || PastAnswering(s)) return reading;
             foreach (var deal in NpcDeals.Pending(s))
             {
                 if (!Present(s, deal.proposerId)) continue;
                 var lapses = OfferLapse(s, deal, out bool now);
+                if (!StillAnswerable(s, deal, lapses)) continue;
                 reading.items.Add(new Item
                 {
                     kind = deal.type == DealKind.VetoUse ? Kind.VetoAsk : Kind.Offer,
@@ -105,12 +106,49 @@ namespace Gamesim.Simulation
                     lapses = lapses, lapsesOnAdvance = now,
                 });
             }
-            reading.storyBeats = EpisodeEngine.OpenStoryBeats(s).Count;
             return reading;
         }
 
         /// <summary>Whether the player can answer anything at all: an evicted player follows the season and answers nothing.</summary>
         private static bool Answers(EpisodeState s) => s.Find(s.playerId)?.status == ContestantStatus.Active;
+
+        /// <summary>
+        /// From the final Head of Household on, nothing put to the player can be answered: no free
+        /// time or campaign comes again, and nobody has time for a word between the parts, the final
+        /// choice and the jury's night. Nor does anything write an offer off any more - the house's
+        /// rounds are over - so one still on the table would wait for ever; it is not listed at all.
+        /// </summary>
+        private static bool PastAnswering(EpisodeState s)
+        {
+            switch (s.phase)
+            {
+                case EpisodePhase.FinalHoHPart1:
+                case EpisodePhase.FinalHoHPart2:
+                case EpisodePhase.FinalHoHPart3:
+                case EpisodePhase.FinalEviction:
+                case EpisodePhase.JuryQuestioning:
+                case EpisodePhase.FinalSpeeches:
+                case EpisodePhase.Jury:
+                case EpisodePhase.Finished:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Whether the player still has a way to answer an offer before it goes: a word with its
+        /// sender, now or in a window still ahead of its lapse. Under the week's windows every
+        /// houseguest has time for a word in every window, so they always do. Without them only the
+        /// people deciding have time for one between the Head of Household and the campaign, and the
+        /// veto meeting is the last of that before the campaign's opening writes last week's offers
+        /// off: there, one from anybody not deciding the veto is past answering. (Earlier in the
+        /// week who will be deciding the veto is not known yet, so an offer then is still listed.)
+        /// A question about the veto is answered on the decision itself, and is always listed.
+        /// </summary>
+        private static bool StillAnswerable(EpisodeState s, DealState deal, Lapse lapses) =>
+            EpisodeEngine.WeekRulesOn(s) || s.phase != EpisodePhase.VetoMeeting || lapses != Lapse.CampaignOpens
+            || deal.expiresWeek >= s.week || StrategyRules.IsDecider(s, deal.proposerId);
 
         /// <summary>Whether somebody other than the player is still in the house to be answered.</summary>
         private static bool Present(EpisodeState s, string id)
@@ -235,9 +273,9 @@ namespace Gamesim.Simulation
         // ---------------------------------------------------------------- the words
 
         /// <summary>
-        /// The objective's line when something waits on the player: who has an offer for them, or who
-        /// is waiting on an answer; how many, when it is more than one; else how many stories wait.
-        /// Null when nothing does.
+        /// The objective's line when somebody waits on the player's answer: who has an offer for
+        /// them, or who came to them; how many, when it is more than one. Null when nobody does - a
+        /// story beat is not an answer owed, and the objective keeps its own words for it.
         /// </summary>
         public static string ObjectiveLine(EpisodeState s) => ObjectiveLine(s, Read(s));
 
@@ -246,21 +284,16 @@ namespace Gamesim.Simulation
         {
             if (s == null || reading == null) return null;
             var items = reading.items;
+            if (items.Count == 0) return null;
             if (items.Count == 1)
                 return items[0].kind == Kind.Card
                     ? First(s, items[0].fromId) + " is waiting on your answer"
                     : First(s, items[0].fromId) + " has an offer for you";
-            if (items.Count > 1)
-            {
-                if (items.All(item => item.kind != Kind.Card)) return items.Count + " offers waiting";
-                var senders = items.Select(item => item.fromId).Distinct().ToList();
-                return senders.Count == 1
-                    ? First(s, senders[0]) + " is waiting on your answer"
-                    : senders.Count + " houseguests are waiting on you";
-            }
-            if (reading.storyBeats == 1) return "A story is waiting on you";
-            if (reading.storyBeats > 1) return reading.storyBeats + " stories are waiting on you";
-            return null;
+            if (items.All(item => item.kind != Kind.Card)) return items.Count + " offers waiting";
+            var senders = items.Select(item => item.fromId).Distinct().ToList();
+            return senders.Count == 1
+                ? First(s, senders[0]) + " is waiting on your answer"
+                : senders.Count + " houseguests are waiting on you";
         }
 
         /// <summary>

@@ -398,7 +398,8 @@ namespace Gamesim.Episode
         /// <summary>
         /// A story option's "who?": the people it can name as a grid of faces and names, each named
         /// and captioned by the name, fitted to the step's room less <paramref name="reserveBelow"/>
-        /// for the rows after it. It was a column of up to fifteen rows.
+        /// for the rows after it. It was a column of up to fifteen rows, each with the player's own
+        /// trust reading, so each cell keeps that reading under the name.
         /// </summary>
         public void NominationPeople(IList<(string Id, string Caption, Action Press)> people, float reserveBelow)
         {
@@ -423,17 +424,30 @@ namespace Gamesim.Episode
                 var cell = Chrome(person.Caption, grid, UiTheme.Emphasis.Interactive);
                 HudEmphasis.Promote(cell, UiTheme.Emphasis.Interactive);
                 Pressable(cell, person.Press);
+                var actor = state != null ? state.Find(person.Id) : null;
                 float side = height - 10f * s, photoWidth = side * .86f;
-                var photo = HudPrimitives.RectPortrait(cell, "Photo", Portrait(person.Id), state != null ? state.Find(person.Id) : null,
-                    new Vector2(photoWidth, side), 6);
+                var photo = HudPrimitives.RectPortrait(cell, "Photo", Portrait(person.Id), actor, new Vector2(photoWidth, side), 6);
                 photo.anchorMin = photo.anchorMax = new Vector2(0f, 1f);
                 photo.pivot = new Vector2(0f, 1f);
                 photo.anchoredPosition = new Vector2(5f * s, -5f * s);
-                float x = 5f * s + photoWidth + 10f * s, box = 16f * 1.3f * s;
-                var name = FixedText(cell, person.Caption, 16, Paper, new Vector2(x, -(height - box) * .5f), new Vector2(Mathf.Max(24f, width - x - 8f * s), box));
+                float x = 5f * s + photoWidth + 10f * s, box = 16f * 1.3f * s, line = 12f * 1.3f * s, inner = Mathf.Max(24f, width - x - 8f * s);
+                // The player's own reading of them, as the rows this grid replaced carried it: the
+                // standing word and the trust number, the player's record and never theirs back.
+                bool reading = actor != null && actor.id != state.playerId;
+                float top = Mathf.Max(4f * s, (height - box - (reading ? 2f * s + line : 0f)) * .5f);
+                var name = FixedText(cell, person.Caption, 16, Paper, new Vector2(x, -top), new Vector2(inner, box));
                 name.textWrappingMode = TextWrappingModes.NoWrap;
                 name.overflowMode = TextOverflowModes.Ellipsis;
                 AutoSize(name, 11);
+                if (!reading) continue;
+                var kind = RelationshipWeb.KindOf(state, person.Id);
+                var words = FixedText(cell, RelationshipWeb.StandingWord(kind) + " · Trust " + state.Score(state.playerId, person.Id).ToString("0"), 12,
+                    kind == RelationshipWeb.Kind.Neutral ? UiTheme.Muted : RelationshipWeb.StandingColour(kind),
+                    new Vector2(x, -(top + box + 2f * s)), new Vector2(inner, line));
+                words.name = "Reading";
+                words.textWrappingMode = TextWrappingModes.NoWrap;
+                words.overflowMode = TextOverflowModes.Ellipsis;
+                AutoSize(words, 10);
             }
         }
 

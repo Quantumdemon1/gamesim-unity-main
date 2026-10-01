@@ -55,12 +55,39 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// A story beat waiting at the nomination whose options open the views behind a press: one
+        /// that names somebody, from everybody in the house but the player - the most a WHO? grid
+        /// ever holds - and a rule break, which asks to be pressed twice; then its lapse.
+        /// </summary>
+        private static HouseEventState NominationAsk(EpisodeState state)
+        {
+            var beat = NominationBeat(state, 0, 1);
+            beat.choices.Insert(0, new HouseEventChoice
+            {
+                label = "Invite someone up", optionId = "invite-one", pickPerson = true,
+                description = "Pick one person to share it with. Everyone will notice who.",
+                eligibleIds = state.Active.Where(actor => !actor.isPlayer).Select(actor => actor.id).ToList(),
+            });
+            beat.choices.Insert(1, new HouseEventChoice
+            {
+                label = "Read the letter from home", optionId = "read-letter", conduct = true, risk = HouseEventRisk.High,
+                description = "It is not yours to read, and production will see you do it.",
+            });
+            return beat;
+        }
+
+        /// <summary>
         /// A house of <paramref name="houseguests"/> at its nomination: a houseguest or the player at
         /// the head of the house, the block as given, the week's windows, the strategy rules and the
         /// story system on, and one waiting beat for each entry of <paramref name="beats"/> with that
         /// many options. The house's own clock is held, so nothing commits under the test.
         /// </summary>
-        private IEnumerator InstallNomination(int houseguests, bool playerHoh, NominationBlock block, params int[] beats)
+        private IEnumerator InstallNomination(int houseguests, bool playerHoh, NominationBlock block, params int[] beats) =>
+            InstallNomination(houseguests, playerHoh, block, house => Enumerable.Range(0, beats.Length).Select(i => NominationBeat(house, i, beats[i])));
+
+        /// <summary>The same house, with the waiting beats <paramref name="beats"/> makes for it.</summary>
+        private IEnumerator InstallNomination(int houseguests, bool playerHoh, NominationBlock block,
+            System.Func<EpisodeState, IEnumerable<HouseEventState>> beats)
         {
             HoldTheHouseForTheFixture();
             var state = FullHouse(4401, houseguests);
@@ -74,7 +101,7 @@ namespace Gamesim.Tests.PlayMode
             EpisodeEngine.EnableWeek(state, state.week);
             EpisodeEngine.EnableStory(state, state.week);
             state.houseEvents.RemoveAll(item => item.IsStory && !item.resolved);
-            for (int i = 0; i < beats.Length; i++) state.houseEvents.Add(NominationBeat(state, i, beats[i]));
+            state.houseEvents.AddRange(beats(state).ToList());
             Assert.That(EpisodeValidation.TryValidate(state, out var reason), Is.True, reason);
             new EpisodeSaveStore(director.SavePath).Save(state);
             yield return ReloadEpisode();
@@ -377,6 +404,93 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(after.revision, Is.EqualTo(revision + 1), "The commit is one command.");
             Assert.That(after.nominees, Is.EquivalentTo(new[] { candidates[0].Id, candidates[1].Id }), "It names the two picked.");
             Assert.That(after.houseEvents.Single(item => item.id == beat.id).resolved, Is.True, "Committing let the story pass.");
+        }
+
+        /// <summary>
+        /// The views a step opens behind a press hold without a scroll as the steps themselves do, in
+        /// a house of sixteen - the most names any of them holds - at both text sizes: the picker's
+        /// backdoor plan and its comparison, each in the grid's place, and a story's WHO? grid of
+        /// everybody it can name and its rule break's confirm. Each keeps the footer its step has
+        /// and a way back, and going there and back commits nothing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator NominationScreen_TheViewsBehindAPressHoldWithoutAScroll()
+        {
+            foreach (bool larger in new[] { false, true })
+            {
+                string size = larger ? " at the larger text" : "";
+
+                // The Head of Household's picker: the backdoor plan behind its door, and the way back.
+                yield return InstallNomination(16, true, NominationBlock.Open);
+                yield return ApplyTextSize(larger);
+                yield return OpenStation();
+                yield return null;
+                var candidates = EpisodeEngine.NominationCandidates(director.Snapshot).ToList();
+                int revision = director.Snapshot.revision;
+                ButtonWithCaption(EpisodeHud.PlanBackdoorCaption).onClick.Invoke();
+                yield return null;
+                AssertNominationScreen("The backdoor plan" + size, EpisodeHud.BackToNomineesCaption);
+                var aims = ActiveRect(EpisodeHud.BackdoorAimsName);
+                Assert.That(aims, Is.Not.Null, "The backdoor plan" + size + " is a grid.");
+                Assert.That(aims.GetComponentsInChildren<Button>().Select(aim => aim.name),
+                    Is.EquivalentTo(candidates.Select(candidate => "Aim this week at " + candidate.name)), "One aim for each candidate" + size + ".");
+                ButtonWithCaption(EpisodeHud.BackToNomineesCaption).onClick.Invoke();
+                yield return null;
+                AssertNominationScreen("Back on the picker" + size, "Commit nominations", EpisodeHud.ShowCandidateContextCaption);
+
+                // Two picks compared, in the grid's place. The toggle swaps the views in place without
+                // a render, so the screen is measured in the same frame, before a body finishing its
+                // assembly can re-render it.
+                ButtonWithCaption(candidates[0].name).onClick.Invoke();
+                ButtonWithCaption(candidates[1].name).onClick.Invoke();
+                ButtonWithCaption(EpisodeHud.ShowCandidateContextCaption).onClick.Invoke();
+                AssertNominationScreen("The comparison" + size, "Commit nominations", EpisodeHud.HideCandidateContextCaption);
+                Assert.That(ActiveRect(EpisodeHud.CandidateContextName), Is.Not.Null, "The comparison" + size + " is up,");
+                Assert.That(ActiveRect(EpisodeHud.NomineeGridName), Is.Null, "in the grid's place.");
+                Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "The picker's views commit nothing" + size + ".");
+                director.ClosePanels();
+                yield return null;
+
+                // A story's WHO? and its rule break's confirm, under a houseguest at the head of the house.
+                yield return InstallNomination(16, false, NominationBlock.Open, house => new[] { NominationAsk(house) });
+                yield return ApplyTextSize(larger);
+                yield return OpenStation();
+                yield return null;
+                var state = director.Snapshot;
+                var beat = EpisodeEngine.OpenStoryBeats(state).Single();
+                var people = beat.choices[0].eligibleIds.Select(id => state.Find(id).name).ToList();
+                Assert.That(people, Has.Count.EqualTo(state.Active.Count() - 1), "The WHO? holds everybody but the player:");
+                Assert.That(people.Count, Is.GreaterThanOrEqualTo(15), "fifteen names in a house of sixteen, the most a WHO? holds.");
+                revision = state.revision;
+                ButtonWithCaption(EpisodeHud.EventChoiceCaption(beat.choices[0].label)).onClick.Invoke();
+                yield return null;
+                AssertNominationScreen("The WHO? of the whole house" + size, "Continue episode");
+                var grid = ActiveRect(EpisodeHud.StoryPeopleName);
+                Assert.That(grid, Is.Not.Null, "Everybody it can name is a grid" + size + ".");
+                Assert.That(grid.IsChildOf(ActiveRect("Episode content")), Is.True, "inside the stage's column,");
+                Assert.That(grid.GetComponentsInChildren<Button>().Select(cell => cell.name), Is.EquivalentTo(people),
+                    "one cell for each, named by the name" + size + ".");
+                foreach (string id in beat.choices[0].eligibleIds)
+                {
+                    var face = grid.GetComponentsInChildren<Button>().Single(button => button.name == state.Find(id).name);
+                    Assert.That(face.GetComponentsInChildren<TMP_Text>().Single(text => text.name == "Reading").text,
+                        Is.EqualTo(RelationshipWeb.StandingWord(RelationshipWeb.KindOf(state, id)) + " · Trust " + state.Score(state.playerId, id).ToString("0")),
+                        face.name + "'s cell keeps the player's own reading of them, as the list it replaced did" + size + ".");
+                }
+                ButtonWithCaption(EpisodeHud.StoryBackCaption).onClick.Invoke();
+                yield return null;
+                ButtonWithCaption(EpisodeHud.EventChoiceCaption(beat.choices[1].label)).onClick.Invoke();
+                yield return null;
+                AssertNominationScreen("The rule break's confirm" + size, "Continue episode");
+                Assert.That(FindButton(EpisodeHud.StoryConfirmCaption), Is.Not.Null, "A rule break asks to be pressed twice" + size + ".");
+                ButtonWithCaption(EpisodeHud.StoryBackCaption).onClick.Invoke();
+                yield return null;
+                Assert.That(ActiveRect(EpisodeHud.StoryChoicesName), Is.Not.Null, "The way back is the beat" + size + ",");
+                Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "and going there and back commits nothing.");
+                director.ClosePanels();
+                yield return null;
+            }
+            yield return ApplyTextSize(false);
         }
 
         /// <summary>

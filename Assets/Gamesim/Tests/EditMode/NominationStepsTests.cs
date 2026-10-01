@@ -155,6 +155,18 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
+        public void EveryStandingHasTheWordTheTrackerPrints()
+        {
+            // The PlayMode walks read these words off the tracker's cells, which only the editor runs,
+            // so the subset holds every one of them and a changed word fails here first.
+            Assert.That(NominationSteps.StandingWord(NominationSteps.Standing.Done), Is.EqualTo("Complete"));
+            Assert.That(NominationSteps.StandingWord(NominationSteps.Standing.LetPass), Is.EqualTo("Let pass"));
+            Assert.That(NominationSteps.StandingWord(NominationSteps.Standing.Waiting), Is.EqualTo("Waiting"));
+            Assert.That(NominationSteps.StandingWord(NominationSteps.Standing.Current), Is.EqualTo("Current"));
+            Assert.That(NominationSteps.StandingWord(NominationSteps.Standing.Next), Is.EqualTo("Next"));
+        }
+
+        [Test]
         public void ABeatOpenedAtTheNominationsComesBeforeTheOutcome()
         {
             var s = Nomination();
@@ -207,6 +219,60 @@ namespace Gamesim.Tests.EditMode
             Assert.That(steps.Single(step => step.kind == NominationSteps.Kind.Picker).standing, Is.EqualTo(NominationSteps.Standing.Done));
             Assert.That(NominationSteps.Current(steps).kind, Is.EqualTo(NominationSteps.Kind.Outcome));
             Assert.That(NominationSteps.LapsingOnNominate(s), Is.Empty, "Nothing is left to commit.");
+        }
+
+        /// <summary>
+        /// The Invite List's own week (PACK8-PASS-PLAN B1), with the engine's arc rather than a beat
+        /// made by hand: cast at the crowning for a player Head of Household, it waits on the tracker
+        /// under its own name while the picker is current; "Commit nominations" is what lets it pass,
+        /// in its lapse's own words, which "Continue episode"'s warning never saw; and the engine's
+        /// Nominate lets exactly that beat pass, by its lapse.
+        /// </summary>
+        [Test]
+        public void TheEnginesInviteListWaitsBehindThePickerAndCommittingLetsItPass()
+        {
+            EpisodeState fixture = null;
+            for (uint seed = 1; seed <= 40 && fixture == null; seed++)
+            {
+                var s = Nomination(playerHoh: true, seed: seed);
+                EpisodeEngine.EnableStory(s, s.week);
+                if (EpisodeEngine.StartStory(s, "the-invite-list", StoryAnchors.HohCrowned) && EpisodeEngine.OpenStoryBeats(s).Count == 1)
+                    fixture = s;
+            }
+            Assert.That(fixture, Is.Not.Null, "No bounded legal fixture with The Invite List found.");
+            var invite = EpisodeEngine.OpenStoryBeats(fixture).Single();
+            var steps = NominationSteps.Build(fixture);
+            AssertWellFormed(steps, "The engine's Invite List");
+            Assert.That(Labels(steps), Is.EqualTo(new[]
+            {
+                "1. The Invite List", "2. " + NominationSteps.PickerTitle, "3. " + NominationSteps.CeremonyTitle, "4. " + NominationSteps.OutcomeTitle,
+            }));
+            Assert.That(NominationSteps.Current(steps).kind, Is.EqualTo(NominationSteps.Kind.Picker),
+                "The picker is current while The Invite List is open, so the names and Commit are pressed at once.");
+            Assert.That(steps[0].standing, Is.EqualTo(NominationSteps.Standing.Waiting));
+            Assert.That(steps[0].Opens, Is.True, "The story waits on the tracker, a press away.");
+            Assert.That(steps[0].eventId, Is.EqualTo(invite.id));
+            Assert.That(NominationSteps.LapsingOnNominate(fixture).Select(e => e.id), Is.EqualTo(new[] { invite.id }),
+                "Committing lets it pass, and the footer says so,");
+            Assert.That(invite.choices.Single(c => c.optionId == invite.lapseOptionId).label, Is.EqualTo("Keep the room to yourself"),
+                "in its lapse's own words.");
+            Assert.That(EpisodeEngine.LapsingOnAdvance(fixture), Is.Empty, "Continue episode's warning never saw it: that was the silent lapse.");
+
+            var candidates = EpisodeEngine.NominationCandidates(fixture).ToList();
+            var nominate = EpisodeEngineTests.Command(fixture, EpisodeCommandKind.Nominate);
+            nominate.targetId = candidates[0].id;
+            nominate.secondTargetId = candidates[1].id;
+            var after = new EpisodeEngine(fixture).Apply(nominate);
+            Assert.That(after.accepted, Is.True, after.reason);
+            var lapsed = after.state.houseEvents.Single(e => e.id == invite.id);
+            Assert.That(lapsed.resolved, Is.True, "The commit let The Invite List pass,");
+            Assert.That(lapsed.choices[lapsed.chosenIndex].optionId, Is.EqualTo(invite.lapseOptionId), "by its lapse, as the footer said.");
+            var named = NominationSteps.Build(after.state);
+            AssertWellFormed(named, "After the commit");
+            Assert.That(named.Single(step => step.kind == NominationSteps.Kind.Picker).standing, Is.EqualTo(NominationSteps.Standing.Done));
+            Assert.That(named.Single(step => step.title == "The Invite List").standing, Is.EqualTo(NominationSteps.Standing.LetPass),
+                "and the tracker says it was let pass, not answered.");
+            Assert.That(NominationSteps.LapsingOnNominate(after.state), Is.Empty, "Nothing is left for a commit to let pass.");
         }
 
         [Test]

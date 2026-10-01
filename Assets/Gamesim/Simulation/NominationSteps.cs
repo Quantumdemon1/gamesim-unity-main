@@ -61,14 +61,18 @@ namespace Gamesim.Simulation
             public bool Opens => kind == Kind.Story && standing == Standing.Waiting && eventId != null;
         }
 
-        /// <summary>The word under a step's name, so where it stands is never said by colour alone.</summary>
+        /// <summary>
+        /// The word under a step's name, so where it stands is never said by colour alone. The words
+        /// are short because at the larger text size the word sits beside the title in a box about a
+        /// third of the step's width.
+        /// </summary>
         public static string StandingWord(Standing standing)
         {
             switch (standing)
             {
                 case Standing.Done: return "Complete";
                 case Standing.LetPass: return "Let pass";
-                case Standing.Waiting: return "Waiting on you";
+                case Standing.Waiting: return "Waiting";
                 case Standing.Current: return "Current";
                 default: return "Next";
             }

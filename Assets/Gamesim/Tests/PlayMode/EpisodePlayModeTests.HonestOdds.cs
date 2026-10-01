@@ -126,6 +126,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(KnownOdds.Word(PlayerDeals.AcceptanceChance(state, id, DealKind.TargetAgreement, liked)),
                 Is.Not.EqualTo(KnownOdds.Word(PlayerDeals.AcceptanceChance(state, id, DealKind.TargetAgreement, loathed))),
                 "The roll's words differ across the rows.");
+            // The target agreements wait behind their verb row in the grouped conversation (V5): one
+            // press opens them, each under the caption and with the tag its row had.
+            ButtonWithCaption(EpisodeDirector.TargetDealPickerCaption).onClick.Invoke();
+            yield return null;
             var against = subjects.Select(about => TagWords(FindButton(EpisodeHud.DealProposeCaption(
                     DealKind.Title(DealKind.TargetAgreement).ToLowerInvariant() + " against " + state.Find(about).name)))
                 .Split(TagSeparator, System.StringSplitOptions.None).Last()).Distinct().ToList();

@@ -444,6 +444,23 @@ namespace Gamesim.Tests.EditMode
             Assert.That(WaitingOnYou.ActionsLostOnAdvance(pool), Is.Zero);
         }
 
+        [Test]
+        public void MoveInNightLosesOnlyItsOwnActionsForTimeBoughtCarriesIntoTheWeek()
+        {
+            var s = Season(5);
+            EpisodeEngine.EnableStory(s);
+            EpisodeEngine.EnableWeek(s);
+            Assert.That(EpisodeEngine.IsFirstNight(s), Is.True, "The fixture is move-in night,");
+            Assert.That(EpisodeEngine.Window(s), Is.EqualTo(Windows.AfterEviction), "the week's free time before anybody has left.");
+            int seats = EpisodeEngine.WindowSeats(s, Windows.AfterEviction);
+            Assert.That(WaitingOnYou.ActionsLostOnAdvance(s), Is.EqualTo(seats), "With nothing bought, the night's own actions are all it has.");
+
+            s.boughtActionPoints = 1;
+            Assert.That(EpisodeEngine.SocialActionBudget(s), Is.EqualTo(seats + 1));
+            Assert.That(WaitingOnYou.ActionsLostOnAdvance(s), Is.EqualTo(seats), "The action bought carries into the week's first window.");
+            Assert.That(WaitingOnYou.AdvanceNote(s), Does.EndWith(seats + (seats == 1 ? " unused action" : " unused actions") + " will be lost."));
+        }
+
         // ---------------------------------------------------------------- reading writes nothing
 
         [Test]

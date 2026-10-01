@@ -257,7 +257,9 @@ namespace Gamesim.Simulation
         /// window's own seats, when the advance closes it. The week's extras - time bought, what a
         /// story left - are the week's to spend in any window, so a window that closes hands what is
         /// left of them on, until the last window of the week takes everything with it. A Have-Not
-        /// has no extras to hand on, and every seat of their window is its own.
+        /// has no extras to hand on, and every seat of their window is its own. Move-in night is the
+        /// week's free time but does not turn the week, so it loses only the night's own seats, as
+        /// the free-time board counts it.
         /// </summary>
         public static int ActionsLostOnAdvance(EpisodeState s)
         {
@@ -265,7 +267,7 @@ namespace Gamesim.Simulation
             int window = EpisodeEngine.Window(s);
             int budget = EpisodeEngine.SocialActionBudget(s), spent = EpisodeEngine.SocialActionsSpent(s);
             int left = Math.Max(0, budget - spent);
-            if (window == Windows.AfterEviction) return left;
+            if (window == Windows.AfterEviction && !EpisodeEngine.IsFirstNight(s)) return left;
             int own = EpisodeEngine.WeeklyExtras(s) < 0 ? budget : EpisodeEngine.WindowSeats(s, window);
             return Math.Max(0, Math.Min(left, own - spent));
         }

@@ -329,10 +329,12 @@ namespace Gamesim.Tests.PlayMode
         /// pixels in the frame, which is how a caller asks whether a portrait or a card actually drew
         /// where it stands (<see cref="AssertRegionHasContent"/>). A whole-frame check cannot tell a
         /// face from the empty disc it lands in.</para>
+        ///
+        /// <para>The frame is 1600 by 900 unless <paramref name="width"/> and <paramref name="height"/>
+        /// say otherwise: 1200 by 900 photographs a 4:3 layout as the batch canvas laid it out.</para>
         /// </summary>
-        private IEnumerator CaptureFraming(string name, bool settle = true, Action<Texture2D> inspect = null)
+        private IEnumerator CaptureFraming(string name, bool settle = true, Action<Texture2D> inspect = null, int width = 1600, int height = 900)
         {
-            const int width = 1600, height = 900;
             var camera = cameraRig.ViewCamera;
             var overlays = Object.FindObjectsByType<Canvas>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
                 .Where(canvas => canvas.renderMode == RenderMode.ScreenSpaceOverlay).ToArray();
@@ -498,6 +500,8 @@ namespace Gamesim.Tests.PlayMode
                     return director.ProfileId == someone.id;
                 }),
                 ("the vote", () => { director.ShowNotebookSection(EpisodeDirector.NotebookSection.Votes); return director.IsPanelOpen; }),
+                ("the alliances", () => { director.ShowNotebookSection(EpisodeDirector.NotebookSection.Alliances); return director.IsPanelOpen; }),
+                ("your word", () => { director.ShowNotebookSection(EpisodeDirector.NotebookSection.Word); return director.IsPanelOpen; }),
                 // The episode screen, fitted to what it holds with its way on pinned.
                 ("the episode screen", () => { WarpPlayer(director.StationPosition); return director.TryOpenPhasePanel(); }),
                 ("the settings", () => { director.OpenSettings(); return director.IsPanelOpen; }),

@@ -59,8 +59,13 @@
     <Compile Include="$(EditMode)TraitAffinityTests.cs" />
     <Compile Include="$(EditMode)NpcAgencyHarnessTests.cs" />
     <Compile Include="$(EditMode)HouseguestNotesTests.cs" />
+    <Compile Include="$(EditMode)CommitmentsReadTests.cs" />
     <Compile Include="$(EditMode)CampaignBriefTests.cs" />
+    <Compile Include="$(EditMode)WaitingOnYouTests.cs" />
     <Compile Include="$(EditMode)FinalistReadTests.cs" />
+    <Compile Include="$(EditMode)KnownOddsTests.cs" />
+
+    <Compile Include="$(EditMode)AllianceReadTests.cs" />
     <Compile Include="$(EditMode)FinalBracketTests.cs" />
     <Compile Include="$(EditMode)JuryHouseReadTests.cs" />
     <Compile Include="$(EditMode)FinaleRulesTests.cs" />
@@ -105,6 +110,7 @@
     <Compile Include="$(EditMode)WebIntroductionsTests.cs" />
     <Compile Include="$(EditMode)WebJurySentimentParityTests.cs" />
     <Compile Include="$(EditMode)WebLoyaltyOathParityTests.cs" />
+    <Compile Include="$(EditMode)OathBreachTests.cs" />
     <Compile Include="$(EditMode)WebNpcActivityParityTests.cs" />
     <Compile Include="$(EditMode)WebNpcConversationParityTests.cs" />
     <Compile Include="$(EditMode)WebNpcMotiveParityTests.cs" />
@@ -114,6 +120,7 @@
     <Compile Include="$(EditMode)WebVotingBlocParityTests.cs" />
     <Compile Include="$(EditMode)WeeklyRuleParityTests.cs" />
     <Compile Include="$(EditMode)WritingPassTests.cs" />
+    <Compile Include="$(EditMode)YourWeekTests.cs" />
 
     <!--
       One file from outside the simulation, because it is as Unity-free as the simulation is: the

@@ -70,6 +70,25 @@ namespace Gamesim.Tests.PlayMode
             return state;
         }
 
+        /// <summary>
+        /// The EndScreens fixture with the player in the final two: the runner-up's place and the
+        /// ballots for them handed to the player, the player's own ballot withdrawn, and the former
+        /// runner-up on the jury with a ballot of their own for the player.
+        /// </summary>
+        private static EpisodeState PlayerRunnerUp()
+        {
+            var state = Finished();
+            var you = state.Find(state.playerId);
+            var runnerUp = state.Find(state.runnerUpId);
+            runnerUp.status = ContestantStatus.Jury;
+            you.status = ContestantStatus.RunnerUp;
+            state.runnerUpId = you.id;
+            state.votes.RemoveAll(vote => vote.voterId == you.id);
+            foreach (var vote in state.votes.Where(vote => vote.targetId == runnerUp.id)) vote.targetId = you.id;
+            state.votes.Add(new VoteState { voterId = runnerUp.id, targetId = you.id, reason = "You never lied to me, and I know what that cost you." });
+            return state;
+        }
+
         /// <summary>The number in one of the page's tally tiles.</summary>
         private static string TileNumber(RectTransform card, string name) =>
             card.GetComponentsInChildren<RectTransform>().Last(rect => rect.name == name)
@@ -141,7 +160,10 @@ namespace Gamesim.Tests.PlayMode
                 var expected = ballot.FinalistId == winner.id ? UiTheme.Gold : EndScreenKit.Steel;
                 Assert.That(rim.color, Is.EqualTo(expected), where + ": " + juror.name + "'s ring is in the colour of the finalist they chose.");
                 var chip = face.GetComponentsInChildren<TMP_Text>(true).Single(label => label.name == EpisodeHud.FinaleJurorChipWordName);
-                Assert.That(chip.text, Is.EqualTo(FinalistRead.FirstName(ballot.Finalist)), where + ": the chip names the finalist by first name.");
+                var chosen = state.Find(ballot.FinalistId);
+                Assert.That(chip.text, Is.EqualTo(chosen.isPlayer ? "You" : FinalistRead.FirstName(ballot.Finalist)),
+                    where + ": the chip names the finalist by first name, or 'You' for the player.");
+                Assert.That(chip.text, Is.EqualTo(EpisodeDirector.FinalistChipWord(chosen)));
                 AssertInside(ScreenRect(jury), (RectTransform)face.transform, where + ": " + juror.name + "'s face");
             }
             Assert.That(FinalePart(EpisodeHud.FinaleReasonLineName), Is.Null, where + ": no reason is open until a face is pressed,");
@@ -157,9 +179,32 @@ namespace Gamesim.Tests.PlayMode
             var second = bar.Find("Second") as RectTransform;
             Assert.That(first != null, Is.EqualTo(forWinner > 0), where + ": the bar's first part is there exactly when the winner has votes.");
             Assert.That(second != null, Is.EqualTo(forRunnerUp > 0), where + ": and the second when the runner-up has.");
+            // Each part at the width the kit's rule gives it - its share less the gap, never under the
+            // bar's height, a part lifted to that least taking the difference from the other - and
+            // both inside the track: the first from its start, the second to its end, never meeting.
+            float barWidth = bar.rect.width, barHeight = bar.rect.height;
+            var (expectedFirst, expectedSecond) = EndScreenKit.SplitWidths(barWidth, barHeight, forWinner, forRunnerUp);
+            if (first != null)
+            {
+                Assert.That(first.rect.width, Is.EqualTo(expectedFirst).Within(.5f), where + ": the winner's part of the bar.");
+                Assert.That(first.anchoredPosition.x, Is.EqualTo(0f).Within(.5f), where + ": from the track's start.");
+            }
+            if (second != null)
+            {
+                Assert.That(second.rect.width, Is.EqualTo(expectedSecond).Within(.5f), where + ": the runner-up's part of the bar.");
+                Assert.That(second.anchoredPosition.x + second.rect.width, Is.EqualTo(barWidth).Within(.5f), where + ": to the track's end.");
+            }
             if (first != null && second != null)
-                Assert.That(first.rect.width / second.rect.width, Is.EqualTo(forWinner / (float)forRunnerUp).Within(.12f),
-                    where + ": the bar is split as the ballots were.");
+            {
+                Assert.That(first.anchoredPosition.x + first.rect.width, Is.LessThanOrEqualTo(second.anchoredPosition.x + .5f), where + ": the two parts never meet.");
+                // Where neither part is lifted to its least, the split is the ballots' own.
+                if (expectedFirst > barHeight + .5f && expectedSecond > barHeight + .5f)
+                {
+                    float ratio = forWinner / (float)forRunnerUp;
+                    Assert.That((first.rect.width + 2f) / (second.rect.width + 2f), Is.EqualTo(ratio).Within(ratio * .05f),
+                        where + ": the bar is split as the ballots were.");
+                }
+            }
 
             // The highlights: six tiles at the state's own counts, worked out here rather than read back.
             var strip = FinalePart(EpisodeHud.FinaleHighlightsName);
@@ -220,17 +265,18 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// The page as CaptureFraming draws it, re-laid for its 1600x900 frame: on that frame, holding
-        /// without a scroll, the page inside the stage's view and its three cards in a row inside it.
+        /// The page as CaptureFraming draws it, re-laid for its frame (1600x900, or 1200x900 for the
+        /// 4:3 canvas): on a frame of <paramref name="aspect"/>, holding without a scroll, the page
+        /// inside the stage's view and its three cards in a row inside it.
         /// </summary>
-        private void AssertTheFinalePageOnTheWideFrame(string where)
+        private void AssertTheFinalePageOnTheFrame(string where, float aspect)
         {
             Canvas.ForceUpdateCanvases();
             var page = ActiveRect(EpisodeHud.FinalePageName);
             Assert.That(page, Is.Not.Null, where + " is the page.");
             var frame = (RectTransform)page.GetComponentInParent<Canvas>().rootCanvas.transform;
-            Assert.That(frame.rect.width / frame.rect.height, Is.EqualTo(16f / 9f).Within(.02f),
-                where + " is laid out on the 16:9 frame, not the batch canvas's " + frame.rect.size + ".");
+            Assert.That(frame.rect.width / frame.rect.height, Is.EqualTo(aspect).Within(.02f),
+                where + " is laid out on the frame asked for, not the batch canvas's " + frame.rect.size + ".");
             var content = ActiveRect("Episode content");
             var viewport = (RectTransform)content.parent;
             Assert.That(content.rect.height, Is.LessThanOrEqualTo(viewport.rect.height + .5f),
@@ -271,7 +317,9 @@ namespace Gamesim.Tests.PlayMode
                 else Assert.That(line, Is.EqualTo(ballot.Reason), where + ": the reason as they gave it, word for word.");
                 var eyebrow = FinalePart(EpisodeHud.FinaleReasonEyebrowName);
                 Assert.That(eyebrow, Is.Not.Null, where + ": over an eyebrow naming them and their choice,");
-                Assert.That(eyebrow.GetComponent<TMP_Text>().text, Does.Contain(FinalistRead.FirstName(ballot.Finalist).ToUpperInvariant()));
+                var chosen = state.Find(ballot.FinalistId);
+                Assert.That(eyebrow.GetComponent<TMP_Text>().text, Does.EndWith("VOTED " + (chosen.isPlayer ? "YOU" : FinalistRead.FirstName(ballot.Finalist).ToUpperInvariant())),
+                    where + ": the finalist by first name, or 'YOU' for the player.");
                 Assert.That(FinalePart(EpisodeHud.FinaleReasonHintName), Is.Null, where + ": in the hint's place.");
                 JurorFace(juror).onClick.Invoke();
                 yield return null;
@@ -282,8 +330,9 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// A season played to its end and loaded from its save: the page at both text sizes, with
-        /// every assertion of <see cref="AssertFinalePage"/>; the keyboard ring walked; and, in a
-        /// batch run, photographed on the 16:9 frame at each size and held there without a scroll.
+        /// every assertion of <see cref="AssertFinalePage"/>; a face the keyboard is on seen by its
+        /// lifted edge; the keyboard ring walked; and, in a batch run, photographed on the 16:9 frame
+        /// at each size and on the 4:3 one at the resting size, held on each without a scroll.
         /// </summary>
         [UnityTest]
         public IEnumerator FinalePage_TheCardsTheTallyAndTheWaysOnHoldAtBothTextSizes()
@@ -296,9 +345,22 @@ namespace Gamesim.Tests.PlayMode
                 yield return OpenFinalePanel();
                 string where = "The finale page" + (larger ? " at the larger text" : "");
                 AssertFinalePage(where);
+
+                // A face the keyboard is on is seen: its edge steps up from the others' (HudEmphasis).
+                var faces = FinalePart(EpisodeHud.FinaleJuryCardName).GetComponentsInChildren<Button>().Where(button => button.IsActive()).ToList();
+                Assert.That(faces.Count, Is.GreaterThanOrEqualTo(2), where + ": two faces to tell apart.");
+                Color Edge(Button face) => face.transform.Find("Border").GetComponent<Image>().color;
+                EventSystem.current.SetSelectedGameObject(faces[0].gameObject);
+                yield return null;
+                Assert.That(Edge(faces[0]), Is.EqualTo(UiTheme.Edge(UiTheme.Emphasis.Interactive)), where + ": the face the keyboard is on wears the lifted edge,");
+                Assert.That(Edge(faces[1]), Is.EqualTo(UiTheme.Edge(UiTheme.Emphasis.Resting)), where + ": the others their resting edge,");
+                Assert.That(Edge(faces[0]), Is.Not.EqualTo(Edge(faces[1])), where + ": so the two are told apart.");
+
                 yield return AssertKeyboardRing(where, ModalRoot);
-                if (Application.isBatchMode)
-                    yield return CaptureFraming(larger ? "finale-page-large" : "finale-page", inspect: frame => AssertTheFinalePageOnTheWideFrame(where + " at 16:9"));
+                if (!Application.isBatchMode) continue;
+                yield return CaptureFraming(larger ? "finale-page-large" : "finale-page", inspect: frame => AssertTheFinalePageOnTheFrame(where + " at 16:9", 16f / 9f));
+                if (!larger)
+                    yield return CaptureFraming("finale-page-43", inspect: frame => AssertTheFinalePageOnTheFrame(where + " at 4:3", 4f / 3f), width: 1200, height: 900);
             }
             director.ClosePanels();
             yield return ApplyTextSize(false);
@@ -343,18 +405,24 @@ namespace Gamesim.Tests.PlayMode
             var content = ActiveRect("Episode content");
             Assert.That(content.rect.height, Is.LessThanOrEqualTo(((RectTransform)content.parent).rect.height + .5f), "A reason open holds without a scroll.");
             AssertEveryLabelDraws(FinalePart(EpisodeHud.FinalePageName), "The finale page with a reason open");
-            if (Application.isBatchMode) yield return CaptureFraming("finale-votes", inspect: frame => AssertTheFinalePageOnTheWideFrame("The finale page with a reason open at 16:9"));
+            if (Application.isBatchMode) yield return CaptureFraming("finale-votes", inspect: frame => AssertTheFinalePageOnTheFrame("The finale page with a reason open at 16:9", 16f / 9f));
             director.ClosePanels();
         }
 
+        /// <summary>The number on one of the highlights' tiles, by the tile's caption.</summary>
+        private string HighlightValue(string caption) =>
+            ((RectTransform)FinalePart(EpisodeHud.FinaleHighlightsName).Find(caption)).GetComponentsInChildren<TMP_Text>().Single(label => label.name == "Value").text;
+
         /// <summary>
         /// A jury of fourteen (the EndScreens fixture of sixteen) at both text sizes: a face a ballot,
-        /// in no more than three rows, inside the card, the page holding without a scroll; in a batch
-        /// run photographed on the 16:9 frame. Then the tie fixture: equal halves of the bar, the
-        /// jury called tied, and the highlights' vote tile saying so.
+        /// in no more than three rows, inside the card, the page holding without a scroll, and the
+        /// highlights at the fixture's known counts; in a batch run photographed on the 16:9 frame.
+        /// Then the tie fixture: equal halves of the bar, the jury called tied, and the highlights'
+        /// vote tile saying so. Then a player in the final two: "You" on the chips of the ballots
+        /// for them and "VOTED YOU" over the reason, as every reader names the player.
         /// </summary>
         [UnityTest]
-        public IEnumerator FinalePage_AJuryOfFourteenHoldsAndATieDrawsEqualHalves()
+        public IEnumerator FinalePage_AJuryOfFourteenHoldsATieDrawsEqualHalvesAndAPlayerFinalistIsYou()
         {
             var sixteen = Finished(16);
             Assert.That(SeasonReport.JuryBallots(sixteen), Has.Count.EqualTo(14), "A jury of fourteen.");
@@ -370,8 +438,16 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(faces, Has.Count.EqualTo(14), where + ": fourteen faces.");
                 int rows = faces.Select(face => Mathf.RoundToInt(ScreenRect((RectTransform)face.transform).yMax)).Distinct().Count();
                 Assert.That(rows, Is.LessThanOrEqualTo(3), where + ": in no more than three rows.");
+                // The counts the fixture is known to have: sixteen houseguests in week one, fourteen
+                // out, the champion's three HoHs and two vetoes the only wins, thirteen votes to one.
+                Assert.That(HighlightValue("Houseguests"), Is.EqualTo("16"), where);
+                Assert.That(HighlightValue("Week"), Is.EqualTo("1"), where);
+                Assert.That(HighlightValue("Evictions"), Is.EqualTo("14"), where);
+                Assert.That(HighlightValue("Competitions held"), Is.EqualTo("5"), where);
+                Assert.That(HighlightValue("Jury vote"), Is.EqualTo("13–1"), where);
+                Assert.That(HighlightValue("Winner"), Is.EqualTo("One"), where);
                 if (Application.isBatchMode && !larger)
-                    yield return CaptureFraming("finale-page-14", inspect: frame => AssertTheFinalePageOnTheWideFrame(where + " at 16:9"));
+                    yield return CaptureFraming("finale-page-14", inspect: frame => AssertTheFinalePageOnTheFrame(where + " at 16:9", 16f / 9f));
             }
             director.ClosePanels();
             yield return ApplyTextSize(false);
@@ -380,6 +456,7 @@ namespace Gamesim.Tests.PlayMode
             var champion = tied.Find(tied.winnerId);
             var runnerUp = tied.Find(tied.runnerUpId);
             int each = tied.votes.Count(v => v.targetId == champion.id);
+            Assert.That(each, Is.EqualTo(3), "Six ballots, three each way.");
             Assert.That(tied.votes.Count(v => v.targetId == runnerUp.id), Is.EqualTo(each), "The fixture is tied.");
             yield return InstallBuiltFinale(tied);
             yield return OpenFinalePanel();
@@ -391,10 +468,33 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(first.rect.width, Is.EqualTo(second.rect.width).Within(.5f), "A tie draws equal halves.");
             Assert.That(two.GetComponentsInChildren<TMP_Text>().Single(label => label.name == EpisodeHud.FinaleCountEyebrowName).text,
                 Is.EqualTo("THE JURY IS TIED"), "and is called a tie, as the reveal calls it.");
-            Assert.That(TileNumber(two, EpisodeHud.FinaleWinnerTallyName), Is.EqualTo(each.ToString()));
-            Assert.That(TileNumber(two, EpisodeHud.FinaleRunnerUpTallyName), Is.EqualTo(each.ToString()));
-            var vote = (RectTransform)FinalePart(EpisodeHud.FinaleHighlightsName).Find(EpisodeDirector.JuryVoteTileCaption);
-            Assert.That(vote.GetComponentsInChildren<TMP_Text>().Single(label => label.name == "Value").text, Is.EqualTo(each + "–" + each));
+            Assert.That(TileNumber(two, EpisodeHud.FinaleWinnerTallyName), Is.EqualTo("3"));
+            Assert.That(TileNumber(two, EpisodeHud.FinaleRunnerUpTallyName), Is.EqualTo("3"));
+            Assert.That(HighlightValue("Houseguests"), Is.EqualTo("8"));
+            Assert.That(HighlightValue("Evictions"), Is.EqualTo("6"));
+            Assert.That(HighlightValue("Jury vote"), Is.EqualTo("3–3"));
+            director.ClosePanels();
+
+            // A player who reached the final two is "you" where the page names the finalist.
+            var yours = PlayerRunnerUp();
+            yield return InstallBuiltFinale(yours);
+            yield return OpenFinalePanel();
+            AssertFinalePage("A player in the final two");
+            var state = director.Snapshot;
+            Assert.That(state.runnerUpId, Is.EqualTo(state.playerId), "The player is the runner-up.");
+            var forYou = SeasonReport.JuryBallots(state).Where(ballot => ballot.FinalistId == state.playerId).ToList();
+            Assert.That(forYou, Is.Not.Empty, "Somebody voted for the player.");
+            var chips = FinalePart(EpisodeHud.FinaleJuryCardName).GetComponentsInChildren<TMP_Text>()
+                .Where(label => label.name == EpisodeHud.FinaleJurorChipWordName).Select(label => label.text).ToList();
+            Assert.That(chips.Count(word => word == "You"), Is.EqualTo(forYou.Count), "A 'You' chip for each ballot for the player,");
+            Assert.That(chips.Count(word => word == FinalistRead.FirstName(state.Find(state.winnerId).name)), Is.EqualTo(chips.Count - forYou.Count),
+                "the winner's first name on the rest.");
+            var juror = state.Find(forYou[0].JurorId);
+            JurorFace(juror).onClick.Invoke();
+            yield return null;
+            Assert.That(FinalePart(EpisodeHud.FinaleReasonEyebrowName).GetComponent<TMP_Text>().text, Does.EndWith("VOTED YOU"),
+                "and 'VOTED YOU' over their reason.");
+            Assert.That(FinaleReasonLine(), Is.EqualTo(forYou[0].Reason));
             director.ClosePanels();
         }
 
@@ -419,7 +519,6 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(director.IsSeasonReportOpen, Is.False, "Close closes it,");
             Assert.That(director.IsPhasePanelOpen, Is.True, "and leaves the page under it.");
-            if (!director.IsPhasePanelOpen) yield return OpenFinalePanel();
 
             int revision = director.Snapshot.revision;
             FinaleControl(EpisodeDirector.JuryQuestionsCaption).onClick.Invoke();

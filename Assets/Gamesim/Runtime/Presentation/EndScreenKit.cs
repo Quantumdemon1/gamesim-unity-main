@@ -227,20 +227,44 @@ namespace Gamesim.Presentation
             int radius = Mathf.Max(2, Mathf.RoundToInt(height * .5f) - 1);
             var ground = HudPrimitives.Fill("Track", track, new Color(UiTheme.SurfaceRaised.r, UiTheme.SurfaceRaised.g, UiTheme.SurfaceRaised.b, .9f), radius);
             ground.anchorMin = Vector2.zero; ground.anchorMax = Vector2.one; ground.offsetMin = Vector2.zero; ground.offsetMax = Vector2.zero;
-            int total = Math.Max(0, a) + Math.Max(0, b);
-            if (total == 0) return track;
-            float first = width * a / total;
-            if (a > 0)
+            var (first, second) = SplitWidths(width, height, a, b);
+            if (first > 0f)
             {
                 var left = HudPrimitives.Fill("First", track, tintA, radius);
-                Place(left, 0f, 0f, Mathf.Max(height, first - (b > 0 ? 2f : 0f)), height);
+                Place(left, 0f, 0f, first, height);
             }
-            if (b > 0)
+            if (second > 0f)
             {
+                // From the track's end back, so a part lifted to its least never runs past it.
                 var right = HudPrimitives.Fill("Second", track, tintB, radius);
-                Place(right, first + (a > 0 ? 2f : 0f), 0f, Mathf.Max(height, width - first - (a > 0 ? 2f : 0f)), height);
+                Place(right, width - second, 0f, second, height);
             }
             return track;
+        }
+
+        /// <summary>
+        /// The widths <see cref="SplitBar"/> draws its two parts at: each its share of
+        /// <paramref name="width"/> less two units at the split, never narrower than
+        /// <paramref name="height"/> (a round end needs that much to read as a part at all), and a
+        /// part lifted to that least takes the difference from the other, so both stay inside the
+        /// track with the gap between them. Public so a test can hold the drawn bar to the rule.
+        /// </summary>
+        public static (float first, float second) SplitWidths(float width, float height, int a, int b)
+        {
+            a = Math.Max(0, a); b = Math.Max(0, b);
+            int total = a + b;
+            if (total == 0) return (0f, 0f);
+            float split = width * a / total;
+            float first = a > 0 ? Mathf.Max(height, split - (b > 0 ? 2f : 0f)) : 0f;
+            float second = b > 0 ? Mathf.Max(height, width - split - (a > 0 ? 2f : 0f)) : 0f;
+            float room = width - (a > 0 && b > 0 ? 4f : 0f);
+            float over = first + second - room;
+            if (over > 0f)
+            {
+                if (first >= second) first = Mathf.Max(0f, first - over);
+                else second = Mathf.Max(0f, second - over);
+            }
+            return (first, second);
         }
 
         /// <summary>The runner-up's steel, as every end screen wears it beside the winner's gold.</summary>
@@ -281,7 +305,13 @@ namespace Gamesim.Presentation
         /// A whole glow sprite drawn behind <paramref name="host"/> and out past it by <paramref name="reach"/>
         /// on every side, in <paramref name="tint"/>: the pack's halo under a card. Null without the sprite.
         /// </summary>
-        public static Image Halo(RectTransform host, string path, float reach, Color tint)
+        public static Image Halo(RectTransform host, string path, float reach, Color tint) => Halo(host, path, reach, reach, reach, reach, tint);
+
+        /// <summary>
+        /// The same halo reaching a different distance each side: as far as the room above a card
+        /// or the column beside it allows, where a mask would cut a halo that reached further.
+        /// </summary>
+        public static Image Halo(RectTransform host, string path, float left, float top, float right, float bottom, Color tint)
         {
             var sprite = UiTheme.Pack(path);
             if (sprite == null) return null;
@@ -290,7 +320,7 @@ namespace Gamesim.Presentation
             rect.SetParent(host, false);
             rect.SetAsFirstSibling();
             rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one;
-            rect.offsetMin = new Vector2(-reach, -reach); rect.offsetMax = new Vector2(reach, reach);
+            rect.offsetMin = new Vector2(-left, -bottom); rect.offsetMax = new Vector2(right, top);
             image.sprite = sprite;
             image.type = Image.Type.Simple;
             image.preserveAspect = false;

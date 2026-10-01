@@ -81,7 +81,9 @@ namespace Gamesim.Episode
         private const float FinaleGap = 12f, FinalePad = 14f, FinaleRowGap = 10f, FinaleWell = 6f;
         /// <summary>The winner's portrait: as tall as this, and never shorter than the least when the row is squeezed.</summary>
         private const float FinalePortrait = 180f, FinalePortraitLeast = 120f;
-        private const float FinaleHighlightTile = 60f, FinaleWayHeight = 64f, FinaleThinHeight = 46f;
+        private const float FinaleWayHeight = 64f, FinaleThinHeight = 46f;
+        /// <summary>How far the winner's halo reaches past its card, where the room allows.</summary>
+        private const float FinaleHaloReach = 28f;
         /// <summary>The jury's face sizes, tried largest first: a jury past eight starts smaller.</summary>
         private static readonly float[] FinaleFacesSmall = { 72f, 64f, 56f, 48f, 40f, 36f }, FinaleFacesLarge = { 56f, 48f, 44f, 40f, 36f };
         private static readonly Color FinaleLightGold = new Color(1f, .9f, .58f);
@@ -98,7 +100,14 @@ namespace Gamesim.Episode
             UncapContent();
             float s = FontScale, width = ContentWidth(), gap = FinaleGap * s;
             float room = FinaleRoom();
-            float highlights = FinaleHighlightsHeight(), ways = FinaleWayHeight * s, thin = FinaleThinHeight * s;
+            var board = new GameObject(FinalePageName, typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
+            board.SetParent(content, false);
+            // A probe to measure words on, as the free-time board measures; gone once the page is laid.
+            var probe = NewText(board, "", 12, Paper);
+            float highlights = FinaleHighlightsHeight(probe, spec.Highlights, width, out int captionLines);
+            probe.gameObject.SetActive(false);
+            Destroy(probe.gameObject);
+            float ways = FinaleWayHeight * s, thin = FinaleThinHeight * s;
             float rest = gap + highlights + gap + ways + FinaleRowGap * s + thin;
             int jurors = spec.Jurors != null ? spec.Jurors.Count : 0;
             var faces = jurors > 8 ? FinaleFacesLarge : FinaleFacesSmall;
@@ -129,17 +138,18 @@ namespace Gamesim.Episode
                 cards = Mathf.Max(cards, FinaleJuryFixed() + FinaleJuryArea(jurors, juryWidth, face));
             }
 
-            var board = new GameObject(FinalePageName, typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
-            board.SetParent(content, false);
-            float y = cards + gap + highlights + gap;
+            // The winner's halo reaches past its card's top by what the room leaves over the cards, so
+            // the scroll's mask never cuts it; the rows are lifted by as much.
+            float lift = Mathf.Clamp(most - cards, 0f, FinaleHaloReach * s);
+            float y = lift + cards + gap + highlights + gap;
             FinaleWayRow(board, FinaleWaysName, y, width, ways, spec.Ways, true);
             y += ways + FinaleRowGap * s;
             FinaleWayRow(board, FinaleSecondRowName, y, width, thin, spec.SecondRow, false);
             float total = y + thin;
-            FinaleWinnerCard(board, 0f, 0f, winnerWidth, cards, spec, state);
-            FinaleFinalTwoCard(board, winnerWidth + gap, 0f, twoWidth, cards, spec, state);
-            FinaleJuryCard(board, winnerWidth + gap + twoWidth + gap, 0f, juryWidth, cards, face, spec, state);
-            FinaleHighlights(board, cards + gap, width, highlights, spec.Highlights);
+            FinaleWinnerCard(board, 0f, lift, winnerWidth, cards, lift, spec, state);
+            FinaleFinalTwoCard(board, winnerWidth + gap, lift, twoWidth, cards, spec, state);
+            FinaleJuryCard(board, winnerWidth + gap + twoWidth + gap, lift, juryWidth, cards, face, spec, state);
+            FinaleHighlights(board, lift + cards + gap, width, highlights, spec.Highlights, captionLines);
             var size = board.GetComponent<LayoutElement>();
             size.minHeight = size.preferredHeight = total;
         }
@@ -166,12 +176,16 @@ namespace Gamesim.Episode
                 + 2f * BoardLine(13) + 4f * s + BoardLine(12) + FinalePad * s;
         }
 
-        /// <summary>The FINAL TWO card without its portraits: the heading, each finalist's name and role row, the count's eyebrow and the bar.</summary>
-        private float FinaleTwoFixed()
+        /// <summary>
+        /// The FINAL TWO card without its portraits: the heading, each finalist's name and role row -
+        /// the role on a line of its own over the tile when <paramref name="stacked"/> - the count's
+        /// eyebrow and the bar.
+        /// </summary>
+        private float FinaleTwoFixed(bool stacked)
         {
             float s = FontScale;
-            return FinalePad * s + BoardLine(14) + 8f * s + 8f * s + 6f * s + BoardLine(15) + 4f * s + 28f * s + 8f * s
-                + 8f * s + BoardLine(11) + 4f * s + 22f * s + FinalePad * s;
+            return FinalePad * s + BoardLine(14) + 8f * s + 8f * s + 6f * s + BoardLine(15) + 4f * s + (stacked ? BoardLine(12) + 2f * s : 0f)
+                + 28f * s + 8f * s + 8f * s + BoardLine(11) + 4f * s + 22f * s + FinalePad * s;
         }
 
         /// <summary>The narrowest the winner's card runs: its portrait at full width in its well, and the padding.</summary>
@@ -209,7 +223,33 @@ namespace Gamesim.Episode
             return rows * FinaleFaceRow(face) + (rows - 1) * 6f * FontScale;
         }
 
-        private float FinaleHighlightsHeight() => 12f * FontScale + BoardLine(14) + 6f * FontScale + FinaleHighlightTile * FontScale + 12f * FontScale;
+        /// <summary>The highlights' tiles across <paramref name="width"/>: the width each takes, and the words' room beside the mark.</summary>
+        private void FinaleTileWidths(int count, float width, out float tileWidth, out float textWidth)
+        {
+            float s = FontScale, pad = 12f * s, gap = 10f * s, glyph = 26f * s;
+            tileWidth = count > 0 ? (width - 2f * pad - gap * (count - 1)) / count : width - 2f * pad;
+            textWidth = Mathf.Max(30f, tileWidth - 10f * s - glyph - 8f * s - 8f * s);
+        }
+
+        /// <summary>A highlight tile's height with its caption on <paramref name="captionLines"/> lines, each in a box 1.32 times its size.</summary>
+        private float FinaleTileHeight(int captionLines) =>
+            8f * FontScale + BoardLine(20) + 2f * FontScale + captionLines * BoardLine(11) + 8f * FontScale;
+
+        /// <summary>
+        /// The highlights' height: the heading and a row of tiles whose captions take two lines when
+        /// any of them ("Competitions held") would not fit one at the width the tiles come to -
+        /// measured on <paramref name="probe"/> rather than shrunk to the floor.
+        /// </summary>
+        private float FinaleHighlightsHeight(TMP_Text probe, IList<FinaleStat> stats, float width, out int captionLines)
+        {
+            float s = FontScale;
+            int count = stats != null ? stats.Count : 0;
+            FinaleTileWidths(count, width, out _, out float textWidth);
+            captionLines = 1;
+            for (int i = 0; i < count; i++)
+                if (BoardWidthOf(probe, stats[i].Caption, 11) > textWidth - 2f) { captionLines = 2; break; }
+            return 12f * s + BoardLine(14) + 6f * s + FinaleTileHeight(captionLines) + 12f * s;
+        }
 
         // ------------------------------------------------------------ the pieces
 
@@ -249,16 +289,23 @@ namespace Gamesim.Episode
         /// the crown over its top edge, 'WINNER', the name on the pack's plate, the Game Sense numbers
         /// on two lines, and at the foot the sentence the whole-season walk reads.
         /// </summary>
-        private void FinaleWinnerCard(RectTransform board, float x, float y, float width, float height, FinalePageSpec spec, EpisodeState state)
+        private void FinaleWinnerCard(RectTransform board, float x, float y, float width, float height, float haloTop, FinalePageSpec spec, EpisodeState state)
         {
             float s = FontScale, pad = FinalePad * s, inner = width - 2f * pad;
             var winner = state.Find(spec.WinnerId);
             if (winner == null) return;
             var card = EndScreenKit.Box(FinaleWinnerCardName, board, x, y, width, height);
-            // The pack's card, then its halo put in front of it in the hierarchy, which draws it behind.
+            // The pack's card, then its halo put in front of it in the hierarchy, which draws it
+            // behind. The halo reaches past the card's top by what the row was lifted and past its
+            // left by the column's padding - the scroll's mask cuts anything further - and its own
+            // reach on the sides the row's other parts cover.
             EndScreenKit.Skin(card, PackArt.Pack9SeasonFinaleWinnerCardFill, PackArt.Pack9SeasonFinaleWinnerCardEdge, 14f * s,
                 new Color(Surface.r, Surface.g, Surface.b, .96f), UiTheme.Gold, PackArt.SeasonWinnerHero, UiTheme.SurfaceRaised, UiTheme.Gold);
-            EndScreenKit.Halo(card, PackArt.Pack9SeasonFinaleWinnerCardHalo, 28f * s, new Color(UiTheme.Gold.r, UiTheme.Gold.g, UiTheme.Gold.b, .6f));
+            float reach = FinaleHaloReach * s;
+            var column = content != null ? content.GetComponent<VerticalLayoutGroup>() : null;
+            float leftRoom = column != null ? column.padding.left : 8f;
+            EndScreenKit.Halo(card, PackArt.Pack9SeasonFinaleWinnerCardHalo, Mathf.Min(reach, leftRoom), Mathf.Clamp(haloTop, 0f, reach), reach, reach,
+                new Color(UiTheme.Gold.r, UiTheme.Gold.g, UiTheme.Gold.b, .6f));
 
             // The portrait as tall as the card leaves it, up to 180, in a well lit gold from below.
             float well = FinaleWell * s;
@@ -358,15 +405,18 @@ namespace Gamesim.Episode
             at += BoardLine(14) + 8f * s;
 
             float cardWidth = (inner - gap) * .5f, cardPad = 8f * s;
+            // On a narrow card the role word goes on a line of its own over the count's tile rather
+            // than beside it, where "Runner-Up" would shrink to an ellipsis.
+            bool stacked = cardWidth - 2f * cardPad - 40f * s - 6f * s < 64f;
             // The faces as tall as the card leaves them, up to 180, and as wide as their card allows:
             // never squashed, so a narrow card gets a shorter face.
-            float portraitHeight = Mathf.Clamp(height - FinaleTwoFixed(), 48f, FinalePortrait);
+            float portraitHeight = Mathf.Clamp(height - FinaleTwoFixed(stacked), 48f, FinalePortrait);
             float portraitWidth = Mathf.Max(40f, Mathf.Min(cardWidth - 2f * cardPad, portraitHeight * (150f / 180f)));
             portraitHeight = Mathf.Min(portraitHeight, portraitWidth * (180f / 150f));
-            float finalistHeight = cardPad + portraitHeight + 6f * s + BoardLine(15) + 4f * s + 28f * s + cardPad;
-            FinaleFinalist(card, pad, at, cardWidth, finalistHeight, portraitWidth, portraitHeight, winner, FinaleWinnerRole, UiTheme.Gold,
+            float finalistHeight = cardPad + portraitHeight + 6f * s + BoardLine(15) + 4f * s + (stacked ? BoardLine(12) + 2f * s : 0f) + 28f * s + cardPad;
+            FinaleFinalist(card, pad, at, cardWidth, finalistHeight, portraitWidth, portraitHeight, stacked, winner, FinaleWinnerRole, UiTheme.Gold,
                 spec.ForWinner, FinaleWinnerTallyName);
-            FinaleFinalist(card, pad + cardWidth + gap, at, cardWidth, finalistHeight, portraitWidth, portraitHeight, runnerUp, FinaleRunnerUpRole,
+            FinaleFinalist(card, pad + cardWidth + gap, at, cardWidth, finalistHeight, portraitWidth, portraitHeight, stacked, runnerUp, FinaleRunnerUpRole,
                 EndScreenKit.Steel, spec.ForRunnerUp, FinaleRunnerUpTallyName);
             at += finalistHeight + 8f * s;
 
@@ -384,9 +434,12 @@ namespace Gamesim.Episode
             EndScreenKit.SplitBar(card, pad, at, inner, 22f * s, spec.ForWinner, spec.ForRunnerUp, UiTheme.Gold, EndScreenKit.Steel);
         }
 
-        /// <summary>One finalist on the FINAL TWO card: the pack's finalist card, the face, the name, the role word and the count tile.</summary>
+        /// <summary>
+        /// One finalist on the FINAL TWO card: the pack's finalist card, the face, the name, the role
+        /// word and the count tile - beside each other, or the tile under the role when <paramref name="stacked"/>.
+        /// </summary>
         private void FinaleFinalist(RectTransform parent, float x, float y, float width, float height, float portraitWidth, float portraitHeight,
-            ContestantState who, string role, Color tint, int votes, string tallyName)
+            bool stacked, ContestantState who, string role, Color tint, int votes, string tallyName)
         {
             float s = FontScale, pad = 8f * s, inner = width - 2f * pad;
             var card = EndScreenKit.Box(FinaleFinalistPrefix + who.name, parent, x, y, width, height);
@@ -406,10 +459,24 @@ namespace Gamesim.Episode
             name.overflowMode = TextOverflowModes.Ellipsis;
             AutoSize(name, 10);
             at += BoardLine(15) + 4f * s;
-            // The role word and the count's tile on one row.
             float tileWidth = 40f * s, tileHeight = 28f * s, roleBox = BoardLine(12);
+            if (stacked)
+            {
+                // The role on a line of its own, the count's tile centred under it.
+                var line = FixedText(card, role, 12, tint, new Vector2(pad, -at), new Vector2(inner, roleBox));
+                line.name = "Role";
+                if (semibold != null) line.font = semibold;
+                line.alignment = TextAlignmentOptions.Center;
+                line.textWrappingMode = TextWrappingModes.NoWrap;
+                line.overflowMode = TextOverflowModes.Ellipsis;
+                AutoSize(line, 9);
+                at += roleBox + 2f * s;
+                EndScreenKit.NumberTile(card, tallyName, votes, tint, (width - tileWidth) * .5f, at, tileWidth, tileHeight, Mathf.RoundToInt(15 * s));
+                return;
+            }
+            // The role word and the count's tile on one row.
             var word = FixedText(card, role, 12, tint, new Vector2(pad, -(at + (tileHeight - roleBox) * .5f)),
-                new Vector2(Mathf.Max(30f, inner - tileWidth - 6f * s), roleBox));
+                new Vector2(inner - tileWidth - 6f * s, roleBox));
             word.name = "Role";
             if (semibold != null) word.font = semibold;
             word.alignment = TextAlignmentOptions.MidlineLeft;
@@ -466,17 +533,17 @@ namespace Gamesim.Episode
             bool forWinner = juror.FinalistId == spec.WinnerId;
             var tint = forWinner ? UiTheme.Gold : EndScreenKit.Steel;
             bool pressed = spec.PressedJurorId != null && spec.PressedJurorId == juror.Id;
-            // A faint seat behind the face, which the keyboard's and the pointer's tints multiply up:
-            // a tint on a clear panel shows nothing, and a face the keyboard is on must be seen.
-            var seat = Panel(juror.Caption, grid, new Color(1f, 1f, 1f, pressed ? .1f : .04f), 8);
+            // A seat behind the face, made as the way tiles are: a quiet ground the pointer's and the
+            // keyboard's tints lift (a tint on a clear or white panel shows nothing), and an edge
+            // HudEmphasis steps up on hover and focus, so a face the keyboard is on is seen. The
+            // pressed face sits a level up at rest.
+            var level = pressed ? UiTheme.Emphasis.Interactive : UiTheme.Emphasis.Resting;
+            var seat = Panel(juror.Caption, grid, new Color(UiTheme.SurfaceRaised.r, UiTheme.SurfaceRaised.g, UiTheme.SurfaceRaised.b, pressed ? .9f : .55f), 8);
+            UiTheme.AddBorder(seat, 8, UiTheme.Edge(level));
+            HudEmphasis.Promote(seat, level);
             EndScreenKit.Place(seat, x, y, rim, height);
             string id = juror.Id;
-            var button = Pressable(seat, () => spec.PressJuror?.Invoke(id));
-            var colours = button.colors;
-            colours.highlightedColor = new Color(3f, 3f, 3f);
-            colours.selectedColor = colours.highlightedColor;
-            colours.pressedColor = new Color(4f, 4f, 4f);
-            button.colors = colours;
+            Pressable(seat, () => spec.PressJuror?.Invoke(id));
             // The pack's glow behind the ring, in the finalist's colour, brighter on the pressed face.
             var glow = EndScreenKit.Picture("Ring glow", seat, pressed ? PackArt.Pack9SharedFocusHalo : PackArt.Pack9SharedPortraitRingGlow, null, tint,
                 new Vector2(rim * .5f, -rim * .5f), rim);
@@ -491,12 +558,13 @@ namespace Gamesim.Episode
             if (medium != null) name.font = medium;
             AutoSize(name, 7);
             at += nameBox + 3f * s;
-            // The finalist's first name on a chip in the finalist's colour, as the reveal's chips say it.
+            // The finalist's first name on a chip in the finalist's colour, as the reveal's chips say
+            // it; "You" where the finalist is the player, as every reader names the player.
             float chipHeight = 18f * s;
             var chip = HudPrimitives.Fill(FinaleJurorChipName, seat, tint, UiTheme.ControlRadius);
             UiTheme.PackSliced(chip.GetComponent<Image>(), PackArt.Pack9SharedPillFill, chipHeight * .5f, tint);
             EndScreenKit.Place(chip, -2f * s, at, rim + 4f * s, chipHeight);
-            var word = NewText(chip, FinalistRead.FirstName(finalist != null ? finalist.name : juror.FinalistId), 10, UiTheme.OnColor(tint));
+            var word = NewText(chip, finalist != null ? EpisodeDirector.FinalistChipWord(finalist) : juror.FinalistId, 10, UiTheme.OnColor(tint));
             word.name = FinaleJurorChipWordName;
             var bold = UiTheme.Font(UiTheme.Weight.Bold);
             if (bold != null) word.font = bold;
@@ -530,8 +598,9 @@ namespace Gamesim.Episode
             bool forWinner = juror.FinalistId == spec.WinnerId;
             var tint = forWinner ? UiTheme.Gold : EndScreenKit.Steel;
             var finalist = state.Find(juror.FinalistId);
-            string chosen = FinalistRead.FirstName(finalist != null ? finalist.name : "");
-            var eyebrow = FixedText(card, (juror.IsPlayer ? "YOU" : juror.Caption.ToUpperInvariant()) + " · VOTED " + chosen.ToUpperInvariant(), 10, tint,
+            // "VOTED YOU" where the finalist is the player, as the record says "Voted for you".
+            string chosen = EpisodeDirector.FinalistChipWord(finalist).ToUpperInvariant();
+            var eyebrow = FixedText(card, (juror.IsPlayer ? "YOU" : juror.Caption.ToUpperInvariant()) + " · VOTED " + chosen, 10, tint,
                 new Vector2(x, -y), new Vector2(width, eyebrowBox));
             eyebrow.name = FinaleReasonEyebrowName;
             eyebrow.characterSpacing = 2f;
@@ -547,8 +616,11 @@ namespace Gamesim.Episode
             AutoSize(line, 9);
         }
 
-        /// <summary>SEASON HIGHLIGHTS: six tiles of real counts, each with its mark, its number and the caption it is found by.</summary>
-        private void FinaleHighlights(RectTransform board, float y, float width, float height, IList<FinaleStat> stats)
+        /// <summary>
+        /// SEASON HIGHLIGHTS: six tiles of real counts, each with its mark, its number and the caption
+        /// it is found by, on <paramref name="captionLines"/> lines.
+        /// </summary>
+        private void FinaleHighlights(RectTransform board, float y, float width, float height, IList<FinaleStat> stats, int captionLines)
         {
             float s = FontScale, pad = 12f * s, inner = width - 2f * pad, gap = 10f * s;
             var strip = EndScreenKit.Box(FinaleHighlightsName, board, 0f, y, width, height);
@@ -556,10 +628,10 @@ namespace Gamesim.Episode
                 new Color(Surface.r, Surface.g, Surface.b, .94f), new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .5f),
                 PackArt.Pack8Section, UiTheme.Surface);
             FinaleHeading(strip, FinaleHighlightsHeading, pad, pad, inner);
-            float at = pad + BoardLine(14) + 6f * s, tileHeight = FinaleHighlightTile * s;
+            float at = pad + BoardLine(14) + 6f * s, tileHeight = FinaleTileHeight(captionLines);
             int count = stats != null ? stats.Count : 0;
             if (count == 0) return;
-            float tileWidth = (inner - gap * (count - 1)) / count;
+            FinaleTileWidths(count, width, out float tileWidth, out _);
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             for (int i = 0; i < count; i++)
             {
@@ -572,7 +644,7 @@ namespace Gamesim.Episode
                 var mark = FinalePicture("Icon", tile, stat.Icon, null, stat.Fallback, stat.Tint, new Vector2(left + glyph * .5f, -tileHeight * .5f), glyph);
                 if (mark != null) left += glyph + 8f * s;
                 float textWidth = Mathf.Max(30f, tileWidth - left - 8f * s);
-                float valueBox = BoardLine(20), captionBox = BoardLine(11);
+                float valueBox = BoardLine(20), captionBox = captionLines * BoardLine(11);
                 float top = Mathf.Max(2f * s, (tileHeight - valueBox - 2f * s - captionBox) * .5f);
                 var value = FixedText(tile, stat.Value, 20, Paper, new Vector2(left, -top), new Vector2(textWidth, valueBox));
                 value.name = "Value";
@@ -582,9 +654,10 @@ namespace Gamesim.Episode
                 AutoSize(value, 12);
                 var caption = FixedText(tile, stat.Caption, 11, UiTheme.Muted, new Vector2(left, -(top + valueBox + 2f * s)), new Vector2(textWidth, captionBox));
                 caption.name = "Caption";
-                caption.textWrappingMode = TextWrappingModes.NoWrap;
+                caption.alignment = TextAlignmentOptions.TopLeft;
+                caption.textWrappingMode = captionLines > 1 ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
                 caption.overflowMode = TextOverflowModes.Ellipsis;
-                AutoSize(caption, 8);
+                AutoSize(caption, 9);
             }
         }
 

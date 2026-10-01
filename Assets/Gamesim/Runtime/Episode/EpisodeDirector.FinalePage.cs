@@ -66,6 +66,13 @@ namespace Gamesim.Episode
         public static string JuryVoteTileValue(int forWinner, int forRunnerUp) => forWinner + "–" + forRunnerUp;
 
         /// <summary>
+        /// A finalist on a juror's chip: their first name, or "You" for the player, as every reader
+        /// names the player where it names them (the record's "Voted for you").
+        /// </summary>
+        public static string FinalistChipWord(ContestantState finalist) =>
+            finalist == null ? string.Empty : finalist.isPlayer ? "You" : FinalistRead.FirstName(finalist.name);
+
+        /// <summary>
         /// SEASON HIGHLIGHTS: six real counts (decision 11) - the houseguests, the weeks, the
         /// evictions, the competitions held (every one has one winner, the final parts included),
         /// the jury's vote and the one winner. Never a count the ledger does not keep.

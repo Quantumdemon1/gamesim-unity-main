@@ -324,6 +324,65 @@ namespace Gamesim.Tests.PlayMode
             yield return ApplyTextSize(false);
         }
 
+        /// <summary>
+        /// A breach is a line of the footer's warning rank (<see cref="EpisodeHud.FooterRank"/>). Over
+        /// the nomination's outcome - what comes next over what continuing costs - it takes the strip
+        /// alone, the cost line hidden under it, and taken down it gives back both lines exactly as
+        /// they were. Over a resting warning it leads that warning in the one line, under its name,
+        /// and gives it back. On the veto decision, which has no strip, it builds one, and the strip
+        /// is hidden again when it goes. Nothing of it commits anything.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator YourWord_ABreachTakesTheFootersWarningRankAndGivesEveryLineBack()
+        {
+            yield return InstallNomination(8, false, NominationBlock.Houseguests);
+            yield return OpenStation();
+            yield return null;
+            var hud = director.GetComponentInChildren<EpisodeHud>();
+            int revision = director.Snapshot.revision;
+            var lines = FooterLines();
+            Assert.That(lines.Select(line => line.Item1), Is.EqualTo(new[] { EpisodeHud.UpNextName, EpisodeDirector.MovingOnCostsName }),
+                "Precondition: the outcome's strip says what comes next over what continuing costs.");
+            var cost = LiveStrip().GetComponentsInChildren<TMP_Text>(true).Single(label => label.name == EpisodeDirector.MovingOnCostsName);
+
+            hud.FooterBreachWarning("A probe breach.", "A probe's short form.");
+            Assert.That(FooterLines(), Is.EqualTo(new[] { (EpisodeHud.BreachWarningName, "A probe breach.") }), "The breach takes the strip alone,");
+            Assert.That(cost.gameObject.activeSelf, Is.False, "the cost line hidden under it,");
+            Assert.That(FooterWords().color, Is.EqualTo(UiTheme.Warning), "in the warning colour.");
+            hud.FooterBreachWarning(null);
+            Assert.That(FooterLines(), Is.EqualTo(lines), "Taken down, the strip says both lines as it did,");
+            Assert.That(cost.gameObject.activeSelf, Is.True, "the cost line back under what comes next.");
+
+            hud.PinnedNote("Moving on lets the probe pass.", EpisodeDirector.AdvanceWarningName, true);
+            hud.FooterBreachWarning("A probe breach.", "A probe's short form.");
+            Assert.That(FooterLines(), Is.EqualTo(new[] { (EpisodeDirector.AdvanceWarningName, "A probe breach. Moving on lets the probe pass.") }),
+                "Over a resting warning the breach leads it in the one line, under the warning's name,");
+            hud.FooterBreachWarning(null);
+            Assert.That(FooterLines(), Is.EqualTo(new[] { (EpisodeDirector.AdvanceWarningName, "Moving on lets the probe pass.") }),
+                "and gives it back exactly.");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "Nothing of it commits anything.");
+            director.ClosePanels();
+            yield return null;
+
+            // The player's veto decision is its own way on: nothing is pinned and nothing is in the footer.
+            yield return InstallStrategySeason(49, state =>
+            {
+                AtVetoMeeting(state, true);
+                state.houseEvents.RemoveAll(item => item.IsStory && !item.resolved);
+            });
+            HoldTheHouseForTheFixture();
+            yield return OpenStation();
+            yield return null;
+            Assert.That(ActiveRect(EpisodeHud.StrategyStripName), Is.Null, "Precondition: the veto decision has no footer strip.");
+            hud = director.GetComponentInChildren<EpisodeHud>();
+            hud.FooterBreachWarning("A probe breach.");
+            Assert.That(FooterLines(), Is.EqualTo(new[] { (EpisodeHud.BreachWarningName, "A probe breach.") }), "A breach builds the strip it needs,");
+            hud.FooterBreachWarning(null);
+            Assert.That(ActiveRect(EpisodeHud.StrategyStripName), Is.Null, "and the strip goes with it.");
+            director.ClosePanels();
+            yield return null;
+        }
+
         // ---------------------------------------------------------------- the veto
 
         /// <summary>

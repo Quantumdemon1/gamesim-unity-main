@@ -31,84 +31,75 @@ namespace Gamesim.Episode
 
         // ------------------------------------------------------------ the footer strip, in place
 
-        /// <summary>The strip a breach warning holds this render, and what the strip said before it took it.</summary>
-        private RectTransform breachStrip;
-        /// <summary>The strip a breach built because the footer had none: nothing rests in it, and it goes when the breach does.</summary>
-        private RectTransform breachMadeStrip;
-        private string breachRestText, breachRestName;
-        private Color breachRestColour;
-        private bool breachRestWarns;
+        /// <summary>
+        /// The line a breach warning put in the footer strip's warning slot, and the line that slot
+        /// held before it, which the breach gives back exactly. The slot is the breach's only while it
+        /// still holds that very line: a rebuild empties the slots, and a later warning takes it.
+        /// </summary>
+        private FooterLine breachLine, breachRest;
 
         /// <summary>
         /// Puts a breach warning in the strategy stage's footer strip, or takes it down, in place and
         /// without a render: the nomination picker lights its picks without rebuilding anything, so the
         /// strip changes with them the same way. Null or empty words take it down.
         ///
-        /// <para>The strip carries one warning line. A breach outranks what comes next, which it
-        /// takes the place of. A warning already resting there - what committing lets pass - is
-        /// never taken away: the line says the breach and then that warning, under the resting
-        /// warning's own name, so it is found where it always was. When the two cannot share the
-        /// strip even at its smallest text, the line says <paramref name="brief"/> instead, the
-        /// short form that counts them. Taking the breach down gives the strip back exactly what it
-        /// said - its words, colour and name - or, for a strip the breach built, hides it again.
-        /// Off the strategy stage, nothing.</para>
+        /// <para>The breach is a line of the warning's rank (<see cref="FooterRank.Warning"/>), so it
+        /// takes the strip alone: what comes next and what moving on costs are hidden under it, and
+        /// come back when it goes. A warning already in that slot - what committing lets pass - is
+        /// never taken away: the one line says the breach and then that warning, under the resting
+        /// warning's own name, so it is found where it always was. When that line cannot be said in
+        /// the strip even at its smallest text, the slot says <paramref name="brief"/> instead, the
+        /// short form that counts them. Taking the breach down gives the slot back exactly the line it
+        /// held and draws the strip again from its lines; a strip with none left - one the breach
+        /// built - is hidden again. Off the strategy stage, nothing.</para>
         /// </summary>
         public void FooterBreachWarning(string words, string brief = null)
         {
             if (modal == null || activityLayout != ActivityLayout.Strategy) return;
-            // A rebuilt footer is a new strip: what this held belonged to the render before.
-            if (breachStrip != null && breachStrip != footerStrip) breachStrip = null;
-            if (breachMadeStrip != null && breachMadeStrip != footerStrip) breachMadeStrip = null;
+            int slot = (int)FooterRank.Warning;
+            if (breachLine != null && !ReferenceEquals(footerLines[slot], breachLine)) breachLine = breachRest = null;
             if (string.IsNullOrEmpty(words))
             {
                 TakeDownBreach();
                 return;
             }
-            if (breachStrip == null)
-            {
-                if (footerStrip == null)
-                {
-                    PinnedNote(words, BreachWarningName, true);
-                    breachMadeStrip = footerStrip;
-                }
-                if (footerStrip == null || footerWords == null) return;
-                // A strip the breach built holds nothing of its own, whatever a breach before left in it.
-                bool own = footerStrip == breachMadeStrip;
-                breachRestText = own ? null : footerWords.text;
-                breachRestName = own ? null : footerWords.name;
-                breachRestColour = footerWords.color;
-                breachRestWarns = !own && footerWarns;
-                breachStrip = footerStrip;
-            }
-            if (footerWords == null) return;
-            footerStrip.gameObject.SetActive(true);
-            bool both = breachRestWarns && !string.IsNullOrEmpty(breachRestText);
-            footerWords.text = both ? Localisation.Text(words) + " " + breachRestText : Localisation.Text(words);
-            footerWords.color = UiTheme.Warning;
-            footerWords.name = both ? breachRestName : BreachWarningName;
-            footerWarns = true;
-            if (!string.IsNullOrEmpty(brief) && Overflows(footerWords)) footerWords.text = Localisation.Text(brief);
+            if (breachLine == null) breachRest = footerLines[slot];
+            string said = Localisation.Text(words);
+            PutBreach(breachRest != null
+                ? new FooterLine(said + " " + Localisation.Text(breachRest.Words), breachRest.Name, true)
+                : new FooterLine(said, BreachWarningName, true));
+            if (!string.IsNullOrEmpty(brief) && Overflows(footerWords))
+                PutBreach(new FooterLine(Localisation.Text(brief), breachLine.Name, true));
         }
 
-        /// <summary>The breach comes down: the strip says what it said before, or a strip the breach built is hidden again.</summary>
+        /// <summary>
+        /// A breach's line in the strip's warning slot, drawn as <see cref="PinnedNote(string, string, FooterRank, bool)"/>
+        /// draws a line: the strip from its lines, the footer's row, the scroll's foot. A strip an
+        /// earlier breach built and hid again shows again.
+        /// </summary>
+        private void PutBreach(FooterLine line)
+        {
+            breachLine = footerLines[(int)FooterRank.Warning] = line;
+            DrawFooterStrip();
+            LayoutStrategyFooter();
+            ApplyPinnedInset();
+            if (footerStrip != null) footerStrip.gameObject.SetActive(true);
+        }
+
+        /// <summary>
+        /// The breach comes down: the warning slot gets back exactly the line it held, the strip is
+        /// drawn again from its lines - what comes next and what moving on costs come back with
+        /// them - and a strip with no line left, as one the breach built has none, is hidden again.
+        /// </summary>
         private void TakeDownBreach()
         {
-            if (breachStrip != null && breachStrip == footerStrip && footerWords != null)
-            {
-                if (footerStrip == breachMadeStrip)
-                {
-                    footerStrip.gameObject.SetActive(false);
-                    footerWarns = false;
-                }
-                else
-                {
-                    footerWords.text = breachRestText;
-                    footerWords.color = breachRestColour;
-                    footerWords.name = breachRestName;
-                    footerWarns = breachRestWarns;
-                }
-            }
-            breachStrip = null;
+            if (breachLine == null) return;
+            footerLines[(int)FooterRank.Warning] = breachRest;
+            breachLine = breachRest = null;
+            DrawFooterStrip();
+            LayoutStrategyFooter();
+            ApplyPinnedInset();
+            if (footerStrip != null && Array.TrueForAll(footerLines, line => line == null)) footerStrip.gameObject.SetActive(false);
         }
 
         /// <summary>

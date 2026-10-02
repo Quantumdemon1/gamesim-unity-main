@@ -199,7 +199,11 @@ namespace Gamesim.Tests.EditMode
             Assert.That(payload["commitmentRulesStartWeek"], Is.Null, "and it knows nothing of the commitment rules.");
 
             using var files = new Files();
-            File.Copy(V21FixturePath, files.Store.SavePath);
+            // Sealed again for the runtime this runs in, not a value of the state changed. The envelope's
+            // checksum covers the canonical text of the state, and a double's round-trip text is the
+            // runtime's own: the .NET that ran the v21 build writes 4.625035332515836, where Unity's Mono
+            // can write a seventeenth digit - the editor read the file as written as damaged.
+            files.Write(payload);
             var originalBytes = File.ReadAllBytes(files.Store.SavePath);
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
             Assert.That(message, Does.Contain("Schema 21").And.Contain("schema 22 in memory"));

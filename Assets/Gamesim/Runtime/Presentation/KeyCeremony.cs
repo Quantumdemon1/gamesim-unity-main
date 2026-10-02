@@ -529,11 +529,16 @@ namespace Gamesim.Presentation
 
             /// <summary>
             /// The stage's beat over the pedestal: the safe face, and the block's two. Each hangs with
-            /// its ring art's top a little under the band's top, and its name under the art.
+            /// its ring art's top a little under the band's top, and its name under the art. The
+            /// block's two stand 66 either side of the axis at 112, so each one's ring art (157.5
+            /// square) ends at 144.8, nine units short of the roster's innermost name boxes, which
+            /// start 154 out on every roster shape; at 120 on a 156 step the art reached 162.4 and
+            /// crossed the first row's names on a two-row roster. Their names are 128 wide, two
+            /// units apart in the middle.
             /// </summary>
             public const float BeatFace = 140f, BeatRing = 5f, BeatNamePt = 30f, BeatNameH = 40f, BeatNameW = 280f,
                 BeatChipW = 120f, BeatChipH = 44f, BeatChipPt = 26f;
-            public const float BlockFace = 120f, BlockRing = 4f, BlockStep = 156f, BlockNameW = 136f, BlockNamePt = 28f, BlockNameH = 37f;
+            public const float BlockFace = 112f, BlockRing = 4f, BlockStep = 132f, BlockNameW = 128f, BlockNamePt = 28f, BlockNameH = 37f;
 
             /// <summary>The key on its pedestal, under the beat's names: the glyph's size and its top under the band's top, and the pedestal's width.</summary>
             public const float KeySize = 100f, KeyY = -246f, Pedestal = 187f;
@@ -930,7 +935,10 @@ namespace Gamesim.Presentation
             rect.anchoredPosition = Vector2.zero;
         }
 
-        /// <summary>The block, both nominees side by side in their frames (mockup-10) - ring discs on the screen's frame.</summary>
+        /// <summary>
+        /// The block, both nominees side by side in their frames (mockup-10) - ring discs on the
+        /// screen's frame - with their names at one size, as the roster's are.
+        /// </summary>
         private void StageBlock()
         {
             ClearFaces();
@@ -938,6 +946,7 @@ namespace Gamesim.Presentation
 
             float step = frame.BlockStep;
             float start = -(nominated.Count - 1) * step * 0.5f;
+            var names = new List<TMP_Text>(nominated.Count);
             if (frame.Screen)
             {
                 float face = frame.BlockW;
@@ -949,22 +958,26 @@ namespace Gamesim.Presentation
                     var rim = Disc(faces, "Nominee face", nominated[i], UiTheme.Conflict, face, ScreenRoster.BlockRing,
                         RingArtFor(UiTheme.Conflict), new Vector2(x, centre));
                     HudPrimitives.AddRoleMark(rim, HudPrimitives.RoleMark.Nominee, face);
-                    NameUnder(faces, "Nominee", nominated[i].Name, ScreenRoster.BlockNamePt, ScreenRoster.BlockNameW, ScreenRoster.BlockNameH,
-                        centre - footprint * .5f - ScreenRoster.Gap, x, UiTheme.Weight.SemiBold);
+                    names.Add(NameUnder(faces, "Nominee", nominated[i].Name, ScreenRoster.BlockNamePt, ScreenRoster.BlockNameW, ScreenRoster.BlockNameH,
+                        centre - footprint * .5f - ScreenRoster.Gap, x, UiTheme.Weight.SemiBold));
                 }
+                OneSize(names);
                 return;
             }
 
             for (int i = 0; i < nominated.Count; i++)
-                Slot(nominated[i], start + i * step, frame.BlockW, frame.BlockH, UiTheme.Conflict, "Nominee");
+                Slot(nominated[i], start + i * step, frame.BlockW, frame.BlockH, UiTheme.Conflict, "Nominee", names);
+            OneSize(names);
         }
 
         /// <summary>
         /// One face on the HUD's board: the pack's slot frame, the photo inside it, and a name plate
         /// across the photo's foot. The plate's label is named <paramref name="label"/> - the block's
-        /// are "Nominee", which is how the suite counts who is on it.
+        /// are "Nominee", which is how the suite counts who is on it - and is added to
+        /// <paramref name="names"/> when the caller wants it, to size a set of plates together.
         /// </summary>
-        private RectTransform Slot(Person person, float x, float slotWidth, float slotHeight, Color tint, string label)
+        private RectTransform Slot(Person person, float x, float slotWidth, float slotHeight, Color tint, string label,
+            List<TMP_Text> names = null)
         {
             float scale = frame.Text;
             var slot = new GameObject("Nominee slot", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
@@ -998,6 +1011,7 @@ namespace Gamesim.Presentation
             name.enableAutoSizing = true; name.fontSizeMax = name.fontSize; name.fontSizeMin = Mathf.Min(10f * scale, name.fontSize);
             name.rectTransform.anchorMin = Vector2.zero; name.rectTransform.anchorMax = Vector2.one;
             name.rectTransform.offsetMin = new Vector2(4f * scale, 0f); name.rectTransform.offsetMax = new Vector2(-4f * scale, 0f);
+            names?.Add(name);
             return slot;
         }
 
@@ -1011,16 +1025,17 @@ namespace Gamesim.Presentation
             public float Face;
             public RectTransform Rim, Chip, NomineeMark;
             public Image RimDisc, RingArt, ChipArt;
-            public TMP_Text ChipText;
+            public TMP_Text Name, ChipText;
         }
 
         /// <summary>
         /// The roster across the band, either side of the stage's column: a disc, a name and an empty
         /// chip for everyone in the house in the order given, the Head of Household first with the
         /// crown and the HOH chip. Reading order is the mockup's - left to right, top to bottom - so
-        /// the Head of Household is the first face of the first row. The labels are named "Roster
-        /// name" and "Roster badge text", never "Nominee" (the block's count) nor anything starting
-        /// with "Key " (the key slots' count).
+        /// the Head of Household is the first face of the first row. The names are drawn at one size,
+        /// the largest at which every one of them fits its box (<see cref="OneSize"/>). The labels are
+        /// named "Roster name" and "Roster badge text", never "Nominee" (the block's count) nor
+        /// anything starting with "Key " (the key slots' count).
         /// </summary>
         private void BuildRoster()
         {
@@ -1066,7 +1081,7 @@ namespace Gamesim.Presentation
                         SwapRoleGlyph(crown, CrownArt());
                     }
                     float nameTop = rowTop - footprint - ScreenRoster.Gap;
-                    NameUnder(rosterRow, "Roster name", person.Name, sizes.NamePt, nameW, sizes.NameH, nameTop, x, UiTheme.Weight.Medium);
+                    entry.Name = NameUnder(rosterRow, "Roster name", person.Name, sizes.NamePt, nameW, sizes.NameH, nameTop, x, UiTheme.Weight.Medium);
 
                     float chipTop = nameTop - sizes.NameH - ScreenRoster.Gap * .5f;
                     entry.Chip = HudPrimitives.Fill("Roster badge", rosterRow, UiTheme.Muted, Mathf.RoundToInt(sizes.ChipH * .5f) - 1);
@@ -1093,6 +1108,9 @@ namespace Gamesim.Presentation
                     index++;
                 }
             }
+            var names = new List<TMP_Text>(roster.Count);
+            foreach (var entry in roster) names.Add(entry.Name);
+            OneSize(names);
             DressRoster(0, false);
         }
 
@@ -1209,17 +1227,47 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
+        /// Draws a set of names at one size: the largest at which every one of them fits its box,
+        /// never above their type. Each label auto-sizes to its own box, which drew "Noah Kim" at
+        /// the full thirty points beside "Riley Johnson" at twenty on the same row - two weights of
+        /// name on one roster (the nomination-card-roster-8 capture). Each is fitted on its own
+        /// first and every box then takes the smallest of those fits as its ceiling, so a name only
+        /// ever shrinks, and the whole set shrinks together. A label not yet awake measures nothing
+        /// and keeps its type, which leaves the set auto-sized name by name.
+        /// </summary>
+        private static void OneSize(List<TMP_Text> names)
+        {
+            float size = float.MaxValue;
+            foreach (var name in names)
+            {
+                if (name == null) continue;
+                name.ForceMeshUpdate(true);
+                size = Mathf.Min(size, name.fontSize);
+            }
+            if (size == float.MaxValue) return;
+            foreach (var name in names)
+            {
+                if (name == null) continue;
+                name.fontSizeMax = size;
+                name.fontSize = size;
+            }
+        }
+
+        /// <summary>
         /// The mockups' glass ground behind the card's column (VISUAL-TARGET.md §4, mockup-08 and
         /// -10): the night background at 85 %, a cyan hairline on the edge and a soft glow outside
         /// it. Built as the column's first child so every piece of the ceremony draws over it, and
         /// stretched to the column so it grows with the large-text preference. Its name deliberately
         /// does not begin with "Key ": that prefix is how the suite counts the ceremony's key slots.
         ///
-        /// <para>On the set's screen the glass stands on a ground of its own, the pack's ceremony
-        /// panel tinted ink at full alpha (the sprite's own centre is 236 of 255), as the column's
-        /// very first child: through 85 % glass alone the screen's own lit face showed as a warm blob
-        /// in the band and lighter diagonals from the corners (UI-UX-PASS-PLAN 1.2). The HUD's card
-        /// keeps its glass over the room.</para>
+        /// <para>On the set's screen the glass stands on a ground of its own, a plain fill in ink at
+        /// full alpha, as the column's very first child: through 85 % glass alone the screen's own
+        /// lit face showed as a warm blob in the band and lighter diagonals from the corners
+        /// (UI-UX-PASS-PLAN 1.2). The ground is the kit's own rounded fill and not the pack's
+        /// ceremony panel: that sprite is a flat white whose centre is 236 of 255, and through the
+        /// nineteen in 255 it let pass the bright board behind the card lifted the band's pixels
+        /// (0.13 where the ground is 0.04, the frames being blended in linear light). The HUD's
+        /// card keeps its glass over the room.</para>
         /// </summary>
         private static RectTransform CardGlass(RectTransform column, float glassMargin, float neonMargin, bool screen)
         {
@@ -1239,9 +1287,7 @@ namespace Gamesim.Presentation
                 ground.anchorMax = Vector2.one;
                 ground.offsetMin = new Vector2(-glassMargin, -glassMargin);
                 ground.offsetMax = new Vector2(glassMargin, glassMargin);
-                var fill = ground.GetComponent<Image>();
-                fill.raycastTarget = false;
-                UiTheme.PackSliced(fill, PackArt.Pack9NominationCeremonyCeremonyPanelFill, UiTheme.GlassRadius, ink);
+                ground.GetComponent<Image>().raycastTarget = false;
             }
             // The board's neon: the pack's danger frame, its baked glow outside the glass's edge.
             var neon = new GameObject("Screen frame", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();

@@ -614,7 +614,11 @@ namespace Gamesim.Tests.PlayMode
         /// The look sheet's frames of the vote on the living room's screen (MOCKUP-PASS-PLAN M18): the
         /// roster with votes on it, and the result read in lines once the board has given way. The
         /// stage cuts to the hot seats between votes, so each frame puts the rig on the screen's own
-        /// shot first.
+        /// shot first. Neither frame waits ten seconds for the board's faces: the card runs on its
+        /// own clock, and that wait at the first frame ran the whole count, the result and the fade
+        /// out before the result was asked for. The board's faces get the rest of the beat the first
+        /// frame is of, and the result's frame - which has no faces on it - is asserted to be of the
+        /// result as it is taken.
         /// </summary>
         [UnityTest]
         public IEnumerator CeremonyStage_CapturesTheVoteOnTheLivingScreenAndItsResult()
@@ -629,12 +633,20 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(vote.Surface, Is.Not.Null, "on the living room's screen");
             var screen = vote.Surface;
             yield return WaitFor(() => vote.VotesShown >= 2, 20f, "two votes are on the board");
-            yield return CaptureTheScreen(screen, "ceremony-stage-vote-screen");
+            // The board's faces given their time to land, but only this beat's: the wait ends with
+            // the next vote, so the frame is still of a board with two votes on it and the card is
+            // never outrun.
+            int shown = vote.VotesShown;
+            float facesBy = Time.realtimeSinceStartup + 10f;
+            while (Time.realtimeSinceStartup < facesBy && vote.VotesShown == shown && !vote.ShowingResult && AnyBoundFaceIsStillMissing())
+                yield return null;
+            yield return CaptureTheScreen(screen, "ceremony-stage-vote-screen", waitForFaces: false);
             yield return WaitFor(() => vote.ShowingResult, 60f, "the result is read");
             // The board hands over to the result block over the result's first moment.
             yield return new WaitForSecondsRealtime(0.6f);
             Assert.That(vote.IsPlaying, Is.True, "The result is still up to be photographed.");
-            yield return CaptureTheScreen(screen, "ceremony-stage-vote-result");
+            yield return CaptureTheScreen(screen, "ceremony-stage-vote-result",
+                frame => Assert.That(vote.IsPlaying && vote.ShowingResult, Is.True, "The result is up as its frame is taken."), waitForFaces: false);
             yield return SkipReveals();
             yield return WaitFor(() => !director.StagedExitRunning, EpisodeDirector.GoodbyeSeconds + EpisodeDirector.WalkOutSeconds + 2f,
                 "the goodbye and the walk-out end");
@@ -643,16 +655,22 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// A frame of a card on its screen: the faces the card has bound given their time to land
-        /// (bounded, as CaptureFraming's own settle is - a frame of empty discs says nothing about the
-        /// screen), then the rig on the screen's own shot for two frames, then the capture, handed to
-        /// <paramref name="inspect"/> while the camera still holds it. The rig is put on the shot
-        /// after the wait, since the stage's cuts move it between beats.
+        /// A frame of a card on its screen: while <paramref name="waitForFaces"/>, the faces the card
+        /// has bound given their time to land (bounded, as CaptureFraming's own settle is - a frame of
+        /// empty discs says nothing about the screen), then the rig on the screen's own shot for two
+        /// frames, then the capture, handed to <paramref name="inspect"/> while the camera still
+        /// holds it. The rig is put on the shot after the wait, since the stage's cuts move it
+        /// between beats. The wait is for a frame of a beat that holds - the keys' roster, the block
+        /// - and not for one the card moves off on its own clock: the vote's result holds 1.9 seconds
+        /// at the quick pace, and a wait of ten here saw it come and go before the frame.
         /// </summary>
-        private IEnumerator CaptureTheScreen(ScreenSurface screen, string name, System.Action<Texture2D> inspect = null)
+        private IEnumerator CaptureTheScreen(ScreenSurface screen, string name, System.Action<Texture2D> inspect = null, bool waitForFaces = true)
         {
-            float until = Time.realtimeSinceStartup + 10f;
-            while (Time.realtimeSinceStartup < until && AnyBoundFaceIsStillMissing()) yield return null;
+            if (waitForFaces)
+            {
+                float until = Time.realtimeSinceStartup + 10f;
+                while (Time.realtimeSinceStartup < until && AnyBoundFaceIsStillMissing()) yield return null;
+            }
             cameraRig.MoveTo(screen.Shot());
             yield return Frames(2);
             yield return CaptureFraming(name, settle: false, inspect: inspect);

@@ -46,7 +46,7 @@ namespace Gamesim.Episode
         private HouseNpc focusedNpc;
         // What the last social command actually moved, so the panel can say so.
         private double lastSocialDelta;
-        private string saveRoot, message = "Welcome home. Meet the housemates, then visit the living-room screen.";
+        private string saveRoot, message = "Welcome home. Meet the houseguests, then visit the living-room screen.";
         private bool blockedRecovery, reducedMotion, muted, largeText, phaseOpen, settingsOpen, journalOpen;
         /// <summary>Which page of the notebook is showing. The rail picks it; Render obeys it.</summary>
         private string journalSection = NotebookSection.Network;

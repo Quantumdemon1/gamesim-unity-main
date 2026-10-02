@@ -1336,7 +1336,9 @@ namespace Gamesim.Episode
                     closer.Seconds = 2f;
                     Schedule(0.05f, () => director.cameraRig.MoveTo(closer));
                 }
-                if (director.sting != null) director.sting.Play(CeremonySting.WalkOutKind, GoodbyeLine(state, id), director.reducedMotion);
+                // Their line, worded for where they are: standing before the house, not at the door
+                // (UI-UX-PASS-PLAN W0). The walk out does not say it again.
+                if (director.sting != null) director.sting.Play(CeremonySting.WalkOutKind, GoodbyeLine(state, id, GoodbyeMoment.Standing), director.reducedMotion);
                 // The exit's door, chosen now: the living room's goes up closed at the end of the
                 // room for the walk to come (MOCKUP-PASS-PLAN M23), the yard's at the dip later.
                 director.OnStagedGoodbye(id);

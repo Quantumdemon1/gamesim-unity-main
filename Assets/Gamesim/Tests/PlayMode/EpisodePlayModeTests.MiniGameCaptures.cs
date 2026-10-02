@@ -53,11 +53,25 @@ namespace Gamesim.Tests.PlayMode
             try
             {
                 MiniGameRun lastRun = null;
+                // The houseguest scramble deals the house's own names, as the director's run does
+                // (EpisodeDirector.Challenge's ScrambleWords): built without them, its frame dealt the
+                // plain scramble's house words under a rule that says names (UI-UX-PASS-PLAN M0).
+                var houseNames = director.Snapshot.contestants.Select(contestant => contestant.name).ToList();
                 foreach (var definition in CompetitionDefinitions.All)
                 {
                     var kind = CompetitionMiniGames.For(definition.Category);
-                    var run = new MiniGameRun(kind, 77, CompetitionMiniGames.CurrentRules, definition);
+                    bool names = definition.Pattern == CompetitionPattern.HouseguestNames;
+                    var run = new MiniGameRun(kind, 77, CompetitionMiniGames.CurrentRules, definition, names ? houseNames : null);
                     lastRun = run;
+                    if (names)
+                    {
+                        // The fixture's six-house, whose player is "You": five names to deal, a house word after them.
+                        var dealt = houseNames.Select(CompetitionMiniGames.ScrambleForm)
+                            .Where(word => word.Length >= CompetitionMiniGames.ShortestScrambleWord).ToList();
+                        Assert.That(dealt, Does.Contain(run.Word), definition.Id + ": the first board is a houseguest's name, not " + run.Word + ".");
+                        Assert.That(run.DealsHouseWords, Is.EqualTo(dealt.Distinct().Count() < CompetitionMiniGames.FewestScrambleWords),
+                            definition.Id + ": house words follow the names only when the house has too few.");
+                    }
                     probe.Show(run, "Head of Household · " + definition.Title, field, true, i => run.Flip(i), () => run.Tap(), d => run.Tap(d),
                         () => run.SetHolding(!run.Holding), () => { });
                     yield return null;
@@ -98,6 +112,12 @@ namespace Gamesim.Tests.PlayMode
                     float clear = Time.realtimeSinceStartup + .7f;
                     while (Time.realtimeSinceStartup < clear) yield return null;
                     probe.Refresh();
+                    if (names)
+                    {
+                        var rules = probe.GetComponentsInChildren<TMPro.TMP_Text>().Single(label => label.name == "Rules");
+                        Assert.That(rules.text.Contains(CompetitionGameScreen.HouseWordsFollowTheNames), Is.EqualTo(run.DealsHouseWords),
+                            definition.Id + ": the rules line says house words follow the names exactly when they do: " + rules.text);
+                    }
                     if (Application.isBatchMode) yield return CaptureFraming("minigame-" + definition.Id, false);
                 }
 

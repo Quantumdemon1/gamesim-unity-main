@@ -55,6 +55,17 @@ namespace Gamesim.Presentation
         public const string SkipIntroductionsCaption = "Skip Introductions";
         public const string MeetHeading = "Meet the Houseguests";
 
+        /// <summary>
+        /// The ground under every hint the stage lays over the house - the Continue hint, the reveal's
+        /// count, the introductions' header - as a sibling of the words it stands behind, which the
+        /// tests find by this name. A hint laid straight on the camera's picture stood inside the lit
+        /// doorway and vanished on the dark yard (UI-UX-PASS-PLAN S0).
+        /// </summary>
+        public const string GroundName = "Ground";
+
+        /// <summary>The Skip pill's measure, which the Continue hint shares on the same row: height, width and the margin from the frame's corner.</summary>
+        private const float PillHeight = 42f, PillWidth = 240f, PillMargin = 40f;
+
         /// <summary>What an introduction came to, as the game around the sequence committed it.</summary>
         public struct Introduction
         {
@@ -100,6 +111,11 @@ namespace Gamesim.Presentation
             void StrikeSet();
             void SendHome(string id);
             bool AllHome { get; }
+            /// <summary>
+            /// Ends every walk and holds everybody where they stand, for the introductions: a
+            /// houseguest framed where they stand is still there when they answer.
+            /// </summary>
+            void HoldForIntroductions();
         }
 
         /// <summary>What the sequence needs from the game around it.</summary>
@@ -657,19 +673,39 @@ namespace Gamesim.Presentation
             button.transition = Selectable.Transition.None;
             button.onClick.AddListener(Advance);
 
+            // The hint on the skip pill's row, bottom-left, and on its ground: centred at the foot of
+            // the frame it stood inside the lit doorway of every door frame, muted type on the door's
+            // light (UI-UX-PASS-PLAN S0, sweep-show 5). The ground is a sibling of the words.
             var hint = new GameObject("Hint", typeof(RectTransform)).GetComponent<RectTransform>();
             hint.SetParent(whole, false);
-            hint.anchorMin = hint.anchorMax = new Vector2(0.5f, 0f);
-            hint.pivot = new Vector2(0.5f, 0f);
-            hint.sizeDelta = new Vector2(240f, 30f);
-            hint.anchoredPosition = new Vector2(0f, 44f);
-            var label = HudPrimitives.Label("Label", hint, 16f, UiTheme.Muted, TextAlignmentOptions.Right);
+            hint.anchorMin = hint.anchorMax = new Vector2(0f, 0f);
+            hint.pivot = new Vector2(0f, 0f);
+            hint.sizeDelta = new Vector2(PillWidth, PillHeight);
+            hint.anchoredPosition = new Vector2(PillMargin, PillMargin);
+            Ground(hint, 18);
+            var label = HudPrimitives.Label("Label", hint, 14f, UiTheme.Paper, TextAlignmentOptions.Left);
             label.text = Localisation.Text(ContinueCaption);
+            label.textWrappingMode = TextWrappingModes.NoWrap;
             label.rectTransform.anchorMin = new Vector2(0f, 0f);
             label.rectTransform.anchorMax = new Vector2(0.62f, 1f);
-            label.rectTransform.offsetMin = Vector2.zero;
+            label.rectTransform.offsetMin = new Vector2(18f, 0f);
             label.rectTransform.offsetMax = new Vector2(-8f, 0f);
             KeyChip(hint, "Space", new Vector2(0.62f, 0.5f), 64f);
+        }
+
+        /// <summary>
+        /// The skip pill's ground under a hint laid over the house: the raised fill with the panel
+        /// edge, behind every sibling, named <see cref="GroundName"/>. Opaque where the pill is .98:
+        /// in linear light two per cent of the lit doorway lifts a fill this dark visibly.
+        /// </summary>
+        private static RectTransform Ground(RectTransform parent, int radius)
+        {
+            var fill = UiTheme.SurfaceRaised;
+            var ground = HudPrimitives.Fill(GroundName, parent, new Color(fill.r, fill.g, fill.b, 1f), radius);
+            Stretch(ground);
+            ground.SetAsFirstSibling();
+            UiTheme.AddBorder(ground, radius, UiTheme.Outline);
+            return ground;
         }
 
         /// <summary>A key cap beside a control, naming its key. Never inside the control's caption.</summary>
@@ -693,8 +729,8 @@ namespace Gamesim.Presentation
             pill.anchorMin = new Vector2(1f, 0f);
             pill.anchorMax = new Vector2(1f, 0f);
             pill.pivot = new Vector2(1f, 0f);
-            pill.sizeDelta = new Vector2(240f, 42f);
-            pill.anchoredPosition = new Vector2(-40f, 40f);
+            pill.sizeDelta = new Vector2(PillWidth, PillHeight);
+            pill.anchoredPosition = new Vector2(-PillMargin, PillMargin);
             UiTheme.AddBorder(pill, 18, UiTheme.Outline);
 
             var image = pill.GetComponent<Image>();
@@ -717,8 +753,8 @@ namespace Gamesim.Presentation
             keys.SetParent(stage, false);
             keys.anchorMin = keys.anchorMax = new Vector2(1f, 0f);
             keys.pivot = new Vector2(1f, 0f);
-            keys.sizeDelta = new Vector2(52f, 42f);
-            keys.anchoredPosition = new Vector2(-290f, 40f);
+            keys.sizeDelta = new Vector2(52f, PillHeight);
+            keys.anchoredPosition = new Vector2(-(PillMargin + PillWidth + 10f), PillMargin);
             KeyChip(keys, "Esc", new Vector2(0f, 0.5f), 44f);
         }
 

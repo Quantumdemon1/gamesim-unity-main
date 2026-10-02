@@ -66,6 +66,8 @@ namespace Gamesim.Presentation
         private const float NextHeight = 36f;
         private const float SkipGap = 20f;
         private const float FullCard = ChoicesTop + 3f * RowHeight + 2f * RowGap + CardPad;
+        /// <summary>The header's ground: how far it reaches past the column's edges, and how far down it runs under the progress bar (which ends at 36), short of the card at <see cref="CardTop"/>.</summary>
+        private const float HeaderPad = 12f, HeaderBottom = 42f;
 
         private RectTransform meetColumn;
         private RectTransform choicesSlot;
@@ -73,6 +75,28 @@ namespace Gamesim.Presentation
         private RectTransform liveCard;
         private TMP_Text tally;
         private Button skipIntroductions;
+
+        /// <summary>
+        /// How far across the frame the introductions' column reaches, as a share of the frame's
+        /// width from its left edge, while they are on screen; null when they are not. Read in the
+        /// canvas's own space, so it holds for an overlay and for a capture drawn through a camera
+        /// alike. The director keeps the houseguest it frames to the right of it: at 4:3 and the
+        /// larger text the card reaches nearly half way across, and a body behind it is not seen.
+        /// </summary>
+        public float? IntroductionsReach
+        {
+            get
+            {
+                if (!IsMeeting || meetColumn == null) return null;
+                var root = (RectTransform)transform;
+                var frame = root.rect;
+                if (frame.width <= 0f) return null;
+                var corners = new Vector3[4];
+                meetColumn.GetWorldCorners(corners);
+                float right = root.InverseTransformPoint(corners[2]).x;
+                return Mathf.Clamp01((right - frame.xMin) / frame.width);
+            }
+        }
 
         /// <summary>Ends the introductions: whoever has not been met gets nothing from them, as in the reference build.</summary>
         public void SkipIntroductions()
@@ -134,6 +158,10 @@ namespace Gamesim.Presentation
                 yield return Pause(0.3f);
                 Clear();
             }
+            // Everybody held where they stand: the stage's walks end and nobody is sent anywhere,
+            // so a houseguest framed on their spot is still on it when they answer (UI-UX-PASS-PLAN
+            // S0, sweep-show 24: the reaction's shot held on an empty corner).
+            if (world != null && world.Placed) world.HoldForIntroductions();
 
             Scrim(new Color(0f, 0f, 0f, 0.7f));
             IsMeeting = true;
@@ -163,6 +191,14 @@ namespace Gamesim.Presentation
             meetColumn.pivot = new Vector2(0f, 0.5f);
             meetColumn.sizeDelta = new Vector2(ColumnWidth, 560f);
             meetColumn.anchoredPosition = new Vector2(120f, 0f);
+
+            // The heading, the count and the progress bar on a ground of their own, a sibling behind
+            // them: laid on the scrim they read through the yard's sign (UI-UX-PASS-PLAN S0,
+            // sweep-show 24). It reaches HeaderPad past the column on every side and stops short of
+            // the card.
+            var ground = Ground(meetColumn, 12);
+            Place(ground, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(-HeaderPad, HeaderPad),
+                new Vector2(ColumnWidth + 2f * HeaderPad, HeaderPad + HeaderBottom));
 
             var heading = HudPrimitives.Label("Heading", meetColumn, 16f, UiTheme.Heading, TextAlignmentOptions.Left);
             heading.text = Localisation.Text(MeetHeading);

@@ -45,9 +45,10 @@ namespace Gamesim.Tests.EditMode
             var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 29);
             string head = s.contestants.First(c => !c.isPlayer).id;
             hoh = head;
+            // The nominations as the week reaches them: the crowning clears the competition, so the
+            // veto's is still to be played when the week goes on.
             s.phase = EpisodePhase.Nomination;
             s.hohId = head;
-            s.competitionResolved = true;
             foreach (var edge in s.relationships.Where(r => r.fromId == head))
                 edge.score = edge.toId == s.playerId ? -90 : 60;
             s.deals.Add(new DealState

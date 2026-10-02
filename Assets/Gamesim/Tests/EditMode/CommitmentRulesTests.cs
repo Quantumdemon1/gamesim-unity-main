@@ -601,9 +601,9 @@ namespace Gamesim.Tests.EditMode
             var npcs = Npcs(s);
             string head = npcs[0].id;
             hoh = head;
+            // The nominations as the week reaches them: the crowning clears the competition.
             s.phase = EpisodePhase.Nomination;
             s.hohId = head;
-            s.competitionResolved = true;
             foreach (var other in s.contestants.Where(c => c.id != head)) SetScore(s, head, other.id, other.isPlayer ? -90 : 60);
             s.deals.Add(new DealState
             {

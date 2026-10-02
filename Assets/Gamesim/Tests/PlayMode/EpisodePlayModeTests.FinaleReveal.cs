@@ -123,7 +123,7 @@ namespace Gamesim.Tests.PlayMode
             var kept = state.Active.Single(actor => !actor.isPlayer && actor.id != cut.id);
             var cutBody = SceneComponents<HouseNpc>().Single(npc => npc.Id == cut.id);
             var stoodAt = cutBody.transform.position;
-            ButtonWithCaption("Evict " + cut.name).onClick.Invoke();
+            ButtonWithCaption(FinalChoiceWords.CaptionToEvict(state, cut.id)).onClick.Invoke();
             yield return Frames(2);
             Assert.That(director.Snapshot.Find(cut.id).status, Is.EqualTo(ContestantStatus.Jury),
                 "One press commits the choice: the ring and the gold edge on its column are decoration (MOCKUP-PASS M8).");

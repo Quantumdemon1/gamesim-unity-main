@@ -122,20 +122,24 @@
     <Compile Include="$(EditMode)YourWeekTests.cs" />
     <Compile Include="$(EditMode)KnownBallotsTests.cs" />
     <Compile Include="$(EditMode)BallotPrivacyTests.cs" />
+    <Compile Include="$(EditMode)SeasonBallotsTests.cs" />
     <Compile Include="$(EditMode)PlayScreenCopyTests.cs" />
 
     <!--
       Files from outside the simulation, because they are as Unity-free as the simulation is:
       the music's fade arithmetic, which Gamesim.Runtime compiles and uses nothing but System.Math;
-      the competition's words to the player, which read the committed state and nothing else; and
-      the mini-games' own runs, which keep their clock and their generator to themselves (the word
-      board's deal is pinned here). Only a file with no `using UnityEngine` belongs here; a
+      the competition's words to the player, which read the committed state and nothing else; the
+      final choice's words, the caption every walk presses and the chips' order, read from the
+      finalist read; and the mini-games' own runs, which keep their clock and their generator to
+      themselves (the word board's deal is pinned here). Only a file with no `using UnityEngine` belongs here; a
       presentation file that grows one leaves.
     -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MusicFade.cs" />
     <Compile Include="$(EditMode)MusicFadeTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionWords.cs" />
     <Compile Include="$(EditMode)CompetitionWordsTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FinalChoiceWords.cs" />
+    <Compile Include="$(EditMode)FinalChoiceWordsTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionMiniGames.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Dice.cs" />

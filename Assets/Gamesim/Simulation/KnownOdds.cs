@@ -83,6 +83,27 @@ namespace Gamesim.Simulation
             return Unlikely;
         }
 
+        /// <summary>What a person's card in a picker says of a chance with nothing behind it (<see cref="CardWord"/>).</summary>
+        public const string NoRead = "no read";
+
+        /// <summary>
+        /// The chance as a person's card in the conversation's deal picker says it (UI-UX-PASS-PLAN
+        /// P1): <see cref="NoRead"/> where the estimate has nothing behind it, and its word otherwise.
+        ///
+        /// <para>Nothing behind it is <see cref="Many"/> unknowns about the houseguest the deal is put
+        /// to - no current read, no claim about the vote, little history, which is exactly when the
+        /// table above says "Many unknowns" - and nothing known of where they stand with the person the
+        /// card names (<see cref="Estimate.aboutKnown"/>). A grid of a dozen target agreements each
+        /// reading "about even" at the player's own trust of nought said one guess a dozen times as
+        /// if it were a dozen reads (the play sweep's row 15). A card whose person the player does
+        /// know something of - a pact they know of, a standing they learned - keeps its word, because
+        /// that word carries what the player knows.</para>
+        ///
+        /// <para>Words only: the estimate, and the roll, are untouched.</para>
+        /// </summary>
+        public static string CardWord(Estimate e) =>
+            e == null || (e.unknowns == Many && !e.aboutKnown) ? NoRead : e.word;
+
         // ---------------------------------------------------------------- a deal
 
         /// <summary>

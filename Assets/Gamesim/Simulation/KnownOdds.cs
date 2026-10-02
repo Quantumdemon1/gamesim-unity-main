@@ -182,6 +182,18 @@ namespace Gamesim.Simulation
             return Finish(e, chance);
         }
 
+        // ---------------------------------------------------------------- an alliance
+
+        /// <summary>
+        /// The chance shown beside 'Propose an alliance' under the commitment rules
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN C4): the alliance invitation's, worked out as the deal table
+        /// works it out (<see cref="Deal"/>), because the invitation's roll is the one a proposal draws
+        /// (<see cref="EpisodeEngine.AllianceChance"/>). Where the player knows every term that roll
+        /// reads, the two are equal. A grudge of forty or more refuses whatever the chance; a grudge is
+        /// the houseguest's own and nothing the player is told, so the shown chance cannot see one.
+        /// </summary>
+        public static Estimate Alliance(EpisodeState s, string npcId) => Deal(s, npcId, DealKind.AllianceInvite, null);
+
         // ---------------------------------------------------------------- a plea
 
         /// <summary>

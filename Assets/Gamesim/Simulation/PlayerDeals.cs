@@ -78,6 +78,10 @@ namespace Gamesim.Simulation
                 case DealKind.AllianceInvite:
                     if (state.Allied(state.playerId, toId))
                         return Refuse(out reason, "You already share an active alliance.");
+                    // The player's three (ACTIONS-DEALS-ALLIANCES-PLAN C4, decision 10): under the
+                    // commitment rules an invitation agreed now would make a fourth.
+                    if (EpisodeEngine.InvitationPastPactCap(state, toId))
+                        return Refuse(out reason, EpisodeEngine.PactCapRefusal);
                     break;
                 case DealKind.VoteSave:
                 case DealKind.VoteEvict:
@@ -262,10 +266,20 @@ namespace Gamesim.Simulation
             return modifier;
         }
 
-        /// <summary>What the houseguest says, in their own words, from the reference's lines.</summary>
+        /// <summary>
+        /// What the houseguest says, in their own words, from the reference's lines.
+        ///
+        /// <para>Under the commitment rules the words come only from what the player knows
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN C4, the line half of X9): how the houseguest sees the player is
+        /// the player's own read of it (<see cref="KnownOdds.PresumedView"/>), and a track record is the
+        /// player's own breaches. Before them the line read the houseguest's hidden view and their
+        /// private record of the player, so two answers worded differently told the player which of
+        /// two houseguests thought less of them - and a refused alliance, its reason.</para>
+        /// </summary>
         public static string Reasoning(EpisodeState state, string npcId, string type, bool accepted)
         {
-            double relationship = state.Score(npcId, state.playerId);
+            bool rules = EpisodeEngine.CommitmentRulesOn(state);
+            double relationship = rules ? KnownOdds.PresumedView(state, npcId) : state.Score(npcId, state.playerId);
             bool nominated = !state.evictionResolved && state.nominees.Contains(npcId);
             bool allied = state.Allied(npcId, state.playerId);
             // "I've heard you've broken deals" says it only of deals the player broke, under the commitment rules (C0, X3).
@@ -280,7 +294,9 @@ namespace Gamesim.Simulation
             }
             if (BrokenDealPenalty * broken > 20) return "I've heard you've broken deals before. I can't trust that.";
             if (relationship < 20) return "I don't think I can trust you with that.";
-            if (ThreatAssessment.TrustScore(state, state.playerId, npcId) < 40) return "Your track record concerns me.";
+            if (rules ? broken > 0 || state.promises.Any(p => Breaches.CountsAgainst(state, p, state.playerId))
+                    : ThreatAssessment.TrustScore(state, state.playerId, npcId) < 40)
+                return "Your track record concerns me.";
             return "I'm not sure this is the right move for me.";
         }
 

@@ -1066,6 +1066,9 @@ namespace Gamesim.Simulation
                     // (UI-UX-PASS-PLAN decision 19). The goal appears only once the facet is learned.
                     Log(s, "conversation", "You and " + target.name + " talked about the game.", s.playerId, target.id); break;
                 case EpisodeCommandKind.FormAlliance:
+                    // Under the commitment rules the proposal asks the invitation's question, one roll
+                    // on its odds, and a no spends the action like a yes (ACTIONS-DEALS-ALLIANCES-PLAN C4).
+                    if (CommitmentRulesOn(s)) { ProposeAlliance(s, target); break; }
                     // The body moved to FormAllianceWith so a story can form one with a keyed roll;
                     // this path passes the season's own stream, exactly as it always drew.
                     FormAllianceWith(s, target, () => Roll(s));
@@ -1854,7 +1857,10 @@ namespace Gamesim.Simulation
             Require(PlayerDeals.CanPropose(s, target.id, type, about, out string refusal), refusal);
 
             double chance = PlayerDeals.AcceptanceChance(s, target.id, type, about);
-            bool accepted = Roll(s) * 100 < chance;
+            // An alliance invitation is the one way to a pact (ACTIONS-DEALS-ALLIANCES-PLAN C4): under
+            // the commitment rules a grudge of forty or more says no to it whatever the roll, which is
+            // drawn all the same, as 'Propose an alliance' draws it.
+            bool accepted = Roll(s) * 100 < chance && !(type == DealKind.AllianceInvite && GrudgeRefusesAlliance(s, target.id));
             string title = DealKind.Title(type).ToLowerInvariant();
             string said = PlayerDeals.Reasoning(s, target.id, type, accepted);
 
@@ -1903,6 +1909,9 @@ namespace Gamesim.Simulation
             string title = DealKind.Title(deal.type).ToLowerInvariant();
             if (string.Equals((c.text ?? string.Empty).Trim(), AcceptDeal, StringComparison.OrdinalIgnoreCase))
             {
+                // The player's three (ACTIONS-DEALS-ALLIANCES-PLAN C4, decision 10): under the
+                // commitment rules a yes that would bring them into a fourth pact is not theirs to give.
+                Require(!(deal.type == DealKind.AllianceInvite && InvitationPastPactCap(s, deal.proposerId)), PactCapRefusal);
                 deal.status = DealStatus.Active;
                 // The offer lapsed at the end of this week; the arrangement it becomes runs for as
                 // long as its own kind runs for, which for a final two or a partnership is no limit.

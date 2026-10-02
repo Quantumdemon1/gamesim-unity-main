@@ -1938,6 +1938,9 @@ namespace Gamesim.Episode
             // A panel redrawn under the pointer takes its presses back once the hold's time is up
             // (EpisodeHud.FreeTimeBoard.cs), whether or not anything renders again.
             if (pointerHeldUntil > 0f) ApplyPointerHold();
+            // A name a picker drew over a card that a row drawn after it uses as its caption comes off
+            // now the render is done (EpisodeHud.ConversationGroups.cs).
+            if (pickerNames.Count > 0) StandDownNamesThatAreCaptions();
             var events = EventSystem.current;
             if (canvas == null || !canvas.gameObject.activeInHierarchy || events == null) return;
             var overlay = ActiveOverlay();

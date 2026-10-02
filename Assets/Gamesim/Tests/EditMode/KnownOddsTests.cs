@@ -417,10 +417,11 @@ namespace Gamesim.Tests.EditMode
             uint random = s.randomState; int sequence = s.nextSequence, revision = s.revision;
             var e = KnownOdds.Deal(s, npc.id, DealKind.TargetAgreement, x.id);
             double chance = e.chance; string word = e.word;
+            double roll = PlayerDeals.AcceptanceChance(s, npc.id, DealKind.TargetAgreement, x.id);
             KnownOdds.CardWord(e);
             Assert.That((e.chance, e.word), Is.EqualTo((chance, word)), "The estimate keeps its number and its word.");
-            Assert.That(PlayerDeals.AcceptanceChance(s, npc.id, DealKind.TargetAgreement, x.id),
-                Is.EqualTo(PlayerDeals.AcceptanceChance(s, npc.id, DealKind.TargetAgreement, x.id)));
+            Assert.That(PlayerDeals.AcceptanceChance(s, npc.id, DealKind.TargetAgreement, x.id), Is.EqualTo(roll),
+                "and the roll's own chance is what it was before the card said its word.");
             Assert.That((s.randomState, s.nextSequence, s.revision), Is.EqualTo((random, sequence, revision)));
         }
 

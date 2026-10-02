@@ -32,7 +32,10 @@ namespace Gamesim.Episode
     /// beside it, "no read" where the read has nothing behind it; and at the foot a bar and the words
     /// "Your trust N" give the player's own trust of them - <c>Score(player -> them)</c>, never theirs
     /// of the player. None of it is in the caption, and none of it is a caption: the name, the chip
-    /// and the bar are decoration a test finds by name.</para>
+    /// and the bar are decoration a test finds by name. A player can call a houseguest anything, and a
+    /// name that is the caption of a control on the page is not drawn over the card at all, so those
+    /// words still find the one control they belong to (<see cref="EndPersonPicker"/>,
+    /// <see cref="StandDownNamesThatAreCaptions"/>).</para>
     ///
     /// <para>The picker is a scope, not a list the director builds: every <see cref="ActionFor"/> row
     /// drawn between <see cref="BeginPersonPicker"/> and <see cref="EndPersonPicker"/> whose caption the
@@ -67,6 +70,13 @@ namespace Gamesim.Episode
 
         /// <summary>The picker being drawn, between its Begin and its End; null outside one, and cleared with each rebuild.</summary>
         private PickerScope picker;
+
+        /// <summary>
+        /// The names this render's pickers drew over their cards, for the pass that runs once the render
+        /// is done (<see cref="StandDownNamesThatAreCaptions"/>): a row drawn after a picker can carry
+        /// a caption the picker's End could not see yet.
+        /// </summary>
+        private readonly List<TMP_Text> pickerNames = new List<TMP_Text>();
 
         /// <summary>A row asked to stand at the top of the column once the rows have their final heights; cleared with each rebuild.</summary>
         private string revealAtTop;
@@ -161,23 +171,46 @@ namespace Gamesim.Episode
             picker = null;
             if (scope == null || scope.Grid == null || scope.Cells.Count == 0) return;
             float s = FontScale, gap = PickerGap * s, line = 2f * s, width = scope.TextWidth, left = TextLeft(), tallest = 0f;
+            int count = scope.Cells.Count;
             // A deal's chance stands beside its chip where every person's pair fits the line, else
-            // under it on every card, so the chips stand level across the grid.
+            // under it on every card, so the chips stand level across the grid. Each is measured
+            // once, here, and laid out from these below.
+            var chipWidths = new float[count];
+            var oddsWidths = new float[count];
             bool beside = true;
-            foreach (var cell in scope.Cells)
-                if (scope.TagOf.TryGetValue(cell, out var tag) && tag != null && scope.ChanceOf.TryGetValue(cell, out var chance) && chance != null
-                    && ChipWidth(tag, width) + ChanceGap() + LineWidth(chance) > width)
-                    beside = false;
-            foreach (var cell in scope.Cells)
+            for (int i = 0; i < count; i++)
             {
+                var cell = scope.Cells[i];
+                if (!scope.TagOf.TryGetValue(cell, out var tag) || tag == null) continue;
+                chipWidths[i] = ChipWidth(tag, width);
+                if (!scope.ChanceOf.TryGetValue(cell, out var chance) || chance == null) continue;
+                oddsWidths[i] = LineWidth(chance);
+                if (chipWidths[i] + ChanceGap() + oddsWidths[i] > width) beside = false;
+            }
+            // A name that is the caption of a control already on the page is not drawn over its card
+            // (a houseguest the player called "Vent about…"): words a test, the walk and a screen
+            // reader find a control by must belong to that control alone. The card keeps its caption,
+            // which carries the name. A caption drawn after this picker is caught once the render is
+            // done (StandDownNamesThatAreCaptions).
+            var captions = LiveCaptions();
+            for (int i = 0; i < count; i++)
+            {
+                var cell = scope.Cells[i];
                 if (!scope.CaptionOf.TryGetValue(cell, out var caption) || caption == null) continue;
                 // From the top: the name, large, and the caption under it.
                 float top = 0f;
-                if (scope.NameOf.TryGetValue(cell, out var name) && name != null)
+                if (scope.NameOf.TryGetValue(cell, out var name) && name != null && captions.Contains(name.text))
+                {
+                    StandDown(name);
+                    scope.NameOf.Remove(cell);
+                    name = null;
+                }
+                if (name != null)
                 {
                     float nameHeight = CaptionHeight(name, width);
                     TopLine(name.rectTransform, left, top, width, nameHeight);
                     top += nameHeight + line;
+                    pickerNames.Add(name);
                 }
                 float captionHeight = CaptionHeight(caption, width);
                 TopLine(caption.rectTransform, left, top, width, captionHeight);
@@ -208,11 +241,11 @@ namespace Gamesim.Episode
                 {
                     if (below > 0f) below += 2f * line;
                     scope.ChanceOf.TryGetValue(cell, out var odds);
-                    float chip = Mathf.Ceil(stakes.fontSize * 1.3f) + 2f * s, chipWidth = ChipWidth(stakes, width), inset = PickerChipInset * s;
+                    float chip = Mathf.Ceil(stakes.fontSize * 1.3f) + 2f * s, chipWidth = chipWidths[i], inset = PickerChipInset * s;
                     if (odds != null && !beside)
                     {
                         float oddsHeight = Mathf.Ceil(odds.fontSize * 1.3f);
-                        FootLine(odds.rectTransform, left, Mathf.Min(LineWidth(odds), width), oddsHeight, below);
+                        FootLine(odds.rectTransform, left, Mathf.Min(oddsWidths[i], width), oddsHeight, below);
                         below += oddsHeight + line;
                     }
                     if (scope.ChipOf.TryGetValue(cell, out var ground) && ground != null) FootLine(ground, left, chipWidth, chip, below);
@@ -220,7 +253,7 @@ namespace Gamesim.Episode
                     if (odds != null && beside)
                     {
                         float x = left + chipWidth + ChanceGap();
-                        FootLine(odds.rectTransform, x, Mathf.Max(1f, Mathf.Min(LineWidth(odds), left + width - x)), chip, below);
+                        FootLine(odds.rectTransform, x, Mathf.Max(1f, Mathf.Min(oddsWidths[i], left + width - x)), chip, below);
                     }
                     below += chip;
                     AutoSize(stakes, Mathf.Round(9f * s));
@@ -248,6 +281,54 @@ namespace Gamesim.Episode
 
         /// <summary>The air between a chip and the chance beside it.</summary>
         private float ChanceGap() => 6f * FontScale;
+
+        /// <summary>
+        /// The words every live control on the page is known by: its name, and the label it shows its
+        /// caption on - its first label, as a row's and a card's is, or one that reads its name -
+        /// which is what a test's lookup by words and a screen reader go by.
+        /// </summary>
+        private HashSet<string> LiveCaptions()
+        {
+            var captions = new HashSet<string>();
+            if (canvas == null) return captions;
+            foreach (var control in canvas.GetComponentsInChildren<Button>())
+            {
+                if (!control.IsActive()) continue;
+                captions.Add(control.name);
+                string named = Localisation.Text(control.name);
+                bool first = true;
+                foreach (Transform child in control.transform)
+                {
+                    var label = child.GetComponent<TMP_Text>();
+                    if (label == null) continue;
+                    if (first || label.text == named) captions.Add(label.text);
+                    first = false;
+                }
+            }
+            return captions;
+        }
+
+        /// <summary>Takes a name off its card at once: its words go before it does, so no lookup by words finds it while it waits to be destroyed.</summary>
+        private static void StandDown(TMP_Text name)
+        {
+            name.text = "";
+            name.gameObject.SetActive(false);
+            Destroy(name.gameObject);
+        }
+
+        /// <summary>
+        /// Once a render is done, takes off any name the pickers drew over a card that turned out to
+        /// be the caption of a control drawn after them on the page: the card keeps its caption, which
+        /// carries the name, and the room the name had stays empty. Run from <see cref="LateUpdate"/>,
+        /// in the frame of the render, before anything is drawn.
+        /// </summary>
+        private void StandDownNamesThatAreCaptions()
+        {
+            var captions = LiveCaptions();
+            foreach (var name in pickerNames)
+                if (name != null && name.gameObject.activeInHierarchy && captions.Contains(name.text)) StandDown(name);
+            pickerNames.Clear();
+        }
 
         /// <summary>
         /// Whether a person picker is drawing, and takes this caption as one of its people. Only a
@@ -348,9 +429,11 @@ namespace Gamesim.Episode
 
             double trust = state.Score(state.playerId, contestantId);
             bool allied = state.Allied(state.playerId, contestantId);
-            // One fact, one set (Annotate): the ring, the bar, the reading and ALLY say the same standing.
+            // The colours a row uses for the same facts (Annotate): the bar and the reading in the
+            // trust's own colour; the ring in the ally colour for a pact or a trust over five, as a
+            // row's portrait ring always was, so an ally the player trusts five or less shows an
+            // ally's ring over a bar and a reading that are not; ALLY in the ally colour.
             var tint = trust > 5 ? UiTheme.Allied : trust < -5 ? UiTheme.Conflict : UiTheme.Muted;
-            // The player's own reading of them, as the row's portrait ring always said it.
             var ring = allied || trust > 5 ? UiTheme.Allied : tint;
             var rim = HudPrimitives.Portrait(rect, CharacterPortraits.Get(person), ring, PickerFace * s, 2f * s, false, person);
             rim.gameObject.name = "Portrait";
@@ -420,17 +503,19 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// A deal's tag: what breaking it would cost, and the player's read of the chance they say
-        /// yes. On one of a picker's people the stakes stand on a chip with the chance beside it, in
-        /// muted type where it is <see cref="KnownOdds.NoRead"/> (UI-UX-PASS-PLAN P1); on a folded row,
-        /// nowhere; on any other row it is the row's tag, the two in one pill past its reading, as the
-        /// deal table's other rows have theirs.
+        /// yes. On one of a picker's people the stakes stand on a chip with the chance beside it, said
+        /// as the card says it (<see cref="KnownOdds.CardWord"/>) - in muted type where it is
+        /// <see cref="KnownOdds.NoRead"/> (UI-UX-PASS-PLAN P1); on a folded row, nowhere; on any other
+        /// row it is the row's tag, the two in one pill past its reading, with the read's own word, as
+        /// the deal table's other rows have theirs - "no read" is a card's word, never a row's.
         /// </summary>
-        public void DealTag(Button target, string stakes, string chance)
+        public void DealTag(Button target, string stakes, KnownOdds.Estimate read)
         {
             if (target == null || string.IsNullOrEmpty(stakes)) return;
             if (PickerTag(target, stakes))
             {
-                if (target == picker.Folded || string.IsNullOrEmpty(chance)) return;
+                if (target == picker.Folded || read == null) return;
+                string chance = KnownOdds.CardWord(read);
                 var words = picker.ChanceOf.TryGetValue(target, out var line) ? line : null;
                 if (words == null)
                 {
@@ -440,10 +525,14 @@ namespace Gamesim.Episode
                     words.textWrappingMode = TextWrappingModes.NoWrap;
                     picker.ChanceOf[target] = words;
                 }
-                else words.text = Localisation.Text(chance);
+                else
+                {
+                    words.text = Localisation.Text(chance);
+                    words.color = chance == KnownOdds.NoRead ? UiTheme.Muted : Paper;
+                }
                 return;
             }
-            Tag(target, string.IsNullOrEmpty(chance) ? stakes : stakes + " · " + chance, TagSeat.PastReading);
+            Tag(target, read == null ? stakes : stakes + " · " + read.word, TagSeat.PastReading);
         }
 
         /// <summary>

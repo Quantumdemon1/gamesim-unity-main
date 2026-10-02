@@ -463,7 +463,14 @@ namespace Gamesim.Tests.PlayMode
         {
             foreach (int houseguests in new[] { 3, 16 })
             {
-                yield return InstallTalkingHouse(houseguests, false, AlliedWith(season => season.Active.Last(c => !c.isPlayer).id));
+                // In the largest house one houseguest has a long two-word name, so the photographs
+                // show a card whose name takes its second line (EpisodePlayModeTests.PickerCards.cs).
+                var allied = AlliedWith(season => season.Active.Last(c => !c.isPlayer).id);
+                yield return InstallTalkingHouse(houseguests, false, season =>
+                {
+                    allied(season);
+                    if (houseguests == 16) LongNamed(season);
+                });
                 // A body that finishes assembling renders the HUD again; measure in a house that has.
                 yield return SettleCast();
                 foreach (bool larger in new[] { false, true })
@@ -879,14 +886,22 @@ namespace Gamesim.Tests.PlayMode
 
                 var person = PersonOnCell(state, cell.name);
                 Assert.That(person != null, Is.True, about + " names somebody in the house.");
+                // The name is drawn over the card unless it is the caption of another control on the
+                // page (a houseguest called "Vent about…"), where it would make those words ambiguous.
                 var nameLabel = cell.Find(EpisodeHud.PickerNameName);
-                Assert.That(nameLabel != null, Is.True, about + " carries the name of who it is about.");
-                var nameText = nameLabel.GetComponent<TMP_Text>();
-                Assert.That(nameText.text, Is.EqualTo(person.name), about + ": the name is theirs.");
-                Assert.That(nameText.fontSize, Is.GreaterThan(words.fontSize),
-                    about + ": the name stands large (" + nameText.fontSize.ToString("0.#") + ") over the caption (" + words.fontSize.ToString("0.#") + ").");
-                Assert.That(LocalRect(column, nameText.rectTransform).yMin, Is.GreaterThanOrEqualTo(LocalRect(column, words.rectTransform).yMax - .5f),
-                    about + ": the name stands over the caption.");
+                bool nameIsACaption = LiveCaptionsBut(cell.GetComponent<Button>()).Contains(person.name);
+                Assert.That(nameLabel != null, Is.EqualTo(!nameIsACaption), about + (nameIsACaption
+                    ? ": '" + person.name + "' is the caption of a control on the page, and is not drawn over the card."
+                    : " carries the name of who it is about."));
+                if (nameLabel != null)
+                {
+                    var nameText = nameLabel.GetComponent<TMP_Text>();
+                    Assert.That(nameText.text, Is.EqualTo(person.name), about + ": the name is theirs.");
+                    Assert.That(nameText.fontSize, Is.GreaterThan(words.fontSize),
+                        about + ": the name stands large (" + nameText.fontSize.ToString("0.#") + ") over the caption (" + words.fontSize.ToString("0.#") + ").");
+                    Assert.That(LocalRect(column, nameText.rectTransform).yMin, Is.GreaterThanOrEqualTo(LocalRect(column, words.rectTransform).yMax - .5f),
+                        about + ": the name stands over the caption.");
+                }
 
                 double score = state.Score(state.playerId, person.id);
                 var reading = cell.Find(EpisodeHud.PickerReadingName);
@@ -934,6 +949,24 @@ namespace Gamesim.Tests.PlayMode
         {
             var chance = button.transform.Find(EpisodeHud.PickerChanceName);
             return chance == null ? null : chance.GetComponent<TMP_Text>().text;
+        }
+
+        /// <summary>
+        /// The words every live control but <paramref name="except"/> is found by: its name, and the
+        /// label it shows its caption on - its first label, or one that reads its name - since a
+        /// lookup by words (FindButton) matches a label's words, not a GameObject's name.
+        /// </summary>
+        private HashSet<string> LiveCaptionsBut(Button except)
+        {
+            var captions = new HashSet<string>();
+            foreach (var control in director.GetComponentsInChildren<Button>().Where(control => control.IsActive() && control != except))
+            {
+                captions.Add(control.name);
+                var labels = control.transform.Cast<Transform>().Select(child => child.GetComponent<TMP_Text>()).Where(label => label != null).ToList();
+                if (labels.Count > 0) captions.Add(labels[0].text);
+                foreach (var label in labels.Where(label => label.text == Localisation.Text(control.name))) captions.Add(label.text);
+            }
+            return captions;
         }
 
         /// <summary>A rectangle's corners in <paramref name="space"/>'s own units, whatever camera the canvas is drawn through.</summary>

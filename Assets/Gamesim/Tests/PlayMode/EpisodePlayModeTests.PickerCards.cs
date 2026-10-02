@@ -26,6 +26,49 @@ namespace Gamesim.Tests.PlayMode
     public sealed partial class EpisodePlayModeTests
     {
         /// <summary>
+        /// A long two-word name, as a player can give a houseguest (up to a hundred characters of
+        /// anything): 195 units at the name's 16 points in Inter SemiBold, past the 145 a card's words
+        /// have three to a row on the 16:9 frame at the resting size, while each word fits every card
+        /// at either text size. The roster's longest names never wrap: "Derrick Levasseur" measures
+        /// 140.5, and the test house's extras are "Extra 12" to "Extra 15".
+        /// </summary>
+        private const string LongTwoWordName = "Christopher Montgomery";
+
+        /// <summary>Gives the house's second-to-last houseguest <see cref="LongTwoWordName"/>: never the one the player talks to, and never the last, whom the fit tests' pact is with.</summary>
+        private static void LongNamed(EpisodeState state)
+        {
+            var npcs = state.Active.Where(c => !c.isPlayer).ToList();
+            npcs[npcs.Count - 2].name = LongTwoWordName;
+        }
+
+        /// <summary>
+        /// The long-named houseguest's card in an open picker: present where <paramref name="present"/>,
+        /// and there their name drawn whole at its full size - every letter, never cut, never shrunk
+        /// below the grid's one size - on two lines at most, broken at the word, and on exactly two
+        /// where <paramref name="twoLines"/>.
+        /// </summary>
+        private void AssertLongNameDrawnWhole(string verb, string where, bool present, bool twoLines)
+        {
+            var names = PickerCells(verb, where).Select(cell => cell.Find(EpisodeHud.PickerNameName)).Where(name => name != null)
+                .Select(name => name.GetComponent<TMP_Text>()).Where(name => name.text == LongTwoWordName).ToList();
+            Assert.That(names.Count, Is.EqualTo(present ? 1 : 0), where + ": '" + LongTwoWordName + "' " + (present ? "has a card here." : "has no card here."));
+            if (!present) return;
+            var label = names[0];
+            label.ForceMeshUpdate(true);
+            var info = label.textInfo;
+            string about = where + ": '" + LongTwoWordName + "'";
+            if (twoLines) Assert.That(info.lineCount, Is.EqualTo(2), about + " takes its second line on a card three to a row.");
+            else Assert.That(info.lineCount, Is.InRange(1, 2), about + " stands on one line or two.");
+            if (info.lineCount == 2)
+                Assert.That(info.lineInfo[1].firstVisibleCharacterIndex, Is.EqualTo(LongTwoWordName.IndexOf(' ') + 1), about + " breaks at the word.");
+            Assert.That(info.characterInfo.Take(info.characterCount).Count(glyph => glyph.isVisible),
+                Is.EqualTo(LongTwoWordName.Count(letter => !char.IsWhiteSpace(letter))), about + ": every letter is drawn.");
+            Assert.That(label.isTextOverflowing, Is.False, about + " is cut off.");
+            Assert.That(label.fontSize, Is.GreaterThanOrEqualTo((label.enableAutoSizing ? label.fontSizeMax : label.fontSize) - .01f),
+                about + " is drawn at the grid's one size, not shrunk to fit.");
+        }
+
+        /// <summary>
         /// A house whose readings run the bar's length: the player's own trust of seven of them, from
         /// the last houseguest back, spread from -100 to 100 and across the three colours, each the
         /// other way about from theirs of the player - a bar that read their view of the player would
@@ -84,25 +127,31 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(carrying[0], Is.SameAs(button), about + ": and it is this card.");
             Assert.That(FindButton(caption), Is.SameAs(button), about + ": found by its caption as every test finds a control.");
 
-            var captions = director.GetComponentsInChildren<Button>().Where(control => control.IsActive()).Select(control => control.name).ToList();
+            // Against every other control's name and the label its caption stands on: a lookup by
+            // words matches a label, not a GameObject's name.
+            var captions = LiveCaptionsBut(button);
             foreach (var label in cell.GetComponentsInChildren<TMP_Text>(true).Where(label => label != words && !string.IsNullOrWhiteSpace(label.text)))
                 Assert.That(captions, Does.Not.Contain(label.text),
-                    about + ": '" + label.text + "' (" + label.name + ") is drawn around the caption, and no control is called that.");
+                    about + ": '" + label.text + "' (" + label.name + ") is drawn around the caption, and no control is known by those words.");
         }
 
         /// <summary>
         /// Every person in every picker a conversation offers, in free time and the campaign of a house
-        /// of sixteen, keeps the caption their row had, whole and on screen, as the one control those
-        /// words find; their name stands large over it; and the bar and the words at the foot read the
-        /// player's own trust of them - spread from -100 to 100 here, and the other way about from
-        /// theirs of the player - in the colour the ring and ALLY share.
+        /// of sixteen - one of them with a long two-word name - keeps the caption their row had, whole
+        /// and on screen, as the one control those words find; their name stands large over it; and the
+        /// bar and the words at the foot read the player's own trust of them - spread from -100 to 100
+        /// here, and the other way about from theirs of the player - in the reading's colour.
         /// </summary>
         [UnityTest, Timeout(600000)]
         public IEnumerator PickerCards_EveryPersonKeepsTheirCaptionWholeUnderTheirNameAndTheBarIsYourOwnTrust()
         {
             foreach (bool campaign in new[] { false, true })
             {
-                yield return InstallTalkingHouse(16, campaign, ReadingsAcrossTheBar);
+                yield return InstallTalkingHouse(16, campaign, season =>
+                {
+                    ReadingsAcrossTheBar(season);
+                    LongNamed(season);
+                });
                 yield return SettleCast();
                 var listener = Listener(director.Snapshot);
                 yield return TalkTo(listener.id);
@@ -217,20 +266,79 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// A player may call a houseguest anything, a control's caption included. Such a name is not
+        /// drawn over the card, so the words still find the one control they belong to: a houseguest
+        /// called "Vent about…", the verb row drawn before its people, is never drawn there; one called
+        /// "Work against them quietly", a row drawn after the picker, is taken off once the render is
+        /// done. Each card keeps its caption, which carries the name, and every other card its name.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator PickerCards_ANameThatIsACaptionOnThePageIsNotDrawnOverItsCard()
+        {
+            const string AfterThePicker = "Work against them quietly";
+            yield return InstallTalkingHouse(8, false, season =>
+            {
+                var npcs = season.Active.Where(c => !c.isPlayer).ToList();
+                npcs[npcs.Count - 1].name = EpisodeDirector.VentPickerCaption;
+                npcs[npcs.Count - 2].name = AfterThePicker;
+            });
+            yield return SettleCast();
+            var listener = Listener(director.Snapshot);
+            Assert.That(listener.name, Is.Not.EqualTo(EpisodeDirector.VentPickerCaption).And.Not.EqualTo(AfterThePicker),
+                "The player talks to somebody with an ordinary name.");
+            yield return TalkTo(listener.id);
+            Assert.That(ButtonWithCaption(AfterThePicker), Is.Not.Null, "The row is offered after the scheming pickers.");
+            yield return PressRow(EpisodeDirector.VentPickerCaption);
+            // The render is done, and anything it drew that the pass took off is gone.
+            yield return null;
+            const string where = "Venting, with houseguests called after the page's captions";
+            var state = director.Snapshot;
+            foreach (string named in new[] { EpisodeDirector.VentPickerCaption, AfterThePicker })
+            {
+                var card = FindButton(EpisodeDirector.VentCaption(named));
+                Assert.That(card.transform.IsChildOf(ActiveRect(EpisodeHud.PersonPickerPrefix + EpisodeDirector.VentPickerCaption)), Is.True,
+                    where + ": '" + EpisodeDirector.VentCaption(named) + "' is a card in the picker.");
+                Assert.That(card.transform.Find(EpisodeHud.PickerNameName) == null, Is.True,
+                    where + ": '" + named + "' is a caption on the page, and is not drawn over the card.");
+                Assert.That(ActiveButtons(named).Count, Is.EqualTo(1), where + ": '" + named + "' finds one control,");
+                Assert.That(FindButton(named).name, Is.EqualTo(named), "the one called that.");
+            }
+            foreach (var cell in PickerCells(EpisodeDirector.VentPickerCaption, where))
+            {
+                var person = PersonOnCell(state, cell.name);
+                if (person.name == EpisodeDirector.VentPickerCaption || person.name == AfterThePicker) continue;
+                var name = cell.Find(EpisodeHud.PickerNameName);
+                Assert.That(name != null && name.GetComponent<TMP_Text>().text == person.name, Is.True, where + ": '" + cell.name + "' still wears its name.");
+            }
+            AssertPickerFits(EpisodeDirector.VentPickerCaption, where);
+            // The verb row is still pressed by its words: pressed again, it shuts its people.
+            yield return PressRow(EpisodeDirector.VentPickerCaption);
+            Assert.That(director.ConversationPicker, Is.Null, where + ": the verb row's words still press the verb row.");
+            director.ClosePanels();
+            yield return null;
+        }
+
+        /// <summary>
         /// The decorated pickers fit the HUD as a capture lays it out on the 16:9 frame and on the 4:3,
         /// at both text sizes, in a house of sixteen: in free time venting, a lie, a call-out (whose
         /// captions carry the name mid-sentence) and the target agreements; in the campaign the promise
         /// about the vote and the target agreements. On each frame every row keeps room for its words
         /// (the cards are no rows, and leave the rows as they were), nothing on the panel is cut off or
-        /// draws nothing, and every card fits as <see cref="AssertPickerFits"/> says.
+        /// draws nothing, and every card fits as <see cref="AssertPickerFits"/> says. A houseguest with a
+        /// long two-word name keeps it whole at the grid's one size, broken at the word - on two lines
+        /// on the 16:9 frame at the resting size, three cards a row.
         /// </summary>
         [UnityTest, Timeout(900000)]
         public IEnumerator PickerCards_FitOnBothFramesAtBothTextSizesInAHouseOfSixteen()
         {
             foreach (bool campaign in new[] { false, true })
             {
-                yield return InstallTalkingHouse(16, campaign,
-                    AlliedWith(season => campaign ? season.nominees[1] : season.Active.Last(c => !c.isPlayer).id));
+                var allied = AlliedWith(season => campaign ? season.nominees[1] : season.Active.Last(c => !c.isPlayer).id);
+                yield return InstallTalkingHouse(16, campaign, season =>
+                {
+                    allied(season);
+                    LongNamed(season);
+                });
                 yield return SettleCast();
                 var verbs = campaign
                     ? new[] { EpisodeDirector.PromiseToEvictPickerCaption, EpisodeDirector.TargetDealPickerCaption }
@@ -252,6 +360,8 @@ namespace Gamesim.Tests.PlayMode
                             AssertRowsHaveRoom(larger, at);
                             AssertCopyHolds(at);
                             AssertPickerFits(verb, at);
+                            // The promise's people are the nominees; every other picker holds the long name.
+                            AssertLongNameDrawnWhole(verb, at, verb != EpisodeDirector.PromiseToEvictPickerCaption, frame == "16:9" && !larger);
                         });
                     }
                     director.ClosePanels();

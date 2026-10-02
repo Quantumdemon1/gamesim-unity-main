@@ -511,11 +511,13 @@ namespace Gamesim.Episode
                         // into a picker of people (FoldedDealPanel): on each person's card the stakes
                         // stand on a chip with the player's read of the chance beside it - "no read"
                         // where it has nothing behind it (KnownOdds.CardWord). Drawn as a row, the tag
-                        // would sit past the row's trust reading (EpisodeHud.DealTag).
+                        // would sit past the row's trust reading with the read's own word, as every
+                        // row's does (EpisodeHud.DealTag): the HUD has the read, and says it as the
+                        // place it lands on says it.
                         hud.DealTag(hud.ActionFor(about, EpisodeHud.DealProposeCaption(
                                     DealKind.Title(kind).ToLowerInvariant() + " against " + subject.name),
                                 () => Commit(state, EpisodeCommandKind.ProposeDeal, npc.id, about, text: kind)),
-                            Stakes(kind), CardChance(state, npc.id, kind, about));
+                            Stakes(kind), KnownOdds.Deal(state, npc.id, kind, about));
                     }
                     continue;
                 }
@@ -581,15 +583,6 @@ namespace Gamesim.Episode
         /// </summary>
         private static string Chance(EpisodeState state, string npcId, string type, string about) =>
             KnownOdds.Deal(state, npcId, type, about).word;
-
-        /// <summary>
-        /// The chance on a person's card in the deal picker (UI-UX-PASS-PLAN P1): the same read as
-        /// <see cref="Chance"/>, said as "no read" where it has nothing behind it - nothing on the
-        /// houseguest it is put to, which is when the table's "Many unknowns" chip shows, and nothing
-        /// on where they stand with the person the card names (<see cref="KnownOdds.CardWord"/>).
-        /// </summary>
-        private static string CardChance(EpisodeState state, string npcId, string type, string about) =>
-            KnownOdds.CardWord(KnownOdds.Deal(state, npcId, type, about));
 
         /// <summary>The line above a table of chances: whose read they are, and that they are not a promise.</summary>
         public static string OddsReadLine(string first) => "Each chance is your own read of " + first + ", not a promise.";

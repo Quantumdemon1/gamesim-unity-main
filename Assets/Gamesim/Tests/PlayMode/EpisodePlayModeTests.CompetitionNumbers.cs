@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Gamesim.Episode;
@@ -36,9 +37,10 @@ namespace Gamesim.Tests.PlayMode
             yield return AssertTheCardSaysNoScore(card, "standard");
             yield return DismissTheCard(card);
             AssertTheStandingsAreRows("standard");
-
             director.ClosePanels();
-            yield return null;
+            yield return Frames(2);
+            yield return AssertTheRecordSaysNoScore("standard");
+
             yield return ApplyTextSize(true);
             WarpPlayer(director.StationPosition);
             Assert.That(director.TryOpenPhasePanel(), Is.True);
@@ -54,8 +56,57 @@ namespace Gamesim.Tests.PlayMode
             if (Application.isBatchMode) yield return CaptureFraming("competition-result-large");
             yield return DismissTheCard(card);
             director.ClosePanels();
-            yield return null;
+            yield return Frames(2);
+            yield return AssertTheRecordSaysNoScore("larger");
             yield return ApplyTextSize(false);
+        }
+
+        /// <summary>
+        /// The two generic readers of the record, with the panels closed: the Recent events card
+        /// and the notebook's story page list what happened and never the engine's committed
+        /// standings or its arithmetic (EpisodeEngine.IsScaffolding). A competition's own rules may
+        /// carry a number of the game's ("0.65 or 1.15 seconds"), so a line that is the
+        /// competition's definition is read past; every other line says no decimal. The feed's three
+        /// rows are not pinned to the winner's line - the house's own talk can scroll it off - but
+        /// the story keeps it.
+        /// </summary>
+        private IEnumerator AssertTheRecordSaysNoScore(string at)
+        {
+            Canvas.ForceUpdateCanvases();
+            var state = director.Snapshot;
+            var definitions = state.events.Where(entry => entry.kind == "competition-definition").Select(entry => entry.text).ToList();
+            var feed = ActiveRect(EpisodeHud.RecentEventsCardName);
+            Assert.That(feed, Is.Not.Null, at + ": the Recent events card is up once the panels are closed.");
+            var lines = feed.GetComponentsInChildren<TMP_Text>(true).Select(label => label.text).Where(text => !string.IsNullOrEmpty(text)).ToList();
+            Assert.That(lines, Is.Not.Empty, at + ": the feed has lines.");
+            AssertNoScoreInTheLines(lines, definitions, at + ": Recent events");
+
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
+            yield return Frames(2);
+            Canvas.ForceUpdateCanvases();
+            Assert.That(director.ActiveSection, Is.EqualTo(EpisodeDirector.NotebookSection.Story), at + ": the story so far is open.");
+            var page = VisibleLines();
+            Assert.That(page, Has.Some.StartsWith("Competition winner: "), at + ": the story keeps the winner's line.");
+            AssertNoScoreInTheLines(page, definitions, at + ": The story so far");
+            director.ClosePanels();
+            yield return null;
+        }
+
+        private static void AssertNoScoreInTheLines(IEnumerable<string> lines, IList<string> definitions, string where)
+        {
+            foreach (var line in lines)
+            {
+                Assert.That(line, Does.Not.Contain("Committed competition standings"), where + " lists the engine's standings: " + line);
+                if (definitions.Any(definition => Opens(line, definition))) continue;
+                Assert.That(CompetitionWords.HasDecimal(line), Is.False, where + " says a number: " + line);
+            }
+        }
+
+        /// <summary>Whether a line on screen is the start of this text: the feed's excerpt ends it early.</summary>
+        private static bool Opens(string line, string text)
+        {
+            int length = Mathf.Min(24, Mathf.Min(line.Length, text.Length));
+            return length > 0 && string.CompareOrdinal(line, 0, text, 0, length) == 0;
         }
 
         /// <summary>

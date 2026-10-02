@@ -38,6 +38,7 @@ namespace Gamesim.Presentation
         private string playedAward, playedCategory, playedExplanation, playedAttempt;
         private int playedWeek;
         private IList<Standing> playedStandings;
+        private HudPrimitives.RoleMark? playedMark;
         private Vector2 builtFor;
         public float FontScale { get; set; } = 1f;
         public bool IsPlaying => playing;
@@ -59,12 +60,17 @@ namespace Gamesim.Presentation
         /// <summary>
         /// Shows the committed standings. <paramref name="attempt"/> is the player's own attempt in
         /// the game's own measure ("7 / 9 targets hit · performance 78%"), when there is one to say.
+        /// <paramref name="winnersMark"/> is the badge on the winner's face - the crown, or the
+        /// veto's medal - decided by the director for this card and the HUD's standings alike;
+        /// left out, the card reads it from the award as the game screen does.
         /// </summary>
-        public bool Play(string award,string category,int week,IList<Standing> standings,bool reducedMotion,string explanation=null,string attempt=null)
+        public bool Play(string award,string category,int week,IList<Standing> standings,bool reducedMotion,string explanation=null,string attempt=null,
+            HudPrimitives.RoleMark? winnersMark=null)
         {
             if(standings==null||standings.Count==0)return false;
             playedAward=award;playedCategory=category;playedWeek=week;playedStandings=standings;playedExplanation=explanation;playedAttempt=attempt;
-            Build(award,category,week,standings,explanation);
+            playedMark=winnersMark;
+            Build(award,category,week,standings,explanation,winnersMark);
             reduced=reducedMotion;elapsed=0;playing=true;
             group.alpha=reduced?1:.01f;group.interactable=true;group.blocksRaycasts=true;
             column.gameObject.SetActive(true);scrim.gameObject.SetActive(true);
@@ -101,7 +107,7 @@ namespace Gamesim.Presentation
             bool details=showingDetails;
             var selected=EventSystem.current!=null?EventSystem.current.currentSelectedGameObject:null;
             string selectedName=selected!=null&&selected.transform.IsChildOf(transform)?selected.name:null;
-            Build(playedAward,playedCategory,playedWeek,playedStandings,playedExplanation);
+            Build(playedAward,playedCategory,playedWeek,playedStandings,playedExplanation,playedMark);
             column.gameObject.SetActive(true);
             if(details){showingDetails=true;standingsPanel.gameObject.SetActive(false);detailsPanel.gameObject.SetActive(true);
                 detailsButton.GetComponentInChildren<TMP_Text>().text="Back to standings";}
@@ -166,7 +172,7 @@ namespace Gamesim.Presentation
         /// up. The result still owns input until Continue: the ground under it takes the clicks
         /// it always took, it just no longer paints the room out.
         /// </summary>
-        private void Build(string award,string category,int week,IList<Standing> standings,string explanation)
+        private void Build(string award,string category,int week,IList<Standing> standings,string explanation,HudPrimitives.RoleMark? badge)
         {
             if(column!=null){column.gameObject.SetActive(false);Destroy(column.gameObject);}
             if(scrim==null)
@@ -257,9 +263,10 @@ namespace Gamesim.Presentation
             // The rows say the order, a face and a name, and the winner's word; never the engine's
             // composite score or a bar proportioned to it (UI-UX-PASS-PLAN decision 12). The one
             // number the card shows is the player's own attempt, above, in the game's own measure.
-            // The winner's badge on their face: the crown, or the veto's medal, as the game screen
-            // reads the award.
-            var winnersMark=awardName.ToUpperInvariant().Contains("VETO")?HudPrimitives.RoleMark.VetoHolder:HudPrimitives.RoleMark.HeadOfHousehold;
+            // The winner's badge on their face: the crown, or the veto's medal - the director's
+            // word for this card and the HUD's standings alike, or read from the award as the game
+            // screen reads it when the card is played on its own.
+            var winnersMark=badge??(awardName.ToUpperInvariant().Contains("VETO")?HudPrimitives.RoleMark.VetoHolder:HudPrimitives.RoleMark.HeadOfHousehold);
             float face=(rowHeight-10f);
             const float WordWidth=96f;
             for(int i=0;i<standings.Count;i++)

@@ -110,8 +110,40 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(texts.Single(text => text.name == "Full performance explanation").text, Is.EqualTo(CompetitionWords.DetailsFallback),
                     "A card played without a season explains in the fallback's words.");
                 AssertNoCompetitorsNumber(result, "a veto result");
+
+                // The veto's medal on the winner's face, read from the award when the card is played
+                // on its own; the director's word, when it gives one, is drawn over the award's reading.
+                Assert.That(IsTheVetoMedal(BadgeOn(result, "Standing 1")), Is.True, "A veto win wears the veto's medal.");
+                Assert.That(result.Play("Head of Household · Lock In", "Mental", 3, rows, true, winnersMark: HudPrimitives.RoleMark.VetoHolder), Is.True);
+                yield return null;
+                Assert.That(IsTheVetoMedal(BadgeOn(result, "Standing 1")), Is.True, "The director's badge is drawn over the award's reading.");
+                Assert.That(result.Play("Power of Veto · Lock In", "Mental", 3, rows, true, winnersMark: HudPrimitives.RoleMark.HeadOfHousehold), Is.True);
+                yield return null;
+                Assert.That(IsTheVetoMedal(BadgeOn(result, "Standing 1")), Is.False, "and the crown where the director says crown,");
+                Assert.That(IsTheCrownBadge(BadgeOn(result, "Standing 1")), Is.True, "whatever the award says.");
             }
             finally { Object.Destroy(result.gameObject); }
+        }
+
+        /// <summary>The badge on a row's face: the one "Role mark" under it.</summary>
+        private static RectTransform BadgeOn(CompetitionResult result, string row) =>
+            result.GetComponentsInChildren<RectTransform>().Single(rect => rect.name == row)
+                .GetComponentsInChildren<RectTransform>(true).Single(rect => rect.name == "Role mark");
+
+        /// <summary>The badge is the veto's medal: the generated token where the icon pass has run, the drawn bar where it has not.</summary>
+        private static bool IsTheVetoMedal(RectTransform badge)
+        {
+            var glyph = badge.GetComponentsInChildren<Image>(true).FirstOrDefault(image => image.name == "Role glyph");
+            if (glyph != null) return glyph.sprite != null && glyph.sprite == UiTheme.Icon("veto-token");
+            return badge.GetComponentsInChildren<RectTransform>(true).Any(rect => rect.name == "Veto bar");
+        }
+
+        /// <summary>The badge is the crown: the generated glyph, or the drawn band and points.</summary>
+        private static bool IsTheCrownBadge(RectTransform badge)
+        {
+            var glyph = badge.GetComponentsInChildren<Image>(true).FirstOrDefault(image => image.name == "Role glyph");
+            if (glyph != null) return glyph.sprite != null && glyph.sprite == UiTheme.Icon("crown");
+            return badge.GetComponentsInChildren<RectTransform>(true).Any(rect => rect.name == "Crown band");
         }
 
         /// <summary>No label on the card, the hidden details page included, says a number with a fraction - but the player's own attempt.</summary>

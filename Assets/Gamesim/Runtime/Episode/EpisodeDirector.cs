@@ -839,7 +839,8 @@ namespace Gamesim.Episode
                     if (competitionCard != null)
                         competitionCard.Play(CompetitionTitle(result.state),
                             EpisodeEngine.CompetitionCategory(wasPhase, wasWeek, result.state.competitionRulesVersion, result.state.seed), result.state.week,
-                            standings, reducedMotion, CompetitionPerformanceExplanation(result.state), pendingAttemptLine ?? ThrowAttemptLine(result.state));
+                            standings, reducedMotion, CompetitionPerformanceExplanation(result.state), pendingAttemptLine ?? ThrowAttemptLine(result.state),
+                            WinnersMark(wasPhase));
                     React(CompetitionWinnerId(result.state, standings), CharacterPresentation.Reaction.Cheered);
                 }
 
@@ -1519,8 +1520,7 @@ namespace Gamesim.Episode
                     // the crown, or the veto's medal - and no score (UI-UX-PASS-PLAN C0). The rows
                     // are the result card's own standings, so the two never disagree.
                     hud.Section("FINAL STANDINGS");
-                    hud.CompetitionStandings(CompetitionStandings(state),
-                        state.phase == EpisodePhase.Veto ? HudPrimitives.RoleMark.VetoHolder : HudPrimitives.RoleMark.HeadOfHousehold);
+                    hud.CompetitionStandings(CompetitionStandings(state), WinnersMark(state.phase));
                     // The way on, pinned: it used to sit under the standings, well past the fold.
                     AdvanceWarning(state);
                     hud.PinnedAction("Continue to the next ceremony", () => Commit(state, EpisodeCommandKind.Advance));

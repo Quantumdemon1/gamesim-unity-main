@@ -99,6 +99,20 @@ namespace Gamesim.Tests.EditMode
             Assert.That(CompetitionWords.ThrowDescription(3), Does.Contain("you may still win"));
             Assert.That(CompetitionWords.EarnedRule(3), Does.Contain("your preparation (3 of 5)"), "The player's banked preparation, as the diary counts it.");
             Assert.That(CompetitionWords.EarnedRule(0), Does.Not.Contain("of 5"));
+            Assert.That(CompetitionWords.EarnedRule(3), Does.StartWith("Play it, let the day decide or take the accessible alternative:"),
+                "The three ways in that keep what was earned; a throw gives it up, and its own card says so.");
+            Assert.That(CompetitionWords.EarnedRule(3), Does.Not.Contain("However you enter"));
+        }
+
+        [Test]
+        public void TheEnginesScaffoldingIsNeverAStoryLine()
+        {
+            // The phase markers and the competition's arithmetic are the record's, left out by every
+            // reader that lists events for the player; everything that happened stays a line.
+            foreach (string kind in new[] { "phase", "competition-standings", "competition-performance" })
+                Assert.That(EpisodeEngine.IsScaffolding(kind), Is.True, kind);
+            foreach (string kind in new[] { "conversation", "eviction", "competition", "competition-definition", EpisodeEngine.ThrowEventKind, "", null })
+                Assert.That(EpisodeEngine.IsScaffolding(kind), Is.False, kind ?? "null");
         }
 
         [Test]

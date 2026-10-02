@@ -1226,8 +1226,10 @@ namespace Gamesim.Episode
                 .Where(entry => entry.audienceIds.Count == 0 || entry.audienceIds.Contains(state.playerId))
                 // Phase markers are the engine's scaffolding, not something that happened - the
                 // story page leaves them out for the same reason. They filled the card with
-                // "Week 1 · Nomination" where the nomination itself should have been.
-                .Where(entry => entry.kind != "phase")
+                // "Week 1 · Nomination" where the nomination itself should have been. So are the
+                // competition's committed standings and performance arithmetic: the record's
+                // numbers, which nobody in the house sees (UI-UX-PASS-PLAN decision 12).
+                .Where(entry => !EpisodeEngine.IsScaffolding(entry.kind))
                 .Reverse()
                 // A quieter house at the endgame: two rows, as the outline asks (ENDGAME-PLAN F1).
                 .Take(IsEndgame(state) ? EndgameEventRows : RecentEventRows)

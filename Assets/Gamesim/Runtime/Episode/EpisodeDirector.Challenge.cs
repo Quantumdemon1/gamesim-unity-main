@@ -58,6 +58,13 @@ namespace Gamesim.Episode
             return notes.Count == 0 ? null : string.Join("  ·  ", notes);
         }
 
+        /// <summary>
+        /// The badge on a competition winner's face, on the result card and the HUD's standings
+        /// alike: the veto's medal for the veto, the crown for a Head of Household and the final parts.
+        /// </summary>
+        public static HudPrimitives.RoleMark WinnersMark(EpisodePhase phase) =>
+            phase == EpisodePhase.Veto ? HudPrimitives.RoleMark.VetoHolder : HudPrimitives.RoleMark.HeadOfHousehold;
+
         /// <summary>What a Head of Household's Have-Not rows carry on the standings.</summary>
         public const string HaveNotNote = "Have-Not";
 
@@ -543,7 +550,7 @@ namespace Gamesim.Episode
         {
             if (competitionCard == null || !state.competitionResolved) return;
             competitionCard.Play(CompetitionTitle(state), EpisodeEngine.CompetitionCategory(state), state.week,
-                CompetitionStandings(state), reducedMotion, CompetitionPerformanceExplanation(state), ThrowAttemptLine(state));
+                CompetitionStandings(state), reducedMotion, CompetitionPerformanceExplanation(state), ThrowAttemptLine(state), WinnersMark(state.phase));
         }
         /// <summary>
         /// The competition wide (V5): the yard from the house's side, over the wall line, the

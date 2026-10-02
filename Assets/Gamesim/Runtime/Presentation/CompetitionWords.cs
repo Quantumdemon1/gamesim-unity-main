@@ -108,9 +108,14 @@ namespace Gamesim.Presentation
             ? "Performance adds " + range + " endurance for this competition only. Who you are and how the day goes decide the rest; full marks do not guarantee a win."
             : "Performance adds a " + range + " point bonus. Who you are and how the day goes decide the rest; full marks do not guarantee a win.";
 
-        /// <summary>The full rules' line on what every way in keeps (rules 3 on): the player's own banked preparation, as the diary counts it.</summary>
+        /// <summary>
+        /// The full rules' line on what the three ways in keep (rules 3 on): the player's own banked
+        /// preparation, as the diary counts it. A throw is the exception - every bonus given up -
+        /// and the Throw card says so; this sentence does not claim it.
+        /// </summary>
         public static string EarnedRule(int preparation) =>
-            "However you enter, what you have earned counts the same: your preparation" + (preparation > 0 ? " (" + preparation + " of 5)" : "")
+            "Play it, let the day decide or take the accessible alternative: what you have earned counts the same - your preparation"
+            + (preparation > 0 ? " (" + preparation + " of 5)" : "")
             + ", the week's events and the story so far. Playing, or the accessible alternative, adds your performance on top; your preparation carries over to later weeks.";
     }
 }

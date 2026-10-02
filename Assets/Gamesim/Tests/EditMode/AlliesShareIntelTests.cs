@@ -110,6 +110,50 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
+        public void C6_ABetrayalThePlayerCannotKnowChangesNothingInWhoAnswersAsAnAlly()
+        {
+            // A strategist at a view of 10, in a pact of three with the player, who turned on it last
+            // week: by voting to evict the player, a ballot the player cannot place, or by nominating
+            // them, which the player saw. Who answers as an ally follows what the player can know: a
+            // hidden ballot betrayal must not be told by a deflection, or by silence at a meeting.
+            foreach (bool known in new[] { false, true })
+            {
+                string label = known ? "A nomination the player saw" : "A vote against the player they cannot place";
+                foreach (bool meeting in new[] { false, true })
+                {
+                    var s = Campaign(true);
+                    string member = Voter(s, 0), other = Voter(s, 1);
+                    s.Find(member).traits = new List<string> { "Strategic", "Social" };
+                    Pact(s, PactId, PactName, s.playerId, member, other);
+                    foreach (var id in new[] { s.playerId, member, other })
+                        foreach (var to in new[] { s.playerId, member, other }.Where(t => t != id)) SetScore(s, id, to, 30);
+                    SetScore(s, member, s.playerId, 10);
+                    Betray(s, member, known ? Allegiance.Nominated : Allegiance.VotedAgainst);
+                    s.week = 2;
+                    Valid(s);
+                    Assert.That(Allegiance.Betrayed(s, member), Is.True, label + ": the betrayal stands on the record,");
+                    Assert.That(Allegiance.KnownBetrayed(s, member), Is.EqualTo(known), label + ": and the player " + (known ? "knows it." : "cannot know it."));
+                    if (!meeting)
+                    {
+                        var engine = new EpisodeEngine(s);
+                        Assert.That(Apply(engine, EpisodeCommandKind.AskVote, member).accepted, Is.True, label);
+                        var asked = engine.Snapshot;
+                        bool deflected = asked.ledger.standings.Any(r => r.fromId == member && r.source == ClaimSource.Deflected);
+                        Assert.That(deflected, Is.EqualTo(known), label + (known ? ": they answer as anybody does, and keep it to themselves." : ": they answer as an ally,"));
+                        if (known) continue;
+                        var claim = asked.ledger.claims.Single(k => k.voterId == member);
+                        Assert.That((claim.source, claim.targetId), Is.EqualTo((ClaimSource.Told, EpisodeEngine.ProjectBallot(s, member).selectedNomineeId)),
+                            label + ": with their true ballot, to the player's face.");
+                        continue;
+                    }
+                    var met = Meet(s, member);
+                    Assert.That(met.ledger.claims.Single().voterId, Is.EqualTo(known ? other : member),
+                        label + (known ? ": at a meeting they say nothing, and the other member does." : ": at a meeting they say where their vote is going."));
+                }
+            }
+        }
+
+        [Test]
         public void C6_AStrangersAnswerIsUnchangedByTheRules()
         {
             // The same question to the same stranger, with and without the rules: the same line, the same
@@ -198,11 +242,12 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void C6_APactMeetsInAnyPrivateRoom()
         {
-            foreach (var room in new[] { "Bedroom", "Private", "Yard", "HoH", "Games" })
+            foreach (var room in new[] { "Bedroom", "Yard", "HoH", "Games" })
                 Assert.That(EpisodeEngine.IsPrivateRoom(room), Is.True, room + " is a room where nobody listens.");
-            foreach (var room in new[] { "Living", "Kitchen", "Nomination", "", null, "the backyard" })
+            // The open rooms, the ceremonies' room, and the private room, which is the diary room's.
+            foreach (var room in new[] { "Living", "Kitchen", "Nomination", "Private", "", null, "the backyard" })
                 Assert.That(EpisodeEngine.IsPrivateRoom(room), Is.False, (room ?? "null") + " is not.");
-            Assert.That(RoomWords.Rooms.Count(EpisodeEngine.IsPrivateRoom), Is.EqualTo(5), "Five of the house's eight rooms.");
+            Assert.That(RoomWords.Rooms.Count(EpisodeEngine.IsPrivateRoom), Is.EqualTo(4), "Four of the house's eight rooms.");
             // The engine never knows the room: the line says where nobody listens, never "the backyard".
             var s = FreeTimeWithAPactOfThree(true, out string first, out _);
             var after = Meet(s, first);
@@ -241,9 +286,12 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(after.Score(second, first) - s.Score(second, first), Is.EqualTo(EpisodeEngine.AllianceMeetingWarmth));
                 foreach (var (from, to) in new[] { (first, second), (second, first) })
                 {
-                    var record = Entries(after, from, to, "alliance-meeting").Single();
+                    var record = Entries(after, from, to, EpisodeEngine.PactMeetingType).Single();
                     Assert.That((record.impactScore, record.description), Is.EqualTo((EpisodeEngine.AllianceMeetingWarmth, PactName + " met in week " + s.week)),
-                        "on the record as the house's own meetings write it.");
+                        "on the record as the house's own meetings write theirs,");
+                    Assert.That(record.decayable, Is.True, "fading as theirs does,");
+                    Assert.That(Entries(after, from, to, "alliance-meeting"), Is.Empty,
+                        "under a type of its own: the house's private meetings are what the Spy Screen shows the player.");
                 }
                 // Arcs are the player's: one each from the player's own pair, none from the houseguests'.
                 foreach (var member in new[] { first, second })
@@ -271,7 +319,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(after.Score(after.playerId, first) - s.Score(s.playerId, first), Is.EqualTo(EpisodeEngine.AllianceMeetingWarmth),
                 "the one it was not held through included,");
             Assert.That(after.Score(after.playerId, gone), Is.EqualTo(s.Score(s.playerId, gone)), "and nobody gone.");
-            Assert.That(Entries(after, first, gone, "alliance-meeting"), Is.Empty);
+            Assert.That(Entries(after, first, gone, EpisodeEngine.PactMeetingType), Is.Empty);
             Assert.That(EpisodeEngine.AtTheMeeting(s, s.alliances.Single(a => a.id == PactId)), Is.EqualTo(new[] { first, second }), "The pact's own order, the departed left out.");
         }
 
@@ -374,6 +422,20 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(after.events.Any(e => e.kind == "vote-lie"), Is.False, label + ": an ally's account is no lie told to the player's face.");
                 Assert.That(Entries(after, after.playerId, first, "vote-lie"), Is.Empty);
                 Assert.That(after.Score(after.playerId, first), Is.EqualTo(mine), label + ": nothing costs them with the player for it.");
+
+                // The pages say it as it was said: the member's own word to the pact, and a ballot that
+                // went against it a vote that changed, never a lie.
+                var note = HouseguestNotes.For(after, first).Single(n => n.kind == HouseguestNotes.Kinds.Vote);
+                Assert.That(note.text, Is.EqualTo("Told the pact they'd vote out " + after.Find(told).name + (changesTheirMind ? " · voted the other way" : " · and did")),
+                    label + ": the notes.");
+                Assert.That(note.brief, Is.EqualTo(changesTheirMind ? "Voted the other way" : "Told the pact the truth about the vote"), label + ": the notes' brief.");
+                var recap = YourWeek.Build(after, s.week).reads.Single(l => l.kind == YourWeek.Kinds.Claim && l.aboutId == first);
+                Assert.That(recap.text, Does.StartWith(after.Find(first).name + " told the pact: evict " + after.Find(told).name), label + ": Your week.");
+                foreach (var words in new[] { note.text, note.brief, recap.text })
+                {
+                    Assert.That(words, Does.Not.Contain("a lie").And.Not.Contain("Lied"), label + ": never a lie.");
+                    Assert.That(words, Does.Not.Contain("An ally heard"), label + ": the member's own word, not an account of somebody else's.");
+                }
             }
         }
 

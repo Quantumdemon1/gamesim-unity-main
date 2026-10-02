@@ -10,11 +10,17 @@ namespace Gamesim.Simulation
     /// did, roll for roll and line for line.
     ///
     /// <para><b>Who is an ally.</b> A houseguest in a pact with the player that holds from their own
-    /// side (<see cref="Allegiance.Holds"/>): both still in the house, no betrayal of theirs standing
-    /// against it, their own view of the player not under <see cref="Allegiance.QuietLine"/>. A member
-    /// who has cooled, turned or betrayed is no ally here and answers as anybody does - which is one of
-    /// the ways the player learns a pact has cooled (C3): a member who will not say where their vote is
-    /// has told the player where they stand (<see cref="Allegiance.CommitmentKnown"/>).</para>
+    /// side as far as the player can know (<see cref="SharesIntel"/>): both still in the house, no
+    /// betrayal of theirs the player can know standing against it (<see cref="Allegiance.KnownBetrayed"/>),
+    /// their own view of the player not under <see cref="Allegiance.QuietLine"/>. A betrayal told only
+    /// by a ballot the player cannot place changes nothing here - the betrayer goes on answering as an
+    /// ally, their true ballot still - or a question would tell the player of a ballot they were never
+    /// told. A member gone cold, or whose betrayal the player knows of, answers as anybody does, and a
+    /// member who will not say where their vote is has told the player where they stand
+    /// (<see cref="Allegiance.CommitmentKnown"/>): the notes then say which, "gone quiet" for a member
+    /// gone cold and the betrayal for one who turned. C3's refused call reads the true state as it
+    /// did: following is a roll (<see cref="WebVotingBlocs.Complies"/>), so a refusal tells nothing
+    /// for certain.</para>
     ///
     /// <para><b>"Where's your head at?"</b> An ally answers straight (<see cref="SharesIntel"/>): never a
     /// deflection, their ballot as it stands (<see cref="ProjectBallot"/>), told to the player's face
@@ -34,7 +40,8 @@ namespace Gamesim.Simulation
     /// still in the house is at it. Every pair of them, the player's included, is worth
     /// <see cref="AllianceMeetingWarmth"/>: the player's own pairs through the engine's path, a roll
     /// each, as any conversation of theirs; the houseguests' pairs as the house moves them, symmetric
-    /// and without a roll or an arc, on the record as the house's meetings write them. In a vote week,
+    /// and without a roll or an arc, on the record under a type of the meeting's own
+    /// (<see cref="PactMeetingType"/>). In a vote week,
     /// while two nominees stand (<see cref="VoteRead.Available"/>), one member says where their vote is
     /// going: one <see cref="ClaimSource.Ally"/> claim, their ballot as it stands after the meeting,
     /// no roll, judged at the reveal like every other claim (<see cref="MeetingSpeaker"/> says who).
@@ -50,29 +57,44 @@ namespace Gamesim.Simulation
         public const double AllianceMeetingWarmth = NpcSocialActions.AllianceMeetingImpact;
 
         /// <summary>
-        /// The rooms where nobody listens, by the house's room ids (<see cref="RoomWords.Rooms"/>), read
-        /// from the room acts: the bedroom, the private room, the backyard - the yard, where the plan was
-        /// always gone over "where nobody listens" - the Head of Household's suite and the game room,
-        /// each a room whose act is between two people and has no audience. Not the living room or the
-        /// kitchen, the house's open rooms, whose acts are watched by everybody in either
-        /// (<see cref="EpisodeCommandKind.PublicDefense"/>'s witnesses, <see cref="EpisodeCommandKind.Cook"/>'s
-        /// table); nor the nomination room, where the house gathers for its ceremonies.
+        /// The record a meeting of the player's pact leaves between two of its houseguests. It fades as
+        /// the house's own <c>alliance-meeting</c> record does (<see cref="RelationshipLedger.Decays"/>),
+        /// under a type of its own: what reads the house's private meetings - the Spy Screen casts from
+        /// them - must not show the player two of their own pact-mates meeting behind their back.
         /// </summary>
-        public static readonly string[] PrivateRooms = { "Bedroom", "Private", "Yard", "HoH", "Games" };
+        public const string PactMeetingType = "pact-meeting";
+
+        /// <summary>
+        /// The rooms where nobody listens, by the house's room ids (<see cref="RoomWords.Rooms"/>), read
+        /// from the room acts: the bedroom, the backyard - the yard, where the plan was always gone over
+        /// "where nobody listens" - the Head of Household's suite and the game room, each a room whose
+        /// act is between two people and has no audience. Not the living room or the kitchen, the
+        /// house's open rooms, whose acts are watched by everybody in either
+        /// (<see cref="EpisodeCommandKind.PublicDefense"/>'s witnesses, <see cref="EpisodeCommandKind.Cook"/>'s
+        /// table); nor the nomination room, where the house gathers for its ceremonies; nor the private
+        /// room, which is the diary room's, a confessional for one.
+        /// </summary>
+        public static readonly string[] PrivateRooms = { "Bedroom", "Yard", "HoH", "Games" };
 
         /// <summary>Whether a room of the house is one where nobody listens (<see cref="PrivateRooms"/>).</summary>
         public static bool IsPrivateRoom(string roomId) => roomId != null && Array.IndexOf(PrivateRooms, roomId) >= 0;
 
         /// <summary>
         /// Whether this houseguest answers the player as an ally (C6): under the commitment rules, in a
-        /// pact with the player that holds from their own side (<see cref="Allegiance.Holds"/>). Never
-        /// without the rules, never the player.
+        /// pact with the player that holds from their own side as far as the player can know -
+        /// <see cref="Allegiance.Holds"/> on the season as the player knows it
+        /// (<see cref="Allegiance.AsThePlayerKnows"/>), without the copy: both in the house, no betrayal
+        /// of theirs the player can know standing against it, their own view of the player not under
+        /// <see cref="Allegiance.QuietLine"/>. A betrayal told only by a ballot the player cannot place
+        /// does not count here, or who answers straight would tell it; what they answer is still their
+        /// true ballot. Never without the rules, never the player.
         /// </summary>
         public static bool SharesIntel(EpisodeState s, string npcId)
         {
             if (!CommitmentRulesOn(s) || string.IsNullOrEmpty(npcId) || npcId == s.playerId) return false;
             var npc = s.Find(npcId);
-            return npc != null && !npc.isPlayer && Allegiance.Holds(s, npcId, s.playerId);
+            return npc != null && !npc.isPlayer && s.Allied(npcId, s.playerId)
+                   && !Allegiance.KnownBetrayed(s, npcId) && s.Score(npcId, s.playerId) >= Allegiance.QuietLine;
         }
 
         /// <summary>
@@ -126,8 +148,8 @@ namespace Gamesim.Simulation
         /// ballot and answer as allies (<see cref="SharesIntel"/>), the first whose vote the player has
         /// not heard this week (no claim from them yet, however heard) - the one the meeting was held
         /// through first, then the pact's own order. Where the player has heard every one of them, the
-        /// first again. Null outside a vote week, or with no ally at it who votes: a member who has
-        /// cooled, turned or betrayed says nothing, as they would say nothing straight to anybody.
+        /// first again. Null outside a vote week, or with no ally at it who votes: a member gone cold, or
+        /// whose betrayal the player knows of, says nothing, as they would say nothing straight to anybody.
         /// </summary>
         public static string MeetingSpeaker(EpisodeState s, AllianceState pact, string throughId)
         {
@@ -188,7 +210,7 @@ namespace Gamesim.Simulation
                 for (int j = i + 1; j < at.Count; j++)
                 {
                     RelationshipLedger.Move(s, at[i], at[j], AllianceMeetingWarmth);
-                    RelationshipLedger.Record(s, at[i], at[j], "alliance-meeting", AllianceMeetingWarmth, record);
+                    RelationshipLedger.Record(s, at[i], at[j], PactMeetingType, AllianceMeetingWarmth, record);
                 }
             foreach (var id in at) Remember(s, id, s.playerId, MeetingMemory(s.week), true);
 

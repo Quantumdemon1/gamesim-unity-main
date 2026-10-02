@@ -70,8 +70,9 @@ namespace Gamesim.Simulation
             Require(!AskedThisWeek(s, target.id), "You already asked " + target.name + " this week.");
             double view = s.Score(target.id, s.playerId);
             // Under the commitment rules an ally answers straight (ACTIONS-DEALS-ALLIANCES-PLAN C6): in
-            // a pact with the player that holds from their side, they never deflect and never lie. A
-            // member who has cooled, turned or betrayed answers as anybody does. Never without the rules.
+            // a pact with the player that holds from their side as far as the player can know, they never
+            // deflect and never lie. A member gone cold, or whose betrayal the player knows of, answers as
+            // anybody does. Never without the rules.
             bool ally = SharesIntel(s, target.id);
             // A strategist who is not close to you keeps it to themselves. No roll: nothing to keep.
             if (!ally && target.traits.Contains("Strategic") && !target.traits.Contains("Loyal") && view < 25)

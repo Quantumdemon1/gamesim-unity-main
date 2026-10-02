@@ -379,7 +379,8 @@ namespace Gamesim.Tests.EditMode
             row.said.Add(new SeasonBallots.Said { saidId = npcs[1].id, source = ClaimSource.Ally, lied = true });
             Assert.That(row.Lied, Is.False, "An ally's account the vote went against is not a lie told to the player.");
             Assert.That(SeasonBallots.LieWords(s, row), Is.Null);
-            Assert.That(SeasonBallots.ChangedWords(s, row), Is.EqualTo("An ally heard they'd evict " + npcs[1].name + "; voted the other way"));
+            Assert.That(SeasonBallots.ChangedWords(s, row), Is.EqualTo("Told the pact they'd evict " + npcs[1].name + "; voted the other way"),
+                "An ally's account is their own word to the pact (C6).");
             row.said.Insert(0, new SeasonBallots.Said { saidId = s.playerId, source = ClaimSource.Overheard, lied = true });
             Assert.That(row.Lied, Is.False, "Nor is a lean overheard.");
             Assert.That(SeasonBallots.ChangedWords(s, row), Is.EqualTo("Overheard saying they'd evict you; voted the other way"), "The surest source speaks for it.");

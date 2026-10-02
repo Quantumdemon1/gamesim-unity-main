@@ -154,9 +154,10 @@ namespace Gamesim.Tests.PlayMode
                     continue;
                 }
 
-                // Pressed: one command, the whole pact at it, one ally's vote told.
+                // Pressed: one command, the whole pact at it, one ally's vote told. The control is found
+                // again by its caption: a capture can render the conversation anew.
                 int revision = director.Snapshot.revision;
-                row.onClick.Invoke();
+                ButtonWithCaption(EpisodeDirector.AllianceMeetingCaption).onClick.Invoke();
                 yield return null; yield return null;
                 var after = director.Snapshot;
                 Assert.That(after.revision, Is.EqualTo(revision + 1), where + ": the meeting is one command.");

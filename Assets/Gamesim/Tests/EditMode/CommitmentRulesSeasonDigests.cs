@@ -127,8 +127,11 @@ namespace Gamesim.Tests.EditMode
             Assert.That(reached.TryGetValue("safety-kept", out int spared) && spared > 0, Is.True, "Safety pacts were kept.");
             Assert.That(reached.TryGetValue("information-reading", out int readings) && readings > 0, Is.True, "Information deals passed their readings.");
             Assert.That(reached.TryGetValue("accepted-offer-broken", out int accepted) && accepted > 0, Is.True, "Offers the player accepted broke.");
-            // C6 (allies share intel): allies were asked, pacts met, and meetings in a vote week told a vote the reveal judged.
-            Assert.That(reached.TryGetValue("ally-asked", out int allyAsked) && allyAsked > 0, Is.True, "The player asked somebody in a pact with them.");
+            // C6 (allies share intel): allies were asked and answered straight, pacts met, and meetings in a
+            // vote week told a vote the reveal judged.
+            Assert.That(reached.TryGetValue("ally-asked", out int allyAsked) && allyAsked > 0, Is.True, "The player asked somebody who answers as an ally.");
+            reached.TryGetValue("ally-asked-straight", out int straight);
+            Assert.That(straight, Is.EqualTo(allyAsked), "Every ally asked answered with their ballot as it stood.");
             Assert.That(reached.TryGetValue("AllianceMeet", out int meetings) && meetings > 0, Is.True, "Pacts met.");
             Assert.That(reached.TryGetValue("ally-claim", out int allyClaims) && allyClaims > 0, Is.True, "A meeting told the player a vote.");
             Assert.That(reached.TryGetValue("ally-claim-kept", out int allyKept) && allyKept > 0, Is.True, "The reveal judged it.");
@@ -199,13 +202,21 @@ namespace Gamesim.Tests.EditMode
                 {
                     var own = Busy(s, seed, attempt, rulesOn);
                     if (own == null) break;
+                    // C6: whether the one asked answers as an ally, read before the question is put.
+                    bool ally = own.kind == EpisodeCommandKind.AskVote && AnswersAsAnAlly(s, own.targetId);
                     var result = engine.Apply(own);
                     if (result.accepted)
                     {
                         done = true;
                         Count(counts, own.kind.ToString());
-                        // C6: a question put to somebody in a pact with the player.
-                        if (own.kind == EpisodeCommandKind.AskVote && s.Allied(own.targetId, s.playerId)) Count(counts, "ally-asked");
+                        if (ally)
+                        {
+                            // An ally's answer is their ballot as it stood when asked, and never a deflection.
+                            Count(counts, "ally-asked");
+                            var told = result.state.ledger.claims.LastOrDefault(k => k.week == s.week && k.voterId == own.targetId);
+                            if (told != null && told.source == ClaimSource.Told && told.targetId == EpisodeEngine.ProjectBallot(s, own.targetId).selectedNomineeId)
+                                Count(counts, "ally-asked-straight");
+                        }
                     }
                 }
                 if (done) continue;
@@ -248,6 +259,13 @@ namespace Gamesim.Tests.EditMode
                 + " winner=" + final.winnerId;
             digest = Hash(trace.ToString());
         }
+
+        /// <summary>C6's reader of who answers the player as an ally (EpisodeEngine.SharesIntel), by reflection so the file still compiles against the build before it; nobody there.</summary>
+        private static readonly System.Reflection.MethodInfo SharesIntel =
+            typeof(EpisodeEngine).GetMethod("SharesIntel", new[] { typeof(EpisodeState), typeof(string) });
+
+        private static bool AnswersAsAnAlly(EpisodeState s, string npcId) =>
+            SharesIntel != null && !string.IsNullOrEmpty(npcId) && (bool)SharesIntel.Invoke(null, new object[] { s, npcId });
 
         private static void Count(Dictionary<string, int> counts, string key, int by = 1)
         {

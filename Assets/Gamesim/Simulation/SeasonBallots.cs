@@ -375,7 +375,8 @@ namespace Gamesim.Simulation
         /// <summary>
         /// The muted line under a vote that changed, with no mark: what was heard, in the claim's
         /// own source, and that the ballot went the other way - "Overheard saying they'd evict Maya
-        /// Hassan; voted the other way", "An ally heard they'd evict you; voted the other way".
+        /// Hassan; voted the other way", and an ally's own word at a meeting of the player's pact
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN C6), "Told the pact they'd evict you; voted the other way".
         /// Null where there is none.
         /// </summary>
         public static string ChangedWords(EpisodeState s, Row row)
@@ -386,7 +387,7 @@ namespace Gamesim.Simulation
             switch (changed.source)
             {
                 case ClaimSource.Overheard: return "Overheard saying " + evict;
-                case ClaimSource.Ally: return "An ally heard " + evict;
+                case ClaimSource.Ally: return "Told the pact " + evict;
                 default: return "Said " + evict;
             }
         }

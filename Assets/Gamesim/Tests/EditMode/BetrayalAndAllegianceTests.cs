@@ -401,7 +401,7 @@ namespace Gamesim.Tests.EditMode
             var page = AllianceRead.Yours(after).Single(p => p.id == PactId);
             Assert.That(page.ended, Is.Null, "The alliances page shows it standing,");
             Assert.That(page.members.Select(m => m.id), Is.EqualTo(new[] { loyal }), "without them.");
-            Assert.That(HouseDialogue.Response(after, betrayer, EpisodeCommandKind.LeaveAlliance), Is.AnyOf(BetrayersReplies), "and the betrayer knows why.");
+            Assert.That(BetrayersReplies, Does.Contain(HouseDialogue.Response(after, betrayer, EpisodeCommandKind.LeaveAlliance)), "and the betrayer knows why.");
             Assert.That(Allegiance.FreeExit(after, betrayer), Is.False, "Cut out, there is nothing left to leave.");
             Valid(after);
         }
@@ -425,7 +425,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(sense.text, Is.EqualTo("Week " + after.week + ": your alliance with " + after.Find(betrayer).name + " ended in a betrayal."), "and so does Game Sense,");
             Assert.That(sense.points, Is.EqualTo(-6));
             Assert.That(sense.known, Is.True, "from a betrayal the player can know.");
-            Assert.That(HouseDialogue.Response(after, betrayer, EpisodeCommandKind.LeaveAlliance), Is.AnyOf(BetrayersReplies), "The betrayer knows why.");
+            Assert.That(BetrayersReplies, Does.Contain(HouseDialogue.Response(after, betrayer, EpisodeCommandKind.LeaveAlliance)), "The betrayer knows why.");
             Valid(after);
         }
 
@@ -454,7 +454,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(paid.Score(betrayer, paid.playerId), Is.EqualTo(plain.Score(betrayer, plain.playerId)), "The same -15 with them, through the same roll.");
             Assert.That(paid.randomState, Is.EqualTo(plain.randomState));
             Assert.That(paid.events.Last().text, Is.EqualTo("You left the alliance with " + paid.Find(betrayer).name + "."));
-            Assert.That(HouseDialogue.Response(paid, betrayer, EpisodeCommandKind.LeaveAlliance), Is.Not.AnyOf(BetrayersReplies));
+            Assert.That(BetrayersReplies, Does.Not.Contain(HouseDialogue.Response(paid, betrayer, EpisodeCommandKind.LeaveAlliance)));
         }
 
         [Test]

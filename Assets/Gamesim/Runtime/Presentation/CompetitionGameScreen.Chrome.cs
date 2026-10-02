@@ -47,7 +47,7 @@ namespace Gamesim.Presentation
             rulesLabel.alignment = TextAlignmentOptions.TopLeft; Fit(rulesLabel, 12);
             policyMark = Picture("Policy mark", challengeCard, UiTheme.Pack(PackArt.KitIconInfo), UiTheme.Muted);
             policyLabel = Label("Attempt policy", challengeCard, practice
-                ? "Practice never changes your season. Ranked play uses a separate, fixed board."
+                ? CompetitionWords.PracticePolicy
                 : "Cancel or reload returns to this same ranked board. Scores commit once, after play ends.",
                 12, 0, 0, 10, 10, UiTheme.Muted);
             policyLabel.alignment = TextAlignmentOptions.TopLeft; Fit(policyLabel, 10);
@@ -74,6 +74,9 @@ namespace Gamesim.Presentation
             return CompetitionMiniGames.CategoryOf(run.Kind) ?? "Skill";
         }
 
+        /// <summary>The rules line's sentence for a names board filled out with house words, which the names come before.</summary>
+        public const string HouseWordsFollowTheNames = "Fewer than six of this season's names can be scrambled, so house words follow them.";
+
         /// <summary>
         /// The rules the game runs, on the surface it is played on: the authored summary, and for an
         /// authored competition the controls and costs the summary does not state. Every sentence is
@@ -94,7 +97,10 @@ namespace Gamesim.Presentation
                 case CompetitionMiniGames.Kind.Dice:
                     return rules + " Arrows / D-pad choose Roll or Keep; Enter / A presses it. The dice land one after another.";
                 case CompetitionMiniGames.Kind.Words:
-                    return rules + " Click, type or press A on a letter; Backspace / X takes one back; a wrong spelling clears. "
+                    // A names board that is filled out says so: the rule says names, and a house
+                    // word under it with no warning read as the wrong game (UI-UX-PASS-PLAN M0).
+                    return rules + (run.DealsHouseWords ? " " + HouseWordsFollowTheNames : string.Empty)
+                        + " Click, type or press A on a letter; Backspace / X takes one back; a wrong spelling clears. "
                         + "Typing spells, so P is a letter here: Start or the Pause button pauses.";
                 default: return rules;
             }

@@ -456,9 +456,19 @@ namespace Gamesim.Episode
                         }
                         var size = chip.rect.sizeDelta * pixels;
                         // The chip hangs from the middle of its bottom edge.
-                        box = new Rect(screen.x - size.x * .5f, screen.y, size.x, size.y);
-                        LiftClearOfPlacedNames(ref box, 2f * pixels);
+                        var over = new Rect(screen.x - size.x * .5f, screen.y, size.x, size.y);
+                        box = over;
+                        LiftClear(ref box, 2f * pixels);
                         show = bounds.Contains(box.min) && bounds.Contains(box.max) && !ChipCovered(box);
+                        // Lifted off the frame or into the chrome - a finalist under the top bar -
+                        // the name tries the other side, under what it stood clear of, before it
+                        // is put away.
+                        if (!show && box.y != over.y)
+                        {
+                            var under = over;
+                            LowerClear(ref under, 2f * pixels);
+                            if (bounds.Contains(under.min) && bounds.Contains(under.max) && !ChipCovered(under)) { box = under; show = true; }
+                        }
                     }
                 }
                 if (!show)
@@ -477,26 +487,62 @@ namespace Gamesim.Episode
             namesShowing = any;
         }
 
+        /// <summary>The icons placed this frame, in screen pixels, with their badges' reach: a name chip stands clear of them.</summary>
+        private readonly List<Rect> placedIcons = new List<Rect>();
+
         /// <summary>
         /// Moves a chip's screen rect up until it is at least <paramref name="gap"/> clear of every
-        /// chip placed before it this frame. Each move takes it above one placed chip's top, and it
-        /// only ever goes up, so it passes each placed chip at most once and the loop ends.
+        /// chip placed before it this frame and of every icon on screen. Each move takes it above
+        /// one placed rect's top, and it only ever goes up, so it passes each at most once and the
+        /// loop ends.
+        ///
+        /// <para>The icons too: a chip is drawn under them, so a houseguest standing at a room's
+        /// icon wore their name half under it, and what showed read as the icon's own - the yard's
+        /// count of one over the tail of "Taylor" read "1 of" on its badge (endgame-final-three;
+        /// UI-UX-PASS-PLAN T0).</para>
         /// </summary>
-        private void LiftClearOfPlacedNames(ref Rect box, float gap)
+        private void LiftClear(ref Rect box, float gap)
         {
-            for (int pass = 0; pass <= placedNames.Count; pass++)
+            for (int pass = 0; pass <= placedNames.Count + placedIcons.Count; pass++)
             {
-                bool moved = false;
-                foreach (var placed in placedNames)
-                {
-                    bool touches = box.xMin < placed.xMax + gap && box.xMax > placed.xMin - gap
-                        && box.yMin < placed.yMax + gap && box.yMax > placed.yMin - gap;
-                    if (!touches) continue;
-                    box.y = placed.yMax + gap;
-                    moved = true;
-                }
+                bool moved = Past(placedNames, ref box, gap, true);
+                moved |= Past(placedIcons, ref box, gap, true);
                 if (!moved) return;
             }
+        }
+
+        /// <summary>
+        /// The same, the other way: moves a chip's screen rect down until it is clear of every chip
+        /// placed and every icon, for a name that lifting took off the frame or under the chrome.
+        /// </summary>
+        private void LowerClear(ref Rect box, float gap)
+        {
+            for (int pass = 0; pass <= placedNames.Count + placedIcons.Count; pass++)
+            {
+                bool moved = Past(placedNames, ref box, gap, false);
+                moved |= Past(placedIcons, ref box, gap, false);
+                if (!moved) return;
+            }
+        }
+
+        /// <summary>
+        /// Moves <paramref name="box"/> past every rect of <paramref name="placed"/> it touches,
+        /// above it when <paramref name="up"/> and below it otherwise. Indexed, not enumerated
+        /// through an array of the lists: this runs for every chip every frame.
+        /// </summary>
+        private static bool Past(List<Rect> placed, ref Rect box, float gap, bool up)
+        {
+            bool moved = false;
+            for (int i = 0; i < placed.Count; i++)
+            {
+                var other = placed[i];
+                bool touches = box.xMin < other.xMax + gap && box.xMax > other.xMin - gap
+                    && box.yMin < other.yMax + gap && box.yMax > other.yMin - gap;
+                if (!touches) continue;
+                box.y = up ? other.yMax + gap : other.yMin - gap - box.height;
+                moved = true;
+            }
+            return moved;
         }
 
         /// <summary>
@@ -506,6 +552,8 @@ namespace Gamesim.Episode
         /// </summary>
         private bool ChipCovered(Rect box)
         {
+            // Given the chrome as rects, the chip is one test.
+            if (coveredBox != null) return coveredBox(box);
             if (covered == null) return false;
             int spans = Mathf.Max(2, Mathf.CeilToInt(box.width / Mathf.Max(1f, box.height)));
             for (int x = 0; x <= spans; x++)
@@ -520,6 +568,8 @@ namespace Gamesim.Episode
         private string stationRoom, playerRoom;
         private System.Func<string, Vector3> where;
         private System.Func<Vector2, bool> covered;
+        /// <summary>The chrome asked about a whole screen rect at once, when the caller has it so; preferred over the points.</summary>
+        private System.Func<Rect, bool> coveredBox;
         private System.Func<string, int> occupants;
         private string nextStop;
 
@@ -567,13 +617,16 @@ namespace Gamesim.Episode
         /// LateUpdate, after the camera has moved: placed any earlier, every icon trails the view
         /// by a frame and swims whenever it pans. <paramref name="where"/> says where a room's icon
         /// floats over the floor; the room the player is standing in is left out, unless there is
-        /// something in it to open.
+        /// something in it to open. The chrome is asked about points (<paramref name="underChrome"/>),
+        /// or - when the caller can say it so - about whole screen rects (<paramref name="underChromeBox"/>),
+        /// which makes an icon's square and the room's name under it one question each.
         /// </summary>
         public void Request(bool visible, HouseCameraRig camera, float textScale, string screenRoom, bool isCompetition,
-            string standingIn, System.Func<string, Vector3> anchor, System.Func<Vector2, bool> underChrome = null)
+            string standingIn, System.Func<string, Vector3> anchor, System.Func<Vector2, bool> underChrome = null,
+            System.Func<Rect, bool> underChromeBox = null)
         {
             wanted = visible; rig = camera; scale = textScale; stationRoom = screenRoom; competition = isCompetition;
-            playerRoom = standingIn; where = anchor; covered = underChrome;
+            playerRoom = standingIn; where = anchor; covered = underChrome; coveredBox = underChromeBox;
             if (!visible) Hide();
         }
 
@@ -595,8 +648,13 @@ namespace Gamesim.Episode
             }
             var frame = root.rect;
             bool any = false;
+            // Canvas units to screen pixels, for the icons' footprints.
+            float pixels = scale * canvas.scaleFactor;
             // Middle to edge of an icon, in screen pixels, with a little air.
-            float margin = (Side * .5f + 6f) * scale * canvas.scaleFactor;
+            float margin = (Side * .5f + 6f) * pixels;
+            // The icons' footprints this frame, with their badges' reach, for the name chips to clear.
+            float footprint = (Side * .5f + 8f) * pixels;
+            placedIcons.Clear();
             foreach (var beacon in beacons)
             {
                 bool special = beacon.room == stationRoom || beacon.room == "Private";
@@ -609,13 +667,15 @@ namespace Gamesim.Episode
                     screen = eye.WorldToScreenPoint(where(beacon.room) + Vector3.up * Height);
                     // An icon under the HUD's chrome is not shown: it would be half hidden, and
                     // where the chrome takes no click, clickable without being seen. Any of it, not
-                    // just its middle: an icon half under the status line was still being shown.
-                    show = screen.z > .5f && eye.pixelRect.Contains(screen) && !Covered(screen, margin);
+                    // just its middle: an icon half under the status line was still being shown,
+                    // and the room's name under the icon - wider than it, hung below the square -
+                    // showed through the cards while the icon itself stood clear.
+                    show = screen.z > .5f && eye.pixelRect.Contains(screen) && !IconCovered(beacon, screen, margin, pixels);
                     // Except the next stop, which is never lost that way: its icon waits at the
                     // first clear spot on the way from its place to the middle of the screen,
                     // whole and clickable, with a pip on the side its place is on.
                     if (!show && beacon.room == nextStop && screen.z > .5f
-                        && TryPin(eye.pixelRect, screen, margin, out var clear))
+                        && TryPin(eye.pixelRect, screen, margin, beacon, pixels, out var clear))
                     {
                         toward = ((Vector2)screen - clear).normalized;
                         screen = new Vector3(clear.x, clear.y, screen.z);
@@ -630,6 +690,10 @@ namespace Gamesim.Episode
                 }
                 if (!beacon.rect.gameObject.activeSelf) beacon.rect.gameObject.SetActive(true);
                 any = true;
+                placedIcons.Add(new Rect(screen.x - footprint, screen.y - footprint, 2f * footprint, 2f * footprint));
+                // The room's name hung under the icon is part of what a name chip must clear, as the
+                // chrome treats it (IconCovered): a chip over "KITCHEN" read as the room's own words.
+                if (beacon.roomName != null && !beacon.hovered) placedIcons.Add(TagRect(beacon, screen, pixels));
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(root, screen, UiCamera, out var local);
                 beacon.rect.anchoredPosition = local - frame.min;
                 beacon.group.alpha = fade;
@@ -682,19 +746,20 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The first spot on the way from <paramref name="target"/> to the middle of the screen
-        /// where the whole icon - <paramref name="margin"/> from its middle to its edge - is on
-        /// the screen and clear of the HUD's chrome.
+        /// where the whole icon - <paramref name="margin"/> from its middle to its edge, and the
+        /// room's name under it - is on the screen and clear of the HUD's chrome.
         /// </summary>
-        private bool TryPin(Rect pixels, Vector2 target, float margin, out Vector2 at)
+        private bool TryPin(Rect pixels, Vector2 target, float margin, Beacon beacon, float scalePixels, out Vector2 at)
         {
             at = default;
-            var inner = new Rect(pixels.xMin + margin, pixels.yMin + margin, pixels.width - 2f * margin, pixels.height - 2f * margin);
+            float tag = TagDepth(beacon, scalePixels);
+            var inner = new Rect(pixels.xMin + margin, pixels.yMin + tag, pixels.width - 2f * margin, pixels.height - margin - tag);
             if (inner.width <= 0f || inner.height <= 0f) return false;
             const int Steps = 24;
             for (int step = 0; step <= Steps; step++)
             {
                 var point = Vector2.Lerp(target, pixels.center, step / (float)Steps);
-                if (!inner.Contains(point) || Covered(point, margin)) continue;
+                if (!inner.Contains(point) || IconCovered(beacon, point, margin, scalePixels)) continue;
                 at = point;
                 return true;
             }
@@ -710,6 +775,47 @@ namespace Gamesim.Episode
                 for (int y = -1; y <= 1; y++)
                     if ((x != 0 || y != 0) && covered(point + new Vector2(x * margin, y * margin))) return true;
             return false;
+        }
+
+        /// <summary>How far under an icon's middle the room's name reaches, in screen pixels; the margin where there is no name.</summary>
+        private static float TagDepth(Beacon beacon, float scalePixels)
+        {
+            if (beacon.roomName == null) return (Side * .5f + 6f) * scalePixels;
+            var tag = (RectTransform)beacon.roomName.transform;
+            return (Side * .5f - tag.anchoredPosition.y + tag.sizeDelta.y) * scalePixels;
+        }
+
+        /// <summary>
+        /// Whether the chrome covers any of an icon drawn with its middle at <paramref name="point"/>:
+        /// the square round it, and the room's name under it. A name half under a card read as
+        /// another room's (the play sweep's row 10). Asked as two rects when the chrome can be;
+        /// otherwise as points along the name's top and bottom edges no further apart than it is
+        /// tall, so a narrow piece of chrome cannot slip between them.
+        /// </summary>
+        private bool IconCovered(Beacon beacon, Vector2 point, float margin, float scalePixels)
+        {
+            if (coveredBox != null)
+                return coveredBox(new Rect(point.x - margin, point.y - margin, 2f * margin, 2f * margin))
+                    || (beacon.roomName != null && coveredBox(TagRect(beacon, point, scalePixels)));
+            if (Covered(point, margin)) return true;
+            if (covered == null || beacon.roomName == null) return false;
+            var tag = TagRect(beacon, point, scalePixels);
+            int spans = Mathf.Max(2, Mathf.CeilToInt(tag.width / Mathf.Max(1f, tag.height)));
+            for (int x = 0; x <= spans; x++)
+            {
+                float at = tag.xMin + tag.width * x / spans;
+                if (covered(new Vector2(at, tag.yMax)) || covered(new Vector2(at, tag.yMin))) return true;
+            }
+            return false;
+        }
+
+        /// <summary>The room's name under an icon drawn with its middle at <paramref name="point"/>, in screen pixels.</summary>
+        private static Rect TagRect(Beacon beacon, Vector2 point, float scalePixels)
+        {
+            var tag = (RectTransform)beacon.roomName.transform;
+            float width = tag.sizeDelta.x * scalePixels, height = tag.sizeDelta.y * scalePixels;
+            float top = point.y - (Side * .5f - tag.anchoredPosition.y) * scalePixels;
+            return new Rect(point.x - width * .5f, top - height, width, height);
         }
     }
 }

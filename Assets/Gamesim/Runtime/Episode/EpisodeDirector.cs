@@ -46,7 +46,7 @@ namespace Gamesim.Episode
         private HouseNpc focusedNpc;
         // What the last social command actually moved, so the panel can say so.
         private double lastSocialDelta;
-        private string saveRoot, message = "Welcome home. Meet the housemates, then visit the living-room screen.";
+        private string saveRoot, message = "Welcome home. Meet the houseguests, then visit the living-room screen.";
         private bool blockedRecovery, reducedMotion, muted, largeText, phaseOpen, settingsOpen, journalOpen;
         /// <summary>Which page of the notebook is showing. The rail picks it; Render obeys it.</summary>
         private string journalSection = NotebookSection.Network;
@@ -348,6 +348,8 @@ namespace Gamesim.Episode
             TickCeremonies();
             // After both have moved on: the chip says what a press does while a stage runs.
             TickSkipChip();
+            // And what the house draws over itself, as the chrome this frame allows it.
+            TickHouseOverlays();
             // The music follows what is on screen every frame, before anything can return early:
             // the opening's loading gate and its closing fade change in the middle of a beat, with
             // nothing rendering. A state the bed is already in costs a comparison.
@@ -478,8 +480,10 @@ namespace Gamesim.Episode
             }
             // Nothing to press while a ceremony card is up: the card takes the pointer by reading the
             // mouse, not through a raycaster, and the click that dismissed it went on to press
-            // whatever the prompt said underneath.
-            if (!IsPanelOpen && !CeremonyOverlays.OnScreen)
+            // whatever the prompt said underneath. Nor under the briefing or a board (the house's
+            // one gate, EpisodeDirector.HouseOverlays.cs): the prompt drew over the briefing's
+            // recommended row, and E answers nothing the prompt does not say.
+            if (!IsHouseUnderChrome)
             {
                 // One decision, read twice. The prompt and the key used to run the same priority
                 // chain in two places, which is two chances to disagree about what E does.
@@ -510,7 +514,10 @@ namespace Gamesim.Episode
         /// </summary>
         public void Interact()
         {
-            if (!IsReady || IsPanelOpen) return;
+            // The prompt says nothing under the house's gate - a panel, the briefing, a board, a
+            // ceremony card (EpisodeDirector.HouseOverlays.cs) - so the key does nothing there either:
+            // one decision, read in one place.
+            if (!IsReady || IsHouseUnderChrome) return;
             // Busy at a piece of furniture, E is getting up, before it is anything else.
             if (IsPlayerHouseActivityActive && playerActivityInHouse) { FinishPlayerHouseActivity(); return; }
             switch (ChooseInteraction(out var target))
@@ -839,7 +846,8 @@ namespace Gamesim.Episode
                     if (competitionCard != null)
                         competitionCard.Play(CompetitionTitle(result.state),
                             EpisodeEngine.CompetitionCategory(wasPhase, wasWeek, result.state.competitionRulesVersion, result.state.seed), result.state.week,
-                            standings, reducedMotion, CompetitionPerformanceExplanation(result.state), pendingAttemptLine ?? ThrowAttemptLine(result.state));
+                            standings, reducedMotion, CompetitionPerformanceExplanation(result.state), pendingAttemptLine ?? ThrowAttemptLine(result.state),
+                            WinnersMark(wasPhase));
                     React(CompetitionWinnerId(result.state, standings), CharacterPresentation.Reaction.Cheered);
                 }
 
@@ -1198,7 +1206,7 @@ namespace Gamesim.Episode
             RenderDiaryRecord(state);
             // The player's memories as they may know them: one that tells a ballot the reveal kept
             // private waits for the ballot (KnownBallots.PlayerMemories; decision 4).
-            foreach (var memory in KnownBallots.PlayerMemories(state)) hud.Paragraph("Week " + memory.week + ": " + memory.text);
+            foreach (var memory in KnownBallots.PlayerMemories(state)) hud.Paragraph("Week " + memory.week + ": " + MemoryWords.Said(state, memory));
             RenderStorySoFar(state);
         }
 
@@ -1472,9 +1480,13 @@ namespace Gamesim.Episode
                 // The veto's draw is laid out for the frame's whole width (EpisodeDirector.VetoDraw.cs).
                 if (VetoDrawBeat(state)) hud.StrategyWholeWidth();
             }
+            // A station screen - the final case, the jury house - is a screen of its own on the
+            // strategy stage, with nothing pinned under it (UI-UX-PASS-PLAN E0).
+            else if (StationScreenOpen(state)) hud.StrategyStage(null);
             // Free time is a board on the strategy stage too (EpisodeDirector.FreeTimeBoard.cs), on
-            // the panel's own glass: Pack 8 has no free-time shell.
-            else if (FreeTimeBoardBeat(state)) hud.StrategyStage(null);
+            // the panel's own glass: Pack 8 has no free-time shell. A houseguest's screen opened from
+            // the board's cards is laid for the same stage, with the board's footer (U0).
+            else if (FreeTimeBoardBeat(state) || HouseguestScreenBeat(state)) hud.StrategyStage(null);
             // And so is the finale page, in the campaign's neutral shell: Pack 9 brings cards, not a
             // shell of its own (EpisodeDirector.FinalePage.cs).
             else if (FinalePageBeat(state)) hud.StrategyStage(PackArt.Pack8CampaignShell);
@@ -1515,16 +1527,11 @@ namespace Gamesim.Episode
                 else
                 {
                     hud.Action("Review competition results", () => ReviewCompetitionResult(state));
-                    // Ranked as the engine ranks them: the stable order by score, the first the winner.
+                    // Ranked as the engine ranks them, as rows: a face, a name, the winner's badge -
+                    // the crown, or the veto's medal - and no score (UI-UX-PASS-PLAN C0). The rows
+                    // are the result card's own standings, so the two never disagree.
                     hud.Section("FINAL STANDINGS");
-                    var standings = state.competitionScores.OrderByDescending(x => x.score).ToList();
-                    for (int rank = 0; rank < standings.Count; rank++)
-                    {
-                        var who = state.Find(standings[rank].contestantId);
-                        if (who == null) continue;
-                        hud.Paragraph((rank + 1) + ".  " + HudPrimitives.WithYou(who.name, who.isPlayer) + "   "
-                            + standings[rank].score.ToString("0.00") + (rank == 0 ? "  \u00b7  winner" : ""));
-                    }
+                    hud.CompetitionStandings(CompetitionStandings(state), WinnersMark(state.phase));
                     // The way on, pinned: it used to sit under the standings, well past the fold.
                     AdvanceWarning(state);
                     hud.PinnedAction("Continue to the next ceremony", () => Commit(state, EpisodeCommandKind.Advance));
@@ -1577,7 +1584,13 @@ namespace Gamesim.Episode
                 hud.Paragraph(RemovedAtTheVoteLine);
             if (state.phase == EpisodePhase.Campaign) CampaignScreen(state);
             // Free time as a screen: the house as cards and the moves as tiles (EpisodeDirector.FreeTimeScreen.cs).
-            else if (state.phase == EpisodePhase.Social) FreeTimeScreen(state);
+            else if (state.phase == EpisodePhase.Social)
+            {
+                FreeTimeScreen(state);
+                // A station screen at three - the final case read early, the jury house - has its
+                // own way back and takes the room: nothing is pinned under it (UI-UX-PASS-PLAN E0).
+                if (StationScreenOpen(state)) return;
+            }
             if (state.phase == EpisodePhase.Jury) hud.Paragraph(JuryLine(state));
             string pointer = WindowLine(state);
             if (pointer != null) hud.Paragraph(pointer);

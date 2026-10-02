@@ -228,7 +228,7 @@ namespace Gamesim.Episode
         /// Whether the house is the thing on screen: free roam, nothing open over it, no scripted
         /// shot, no ceremony, no competition, and the HUD up.
         /// </summary>
-        private bool HouseIsTheView => IsReady && !blockedRecovery && !IsPanelOpen && !overviewOpen && !challengeActive
+        private bool HouseIsTheView => IsReady && !blockedRecovery && !IsHouseUnderChrome && !overviewOpen && !challengeActive
             && !CeremonyOverlays.OnScreen && !IsFramingCeremony && !IsCeremonyStaged && (voteReveal == null || !voteReveal.IsPlaying) && !JuryRevealPlaying
             && (takeover == null || !takeover.IsPlaying) && (keyCeremony == null || !keyCeremony.IsPlaying)
             && hud != null && hud.IsVisible && player != null
@@ -274,10 +274,18 @@ namespace Gamesim.Episode
             // One reader, kept: a method group passed every frame is a new delegate every frame.
             if (houseguestsIn == null) houseguestsIn = HouseguestsIn;
             travelBeacons.Annotate(houseguestsIn, playerIsActive ? next : null, StagedRoom(projected, out _));
+            // The chrome as points and as rects, kept as the reader is: the icons ask about an
+            // icon's square and the room's name under it as one rect each.
+            if (chromeCovers == null) chromeCovers = hud.Covers;
+            if (chromeCoversBox == null) chromeCoversBox = box => hud.CoversAny(box);
             travelBeacons.Request(true, cameraRig, largeText ? 1.2f : 1f, StationRoomId(),
                 EpisodeEngine.IsCompetition(projected?.phase ?? EpisodePhase.Social), playerIsActive ? beaconPlayerRoom : null,
-                BeaconAnchor, hud.Covers);
+                BeaconAnchor, chromeCovers, chromeCoversBox);
         }
+
+        /// <summary>What the icons ask the HUD's chrome, made once.</summary>
+        private System.Func<Vector2, bool> chromeCovers;
+        private System.Func<Rect, bool> chromeCoversBox;
 
         /// <summary>Where a room's icon floats: over the screen, over the diary chair, over the middle of the rest.</summary>
         private Vector3 BeaconAnchor(string room)

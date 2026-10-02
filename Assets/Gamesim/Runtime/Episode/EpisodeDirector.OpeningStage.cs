@@ -259,6 +259,17 @@ namespace Gamesim.Episode
                 set = null;
             }
 
+            /// <summary>
+            /// Ends every walk and holds everybody where they stand, for the introductions: the
+            /// opening's leases end, so the house's pause - kept on the world under the stage - takes
+            /// every body, and no retried walk home starts under a card framed on them.
+            /// </summary>
+            public void HoldForIntroductions()
+            {
+                if (!Placed || ended) return;
+                ReleaseEveryone();
+            }
+
             /// <summary>Lets the house have its people back, putting them home first when asked and anybody is not.</summary>
             public void End(bool restoreHome)
             {

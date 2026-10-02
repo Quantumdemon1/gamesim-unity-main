@@ -145,12 +145,12 @@ namespace Gamesim.Episode
             return UiTheme.Allied;
         }
 
-        /// <summary>The ballot's row, so a test can find it the way it finds a named panel.</summary>
-        public const string BallotRowName = "Ballot row";
+        /// <summary>The ballot's parts, so a test can find them the way it finds a named panel: the heading, the line under it and the cards' row.</summary>
+        public const string BallotHeadingName = "Ballot heading", BallotLineName = "Ballot line", BallotRowName = "Ballot row";
         /// <summary>The juror's "What matters to you" card (ENDGAME-PLAN F6).</summary>
         public const string JurorMattersName = "What matters to you";
-        private const float BallotCardWidth = 196f;
-        private const float BallotCardHeight = 250f;
+        /// <summary>A ballot card at the scale of one; see <see cref="BallotCardFloor"/> for the least it shrinks to.</summary>
+        public const float BallotCardWidth = 196f, BallotCardHeight = 250f;
 
         /// <summary>
         /// The eviction ballot as the mockup draws it (mockup-08): one portrait card per nominee,
@@ -160,15 +160,36 @@ namespace Gamesim.Episode
         /// still the words on it. <paramref name="chosenId"/> marks the card already chosen, while
         /// the choice is waiting to be confirmed. A <paramref name="warning"/> - what a ballot would
         /// break of the player's word (EpisodeHud.YourWord) - stands under the line and over the
-        /// cards it is about, and the cards give it the room, so what follows them stays in view.
+        /// cards it is about, and the cards give it the room.
+        ///
+        /// <para>The decision fits at scroll 0; the context follows (UI-UX-PASS-PLAN T0). The cards
+        /// are sized to the room the scroll's window has under the column's head, the heading, the
+        /// line as it wraps and a warning, less what has to stand in view under them as well:
+        /// <paramref name="under"/> - a Confirm row by default (-1), nothing but the column's foot
+        /// for 0, where Confirm and its way back are pinned under the scroll. With
+        /// <paramref name="over"/> the rows the column holds from that index on (<see cref="ColumnRows"/>,
+        /// taken before they were built: the ballot's lines and the voters' row) are moved under
+        /// the cards, and kept in the window beside them only while the cards hold their floor
+        /// there; past that they follow below the fold, with whatever the caller adds after. Under
+        /// the text size the card's type shrinks with the card, so its boxes stay 1.3 times their
+        /// words.</para>
         /// </summary>
         public void BallotCards(EpisodeState state, System.Collections.Generic.IList<string> nominees, string chosenId,
             Func<string, string> caption, Action<string> press,
             string heading = "EVICTION VOTE", string line = "Choose one houseguest to evict from the house.", string glyph = "gavel",
-            string warning = null)
+            string warning = null, float under = -1f, int over = -1)
         {
             string headingWords = heading;
-            var headingRow = new GameObject("Ballot heading", typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
+            var column = content.GetComponent<VerticalLayoutGroup>();
+            float spacing = column != null ? column.spacing : 12f;
+            int lead = content.childCount;
+            // The rows from `over` on as the column will lay them out, each with the gap after it.
+            float beside = 0f;
+            if (over >= 0)
+                for (int i = Mathf.Min(over, lead); i < lead; i++)
+                    if (content.GetChild(i) is RectTransform held && held.gameObject.activeSelf)
+                        beside += ColumnRowHeight(held, ContentWidth()) + spacing;
+            var headingRow = new GameObject(BallotHeadingName, typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
             headingRow.SetParent(content, false);
             headingRow.GetComponent<LayoutElement>().minHeight = 40f * FontScale;
             // Centred, the gavel and the title together, over a centred line, as mockup-08 heads
@@ -184,7 +205,10 @@ namespace Gamesim.Episode
             float words = Mathf.Min(title.rectTransform.sizeDelta.x, Mathf.Ceil(title.GetPreferredValues(title.text).x));
             HudPrimitives.Glyph("Ballot mark", headingRow, glyph, Paper,
                 new Vector2((ContentWidth() - words) * .5f - markSide - 10f * FontScale, -4f), markSide);
-            DecisionText(content, line, 16, Paper).alignment = TextAlignmentOptions.Center;
+            var said = DecisionText(content, line, 16, Paper);
+            said.name = BallotLineName;
+            said.alignment = TextAlignmentOptions.Center;
+            float lineHeight = Mathf.Max(16f * FontScale + 8f, Mathf.Ceil(said.GetPreferredValues(said.text, ContentWidth(), 0f).y));
             float warned = BallotWarningLine(warning);
 
             var row = new GameObject(BallotRowName, typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement)).GetComponent<RectTransform>();
@@ -196,24 +220,55 @@ namespace Gamesim.Episode
             layout.childForceExpandWidth = layout.childForceExpandHeight = false;
             // Large on a large screen - the two people the vote is between are what it shows - and
             // never wider than the column holds them side by side.
-            float fitsWidth = (ContentWidth() - 24f * FontScale) / (2f * BallotCardWidth);
+            int across = Mathf.Max(2, nominees != null ? nominees.Count : 2);
+            float fitsWidth = (ContentWidth() - (across - 1) * 24f * FontScale) / (across * BallotCardWidth);
+            float floor = Mathf.Min(BallotCardFloor * FontScale, fitsWidth);
             float fitsHeight = float.MaxValue;
             if (modal != null && modalScroll != null)
             {
                 var scroll = (RectTransform)modalScroll.transform;
                 float viewport = modal.sizeDelta.y + scroll.offsetMax.y - scroll.offsetMin.y;
-                // The heading, the line under it, the spacing, a warning over the cards, and a
-                // Confirm row under them.
-                fitsHeight = (viewport - (6f + 40f + 30f + 3f * 12f + 57f) * FontScale - warned) / BallotCardHeight;
+                // What the window holds over the cards' row at scroll 0: the column's head, the
+                // heading and the gap after it, the line as it wraps and the gap after it, and a
+                // warning with its own; and the row's slack.
+                float padTop = column != null ? column.padding.top : 6f, padFoot = column != null ? column.padding.bottom : 18f;
+                float room = viewport - padTop - 40f * FontScale - spacing - lineHeight - spacing - warned - 4f;
+                // What has to stand in the window under the cards as well.
+                float tail = over >= 0 ? 0f : under < 0f ? 57f * FontScale + spacing : under > 0f ? under + spacing : padFoot;
+                fitsHeight = (room - tail) / BallotCardHeight;
+                // The rows the caller built for under the cards, in the window beside them while
+                // the cards keep their floor there; when they cannot, the cards take the window
+                // and the rows follow below the fold.
+                if (beside > 0f)
+                {
+                    float withRows = (room - beside) / BallotCardHeight;
+                    if (withRows >= floor) fitsHeight = withRows;
+                }
             }
-            float scale = Mathf.Max(Mathf.Min(FontScale, fitsWidth), Mathf.Min(1.4f * FontScale, Mathf.Min(fitsWidth, fitsHeight)));
+            float scale = Mathf.Max(floor, Mathf.Min(1.4f * FontScale, Mathf.Min(fitsWidth, fitsHeight)));
             row.GetComponent<LayoutElement>().minHeight = BallotCardHeight * scale + 4f;
             foreach (var id in nominees)
             {
                 string captured = id;
                 BallotCard(row, state.Find(id), caption(id), id == chosenId, scale, () => press(captured));
             }
+            // The cards and their heading take the place the caller took, and what was built there
+            // since follows them.
+            if (over >= 0)
+            {
+                int at = Mathf.Min(over, lead);
+                for (int i = lead; i < content.childCount; i++) content.GetChild(i).SetSiblingIndex(at + (i - lead));
+            }
         }
+
+        /// <summary>How many rows the column holds now: the index a caller takes before building rows the cards will stand over.</summary>
+        public int ColumnRows => content != null ? content.childCount : 0;
+
+        /// <summary>
+        /// The least a ballot card shrinks below the text size when the vote's other rows leave it
+        /// no more height: the card's type shrinks with it, so nothing under 1.3 of its words.
+        /// </summary>
+        public const float BallotCardFloor = .8f;
 
         private void BallotCard(RectTransform row, ContestantState actor, string caption, bool chosen, float scale, Action press)
         {
@@ -257,7 +312,10 @@ namespace Gamesim.Episode
             var name = FixedText(rect, actor.name, 18, Paper, new Vector2(10f * scale, -161f * scale), new Vector2(width - 20f * scale, 24f * scale));
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (semibold != null) name.font = semibold;
-            AutoSize(name, 12);
+            // The card's own scale, not the text size's: a card the vote's rows shrank below the
+            // text size keeps its name in a box 1.3 times the type.
+            name.fontSize = Mathf.RoundToInt(18f * scale);
+            AutoSize(name, 12f * scale);
 
             // Two traits as the cast screen shows them - the card is a person, not a number.
             float x = 10f * scale;
@@ -275,7 +333,8 @@ namespace Gamesim.Episode
 
             // The control's caption, on the card: what pressing it does, in the words it is known by.
             var foot = FixedText(rect, caption, 12, UiTheme.Muted, new Vector2(10f * scale, -220f * scale), new Vector2(width - 20f * scale, 22f * scale));
-            AutoSize(foot, 9);
+            foot.fontSize = Mathf.RoundToInt(12f * scale);
+            AutoSize(foot, 9f * scale);
         }
 
         private RectTransform DecisionColumn(string name, Transform parent, bool card = false)

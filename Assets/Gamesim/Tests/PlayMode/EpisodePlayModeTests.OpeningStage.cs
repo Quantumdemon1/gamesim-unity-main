@@ -7,6 +7,7 @@ using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
@@ -239,9 +240,25 @@ namespace Gamesim.Tests.PlayMode
             else Assert.That(set.IsOpen, Is.False, "The door is still shut on the closed-door frame.");
             yield return WaitFor(() => set.IsOpen, 12f, "The door opens for the player.");
             yield return WaitFor(() => set.Openness > 0.6f, 3f, "and swings wide.");
-            if (Application.isBatchMode) yield return CaptureFraming("opening-reveal-open", settle: false);
+            // The hints over the door frames stand on grounds (UI-UX-PASS-PLAN S0): the Continue
+            // hint on the skip pill's row, no longer inside the lit doorway, and the count on its chip.
+            var hint = SequenceNode(opening, "Hint");
+            var counterChip = SequenceNode(opening, "Counter chip");
+            var pill = SequenceButtons(opening, OpeningSequence.SkipCaption).Single(button => button.IsActive()).transform;
+            Assert.That(hint, Is.Not.Null, "The Continue hint is on the door frame.");
+            Assert.That(counterChip, Is.Not.Null, "The reveal's count is on its chip.");
+            AssertOnAGround(hint.Find("Label"), "The Continue hint over the open door", shown: true);
+            AssertOnAGround(SequenceLabels(counterChip).Single(label => label.name == "Counter").transform, "The reveal's count over the open door", shown: true);
+            if (Application.isBatchMode)
+                yield return CaptureFraming("opening-reveal-open", settle: false, inspect: frame =>
+                {
+                    AssertGroundIsDrawn(frame, hint.Find(OpeningSequence.GroundName), pill, "The Continue hint's ground on the skip pill's row");
+                    AssertGroundIsDrawn(frame, counterChip.Find(OpeningSequence.GroundName), pill, "The reveal's count's chip");
+                });
             yield return WaitFor(() => Flat(player.transform.position, RevealMarkForTests) < 0.6f, 10f, "The player walks through the door to the mark.");
-            if (Application.isBatchMode) yield return CaptureFraming("opening-reveal-mark", settle: false);
+            if (Application.isBatchMode)
+                yield return CaptureFraming("opening-reveal-mark", settle: false, inspect: frame =>
+                    AssertGroundIsDrawn(frame, hint.Find(OpeningSequence.GroundName), pill, "The Continue hint's ground beside the player on the mark"));
 
             yield return WaitFor(() => opening.CurrentGuestId == firstGuest, 15f, "The first houseguest follows the player.");
             var guest = SceneComponents<HouseNpc>().Single(npc => npc.Id == firstGuest);
@@ -288,6 +305,97 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Flat(player.transform.position, playerHome), Is.LessThan(0.6f), "and so is the player.");
             Assert.That(GameObject.Find(OpeningDoorSet.RootName), Is.Null, "The front door is gone.");
             CollectionAssert.AreEqual(OpeningBeat.InOrder.Take(4), director.Snapshot.openingBeatsSeen, "Every beat of the show is recorded; the introductions are not.");
+
+            opening.SkipIntroductions();
+            yield return WaitFor(() => !opening.IsPlaying, 5f, "Skipping the introductions ends the opening.");
+            yield return WaitFor(() => director.NpcAutonomyReady, 5f, "The house binds its people again and carries on.");
+        }
+
+        /// <summary>Whether a point of the frame, as <see cref="InTheFrame"/> gives it, is inside the picture.</summary>
+        private static bool InsideTheFrame(Vector2? at) =>
+            at.HasValue && at.Value.x > 0f && at.Value.x < 1f && at.Value.y > 0f && at.Value.y < 1f;
+
+        /// <summary>
+        /// A houseguest framed for their introduction stays in the frame while they answer
+        /// (UI-UX-PASS-PLAN S0, sweep-show 24: the reaction's shot held on an empty corner and a
+        /// lamp). Two halves. Nobody walks under the card: the stage holds everybody for the
+        /// introductions, and the body framed is where it was framed into the reaction. And the shot
+        /// holds on the body: carried 1.5 m to one side mid-reaction - as a take carries a mesh from
+        /// its root, the drift the sweep saw - the shot's focus follows it within 0.6 s, the key
+        /// light with it, and the body is back in the frame once the camera lands. Without the hold
+        /// nothing moves the rig's focus once the card is framed (the introduction's framing is the
+        /// only other shot under the opening), so the second half fails on the warp; the drift's
+        /// own cause on a UMA body is read at the staged capture's step 11.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator OpeningStage_TheIntroductionHoldsTheHouseguestInFrame()
+        {
+            var opening = director.Opening;
+            string firstGuest = director.Snapshot.Active.First(person => !person.isPlayer).id;
+
+            director.PlayOpeningForVerification(stage: true, holdHeadless: true, armSeconds: 0f);
+            yield return WaitFor(() => director.IsOpeningStaged, 40f, "The house is placed behind the front door.");
+            yield return WaitFor(() => opening.CurrentGuestId != null, 40f, "The reveals begin.");
+            director.SkipOpening();
+            yield return WaitFor(() => opening.IsMeeting, 10f, "Skipping the show stops at the introductions.");
+            yield return WaitFor(() => MeetCardIsSettled(opening, firstGuest), 8f, "The first houseguest's card is up and the camera has landed on them.");
+            Assert.That(director.IsOpeningStaged, Is.True, "The stage still has the house through the introductions.");
+
+            var body = SceneComponents<HouseNpc>().Single(npc => npc.Id == firstGuest);
+            var framedAt = body.transform.position;
+            Vector3 Drawn() { var hips = HipsOf(body); return hips != null ? hips.position : body.transform.position + Vector3.up * 0.95f; }
+            string Where(Vector2? at) => at.HasValue ? at.Value.ToString("F2") : "behind the lens";
+            Assert.That(InsideTheFrame(InTheFrame(cameraRig.ViewCamera, Drawn())), Is.True, "They are framed where they stand: " + Where(InTheFrame(cameraRig.ViewCamera, Drawn())));
+
+            SequenceButtons(opening, "Calculated").Single().onClick.Invoke();
+            yield return WaitFor(() => FadedIn(SequenceNode(opening, "Answer")), 3f, "The answer comes up where the question was.");
+            float answered = Time.realtimeSinceStartup;
+            // Into the reaction, their root watched the whole way.
+            float drift = 0f;
+            while (Time.realtimeSinceStartup < answered + 0.4f) { drift = Mathf.Max(drift, Flat(body.transform.position, framedAt)); yield return null; }
+            var seen = InTheFrame(cameraRig.ViewCamera, Drawn());
+            Assert.That(InsideTheFrame(seen), Is.True, "Into the reaction their body is in the frame: hips at " + Drawn().ToString("F2") + " -> " + Where(seen) + ".");
+            Assert.That(drift, Is.LessThan(0.3f), "They stay where they were framed: no walk home starts under the card (moved " + drift.ToString("F2") + " m).");
+
+            // Mid-reaction the body is carried 1.5 m to one side, to floor the agent can stand on.
+            var agent = body.GetComponent<NavMeshAgent>();
+            Assert.That(agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh, Is.True, body.DisplayName + " stands on the floor with their navigation bound.");
+            var side = cameraRig.ViewCamera.transform.right;
+            side.y = 0f;
+            side.Normalize();
+            var from = body.transform.position;
+            var filter = new NavMeshQueryFilter { agentTypeID = agent.agentTypeID, areaMask = agent.areaMask };
+            // Either side takes the hips out of the part of the frame the card leaves clear: past its
+            // right margin one way, behind the card the other. The nearest of 1.5 m that has floor.
+            Vector3? to = null;
+            foreach (float reach in new[] { 1.5f, 1.35f, 1.2f })
+            {
+                foreach (var direction in new[] { side, -side })
+                    if (NavMesh.SamplePosition(from + direction * reach, out var hit, 0.3f, filter) && Flat(hit.position, from) > 1.15f) { to = hit.position; break; }
+                if (to.HasValue) break;
+            }
+            Assert.That(to.HasValue, Is.True, "There is floor 1.2 to 1.5 m to one side of " + body.DisplayName + " at " + from.ToString("F2") + ".");
+            var lamp = director.transform.Find("Introduction key light");
+            Assert.That(lamp, Is.Not.Null, "The introduction's key light is up.");
+            var focusBefore = cameraRig.DesiredFocus;
+            var lampBefore = lamp.position;
+            var drawnBefore = Drawn();
+            Assert.That(agent.Warp(to.Value), Is.True, "The body is moved.");
+            Physics.SyncTransforms();
+            var moved = Drawn() - drawnBefore;
+            Assert.That(moved.magnitude, Is.GreaterThan(1.1f), "Their hips moved with them: " + moved.ToString("F2") + ".");
+            var followed = focusBefore + moved;
+            float by = Time.realtimeSinceStartup + 0.6f;
+            while (Time.realtimeSinceStartup < by && Vector3.Distance(cameraRig.DesiredFocus, followed) > 0.3f) yield return null;
+            Assert.That(Vector3.Distance(cameraRig.DesiredFocus, followed), Is.LessThan(0.3f),
+                "The shot follows the body within 0.6 s: aimed at " + cameraRig.DesiredFocus.ToString("F2") + " for hips moved " + moved.ToString("F2")
+                + " from a focus of " + focusBefore.ToString("F2") + ".");
+            Assert.That(Vector3.Distance(lamp.position, lampBefore + moved), Is.LessThan(0.3f),
+                "The key light goes with the shot: at " + lamp.position.ToString("F2") + ", from " + lampBefore.ToString("F2") + ".");
+            yield return WaitFor(() => !cameraRig.IsTravelling && cameraRig.HasArrived(0.1f), 1f, "The camera lands on them again.");
+            seen = InTheFrame(cameraRig.ViewCamera, Drawn());
+            Assert.That(InsideTheFrame(seen), Is.True, "Once the shot has followed, their body is in the frame: hips at " + Drawn().ToString("F2") + " -> " + Where(seen) + ".");
+            Assert.That(opening.CurrentGuestId, Is.EqualTo(firstGuest), "It is still their card.");
 
             opening.SkipIntroductions();
             yield return WaitFor(() => !opening.IsPlaying, 5f, "Skipping the introductions ends the opening.");

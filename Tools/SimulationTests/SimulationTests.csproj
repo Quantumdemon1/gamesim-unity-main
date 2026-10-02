@@ -122,6 +122,7 @@
     <Compile Include="$(EditMode)YourWeekTests.cs" />
     <Compile Include="$(EditMode)KnownBallotsTests.cs" />
     <Compile Include="$(EditMode)BallotPrivacyTests.cs" />
+    <Compile Include="$(EditMode)SeasonBallotsTests.cs" />
     <Compile Include="$(EditMode)PlayScreenCopyTests.cs" />
 
     <!--

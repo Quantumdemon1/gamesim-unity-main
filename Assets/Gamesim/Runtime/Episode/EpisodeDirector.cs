@@ -1690,7 +1690,8 @@ namespace Gamesim.Episode
                 case EpisodePhase.Social: return "FREE TIME";
                 case EpisodePhase.HoH: return "HEAD OF HOUSEHOLD";
                 case EpisodePhase.VetoSelection: return "VETO PLAYER SELECTION";
-                case EpisodePhase.VetoMeeting: return "VETO CEREMONY";
+                // The veto meeting, as every other screen and card names it (UI-UX-PASS-PLAN V0).
+                case EpisodePhase.VetoMeeting: return "VETO MEETING";
                 case EpisodePhase.FinalHoHPart1:
                 case EpisodePhase.FinalHoHPart2:
                 case EpisodePhase.FinalHoHPart3: return "FINAL HEAD OF HOUSEHOLD";

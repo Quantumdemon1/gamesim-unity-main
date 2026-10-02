@@ -87,7 +87,7 @@ namespace Gamesim.Tests.PlayMode
                 AssertOnTheStrategyStage("Continue episode", where);
                 AssertTheMeetingFits(where);
                 var panel = ActiveRect("Episode panel");
-                Assert.That(ActiveRect(EpisodeHud.CeremonyTitleName).GetComponent<TMP_Text>().text, Is.EqualTo("Power of Veto Meeting"));
+                Assert.That(ActiveRect(EpisodeHud.CeremonyTitleName).GetComponent<TMP_Text>().text, Is.EqualTo("Veto Meeting"));
 
                 var strip = ActiveRect(EpisodeHud.HouseStatusStripName);
                 Assert.That(strip, Is.Not.Null, where + " says who holds what in a strip,");
@@ -140,7 +140,7 @@ namespace Gamesim.Tests.PlayMode
                 var panel = ActiveRect("Episode panel");
                 AssertOnTheStage(panel);
                 AssertTheMeetingFits(where);
-                Assert.That(ActiveRect(EpisodeHud.CeremonyTitleName).GetComponent<TMP_Text>().text, Is.EqualTo("Power of Veto Meeting"),
+                Assert.That(ActiveRect(EpisodeHud.CeremonyTitleName).GetComponent<TMP_Text>().text, Is.EqualTo("Veto Meeting"),
                     "The decision names its ceremony.");
                 var words = PanelWords(panel);
                 Assert.That(words, Does.Contain(EpisodeDirector.HouseStatus(before)));

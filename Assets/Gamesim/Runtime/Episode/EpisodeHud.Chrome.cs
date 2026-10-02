@@ -1124,8 +1124,48 @@ namespace Gamesim.Episode
             if (nearbyBar != null)
             {
                 nearbyBar.gameObject.SetActive(visible);
-                if (statusRoot != null) statusRoot.gameObject.SetActive(!visible);
+                ApplyStatusLine();
             }
+            MarkChromeChanged();
+        }
+
+        /// <summary>
+        /// Whether a ceremony's own card is saying what the status line would (UI-UX-PASS-PLAN V0,
+        /// decision 14): the veto meeting's card and the strip reporting it announce the meeting, and
+        /// the line under them said it a third time. Kept, as the Nearby card's wish is, so a render
+        /// under the card builds the line down; asked of the director by that render, and set by it
+        /// every frame after.
+        /// </summary>
+        private bool statusUnderCard;
+
+        /// <summary>
+        /// Stands the status line down while a ceremony's card announces the beat it reports, and
+        /// back up the frame the card is gone. Only the line: under any other card, and for any
+        /// other reason, it stays where it is.
+        /// </summary>
+        public void StatusUnderCard(bool under)
+        {
+            if (statusUnderCard == under) return;
+            statusUnderCard = under;
+            ApplyStatusLine();
+        }
+
+        /// <summary>Whether the status line is standing down under a ceremony's card. A read for tests.</summary>
+        public bool IsStatusUnderCard => statusUnderCard;
+
+        /// <summary>
+        /// The status line up or down as everything that stands in its place asks: down while the
+        /// Nearby bar holds its place or a ceremony's card says what it would, up otherwise. The line
+        /// is the one this render built (<see cref="statusRoot"/>), never a rebuild's copy on its way
+        /// out; a line that arrives as it comes back up keeps its reveal (HudReveal waits while the
+        /// line is down and fades it in after).
+        /// </summary>
+        private void ApplyStatusLine()
+        {
+            if (statusRoot == null) return;
+            bool show = (nearbyBar == null || !nearbyBar.gameObject.activeSelf) && !statusUnderCard;
+            if (statusRoot.gameObject.activeSelf == show) return;
+            statusRoot.gameObject.SetActive(show);
             MarkChromeChanged();
         }
 

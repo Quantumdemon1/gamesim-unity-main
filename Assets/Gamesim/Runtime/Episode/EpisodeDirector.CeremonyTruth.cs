@@ -156,6 +156,20 @@ namespace Gamesim.Episode
         private bool EndgameCardPlaying => takeover != null && IsEndgameCard(takeover.PlayingKind);
 
         /// <summary>
+        /// Whether a ceremony's own card is announcing the beat the status line reports
+        /// (UI-UX-PASS-PLAN V0, decision 14): the veto meeting's card - the takeover on the HUD
+        /// frame, or the meeting on the living room's screen - or the strip that reports it, the
+        /// summons' included. A veto meeting was said three times at once, the strip, the card and
+        /// the line under them, so the line stands down while either is up and comes back the frame
+        /// both are gone: the strip and the line are never on screen together. Under every other
+        /// card the line stays where it is; the HUD's hold (<see cref="HoldHudForReveal"/>) is what
+        /// takes it down under the reveals.
+        /// </summary>
+        public bool CeremonyCardAnnouncing =>
+            (takeover != null && takeover.PlayingKind == CeremonySting.VetoKind)
+            || (sting != null && sting.PlayingKind == CeremonySting.VetoKind);
+
+        /// <summary>
         /// Each frame: the chrome returns when the reveal it stepped aside for ends; the evicted
         /// houseguest leaves when the last card narrating their eviction is gone; and while any
         /// ceremony card is on screen the UI takes no Submit, so the key that moves a card on does
@@ -180,6 +194,9 @@ namespace Gamesim.Episode
                 if (hud != null) hud.HoldForReveal(false);
                 if (IsReady && redraw) Render();
             }
+            // The status line under a card that says the same beat stands down until it is gone
+            // (UI-UX-PASS-PLAN V0): a veto meeting is announced once.
+            if (hud != null) hud.StatusUnderCard(CeremonyCardAnnouncing);
             bool narrating = revealing || (takeover != null && takeover.IsPlaying);
             // The cards are done: the evicted walks out through the front door when this house can
             // play it, and goes as they always did when it cannot.

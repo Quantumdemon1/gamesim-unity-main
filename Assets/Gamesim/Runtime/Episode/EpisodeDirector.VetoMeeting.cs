@@ -40,6 +40,15 @@ namespace Gamesim.Episode
             NameTheReplacementEyebrow = "NAME THE REPLACEMENT NOMINEE", ReplacementMarkWords = "REPLACEMENT NOMINEE",
             OnTheBlockPill = "ON THE BLOCK", SavedPill = "SAVED", VetoUsedPill = "VETO USED", VetoNotUsedPill = "VETO NOT USED";
 
+        /// <summary>
+        /// The meeting's title over its decision and its row: the veto meeting, the one name the
+        /// strip, the card, the living room's screen, the band and the week chip give it
+        /// (UI-UX-PASS-PLAN V0, decision 14), where this said "Power of Veto Meeting" under a band
+        /// that said "VETO CEREMONY". The Golden Power of Veto is still the veto's own name in the
+        /// lines under it.
+        /// </summary>
+        public const string VetoMeetingTitle = "Veto Meeting";
+
         /// <summary>Why the holder has only the one way, as the decision has always said it.</summary>
         public const string VetoLockedLine = "At the final four a veto holder who is not on the block cannot use the veto. Nominations stand.",
             VetoNoReplacementLine = "No legal replacement exists at the final four, so the veto cannot be used.";
@@ -150,7 +159,7 @@ namespace Gamesim.Episode
             if (holder == null) return;
             if (!s.vetoResolved)
             {
-                hud.MeetingTitle("Power of Veto Meeting", holder.name + " holds the Golden Power of Veto and must decide whether to use it.");
+                hud.MeetingTitle(VetoMeetingTitle, holder.name + " holds the Golden Power of Veto and must decide whether to use it.");
                 meetingRow = new PendingMeetingRow { At = hud.MeetingColumnMark(), Marker = -1, Cards = MeetingCardsBefore(s, null) };
                 return;
             }
@@ -193,7 +202,7 @@ namespace Gamesim.Episode
             {
                 string savedByNpc = EpisodeEngine.NpcVetoSave(state);
                 if (savedByNpc == null) return false;
-                hud.MeetingTitle("Power of Veto Meeting", VetoReplacementLine(state, savedByNpc));
+                hud.MeetingTitle(VetoMeetingTitle, VetoReplacementLine(state, savedByNpc));
                 int mark = hud.MeetingColumnMark();
                 var named = MeetingCardsBefore(state, savedByNpc);
                 hud.MeetingEyebrow(NameTheReplacementEyebrow, UiTheme.Danger, PackArt.Pack8IconTarget, "target");
@@ -205,7 +214,7 @@ namespace Gamesim.Episode
             }
 
             bool alsoHoh = state.hohId == state.playerId;
-            hud.MeetingTitle("Power of Veto Meeting", alsoHoh
+            hud.MeetingTitle(VetoMeetingTitle, alsoHoh
                 ? "You hold the Golden Power of Veto, and as Head of Household you name the replacement too."
                 : "You hold the Golden Power of Veto and must decide whether to use it.");
             int at = hud.MeetingColumnMark();

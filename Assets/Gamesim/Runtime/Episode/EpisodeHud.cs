@@ -407,6 +407,11 @@ namespace Gamesim.Episode
             // in for is built: a render between the director's ticks used to leave the new status
             // over the bar until the next tick, and a frame is what a capture photographs.
             ApplyNearby();
+            // And the line down under a ceremony's card that says the same beat (UI-UX-PASS-PLAN
+            // V0), asked of the director now: the render a commit makes comes in the frame its card
+            // begins, before the director's next tick says so.
+            statusUnderCard = director != null && director.CeremonyCardAnnouncing;
+            ApplyStatusLine();
             content = null;
             if (!open && !recovery)
             {

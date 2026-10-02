@@ -129,7 +129,7 @@ namespace Gamesim.Tests.PlayMode
             var expected = new[]
             {
                 (CeremonySting.NominationKind, "NOMINATION CEREMONY"),
-                (CeremonySting.VetoKind, "VETO CEREMONY"),
+                (CeremonySting.VetoKind, "VETO MEETING"),
                 (CeremonySting.EvictionKind, "EVICTION"),
                 (CeremonySting.WinnerKind, "THE WINNER"),
             };
@@ -178,7 +178,7 @@ namespace Gamesim.Tests.PlayMode
         {
             sting.Play(CeremonySting.VetoKind, "Taylor Kim used the veto.", false);
             yield return null;
-            Assert.That(VisibleText(), Does.Contain("VETO CEREMONY"));
+            Assert.That(VisibleText(), Does.Contain("VETO MEETING"));
 
             // Fade in, hold and fade out total 2.6s; allow a margin for frame granularity.
             yield return new WaitForSecondsRealtime(3.1f);
@@ -351,6 +351,74 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Headline().rectTransform.rect.height,
                 Is.GreaterThanOrEqualTo(Headline().fontSize * 1.2f),
                 "The headline needs a full line box or it renders truncated.");
+        }
+
+        /// <summary>
+        /// The strip on the kit (UI-UX-PASS-PLAN V0, decision 14): every beat leads with its
+        /// medallion where the accent bar stood - the veto meeting with its own mark, drawn as
+        /// authored, every other beat with a ring of its colour round its glyph - and its name beside
+        /// it, every letter drawn and ending inside the card, at both text sizes on whatever canvas
+        /// the run has (the 4:3 batch canvas narrows the strip to about 525). The old bar is gone.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EveryBeat_LeadsWithItsMedallionAndItsNameBesideItAtEveryTextSize()
+        {
+            var kinds = new[]
+            {
+                CeremonySting.NominationKind, CeremonySting.VetoKind, CeremonySting.EvictionKind,
+                CeremonySting.WinnerKind, CeremonySting.FinalEvictionKind, CeremonySting.WalkOutKind,
+            };
+            foreach (float scale in new[] { 1f, 1.2f })
+            foreach (var kind in kinds)
+            {
+                sting.FontScale = scale;
+                sting.Play(kind, "detail for " + kind, true);
+                yield return null;
+                Canvas.ForceUpdateCanvases();
+                string where = kind + " at font scale " + scale;
+                var rects = sting.GetComponentsInChildren<RectTransform>(true);
+                Assert.That(rects.Any(rect => rect.name == "Sting rule"), Is.False, where + ": the accent bar is gone.");
+                var card = CardRect();
+                var box = card.rect;
+                var head = Headline();
+
+                var mark = InCard(card, rects.Single(rect => rect.name == "Sting mark"));
+                Assert.That(mark.xMin >= box.xMin && mark.yMin >= box.yMin - .5f && mark.yMax <= box.yMax + .5f, Is.True,
+                    where + ": the medallion " + mark + " stands inside the card " + box + ".");
+                Assert.That(mark.xMax, Is.LessThanOrEqualTo(InCard(card, head.rectTransform).xMin + .5f), where + ": the medallion stands left of the name.");
+
+                head.ForceMeshUpdate(true);
+                int drawn = head.textInfo.characterInfo.Take(head.textInfo.characterCount).Count(glyph => glyph.isVisible);
+                Assert.That(drawn, Is.EqualTo(head.text.Count(letter => !char.IsWhiteSpace(letter))), where + ": every letter of the name is drawn.");
+                float end = card.InverseTransformPoint(head.rectTransform.TransformPoint(head.textBounds.max)).x;
+                Assert.That(end, Is.LessThanOrEqualTo(box.xMax + .5f), where + ": the name ends inside the card, at " + end.ToString("0") + " of " + box.xMax.ToString("0") + ".");
+
+                var ring = rects.Single(rect => rect.name == "Mark ring").GetComponent<Image>();
+                var glyph = rects.Single(rect => rect.name == "Mark glyph").GetComponent<Image>();
+                var authored = CeremonySting.AuthoredMark(kind);
+                if (authored != null)
+                {
+                    Assert.That(ring.enabled && ring.sprite == authored, Is.True, where + ": the veto meeting leads with its own mark,");
+                    Assert.That(ring.color, Is.EqualTo(Color.white), "drawn as authored,");
+                    Assert.That(glyph.enabled, Is.False, "and nothing over it.");
+                }
+                else
+                {
+                    Assert.That(ring.enabled && ring.sprite != null, Is.True, where + ": a ring,");
+                    Assert.That(ring.color, Is.EqualTo(head.color), where + ": in the beat's colour, as its name is.");
+                }
+                sting.Cancel();
+            }
+        }
+
+        /// <summary>A rect's box in the card's own space.</summary>
+        private static Rect InCard(RectTransform card, RectTransform rect)
+        {
+            var corners = new Vector3[4];
+            rect.GetWorldCorners(corners);
+            var low = card.InverseTransformPoint(corners[0]);
+            var high = card.InverseTransformPoint(corners[2]);
+            return Rect.MinMaxRect(Mathf.Min(low.x, high.x), Mathf.Min(low.y, high.y), Mathf.Max(low.x, high.x), Mathf.Max(low.y, high.y));
         }
 
         private TMP_Text Headline() => sting.GetComponentsInChildren<TMP_Text>(true)

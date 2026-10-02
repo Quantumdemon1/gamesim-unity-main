@@ -26,6 +26,31 @@ namespace Gamesim.Tests.EditMode
             Assert.That(EpisodeDirector.SummonsLine(CeremonySting.VetoKind), Is.EqualTo("The house takes its seats for the veto meeting."));
         }
 
+        /// <summary>
+        /// One meeting, one name (UI-UX-PASS-PLAN V0, decision 14): the strip, the card on the HUD
+        /// frame, the card on the living room's screen, the episode screen's band and title, the week
+        /// chip and the status line's phase all say "veto meeting", each in its own case. The strip
+        /// and the band said VETO CEREMONY and the screen POWER OF VETO MEETING.
+        /// </summary>
+        [Test]
+        public void TheMeetingGoesByOneName()
+        {
+            var names = new[]
+            {
+                ("the strip", CeremonySting.HeadlineFor(CeremonySting.VetoKind)),
+                ("the card", CeremonyTakeover.TitleFor(CeremonySting.VetoKind)),
+                ("the living room's screen", CeremonyTakeover.MeetingTitle),
+                ("the episode screen's band", EpisodeDirector.PhaseTitle(EpisodePhase.VetoMeeting)),
+                ("the episode screen's title", EpisodeDirector.VetoMeetingTitle),
+                ("the week chip", EpisodeHud.PhaseShort(EpisodePhase.VetoMeeting)),
+            };
+            foreach (var (where, said) in names)
+                Assert.That(said.ToLowerInvariant(), Is.EqualTo("veto meeting"), where + " calls it '" + said + "'.");
+            Assert.That(EpisodeDirector.PhaseLine(EpisodePhase.VetoMeeting, 2), Is.EqualTo("Week 2 · Veto meeting"), "and so does the status line's phase.");
+            Assert.That(CeremonySting.HeadlineFor(CeremonySting.NominationKind), Is.EqualTo("NOMINATION CEREMONY"),
+                "The nomination is still a ceremony: only the veto meeting was two things.");
+        }
+
         [Test]
         public void TheMeetingsPagesArePacedAsTheRevealsAre()
         {

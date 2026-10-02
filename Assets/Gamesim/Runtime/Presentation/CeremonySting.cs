@@ -7,7 +7,7 @@ namespace Gamesim.Presentation
 {
     /// <summary>
     /// A broadcast title card for the four beats the episode already models but previously rendered
-    /// as a plain status-line swap: the nomination ceremony, the veto ceremony, an eviction, and the
+    /// as a plain status-line swap: the nomination ceremony, the veto meeting, an eviction, and the
     /// jury's winner.
     ///
     /// Three constraints shape this more than the visual design does.
@@ -24,6 +24,13 @@ namespace Gamesim.Presentation
     /// <para>It shows only what the player is allowed to see. The caller passes the last committed
     /// event that already passed the audience filter, so the card cannot become a side channel for
     /// private coordination the notebook deliberately withholds.</para>
+    ///
+    /// <para>It is drawn on the kit the other ceremony cards are (UI-UX-PASS-PLAN V0, decision 14):
+    /// the glass every card stands on, a medallion for the beat at its left - Pack 8's veto mark for
+    /// the veto meeting, as the meeting's screen and its card wear it, and otherwise the beat's
+    /// glyph in a ring of the beat's colour, on Pack 9's portrait ring - and the beat's name beside
+    /// it, set as the meeting's screen sets its title. The accent bar it used to lead with was the
+    /// HUD's older banner, beside cards that had all moved on.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class CeremonySting : MonoBehaviour
@@ -64,19 +71,39 @@ namespace Gamesim.Presentation
         private const float DetailSize = 19f;
         private const float TopPad = 14f, Gap = 6f, BottomPad = 14f;
 
+        /// <summary>
+        /// The medallion's side at the resting text size, its inset from the card's left edge, the
+        /// room between it and the words, and the room the words leave at the right.
+        /// </summary>
+        private const float MarkSize = 58f, MarkInset = 20f, MarkGap = 16f, RightPad = 28f;
+
+        /// <summary>
+        /// Pack 9's portrait ring as shares of its side: the ring's outer edge (24 to 233 of 256) and
+        /// its hole (37 to 219), which the medallion's core fills.
+        /// </summary>
+        private const float RingOuter = 0.816f, RingHole = 0.711f;
+
         private CanvasGroup group;
-        private RectTransform card, ruleRect;
+        private RectTransform card, mark;
         private TMP_Text headline, detail;
-        private Image rule;
+        private Image ring, core, glyph;
+        private float markSide;
         private Vector2 restPosition;
         private float elapsed;
         private bool playing, reduced;
+        private string playingKind;
 
         /// <summary>Matches the HUD's accessibility preference so a large-text player gets a large card.</summary>
         public float FontScale { get; set; } = 1f;
 
         /// <summary>Whether the card is still on its own timer, as every sibling card reports.</summary>
         public bool IsPlaying => playing;
+
+        /// <summary>
+        /// The kind on screen, or null when no card is playing: what the director asks to keep the
+        /// status line from saying the same beat beside it (UI-UX-PASS-PLAN V0).
+        /// </summary>
+        public string PlayingKind => playing ? playingKind : null;
 
         /// <summary>
         /// Creates the sting in <paramref name="owner"/>'s scene, as a root object so it unloads with
@@ -115,12 +142,14 @@ namespace Gamesim.Presentation
             reduced = reducedMotion;
             elapsed = 0f;
             playing = true;
+            playingKind = kind;
 
             Layout();
-            headline.text = Headline(kind);
-            headline.color = Tint(kind);
-            rule.color = Tint(kind);
+            var tint = Tint(kind);
+            headline.text = HeadlineFor(kind);
+            headline.color = tint;
             detail.text = body ?? string.Empty;
+            DressMark(kind, tint);
 
             card.gameObject.SetActive(true);
             Apply(reduced ? 1f : 0f);
@@ -141,12 +170,17 @@ namespace Gamesim.Presentation
             if (card != null) card.gameObject.SetActive(false);
         }
 
-        private static string Headline(string kind)
+        /// <summary>
+        /// The beat's name on the strip. The veto meeting is the veto meeting here as everywhere else
+        /// it is named - the card, its screen, the episode screen's band, the week chip - where the
+        /// strip called it a ceremony (UI-UX-PASS-PLAN V0, decision 14: one meeting, one name).
+        /// </summary>
+        public static string HeadlineFor(string kind)
         {
             switch (kind)
             {
                 case NominationKind: return "NOMINATION CEREMONY";
-                case VetoKind: return "VETO CEREMONY";
+                case VetoKind: return "VETO MEETING";
                 case EvictionKind: return "EVICTION";
                 case WinnerKind: return "THE WINNER";
                 case FinalEvictionKind: return "THE FINAL TWO";
@@ -168,6 +202,37 @@ namespace Gamesim.Presentation
             }
         }
 
+        /// <summary>
+        /// The veto meeting's own mark - Pack 8's veto medallion, its gold ring and dark core drawn
+        /// in - which the meeting's screen titles itself with and its card leads with, so the
+        /// meeting wears one mark wherever it is announced (UI-UX-PASS-PLAN V0). Null for every other
+        /// beat, and without the pack.
+        /// </summary>
+        public static Sprite AuthoredMark(string kind) => kind == VetoKind ? UiTheme.Pack(PackArt.Pack8IconVeto) : null;
+
+        /// <summary>
+        /// The beat's glyph in its medallion: Pack 9's where the ceremony and finale pack drew one -
+        /// white, drawn in the beat's colour - and the generated set's otherwise; null with neither.
+        /// <paramref name="fromPack"/> says which, since a pack icon carries clear padding round its
+        /// drawing and the generated set draws to its edges.
+        /// </summary>
+        private static Sprite Glyph(string kind, out bool fromPack)
+        {
+            string pack = null, generated = null;
+            switch (kind)
+            {
+                case NominationKind: pack = PackArt.Pack9IconsIcKey; generated = "key"; break;
+                case VetoKind: generated = "veto-token"; break;
+                case EvictionKind: pack = PackArt.Pack9IconsIcBallot; generated = "evicted"; break;
+                case WinnerKind: pack = PackArt.Pack9IconsIcTrophy; generated = "trophy"; break;
+                case FinalEvictionKind: pack = PackArt.Pack9IconsIcPeople; generated = "people"; break;
+                case WalkOutKind: pack = PackArt.Pack9IconsIcHome; generated = "exit"; break;
+            }
+            var sprite = UiTheme.Pack(pack);
+            fromPack = sprite != null;
+            return fromPack ? sprite : UiTheme.Icon(generated);
+        }
+
         // Set here rather than in Build so the card is inert from the moment it exists, not from
         // the moment it first plays.
         private void Awake()
@@ -182,31 +247,85 @@ namespace Gamesim.Presentation
         {
             if (card != null) return;
 
-            card = NewPanel("Card", (RectTransform)transform, UiTheme.GlassFill, UiTheme.GlassRadius);
+            // The mockups' running bug is a glass strip: the night ground at 85 %, a cyan hairline
+            // on the edge and a soft glow outside it (mockup-08, -10). The glow is a child that
+            // reaches past the rect, and every geometry check in the suite reads the rect.
+            card = HudPrimitives.Glass("Card", transform);
             // Stretched across the top, inset past the chrome on both sides.
             card.anchorMin = new Vector2(0f, 1f);
             card.anchorMax = new Vector2(1f, 1f);
             card.pivot = new Vector2(0.5f, 1f);
-            // The mockups' running bug is a glass strip: the night ground at 85 %, a cyan hairline
-            // on the edge and a soft glow outside it (mockup-08, -10). The glow is a child that
-            // reaches past the rect, and every geometry check in the suite reads the rect.
-            UiTheme.Glass(card, UiTheme.GlassRadius);
 
-            rule = NewPanel("Sting rule", card, UiTheme.Accent, 2).GetComponent<Image>();
-            ruleRect = (RectTransform)rule.transform;
-            ruleRect.anchorMin = new Vector2(0f, 0.5f);
-            ruleRect.anchorMax = new Vector2(0f, 0.5f);
-            ruleRect.pivot = new Vector2(0f, 0.5f);
+            // The beat's medallion at the card's left, where the accent bar stood: a ring of the
+            // beat's colour round a dark core with the beat's glyph on it, or the veto meeting's own
+            // mark whole. Three layers, dressed per play (DressMark), since one strip plays every beat.
+            mark = new GameObject("Sting mark", typeof(RectTransform)).GetComponent<RectTransform>();
+            mark.SetParent(card, false);
+            mark.anchorMin = mark.anchorMax = new Vector2(0f, .5f);
+            mark.pivot = new Vector2(0f, .5f);
+            ring = MarkLayer("Mark ring", mark);
+            core = MarkLayer("Mark core", mark);
+            glyph = MarkLayer("Mark glyph", mark);
 
-            headline = NewText("Sting headline", card, HeadlineSize, UiTheme.Accent);
+            // The beat's name as the meeting's screen sets its title: the bold cut, tracked, in the
+            // beat's colour.
+            headline = HudPrimitives.Label("Sting headline", card, HeadlineSize, UiTheme.Accent);
             headline.overflowMode = TextOverflowModes.Overflow;
             headline.textWrappingMode = TextWrappingModes.NoWrap;
             headline.characterSpacing = 2f;
             var bold = UiTheme.Font(UiTheme.Weight.Bold);
             if (bold != null) headline.font = bold;
-            detail = NewText("Sting detail", card, DetailSize, UiTheme.Paper);
+            detail = HudPrimitives.Label("Sting detail", card, DetailSize, UiTheme.Paper);
 
             card.gameObject.SetActive(false);
+        }
+
+        /// <summary>One of the medallion's layers, centred on it, inert like everything on the card.</summary>
+        private static Image MarkLayer(string name, RectTransform parent)
+        {
+            var image = new GameObject(name, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            var rect = image.rectTransform;
+            rect.SetParent(parent, false);
+            rect.anchorMin = rect.anchorMax = new Vector2(.5f, .5f);
+            rect.pivot = new Vector2(.5f, .5f);
+            rect.anchoredPosition = Vector2.zero;
+            image.type = Image.Type.Simple;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        /// <summary>
+        /// The medallion for this beat: the veto meeting's own mark whole where the pack is in
+        /// (<see cref="AuthoredMark"/>); otherwise Pack 9's portrait ring in the beat's colour - the
+        /// kit's plain disc of the colour without the pack - a dark core filling its hole, as the
+        /// veto mark's own core is dark, and the beat's glyph on the core.
+        /// </summary>
+        private void DressMark(string kind, Color tint)
+        {
+            var authored = AuthoredMark(kind);
+            if (authored != null)
+            {
+                Layer(ring, authored, Color.white, markSide);
+                core.enabled = false;
+                glyph.enabled = false;
+                return;
+            }
+            var art = UiTheme.Pack(PackArt.Pack9SharedPortraitRing);
+            if (art != null) Layer(ring, art, tint, markSide);
+            else Layer(ring, UiTheme.Circle(), tint, markSide * RingOuter);
+            Layer(core, UiTheme.Circle(), new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .92f), markSide * RingHole);
+            var icon = Glyph(kind, out bool fromPack);
+            if (icon == null) { glyph.enabled = false; return; }
+            Layer(glyph, icon, tint, markSide * (fromPack ? .5f : .4f));
+        }
+
+        private static void Layer(Image image, Sprite sprite, Color colour, float side)
+        {
+            image.enabled = true;
+            image.sprite = sprite;
+            image.color = colour;
+            image.rectTransform.sizeDelta = new Vector2(side, side);
         }
 
         /// <summary>
@@ -218,20 +337,31 @@ namespace Gamesim.Presentation
             float head = Mathf.Round(HeadlineSize * FontScale);
             float body = Mathf.Round(DetailSize * FontScale);
             // Inter's line is taller than 1.2 of its size, and a headline in a box one pixel short of
-            // its line is truncated whole: every sting drew its detail under an empty band.
+            // its line is truncated whole: every sting drew its detail under an empty band. The kit's
+            // rule is a box 1.3 times its type, the detail's included (it was 1.25).
             float headLine = Mathf.Ceil(head * 1.35f);
-            float bodyLine = Mathf.Ceil(body * 1.25f);
+            float bodyLine = Mathf.Ceil(body * 1.32f);
             float height = TopPad + headLine + Gap + bodyLine + BottomPad;
 
             card.offsetMin = new Vector2(LeftInset, -(TopInset + height));
             card.offsetMax = new Vector2(-RightInset, -TopInset);
             restPosition = card.anchoredPosition;
 
-            ruleRect.anchoredPosition = new Vector2(30f, 0f);
-            ruleRect.sizeDelta = new Vector2(6f, Mathf.Max(8f, height - 28f));
+            // The medallion grows with the type, and never past the card's height less a margin over
+            // and under it; the words start a gap to its right.
+            markSide = Mathf.Min(Mathf.Round(MarkSize * FontScale), height - 24f);
+            mark.anchoredPosition = new Vector2(MarkInset, 0f);
+            mark.sizeDelta = new Vector2(markSide, markSide);
+            float left = MarkInset + markSide + MarkGap;
 
+            // The name on its one line, drawn a size or two smaller rather than run past the card's
+            // edge: on the 4:3 canvas the strip is 525 wide, and NOMINATION CEREMONY at the larger
+            // text is wider than the words' room beside the medallion.
             headline.fontSize = head;
-            Stretch(headline.rectTransform, 56f, TopPad, 40f, height - TopPad - headLine);
+            headline.enableAutoSizing = true;
+            headline.fontSizeMax = head;
+            headline.fontSizeMin = Mathf.Round(head * 0.6f);
+            Stretch(headline.rectTransform, left, TopPad, RightPad, height - TopPad - headLine);
 
             // Committed event text varies a lot in length and the card is only one line deep, so the
             // detail is allowed to shrink rather than truncate. A slightly smaller sentence is a far
@@ -240,7 +370,7 @@ namespace Gamesim.Presentation
             detail.enableAutoSizing = true;
             detail.fontSizeMax = body;
             detail.fontSizeMin = Mathf.Max(11f, body * 0.7f);
-            Stretch(detail.rectTransform, 56f, TopPad + headLine + Gap, 40f, BottomPad);
+            Stretch(detail.rectTransform, left, TopPad + headLine + Gap, RightPad, BottomPad);
         }
 
         private void LateUpdate()
@@ -274,35 +404,6 @@ namespace Gamesim.Presentation
             // resting position for the length of the entrance, and its resting position is chosen to
             // be the lowest it may ever sit without covering the episode panel's Close button.
             card.anchoredPosition = restPosition + new Vector2(0f, (1f - eased) * Rise);
-        }
-
-        private static RectTransform NewPanel(string name, RectTransform parent, Color color, int radius)
-        {
-            var panel = new GameObject(name, typeof(RectTransform), typeof(Image));
-            var rect = (RectTransform)panel.transform;
-            rect.SetParent(parent, false);
-            var image = panel.GetComponent<Image>();
-            UiTheme.Style(image, color, radius);
-            image.raycastTarget = false;
-            return rect;
-        }
-
-        private static TMP_Text NewText(string name, RectTransform parent, float size, Color color)
-        {
-            var holder = new GameObject(name, typeof(RectTransform));
-            holder.transform.SetParent(parent, false);
-            var label = holder.AddComponent<TextMeshProUGUI>();
-            var font = UiTheme.Font(UiTheme.Weight.Regular);
-            if (font != null) label.font = font;
-            label.fontSize = size;
-            label.color = color;
-            // Event text is authored copy, not markup; the rest of the HUD reads it literally too.
-            label.richText = false;
-            label.raycastTarget = false;
-            label.alignment = TextAlignmentOptions.Left;
-            label.textWrappingMode = TextWrappingModes.Normal;
-            label.overflowMode = TextOverflowModes.Truncate;
-            return label;
         }
 
         private static void Stretch(RectTransform rect, float left, float top, float right, float bottom)

@@ -302,11 +302,15 @@ namespace Gamesim.Presentation
             eyebrow.text = "WEEK " + Mathf.Max(1, week);
             title.text = name;
             flavour.text = string.IsNullOrEmpty(line) ? FlavourFor(kind) : line;
-            // A generated glyph when the icon set exists, and the two-disc mark when it does not.
-            var glyph = UiTheme.Icon(IconFor(kind));
-            markOuter.GetComponent<Image>().sprite = glyph != null ? glyph : UiTheme.Circle();
-            markOuter.GetComponent<Image>().color = tint;
-            markOuter.GetComponent<Image>().preserveAspect = glyph != null;
+            // The veto meeting leads with its own mark, drawn as authored, as its screen and the strip
+            // reporting it do (UI-UX-PASS-PLAN V0): one meeting, one mark. Every other beat has a
+            // generated glyph when the icon set exists, and the two-disc mark when it does not.
+            var authored = CeremonySting.AuthoredMark(kind);
+            var glyph = authored != null ? authored : UiTheme.Icon(IconFor(kind));
+            var markImage = markOuter.GetComponent<Image>();
+            markImage.sprite = glyph != null ? glyph : UiTheme.Circle();
+            markImage.color = authored != null ? Color.white : tint;
+            markImage.preserveAspect = glyph != null;
             markInner.gameObject.SetActive(glyph == null);
             markInner.GetComponent<Image>().color = tint;
             title.color = Color.white;
@@ -637,8 +641,12 @@ namespace Gamesim.Presentation
         /// <summary>The badges the meeting's faces wear.</summary>
         public const string VetoBadge = "VETO", OnTheBlockBadge = "ON THE BLOCK", SavedBadge = "SAVED", ReplacementBadge = "REPLACEMENT";
 
-        /// <summary>The meeting's title on the screen.</summary>
-        public const string MeetingTitle = "POWER OF VETO MEETING";
+        /// <summary>
+        /// The meeting's title on the screen: the veto meeting, the name the strip, the card, the
+        /// episode screen and the week chip give it (UI-UX-PASS-PLAN V0, decision 14). It was
+        /// POWER OF VETO MEETING here while the strip called the same meeting a ceremony.
+        /// </summary>
+        public const string MeetingTitle = "VETO MEETING";
 
         private VetoMeetingScript meeting;
         private ScreenSurface surface;
@@ -843,7 +851,14 @@ namespace Gamesim.Presentation
                     headline = VetoMeetingRead.FinalHeadline;
                     headlineColour = UiTheme.Gold;
                     line = read.outcomeLine;
-                    foreach (var id in read.finalBlock) row.Add(new MeetingFace(id, OnTheBlockBadge, UiTheme.Danger));
+                    // The replacement keeps the pill the page before gave them, under the block's
+                    // (UI-UX-PASS-PLAN V0): the block that goes to the vote says who went up in whose
+                    // place, as the meeting's row on the episode screen does. Named by now - a skip
+                    // reports the naming on its way here - and never on a page before the naming.
+                    foreach (var id in read.finalBlock)
+                        row.Add(read.HasReplacement && id == read.replacementId
+                            ? new MeetingFace(id, OnTheBlockBadge, UiTheme.Danger, ReplacementBadge, UiTheme.Danger)
+                            : new MeetingFace(id, OnTheBlockBadge, UiTheme.Danger));
                     break;
             }
             meetingHeadline.text = headline ?? string.Empty;
@@ -978,24 +993,38 @@ namespace Gamesim.Presentation
             if (!string.IsNullOrEmpty(spec.Second)) MeetingBadge(photo, spec.Second, spec.SecondTint, 1);
         }
 
-        /// <summary>A badge just inside the photo's top edge, the second under the first.</summary>
+        /// <summary>The height of a badge on a face, and the type in it: a box 1.8 times its words, where Inter needs 1.21.</summary>
+        public const float MeetingBadgeHeight = 40f, MeetingBadgeType = 22f;
+
+        /// <summary>
+        /// A badge just inside the photo's top edge, the second under the first: the kit's pill - Pack
+        /// 9's status tag, the chip the nomination card's roster wears SAFE and NOMINATED in - in the
+        /// badge's colour, its word in whatever reads on it (UI-UX-PASS-PLAN V0). The kit's own
+        /// rounded fill stands in without the pack. Named "Badge" over "Badge text", as a test finds it.
+        /// </summary>
         private static void MeetingBadge(RectTransform photo, string text, Color tint, int index)
         {
             if (string.IsNullOrEmpty(text)) return;
-            const float height = 40f, width = 230f, gap = 8f;
-            var chip = NewPanel("Badge", photo, tint, 6);
+            const float height = MeetingBadgeHeight, width = 230f, gap = 8f;
+            var chip = HudPrimitives.Fill("Badge", photo, tint, Mathf.RoundToInt(height * .5f) - 1);
             chip.anchorMin = chip.anchorMax = new Vector2(.5f, 1f);
             chip.pivot = new Vector2(.5f, 1f);
             chip.anchoredPosition = new Vector2(0f, -10f - index * (height + gap));
             chip.sizeDelta = new Vector2(width, height);
-            var label = NewText("Badge text", chip, 22f, UiTheme.Ink);
+            UiTheme.PackSliced(chip.GetComponent<Image>(), PackArt.Pack9NominationCeremonyStatusTagFill, height * .5f - 2f, tint);
+            var label = NewText("Badge text", chip, MeetingBadgeType, UiTheme.OnColor(tint));
             label.alignment = TextAlignmentOptions.Center;
             var bold = UiTheme.Font(UiTheme.Weight.Bold);
             if (bold != null) label.font = bold;
+            label.characterSpacing = 1f;
+            // One word on one line, a size smaller rather than cut where a longer one comes.
             label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.enableAutoSizing = true;
+            label.fontSizeMax = MeetingBadgeType;
+            label.fontSizeMin = 16f;
             label.text = text;
             label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one;
-            label.rectTransform.offsetMin = Vector2.zero; label.rectTransform.offsetMax = Vector2.zero;
+            label.rectTransform.offsetMin = new Vector2(12f, 0f); label.rectTransform.offsetMax = new Vector2(-12f, 0f);
         }
 
         /// <summary>A rect hung from its parent's top centre, <paramref name="y"/> down and <paramref name="x"/> across.</summary>

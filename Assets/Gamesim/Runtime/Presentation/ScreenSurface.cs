@@ -236,11 +236,14 @@ namespace Gamesim.Presentation
         /// <summary>A houseguest's height and half-width, as the shot reckons a body that stands.</summary>
         public const float StandingHeight = 1.8f, BodyRadius = 0.34f;
 
+        /// <summary>From a rig's head bone, which sits about the ears, to the top of the head.</summary>
+        public const float HeadCrown = 0.15f;
+
         /// <summary>
-        /// A body as the screen shot sees it: a vertical capsule from its feet to the top of its
-        /// head, <see cref="Radius"/> wide. The seated and the standing alike - a seat moves the
+        /// A body as the screen shot sees it: an upright cylinder from its feet to the top of its
+        /// head, <see cref="Radius"/> round. The seated and the standing alike - a seat moves the
         /// visual body and leaves the root at the chair's approach, so the caller says where the
-        /// feet and the head are.
+        /// feet and the head are (<see cref="BodyOf"/> reads them from the scene).
         /// </summary>
         public readonly struct Body
         {
@@ -257,6 +260,29 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
+        /// A houseguest's or the player's body as the shot sees it, from the scene: the top of the
+        /// rig's head where the body has a head bone, over the visual body's feet where a seat has
+        /// moved it off its root, else under the head - a body can stand away from its root, and the
+        /// head bone is where its mesh is; without a head bone, the seat's focus, or a houseguest's
+        /// height over the root.
+        /// </summary>
+        public static Body BodyOf(Component body)
+        {
+            var seat = body.GetComponent<HouseSeatPresentation>();
+            bool seated = seat != null && seat.Active;
+            var root = body.transform.position;
+            var visual = body.GetComponent<CharacterPresentation>();
+            var bone = visual != null ? visual.HeadBone : null;
+            if (bone != null)
+            {
+                var head = bone.position + Vector3.up * HeadCrown;
+                return new Body(seated ? seat.VisualFeet : new Vector3(head.x, root.y, head.z), head);
+            }
+            var feet = seated ? seat.VisualFeet : root;
+            return new Body(feet, seated ? seat.VisualFocus + Vector3.up * HeadCrown : feet + Vector3.up * StandingHeight);
+        }
+
+        /// <summary>
         /// The framings a cut tries when a body stands between the lens and the card, nearest the
         /// head-on shot first: raised a little, swung a little to either side, then more of each.
         /// A lens raised 26 degrees at the screen's distance stands about a metre above the face's
@@ -269,87 +295,131 @@ namespace Gamesim.Presentation
             (26f, 0f), (26f, 34f), (26f, -34f), (8f, 40f), (8f, -40f),
         };
 
-        /// <summary>How many points along a body, feet to head, the shot tests.</summary>
-        private const int BodySamples = 6;
+        /// <summary>How many points along a body, its feet and the top of its head included, the shot tests: one every 0.3 m of a houseguest standing.</summary>
+        private const int BodyPoints = 7;
 
         /// <summary>
         /// The screen shot with the lens kept clear of <paramref name="bodies"/>: the head-on shot
         /// when no body stands between it and the card, else the first of a few raised and swung
         /// framings that none does, and the one with the least of anyone in it when every framing
-        /// has somebody. The staging's first line of defence is the marks beside the screen; this
-        /// is the second, for a houseguest still walking to a chair or a seat the shot stands past.
+        /// has somebody. A framing <paramref name="usable"/> turns down - one whose boom a wall
+        /// would shorten, cropping the card - is passed over. The staging's first line of defence
+        /// is the marks beside the screen; this is the second, for a houseguest still walking to a
+        /// chair or a seat the shot stands past. Allocates nothing: it runs at every cut.
         /// </summary>
-        public HouseCameraRig.Shot ShotClearOf(IReadOnlyList<Body> bodies, float seconds = 0.01f)
+        public HouseCameraRig.Shot ShotClearOf(IReadOnlyList<Body> bodies, float seconds = 0.01f, System.Func<HouseCameraRig.Shot, bool> usable = null)
         {
             var best = Shot(seconds);
             if (bodies == null || bodies.Count == 0) return best;
             int least = int.MaxValue;
-            foreach (var (pitch, yaw) in ClearFramings)
+            for (int f = 0; f < ClearFramings.Length; f++)
             {
-                var shot = Framing(pitch, yaw, seconds);
+                var shot = Framing(ClearFramings[f].pitch, ClearFramings[f].yaw, seconds);
+                if (usable != null && !usable(shot)) continue;
+                var lens = LensFor(shot);
                 int inTheWay = 0;
-                foreach (var body in bodies) inTheWay += Intrusion(shot, body);
+                for (int i = 0; i < bodies.Count; i++) inTheWay += Intrusion(lens, bodies[i]);
                 if (inTheWay == 0) return shot;
                 if (inTheWay < least) { least = inTheWay; best = shot; }
             }
             return best;
         }
 
-        /// <summary>Whether <paramref name="body"/> stands in the card from <paramref name="shot"/>: any part of it, nearer the lens than the face, in the card's frame.</summary>
-        public bool InTheShot(in HouseCameraRig.Shot shot, in Body body) => Intrusion(shot, body) > 0;
+        /// <summary>Whether <paramref name="body"/> stands in the card from <paramref name="shot"/>: any part of it, between the lens and the face, in the card's frame.</summary>
+        public bool InTheShot(in HouseCameraRig.Shot shot, in Body body) => Intrusion(LensFor(shot), body) > 0;
 
         /// <summary>Where the lens stands for <paramref name="shot"/>: the rig puts it the shot's distance behind the focus, turned by the shot's pitch and yaw.</summary>
         public static Vector3 Eye(in HouseCameraRig.Shot shot) =>
             shot.Focus + Quaternion.Euler(shot.Pitch, shot.Yaw, 0f) * Vector3.back * shot.Distance;
 
-        /// <summary>The card's four world corners on the face, as <see cref="Mount"/> hangs it: bottom-left, top-left, top-right, bottom-right.</summary>
-        public Vector3[] CardCorners()
+        /// <summary>The card's four world corners on the face, as <see cref="Mount"/> hangs it: bottom-left, top-left, top-right, bottom-right. For tests; the shot reads them without the array.</summary>
+        public Vector3[] CardCorners() => new[] { CardCorner(0), CardCorner(1), CardCorner(2), CardCorner(3) };
+
+        /// <summary>One of the card's corners, in <see cref="CardCorners"/>' order.</summary>
+        private Vector3 CardCorner(int index)
         {
             var right = Vector3.Cross(Vector3.up, -Normal).normalized;
-            float halfWidth = ReferenceWidth * Scale * 0.5f, halfHeight = ReferenceHeight * Scale * 0.5f;
-            return new[]
-            {
-                Centre - right * halfWidth - Vector3.up * halfHeight, Centre - right * halfWidth + Vector3.up * halfHeight,
-                Centre + right * halfWidth + Vector3.up * halfHeight, Centre + right * halfWidth - Vector3.up * halfHeight,
-            };
+            float across = index < 2 ? -1f : 1f, up = index == 1 || index == 2 ? 1f : -1f;
+            return Centre + right * (across * ReferenceWidth * Scale * 0.5f) + Vector3.up * (up * ReferenceHeight * Scale * 0.5f);
         }
 
         /// <summary>
-        /// How much of <paramref name="body"/> the shot sees in the card: of <see cref="BodySamples"/>
-        /// points along it, feet to head, how many project inside the card's frame from nearer than
-        /// the face, each a disc of the body's radius. Zero when it is clear of the card, behind the
-        /// lens, or beyond the face. Measured in the lens's own tangent plane, so the frame's aspect
-        /// is no part of it: the card's frame is the card's, whatever the screen's shape.
+        /// A framing as the body test reads it, worked out once a framing: where the lens stands, the
+        /// turn into its own space, the card's box in its tangent plane, and how far it looks down -
+        /// the share of a body's round top and foot a raised lens sees.
         /// </summary>
-        public int Intrusion(in HouseCameraRig.Shot shot, in Body body)
+        private readonly struct Lens
+        {
+            public readonly Vector3 Eye;
+            public readonly Quaternion ToView;
+            public readonly float UMin, UMax, WMin, WMax, Tilt;
+
+            public Lens(Vector3 eye, Quaternion toView, float uMin, float uMax, float wMin, float wMax, float tilt)
+            {
+                Eye = eye; ToView = toView; UMin = uMin; UMax = uMax; WMin = wMin; WMax = wMax; Tilt = tilt;
+            }
+        }
+
+        private Lens LensFor(in HouseCameraRig.Shot shot)
         {
             var rotation = Quaternion.Euler(shot.Pitch, shot.Yaw, 0f);
             var eye = shot.Focus + rotation * Vector3.back * shot.Distance;
             var toView = Quaternion.Inverse(rotation);
-            float uMin = float.MaxValue, uMax = float.MinValue, wMin = float.MaxValue, wMax = float.MinValue, faceDepth = float.MaxValue;
-            foreach (var corner in CardCorners())
+            float uMin = float.MaxValue, uMax = float.MinValue, wMin = float.MaxValue, wMax = float.MinValue;
+            for (int i = 0; i < 4; i++)
             {
-                var view = toView * (corner - eye);
+                var view = toView * (CardCorner(i) - eye);
                 float depth = Mathf.Max(0.05f, view.z);
                 float u = view.x / depth, w = view.y / depth;
                 uMin = Mathf.Min(uMin, u); uMax = Mathf.Max(uMax, u);
                 wMin = Mathf.Min(wMin, w); wMax = Mathf.Max(wMax, w);
-                faceDepth = Mathf.Min(faceDepth, depth);
             }
-            int samples = 0;
-            for (int i = 0; i <= BodySamples; i++)
+            return new Lens(eye, toView, uMin, uMax, wMin, wMax, Mathf.Abs(Mathf.Sin(shot.Pitch * Mathf.Deg2Rad)));
+        }
+
+        /// <summary>
+        /// How much of <paramref name="body"/> the shot sees in the card: of the
+        /// <see cref="BodyPoints"/> points along it, feet to the top of the head, how many project
+        /// into the card's frame from in front of the face, each the body's round cross-section -
+        /// its whole radius sideways, and up and down only what a raised lens sees of its top and
+        /// foot - plus one for each pair of neighbours either side of the card's height, which the
+        /// body crosses there however thin the card's slice at its distance. Zero when it is clear of
+        /// the card, behind the lens, or on or behind the face (against the board, or through a
+        /// cutaway). Measured in the lens's own tangent plane, so the frame's aspect is no part of
+        /// it: the card's frame is the card's, whatever the screen's shape.
+        /// </summary>
+        public int Intrusion(in HouseCameraRig.Shot shot, in Body body) => Intrusion(LensFor(shot), body);
+
+        private int Intrusion(in Lens lens, in Body body)
+        {
+            int points = 0, lastSide = 0;
+            bool lastAcross = false;
+            for (int i = 0; i < BodyPoints; i++)
             {
-                var point = Vector3.Lerp(body.Feet, body.Head, i / (float)BodySamples);
-                var view = toView * (point - eye);
-                // Behind the lens, or past the face: not between them.
-                if (view.z <= 0f || view.z >= faceDepth) continue;
+                var point = Vector3.Lerp(body.Feet, body.Head, i / (float)(BodyPoints - 1));
+                var view = lens.ToView * (point - lens.Eye);
+                // Behind the lens, or on or behind the face: not between them. Against the face's
+                // plane, not the nearest corner's depth - a raised or swung lens sees the card's far
+                // side deeper than its near corner, and a body in front of the face is in front of it.
+                if (view.z <= 0f || Vector3.Dot(point - Centre, Normal) <= 0f) { lastAcross = false; continue; }
                 // At the lens: in the way whatever the frame.
-                if (view.z < 0.05f) { samples++; continue; }
-                float u = view.x / view.z, w = view.y / view.z, radius = body.Radius / view.z;
-                float du = Mathf.Max(Mathf.Max(uMin - u, 0f), u - uMax), dw = Mathf.Max(Mathf.Max(wMin - w, 0f), w - wMax);
-                if (du * du + dw * dw <= radius * radius) samples++;
+                if (view.z < 0.05f) { points++; lastAcross = false; continue; }
+                float u = view.x / view.z, w = view.y / view.z;
+                float across = body.Radius / view.z, along = across * lens.Tilt;
+                float du = Mathf.Max(Mathf.Max(lens.UMin - u, 0f), u - lens.UMax);
+                bool inAcross = du <= across;
+                int side = w < lens.WMin - along ? -1 : w > lens.WMax + along ? 1 : 0;
+                if (inAcross && side == 0)
+                {
+                    float dw = Mathf.Max(Mathf.Max(lens.WMin - w, 0f), w - lens.WMax);
+                    float a = du / across, b = along > 1e-6f ? dw / along : 0f;
+                    if (a * a + b * b <= 1f) points++;
+                }
+                else if (inAcross && lastAcross && side * lastSide < 0) points++;
+                lastAcross = inAcross && side != 0;
+                lastSide = side;
             }
-            return samples;
+            return points;
         }
 
         /// <summary>Every ceremony screen in the scene, by the room it stands in.</summary>

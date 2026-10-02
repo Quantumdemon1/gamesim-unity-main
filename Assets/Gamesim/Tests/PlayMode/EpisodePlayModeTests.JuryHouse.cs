@@ -23,6 +23,10 @@ namespace Gamesim.Tests.PlayMode
             string head = Words(LastActive(EpisodeHud.ScreenHeadName));
             Assert.That(head, Does.Not.Contain("THE JURY HOUSE"), "The head does not repeat the band's title.");
             Assert.That(head, Does.Contain("JUROR").And.Contain("ONE DECISION"), "The head is the jury's size.");
+            // The way back is the screen's last row, under the columns, as the final case's is (E0).
+            var leave = FindButton(EpisodeDirector.LeaveJuryHouseCaption).transform;
+            var rows = leave.parent.Cast<Transform>().Where(row => row.gameObject.activeSelf).ToList();
+            Assert.That(rows.Last(), Is.SameAs(leave), "'Leave the jury house' is the screen's last row.");
             Assert.That(LastActive(EpisodeHud.JuryMattersName), Is.Not.Null, "What matters to this jury.");
             var jurors = FinalistRead.Jurors(state);
             Assert.That(jurors, Is.Not.Empty);

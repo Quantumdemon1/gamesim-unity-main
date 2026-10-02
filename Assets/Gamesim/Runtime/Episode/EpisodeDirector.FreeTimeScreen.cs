@@ -108,7 +108,9 @@ namespace Gamesim.Episode
         /// window's checks, where a houseguest's screen and the comparison come first; never under a
         /// challenge or a reflection waiting, which take the panel before either. A station screen
         /// is a screen of its own: it takes the strategy stage and nothing is pinned under it, so its
-        /// columns have the frame's room and its own way back is its last row.
+        /// columns have the frame's room, and its own way back - "Close your final case", "Leave the
+        /// jury house" - is its last row. The comparison at three is not one of them (the plan names
+        /// these two): it keeps the window's pinned way on.
         /// </summary>
         private bool StationScreenOpen(EpisodeState state)
         {
@@ -317,12 +319,14 @@ namespace Gamesim.Episode
         /// <summary>
         /// The moves that name nobody, as cards: the two house meetings, listening in, and the two
         /// ways of buying time, each saying what it does, its risk and what it costs before it is
-        /// pressed. On the campaign they wait behind "More ways to campaign", as rows.
+        /// pressed. On the campaign they wait behind "More ways to campaign", as rows. As cards they
+        /// stand under a head of their own unless the caller has given them one
+        /// (<paramref name="headed"/> false: a houseguest's screen heads them WHOLE HOUSE MOVES).
         /// </summary>
-        private void HouseMoves(EpisodeState state, bool asCards = false)
+        private void HouseMoves(EpisodeState state, bool asCards = false, bool headed = true)
         {
             if (!state.Active.Any(c => !c.isPlayer)) return;
-            if (asCards) hud.SectionHead("home", "OTHER WAYS TO SPEND YOUR TIME", "Make a move, gather information, or shake things up around the house.");
+            if (asCards) { if (headed) hud.SectionHead("home", "OTHER WAYS TO SPEND YOUR TIME", "Make a move, gather information, or shake things up around the house."); }
             else hud.Eyebrow("THE WHOLE HOUSE", UiTheme.Muted);
             var tiles = new List<EpisodeHud.MoveTile>
             {
@@ -443,20 +447,21 @@ namespace Gamesim.Episode
 
         // ------------------------------------------------------------ a houseguest's screen
 
-        /// <summary>
-        /// A houseguest's screen: the house in a strip with them pressed, the three ways to spend an
-        /// action on them, the whole house's moves, and beside them your own context and what you
-        /// have on them.
-        /// </summary>
         /// <summary>The widest a card of the houseguest strip runs on the stage: a shorter row, so the screen holds in the stage's height.</summary>
         private const float StageStripCardWidth = 110f;
 
+        /// <summary>
+        /// A houseguest's screen: the house in a strip with them pressed, the three ways to spend an
+        /// action on them, the whole house's moves under one head, and beside them your own context
+        /// and what you have on them.
+        /// </summary>
         private void HouseguestScreen(EpisodeState state, ContestantState who)
         {
             // On the strategy stage - free time's own, with the board's footer (UI-UX-PASS-PLAN U0) -
             // the way back is the footer's secondary slot, the band says FREE TIME and the week, and
             // the heads keep to their titles, so the screen holds in the stage's height rather than
-            // scrolling under the pinned bar. On the Stage's column, at three, it is as it was.
+            // scrolling under the pinned bar. On the Stage's column, at three, it keeps its own way
+            // back, its FREE TIME head and its heads' lines.
             bool stage = hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Strategy;
             if (!stage) hud.Action(BackToFreeTimeCaption, CloseHouseguestScreen);
             int left = ActionsLeftCount(state);
@@ -491,8 +496,10 @@ namespace Gamesim.Episode
                     Choose = () => TalkWithIntent(id, IntentDeal),
                 },
             });
+            // One head over the moves: WHOLE HOUSE MOVES, never "OTHER WAYS TO SPEND YOUR TIME" under
+            // it as well (UI-UX-PASS-PLAN U0's review: two heads back to back, 50 units of the stage).
             hud.SectionHead("people", "WHOLE HOUSE MOVES", stage ? null : "Spend your action on a move that affects everyone.");
-            HouseMoves(state, true);
+            HouseMoves(state, true, headed: false);
             hud.SideColumn();
             YourContextCard(state, stage);
             AboutCard(state, who);
@@ -500,20 +507,32 @@ namespace Gamesim.Episode
             hud.EndColumns();
         }
 
-        /// <summary>The context card's line before anybody holds a role: the week's first competition decides them.</summary>
+        /// <summary>The context card's line before anybody holds a role - move-in night's free time: the week's first competition decides them.</summary>
         public const string NothingDecidedRole = "Nothing decided yet", NothingDecidedWhy = "The week's roles come with the first competition.";
 
         /// <summary>
+        /// The context card's line once the week's eviction is done: its roles stand in the state until
+        /// free time closes (the rollover clears them as it advances into the next Head of Household
+        /// competition), and none of them is anybody's any more.
+        /// </summary>
+        public const string WeekOverRole = "The week is over", WeekOverWhy = "The next Head of Household competition sets the roles.";
+
+        /// <summary>
         /// Your role this week in a few words, and why it matters, for the context card: the Final 3's
-        /// window, the Head of Household, the block, the veto, nothing decided yet before anybody is
-        /// Head of Household (UI-UX-PASS-PLAN U0: it said "safe" in week one's free time, under a top
-        /// bar saying "Awaiting HoH"), and safe once the roles are out.
+        /// window; the week over once its eviction is done - every free time after move-in night
+        /// follows an eviction, with the ended week's roles still in the state, so a surviving
+        /// nominee read "You are on the block" (U0's review); the Head of Household, the block, the
+        /// veto; nothing decided yet before anybody is Head of Household - move-in night (U0: it said
+        /// "safe" there, under a top bar saying "Awaiting HoH"); and safe once the roles are out.
+        /// Free time is only ever move-in night and the window after an eviction, so the role lines
+        /// read for a state with live roles, which the free-time screens do not reach today.
         /// </summary>
         public static string ContextRole(EpisodeState state, out string why)
         {
             // At three the final-four week's roles are still in state until the window closes; what
             // matters now is the final Head of Household (ENDGAME-PLAN F1).
             if (Preparing(state)) { why = "The final Head of Household is next."; return "You are in the Final 3"; }
+            if (state.evictionResolved) { why = WeekOverWhy; return WeekOverRole; }
             if (state.playerId == state.hohId) { why = "You can set the tone this week."; return "You are HOH"; }
             if (state.nominees != null && state.nominees.Contains(state.playerId)) { why = "Campaign for the votes you need."; return "You are on the block"; }
             if (state.playerId == state.vetoHolderId) { why = "The meeting is yours to call."; return "You hold the veto"; }

@@ -1397,35 +1397,45 @@ namespace Gamesim.Episode
             /// screen's own shot unless somebody in the house - a houseguest still walking to a
             /// chair, the Head of Household at a mark, a seat the shot stands past - is between the
             /// lens and the card, when it is raised or swung round the face by the least that clears
-            /// them, or by what clears the most of them when nothing clears them all. The marks
-            /// beside the screen (CeremonySets, N1) are the first line of defence; this is the second.
-            /// Gathered at the cut, because the house moves between beats.
+            /// them, or by what clears the most of them when nothing clears them all; never to a
+            /// framing whose boom the rig would shorten against a wall (<see cref="BoomIsOpen"/>). The
+            /// marks beside the screen (CeremonySets, N1) are the first line of defence; this is the
+            /// second. Gathered at the cut, because the house moves between beats.
             /// </summary>
             public HouseCameraRig.Shot ScreenCut()
             {
                 bodiesInTheShot.Clear();
                 if (director.housemates != null)
                     foreach (var npc in director.housemates)
-                        if (npc != null && npc.gameObject.activeInHierarchy) bodiesInTheShot.Add(BodyOf(npc));
-                if (director.player != null && director.player.gameObject.activeInHierarchy) bodiesInTheShot.Add(BodyOf(director.player));
-                return Screen.ShotClearOf(bodiesInTheShot, CutSeconds);
+                        if (npc != null && npc.gameObject.activeInHierarchy) bodiesInTheShot.Add(ScreenSurface.BodyOf(npc));
+                if (director.player != null && director.player.gameObject.activeInHierarchy) bodiesInTheShot.Add(ScreenSurface.BodyOf(director.player));
+                return Screen.ShotClearOf(bodiesInTheShot, CutSeconds, boomIsOpen);
             }
 
+            private static readonly Func<HouseCameraRig.Shot, bool> boomIsOpen = BoomIsOpen;
+            private static readonly RaycastHit[] boomHits = new RaycastHit[16];
+
             /// <summary>
-            /// A body as the shot sees it: the visual body's feet where a seat has moved it off its
-            /// root, the rig's head bone where the body has one (a seat lowers it; a body can stand
-            /// away from its root), and a houseguest's height over the feet otherwise.
+            /// Whether the rig would hold a shot's boom whole: nothing on the sight layer between the
+            /// face and the lens but bodies, which the rig looks through - its occlusion pulls the lens
+            /// in front of anything else, and a raised or swung framing pulled in crops the card. The
+            /// rig's own test for a scripted shot: a 0.18 sphere from 0.4 out along the boom.
             /// </summary>
-            private static ScreenSurface.Body BodyOf(Component body)
+            private static bool BoomIsOpen(HouseCameraRig.Shot shot)
             {
-                var seat = body.GetComponent<HouseSeatPresentation>();
-                bool seated = seat != null && seat.Active;
-                var feet = seated ? seat.VisualFeet : body.transform.position;
-                var visual = body.GetComponent<CharacterPresentation>();
-                var crown = Vector3.up * 0.15f;
-                var head = visual != null && visual.HeadBone != null ? visual.HeadBone.position + crown
-                    : seated ? seat.VisualFocus + crown : feet + Vector3.up * ScreenSurface.StandingHeight;
-                return new ScreenSurface.Body(feet, head);
+                const float skip = 0.4f, radius = 0.18f;
+                if (shot.Distance <= skip) return true;
+                var back = Quaternion.Euler(shot.Pitch, shot.Yaw, 0f) * Vector3.back;
+                int count = Physics.SphereCastNonAlloc(shot.Focus + back * skip, radius, back, boomHits, shot.Distance - skip,
+                    HouseLayers.Sight, QueryTriggerInteraction.Ignore);
+                for (int i = 0; i < count; i++)
+                {
+                    var hit = boomHits[i];
+                    if (hit.distance <= 0f || hit.transform.GetComponentInParent<HouseNpc>() != null
+                        || hit.transform.GetComponentInParent<HousePlayerController>() != null) continue;
+                    return false;
+                }
+                return true;
             }
 
             /// <summary>The wide from across the set, looking at the screen over the chairs, as the house gathers.</summary>

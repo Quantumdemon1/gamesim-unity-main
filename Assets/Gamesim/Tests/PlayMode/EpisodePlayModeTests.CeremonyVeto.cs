@@ -232,10 +232,17 @@ namespace Gamesim.Tests.PlayMode
                 yield return WaitFor(() => takeover.Page == CeremonyTakeover.MeetingPage.Decision, decisionBy + 3f, "the decision is on the screen");
                 // The frame from the stage's cut to the screen, with no body in the meeting's card
                 // (UI-UX-PASS-PLAN K0): the card is the mounted canvas's whole frame, "Veto meeting".
+                // Taken at once, as the vote's frames are: the faces were bound as the meeting opened,
+                // and a wait for faces that never land on a copy without bodies outlasts the page.
                 if (Application.isBatchMode)
                 {
                     string frameName = used ? "ceremony-stage-veto-used" : "ceremony-stage-veto-not-used";
-                    yield return CaptureTheScreen(takeover.Surface, frameName, frame => AssertNoBodyStandsInTheCard(takeover, frameName, "Veto meeting"));
+                    var screen = takeover.Surface;
+                    yield return CaptureTheScreen(screen, frameName, frame =>
+                    {
+                        Assert.That(takeover.PlayingMeeting, Is.True, frameName + ": the meeting is up as its frame is taken.");
+                        AssertNoBodyStandsInTheCard(takeover, screen, frameName, "Veto meeting");
+                    }, waitForFaces: false);
                 }
                 yield return WaitFor(() => !takeover.IsPlaying, takeover.MeetingDuration + 3f, "the meeting plays to its end");
 

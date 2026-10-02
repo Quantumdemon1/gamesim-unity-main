@@ -130,12 +130,15 @@ namespace Gamesim.Tests.PlayMode
                 yield return OpenFreeTime();
                 string where = "A houseguest's screen" + (larger ? " at the larger text" : "");
                 var state = director.Snapshot;
-                Assume.That(state.phase, Is.EqualTo(EpisodePhase.Social));
+                Assert.That(state.phase, Is.EqualTo(EpisodePhase.Social), "The fixture opens in free time.");
                 var who = state.Active.First(c => !c.isPlayer);
                 var cards = ActiveRect(EpisodeHud.HouseCardsName);
                 var open = cards.GetComponentsInChildren<Button>(true).First(b => b.name == who.name);
                 open.onClick.Invoke();
+                Assert.That(Hud.PointerHeld, Is.True, "The screen replaces the board under the pointer, which is held off a moment.");
                 yield return null; yield return null;
+                // The next deliberate press waits that out, as a player's does - and as ButtonWithCaption's raycast needs.
+                yield return WaitOutThePointerHold();
                 Canvas.ForceUpdateCanvases();
                 Assert.That(director.HouseguestScreenFor, Is.EqualTo(who.id), "Their screen is open over free time.");
                 var panel = ActiveRect("Episode panel");
@@ -189,13 +192,15 @@ namespace Gamesim.Tests.PlayMode
                     yield return CaptureFraming(larger ? "houseguest-screen-large" : "houseguest-screen", settle: false,
                         inspect: frame => AssertNoRowUnderThePinnedBar(where + " on the 16:9 frame", assert: !larger));
 
-                // Another face on the strip is another screen.
+                // Another face on the strip is another screen, its strip where it stood: no hold.
                 var other = state.Active.First(c => !c.isPlayer && c.id != who.id);
                 ActiveRect(EpisodeHud.HouseguestStripName).GetComponentsInChildren<Button>(true).First(b => b.name == other.name).onClick.Invoke();
+                Assert.That(Hud.PointerHeld, Is.False, "One houseguest's screen giving way to another's holds nothing off.");
                 yield return null; yield return null;
                 Assert.That(director.HouseguestScreenFor, Is.EqualTo(other.id), "Pressing another face makes the screen theirs.");
-                // And back, to the board.
+                // And back, to the board, which replaces the screen under the pointer.
                 ButtonWithCaption(EpisodeDirector.BackToFreeTimeCaption).onClick.Invoke();
+                Assert.That(Hud.PointerHeld, Is.True, "The board replaces the screen under the pointer, which is held off a moment.");
                 yield return null; yield return null;
                 Assert.That(director.HouseguestScreenFor, Is.Null, "Back to free time.");
                 Assert.That(ActiveRect(EpisodeHud.HouseCardsName), Is.Not.Null, "The cards are back,");
@@ -244,10 +249,11 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// Before anybody is Head of Household the context card says nothing is decided
-        /// (UI-UX-PASS-PLAN D0, the play sweep's row 20): in free time - every week's, since the
-        /// rollover clears the Head of Household - it read "You are safe this week" under a HUD
-        /// saying "Awaiting HoH", because the safe line was everything that was not a role. The
-        /// words are the plan's, the same ones U0's ContextRole says.
+        /// (UI-UX-PASS-PLAN D0, the play sweep's row 20): on move-in night's free time - the only one
+        /// with no Head of Household, since the rollover clears the roles only as free time closes and
+        /// every later free time follows an eviction, where the card says the week is over - it read
+        /// "You are safe this week" under a HUD saying "Awaiting HoH", because the safe line was
+        /// everything that was not a role. The words are the plan's, the ones U0's ContextRole says.
         /// </summary>
         [UnityTest]
         public IEnumerator FreeTime_YourContextSaysNothingIsDecidedBeforeAnyHeadOfHousehold()
@@ -266,6 +272,69 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             director.ClosePanels();
             yield return null;
+        }
+
+        /// <summary>
+        /// UI-UX-PASS-PLAN U0's review, M2: a houseguest's screen and the board stand in each other's
+        /// place, so the second press of a double click on what swapped them would land on whatever
+        /// is drawn there now - under a card's name, a strip face, a way to spend the action or a move
+        /// that commits; under "Back to free time", the board's "Stay in the house", which closes the
+        /// panel. For a moment the panel takes no pointer press either way: a double click on a
+        /// card's name opens their screen and does nothing else, and one on "Back to free time" goes
+        /// back and does nothing else - the panel stays open and nothing is committed. Once the moment
+        /// has passed a deliberate press works.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FreeTime_ADoubleClickBetweenTheBoardAndAHouseguestsScreenTakesNoSecondPress()
+        {
+            yield return OpenFreeTime();
+            var state = director.Snapshot;
+            Assert.That(director.IsFreeTimeBoard, Is.True, "Free time is the board.");
+            var who = state.Active.First(c => !c.isPlayer);
+            Button NameOnTheBoard() => ActiveRect(EpisodeHud.HouseCardsName).GetComponentsInChildren<Button>(true).First(b => b.name == who.name);
+
+            // A double click on a card's name: their screen opens, and the second press takes nothing.
+            var name = NameOnTheBoard();
+            var namePoint = ScreenCentre(name);
+            int revision = director.Snapshot.revision;
+            Assert.That(PressAt(namePoint), Is.SameAs(name.gameObject), "The press lands on " + who.name + "'s name.");
+            Assert.That(director.HouseguestScreenFor, Is.EqualTo(who.id), "Their screen opens,");
+            Assert.That(Hud.PointerHeld, Is.True, "holding the pointer off as it replaces the board.");
+            yield return null; yield return null;
+            Assert.That(Hud.PointerHeld, Is.True, "The hold outlasts a frame or two.");
+            var stray = PressAt(namePoint);
+            Assert.That(stray == null || !stray.transform.IsChildOf(ActiveRect(ModalRoot)), Is.True,
+                "The second press of a double click on the name lands on " + (stray != null ? stray.name : "nothing") + ".");
+            Assert.That(director.IsPanelOpen, Is.True, "The panel stays open,");
+            Assert.That(director.HouseguestScreenFor, Is.EqualTo(who.id), "on their screen,");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "and nothing is committed.");
+
+            // A double click on "Back to free time": the board comes back, and "Stay in the house" under the point takes nothing.
+            yield return WaitOutThePointerHold();
+            var back = ButtonWithCaption(EpisodeDirector.BackToFreeTimeCaption);
+            var backPoint = ScreenCentre(back);
+            revision = director.Snapshot.revision;
+            Assert.That(PressAt(backPoint), Is.SameAs(back.gameObject), "The press lands on 'Back to free time'.");
+            Assert.That(director.HouseguestScreenFor, Is.Null, "Back on the board,");
+            Assert.That(director.IsFreeTimeBoard, Is.True);
+            Assert.That(Hud.PointerHeld, Is.True, "holding the pointer off as it replaces the screen.");
+            yield return null; yield return null;
+            Assert.That(Hud.PointerHeld, Is.True, "The hold outlasts a frame or two.");
+            stray = PressAt(backPoint);
+            Assert.That(stray == null || !stray.transform.IsChildOf(ActiveRect(ModalRoot)), Is.True,
+                "The second press of a double click on 'Back to free time' lands on " + (stray != null ? stray.name : "nothing") + ".");
+            Assert.That(director.IsPanelOpen && director.IsFreeTimeBoard, Is.True, "The panel stays open, on the board,");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "and nothing is committed.");
+
+            // Once the moment has passed, a deliberate press works.
+            yield return WaitOutThePointerHold();
+            Assert.That(Hud.PointerHeld, Is.False, "The hold has lifted.");
+            var again = NameOnTheBoard();
+            Assert.That(PressAt(ScreenCentre(again)), Is.SameAs(again.gameObject), "A deliberate press on the name lands,");
+            Assert.That(director.HouseguestScreenFor, Is.EqualTo(who.id), "and opens their screen.");
+            director.ClosePanels();
+            yield return null;
+            Assert.That(Hud.PointerHeld, Is.False, "Closing the panel ends the hold.");
         }
 
         [UnityTest]

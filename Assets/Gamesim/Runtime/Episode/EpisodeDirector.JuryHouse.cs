@@ -32,7 +32,7 @@ namespace Gamesim.Episode
         /// <summary>The jury strip's door. Words of its own: the tile and the Final 2's row carry <see cref="JuryHouseCaption"/>.</summary>
         public const string JuryStripCaption = "Jury house";
 
-        /// <summary>The screen's name: the head's title and, while it is open, the station band's.</summary>
+        /// <summary>The screen's name: the station band's title while it is open. The head under the band says the jury's size, not the name again.</summary>
         private const string JuryHouseTitle = "THE JURY HOUSE";
 
         /// <summary>How many highlights the side card shows before "and n more".</summary>
@@ -73,12 +73,13 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// Draws the jury house opened from the strip, when it is, and says whether it did: on the
-        /// stage the station's screens take, over the house.
+        /// strategy stage the station's screens take (UI-UX-PASS-PLAN E0), over the house, with
+        /// nothing pinned under it.
         /// </summary>
         private bool JuryHouseOverHouseIfOpen(EpisodeState state)
         {
             if (!juryHouseOverHouse) return false;
-            hud.SetActivityLayout(EpisodeHud.ActivityLayout.Stage);
+            hud.StrategyStage(null);
             JuryHouseScreen(state);
             return true;
         }
@@ -164,7 +165,6 @@ namespace Gamesim.Episode
             hud.JuryHouseHead(null, JurySizeHeadline(house.jurors.Count),
                 "Relationships still matter. Where each juror stands with you, as far as you know it.",
                 FinalCaseAvailable(state) ? "You can't sway the jury from here. Your final case can." : null);
-            hud.Action(LeaveJuryHouseCaption, CloseJuryHouse);
             hud.BandLegend(JuryHouseRead.Bands);
             hud.Footnote("From your last read of each juror and what the house saw you do since. Never a count of votes.");
 
@@ -207,6 +207,10 @@ namespace Gamesim.Episode
             hud.CardLine("The trait each juror leads with is the one their questions come from.", 12, UiTheme.Muted);
             hud.EndSideCard();
             hud.EndColumns();
+            // The way back is the screen's last row, as the final case's is (UI-UX-PASS-PLAN E0): it
+            // stood under the head, a full-width button over the jury it leaves. Nothing here is a
+            // control but it, so the panel still opens on it.
+            hud.Action(LeaveJuryHouseCaption, CloseJuryHouse);
         }
     }
 }

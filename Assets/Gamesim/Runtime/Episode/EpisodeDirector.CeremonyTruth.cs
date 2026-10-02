@@ -160,14 +160,27 @@ namespace Gamesim.Episode
         /// (UI-UX-PASS-PLAN V0, decision 14): the veto meeting's card - the takeover on the HUD
         /// frame, or the meeting on the living room's screen - or the strip that reports it, the
         /// summons' included. A veto meeting was said three times at once, the strip, the card and
-        /// the line under them, so the line stands down while either is up and comes back the frame
-        /// both are gone: the strip and the line are never on screen together. Under every other
-        /// card the line stays where it is; the HUD's hold (<see cref="HoldHudForReveal"/>) is what
-        /// takes it down under the reveals.
+        /// the line under them, so the line stands down while either is up, for as long as it still
+        /// says what it said when the card began (<see cref="EpisodeHud.StatusUnderCard"/>): the
+        /// strip and that line are never on screen together. Under every other card the line stays
+        /// where it is; the HUD's hold (<see cref="HoldHudForReveal"/>) is what takes it down under
+        /// the reveals.
         /// </summary>
         public bool CeremonyCardAnnouncing =>
             (takeover != null && takeover.PlayingKind == CeremonySting.VetoKind)
             || (sting != null && sting.PlayingKind == CeremonySting.VetoKind);
+
+        /// <summary>
+        /// Whether the veto meeting's card is up on the HUD frame - reduced motion, a house that
+        /// cannot be staged, a batch run - which holds the chrome as the endgame's cards do: the
+        /// episode screen the decision was made on is drawn from the outcome. Never a meeting on a
+        /// set's screen, whose stage holds the chrome itself.
+        /// </summary>
+        private bool HudFrameVetoCardPlaying =>
+            takeover != null && takeover.PlayingKind == CeremonySting.VetoKind && takeover.Surface == null;
+
+        /// <summary>Whether the veto meeting's card was up on the HUD frame at the last tick: its going is what takes the strip with it.</summary>
+        private bool hudFrameVetoCardWasUp;
 
         /// <summary>
         /// Each frame: the chrome returns when the reveal it stepped aside for ends; the evicted
@@ -177,6 +190,14 @@ namespace Gamesim.Episode
         /// </summary>
         private void TickCeremonies()
         {
+            // The veto meeting's card on the HUD frame takes its strip with it when it goes before
+            // the strip has (UI-UX-PASS-PLAN V0): a press that moves the card on is done with the
+            // meeting, and the strip left reporting it said the meeting again over the screen the
+            // card had covered. Played to its end the card outlasts its strip, so only an early end
+            // finds the strip still up.
+            bool vetoCard = HudFrameVetoCardPlaying;
+            if (hudFrameVetoCardWasUp && !vetoCard && sting != null && sting.PlayingKind == CeremonySting.VetoKind) sting.Cancel();
+            hudFrameVetoCardWasUp = vetoCard;
             // A staged ceremony counts as a reveal from its summons: the chrome is drawn from the
             // committed result, and the house walking to its seats is the reveal's first beat.
             // The veto's draw holds it too: the status line names the drawn before its chips come out.
@@ -185,8 +206,9 @@ namespace Gamesim.Episode
             // A staged eviction keeps the chrome aside past its card, through the goodbye and the
             // walk out to the door shut behind them (MOCKUP-PASS-PLAN M19). Not folded into
             // `revealing`: the walk out starts once nothing narrates, and an exit that counted as
-            // narrating would wait for itself.
-            if (revealHeld && !revealing && !StagedExitRunning && !EndgameCardPlaying)
+            // narrating would wait for itself. The veto meeting's card on the HUD frame keeps it
+            // aside as the endgame's cards do, for its frame alone.
+            if (revealHeld && !revealing && !StagedExitRunning && !EndgameCardPlaying && !vetoCard)
             {
                 revealHeld = false;
                 bool redraw = revealRedraws;
@@ -272,6 +294,11 @@ namespace Gamesim.Episode
             // and a season being replaced is no place to project one.
             ResetWalkOut();
             EndCeremonyStage();
+            // The replaced season's cards and strip go with it: they told its beats, and a card left
+            // up kept the line about the new season standing down under it (UI-UX-PASS-PLAN V0).
+            EndCeremonyCards();
+            if (sting != null) sting.Cancel();
+            hudFrameVetoCardWasUp = false;
             if (revealHeld && hud != null) hud.HoldForReveal(false);
             revealHeld = false;
             revealRedraws = false;

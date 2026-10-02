@@ -311,6 +311,9 @@ namespace Gamesim.Presentation
             markImage.sprite = glyph != null ? glyph : UiTheme.Circle();
             markImage.color = authored != null ? Color.white : tint;
             markImage.preserveAspect = glyph != null;
+            // At the strip's scale for the veto mark, so its medallion is the size the strip's is.
+            float markScale = authored != null ? CeremonySting.VetoMarkScale : 1f;
+            markOuter.localScale = new Vector3(markScale, markScale, 1f);
             markInner.gameObject.SetActive(glyph == null);
             markInner.GetComponent<Image>().color = tint;
             title.color = Color.white;

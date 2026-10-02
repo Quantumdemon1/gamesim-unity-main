@@ -1139,19 +1139,37 @@ namespace Gamesim.Episode
         private bool statusUnderCard;
 
         /// <summary>
+        /// What the status line said when the card began: the line stands down only while it still
+        /// says that. A line with anything else to say - a season loaded or begun under the card, a
+        /// save that needs attention, the next commit's result - is news the card does not carry,
+        /// and it stays up.
+        /// </summary>
+        private string statusCardSays;
+
+        /// <summary>The card's wish, remembering the line it began over as it turns on.</summary>
+        private void SetStatusUnderCard(bool under)
+        {
+            if (under && !statusUnderCard) statusCardSays = lastStatusMessage;
+            statusUnderCard = under;
+        }
+
+        /// <summary>
         /// Stands the status line down while a ceremony's card announces the beat it reports, and
-        /// back up the frame the card is gone. Only the line: under any other card, and for any
-        /// other reason, it stays where it is.
+        /// back up the frame the card is gone. Only the line, and only while it says what it said as
+        /// the card began: under any other card, and for any other words, it stays where it is.
         /// </summary>
         public void StatusUnderCard(bool under)
         {
             if (statusUnderCard == under) return;
-            statusUnderCard = under;
+            SetStatusUnderCard(under);
             ApplyStatusLine();
         }
 
-        /// <summary>Whether the status line is standing down under a ceremony's card. A read for tests.</summary>
+        /// <summary>Whether a ceremony's card is announcing the beat the status line reports. A read for tests.</summary>
         public bool IsStatusUnderCard => statusUnderCard;
+
+        /// <summary>Whether the status line is the one a ceremony's card is saying: under the card, with the words it began over.</summary>
+        private bool StatusSaysTheCard => statusUnderCard && lastStatusMessage == statusCardSays;
 
         /// <summary>
         /// The status line up or down as everything that stands in its place asks: down while the
@@ -1163,7 +1181,7 @@ namespace Gamesim.Episode
         private void ApplyStatusLine()
         {
             if (statusRoot == null) return;
-            bool show = (nearbyBar == null || !nearbyBar.gameObject.activeSelf) && !statusUnderCard;
+            bool show = (nearbyBar == null || !nearbyBar.gameObject.activeSelf) && !StatusSaysTheCard;
             if (statusRoot.gameObject.activeSelf == show) return;
             statusRoot.gameObject.SetActive(show);
             MarkChromeChanged();

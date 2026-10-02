@@ -378,7 +378,7 @@ namespace Gamesim.Episode
             }
             if (status == null) return;
             // Unless a ceremony's card is saying what it would (UI-UX-PASS-PLAN V0).
-            status.gameObject.SetActive(!statusUnderCard);
+            status.gameObject.SetActive(!StatusSaysTheCard);
             float room = canvasWidth - FullFrameEdge - freeLeft;
             float width = Mathf.Min(status.sizeDelta.x, Mathf.Max(200f, room));
             Anchor(status, new Vector2(1, 0), new Vector2(1, 0), new Vector2(-FullFrameEdge, FullFrameEdge), new Vector2(width, status.sizeDelta.y));

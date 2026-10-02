@@ -47,6 +47,17 @@ namespace Gamesim.Episode
             + "house activities and answering anyone who comes to you are free.";
 
         /// <summary>
+        /// The same under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN R0, X1), where studying
+        /// the house in the diary room is one of the window's actions too.
+        /// </summary>
+        public const string FreeTimeCostCopyWithStudy = "Talking, listening in, house meetings and studying the house each spend one action. "
+            + "Walking the house, house activities and answering anyone who comes to you are free.";
+
+        /// <summary>What costs an action in this season's free time: a study too, under the commitment rules.</summary>
+        public static string FreeTimeCostCopyFor(EpisodeState state) =>
+            EpisodeEngine.CommitmentRulesOn(state) ? FreeTimeCostCopyWithStudy : FreeTimeCostCopy;
+
+        /// <summary>
         /// The budget card's copy: what costs and what is free, then what beginning the next
         /// competition loses, as the engine counts it. Everything left goes when the week turns; on a
         /// night that does not turn it - move-in night - what was bought carries into the week's
@@ -55,8 +66,9 @@ namespace Gamesim.Episode
         public static string FreeTimeCostLine(EpisodeState state)
         {
             const string lost = "Unspent actions are lost when you begin the next competition";
-            if (state != null && !state.evictionResolved) return FreeTimeCostCopy + " " + lost + ", but actions you buy carry into the week.";
-            return FreeTimeCostCopy + " " + lost + (EpisodeEngine.LeverRulesOn(state) ? "." : "; actions you buy come back every week.");
+            string costs = FreeTimeCostCopyFor(state);
+            if (state != null && !state.evictionResolved) return costs + " " + lost + ", but actions you buy carry into the week.";
+            return costs + " " + lost + (EpisodeEngine.LeverRulesOn(state) ? "." : "; actions you buy come back every week.");
         }
 
         /// <summary>The words at a tile's foot: what it costs, that it is free, or why it is locked.</summary>

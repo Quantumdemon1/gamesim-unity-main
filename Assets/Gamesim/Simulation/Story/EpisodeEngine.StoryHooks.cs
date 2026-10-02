@@ -51,7 +51,7 @@ namespace Gamesim.Simulation
         private static void StoryAllianceLeft(EpisodeState s, string leftBehindId, string betrayerId)
         {
             if (!StoryAt(s, StoryRules.Grudges) || leftBehindId == s.playerId) return;
-            Grudges.Add(s, leftBehindId, betrayerId, 80, GrudgeCauses.AllianceBetrayed);
+            Grudges.Add(s, leftBehindId, betrayerId, AllianceLeftGrudge, GrudgeCauses.AllianceBetrayed);
         }
 
         /// <summary>

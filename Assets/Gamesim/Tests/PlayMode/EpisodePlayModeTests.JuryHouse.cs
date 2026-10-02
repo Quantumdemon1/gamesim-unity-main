@@ -42,7 +42,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(card.GetComponentsInChildren<Button>(), Is.Empty, "Observe only: nothing on a card acts.");
                 AssertDecisionCopyFits(card);
             }
-            Assert.That(director.GetComponentsInChildren<Button>().Any(button => button.IsActive() && button.name.StartsWith("Evict ")), Is.False);
+            Assert.That(director.GetComponentsInChildren<Button>().Any(button => button.IsActive() && IsFinalChoiceControl(button.name)), Is.False,
+                "Nothing in the jury house makes the final choice.");
 
             // MOCKUP-PASS M12: the tableau, a callout per juror in their recorded words or the
             // band's reason, the highlights beside it, and the observe-only chip - none a control.

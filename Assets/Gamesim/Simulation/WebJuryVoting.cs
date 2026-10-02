@@ -74,10 +74,17 @@ namespace Gamesim.Simulation
         /// final eviction itself - so every juror's former ally scores the same 25. Until the final
         /// eviction ended alliances too, its evictee was the one juror whose former ally still read
         /// as current and scored 100.</para>
+        ///
+        /// <para>A pact of three or more goes on without the member it loses, and before the commitment
+        /// rules its evictee stayed in it, so a juror out of it still read 100 (ACTIONS-DEALS-ALLIANCES-PLAN
+        /// X5). Under them a juror has left every pact with the house, and their own commitment drives
+        /// the term (<see cref="Allegiance.JuryLoyalty"/>): 25 for a pact they shared, 0 for none or for
+        /// one they turned on the player in.</para>
         /// </summary>
         public static double AllianceLoyalty(EpisodeState state, string jurorId, string finalistId)
         {
             if (state == null) return 0;
+            if (EpisodeEngine.CommitmentRulesOn(state)) return Allegiance.JuryLoyalty(state, jurorId, finalistId);
             if (state.Allied(jurorId, finalistId)) return 100;
             // An alliance that existed and ended is not the same as never having had one. Somebody
             // who was with you and left is remembered differently from a stranger.
@@ -100,17 +107,21 @@ namespace Gamesim.Simulation
             if (state == null) return 0;
             double score = 0;
 
+            // A breach counts against the finalist only when they broke it, under the commitment rules
+            // (C0, X3): a juror who broke their word to a finalist does not hold it against them.
+            // Before them every breach between the two counted, whoever broke it. And under them an
+            // offer the player accepted weighs one step heavier broken (C1, decision 15).
             foreach (var deal in state.deals.Where(d => Between(d.proposerId, d.recipientId, jurorId, finalistId)))
             {
                 if (deal.status == DealStatus.Fulfilled) score += 20 * DealTrust.Weight(deal.trustImpact);
-                else if (deal.status == DealStatus.Broken) score -= 25 * DealTrust.Weight(deal.trustImpact);
+                else if (deal.status == DealStatus.Broken) { if (Breaches.CountsAgainst(state, deal, finalistId)) score -= 25 * DealResolution.BreachWeight(state, deal); }
                 else if (deal.status == DealStatus.Active) score += 10;
             }
 
             foreach (var promise in state.promises.Where(p => Between(p.fromId, p.toId, jurorId, finalistId)))
             {
                 if (promise.status == PromiseStatus.Fulfilled) score += 15;
-                else if (promise.status == PromiseStatus.Broken) score -= 20;
+                else if (promise.status == PromiseStatus.Broken && Breaches.CountsAgainst(state, promise, finalistId)) score -= 20;
             }
 
             return Math.Max(-50, Math.Min(50, score));
@@ -204,7 +215,10 @@ namespace Gamesim.Simulation
                     ? Say(state, jurorId, "Their final argument was about what I value in this game.", "They made the case I came here to hear.", "What they said at the end spoke to me.")
                     : Say(state, jurorId, "Their season was the kind of game I value.", "The game they played is the one I respect.", "Their record made the case on its own.");
             }
-            if (state.Allied(jurorId, chosen.id))
+            // Under the commitment rules a juror has left every pact with the house (X5), so "in it
+            // together" reads the finale questions' rule: a pact that still stands or ended only because
+            // the juror left, and never one they turned on the player in (Allegiance.SharedToTheEnd).
+            if (EpisodeEngine.CommitmentRulesOn(state) ? Allegiance.SharedToTheEnd(state, jurorId, chosen.id) : state.Allied(jurorId, chosen.id))
                 return Say(state, jurorId, "We were in this together and I am not walking away from that now.", "We had an alliance, and I am keeping my end of it tonight.", "I do not abandon people I made plans with. This is that.");
             if (Obligations(state, jurorId, chosen.id) > 10)
                 return Say(state, jurorId, "They kept their word to me when it cost them something.", "Every deal they made me, they kept. That decides it.", "They paid for keeping a promise to me. I am paying it back.");

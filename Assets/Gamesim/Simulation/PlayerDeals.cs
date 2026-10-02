@@ -37,6 +37,16 @@ namespace Gamesim.Simulation
         /// <summary>What striking a bargain is worth on the ledger, either way round.</summary>
         public const double AcceptedImpact = 12, RefusedImpact = -4;
 
+        /// <summary>
+        /// What accepting a houseguest's offer is worth under the commitment rules
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN C1, decision 15): +4, not <see cref="AcceptedImpact"/>'s +12.
+        /// Answering costs no action, so +12 for every yes made accepting everything the dominant
+        /// play; under the rules the yes is a commitment instead, and an offer accepted and then
+        /// broken weighs one step heavier (<see cref="DealResolution.BreachWeight"/>). A deal the
+        /// player puts to somebody, which costs an action and a roll, keeps its +12.
+        /// </summary>
+        public const double CommittedAcceptedImpact = 4;
+
         /// <summary>How many deals a season lets the player hold at once, proposals included.</summary>
         public const int PlayerDealCeiling = 40;
 
@@ -77,7 +87,11 @@ namespace Gamesim.Simulation
                     break;
                 case DealKind.AllianceInvite:
                     if (state.Allied(state.playerId, toId))
-                        return Refuse(out reason, "You already share an active alliance.");
+                        return Refuse(out reason, EpisodeEngine.AlreadyAlliedRefusal);
+                    // The player's three (ACTIONS-DEALS-ALLIANCES-PLAN C4, decision 10): under the
+                    // commitment rules an invitation agreed now would make a fourth.
+                    if (EpisodeEngine.InvitationPastPactCap(state, toId))
+                        return Refuse(out reason, EpisodeEngine.PactCapRefusal);
                     break;
                 case DealKind.VoteSave:
                 case DealKind.VoteEvict:
@@ -151,10 +165,11 @@ namespace Gamesim.Simulation
             else if (type == DealKind.FinalTwo || type == DealKind.VetoUse || type == DealKind.AllianceInvite) chance -= 10;
 
             chance += (ThreatAssessment.TrustScore(state, state.playerId, npcId) - ThreatAssessment.NeutralTrust) * 0.2;
-            chance -= BrokenDealPenalty * state.deals.Count(d => d.status == DealStatus.Broken
-                && (d.proposerId == state.playerId || d.recipientId == state.playerId));
+            // The deals held against the player: under the commitment rules the ones they broke (C0, X3).
+            chance -= BrokenDealPenalty * NpcDeals.BrokenDeals(state, state.playerId);
 
-            bool allied = state.Allied(npcId, state.playerId);
+            // Under the commitment rules only an ally whose own commitment holds (Allegiance.Holds; C2, C3).
+            bool allied = Allegiance.Holds(state, npcId, state.playerId);
             if (allied)
             {
                 chance += 20;
@@ -262,14 +277,24 @@ namespace Gamesim.Simulation
             return modifier;
         }
 
-        /// <summary>What the houseguest says, in their own words, from the reference's lines.</summary>
+        /// <summary>
+        /// What the houseguest says, in their own words, from the reference's lines.
+        ///
+        /// <para>Under the commitment rules the words come only from what the player knows
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN C4, the line half of X9): how the houseguest sees the player is
+        /// the player's own read of it (<see cref="KnownOdds.PresumedView"/>), and a track record is the
+        /// player's own breaches. Before them the line read the houseguest's hidden view and their
+        /// private record of the player, so two answers worded differently told the player which of
+        /// two houseguests thought less of them - and a refused alliance, its reason.</para>
+        /// </summary>
         public static string Reasoning(EpisodeState state, string npcId, string type, bool accepted)
         {
-            double relationship = state.Score(npcId, state.playerId);
+            bool rules = EpisodeEngine.CommitmentRulesOn(state);
+            double relationship = rules ? KnownOdds.PresumedView(state, npcId) : state.Score(npcId, state.playerId);
             bool nominated = !state.evictionResolved && state.nominees.Contains(npcId);
-            bool allied = state.Allied(npcId, state.playerId);
-            int broken = state.deals.Count(d => d.status == DealStatus.Broken
-                && (d.proposerId == state.playerId || d.recipientId == state.playerId));
+            bool allied = Allegiance.Holds(state, npcId, state.playerId);
+            // "I've heard you've broken deals" says it only of deals the player broke, under the commitment rules (C0, X3).
+            int broken = NpcDeals.BrokenDeals(state, state.playerId);
 
             if (accepted)
             {
@@ -280,7 +305,9 @@ namespace Gamesim.Simulation
             }
             if (BrokenDealPenalty * broken > 20) return "I've heard you've broken deals before. I can't trust that.";
             if (relationship < 20) return "I don't think I can trust you with that.";
-            if (ThreatAssessment.TrustScore(state, state.playerId, npcId) < 40) return "Your track record concerns me.";
+            if (rules ? broken > 0 || state.promises.Any(p => Breaches.CountsAgainst(state, p, state.playerId))
+                    : ThreatAssessment.TrustScore(state, state.playerId, npcId) < 40)
+                return "Your track record concerns me.";
             return "I'm not sure this is the right move for me.";
         }
 

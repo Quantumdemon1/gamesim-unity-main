@@ -131,24 +131,20 @@ namespace Gamesim.Simulation
         /// wants the score to change says so separately, through the engine.</para>
         /// </summary>
         public static void Record(EpisodeState state, string from, string to,
-            string type, double impact, string description)
+            string type, double impact, string description) =>
+            Record(state, from, to, type, impact, description, permanent: false);
+
+        /// <summary>
+        /// The same, marked permanent whatever the type's own rule when <paramref name="permanent"/>:
+        /// a breach under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C0, X11), whose type
+        /// fades on every season played before them and must go on fading there.
+        /// </summary>
+        public static void Record(EpisodeState state, string from, string to,
+            string type, double impact, string description, bool permanent)
         {
             if (state == null || from == to) return;
             foreach (var pair in new[] { (from, to), (to, from) })
-            {
-                var edge = Edge(state, pair.Item1, pair.Item2);
-                if (edge == null)
-                {
-                    edge = new RelationshipState { fromId = pair.Item1, toId = pair.Item2, score = 0 };
-                    state.relationships.Add(edge);
-                }
-                edge.events.Add(new RelationshipEventState
-                {
-                    sequence = state.nextSequence++, week = state.week, type = type,
-                    description = description, impactScore = impact, decayable = Decays(type),
-                });
-                if (edge.events.Count > 512) edge.events.RemoveAt(0);
-            }
+                Append(state, pair.Item1, pair.Item2, type, impact, description, permanent);
         }
 
         /// <summary>
@@ -160,9 +156,20 @@ namespace Gamesim.Simulation
         /// this is the only writer that can make them. It records; it does not move a score.</para>
         /// </summary>
         public static void RecordOneWay(EpisodeState state, string holderId, string aboutId,
-            string type, double impact, string description)
+            string type, double impact, string description) =>
+            RecordOneWay(state, holderId, aboutId, type, impact, description, permanent: false);
+
+        /// <summary>The same, marked permanent whatever the type's own rule when <paramref name="permanent"/> (see <see cref="Record(EpisodeState, string, string, string, double, string, bool)"/>).</summary>
+        public static void RecordOneWay(EpisodeState state, string holderId, string aboutId,
+            string type, double impact, string description, bool permanent)
         {
             if (state == null || holderId == aboutId) return;
+            Append(state, holderId, aboutId, type, impact, description, permanent);
+        }
+
+        private static void Append(EpisodeState state, string holderId, string aboutId,
+            string type, double impact, string description, bool permanent)
+        {
             var edge = Edge(state, holderId, aboutId);
             if (edge == null)
             {
@@ -172,7 +179,7 @@ namespace Gamesim.Simulation
             edge.events.Add(new RelationshipEventState
             {
                 sequence = state.nextSequence++, week = state.week, type = type,
-                description = description, impactScore = impact, decayable = Decays(type),
+                description = description, impactScore = impact, decayable = !permanent && Decays(type),
             });
             if (edge.events.Count > 512) edge.events.RemoveAt(0);
         }

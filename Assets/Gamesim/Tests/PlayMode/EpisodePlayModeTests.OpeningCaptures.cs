@@ -454,13 +454,14 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// Where a piece of an overlay stands in the frame being photographed, in the frame's pixels,
         /// shrunk about its centre to the given share of its width and height. Only inside a capture's
-        /// inspection, while the overlays are drawn through the view camera into the frame.
+        /// inspection, while the overlays are drawn into the frame through the capture's lens: its
+        /// corners go through the camera its canvas is drawn with (<see cref="LensOf"/>).
         /// </summary>
         private Rect CaptureRectOf(Transform node, float widthShare = 1f, float heightShare = 1f)
         {
             var corners = new Vector3[4];
             ((RectTransform)node).GetWorldCorners(corners);
-            var camera = cameraRig.ViewCamera;
+            var camera = LensOf(node);
             var min = new Vector2(float.MaxValue, float.MaxValue);
             var max = new Vector2(float.MinValue, float.MinValue);
             foreach (var corner in corners)

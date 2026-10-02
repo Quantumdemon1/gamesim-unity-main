@@ -131,14 +131,24 @@ namespace Gamesim.Simulation
             alliance.id.StartsWith("alliance-npc-", StringComparison.Ordinal) ? "npc"
             : alliance.id.StartsWith("alliance-story-", StringComparison.Ordinal) ? "story" : "player";
 
-        /// <summary>Why an alliance ended, as far as the state can tell: somebody left the house, it turned on the player, it soured, or it simply ended.</summary>
+        /// <summary>
+        /// Why an alliance ended, as far as the state can tell: somebody left the house, it turned on the
+        /// player, it soured, or it simply ended. Under the commitment rules a pact ends with a departure
+        /// only once fewer than two of it are left in the house - a member who left a bigger one left it,
+        /// and it went on without them (X5), so only those still in it are read for the rest - and one
+        /// a member had turned on ended in a betrayal (C2): the player cut ties, or it went its way since.
+        /// </summary>
         private static string AllianceEnding(EpisodeState s, AllianceState alliance)
         {
             if (alliance == null) return "ended";
-            if (alliance.members.Any(id => s.Find(id)?.status != ContestantStatus.Active)) return "left-house";
-            if (alliance.members.Contains(s.playerId)
-                && alliance.members.Where(id => id != s.playerId).Any(id => s.Score(id, s.playerId) < AllianceSourLine)) return "turned";
-            if (alliance.members.Any(from => alliance.members.Any(to => to != from && s.Score(from, to) < AllianceSourLine))) return "soured";
+            bool rules = CommitmentRulesOn(s);
+            if (rules ? alliance.members.Count(id => s.Find(id)?.status == ContestantStatus.Active) < 2
+                      : alliance.members.Any(id => s.Find(id)?.status != ContestantStatus.Active)) return "left-house";
+            var members = rules ? alliance.members.Where(id => s.Find(id)?.status == ContestantStatus.Active).ToList() : alliance.members;
+            if (rules && members.Contains(s.playerId) && members.Any(id => id != s.playerId && Allegiance.Stands(s, id, alliance))) return "betrayed";
+            if (members.Contains(s.playerId)
+                && members.Where(id => id != s.playerId).Any(id => s.Score(id, s.playerId) < AllianceSourLine)) return "turned";
+            if (members.Any(from => members.Any(to => to != from && s.Score(from, to) < AllianceSourLine))) return "soured";
             return "ended";
         }
 
@@ -185,13 +195,18 @@ namespace Gamesim.Simulation
         public static void ReconcileOpportunities(EpisodeState s)
         {
             if (s?.ledger == null) return;
+            bool rules = CommitmentRulesOn(s);
             foreach (var deal in s.deals.Where(d => d.proposerId == s.playerId || d.recipientId == s.playerId))
             {
                 var row = Opportunity(s, deal.id, OpportunityKinds.Deal, deal.week);
                 row.source = deal.type + (deal.targetId != null ? ":" + deal.targetId : "");
                 row.note = (deal.proposerId == s.playerId ? "put to " + deal.recipientId : "offered by " + deal.proposerId) + ", " + deal.status;
+                // Under the commitment rules (C1, X4) a deal ends with an evictee, after the reveal's
+                // reconcile has seen it taken: a deal the player took and that then ended is still a
+                // deal they took, not an offer left on the table.
+                bool takenBefore = rules && row.response == OpportunityResponse.Taken;
                 row.response = deal.status == DealStatus.Declined ? OpportunityResponse.Declined
-                    : deal.status == DealStatus.Expired ? OpportunityResponse.Expired
+                    : deal.status == DealStatus.Expired ? (takenBefore ? OpportunityResponse.Taken : OpportunityResponse.Expired)
                     : deal.status == DealStatus.Proposed ? OpportunityResponse.Ignored : OpportunityResponse.Taken;
                 row.outcome = deal.status == DealStatus.Fulfilled ? OpportunityOutcome.Won
                     : deal.status == DealStatus.Broken ? OpportunityOutcome.Lost : OpportunityOutcome.NotApplicable;

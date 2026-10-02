@@ -21,6 +21,44 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 22) return (JObject)original.DeepClone();
+            if (version < 1 || version > 21) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV21ToV22(version == 21 ? original : PrepareV21Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds the commitment rules switched off (ACTIONS-DEALS-ALLIANCES-PLAN R0, C0): a rules week of
+        /// 0, so a season saved before them plays without them to its end, as a season keeps the
+        /// finale rules it was saved under; and on every deal and every promise the two fields only a
+        /// settlement under the rules fills, empty - who broke it, and the week it was settled. Never a
+        /// guess: a reader that needs who broke a deal settled before the record existed reads it by
+        /// <see cref="FinalistRead.DealBreaker"/>'s rule (<see cref="Breaches.DealBreaker"/>), and a
+        /// promise by its maker. Hand-written literals, never the live type.
+        /// </summary>
+        public static JObject UpgradeV21ToV22(JObject original)
+        {
+            FrozenEpisodeV21.Validate(original);
+            var result = (JObject)original.DeepClone();
+            result.Add("commitmentRulesStartWeek", 0);
+            foreach (var name in new[] { "deals", "promises" })
+                foreach (JObject row in ((JArray)result[name]).OfType<JObject>())
+                {
+                    row.Add("brokenById", JValue.CreateNull());
+                    row.Add("settledWeek", 0);
+                }
+            result["schemaVersion"] = 22;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v20-to-v21 dispatch.</summary>
+        public static JObject PrepareV21Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 21) return (JObject)original.DeepClone();
             if (version < 1 || version > 20) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV20ToV21(version == 20 ? original : PrepareV20Payload(original, out _));

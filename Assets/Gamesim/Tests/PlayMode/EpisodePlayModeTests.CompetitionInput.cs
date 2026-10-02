@@ -116,7 +116,11 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The arena's sign of the award and the discipline reads from the deck (MOCKUP-PASS-PLAN M2).
         /// It was turned half round, so it read mirrored from the competition camera and every seat,
-        /// and it hung across the centre gate, whose neon ran through the words. A practice attempt
+        /// and it hung across the centre gate, whose neon ran through the words; lifted over the
+        /// gate alone, its lower lines ran through the entrance arch's lintel, half a metre taller
+        /// and nearer (the show sweep's row 26). All three lines - the award, the discipline, the
+        /// game's title - now stand clear of everything between the deck and the words, read from
+        /// the glyphs as drawn rather than the bounds the sign reports of itself. A practice attempt
         /// stages the arena and commits nothing; batch runs frame the sign for the look sheet.
         /// </summary>
         [UnityTest]
@@ -152,10 +156,46 @@ namespace Gamesim.Tests.PlayMode
             var centre = gates.OrderBy(gate => Mathf.Abs(gate.position.x - sign.transform.position.x)).First();
             float gateTop = centre.GetComponentsInChildren<Renderer>().Max(renderer => renderer.bounds.max.y);
             sign.ForceMeshUpdate();
-            float foot = sign.transform.TransformPoint(new Vector3(0f, sign.textBounds.min.y, 0f)).y;
-            Assert.That(foot, Is.GreaterThan(gateTop),
-                "The words stand clear of the centre gate's head: their foot at " + foot.ToString("0.00")
-                + ", the gate's top at " + gateTop.ToString("0.00") + ".");
+            int lines = Gamesim.Simulation.CompetitionDefinitions.For(before) != null ? 3 : 2;
+            Assert.That(sign.textInfo.lineCount, Is.EqualTo(lines), "The award, the discipline and the game's title, a line each: '" + sign.text + "'.");
+            // The lowest glyph as it is drawn, in the world: the mesh's own vertices, not the bounds
+            // the sign reports of itself.
+            float foot = float.MaxValue, top = float.MinValue;
+            for (int i = 0; i < sign.textInfo.characterCount; i++)
+            {
+                var glyph = sign.textInfo.characterInfo[i];
+                if (!glyph.isVisible) continue;
+                foot = Mathf.Min(foot, sign.transform.TransformPoint(new Vector3(0f, glyph.descender, 0f)).y);
+                top = Mathf.Max(top, sign.transform.TransformPoint(new Vector3(0f, glyph.ascender, 0f)).y);
+            }
+            Assert.That(foot, Is.LessThan(top), "The sign draws its words.");
+            // Everything standing between the deck and the words, under the words' width: the
+            // gates, and the entrance arch over the centre lane, whose lintel is half a metre over
+            // the gates' heads. The backdrop and its lettering stand behind the sign.
+            var deck = SceneComponents<BoxCollider>().Single(collider => collider.name == "Competition yard floor").bounds;
+            float halfWidth = Mathf.Max(1f, sign.textBounds.size.x * .5f);
+            float signZ = sign.transform.position.z;
+            var inTheWay = SceneComponents<Renderer>()
+                .Where(renderer => renderer.enabled && !(renderer is ParticleSystemRenderer) && !renderer.transform.IsChildOf(sign.transform.parent))
+                .Select(renderer => (renderer, bounds: renderer.bounds))
+                .Where(item => item.bounds.center.z >= deck.center.z && item.bounds.min.z < signZ
+                    && item.bounds.max.x >= deck.center.x - halfWidth && item.bounds.min.x <= deck.center.x + halfWidth
+                    && item.bounds.min.x >= deck.min.x && item.bounds.max.x <= deck.max.x
+                    && item.bounds.min.y <= deck.max.y + EpisodeDirector.CompetitionSignLineCeiling)
+                .ToList();
+            Assert.That(inTheWay.Select(item => item.renderer.name), Does.Contain("Arch lintel"), "The entrance arch stands between the deck and the words.");
+            var tallest = inTheWay.OrderByDescending(item => item.bounds.max.y).First();
+            float obstacle = tallest.bounds.max.y;
+            Assert.That(obstacle, Is.GreaterThanOrEqualTo(gateTop - .01f), "Nothing in the way is lower than the gate's head.");
+            Assert.That(foot, Is.GreaterThan(obstacle),
+                "Every line of the sign stands clear of what is in front of it: the words' foot at " + foot.ToString("0.00")
+                + ", the top of the " + tallest.renderer.name + " at " + obstacle.ToString("0.00")
+                + ", the gate's at " + gateTop.ToString("0.00") + ".");
+            // And never off into the dark over the yard: at most a set height over the wall behind it.
+            float cap = deck.max.y + EpisodeDirector.CompetitionBackdropHeight + EpisodeDirector.CompetitionSignOverWall;
+            Assert.That(foot, Is.LessThanOrEqualTo(cap + .01f),
+                "The sign's lowest line stands no more than " + EpisodeDirector.CompetitionSignOverWall + " m over the "
+                + EpisodeDirector.CompetitionBackdropHeight + " m wall: its foot at " + foot.ToString("0.00") + ", the cap at " + cap.ToString("0.00") + ".");
 
             if (Application.isBatchMode)
             {

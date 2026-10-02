@@ -282,20 +282,24 @@ namespace Gamesim.Tests.EditMode
             string you = s.Find(s.playerId).name;
             RelationshipLedger.Record(s, s.playerId, npc.id, YourWeek.DealBroken, -30, npc.name + " broke a safety pact with " + you + ".");
             RelationshipLedger.Record(s, npc.id, s.playerId, YourWeek.DealKept, 24, you + " honoured a veto commitment with " + npc.name + ".");
-            RelationshipLedger.Record(s, s.playerId, npc.id, YourWeek.DealBroken, -22, you + " and " + npc.name + " fell out over their voting block.");
+            RelationshipLedger.Record(s, s.playerId, npc.id, YourWeek.DealBroken, -22, you + " and " + npc.name + " fell out over their voting bloc.");
             RelationshipLedger.Record(s, s.playerId, npc.id, YourWeek.DealBroken, -22, "Words nobody wrote.");
+            // A season that settled one before the word was corrected wrote the reference's spelling.
+            RelationshipLedger.Record(s, s.playerId, npc.id, YourWeek.DealBroken, -22, you + " and " + npc.name + " fell out over their voting block.");
 
             var word = YourWeek.Build(s, 1).word;
-            Assert.That(word, Has.Count.EqualTo(4), "One line for each ending, read from the player's own copy of each.");
+            Assert.That(word, Has.Count.EqualTo(5), "One line for each ending, read from the player's own copy of each.");
             Assert.That(word[0].verdict, Is.EqualTo(YourWeek.Verdicts.Broken)); Assert.That(word[0].byId, Is.EqualTo(npc.id));
             Assert.That(word[0].text, Is.EqualTo(npc.name + " broke the safety pact with you."));
             Assert.That(word[1].verdict, Is.EqualTo(YourWeek.Verdicts.Kept)); Assert.That(word[1].byId, Is.EqualTo(s.playerId));
             Assert.That(word[1].text, Is.EqualTo("You kept the veto commitment with " + npc.name + "."));
-            // A voting block that fell apart says how the other voted: unresolved until the player knows their ballot (decision 4).
+            // A voting bloc that fell apart says how the other voted: unresolved until the player knows their ballot (decision 4).
             Assert.That(word[2].verdict, Is.EqualTo(YourWeek.Verdicts.NotKnown)); Assert.That(word[2].byId, Is.Null);
-            Assert.That(word[2].text, Is.EqualTo("The voting block with " + npc.name + " is " + KnownBallots.Unresolved + "."));
+            Assert.That(word[2].text, Is.EqualTo("The voting bloc with " + npc.name + " is " + KnownBallots.Unresolved + "."));
             Assert.That(word[3].verdict, Is.EqualTo(YourWeek.Verdicts.Broken), "Words the reader does not know still carry how it ended.");
             Assert.That(word[3].text, Is.EqualTo("Words nobody wrote."));
+            Assert.That(word[4].verdict, Is.EqualTo(YourWeek.Verdicts.NotKnown), "The old spelling still reads as the deal it was,");
+            Assert.That(word[4].text, Is.EqualTo("The voting bloc with " + npc.name + " is " + KnownBallots.Unresolved + "."), "said the corrected way.");
             Assert.That(word.Select(l => l.aboutId), Is.All.EqualTo(npc.id));
         }
 

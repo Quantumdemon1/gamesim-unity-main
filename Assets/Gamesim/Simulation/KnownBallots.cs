@@ -511,8 +511,9 @@ namespace Gamesim.Simulation
             bool tells = false;
             if (text == them + " broke a Vote promise." || text == them + " fulfilled a Vote promise.") tells = true;
             foreach (var kind in new[] { DealKind.VoteTogether, DealKind.VoteSave, DealKind.VoteEvict })
+            foreach (var spelling in DealKind.Titles(kind))
             {
-                string title = DealKind.Title(kind).ToLowerInvariant();
+                string title = spelling.ToLowerInvariant();
                 if (text == them + " honoured a " + title + " with " + you + "." || text == them + " broke a " + title + " with " + you + "."
                     || text == you + " and " + them + " held to their " + title + "." || text == them + " and " + you + " held to their " + title + "."
                     || text == you + " and " + them + " fell out over their " + title + "." || text == them + " and " + you + " fell out over their " + title + ".")

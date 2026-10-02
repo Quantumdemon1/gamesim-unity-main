@@ -154,7 +154,7 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(all, Does.Not.Contain(number), "A score in the bracket: " + number);
             Assert.That(JsonConvert.SerializeObject(s), Is.EqualTo(before), "Reading the bracket must not change the state.");
             Assert.That(s.randomState, Is.EqualTo(random), "or draw from its generator.");
-            Assert.That(FinalBracket.ScoringLine, Is.EqualTo("Highest score wins · statistics and seeded rolls count"));
+            Assert.That(FinalBracket.ScoringLine, Is.EqualTo("Highest score wins · who you are and the day both count"));
         }
     }
 }

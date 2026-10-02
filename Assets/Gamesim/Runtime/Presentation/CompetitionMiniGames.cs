@@ -317,7 +317,8 @@ namespace Gamesim.Presentation
                     return "HOUSE SIGNALS: hit every target before it goes. A target you let expire counts "
                         + "against you exactly as much as one you miss. Score is the share you hit.";
                 case Kind.Memory:
-                    return "HOUSE SIGNALS · LEGACY RULES: match all " + MemoryPairs + " pairs. Unfinished boards score matched pairs out of ten; "
+                    // The rules strip already says which rules a season plays; the brief says the game.
+                    return "HOUSE SIGNALS: match all " + MemoryPairs + " pairs. Unfinished boards score matched pairs out of ten; "
                         + "completion scores 8 plus up to 2 for remaining time. A late completion can score less than seven pairs. A wrong flip costs 0.15.";
                 // Only rules 4 reaches these two; the rule-numbered overload above has their words.
                 case Kind.Dice:

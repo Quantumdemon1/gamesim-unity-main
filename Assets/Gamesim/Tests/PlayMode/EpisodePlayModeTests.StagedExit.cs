@@ -111,7 +111,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(cameraRig.HasShot, Is.True, "The camera is the goodbye's,");
             Assert.That(Vector3.Distance(cameraRig.DesiredFocus, face), Is.LessThan(0.3f), "on the evicted's face.");
             var strip = SceneComponents<CeremonySting>().Single().GetComponentsInChildren<TMP_Text>(true).Select(text => text.text).ToList();
-            Assert.That(strip, Has.Some.EqualTo(EpisodeDirector.GoodbyeLine(director.Snapshot, evicted)), "The goodbye line plays here, not at the door.");
+            string standing = EpisodeDirector.GoodbyeLine(director.Snapshot, evicted, EpisodeDirector.GoodbyeMoment.Standing);
+            Assert.That(strip, Has.Some.EqualTo(standing), "The goodbye line plays here, not at the door,");
+            Assert.That(standing, Does.Not.Contain("door"), "worded for where they are - standing before the house - not for the doorway (UI-UX-PASS-PLAN W0).");
+            Assert.That(strip, Has.None.EqualTo(EpisodeDirector.GoodbyeLine(director.Snapshot, evicted)), "The doorway's words wait for a body at the door.");
 
             // Then the walk, and not before the goodbye is over.
             yield return WaitFor(() => director.WalkingOutId != null, EpisodeDirector.GoodbyeSeconds + 1f, "the goodbye gives way to the walk out");
@@ -327,8 +330,18 @@ namespace Gamesim.Tests.PlayMode
             yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing, 3f, "the vote plays");
             yield return SkipReveals();
             Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Goodbye), "The goodbye.");
-            // Past the push-in, inside the goodbye.
-            yield return RealSeconds(2.2f);
+            string evicted = director.DepartingId;
+            var sting = SceneComponents<CeremonySting>().Single();
+            // Past the push-in (2.05 s), inside the goodbye. The strip says what the picture shows -
+            // the evicted standing before the house - and not "from the doorway" (UI-UX-PASS-PLAN
+            // W0, sweep-show 10). Read as the wait ends, before the capture's own frames: the strip
+            // runs its 2.6 s on the unscaled clock, which a capture's long frame spends.
+            yield return RealSeconds(2.1f);
+            Assert.That(sting.IsPlaying, Is.True, "The strip is up on the goodbye's frame,");
+            var words = sting.GetComponentsInChildren<TMP_Text>(true).Select(text => text.text).ToList();
+            Assert.That(words, Has.Some.EqualTo("GOODBYE"), "saying goodbye,");
+            Assert.That(words, Has.Some.EqualTo(EpisodeDirector.GoodbyeLine(director.Snapshot, evicted, EpisodeDirector.GoodbyeMoment.Standing)),
+                "with the words for where they are: standing, not at the door.");
             yield return CaptureFraming("walk-out-goodbye", settle: false);
             yield return WaitFor(() => director.WalkOutAtTheDoor, EpisodeDirector.GoodbyeSeconds + EpisodeDirector.WalkOutSeconds, "the door opens for them");
             yield return RealSeconds(0.6f);

@@ -159,8 +159,9 @@ namespace Gamesim.Episode
 
             var visible = state.events
                 .Where(e => e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId))
-                // Phase markers are scaffolding for the engine, not events in the story.
-                .Where(e => e.kind != "phase")
+                // Phase markers are scaffolding for the engine, not events in the story; so are the
+                // competition's committed standings and performance arithmetic (decision 12).
+                .Where(e => !EpisodeEngine.IsScaffolding(e.kind))
                 .ToList();
             if (visible.Count == 0) { hud.Paragraph("Nothing has happened yet."); return; }
 
@@ -176,7 +177,7 @@ namespace Gamesim.Episode
                 var entries = visible.Where(e => e.week == week).ToList();
                 if (entries.Count == 0) continue;
                 hud.Heading(week == newest ? "Week " + week + " · this week" : "Week " + week, UiTheme.Gold);
-                foreach (var entry in entries) hud.Paragraph(StoryText.Log(state, entry));
+                foreach (var entry in entries) hud.Paragraph(EventLine(state, entry));
             }
         }
 
@@ -404,7 +405,7 @@ namespace Gamesim.Episode
                 Memories = KnownBallots.PlayerMemories(state)
                     .Where(m => m.subjectId == actor.id && !string.IsNullOrEmpty(m.text))
                     .OrderByDescending(m => m.week).Take(3)
-                    .Select(m => "Week " + m.week + " \u00b7 " + m.text).ToList(),
+                    .Select(m => "Week " + m.week + " \u00b7 " + MemoryWords.Said(state, m)).ToList(),
                 Records = ProfileRecords(state, actor, first),
                 Back = BackToHouseguests,
             };

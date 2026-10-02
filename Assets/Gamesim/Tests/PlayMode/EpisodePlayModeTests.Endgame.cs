@@ -114,6 +114,40 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(rail.Cast<Transform>().Count(), Is.EqualTo(3), "The strip is the three who are left; the jury has its faces in the column.");
             foreach (var actor in state.Active)
                 Assert.That(rail.Cast<Transform>().Any(entry => entry.name == actor.name), Is.True, actor.name + " keeps a chip.");
+
+            // The chrome's small parts whole (UI-UX-PASS-PLAN T0): the strip's door inside the card
+            // with its words drawn, and painting nothing over them while the column stands down;
+            // every pin's count badge on the pin's shoulder, reading whole; and no name chip under
+            // a pin, whose tail read as the pin's own - the yard's count of one over "Taylor".
+            var door = FindButton(EpisodeDirector.JuryStripCaption);
+            Assert.That(door, Is.Not.Null, "The strip is a door to the jury house.");
+            AssertInside(ScreenRect(card), (RectTransform)door.transform, "The strip's door");
+            var doorWords = door.GetComponentsInChildren<TMP_Text>().Single();
+            doorWords.ForceMeshUpdate(true);
+            Assert.That(doorWords.isTextOverflowing, Is.False, "'" + doorWords.text + "' fits its box at " + doorWords.fontSize.ToString("0.#") + ".");
+            AssertEveryLabelDraws((RectTransform)door.transform, "The strip's door");
+            Assert.That(door.colors.disabledColor.a, Is.EqualTo(0f).Within(.001f), "The door paints nothing over its words while the column stands down.");
+            var beacons = director.GetComponentInChildren<EpisodeTravelBeacons>(true);
+            if (beacons != null && beacons.IsShowing)
+            {
+                var icons = beacons.transform.Cast<Transform>().Select(child => (RectTransform)child)
+                    .Where(rect => rect.gameObject.activeInHierarchy && rect.Find("Disc") != null).ToList();
+                foreach (var icon in icons)
+                {
+                    var badge = icon.Find(EpisodeTravelBeacons.BadgeName) as RectTransform;
+                    if (badge == null || !badge.gameObject.activeInHierarchy) continue;
+                    var count = badge.GetComponentInChildren<TMP_Text>();
+                    count.ForceMeshUpdate(true);
+                    Assert.That(count.isTextTruncated || count.isTextOverflowing, Is.False, "'" + count.text + "' on '" + icon.name + "' reads whole.");
+                    var shoulder = ScreenRect(icon);
+                    shoulder.xMax += 12f; shoulder.yMax += 12f;
+                    AssertInside(shoulder, badge, "'" + icon.name + "'s badge");
+                }
+                foreach (var chip in beacons.transform.Cast<Transform>().Select(child => (RectTransform)child)
+                    .Where(rect => rect.gameObject.activeInHierarchy && rect.name.StartsWith(EpisodeTravelBeacons.NameChipPrefix)))
+                    foreach (var icon in icons)
+                        Assert.That(ScreenRect(chip).Overlaps(ScreenRect(icon)), Is.False, "'" + chip.name + "' stands under '" + icon.name + "'.");
+            }
             // The look sheet: the frame at three, for the eye the measurements cannot replace.
             if (Application.isBatchMode) yield return CaptureFraming("endgame-final-three", settle: false);
         }

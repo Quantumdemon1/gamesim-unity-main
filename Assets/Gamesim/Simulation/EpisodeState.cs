@@ -605,7 +605,21 @@ namespace Gamesim.Simulation
         /// Schema 21 (ENDGAME-PLAN F4b): the player finalist locks their final argument, the theme's
         /// key in <c>secondTargetId</c> and the moments' references in <c>text</c>, one to a line.
         /// </summary>
-        LockFinalArgument
+        LockFinalArgument,
+        // Grow and manage alliances (ACTIONS-DEALS-ALLIANCES-PLAN C5), under the commitment rules only:
+        // without them both are refused before anything is spent. Appended, so no recorded ordinal moves.
+        /// <summary>
+        /// "Bring {name} into {pact}": <c>targetId</c> is the houseguest asked, <c>secondTargetId</c> the
+        /// pact's id. A social action, spent whatever the answer: the houseguest answers on the alliance
+        /// invitation's odds and every member in the house must welcome them (<see cref="NpcAlliances.WouldWelcome"/>).
+        /// </summary>
+        BringIntoAlliance,
+        /// <summary>
+        /// "Rename {pact}": <c>targetId</c> is the member the player says it to, <c>secondTargetId</c>
+        /// the pact's id and <c>text</c> one of the names on offer (<see cref="PactNames.For"/>). The
+        /// founder's to give, free, and once a pact a week.
+        /// </summary>
+        RenameAlliance
     }
 
     /// <summary>

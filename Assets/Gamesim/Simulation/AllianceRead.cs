@@ -79,6 +79,11 @@ namespace Gamesim.Simulation
             public int formedWeek;
             /// <summary>How it came about, as a sentence ("You invited Riley."), or null when the record holds nothing.</summary>
             public string formed;
+            /// <summary>
+            /// Who the player brought into it since (ACTIONS-DEALS-ALLIANCES-PLAN C5), oldest first: "You
+            /// brought Maya in.", by the line that told the player, while the log holds it.
+            /// </summary>
+            public List<Evidence> joined = new List<Evidence>();
             /// <summary>The week it ended, or 0 while it stands (or when the record cannot say).</summary>
             public int endedWeek;
             /// <summary>Why it ended, in the words the player was told; null while it stands.</summary>
@@ -212,7 +217,12 @@ namespace Gamesim.Simulation
         /// </summary>
         private static void Formed(EpisodeState s, AllianceState alliance, AllianceRow row, Pact pact)
         {
-            var firsts = pact.members.Select(m => FinalistRead.FirstName(m.name)).ToList();
+            // Who the player brought in since (C5) did not form it: their own line says when they joined.
+            var brought = BroughtInSince(s, alliance, row);
+            foreach (var join in brought) pact.joined.Add(new Evidence { week = join.week, text = "You brought " + First(s, join.id) + " in." });
+            var founding = pact.members.Where(m => brought.All(join => join.id != m.id)).ToList();
+            if (founding.Count == 0) founding = pact.members;
+            var firsts = founding.Select(m => FinalistRead.FirstName(m.name)).ToList();
             pact.formedWeek = FinalistRead.PlayerAlliedSince(s, alliance);
             // With no ledger row (an old save) the order is all there is: the player's pacts open with them.
             bool founder = row != null ? FinalistRead.FoundedByPlayer(s, alliance, row)
@@ -232,7 +242,8 @@ namespace Gamesim.Simulation
             {
                 // A story's pact is said the way the story said it: "Riley and Jo let you in" is not
                 // a pact the player formed, and "you proposed a three-way alliance" is.
-                pact.formed = StoryOutcome(s, alliance, row.startedWeek) ?? "It came together in a story, with " + Join(firsts) + ".";
+                var made = new[] { s.playerId }.Concat(founding.Select(m => m.id)).ToList();
+                pact.formed = StoryOutcome(s, made, row.startedWeek) ?? "It came together in a story, with " + Join(firsts) + ".";
                 return;
             }
             // An invitation the player put or accepted, agreed the week it began: that is how. Under the
@@ -254,11 +265,34 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// The line a story showed the player when its beat made the pact: the step that week whose
-        /// option formed an alliance of exactly these people, in the story's own words ("Riley and
-        /// Jo let you in. The three of you are a bloc now."). Null when no step on the record did.
+        /// The partners the player brought into a pact since it began (ACTIONS-DEALS-ALLIANCES-PLAN C5),
+        /// and the week each joined, oldest first: by the line that told the player - "Maya Hassan joined
+        /// The Riley Pact." - while the log holds it. A line of this pact's: told to the player and to the
+        /// one who joined, under the pact's name, or, renamed since, to nobody but its members.
         /// </summary>
-        private static string StoryOutcome(EpisodeState s, AllianceState alliance, int week)
+        private static List<(string id, int week)> BroughtInSince(EpisodeState s, AllianceState alliance, AllianceRow row)
+        {
+            var found = new List<(string id, int week)>();
+            foreach (string id in alliance.members.Where(id => id != s.playerId))
+            {
+                string name = s.Find(id)?.name;
+                if (string.IsNullOrEmpty(name)) continue;
+                var line = Seen(s).LastOrDefault(e => e.kind == "alliance" && (row == null || e.week >= row.startedWeek)
+                    && e.text != null && e.text.StartsWith(name + " joined ", StringComparison.Ordinal)
+                    && e.audienceIds != null && e.audienceIds.Contains(s.playerId) && e.audienceIds.Contains(id)
+                    && (e.text == EpisodeEngine.JoinedLine(name, alliance.name) || e.audienceIds.All(alliance.members.Contains)));
+                if (line != null) found.Add((id, line.week));
+            }
+            return found.OrderBy(join => join.week).ToList();
+        }
+
+        /// <summary>
+        /// The line a story showed the player when its beat made the pact: the step that week whose
+        /// option formed an alliance of exactly these people - the ones it was made with, the player
+        /// among them, not anybody brought in since - in the story's own words ("Riley and Jo let you
+        /// in. The three of you are a bloc now."). Null when no step on the record did.
+        /// </summary>
+        private static string StoryOutcome(EpisodeState s, IList<string> members, int week)
         {
             foreach (var cycle in s.storylines ?? new List<StorylineState>())
             {
@@ -273,7 +307,7 @@ namespace Gamesim.Simulation
                     {
                         var ids = new[] { fx.from, fx.to, fx.third }.Where(role => !string.IsNullOrEmpty(role))
                             .Select(role => Cast(s, cycle, role)).ToList();
-                        if (ids.Any(id => id == null) || ids.Distinct().Count() != alliance.members.Count || !ids.All(alliance.members.Contains)) continue;
+                        if (ids.Any(id => id == null) || ids.Distinct().Count() != members.Count || !ids.All(members.Contains)) continue;
                         return StoryText.Fill(s, option.outcome, cycle.cast);
                     }
                 }
@@ -424,6 +458,12 @@ namespace Gamesim.Simulation
                 // A play's receipt names everyone in it: what the player was shown, said as it was shown.
                 string learned = LearnedLine(s, alliance);
                 foreach (var e in seen.Where(e => e.kind == StoryLog.Receipt && e.text == learned))
+                    evidence.Add(new Evidence { week = e.week, text = e.text });
+                // A pact of three or more the player walked out of, which went on without them
+                // (ACTIONS-DEALS-ALLIANCES-PLAN C5): no longer theirs, and known to them by their own line,
+                // told to everyone left in it.
+                foreach (var e in seen.Where(e => e.kind == "alliance" && EpisodeEngine.IsLeftGoesOnLine(e.text, alliance.name)
+                             && e.audienceIds != null && e.audienceIds.Where(id => id != s.playerId).All(alliance.members.Contains)))
                     evidence.Add(new Evidence { week = e.week, text = e.text });
                 if (certainty != null)
                 {

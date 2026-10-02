@@ -183,54 +183,30 @@ namespace Gamesim.Simulation
             if (npc == null) return string.Empty;
             string id = ContentCatalog.CanonicalId(npc.id);
             if (acceptedAction == EpisodeCommandKind.FormAlliance && SharedAlliance(state, npc.id, true))
-                return Vary(state,
-                    Pick(id,
-                        "We have an alliance. Let's keep its commitments precise and talk before changing course.",
-                        "We're working together. I still intend to compete for my own game.",
-                        "I'm glad we're working together. Let's keep making room for an honest conversation.",
-                        "Our alliance has a name now. I'd like it to have substance, too.",
-                        "Our alliance is in place. A plan is useful when both people understand it.",
-                        "We have an alliance now. Let's be clear with each other."),
-                    Pick(id,
-                        "An alliance, then. Let's write the terms in our heads so neither of us rewrites them later.",
-                        "Allies. Good. I'll pull my weight; I expect you to pull yours.",
-                        "I'm really glad. It's easier to be brave in here with someone beside you.",
-                        "An alliance. I'll try not to look too smug about it in the kitchen.",
-                        "Alliance noted. I'll treat it as data about what you'll do, not a guarantee.",
-                        "We're allied now. Let's keep talking."),
-                    Pick(id,
-                        "We're in this together. I take that seriously, and I'll expect you to.",
-                        "Deal. Now let's win something and make it count.",
-                        "Thank you. I'll be honest with you, even when it's awkward.",
-                        "Partners in crime. Mostly the polite kind.",
-                        "Fine. An alliance is a hypothesis about trust; let's test it gently.",
-                        "We're working together. Good."));
+                return AllianceYes(state, id);
             // Under the commitment rules a proposal can be turned down and still be spent
             // (ACTIONS-DEALS-ALLIANCES-PLAN C4): a committed proposal that left no pact between them is
             // a no, said without a reason - the reason would be what they privately think of the player.
             if (acceptedAction == EpisodeCommandKind.FormAlliance && EpisodeEngine.CommitmentRulesOn(state))
-                return Vary(state,
-                    Pick(id,
-                        "Not an alliance, not yet. I'd rather we earn one than announce it.",
-                        "No. I'm not tying my game to yours. Not yet.",
-                        "I'm sorry, I can't say yes to that right now. I hope you understand.",
-                        "An alliance? I'm flattered. I'm also saying no.",
-                        "No. The case for it isn't there yet.",
-                        "Not right now. I'm not ready for an alliance."),
-                    Pick(id,
-                        "I'm going to say no for now. I don't make commitments I can't explain to myself.",
-                        "Pass. Prove you're worth it and ask me again.",
-                        "Please don't take it personally. I'm just not ready to promise that.",
-                        "Tempting, but I'm keeping my options as open as the snack cupboard.",
-                        "I've weighed it, and the answer is no. For now.",
-                        "No. Not yet."),
-                    Pick(id,
-                        "Not this week. Ask me again once we've both seen how the other plays.",
-                        "No deal. I'm not convinced you help me win.",
-                        "I can't do it. Not yet. I'm sorry.",
-                        "No, but thank you for asking. Most people just assume.",
-                        "Not enough to go on. Ask me again later.",
-                        "I'll pass on that for now."));
+                return AllianceNo(state, id);
+            // "Bring {name} into {pact}" (C5), answered by the one asked: brought in, as a pact's yes is
+            // answered; their own no, as a proposal's no is, without a reason; and where it was a member
+            // who would not have them, what they make of that - the line said who it was.
+            if (acceptedAction == EpisodeCommandKind.BringIntoAlliance)
+            {
+                var answer = BringInAnswer(state, npc);
+                if (answer != null && answer.kind != EpisodeEngine.AllianceRefusedKind) return AllianceYes(state, id);
+                if (answer != null && answer.text != null && answer.text.StartsWith(npc.name + " turned down ", StringComparison.Ordinal))
+                    return AllianceNo(state, id);
+                if (answer != null)
+                    return Pick(id,
+                        "If they won't have me, I'm not going to beg to be let in. Thank you for asking, though.",
+                        "Sounds like your people have opinions about me. Noted.",
+                        "Oh. They don't want me in it. That's... all right. Thank you for trying.",
+                        "Rejected by committee. A new low, and I've sat on the block.",
+                        "A pact needs everyone's yes, and I didn't get one. That's how it should work.",
+                        "It sounds like the others aren't ready for me. Thanks for asking.");
+            }
             // Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C2) the player cut ties the week
             // this houseguest turned on the pact, and the player knows it: they had it coming. A pact of
             // two ended; a bigger one went on without them, so they share no pact at all any more.
@@ -243,7 +219,12 @@ namespace Gamesim.Simulation
                     "Yeah. I figured that was coming. No hard feelings, honestly.",
                     "Understood. My move cost me your trust. That was the price.",
                     "Fair enough. I gave you every reason to.");
-            if (acceptedAction == EpisodeCommandKind.LeaveAlliance && !SharedAlliance(state, npc.id, true) && SharedAlliance(state, npc.id, false))
+            // Under the commitment rules (C5) a leave from a pact of three or more takes only the player
+            // out, so the pact goes on without them and no ended one is left between the two: what they
+            // remember of this week says it.
+            if (acceptedAction == EpisodeCommandKind.LeaveAlliance
+                && ((!SharedAlliance(state, npc.id, true) && SharedAlliance(state, npc.id, false))
+                    || (EpisodeEngine.CommitmentRulesOn(state) && RememberedThisWeek(state, npc.id, state.playerId, "Left our alliance."))))
                 return Vary(state,
                     Pick(id,
                         "You've left our alliance. I'll treat that as a change in our agreement, not an unspoken favor.",
@@ -573,6 +554,83 @@ namespace Gamesim.Simulation
             if (state.alliances == null) return false;
             foreach (var alliance in state.alliances)
                 if (alliance != null && alliance.active == active && Contains(alliance.members, npcId) && Contains(alliance.members, state.playerId)) return true;
+            return false;
+        }
+
+        /// <summary>A pact's yes: what a houseguest says once they are in one with the player.</summary>
+        private static string AllianceYes(EpisodeState state, string id) =>
+            Vary(state,
+                Pick(id,
+                    "We have an alliance. Let's keep its commitments precise and talk before changing course.",
+                    "We're working together. I still intend to compete for my own game.",
+                    "I'm glad we're working together. Let's keep making room for an honest conversation.",
+                    "Our alliance has a name now. I'd like it to have substance, too.",
+                    "Our alliance is in place. A plan is useful when both people understand it.",
+                    "We have an alliance now. Let's be clear with each other."),
+                Pick(id,
+                    "An alliance, then. Let's write the terms in our heads so neither of us rewrites them later.",
+                    "Allies. Good. I'll pull my weight; I expect you to pull yours.",
+                    "I'm really glad. It's easier to be brave in here with someone beside you.",
+                    "An alliance. I'll try not to look too smug about it in the kitchen.",
+                    "Alliance noted. I'll treat it as data about what you'll do, not a guarantee.",
+                    "We're allied now. Let's keep talking."),
+                Pick(id,
+                    "We're in this together. I take that seriously, and I'll expect you to.",
+                    "Deal. Now let's win something and make it count.",
+                    "Thank you. I'll be honest with you, even when it's awkward.",
+                    "Partners in crime. Mostly the polite kind.",
+                    "Fine. An alliance is a hypothesis about trust; let's test it gently.",
+                    "We're working together. Good."));
+
+        /// <summary>A pact's no, under the commitment rules: said without a reason (C4).</summary>
+        private static string AllianceNo(EpisodeState state, string id) =>
+            Vary(state,
+                Pick(id,
+                    "Not an alliance, not yet. I'd rather we earn one than announce it.",
+                    "No. I'm not tying my game to yours. Not yet.",
+                    "I'm sorry, I can't say yes to that right now. I hope you understand.",
+                    "An alliance? I'm flattered. I'm also saying no.",
+                    "No. The case for it isn't there yet.",
+                    "Not right now. I'm not ready for an alliance."),
+                Pick(id,
+                    "I'm going to say no for now. I don't make commitments I can't explain to myself.",
+                    "Pass. Prove you're worth it and ask me again.",
+                    "Please don't take it personally. I'm just not ready to promise that.",
+                    "Tempting, but I'm keeping my options as open as the snack cupboard.",
+                    "I've weighed it, and the answer is no. For now.",
+                    "No. Not yet."),
+                Pick(id,
+                    "Not this week. Ask me again once we've both seen how the other plays.",
+                    "No deal. I'm not convinced you help me win.",
+                    "I can't do it. Not yet. I'm sorry.",
+                    "No, but thank you for asking. Most people just assume.",
+                    "Not enough to go on. Ask me again later.",
+                    "I'll pass on that for now."));
+
+        /// <summary>
+        /// This week's answer to asking a houseguest into a pact (C5), as the log has it: the line saying
+        /// they joined, or the refusal said in their hearing. Null when there is none.
+        /// </summary>
+        private static EpisodeEvent BringInAnswer(EpisodeState state, ContestantState npc)
+        {
+            if (state.events == null) return null;
+            for (int index = state.events.Count - 1; index >= 0; index--)
+            {
+                var entry = state.events[index];
+                if (entry == null || entry.week != state.week || entry.audienceIds == null || !entry.audienceIds.Contains(npc.id) || entry.text == null) continue;
+                if (entry.kind == EpisodeEngine.AllianceRefusedKind) return entry;
+                if (entry.kind == "alliance" && entry.text.StartsWith(npc.name + " joined ", StringComparison.Ordinal)) return entry;
+            }
+            return null;
+        }
+
+        /// <summary>Whether this houseguest remembers something of the player's from this week, by how it begins.</summary>
+        private static bool RememberedThisWeek(EpisodeState state, string npcId, string subjectId, string prefix)
+        {
+            if (state.memories == null) return false;
+            foreach (var memory in state.memories)
+                if (memory != null && memory.ownerId == npcId && memory.week == state.week && memory.subjectId == subjectId
+                    && memory.text != null && memory.text.StartsWith(prefix, StringComparison.Ordinal)) return true;
             return false;
         }
 

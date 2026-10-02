@@ -107,19 +107,50 @@ namespace Gamesim.Simulation
             if (state.Allied(npcId, targetId)) return false;
             if (ActiveAlliancesFor(state, npcId).Count >= MaximumEach) return false;
             if (ActiveAlliancesFor(state, targetId).Count >= MaximumEach) return false;
-            // The web's rule that a grudge blocks an alliance: nobody offers a pact to somebody they
-            // hold forty or more against. Behind the story boundary, where grudges exist at all.
-            if (EpisodeEngine.StoryAt(state, StoryRules.Grudges)
-                && (Grudges.Severity(state, npcId, targetId) >= EpisodeEngine.AllianceGrudgeLine
-                    || Grudges.Severity(state, targetId, npcId) >= EpisodeEngine.AllianceGrudgeLine))
-                return false;
+            if (GrudgeBetween(state, npcId, targetId)) return false;
             // The pact cap (NPC-AGENCY-PLAN.md §3.4): pacts among houseguests stay few enough to read.
             // The player's pacts are outside it, as a story's are.
             if (EpisodeEngine.AgencyOn(state) && npcId != state.playerId && targetId != state.playerId && !PactRoom(state, npcId, targetId))
                 return false;
-            return state.Score(npcId, targetId) >= MinimumRelationship
-                   && Desire(state, npcId, targetId) > ProposeThreshold;
+            return Warm(state, npcId, targetId);
         }
+
+        /// <summary>
+        /// Whether a member of a pact would have this houseguest brought into it (ACTIONS-DEALS-ALLIANCES-PLAN
+        /// C5, "Bring {name} into {pact}"): <see cref="WouldPropose"/>'s question, asked of a pact that
+        /// already exists. The same floor and desire (<see cref="MinimumRelationship"/>,
+        /// <see cref="ProposeThreshold"/>), the same grudge either way, and the invitee's own three
+        /// (<see cref="MaximumEach"/>): joining is a pact more for them, and nobody offers a pact to
+        /// somebody who carries three. What it leaves out is what decides only whether a <i>new</i> pact
+        /// may be made: that the two share one already (they welcome a partner all the more), the
+        /// member's own count (they are in this pact already, and joining adds none to it), and the cap
+        /// on pacts among houseguests (NPC-AGENCY-PLAN.md §3.4), which a pact of the player's is outside.
+        /// No roll: pure, like the rest of this class.
+        /// </summary>
+        public static bool WouldWelcome(EpisodeState state, string memberId, string inviteeId)
+        {
+            if (memberId == inviteeId) return false;
+            if (state.Find(memberId)?.status != ContestantStatus.Active) return false;
+            if (state.Find(inviteeId)?.status != ContestantStatus.Active) return false;
+            if (ActiveAlliancesFor(state, inviteeId).Count >= MaximumEach) return false;
+            if (GrudgeBetween(state, memberId, inviteeId)) return false;
+            return Warm(state, memberId, inviteeId);
+        }
+
+        /// <summary>
+        /// The web's rule that a grudge blocks an alliance: nobody offers a pact to somebody they hold
+        /// forty or more against, or who holds that against them. Behind the story boundary, where
+        /// grudges exist at all.
+        /// </summary>
+        private static bool GrudgeBetween(EpisodeState state, string a, string b) =>
+            EpisodeEngine.StoryAt(state, StoryRules.Grudges)
+            && (Grudges.Severity(state, a, b) >= EpisodeEngine.AllianceGrudgeLine
+                || Grudges.Severity(state, b, a) >= EpisodeEngine.AllianceGrudgeLine);
+
+        /// <summary>Whether one houseguest wants the other: the relationship floor and the desire threshold, both.</summary>
+        private static bool Warm(EpisodeState state, string npcId, string targetId) =>
+            state.Score(npcId, targetId) >= MinimumRelationship
+            && Desire(state, npcId, targetId) > ProposeThreshold;
 
         /// <summary>
         /// A pact a story made: two to four houseguests, no roll, the same record the weekly pass

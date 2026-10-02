@@ -167,6 +167,14 @@ namespace Gamesim.Simulation
                 // week, once the player can know it, is free: no action, no warmth, no grudge. Any other
                 // leave is the social action below, as it always was.
                 case EpisodeCommandKind.LeaveAlliance when Allegiance.FreeExit(s, c.targetId): CutTies(s, c, s.Find(c.targetId)); break;
+                // Growing and renaming a pact (C5) exist only under the commitment rules: without them
+                // they are refused before anything is spent, drawn or logged.
+                case EpisodeCommandKind.BringIntoAlliance:
+                    Require(CommitmentRulesOn(s), CommitmentKindRefusal);
+                    Social(s, c); break;
+                case EpisodeCommandKind.RenameAlliance:
+                    Require(CommitmentRulesOn(s), CommitmentKindRefusal);
+                    RenameAlliance(s, c); break;
                 default: Social(s, c); break;
             }
         }
@@ -1092,7 +1100,12 @@ namespace Gamesim.Simulation
                     FormAllianceWith(s, target, () => Roll(s));
                     if (StoryAt(s, StoryRules.Bonds)) Knowledge.AllianceFormed(s, s.alliances.Last());
                     break;
+                // "Bring {name} into {pact}" (C5): the houseguest asked is the one in front of the player.
+                case EpisodeCommandKind.BringIntoAlliance: BringIntoAlliance(s, target, c); break;
                 case EpisodeCommandKind.LeaveAlliance:
+                    // Under the commitment rules (C5) the leave names its pact, and in a pact of three or
+                    // more it takes only the player out; a pact of two ends as below.
+                    if (CommitmentRulesOn(s)) { LeavePact(s, target, c); break; }
                     var alliance = s.alliances.FirstOrDefault(a => a.active && a.members.Contains(s.playerId) && a.members.Contains(target.id));
                     Require(alliance != null, "No shared alliance is active."); alliance.active = false; Change(s, target.id, s.playerId, -15);
                     Remember(s, target.id, s.playerId, "Left our alliance.", true); Log(s, "alliance", "You left the alliance with " + target.name + ".", s.playerId, target.id);

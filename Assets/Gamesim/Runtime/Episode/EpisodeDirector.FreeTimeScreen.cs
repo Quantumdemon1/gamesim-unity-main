@@ -596,15 +596,22 @@ namespace Gamesim.Episode
                 Category(EpisodeCommandKind.PromiseSafety));
             hud.Tag(hud.Action("Propose a final-two promise", () => Commit(state, EpisodeCommandKind.PromiseFinalTwo, npc.id)),
                 Category(EpisodeCommandKind.PromiseFinalTwo));
-            if (!allied && EpisodeEngine.CommitmentRulesOn(state)) { ProposeAllianceRow(state, npc); return; }
+            bool rules = EpisodeEngine.CommitmentRulesOn(state);
             // The week an ally turned on the pact, leaving them costs nothing (ACTIONS-DEALS-ALLIANCES-PLAN
             // C2): the pill says so - and, in a pact of three or more, that it cuts them out of it - and
             // the caption is the one it always was.
             bool free = allied && Allegiance.FreeExit(state, npc.id);
-            hud.Tag(hud.Action(allied ? "Leave our alliance" : "Propose an alliance",
-                    () => Commit(state, allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance, npc.id)),
-                free ? (Allegiance.FreeExitKeepsAPact(state, npc.id) ? FreeExitCutOutTag : FreeExitTag)
-                    : Category(allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance));
+            if (!allied && rules) ProposeAllianceRow(state, npc);
+            // Under the rules any other leave names its pact, and leaves a pact of three or more going on
+            // without the player (C5).
+            else if (allied && rules && !free) LeaveRows(state, npc);
+            else
+                hud.Tag(hud.Action(allied ? "Leave our alliance" : "Propose an alliance",
+                        () => Commit(state, allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance, npc.id)),
+                    free ? (Allegiance.FreeExitKeepsAPact(state, npc.id) ? FreeExitCutOutTag : FreeExitTag)
+                        : Category(allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance));
+            // Growing and naming the player's pacts (C5), under the rules only.
+            PactRows(state, npc);
         }
 
         /// <summary>

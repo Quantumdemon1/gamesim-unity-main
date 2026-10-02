@@ -205,12 +205,16 @@ namespace Gamesim.Simulation
         /// the story's grudges are the round's, and a call the player made this week stands.
         /// Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C3) a pact of the player's leaves
         /// out the members whose own commitment to the player has lapsed: they no longer answer to its
-        /// bloc (<see cref="Allegiance.Following"/>).
+        /// bloc (<see cref="Allegiance.Following"/>). And (C5) the pact's founder is its first member,
+        /// as the source's <c>founderId</c> is, invented by nothing: <see cref="Resolve"/> makes them the
+        /// caller whenever they are among the members who vote, as the source does, and otherwise the
+        /// round picks one as it always did. Without the rules no founder, as before.
         /// No ballots, phase state, sequence, revision or persisted RNG are changed.
         /// </summary>
         public static WebBlocSnapshot FromNative(EpisodeState state)
         {
             if (state == null) throw new ArgumentNullException(nameof(state));
+            bool founders = EpisodeEngine.CommitmentRulesOn(state);
             return new WebBlocSnapshot
             {
                 week = state.week,
@@ -223,6 +227,7 @@ namespace Gamesim.Simulation
                     return new WebBlocAlliance
                     {
                         id = a.id, name = a.name, status = a.active ? "Active" : "Broken", members = Allegiance.Following(state, a),
+                        founderId = founders ? EpisodeEngine.Founder(a) : null,
                         stability = EpisodeEngine.LeverRulesOn(state) ? Stability(state, a) : (double?)null,
                         calledTargetId = call?.targetId, callerId = call?.callerId,
                         followedIds = call != null ? new List<string>(call.followed) : new List<string>(),

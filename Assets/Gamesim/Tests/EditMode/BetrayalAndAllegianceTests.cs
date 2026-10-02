@@ -453,23 +453,43 @@ namespace Gamesim.Tests.EditMode
             Assert.That(EpisodeEngine.SocialActionsSpent(paid), Is.EqualTo(1), "It is a social action again.");
             Assert.That(paid.Score(betrayer, paid.playerId), Is.EqualTo(plain.Score(betrayer, plain.playerId)), "The same -15 with them, through the same roll.");
             Assert.That(paid.randomState, Is.EqualTo(plain.randomState));
-            Assert.That(paid.events.Last().text, Is.EqualTo("You left the alliance with " + paid.Find(betrayer).name + "."));
+            // A pact of three goes on without the player (C5, the story's defector rule): the line says so.
+            Assert.That(paid.events.Last().text, Is.EqualTo("You left the alliance with " + paid.Find(betrayer).name + " and "
+                + paid.Find(loyal).name + ": " + PactName + " goes on without you."));
+            Assert.That(paid.alliances.Single(a => a.id == PactId).members, Is.EqualTo(new[] { betrayer, loyal }), "The other two keep it.");
             Assert.That(BetrayersReplies, Does.Not.Contain(HouseDialogue.Response(paid, betrayer, EpisodeCommandKind.LeaveAlliance)));
         }
 
+        /// <summary>
+        /// Leaving outside a betrayal costs what it always cost: the same roll for the same −15 with the one
+        /// told, the eighty from every member, an action. A pact of two ends as it always did, line for line;
+        /// a pact of three or more goes on without the player under the rules (C5), where without them it
+        /// ended for everybody.
+        /// </summary>
         [Test]
-        public void C2_LeavingOutsideABetrayalIsUnchangedByTheRules()
+        public void C2_LeavingOutsideABetrayalCostsWhatItAlwaysDid()
         {
+            var offTwo = Leave(PactOfThreeWithABetrayal(rules: false, out string partner, out _, betray: false, three: false), partner);
+            var onTwo = Leave(PactOfThreeWithABetrayal(rules: true, out _, out _, betray: false, three: false), partner);
+            Assert.That(onTwo.randomState, Is.EqualTo(offTwo.randomState), "A pact of two: the same roll,");
+            Assert.That(Json(onTwo.relationships), Is.EqualTo(Json(offTwo.relationships)));
+            Assert.That(Json(onTwo.story.grudges), Is.EqualTo(Json(offTwo.story.grudges)));
+            Assert.That(Json(onTwo.events), Is.EqualTo(Json(offTwo.events)), "the same line,");
+            Assert.That(Json(onTwo.alliances), Is.EqualTo(Json(offTwo.alliances)), "and it ends, as it always did.");
+            Assert.That(onTwo.alliances.Single(a => a.id == PactId).active, Is.False);
+
             var off = Leave(PactOfThreeWithABetrayal(rules: false, out string ally, out string loyal, betray: false), ally);
             var on = Leave(PactOfThreeWithABetrayal(rules: true, out _, out _, betray: false), ally);
             Assert.That(on.randomState, Is.EqualTo(off.randomState), "The same roll for the same -15.");
             Assert.That(Json(on.relationships), Is.EqualTo(Json(off.relationships)));
             Assert.That(Json(on.story.grudges), Is.EqualTo(Json(off.story.grudges)), "The same eighty from every member.");
             Assert.That(Grudges.Severity(on, loyal, on.playerId), Is.EqualTo(80));
-            Assert.That(Json(on.events), Is.EqualTo(Json(off.events)));
-            Assert.That(Json(on.alliances), Is.EqualTo(Json(off.alliances)));
             Assert.That(EpisodeEngine.SocialActionsSpent(on), Is.EqualTo(EpisodeEngine.SocialActionsSpent(off)));
             Assert.That(Allegiance.FreeExit(on, ally), Is.False);
+            Assert.That(off.alliances.Single(a => a.id == PactId).active, Is.False, "Without the rules a pact of three ended for everybody;");
+            var pact = on.alliances.Single(a => a.id == PactId);
+            Assert.That(pact.active, Is.True, "under them it goes on");
+            Assert.That(pact.members, Is.EqualTo(new[] { ally, loyal }), "without the player.");
         }
 
         // ------------------------------------------------------------ C2: what the player can know

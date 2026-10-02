@@ -45,7 +45,7 @@ namespace Gamesim.Tests.PlayMode
         {
             EpisodeDirector.PillowTalkCaption, EpisodeDirector.CookCaption, EpisodeDirector.InviteUpCaption,
             EpisodeDirector.PublicDefenseCaption, EpisodeDirector.AllianceMeetCaption, EpisodeDirector.CompPracticeCaption,
-            EpisodeDirector.PlayAGameCaption,
+            EpisodeDirector.PlayAGameCaption, EpisodeDirector.AllianceMeetingCaption,
         };
 
         /// <summary>

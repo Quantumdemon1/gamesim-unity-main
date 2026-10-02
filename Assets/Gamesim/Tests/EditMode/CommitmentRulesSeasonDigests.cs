@@ -127,6 +127,11 @@ namespace Gamesim.Tests.EditMode
             Assert.That(reached.TryGetValue("safety-kept", out int spared) && spared > 0, Is.True, "Safety pacts were kept.");
             Assert.That(reached.TryGetValue("information-reading", out int readings) && readings > 0, Is.True, "Information deals passed their readings.");
             Assert.That(reached.TryGetValue("accepted-offer-broken", out int accepted) && accepted > 0, Is.True, "Offers the player accepted broke.");
+            // C6 (allies share intel): allies were asked, pacts met, and meetings in a vote week told a vote the reveal judged.
+            Assert.That(reached.TryGetValue("ally-asked", out int allyAsked) && allyAsked > 0, Is.True, "The player asked somebody in a pact with them.");
+            Assert.That(reached.TryGetValue("AllianceMeet", out int meetings) && meetings > 0, Is.True, "Pacts met.");
+            Assert.That(reached.TryGetValue("ally-claim", out int allyClaims) && allyClaims > 0, Is.True, "A meeting told the player a vote.");
+            Assert.That(reached.TryGetValue("ally-claim-kept", out int allyKept) && allyKept > 0, Is.True, "The reveal judged it.");
         }
 
         /// <summary>A played line's key: its rule set, size, seed and digest, without the run's counts.</summary>
@@ -192,10 +197,16 @@ namespace Gamesim.Tests.EditMode
                 bool done = false;
                 for (int attempt = 0; attempt < 6 && !done; attempt++)
                 {
-                    var own = Busy(s, seed, attempt);
+                    var own = Busy(s, seed, attempt, rulesOn);
                     if (own == null) break;
                     var result = engine.Apply(own);
-                    if (result.accepted) { done = true; Count(counts, own.kind.ToString()); }
+                    if (result.accepted)
+                    {
+                        done = true;
+                        Count(counts, own.kind.ToString());
+                        // C6: a question put to somebody in a pact with the player.
+                        if (own.kind == EpisodeCommandKind.AskVote && s.Allied(own.targetId, s.playerId)) Count(counts, "ally-asked");
+                    }
                 }
                 if (done) continue;
                 var next = NextCommand(s);
@@ -230,6 +241,9 @@ namespace Gamesim.Tests.EditMode
             Count(counts, "pact-ended-betrayed", final.ledger.alliances.Count(r => r.why != null && r.why.EndsWith("/betrayed", StringComparison.Ordinal)));
             Count(counts, "pact-ended-turned", final.ledger.alliances.Count(r => r.why != null && r.why.StartsWith("player", StringComparison.Ordinal)
                 && r.why.EndsWith("/turned", StringComparison.Ordinal)));
+            // C6, by the record's own words: an ally's account of their vote at a meeting, and how the reveal judged it.
+            Count(counts, "ally-claim", final.ledger.claims.Count(k => k.source == ClaimSource.Ally));
+            Count(counts, "ally-claim-kept", final.ledger.claims.Count(k => k.source == ClaimSource.Ally && k.status == ClaimStatus.Kept));
             stats = "cmds=" + i + " week=" + final.week + " deals=" + final.deals.Count + " broken=" + broken + " promisesBroken=" + brokenPromises
                 + " winner=" + final.winnerId;
             digest = Hash(trace.ToString());
@@ -316,8 +330,12 @@ namespace Gamesim.Tests.EditMode
             return choice == null ? null : Cmd(s, EpisodeCommandKind.ProgressStoryline, item.id, choice.optionId);
         }
 
-        /// <summary>A busy player: every action the commitment rules touch, by <see cref="Pick"/>.</summary>
-        private static EpisodeCommand Busy(EpisodeState s, uint seed, int attempt)
+        /// <summary>
+        /// A busy player: every action the commitment rules touch, by <see cref="Pick"/>. Under the rules
+        /// only (<paramref name="rulesOn"/>), so the half without them plays the recorded seasons' own
+        /// commands, a pact of the player's meets now and then (C6).
+        /// </summary>
+        private static EpisodeCommand Busy(EpisodeState s, uint seed, int attempt, bool rulesOn)
         {
             if (s.pendingDiary != null) return null;
             var me = s.Find(s.playerId);
@@ -345,6 +363,15 @@ namespace Gamesim.Tests.EditMode
             if (!left)
                 return s.boughtActionPoints < 2 && Pick(s, seed, 11 + attempt, 3) == 0
                     ? Cmd(s, EpisodeCommandKind.BuyActionPoint, null, null, WebSocialVocabulary.SpreadAll) : null;
+            // C6, the rules' half only: a pact of the player's meets through one of its members. A pact that
+            // has met this week refuses, and the attempt goes on to something else.
+            if (rulesOn && Pick(s, seed, 23 + attempt, 3) == 0)
+            {
+                var pact = s.alliances.FirstOrDefault(p => p.active && p.members.Contains(s.playerId)
+                    && p.members.Any(id => id != s.playerId && s.Find(id)?.status == ContestantStatus.Active));
+                var mate = pact?.members.Where(id => id != s.playerId).Select(s.Find).FirstOrDefault(m => m != null && m.status == ContestantStatus.Active);
+                if (mate != null) return Cmd(s, EpisodeCommandKind.AllianceMeet, mate.id, null, pact.id);
+            }
             var a = npcs[Pick(s, seed, 1 + attempt * 7, npcs.Count)];
             var others = npcs.Where(x => x.id != a.id).ToList();
             var b = others.Count > 0 ? others[Pick(s, seed, 2 + attempt * 7, others.Count)] : null;

@@ -23,7 +23,7 @@ namespace Gamesim.Simulation
         public const int InvitesPerWeek = 2;
         /// <summary>The living room's Public Defense: +6 with the defended, +1 with each witness.</summary>
         public const double DefenseWarmth = 6, DefenseWitnessWarmth = 1;
-        /// <summary>The backyard's Alliance Meet, "low suspicion": +4 with an ally.</summary>
+        /// <summary>The backyard's Alliance Meet, "low suspicion": +4 with an ally. Under the commitment rules a meeting of the pact instead (C6, <see cref="AllianceMeetingWarmth"/>).</summary>
         public const double AllianceMeetWarmth = 4;
         /// <summary>The game room's Play a Game: +3.</summary>
         public const double PlayAGameWarmth = 3;
@@ -89,6 +89,8 @@ namespace Gamesim.Simulation
                     break;
                 case EpisodeCommandKind.AllianceMeet:
                     Require(s.Allied(s.playerId, target.id), "A private meeting is for an ally.");
+                    // Under the commitment rules it is a meeting of the pact, in any private room (C6).
+                    if (CommitmentRulesOn(s)) { HoldAllianceMeeting(s, target, c); break; }
                     Converse(s, target, AllianceMeetWarmth, "You and " + target.name + " went over the plan in the backyard, where nobody listens.");
                     break;
                 case EpisodeCommandKind.InviteUp:

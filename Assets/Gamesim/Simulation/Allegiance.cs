@@ -39,9 +39,10 @@ namespace Gamesim.Simulation
     /// logged to the betrayer alone, kept off every page of the player's while the ballot is not theirs
     /// to know (<see cref="KnownBallots.TellsAnUnknownBallot"/>; the vote read and the levers' lines
     /// project on <see cref="AsThePlayerKnows"/>), and opens its free exit only once it is. Where an
-    /// ally stands is the player's to tell only this week, through a read, a refused call or contact
-    /// (<see cref="CommitmentKnown"/>): then the notes say a cold ally has "gone quiet", in words and
-    /// never a number, and the vote read counts the ally's pact terms. The two always agree.</para>
+    /// ally stands is the player's to tell only this week, through a read, a refused call, a question
+    /// about the vote they would not answer (C6) or contact (<see cref="CommitmentKnown"/>): then the
+    /// notes say a cold ally has "gone quiet", in words and never a number, and the vote read counts
+    /// the ally's pact terms. The two always agree.</para>
     ///
     /// <para>Pure and read-only: it neither mutates the state nor draws from its generator.</para>
     /// </summary>
@@ -156,7 +157,8 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// Whether the player can tell where an ally stands with them right now, under the commitment
-        /// rules: they read the ally this week, the ally refused their call this week, the two had
+        /// rules: they read the ally this week, the ally refused their call this week, the ally would not
+        /// say where their vote is when asked this week (an ally never deflects, C6), the two had
         /// contact this week (the player's own record of them was touched), or a betrayal of the ally's
         /// that the player can know stands against their pacts. Only then does the vote read count the
         /// ally's pact terms (<see cref="VoteRead.CommitmentHidden"/>) and only then do the notes say a
@@ -166,7 +168,7 @@ namespace Gamesim.Simulation
         {
             if (!EpisodeEngine.CommitmentRulesOn(s) || string.IsNullOrEmpty(npcId) || npcId == s.playerId) return false;
             if (s.ledger?.standings != null && s.ledger.standings.Any(r => r != null && r.fromId == npcId && r.toId == s.playerId
-                    && r.source == ClaimSource.Read && r.week == s.week)) return true;
+                    && (r.source == ClaimSource.Read || r.source == ClaimSource.Deflected) && r.week == s.week)) return true;
             if (s.ledger?.calls != null && s.ledger.calls.Any(k => k != null && k.week == s.week && k.callerId == s.playerId
                     && k.defected != null && k.defected.Contains(npcId))) return true;
             var edge = s.relationships.FirstOrDefault(r => r.fromId == s.playerId && r.toId == npcId);

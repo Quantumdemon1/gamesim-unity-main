@@ -22,6 +22,14 @@ namespace Gamesim.Episode
         public const string CompPracticeCaption = "Practise for the next competition";
         public const string PlayAGameCaption = "Play a game together";
 
+        /// <summary>
+        /// A meeting of a pact the player is in (ACTIONS-DEALS-ALLIANCES-PLAN C6), offered only under the
+        /// commitment rules, in any private room. A new caption: under the rules the meeting is what
+        /// "Go over the plan in private" commits, and that row, with its caption, is the backyard's
+        /// word with one ally in every season without them.
+        /// </summary>
+        public const string AllianceMeetingCaption = "Hold an alliance meeting";
+
         /// <summary>The room the player is standing in, as the house last read it: null between rooms.</summary>
         public string PlayerRoom => playerIsActive ? beaconPlayerRoom : null;
 
@@ -37,6 +45,10 @@ namespace Gamesim.Episode
                 string text = audience == null ? null : string.Join(" ", audience);
                 hud.Tag(hud.Action(caption, () => Commit(state, kind, target, text: text)), Category(kind));
             }
+            // Under the commitment rules a pact meets in any private room (C6); the backyard's word with
+            // one ally is the same command, so it is not offered beside it.
+            bool meetings = EpisodeEngine.CommitmentRulesOn(state);
+            if (meetings) AllianceMeetingRow(state, target, room);
             switch (room)
             {
                 case "Bedroom":
@@ -52,7 +64,7 @@ namespace Gamesim.Episode
                     break;
                 }
                 case "Yard":
-                    if (state.Allied(state.playerId, target)) Act(AllianceMeetCaption, EpisodeCommandKind.AllianceMeet);
+                    if (!meetings && state.Allied(state.playerId, target)) Act(AllianceMeetCaption, EpisodeCommandKind.AllianceMeet);
                     Act(CompPracticeCaption, EpisodeCommandKind.CompPractice);
                     break;
                 case "Kitchen":
@@ -65,6 +77,30 @@ namespace Gamesim.Episode
                     break;
             }
         }
+
+        /// <summary>
+        /// The pact meeting's row (C6): in a room where nobody listens (<see cref="EpisodeEngine.PrivateRooms"/>),
+        /// with somebody in a pact of the player's that has not met this week - the oldest such pact, as
+        /// the engine holds it (<see cref="EpisodeEngine.MeetingPact"/>), named by the command as a call
+        /// names its pact. One row whatever the pacts: once that one has met, the next is offered under
+        /// the same caption. Nothing about the houseguest is read to offer it.
+        /// </summary>
+        private void AllianceMeetingRow(EpisodeState state, string target, string room)
+        {
+            if (!EpisodeEngine.IsPrivateRoom(room)) return;
+            var pact = EpisodeEngine.MeetingPact(state, target);
+            if (pact == null) return;
+            string pactId = pact.id;
+            hud.Tag(hud.Action(AllianceMeetingCaption, () => Commit(state, EpisodeCommandKind.AllianceMeet, target, text: pactId)),
+                AllianceMeetingTag(state, pact));
+        }
+
+        /// <summary>
+        /// The pill on the meeting's row: warmth, and learn as well in a vote week when somebody at it
+        /// casts a ballot - by what the player can see; whether they say is theirs.
+        /// </summary>
+        public static string AllianceMeetingTag(EpisodeState state, AllianceState pact) =>
+            EpisodeEngine.MeetingCouldTellAVote(state, pact) ? WarmthTag + " · " + LearnTag : WarmthTag;
 
         /// <summary>The houseguests other than the player standing in a room, by the house's own occupancy read.</summary>
         private List<string> PeopleIn(EpisodeState state, string room) =>

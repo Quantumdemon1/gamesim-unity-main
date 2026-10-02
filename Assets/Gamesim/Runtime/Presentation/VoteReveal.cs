@@ -632,6 +632,8 @@ namespace Gamesim.Presentation
                 CountY, CountH, CountPt, CaptionY, CaptionH, CaptionPt, VersusSize, VersusY, VersusPt, DotsY, DotsH, Pip, Step,
                 TieMarkY, TieMarkW, TieMarkH, TieMarkDx, TiePt, ProgressY, ProgressH, ProgressPt, HostY, HostH, HostPt,
                 BannerY, BannerW, BannerH, BannerPt, ControlsY, ControlsH, ControlsPt, GlassX, GlassY, Ring;
+            /// <summary>The host's line's box, and the smallest type it may shrink to on one line: the card's width and two thirds of its type unless the frame says otherwise.</summary>
+            public readonly float HostW, HostMinPt;
 
             private Frame(bool screen, float width, float height, float portrait, float slot, float eyebrowY, float eyebrowH,
                 float eyebrowPt, float titleY, float titleH, float titlePt, float rimY, float nameY, float nameH, float namePt,
@@ -639,10 +641,13 @@ namespace Gamesim.Presentation
                 float versusY, float versusPt, float dotsY, float dotsH, float pip, float step, float tieMarkY, float tieMarkW,
                 float tieMarkH, float tieMarkDx, float tiePt, float progressY, float progressH, float progressPt, float hostY,
                 float hostH, float hostPt, float bannerY, float bannerW, float bannerH, float bannerPt, float controlsY,
-                float controlsH, float controlsPt, float glassX, float glassY, float ring, float columnX = float.NaN)
+                float controlsH, float controlsPt, float glassX, float glassY, float ring, float columnX = float.NaN,
+                float hostW = float.NaN, float hostMinPt = float.NaN)
             {
                 Screen = screen; Width = width; Height = height; Portrait = portrait; Slot = slot;
                 ColumnX = float.IsNaN(columnX) ? slot * 0.5f : columnX;
+                HostW = float.IsNaN(hostW) ? width : hostW;
+                HostMinPt = float.IsNaN(hostMinPt) ? hostPt * 0.66f : hostMinPt;
                 EyebrowY = eyebrowY; EyebrowH = eyebrowH; EyebrowPt = eyebrowPt; TitleY = titleY; TitleH = titleH; TitlePt = titlePt;
                 RimY = rimY; NameY = nameY; NameH = nameH; NamePt = namePt; CountY = countY; CountH = countH; CountPt = countPt;
                 CaptionY = captionY; CaptionH = captionH; CaptionPt = captionPt; VersusSize = versusSize; VersusY = versusY; VersusPt = versusPt;
@@ -682,7 +687,10 @@ namespace Gamesim.Presentation
             /// the pips' row at its own height (−582 to −610), two units under the roster's seventh
             /// row at a full house. The eyebrow (21 points in 28) starts 3 % of the face's height
             /// inside its top and ends where the title (63 points in 82) starts, and the title ends
-            /// where THE VOTE starts: no two rows' boxes cross.
+            /// where THE VOTE starts: no two rows' boxes cross. The host's line is boxed
+            /// <see cref="ScreenBoard.HostInset"/> inside the face a side and shrinks on its one line
+            /// to twenty points at the least, so its longest wording - the tie-break's, which at thirty
+            /// points spans the whole face - ends inside the face's 3 % margin.
             /// </summary>
             public static Frame OnScreen() => new Frame(true, ScreenSurface.ReferenceWidth, ScreenSurface.ReferenceHeight, 160f, 220f,
                 -24f, 28f, 21f, -52f, 82f, 63f, -176f,
@@ -690,7 +698,8 @@ namespace Gamesim.Presentation
                 56f, -174f, 22f, -582f, 28f, 24f, 40f,
                 -508f, 96f, 40f, 0f, 26f, -612f, 36f, 26f,
                 -650f, 40f, 30f, -692f, 720f, 46f, 34f,
-                -740f, 36f, 26f, 0f, 0f, 6f, 470f);
+                -740f, 36f, 26f, 0f, 0f, 6f, 470f,
+                ScreenSurface.ReferenceWidth - 2f * ScreenBoard.HostInset, ScreenBoard.HostMinPt);
         }
 
         /// <summary>
@@ -707,6 +716,15 @@ namespace Gamesim.Presentation
 
             /// <summary>The band the board stands in, and the result block after it.</summary>
             public const float BandTop = -176f, BandBottom = -584f;
+
+            /// <summary>
+            /// How far inside the face's edge the host's line is boxed, a side, and the smallest type
+            /// it shrinks to on its one line. The face's margin is 3 % of its height (24): boxed at
+            /// the full width the tie-break's wording ended on the edge, and at 28 a side the box is
+            /// 1144, which the longest line fits at about 28 points; twenty points carries about a
+            /// hundred and fifteen characters.
+            /// </summary>
+            public const float HostInset = 28f, HostMinPt = 20f;
 
             /// <summary>The roster: its top, its rows, and one column or two.</summary>
             public const float RosterY = -242f, Row = 44f, Gap = 5f, OneWide = 520f, TwoWide = 322f, Between = 16f;
@@ -935,9 +953,10 @@ namespace Gamesim.Presentation
             var medium = UiTheme.Font(UiTheme.Weight.Medium);
             if (medium != null) host.font = medium;
             // One line, drawn smaller rather than cut: a long name would wrap the verdict onto a second
-            // line the box truncates, and "...Jordan Taylor, you" is not a result.
-            host.enableAutoSizing = true; host.fontSizeMax = host.fontSize; host.fontSizeMin = f.HostPt * 0.66f;
-            Place(host.rectTransform, width, f.HostH, f.HostY);
+            // line the box truncates, and "...Jordan Taylor, you" is not a result. The box is the
+            // frame's - inside the screen face's margin, where the full width ended on the edge.
+            host.enableAutoSizing = true; host.fontSizeMax = host.fontSize; host.fontSizeMin = f.HostMinPt;
+            Place(host.rectTransform, f.HostW, f.HostH, f.HostY);
 
             banner = HudPrimitives.Fill("Result banner", column, UiTheme.Danger, UiTheme.ControlRadius);
             Place(banner, f.BannerW, f.BannerH, f.BannerY);

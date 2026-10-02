@@ -55,15 +55,27 @@ namespace Gamesim.Tests.PlayMode
 
             float began = Time.realtimeSinceStartup;
 
-            yield return WaitFor(() => director.WalkOutAtTheDoor || director.WalkingOutId == null, 40f, "They reach the front door.");
+            // The strip waits for the door: played as the walk began, "glares at you from the
+            // doorway" ran over a body crossing the yard (UI-UX-PASS-PLAN W0, sweep-show 10).
+            var sting = SceneComponents<CeremonySting>().Single();
+            string StingHeadline() => sting.GetComponentsInChildren<TMP_Text>(true).FirstOrDefault(text => text.name == "Sting headline")?.text;
+            bool goodbyeBeforeTheDoor = false;
+            float by = Time.realtimeSinceStartup + 40f;
+            while (!director.WalkOutAtTheDoor && director.WalkingOutId != null && Time.realtimeSinceStartup < by)
+            {
+                goodbyeBeforeTheDoor |= sting.IsPlaying && StingHeadline() == "GOODBYE";
+                yield return null;
+            }
             Assert.That(director.WalkOutAtTheDoor, Is.True, "They reach the front door, and it opens for them.");
+            Assert.That(goodbyeBeforeTheDoor, Is.False, "Nothing said goodbye while they crossed the yard.");
             Assert.That(DoorSetUp(), Is.True, "The opening's door is up for them.");
             Assert.That(Flat(body.transform.position, new Vector3(-1.6f, 0f, 14.1f)), Is.LessThan(1.5f), "They walked to it across the yard.");
-            var strip = SceneComponents<CeremonySting>().Single().GetComponentsInChildren<TMP_Text>(true).Select(text => text.text).ToList();
+            Assert.That(sting.IsPlaying && StingHeadline() == "GOODBYE", Is.True, "The strip says goodbye as the door opens for them,");
+            var strip = sting.GetComponentsInChildren<TMP_Text>(true).Select(text => text.text).ToList();
             string firstName = director.Snapshot.Find(leaving).name.Split(' ')[0];
-            Assert.That(strip, Has.Some.EqualTo("GOODBYE"), "The strip says goodbye,");
+            Assert.That(strip, Has.Some.EqualTo(EpisodeDirector.GoodbyeLine(director.Snapshot, leaving)), "with the doorway's words, where the body is,");
             Assert.That(strip.Any(text => text.StartsWith(firstName + " ") && text.EndsWith("They'll be waiting in the jury house.")), Is.True,
-                "with what they do at the door, and where they are going.");
+                "what they do at the door, and where they are going.");
 
             // Through the door and off the deck behind the facade, on their own feet.
             var door = SceneRoot(OpeningDoorSet.RootName).GetComponent<OpeningDoorSet>();

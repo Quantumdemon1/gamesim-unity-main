@@ -255,12 +255,14 @@ namespace Gamesim.Episode
                     walkOutDoor = OpeningDoorSet.Build(gameObject.scene);
                     var body = BodyFor(walkingOutId);
                     if (body != null && cameraRig != null) cameraRig.FocusSubject(body, false);
-                    if (sting != null && projected != null) sting.Play(CeremonySting.WalkOutKind, GoodbyeLine(projected, walkingOutId), reducedMotion);
                     walkOutLeg = 1;
                     return;
                 case 1:
                     if (!npcMeetings.DepartureArrived()) return;
                     if (walkOutDoor != null) walkOutDoor.Open(reducedMotion);
+                    // The goodbye on the strip where the body is - at the door, as its words say -
+                    // rather than as the walk across the yard begins (UI-UX-PASS-PLAN W0, sweep-show 10).
+                    if (sting != null && projected != null) sting.Play(CeremonySting.WalkOutKind, GoodbyeLine(projected, walkingOutId), reducedMotion);
                     walkOutLeg = 2;
                     return;
                 case 2:
@@ -337,8 +339,6 @@ namespace Gamesim.Episode
                     { FinishWalkOut(); return; }
                     stagedLeg = StagedLeg.Walking;
                     stagedWalkFrom = now;
-                    if (!walkOutLineSaid && sting != null && projected != null)
-                        sting.Play(CeremonySting.WalkOutKind, GoodbyeLine(projected, walkingOutId), reducedMotion);
                     // The yard's walk leaves the room, and the house watches it go; the living
                     // room's stays in it, and the exit wide holds the door in frame the whole way.
                     if (ceremonyStage != null) ceremonyStage.WatchTheWalk(body, ExitIsTheLivingRoom ? LivingExitWide : (HouseCameraRig.Shot?)null, WatchSeconds);
@@ -360,6 +360,13 @@ namespace Gamesim.Episode
                     if (!npcMeetings.DepartureArrived()) return;
                     if (!stagedDoorCut && !ExitIsTheLivingRoom) CutToTheDoor();
                     TakeTheLastLook(body);
+                    // A staged walk with no goodbye before it says its line here, at the door, where
+                    // the body is; the goodbye's own line is said standing (UI-UX-PASS-PLAN W0).
+                    if (!walkOutLineSaid && sting != null && projected != null)
+                    {
+                        sting.Play(CeremonySting.WalkOutKind, GoodbyeLine(projected, walkingOutId), reducedMotion);
+                        walkOutLineSaid = true;
+                    }
                     stagedLeg = StagedLeg.LastLook;
                     return;
                 case StagedLeg.LastLook:
@@ -691,21 +698,34 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// What the evicted does at the door: the reference's goodbye lines, by how they leave things
-        /// with the player as far as the player knows (<see cref="GoodbyeTone"/>), and where they are
-        /// going - the jury house for a juror, and nowhere named for somebody out before the jury.
+        /// Where the goodbye's line is said, so its words match the picture (UI-UX-PASS-PLAN W0):
+        /// standing before the house as the card comes down - the staged goodbye, before the walk -
+        /// or at the door, where an unstaged walk and a staged walk with no goodbye before it say it.
         /// </summary>
-        public static string GoodbyeLine(EpisodeState state, string id)
+        public enum GoodbyeMoment { Standing, Doorway }
+
+        /// <summary>The goodbye's line at the door: <see cref="GoodbyeLine(EpisodeState, string, GoodbyeMoment)"/> for <see cref="GoodbyeMoment.Doorway"/>.</summary>
+        public static string GoodbyeLine(EpisodeState state, string id) => GoodbyeLine(state, id, GoodbyeMoment.Doorway);
+
+        /// <summary>
+        /// What the evicted does as they go: the reference's goodbye lines, by how they leave things
+        /// with the player as far as the player knows (<see cref="GoodbyeTone"/>), for the moment the
+        /// line is said - the doorway's words only at the doorway, where the strip once said "glares
+        /// at you from the doorway" over a body still at its seat - and where they are going: the
+        /// jury house for a juror, and nowhere named for somebody out before the jury.
+        /// </summary>
+        public static string GoodbyeLine(EpisodeState state, string id, GoodbyeMoment moment)
         {
             var who = state?.Find(id);
             if (who == null) return string.Empty;
             string name = who.name.Split(' ')[0];
+            bool atTheDoor = moment == GoodbyeMoment.Doorway;
             string opener;
             switch (GoodbyeTone(state, id))
             {
-                case GoodbyeKind.Dealt: opener = name + " pauses at the door and turns to you…"; break;
-                case GoodbyeKind.Cold: opener = name + " glares at you from the doorway."; break;
-                default: opener = name + " walks to the door without looking back."; break;
+                case GoodbyeKind.Dealt: opener = name + (atTheDoor ? " pauses at the door and turns to you…" : " finds your eye before they go…"); break;
+                case GoodbyeKind.Cold: opener = name + (atTheDoor ? " glares at you from the doorway." : " stands and glares at you."); break;
+                default: opener = name + (atTheDoor ? " walks to the door without looking back." : " stands without a word."); break;
             }
             return who.status == ContestantStatus.Jury ? opener + " They'll be waiting in the jury house." : opener;
         }

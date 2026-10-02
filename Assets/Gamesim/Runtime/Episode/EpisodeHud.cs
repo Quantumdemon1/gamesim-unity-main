@@ -45,8 +45,10 @@ namespace Gamesim.Episode
         public const string DiaryCancelReflectionCaption = "Back to reflection (discard answer)";
         public const string OathDeclareCaption = "Declare my loyalty";
         public const string OathDeclineCaption = "Pass on this loyalty declaration";
-        public const string StudyMemorizeCaption = "Memorize the layout · review";
-        public const string StudySneakCaption = "Sneak a peek at production notes · review";
+        // Captioned by what they do: the "· review" the cards wore explained nothing - the press
+        // opens the review under the pending tab, which the diary says itself (UI-UX-PASS-PLAN D0).
+        public const string StudyMemorizeCaption = "Memorize the layout";
+        public const string StudySneakCaption = "Sneak a peek at production notes";
         public const string StudyConfirmCaption = "Confirm study · use 1 social action";
         public const string StudyCancelCaption = "Back to diary (discard study)";
         public const string SimulateCompetitionCaption = "Simulate competition · weighted rules";
@@ -132,10 +134,15 @@ namespace Gamesim.Episode
         /// <para>Each says what it is for rather than what it is called, because the difference
         /// between them is the whole point: small talk is safe and slight, a secret is the largest
         /// swing in the game in either direction.</para>
+        ///
+        /// <para>"Build the bond" was "Spend real time with them", a petal the dial seated beside
+        /// "Spend time together" (Talk, the plain conversation the walks press): two commands under
+        /// indistinguishable captions. Renamed deliberately, with its tests (UI-UX-PASS-PLAN
+        /// decision 18); Talk's petal keeps its words.</para>
         /// </summary>
         public const string SmallTalkCaption = "Make small talk";
         public const string PersonalChatCaption = "Tell them something personal";
-        public const string RelationshipBuildingCaption = "Spend real time with them";
+        public const string RelationshipBuildingCaption = "Build the bond";
         public const string StrategicDiscussionCaption = "Talk tactics";
         public const string DiscussGameCaption = "Talk game openly";
         public const string ShareSecretCaption = "Trust them with a secret";
@@ -195,6 +202,8 @@ namespace Gamesim.Episode
         private Slider challengeMeter;
         private RectTransform modal;
         private ScrollRect modalScroll;
+        /// <summary>The status line this render built: the live one, which a name lookup after a rebuild does not find first.</summary>
+        private RectTransform statusRoot;
         private string preferredSelection, retainedImportPath = "";
         private string retainedSpeech = "", speechSession, speechSpeaker;
         /// <summary>The locked argument the speech editor was last filled from, so a draft the player cleared stays clear.</summary>
@@ -277,9 +286,10 @@ namespace Gamesim.Episode
             // open one keeps the one they did.
             if (!open || modal == null) litChoice = null;
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
+            MarkChromeChanged();
             challengeMeter = null; challengeCaption = null;
             modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
-            fitToContent = false; pinnedAction = null; pinnedNoteHeight = 0f; contentCap = 0f; nearbyCard = null; nearbyBar = null;
+            fitToContent = false; pinnedAction = null; pinnedNoteHeight = 0f; pinnedExtra = 0f; contentCap = 0f; nearbyCard = null; nearbyBar = null; statusRoot = null;
             ForgetStrategyStage();
             activityLayout = ActivityLayout.Standard; relationshipRoot = null;
             ResetColumns(); columnsRow = mainColumn = sideColumn = null; sideCard = null;
@@ -339,6 +349,7 @@ namespace Gamesim.Episode
             // was the widest thing in the frame. Never wider than the room between the controls on
             // either side, so the expanded help box still cannot reach it.
             var status = Chrome("Status",canvas.transform);
+            statusRoot = status;
             var statusBounds = ((RectTransform)canvas.transform).rect;
             // Never narrower than a caption: on a run's first frame the canvas can still be the raw
             // screen, and at 640 wide the room between the gutters came to -2 - the toast was built
@@ -385,6 +396,17 @@ namespace Gamesim.Episode
             var promptCaption = FixedText(promptRoot, InteractCaption, 12, Accent, Vector2.zero, new Vector2(10, 10));
             promptCaption.gameObject.SetActive(false);
             promptRoot.gameObject.SetActive(false);
+            // The prompt as last asked for, as the Nearby card is below: a render between the
+            // director's ticks left it down until the next one, so it blinked out for a frame on
+            // every render, and the map's chips placed in that frame were placed without it - a
+            // chip read under the prompt in a capture's frame (UI-UX-PASS-PLAN H0, the wave's first
+            // full run). Never under the gate: opening a panel renders before the tick clears it.
+            if (!string.IsNullOrEmpty(promptAsked) && director != null && !director.IsHouseUnderChrome)
+                SetPrompt(promptAsked, promptHintAsked);
+            // The Nearby card and its bar as last asked for, now that the status line they stand
+            // in for is built: a render between the director's ticks used to leave the new status
+            // over the bar until the next tick, and a frame is what a capture photographs.
+            ApplyNearby();
             content = null;
             if (!open && !recovery)
             {
@@ -1135,7 +1157,7 @@ namespace Gamesim.Episode
             if (PickerTag(target, text)) return;
             // A row carrying a trust reading has already spent its right-hand end on it: a tag
             // seated at the row's end sat on top of "Trust 9" (the Vent and rumour rows).
-            if (seat == TagSeat.RowEnd && readingRows.Contains(target)) seat = TagSeat.PastReading;
+            if (seat == TagSeat.RowEnd && readingRows.ContainsKey(target)) seat = TagSeat.PastReading;
             var chip = Panel("Tag",target.transform,new Color(Accent.r,Accent.g,Accent.b,.16f));
             // Wide enough for what is in it. A row-end tag was a fixed 104, which was right while it
             // held one word and wrong the moment a deal row started carrying its stakes as well as
@@ -1150,14 +1172,13 @@ namespace Gamesim.Episode
                 Anchor(chip,new Vector2(0,0),new Vector2(0,0),new Vector2(10f * FontScale,6f * FontScale),size);
             else
                 // Clear of whatever already owns the row's right-hand end, which is not the same for
-                // every row. A plain row spends it on the chevron Action() pins 18 wide at -16. A row
-                // fronted by a portrait spends it on the trust reading at -16 width 74 and, when the
-                // two are allied, an ALLY tag at -96 width 48 - which its own doc comment says out
-                // loud. A tag anchored at -12 sat on top of all of them: invisible while it held one
+                // every row. A plain row spends it on the chevron Action() pins 18 wide at -16. An
+                // annotated row spends it on the trust reading, the chevron it stands left of and,
+                // when the two are allied, an ALLY tag - the reserve Annotate recorded for the row.
+                // A tag anchored at -12 sat on top of all of them: invisible while it held one
                 // short word, plainly wrong once it held stakes AND odds. isTextOverflowing cannot
                 // see any of this, because nothing is clipped - the labels are simply in one place.
-                Anchor(chip,new Vector2(1,.5f),new Vector2(1,.5f),
-                    new Vector2(seat == TagSeat.PastReading ? -(96f + 48f + 10f) : -(16f + 18f + 8f),0f),size);
+                Anchor(chip,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-TagSeatX(target, seat),0f),size);
             chip.GetComponent<Image>().raycastTarget = false;
             var label = FixedText(chip,text,12,Accent,Vector2.zero,size);
             label.alignment = TextAlignmentOptions.Center;
@@ -1193,13 +1214,36 @@ namespace Gamesim.Episode
             }
         }
 
+        /// <summary>How far in from a row's right edge a tag seats: past the chevron, or past the reading, the chevron and any ALLY tag on an annotated row.</summary>
+        private float TagSeatX(Button target, TagSeat seat)
+        {
+            float rowEnd = 16f + 18f * FontScale + RowEndAir;
+            return seat == TagSeat.PastReading && readingRows.TryGetValue(target, out float reserve) ? reserve + 2f : rowEnd;
+        }
+
         /// <summary>The narrowest a row's caption may be left beside its tag, at the resting text size; narrower, the tag goes under it.</summary>
         public const float MinCaptionWidth = 200f;
         private const float TagUnderInset = 6f;
         /// <summary>The rows whose tag went under the caption, and the room it takes there; cleared with each rebuild.</summary>
         private readonly Dictionary<LayoutElement, float> tagUnder = new Dictionary<LayoutElement, float>();
-        /// <summary>The rows <see cref="Annotate"/> gave a trust reading; cleared with each rebuild.</summary>
-        private readonly HashSet<Button> readingRows = new HashSet<Button>();
+        /// <summary>
+        /// The rows <see cref="Annotate"/> gave a trust reading, and how much of each row's right-hand
+        /// end the reading, the chevron and any ALLY tag take between them; cleared with each rebuild.
+        /// </summary>
+        private readonly Dictionary<Button, float> readingRows = new Dictionary<Button, float>();
+
+        /// <summary>The name of the trust reading on an annotated row, so a test can find it beside the chevron.</summary>
+        public const string TrustReadingName = "Trust reading";
+
+        /// <summary>
+        /// The words of an annotated row's trust reading. The number is the player's own feeling
+        /// (<c>Score(player -> them)</c>), and the words say so: beside "Save Riley Johnson" a bare
+        /// "Trust -4" read as a forecast of the save (UI-UX-PASS-PLAN T0, sweep row 25).
+        /// </summary>
+        public static string TrustReading(double trust) => "Your trust " + trust.ToString("0");
+
+        /// <summary>The reading's box and the ALLY tag's beside it, at the resting text size, and the air between the row's end pieces.</summary>
+        private const float TrustReadingWidth = 112f, AllyTagWidth = 48f, RowEndAir = 8f;
 
         /// <summary>A petal's category: a small badge seated on the disc's lower rim.</summary>
         private void PetalTag(Button petal, string text)
@@ -1370,7 +1414,7 @@ namespace Gamesim.Episode
                 Anchor(bar, new Vector2(0, 1), new Vector2(0, 1), new Vector2(12f * s, -161f * s), new Vector2((width - 24f * s) * fill, 4f * s));
                 bar.GetComponent<Image>().raycastTarget = false;
             }
-            var reading = FixedText(rect, "Trust " + trust.ToString("0"), 11, UiTheme.Muted, new Vector2(8f * s, -167f * s), new Vector2(width - 16f * s, 14f * s));
+            var reading = FixedText(rect, TrustReading(trust), 11, UiTheme.Muted, new Vector2(8f * s, -167f * s), new Vector2(width - 16f * s, 15f * s));
             reading.alignment = TextAlignmentOptions.Center;
             return button;
         }
@@ -1429,7 +1473,32 @@ namespace Gamesim.Episode
             double trust = state.Score(state.playerId, contestantId);
             bool allied = state.Allied(state.playerId, contestantId);
             var rect = (RectTransform)button.transform;
-            float reserved = allied ? 150f : 96f;
+            float s = FontScale;
+            // The reading stands left of the row's chevron where the row has one - the plain row a
+            // houseguest without art gets, and every PairedActionFor row on such a copy. Both used
+            // to sit at -16, and the chevron drew over the digit: "Trust -N" on "Save Riley Johnson
+            // (HoH chooses replacement)" and "Trust 0" on "Propose a vote to keep Emma Brown"
+            // (phase-veto, conversation-grouped-promise; UI-UX-PASS-PLAN T0). A row fronted by a
+            // face has no chevron, and the reading keeps the end. The boxes are 1.3 times their type
+            // at either text size: Inter draws nothing in a box under 1.21 of it, and the old 22 for
+            // an 18 at the larger text was 1.22.
+            var chevron = rect.Find("Chevron") as RectTransform;
+            float readingRight = 16f + (chevron != null ? chevron.sizeDelta.x + RowEndAir : 0f);
+            float allyWidth = AllyTagWidth * s;
+            float box = Mathf.RoundToInt(15 * s) * 1.3f;
+            // The reading as wide as its own words, never wider than the widest there could be
+            // ("Your trust -100"): every row kept that widest, and beside a face and the ALLY tag a
+            // long caption at the larger text was left 227 of the 240 its words need ("Propose a
+            // vote to keep Jordan Taylor", a house of sixteen's campaign, the wave's UMA run).
+            string words = TrustReading(trust);
+            var reading = NewText(rect, words, 15,
+                // The same set as the portrait ring and the ALLY tag below.
+                trust > 5 ? UiTheme.Allied : trust < -5 ? UiTheme.Conflict : UiTheme.Muted);
+            reading.name = TrustReadingName;
+            reading.textWrappingMode = TextWrappingModes.NoWrap;
+            float readingWidth = Mathf.Min(TrustReadingWidth * s, Mathf.Ceil(reading.GetPreferredValues(words).x) + 4f);
+            float allyRight = readingRight + readingWidth + RowEndAir;
+            float reserved = (allied ? allyRight + allyWidth : readingRight + readingWidth) + RowEndAir;
 
             // The card's face carries what the house has done to this person: the ring reads the
             // player's own standing with them, the badge reads the role the week has given them.
@@ -1456,15 +1525,12 @@ namespace Gamesim.Episode
             if (allied)
             {
                 var tag = NewText(rect,"ALLY",14,UiTheme.Allied);
-                Anchor(tag.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-96f,0f),new Vector2(48,22));
+                Anchor(tag.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-allyRight,0f),new Vector2(allyWidth,box));
                 tag.alignment = TextAlignmentOptions.Right;
             }
 
-            readingRows.Add(button);
-            var reading = NewText(rect,"Trust " + trust.ToString("0"),15,
-                // The same set as the portrait ring and the ALLY tag above.
-                trust > 5 ? UiTheme.Allied : trust < -5 ? UiTheme.Conflict : UiTheme.Muted);
-            Anchor(reading.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-16f,0f),new Vector2(74,22));
+            readingRows[button] = reserved;
+            Anchor(reading.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-readingRight,0f),new Vector2(readingWidth,box));
             reading.alignment = TextAlignmentOptions.Right;
         }
 
@@ -1572,6 +1638,7 @@ namespace Gamesim.Episode
                 Destroy(child.gameObject);
             }
             FollowChip(name);
+            MarkChromeChanged();
         }
 
         private void FollowChip(string name)
@@ -1606,10 +1673,12 @@ namespace Gamesim.Episode
         /// </summary>
         public void SetPrompt(string value, string hint)
         {
+            promptAsked = value; promptHintAsked = hint;
             if (prompt == null) return;
             prompt.text = Localisation.Text(value);
             var root = (RectTransform)prompt.transform.parent;
-            root.gameObject.SetActive(!string.IsNullOrEmpty(value));
+            bool shown = !string.IsNullOrEmpty(value);
+            if (root.gameObject.activeSelf != shown) { root.gameObject.SetActive(shown); MarkChromeChanged(); }
             if (promptHint == null) return;
             bool hinted = !string.IsNullOrEmpty(value) && !string.IsNullOrEmpty(hint);
             if (hinted)
@@ -1627,9 +1696,11 @@ namespace Gamesim.Episode
         /// <summary>The prompt's hint line, so a test can find it.</summary>
         public const string PromptHintName = "Prompt hint";
         private TMP_Text promptHint;
+        /// <summary>What the director last asked the prompt to say, for a render to put back (Begin).</summary>
+        private string promptAsked, promptHintAsked;
         /// <summary>The prompt's height, and its height with a hint line under its words: the line's 22 and the same 6 of air under it.</summary>
         private const float PromptHeight = 52f, PromptHintedHeight = 74f;
-        public void SetVisible(bool value) { if(canvas!=null) canvas.gameObject.SetActive(value); }
+        public void SetVisible(bool value) { if(canvas!=null) canvas.gameObject.SetActive(value); MarkChromeChanged(); }
         public bool IsVisible => canvas != null && canvas.gameObject.activeSelf;
 
         /// <summary>
@@ -1649,6 +1720,7 @@ namespace Gamesim.Episode
             group.alpha = on ? 0f : 1f;
             group.blocksRaycasts = !on && interactive;
             IsCinematic = on;
+            MarkChromeChanged();
         }
 
         /// <summary>Whether the HUD is stepped aside for a cinematic.</summary>
@@ -1674,6 +1746,7 @@ namespace Gamesim.Episode
                 group.alpha = 0f; group.blocksRaycasts = false;
             }
             else { group.alpha = heldAlpha; group.blocksRaycasts = heldRaycasts; }
+            MarkChromeChanged();
         }
 
         /// <summary>Whether the chrome is stepped aside for a ceremony reveal.</summary>
@@ -1689,16 +1762,43 @@ namespace Gamesim.Episode
         /// </summary>
         public bool Covers(Vector2 screen)
         {
-            if (canvas == null || !canvas.gameObject.activeInHierarchy) return false;
-            var frame = ((RectTransform)canvas.transform).rect;
-            float whole = Mathf.Max(1f, frame.width * frame.height);
-            foreach (Transform child in canvas.transform)
-            {
-                if (!child.gameObject.activeInHierarchy || !(child is RectTransform rect)) continue;
-                var size = rect.rect.size;
-                if (size.x * size.y > whole * .6f) continue;
-                if (RectTransformUtility.RectangleContainsScreenPoint(rect, screen, null)) return true;
-            }
+            GatherChrome();
+            for (int i = 0; i < chromeRects.Count; i++)
+                if (chromeRects[i].Contains(screen)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Whether a piece of the chrome stands over any of a screen rect, in pixels: an icon over a
+        /// room with the name under it, a room's chip on the map, an endgame name chip. Half under a
+        /// card, a name reads as another name, so the house asks about the whole of a thing, not the
+        /// point it hangs from. With <paramref name="containers"/>, a panel the size of the frame
+        /// counts too. The shade under the top bar counts, as it always has for the icons.
+        /// </summary>
+        public bool CoversAny(Rect box, bool containers = false)
+        {
+            GatherChrome();
+            for (int i = 0; i < chromeRects.Count; i++)
+                if (chromeRects[i].Overlaps(box)) return true;
+            if (containers)
+                for (int i = 0; i < chromeContainers.Count; i++)
+                    if (chromeContainers[i].Overlaps(box)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Whether the chrome covers a houseguest's name plate, in pixels: every piece and every
+        /// panel, however much of the frame it takes - a plate behind the notebook's glass is behind
+        /// glass - but two. The shade under the top bar is a gradient fading to nothing, and
+        /// mockup-12 hangs the name of the one you are talking to just under the bar. And a
+        /// conversation's stage is a scrim the pair are seen through, not a card: there a plate
+        /// stands clear of the conversation's column and its dial instead (UI-UX-PASS-PLAN H0).
+        /// </summary>
+        public bool CoversPlate(Rect box)
+        {
+            GatherChrome();
+            for (int i = 0; i < plateChrome.Count; i++)
+                if (plateChrome[i].Overlaps(box)) return true;
             return false;
         }
 
@@ -1712,31 +1812,97 @@ namespace Gamesim.Episode
         public void ChromeOnScreen(List<Rect> into)
         {
             into.Clear();
+            GatherChrome();
+            into.AddRange(chromeRects);
+        }
+
+        /// <summary><see cref="GatherChrome"/>'s corners, asked for on every frame something stands clear of the chrome. Reused.</summary>
+        private readonly Vector3[] chromeCorners = new Vector3[4];
+
+        /// <summary>
+        /// The chrome's screen rects this frame: the pieces, the containers the size of the frame
+        /// apart from them, and what a name plate stands clear of (<see cref="CoversPlate"/>).
+        /// </summary>
+        private readonly List<Rect> chromeRects = new List<Rect>(), chromeContainers = new List<Rect>(), plateChrome = new List<Rect>();
+        private int chromeFrame = -1, chromeVersion, chromeSeen;
+
+        /// <summary>
+        /// Says the chrome changed under a reader this frame - a rebuild, a card shown or put away,
+        /// the HUD stepping aside - so the next <see cref="Covers"/> gathers it again.
+        /// </summary>
+        private void MarkChromeChanged() => chromeVersion++;
+
+        /// <summary>
+        /// The camera a screen point is measured against: none for the overlay the HUD is, the
+        /// canvas's own when something - a test capture - has turned it into a camera canvas. An
+        /// overlay's world corners are its screen pixels; through a camera they are metres in front
+        /// of the lens, and asked as pixels they covered nothing, so every icon and plate drew under
+        /// the cards in every frame photographed.
+        /// </summary>
+        private Camera UiCamera => canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+
+        /// <summary>
+        /// Collects the chrome's screen rects once a frame: every active child of the canvas, by its
+        /// world corners through the canvas's camera. All four corners, for a piece turned on its
+        /// canvas. Asked first whether this frame's are already gathered: the icons over the rooms
+        /// ask twice an icon a frame, and a next stop waiting for a clear spot up to fifty times
+        /// more. Gathered again when the chrome is marked changed, and empty while the HUD is off,
+        /// held for a reveal or stepped aside for a cinematic, since none of it is drawn then.
+        /// </summary>
+        private void GatherChrome()
+        {
+            if (chromeFrame == Time.frameCount && chromeSeen == chromeVersion) return;
+            chromeFrame = Time.frameCount; chromeSeen = chromeVersion;
+            chromeRects.Clear(); chromeContainers.Clear(); plateChrome.Clear();
             if (canvas == null || !canvas.gameObject.activeInHierarchy || revealHold) return;
-            var group = canvas.GetComponent<CanvasGroup>();
-            if (group != null && group.alpha <= .01f) return;
-            var frame = ((RectTransform)canvas.transform).rect;
+            if (canvas.TryGetComponent<CanvasGroup>(out var group) && group.alpha <= .01f) return;
+            var root = (RectTransform)canvas.transform;
+            var frame = root.rect;
             float whole = Mathf.Max(1f, frame.width * frame.height);
-            var corners = chromeCorners;
-            foreach (Transform child in canvas.transform)
+            var eye = UiCamera;
+            bool conversation = activityLayout == ActivityLayout.Conversation;
+            // By index: a foreach over a Transform makes an enumerator every time it is asked.
+            for (int i = 0; i < root.childCount; i++)
             {
+                var child = root.GetChild(i);
                 if (!child.gameObject.activeInHierarchy || !(child is RectTransform rect)) continue;
+                // Faded out by a group of its own, a piece draws nothing to stand clear of - unless
+                // it is arriving: a reveal starts at nothing, and the status line it brings in is
+                // chrome from its first frame, or every icon under it would blink up as it lands.
+                if (child.TryGetComponent<CanvasGroup>(out var own) && own.alpha <= .01f && !child.TryGetComponent<HudReveal>(out _)) continue;
                 var size = rect.rect.size;
                 // A holder with no size draws nothing to stand clear of.
-                if (size.x <= 0f || size.y <= 0f || size.x * size.y > whole * .6f) continue;
-                // An overlay canvas's world corners are its screen pixels; all four, for a piece
-                // turned on its canvas.
-                rect.GetWorldCorners(corners);
-                float left = Mathf.Min(Mathf.Min(corners[0].x, corners[1].x), Mathf.Min(corners[2].x, corners[3].x));
-                float right = Mathf.Max(Mathf.Max(corners[0].x, corners[1].x), Mathf.Max(corners[2].x, corners[3].x));
-                float bottom = Mathf.Min(Mathf.Min(corners[0].y, corners[1].y), Mathf.Min(corners[2].y, corners[3].y));
-                float top = Mathf.Max(Mathf.Max(corners[0].y, corners[1].y), Mathf.Max(corners[2].y, corners[3].y));
-                into.Add(Rect.MinMaxRect(left, bottom, right, top));
+                if (size.x <= 0f || size.y <= 0f) continue;
+                var box = ScreenBox(rect, eye);
+                (size.x * size.y > whole * .6f ? chromeContainers : chromeRects).Add(box);
+                // A plate's chrome is everything but two (CoversPlate): the shade under the top bar,
+                // a gradient fading to nothing, and a conversation's stage, a scrim the pair are seen
+                // through - whose column and dial stand in for it.
+                if (child.name == TopShadeName) continue;
+                if (conversation && rect == modal)
+                {
+                    if (conversationColumn != null && conversationColumn.gameObject.activeInHierarchy) plateChrome.Add(ScreenBox(conversationColumn, eye));
+                    if (dialRoot != null && dialRoot.gameObject.activeInHierarchy) plateChrome.Add(ScreenBox(dialRoot, eye));
+                    continue;
+                }
+                plateChrome.Add(box);
             }
         }
 
-        /// <summary><see cref="ChromeOnScreen"/>'s corners, asked for on every frame a stage runs. Reused.</summary>
-        private readonly Vector3[] chromeCorners = new Vector3[4];
+        /// <summary>A rect's screen rect, in pixels, through <paramref name="eye"/>; none for an overlay, whose world corners are its pixels.</summary>
+        private Rect ScreenBox(RectTransform rect, Camera eye)
+        {
+            var corners = chromeCorners;
+            rect.GetWorldCorners(corners);
+            float left = float.MaxValue, right = float.MinValue, bottom = float.MaxValue, top = float.MinValue;
+            for (int i = 0; i < 4; i++)
+            {
+                Vector2 at = eye == null ? (Vector2)corners[i] : RectTransformUtility.WorldToScreenPoint(eye, corners[i]);
+                left = Mathf.Min(left, at.x); right = Mathf.Max(right, at.x);
+                bottom = Mathf.Min(bottom, at.y); top = Mathf.Max(top, at.y);
+            }
+            return Rect.MinMaxRect(left, bottom, right, top);
+        }
 
         private void OnDestroy() { if(canvas!=null) Destroy(canvas.gameObject); }
 
@@ -1924,13 +2090,72 @@ namespace Gamesim.Episode
             content.anchoredPosition = position;
         }
 
+        /// <summary>
+        /// A button of a fixed size and place, in the kit's secondary chrome: the glass and the
+        /// resting edge the strategy footer's secondary slot wears (<see cref="PinnedSecondary"/>),
+        /// with no hover step. It was a panel in the Surface colour, which is the stage's own ground
+        /// to within a shade, so "Plan a backdoor" under the picker, "Show the briefing" on the
+        /// overview's card and the compact objective's travel rows were bare words with nothing to
+        /// press (UI-UX-PASS-PLAN T0, sweep row 32). A button that cannot be pressed dims its edge
+        /// with its glass (<see cref="EdgeWithGlass"/>): the Button's tint reaches its target
+        /// graphic, the glass, and nothing else.
+        ///
+        /// <para>No pack face of its own. The campaign's talk buttons wear Pack 8's talk face, which
+        /// carries its own edge, so they put this chrome's away (<see cref="WearFace"/>); the talk
+        /// buttons on free time's and the vote read's cards wear this chrome as it is. The caption is
+        /// unchanged: it is the control's name and the words a test and a screen reader find it by.</para>
+        /// </summary>
         private Button FixedButton(RectTransform parent,string caption,Vector2 position,Vector2 size,Action action)
         {
-            var rect=Panel(caption,parent,Surface); Anchor(rect,new Vector2(0,1),new Vector2(0,1),position,size);
+            var rect=Chrome(caption,parent);
+            Anchor(rect,new Vector2(0,1),new Vector2(0,1),position,size);
             var button = FinishButton(rect,caption,action);
             var label = button.GetComponentInChildren<TMP_Text>();
             AutoSize(label, 18);
+            var edge = rect.Find("Border") is Transform border ? border.GetComponent<Image>() : null;
+            if (edge != null)
+            {
+                var follow = rect.gameObject.AddComponent<EdgeWithGlass>();
+                follow.Button = button; follow.Edge = edge; follow.Resting = edge.color;
+            }
             return button;
+        }
+
+        /// <summary>
+        /// Frames a fixed button in a pack face that carries its own edge, and puts the chrome's
+        /// edge away, so the button has one edge rather than the face's under the chrome's.
+        /// </summary>
+        private void WearFace(Button button, string face, float border, Color fallback, Color edge)
+        {
+            if (button == null) return;
+            var rect = (RectTransform)button.transform;
+            EndScreenKit.Frame(rect, face, border, fallback, edge);
+            var chrome = rect.Find("Border");
+            if (chrome == null) return;
+            chrome.gameObject.SetActive(false);
+            Destroy(chrome.gameObject);
+        }
+
+        /// <summary>
+        /// Dims a fixed button's edge with its glass while the button cannot be pressed - set so, or
+        /// in a group that stands its controls down - by the Button's own disabled tint, and puts it
+        /// back when it can. Read on change only: nothing is written while the state holds.
+        /// </summary>
+        private sealed class EdgeWithGlass : MonoBehaviour
+        {
+            public Selectable Button;
+            public Image Edge;
+            public Color Resting;
+            private int shown = -1;
+
+            private void LateUpdate()
+            {
+                if (Button == null || Edge == null) return;
+                int now = Button.IsInteractable() ? 1 : 0;
+                if (now == shown) return;
+                shown = now;
+                Edge.color = now == 1 ? Resting : Resting * Button.colors.disabledColor;
+            }
         }
         private Button FinishButton(RectTransform rect,string caption,Action action,float leftInset = 16f,float rightInset = 16f)
         {

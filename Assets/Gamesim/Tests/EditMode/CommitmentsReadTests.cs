@@ -115,7 +115,7 @@ namespace Gamesim.Tests.EditMode
                 "Deals do not record who broke them: where the record cannot say, nobody is blamed.");
             var block = read.Single(c => c.id == "d-block");
             Assert.That((block.status, block.outcome, block.brokenById), Is.EqualTo((KnownBallots.Unresolved, CommitmentsRead.Outcomes.Unresolved, (string)null)),
-                "A voting block is settled by both ballots at once, and the other's is not the player's to know (decision 4).");
+                "A voting bloc is settled by both ballots at once, and the other's is not the player's to know (decision 4).");
         }
 
         /// <summary>
@@ -583,14 +583,14 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void AVotingBlockIsNeverWarnedAboutItIsDecidedByAPrivateBallot()
+        public void AVotingBlocIsNeverWarnedAboutItIsDecidedByAPrivateBallot()
         {
             var s = AtTheVote();
             var voter = EpisodeEngine.Voters(s).First(v => !v.isPlayer).id;
             Deal(s, "d-block", DealKind.VoteTogether, s.playerId, voter, expires: s.week);
             foreach (string target in s.nominees)
                 Assert.That(CommitmentsRead.WouldBreak(s, CommitmentsRead.Decision.Vote(target)), Is.Empty,
-                    "Whether a voting block holds turns on the partner's ballot, which the player cannot see before the reveal.");
+                    "Whether a voting bloc holds turns on the partner's ballot, which the player cannot see before the reveal.");
         }
 
         [Test]

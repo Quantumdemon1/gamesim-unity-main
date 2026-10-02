@@ -266,7 +266,7 @@ namespace Gamesim.Tests.PlayMode
                 "Continue episode", // Draw participants.
                 "Accessible alternative: steady 1-point bonus",
                 "Continue to the next ceremony",
-                "Save You (HoH chooses replacement)",
+                "Save yourself (HoH chooses replacement)", // The player holds the veto from the block (UI-UX-PASS-PLAN D0).
                 "Continue episode",
                 "Close campaigning and open voting",
                 "Continue episode" // Eviction night opens on the speeches; the house votes after them.

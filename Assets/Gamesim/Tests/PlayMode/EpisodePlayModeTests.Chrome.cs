@@ -84,6 +84,37 @@ namespace Gamesim.Tests.PlayMode
             "Ask what they have heard",
         };
 
+        /// <summary>
+        /// The two petals that spend time with somebody are told apart (UI-UX-PASS-PLAN decision
+        /// 18): "Spend time together" is the plain conversation the walks press and keeps its words;
+        /// the deeper one reads "Build the bond", once "Spend real time with them" - two commands
+        /// under indistinguishable captions. Each is on the dial exactly once.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Chrome_TheTwoSpendTimePetalsAreToldApart()
+        {
+            var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
+            yield return OpenNearbyNpc(maya);
+            var dial = ActiveRect(EpisodeHud.DialName);
+            Assert.That(dial, Is.Not.Null, "A conversation is drawn as a dial.");
+
+            Assert.That(EpisodeHud.RelationshipBuildingCaption, Is.EqualTo("Build the bond"));
+            var bond = ButtonWithCaption("Build the bond");
+            var together = ButtonWithCaption("Spend time together");
+            Assert.That(bond.transform.IsChildOf(dial), Is.True, "'Build the bond' is a petal,");
+            Assert.That(together.transform.IsChildOf(dial), Is.True, "and so is 'Spend time together',");
+            Assert.That(bond, Is.Not.SameAs(together), "two controls.");
+            Assert.That(ButtonWithCaptionOrNull("Spend real time with them"), Is.Null, "The old caption is nowhere.");
+            // Once each on the dial, by the suite's own rule for what carries a caption.
+            var petals = dial.GetComponentsInChildren<Button>().Where(button => button.IsActive()).ToList();
+            foreach (var caption in new[] { "Build the bond", "Spend time together" })
+                Assert.That(petals.Count(button => button.GetComponentsInChildren<TMP_Text>(true).Any(text => text.text == caption)), Is.EqualTo(1),
+                    "'" + caption + "' is on the dial once.");
+
+            director.ClosePanels();
+            yield return null;
+        }
+
         [UnityTest]
         public IEnumerator Chrome_ConversationDialSeatsSevenPetalsAndKeepsEveryCaption()
         {

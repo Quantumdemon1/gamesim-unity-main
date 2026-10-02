@@ -195,6 +195,53 @@ namespace Gamesim.Tests.EditMode
             Assert.That(EpisodeDirector.GoodbyeTone(state, "nobody"), Is.EqualTo(EpisodeDirector.GoodbyeKind.Neutral));
         }
 
+        /// <summary>
+        /// The goodbye's words are for where it is said (UI-UX-PASS-PLAN W0): the staged goodbye
+        /// plays its line as the evicted stand before the house, where "glares at you from the
+        /// doorway" was wrong by a room, and the walks play the doorway's words at the door. The
+        /// tone and the jury's suffix are the same at either moment.
+        /// </summary>
+        [Test]
+        public void TheGoodbyeStandingBeforeTheHouseNamesNoDoor()
+        {
+            var state = ContentCatalog.Create(5);
+            var named = state.contestants.Where(c => !c.isPlayer && c.name.Contains(" ")).ToList();
+            var leaving = named[0];
+            var other = named[1];
+            var hoh = named[2];
+            string first = leaving.name.Split(' ')[0];
+            const string after = " They'll be waiting in the jury house.";
+            leaving.status = ContestantStatus.Jury;
+            state.hohId = hoh.id;
+            state.nominees = new List<string> { leaving.id, other.id };
+            state.votes.Clear();
+            state.deals.Clear();
+            string Standing() => EpisodeDirector.GoodbyeLine(state, leaving.id, EpisodeDirector.GoodbyeMoment.Standing);
+            string AtTheDoor() => EpisodeDirector.GoodbyeLine(state, leaving.id, EpisodeDirector.GoodbyeMoment.Doorway);
+            void AssertWordedForTheMoment(string tone)
+            {
+                Assert.That(Standing(), Does.StartWith(first + " "), tone + ": the standing line names them.");
+                Assert.That(Standing(), Does.Not.Contain("door"), tone + ": standing before the house, nothing says door.");
+                Assert.That(AtTheDoor(), Is.EqualTo(EpisodeDirector.GoodbyeLine(state, leaving.id)), tone + ": the doorway's words are the line as it was.");
+                Assert.That(Standing(), Is.Not.EqualTo(AtTheDoor()), tone + ": the two moments read differently.");
+            }
+
+            Assert.That(Standing(), Is.EqualTo(first + " stands without a word." + after));
+            AssertWordedForTheMoment("Neutral");
+            state.hohId = state.playerId;
+            Assert.That(Standing(), Is.EqualTo(first + " stands and glares at you." + after));
+            AssertWordedForTheMoment("Cold");
+            state.hohId = hoh.id;
+            state.deals.Add(new DealState { id = "d", type = DealKind.FinalTwo, proposerId = leaving.id, recipientId = state.playerId,
+                status = DealStatus.Active, week = 1 });
+            Assert.That(Standing(), Is.EqualTo(first + " finds your eye before they go…" + after));
+            AssertWordedForTheMoment("Dealt");
+
+            leaving.status = ContestantStatus.Evicted;
+            Assert.That(Standing(), Is.EqualTo(first + " finds your eye before they go…"), "Somebody out before the jury is not waiting in the jury house.");
+            Assert.That(EpisodeDirector.GoodbyeLine(state, "nobody", EpisodeDirector.GoodbyeMoment.Standing), Is.Empty);
+        }
+
         private static EpisodeState Finale(int jurors, bool playerSecond)
         {
             var state = new EpisodeState { playerId = "p" };

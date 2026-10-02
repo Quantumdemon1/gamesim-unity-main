@@ -172,16 +172,24 @@ namespace Gamesim.Tests.PlayMode
         {
             var state = PartlyKnownReveal();
             Assert.That(EpisodeValidation.TryValidate(state, out var reason), Is.True, reason);
+            // The house's own clock must not write over the fixture: a tick after the load logs
+            // events of its own, and enough of them roll the reveal's lines off the log the sentinel
+            // reads, which is what a filtered run showed.
+            director.SuspendNpcAutonomyForDiagnostics();
             new EpisodeSaveStore(director.SavePath).Save(state);
             yield return ReloadEpisode();
+            director.SuspendNpcAutonomyForDiagnostics();
             yield return SkipReveals();
             director.ClosePanels();
             yield return null;
             var shown = director.Snapshot;
             int week = shown.week;
             var sheet = KnownBallots.Read(shown, week);
-            var unknown = PrivateBallots(shown).Where(b => !sheet.Knows(b.voterId)).ToList();
-            Assert.That(unknown, Is.Not.Empty, "A ballot the player cannot place, or the sentinel guards nothing.");
+            var privateLines = PrivateBallots(shown);
+            var unknown = privateLines.Where(b => !sheet.Knows(b.voterId)).ToList();
+            Assert.That(unknown, Is.Not.Empty, "A ballot the player cannot place, or the sentinel guards nothing: " + privateLines.Count
+                + " private lines in week " + week + " (the fixture had " + PrivateBallots(state).Count + "), " + sheet.Unknown + " unknown on the sheet, "
+                + shown.events.Count + " events on the log.");
             var known = sheet.ballots.Where(b => b.Known && b.voterId != shown.playerId).ToList();
             Assert.That(known, Is.Not.Empty, "A ballot the player can place.");
             var withheld = WithheldMemories(shown);

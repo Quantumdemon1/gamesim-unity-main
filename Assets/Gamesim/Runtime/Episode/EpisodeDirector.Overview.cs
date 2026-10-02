@@ -60,6 +60,7 @@ namespace Gamesim.Episode
         {
             if (!ShowOverview()) return false;
             briefingOpen = true;
+            if (roomLabels != null) roomLabels.Hidden = true;
             Render();
             return true;
         }
@@ -88,6 +89,10 @@ namespace Gamesim.Episode
             if (roomLabels == null) roomLabels = RoomLabels.Attach(gameObject);
             // Each chip is a way there: the overview is the house's map.
             roomLabels.Show(RoomMarkers(), largeText ? 1.2f : 1f, PressTravelBeacon, cameraRig.ViewCamera);
+            // Under the HUD's chrome a chip is down, and under the briefing every chip is
+            // (EpisodeDirector.HouseOverlays.cs): the map's words read through the panel's glass.
+            roomLabels.Covered = box => hud != null && hud.IsVisible && hud.CoversAny(box);
+            roomLabels.Hidden = IsHouseUnderChrome || briefingOpen;
             Render();
             return true;
         }

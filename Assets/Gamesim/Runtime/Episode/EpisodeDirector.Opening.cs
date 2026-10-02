@@ -139,10 +139,10 @@ namespace Gamesim.Episode
                 MotionInBatchmode = verification && stage,
                 Cast = state.Active.ToList(),
                 Seed = unchecked((int)state.seed),
-                ArrivalLine = state.events
+                ArrivalLine = InTheHousesWord(state.events
                     .Where(entry => entry.kind == "arrival")
                     .Select(entry => entry.text)
-                    .LastOrDefault(),
+                    .LastOrDefault()),
                 Introduce = IntroduceYourself,
                 Introduced = id => projected != null && EpisodeEngine.HasIntroduced(projected, id),
                 FrameGuest = FrameForIntroduction,
@@ -150,6 +150,26 @@ namespace Gamesim.Episode
                 Click = () => { if (audioBed != null) audioBed.PlayCue(HouseAudio.Cue.Button); },
                 SeasonNumber = SeasonNumberFor(state),
             };
+        }
+
+        /// <summary>
+        /// The arrival line in the house's own word. A built season writes "houseguests", as every
+        /// card of the opening says it; the shipped scenario's line says "housemates" and is frozen
+        /// by a replay witness (<c>SeasonBuilder.Arrival</c>), so the opening's card, the Recent
+        /// events card and the notebook's story read that one in the house's word rather than the
+        /// engine's. Presentation only: the event keeps its text.
+        /// </summary>
+        public static string InTheHousesWord(string line) =>
+            string.IsNullOrEmpty(line) ? line : line.Replace("housemates", "houseguests").Replace("Housemates", "Houseguests");
+
+        /// <summary>
+        /// A logged line as the player reads it in the house's lists: <see cref="StoryText.Log"/>'s
+        /// rendering, with the season's arrival line in the house's word (<see cref="InTheHousesWord"/>).
+        /// </summary>
+        public static string EventLine(EpisodeState state, EpisodeEvent entry)
+        {
+            string line = StoryText.Log(state, entry);
+            return entry != null && entry.kind == "arrival" ? InTheHousesWord(line) : line;
         }
 
         /// <summary>
@@ -315,6 +335,10 @@ namespace Gamesim.Episode
             };
             cameraRig.MoveTo(shot);
             openingFramedGuest = true;
+            introductionShot = shot;
+            introductionFocusFromHips = shot.Focus - HipsOf(body, HumanoidHips(body));
+            introductionHeadFromFocus = head - shot.Focus;
+            introductionFraming++;
             KeyLight(head, Quaternion.Euler(shot.Pitch, yaw, 0f), shot.Focus, shot.Distance);
             var visual = body.GetComponent<CharacterPresentation>();
             if (visual == null) return;
@@ -414,6 +438,7 @@ namespace Gamesim.Episode
         {
             var body = BodyFor(id);
             var visual = body != null ? body.GetComponent<CharacterPresentation>() : null;
+            if (body != null) StartCoroutine(HoldInFrame(body, introductionFraming));
             if (outcome == WebIntroductions.Outcome.Match && (visual == null || visual.IsSeated || !visual.CanAct(CharacterPresentation.BodyActivity.Dancing)))
             {
                 React(id, CharacterPresentation.Reaction.Cheered);
@@ -435,6 +460,93 @@ namespace Gamesim.Episode
             float waited = 0f;
             while (waited < IntroductionReaction && visual != null) { waited += Time.unscaledDeltaTime; yield return null; }
             if (visual != null) Set(visual, outcome, false);
+        }
+
+        /// <summary>The shot the introduction under way is framed on, where its focus stands from the body's hips and its head from the focus, and which framing it is - for the hold through the reaction.</summary>
+        private HouseCameraRig.Shot introductionShot;
+        private Vector3 introductionFocusFromHips, introductionHeadFromFocus;
+        private int introductionFraming;
+
+        /// <summary>How far inside the frame, as a share of its width and height, the hips must stay before the shot is re-aimed.</summary>
+        private const float HoldInFrameMargin = 0.1f;
+
+        /// <summary>How far clear of the introductions' column, as a share of the frame's width, the hips are kept; and the furthest across the frame that bound reaches, short of where the shot frames them.</summary>
+        private const float HoldClearOfTheCard = 0.05f, HoldLeftmost = 0.6f;
+
+        /// <summary>How far the body must have moved from where the shot is aimed, in metres, before it is re-aimed: a dance's sway is not a walk out of the frame.</summary>
+        private const float HoldInFrameStep = 0.2f;
+
+        /// <summary>
+        /// Holds the houseguest in the shot through their reaction. The shot is framed on where the
+        /// body stands, and a take can carry the body away from there - a dance entered past its
+        /// wind-up starts wherever its hips are then - so the shot held on an empty corner and a
+        /// lamp (UI-UX-PASS-PLAN S0, sweep-show 24). Whenever the hips leave the part of the frame
+        /// the card leaves clear - right of the introductions' column, inside the frame's margins -
+        /// and have moved from where the shot is aimed, the shot is re-aimed to keep its focus where
+        /// it stood from them and the key light with it, at most twice a second, until the reaction
+        /// is over or the next houseguest is framed. The hips rather than the root: where a body is
+        /// drawn, not where the house stands it.
+        /// </summary>
+        private IEnumerator HoldInFrame(Transform body, int framing)
+        {
+            if (body == null || cameraRig == null) yield break;
+            var hips = HumanoidHips(body);
+            float until = Time.realtimeSinceStartup + IntroductionReaction + 0.5f, nextAim = 0f;
+            while (Time.realtimeSinceStartup < until && body != null && framing == introductionFraming && opening != null && opening.IsMeeting)
+            {
+                var camera = cameraRig.ViewCamera;
+                if (camera != null && Time.realtimeSinceStartup >= nextAim)
+                {
+                    var at = HipsOf(body, hips);
+                    var seen = FrameShare(camera, at);
+                    // At 4:3 and the larger text the card reaches nearly half way across the frame,
+                    // and a body behind it is not seen; on a frame the card all but covers, the bound
+                    // stops short of where the shot puts the hips, so it never chases them.
+                    var reach = opening.IntroductionsReach;
+                    float left = reach.HasValue ? Mathf.Clamp(reach.Value + HoldClearOfTheCard, HoldInFrameMargin, HoldLeftmost) : HoldInFrameMargin;
+                    bool inside = seen.HasValue
+                        && seen.Value.x > left && seen.Value.x < 1f - HoldInFrameMargin
+                        && seen.Value.y > HoldInFrameMargin && seen.Value.y < 1f - HoldInFrameMargin;
+                    var focus = at + introductionFocusFromHips;
+                    if (!inside && (focus - introductionShot.Focus).magnitude > HoldInFrameStep)
+                    {
+                        var shot = introductionShot;
+                        shot.Focus = focus;
+                        shot.Seconds = 0.3f;
+                        introductionShot = shot;
+                        cameraRig.MoveTo(shot);
+                        // The key light goes with the shot: left where the framing put it, it lit the
+                        // spot the body had walked out of.
+                        KeyLight(focus + introductionHeadFromFocus, Quaternion.Euler(shot.Pitch, shot.Yaw, 0f), shot.Focus, shot.Distance);
+                        nextAim = Time.realtimeSinceStartup + 0.5f;
+                    }
+                }
+                yield return null;
+            }
+        }
+
+        /// <summary>A body's Humanoid hips, or null for a body with no active Humanoid rig.</summary>
+        private static Transform HumanoidHips(Transform body)
+        {
+            var animator = body != null ? body.GetComponentsInChildren<Animator>().FirstOrDefault(rig => rig.isHuman && rig.isActiveAndEnabled) : null;
+            return animator != null ? animator.GetBoneTransform(HumanBodyBones.Hips) : null;
+        }
+
+        /// <summary>Where a body stands as drawn: its hips, or hip height over its root for a body with no Humanoid rig.</summary>
+        private static Vector3 HipsOf(Transform body, Transform hips) => hips != null ? hips.position : body.position + Vector3.up * 0.95f;
+
+        /// <summary>
+        /// Where a point lands in the frame the camera draws, as a share of its width and height from
+        /// the bottom-left, through the projection the frame is drawn with - the rig's blended lens
+        /// is a hand-set matrix a screen-point call would ignore. Null behind the lens.
+        /// </summary>
+        private static Vector2? FrameShare(Camera camera, Vector3 world)
+        {
+            var view = camera.worldToCameraMatrix.MultiplyPoint(world);
+            if (view.z >= 0f) return null;
+            var clip = camera.projectionMatrix * new Vector4(view.x, view.y, view.z, 1f);
+            if (Mathf.Abs(clip.w) < 1e-6f) return null;
+            return new Vector2((clip.x / clip.w + 1f) * 0.5f, (clip.y / clip.w + 1f) * 0.5f);
         }
 
         private static void Set(CharacterPresentation visual, WebIntroductions.Outcome outcome, bool on)
@@ -475,22 +587,26 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// The labels as the opening and the ceremonies between them want them: down while either
-        /// has them down. Kept apart so a ceremony's card coming down never brings the plates back
-        /// under the opening, or the other way round. The houseguests' flags are set every time, so
-        /// a body the house takes back mid-card is down with the rest.
+        /// The labels as the opening, the ceremonies between them and the chrome want them: down
+        /// while any has them down. Kept apart so a ceremony's card coming down never brings the
+        /// plates back under the opening, or the other way round, or a board's going brings them
+        /// up under a card. The houseguests' flags are set every time, so a body the house takes
+        /// back mid-card is down with the rest.
         /// </summary>
         private void ApplyPlates()
         {
-            bool suppressed = openingPlatesDown || ceremonyPlatesDown;
-            if (player != null && discSuppressed != suppressed)
+            // The player's disc goes down for the show and never for the chrome: under the briefing
+            // it is the map's "you are here", not a name read through glass.
+            bool forTheShow = openingPlatesDown || ceremonyPlatesDown;
+            bool suppressed = forTheShow || chromePlatesDown;
+            if (player != null && discSuppressed != forTheShow)
             {
-                discSuppressed = suppressed;
+                discSuppressed = forTheShow;
                 foreach (var part in player.GetComponentsInChildren<Transform>(true))
                     if (part.name == PlayerMarkerName)
                     {
                         var disc = part.GetComponent<Renderer>();
-                        if (disc != null) disc.enabled = !suppressed;
+                        if (disc != null) disc.enabled = !forTheShow;
                     }
             }
             if (housemates == null) return;

@@ -11,6 +11,36 @@ namespace Gamesim.Tests.PlayMode
     public sealed partial class EpisodePlayModeTests
     {
         /// <summary>
+        /// The study options are captioned by what they do (UI-UX-PASS-PLAN D0, the play sweep's
+        /// row 36): "Memorize the layout" and "Sneak a peek at production notes", without the
+        /// "· review" the cards wore - the press opens the review under the pending tab, which the
+        /// diary says itself, and the suffix explained nothing. Both are live cards in free time.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Diary_TheStudyOptionsAreCaptionedByWhatTheyDo()
+        {
+            yield return InstallDiaryFixture(state => state.phase == Gamesim.Simulation.EpisodePhase.Social
+                && state.pendingDiary == null
+                && state.Find(state.playerId).status == Gamesim.Simulation.ContestantStatus.Active
+                && Gamesim.Simulation.EpisodeEngine.SocialActionsSpent(state) < Gamesim.Simulation.EpisodeEngine.SocialActionBudget(state),
+                "free time with an action to study with");
+            yield return OpenDiaryFixturePanel();
+            Canvas.ForceUpdateCanvases();
+            Assert.That(EpisodeHud.StudyMemorizeCaption, Is.EqualTo("Memorize the layout"));
+            Assert.That(EpisodeHud.StudySneakCaption, Is.EqualTo("Sneak a peek at production notes"));
+            foreach (var caption in new[] { "Memorize the layout", "Sneak a peek at production notes" })
+            {
+                var card = ButtonWithCaption(caption);
+                Assert.That(card.IsInteractable(), Is.True, caption + " is a live card.");
+                Assert.That(card.GetComponentsInChildren<TMPro.TMP_Text>(true).Select(text => text.text).Any(text => text.Contains("review")), Is.False,
+                    caption + " carries no review suffix.");
+            }
+            Assert.That(ButtonWithCaptionOrNull("Memorize the layout · review"), Is.Null, "The old caption is nowhere.");
+            director.ClosePanels();
+            yield return null;
+        }
+
+        /// <summary>
         /// The diary's own page (mockup-11): a column down the right-hand side of the frame, with
         /// the room's name and "Confessional Options" in its head rather than the week's phase
         /// band, the things to do here as cards - a glyph, the caption, what it means - and the
@@ -56,14 +86,16 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(column.Overlaps(ScreenRect(chrome)), Is.False, "The column covers '" + name + "'.");
             }
             // The chair is captioned with what the player has to talk about: their own latest
-            // memory, under their name, clear of the column and the chrome around it.
+            // memory, as they read it (a nomination names its Head of Household, MemoryWords.Said),
+            // under their name, clear of the column and the chrome around it.
             var state = director.Snapshot;
             var latest = state.memories.LastOrDefault(memory => memory.ownerId == state.playerId);
             Assert.That(latest, Is.Not.Null, "The fixture should give the player a memory.");
             {
                 var caption = ActiveRect(EpisodeHud.ConfessionalName);
                 Assert.That(caption, Is.Not.Null, "The chair has its caption.");
-                Assert.That(caption.GetComponentsInChildren<TMPro.TMP_Text>().Select(text => text.text), Does.Contain(latest.text));
+                Assert.That(caption.GetComponentsInChildren<TMPro.TMP_Text>().Select(text => text.text),
+                    Does.Contain(Gamesim.Simulation.MemoryWords.Said(state, latest)));
                 foreach (var chrome in new[] { ActiveRect("Episode panel"), ActiveRect(CastRail.RootName), ActiveRect(IconRail.RootName) })
                     Assert.That(ScreenRect(caption).Overlaps(ScreenRect(chrome)), Is.False, "The caption covers '" + chrome.name + "'.");
             }

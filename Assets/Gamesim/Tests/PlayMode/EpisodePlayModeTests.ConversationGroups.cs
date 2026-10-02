@@ -524,6 +524,9 @@ namespace Gamesim.Tests.PlayMode
                 string where = "The campaign in a house of 16" + (larger ? " at the larger text" : "");
                 AssertConversationFits(larger, where);
                 AssertTagsHaveRoom(where);
+                // The vote deals' rows ("Propose a vote to keep ...") carry the player's own reading,
+                // said so, clear of the chevron (UI-UX-PASS-PLAN T0).
+                AssertReadingsClearOfChevrons(where, true);
                 foreach (string verb in new[] { EpisodeDirector.PromiseToEvictPickerCaption, EpisodeDirector.TargetDealPickerCaption })
                 {
                     yield return PressRow(verb);
@@ -532,6 +535,7 @@ namespace Gamesim.Tests.PlayMode
                     AssertConversationFits(larger, open);
                     AssertTagsHaveRoom(open);
                     AssertPickerFits(verb, open);
+                    AssertReadingsClearOfChevrons(open, true);
                     Assert.That(PickerShows(verb, EpisodeHud.PickerAllyName), Is.True, open + ": the nominee in a pact with the player shows it on their foot.");
                     if (verb == EpisodeDirector.PromiseToEvictPickerCaption)
                         yield return CaptureConversation(larger ? "conversation-grouped-promise-large" : "conversation-grouped-promise", open, verb);

@@ -112,7 +112,11 @@ namespace Gamesim.Tests.PlayMode
                 }
                 AssertEveryLabelDraws(LastActive(EpisodeHud.FinalistColumnsName), "The juror's cases (" + (larger ? "larger" : "resting") + " text)");
                 Assert.That(LastActive(EpisodeHud.JurorMattersName), Is.Not.Null, "What matters to you.");
-                Assert.That(words, Does.Not.Contain("Trust "), "No trust number on the vote.");
+                // Whichever words a reading wears - "Trust N" on a card, "Your trust N" on a row - and
+                // only a reading: a finalist's quoted speech may well say "trust".
+                Assert.That(words, Does.Not.Match("(?i)\\btrust -?[0-9]"), "No trust number on the vote.");
+                Assert.That(panel.GetComponentsInChildren<TMP_Text>().Any(label => label.name == EpisodeHud.TrustReadingName), Is.False,
+                    "No trust reading on the vote.");
 
                 foreach (string body in bodies)
                     Assert.That(words, Does.Not.Contain(body), "The speeches wait behind their disclosure.");

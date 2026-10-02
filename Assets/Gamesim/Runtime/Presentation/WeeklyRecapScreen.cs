@@ -47,8 +47,8 @@ namespace Gamesim.Presentation
         /// <summary>The tabs. None of them is a way on: each shows a part of the week, and commits nothing.</summary>
         public static readonly string[] TabCaptions = { "Week overview", YourWeekCaption, "Vote breakdown", "Events & highlights", "Houseguest reactions", "What's next" };
 
-        /// <summary>The parts a test finds by name.</summary>
-        public const string HeroName = "Week hero", CardsName = "Week headlines", TabBodyName = "Week tab";
+        /// <summary>The parts a test finds by name: the head pinned over the scroll with the title in it, the hero, the cards and the open tab's body.</summary>
+        public const string HeadName = "Week head", TitleName = "Title", HeroName = "Week hero", CardsName = "Week headlines", TabBodyName = "Week tab";
 
         /// <summary>The Your week tab's parts, by name: the week in a line, its cards (the empty week's included), and a judged line's row.</summary>
         public const string YourWeekLineName = "Your week line", ReadsName = "Reads and claims", WordName = "Deals and promises",
@@ -74,6 +74,31 @@ namespace Gamesim.Presentation
         private Action onDismiss;
         private int openWeek;
         private bool browsing;
+
+        /// <summary>
+        /// The frame the week was last laid out for. A canvas takes a new shape a frame after its
+        /// cause - the larger text's scaler catching up with the preference, a capture's 16:9
+        /// target over the batch canvas's 4:3 - and a card sized to the old one stood past the
+        /// screen at the larger text, its title off the top and its Continue off the foot
+        /// (weekly-recap-overview-large; UI-UX-PASS-PLAN T0). So while the week is open its frame
+        /// is read every LateUpdate, as the cast screen reads its own, and a new one lays the week
+        /// out again: a canvas's own change of size need not reach this component to be seen.
+        /// </summary>
+        private Vector2 builtFor;
+
+        private void LateUpdate()
+        {
+            if (!IsOpen || shown == null) return;
+            var room = Room();
+            if (Mathf.Abs(room.x - builtFor.x) <= 2f && Mathf.Abs(room.y - builtFor.y) <= 2f) return;
+            var events = EventSystem.current;
+            var held = events != null && events.currentSelectedGameObject != null ? events.currentSelectedGameObject.name : null;
+            Rebuild();
+            if (events == null || held == null) return;
+            // The same control by name, where the keyboard was: the one just built, never the copy on its way out.
+            var again = GetComponentsInChildren<Selectable>().LastOrDefault(control => control.gameObject.activeInHierarchy && control.name == held);
+            if (again != null) events.SetSelectedGameObject(again.gameObject);
+        }
 
         /// <summary>Which week is on screen, so a caller can tell a recap from a review.</summary>
         public int OpenWeek => openWeek;
@@ -207,9 +232,13 @@ namespace Gamesim.Presentation
             var recap = WeeklyRecap.Build(shown, openWeek);
             var mine = YourWeek.Build(shown, openWeek);
             var room = Room();
+            builtFor = room;
             float cardWidth = Mathf.Clamp(room.x - 72f, 860f, 1560f);
             Width = cardWidth - 40f;
             const float footer = 84f;
+            // The eyebrow and the title, pinned at the card's head outside the scroll: only the
+            // body scrolls, and the title stays in view whichever tab is open and however far down.
+            const float head = Pad + 22f + TitleBox + 2f;
 
             // The house dimmed behind the week rather than blacked out, and the week on a glass
             // card, as the mockups set every summary over the room it is about.
@@ -234,12 +263,20 @@ namespace Gamesim.Presentation
             foot.anchoredPosition = new Vector2(0f, 6f);
             Controls(foot, recap);
 
+            var top = new GameObject(HeadName, typeof(RectTransform)).GetComponent<RectTransform>();
+            top.SetParent(card, false);
+            top.anchorMin = top.anchorMax = new Vector2(0.5f, 1f);
+            top.pivot = new Vector2(0.5f, 1f);
+            top.sizeDelta = new Vector2(Width, head);
+            top.anchoredPosition = Vector2.zero;
+            Head(top, recap, Width - Pad * 2f);
+
             viewport = HudPrimitives.Fill("Viewport", card, new Color(0f, 0f, 0f, 0f), 1);
             viewport.anchorMin = new Vector2(0.5f, 0f);
             viewport.anchorMax = new Vector2(0.5f, 1f);
             viewport.pivot = new Vector2(0.5f, 1f);
-            viewport.sizeDelta = new Vector2(Width, -(footer + 16f));
-            viewport.anchoredPosition = new Vector2(0f, -6f);
+            viewport.sizeDelta = new Vector2(Width, -(head + footer + 10f));
+            viewport.anchoredPosition = new Vector2(0f, -head);
             viewport.gameObject.AddComponent<RectMask2D>();
             viewport.GetComponent<Image>().raycastTarget = true;
 
@@ -257,9 +294,9 @@ namespace Gamesim.Presentation
             scroll.movementType = ScrollRect.MovementType.Clamped;
             scroll.scrollSensitivity = 40f;
 
-            cursor = Pad;
+            cursor = 6f;
             float inner = Width - Pad * 2f;
-            Title(recap, inner);
+            Headline(recap, inner);
             Hero(recap, inner);
             HeadlineCards(recap, inner);
             Tabs(inner);
@@ -281,7 +318,7 @@ namespace Gamesim.Presentation
 
             // The card as tall as the week it holds, up to the screen: a short week drew its
             // Continue half-way down a card whose lower half was empty glass.
-            float height = Mathf.Min(room.y - 64f, cursor + footer + 24f);
+            float height = Mathf.Min(room.y - 64f, cursor + head + footer + 24f);
             card.sizeDelta = new Vector2(cardWidth, height);
         }
 
@@ -317,18 +354,25 @@ namespace Gamesim.Presentation
 
         // ---------------------------------------------------------------- the head of the week
 
-        private void Title(WeeklyRecap.Week recap, float inner)
+        /// <summary>The title's box: 1.3 times its 40 points, the least Inter is sure to draw a line in.</summary>
+        private const float TitleBox = 52f;
+
+        /// <summary>The eyebrow and the title, in the head pinned over the scroll.</summary>
+        private void Head(RectTransform top, WeeklyRecap.Week recap, float inner)
         {
-            var eyebrow = EndScreenKit.Text("Eyebrow", content, browsing ? "LOOKING BACK  ·  WEEK " + recap.week : "WEEK " + recap.week + "  ·  RECAP",
-                13f, UiTheme.Heading, Pad, cursor, inner, 20f, TextAlignmentOptions.Center, UiTheme.Weight.SemiBold);
+            var eyebrow = EndScreenKit.Text("Eyebrow", top, browsing ? "LOOKING BACK  ·  WEEK " + recap.week : "WEEK " + recap.week + "  ·  RECAP",
+                13f, UiTheme.Heading, Pad, Pad, inner, 20f, TextAlignmentOptions.Center, UiTheme.Weight.SemiBold);
             eyebrow.characterSpacing = 4f;
-            cursor += 22f;
-            var title = EndScreenKit.Text("Title", content, "WEEK " + recap.week + " RECAP", 40f, Color.white, Pad, cursor, inner, 50f,
+            var title = EndScreenKit.Text(TitleName, top, "WEEK " + recap.week + " RECAP", 40f, Color.white, Pad, Pad + 22f, inner, TitleBox,
                 TextAlignmentOptions.Center, UiTheme.Weight.Bold);
             title.characterSpacing = 3f;
             title.enableVertexGradient = true;
             title.colorGradient = new VertexGradient(UiTheme.Glow, UiTheme.Glow, UiTheme.Heading, UiTheme.Heading);
-            cursor += 52f;
+        }
+
+        /// <summary>The week's headline sentence, the first row of the body.</summary>
+        private void Headline(WeeklyRecap.Week recap, float inner)
+        {
             var headline = EndScreenKit.Text("Headline", content, recap.Headline, 18f, UiTheme.Paper, Pad, cursor, inner, 26f, TextAlignmentOptions.Center);
             cursor += EndScreenKit.Wrapped(headline, inner) + 18f;
         }

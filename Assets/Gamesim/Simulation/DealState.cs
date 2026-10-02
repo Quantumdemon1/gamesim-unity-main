@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Gamesim.Simulation
 {
@@ -93,14 +94,19 @@ namespace Gamesim.Simulation
             }
         }
 
-        /// <summary>The title the reference shows, used for the log line a deal writes.</summary>
+        /// <summary>
+        /// The title the reference shows, used for the log line a deal writes - and, lowered, for
+        /// the caption that proposes one ("Propose a voting bloc"). One departure from the
+        /// reference's spelling: its "Voting Block" is a voting bloc (UI-UX-PASS-PLAN D0, the play
+        /// sweep's row 31); <see cref="Titles"/> keeps the old spelling for the lines written under it.
+        /// </summary>
         public static string Title(string type)
         {
             switch (type)
             {
                 case TargetAgreement: return "Target Agreement";
                 case SafetyAgreement: return "Safety Pact";
-                case VoteTogether: return "Voting Block";
+                case VoteTogether: return "Voting Bloc";
                 case VoteSave: return "Vote to Save";
                 case VoteEvict: return "Vote to Evict";
                 case VetoUse: return "Veto Commitment";
@@ -109,6 +115,19 @@ namespace Gamesim.Simulation
                 case AllianceInvite: return "Alliance Invitation";
                 default: return "Partnership";
             }
+        }
+
+        /// <summary>
+        /// Every spelling a deal's title has been written under, the current one first. A line of
+        /// record - a ledger entry, a memory - is matched by rebuilding the engine's own sentence
+        /// from the title (<see cref="YourWeek.ReadDeal"/>, <see cref="KnownBallots.TellsAnUnknownBallot"/>),
+        /// so a reader tries each spelling: a season that settled a "voting block" before the word
+        /// was corrected still reads as what it was.
+        /// </summary>
+        public static IEnumerable<string> Titles(string type)
+        {
+            yield return Title(type);
+            if (type == VoteTogether) yield return "Voting Block";
         }
     }
 

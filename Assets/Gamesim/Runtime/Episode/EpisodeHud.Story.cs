@@ -267,7 +267,9 @@ namespace Gamesim.Episode
             else { pullKey = null; pullAccept = null; pullDecline = null; }
             if (pullCard.gameObject.activeSelf == visible) return;
             pullCard.gameObject.SetActive(visible);
-            if (visible && nearbyCard != null && nearbyCard.gameObject.activeSelf) SetNearby(false);
+            MarkChromeChanged();
+            // The Nearby card gives way as asked for, not forgotten: it comes back when the Pull goes.
+            if (nearbyCard != null) ApplyNearby();
             SyncWeekCard();
             // The ring is wired from what is on screen, so a card that comes and goes between
             // renders has to ask for it: every new control is on the ring (plan §5.6).
@@ -286,6 +288,7 @@ namespace Gamesim.Episode
             if (week == null) return;
             bool borrowed = (pullCard != null && pullCard.gameObject.activeSelf) || (nearbyCard != null && nearbyCard.gameObject.activeSelf);
             week.gameObject.SetActive(!borrowed);
+            MarkChromeChanged();
         }
     }
 }

@@ -28,8 +28,9 @@ namespace Gamesim.Presentation
     /// the runner-up, the five Game Sense cards, then the final standings, the jury's ballots and the
     /// season week by week side by side, and the career under them - the result at a glance on the
     /// first screen (<c>SeasonReport.Dashboard.cs</c>). The detail follows in the same scroll: the
-    /// champion's road, the player's own season, Game Sense's moments and misses, and the house
-    /// table with its sort and filter chips. Three tabs under the title jump the scroll to each part;
+    /// champion's road, the player's own season, Game Sense's moments and misses, how the house
+    /// voted - every eviction ballot, sealed until the finale (<c>SeasonReport.Ballots.cs</c>) - and
+    /// the house table with its sort and filter chips. Three tabs under the title jump the scroll to each part;
     /// they hide nothing, so every line of the season stays on the page to be read.</para>
     ///
     /// <para>Every way on stays on the card while the season scrolls - a new season, the notebook,
@@ -397,6 +398,8 @@ namespace Gamesim.Presentation
             WinnersJourney(state);
             YourJourney(state);
             GameSenseSection(state);
+            // Every eviction ballot, once the season is over (decision 8; SeasonReport.Ballots.cs).
+            HouseBallots(state, portrait);
             sectionTops[2] = cursor + 8f;
             Cast(state, portrait);
 

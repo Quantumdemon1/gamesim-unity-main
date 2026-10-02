@@ -151,8 +151,8 @@ namespace Gamesim.Simulation
             else if (type == DealKind.FinalTwo || type == DealKind.VetoUse || type == DealKind.AllianceInvite) chance -= 10;
 
             chance += (ThreatAssessment.TrustScore(state, state.playerId, npcId) - ThreatAssessment.NeutralTrust) * 0.2;
-            chance -= BrokenDealPenalty * state.deals.Count(d => d.status == DealStatus.Broken
-                && (d.proposerId == state.playerId || d.recipientId == state.playerId));
+            // The deals held against the player: under the commitment rules the ones they broke (C0, X3).
+            chance -= BrokenDealPenalty * NpcDeals.BrokenDeals(state, state.playerId);
 
             bool allied = state.Allied(npcId, state.playerId);
             if (allied)
@@ -268,8 +268,8 @@ namespace Gamesim.Simulation
             double relationship = state.Score(npcId, state.playerId);
             bool nominated = !state.evictionResolved && state.nominees.Contains(npcId);
             bool allied = state.Allied(npcId, state.playerId);
-            int broken = state.deals.Count(d => d.status == DealStatus.Broken
-                && (d.proposerId == state.playerId || d.recipientId == state.playerId));
+            // "I've heard you've broken deals" says it only of deals the player broke, under the commitment rules (C0, X3).
+            int broken = NpcDeals.BrokenDeals(state, state.playerId);
 
             if (accepted)
             {

@@ -147,8 +147,10 @@ namespace Gamesim.Episode
                     about => Commit(state, EpisodeCommandKind.SpreadLie, npc.id, about));
                 if (!window)
                 {
+                    // Told to the person in front of you (R0, X7): the engine reaches them under the
+                    // commitment rules, and before those rules it drew a listener as it always did.
                     PersonPicker(npc, WhisperPickerCaption, Category(EpisodeCommandKind.SpreadRumor), others, about => EpisodeHud.WhisperCaption(about.name),
-                        about => Commit(state, EpisodeCommandKind.SpreadRumor, about, text: EpisodeEngine.WhisperCampaign));
+                        about => Commit(state, EpisodeCommandKind.SpreadRumor, about, npc.id, text: EpisodeEngine.WhisperCampaign));
                     PersonPicker(npc, CalloutPickerCaption, Category(EpisodeCommandKind.SpreadRumor), others, about => EpisodeHud.CalloutCaption(about.name),
                         about => Commit(state, EpisodeCommandKind.SpreadRumor, about, text: EpisodeEngine.PublicCallout));
                     hud.Tag(hud.Action("Work against them quietly", () => Commit(state, EpisodeCommandKind.SchemeAgainst, npc.id)),

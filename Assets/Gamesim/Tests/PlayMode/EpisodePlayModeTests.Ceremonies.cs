@@ -32,7 +32,7 @@ namespace Gamesim.Tests.PlayMode
                 // Nomination and eviction are narrated by their own overlays and asserted below;
                 // they stay in this map because it is also the set of beats the loop looks for.
                 { CeremonySting.NominationKind, "NOMINATION CEREMONY" },
-                { CeremonySting.VetoKind, "VETO CEREMONY" },
+                { CeremonySting.VetoKind, "VETO MEETING" },
                 { CeremonySting.EvictionKind, "EVICTION" },
             };
             var outstanding = new HashSet<string>(expected.Keys);
@@ -151,6 +151,10 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(group.alpha, Is.GreaterThan(0.5f),
                         "The card should be visible at this point, not faded out.");
                     AssertCardCoversNoChrome(sting);
+                    // Announced once (UI-UX-PASS-PLAN V0): the status line under the strip and the
+                    // meeting's card said the same sentence a third time.
+                    if (committed.kind == CeremonySting.VetoKind)
+                        Assert.That(LastActive("Status"), Is.Null, "The status line stands down while the strip says the meeting.");
                 }
 
                 yield return CaptureCeremony(committed.kind);
@@ -304,40 +308,23 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// Renders the set plus every overlay — HUD and card together — into an image.
-        /// <see cref="ScreenCapture"/> returns black in batchmode, so the canvases are pointed at a
-        /// camera with a render target instead, and put back afterwards.
+        /// <see cref="ScreenCapture"/> returns black in batchmode, so the frame is drawn through the
+        /// capture's lens instead (<see cref="CaptureLens"/>: the set through the view camera into a
+        /// render target, the overlays over it), and everything is put back afterwards.
         /// </summary>
         private IEnumerator CaptureCeremony(string kind)
         {
             if (!Application.isBatchMode) yield break;
 
             const int width = 1600, height = 900;
-            var camera = cameraRig.ViewCamera;
-            var overlays = Object.FindObjectsByType<Canvas>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
-                .Where(canvas => canvas.renderMode == RenderMode.ScreenSpaceOverlay)
-                .ToArray();
-
-            var texture = new RenderTexture(width, height, 24);
-            var readback = new Texture2D(width, height, TextureFormat.RGB24, false);
-            var previousTarget = camera.targetTexture;
-            var previousActive = RenderTexture.active;
+            var lens = new CaptureLens(cameraRig.ViewCamera, width, height);
+            Texture2D readback = null;
             try
             {
-                foreach (var canvas in overlays)
-                {
-                    canvas.renderMode = RenderMode.ScreenSpaceCamera;
-                    canvas.worldCamera = camera;
-                    canvas.planeDistance = Mathf.Max(camera.nearClipPlane + 0.1f, 1f);
-                }
-
-                camera.targetTexture = texture;
                 Canvas.ForceUpdateCanvases();
                 yield return null;
-                camera.Render();
-
-                RenderTexture.active = texture;
-                readback.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-                readback.Apply();
+                yield return lens.MakeSureTheCanvasesAreDrawn();
+                readback = lens.Read();
 
                 var path = System.IO.Path.GetFullPath(System.IO.Path.Combine(
                     Application.dataPath, "..", "ceremony-" + kind + "-in-episode.png"));
@@ -346,12 +333,8 @@ namespace Gamesim.Tests.PlayMode
             }
             finally
             {
-                RenderTexture.active = previousActive;
-                camera.targetTexture = previousTarget;
-                foreach (var canvas in overlays) canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                Object.Destroy(readback);
-                texture.Release();
-                Object.Destroy(texture);
+                lens.Dispose();
+                if (readback != null) Object.Destroy(readback);
             }
         }
     }

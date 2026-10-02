@@ -360,6 +360,12 @@ namespace Gamesim.Tests.PlayMode
 
         private IEnumerator ReloadEpisode()
         {
+            // The outgoing director's clock must not commit while the scene changes: a fixture just
+            // written to its save path is the season this reload is for, and an NPC tick committed
+            // during the load saved the outgoing season over it, so a fresh default season came
+            // back instead (a rules-4 install read rules 1, a finale fixture another session; the
+            // second half of wave A's UMA run). The incoming director's clock is its own.
+            if (director != null) director.SuspendNpcAutonomyForDiagnostics();
             // The expectations go in the order the logs arrive, because that is the order LogAssert
             // matches them in. Each pass over the logs offers every unhandled log to the expectation
             // at the head of the queue only, and a new pass runs only when a new log arrives. The
@@ -701,7 +707,7 @@ namespace Gamesim.Tests.PlayMode
                         caption = before.phase == EpisodePhase.Jury ? "Vote for " + before.Find(next.targetId).name + " to win"
                             : "Vote to evict " + before.Find(next.targetId).name; break;
                     case EpisodeCommandKind.SubmitEvictionSpeech: caption = EpisodeHud.EvictionSpeechSkipCaption; break;
-                    case EpisodeCommandKind.FinalEvict: caption = "Evict " + before.Find(next.targetId).name; break;
+                    case EpisodeCommandKind.FinalEvict: caption = FinalChoiceWords.CaptionToEvict(before, next.targetId); break;
                     case EpisodeCommandKind.AnswerJury:
                         var exchange = before.juryExchanges[before.juryQuestionIndex];
                         caption = exchange.finalistId == before.playerId

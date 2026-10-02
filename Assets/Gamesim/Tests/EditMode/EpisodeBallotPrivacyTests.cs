@@ -75,8 +75,20 @@ namespace Gamesim.Tests.EditMode
             Assert.That(after.memories.Count, Is.GreaterThan(pending.memories.Count));
             var revealEvents = after.events.Where(entry => entry.sequence >= pending.nextSequence).ToArray();
             Assert.That(revealEvents.Count(entry => entry.kind == "promise-outcome"), Is.EqualTo(1));
+            // A vote promise's outcome is the promiser's ballot: the line goes to the promiser alone.
+            Assert.That(revealEvents.Single(entry => entry.kind == "promise-outcome").audienceIds, Is.EqualTo(new[] { pending.playerId }));
             Assert.That(revealEvents.Count(entry => entry.kind == "eviction"), Is.EqualTo(1));
             Assert.That(revealEvents.Count(entry => entry.kind == "vote-reveal"), Is.EqualTo(3));
+            // The reveal reads the count to the house on the eviction line's tail and each ballot to
+            // its voter alone; it logs no line of its own (the story mints its ids from the sequence).
+            var gone = revealEvents.Single(entry => entry.kind == "eviction");
+            Assert.That(gone.audienceIds, Is.Empty);
+            Assert.That(gone.text, Does.EndWith(" the jury. By a vote of 2 to 1.").Or.EndWith(" the jury. By a vote of 3 to 0."));
+            Assert.That(revealEvents.Any(entry => entry.kind == "vote-tally"), Is.False);
+            foreach (var line in revealEvents.Where(entry => entry.kind == "vote-reveal"))
+                Assert.That(after.votes.Any(vote => line.audienceIds.SequenceEqual(new[] { vote.voterId })), Is.True, line.text);
+            Assert.That(revealEvents.Single(entry => entry.kind == "vote-reveal" && entry.audienceIds.Contains(pending.playerId)).text,
+                Does.StartWith(after.Find(after.playerId).name + " voted to evict "), "The player's own line, in its own words, to them.");
             Assert.That(engine.Apply(reveal).duplicate, Is.True);
             AssertJsonEqual(after,engine.Snapshot);
             Apply(engine,EpisodeCommandKind.Advance); // The reveal-to-social transition cannot replay effects.

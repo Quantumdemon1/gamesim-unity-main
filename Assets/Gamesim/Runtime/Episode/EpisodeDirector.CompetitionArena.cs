@@ -137,15 +137,19 @@ namespace Gamesim.Episode
             label.color=state.phase==EpisodePhase.Veto?UiTheme.Award:UiTheme.Gold;
             // Lifted clear of whatever stands between the deck and the words: at 2.7 m the centre
             // gate's neon ran through them, and lifted over the gate alone they ran through the
-            // entrance arch's lintel, half a metre higher and half a metre nearer. Measured from
-            // the laid-out text - all its lines - so the lowest line's foot stands over the top.
+            // entrance arch's lintel, 0.65 m higher than the gate's head and 0.2 m nearer. Measured
+            // from the laid-out text - all its lines - so the lowest line's foot stands over the top.
             label.ForceMeshUpdate();
             var laid=label.textBounds;
             bool measured=label.textInfo.characterCount>0 && laid.size.y>0f && laid.size.y<10f;
             float foot=measured ? -laid.min.y : 1f;
             float halfWidth=measured && laid.size.x>0f ? laid.size.x*.5f : 3f;
             float signZ=bounds.max.z-.4f;
-            sign.transform.position=new Vector3(bounds.center.x,CompetitionSignLineTop(bounds,signZ,halfWidth)+CompetitionSignClearance+foot,signZ);
+            // Never higher than a hand's breadth of sky over the wall behind it: whatever is left
+            // standing on the back of the deck must not send the award into the dark over the yard.
+            float lowest=Mathf.Min(CompetitionSignLineTop(bounds,signZ,halfWidth)+CompetitionSignClearance,
+                bounds.max.y+CompetitionBackdropHeight+CompetitionSignOverWall);
+            sign.transform.position=new Vector3(bounds.center.x,lowest+foot,signZ);
             competitionSign=label; competitionOverlaysShown=true;
             TickCompetitionArena(); return competitionArenaStaging;
         }
@@ -162,14 +166,24 @@ namespace Gamesim.Episode
         /// <summary>How far the sign's lowest line stands over the top of what stands between the deck and it.</summary>
         public const float CompetitionSignClearance=.25f;
 
+        /// <summary>The backdrop's authored height over the deck (bb_set_comp_backdrop.py's HEIGHT).</summary>
+        public const float CompetitionBackdropHeight=3f;
+
+        /// <summary>
+        /// The highest the sign's lowest line stands over the backdrop's top. The arch puts it at
+        /// 0.5 m over the wall; a cap of 2 m lets the set grow without letting a stray prop send the
+        /// sign off the top of the competition shot.
+        /// </summary>
+        public const float CompetitionSignOverWall=2f;
+
         /// <summary>
         /// The top of whatever stands between the deck and the sign's words: the course's centre
-        /// gate, and the yard's entrance arch over it, whose lintel is half a metre taller than the
-        /// gate's head and half a metre nearer the deck - the sign stood clear of the gate and ran
-        /// straight through the lintel (the show sweep's row 26). Every renderer on the back half
-        /// of the deck, in front of the sign and under the words' width counts, up to a lamp's
+        /// gate, and the yard's entrance arch over it, whose lintel stands 0.65 m over the gate's
+        /// head (3.25 m to its top) and 0.2 m nearer the deck - the sign stood clear of the gate and
+        /// ran straight through the lintel (the show sweep's row 26). Every renderer on the back
+        /// half of the deck, in front of the sign and under the words' width counts, up to a lamp's
         /// height; never the arena's own; and a gate's authored height over the deck at least, for
-        /// a yard dressed without the course.
+        /// a yard dressed without the course. Capped by the caller (<see cref="CompetitionSignOverWall"/>).
         /// </summary>
         private float CompetitionSignLineTop(Bounds deck,float signZ,float halfWidth)
         {

@@ -191,6 +191,11 @@ namespace Gamesim.Tests.PlayMode
                 "Every line of the sign stands clear of what is in front of it: the words' foot at " + foot.ToString("0.00")
                 + ", the top of the " + tallest.renderer.name + " at " + obstacle.ToString("0.00")
                 + ", the gate's at " + gateTop.ToString("0.00") + ".");
+            // And never off into the dark over the yard: at most a set height over the wall behind it.
+            float cap = deck.max.y + EpisodeDirector.CompetitionBackdropHeight + EpisodeDirector.CompetitionSignOverWall;
+            Assert.That(foot, Is.LessThanOrEqualTo(cap + .01f),
+                "The sign's lowest line stands no more than " + EpisodeDirector.CompetitionSignOverWall + " m over the "
+                + EpisodeDirector.CompetitionBackdropHeight + " m wall: its foot at " + foot.ToString("0.00") + ", the cap at " + cap.ToString("0.00") + ".");
 
             if (Application.isBatchMode)
             {

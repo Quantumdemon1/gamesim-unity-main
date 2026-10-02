@@ -506,6 +506,8 @@ namespace Gamesim.Episode
         /// </summary>
         private bool ChipCovered(Rect box)
         {
+            // Given the chrome as rects, the chip is one test.
+            if (coveredBox != null) return coveredBox(box);
             if (covered == null) return false;
             int spans = Mathf.Max(2, Mathf.CeilToInt(box.width / Mathf.Max(1f, box.height)));
             for (int x = 0; x <= spans; x++)
@@ -520,6 +522,8 @@ namespace Gamesim.Episode
         private string stationRoom, playerRoom;
         private System.Func<string, Vector3> where;
         private System.Func<Vector2, bool> covered;
+        /// <summary>The chrome asked about a whole screen rect at once, when the caller has it so; preferred over the points.</summary>
+        private System.Func<Rect, bool> coveredBox;
         private System.Func<string, int> occupants;
         private string nextStop;
 
@@ -567,13 +571,16 @@ namespace Gamesim.Episode
         /// LateUpdate, after the camera has moved: placed any earlier, every icon trails the view
         /// by a frame and swims whenever it pans. <paramref name="where"/> says where a room's icon
         /// floats over the floor; the room the player is standing in is left out, unless there is
-        /// something in it to open.
+        /// something in it to open. The chrome is asked about points (<paramref name="underChrome"/>),
+        /// or - when the caller can say it so - about whole screen rects (<paramref name="underChromeBox"/>),
+        /// which makes an icon's square and the room's name under it one question each.
         /// </summary>
         public void Request(bool visible, HouseCameraRig camera, float textScale, string screenRoom, bool isCompetition,
-            string standingIn, System.Func<string, Vector3> anchor, System.Func<Vector2, bool> underChrome = null)
+            string standingIn, System.Func<string, Vector3> anchor, System.Func<Vector2, bool> underChrome = null,
+            System.Func<Rect, bool> underChromeBox = null)
         {
             wanted = visible; rig = camera; scale = textScale; stationRoom = screenRoom; competition = isCompetition;
-            playerRoom = standingIn; where = anchor; covered = underChrome;
+            playerRoom = standingIn; where = anchor; covered = underChrome; coveredBox = underChromeBox;
             if (!visible) Hide();
         }
 
@@ -718,7 +725,7 @@ namespace Gamesim.Episode
         }
 
         /// <summary>How far under an icon's middle the room's name reaches, in screen pixels; the margin where there is no name.</summary>
-        private float TagDepth(Beacon beacon, float scalePixels)
+        private static float TagDepth(Beacon beacon, float scalePixels)
         {
             if (beacon.roomName == null) return (Side * .5f + 6f) * scalePixels;
             var tag = (RectTransform)beacon.roomName.transform;
@@ -727,24 +734,35 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// Whether the chrome covers any of an icon drawn with its middle at <paramref name="point"/>:
-        /// the square round it, and the room's name under it, along its top and bottom edges at
-        /// points no further apart than the name is tall, so a narrow piece of chrome cannot slip
-        /// between them. A name half under a card read as another room's (the play sweep's row 10).
+        /// the square round it, and the room's name under it. A name half under a card read as
+        /// another room's (the play sweep's row 10). Asked as two rects when the chrome can be;
+        /// otherwise as points along the name's top and bottom edges no further apart than it is
+        /// tall, so a narrow piece of chrome cannot slip between them.
         /// </summary>
         private bool IconCovered(Beacon beacon, Vector2 point, float margin, float scalePixels)
         {
+            if (coveredBox != null)
+                return coveredBox(new Rect(point.x - margin, point.y - margin, 2f * margin, 2f * margin))
+                    || (beacon.roomName != null && coveredBox(TagRect(beacon, point, scalePixels)));
             if (Covered(point, margin)) return true;
             if (covered == null || beacon.roomName == null) return false;
-            var tag = (RectTransform)beacon.roomName.transform;
-            float width = tag.sizeDelta.x * scalePixels, height = tag.sizeDelta.y * scalePixels;
-            float top = point.y - (Side * .5f - tag.anchoredPosition.y) * scalePixels, bottom = top - height;
-            int spans = Mathf.Max(2, Mathf.CeilToInt(width / Mathf.Max(1f, height)));
+            var tag = TagRect(beacon, point, scalePixels);
+            int spans = Mathf.Max(2, Mathf.CeilToInt(tag.width / Mathf.Max(1f, tag.height)));
             for (int x = 0; x <= spans; x++)
             {
-                float at = point.x - width * .5f + width * x / spans;
-                if (covered(new Vector2(at, top)) || covered(new Vector2(at, bottom))) return true;
+                float at = tag.xMin + tag.width * x / spans;
+                if (covered(new Vector2(at, tag.yMax)) || covered(new Vector2(at, tag.yMin))) return true;
             }
             return false;
+        }
+
+        /// <summary>The room's name under an icon drawn with its middle at <paramref name="point"/>, in screen pixels.</summary>
+        private static Rect TagRect(Beacon beacon, Vector2 point, float scalePixels)
+        {
+            var tag = (RectTransform)beacon.roomName.transform;
+            float width = tag.sizeDelta.x * scalePixels, height = tag.sizeDelta.y * scalePixels;
+            float top = point.y - (Side * .5f - tag.anchoredPosition.y) * scalePixels;
+            return new Rect(point.x - width * .5f, top - height, width, height);
         }
     }
 }

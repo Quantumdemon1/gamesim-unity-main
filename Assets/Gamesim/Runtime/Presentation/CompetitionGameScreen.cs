@@ -75,6 +75,14 @@ namespace Gamesim.Presentation
         private void OnDestroy() { live.Remove(this); }
 
         /// <summary>
+        /// Forgets every board at play's start. The list is static, and the editor can start play
+        /// without reloading the domain: a board left in it from the last session must hold nothing
+        /// in this one (a destroyed one already reads as gone, but a list that only grows is a leak).
+        /// </summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ForgetBoards() => live.Clear();
+
+        /// <summary>
         /// A sound the screen's own beats ask for - the count, the start, the last seconds, a wave -
         /// played by whoever owns the house's audio. Only existing cues: every cue needs a recording.
         /// </summary>

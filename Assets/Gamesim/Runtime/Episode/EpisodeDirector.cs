@@ -514,8 +514,10 @@ namespace Gamesim.Episode
         /// </summary>
         public void Interact()
         {
-            // Under the briefing the prompt says nothing, so the key does nothing: one decision.
-            if (!IsReady || IsPanelOpen || IsBriefing) return;
+            // The prompt says nothing under the house's gate - a panel, the briefing, a board, a
+            // ceremony card (EpisodeDirector.HouseOverlays.cs) - so the key does nothing there either:
+            // one decision, read in one place.
+            if (!IsReady || IsHouseUnderChrome) return;
             // Busy at a piece of furniture, E is getting up, before it is anything else.
             if (IsPlayerHouseActivityActive && playerActivityInHouse) { FinishPlayerHouseActivity(); return; }
             switch (ChooseInteraction(out var target))

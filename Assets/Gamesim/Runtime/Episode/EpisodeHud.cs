@@ -1709,26 +1709,42 @@ namespace Gamesim.Episode
         public bool Covers(Vector2 screen)
         {
             GatherChrome();
-            foreach (var piece in chromeRects)
-                if (piece.Contains(screen)) return true;
+            for (int i = 0; i < chromeRects.Count; i++)
+                if (chromeRects[i].Contains(screen)) return true;
             return false;
         }
 
         /// <summary>
-        /// Whether a piece of the chrome stands over any of a screen rect, in pixels: a name plate,
-        /// a room's chip, an icon with the name under it. Half under a card, a name reads as another
-        /// name, so the house asks about the whole of a thing, not the point it hangs from. With
-        /// <paramref name="containers"/>, a panel the size of the frame counts too: a plate behind
-        /// the notebook's glass is behind glass, however much of the frame the glass is.
+        /// Whether a piece of the chrome stands over any of a screen rect, in pixels: an icon over a
+        /// room with the name under it, a room's chip on the map, an endgame name chip. Half under a
+        /// card, a name reads as another name, so the house asks about the whole of a thing, not the
+        /// point it hangs from. With <paramref name="containers"/>, a panel the size of the frame
+        /// counts too. The shade under the top bar counts, as it always has for the icons.
         /// </summary>
         public bool CoversAny(Rect box, bool containers = false)
         {
             GatherChrome();
-            foreach (var piece in chromeRects)
-                if (piece.Overlaps(box)) return true;
+            for (int i = 0; i < chromeRects.Count; i++)
+                if (chromeRects[i].Overlaps(box)) return true;
             if (containers)
-                foreach (var piece in chromeContainers)
-                    if (piece.Overlaps(box)) return true;
+                for (int i = 0; i < chromeContainers.Count; i++)
+                    if (chromeContainers[i].Overlaps(box)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Whether the chrome covers a houseguest's name plate, in pixels: every piece and every
+        /// panel, however much of the frame it takes - a plate behind the notebook's glass is behind
+        /// glass - but two. The shade under the top bar is a gradient fading to nothing, and
+        /// mockup-12 hangs the name of the one you are talking to just under the bar. And a
+        /// conversation's stage is a scrim the pair are seen through, not a card: there a plate
+        /// stands clear of the conversation's column and its dial instead (UI-UX-PASS-PLAN H0).
+        /// </summary>
+        public bool CoversPlate(Rect box)
+        {
+            GatherChrome();
+            for (int i = 0; i < plateChrome.Count; i++)
+                if (plateChrome[i].Overlaps(box)) return true;
             return false;
         }
 
@@ -1749,9 +1765,12 @@ namespace Gamesim.Episode
         /// <summary><see cref="GatherChrome"/>'s corners, asked for on every frame something stands clear of the chrome. Reused.</summary>
         private readonly Vector3[] chromeCorners = new Vector3[4];
 
-        /// <summary>The chrome's screen rects this frame: the pieces, and apart from them the containers the size of the frame.</summary>
-        private readonly List<Rect> chromeRects = new List<Rect>(), chromeContainers = new List<Rect>();
-        private int chromeFrame = -1, chromeVersion, chromeSeen, chromeActive = -1;
+        /// <summary>
+        /// The chrome's screen rects this frame: the pieces, the containers the size of the frame
+        /// apart from them, and what a name plate stands clear of (<see cref="CoversPlate"/>).
+        /// </summary>
+        private readonly List<Rect> chromeRects = new List<Rect>(), chromeContainers = new List<Rect>(), plateChrome = new List<Rect>();
+        private int chromeFrame = -1, chromeVersion, chromeSeen;
 
         /// <summary>
         /// Says the chrome changed under a reader this frame - a rebuild, a card shown or put away,
@@ -1771,43 +1790,64 @@ namespace Gamesim.Episode
         /// <summary>
         /// Collects the chrome's screen rects once a frame: every active child of the canvas, by its
         /// world corners through the canvas's camera. All four corners, for a piece turned on its
-        /// canvas. Gathered again when the chrome is marked changed or the count of active children
-        /// moved, and empty while the HUD is off, held for a reveal or stepped aside for a cinematic,
-        /// since none of it is drawn then.
+        /// canvas. Asked first whether this frame's are already gathered: the icons over the rooms
+        /// ask twice an icon a frame, and a next stop waiting for a clear spot up to fifty times
+        /// more. Gathered again when the chrome is marked changed, and empty while the HUD is off,
+        /// held for a reveal or stepped aside for a cinematic, since none of it is drawn then.
         /// </summary>
         private void GatherChrome()
         {
-            int active = 0;
-            bool up = canvas != null && canvas.gameObject.activeInHierarchy;
-            if (up) foreach (Transform child in canvas.transform) if (child.gameObject.activeSelf) active++;
-            if (chromeFrame == Time.frameCount && chromeSeen == chromeVersion && chromeActive == active) return;
-            chromeFrame = Time.frameCount; chromeSeen = chromeVersion; chromeActive = active;
-            chromeRects.Clear(); chromeContainers.Clear();
-            if (!up || revealHold) return;
-            var group = canvas.GetComponent<CanvasGroup>();
-            if (group != null && group.alpha <= .01f) return;
-            var frame = ((RectTransform)canvas.transform).rect;
+            if (chromeFrame == Time.frameCount && chromeSeen == chromeVersion) return;
+            chromeFrame = Time.frameCount; chromeSeen = chromeVersion;
+            chromeRects.Clear(); chromeContainers.Clear(); plateChrome.Clear();
+            if (canvas == null || !canvas.gameObject.activeInHierarchy || revealHold) return;
+            if (canvas.TryGetComponent<CanvasGroup>(out var group) && group.alpha <= .01f) return;
+            var root = (RectTransform)canvas.transform;
+            var frame = root.rect;
             float whole = Mathf.Max(1f, frame.width * frame.height);
             var eye = UiCamera;
-            var corners = chromeCorners;
-            foreach (Transform child in canvas.transform)
+            bool conversation = activityLayout == ActivityLayout.Conversation;
+            // By index: a foreach over a Transform makes an enumerator every time it is asked.
+            for (int i = 0; i < root.childCount; i++)
             {
+                var child = root.GetChild(i);
                 if (!child.gameObject.activeInHierarchy || !(child is RectTransform rect)) continue;
+                // Faded out by a group of its own, a piece draws nothing to stand clear of - unless
+                // it is arriving: a reveal starts at nothing, and the status line it brings in is
+                // chrome from its first frame, or every icon under it would blink up as it lands.
+                if (child.TryGetComponent<CanvasGroup>(out var own) && own.alpha <= .01f && !child.TryGetComponent<HudReveal>(out _)) continue;
                 var size = rect.rect.size;
-                // A holder with no size draws nothing to stand clear of; nor does the shade under
-                // the top bar, a gradient fading to nothing - the bar's chips are the chrome there,
-                // and a plate under the shade's foot is over the house, as mockup-12 keeps it.
-                if (size.x <= 0f || size.y <= 0f || child.name == TopShadeName) continue;
-                rect.GetWorldCorners(corners);
-                float left = float.MaxValue, right = float.MinValue, bottom = float.MaxValue, top = float.MinValue;
-                for (int i = 0; i < 4; i++)
+                // A holder with no size draws nothing to stand clear of.
+                if (size.x <= 0f || size.y <= 0f) continue;
+                var box = ScreenBox(rect, eye);
+                (size.x * size.y > whole * .6f ? chromeContainers : chromeRects).Add(box);
+                // A plate's chrome is everything but two (CoversPlate): the shade under the top bar,
+                // a gradient fading to nothing, and a conversation's stage, a scrim the pair are seen
+                // through - whose column and dial stand in for it.
+                if (child.name == TopShadeName) continue;
+                if (conversation && rect == modal)
                 {
-                    Vector2 at = eye == null ? (Vector2)corners[i] : RectTransformUtility.WorldToScreenPoint(eye, corners[i]);
-                    left = Mathf.Min(left, at.x); right = Mathf.Max(right, at.x);
-                    bottom = Mathf.Min(bottom, at.y); top = Mathf.Max(top, at.y);
+                    if (conversationColumn != null && conversationColumn.gameObject.activeInHierarchy) plateChrome.Add(ScreenBox(conversationColumn, eye));
+                    if (dialRoot != null && dialRoot.gameObject.activeInHierarchy) plateChrome.Add(ScreenBox(dialRoot, eye));
+                    continue;
                 }
-                (size.x * size.y > whole * .6f ? chromeContainers : chromeRects).Add(Rect.MinMaxRect(left, bottom, right, top));
+                plateChrome.Add(box);
             }
+        }
+
+        /// <summary>A rect's screen rect, in pixels, through <paramref name="eye"/>; none for an overlay, whose world corners are its pixels.</summary>
+        private Rect ScreenBox(RectTransform rect, Camera eye)
+        {
+            var corners = chromeCorners;
+            rect.GetWorldCorners(corners);
+            float left = float.MaxValue, right = float.MinValue, bottom = float.MaxValue, top = float.MinValue;
+            for (int i = 0; i < 4; i++)
+            {
+                Vector2 at = eye == null ? (Vector2)corners[i] : RectTransformUtility.WorldToScreenPoint(eye, corners[i]);
+                left = Mathf.Min(left, at.x); right = Mathf.Max(right, at.x);
+                bottom = Mathf.Min(bottom, at.y); top = Mathf.Max(top, at.y);
+            }
+            return Rect.MinMaxRect(left, bottom, right, top);
         }
 
         private void OnDestroy() { if(canvas!=null) Destroy(canvas.gameObject); }

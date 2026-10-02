@@ -483,15 +483,18 @@ namespace Gamesim.Episode
         /// </summary>
         private void ApplyPlates()
         {
-            bool suppressed = openingPlatesDown || ceremonyPlatesDown || chromePlatesDown;
-            if (player != null && discSuppressed != suppressed)
+            // The player's disc goes down for the show and never for the chrome: under the briefing
+            // it is the map's "you are here", not a name read through glass.
+            bool forTheShow = openingPlatesDown || ceremonyPlatesDown;
+            bool suppressed = forTheShow || chromePlatesDown;
+            if (player != null && discSuppressed != forTheShow)
             {
-                discSuppressed = suppressed;
+                discSuppressed = forTheShow;
                 foreach (var part in player.GetComponentsInChildren<Transform>(true))
                     if (part.name == PlayerMarkerName)
                     {
                         var disc = part.GetComponent<Renderer>();
-                        if (disc != null) disc.enabled = !suppressed;
+                        if (disc != null) disc.enabled = !forTheShow;
                     }
             }
             if (housemates == null) return;

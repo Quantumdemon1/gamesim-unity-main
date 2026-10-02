@@ -511,30 +511,11 @@ namespace Gamesim.Episode
             }
         }
 
-        /// <summary>The standing legend: a dot and a word for allied, neutral and hostile, in the web's own colours.</summary>
-        public void StandingLegend()
-        {
-            if (content == null) return;
-            float s = FontScale;
-            var row = new GameObject("Standing legend", typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
-            row.SetParent(content, false);
-            var element = row.GetComponent<LayoutElement>();
-            element.minHeight = element.preferredHeight = 20f * s;
-            float x = 0f;
-            foreach (var kind in new[] { RelationshipWeb.Kind.Alliance, RelationshipWeb.Kind.Neutral, RelationshipWeb.Kind.Rivalry })
-            {
-                var colour = kind == RelationshipWeb.Kind.Neutral ? UiTheme.Muted : RelationshipWeb.StandingColour(kind);
-                var dot = HudPrimitives.Disc("Legend dot", row, colour);
-                Anchor(dot, new Vector2(0f, .5f), new Vector2(0f, .5f), new Vector2(x, 0f), new Vector2(10f * s, 10f * s));
-                var word = FixedText(row, RelationshipWeb.StandingWord(kind), 12, UiTheme.Muted, new Vector2(x + 14f * s, -1f * s), new Vector2(80f * s, 20f * s));
-                x += 14f * s + word.GetPreferredValues(word.text).x + 18f * s;
-            }
-        }
-
         /// <summary>
-        /// The same legend at the right-hand end of a section head's row, on the head's own line,
-        /// for a screen with no row to spare for it (the briefing). Laid from the left and then
-        /// hung from the right, since its width is the words'.
+        /// The standing legend - a dot and a word for allied, neutral and hostile, in the web's own
+        /// colours - at the right-hand end of a section head's row, on the head's own line: the
+        /// briefing has no row to spare for it. Laid from the left and then hung from the right,
+        /// since its width is the words'.
         /// </summary>
         private void StandingLegendIn(RectTransform row)
         {

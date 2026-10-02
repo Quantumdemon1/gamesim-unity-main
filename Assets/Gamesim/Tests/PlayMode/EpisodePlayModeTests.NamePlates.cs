@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Linq;
+using Gamesim.Episode;
 using Gamesim.House;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
@@ -59,6 +60,9 @@ namespace Gamesim.Tests.PlayMode
         /// Mockup-12 keeps the name of the one you are talking to over their head. The two-shot
         /// frames the pair's faces in the upper third, and a plate at its dollhouse height went up
         /// with them into the top bar's band, behind the chips; close up it comes down to the head.
+        /// And it is drawn: the conversation's stage is a scrim the pair are seen through, not a
+        /// card, so the chrome's gate leaves the one you are talking to their name (UI-UX-PASS-PLAN
+        /// H0), while anybody else whose plate falls under the conversation's column or its dial is down.
         /// </summary>
         [UnityTest]
         public IEnumerator NamePlates_TheOneYouAreTalkingToWearsTheirNameUnderTheTopBar()
@@ -83,6 +87,19 @@ namespace Gamesim.Tests.PlayMode
                 + ", feet y " + maya.transform.position.y.ToString("0.00") + ", seated " + (seat != null && seat.Active)
                 + ", eye " + eye.transform.position.ToString("0.00") + " pitch " + cameraRig.Pitch.ToString("0.0")
                 + " distance " + cameraRig.Distance.ToString("0.00") + ".");
+
+            Assert.That(maya.PlateAlpha, Is.GreaterThan(.01f), "Maya's plate is drawn over the conversation, not taken down under its stage.");
+            var column = LastActive(EpisodeHud.ConversationColumnName);
+            var dial = LastActive(EpisodeHud.DialName);
+            Assert.That(column, Is.Not.Null, "The conversation has its column.");
+            foreach (var other in SceneComponents<HouseNpc>().Where(npc => npc != maya && npc.gameObject.activeInHierarchy))
+            {
+                if (!other.TryPlateScreenRect(eye, out var plate)) continue;
+                // Well under, not grazing an edge: a plate at the column's edge is the frame before's call.
+                var inner = Rect.MinMaxRect(plate.xMin + 4f, plate.yMin + 4f, plate.xMax - 4f, plate.yMax - 4f);
+                bool under = ScreenRect(column).Overlaps(inner) || (dial != null && ScreenRect(dial).Overlaps(inner));
+                if (under) Assert.That(other.PlateAlpha, Is.LessThan(.01f), other.DisplayName + "'s plate at " + plate + " is under the conversation's column or dial, and down.");
+            }
             director.ClosePanels();
             yield return null;
         }

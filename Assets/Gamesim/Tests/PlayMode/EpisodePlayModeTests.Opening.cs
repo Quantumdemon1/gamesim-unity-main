@@ -405,6 +405,7 @@ namespace Gamesim.Tests.PlayMode
             public void SendOff(string id) => Calls.Add("SendOff " + id);
             public void StrikeSet() => Calls.Add("StrikeSet");
             public void SendHome(string id) { Calls.Add("SendHome " + id); sentHome.Add(id); }
+            public void HoldForIntroductions() => Calls.Add("HoldForIntroductions");
         }
 
         /// <summary>

@@ -418,19 +418,29 @@ namespace Gamesim.Presentation
             }, OutEase);
 
             // The count stands at the other side, above the skip control, the way the reference
-            // build puts it in the bottom corner.
-            var counter = HudPrimitives.Label("Counter", root, 18f, UiTheme.Muted, TextAlignmentOptions.Right);
+            // build puts it in the bottom corner - on a chip, in paper: muted type laid on the dark
+            // yard was all but invisible over the shut door (UI-UX-PASS-PLAN S0, sweep-show 21).
+            var chip = new GameObject("Counter chip", typeof(RectTransform)).GetComponent<RectTransform>();
+            chip.SetParent(stage, false);
+            chip.anchorMin = chip.anchorMax = new Vector2(1f, 0f);
+            chip.pivot = new Vector2(1f, 0f);
+            chip.anchoredPosition = new Vector2(-PillMargin, 100f);
+            Ground(chip, 15);
+            var counter = HudPrimitives.Label("Counter", chip, 18f, UiTheme.Paper, TextAlignmentOptions.Center);
             counter.text = Localisation.Format("{0} of {1}", index + 1, count);
             counter.fontStyle = FontStyles.UpperCase;
             counter.characterSpacing = 10f;
-            var place = counter.rectTransform;
-            place.SetParent(stage, false);
-            place.anchorMin = place.anchorMax = new Vector2(1f, 0f);
-            place.pivot = new Vector2(1f, 0f);
-            place.sizeDelta = new Vector2(240f, 26f);
-            place.anchoredPosition = new Vector2(-80f, 100f);
-            place.SetParent(root, true);
-            Animate(counter, CounterAt, 0.4f, t => counter.alpha = t);
+            counter.textWrappingMode = TextWrappingModes.NoWrap;
+            Stretch(counter.rectTransform);
+            counter.rectTransform.offsetMin = new Vector2(16f, 0f);
+            counter.rectTransform.offsetMax = new Vector2(-16f, 0f);
+            // As wide as its words and never narrower than a two-digit count; a third taller than
+            // its type, as every box here is.
+            float words = Mathf.Ceil(counter.GetPreferredValues(counter.text).x);
+            chip.sizeDelta = new Vector2(Mathf.Max(132f, words + 40f), 30f);
+            chip.SetParent(root, true);
+            var chipFader = Fader(chip);
+            Animate(chip, CounterAt, 0.4f, t => chipFader.alpha = t);
             return root;
         }
 
@@ -770,16 +780,18 @@ namespace Gamesim.Presentation
         /// <summary>
         /// The reference build's house-entry card (HouseEntrySequence.tsx): "Welcome to the House"
         /// with how many have entered under it in capitals, the card growing in from nine tenths at
-        /// 0.3 s. At 2 s, low on the screen where the reference fades in "Head of Household
-        /// competition starting soon...", the season's own arrival line fades in instead: the tour
-        /// and the introductions come next here, and promising a competition would be untrue.
+        /// 0.3 s. At 2 s the season's own arrival line fades in under the count, where the reference
+        /// fades in "Head of Household competition starting soon..." low on the screen: the tour and
+        /// the introductions come next here, and promising a competition would be untrue. The line
+        /// is in the card rather than low on the screen, where it ran edge to edge over the Continue
+        /// hint (UI-UX-PASS-PLAN S0, sweep-show 22), and the card holds for the beat so it can be read.
         /// </summary>
         private IEnumerator HouseEntry()
         {
             Section(Night);
             var card = HudPrimitives.Glass("Card", stage);
             card.anchorMin = card.anchorMax = new Vector2(0.5f, 0.5f);
-            card.sizeDelta = new Vector2(880f, 200f);
+            card.sizeDelta = new Vector2(880f, 272f);
             card.anchoredPosition = Vector2.zero;
             var fader = Fader(card);
             Animate(card, 0.3f, 0.6f, t =>
@@ -789,7 +801,7 @@ namespace Gamesim.Presentation
             });
 
             var title = Text(card, "Heading", Localisation.Text("Welcome to the House"), 60f, Color.white, 840f,
-                new Vector2(0f, 26f), UiTheme.Weight.Bold);
+                new Vector2(0f, 58f), UiTheme.Weight.Bold);
             TitleGradient(title);
             title.textWrappingMode = TextWrappingModes.NoWrap;
 
@@ -797,26 +809,19 @@ namespace Gamesim.Presentation
             string entered = count > 0
                 ? Localisation.Format("{0} Houseguests have entered", count)
                 : Localisation.Text("THE HOUSEGUESTS ARRIVE");
-            var under = Text(card, "Entered", entered, 20f, UiTheme.Accent, 840f, new Vector2(0f, -46f));
+            var under = Text(card, "Entered", entered, 20f, UiTheme.Accent, 840f, new Vector2(0f, -10f));
             under.fontStyle = FontStyles.UpperCase;
             under.characterSpacing = 10f;
 
-            var line = Text(stage, "Line", string.IsNullOrEmpty(settings.ArrivalLine)
+            var line = Text(card, "Line", string.IsNullOrEmpty(settings.ArrivalLine)
                     ? Localisation.Text("Doors open, bags come down, and nobody knows anybody yet.")
                     : settings.ArrivalLine,
-                16f, new Color(UiTheme.Heading.r, UiTheme.Heading.g, UiTheme.Heading.b, 0.8f), 1300f, Vector2.zero);
+                14f, new Color(UiTheme.Heading.r, UiTheme.Heading.g, UiTheme.Heading.b, 0.8f), 840f, new Vector2(0f, -70f));
             line.fontStyle = FontStyles.UpperCase;
-            line.characterSpacing = 10f;
-            line.alignment = TextAlignmentOptions.Bottom;
-            var slot = line.rectTransform;
-            slot.anchorMin = slot.anchorMax = new Vector2(0.5f, 0f);
-            slot.pivot = new Vector2(0.5f, 0f);
-            // Room for a second line, growing up from the reference's 80 px off the bottom.
-            slot.sizeDelta = new Vector2(1300f, 48f);
-            slot.anchoredPosition = new Vector2(0f, 80f);
+            line.characterSpacing = 6f;
+            // Three lines of room: an All-Stars season's line runs long.
+            line.rectTransform.sizeDelta = new Vector2(840f, 56f);
             Animate(line, 2.0f, 0.5f, t => line.alpha = 0.8f * t);
-
-            if (!Motionless) StartCoroutine(FadeCardAt(card, fader, 4.0f));
 
             yield return Hold(HouseEntryHold - 0.1f);
             // The walk-in opens inside the house looking out at the yard; the cut happens under this
@@ -829,13 +834,6 @@ namespace Gamesim.Presentation
                 settings.Rig.MoveTo(Motionless ? keys[WalkInOver] : first);
             }
             yield return Pause(0.1f);
-        }
-
-        private static IEnumerator FadeCardAt(RectTransform card, CanvasGroup fader, float at)
-        {
-            while (at > 0f && card != null) { at -= Time.unscaledDeltaTime; yield return null; }
-            float t = 0f;
-            while (card != null && t < 0.4f) { t += Time.unscaledDeltaTime; fader.alpha = 1f - t / 0.4f; yield return null; }
         }
 
         /// <summary>

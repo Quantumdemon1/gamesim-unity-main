@@ -239,9 +239,24 @@ namespace Gamesim.Tests.PlayMode
             else Assert.That(set.IsOpen, Is.False, "The door is still shut on the closed-door frame.");
             yield return WaitFor(() => set.IsOpen, 12f, "The door opens for the player.");
             yield return WaitFor(() => set.Openness > 0.6f, 3f, "and swings wide.");
-            if (Application.isBatchMode) yield return CaptureFraming("opening-reveal-open", settle: false);
+            // The hints over the door frames stand on grounds (UI-UX-PASS-PLAN S0): the Continue
+            // hint on the skip pill's row, no longer inside the lit doorway, and the count on its chip.
+            var hint = SequenceNode(opening, "Hint");
+            var counterChip = SequenceNode(opening, "Counter chip");
+            Assert.That(hint, Is.Not.Null, "The Continue hint is on the door frame.");
+            Assert.That(counterChip, Is.Not.Null, "The reveal's count is on its chip.");
+            AssertOnAGround(hint.Find("Label"), "The Continue hint over the open door");
+            AssertOnAGround(SequenceLabels(counterChip).Single(label => label.name == "Counter").transform, "The reveal's count over the open door");
+            if (Application.isBatchMode)
+                yield return CaptureFraming("opening-reveal-open", settle: false, inspect: frame =>
+                {
+                    AssertRegionHasContent(frame, CaptureRectOf(hint), "The Continue hint on its ground, on the skip pill's row");
+                    AssertRegionHasContent(frame, CaptureRectOf(counterChip), "The reveal's count on its chip");
+                });
             yield return WaitFor(() => Flat(player.transform.position, RevealMarkForTests) < 0.6f, 10f, "The player walks through the door to the mark.");
-            if (Application.isBatchMode) yield return CaptureFraming("opening-reveal-mark", settle: false);
+            if (Application.isBatchMode)
+                yield return CaptureFraming("opening-reveal-mark", settle: false, inspect: frame =>
+                    AssertRegionHasContent(frame, CaptureRectOf(hint), "The Continue hint on its ground beside the player on the mark"));
 
             yield return WaitFor(() => opening.CurrentGuestId == firstGuest, 15f, "The first houseguest follows the player.");
             var guest = SceneComponents<HouseNpc>().Single(npc => npc.Id == firstGuest);
@@ -288,6 +303,58 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Flat(player.transform.position, playerHome), Is.LessThan(0.6f), "and so is the player.");
             Assert.That(GameObject.Find(OpeningDoorSet.RootName), Is.Null, "The front door is gone.");
             CollectionAssert.AreEqual(OpeningBeat.InOrder.Take(4), director.Snapshot.openingBeatsSeen, "Every beat of the show is recorded; the introductions are not.");
+
+            opening.SkipIntroductions();
+            yield return WaitFor(() => !opening.IsPlaying, 5f, "Skipping the introductions ends the opening.");
+            yield return WaitFor(() => director.NpcAutonomyReady, 5f, "The house binds its people again and carries on.");
+        }
+
+        /// <summary>Whether a point of the frame, as <see cref="InTheFrame"/> gives it, is inside the picture.</summary>
+        private static bool InsideTheFrame(Vector2? at) =>
+            at.HasValue && at.Value.x > 0f && at.Value.x < 1f && at.Value.y > 0f && at.Value.y < 1f;
+
+        /// <summary>
+        /// A houseguest framed for their introduction is still in the frame when they answer
+        /// (UI-UX-PASS-PLAN S0, sweep-show 24: the reaction's shot held on an empty corner and a
+        /// lamp). The stage holds everybody where they stand for the introductions, so no walk home
+        /// starts under the card, and the shot is held on the body through the reaction: their root
+        /// stays where it was framed and their hips - or hip height over the root, for a body with no
+        /// humanoid rig - project inside the frame at the reaction's capture moment and at its end.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator OpeningStage_TheIntroductionHoldsTheHouseguestInFrame()
+        {
+            var opening = director.Opening;
+            string firstGuest = director.Snapshot.Active.First(person => !person.isPlayer).id;
+
+            director.PlayOpeningForVerification(stage: true, holdHeadless: true, armSeconds: 0f);
+            yield return WaitFor(() => director.IsOpeningStaged, 40f, "The house is placed behind the front door.");
+            yield return WaitFor(() => opening.CurrentGuestId != null, 40f, "The reveals begin.");
+            director.SkipOpening();
+            yield return WaitFor(() => opening.IsMeeting, 10f, "Skipping the show stops at the introductions.");
+            yield return WaitFor(() => MeetCardIsSettled(opening, firstGuest), 8f, "The first houseguest's card is up and the camera has landed on them.");
+            Assert.That(director.IsOpeningStaged, Is.True, "The stage still has the house through the introductions.");
+
+            var body = SceneComponents<HouseNpc>().Single(npc => npc.Id == firstGuest);
+            var framedAt = body.transform.position;
+            Vector3 Drawn() { var hips = HipsOf(body); return hips != null ? hips.position : body.transform.position + Vector3.up * 0.95f; }
+            string Where(Vector2? at) => at.HasValue ? at.Value.ToString("F2") : "behind the lens";
+            Assert.That(InsideTheFrame(InTheFrame(cameraRig.ViewCamera, Drawn())), Is.True, "They are framed where they stand: " + Where(InTheFrame(cameraRig.ViewCamera, Drawn())));
+
+            SequenceButtons(opening, "Calculated").Single().onClick.Invoke();
+            yield return WaitFor(() => FadedIn(SequenceNode(opening, "Answer")), 3f, "The answer comes up where the question was.");
+            float answered = Time.realtimeSinceStartup;
+            // The reaction's capture moment, half a second in, and the reaction's end; their root
+            // watched the whole way.
+            float drift = 0f;
+            while (Time.realtimeSinceStartup < answered + 0.5f) { drift = Mathf.Max(drift, Flat(body.transform.position, framedAt)); yield return null; }
+            var seen = InTheFrame(cameraRig.ViewCamera, Drawn());
+            Assert.That(InsideTheFrame(seen), Is.True, "Half a second into the reaction their body is in the frame: hips at " + Drawn().ToString("F2") + " -> " + Where(seen) + ".");
+            while (Time.realtimeSinceStartup < answered + 1.7f) { drift = Mathf.Max(drift, Flat(body.transform.position, framedAt)); yield return null; }
+            seen = InTheFrame(cameraRig.ViewCamera, Drawn());
+            Assert.That(InsideTheFrame(seen), Is.True, "At the reaction's end their body is still in the frame: hips at " + Drawn().ToString("F2") + " -> " + Where(seen) + ".");
+            Assert.That(drift, Is.LessThan(0.3f), "They stay where they were framed: no walk home starts under the card (moved " + drift.ToString("F2") + " m).");
+            Assert.That(opening.CurrentGuestId, Is.EqualTo(firstGuest), "It is still their card.");
 
             opening.SkipIntroductions();
             yield return WaitFor(() => !opening.IsPlaying, 5f, "Skipping the introductions ends the opening.");

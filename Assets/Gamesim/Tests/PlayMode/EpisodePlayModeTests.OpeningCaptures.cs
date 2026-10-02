@@ -43,7 +43,7 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>When the group card is complete: the last face has popped in by 0.8 s and the welcome under it has risen by 1.2 s.</summary>
         private const float GroupArrivedSeconds = 1.3f;
 
-        /// <summary>When the house entry is complete: its card is in by 0.9 s and the season's arrival line by 2.5 s; the card itself goes at 4 s.</summary>
+        /// <summary>When the house entry is complete: its card is in by 0.9 s and the season's arrival line, in the card, by 2.5 s; the card holds for the beat.</summary>
         private const float HouseEntryArrivedSeconds = 2.6f;
 
 #if GAMESIM_UMA
@@ -108,6 +108,11 @@ namespace Gamesim.Tests.PlayMode
                 AssertFaceIsDrawn(frame, playerThird.Find("Portrait"), "The player's face in the lower third over the closed door");
             });
             Assert.That(shutWhenTaken, Is.True, "The door was still shut, its leaves unmoved, when the frame was taken.");
+            // The count on its chip, in paper: dim grey on the dark yard, it was all but invisible
+            // over the shut door (UI-UX-PASS-PLAN S0, sweep-show 21).
+            var playerCount = SequenceLabels(playerThird).Single(label => label.name == "Counter");
+            AssertOnAGround(playerCount.transform, "The reveal's count over the shut door");
+            Assert.That(playerCount.color, Is.EqualTo(UiTheme.Paper), "The count is paper on its chip, not muted on the yard.");
 
             // 03 - the door gives and the camera pushes in, the name still up.
             yield return WaitFor(() => set.IsOpen && set.Openness > 0.6f, 8f, "The door opens for the player and swings wide.");
@@ -116,8 +121,17 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(cameraRig.DesiredDistance, Is.EqualTo(PushInDistanceForTests).Within(0.1f), "The camera pushes in as the door opens.");
             Assert.That(LowerThirdHasArrived(opening), Is.True, "The name stays up while the door opens.");
             var openThird = SequenceNode(opening, "Lower third");
+            // The Continue hint on its ground on the skip pill's row, out of the lit doorway
+            // (UI-UX-PASS-PLAN S0, sweep-show 5), and the count on its chip.
+            var openHint = SequenceNode(opening, "Hint");
+            var openChip = SequenceNode(opening, "Counter chip");
+            AssertOnAGround(openHint.Find("Label"), "The Continue hint as the door opens");
             yield return CaptureFraming("opening-staged-03-door-open", settle: false, inspect: frame =>
-                AssertFaceIsDrawn(frame, openThird.Find("Portrait"), "The player's face in the lower third as the door opens"));
+            {
+                AssertFaceIsDrawn(frame, openThird.Find("Portrait"), "The player's face in the lower third as the door opens");
+                AssertRegionHasContent(frame, CaptureRectOf(openHint), "The Continue hint on its ground, on the skip pill's row");
+                AssertRegionHasContent(frame, CaptureRectOf(openChip), "The reveal's count on its chip");
+            });
 
             // 04 - the first houseguest after the player, on the mark in front of the lens. One press
             // once the half-beat before their walk is over opens the door as soon as they reach it
@@ -192,8 +206,18 @@ namespace Gamesim.Tests.PlayMode
             var entryCard = SequenceNode(opening, "Card");
             Assert.That(opening.CurrentBeat, Is.EqualTo(OpeningBeat.HouseEntry), "The house entry holds until it is moved on.");
             Assert.That(FadedIn(entryCard), Is.True, "Its card is still up.");
+            // The season's line in the card, in the house's word (UI-UX-PASS-PLAN S0, sweep-show 22):
+            // low on the screen it ran edge to edge over the Continue hint, and said "housemates".
+            var entryLine = SequenceLabels(entryCard).Single(label => label.name == "Line");
+            Assert.That(entryLine.text, Does.Not.Contain("housemates").IgnoreCase, "The line says houseguests, as every other card does: " + entryLine.text);
+            Assert.That(Inside((RectTransform)entryCard, entryLine.rectTransform), Is.True, "and stands in the card.");
+            var entryHint = SequenceNode(opening, "Hint");
+            Assert.That(SequenceWorldRect((RectTransform)entryHint).Overlaps(SequenceWorldRect(entryLine.rectTransform)), Is.False, "The line no longer crowds the Continue hint.");
             yield return CaptureFraming("opening-staged-06-house-entry", settle: false, inspect: frame =>
-                AssertRegionHasContent(frame, CaptureRectOf(entryCard), "The house-entry card"));
+            {
+                AssertRegionHasContent(frame, CaptureRectOf(entryCard), "The house-entry card");
+                AssertRegionHasContent(frame, CaptureRectOf(entryLine.rectTransform), "The season's line in the card");
+            });
             opening.Advance();
 
             // 07 to 09 - the walk-in's crane, on its own schedule: the push-in to the doorway, the rise
@@ -240,10 +264,19 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(SequenceButtons(opening, caption).Count(button => button.IsInteractable()), Is.EqualTo(1), caption + " can be chosen.");
             Assert.That(SequenceNode(opening, "Scrim").GetComponent<Image>().color.a, Is.GreaterThan(0f).And.LessThan(0.9f),
                 "The house shows through behind the card.");
+            // The header on a ground of its own: it read through the yard's sign (UI-UX-PASS-PLAN S0, sweep-show 24).
+            var column = SequenceNode(opening, "Introductions");
+            AssertOnAGround(SequenceLabels(column).Single(label => label.name == "Heading").transform, "The introductions' heading");
+            AssertOnAGround(SequenceLabels(column).Single(label => label.name == "Count").transform, "The introductions' count");
+            var headerGround = column.Find(OpeningSequence.GroundName);
             yield return CaptureFraming("opening-staged-10-meet-card", settle: true, inspect: frame =>
-                AssertFaceIsDrawn(frame, card.Find("Portrait"), guests[0].name + "'s face on their card"));
+            {
+                AssertFaceIsDrawn(frame, card.Find("Portrait"), guests[0].name + "'s face on their card");
+                AssertRegionHasContent(frame, CaptureRectOf(headerGround), "The introductions' header on its ground");
+            });
 
             // 11 - the player introduces themselves, and the houseguest answers in words and in the body.
+            var guestBody = SceneComponents<HouseNpc>().Single(npc => npc.Id == guests[0].id);
             SequenceButtons(opening, "Calculated").Single().onClick.Invoke();
             yield return WaitFor(() => FadedIn(SequenceNode(opening, "Answer")), 3f, "The answer comes up where the question was.");
             // Into the houseguest's reaction, which lasts 1.6 s.
@@ -255,7 +288,17 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(SequenceButtons(opening, OpeningSequence.NextCaption).Count(button => button.IsInteractable()), Is.EqualTo(1),
                 "Next stands under the answer.");
             yield return CaptureFraming("opening-staged-11-meet-reaction", settle: false, inspect: frame =>
-                AssertRegionHasContent(frame, CaptureRectOf(answer), "The answer and its Next"));
+            {
+                AssertRegionHasContent(frame, CaptureRectOf(answer), "The answer and its Next");
+                // The speaker's body in the reaction's frame: it had walked out of it, and the shot
+                // held on an empty corner and a lamp (UI-UX-PASS-PLAN S0, sweep-show 24). The hips,
+                // where the body is drawn, projected through the camera the frame was drawn with.
+                var hips = HipsOf(guestBody);
+                var at = hips != null ? hips.position : guestBody.transform.position + Vector3.up * 0.95f;
+                var seen = InTheFrame(cameraRig.ViewCamera, at);
+                Assert.That(InsideTheFrame(seen), Is.True, guests[0].name + "'s body is in the reaction's frame: hips at " + at.ToString("F2")
+                    + " -> " + (seen.HasValue ? seen.Value.ToString("F2") : "behind the lens") + ".");
+            });
 
             // 12 - Next: the card leaves, the next comes in, and the camera goes to the next houseguest.
             SequenceButtons(opening, OpeningSequence.NextCaption).Single().onClick.Invoke();

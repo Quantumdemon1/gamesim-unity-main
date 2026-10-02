@@ -139,10 +139,10 @@ namespace Gamesim.Episode
                 MotionInBatchmode = verification && stage,
                 Cast = state.Active.ToList(),
                 Seed = unchecked((int)state.seed),
-                ArrivalLine = state.events
+                ArrivalLine = InTheHousesWord(state.events
                     .Where(entry => entry.kind == "arrival")
                     .Select(entry => entry.text)
-                    .LastOrDefault(),
+                    .LastOrDefault()),
                 Introduce = IntroduceYourself,
                 Introduced = id => projected != null && EpisodeEngine.HasIntroduced(projected, id),
                 FrameGuest = FrameForIntroduction,
@@ -151,6 +151,15 @@ namespace Gamesim.Episode
                 SeasonNumber = SeasonNumberFor(state),
             };
         }
+
+        /// <summary>
+        /// The arrival line in the house's own word. A built season writes "houseguests", as every
+        /// card of the opening says it; the shipped scenario's line says "housemates" and is frozen
+        /// by a replay witness (<c>SeasonBuilder.Arrival</c>), so the card reads that one in the
+        /// house's word rather than the engine's. Presentation only: the event keeps its text.
+        /// </summary>
+        private static string InTheHousesWord(string line) =>
+            string.IsNullOrEmpty(line) ? line : line.Replace("housemates", "houseguests").Replace("Housemates", "Houseguests");
 
         /// <summary>
         /// Which season of the show this is for the player: the finished seasons in their career
@@ -315,6 +324,9 @@ namespace Gamesim.Episode
             };
             cameraRig.MoveTo(shot);
             openingFramedGuest = true;
+            introductionShot = shot;
+            introductionFocusFromHips = shot.Focus - HipsOf(body, HumanoidHips(body));
+            introductionFraming++;
             KeyLight(head, Quaternion.Euler(shot.Pitch, yaw, 0f), shot.Focus, shot.Distance);
             var visual = body.GetComponent<CharacterPresentation>();
             if (visual == null) return;
@@ -414,6 +426,7 @@ namespace Gamesim.Episode
         {
             var body = BodyFor(id);
             var visual = body != null ? body.GetComponent<CharacterPresentation>() : null;
+            if (body != null) StartCoroutine(HoldInFrame(body, introductionFraming));
             if (outcome == WebIntroductions.Outcome.Match && (visual == null || visual.IsSeated || !visual.CanAct(CharacterPresentation.BodyActivity.Dancing)))
             {
                 React(id, CharacterPresentation.Reaction.Cheered);
@@ -435,6 +448,76 @@ namespace Gamesim.Episode
             float waited = 0f;
             while (waited < IntroductionReaction && visual != null) { waited += Time.unscaledDeltaTime; yield return null; }
             if (visual != null) Set(visual, outcome, false);
+        }
+
+        /// <summary>The shot the introduction under way is framed on, where its focus stands from the body's hips, and which framing it is - for the hold through the reaction.</summary>
+        private HouseCameraRig.Shot introductionShot;
+        private Vector3 introductionFocusFromHips;
+        private int introductionFraming;
+
+        /// <summary>How far inside the frame, as a share of its width and height, the hips must stay before the shot is re-aimed.</summary>
+        private const float HoldInFrameMargin = 0.1f;
+
+        /// <summary>
+        /// Holds the houseguest in the shot through their reaction. The shot is framed on where the
+        /// body stands, and a take can carry the body away from there - a dance entered past its
+        /// wind-up starts wherever its hips are then - so the shot held on an empty corner and a
+        /// lamp (UI-UX-PASS-PLAN S0, sweep-show 24). Whenever the hips leave the middle of the frame
+        /// the shot is re-aimed to keep its focus where it stood from them, at most twice a second,
+        /// until the reaction is over or the next houseguest is framed. The hips rather than the
+        /// root: where a body is drawn, not where the house stands it.
+        /// </summary>
+        private IEnumerator HoldInFrame(Transform body, int framing)
+        {
+            if (body == null || cameraRig == null) yield break;
+            var hips = HumanoidHips(body);
+            float until = Time.realtimeSinceStartup + IntroductionReaction + 0.5f, nextAim = 0f;
+            while (Time.realtimeSinceStartup < until && body != null && framing == introductionFraming && opening != null && opening.IsMeeting)
+            {
+                var camera = cameraRig.ViewCamera;
+                if (camera != null && Time.realtimeSinceStartup >= nextAim)
+                {
+                    var at = HipsOf(body, hips);
+                    var seen = FrameShare(camera, at);
+                    bool inside = seen.HasValue
+                        && seen.Value.x > HoldInFrameMargin && seen.Value.x < 1f - HoldInFrameMargin
+                        && seen.Value.y > HoldInFrameMargin && seen.Value.y < 1f - HoldInFrameMargin;
+                    if (!inside)
+                    {
+                        var shot = introductionShot;
+                        shot.Focus = at + introductionFocusFromHips;
+                        shot.Seconds = 0.3f;
+                        introductionShot = shot;
+                        cameraRig.MoveTo(shot);
+                        nextAim = Time.realtimeSinceStartup + 0.5f;
+                    }
+                }
+                yield return null;
+            }
+        }
+
+        /// <summary>A body's Humanoid hips, or null for a body with no active Humanoid rig.</summary>
+        private static Transform HumanoidHips(Transform body)
+        {
+            var animator = body != null ? body.GetComponentsInChildren<Animator>().FirstOrDefault(rig => rig.isHuman && rig.isActiveAndEnabled) : null;
+            return animator != null ? animator.GetBoneTransform(HumanBodyBones.Hips) : null;
+        }
+
+        /// <summary>Where a body stands as drawn: its hips, or hip height over its root for a body with no Humanoid rig.</summary>
+        private static Vector3 HipsOf(Transform body, Transform hips) => hips != null ? hips.position : body.position + Vector3.up * 0.95f;
+
+        /// <summary>
+        /// Where a point lands in the frame the camera draws, as a share of its width and height from
+        /// the bottom-left, through the projection the frame is drawn with - the rig's blended lens
+        /// is a hand-set matrix a screen-point call would ignore. Null behind the lens.
+        /// </summary>
+        private static Vector2? FrameShare(Camera camera, Vector3 world)
+        {
+            var view = camera.worldToCameraMatrix.MultiplyPoint(world);
+            if (view.z >= 0f) return null;
+            var clip = camera.projectionMatrix * new Vector4(view.x, view.y, view.z, 1f);
+            if (Mathf.Abs(clip.w) < 1e-6f) return null;
+            return new Vector2((clip.x / clip.w + 1f) * 0.5f, (clip.y / clip.w + 1f) * 0.5f);
         }
 
         private static void Set(CharacterPresentation visual, WebIntroductions.Outcome outcome, bool on)

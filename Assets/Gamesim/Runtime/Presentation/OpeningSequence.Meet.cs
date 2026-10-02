@@ -66,6 +66,8 @@ namespace Gamesim.Presentation
         private const float NextHeight = 36f;
         private const float SkipGap = 20f;
         private const float FullCard = ChoicesTop + 3f * RowHeight + 2f * RowGap + CardPad;
+        /// <summary>The header's ground: how far it reaches past the column's edges, and how far down it runs under the progress bar (which ends at 36), short of the card at <see cref="CardTop"/>.</summary>
+        private const float HeaderPad = 12f, HeaderBottom = 42f;
 
         private RectTransform meetColumn;
         private RectTransform choicesSlot;
@@ -134,6 +136,10 @@ namespace Gamesim.Presentation
                 yield return Pause(0.3f);
                 Clear();
             }
+            // Everybody held where they stand: the stage's walks end and nobody is sent anywhere,
+            // so a houseguest framed on their spot is still on it when they answer (UI-UX-PASS-PLAN
+            // S0, sweep-show 24: the reaction's shot held on an empty corner).
+            if (world != null && world.Placed) world.HoldForIntroductions();
 
             Scrim(new Color(0f, 0f, 0f, 0.7f));
             IsMeeting = true;
@@ -163,6 +169,14 @@ namespace Gamesim.Presentation
             meetColumn.pivot = new Vector2(0f, 0.5f);
             meetColumn.sizeDelta = new Vector2(ColumnWidth, 560f);
             meetColumn.anchoredPosition = new Vector2(120f, 0f);
+
+            // The heading, the count and the progress bar on a ground of their own, a sibling behind
+            // them: laid on the scrim they read through the yard's sign (UI-UX-PASS-PLAN S0,
+            // sweep-show 24). It reaches HeaderPad past the column on every side and stops short of
+            // the card.
+            var ground = Ground(meetColumn, 12);
+            Place(ground, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(-HeaderPad, HeaderPad),
+                new Vector2(ColumnWidth + 2f * HeaderPad, HeaderPad + HeaderBottom));
 
             var heading = HudPrimitives.Label("Heading", meetColumn, 16f, UiTheme.Heading, TextAlignmentOptions.Left);
             heading.text = Localisation.Text(MeetHeading);

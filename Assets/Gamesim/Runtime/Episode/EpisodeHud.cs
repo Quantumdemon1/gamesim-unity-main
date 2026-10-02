@@ -1484,8 +1484,19 @@ namespace Gamesim.Episode
             // an 18 at the larger text was 1.22.
             var chevron = rect.Find("Chevron") as RectTransform;
             float readingRight = 16f + (chevron != null ? chevron.sizeDelta.x + RowEndAir : 0f);
-            float readingWidth = TrustReadingWidth * s, allyWidth = AllyTagWidth * s;
+            float allyWidth = AllyTagWidth * s;
             float box = Mathf.RoundToInt(15 * s) * 1.3f;
+            // The reading as wide as its own words, never wider than the widest there could be
+            // ("Your trust -100"): every row kept that widest, and beside a face and the ALLY tag a
+            // long caption at the larger text was left 227 of the 240 its words need ("Propose a
+            // vote to keep Jordan Taylor", a house of sixteen's campaign, the wave's UMA run).
+            string words = TrustReading(trust);
+            var reading = NewText(rect, words, 15,
+                // The same set as the portrait ring and the ALLY tag below.
+                trust > 5 ? UiTheme.Allied : trust < -5 ? UiTheme.Conflict : UiTheme.Muted);
+            reading.name = TrustReadingName;
+            reading.textWrappingMode = TextWrappingModes.NoWrap;
+            float readingWidth = Mathf.Min(TrustReadingWidth * s, Mathf.Ceil(reading.GetPreferredValues(words).x) + 4f);
             float allyRight = readingRight + readingWidth + RowEndAir;
             float reserved = (allied ? allyRight + allyWidth : readingRight + readingWidth) + RowEndAir;
 
@@ -1519,13 +1530,8 @@ namespace Gamesim.Episode
             }
 
             readingRows[button] = reserved;
-            var reading = NewText(rect,TrustReading(trust),15,
-                // The same set as the portrait ring and the ALLY tag above.
-                trust > 5 ? UiTheme.Allied : trust < -5 ? UiTheme.Conflict : UiTheme.Muted);
-            reading.name = TrustReadingName;
             Anchor(reading.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-readingRight,0f),new Vector2(readingWidth,box));
             reading.alignment = TextAlignmentOptions.Right;
-            reading.textWrappingMode = TextWrappingModes.NoWrap;
         }
 
         /// <summary>

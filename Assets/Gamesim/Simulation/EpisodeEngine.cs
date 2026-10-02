@@ -765,11 +765,11 @@ namespace Gamesim.Simulation
                 MoodStep(guest, -2);
                 guest.stressLevel = stress[Math.Min(4, Array.IndexOf(stress, guest.stressLevel) + 2)];
             }
-            // Named: the diary's chair shows the player's latest memory as its caption, and
-            // "Nominated me in week 2." had no subject there (UI-UX-PASS-PLAN D0). The player's
-            // contestant is named "You", so a houseguest the player nominated remembers "You
-            // nominated me".
-            Remember(s, id, s.hohId, Name(s, s.hohId) + " nominated me in week " + s.week + ".", false);
+            // The text stays nameless: WebEvictionVoting.Memory matches a memory to a nominee by
+            // name (+2 toward whoever it names, parity-pinned to the web's ten factors), so naming
+            // the Head of Household here would move every recorded season's ballots. The subject
+            // is on the memory; the diary names them from it (MemoryWords.Said).
+            Remember(s, id, s.hohId, "Nominated me in week " + s.week + ".", false);
             foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.fromId == s.hohId &&
                 ((p.kind == PromiseKind.Safety && p.toId == id) || (p.kind == PromiseKind.AllianceLoyalty && s.Allied(p.fromId, id)))).ToArray())
                 SettlePromise(s, promise, PromiseStatus.Broken);

@@ -314,11 +314,12 @@ namespace Gamesim.Episode
                 return;
             }
             // What the player has to talk about in here, as mockup-11 captions the chair: their
-            // own latest memory under their name - one they may know (KnownBallots.PlayerMemories).
+            // own latest memory under their name - one they may know (KnownBallots.PlayerMemories),
+            // with its subject named where the engine's text leaves it out (MemoryWords.Said).
             var latest = KnownBallots.PlayerMemories(state).LastOrDefault();
             var self = state.Find(state.playerId);
             if (latest != null && self != null)
-                hud.Confessional((self.name ?? "You").Split(' ')[0], latest.text);
+                hud.Confessional((self.name ?? "You").Split(' ')[0], MemoryWords.Said(state, latest));
             // Refinement Kit 6's three tabs, in place of one column that ran the decision, the
             // record's rules and every memory together. The decision's tab opens first when there
             // is something to choose; otherwise the record does. A tab is view state: choosing
@@ -464,7 +465,7 @@ namespace Gamesim.Episode
             hud.DiarySection("YOUR PRIVATE REFLECTIONS");
             var memories = KnownBallots.PlayerMemories(state).Reverse().Take(20).ToArray();
             if (memories.Length == 0) hud.Aside("You have no recorded personal memories yet. Explore and talk to the housemates.");
-            foreach (var memory in memories) hud.Aside("Week " + memory.week + ": " + memory.text);
+            foreach (var memory in memories) hud.Aside("Week " + memory.week + ": " + MemoryWords.Said(state, memory));
         }
 
         /// <summary>
@@ -704,7 +705,7 @@ namespace Gamesim.Episode
 
             string recalled = remembered == null
                 ? "You have nothing specific on them this season."
-                : "Week " + remembered.week + ": " + remembered.text;
+                : "Week " + remembered.week + ": " + MemoryWords.Said(state, remembered);
 
             bool allied = state.Allied(state.playerId, voter.id);
             return standing + " " + recalled

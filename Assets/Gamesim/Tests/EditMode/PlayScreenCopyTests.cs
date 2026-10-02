@@ -91,9 +91,11 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// A nomination is remembered with the Head of Household's name: the diary's chair shows
-        /// the player's latest memory as its caption, and "Nominated me in week 2." had no subject
-        /// (the play sweep's row 38). A houseguest the player nominated remembers "You nominated me".
+        /// A nomination is read with the Head of Household's name: the diary's chair shows the
+        /// player's latest memory as its caption, and "Nominated me in week 2." had no subject (the
+        /// play sweep's row 38). The engine's text stays nameless - WebEvictionVoting.Memory matches
+        /// a memory to a nominee by name, so a named line would move recorded seasons' ballots -
+        /// and MemoryWords.Said names the subject the memory carries.
         /// </summary>
         [TestCase(4u)] [TestCase(9u)]
         public void ANominationIsRememberedWithTheHeadOfHouseholdsName(uint seed)
@@ -107,12 +109,20 @@ namespace Gamesim.Tests.EditMode
             Assert.That(hoh, Is.Not.Null);
             foreach (var nominee in s.nominees)
             {
-                string expected = hoh.name + " nominated me in week " + s.week + ".";
-                var memory = s.memories.LastOrDefault(m => m.ownerId == nominee && m.subjectId == s.hohId && m.text == expected);
-                Assert.That(memory, Is.Not.Null, s.Find(nominee).name + " remembers '" + expected + "'.");
+                var memory = s.memories.LastOrDefault(m => m.ownerId == nominee && m.subjectId == s.hohId && m.text == "Nominated me in week " + s.week + ".");
+                Assert.That(memory, Is.Not.Null, s.Find(nominee).name + "'s memory stays nameless: the vote evaluator matches memories by nominee name.");
                 Assert.That(memory.isPrivate, Is.False, "A nomination is public.");
+                Assert.That(MemoryWords.Said(s, memory), Is.EqualTo(hoh.name + " nominated me in week " + s.week + "."), "The player reads it with the Head of Household's name.");
             }
-            Assert.That(s.memories.Any(m => m.text.StartsWith("Nominated me")), Is.False, "No memory is without its subject.");
+            // The player as Head of Household is "You" to the houseguest they nominated.
+            var byYou = new MemoryState { ownerId = s.nominees[0], subjectId = s.playerId, text = "Nominated me in week 3.", week = 3 };
+            Assert.That(MemoryWords.Said(s, byYou), Is.EqualTo("You nominated me in week 3."));
+            // Any other memory reads as it was written, a copy of the line included.
+            foreach (string text in new[] { "We spent time talking in week 1.", "Heard from you: Nominated me in week 1.", "" })
+                Assert.That(MemoryWords.Said(s, new MemoryState { ownerId = s.playerId, subjectId = s.nominees[0], text = text, week = 1 }), Is.EqualTo(text), text);
+            Assert.That(MemoryWords.Said(s, new MemoryState { ownerId = s.playerId, subjectId = null, text = "Nominated me in week 1.", week = 1 }),
+                Is.EqualTo("Nominated me in week 1."), "No subject, no name to say.");
+            Assert.That(MemoryWords.Said(s, null), Is.Null);
         }
 
         /// <summary>

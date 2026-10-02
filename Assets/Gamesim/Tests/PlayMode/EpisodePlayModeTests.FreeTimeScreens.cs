@@ -165,9 +165,10 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// Before anybody is Head of Household the context card says nothing is decided
-        /// (UI-UX-PASS-PLAN D0, the play sweep's row 20): in week-one free time it read "You are
-        /// safe this week" under a HUD saying "Awaiting HoH", because the safe line was everything
-        /// that was not a role.
+        /// (UI-UX-PASS-PLAN D0, the play sweep's row 20): in free time - every week's, since the
+        /// rollover clears the Head of Household - it read "You are safe this week" under a HUD
+        /// saying "Awaiting HoH", because the safe line was everything that was not a role. The
+        /// words are the plan's, the same ones U0's ContextRole says.
         /// </summary>
         [UnityTest]
         public IEnumerator FreeTime_YourContextSaysNothingIsDecidedBeforeAnyHeadOfHousehold()
@@ -180,7 +181,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null; yield return null;
             var context = LastActive(EpisodeHud.YourContextCardName);
             Assert.That(context, Is.Not.Null, "The houseguest screen has its context card.");
-            Assert.That(Words(context), Does.Contain("Nothing decided yet this week")
+            Assert.That(Words(context), Does.Contain("Nothing decided yet").And.Contain("The week's roles come with the first competition.")
                 .And.Not.Contain("You are safe this week").And.Not.Contain("You are HOH").And.Not.Contain("You are on the block"));
             director.CloseHouseguestScreen();
             yield return null;

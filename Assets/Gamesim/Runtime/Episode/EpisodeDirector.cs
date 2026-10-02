@@ -1198,7 +1198,7 @@ namespace Gamesim.Episode
             RenderDiaryRecord(state);
             // The player's memories as they may know them: one that tells a ballot the reveal kept
             // private waits for the ballot (KnownBallots.PlayerMemories; decision 4).
-            foreach (var memory in KnownBallots.PlayerMemories(state)) hud.Paragraph("Week " + memory.week + ": " + memory.text);
+            foreach (var memory in KnownBallots.PlayerMemories(state)) hud.Paragraph("Week " + memory.week + ": " + MemoryWords.Said(state, memory));
             RenderStorySoFar(state);
         }
 

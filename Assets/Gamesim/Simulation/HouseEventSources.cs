@@ -141,7 +141,9 @@ namespace Gamesim.Simulation
         /// <para>The caller supplies who and where, because only the presentation layer knows — this
         /// port tracks where everybody actually is, which is the half the reference does not have.
         /// The situation is the same either way: you have seen something, and what you do about it
-        /// is the question.</para>
+        /// is the question. Where is the house's room id as the command carries it ("Living"), said
+        /// in words here (<see cref="RoomWords.Where"/>): the card and the toast read "are in
+        /// Living, mid-argument" while the id went in as it was.</para>
         /// </summary>
         public static HouseEventState Proximity(EpisodeState state, string firstId, string secondId,
             string room, long sequence)
@@ -151,7 +153,7 @@ namespace Gamesim.Simulation
             if (first == null || second == null || first.id == second.id) return null;
             if (first.isPlayer || second.isPlayer) return null;
             if (first.status != ContestantStatus.Active || second.status != ContestantStatus.Active) return null;
-            room = string.IsNullOrWhiteSpace(room) ? "the house" : room;
+            room = RoomWords.Where(room);
 
             bool close = state.Score(firstId, secondId) >= UnspokenPairWarmth;
             return new HouseEventState

@@ -86,23 +86,11 @@ namespace Gamesim.Presentation
         /// <summary>
         /// A room marker's name as a sentence says it - "Living room", "HoH suite" - for a card
         /// title. <see cref="Title"/> is the floor paint's capitals, which the live feed's caption
-        /// and the overview's chips are held to.
+        /// and the overview's chips are held to. The words are the simulation's
+        /// (<see cref="Gamesim.Simulation.RoomWords"/>), so the engine's own lines say a room the
+        /// way the set does.
         /// </summary>
-        public static string Name(string roomName)
-        {
-            switch (roomName)
-            {
-                case "Living": return "Living room";
-                case "Kitchen": return "Kitchen";
-                case "Bedroom": return "Bedroom";
-                case "Private": return "Private room";
-                case "Yard": return "Competition yard";
-                case "HoH": return "HoH suite";
-                case "Nomination": return "Nomination room";
-                case "Games": return "Game room";
-                default: return roomName ?? "";
-            }
-        }
+        public static string Name(string roomName) => Gamesim.Simulation.RoomWords.Name(roomName);
 
         /// <summary>
         /// The room's mark from Refinement Kit 6 where the kit draws one (a bed, a sofa, a kitchen,
@@ -127,18 +115,9 @@ namespace Gamesim.Presentation
         /// <summary>
         /// A room's name as it reads mid-sentence: "the living room", "the HoH suite". Only a first
         /// word that is an ordinary capitalised word is lowered; a name whose capitals mean
-        /// something keeps them.
+        /// something keeps them (<see cref="Gamesim.Simulation.RoomWords.InSentence"/>).
         /// </summary>
-        public static string InSentence(string roomName)
-        {
-            string name = Name(roomName);
-            if (string.IsNullOrEmpty(name)) return name;
-            int end = name.IndexOf(' ');
-            string first = end < 0 ? name : name.Substring(0, end);
-            bool ordinary = char.IsUpper(first[0]);
-            for (int i = 1; i < first.Length && ordinary; i++) ordinary = !char.IsUpper(first[i]);
-            return ordinary ? char.ToLowerInvariant(name[0]) + name.Substring(1) : name;
-        }
+        public static string InSentence(string roomName) => Gamesim.Simulation.RoomWords.InSentence(roomName);
 
         public static string Glyph(string roomName)
         {

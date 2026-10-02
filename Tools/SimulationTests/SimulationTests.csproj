@@ -122,14 +122,18 @@
     <Compile Include="$(EditMode)YourWeekTests.cs" />
     <Compile Include="$(EditMode)KnownBallotsTests.cs" />
     <Compile Include="$(EditMode)BallotPrivacyTests.cs" />
+    <Compile Include="$(EditMode)PlayScreenCopyTests.cs" />
 
     <!--
-      One file from outside the simulation, because it is as Unity-free as the simulation is: the
-      music's fade arithmetic, which Gamesim.Runtime compiles and uses nothing but System.Math. Only
-      a file with no `using UnityEngine` belongs here; a presentation file that grows one leaves.
+      Two files from outside the simulation, because they are as Unity-free as the simulation is:
+      the music's fade arithmetic, which Gamesim.Runtime compiles and uses nothing but System.Math,
+      and the competition's words to the player, which read the committed state and nothing else.
+      Only a file with no `using UnityEngine` belongs here; a presentation file that grows one leaves.
     -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MusicFade.cs" />
     <Compile Include="$(EditMode)MusicFadeTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionWords.cs" />
+    <Compile Include="$(EditMode)CompetitionWordsTests.cs" />
 
     <!--
       Several parity tests already carry an #else branch for running outside the editor: without

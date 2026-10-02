@@ -47,7 +47,7 @@ namespace Gamesim.Presentation
             rulesLabel.alignment = TextAlignmentOptions.TopLeft; Fit(rulesLabel, 12);
             policyMark = Picture("Policy mark", challengeCard, UiTheme.Pack(PackArt.KitIconInfo), UiTheme.Muted);
             policyLabel = Label("Attempt policy", challengeCard, practice
-                ? "Practice never changes your season. Ranked play uses a separate, fixed board."
+                ? CompetitionWords.PracticePolicy
                 : "Cancel or reload returns to this same ranked board. Scores commit once, after play ends.",
                 12, 0, 0, 10, 10, UiTheme.Muted);
             policyLabel.alignment = TextAlignmentOptions.TopLeft; Fit(policyLabel, 10);

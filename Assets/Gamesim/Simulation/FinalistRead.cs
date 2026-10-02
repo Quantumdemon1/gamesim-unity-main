@@ -375,7 +375,7 @@ namespace Gamesim.Simulation
             int promises = s.promises.Count(p => p.status == PromiseStatus.Broken && p.fromId == finalistId && p.toId == player);
             var parts = acts.OrderBy(a => a.week).Select(a => "Week " + a.week + ": " + a.text).ToList();
             if (deals > 0) parts.Add(deals == 1 ? "Broke a deal with you" : "Broke " + deals + " deals with you");
-            if (block) parts.Add("Your voting block fell apart");
+            if (block) parts.Add("Your voting bloc fell apart");
             if (promises > 0) parts.Add(promises == 1 ? "Broke a promise to you" : "Broke " + promises + " promises to you");
             return parts.Count == 0 ? new Fact("What they did to you", "Nothing on the record", Unknown)
                 : new Fact("What they did to you", string.Join(" · ", parts), Confirmed);

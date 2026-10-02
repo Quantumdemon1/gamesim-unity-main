@@ -167,14 +167,21 @@ namespace Gamesim.Tests.PlayMode
                 "The review stays the control the results open on.");
             var words = PanelWords(panel);
             Assert.That(words, Does.Contain("FINAL STANDINGS"));
+            // The standings as rows (UI-UX-PASS-PLAN C0): the order, a face and a name on each, the
+            // winner's badge on the first, and no score anywhere - the words are swept, at both text
+            // sizes, in EpisodePlayModeTests.CompetitionNumbers.cs.
             var ranked = state.competitionScores.OrderByDescending(score => score.score).ToList();
             for (int rank = 0; rank < ranked.Count; rank++)
             {
                 var who = state.Find(ranked[rank].contestantId);
-                string line = words.SingleOrDefault(w => w.StartsWith((rank + 1) + ".  " + HudPrimitives.WithYou(who.name, who.isPlayer) + "   "));
-                Assert.That(line, Is.Not.Null, who.name + " is ranked " + (rank + 1) + ".");
-                Assert.That(line.EndsWith("winner"), Is.EqualTo(rank == 0), "Only the engine's winner is marked.");
+                var row = ActiveRect(EpisodeHud.StandingRowName + " " + (rank + 1));
+                Assert.That(row, Is.Not.Null, who.name + " is ranked " + (rank + 1) + ".");
+                Assert.That(row.GetComponentsInChildren<TMP_Text>().Single(text => text.name == EpisodeHud.StandingNameName).text,
+                    Does.StartWith(HudPrimitives.WithYou(who.name, who.isPlayer)));
+                Assert.That(row.GetComponentsInChildren<RectTransform>(true).Any(rect => rect.name == "Role mark"), Is.EqualTo(rank == 0),
+                    "Only the engine's winner is marked.");
             }
+            Assert.That(words.Any(CompetitionWords.HasDecimal), Is.False, "No score on the standings.");
             AssertClearOfTheChrome(panel);
             if (Application.isBatchMode) yield return CaptureFraming("phase-results");
 
@@ -243,7 +250,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null; yield return null;
             Canvas.ForceUpdateCanvases();
 
-            var saves = before.nominees.Select(id => ButtonWithCaption("Save " + before.Find(id).name + " (HoH chooses replacement)")).ToArray();
+            var saves = before.nominees.Select(id => ButtonWithCaption(EpisodeDirector.VetoSaveCaption(before, id))).ToArray();
             Assert.That(saves[0].transform.parent.name, Is.EqualTo(EpisodeHud.ChoiceRowName));
             Assert.That(saves[1].transform.parent, Is.SameAs(saves[0].transform.parent), "The nominees share one row.");
             var a = ScreenRect((RectTransform)saves[0].transform);
@@ -272,7 +279,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.TryOpenPhasePanel(), Is.True);
             yield return null; yield return null;
             foreach (var id in before.nominees)
-                Assert.That(FindButton("Save " + before.Find(id).name + " (HoH chooses replacement)").transform.parent.name,
+                Assert.That(FindButton(EpisodeDirector.VetoSaveCaption(before, id)).transform.parent.name,
                     Is.EqualTo("Episode content"), "At the larger text each save is a row of its own.");
             director.ClosePanels();
             yield return ApplyTextSize(false);
@@ -283,7 +290,7 @@ namespace Gamesim.Tests.PlayMode
             yield return OpenDiaryFixturePanel();
             foreach (var id in before.nominees)
             {
-                var save = FindButton("Save " + before.Find(id).name + " (HoH chooses replacement)");
+                var save = FindButton(EpisodeDirector.VetoSaveCaption(before, id));
                 Assert.That(save.transform.parent.name, Is.EqualTo("Episode content"), "The diary keeps its column.");
             }
             AssertEquivalent(before, director.Snapshot);

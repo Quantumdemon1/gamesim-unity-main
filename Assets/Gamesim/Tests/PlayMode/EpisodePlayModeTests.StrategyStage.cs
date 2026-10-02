@@ -179,7 +179,7 @@ namespace Gamesim.Tests.PlayMode
             yield return AtBothTextSizes(larger =>
             {
                 AssertOnTheStrategyStage("Continue episode", "The veto meeting" + (larger ? " at the larger text" : ""));
-                Assert.That(ActiveRect(EpisodeHud.CeremonyTitleName).GetComponent<TMP_Text>().text, Is.EqualTo("Power of Veto Meeting"));
+                AssertTheBandNamesTheMeeting("The veto meeting" + (larger ? " at the larger text" : ""));
             });
             if (Application.isBatchMode)
             {

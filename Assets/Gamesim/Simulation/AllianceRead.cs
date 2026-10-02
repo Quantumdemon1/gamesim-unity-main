@@ -48,6 +48,8 @@ namespace Gamesim.Simulation
         /// </summary>
         public const string FellApart = "It fell apart.", YouLeft = "You left it.", CalledOff = "It was called off.",
             JustEnded = "It ended.";
+        /// <summary>A pact the player cut ties in after a member turned on it, at no cost (ACTIONS-DEALS-ALLIANCES-PLAN C2).</summary>
+        public const string CutTies = "You cut ties after it was betrayed.";
         /// <summary>How the player came into a pact whose invitation the record no longer holds.</summary>
         public const string BroughtIn = "You were brought into it.";
         /// <summary>A suspected pact's evidence when the line that told the player has left the record.</summary>
@@ -233,9 +235,13 @@ namespace Gamesim.Simulation
                 pact.formed = StoryOutcome(s, alliance, row.startedWeek) ?? "It came together in a story, with " + Join(firsts) + ".";
                 return;
             }
-            // An invitation the player put or accepted, agreed the week it began: that is how.
+            // An invitation the player put or accepted, agreed the week it began: that is how. Under the
+            // commitment rules an agreed invitation - open-ended, where an unanswered one keeps its own
+            // week - ends when a member is evicted (C1, X4), and is still how the pact began.
+            bool rules = EpisodeEngine.CommitmentRulesOn(s);
             var invite = s.deals.LastOrDefault(d => d != null && d.type == DealKind.AllianceInvite && d.week == row.startedWeek
-                && (d.status == DealStatus.Active || d.status == DealStatus.Accepted || d.status == DealStatus.Fulfilled || d.status == DealStatus.Broken)
+                && (d.status == DealStatus.Active || d.status == DealStatus.Accepted || d.status == DealStatus.Fulfilled || d.status == DealStatus.Broken
+                    || (rules && d.status == DealStatus.Expired && d.expiresWeek == 0))
                 && ((d.proposerId == s.playerId && alliance.members.Contains(d.recipientId))
                     || (d.recipientId == s.playerId && alliance.members.Contains(d.proposerId))));
             if (invite != null)
@@ -333,6 +339,11 @@ namespace Gamesim.Simulation
             }
             if (partners.Any(a => lines.Contains("You left the alliance with " + a.name + ".") && !rivals.Any(r => r.members.Contains(a.id))))
                 return YouLeft;
+            // The free exit says a line to each pact it ended, naming the betrayer and the pact: this
+            // pact's only when it is that exact line (one that cut a betrayer out of a bigger pact did
+            // not end it, and a pact whose name holds another's is a different pact).
+            if (partners.Any(a => lines.Contains(Allegiance.CutTiesLine(a.name, alliance.name, true))))
+                return CutTies;
             return null;
         }
 
@@ -373,6 +384,9 @@ namespace Gamesim.Simulation
         private static List<Deal> Deals(EpisodeState s, AllianceState alliance)
         {
             var others = alliance.members.Where(id => id != s.playerId).ToList();
+            // Under the commitment rules a deal the vote settled - a partnership too (C1) - says how it
+            // ended once the player knows the ballot that settled it (KnownBallots).
+            bool rules = EpisodeEngine.CommitmentRulesOn(s);
             return s.deals.Where(d => d != null && d.type != DealKind.AllianceInvite
                     && (d.status == DealStatus.Accepted || d.status == DealStatus.Active || d.status == DealStatus.Fulfilled || d.status == DealStatus.Broken)
                     && ((d.proposerId == s.playerId && others.Contains(d.recipientId)) || (d.recipientId == s.playerId && others.Contains(d.proposerId))))
@@ -381,10 +395,11 @@ namespace Gamesim.Simulation
                 {
                     string with = d.proposerId == s.playerId ? d.recipientId : d.proposerId;
                     string about = string.IsNullOrEmpty(d.targetId) ? "" : ", on " + (d.targetId == s.playerId ? "you" : First(s, d.targetId));
+                    string standing = rules && !KnownBallots.DealOutcomeKnown(s, d) ? KnownBallots.Unresolved : HouseguestNotes.DealStanding(d.status, d.proposerId == with);
                     return new Deal
                     {
                         week = d.week, withId = with, type = d.type, status = d.status,
-                        text = DealKind.Title(d.type) + " with " + First(s, with) + about + " · " + HouseguestNotes.DealStanding(d.status, d.proposerId == with),
+                        text = DealKind.Title(d.type) + " with " + First(s, with) + about + " · " + standing,
                     };
                 }).ToList();
         }

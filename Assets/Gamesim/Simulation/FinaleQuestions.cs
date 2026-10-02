@@ -319,8 +319,11 @@ namespace Gamesim.Simulation
                     && (a.active || ledger.alliances.Any(r => r.id == a.id && r.why != null && r.why.EndsWith("/left-house", StringComparison.Ordinal)
                         && leftWeek != null && r.endedWeek == leftWeek)))
                 .LastOrDefault();
+            // Under the commitment rules a deal the vote settled - a partnership too (C1) - is a receipt
+            // only once the player knows the ballot that kept it (KnownBallots).
+            bool rules = EpisodeEngine.CommitmentRulesOn(s);
             var keptDeal = s.deals.Where(d => d.status == DealStatus.Fulfilled && (d.proposerId == player || d.recipientId == player)
-                && (d.proposerId == jurorId || d.recipientId == jurorId)).OrderBy(d => d.week).LastOrDefault();
+                && (d.proposerId == jurorId || d.recipientId == jurorId) && (!rules || KnownBallots.DealOutcomeKnown(s, d))).OrderBy(d => d.week).LastOrDefault();
             if (keptWord != null) Add(Personal, PromiseReceipt, keptWord.id, keptWord.week);
             else if (shared != null) Add(Personal, AllianceReceipt, shared.id, ledger.alliances.FirstOrDefault(r => r.id == shared.id)?.startedWeek ?? 0);
             else if (keptDeal != null) Add(Personal, DealReceipt, keptDeal.id, keptDeal.week);

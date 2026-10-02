@@ -20,7 +20,7 @@ namespace Gamesim.Simulation
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 21) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 22) return Fail(out error, "Unsupported episode schema.");
             if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > CompetitionRules.Current)
                 return Fail(out error, "Unsupported competition rules version.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
@@ -41,6 +41,8 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Agency-rules activation week must be within the saved season boundary.");
             if (s.finaleRulesStartWeek < 0 || s.finaleRulesStartWeek > 101 || s.finaleRulesStartWeek > s.week + 1)
                 return Fail(out error, "Finale-rules activation week must be within the saved season boundary.");
+            if (s.commitmentRulesStartWeek < 0 || s.commitmentRulesStartWeek > 101 || s.commitmentRulesStartWeek > s.week + 1)
+                return Fail(out error, "Commitment-rules activation week must be within the saved season boundary.");
             if (s.socialBudgetRulesStartWeek < 1 || s.socialBudgetRulesStartWeek > 101 || s.socialBudgetRulesStartWeek > s.week + 1)
                 return Fail(out error, "Social-budget activation week must be within the saved season boundary.");
             if (s.playerStudyBonus < 0 || s.playerStudyBonus > 5) return Fail(out error, "Study preparation must be between zero and five.");
@@ -77,6 +79,16 @@ namespace Gamesim.Simulation
             if (s.promises == null || s.promises.Count > 200 || s.promises.Any(p => p == null || !Text(p.id, 160) || !Id(p.fromId) || !Id(p.toId) || p.fromId == p.toId ||
                 !Optional(p.targetId) || !Defined(p.kind) || !Defined(p.status) || p.week < 1 || p.week > s.week || p.expiresWeek < 0 || p.expiresWeek > 101) ||
                 s.promises.GroupBy(p => p.id).Any(g => g.Count() > 1)) return Fail(out error, "Invalid promise data.");
+            // Schema 22 (C0): the week a kept or broken promise was settled - no earlier than it was
+            // made, nor than the rules that write it - and, on a broken one, its maker, whose act
+            // settles a promise: written together, at the settlement, or not at all. 0 and null on
+            // one settled before the rules.
+            if (s.promises.Any(p => (p.brokenById != null && (p.status != PromiseStatus.Broken || p.brokenById != p.fromId || p.settledWeek == 0))
+                    || p.settledWeek < 0 || p.settledWeek > s.week
+                    || (p.settledWeek > 0 && (p.settledWeek < p.week || p.settledWeek < s.commitmentRulesStartWeek
+                        || (p.status != PromiseStatus.Fulfilled && p.status != PromiseStatus.Broken)
+                        || (p.status == PromiseStatus.Broken && p.brokenById == null)))))
+                return Fail(out error, "Invalid promise settlement.");
             if (s.alliances == null || s.alliances.Count > 100 || s.alliances.Any(a => a == null || !Text(a.id, 160) || !Text(a.name, 100) || a.members == null ||
                 a.members.Count < 2 || a.members.Count > s.contestants.Count || a.members.Any(id => !Id(id)) || a.members.Distinct().Count() != a.members.Count) ||
                 s.alliances.GroupBy(a => a.id).Any(g => g.Count() > 1)) return Fail(out error, "Invalid alliance data.");
@@ -133,6 +145,24 @@ namespace Gamesim.Simulation
                                  || d.expiresWeek < 0 || d.expiresWeek > 101) ||
                 s.deals.GroupBy(d => d.id).Any(g => g.Count() > 1))
                 return Fail(out error, "Invalid deal data.");
+            // Schema 22 (C0): the week a kept or broken deal was settled - no earlier than it was struck,
+            // nor than the rules that write it - and, on a broken one, who broke it, one of its two
+            // sides: written together, at the settlement, or not at all. A voting bloc may name
+            // nobody, since both walked away from it, and so may a vote deal, which both of its sides
+            // can break at the one vote (C1); every other broken deal names somebody. 0 and null on
+            // one settled before the rules.
+            if (s.deals.Any(d => (d.brokenById != null && (d.status != DealStatus.Broken || d.settledWeek == 0
+                        || (d.brokenById != d.proposerId && d.brokenById != d.recipientId)))
+                    || d.settledWeek < 0 || d.settledWeek > s.week
+                    || (d.settledWeek > 0 && (d.settledWeek < d.week || d.settledWeek < s.commitmentRulesStartWeek
+                        || (d.status != DealStatus.Fulfilled && d.status != DealStatus.Broken)
+                        || (d.status == DealStatus.Broken && d.brokenById == null
+                            && d.type != DealKind.VoteTogether && d.type != DealKind.VoteSave && d.type != DealKind.VoteEvict)))))
+                return Fail(out error, "Invalid deal settlement.");
+            // The commitment rules write those records, so a season that never played them holds none.
+            if (s.commitmentRulesStartWeek == 0 && (s.deals.Any(d => d.brokenById != null || d.settledWeek != 0)
+                    || s.promises.Any(p => p.brokenById != null || p.settledWeek != 0)))
+                return Fail(out error, "A season without the commitment rules has none of their records.");
             if (s.dealRulesStartWeek < 1 || s.dealRulesStartWeek > Math.Min(101, s.week + 1))
                 return Fail(out error, "A deal rules boundary cannot be further off than next week.");
             // Bought actions are bounded like everything else a player can accumulate: nothing

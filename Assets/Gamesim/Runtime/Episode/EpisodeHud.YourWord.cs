@@ -147,19 +147,6 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// A breach warning as a line in a finalist's column, over the choice's headline: the warning
-        /// colour, centred, wrapping in the column. The card above takes up its height, so the
-        /// headline, the warning and the control stay level with the other column's.
-        /// </summary>
-        private void BreachLine(string words)
-        {
-            if (content == null || string.IsNullOrEmpty(words)) return;
-            var line = FlowText(words, 13, UiTheme.Warning);
-            line.name = BreachWarningName;
-            line.alignment = TextAlignmentOptions.Center;
-        }
-
-        /// <summary>
         /// A breach warning over a ballot's cards, under the ballot's line (<see cref="BallotCards"/>):
         /// the warning colour, centred, as tall as its words need at the column's width. Returns
         /// the height it takes in the column, its gap included, so the cards can give it the room

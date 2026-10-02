@@ -10,6 +10,10 @@ namespace Gamesim.Simulation
     /// held, what you read of them, what they put to you and how you answered, the pacts you share
     /// and what you remember of them. Nothing you have not learned: every line is a row the engine
     /// wrote when it happened. The notebook's notes page and the free-time cards read it.
+    ///
+    /// <para>One line is not a row but the house's own behaviour, by design (ACTIONS-DEALS-ALLIANCES-PLAN
+    /// C3): an ally whose own commitment to you has lapsed has "gone quiet" (<see cref="Allegiance.GoneQuiet"/>),
+    /// in words and never a number - the warning before they can end the pact from their side.</para>
     /// </summary>
     public static class HouseguestNotes
     {
@@ -123,15 +127,44 @@ namespace Gamesim.Simulation
                     brief = followed ? "Followed your call" : "Ignored your call",
                 });
             }
+            bool rules = EpisodeEngine.CommitmentRulesOn(s);
             foreach (var alliance in s.alliances.Where(a => a.members.Contains(s.playerId) && a.members.Contains(id)))
             {
                 var row = s.ledger.alliances.FirstOrDefault(x => x.id == alliance.id);
+                // Under the commitment rules somebody who has left the house has left every pact, though a
+                // pact of three or more goes on without them (X5): they did, or the player did.
+                bool theyLeft = who.status != ContestantStatus.Active;
+                bool youLeft = s.Find(s.playerId)?.status != ContestantStatus.Active;
+                bool left = rules && alliance.active && (theyLeft || youLeft);
+                string gone = theyLeft && youLeft ? "you both left the house" : theyLeft ? first + " left the house" : "you left the house";
                 notes.Add(new Note
                 {
                     week = row?.startedWeek ?? 0, kind = Kinds.Pact,
-                    text = "You are both in " + alliance.name + (alliance.active ? "" : " · ended"),
-                    brief = alliance.active ? "In " + alliance.name + " with you" : alliance.name + " ended",
+                    text = left ? "You were both in " + alliance.name + " · " + gone
+                        : "You are both in " + alliance.name + (alliance.active ? "" : " · ended"),
+                    brief = left ? (theyLeft ? first + " left " + alliance.name : "You left " + alliance.name)
+                        : alliance.active ? "In " + alliance.name + " with you" : alliance.name + " ended",
                 });
+            }
+            // Under the commitment rules (C2) an ally who turned on a pact of yours, where you can know it:
+            // the act as your record holds it - a ballot only once it is yours to know - and while it is
+            // this week's, the way out it opened.
+            foreach (var betrayal in Allegiance.KnownBetrayals(s, id))
+            {
+                bool open = betrayal.week == s.week && Allegiance.FreeExit(s, id);
+                notes.Add(new Note
+                {
+                    week = betrayal.week, kind = Kinds.Pact,
+                    text = betrayal.description.TrimEnd('.') + (open ? " · you can cut ties this week at no cost" : ""),
+                    brief = "Turned on your pact",
+                });
+            }
+            // An ally gone quiet (C3): their own commitment has lapsed. Said in words, never a number;
+            // a refused call and a read are the other two ways the player learns it.
+            if (Allegiance.GoneQuiet(s, id))
+            {
+                var pacts = s.alliances.Where(a => a.active && a.members.Contains(s.playerId) && a.members.Contains(id)).Select(a => a.name);
+                notes.Add(new Note { week = s.week, kind = Kinds.Pact, text = first + " has gone quiet on " + Allegiance.Join(pacts), brief = "Gone quiet on you" });
             }
             // A memory of a vote deal's or a vote promise's ending tells the ballot that ended it:
             // left out while that ballot is not yours to know (KnownBallots; decision 4).

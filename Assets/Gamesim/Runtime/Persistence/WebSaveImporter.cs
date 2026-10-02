@@ -210,6 +210,7 @@ namespace Gamesim.Persistence
             // From the week after, too, and never seeded: the web house's standings are its own.
             EpisodeEngine.EnableAgency(result, checked(week + 1));
             EpisodeEngine.EnableFinale(result, checked(week + 1));
+            EpisodeEngine.EnableCommitments(result, checked(week + 1));
             return result;
         }
 

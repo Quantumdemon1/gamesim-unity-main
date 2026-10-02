@@ -150,7 +150,9 @@ namespace Gamesim.Episode
             if (holder == null) return;
             if (!s.vetoResolved)
             {
-                hud.MeetingTitle("Power of Veto Meeting", holder.name + " holds the Golden Power of Veto and must decide whether to use it.");
+                // No title before the meeting: the band over it says VETO MEETING, and a title under
+                // the band said the meeting's name twice (UI-UX-PASS-PLAN V0). The line heads the step.
+                hud.MeetingTitle(null, holder.name + " holds the Golden Power of Veto and must decide whether to use it.");
                 meetingRow = new PendingMeetingRow { At = hud.MeetingColumnMark(), Marker = -1, Cards = MeetingCardsBefore(s, null) };
                 return;
             }
@@ -193,7 +195,7 @@ namespace Gamesim.Episode
             {
                 string savedByNpc = EpisodeEngine.NpcVetoSave(state);
                 if (savedByNpc == null) return false;
-                hud.MeetingTitle("Power of Veto Meeting", VetoReplacementLine(state, savedByNpc));
+                hud.MeetingTitle(null, VetoReplacementLine(state, savedByNpc));
                 int mark = hud.MeetingColumnMark();
                 var named = MeetingCardsBefore(state, savedByNpc);
                 hud.MeetingEyebrow(NameTheReplacementEyebrow, UiTheme.Danger, PackArt.Pack8IconTarget, "target");
@@ -205,7 +207,7 @@ namespace Gamesim.Episode
             }
 
             bool alsoHoh = state.hohId == state.playerId;
-            hud.MeetingTitle("Power of Veto Meeting", alsoHoh
+            hud.MeetingTitle(null, alsoHoh
                 ? "You hold the Golden Power of Veto, and as Head of Household you name the replacement too."
                 : "You hold the Golden Power of Veto and must decide whether to use it.");
             int at = hud.MeetingColumnMark();

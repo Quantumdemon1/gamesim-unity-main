@@ -295,19 +295,32 @@ namespace Gamesim.Simulation
         private static string CooledSince(EpisodeState s, string jurorId, int week)
         {
             string player = s.playerId;
+            // Under the commitment rules (C0) the record holds the week a promise or a deal broke, and a
+            // deal cools them only when the player broke it: one they broke is not the player's to
+            // answer for (X3). Before them, the guesses below and any deal between the two of them.
+            bool rules = EpisodeEngine.CommitmentRulesOn(s);
             bool Later(PromiseState p) =>
-                p.kind == PromiseKind.FinalTwo
-                // Safety and alliance loyalty break at a nomination, no later than the promise's end.
-                || ((p.kind == PromiseKind.Safety || p.kind == PromiseKind.AllianceLoyalty) && p.expiresWeek > week)
-                || p.week > week;
+                rules && p.settledWeek > 0 ? p.settledWeek > week
+                : (p.kind == PromiseKind.FinalTwo
+                   // Safety and alliance loyalty break at a nomination, no later than the promise's end.
+                   || ((p.kind == PromiseKind.Safety || p.kind == PromiseKind.AllianceLoyalty) && p.expiresWeek > week)
+                   || p.week > week);
+            bool Between(DealState d) => (d.proposerId == player && d.recipientId == jurorId) || (d.proposerId == jurorId && d.recipientId == player);
             if (s.promises.Any(p => p.fromId == player && p.toId == jurorId && p.status == PromiseStatus.Broken && Later(p)))
                 return "you broke a promise to them since";
             if (s.ledger?.replies != null && s.ledger.replies.Any(r => r.kind == ReplyCards.Plea && r.fromId == jurorId && r.replyKey == "refuse" && r.week > week))
                 return "you refused their plea since";
             if (s.ledger?.ballots != null && s.ledger.ballots.Any(b => b.voterId == player && b.targetId == jurorId && b.week > week && CouldKnowYourBallot(s, b.week, jurorId)))
                 return "you voted to evict them since";
-            if (s.deals.Any(d => d.status == DealStatus.Broken && (d.week > week || d.type == DealKind.FinalTwo)
-                && ((d.proposerId == player && d.recipientId == jurorId) || (d.proposerId == jurorId && d.recipientId == player))))
+            if (rules)
+            {
+                // Only one the player can know broke: a voting bloc is broken by both of them, and how
+                // a vote deal ended is a ballot the player may not know (KnownBallots).
+                if (s.deals.Any(d => Between(d) && Breaches.Broke(s, d, player) && Breaches.BrokeAfter(d, week)
+                        && KnownBallots.DealOutcomeKnown(s, d)))
+                    return "you broke a deal with them since";
+            }
+            else if (s.deals.Any(d => d.status == DealStatus.Broken && (d.week > week || d.type == DealKind.FinalTwo) && Between(d)))
                 return "a deal between you broke since";
             return null;
         }
@@ -372,13 +385,17 @@ namespace Gamesim.Simulation
         private static void Knows(EpisodeState s, Juror juror)
         {
             string player = s.playerId, id = juror.id;
+            // Under the commitment rules a deal or a vote promise the juror's own ballot settled - a
+            // partnership too (C1) - says how it ended once the player knows that ballot (KnownBallots).
+            bool rules = EpisodeEngine.CommitmentRulesOn(s);
             foreach (var alliance in s.alliances.Where(a => a.members.Contains(player) && a.members.Contains(id)))
                 juror.knows.Add("You shared " + alliance.name + (alliance.active ? "." : ", now ended."));
             foreach (var deal in s.deals.Where(d => (d.proposerId == player && d.recipientId == id) || (d.proposerId == id && d.recipientId == player)))
-                juror.knows.Add(DealKind.Title(deal.type) + ": " + HouseguestNotes.DealStanding(deal.status, deal.proposerId == id) + ".");
+                juror.knows.Add(DealKind.Title(deal.type) + ": " + (rules && !KnownBallots.DealOutcomeKnown(s, deal) ? KnownBallots.Unresolved
+                    : HouseguestNotes.DealStanding(deal.status, deal.proposerId == id)) + ".");
             foreach (var promise in s.promises.Where(p => (p.fromId == player && p.toId == id) || (p.fromId == id && p.toId == player)))
                 juror.knows.Add((promise.fromId == player ? "You promised them " : "They promised you ") + HouseguestNotes.PromiseWord(promise.kind)
-                    + ": " + HouseguestNotes.PromiseStanding(promise.status) + ".");
+                    + ": " + (rules && !KnownBallots.PromiseOutcomeKnown(s, promise) ? KnownBallots.Unresolved : HouseguestNotes.PromiseStanding(promise.status)) + ".");
             // The player's ballot against them is theirs to know only where the count showed it
             // (UI-UX-PASS-PLAN B0: the reveal reads the count, not the ballots).
             int votes = s.ledger?.ballots?.Count(b => b.voterId == player && b.targetId == id && CouldKnowYourBallot(s, b.week, id)) ?? 0;

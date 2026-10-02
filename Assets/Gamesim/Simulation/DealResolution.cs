@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -23,6 +24,16 @@ namespace Gamesim.Simulation
     /// marked kept or broken by the vote; it is <i>weighed</i> by the vote evaluator instead, at +35
     /// for the nominee it protects. That is the source's design rather than an omission here, and
     /// changing it would double-count the same promise.</para>
+    ///
+    /// <para><b>Under the commitment rules every deal does something</b> (ACTIONS-DEALS-ALLIANCES-PLAN
+    /// C1): a partnership is judged at every vote that tests it and stands while it is kept
+    /// (<see cref="PartnershipAtTheVote"/>), a safety pact is kept when the Head of Household it is
+    /// with spares a partner they did not put up that week (<see cref="Spared"/>), a
+    /// vote deal both parties broke names neither (<see cref="VoteDeal"/>), and the final choice
+    /// passes over a final two with somebody no longer in the house (X4). An information deal does
+    /// its work in the engine (<c>EpisodeEngine.PassTheReadings</c>), and a final two deal is weighed
+    /// in the final Head of Household's choice before it is judged here. A season without the rules
+    /// is judged as it always was.</para>
     /// </summary>
     public static class DealResolution
     {
@@ -44,6 +55,39 @@ namespace Gamesim.Simulation
         /// <summary>What a fulfilled or broken deal of this weight moves on the ledger.</summary>
         public static double Impact(DealState deal, string status) =>
             (status == DealStatus.Fulfilled ? FulfilledBase : BrokenBase) * DealTrust.Weight(deal.trustImpact);
+
+        /// <summary>
+        /// The same in a season: a breach weighs <see cref="BreachWeight"/>, which under the
+        /// commitment rules is one step heavier for an offer the player accepted. A kept deal, and
+        /// every deal in a season without the rules, weighs what <see cref="Impact(DealState, string)"/> says.
+        /// </summary>
+        public static double Impact(EpisodeState s, DealState deal, string status) =>
+            status == DealStatus.Fulfilled ? FulfilledBase * DealTrust.Weight(deal.trustImpact) : BrokenBase * BreachWeight(s, deal);
+
+        /// <summary>
+        /// What a breach of this deal stakes, for every reader that weighs one - the ledger at the
+        /// settlement, the jury (<see cref="WebJuryVoting.Obligations"/>): its own trust weight, and
+        /// under the commitment rules one step heavier for an offer the player accepted
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN C1, decision 15), whoever breaks it. Accepting costs no action
+        /// and earns +4 now, not +12 (<see cref="PlayerDeals.CommittedAcceptedImpact"/>); a yes is a
+        /// commitment, and walking away from one is worse than walking away from a deal nobody was
+        /// asked to take.
+        /// </summary>
+        public static double BreachWeight(EpisodeState s, DealState deal) =>
+            deal == null ? 0 : DealTrust.Weight(AcceptedOffer(s, deal) ? DealTrust.Heavier(deal.trustImpact) : deal.trustImpact);
+
+        /// <summary>
+        /// Whether this deal is an offer the player accepted under the commitment rules: a question a
+        /// houseguest put to them (<see cref="NpcDeals.OfferPrefix"/>, <see cref="NpcDeals.VetoAskPrefix"/>),
+        /// which only the player's yes makes bind, that binds or was settled, and was put no earlier
+        /// than the rules' first week - so the yes was given under them too. A deal the player put to
+        /// somebody, one two houseguests struck, and one a story made are not.
+        /// </summary>
+        public static bool AcceptedOffer(EpisodeState s, DealState deal) =>
+            deal != null && s != null && EpisodeEngine.CommitmentRulesOn(s) && deal.week >= s.commitmentRulesStartWeek
+            && deal.recipientId == s.playerId && deal.id != null
+            && (deal.id.StartsWith(NpcDeals.OfferPrefix, StringComparison.Ordinal) || deal.id.StartsWith(NpcDeals.VetoAskPrefix, StringComparison.Ordinal))
+            && (deal.status == DealStatus.Active || deal.status == DealStatus.Accepted || deal.status == DealStatus.Fulfilled || deal.status == DealStatus.Broken);
 
         /// <summary>The other party to a deal, from one party's point of view.</summary>
         public static string Partner(DealState deal, string whoId) =>
@@ -125,27 +169,82 @@ namespace Gamesim.Simulation
         /// The eviction vote, against a vote deal (STRATEGY-LOOP-PLAN.md §3). A <c>vote_evict</c> is
         /// kept by a party who voted out the person it names and broken by one who voted to keep
         /// them; a <c>vote_save</c> the other way round. A party who did not vote (the Head of
-        /// Household, somebody on the block, somebody already gone) decided nothing. Where both
-        /// parties voted, the first to break it broke it; where nobody did, the first who voted
-        /// kept it. A deal naming nobody on this block is not this vote's to judge.
+        /// Household, somebody on the block, somebody already gone) decided nothing. Where one party
+        /// broke it, they broke it; where nobody did, the first who voted kept it. A deal naming
+        /// nobody on this block is not this vote's to judge.
+        ///
+        /// <para>Where both parties broke it, the first of them was named as its breaker, and the
+        /// settlement held the second as the one wronged - a permanent grudge for a deal they had
+        /// broken themselves. Under the commitment rules (<paramref name="bothNameNobody"/>,
+        /// ACTIONS-DEALS-ALLIANCES-PLAN C1) it names nobody, as a voting bloc that fell apart does:
+        /// both walked away from it, and each holds it against the other.</para>
         /// </summary>
-        public static string VoteDeal(DealState deal, IReadOnlyList<VoteState> votes, IReadOnlyList<string> nominees, out string actorId)
+        public static string VoteDeal(DealState deal, IReadOnlyList<VoteState> votes, IReadOnlyList<string> nominees, out string actorId,
+            bool bothNameNobody = false)
         {
             actorId = null;
             if (deal == null || votes == null || nominees == null || deal.targetId == null || !nominees.Contains(deal.targetId)) return null;
             if (deal.type != DealKind.VoteSave && deal.type != DealKind.VoteEvict) return null;
-            string kept = null;
+            string kept = null, broke = null;
             foreach (string party in new[] { deal.proposerId, deal.recipientId })
             {
                 var ballot = votes.FirstOrDefault(v => v.voterId == party);
                 if (ballot == null) continue;
                 bool evictedTarget = ballot.targetId == deal.targetId;
-                if (deal.type == DealKind.VoteEvict ? !evictedTarget : evictedTarget) { actorId = party; return DealStatus.Broken; }
+                if (deal.type == DealKind.VoteEvict ? !evictedTarget : evictedTarget)
+                {
+                    if (!bothNameNobody) { actorId = party; return DealStatus.Broken; }
+                    // The second breaker: both of them broke it, so neither is the one who did.
+                    if (broke != null) { actorId = null; return DealStatus.Broken; }
+                    broke = party;
+                    continue;
+                }
                 if (kept == null) kept = party;
             }
+            if (broke != null) { actorId = broke; return DealStatus.Broken; }
             if (kept == null) return null;
             actorId = kept;
             return DealStatus.Fulfilled;
+        }
+
+        /// <summary>
+        /// The eviction vote, against a partnership, under the commitment rules
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN C1): a partnership is tested when one of the two is on the
+        /// block and the other casts a ballot - with the house, or as the Head of Household breaking
+        /// a tie. Voting their partner out breaks it; voting the other nominee out keeps it, and a
+        /// partnership kept goes on standing (<see cref="Verdict.stands"/>): it is judged again at
+        /// every vote that tests it, and only a breach ends it. The voter decided it either way. A
+        /// vote with neither of them on the block, or both, or with the one off it casting no ballot,
+        /// does not test it.
+        /// </summary>
+        public static string PartnershipAtTheVote(DealState deal, IReadOnlyList<VoteState> votes, IReadOnlyList<string> nominees, out string actorId)
+        {
+            actorId = null;
+            if (deal == null || deal.type != DealKind.Partnership || votes == null || nominees == null) return null;
+            bool proposerUp = nominees.Contains(deal.proposerId), recipientUp = nominees.Contains(deal.recipientId);
+            if (proposerUp == recipientUp) return null;
+            string up = proposerUp ? deal.proposerId : deal.recipientId;
+            string voter = proposerUp ? deal.recipientId : deal.proposerId;
+            var ballot = votes.FirstOrDefault(v => v.voterId == voter);
+            if (ballot == null) return null;
+            actorId = voter;
+            return ballot.targetId == up ? DealStatus.Broken : DealStatus.Fulfilled;
+        }
+
+        /// <summary>
+        /// A Head of Household's nominating done for the week, against a safety pact, under the
+        /// commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C1): once the veto meeting has named any
+        /// replacement, a safety pact of theirs whose partner is not on the block is kept - they were
+        /// spared. A partner they nominated broke it at the ceremony or the replacement
+        /// (<see cref="Nomination"/>). Without the rules a safety pact could only ever be broken.
+        /// The caller says whether the partner is still in the house to have been spared.
+        /// </summary>
+        public static string Spared(DealState deal, string hohId, IReadOnlyList<string> block)
+        {
+            if (deal == null || deal.type != DealKind.SafetyAgreement || block == null) return null;
+            string partner = Partner(deal, hohId);
+            if (partner == null) return null;
+            return block.Contains(partner) ? null : DealStatus.Fulfilled;
         }
 
         /// <summary>The final Head of Household choosing who to sit beside.</summary>
@@ -172,10 +271,16 @@ namespace Gamesim.Simulation
         {
             var verdicts = new List<Verdict>();
             if (state == null) return verdicts;
+            // The commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C1): every deal does something. A
+            // partnership is judged at the vote, a safety pact is kept by being spared, a vote deal
+            // both parties broke names neither, and the final choice judges no deal with somebody no
+            // longer in the house (X4). A season without them is judged exactly as it always was.
+            bool rules = EpisodeEngine.CommitmentRulesOn(state);
 
             foreach (var deal in state.deals.Where(d => d.status == DealStatus.Active).ToList())
             {
                 string outcome = null;
+                bool stands = false;
                 // A voting block is decided by both of them at once, so neither is the one who
                 // acted; a vote deal is kept or broken by whichever party voted; everything else
                 // has somebody whose choice settled it.
@@ -195,19 +300,43 @@ namespace Gamesim.Simulation
                         break;
                     case Votes:
                         outcome = VoteTogether(deal, state.votes);
-                        if (outcome == null && voteDeals) outcome = VoteDeal(deal, state.votes, state.nominees, out decidedBy);
+                        if (outcome == null && voteDeals) outcome = VoteDeal(deal, state.votes, state.nominees, out decidedBy, bothNameNobody: rules);
+                        if (outcome == null && rules)
+                        {
+                            outcome = PartnershipAtTheVote(deal, state.votes, state.nominees, out decidedBy);
+                            stands = outcome == DealStatus.Fulfilled;
+                        }
                         break;
                     case Selects:
+                        // A final two with somebody already gone is no choice the final Head of
+                        // Household made: their deals ended as they left, and one that did not end
+                        // (a season that took the rules on later) is passed over, not broken.
+                        if (rules && !InTheHouse(state, Partner(deal, actorId))) break;
                         outcome = FinalSelection(deal, actorId, selectedId);
+                        break;
+                    case Spares:
+                        // Only under the rules, and only a partner still in the house was spared - and
+                        // not one put up this week: a pact struck after the ceremony nominated them,
+                        // their seat then saved by the veto, was not kept by sparing them.
+                        string spared = Partner(deal, actorId);
+                        if (!rules || !InTheHouse(state, spared) || state.Find(spared).nominationWeeks.Contains(state.week)) break;
+                        outcome = Spared(deal, actorId, nominees);
                         break;
                 }
                 if (outcome == null) continue;
-                verdicts.Add(new Verdict { deal = deal, status = outcome, actorId = decidedBy });
+                verdicts.Add(new Verdict { deal = deal, status = outcome, actorId = decidedBy, stands = stands });
             }
             return verdicts;
         }
 
-        public const string Nominates = "nominate", Vetoes = "veto", Votes = "vote", Selects = "final-selection";
+        private static bool InTheHouse(EpisodeState state, string id) =>
+            !string.IsNullOrEmpty(id) && state.Find(id)?.status == ContestantStatus.Active;
+
+        /// <summary>
+        /// The actions a verdict answers to. <see cref="Spares"/> is the commitment rules' own: the
+        /// Head of Household's nominating over for the week, the veto meeting's replacement named.
+        /// </summary>
+        public const string Nominates = "nominate", Vetoes = "veto", Votes = "vote", Selects = "final-selection", Spares = "spare";
 
         /// <summary>One deal, how it ended, and whose doing that was.</summary>
         public sealed class Verdict
@@ -217,6 +346,13 @@ namespace Gamesim.Simulation
 
             /// <summary>Whoever's choice settled it, or null where both parties settled it at once.</summary>
             public string actorId;
+
+            /// <summary>
+            /// Kept, and it stands: a partnership kept at a vote under the commitment rules (C1). Nothing
+            /// is settled - the deal stays active, its status and record untouched - and the keep is a
+            /// small kept record (<c>EpisodeEngine.SettleDeals</c>). False for every other verdict.
+            /// </summary>
+            public bool stands;
         }
     }
 }

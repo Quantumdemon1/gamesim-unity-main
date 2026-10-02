@@ -354,7 +354,7 @@ namespace Gamesim.Tests.EditMode
         /// ENDGAME-PLAN F6: a juror's case says what the finalist did to the player, and a broken
         /// deal is the finalist's only where the record shows it was their act - the ceremony, the
         /// veto, the vote the player's own ballot kept. A deal the player broke is not held against
-        /// the finalist, a voting block is both of theirs, and a promise counts only one way.
+        /// the finalist, a voting bloc is both of theirs, and a promise counts only one way.
         /// </summary>
         [Test]
         public void AJurorsCaseCountsOnlyTheDealsTheFinalistBroke()
@@ -394,14 +394,14 @@ namespace Gamesim.Tests.EditMode
             Assert.That(FinalistRead.BrokeADealWithYou(s, veto, them), Is.True, "The finalist held the veto and left the player up.");
             Assert.That(FinalistRead.BrokeADealWithYou(s, evict, them), Is.True, "The player's own ballot kept it, so the finalist broke it.");
             Assert.That(FinalistRead.BrokeADealWithYou(s, save, them), Is.False, "The player's own ballot broke it.");
-            Assert.That(FinalistRead.BrokeADealWithYou(s, block, them), Is.False, "A voting block is both of theirs.");
+            Assert.That(FinalistRead.BrokeADealWithYou(s, block, them), Is.False, "A voting bloc is both of theirs.");
             s.promises.Add(new PromiseState { id = "their-word", fromId = them, toId = you, kind = PromiseKind.FinalTwo, status = PromiseStatus.Broken, week = 5 });
             s.promises.Add(new PromiseState { id = "your-word", fromId = you, toId = them, kind = PromiseKind.FinalTwo, status = PromiseStatus.Broken, week = 5 });
 
             var fact = FinalistRead.JurorCase(s, them).Facts.Last();
             Assert.That(fact.label, Is.EqualTo("What they did to you"));
             Assert.That(fact.certainty, Is.EqualTo(FinalistRead.Confirmed));
-            Assert.That(fact.value, Is.EqualTo("Week 6: nominated you · Broke 3 deals with you · Your voting block fell apart · Broke a promise to you"));
+            Assert.That(fact.value, Is.EqualTo("Week 6: nominated you · Broke 3 deals with you · Your voting bloc fell apart · Broke a promise to you"));
             Assert.That(FinalistRead.TowardYou(s, other.id).value, Is.EqualTo("Week 7: nominated you"),
                 "The other finalist's own week is theirs, and none of the deals, the block or the promises are.");
         }

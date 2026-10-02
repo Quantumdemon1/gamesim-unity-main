@@ -240,8 +240,9 @@ namespace Gamesim.Simulation
             if (s == null || string.IsNullOrEmpty(text)) return false;
             string you = EngineName(s, s.playerId), them = EngineName(s, partnerId);
             foreach (var kind in DealKind.All)
+            foreach (var spelling in DealKind.Titles(kind))
             {
-                string title = DealKind.Title(kind).ToLowerInvariant();
+                string title = spelling.ToLowerInvariant();
                 foreach (bool honoured in new[] { true, false })
                 {
                     string verb = honoured ? " honoured a " : " broke a ", pair = honoured ? " held to their " : " fell out over their ";
@@ -460,7 +461,7 @@ namespace Gamesim.Simulation
             {
                 case DealKind.TargetAgreement: return "target agreement";
                 case DealKind.SafetyAgreement: return "safety pact";
-                case DealKind.VoteTogether: return "voting block";
+                case DealKind.VoteTogether: return "voting bloc";
                 case DealKind.VoteSave: return "vote-to-save deal";
                 case DealKind.VoteEvict: return "vote-to-evict deal";
                 case DealKind.VetoUse: return "veto commitment";

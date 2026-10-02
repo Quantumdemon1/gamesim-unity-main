@@ -34,8 +34,8 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// The lens a part is drawn through: none for an overlay canvas, whose world corners are its
-        /// pixels; the canvas's camera for a camera canvas, as a capture makes every overlay; the
-        /// view for a world-space canvas.
+        /// pixels; the canvas's camera for a camera canvas, as a capture makes every overlay
+        /// (<see cref="CaptureLens"/>); the view for a world-space canvas.
         /// </summary>
         private Camera LensOf(Component part)
         {
@@ -170,9 +170,11 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// The chrome covers what it stands over, as the house asks: the middle of every piece, and
-        /// the whole of it. Through a capture's lens this is the H0 root cause (the play sweep's row
-        /// 10): a camera canvas's corners read as an overlay's are metres in front of the lens and
-        /// cover no pixel, so every icon was shown under every card in every frame photographed.
+        /// the whole of it. Through a camera canvas this is the H0 root cause (the play sweep's row
+        /// 10): its corners read as an overlay's were metres in front of the lens and covered no
+        /// pixel, so every icon was shown under every card in every frame photographed. The capture's
+        /// lens now stands on the frame's pixels, where the two readings agree; a lens off them
+        /// (<see cref="AtFrame"/>'s <c>pixelAligned</c> false) still tells them apart.
         /// </summary>
         private void AssertTheChromeCoversWhatItStandsOver(string where)
         {
@@ -228,12 +230,15 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Through a capture's lens - every overlay drawn through the view camera into a target, as
-        /// the look sheet's frames are - the chrome covers what it stands over and nothing of the
-        /// house projects into it, on the 16:9 frame and the 4:3: over the house with an offer
-        /// waiting (the 'offer-badges' frame), on the overview's map, and under its briefing (the
-        /// 'overview-dashboard' frame), where every room chip is down. Read as an overlay, a camera
-        /// canvas covered nothing (the play sweep's row 10).
+        /// Through a capture's lens - the set drawn through the view camera into a target and every
+        /// overlay drawn over it by the capture's own camera (<see cref="CaptureLens"/>), as the
+        /// review frames are - the chrome covers what it stands over and nothing of the house
+        /// projects into it, on the 16:9 frame and the 4:3: over the house with an offer waiting (the
+        /// 'offer-badges' frame), on the overview's map, and under its briefing (the
+        /// 'overview-dashboard' frame), where every room chip is down. And through a lens that stands
+        /// off the frame's pixels, where a canvas's world corners are not its pixels: the house asks
+        /// the canvas's own camera, whatever it is. Read as an overlay, a camera canvas covered
+        /// nothing (the play sweep's row 10).
         /// </summary>
         [UnityTest]
         public IEnumerator ChromeGate_ThroughACaptureLensTheChromeCoversWhatItStandsOver()
@@ -253,6 +258,19 @@ namespace Gamesim.Tests.PlayMode
                 AssertTheChromeCoversWhatItStandsOver(where);
                 AssertNothingOfTheHouseUnderTheChrome(where);
             });
+            yield return AtFrame(1600, 900, () =>
+            {
+                const string where = "The house from above through a lens off the frame's pixels";
+                var hud = HudCanvasOrNull();
+                Assert.That(hud, Is.Not.Null, where + ": the HUD is up.");
+                var corners = new Vector3[4];
+                ((RectTransform)hud.transform).GetWorldCorners(corners);
+                Assert.That(Vector2.Distance(corners[0], RectTransformUtility.WorldToScreenPoint(LensOf(hud), corners[0])), Is.GreaterThan(100f),
+                    where + ": the HUD's corner is not its pixel there, so the check below asks its camera or fails.");
+                Assert.That(director.TravelBeacons.IsShowing, Is.True, where + ": the rooms carry their icons.");
+                AssertTheChromeCoversWhatItStandsOver(where);
+                AssertNothingOfTheHouseUnderTheChrome(where);
+            }, pixelAligned: false);
 
             Assert.That(director.ToggleOverview(), Is.True);
             yield return WaitForTheOverviewLens();
@@ -525,27 +543,16 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Runs <paramref name="check"/> with every overlay canvas drawn through the view camera into
-        /// a target of this size, as a capture draws the frame, the HUD rendered for it. Unlike
-        /// <see cref="AtFrame"/> it asks nothing of the HUD's shape, so it holds while the HUD stands
-        /// down for a competition. Everything is put back afterwards.
+        /// Runs <paramref name="check"/> with the frame drawn through the capture's lens
+        /// (<see cref="CaptureLens"/>) on a target of this size, as a capture draws it, the HUD
+        /// rendered for it. Unlike <see cref="AtFrame"/> it asks nothing of the HUD's shape, so it
+        /// holds while the HUD stands down for a competition. Everything is put back afterwards.
         /// </summary>
         private IEnumerator ThroughTheLens(int width, int height, System.Action check)
         {
-            var camera = cameraRig.ViewCamera;
-            var overlays = Object.FindObjectsByType<Canvas>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
-                .Where(canvas => canvas.renderMode == RenderMode.ScreenSpaceOverlay).ToArray();
-            var texture = new RenderTexture(width, height, 24);
-            var previousTarget = camera.targetTexture;
+            var lens = new CaptureLens(cameraRig.ViewCamera, width, height);
             try
             {
-                camera.targetTexture = texture;
-                foreach (var canvas in overlays)
-                {
-                    canvas.renderMode = RenderMode.ScreenSpaceCamera;
-                    canvas.worldCamera = camera;
-                    canvas.planeDistance = Mathf.Max(camera.nearClipPlane + 0.1f, 1f);
-                }
                 Canvas.ForceUpdateCanvases();
                 yield return null; yield return null;
                 Canvas.ForceUpdateCanvases();
@@ -556,11 +563,7 @@ namespace Gamesim.Tests.PlayMode
             }
             finally
             {
-                camera.targetTexture = previousTarget;
-                foreach (var canvas in overlays)
-                    if (canvas != null) canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                texture.Release();
-                Object.Destroy(texture);
+                lens.Dispose();
             }
             Canvas.ForceUpdateCanvases();
             yield return null; yield return null;

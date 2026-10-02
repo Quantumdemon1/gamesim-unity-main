@@ -1515,16 +1515,12 @@ namespace Gamesim.Episode
                 else
                 {
                     hud.Action("Review competition results", () => ReviewCompetitionResult(state));
-                    // Ranked as the engine ranks them: the stable order by score, the first the winner.
+                    // Ranked as the engine ranks them, as rows: a face, a name, the winner's badge -
+                    // the crown, or the veto's medal - and no score (UI-UX-PASS-PLAN C0). The rows
+                    // are the result card's own standings, so the two never disagree.
                     hud.Section("FINAL STANDINGS");
-                    var standings = state.competitionScores.OrderByDescending(x => x.score).ToList();
-                    for (int rank = 0; rank < standings.Count; rank++)
-                    {
-                        var who = state.Find(standings[rank].contestantId);
-                        if (who == null) continue;
-                        hud.Paragraph((rank + 1) + ".  " + HudPrimitives.WithYou(who.name, who.isPlayer) + "   "
-                            + standings[rank].score.ToString("0.00") + (rank == 0 ? "  \u00b7  winner" : ""));
-                    }
+                    hud.CompetitionStandings(CompetitionStandings(state),
+                        state.phase == EpisodePhase.Veto ? HudPrimitives.RoleMark.VetoHolder : HudPrimitives.RoleMark.HeadOfHousehold);
                     // The way on, pinned: it used to sit under the standings, well past the fold.
                     AdvanceWarning(state);
                     hud.PinnedAction("Continue to the next ceremony", () => Commit(state, EpisodeCommandKind.Advance));

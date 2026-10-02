@@ -219,14 +219,11 @@ namespace Gamesim.Episode
                 definition?.Summary,
                 "Rules " + state.competitionRulesVersion + ". Practice cannot alter your season. Ranked attempts use the same board after cancel or reload. "
                     + "Pause stops the clock, including when this window loses focus.",
-                state.phase == EpisodePhase.FinalHoHPart1
-                    ? "Performance adds " + PerformanceRange(state) + " effective endurance points, capped at 10, for this competition only. Statistics and seeded survival rolls still matter; full marks do not guarantee a win."
-                    : "Performance adds a " + PerformanceRange(state) + " point bonus. Character statistics and seeded rolls determine the remaining score; full marks do not guarantee a win.",
+                // In the player's words (CompetitionWords; UI-UX-PASS-PLAN C0): what performance is
+                // worth in the game's own measure, and that who they are and the day decide the rest.
+                CompetitionWords.PerformanceRule(PerformanceRange(state), state.phase == EpisodePhase.FinalHoHPart1),
             };
-            if (state.competitionRulesVersion >= 3)
-                rules.Add("Every entry route keeps the same earned bonuses: preparation " + state.playerStudyBonus
-                    + ", event " + state.phaseEventCompBonus + ", storyline " + Storylines.CompetitionBonus(state)
-                    + ". Playing or the accessible alternative adds performance on top; preparation is retained.");
+            if (state.competitionRulesVersion >= 3) rules.Add(CompetitionWords.EarnedRule(state.playerStudyBonus));
             hud.CompetitionActions("Practice this competition", () => StartChallenge(state, true), rules);
 
             hud.Section("COMPETE FOR REAL");
@@ -240,15 +237,11 @@ namespace Gamesim.Episode
                 () => Commit(state, EpisodeCommandKind.Compete, performance: .5), compact: true);
             if (state.phase == EpisodePhase.HoH || state.phase == EpisodePhase.Veto)
             {
-                hud.OptionCard(EpisodeHud.SimulateCompetitionCaption, state.competitionRulesVersion >= 3
-                        ? "The same statistics, earned bonuses and seeded rolls as playing, with zero performance bonus."
-                        : "Weighted statistics plus preparation " + state.playerStudyBonus + "/5 and event bonus "
-                            + state.phaseEventCompBonus + ". No minigame performance bonus; preparation is retained for later weeks.",
+                // The captions are the controls' contracts; what each way in does for the player is
+                // said under them, in the player's words (CompetitionWords; UI-UX-PASS-PLAN C0).
+                hud.OptionCard(EpisodeHud.SimulateCompetitionCaption, CompetitionWords.SimulateDescription(state.competitionRulesVersion),
                     "dumbbell", () => SimulateCompetition(state), compact: true);
-                hud.OptionCard(EpisodeHud.ThrowCompetitionCaption, widened
-                        ? "Every bonus given up and only part of your score counts, so you will lose about nine times in ten. "
-                            + "It lowers only your own score: if everyone else rolls lower still, you win anyway."
-                        : "Zero performance bonus. Your statistics and seeded rolls still count, so you may still win.", "exit",
+                hud.OptionCard(EpisodeHud.ThrowCompetitionCaption, CompetitionWords.ThrowDescription(state.competitionRulesVersion), "exit",
                     () => ThrowCompetition(state), compact: true);
             }
             // And its foot says what the part's winner goes on to, in the final Head of Household's gold.
@@ -530,16 +523,13 @@ namespace Gamesim.Episode
             challengeActive = false; challengeResultShown = false; challengeCommitting = false; challengeFinishHold = 0f;
         }
 
-        private string CompetitionPerformanceExplanation(EpisodeState state)
-        {
-            var explanation = state.events.LastOrDefault(e => e.week == state.week && e.phase == state.phase && e.kind == "competition-performance");
-            if (explanation != null) return explanation.text;
-            var result = state.events.LastOrDefault(e => e.week == state.week && e.phase == state.phase && e.kind == "competition");
-            return result != null && result.text.Contains("(simulated)")
-                ? "Simulated result: weighted statistics, preparation and event bonuses, and seeded rolls. No minigame bonus was used."
-                : "Committed scores combine character statistics, competition modifiers and seeded rolls. Minigame performance adds up to "
-                    + (state.competitionRulesVersion >= CompetitionRules.Widened ? "three" : "two") + " points; it does not guarantee a win.";
-        }
+        /// <summary>
+        /// The Score details page's words: how the player entered, what they brought and that the
+        /// rest was the day (CompetitionWords.Explanation). Never the engine's own
+        /// "competition-performance" line, which is arithmetic nobody in the house sees
+        /// (UI-UX-PASS-PLAN decision 12).
+        /// </summary>
+        private static string CompetitionPerformanceExplanation(EpisodeState state) => CompetitionWords.Explanation(state);
 
         /// <summary>
         /// The houseguest scramble's words: the first names of everyone in the season, the player's

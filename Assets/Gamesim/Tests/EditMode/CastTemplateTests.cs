@@ -223,13 +223,14 @@ namespace Gamesim.Tests.EditMode
             var line = built.events.First(e => e.kind == "arrival").text;
 
             Assert.That(line, Is.Not.EqualTo(authored));
-            Assert.That(line, Does.StartWith("Eight housemates"));
+            Assert.That(line, Does.StartWith("Eight houseguests"), "In the house's own word, as every card of the opening says it.");
+            Assert.That(line, Does.Not.Contain("housemates"));
             Assert.That(line.Length, Is.LessThanOrEqualTo(4000));
 
             var allStars = SeasonBuilder.Create(
                 new SeasonBuilder.Choice { Roster = CastTemplates.Roster.AllStars, HouseSize = 12 }, 1u);
             Assert.That(allStars.events.First(e => e.kind == "arrival").text,
-                Does.StartWith("Twelve housemates").And.Contains("played before"));
+                Does.StartWith("Twelve houseguests").And.Contains("played before"));
         }
 
         /// <summary>

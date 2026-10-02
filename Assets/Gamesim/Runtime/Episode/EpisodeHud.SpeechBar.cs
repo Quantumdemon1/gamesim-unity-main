@@ -18,8 +18,9 @@ namespace Gamesim.Episode
         /// The mockups' bar at the foot of the frame (06, 07, 08): the chat mark, a face in a ring,
         /// a bold first line and a second under it. Here it is always the player's own face and
         /// something true of them on this screen. The game writes the player no inner lines, and a
-        /// status message is not always speech ("Maya Hassan: Build a dependable voting
-        /// partnership..." is her goal, not her words), so nothing is dressed up as a quote.
+        /// status message is not always speech ("You and Maya Hassan talked about the game." is
+        /// the line's account of a conversation, not anybody's words), so nothing is dressed up as
+        /// a quote.
         ///
         /// <para>In the strip's band when <paramref name="inStripBand"/> - mockups 07 and 08 draw
         /// no strip there - up to the quote card when it is showing; otherwise in the status line's

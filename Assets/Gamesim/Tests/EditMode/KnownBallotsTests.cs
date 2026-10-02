@@ -324,7 +324,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(KnownBallots.DealOutcomeKnown(s, deal), Is.False, "Honoured by a ballot the player cannot place.");
             var block = new DealState { id = "b", type = DealKind.VoteTogether, proposerId = s.playerId, recipientId = npcs[4].id, status = DealStatus.Broken, week = 1, expiresWeek = 1 };
             s.deals.Add(block);
-            Assert.That(KnownBallots.DealOutcomeKnown(s, block), Is.False, "A voting block that fell apart says how the other voted.");
+            Assert.That(KnownBallots.DealOutcomeKnown(s, block), Is.False, "A voting bloc that fell apart says how the other voted.");
 
             Claim(s, 1, npcs[3].id, npcs[2].id, ClaimSource.Told, ClaimStatus.Lied);
             Assert.That(KnownBallots.PromiseOutcomeKnown(s, promise), Is.True, "Told, and caught: the ballot is known, and so is the verdict.");
@@ -352,7 +352,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(KnownBallots.TellsAnUnknownBallot(s, npcs[3].id, them + " broke a Vote promise.", 1), Is.True);
             Assert.That(KnownBallots.TellsAnUnknownBallot(s, npcs[3].id, them + " fulfilled a Vote promise.", 1), Is.True);
             Assert.That(KnownBallots.TellsAnUnknownBallot(s, npcs[3].id, them + " broke a vote to evict with " + you + ".", 1), Is.True);
-            Assert.That(KnownBallots.TellsAnUnknownBallot(s, npcs[3].id, you + " and " + them + " fell out over their voting block.", 1), Is.True);
+            Assert.That(KnownBallots.TellsAnUnknownBallot(s, npcs[3].id, you + " and " + them + " fell out over their voting bloc.", 1), Is.True);
+            Assert.That(KnownBallots.TellsAnUnknownBallot(s, npcs[3].id, you + " and " + them + " fell out over their voting block.", 1), Is.True,
+                "A line written under the reference's spelling, before the word was corrected, tells the same ballot.");
             Assert.That(KnownBallots.TellsAnUnknownBallot(s, npcs[3].id, them + " broke a safety pact with " + you + ".", 1), Is.False, "A nomination is public.");
             Assert.That(KnownBallots.TellsAnUnknownBallot(s, npcs[3].id, them + " talked about me to somebody.", 1), Is.False);
             Claim(s, 1, npcs[3].id, npcs[1].id, ClaimSource.Told, ClaimStatus.Kept);
@@ -399,7 +401,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(KnownBallots.PromiseSettledWeek(s, promise), Is.EqualTo(1), "A vote promise of the Head of Household's settled with the tie-break,");
             Assert.That(KnownBallots.PromiseOutcomeKnown(s, promise), Is.True, "in the open.");
             var block = new DealState { id = "b", type = DealKind.VoteTogether, proposerId = s.playerId, recipientId = hoh, status = DealStatus.Broken, week = 1, expiresWeek = 1 };
-            Assert.That(KnownBallots.DealSettledWeek(s, block, hoh), Is.EqualTo(1), "So did a voting block with them,");
+            Assert.That(KnownBallots.DealSettledWeek(s, block, hoh), Is.EqualTo(1), "So did a voting bloc with them,");
             Assert.That(KnownBallots.DealOutcomeKnown(s, block), Is.True, "known.");
             var evict = new DealState { id = "e", type = DealKind.VoteEvict, proposerId = hoh, recipientId = s.playerId, targetId = npcs[1].id, status = DealStatus.Broken, week = 1, expiresWeek = 1 };
             Assert.That(KnownBallots.DealOutcomeKnown(s, evict), Is.True, "The player's own ballot broke a vote to evict with them.");

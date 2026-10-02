@@ -472,7 +472,8 @@ namespace Gamesim.Episode
         {
             string id = actor.id, first = (actor.name ?? "").Split(' ')[0];
             var button = FixedButton(card, CastTalkCaption(first), new Vector2(x, -y), new Vector2(width, height), () => talk?.Invoke(id));
-            EndScreenKit.Frame((RectTransform)button.transform, PackArt.Pack8TalkButton, 8f * FontScale,
+            // The face's edge, not the face's under the fixed button's own.
+            WearFace(button, PackArt.Pack8TalkButton, 8f * FontScale,
                 new Color(Surface.r, Surface.g, Surface.b, .92f), new Color(Accent.r, Accent.g, Accent.b, .6f));
             var words = button.GetComponentInChildren<TMP_Text>();
             if (words == null) return;

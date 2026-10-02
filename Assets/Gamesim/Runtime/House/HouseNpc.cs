@@ -82,6 +82,57 @@ namespace Gamesim.House
         public bool PlateSuppressed { get; set; }
 
         /// <summary>
+        /// Whether the HUD's chrome stands over the plate on screen (the director measures it late
+        /// each frame, after this plate has been placed, UI-UX-PASS-PLAN H0): a plate half under the
+        /// right column or the strip reads as a different name, so it is down until it is clear.
+        /// Taken at once, so the frame it is measured in is the frame it is drawn in.
+        /// </summary>
+        public bool PlateCovered
+        {
+            get => plateCovered;
+            set { plateCovered = value; ApplyPlateAlpha(); }
+        }
+
+        private bool plateCovered;
+
+        /// <summary>
+        /// The plate's alpha from what holds it: down for the show or a board, down under the
+        /// chrome, up whatever the distance for the one the player is with, and faded with the
+        /// distance for everyone else.
+        /// </summary>
+        private void ApplyPlateAlpha()
+        {
+            if (plateGroup != null) plateGroup.alpha = PlateSuppressed || plateCovered ? 0f : spotlit ? 1f : NameTagAlpha;
+        }
+
+        /// <summary>How much of the plate is drawn this frame, 0 to 1. A read for tests.</summary>
+        public float PlateAlpha => plateGroup != null ? plateGroup.alpha : 0f;
+
+        private readonly Vector3[] plateCorners = new Vector3[4];
+
+        /// <summary>
+        /// The plate's four corners through <paramref name="eye"/>, as the screen rect they span,
+        /// in pixels. False with no plate, or with a corner behind the lens. WorldToScreenPoint
+        /// follows a projection set by hand, which the overview's blended lens is.
+        /// </summary>
+        public bool TryPlateScreenRect(Camera eye, out Rect rect)
+        {
+            rect = default;
+            if (plate == null || eye == null) return false;
+            plate.GetWorldCorners(plateCorners);
+            float left = float.MaxValue, right = float.MinValue, bottom = float.MaxValue, top = float.MinValue;
+            foreach (var corner in plateCorners)
+            {
+                var screen = eye.WorldToScreenPoint(corner);
+                if (screen.z <= 0f) return false;
+                left = Mathf.Min(left, screen.x); right = Mathf.Max(right, screen.x);
+                bottom = Mathf.Min(bottom, screen.y); top = Mathf.Max(top, screen.y);
+            }
+            rect = Rect.MinMaxRect(left, bottom, right, top);
+            return true;
+        }
+
+        /// <summary>
         /// The name as the mockups draw it over a houseguest (01, 12): the given name in the HUD's
         /// face on the pack's name plate - dark glass with a blue edge. The TextMesh stays as the
         /// name's holder and its fade, and stops drawing: in the default font it was a large grey
@@ -173,7 +224,10 @@ namespace Gamesim.House
                     nameLabel.transform.localPosition = labelRestPosition - Vector3.up * Mathf.InverseLerp(1f, .5f, near) * NameTagCloseDrop;
                 var colour = nameLabel.color;
                 if (!Mathf.Approximately(colour.a, NameTagAlpha)) { colour.a = NameTagAlpha; nameLabel.color = colour; }
-                if (plateGroup != null) plateGroup.alpha = PlateSuppressed ? 0f : spotlit ? 1f : NameTagAlpha;
+                // Down under the chrome, a followed plate as well: a plate half behind a card is the
+                // chrome's problem, not the follow's. The one the player is talking to is never
+                // covered - the director does not ask (mockup-12).
+                ApplyPlateAlpha();
             }
         }
 

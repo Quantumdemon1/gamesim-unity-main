@@ -170,11 +170,14 @@ namespace Gamesim.Tests.PlayMode
             ButtonWithCaption(EpisodeDirector.DiaryMemoriesTabCaption).onClick.Invoke();
             yield return null; yield return null;
             var labels = ActiveDiaryText();
+            // Each memory as the player reads it: the engine's nameless "Nominated me in week 2."
+            // is said with the Head of Household who did it (MemoryWords.Said, UI-UX-PASS-PLAN D0).
             foreach (var memory in before.memories.Where(memory => memory.ownerId == before.playerId))
-                Assert.That(labels, Does.Contain("Week " + memory.week + ": " + memory.text));
+                Assert.That(labels, Does.Contain("Week " + memory.week + ": " + MemoryWords.Said(before, memory)));
             foreach (var memory in before.memories.Where(memory => memory.ownerId != before.playerId
-                && !before.memories.Any(owned => owned.ownerId == before.playerId && owned.week == memory.week && owned.text == memory.text)))
-                Assert.That(labels, Does.Not.Contain("Week " + memory.week + ": " + memory.text));
+                && !before.memories.Any(owned => owned.ownerId == before.playerId && owned.week == memory.week
+                    && MemoryWords.Said(before, owned) == MemoryWords.Said(before, memory))))
+                Assert.That(labels, Does.Not.Contain("Week " + memory.week + ": " + MemoryWords.Said(before, memory)));
             Assert.That(DiaryHasButton("Begin the next competition"), Is.False);
             Assert.That(DiaryHasButton("Continue episode"), Is.False);
             director.ContinueEpisode(); // Only the phase panel is permitted to expose progression.
@@ -277,20 +280,12 @@ namespace Gamesim.Tests.PlayMode
             ButtonWithCaption(caption).onClick.Invoke();
             yield return null; yield return null;
             if (Application.isBatchMode) yield return CaptureFraming("ballot-review");
-            // The eviction vote's own panel (mockup-08), with Confirm straight under the cards:
-            // on screen without a scroll, where the choice was just made.
+            // The eviction vote's own panel (mockup-08), with Confirm and the way back pinned under
+            // the cards, outside the scroll: on screen without a scroll, where the choice was just
+            // made (UI-UX-PASS-PLAN T0).
             Assert.That(director.GetComponentInChildren<EpisodeHud>().CurrentActivityLayout,
                 Is.EqualTo(EpisodeHud.ActivityLayout.Ballot), "A ballot in the diary is the eviction vote's panel.");
-            Canvas.ForceUpdateCanvases();
-            var viewport = ScreenRect(director.GetComponentsInChildren<RectTransform>()
-                .First(rect => rect.name == "Episode scroll" && rect.gameObject.activeInHierarchy));
-            var confirmAt = ScreenRect((RectTransform)ButtonWithCaption(EpisodeHud.DiaryConfirmCaption).transform);
-            Assert.That(confirmAt.yMin, Is.GreaterThanOrEqualTo(viewport.yMin - 1f),
-                "Confirm stands under the ballot, not past the fold of the panel.");
-            var cards = ScreenRect(director.GetComponentsInChildren<RectTransform>()
-                .First(rect => rect.name == EpisodeHud.BallotRowName && rect.gameObject.activeInHierarchy));
-            Assert.That(cards.yMin - confirmAt.yMax, Is.LessThan(confirmAt.height),
-                "Confirm follows the cards directly; the explanation comes after it.");
+            AssertTheDecisionFitsAtScrollZero("The ballot with a choice waiting", true, false);
             // Mockup-08's bar under the vote, in the strip's place.
             Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == EpisodeHud.SpeechBarName && rect.gameObject.activeInHierarchy),
                 Is.True, "The ballot has its bar.");

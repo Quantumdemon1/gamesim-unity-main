@@ -17,6 +17,14 @@ namespace Gamesim.Simulation
     {
         public string id, name, status;
         public List<string> members = new List<string>();
+
+        /// <summary>
+        /// Native, not the web's (ACTIONS-DEALS-ALLIANCES-PLAN C2, C3): the members whose own commitment
+        /// to the player has lapsed under the commitment rules - one who turned on the pact, or has gone
+        /// cold on the player (<see cref="Allegiance.Lapsed"/>) - whose alliance term toward the player
+        /// counts for nothing. Empty on an imported web round and on every season without the rules.
+        /// </summary>
+        public List<string> lapsedIds = new List<string>();
     }
 
     [Serializable] public sealed class WebVotePromise
@@ -177,10 +185,14 @@ namespace Gamesim.Simulation
                     { npcId = a.npcId, npcName = a.npcName, arcType = a.arcType, intensity = a.intensity, escalationLevel = a.escalationLevel }).ToList(),
                     // A voter weighs only the alliances they know about. Every alliance without a
                     // story fact is known to all, so a season before the knowledge rules is unchanged.
+                    // Under the commitment rules a member who has left the house has left the pact, so
+                    // its size in threat and loyalty is the members still in it (X5), and a member whose
+                    // own commitment to the player has lapsed holds none of its loyalty toward them (C2, C3).
                     alliances = state.alliances.Where(a => Knowledge.AllianceVisibleTo(state, a, voterId)).Select(a => new WebVoteAlliance
                     {
                         id = a.id, name = a.name, status = a.active ? "Active" : "Dissolved",
-                        members = new List<string>(a.members)
+                        members = Allegiance.Counted(state, a),
+                        lapsedIds = Allegiance.LapsedMembers(state, a),
                     }).ToList(),
                     promises = state.promises.Select(p => new WebVotePromise
                     {
@@ -328,7 +340,11 @@ namespace Gamesim.Simulation
 
         private static EvidenceValue AllianceLoyalty(string evaluatorId, string targetId, WebVoteState state)
         {
-            var shared = state.alliances.Where(a => Active(a) && a.members.Contains(evaluatorId) && a.members.Contains(targetId)).ToArray();
+            // Native (C2, C3): a voter whose own commitment to the player has lapsed weighs none of the
+            // pact's loyalty toward them. No imported round names anybody, so the web's term is the web's.
+            bool towardThePlayer = state.allActive.Any(c => c.id == targetId && c.isPlayer);
+            var shared = state.alliances.Where(a => Active(a) && a.members.Contains(evaluatorId) && a.members.Contains(targetId)
+                && !(towardThePlayer && a.lapsedIds != null && a.lapsedIds.Contains(evaluatorId))).ToArray();
             return new EvidenceValue
             {
                 value = Math.Min(100, shared.Sum(a => Math.Min(a.members.Count * 10, 50) + (a.members.Count <= 3 ? 20 : 0))),
@@ -365,7 +381,11 @@ namespace Gamesim.Simulation
                     else if (pair) result.value += PairDealValue(deal.type);
                     result.evidenceIds.Add(deal.id);
                 }
-                else if (deal.status == "broken" && pair) { result.value -= 35; result.evidenceIds.Add(deal.id); }
+                // A broken deal between them, held by the voter against the nominee. Under the commitment
+                // rules only when the nominee broke it (or walked away from a voting bloc), as the web's own
+                // promise term reads a broken promise and as the threat term holds a breach (C0): a voter's
+                // own breach is no grievance of theirs against the one they wronged.
+                else if (deal.status == "broken" && pair && HeldAgainst(deal, targetId)) { result.value -= 35; result.evidenceIds.Add(deal.id); }
                 else if (deal.status == "fulfilled" && pair) { result.value += 5; result.evidenceIds.Add(deal.id); }
             }
             result.value = Clamp(result.value, -50, 50);

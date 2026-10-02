@@ -163,6 +163,10 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.AskVote: AskVote(s, c); break;
                 case EpisodeCommandKind.ReadPerson: ReadPerson(s, c); break;
                 case EpisodeCommandKind.LockFinalArgument: LockFinalArgument(s, c); break;
+                // Under the commitment rules (C2) cutting ties with an ally who turned on the pact this
+                // week, once the player can know it, is free: no action, no warmth, no grudge. Any other
+                // leave is the social action below, as it always was.
+                case EpisodeCommandKind.LeaveAlliance when Allegiance.FreeExit(s, c.targetId): CutTies(s, c, s.Find(c.targetId)); break;
                 default: Social(s, c); break;
             }
         }
@@ -436,6 +440,9 @@ namespace Gamesim.Simulation
                     SettleVoteRead(s, evicted);
                     RecordReveal(s, evicted, tally.Select(x => x.count).ToList());
                     RecordJurorStanding(s, evicted);
+                    // Under the commitment rules (C2) an ally whose ballot went against the player has
+                    // turned on their pact - told to the betrayer alone, as the ballot is.
+                    BallotBetrayals(s, evicted);
                     ReconcileOpportunities(s);
                     PreparePostEvictionDiary(s, evicted);
                     break;
@@ -770,6 +777,8 @@ namespace Gamesim.Simulation
             SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Nominates, s.hohId, s.nominees.ToList()));
             Log(s, "nomination", Name(s, s.hohId) + Verb(s, s.hohId, " nominates ", " nominate ")
                 + Target(s, first, s.hohId) + " and " + Target(s, second, s.hohId) + ".");
+            // Under the commitment rules (C2) an ally who puts the player up has turned on their pact.
+            if (s.hohId != s.playerId && s.nominees.Contains(s.playerId)) Betrayal(s, s.hohId, Allegiance.Nominated, false);
         }
 
         private static void NominationEffects(EpisodeState s, string id, bool initial = true)
@@ -893,12 +902,20 @@ namespace Gamesim.Simulation
             }
             else Log(s, "veto", Name(s, s.vetoHolderId) + Verb(s, s.vetoHolderId, " declines ", " decline ")
                 + "to use the veto. Nominations stand.");
-            SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Vetoes, s.vetoHolderId,
-                nominees: blockBefore, savedId: use ? saved : null, used: use));
+            var vetoVerdicts = DealResolution.Verdicts(s, DealResolution.Vetoes, s.vetoHolderId,
+                nominees: blockBefore, savedId: use ? saved : null, used: use);
+            SettleDeals(s, vetoVerdicts);
+            // Under the commitment rules (C2) an ally who broke their veto commitment to the player has
+            // turned on their pact: the decision is the house's to see.
+            foreach (var verdict in vetoVerdicts.Where(v => v.status == DealStatus.Broken && v.actorId != null
+                         && v.actorId != s.playerId && DealResolution.Partner(v.deal, v.actorId) == s.playerId))
+                Betrayal(s, verdict.actorId, Allegiance.BrokeDeal(verdict.deal.type), false);
             // Naming a replacement is a nomination, and a safety pact with the person named is
             // broken by it exactly as it would be at the ceremony itself.
             if (use) SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Nominates, s.hohId,
                 new List<string> { replacement }));
+            // So is putting an ally up in a saved nominee's place (C2).
+            if (use && replacement == s.playerId && s.hohId != s.playerId) Betrayal(s, s.hohId, Allegiance.NamedReplacement, false);
             // Under the commitment rules (C1) the Head of Household's nominating is done for the
             // week, so a safety pact of theirs with somebody they spared is kept - and the one spared
             // thinks the better of them for it, at the pact's weight. Before them it could only break.
@@ -1046,25 +1063,7 @@ namespace Gamesim.Simulation
 
         private static void Social(EpisodeState s, EpisodeCommand c)
         {
-            if (s.phase != EpisodePhase.Social && s.phase != EpisodePhase.Campaign)
-            {
-                // From the strategy windows the Head of Household can be reached before nominations,
-                // and the veto holder before the meeting. Everybody else, and everything that is not
-                // a word with them, still waits for free time.
-                if (WeekRulesOn(s) && Window(s) != Windows.None)
-                {
-                    // The week's windows (STRATEGY-LOOP-PLAN.md section 4): free roam and every word said
-                    // to somebody, in every window; the strategy windows' own rule still keeps listening
-                    // in, rumours and scheming for the free time.
-                    Require(StrategyRules.IsWindowConversation(c.kind), "That can wait for free time. Right now there is a decision to be made.");
-                }
-                else
-                {
-                    Require(StrategyRules.WindowOpen(s), "Social actions are available during free time and campaigning.");
-                    string refusal = StrategyRules.WindowRefusal(s, c.targetId, c.kind);
-                    Require(refusal == null, refusal);
-                }
-            }
+            RequireConversationWindow(s, c);
             Require(s.Find(s.playerId).status == ContestantStatus.Active, "Evicted players can follow the season but cannot influence it.");
             var target = s.Find(c.targetId);
             // Listening in names nobody: the engine draws the pair it overhears. Every other action
@@ -1147,6 +1146,34 @@ namespace Gamesim.Simulation
             // A conversation is the web's other beat trigger: it advances a story the houseguest is
             // in, raises a broken word waiting between you, and sometimes starts something new.
             if (target != null && TopicChance(c.kind) > 0) StoryConversation(s, target.id, c.kind, c.secondTargetId);
+        }
+
+        /// <summary>
+        /// Where a word with somebody can be said: free time and the campaign, and outside them only a
+        /// window the week opens. The social actions' gate, and the free exit's (C2), which is said where
+        /// a leave is said and costs nothing.
+        /// </summary>
+        private static void RequireConversationWindow(EpisodeState s, EpisodeCommand c)
+        {
+            if (s.phase != EpisodePhase.Social && s.phase != EpisodePhase.Campaign)
+            {
+                // From the strategy windows the Head of Household can be reached before nominations,
+                // and the veto holder before the meeting. Everybody else, and everything that is not
+                // a word with them, still waits for free time.
+                if (WeekRulesOn(s) && Window(s) != Windows.None)
+                {
+                    // The week's windows (STRATEGY-LOOP-PLAN.md section 4): free roam and every word said
+                    // to somebody, in every window; the strategy windows' own rule still keeps listening
+                    // in, rumours and scheming for the free time.
+                    Require(StrategyRules.IsWindowConversation(c.kind), "That can wait for free time. Right now there is a decision to be made.");
+                }
+                else
+                {
+                    Require(StrategyRules.WindowOpen(s), "Social actions are available during free time and campaigning.");
+                    string refusal = StrategyRules.WindowRefusal(s, c.targetId, c.kind);
+                    Require(refusal == null, refusal);
+                }
+            }
         }
 
         /// <summary>

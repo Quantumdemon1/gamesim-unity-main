@@ -168,7 +168,8 @@ namespace Gamesim.Simulation
             // The deals held against the player: under the commitment rules the ones they broke (C0, X3).
             chance -= BrokenDealPenalty * NpcDeals.BrokenDeals(state, state.playerId);
 
-            bool allied = state.Allied(npcId, state.playerId);
+            // Under the commitment rules only an ally whose own commitment holds (Allegiance.Holds; C2, C3).
+            bool allied = Allegiance.Holds(state, npcId, state.playerId);
             if (allied)
             {
                 chance += 20;
@@ -291,7 +292,7 @@ namespace Gamesim.Simulation
             bool rules = EpisodeEngine.CommitmentRulesOn(state);
             double relationship = rules ? KnownOdds.PresumedView(state, npcId) : state.Score(npcId, state.playerId);
             bool nominated = !state.evictionResolved && state.nominees.Contains(npcId);
-            bool allied = state.Allied(npcId, state.playerId);
+            bool allied = Allegiance.Holds(state, npcId, state.playerId);
             // "I've heard you've broken deals" says it only of deals the player broke, under the commitment rules (C0, X3).
             int broken = NpcDeals.BrokenDeals(state, state.playerId);
 

@@ -231,6 +231,18 @@ namespace Gamesim.Simulation
                         "No, but thank you for asking. Most people just assume.",
                         "Not enough to go on. Ask me again later.",
                         "I'll pass on that for now."));
+            // Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C2) the player cut ties the week
+            // this houseguest turned on the pact, and the player knows it: they had it coming. A pact of
+            // two ended; a bigger one went on without them, so they share no pact at all any more.
+            if (acceptedAction == EpisodeCommandKind.LeaveAlliance && !SharedAlliance(state, npc.id, true)
+                && Allegiance.KnownThisWeek(state, npc.id))
+                return Pick(id,
+                    "That's fair. I made my choice first; you're only answering it.",
+                    "Fine. I'd have done the same in your shoes.",
+                    "I know. I'd cut me off too. I'm sorry it came to this.",
+                    "Yeah. I figured that was coming. No hard feelings, honestly.",
+                    "Understood. My move cost me your trust. That was the price.",
+                    "Fair enough. I gave you every reason to.");
             if (acceptedAction == EpisodeCommandKind.LeaveAlliance && !SharedAlliance(state, npc.id, true) && SharedAlliance(state, npc.id, false))
                 return Vary(state,
                     Pick(id,

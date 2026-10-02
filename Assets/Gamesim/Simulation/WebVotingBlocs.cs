@@ -203,6 +203,9 @@ namespace Gamesim.Simulation
         /// Before the levers, no stability and no grudges either, as it always was. Under them
         /// (STRATEGY-LOOP-PLAN.md §3) a pact's stability is its members' warmth for each other,
         /// the story's grudges are the round's, and a call the player made this week stands.
+        /// Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C3) a pact of the player's leaves
+        /// out the members whose own commitment to the player has lapsed: they no longer answer to its
+        /// bloc (<see cref="Allegiance.Following"/>).
         /// No ballots, phase state, sequence, revision or persisted RNG are changed.
         /// </summary>
         public static WebBlocSnapshot FromNative(EpisodeState state)
@@ -219,7 +222,7 @@ namespace Gamesim.Simulation
                     var call = EpisodeEngine.CallThisWeek(state, a.id);
                     return new WebBlocAlliance
                     {
-                        id = a.id, name = a.name, status = a.active ? "Active" : "Broken", members = new List<string>(a.members),
+                        id = a.id, name = a.name, status = a.active ? "Active" : "Broken", members = Allegiance.Following(state, a),
                         stability = EpisodeEngine.LeverRulesOn(state) ? Stability(state, a) : (double?)null,
                         calledTargetId = call?.targetId, callerId = call?.callerId,
                         followedIds = call != null ? new List<string>(call.followed) : new List<string>(),

@@ -246,7 +246,10 @@ namespace Gamesim.Presentation
         /// which is the same line the notebook and the diary room draw. And an entry whose own words
         /// tell a ballot the player does not know - how a vote deal or a vote promise with that
         /// houseguest ended - is left out of the sum, as the web's history leaves it out of its list
-        /// (<see cref="KnownBallots.TellsAnUnknownBallot"/>).</para>
+        /// (<see cref="KnownBallots.TellsAnUnknownBallot"/>). So is the record of an ally's betrayal
+        /// (<see cref="Allegiance.BetrayedType"/>, ACTIONS-DEALS-ALLIANCES-PLAN C2): it moves no view -
+        /// the player's own is theirs to change - so summing its −50 would say a feeling had moved
+        /// that never did. The betrayal is told by its own line.</para>
         /// </summary>
         private static List<Movement> Movements(EpisodeState state, int week)
         {
@@ -256,7 +259,8 @@ namespace Gamesim.Presentation
                 if (edge.fromId != state.playerId && edge.toId != state.playerId) continue;
                 if (edge.fromId == state.playerId && edge.toId == state.playerId) continue;
                 string other = edge.fromId == state.playerId ? edge.toId : edge.fromId;
-                double total = edge.events.Where(e => e.week == week && !KnownBallots.TellsAnUnknownBallot(state, other, e.description, e.week))
+                double total = edge.events.Where(e => e.week == week && e.type != Allegiance.BetrayedType
+                                                      && !KnownBallots.TellsAnUnknownBallot(state, other, e.description, e.week))
                     .Sum(e => e.impactScore);
                 if (Math.Abs(total) < NotableMove) continue;
                 moves.Add(new Movement

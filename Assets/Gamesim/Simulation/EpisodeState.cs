@@ -471,7 +471,15 @@ namespace Gamesim.Simulation
         public ContestantState Find(string id) => contestants.FirstOrDefault(c => c.id == id);
         public IEnumerable<ContestantState> Active => contestants.Where(c => c.status == ContestantStatus.Active);
         public double Score(string from, string to) => relationships.FirstOrDefault(r => r.fromId == from && r.toId == to)?.score ?? 0;
-        public bool Allied(string a, string b) => alliances.Any(x => x.active && x.members.Contains(a) && x.members.Contains(b));
+        /// <summary>
+        /// Whether two houseguests share a standing pact. Under the commitment rules
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN X5) somebody who has left the house has left every pact, though
+        /// a pact of three or more goes on without them and its record still names them.
+        /// </summary>
+        public bool Allied(string a, string b) => alliances.Any(x => x.active && x.members.Contains(a) && x.members.Contains(b))
+            && (!EpisodeEngine.CommitmentRulesOn(this) || (InHouse(a) && InHouse(b)));
+
+        private bool InHouse(string id) => contestants.Any(c => c.id == id && c.status == ContestantStatus.Active);
 
         public EpisodeState Clone()
         {

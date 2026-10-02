@@ -196,6 +196,51 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C1, X4) a deal with the evicted ends
+        /// as the house turns to the social week - after the walk out has read it - so the goodbye at the
+        /// door is still a deal's. An ending at the reveal itself left every such goodbye neutral.
+        /// </summary>
+        [Test]
+        public void UnderTheCommitmentRulesTheDealtGoodbyeStillFires()
+        {
+            var state = ContentCatalog.Create(7);
+            state.strategyRulesStartWeek = 1;
+            var npcs = state.contestants.Where(c => !c.isPlayer).Select(c => c.id).ToList();
+            string gone = npcs[1], stays = npcs[2];
+            state.phase = EpisodePhase.Campaign;
+            state.hohId = npcs[0];
+            state.nominees = new List<string> { gone, stays };
+            state.vetoHolderId = npcs[3];
+            state.vetoPlayers = state.contestants.Select(c => c.id).Take(EpisodeEngine.VetoPlayerCount(state.contestants.Count)).ToList();
+            if (!state.vetoPlayers.Contains(state.vetoHolderId)) state.vetoPlayers[state.vetoPlayers.Count - 1] = state.vetoHolderId;
+            state.vetoResolved = true;
+            void Score(string from, string to, double value)
+            {
+                var edge = state.relationships.FirstOrDefault(r => r.fromId == from && r.toId == to);
+                if (edge == null) state.relationships.Add(edge = new RelationshipState { fromId = from, toId = to });
+                edge.score = value;
+            }
+            foreach (var voter in EpisodeEngine.Voters(state).ToList()) { Score(voter.id, gone, -100); Score(voter.id, stays, 100); }
+            state.deals.Add(new DealState
+            {
+                id = "deal-final", type = DealKind.FinalTwo, proposerId = state.playerId, recipientId = gone,
+                status = DealStatus.Active, week = 1, expiresWeek = 0, trustImpact = DealKind.DefaultTrust(DealKind.FinalTwo),
+            });
+            EpisodeEngine.EnableCommitments(state);
+            var engine = new EpisodeEngine(state);
+            for (int i = 0; i < 40 && !engine.Snapshot.evictionResolved; i++)
+                Assert.That(engine.Apply(EpisodeEngineTests.NextCommand(engine.Snapshot)).accepted, Is.True);
+            var revealed = engine.Snapshot;
+            Assert.That(revealed.Find(gone).status, Is.EqualTo(ContestantStatus.Jury), "The house voted them out.");
+            Assert.That(EpisodeDirector.GoodbyeTone(revealed, gone), Is.EqualTo(EpisodeDirector.GoodbyeKind.Dealt),
+                "The walk out reads the deal between them before it ends.");
+            for (int i = 0; i < 8 && engine.Snapshot.phase != EpisodePhase.Social; i++)
+                Assert.That(engine.Apply(EpisodeEngineTests.NextCommand(engine.Snapshot)).accepted, Is.True);
+            Assert.That(engine.Snapshot.deals.Single(d => d.id == "deal-final").status, Is.EqualTo(DealStatus.Expired),
+                "and it ends as the house turns to the week.");
+        }
+
+        /// <summary>
         /// The goodbye's words are for where it is said (UI-UX-PASS-PLAN W0): the staged goodbye
         /// plays its line as the evicted stand before the house, where "glares at you from the
         /// doorway" was wrong by a room, and the walks play the doorway's words at the door. The

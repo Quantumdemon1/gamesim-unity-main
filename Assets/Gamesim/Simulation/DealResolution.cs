@@ -26,8 +26,9 @@ namespace Gamesim.Simulation
     /// changing it would double-count the same promise.</para>
     ///
     /// <para><b>Under the commitment rules every deal does something</b> (ACTIONS-DEALS-ALLIANCES-PLAN
-    /// C1): a partnership is judged at the vote (<see cref="PartnershipAtTheVote"/>), a safety pact
-    /// is kept when the Head of Household it is with spares their partner (<see cref="Spared"/>), a
+    /// C1): a partnership is judged at every vote that tests it and stands while it is kept
+    /// (<see cref="PartnershipAtTheVote"/>), a safety pact is kept when the Head of Household it is
+    /// with spares a partner they did not put up that week (<see cref="Spared"/>), a
     /// vote deal both parties broke names neither (<see cref="VoteDeal"/>), and the final choice
     /// passes over a final two with somebody no longer in the house (X4). An information deal does
     /// its work in the engine (<c>EpisodeEngine.PassTheReadings</c>), and a final two deal is weighed
@@ -210,9 +211,11 @@ namespace Gamesim.Simulation
         /// The eviction vote, against a partnership, under the commitment rules
         /// (ACTIONS-DEALS-ALLIANCES-PLAN C1): a partnership is tested when one of the two is on the
         /// block and the other casts a ballot - with the house, or as the Head of Household breaking
-        /// a tie. Voting their partner out breaks it; voting the other nominee out keeps it. The voter
-        /// settled it either way. A vote with neither of them on the block, or both, or with the one
-        /// off it casting no ballot, does not test it, and it stands.
+        /// a tie. Voting their partner out breaks it; voting the other nominee out keeps it, and a
+        /// partnership kept goes on standing (<see cref="Verdict.stands"/>): it is judged again at
+        /// every vote that tests it, and only a breach ends it. The voter decided it either way. A
+        /// vote with neither of them on the block, or both, or with the one off it casting no ballot,
+        /// does not test it.
         /// </summary>
         public static string PartnershipAtTheVote(DealState deal, IReadOnlyList<VoteState> votes, IReadOnlyList<string> nominees, out string actorId)
         {
@@ -277,6 +280,7 @@ namespace Gamesim.Simulation
             foreach (var deal in state.deals.Where(d => d.status == DealStatus.Active).ToList())
             {
                 string outcome = null;
+                bool stands = false;
                 // A voting block is decided by both of them at once, so neither is the one who
                 // acted; a vote deal is kept or broken by whichever party voted; everything else
                 // has somebody whose choice settled it.
@@ -297,7 +301,11 @@ namespace Gamesim.Simulation
                     case Votes:
                         outcome = VoteTogether(deal, state.votes);
                         if (outcome == null && voteDeals) outcome = VoteDeal(deal, state.votes, state.nominees, out decidedBy, bothNameNobody: rules);
-                        if (outcome == null && rules) outcome = PartnershipAtTheVote(deal, state.votes, state.nominees, out decidedBy);
+                        if (outcome == null && rules)
+                        {
+                            outcome = PartnershipAtTheVote(deal, state.votes, state.nominees, out decidedBy);
+                            stands = outcome == DealStatus.Fulfilled;
+                        }
                         break;
                     case Selects:
                         // A final two with somebody already gone is no choice the final Head of
@@ -307,13 +315,16 @@ namespace Gamesim.Simulation
                         outcome = FinalSelection(deal, actorId, selectedId);
                         break;
                     case Spares:
-                        // Only under the rules, and only a partner still in the house was spared.
-                        if (!rules || !InTheHouse(state, Partner(deal, actorId))) break;
+                        // Only under the rules, and only a partner still in the house was spared - and
+                        // not one put up this week: a pact struck after the ceremony nominated them,
+                        // their seat then saved by the veto, was not kept by sparing them.
+                        string spared = Partner(deal, actorId);
+                        if (!rules || !InTheHouse(state, spared) || state.Find(spared).nominationWeeks.Contains(state.week)) break;
                         outcome = Spared(deal, actorId, nominees);
                         break;
                 }
                 if (outcome == null) continue;
-                verdicts.Add(new Verdict { deal = deal, status = outcome, actorId = decidedBy });
+                verdicts.Add(new Verdict { deal = deal, status = outcome, actorId = decidedBy, stands = stands });
             }
             return verdicts;
         }
@@ -335,6 +346,13 @@ namespace Gamesim.Simulation
 
             /// <summary>Whoever's choice settled it, or null where both parties settled it at once.</summary>
             public string actorId;
+
+            /// <summary>
+            /// Kept, and it stands: a partnership kept at a vote under the commitment rules (C1). Nothing
+            /// is settled - the deal stays active, its status and record untouched - and the keep is a
+            /// small kept record (<c>EpisodeEngine.SettleDeals</c>). False for every other verdict.
+            /// </summary>
+            public bool stands;
         }
     }
 }

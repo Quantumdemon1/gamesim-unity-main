@@ -104,6 +104,32 @@ namespace Gamesim.Simulation
         // ---------------------------------------------------------------- C1: every deal does something
 
         /// <summary>
+        /// What a partnership kept at a vote leaves on the record, both ways: a kept deal's entry at a
+        /// word's weight (+4, a conversation's), so a partnership kept at every vote that tests it is
+        /// never a farm of standing. A record, which moves no score.
+        /// </summary>
+        public const double PartnershipKept = 4;
+
+        /// <summary>
+        /// A partnership kept at a vote, under the commitment rules (C1): it stands - no status, no
+        /// settlement, no week on its record - and the keep is a small kept record: the entry
+        /// (<see cref="PartnershipKept"/>), the memory of the one kept, and the line, which goes to
+        /// the voter alone, since the ballot that kept it is theirs. Their memory and the record wait
+        /// for the player who was kept to know that ballot, as a vote deal's do
+        /// (<see cref="KnownBallots.TellsAnUnknownBallot"/>). Nothing is drawn and no view moves.
+        /// </summary>
+        private static void KeptAndStanding(EpisodeState s, DealResolution.Verdict verdict)
+        {
+            var deal = verdict.deal;
+            string kept = DealResolution.Partner(deal, verdict.actorId);
+            if (kept == null) return;
+            string text = Name(s, verdict.actorId) + " honoured a " + DealKind.Title(deal.type).ToLowerInvariant() + " with " + Name(s, kept) + ".";
+            RelationshipLedger.Record(s, kept, verdict.actorId, "deal_fulfilled", PartnershipKept, text);
+            Remember(s, kept, verdict.actorId, text, true);
+            Log(s, "deal-outcome", text, verdict.actorId);
+        }
+
+        /// <summary>
         /// Somebody has left the house, under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C1,
         /// X4): every deal that still binds them - one they are a party to, an offer they made or were
         /// made, one that names them - ends, and so does every final two promise made to them or by
@@ -178,13 +204,15 @@ namespace Gamesim.Simulation
         /// is about to vote, a partner of the player's who casts a ballot this week tells them where
         /// it is going. It is the same claim an answered "where's your head at" is - told to the
         /// player's face (<see cref="ClaimSource.Told"/>), on the ledger's claims, read by the whip
-        /// count, and judged at the reveal like every other (kept, or a lie that costs them with the
-        /// player). What they say is their ballot as it stands (<see cref="ProjectBallot"/>), honestly:
-        /// that is the deal, a fact that is theirs to give, never a number. A partner who casts no
-        /// ballot this week - the Head of Household, somebody on the block - has no vote to share.
-        /// One a week for each partner, however many deals; no roll; nothing for a player out of the
-        /// house. No memory either, as with the asked claim: a memory naming somebody counts in the
-        /// web's vote term.
+        /// count, and judged at the reveal like every other. Their word is as good as it is to anybody
+        /// who asks (<see cref="VoteHonesty"/>: Loyal always, Sneaky one time in four, anybody else by
+        /// how they see the player), drawn on a coin keyed to the week and the partner, so the season's
+        /// stream is untouched; a lie names the nominee they are not voting out. The deal obliges an
+        /// answer, so nobody deflects. A partner caught lying at the reveal has broken the deal
+        /// (<see cref="BreakTheDealsOfLyingPartners"/>). A partner who casts no ballot this week - the
+        /// Head of Household, somebody on the block - has no vote to share. One a week for each
+        /// partner, however many deals; nothing for a player out of the house; no memory, as with the
+        /// asked claim: a memory naming somebody counts in the web's vote term.
         /// </summary>
         private static void PassTheReadings(EpisodeState s)
         {
@@ -196,11 +224,39 @@ namespace Gamesim.Simulation
             {
                 string partner = DealResolution.Partner(deal, s.playerId);
                 if (partner == null || !voters.Contains(partner) || !told.Add(partner)) continue;
-                string target = ProjectBallot(s, partner).selectedNomineeId;
-                if (string.IsNullOrEmpty(target)) continue;
-                SeasonLedger.Append(s.ledger, s.ledger.claims, new ClaimRow { week = s.week, voterId = partner, targetId = target, source = ClaimSource.Told });
-                Log(s, "vote-read", ReadingLine(Name(s, partner), Target(s, target, partner)), s.playerId, partner);
+                string truth = ProjectBallot(s, partner).selectedNomineeId;
+                if (string.IsNullOrEmpty(truth)) continue;
+                bool honest = StoryRandom.Chance(s, ReadingKey(s, partner), VoteHonesty(s.Find(partner), s.Score(partner, s.playerId)));
+                string stated = honest ? truth : s.nominees.FirstOrDefault(id => id != truth);
+                if (string.IsNullOrEmpty(stated)) continue;
+                SeasonLedger.Append(s.ledger, s.ledger.claims, new ClaimRow { week = s.week, voterId = partner, targetId = stated, source = ClaimSource.Told });
+                Log(s, "vote-read", ReadingLine(Name(s, partner), Target(s, stated, partner)), s.playerId, partner);
             }
+        }
+
+        /// <summary>The key of the coin an information partner's honesty is drawn on: the week and the partner, in the season's own story stream (<see cref="StoryRandom"/>).</summary>
+        public static string ReadingKey(EpisodeState s, string partnerId) => "w" + s.week + ":reading:" + partnerId;
+
+        /// <summary>
+        /// At the reveal, under the commitment rules (C1): an information partner whose claim to the
+        /// player's face was judged a lie has broken the deal - the truth was what it promised. Broken
+        /// by them, settled as any breach is, its line to both: the judged claim has already told the
+        /// player the ballot.
+        /// </summary>
+        private static void BreakTheDealsOfLyingPartners(EpisodeState s)
+        {
+            var liars = new HashSet<string>(s.ledger.claims
+                .Where(k => k.week == s.week && k.status == ClaimStatus.Lied && k.source == ClaimSource.Told)
+                .Select(k => k.voterId));
+            if (liars.Count == 0) return;
+            var verdicts = new List<DealResolution.Verdict>();
+            foreach (var deal in s.deals.Where(d => d.status == DealStatus.Active && d.type == DealKind.InformationSharing))
+            {
+                string partner = DealResolution.Partner(deal, s.playerId);
+                if (partner != null && liars.Contains(partner))
+                    verdicts.Add(new DealResolution.Verdict { deal = deal, status = DealStatus.Broken, actorId = partner });
+            }
+            SettleDeals(s, verdicts);
         }
 
         /// <summary>The line an information deal's reading is told in: "Alex kept you in the loop, as your information deal has it: they're voting to evict Maya."</summary>

@@ -233,9 +233,13 @@ namespace Gamesim.Simulation
                 pact.formed = StoryOutcome(s, alliance, row.startedWeek) ?? "It came together in a story, with " + Join(firsts) + ".";
                 return;
             }
-            // An invitation the player put or accepted, agreed the week it began: that is how.
+            // An invitation the player put or accepted, agreed the week it began: that is how. Under the
+            // commitment rules an agreed invitation - open-ended, where an unanswered one keeps its own
+            // week - ends when a member is evicted (C1, X4), and is still how the pact began.
+            bool rules = EpisodeEngine.CommitmentRulesOn(s);
             var invite = s.deals.LastOrDefault(d => d != null && d.type == DealKind.AllianceInvite && d.week == row.startedWeek
-                && (d.status == DealStatus.Active || d.status == DealStatus.Accepted || d.status == DealStatus.Fulfilled || d.status == DealStatus.Broken)
+                && (d.status == DealStatus.Active || d.status == DealStatus.Accepted || d.status == DealStatus.Fulfilled || d.status == DealStatus.Broken
+                    || (rules && d.status == DealStatus.Expired && d.expiresWeek == 0))
                 && ((d.proposerId == s.playerId && alliance.members.Contains(d.recipientId))
                     || (d.recipientId == s.playerId && alliance.members.Contains(d.proposerId))));
             if (invite != null)

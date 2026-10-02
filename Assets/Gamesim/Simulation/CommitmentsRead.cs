@@ -186,6 +186,14 @@ namespace Gamesim.Simulation
                 c.binds = DealBinds(s, d);
                 c.status = withheld ? KnownBallots.Unresolved : DealStatusWord(d, yours, c.brokenById, player);
                 c.term = Term(s, c);
+                // Under the commitment rules an open-ended deal ends when one of the two leaves the house
+                // (C1, X4): its term says so, as an oath's does, rather than "never expires".
+                if (EpisodeEngine.CommitmentRulesOn(s) && d.status == DealStatus.Expired && d.expiresWeek == 0)
+                {
+                    string leaver = s.Find(other).status != ContestantStatus.Active ? other
+                        : s.Find(player).status != ContestantStatus.Active ? player : null;
+                    if (leaver != null) { c.untilWeek = LeftWeek(s, leaver); c.term = UntilLeft(s, leaver); }
+                }
                 into.Add(c);
             }
         }

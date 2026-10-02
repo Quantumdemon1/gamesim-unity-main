@@ -445,6 +445,10 @@ namespace Gamesim.Simulation
                     // C1), and the record says who: the player's own ballot, known to them, or the
                     // other's, told once the player knows it (KnownBallots). Before them none broke.
                     return deal.settledWeek > 0 && KnownBallots.DealOutcomeKnown(s, deal) ? deal.brokenById : null;
+                case DealKind.InformationSharing:
+                    // Only a lie the reveal caught breaks one, under the commitment rules (C1), and the
+                    // player was told that lie and the ballot it hid. Before them none broke.
+                    return deal.settledWeek > 0 ? deal.brokenById : null;
                 default:
                     return null;
             }

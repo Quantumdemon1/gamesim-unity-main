@@ -141,8 +141,44 @@ namespace Gamesim.Tests.EditMode
         {
             Assert.That(FinalChoiceWords.JuryEyebrow(1), Is.EqualTo("JURY READ (1 JUROR)"));
             Assert.That(FinalChoiceWords.JuryEyebrow(13), Is.EqualTo("JURY READ (13 JURORS)"));
-            Assert.That(FinalChoiceWords.BulletsEyebrow("Maya Hassan"), Is.EqualTo("IF YOU TAKE MAYA"));
+            Assert.That(FinalChoiceWords.BulletsEyebrow("Maya Hassan", "Taylor Kim"), Is.EqualTo("IF YOU TAKE MAYA"));
+            Assert.That(FinalChoiceWords.BulletsEyebrow("Dr. Will Kirby", "Taylor Kim"), Is.EqualTo("IF YOU TAKE WILL"), "Past a title, as the caption.");
             Assert.That(FinalChoiceWords.FallbackCaption("Maya Hassan"), Is.EqualTo("Evict Maya Hassan"));
+        }
+
+        /// <summary>With nobody on the jury yet, the eyebrow over the line that says so counts nobody.</summary>
+        [Test]
+        public void AnEmptyJurysEyebrowCountsNobody()
+        {
+            Assert.That(FinalChoiceWords.JuryEyebrow(0), Is.EqualTo("JURY READ"));
+            Assert.That(FinalChoiceWords.JuryEyebrow(-1), Is.EqualTo("JURY READ"));
+            Assert.That(FinalChoiceWords.JuryEyebrow(0), Does.Not.Contain("0"));
+        }
+
+        /// <summary>
+        /// Finalists who share a first name are named whole everywhere the page names them - the
+        /// caption, the bullets' eyebrow - so nothing that names one reads as naming the other.
+        /// </summary>
+        [Test]
+        public void TheBulletsEyebrowNamesWholeFinalistsWhoShareAFirstName()
+        {
+            Assert.That(FinalChoiceWords.BulletsEyebrow("Maya Hassan", "maya Ortiz"), Is.EqualTo("IF YOU TAKE MAYA HASSAN"));
+            Assert.That(FinalChoiceWords.BulletsEyebrow("maya Ortiz", "Maya Hassan"), Is.EqualTo("IF YOU TAKE MAYA ORTIZ"));
+            Assert.That(FinalChoiceWords.Names("Maya Hassan", "maya Ortiz"), Is.EqualTo(("Maya Hassan", "maya Ortiz")));
+            Assert.That(FinalChoiceWords.Names("Maya Hassan", "Taylor Kim"), Is.EqualTo(("Maya", "Taylor")));
+            Assert.That(FinalChoiceWords.BulletsEyebrow("Maya Hassan", null), Is.EqualTo("IF YOU TAKE MAYA"), "With nobody to share a name with, the first name.");
+        }
+
+        /// <summary>What breaks whichever finalist is taken, said once: nothing for nobody, then one agreement or several.</summary>
+        [Test]
+        public void TheEitherWayLineNamesTheJurorsWhoseAgreementsBreak()
+        {
+            Assert.That(FinalChoiceWords.EitherWay(new List<string>()), Is.Null);
+            Assert.That(FinalChoiceWords.EitherWay(null), Is.Null);
+            Assert.That(FinalChoiceWords.EitherWay(new List<string> { "Riley" }),
+                Is.EqualTo("Either way, your Final 2 agreement with Riley (on the jury) will end broken."));
+            Assert.That(FinalChoiceWords.EitherWay(new List<string> { "Riley", "Jamie" }),
+                Is.EqualTo("Either way, your Final 2 agreements with Riley and Jamie (on the jury) will end broken."));
         }
     }
 }

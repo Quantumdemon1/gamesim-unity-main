@@ -19,10 +19,15 @@ namespace Gamesim.Episode
     /// the screen scrolled off the top (the show sweep's rows 12 and 37).
     ///
     /// <para>Laid for the frame in fixed boxes and fitted to the height the stage leaves it, as the
-    /// finale page is: the record's line, the photo, the bullets' type and the chips step down a size
-    /// before the page grows, so it holds without a scroll at both text sizes on the 16:9 frame and
-    /// the 4:3 canvas. The two columns are measured together, so the cards end level and the
-    /// controls under them stand level whatever each card holds.</para>
+    /// finale page is: the record's line, the photo, the bullets' type and the chips step down a size,
+    /// and at the last the line of what the choice does goes and the controls shorten, before the page
+    /// grows, so it holds without a scroll at both text sizes on the 16:9 frame and the 4:3 canvas.
+    /// The two columns are measured together, so the cards end level and the controls under them
+    /// stand level whatever each card holds.</para>
+    ///
+    /// <para>An Enter the player did not aim commits nothing: the page opens with the keyboard on
+    /// Close, never on a choice (<see cref="MayFocusOnItsOwn"/>), and a card is lit while its control
+    /// holds the keyboard, so Enter only ever presses the lit control (<see cref="ChoiceLight"/>).</para>
     ///
     /// <para>Every word is the player's read. The chips are <see cref="FinalistRead.Lean"/>'s, which
     /// takes only what the player saw, was part of or was told - an alliance they know of, a
@@ -56,6 +61,8 @@ namespace Gamesim.Episode
             public ContestantState Actor;
             public FinalistRead.Finalist Read;
             public IList<FinalChoiceJuror> Jurors;
+            /// <summary>The bullets' eyebrow, "IF YOU TAKE MAYA", by the name the page calls them (<see cref="FinalChoiceWords.BulletsEyebrow"/>).</summary>
+            public string BulletsHeading;
             public IList<string> Bullets;
             public string Caption, Warning, Consequence, Breach;
             public Action Choose;
@@ -78,21 +85,31 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// One way the page can be laid, largest first: the photo's height, whether the archetype and
-        /// the record's line are said, the bullets' type, the chips' height and type, and the gaps
-        /// between the page's parts (<see cref="Gaps"/> of their resting size).
+        /// the record's line are said, the bullets' type, the chips' height and type, the gaps between
+        /// the page's parts (<see cref="Gaps"/> of their resting size), whether the line of what the
+        /// choice does stands over the control, and the control's height.
         /// </summary>
         private readonly struct ChoiceTier
         {
-            public readonly float Photo, Chip, Gaps;
+            public readonly float Photo, Chip, Gaps, Control;
             public readonly int Bullet, ChipType;
-            public readonly bool Archetype, Record;
+            public readonly bool Archetype, Record, Consequence;
 
-            public ChoiceTier(float photo, bool archetype, bool record, int bullet, float chip, int chipType, float gaps)
+            public ChoiceTier(float photo, bool archetype, bool record, int bullet, float chip, int chipType, float gaps,
+                bool consequence = true, float control = ChoiceControlHeight)
             {
                 Photo = photo; Archetype = archetype; Record = record; Bullet = bullet; Chip = chip; ChipType = chipType; Gaps = gaps;
+                Consequence = consequence; Control = control;
             }
         }
 
+        /// <summary>
+        /// The tiers, largest first. The last gives up the line of what the choice does - the last
+        /// bullet already says who joins the jury - and stands the control 48 tall: headroom for the
+        /// worst case Q0's review measured, a house of sixteen at the larger text on the 4:3 canvas
+        /// with Final 2 deals between the player and both finalists and one with a juror - five and
+        /// six bullets, a breach over each control and the either-way line over both.
+        /// </summary>
         private static readonly ChoiceTier[] ChoiceTiers =
         {
             new ChoiceTier(128f, true, true, 14, 22f, 12, 1f),
@@ -100,6 +117,7 @@ namespace Gamesim.Episode
             new ChoiceTier(96f, true, false, 13, 20f, 11, 1f),
             new ChoiceTier(84f, true, false, 12, 18f, 10, .7f),
             new ChoiceTier(72f, false, false, 12, 18f, 10, .6f),
+            new ChoiceTier(64f, false, false, 12, 18f, 10, .5f, consequence: false, control: 48f),
         };
 
         /// <summary>Where a chip, or the word over its group, stands in its card's row of chips.</summary>
@@ -294,13 +312,15 @@ namespace Gamesim.Episode
             layout.WarningY = y;
             layout.WarningH = columns.Any(column => !string.IsNullOrEmpty(column.Warning)) ? BoardLine(13) : 0f;
             if (layout.WarningH > 0f) y += layout.WarningH + 4f * s;
-            foreach (var column in columns)
-                if (!string.IsNullOrEmpty(column.Consequence))
-                    layout.ConsequenceH = Mathf.Max(layout.ConsequenceH, Mathf.Max(BoardLine(13), BoardMeasure(probe, column.Consequence, 13, layout.ColumnWidth)));
+            // What the choice does, where the tier keeps it; the last tier lets the last bullet say it.
+            if (tier.Consequence)
+                foreach (var column in columns)
+                    if (!string.IsNullOrEmpty(column.Consequence))
+                        layout.ConsequenceH = Mathf.Max(layout.ConsequenceH, Mathf.Max(BoardLine(13), BoardMeasure(probe, column.Consequence, 13, layout.ColumnWidth)));
             layout.ConsequenceY = y;
             if (layout.ConsequenceH > 0f) y += layout.ConsequenceH + 8f * s;
             layout.ControlY = y;
-            layout.ControlH = ChoiceControlHeight * s;
+            layout.ControlH = tier.Control * s;
             layout.ColumnsH = y + layout.ControlH;
 
             // The page: the line under the band, what breaks either way, the columns, the legend.
@@ -435,8 +455,8 @@ namespace Gamesim.Episode
             {
                 float side = 16f * s;
                 float x = Mark("Eyebrow mark", card, PackArt.IconTrophy, null, UiTheme.Gold, new Vector2(pad, -(layout.BulletsY + 2f * s)), side) != null ? side + 8f * s : 0f;
-                var eyebrow = FixedText(card, FinalChoiceWords.BulletsEyebrow(actor.name), 12, Accent, new Vector2(pad + x, -layout.BulletsY),
-                    new Vector2(Mathf.Max(10f, layout.Inner - x), 20f * s));
+                var eyebrow = FixedText(card, column.BulletsHeading ?? FinalChoiceWords.BulletsEyebrow(actor.name, null), 12, Accent,
+                    new Vector2(pad + x, -layout.BulletsY), new Vector2(Mathf.Max(10f, layout.Inner - x), 20f * s));
                 eyebrow.name = BulletsEyebrowName;
                 eyebrow.characterSpacing = 4f;
                 eyebrow.alignment = TextAlignmentOptions.MidlineLeft;
@@ -460,7 +480,7 @@ namespace Gamesim.Episode
                 breach.alignment = TextAlignmentOptions.Top;
             }
             if (!string.IsNullOrEmpty(column.Warning)) ChoiceWarning(box, column.Warning, layout, probe);
-            if (!string.IsNullOrEmpty(column.Consequence))
+            if (layout.ConsequenceH > 0f && !string.IsNullOrEmpty(column.Consequence))
             {
                 var line = FixedText(box, column.Consequence, 13, UiTheme.Muted, new Vector2(0f, -layout.ConsequenceY), new Vector2(layout.ColumnWidth, layout.ConsequenceH));
                 line.name = FinalistConsequenceName;

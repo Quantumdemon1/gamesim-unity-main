@@ -192,17 +192,21 @@ namespace Gamesim.Episode
         /// is the column's only one - and it listens to the same select and pointer events the
         /// Button does, so the column says which choice a press would make before it is made.
         ///
-        /// <para>The columns are one group, and one card in it is lit at a time. The pointer's column
-        /// wins while the pointer is on a control, because a click lands there whatever the keyboard
-        /// is on; with the pointer on neither, the keyboard's column is lit. Lit separately, the two
-        /// could light both cards at once.</para>
+        /// <para>The columns are one group, and one card in it is lit at a time. The keyboard's column
+        /// wins whenever the player has put the keyboard on one of the group's controls, and keeps the
+        /// light while the pointer passes over the other: Enter presses the selected control, so the
+        /// lit card is always the one Enter would take (UI-UX-PASS-PLAN Q0's review; the pointer's
+        /// column used to win, and Enter could press the unlit control). With neither control holding
+        /// the keyboard, the pointer's lights its column, a preview of what a click there would do. Lit
+        /// separately, the two could light both cards at once.</para>
         ///
-        /// <para>The keyboard lights a column only when the player put it there. Every panel opens
-        /// with the keyboard on its first control, which here is the first finalist's; a card lit
-        /// before the player has done anything would read as the game's pick, on a screen whose head
-        /// says nothing on it is a prediction. So a selection the HUD makes on its own account
-        /// (<see cref="RestoreFocus"/>) lights nothing, unless it hands back the control the player
-        /// had lit before a rebuild. The Button's own tint still shows where the keyboard is.</para>
+        /// <para>The keyboard lights a column only when the player put it there. The HUD never puts
+        /// it on one of these controls of its own accord (<see cref="MayFocusOnItsOwn"/>: the page
+        /// opens on Close), and a selection the HUD makes on its own account (<see cref="RestoreFocus"/>)
+        /// lights nothing unless it hands back the control the player had lit before a rebuild - a
+        /// card lit before the player has done anything would read as the game's pick, on a screen
+        /// whose head says nothing on it is a prediction. The Button's own tint still shows where the
+        /// keyboard is.</para>
         ///
         /// <para>No OnDisable reset: the HUD deactivates a whole panel before it destroys it, and a
         /// SetActive on the edge from inside that deactivation is one Unity refuses. A rebuilt panel
@@ -239,10 +243,12 @@ namespace Gamesim.Episode
 
             public void Apply()
             {
-                bool pointed = hovered;
+                // The player's keyboard on any of the group's controls holds the light; only without
+                // it does the pointer's control light its column.
+                bool chosen = focused;
                 if (Group != null)
-                    foreach (var light in Group) pointed |= light != null && light.hovered;
-                bool lit = pointed ? hovered : focused;
+                    foreach (var light in Group) chosen |= light != null && light.focused;
+                bool lit = chosen ? focused : hovered;
                 if (Edge != null) Edge.SetActive(lit);
                 if (Fill != null) Fill.SetActive(lit);
             }

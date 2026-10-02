@@ -2012,12 +2012,14 @@ namespace Gamesim.Episode
                 // reason to move the keyboard. The HUD's own rebuilds destroy the old selection, so
                 // for them this is null and the named restore below takes over as before.
                 var current = events.currentSelectedGameObject;
+                // Never, of the HUD's own accord, a control that commits the final choice: the
+                // final Head of Household's page opens on Close (MayFocusOnItsOwn).
                 var focus = eligible.FirstOrDefault(item => current != null && item.gameObject == current)
-                    ?? eligible.FirstOrDefault(item => item.name == preferredSelection)
-                    ?? OpeningControl(eligible)
+                    ?? eligible.FirstOrDefault(item => item.name == preferredSelection && MayFocusOnItsOwn(item))
+                    ?? OpeningControl(eligible.Where(MayFocusOnItsOwn).ToArray())
                     ?? PinnedSelectable(eligible)
                     ?? eligible.FirstOrDefault(item => item.name == "Go to episode screen")
-                    ?? eligible.FirstOrDefault();
+                    ?? eligible.FirstOrDefault(MayFocusOnItsOwn);
                 RestoreFocus(events, focus != null ? focus.gameObject : null);
                 restoreSelection = false;
             }
@@ -2041,9 +2043,9 @@ namespace Gamesim.Episode
             }
             if (scope != null && (selected == null || !selected.transform.IsChildOf(scope)))
             {
-                var focus = (overlay != null ? overlay : content).GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable())
+                var focus = (overlay != null ? overlay : content).GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable() && MayFocusOnItsOwn(item))
                     ?? (overlay == null && pinnedAction != null ? pinnedAction.GetComponent<Selectable>() : null)
-                    ?? scope.GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable());
+                    ?? scope.GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable() && MayFocusOnItsOwn(item));
                 RestoreFocus(events, focus != null ? focus.gameObject : null);
                 selected = events.currentSelectedGameObject;
             }
@@ -2054,6 +2056,18 @@ namespace Gamesim.Episode
                     RevealSelection(selected.transform);
             }
         }
+
+        /// <summary>
+        /// Whether the HUD may put the keyboard on <paramref name="item"/> on its own account - a
+        /// panel opening, a rebuild's restore, a lost selection's fallback. Never a control that
+        /// commits the final Head of Household's choice (it wears a <see cref="ChoiceLight"/>), unless
+        /// it is the one the player lit, handed back across a rebuild: an irreversible choice is never
+        /// left under an Enter the player did not aim (UI-UX-PASS-PLAN Q0's review). That page opens
+        /// on Close, which commits nothing; Tab or an arrow takes the keyboard to a choice, which
+        /// lights its card.
+        /// </summary>
+        private bool MayFocusOnItsOwn(Selectable item) =>
+            item != null && (item.GetComponent<ChoiceLight>() == null || (litChoice != null && item.name == litChoice));
 
         /// <summary>
         /// Selects <paramref name="target"/> on the HUD's own account rather than the player's: a

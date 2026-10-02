@@ -100,10 +100,15 @@ namespace Gamesim.Episode
         /// <summary>
         /// What taking <paramref name="take"/> does, as the engine settles it: the other finalist
         /// joins the jury, and the jury's questions come to the two left (EpisodeFinale's exchanges,
-        /// each asked of the player with the other finalist's answer recorded beside it).
+        /// each asked of the player with the other finalist's answer recorded beside it). By the
+        /// names the page calls the two (<see cref="FinalChoiceWords.Names"/>): whole where they share
+        /// a first name.
         /// </summary>
-        public static string FinalChoiceConsequence(ContestantState take, ContestantState cut) =>
-            FinalistRead.FirstName(cut.name) + " joins the jury; you and " + FinalistRead.FirstName(take.name) + " face the jury's questions.";
+        public static string FinalChoiceConsequence(ContestantState take, ContestantState cut)
+        {
+            var (taken, gone) = FinalChoiceWords.Names(take.name, cut.name);
+            return gone + " joins the jury; you and " + taken + " face the jury's questions.";
+        }
 
         /// <summary>
         /// The final Head of Household's choice as a page (UI-UX-PASS-PLAN Q0): a card per finalist
@@ -126,15 +131,11 @@ namespace Gamesim.Episode
                 }
                 return;
             }
-            hud.StrategyWholeWidth();
             // Whatever the choice: the Final 2 agreements with anyone but the two finalists end broken.
-            var broken = FinalistRead.BrokenEitherWay(state);
             var spec = new EpisodeHud.FinalChoiceSpec
             {
                 Line = FinalTwoHeadLine,
-                EitherWay = broken.Count == 0 ? null
-                    : "Either way, your Final 2 " + (broken.Count == 1 ? "agreement" : "agreements") + " with "
-                      + string.Join(" and ", broken) + " (on the jury) will end broken.",
+                EitherWay = FinalChoiceWords.EitherWay(FinalistRead.BrokenEitherWay(state)),
                 Columns = new List<EpisodeHud.FinalChoiceColumn>(),
             };
             // The jurors by the names their chips carry: first names, whole where two share one.
@@ -156,6 +157,7 @@ namespace Gamesim.Episode
                         Id = lean.jurorId, Name = named.ContainsKey(lean.jurorId) ? named[lean.jurorId] : lean.name,
                         Lean = lean.lean, Certainty = lean.certainty,
                     }).ToList(),
+                    BulletsHeading = FinalChoiceWords.BulletsEyebrow(take.name, cut.name),
                     Bullets = FinalistRead.IfYouTake(state, take.id, cut.id),
                     Caption = FinalChoiceWords.Caption(take.name, cut.name),
                     Warning = FinalChoiceWarning,

@@ -38,20 +38,39 @@ namespace Gamesim.Presentation
         public static readonly IReadOnlyList<string> LeanOrder = new[] { FinalistRead.Support, FinalistRead.Bitter, FinalistRead.Uncertain };
 
         /// <summary>
+        /// The names the page calls the two finalists by: their first names, as the house says them
+        /// (<see cref="FinalistRead.FirstName"/>), or both whole where the two share a first name, so
+        /// nothing on the page that names one can be read as naming the other.
+        /// </summary>
+        public static (string take, string cut) Names(string takeName, string cutName)
+        {
+            string take = FinalistRead.FirstName(takeName), cut = FinalistRead.FirstName(cutName);
+            return string.Equals(take, cut, StringComparison.OrdinalIgnoreCase) ? (takeName ?? string.Empty, cutName ?? string.Empty) : (take, cut);
+        }
+
+        /// <summary>
         /// The control that takes <paramref name="takeName"/> to the Final 2 and so evicts
-        /// <paramref name="cutName"/>: "Take Maya · evict Taylor", by the names the house calls them
-        /// (<see cref="FinalistRead.FirstName"/>); both whole where the two share a first name, so the
-        /// two controls on the page never read alike.
+        /// <paramref name="cutName"/>: "Take Maya · evict Taylor", by the names the page calls them
+        /// (<see cref="Names"/>), so the two controls on the page never read alike.
         /// </summary>
         public static string Caption(string takeName, string cutName)
         {
-            string take = FinalistRead.FirstName(takeName), cut = FinalistRead.FirstName(cutName);
-            if (string.Equals(take, cut, StringComparison.OrdinalIgnoreCase)) { take = takeName ?? string.Empty; cut = cutName ?? string.Empty; }
+            var (take, cut) = Names(takeName, cutName);
             return TakeWord + take + EvictWord + cut;
         }
 
         /// <summary>The paired choice's caption, for a final eviction not between two finalists: a shape the engine never produces.</summary>
         public static string FallbackCaption(string name) => "Evict " + name;
+
+        /// <summary>
+        /// The line over both cards when the player's Final 2 agreements with somebody on the jury end
+        /// broken whichever finalist is taken (<see cref="FinalistRead.BrokenEitherWay"/>'s names), said
+        /// once rather than as a breach over either control; null when there are none.
+        /// </summary>
+        public static string EitherWay(IReadOnlyList<string> names) =>
+            names == null || names.Count == 0 ? null
+                : "Either way, your Final 2 " + (names.Count == 1 ? "agreement" : "agreements") + " with "
+                  + string.Join(" and ", names) + " (on the jury) will end broken.";
 
         /// <summary>
         /// The caption of the control that evicts <paramref name="evictedId"/> at the final eviction:
@@ -115,10 +134,17 @@ namespace Gamesim.Presentation
         public static bool Filled(string lean, string certainty) =>
             lean != FinalistRead.Uncertain && certainty == FinalistRead.Confirmed;
 
-        /// <summary>The chips' eyebrow, with the jury's size: "JURY READ (3 JURORS)".</summary>
-        public static string JuryEyebrow(int jurors) => "JURY READ (" + jurors + (jurors == 1 ? " JUROR)" : " JURORS)");
+        /// <summary>
+        /// The chips' eyebrow, with the jury's size: "JURY READ (3 JURORS)"; with nobody on the jury,
+        /// "JURY READ" alone over the line that says so, never a count of none.
+        /// </summary>
+        public static string JuryEyebrow(int jurors) =>
+            jurors <= 0 ? "JURY READ" : "JURY READ (" + jurors + (jurors == 1 ? " JUROR)" : " JURORS)");
 
-        /// <summary>The bullets' eyebrow: "IF YOU TAKE MAYA".</summary>
-        public static string BulletsEyebrow(string takeName) => "IF YOU TAKE " + FinalistRead.FirstName(takeName).ToUpperInvariant();
+        /// <summary>
+        /// The bullets' eyebrow over what taking <paramref name="takeName"/> means: "IF YOU TAKE MAYA",
+        /// by the name the page calls them (<see cref="Names"/>) - whole where the two share a first name.
+        /// </summary>
+        public static string BulletsEyebrow(string takeName, string cutName) => "IF YOU TAKE " + Names(takeName, cutName).take.ToUpperInvariant();
     }
 }

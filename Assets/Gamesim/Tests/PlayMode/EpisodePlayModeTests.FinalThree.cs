@@ -8,6 +8,7 @@ using NUnit.Framework;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
@@ -49,10 +50,13 @@ namespace Gamesim.Tests.PlayMode
         /// player saw or was part of, standing close, then a grudge, then no read, each group under its
         /// word, and every bullet of what taking them means; under the card the warning, what the choice
         /// does and the one control, "Take {first} · evict {first}", whole and inside its column, the two
-        /// controls level; every label drawn, in a box at least 1.3 times its type. Measured in the
-        /// canvas's own units, so it holds on the batch canvas, inside AtFrame and in a capture's frame.
+        /// controls level; the either-way line where the player's word to a juror breaks whoever is
+        /// taken, and a breach line over a control only where that choice alone breaks it; every label
+        /// drawn, in a box at least 1.3 times its type. Measured in the canvas's own units, so it holds
+        /// on the batch canvas, inside AtFrame and in a capture's frame. <paramref name="consequenceMayGo"/>
+        /// lets the page's smallest tier drop the line of what the choice does (the worst case).
         /// </summary>
-        private void AssertTheFinalChoicePage(EpisodeState state, string where)
+        private void AssertTheFinalChoicePage(EpisodeState state, string where, bool consequenceMayGo = false)
         {
             Canvas.ForceUpdateCanvases();
             Assert.That(Hud.CurrentActivityLayout, Is.EqualTo(EpisodeHud.ActivityLayout.Strategy), where + " takes the strategy stage.");
@@ -71,6 +75,17 @@ namespace Gamesim.Tests.PlayMode
             string status = EpisodeDirector.HouseStatus(state);
             if (status != null) Assert.That(Words(LastActive("Episode panel")), Does.Not.Contain(status), where + ": the house's status line stands down.");
             Assert.That(Words(page), Does.Contain(FinalChoiceWords.Legend), where + ": what a chip's fill says.");
+            // What breaks whichever finalist is taken is said once, over both cards.
+            string eitherWay = FinalChoiceWords.EitherWay(FinalistRead.BrokenEitherWay(state));
+            var either = page.GetComponentsInChildren<TMP_Text>().SingleOrDefault(label => label.name == EpisodeHud.EitherWayName);
+            if (eitherWay == null) Assert.That(either, Is.Null, where + ": nothing breaks either way, and nothing says so.");
+            else
+            {
+                Assert.That(either, Is.Not.Null, where + ": the either-way line.");
+                Assert.That(either.text, Is.EqualTo(eitherWay), where + ": the either-way line's words.");
+                Assert.That(CanvasRect(either.rectTransform).yMin, Is.GreaterThanOrEqualTo(CanvasRect(LastActive(EpisodeHud.FinalistColumnsName)).yMax - 1f),
+                    where + ": over both cards.");
+            }
 
             var others = FinalistRead.Others(state);
             Assert.That(others, Has.Count.EqualTo(2), where + ": two finalists to choose between.");
@@ -92,6 +107,7 @@ namespace Gamesim.Tests.PlayMode
                 columns.Add(columnRect);
                 string words = Words(card);
                 Assert.That(words, Does.Contain(take.name), who + ": the card names them.");
+                Assert.That(words, Does.Not.Contain("FINAL HEAD OF HOUSEHOLD"), who + ": the crown is the player's tonight, not a finalist's.");
                 Assert.That(card.GetComponentsInChildren<CharacterPortraitBinding>(true), Has.Length.EqualTo(1), who + ": a photo bound to them.");
                 Assert.That(card.GetComponentsInChildren<TMP_Text>().Single(label => label.name == EpisodeHud.RelationshipWordName).text,
                     Is.EqualTo(FinalistRead.StandingWord(state, take.id)), who + ": where the player stands, in the web's word.");
@@ -141,15 +157,16 @@ namespace Gamesim.Tests.PlayMode
                 }
 
                 // What taking them means: every bullet of the read's own.
-                Assert.That(words, Does.Contain(FinalChoiceWords.BulletsEyebrow(take.name)), who + ": what taking them means, headed.");
+                Assert.That(words, Does.Contain(FinalChoiceWords.BulletsEyebrow(take.name, cut.name)), who + ": what taking them means, headed.");
                 Assert.That(card.GetComponentsInChildren<TMP_Text>().Where(label => label.name == EpisodeHud.FinalistBulletName).Select(label => label.text),
                     Is.EqualTo(FinalistRead.IfYouTake(state, take.id, cut.id).Select(line => "• " + line)), who + ": every bullet, in order.");
 
-                // Under the card: the warning, what the choice does, and the one control, its caption both halves of the choice.
+                // Under the card: any breach, the warning, what the choice does, and the one control, its caption both halves of the choice.
                 var warning = column.GetComponentsInChildren<TMP_Text>().Single(label => label.name == EpisodeHud.FinalistWarningName);
                 Assert.That(warning.text, Is.EqualTo(EpisodeDirector.FinalChoiceWarning), who + ": the warning.");
-                var consequence = column.GetComponentsInChildren<TMP_Text>().Single(label => label.name == EpisodeHud.FinalistConsequenceName);
-                Assert.That(consequence.text, Is.EqualTo(EpisodeDirector.FinalChoiceConsequence(take, cut)), who + ": what the choice does.");
+                var consequence = column.GetComponentsInChildren<TMP_Text>().SingleOrDefault(label => label.name == EpisodeHud.FinalistConsequenceName);
+                if (consequence == null) Assert.That(consequenceMayGo, Is.True, who + ": what the choice does is said over the control.");
+                else Assert.That(consequence.text, Is.EqualTo(EpisodeDirector.FinalChoiceConsequence(take, cut)), who + ": what the choice does.");
                 string caption = FinalChoiceWords.Caption(take.name, cut.name);
                 Assert.That(caption, Is.EqualTo(FinalChoiceWords.CaptionToEvict(state, cut.id)), who + ": the control that takes them evicts the other.");
                 var buttons = column.GetComponentsInChildren<Button>().Where(button => button.IsActive() && button.IsInteractable()).ToList();
@@ -157,11 +174,26 @@ namespace Gamesim.Tests.PlayMode
                 var control = (RectTransform)buttons[0].transform;
                 var captionLabel = control.GetComponentsInChildren<TMP_Text>().First(text => text.text == caption);
                 Assert.That(ShowsAllOf(captionLabel), Is.True, who + ": the caption '" + caption + "' is drawn to its end.");
-                Rect controlRect = CanvasRect(control), warningRect = CanvasRect(warning.rectTransform), consequenceRect = CanvasRect(consequence.rectTransform);
+                Rect controlRect = CanvasRect(control), warningRect = CanvasRect(warning.rectTransform);
                 AssertWithin(columnRect, controlRect, who + "'s control", "its column");
                 Assert.That(cardRect.yMin, Is.GreaterThanOrEqualTo(warningRect.yMax - 1f), who + ": the card, then the warning,");
-                Assert.That(warningRect.yMin, Is.GreaterThanOrEqualTo(consequenceRect.yMax - 1f), who + ": then what the choice does,");
-                Assert.That(consequenceRect.yMin, Is.GreaterThanOrEqualTo(controlRect.yMax - 1f), who + ": then the control.");
+                float overControl = warningRect.yMin;
+                if (consequence != null)
+                {
+                    var consequenceRect = CanvasRect(consequence.rectTransform);
+                    Assert.That(warningRect.yMin, Is.GreaterThanOrEqualTo(consequenceRect.yMax - 1f), who + ": then what the choice does,");
+                    overControl = consequenceRect.yMin;
+                }
+                Assert.That(overControl, Is.GreaterThanOrEqualTo(controlRect.yMax - 1f), who + ": then the control.");
+                // A breach line only where this choice alone breaks the player's word, between the card and the warning.
+                var breach = column.GetComponentsInChildren<TMP_Text>().SingleOrDefault(label => label.name == EpisodeHud.BreachWarningName);
+                if (breach != null)
+                {
+                    Assert.That(breach.text, Does.Contain(FinalistRead.FirstName(cut.name)).Or.Contain(cut.name), who + ": the breach names whom this choice lets down.");
+                    Rect breachRect = CanvasRect(breach.rectTransform);
+                    Assert.That(cardRect.yMin, Is.GreaterThanOrEqualTo(breachRect.yMax - 1f), who + ": the breach under the card,");
+                    Assert.That(breachRect.yMin, Is.GreaterThanOrEqualTo(warningRect.yMax - 1f), who + ": over the warning.");
+                }
                 controls.Add(controlRect);
                 warnings.Add(warningRect);
             }
@@ -244,28 +276,37 @@ namespace Gamesim.Tests.PlayMode
                                 shown.name + "'s ring is " + (on ? "filled " : "empty ") + when + ".");
                         }
                     }
-                    // The screen opens with the keyboard on its first control, as every panel does, and
-                    // lights no card for it: that control is the HUD's pick, not the player's, on a
-                    // screen whose line says nothing on it is a prediction.
-                    Assert.That(EventSystem.current.currentSelectedGameObject, Is.Not.Null, "The screen opens on a control.");
+                    // The screen opens with the keyboard on Close, which commits nothing, and lights no
+                    // card: the HUD never puts the keyboard on an irreversible choice of its own accord,
+                    // and a card lit before the player has done anything would read as the game's pick.
+                    var opened = EventSystem.current.currentSelectedGameObject;
+                    Assert.That(opened, Is.Not.Null, "The screen opens on a control.");
+                    Assert.That(IsFinalChoiceControl(opened.name), Is.False, "The screen opens on a control that commits nothing, not on '" + opened.name + "'.");
                     AssertLit(null, "as the screen opens");
+                    // With the keyboard on no choice, the pointer's control lights its column - what a
+                    // click there would do - and gives the light back as it leaves.
+                    var pointer = new PointerEventData(EventSystem.current);
+                    var previewed = ControlFor(others[0]).gameObject;
+                    ExecuteEvents.Execute(previewed, pointer, ExecuteEvents.pointerEnterHandler);
+                    AssertLit(others[0], "under the pointer, with the keyboard on no choice");
+                    ExecuteEvents.Execute(previewed, pointer, ExecuteEvents.pointerExitHandler);
+                    AssertLit(null, "once the pointer leaves");
                     foreach (var take in others)
                     {
-                        // Through nothing, so that selecting even the control the screen opened on is a move.
+                        // Through nothing, so that selecting even a control already selected is a move.
                         EventSystem.current.SetSelectedGameObject(null);
                         EventSystem.current.SetSelectedGameObject(ControlFor(take).gameObject);
                         yield return null;
                         AssertLit(take, "with " + take.name + "'s control selected");
                     }
-                    // The pointer's column wins while the pointer is on its control, because a click
-                    // lands there whatever the keyboard is on, and gives the light back as it leaves:
-                    // one card lit at a time, never both. The pointer moves no selection.
+                    // The keyboard's column keeps the light while the pointer passes over the other:
+                    // Enter presses the selected control, so the lit card is always the one Enter takes.
+                    // One card lit at a time, never both, and the pointer moves no selection.
                     var keyboardOn = others[1];
                     var pointed = ControlFor(others[0]).gameObject;
-                    var pointer = new PointerEventData(EventSystem.current);
                     ExecuteEvents.Execute(pointed, pointer, ExecuteEvents.pointerEnterHandler);
                     Assert.That(EventSystem.current.currentSelectedGameObject, Is.SameAs(ControlFor(keyboardOn).gameObject), "The keyboard stays where it was.");
-                    AssertLit(others[0], "under the pointer, with " + keyboardOn.name + "'s control selected");
+                    AssertLit(keyboardOn, "with the pointer over " + others[0].name + "'s control and the keyboard on " + keyboardOn.name + "'s");
                     ExecuteEvents.Execute(pointed, pointer, ExecuteEvents.pointerExitHandler);
                     AssertLit(keyboardOn, "once the pointer leaves");
                 }
@@ -296,6 +337,62 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(after.ledger.power.Any(row => row.week == state.week && row.evicteeId == gone.id && row.hohId == state.playerId), Is.True,
                 "The record says who the player sent to the jury.");
             Assert.That(after.phase, Is.EqualTo(EpisodePhase.JuryQuestioning).Or.EqualTo(EpisodePhase.FinalSpeeches), "The finale opens.");
+            yield return PutAwayTheCards();
+            director.ClosePanels();
+            yield return null;
+        }
+
+        /// <summary>
+        /// UI-UX-PASS-PLAN Q0's review: an Enter the player did not aim commits nothing, and Enter only
+        /// ever presses the lit control. The page opens with the keyboard on Close, never on a choice,
+        /// so Enter as it opens commits nothing; Tab takes the keyboard to a choice, whose card lights,
+        /// and Enter then commits that one and nothing else. Real key presses through the input system,
+        /// as the keyboard walk makes them.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Endgame_EnterAtTheFinalChoiceOnlyEverPressesTheLitControl()
+        {
+            HoldTheHouseForTheFixture();
+            yield return InstallDiaryFixture(state => state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId,
+                "the player as final Head of Household");
+            yield return PutAwayTheCards();
+            var state = director.Snapshot;
+            var others = FinalistRead.Others(state);
+            Assert.That(others, Has.Count.EqualTo(2), "Two finalists to choose between.");
+            bool Lit(ContestantState finalist) => LastActive(EpisodeHud.FinalistCardPrefix + finalist.name).Find(EpisodeHud.ChosenEdgeName).gameObject.activeSelf;
+
+            yield return OpenFinalePanel();
+            yield return Frames(3);
+            var opened = EventSystem.current.currentSelectedGameObject;
+            Assert.That(opened, Is.Not.Null, "The page opens with the keyboard on a control.");
+            Assert.That(IsFinalChoiceControl(opened.name), Is.False, "The page opens on a control that commits nothing, not on '" + opened.name + "'.");
+            Assert.That(others.Any(Lit), Is.False, "No card is lit as the page opens.");
+            yield return PressKey(Key.Enter);
+            yield return Frames(2);
+            Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision), "Enter as the page opens commits nothing.");
+            Assert.That(director.Snapshot.phase, Is.EqualTo(EpisodePhase.FinalEviction), "The choice is still the player's to make.");
+
+            // Tab to a choice: its card lights, and Enter commits that one.
+            if (!director.IsPanelOpen) { yield return OpenFinalePanel(); yield return Frames(3); }
+            GameObject selected = null;
+            for (int step = 0; step < 6; step++)
+            {
+                yield return PressKey(Key.Tab);
+                selected = EventSystem.current.currentSelectedGameObject;
+                if (selected != null && IsFinalChoiceControl(selected.name)) break;
+            }
+            Assert.That(selected != null && IsFinalChoiceControl(selected.name), Is.True, "Tab reaches a choice.");
+            string chosen = selected.name;
+            var kept = others.Single(finalist => chosen == FinalChoiceWords.Caption(finalist.name, others.Single(other => other.id != finalist.id).name));
+            var gone = others.Single(finalist => finalist.id != kept.id);
+            Assert.That(Lit(kept), Is.True, "The card of the control the keyboard is on is lit,");
+            Assert.That(Lit(gone), Is.False, "and only that one.");
+            yield return PressKey(Key.Enter);
+            yield return Frames(2);
+            var after = director.Snapshot;
+            Assert.That(after.revision, Is.EqualTo(state.revision + 1), "Enter on the lit choice commits it, once.");
+            Assert.That(after.Find(gone.id).status, Is.EqualTo(ContestantStatus.Jury), "Enter took the lit card's choice: " + gone.name + " joins the jury,");
+            Assert.That(after.Find(kept.id).status, Is.EqualTo(ContestantStatus.Active), "and " + kept.name + " sits in the Final 2.");
             yield return PutAwayTheCards();
             director.ClosePanels();
             yield return null;
@@ -371,6 +468,65 @@ namespace Gamesim.Tests.PlayMode
                 if (Application.isBatchMode && larger)
                     yield return CaptureFraming("endgame-final-choice-13", settle: false,
                         inspect: frame => AssertTheFinalChoicePage(state, where + " in the capture's 16:9 frame"));
+                director.ClosePanels();
+                yield return null;
+            }
+            yield return ApplyTextSize(false);
+            Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision), "Reading the page commits nothing.");
+        }
+
+        /// <summary>
+        /// The worst the page is asked to hold (UI-UX-PASS-PLAN Q0's review): the house of sixteen with a
+        /// Final 2 deal between the player and each finalist and one with a juror - five and six bullets
+        /// in the columns, a breach over each control, and the either-way line over both cards.
+        /// </summary>
+        private static EpisodeState FinalChoiceHouseWithEveryDeal()
+        {
+            var state = FinalChoiceHouse();
+            var finalists = state.contestants.Where(actor => !actor.isPlayer && actor.status == ContestantStatus.Active).ToList();
+            var juror = state.contestants.First(actor => actor.status == ContestantStatus.Jury);
+            state.deals.Add(WordDeal(state, "deal-final-first", DealKind.FinalTwo, finalists[0].id, state.playerId, DealStatus.Active, 0));
+            state.deals.Add(WordDeal(state, "deal-final-second", DealKind.FinalTwo, state.playerId, finalists[1].id, DealStatus.Active, 0));
+            state.deals.Add(WordDeal(state, "deal-final-juror", DealKind.FinalTwo, juror.id, state.playerId, DealStatus.Active, 0));
+            return state;
+        }
+
+        /// <summary>
+        /// The worst case at both text sizes on the batch canvas, the 16:9 frame and the 4:3: every
+        /// assertion of <see cref="AssertTheFinalChoicePage"/> - no scroll among them - with the line of
+        /// what the choice does free to go at the page's smallest tier; a breach over each control,
+        /// since taking either finalist breaks the deal with the other; and the either-way line for the
+        /// juror's deal, said once over both. In a batch run photographed at the larger text.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Endgame_TheFinalChoiceHoldsEveryDealBothBreachesAndAJuryOfThirteen()
+        {
+            yield return InstallBuiltFinale(FinalChoiceHouseWithEveryDeal());
+            yield return PutAwayTheCards();
+            var state = director.Snapshot;
+            var others = FinalistRead.Others(state);
+            Assert.That(FinalistRead.Jurors(state), Has.Count.EqualTo(13), "A jury of thirteen.");
+            Assert.That(FinalistRead.BrokenEitherWay(state), Has.Count.EqualTo(1), "One agreement with a juror breaks either way.");
+            foreach (var take in others)
+                Assert.That(FinalistRead.IfYouTake(state, take.id, others.Single(other => other.id != take.id).id), Has.Count.GreaterThanOrEqualTo(5),
+                    take.name + "'s column carries the deals' bullets beside the jury's.");
+
+            foreach (bool larger in new[] { false, true })
+            {
+                yield return ApplyTextSize(larger);
+                yield return OpenFinalePanel();
+                yield return Frames(3);
+                string where = "Every deal and a jury of thirteen" + (larger ? " at the larger text" : "");
+                AssertTheFinalChoicePage(state, where + " on the batch canvas", consequenceMayGo: true);
+                yield return AtBothFrames(frame => AssertTheFinalChoicePage(state, where + " on the " + frame + " frame", consequenceMayGo: true));
+                foreach (var take in others)
+                    Assert.That(LastActive("Finalist column · " + take.name).GetComponentsInChildren<TMP_Text>().Count(label => label.name == EpisodeHud.BreachWarningName),
+                        Is.EqualTo(1), where + ": " + take.name + "'s column warns of the deal its control alone breaks.");
+                Assert.That(LastActive(EpisodeHud.FinalChoicePageName).GetComponentsInChildren<TMP_Text>().Count(label => label.name == EpisodeHud.EitherWayName),
+                    Is.EqualTo(1), where + ": the either-way line, once, over both cards.");
+                if (Application.isBatchMode && larger)
+                    yield return CaptureFraming("endgame-final-choice-every-deal", settle: false,
+                        inspect: frame => AssertTheFinalChoicePage(state, where + " in the capture's 16:9 frame", consequenceMayGo: true));
                 director.ClosePanels();
                 yield return null;
             }

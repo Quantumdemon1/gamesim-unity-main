@@ -1490,9 +1490,14 @@ namespace Gamesim.Episode
             // And so is the finale page, in the campaign's neutral shell: Pack 9 brings cards, not a
             // shell of its own (EpisodeDirector.FinalePage.cs).
             else if (FinalePageBeat(state)) hud.StrategyStage(PackArt.Pack8CampaignShell);
-            // The final Head of Household's choice is a page of the same kit, in the same shell
+            // The final Head of Household's choice is a page of the same kit, in the same shell, laid
+            // for the frame's whole width before anything - a story beat over it included - is built
             // (EpisodeDirector.FinalThree.cs; UI-UX-PASS-PLAN Q0).
-            else if (FinalChoiceBeat(state)) hud.StrategyStage(PackArt.Pack8CampaignShell);
+            else if (FinalChoiceBeat(state))
+            {
+                hud.StrategyStage(PackArt.Pack8CampaignShell);
+                hud.StrategyWholeWidth();
+            }
             else hud.SetActivityLayout(EpisodeHud.ActivityLayout.Stage);
             // The phase and week now live in the panel's fixed header band, which stays on screen
             // while this content scrolls. Repeating them as the first line of the scroll was the

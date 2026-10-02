@@ -118,11 +118,23 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>A piece the house draws, inset by a pixel so a touching edge is not a lie on the chrome, lies on no card.</summary>
-        private static void AssertClearOfChrome(Rect piece, List<Rect> chrome, string what)
+        private void AssertClearOfChrome(Rect piece, List<Rect> chrome, string what)
         {
             var inner = Rect.MinMaxRect(piece.xMin + 1f, piece.yMin + 1f, piece.xMax - 1f, piece.yMax - 1f);
             foreach (var card in chrome)
-                Assert.That(inner.Overlaps(card), Is.False, what + " at " + piece + " lies under the chrome at " + card + ".");
+                if (inner.Overlaps(card))
+                    Assert.Fail(what + " at " + piece + " lies under the chrome at " + card + " ('" + ChromeNameAt(card) + "').");
+        }
+
+        /// <summary>The name of the HUD's top-level piece whose screen rect this is, for a failure to say which card it was.</summary>
+        private string ChromeNameAt(Rect box)
+        {
+            var canvas = HudCanvasOrNull();
+            if (canvas == null) return "?";
+            foreach (Transform child in canvas.transform)
+                if (child.gameObject.activeInHierarchy && child is RectTransform rect && ScreenBox(rect) == box)
+                    return child.name;
+            return "?";
         }
 
         /// <summary>

@@ -111,8 +111,12 @@ namespace Gamesim.Tests.PlayMode
                 yield return null; yield return null;
                 Assert.That(director.InJuryHouse, Is.False);
                 Assert.That(Words(LastActive(EpisodeHud.ScreenHeadName)), Does.Contain(EpisodeDirector.EndgamePreparationTitle), "Back in the window.");
-                Assert.That(FindButton(EpisodeDirector.BeginNextCompetitionCaption).transform.parent, Is.SameAs(LastActive("Episode panel")),
-                    "The window's way on is back, pinned, once the jury house is left.");
+                // Back where the window keeps it: pinned under the panel, except under a house event,
+                // whose choices keep the panel and whose way on stays inline after them (Render).
+                var wayOn = FindButton(EpisodeDirector.BeginNextCompetitionCaption).transform;
+                var layout = director.GetComponentInChildren<EpisodeHud>().CurrentActivityLayout;
+                Assert.That(wayOn.parent, Is.SameAs(LastActive(layout == EpisodeHud.ActivityLayout.HouseEvent ? "Episode content" : "Episode panel")),
+                    "The window's way on is back once the jury house is left; it stands under " + HierarchyPath(wayOn.parent) + " on the " + layout + " layout.");
                 director.ClosePanels();
                 yield return null;
             }

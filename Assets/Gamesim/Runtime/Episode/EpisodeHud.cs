@@ -396,6 +396,13 @@ namespace Gamesim.Episode
             var promptCaption = FixedText(promptRoot, InteractCaption, 12, Accent, Vector2.zero, new Vector2(10, 10));
             promptCaption.gameObject.SetActive(false);
             promptRoot.gameObject.SetActive(false);
+            // The prompt as last asked for, as the Nearby card is below: a render between the
+            // director's ticks left it down until the next one, so it blinked out for a frame on
+            // every render, and the map's chips placed in that frame were placed without it - a
+            // chip read under the prompt in a capture's frame (UI-UX-PASS-PLAN H0, the wave's first
+            // full run). Never under the gate: opening a panel renders before the tick clears it.
+            if (!string.IsNullOrEmpty(promptAsked) && director != null && !director.IsHouseUnderChrome)
+                SetPrompt(promptAsked, promptHintAsked);
             // The Nearby card and its bar as last asked for, now that the status line they stand
             // in for is built: a render between the director's ticks used to leave the new status
             // over the bar until the next tick, and a frame is what a capture photographs.
@@ -1660,6 +1667,7 @@ namespace Gamesim.Episode
         /// </summary>
         public void SetPrompt(string value, string hint)
         {
+            promptAsked = value; promptHintAsked = hint;
             if (prompt == null) return;
             prompt.text = Localisation.Text(value);
             var root = (RectTransform)prompt.transform.parent;
@@ -1682,6 +1690,8 @@ namespace Gamesim.Episode
         /// <summary>The prompt's hint line, so a test can find it.</summary>
         public const string PromptHintName = "Prompt hint";
         private TMP_Text promptHint;
+        /// <summary>What the director last asked the prompt to say, for a render to put back (Begin).</summary>
+        private string promptAsked, promptHintAsked;
         /// <summary>The prompt's height, and its height with a hint line under its words: the line's 22 and the same 6 of air under it.</summary>
         private const float PromptHeight = 52f, PromptHintedHeight = 74f;
         public void SetVisible(bool value) { if(canvas!=null) canvas.gameObject.SetActive(value); MarkChromeChanged(); }

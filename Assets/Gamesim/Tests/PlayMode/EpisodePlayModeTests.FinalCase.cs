@@ -350,8 +350,12 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.InFinalCase, Is.False);
                 Assert.That(Words(LastActive(EpisodeHud.ScreenHeadName)), Does.Contain(EpisodeDirector.EndgamePreparationTitle), "Back in the window.");
                 Assert.That(Words(LastActive("Episode panel")), Does.Contain(status), "The window's own screen keeps its status line.");
-                Assert.That(FindButton(EpisodeDirector.BeginNextCompetitionCaption).transform.parent, Is.SameAs(LastActive("Episode panel")),
-                    "The window's way on is back, pinned, once the case is closed.");
+                // Back where the window keeps it: pinned under the panel, except under a house event,
+                // whose choices keep the panel and whose way on stays inline after them (Render).
+                var wayOn = FindButton(EpisodeDirector.BeginNextCompetitionCaption).transform;
+                var layout = director.GetComponentInChildren<EpisodeHud>().CurrentActivityLayout;
+                Assert.That(wayOn.parent, Is.SameAs(LastActive(layout == EpisodeHud.ActivityLayout.HouseEvent ? "Episode content" : "Episode panel")),
+                    "The window's way on is back once the case is closed; it stands under " + HierarchyPath(wayOn.parent) + " on the " + layout + " layout.");
                 ButtonWithCaption(EpisodeDirector.FinalCaseCaption).onClick.Invoke();
                 yield return Frames(2);
                 Assert.That(LastActive(EpisodeHud.FinalCaseThemesName).GetComponentsInChildren<Image>().Any(image => image.name == "Chosen mark"), Is.False,

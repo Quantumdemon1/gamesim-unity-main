@@ -72,7 +72,7 @@ namespace Gamesim.Episode
             PushContent(column, width - 32f - 16f);
             ScreenHead(view.Title, view.Headline, view.Hint);
             RolesBanner(state);
-            BeginColumns(320f);
+            BeginColumns(BriefingSideWidth);
             // The legend on the head's own line, and the glance's photos no taller than a chip's:
             // with the map's row the briefing's main column ran 115 units past the panel's foot at
             // the resting size on the 16:9 frame, and the recommended moves - the point of the
@@ -123,6 +123,16 @@ namespace Gamesim.Episode
         /// chips, two lines of the description and the foot, which is 136 of the cards' own 150.
         /// </summary>
         private const float RecommendedCardHeight = 136f;
+
+        /// <summary>
+        /// The strategic context's column at the resting size. Free time recommends four moves - the
+        /// one to talk to, listening in, the house meeting and the way on, which is always one of
+        /// them - and four cards of 176 with their three gaps want a main column of 734: beside a
+        /// 320 column the 16:9 frame's was 700, the cards went three and one, and the way on's card
+        /// was the row cut at the panel's foot (the wave's first full run). At 280 the main column
+        /// is 740 and the four stand in one row; the 4:3 frame lays the moves out as rows either way.
+        /// </summary>
+        private const float BriefingSideWidth = 280f;
 
         /// <summary>One block of the strategic context: its name, then a line each, or one word when it has none.</summary>
         private void ContextBlock(string heading, List<(string title, string line)> rows, string none)

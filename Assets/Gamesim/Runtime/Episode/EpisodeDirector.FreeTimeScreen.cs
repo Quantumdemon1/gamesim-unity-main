@@ -101,6 +101,28 @@ namespace Gamesim.Episode
                 || (juryHouseOpen && JuryHouseAvailable(state));
         }
 
+        /// <summary>
+        /// Whether this render draws the final case or the jury house as the screen - a station
+        /// screen over the panel (UI-UX-PASS-PLAN E0) - by the checks that draw them, in their order:
+        /// at the Final 2 before the questioning's or the speech's own screen; at three under the
+        /// window's checks, where a houseguest's screen and the comparison come first; never under a
+        /// challenge or a reflection waiting, which take the panel before either. A station screen
+        /// is a screen of its own: it takes the strategy stage and nothing is pinned under it, so its
+        /// columns have the frame's room and its own way back is its last row.
+        /// </summary>
+        private bool StationScreenOpen(EpisodeState state)
+        {
+            if (state == null || hud == null || challengeActive || state.pendingDiary != null) return false;
+            bool finalCase = finalCaseOpen && (finalCaseEarly ? FinalCaseEarlyAvailable(state) : FinalCaseAvailable(state));
+            bool juryHouse = juryHouseOpen && JuryHouseAvailable(state);
+            if (!finalCase && !juryHouse) return false;
+            if (state.phase == EpisodePhase.JuryQuestioning || state.phase == EpisodePhase.FinalSpeeches) return true;
+            if (!Preparing(state)) return false;
+            var chosen = moveScreenId != null ? state.Find(moveScreenId) : null;
+            if (chosen != null && !chosen.isPlayer && chosen.status == ContestantStatus.Active) return false;
+            return !comparingFinalists;
+        }
+
         private void FreeTimeScreen(EpisodeState state)
         {
             var chosen = moveScreenId != null ? state.Find(moveScreenId) : null;
@@ -426,17 +448,25 @@ namespace Gamesim.Episode
         /// action on them, the whole house's moves, and beside them your own context and what you
         /// have on them.
         /// </summary>
+        /// <summary>The widest a card of the houseguest strip runs on the stage: a shorter row, so the screen holds in the stage's height.</summary>
+        private const float StageStripCardWidth = 110f;
+
         private void HouseguestScreen(EpisodeState state, ContestantState who)
         {
-            hud.Action(BackToFreeTimeCaption, CloseHouseguestScreen);
+            // On the strategy stage - free time's own, with the board's footer (UI-UX-PASS-PLAN U0) -
+            // the way back is the footer's secondary slot, the band says FREE TIME and the week, and
+            // the heads keep to their titles, so the screen holds in the stage's height rather than
+            // scrolling under the pinned bar. On the Stage's column, at three, it is as it was.
+            bool stage = hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Strategy;
+            if (!stage) hud.Action(BackToFreeTimeCaption, CloseHouseguestScreen);
             int left = ActionsLeftCount(state);
-            hud.ScreenHead("FREE TIME", left <= 0 ? "NO ACTIONS LEFT" : left == 1 ? "SPEND YOUR LAST ACTION" : "SPEND AN ACTION",
-                "Build relationships, gather information, or make a move. Choose who to interact with and how.");
-            hud.HouseguestStrip(OthersHereFirst(state).Select(c => c.id).ToList(), who.id, OpenHouseguestScreen);
+            hud.ScreenHead(stage ? null : "FREE TIME", left <= 0 ? "NO ACTIONS LEFT" : left == 1 ? "SPEND YOUR LAST ACTION" : "SPEND AN ACTION",
+                stage ? null : "Build relationships, gather information, or make a move. Choose who to interact with and how.");
+            hud.HouseguestStrip(OthersHereFirst(state).Select(c => c.id).ToList(), who.id, OpenHouseguestScreen, stage ? StageStripCardWidth : 150f);
             string first = (who.name ?? "").Split(' ')[0];
             string id = who.id;
             hud.BeginColumns(300f);
-            hud.SectionHead("chat", "TALK TO " + who.name.ToUpperInvariant(), "Choose how you want to spend your action with " + first + ".");
+            hud.SectionHead("chat", "TALK TO " + who.name.ToUpperInvariant(), stage ? null : "Choose how you want to spend your action with " + first + ".");
             hud.Tiles("Interaction tiles", new List<EpisodeHud.MoveTile>
             {
                 new EpisodeHud.MoveTile
@@ -461,32 +491,55 @@ namespace Gamesim.Episode
                     Choose = () => TalkWithIntent(id, IntentDeal),
                 },
             });
-            hud.SectionHead("people", "WHOLE HOUSE MOVES", "Spend your action on a move that affects everyone.");
+            hud.SectionHead("people", "WHOLE HOUSE MOVES", stage ? null : "Spend your action on a move that affects everyone.");
             HouseMoves(state, true);
             hud.SideColumn();
-            YourContextCard(state);
+            YourContextCard(state, stage);
             AboutCard(state, who);
             StoryCard(state);
             hud.EndColumns();
         }
 
-        /// <summary>Your own week in three lines: your role, what you have left to spend, and where you are being sent next.</summary>
-        private void YourContextCard(EpisodeState state)
+        /// <summary>The context card's line before anybody holds a role: the week's first competition decides them.</summary>
+        public const string NothingDecidedRole = "Nothing decided yet", NothingDecidedWhy = "The week's roles come with the first competition.";
+
+        /// <summary>
+        /// Your role this week in a few words, and why it matters, for the context card: the Final 3's
+        /// window, the Head of Household, the block, the veto, nothing decided yet before anybody is
+        /// Head of Household (UI-UX-PASS-PLAN U0: it said "safe" in week one's free time, under a top
+        /// bar saying "Awaiting HoH"), and safe once the roles are out.
+        /// </summary>
+        public static string ContextRole(EpisodeState state, out string why)
         {
-            hud.BeginSideCard(EpisodeHud.YourContextCardName, "YOUR CONTEXT");
-            string role, why;
             // At three the final-four week's roles are still in state until the window closes; what
             // matters now is the final Head of Household (ENDGAME-PLAN F1).
-            if (Preparing(state)) { role = "You are in the Final 3"; why = "The final Head of Household is next."; }
-            else if (state.playerId == state.hohId) { role = "You are HOH"; why = "You can set the tone this week."; }
-            else if (state.nominees != null && state.nominees.Contains(state.playerId)) { role = "You are on the block"; why = "Campaign for the votes you need."; }
-            else if (state.playerId == state.vetoHolderId) { role = "You hold the veto"; why = "The meeting is yours to call."; }
-            else { role = "You are safe this week"; why = "Spend the week on what comes next."; }
+            if (Preparing(state)) { why = "The final Head of Household is next."; return "You are in the Final 3"; }
+            if (state.playerId == state.hohId) { why = "You can set the tone this week."; return "You are HOH"; }
+            if (state.nominees != null && state.nominees.Contains(state.playerId)) { why = "Campaign for the votes you need."; return "You are on the block"; }
+            if (state.playerId == state.vetoHolderId) { why = "The meeting is yours to call."; return "You hold the veto"; }
+            if (string.IsNullOrEmpty(state.hohId)) { why = NothingDecidedWhy; return NothingDecidedRole; }
+            why = "Spend the week on what comes next.";
+            return "You are safe this week";
+        }
+
+        /// <summary>
+        /// Your own week in three lines: your role, what you have left to spend, and where you are
+        /// being sent next. On the stage (<paramref name="compact"/>) the actions left are the head's
+        /// headline, the top bar's count and the footer's note already, so the card keeps to the role
+        /// and the way on.
+        /// </summary>
+        private void YourContextCard(EpisodeState state, bool compact = false)
+        {
+            hud.BeginSideCard(EpisodeHud.YourContextCardName, "YOUR CONTEXT");
+            string role = ContextRole(state, out string why);
             hud.CardLine(role, 15, UiTheme.Gold, UiTheme.Weight.SemiBold);
             hud.CardLine(why, 12, UiTheme.Muted);
-            int left = ActionsLeftCount(state);
-            hud.CardLine(left + (left == 1 ? " action left" : " actions left"), 15, UiTheme.Paper, UiTheme.Weight.SemiBold);
-            hud.CardLine(left == 1 ? "Choose carefully." : left == 0 ? "The week's actions are spent." : "Spend them well.", 12, UiTheme.Muted);
+            if (!compact)
+            {
+                int left = ActionsLeftCount(state);
+                hud.CardLine(left + (left == 1 ? " action left" : " actions left"), 15, UiTheme.Paper, UiTheme.Weight.SemiBold);
+                hud.CardLine(left == 1 ? "Choose carefully." : left == 0 ? "The week's actions are spent." : "Spend them well.", 12, UiTheme.Muted);
+            }
             hud.CardLine(EpisodeHud.ObjectiveTitle(state), 15, UiTheme.Paper, UiTheme.Weight.SemiBold);
             hud.CardLine(hud.NextStop(state), 12, UiTheme.Muted);
             hud.EndSideCard();

@@ -100,10 +100,10 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// Whether free time is drawn as the board: the social window, with nothing that keeps a
-        /// screen of its own over it.
+        /// Whether free time is on the strategy stage: the social window, with nothing that keeps a
+        /// screen of its own over it - the board, or a houseguest's screen opened from its cards.
         /// </summary>
-        private bool FreeTimeBoardBeat(EpisodeState state)
+        private bool FreeTimeStageBeat(EpisodeState state)
         {
             if (state == null || state.phase != EpisodePhase.Social || challengeActive || state.pendingDiary != null) return false;
             // A legacy situation keeps the house event's band, the camera on its people and the
@@ -113,23 +113,51 @@ namespace Gamesim.Episode
             if (EpisodeHud.IsFinalThree(state)) return false;
             // A player out of the game has nothing here to spend; they keep the screen they watch from.
             var you = state.Find(state.playerId);
-            if (you == null || you.status != ContestantStatus.Active) return false;
-            // A houseguest's screen keeps its own layout until it is laid out for the stage.
-            var chosen = moveScreenId != null ? state.Find(moveScreenId) : null;
-            if (chosen != null && !chosen.isPlayer && chosen.status == ContestantStatus.Active) return false;
-            return true;
+            return you != null && you.status == ContestantStatus.Active;
         }
+
+        /// <summary>The houseguest whose screen is open over free time, when one is: active, and not the player. Null for the root.</summary>
+        private ContestantState HouseguestScreenChosen(EpisodeState state)
+        {
+            var chosen = state != null && moveScreenId != null ? state.Find(moveScreenId) : null;
+            return chosen != null && !chosen.isPlayer && chosen.status == ContestantStatus.Active ? chosen : null;
+        }
+
+        /// <summary>Whether free time is drawn as the board: on the stage, with no houseguest's screen over it.</summary>
+        private bool FreeTimeBoardBeat(EpisodeState state) => FreeTimeStageBeat(state) && HouseguestScreenChosen(state) == null;
+
+        /// <summary>
+        /// Whether free time is a houseguest's screen on the stage (UI-UX-PASS-PLAN U0): opened from
+        /// the board's cards, laid for the board's frame with the board's footer - the way on, "Back
+        /// to free time" in the secondary slot, and the strip - in place of the Stage's column, whose
+        /// scroll cut its rows at the pinned bar. At three and for a watcher the column is still
+        /// free time's (decision 17), and the screen keeps its old layout there.
+        /// </summary>
+        private bool HouseguestScreenBeat(EpisodeState state) => FreeTimeStageBeat(state) && HouseguestScreenChosen(state) != null;
 
         /// <summary>
         /// Draws free time's board when free time is on the strategy stage, and says whether it did:
-        /// the beat opened as the step, or the board, and the footer under either.
+        /// the beat opened as the step, or the board, and the footer under either; or a houseguest's
+        /// screen opened from the board's cards, with the footer it shares.
         /// </summary>
         private bool FreeTimeBoard(EpisodeState state)
         {
-            if (hud == null || !FreeTimeBoardBeat(state) || hud.CurrentActivityLayout != EpisodeHud.ActivityLayout.Strategy)
+            if (hud == null || hud.CurrentActivityLayout != EpisodeHud.ActivityLayout.Strategy || !FreeTimeStageBeat(state))
             {
                 freeTimeView = null;
                 return false;
+            }
+            var chosen = HouseguestScreenChosen(state);
+            if (chosen != null)
+            {
+                // A houseguest's screen is not a step of the board: whatever hold on the pointer is
+                // running is kept, and the board's view is forgotten with it.
+                freeTimeView = null;
+                hud.StrategyWholeWidth();
+                HouseguestScreen(state, chosen);
+                HouseguestFooter(state);
+                hud.KeepPointerHold();
+                return true;
             }
             // A new free time opens on the first page; week one has two, move-in night and the one after its eviction.
             int key = state.week * 2 + (EpisodeEngine.IsFirstNight(state) ? 0 : 1);
@@ -386,6 +414,25 @@ namespace Gamesim.Episode
             string where = FreeTimeLocationLine(state);
             if (where != null) hud.PinnedNote(where, EpisodeHud.LocationCardName, false);
             else hud.PinnedNote(PhaseRule(state), EpisodeHud.FreeTimeTipName, false);
+        }
+
+        /// <summary>
+        /// The footer under a houseguest's screen on the stage (UI-UX-PASS-PLAN U0): the way on under
+        /// its headline, "Back to free time" in the secondary slot, and the strip with where the
+        /// player is over what moving on loses - the unused actions, which the Stage's column pinned
+        /// as a note under the way on - unless a storyline moving on lets pass outranks them.
+        /// </summary>
+        private void HouseguestFooter(EpisodeState state)
+        {
+            var wayOn = hud.PinnedAction(BeginNextCompetitionCaption, () => Commit(state, EpisodeCommandKind.Advance));
+            hud.DressWayOn(wayOn, EndFreeTimeHeadline, PackArt.Pack8ContinueButton);
+            hud.PinnedSecondary(BackToFreeTimeCaption, CloseHouseguestScreen);
+            AdvanceWarning(state);
+            string where = FreeTimeLocationLine(state);
+            if (where != null) hud.PinnedNote(where, EpisodeHud.LocationCardName, false);
+            else hud.PinnedNote(PhaseRule(state), EpisodeHud.FreeTimeTipName, false);
+            string unused = UnusedActionsNote(state);
+            if (unused != null) hud.PinnedNote(unused, EpisodeHud.UnusedActionsNoteName, EpisodeHud.FooterRank.Notice, true);
         }
 
         /// <summary>"Nomination room · you have it to yourself": the player's room and who else is in it, by first name.</summary>

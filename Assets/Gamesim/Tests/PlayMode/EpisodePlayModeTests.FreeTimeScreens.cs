@@ -111,56 +111,135 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
         }
 
+        /// <summary>
+        /// A houseguest's screen opens from their card with the three ways to spend the action on
+        /// them, the whole house's moves, your context and what you have on them, and returns. It is
+        /// laid for the strategy stage as the board is (UI-UX-PASS-PLAN U0): the way on pinned with
+        /// "Back to free time" in the footer's secondary slot, the room and what moving on loses in
+        /// the footer's strip, and no row of the screen under the pinned bar - on the 16:9 frame at
+        /// the resting text size the whole screen holds in the stage's height; at the larger text
+        /// its scroll stands clear of the footer, and the log says how far the column runs. Before
+        /// anybody is Head of Household the context says nothing is decided yet, never "safe".
+        /// </summary>
         [UnityTest]
         public IEnumerator FreeTime_AHouseguestsScreenOpensFromTheirCardWithThreeWaysToSpendTheActionAndReturns()
         {
-            yield return OpenFreeTime();
-            var state = director.Snapshot;
-            Assume.That(state.phase, Is.EqualTo(EpisodePhase.Social));
-            var who = state.Active.First(c => !c.isPlayer);
-            var cards = ActiveRect(EpisodeHud.HouseCardsName);
-            var open = cards.GetComponentsInChildren<Button>(true).First(b => b.name == who.name);
-            open.onClick.Invoke();
-            yield return null; yield return null;
-            Canvas.ForceUpdateCanvases();
-            Assert.That(director.HouseguestScreenFor, Is.EqualTo(who.id), "Their screen is open over free time.");
-            var panel = ActiveRect("Episode panel");
-            Assert.That(ActiveRect(EpisodeHud.HouseCardsName), Is.Null, "The root's cards stand down;");
-            var strip = ActiveRect(EpisodeHud.HouseguestStripName);
-            Assert.That(strip, Is.Not.Null, "the house is a strip instead,");
-            Assert.That(strip.GetComponentsInChildren<Button>(true).Select(b => b.name),
-                Is.EquivalentTo(state.Active.Where(c => !c.isPlayer).Select(c => c.name)), "everybody on it.");
-            Assert.That(Words(ActiveRect(EpisodeHud.ScreenHeadName)), Does.Contain("SPEND"), "The head says the action is being spent.");
-            // The three ways, as tiles, each with its cost at its foot.
-            var tiles = ActiveRect("Interaction tiles");
-            Assert.That(tiles, Is.Not.Null);
-            foreach (var caption in new[] { EpisodeDirector.TalkPrivatelyCaption, EpisodeDirector.AskForInformationCaption, EpisodeDirector.PitchADealCaption })
+            foreach (bool larger in new[] { false, true })
             {
-                var tile = ButtonWithCaption(caption);
-                Assert.That(tile.transform.IsChildOf(tiles), Is.True, caption + " is one of the three.");
-                Assert.That(tile.GetComponentsInChildren<TMP_Text>(true).Any(t => t.name == "Tile foot" && t.text.Contains("Cost")), Is.True, caption + " says its cost.");
+                yield return ApplyTextSize(larger);
+                yield return OpenFreeTime();
+                string where = "A houseguest's screen" + (larger ? " at the larger text" : "");
+                var state = director.Snapshot;
+                Assume.That(state.phase, Is.EqualTo(EpisodePhase.Social));
+                var who = state.Active.First(c => !c.isPlayer);
+                var cards = ActiveRect(EpisodeHud.HouseCardsName);
+                var open = cards.GetComponentsInChildren<Button>(true).First(b => b.name == who.name);
+                open.onClick.Invoke();
+                yield return null; yield return null;
+                Canvas.ForceUpdateCanvases();
+                Assert.That(director.HouseguestScreenFor, Is.EqualTo(who.id), "Their screen is open over free time.");
+                var panel = ActiveRect("Episode panel");
+                Assert.That(ActiveRect(EpisodeHud.HouseCardsName), Is.Null, "The root's cards stand down;");
+                var strip = ActiveRect(EpisodeHud.HouseguestStripName);
+                Assert.That(strip, Is.Not.Null, "the house is a strip instead,");
+                Assert.That(strip.GetComponentsInChildren<Button>(true).Select(b => b.name),
+                    Is.EquivalentTo(state.Active.Where(c => !c.isPlayer).Select(c => c.name)), "everybody on it.");
+                Assert.That(Words(ActiveRect(EpisodeHud.ScreenHeadName)), Does.Contain("SPEND"), "The head says the action is being spent.");
+                // The three ways, as tiles, each with its cost at its foot - a card's foot; at the
+                // larger text the tiles are rows, which carry no foot.
+                var tiles = ActiveRect("Interaction tiles");
+                Assert.That(tiles, Is.Not.Null);
+                foreach (var caption in new[] { EpisodeDirector.TalkPrivatelyCaption, EpisodeDirector.AskForInformationCaption, EpisodeDirector.PitchADealCaption })
+                {
+                    var tile = ButtonWithCaption(caption);
+                    Assert.That(tile.transform.IsChildOf(tiles), Is.True, caption + " is one of the three.");
+                    if (!larger)
+                        Assert.That(tile.GetComponentsInChildren<TMP_Text>(true).Any(t => t.name == "Tile foot" && t.text.Contains("Cost")), Is.True, caption + " says its cost.");
+                }
+                Assert.That(ActiveRect(EpisodeHud.HouseMovesName), Is.Not.Null, "The whole house's moves are under them,");
+                Assert.That(ButtonWithCaption(EpisodeHud.RallyHouseCaption).transform.IsChildOf(ActiveRect(EpisodeHud.HouseMovesName)), Is.True);
+                var about = ActiveRect(EpisodeHud.AboutCardName);
+                Assert.That(about, Is.Not.Null, "and what you have on them beside.");
+                Assert.That(Words(about), Does.Contain(who.name.ToUpperInvariant()).And.Contain(RelationshipWeb.StandingWord(RelationshipWeb.KindOf(state, who.id))));
+                var context = ActiveRect(EpisodeHud.YourContextCardName);
+                Assert.That(context, Is.Not.Null, "Your own context is beside too,");
+                string role = EpisodeDirector.ContextRole(state, out string why);
+                Assert.That(Words(context), Does.Contain(role).And.Contain(why), "with your role this week as the rule reads it.");
+                if (state.hohId == null)
+                    Assert.That(Words(context), Does.Contain(EpisodeDirector.NothingDecidedRole).And.Not.Contain("You are safe this week"),
+                        "Before anybody is Head of Household nothing is decided, and nobody is 'safe'.");
+
+                // The board's footer: the way on pinned under its headline, the way back in the
+                // secondary slot, and in the strip where the player is over what moving on loses.
+                AssertOnTheStrategyStage("Begin the next competition", where, EpisodeDirector.BackToFreeTimeCaption);
+                Assert.That(panel.Find(EpisodeHud.PinnedNoteName), Is.Null, "Nothing is wedged under the way on.");
+                var footer = ActiveRect(EpisodeHud.StrategyStripName);
+                Assert.That(footer, Is.Not.Null, "The footer has its strip.");
+                var said = footer.GetComponentsInChildren<TMP_Text>().Where(t => t.gameObject.activeInHierarchy).ToList();
+                Assert.That(said.Select(t => t.name), Has.Some.Matches<string>(name =>
+                        name == EpisodeHud.LocationCardName || name == EpisodeHud.FreeTimeTipName || name == EpisodeDirector.AdvanceWarningName),
+                    "The strip says where the player is, a tip, or what moving on lets pass: " + string.Join(" | ", said.Select(t => t.name + " '" + t.text + "'")));
+                string lost = EpisodeDirector.UnusedActionsNote(state);
+                if (lost != null && said.All(t => t.name != EpisodeDirector.AdvanceWarningName))
+                    Assert.That(said.Any(t => t.name == EpisodeHud.UnusedActionsNoteName && t.text == lost), Is.True,
+                        "What moving on loses is the strip's second line: '" + lost + "'.");
+                AssertNoRowUnderThePinnedBar(where + " on the batch canvas", assert: false);
+                AssertEveryLabelDraws(panel, where);
+                if (Application.isBatchMode)
+                    yield return CaptureFraming(larger ? "houseguest-screen-large" : "houseguest-screen", settle: false,
+                        inspect: frame => AssertNoRowUnderThePinnedBar(where + " on the 16:9 frame", assert: !larger));
+
+                // Another face on the strip is another screen.
+                var other = state.Active.First(c => !c.isPlayer && c.id != who.id);
+                ActiveRect(EpisodeHud.HouseguestStripName).GetComponentsInChildren<Button>(true).First(b => b.name == other.name).onClick.Invoke();
+                yield return null; yield return null;
+                Assert.That(director.HouseguestScreenFor, Is.EqualTo(other.id), "Pressing another face makes the screen theirs.");
+                // And back, to the board.
+                ButtonWithCaption(EpisodeDirector.BackToFreeTimeCaption).onClick.Invoke();
+                yield return null; yield return null;
+                Assert.That(director.HouseguestScreenFor, Is.Null, "Back to free time.");
+                Assert.That(ActiveRect(EpisodeHud.HouseCardsName), Is.Not.Null, "The cards are back,");
+                Assert.That(director.IsFreeTimeBoard, Is.True, "on the board.");
+                director.ClosePanels();
+                yield return null;
+                Assert.That(director.HouseguestScreenFor, Is.Null, "Closing the panel forgets the screen.");
             }
-            Assert.That(ActiveRect(EpisodeHud.HouseMovesName), Is.Not.Null, "The whole house's moves are under them,");
-            Assert.That(ButtonWithCaption(EpisodeHud.RallyHouseCaption).transform.IsChildOf(ActiveRect(EpisodeHud.HouseMovesName)), Is.True);
-            var about = ActiveRect(EpisodeHud.AboutCardName);
-            Assert.That(about, Is.Not.Null, "and what you have on them beside.");
-            Assert.That(Words(about), Does.Contain(who.name.ToUpperInvariant()).And.Contain(RelationshipWeb.StandingWord(RelationshipWeb.KindOf(state, who.id))));
-            Assert.That(ActiveRect(EpisodeHud.YourContextCardName), Is.Not.Null, "Your own context is beside too.");
-            Assert.That(ButtonWithCaption("Begin the next competition").transform.parent, Is.SameAs(panel), "The way on stays pinned.");
-            // Another face on the strip is another screen.
-            var other = state.Active.First(c => !c.isPlayer && c.id != who.id);
-            strip.GetComponentsInChildren<Button>(true).First(b => b.name == other.name).onClick.Invoke();
-            yield return null; yield return null;
-            Assert.That(director.HouseguestScreenFor, Is.EqualTo(other.id), "Pressing another face makes the screen theirs.");
-            if (Application.isBatchMode) yield return CaptureFraming("houseguest-screen");
-            // And back.
-            ButtonWithCaption(EpisodeDirector.BackToFreeTimeCaption).onClick.Invoke();
-            yield return null; yield return null;
-            Assert.That(director.HouseguestScreenFor, Is.Null, "Back to free time.");
-            Assert.That(ActiveRect(EpisodeHud.HouseCardsName), Is.Not.Null, "The cards are back.");
-            director.ClosePanels();
-            yield return null;
-            Assert.That(director.HouseguestScreenFor, Is.Null, "Closing the panel forgets the screen.");
+            yield return ApplyTextSize(false);
+        }
+
+        /// <summary>
+        /// No row of the houseguest's screen reaches under the pinned way on, in the frame the HUD
+        /// is laid for: the scroll's foot stands clear of the footer's row, and, when
+        /// <paramref name="assert"/>, every named row of the screen stands wholly above it - which
+        /// is to say the column holds without a scroll (UI-UX-PASS-PLAN U0: the Stage's column cut
+        /// the strip's cards and YOUR CONTEXT at the bar). Measured in the canvas's own units, which
+        /// hold inside a capture's frame as well as on the batch canvas. Logs how far the column
+        /// runs past its viewport either way, and returns it.
+        /// </summary>
+        private float AssertNoRowUnderThePinnedBar(string where, bool assert)
+        {
+            Canvas.ForceUpdateCanvases();
+            var begin = FindButton(EpisodeDirector.BeginNextCompetitionCaption);
+            var bar = CanvasRect((RectTransform)begin.transform);
+            var content = LastActive("Episode content");
+            var viewport = (RectTransform)content.parent;
+            float over = content.rect.height - viewport.rect.height;
+            Debug.Log("[Gamesim] " + where + ": the column runs " + content.rect.height.ToString("0") + " in a viewport of "
+                + viewport.rect.height.ToString("0") + (over > .5f ? ", " + over.ToString("0") + " past it." : ", and holds."));
+            Assert.That(CanvasRect(viewport).yMin, Is.GreaterThanOrEqualTo(bar.yMax - .5f), where + ": the scroll runs under the pinned '" + begin.name + "'.");
+            if (!assert) return over;
+            foreach (var name in new[] { EpisodeHud.HouseguestStripName, "Interaction tiles", EpisodeHud.HouseMovesName,
+                EpisodeHud.YourContextCardName, EpisodeHud.AboutCardName, EpisodeHud.ThreadsCardName })
+            {
+                var row = LastActive(name);
+                if (row == null) continue;
+                var at = CanvasRect(row);
+                Assert.That(at.yMin, Is.GreaterThanOrEqualTo(bar.yMax - .5f),
+                    where + ": '" + name + "' reaches under the pinned '" + begin.name + "': " + at + " against " + bar + ".");
+            }
+            Assert.That(over, Is.LessThanOrEqualTo(.5f), where + " holds without a scroll: " + content.rect.height.ToString("0")
+                + " in " + viewport.rect.height.ToString("0") + ".");
+            return over;
         }
 
         [UnityTest]

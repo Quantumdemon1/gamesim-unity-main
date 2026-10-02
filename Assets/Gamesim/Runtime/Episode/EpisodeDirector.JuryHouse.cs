@@ -158,8 +158,10 @@ namespace Gamesim.Episode
         {
             var house = JuryHouseRead.Read(state);
             bool rules = EpisodeEngine.FinaleOn(state);
+            // The band names the screen; the head does not say it again over the headline
+            // (UI-UX-PASS-PLAN E0: the eyebrow was the band's title twice, six lines apart).
             hud.StageAsPlace(JuryHouseTitle, "people");
-            hud.JuryHouseHead(JuryHouseTitle, JurySizeHeadline(house.jurors.Count),
+            hud.JuryHouseHead(null, JurySizeHeadline(house.jurors.Count),
                 "Relationships still matter. Where each juror stands with you, as far as you know it.",
                 FinalCaseAvailable(state) ? "You can't sway the jury from here. Your final case can." : null);
             hud.Action(LeaveJuryHouseCaption, CloseJuryHouse);

@@ -1472,9 +1472,13 @@ namespace Gamesim.Episode
                 // The veto's draw is laid out for the frame's whole width (EpisodeDirector.VetoDraw.cs).
                 if (VetoDrawBeat(state)) hud.StrategyWholeWidth();
             }
+            // A station screen - the final case, the jury house - is a screen of its own on the
+            // strategy stage, with nothing pinned under it (UI-UX-PASS-PLAN E0).
+            else if (StationScreenOpen(state)) hud.StrategyStage(null);
             // Free time is a board on the strategy stage too (EpisodeDirector.FreeTimeBoard.cs), on
-            // the panel's own glass: Pack 8 has no free-time shell.
-            else if (FreeTimeBoardBeat(state)) hud.StrategyStage(null);
+            // the panel's own glass: Pack 8 has no free-time shell. A houseguest's screen opened from
+            // the board's cards is laid for the same stage, with the board's footer (U0).
+            else if (FreeTimeBoardBeat(state) || HouseguestScreenBeat(state)) hud.StrategyStage(null);
             // And so is the finale page, in the campaign's neutral shell: Pack 9 brings cards, not a
             // shell of its own (EpisodeDirector.FinalePage.cs).
             else if (FinalePageBeat(state)) hud.StrategyStage(PackArt.Pack8CampaignShell);
@@ -1577,7 +1581,13 @@ namespace Gamesim.Episode
                 hud.Paragraph(RemovedAtTheVoteLine);
             if (state.phase == EpisodePhase.Campaign) CampaignScreen(state);
             // Free time as a screen: the house as cards and the moves as tiles (EpisodeDirector.FreeTimeScreen.cs).
-            else if (state.phase == EpisodePhase.Social) FreeTimeScreen(state);
+            else if (state.phase == EpisodePhase.Social)
+            {
+                FreeTimeScreen(state);
+                // A station screen at three - the final case read early, the jury house - has its
+                // own way back and takes the room: nothing is pinned under it (UI-UX-PASS-PLAN E0).
+                if (StationScreenOpen(state)) return;
+            }
             if (state.phase == EpisodePhase.Jury) hud.Paragraph(JuryLine(state));
             string pointer = WindowLine(state);
             if (pointer != null) hud.Paragraph(pointer);

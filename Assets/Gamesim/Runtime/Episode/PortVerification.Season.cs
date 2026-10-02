@@ -386,6 +386,7 @@ namespace Gamesim.Episode
             // coverage may simply run out of actions before the milestone. It breaks out and records
             // a note rather than failing: the oath path is optional by design.
             int weeklyBudget = EpisodeEngine.SocialActionBudget(seasonDirector.Snapshot);
+            bool proposed = false;
             for (int spent = 0; spent < weeklyBudget && !seasonDirector.Snapshot.oathOpportunities.Contains(npc.Id); spent++)
             {
                 var before = seasonDirector.Snapshot;
@@ -393,9 +394,13 @@ namespace Gamesim.Episode
                     || EpisodeEngine.SocialActionsSpent(before) >= EpisodeEngine.SocialActionBudget(before)
                     || !HasSeasonButton("Spend time together")) break;
                 // Plain +4 conversations climb slowly from a neutral start.
-                // Use the same legal alliance opportunity as the live Play Mode fixture.
-                string action = !before.Allied(before.playerId,npc.Id) && before.Score(npc.Id,before.playerId) >= 8
+                // Use the same legal alliance opportunity as the live Play Mode fixture - once. Under the
+                // commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C4) the proposal rolls on the invitation's
+                // odds and a no spends the action, so asking again would spend the oath's budget on the
+                // roll; before them a proposal at this score was never refused, so once is all it took.
+                string action = !proposed && !before.Allied(before.playerId,npc.Id) && before.Score(npc.Id,before.playerId) >= 8
                     && HasSeasonButton("Propose an alliance") ? "Propose an alliance" : "Spend time together";
+                proposed |= action == "Propose an alliance";
                 yield return ClickSeasonButton(action);
                 if (seasonDirector.Snapshot.revision != before.revision + 1) break;
                 seasonReport.optionalSocialCommands++;
@@ -408,7 +413,7 @@ namespace Gamesim.Episode
                 RequireSeason(seasonDirector.Snapshot.revision == before.revision + 1
                     && seasonDirector.Snapshot.loyaltyOaths.Any(oath => oath.playerId == before.playerId && oath.targetId == npc.Id),"An available oath button must commit the player's declaration.");
                 seasonReport.oathOutcome = "Legally earned and declared";
-                seasonReport.oathNote = "Earned through at most eighteen actual social actions, including an eligible alliance proposal; no fabricated role, score, seed, or oath state.";
+                seasonReport.oathNote = "Earned through at most eighteen actual social actions, at most one of them an alliance proposal, whatever its answer; no fabricated role, score, seed, or oath state.";
                 yield return CaptureSeason("oath-recorded",graphical);
             }
             else seasonReport.oathNote = verifyStudy

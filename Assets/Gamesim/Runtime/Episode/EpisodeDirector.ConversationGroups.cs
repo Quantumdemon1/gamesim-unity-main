@@ -161,7 +161,9 @@ namespace Gamesim.Episode
             // BARGAIN: what carries no chance first - the promises and the pact, a promise about the
             // vote, and calling it through an ally - then the deal table, whose heading and note on
             // the odds speak only for the rows under them: an offer waiting, then what could be put.
-            // The came-to-deal path draws the promises before the table for the same reason.
+            // The came-to-deal path draws the promises before the table for the same reason. Under
+            // the commitment rules the pact carries the invitation's chance (C4), and the note on the
+            // odds comes above it instead, once (ProposeAllianceRow).
             var promised = PromiseToEvictTargets(state, npc.id);
             var calls = Calls(state, npc);
             if (!cameToDeal || promised.Count > 0 || calls.Count > 0)

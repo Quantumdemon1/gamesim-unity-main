@@ -609,3 +609,63 @@ W4 and W5 both add a notebook page, which is an expected adjacent-line merge.
 **Found on the way, for wave B and C:** the eviction vote's deal obligation (`WebEvictionVoting.DealObligation`'s −35 for a broken deal between the voter and the nominee) and the strategy windows' nomination reluctance (`StrategyRules.NominationReluctance`) still read a broken deal between the two either way - C2 and C3 (the vote's is parity-pinned, and both are arguably a breaker's reason too); a vote deal both parties broke names only the first breaker on the record (`DealResolution.VoteDeal` into `RecordBreach`) - C1; the editor's v5 QA save (`LegacySaveFixtures`) has not stripped the schema 14 and later fields since schema 14; the Your word page and the notes could read the record for the player's own breaches; a save's checksum is over the runtime's text of its doubles, so a runtime that writes them differently (.NET's shortest round-trip against Mono's seventeen digits) reads every save holding such a double as damaged - worth knowing before the editor's runtime changes.
 
 **Floors:** the Unity-free subset 1328 to 1352 (`CommitmentRulesTests`, 24); EditMode 2232 to 2265 (those 24, `PersistenceV22MigrationTests`' 7, the cost copy and the weekly recap's privacy); PlayMode adds 2. Outside the editor, the persistence suites with `EpisodePreparationTests` and `EpisodeVotingBlocTests` (481 cases, every pin moved to 22) pass, compiled with Gamesim.Persistence against a one-line `Application` stub in a scratch project; that run found the V22 fixture marking the nominations' competition resolved, which refused every command once the veto's opened. The EditMode suite ran on the UMA-free copy at 6213f59, 2256 of 2256, and after the review at 655a1ba, 2264 of 2265: the v21 fixture's own envelope read as damaged in the editor (its checksum is over a double's round-trip text, written by .NET), so the test seals the v21 build's state again for the runtime it runs in.
+
+**C4, one way to form an alliance, built 2026-10-02** in its own worktree from `claude/nearby-render-gap` at 50ebd57. Everything is behind `commitmentRulesStartWeek`. No saved field, no command kind, and no caption changed.
+- **The proposal rolls.** Under the rules 'Propose an alliance' (`FormAlliance`) asks the alliance invitation's question.
+  - One draw from the season's stream, taken first, against `PlayerDeals.AcceptanceChance` for an `alliance_invite` (`EpisodeEngine.AllianceChance`).
+  - A yes forms the pact as before: +8 with its reciprocal draw, and the same line.
+  - A no logs "Maya Hassan turned down your alliance. “…”" to the two of them and moves nothing else. It is logged under its own kind, `alliance-refused`, so it is never drawn with an alliance's green and handshake or read as one of the week's alliance lines.
+  - Either answer spends the action, so a refusal is no longer a free look at the houseguest's view (X9's refusal half).
+  - Without the rules the gate of eight stands, with no roll, as it always did.
+- **A grudge of 40 or more** held against the player refuses whatever the draw (`GrudgeRefusesAlliance`, where grudges exist). The draw is taken all the same, so a proposal is always one draw. The deal table's 'Propose an alliance invitation' asks the same question with the same grudge.
+- **Three pacts at once** (decision 10, `PlayerPactCap`). A fourth is refused before anybody is asked, with the reason, and spends nothing, because the player can count their own pacts. That holds for every way in:
+  - the proposal;
+  - the deal table's invitation, which is not offered (`CanPropose` gives the reason);
+  - the yes to an invitation put to the player (the no is still theirs), except where no pact would come of it: without the strategy windows an agreed invitation is only a deal;
+  - a story's pact, of two or of three, which is skipped, as one with a houseguest below eight always was.
+
+  Nobody puts an invitation to a player who holds three: `NpcDeals.Offer`'s first rung (partners, safe and warm) asks for something else or nothing, roll-free. The agency rung already counted them through `WouldPropose`.
+- **On the record.** Every pact the player comes into under the rules writes the permanent 'alliance-formed' (+30) between them and each partner still in the house, both ways, as `NpcAlliances` writes it for houseguests. That covers a proposal, an invitation either way, joining a houseguest's pact, and a story's pact of two. Twenty weeks on, a partner trusts the player (60) exactly as a houseguest trusts their own pact-mate.
+- **The words.** Under the rules `PlayerDeals.Reasoning` reads only what the player knows (W3's found-on-the-way item):
+  - how the houseguest sees the player is the player's own read of it (`KnownOdds.PresumedView`);
+  - 'Your track record concerns me' is the player's own broken deals and promises, never the houseguest's private record.
+
+  A committed proposal that left no pact is answered with a no in the houseguest's own voice, without a reason (`HouseDialogue`).
+- **The greeting.** Under the rules `HouseDialogue`'s relationship line - the end of every greeting, and every reply that falls through to it, a refused deal's among them - reads the player's own reading of the houseguest, inside the band a read, an account or an overheard word put them in (`KnownOdds.PresumedView`). Before, it read the houseguest's hidden view, and every conversation that opened said for free whether that was −15 or under, or 25 or over.
+- **On screen.** Under the rules the 'Propose an alliance' row's pill reads 'binds you · ' and the player's read of the chance (`KnownOdds.Alliance`, the deal table's own estimate for the invitation). The 'Each chance is your own read' note sits above it, once a render, above the first chance shown. At three pacts the row is drawn locked under the reason, and so is an invitation's yes (`PactCapOfferLine`).
+
+**Shown against rolled.** The roll reads two things the player cannot see:
+- the houseguest's true view of the player;
+- their private record of the player, as ledger trust (0.2 a point either side of 50).
+The shown chance reads the player's own reading of them, held inside a current read's band, and leaves the trust term out (neutral). Every other term is the roll's own: the invitation's −10, the traits, and the player's own broken deals. Where the player knows every term the roll reads, the two are equal, and the proposal is decided by exactly that number against one draw (`AllianceProposalTests`).
+
+A grudge of 40 or more refuses whatever either says. The player can know of one such grudge, because their own act wrote it: walking out of a pact leaves every other member holding 80 against them (`AllianceLeftGrudge`), fading 2 a week. While that reckoning is at 40 or more, every member of a pact the player walked out of reads 'no chance', nought, on the row and in the deal table (`KnownOdds.KnownWalkOut`, from the alliances page's own "You left it."). Any other grudge - a nomination, a broken word, a story's falling-out - is the houseguest's own and never shown. A walk-out's grudge that a story has since eased still reads as the player reckons it.
+
+**The walk.** The audited walk's optional oath branch proposes to Maya at most once (PortVerification.Season). Under the rules a no spends the action, and asking again would spend the oath's budget on the roll. Before them a proposal at eight was never refused, so the walk plays as it did.
+
+**Evidence.**
+- `CommitmentRulesSeasonDigests` without the rules: the 54 recorded digests, unchanged.
+- Under the rules 52 of the 54 move (51 before C4), and every command stays legal. The busy player's committed proposals rise from 8 to 56, because a no is now a committed command.
+- The Unity-free subset rises from 1352 to 1364 (`AllianceProposalTests`, 12). Ten of the twelve fail on 50ebd57's simulation. Every name C4 added is read only through the file's helpers, so it compiles there with their bodies stubbed to 50ebd57's behaviour. The other two hold on both builds: the shown odds' V6 half, and the season without the rules.
+- The screen's half is a PlayMode test, `AllianceProposal_UnderTheRulesTheRowShowsItsOddsAndThreePactsLockIt`, at both text sizes:
+  - the row's pill is 'binds you · ' and `KnownOdds.Alliance`'s word, under exactly one odds note;
+  - at three pacts the reason stands directly over a locked 'Propose an alliance' that commits nothing, and the deal table offers no invitation;
+  - an invitation from the one the player talks to has its yes locked directly under `PactCapOfferLine`, committing nothing, and its no commits;
+  - a batch run photographs 'conversation-alliance-odds' and 'conversation-alliance-cap', with '-large' and '-4x3' forms.
+
+**After the review (fix-then-land, 2026-10-02):** the screen's PlayMode test; nobody invites a player who holds three; the walk-out's grudge in the shown chance; the greeting's knowledge gate; the refusal's own kind; 'alliance-formed' only with partners still in the house; the cap's wording ("the most you can keep at once": a houseguest may hold more); the constants where the literals stood (`AlreadyAlliedRefusal`, `AllianceGrudgeLine`, `AllianceLeftGrudge`); the walk's oath note; and the tests the review asked for - a story's pact of three at the cap, the deal table's invitation drawing its roll whatever the grudge, and a yes at three without the strategy windows.
+
+**Where the build departs from the plan:**
+- **The cap binds every way into a pact,** not only the proposal, or it would be no cap.
+- **Not compiled offline in the slice.** The worktree's hook refused `powershell -File Tools/offline-compile.ps1`, twice, also as a plain command. The runtime, walk and PlayMode edits were checked against the signatures they call; the lead compiles them at landing.
+
+**For the owner and the story session:**
+- **One way, two controls (the owner's call).** The deal table's 'Propose an alliance invitation' stays, because captions are contracts. It asks the same question, on identical odds, with the same grudge and the same cap. Its payoffs differ as they always did: +12 on a yes or −4 on a no, a deal on the record, and it can bring the player into the houseguest's own pact. Retiring it, and whether a refused proposal should also cost −4, are the owner's to decide.
+- **Story pacts (the story session's call).** A story's pact with the player keeps the story's own gate of eight and ignores the grudge rule (StoryEffects.cs:307). A story option whose pact meets the player's three plays without its pact. Locking such an option is the story session's to decide.
+
+**Found on the way, for wave B and C:**
+- The deal lines say "agreed a alliance invitation" and "turned down a alliance invitation", in every season's log.
+- A refused deal is answered by the houseguest's relationship line, which can contradict it, as a refused alliance was before this slice; under the rules that line now says only what the player knows.
+- `AllyThroughInvitation` forms no pact without the strategy windows, so there an accepted invitation is only a deal.
+
+**Floors:** the Unity-free subset 1352 to 1364; EditMode +12 (the same file); PlayMode +1.

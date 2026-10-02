@@ -123,8 +123,11 @@ namespace Gamesim.Simulation
             bool partnership = Has(state, npcId, targetId, DealKind.Partnership);
             bool safety = Has(state, npcId, targetId, DealKind.SafetyAgreement);
 
-            // Already partners and already safe: make it an alliance.
-            if (partnership && safety && warmth > UpgradeWarmth && !allied)
+            // Already partners and already safe: make it an alliance - unless, under the commitment
+            // rules, the player it would be put to holds as many pacts as they may (C4, decision 10),
+            // and could only turn it down. The agency rung below counts them through WouldPropose.
+            if (partnership && safety && warmth > UpgradeWarmth && !allied
+                && !(target.isPlayer && EpisodeEngine.InvitationPastPactCap(state, npcId)))
                 return DealKind.AllianceInvite;
 
             // Under agency a houseguest looking for a partner asks the one they want, when that is

@@ -596,9 +596,33 @@ namespace Gamesim.Episode
                 Category(EpisodeCommandKind.PromiseSafety));
             hud.Tag(hud.Action("Propose a final-two promise", () => Commit(state, EpisodeCommandKind.PromiseFinalTwo, npc.id)),
                 Category(EpisodeCommandKind.PromiseFinalTwo));
+            if (!allied && EpisodeEngine.CommitmentRulesOn(state)) { ProposeAllianceRow(state, npc); return; }
             hud.Tag(hud.Action(allied ? "Leave our alliance" : "Propose an alliance",
                     () => Commit(state, allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance, npc.id)),
                 Category(allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance));
+        }
+
+        /// <summary>
+        /// 'Propose an alliance' under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C4). It rolls
+        /// on the alliance invitation's odds and a no spends the action, so the row carries the
+        /// player's read of the chance as a deal's row does (<see cref="KnownOdds.Alliance"/>, never the
+        /// roll's own number), under the note that says whose read it is - once a render, above the
+        /// first chance the conversation shows. At the player's three pacts it is drawn locked, under
+        /// the line that says why, as an offer's yes that cannot be given is: same caption, nothing
+        /// committed, and nothing about the houseguest told.
+        /// </summary>
+        private void ProposeAllianceRow(EpisodeState state, ContestantState npc)
+        {
+            string refusal = EpisodeEngine.AllianceRefusal(state, npc.id);
+            if (refusal != null)
+            {
+                hud.Paragraph(refusal);
+                hud.LockedAction("Propose an alliance");
+                return;
+            }
+            OddsAreYourRead(state, npc);
+            hud.Tag(hud.Action("Propose an alliance", () => Commit(state, EpisodeCommandKind.FormAlliance, npc.id)),
+                Category(EpisodeCommandKind.FormAlliance) + " · " + KnownOdds.Alliance(state, npc.id).word);
         }
 
         /// <summary>What you have on them: the play about them as a bar, where you stand, the threads they are in, and the latest note.</summary>

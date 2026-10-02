@@ -205,6 +205,32 @@ namespace Gamesim.Simulation
                         "Partners in crime. Mostly the polite kind.",
                         "Fine. An alliance is a hypothesis about trust; let's test it gently.",
                         "We're working together. Good."));
+            // Under the commitment rules a proposal can be turned down and still be spent
+            // (ACTIONS-DEALS-ALLIANCES-PLAN C4): a committed proposal that left no pact between them is
+            // a no, said without a reason - the reason would be what they privately think of the player.
+            if (acceptedAction == EpisodeCommandKind.FormAlliance && EpisodeEngine.CommitmentRulesOn(state))
+                return Vary(state,
+                    Pick(id,
+                        "Not an alliance, not yet. I'd rather we earn one than announce it.",
+                        "No. I'm not tying my game to yours. Not yet.",
+                        "I'm sorry, I can't say yes to that right now. I hope you understand.",
+                        "An alliance? I'm flattered. I'm also saying no.",
+                        "No. The case for it isn't there yet.",
+                        "Not right now. I'm not ready for an alliance."),
+                    Pick(id,
+                        "I'm going to say no for now. I don't make commitments I can't explain to myself.",
+                        "Pass. Prove you're worth it and ask me again.",
+                        "Please don't take it personally. I'm just not ready to promise that.",
+                        "Tempting, but I'm keeping my options as open as the snack cupboard.",
+                        "I've weighed it, and the answer is no. For now.",
+                        "No. Not yet."),
+                    Pick(id,
+                        "Not this week. Ask me again once we've both seen how the other plays.",
+                        "No deal. I'm not convinced you help me win.",
+                        "I can't do it. Not yet. I'm sorry.",
+                        "No, but thank you for asking. Most people just assume.",
+                        "Not enough to go on. Ask me again later.",
+                        "I'll pass on that for now."));
             if (acceptedAction == EpisodeCommandKind.LeaveAlliance && !SharedAlliance(state, npc.id, true) && SharedAlliance(state, npc.id, false))
                 return Vary(state,
                     Pick(id,
@@ -404,7 +430,14 @@ namespace Gamesim.Simulation
                         "Ally to ally: who are we pretending to like today?",
                         "Alliance check-in. Any new information I should have?",
                         "Allies. What's the plan?"));
-            double trust = OwnTrust(state, npc.id);
+            // Under the commitment rules the line says only what the player could know of how they
+            // stand (ACTIONS-DEALS-ALLIANCES-PLAN C4, the knowledge gate): the player's own reading of
+            // them, held inside the band a read, an account or an overheard word put them in
+            // (KnownOdds.PresumedView). Before the rules it read how the houseguest privately sees the
+            // player, and said at every greeting - and after every reply that falls through to it, a
+            // refused deal's among them - whether that was at -15 or under, or 25 or over.
+            double trust = EpisodeEngine.CommitmentRulesOn(state) && state.relationships != null
+                ? KnownOdds.PresumedView(state, npc.id) : OwnTrust(state, npc.id);
             if (trust <= -15)
                 return Vary(state,
                     Pick(id,

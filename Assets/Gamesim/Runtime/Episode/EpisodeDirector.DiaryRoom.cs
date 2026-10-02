@@ -290,8 +290,11 @@ namespace Gamesim.Episode
                     // until Confirm. Confirm stands straight under the cards, where mockup-08 puts
                     // its button; the explanation follows it rather than pushing it past the fold.
                     bool tieBreak = EpisodeEngine.NeedsPlayerTieBreak(state);
+                    // What the ballot chosen would break of the player's word, over the cards and
+                    // Confirm - the controls it is about - so Confirm still follows the cards
+                    // (EpisodeDirector.YourWord).
                     hud.BallotCards(state, state.nominees, reviewed.target, id => id == reviewed.target ? "Your choice: " + state.Find(id).name : "Choose " + state.Find(id).name + " instead",
-                        id => { if (id != reviewed.target) OfferBallot(state, true, tieBreak, id); });
+                        id => { if (id != reviewed.target) OfferBallot(state, true, tieBreak, id); }, warning: DraftWarning(reviewed));
                     hud.Action(EpisodeHud.DiaryConfirmCaption, () => ConfirmDiaryDecision(reviewed));
                     hud.Action(EpisodeHud.DiaryCancelCaption, () => CancelDiaryDecision(reviewed));
                     hud.Paragraph(reviewed.summary);
@@ -512,6 +515,9 @@ namespace Gamesim.Episode
                 PackArt.KitIconNote, headline, reflection, null, "NOT YET SAVED");
             if (effects.Length > 0)
                 hud.ReviewCard(EpisodeHud.DiaryReviewEffectsName, "WHAT CONFIRMATION RECORDS", null, null, false, effects);
+            // A nomination or a veto under review, and what it would break of the player's word.
+            string breach = DraftWarning(reviewed);
+            if (breach != null) hud.NamedParagraph(EpisodeHud.BreachWarningName, breach, UiTheme.Warning);
             hud.InfoNote("Review note", "Nothing has been committed yet. Confirm once to save this decision, or go back to discard it.");
             hud.Action(study ? EpisodeHud.StudyConfirmCaption : reflection ? EpisodeHud.DiaryConfirmReflectionCaption : EpisodeHud.DiaryConfirmCaption,
                 () => ConfirmDiaryDecision(reviewed));
@@ -779,8 +785,12 @@ namespace Gamesim.Episode
             if (BallotIsLive(state))
             {
                 bool tieBreak = EpisodeEngine.NeedsPlayerTieBreak(state);
+                // Out of the diary a card is the vote itself, cast as it is pressed: what each one
+                // would break of the player's word is said over the cards, before either is
+                // pressed (EpisodeDirector.YourWord). In the diary the card stages the choice, and
+                // its review says it then.
                 hud.BallotCards(state, state.nominees, null, id => "Vote to evict " + state.Find(id).name,
-                    id => OfferBallot(state, privateRoom, tieBreak, id));
+                    id => OfferBallot(state, privateRoom, tieBreak, id), warning: privateRoom ? null : BallotWarning(state, state.nominees));
                 // Under the cards, where mockup-08 keeps its line: ahead of the title it read as
                 // the page's heading.
                 hud.Paragraph(tieBreak ? "The vote is tied. As HoH, you cast the deciding vote." : "Your ballot is private until the eviction reveal.");

@@ -63,5 +63,35 @@ namespace Gamesim.Tests.EditMode
             Assert.That(DecisionContext.ForCandidate(state,"missing"),Is.Null);
             Assert.That(DecisionContext.Participants(state,null),Is.Empty);
         }
+
+        /// <summary>
+        /// The nominee comparison shows the deals between the player and a candidate beside the
+        /// promises (ACTIONS-DEALS-ALLIANCES-PLAN V1), each with its term and where it stands, and
+        /// never a deal between two houseguests. With none there is no line, so the comparison is
+        /// no taller for a candidate with nothing between you.
+        /// </summary>
+        [Test]
+        public void TheComparisonShowsTheDealsBetweenYouBesideThePromises()
+        {
+            var state = ContentCatalog.Create(11);
+            var guests = state.contestants.Where(c => c.id != state.playerId).Take(3).ToArray();
+            Assert.That(DecisionContext.ForCandidate(state, guests[0].id).Deals, Is.Null, "No deal, no line.");
+            state.deals.Add(new DealState { id = "deal-safety", type = DealKind.SafetyAgreement, proposerId = state.playerId, recipientId = guests[0].id,
+                status = DealStatus.Active, week = state.week, expiresWeek = state.week, trustImpact = DealKind.DefaultTrust(DealKind.SafetyAgreement) });
+            state.deals.Add(new DealState { id = "deal-vote", type = DealKind.VoteEvict, proposerId = guests[0].id, recipientId = state.playerId, targetId = guests[2].id,
+                status = DealStatus.Proposed, week = state.week, expiresWeek = state.week, trustImpact = DealKind.DefaultTrust(DealKind.VoteEvict) });
+            state.deals.Add(new DealState { id = "deal-private", type = DealKind.FinalTwo, proposerId = guests[0].id, recipientId = guests[1].id,
+                status = DealStatus.Active, week = state.week, trustImpact = DealKind.DefaultTrust(DealKind.FinalTwo) });
+            var context = DecisionContext.ForCandidate(state, guests[0].id);
+            Assert.That(context.Deals, Is.EqualTo("Deal: Vote-to-evict deal they offered (" + FinalistRead.FirstName(guests[2].name) + ") · this week · waiting on you\n"
+                + "Deal: Safety deal you proposed · this week · agreed"), "Newest first, each with its term and where it stands.");
+            Assert.That(context.Promises, Is.EqualTo("No promises recorded between you."), "The promises read as they always did.");
+            Assert.That(DecisionContext.ForCandidate(state, guests[1].id).Deals, Is.Null, "A deal between two houseguests is theirs.");
+
+            // A deal that names the player says "you", never the player's own name in the third person.
+            state.deals.Add(new DealState { id = "deal-keep-you", type = DealKind.VoteSave, proposerId = guests[2].id, recipientId = state.playerId,
+                targetId = state.playerId, status = DealStatus.Active, week = state.week, expiresWeek = state.week, trustImpact = DealKind.DefaultTrust(DealKind.VoteSave) });
+            Assert.That(DecisionContext.ForCandidate(state, guests[2].id).Deals, Is.EqualTo("Deal: Vote-to-save deal they offered (you) · this week · agreed"));
+        }
     }
 }

@@ -516,7 +516,8 @@ namespace Gamesim.Tests.PlayMode
             director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
             yield return null; yield return null;
             Assert.That(ActiveDiaryText(), Does.Contain("You declared loyalty to " + after.Find(id).name));
-            Assert.That(ActiveDiaryText(), Does.Contain("A declaration is not a mutual guarantee."));
+            // In the conversation's terms (X12): no promise from them, and binding both ways.
+            Assert.That(ActiveDiaryText(), Does.Contain(EpisodeDirector.OathNotebookNote));
         }
 
         [UnityTest]

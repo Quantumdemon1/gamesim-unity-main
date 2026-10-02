@@ -26,15 +26,42 @@ namespace Gamesim.Presentation
     /// </summary>
     public static class CeremonyOverlays
     {
+        /// <summary>A stamp from before any frame: nothing has been shown.</summary>
+        private const int Never = -1000;
+
         // Well before frame zero, but nowhere near int.MinValue: the comparison below is a
         // subtraction, and int.MinValue makes it overflow to a negative number on the very first
         // frame, which reads as "a card is on screen" and silently swallows every click in the game.
-        private static int lastFrame = -1000;
+        private static int lastFrame = Never;
 
         /// <summary>Called by a ceremony card on each frame it is playing.</summary>
         public static void Showing() => lastFrame = Time.frameCount;
 
         /// <summary>Whether the world should treat this frame's click as already spoken for.</summary>
-        public static bool OnScreen => Time.frameCount - lastFrame <= 1;
+        public static bool OnScreen => Holds(Time.frameCount, lastFrame);
+
+        /// <summary>
+        /// Whether a card stamped on <paramref name="stamped"/> still holds the click on frame
+        /// <paramref name="now"/>: that frame or the one before it, and never a frame that has not
+        /// happened yet. The editor can start play without reloading the domain, and then this
+        /// static outlives the session that wrote it: a card shown an hour into one season left a
+        /// stamp of two hundred thousand frames, the next season started again from frame one, and
+        /// "now minus stamp" was a large negative number - under the limit, so a card was on screen,
+        /// for the whole first hour of a season that had no ceremony in it. E, Escape, the prompt and
+        /// every click on the house went nowhere, with nothing on screen to say why.
+        /// </summary>
+        public static bool Holds(int now, int stamped)
+        {
+            // In 64 bits, so that no seed can overflow the subtraction into a negative age.
+            long age = (long)now - stamped;
+            return age >= 0 && age <= 1;
+        }
+
+        /// <summary>
+        /// Nothing is on screen: what a fresh domain would say. Run as play begins, because a play
+        /// session started without a domain reload keeps every static from the one before it.
+        /// </summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        public static void Forget() => lastFrame = Never;
     }
 }

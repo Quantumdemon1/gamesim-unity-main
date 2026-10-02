@@ -13,8 +13,15 @@ namespace Gamesim.Presentation
             public string Record { get; }
             public string Relationship { get; }
             public string Promises { get; }
-            internal Candidate(ContestantState character, string record, string relationship, string promises)
-            { Character = character.Clone(); Record = record; Relationship = relationship; Promises = promises; }
+            /// <summary>
+            /// The deals between the player and them, newest first, each with its term and where it
+            /// stands (ACTIONS-DEALS-ALLIANCES-PLAN V1): the comparison listed promises and never
+            /// deals, so a safety deal was forgotten at the very ceremony that breaks it. Null when
+            /// there are none, so the comparison is no taller for a candidate with nothing to say.
+            /// </summary>
+            public string Deals { get; }
+            internal Candidate(ContestantState character, string record, string relationship, string promises, string deals)
+            { Character = character.Clone(); Record = record; Relationship = relationship; Promises = promises; Deals = deals; }
         }
 
         public static Candidate ForCandidate(EpisodeState state, string id)
@@ -32,7 +39,28 @@ namespace Gamesim.Presentation
                     + " · " + p.status.ToString().ToLowerInvariant()))
                     + (promises.Length > 2 ? "\n+" + (promises.Length - 2) + " other promises between you" : "");
             return new Candidate(actor, "HoH " + actor.hohWins + " · Veto " + actor.vetoWins
-                + " · Nominated " + actor.timesNominated, relationship, known);
+                + " · Nominated " + actor.timesNominated, relationship, known, Deals(state, id));
+        }
+
+        /// <summary>
+        /// "Deal: Safety deal you proposed · this week · agreed", the newest two and a count of the
+        /// rest: only deals the player is a party to, read as the Your word page reads them, with
+        /// whom a deal names - "(you)" when it names the player.
+        /// </summary>
+        private static string Deals(EpisodeState state, string id)
+        {
+            if (id == state.playerId) return null;
+            var deals = CommitmentsRead.With(state, id).Where(c => c.kind == CommitmentsRead.Kinds.Deal).ToList();
+            if (deals.Count == 0) return null;
+            string Line(CommitmentsRead.Commitment deal)
+            {
+                var about = state.Find(deal.aboutId);
+                string named = about == null ? null : about.id == state.playerId ? "you" : FinalistRead.FirstName(about.name);
+                return "Deal: " + deal.title + (named != null ? " (" + named + ")" : "")
+                    + " · " + deal.term + " · " + deal.status;
+            }
+            return string.Join("\n", Enumerable.Reverse(deals).Take(2).Select(Line))
+                + (deals.Count > 2 ? "\n+" + (deals.Count - 2) + " other deals between you" : "");
         }
 
         public static Candidate[] Participants(EpisodeState state, HouseEventState item) =>

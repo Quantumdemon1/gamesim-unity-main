@@ -38,10 +38,17 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(moon, Is.Not.Null);
             Assert.That(moon.name, Is.EqualTo("Moon"));
             Assert.That(moon.lightmapBakeType, Is.EqualTo(LightmapBakeType.Mixed));
+            // The scene's own lamps. A rig the game builds at play - the character studio's lamps
+            // behind a creator a test left behind, the opening door's burst - lights live, and on a
+            // copy with bodies those rigs are built where the UMA-free copy shows a stand-in.
             var practicals = Object.FindObjectsByType<Light>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-                .Where(l => l.type == LightType.Point).ToArray();
+                .Where(l => l.type == LightType.Point
+                    && l.GetComponentInParent<Gamesim.Presentation.CharacterStudioPreview>(true) == null
+                    && l.GetComponentInParent<Gamesim.Presentation.OpeningDoorSet>(true) == null).ToArray();
             Assert.That(practicals, Is.Not.Empty);
-            Assert.That(practicals.All(l => l.lightmapBakeType == LightmapBakeType.Mixed), Is.True, "Bounce baked, direct live.");
+            var live = practicals.Where(l => l.lightmapBakeType != LightmapBakeType.Mixed)
+                .Select(l => l.name + " (" + l.lightmapBakeType + ", under " + l.transform.root.name + ")").ToArray();
+            Assert.That(live, Is.Empty, "Bounce baked, direct live: " + string.Join(", ", live));
             Assert.That(practicals.Any(l => l.shadows != LightShadows.None), Is.True, "The lamps cast shadows.");
             var fitted = director.gameObject.scene.GetRootGameObjects()
                 .Single(root => root.name == "Gamesim Fitted Lighting");

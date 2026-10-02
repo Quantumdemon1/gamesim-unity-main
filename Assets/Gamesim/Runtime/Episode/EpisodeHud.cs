@@ -288,6 +288,8 @@ namespace Gamesim.Episode
             // next screen's petals on a destroyed rectangle.
             dialRoot = null; dialSeat = null; conversationColumn = null; topicSeats = topicTaken = 0;
             tagUnder.Clear(); readingRows.Clear();
+            // So do a person picker and a row it asked to bring to the top (EpisodeHud.ConversationGroups.cs).
+            picker = null; revealAtTop = null;
             // Brand and Objective used to be placed at hard-coded offsets, so Objective's -143
             // silently assumed Brand's exact height; growing either one overlapped them. Stacking
             // them in a column makes that impossible to get wrong.
@@ -704,7 +706,7 @@ namespace Gamesim.Episode
             Canvas.ForceUpdateCanvases();
             relationshipRoot = RelationshipWeb.Build(content, state, FontScale, font, Portrait,
                 id => director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network), modalScroll.viewport.rect.height,
-                modalScroll.viewport.rect.width);
+                modalScroll.viewport.rect.width, () => director.ShowNotebookSection(EpisodeDirector.NotebookSection.Alliances));
             // The graph is the notebook's entry view. Its explanatory heading belongs after the
             // complete graph instead of consuming the top of its only visible viewport.
             relationshipRoot.SetAsFirstSibling();
@@ -1129,6 +1131,8 @@ namespace Gamesim.Episode
         {
             if (target == null || string.IsNullOrEmpty(text)) return;
             if (dialRoot != null && target.transform.parent == dialRoot) { PetalTag(target, text); return; }
+            // One of a person picker's people carries its tag on its foot (EpisodeHud.ConversationGroups.cs).
+            if (PickerTag(target, text)) return;
             // A row carrying a trust reading has already spent its right-hand end on it: a tag
             // seated at the row's end sat on top of "Trust 9" (the Vent and rumour rows).
             if (seat == TagSeat.RowEnd && readingRows.Contains(target)) seat = TagSeat.PastReading;
@@ -1400,6 +1404,8 @@ namespace Gamesim.Episode
         /// </summary>
         public Button ActionFor(string contestantId,string caption,Action action)
         {
+            // Inside a person picker the row is one of the picker's people (EpisodeHud.ConversationGroups.cs).
+            if (PickerTakes(caption)) return PickerChoice(contestantId,caption,action);
             var button = Action(caption,Portrait(contestantId),action);
             Annotate(button,contestantId);
             return button;
@@ -1763,6 +1769,9 @@ namespace Gamesim.Episode
 
         private void LateUpdate()
         {
+            // A panel redrawn under the pointer takes its presses back once the hold's time is up
+            // (EpisodeHud.FreeTimeBoard.cs), whether or not anything renders again.
+            if (pointerHeldUntil > 0f) ApplyPointerHold();
             var events = EventSystem.current;
             if (canvas == null || !canvas.gameObject.activeInHierarchy || events == null) return;
             var overlay = ActiveOverlay();
@@ -1799,6 +1808,8 @@ namespace Gamesim.Episode
                     Canvas.ForceUpdateCanvases();
                     // With the rows at their final heights, the panel can take its own.
                     FitStandardPanel();
+                    // And a picker just opened can take the top of its column (EpisodeHud.ConversationGroups.cs).
+                    ApplyRevealAtTop();
                 }
                 // Scrollbars stay out of the ring: the panel scrolls to whatever is selected, and a
                 // scrollbar the ScrollRect auto-hides after layout would sit in the ring inactive,

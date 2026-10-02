@@ -24,6 +24,11 @@ namespace Gamesim.Simulation
         {
             public int week;
             public string kind, text, brief;
+            /// <summary>
+            /// The line for a row with room for one short line - the campaign's Recent Intel - where
+            /// <see cref="text"/> says more than that row holds; null where the text is short already.
+            /// </summary>
+            public string compact;
             public override string ToString() => "Week " + week + " · " + text;
         }
 
@@ -54,10 +59,15 @@ namespace Gamesim.Simulation
                 bool theirs = deal.proposerId == id;
                 string title = DealKind.Title(deal.type).ToLowerInvariant();
                 string standing = DealStanding(deal.status, theirs);
+                // Whom it is about, where it names somebody, and how it ended where the record can say.
+                // The campaign's one-line row keeps the offer and where it stands, as it always read.
+                string about = DealKind.NamesATarget(deal.type) && s.Find(deal.targetId) != null ? " (about " + Name(deal.targetId) + ")" : "";
+                string offer = theirs ? first + " put a " + title + " to you" : "You put a " + title + " to " + first;
                 notes.Add(new Note
                 {
                     week = deal.week, kind = Kinds.Offer,
-                    text = (theirs ? first + " put a " + title + " to you" : "You put a " + title + " to " + first) + " · " + standing,
+                    text = offer + about + " · " + DealEnding(s, deal, theirs),
+                    compact = offer + " · " + standing,
                     brief = theirs && deal.status == DealStatus.Proposed ? "An offer waiting on you" : (theirs ? "Their offer: " : "Your offer: ") + standing,
                 });
             }
@@ -162,6 +172,22 @@ namespace Gamesim.Simulation
                 case PromiseStatus.Expired: return "expired";
                 default: return "still standing";
             }
+        }
+
+        /// <summary>
+        /// How a deal ended, where the record can say: who broke a broken one, as
+        /// <see cref="FinalistRead.DealBreaker"/> reads it off the public record and the player's own
+        /// ballot, or "broken" blaming nobody where it cannot - deals do not record who broke them.
+        /// A voting block both partners settle at once fell apart. Anything else, where it stands.
+        /// </summary>
+        public static string DealEnding(EpisodeState s, DealState deal, bool theirs)
+        {
+            if (deal == null) return "";
+            if (deal.status != DealStatus.Broken || s == null) return DealStanding(deal.status, theirs);
+            string breaker = FinalistRead.DealBreaker(s, deal);
+            if (breaker == s.playerId) return "broken by you";
+            if (breaker != null) return "broken by " + FirstName(s.Find(breaker)?.name);
+            return deal.type == DealKind.VoteTogether ? "fell apart" : "broken";
         }
 
         /// <summary>Where a deal stands, in a word or two.</summary>

@@ -74,9 +74,12 @@ namespace Gamesim.Tests.PlayMode
         /// Plays the season on with the house's next legal decisions until a nomination or an
         /// eviction is committed, and asserts the house stages it: the card on the set's own screen,
         /// skipped as a player skips it, the walk out after an eviction skipped too, and the house's
-        /// world still running for the ceremony after.
+        /// world still running for the ceremony after. With <paramref name="readTheCardsSecondPlay"/>
+        /// the nomination found is the key card's second play on this director - the first play
+        /// measured its title before its Awake and hung the mark over the T (UI-UX-PASS-PLAN N0), a
+        /// frame no other capture reaches - and the live card's mark is read and the frame kept.
         /// </summary>
-        private IEnumerator PlayOnToTheNextStagedCeremony(string what, int steps = 40)
+        private IEnumerator PlayOnToTheNextStagedCeremony(string what, int steps = 40, bool readTheCardsSecondPlay = false)
         {
             stagedKind = null;
             for (int step = 0; step < steps; step++)
@@ -112,6 +115,15 @@ namespace Gamesim.Tests.PlayMode
                     var keys = SceneComponents<KeyCeremony>().Single();
                     Assert.That(keys.IsPlaying && keys.Surface != null, Is.True, what + ": the keys play on the set's screen.");
                     Assert.That(keys.Surface.Room, Is.EqualTo("Nomination"), what + ": at the nomination table.");
+                    if (readTheCardsSecondPlay)
+                    {
+                        // The live card's second play, the frame the owner's screenshot was: the mark
+                        // read on the card as drawn, and the frame kept for the look sheet under the
+                        // plan's name for it (the card's second week; week 3 of this walk).
+                        yield return null;
+                        AssertTheTitleMarkClearsTheTitle(keys, what + " (week " + before.week + ", the card's second play on this director)");
+                        if (Application.isBatchMode) yield return CaptureTheScreen(keys.Surface, "nomination-card-week2");
+                    }
                 }
                 else
                 {
@@ -348,7 +360,9 @@ namespace Gamesim.Tests.PlayMode
                 var state = director.Snapshot;
                 Assert.That(state.Find(state.playerId).status, Is.EqualTo(ContestantStatus.Active),
                     "The player is in the house for week " + week + ", as the engine alone played season " + seed + ".");
-                yield return PlayOnToTheNextStagedCeremony("Week " + week + "'s nomination");
+                // The season is installed at week one's eviction, so week 2's nomination is this
+                // director's card's first play and week 3's its second: the one the mark is read on.
+                yield return PlayOnToTheNextStagedCeremony("Week " + week + "'s nomination", readTheCardsSecondPlay: week == 3);
                 Assert.That(stagedKind, Is.EqualTo(CeremonySting.NominationKind), "Week " + week + " stages its nomination first.");
                 Assert.That(director.Snapshot.week, Is.EqualTo(week));
                 yield return PlayOnToTheNextStagedCeremony("Week " + week + "'s eviction");

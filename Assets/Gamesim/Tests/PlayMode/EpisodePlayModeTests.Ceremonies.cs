@@ -32,7 +32,7 @@ namespace Gamesim.Tests.PlayMode
                 // Nomination and eviction are narrated by their own overlays and asserted below;
                 // they stay in this map because it is also the set of beats the loop looks for.
                 { CeremonySting.NominationKind, "NOMINATION CEREMONY" },
-                { CeremonySting.VetoKind, "VETO CEREMONY" },
+                { CeremonySting.VetoKind, "VETO MEETING" },
                 { CeremonySting.EvictionKind, "EVICTION" },
             };
             var outstanding = new HashSet<string>(expected.Keys);
@@ -151,6 +151,10 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(group.alpha, Is.GreaterThan(0.5f),
                         "The card should be visible at this point, not faded out.");
                     AssertCardCoversNoChrome(sting);
+                    // Announced once (UI-UX-PASS-PLAN V0): the status line under the strip and the
+                    // meeting's card said the same sentence a third time.
+                    if (committed.kind == CeremonySting.VetoKind)
+                        Assert.That(LastActive("Status"), Is.Null, "The status line stands down while the strip says the meeting.");
                 }
 
                 yield return CaptureCeremony(committed.kind);

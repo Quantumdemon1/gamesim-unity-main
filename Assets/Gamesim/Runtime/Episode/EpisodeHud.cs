@@ -403,10 +403,16 @@ namespace Gamesim.Episode
             // full run). Never under the gate: opening a panel renders before the tick clears it.
             if (!string.IsNullOrEmpty(promptAsked) && director != null && !director.IsHouseUnderChrome)
                 SetPrompt(promptAsked, promptHintAsked);
+            // The line down under a ceremony's card that says the same beat (UI-UX-PASS-PLAN V0),
+            // asked of the director now - the render a commit makes comes in the frame its card
+            // begins, before the director's next tick says so - and before the Nearby card is put
+            // back, which stands the line down by the same rule.
+            SetStatusUnderCard(director != null && director.CeremonyCardAnnouncing);
             // The Nearby card and its bar as last asked for, now that the status line they stand
             // in for is built: a render between the director's ticks used to leave the new status
             // over the bar until the next tick, and a frame is what a capture photographs.
             ApplyNearby();
+            ApplyStatusLine();
             content = null;
             if (!open && !recovery)
             {

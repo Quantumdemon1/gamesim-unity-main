@@ -991,6 +991,11 @@ namespace Gamesim.Episode
             if (takeover != null) takeover.Play(kind, state.week, CeremonySubjects(state, kind, wasActive, wasNominated), reducedMotion, null, line);
             // The final Head of Household's choice is an endgame card: the chrome stands aside for it.
             if (takeover != null && kind == CeremonySting.FinalEvictionKind) HoldHudForReveal(redraw: false);
+            // So does the veto meeting's card on the HUD frame (UI-UX-PASS-PLAN V0): the episode screen
+            // the decision was made on redraws as the meeting's outcome under it, its sentence and its
+            // VETO USED, beside the strip that says the sentence once. Not under a stage, which holds
+            // the chrome itself; nothing it draws names what the card has not, so no redraw.
+            if (takeover != null && kind == CeremonySting.VetoKind && !IsCeremonyStaged) HoldHudForReveal(redraw: false);
             if (sting != null) sting.Play(kind, text, reducedMotion);
             // Under a stage - a reveal that declined the set's screen - the stage has the camera
             // and the bodies, and the card only reports: framing the room as well put two hands on
@@ -1697,7 +1702,8 @@ namespace Gamesim.Episode
                 case EpisodePhase.Social: return "FREE TIME";
                 case EpisodePhase.HoH: return "HEAD OF HOUSEHOLD";
                 case EpisodePhase.VetoSelection: return "VETO PLAYER SELECTION";
-                case EpisodePhase.VetoMeeting: return "VETO CEREMONY";
+                // The veto meeting, as every other screen and card names it (UI-UX-PASS-PLAN V0).
+                case EpisodePhase.VetoMeeting: return "VETO MEETING";
                 case EpisodePhase.FinalHoHPart1:
                 case EpisodePhase.FinalHoHPart2:
                 case EpisodePhase.FinalHoHPart3: return "FINAL HEAD OF HOUSEHOLD";

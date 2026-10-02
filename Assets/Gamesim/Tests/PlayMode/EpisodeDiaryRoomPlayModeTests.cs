@@ -282,7 +282,7 @@ namespace Gamesim.Tests.PlayMode
             // made (UI-UX-PASS-PLAN T0).
             Assert.That(director.GetComponentInChildren<EpisodeHud>().CurrentActivityLayout,
                 Is.EqualTo(EpisodeHud.ActivityLayout.Ballot), "A ballot in the diary is the eviction vote's panel.");
-            AssertBallotFits("The ballot with a choice waiting", true);
+            AssertTheDecisionFitsAtScrollZero("The ballot with a choice waiting", true, false);
             // Mockup-08's bar under the vote, in the strip's place.
             Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == EpisodeHud.SpeechBarName && rect.gameObject.activeInHierarchy),
                 Is.True, "The ballot has its bar.");

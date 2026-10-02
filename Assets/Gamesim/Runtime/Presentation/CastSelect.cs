@@ -810,22 +810,35 @@ namespace Gamesim.Presentation
             return plate;
         }
 
-        /// <summary>The traits as pills, one each, tinted by what they mean, centred across <paramref name="span"/>.</summary>
+        /// <summary>
+        /// The traits as pills, one each, tinted by what they mean, centred across
+        /// <paramref name="span"/> and inside it: a pair of long words shares the span less its
+        /// margins rather than running past it (Taylor Kim's "Competitive" and "Confrontational"
+        /// came to 215 on a card 202 wide at 22 tall; UI-UX-PASS-PLAN T0). A word sits on one line
+        /// and shrinks a little before it is cut.
+        /// </summary>
         private static void Traits(RectTransform parent, CastTemplates.Template template, float span, float y,
             string chipName = TraitChipName, float height = 18f)
         {
             var words = template.Traits;
             if (words == null || words.Length == 0) return;
+            const float gap = 6f, margin = 6f;
             var widths = new float[words.Length];
-            float total = 0f;
+            float sum = 0f;
             for (int i = 0; i < words.Length; i++)
             {
                 string word = Localisation.Text(words[i]);
                 widths[i] = Mathf.Max(50f, word.Length * height * .31f + 16f);
-                total += widths[i];
+                sum += widths[i];
             }
-            total += 6f * (words.Length - 1);
-            float x = (span - total) * .5f;
+            float gaps = gap * (words.Length - 1), room = span - 2f * margin - gaps;
+            if (sum > room && room > 0f)
+            {
+                float k = room / sum;
+                for (int i = 0; i < words.Length; i++) widths[i] *= k;
+                sum = room;
+            }
+            float x = (span - sum - gaps) * .5f;
             for (int i = 0; i < words.Length; i++)
             {
                 var chip = HudPrimitives.Chip(chipName, parent, Localisation.Text(words[i]), TraitTint(words[i]), widths[i], height);
@@ -833,7 +846,15 @@ namespace Gamesim.Presentation
                 chip.anchorMax = new Vector2(0f, 1f);
                 chip.pivot = new Vector2(0f, 1f);
                 chip.anchoredPosition = new Vector2(x, y);
-                x += widths[i] + 6f;
+                var label = chip.GetComponentInChildren<TMP_Text>();
+                if (label != null)
+                {
+                    label.textWrappingMode = TextWrappingModes.NoWrap;
+                    label.enableAutoSizing = true;
+                    label.fontSizeMax = label.fontSize;
+                    label.fontSizeMin = Mathf.Min(10f, label.fontSize);
+                }
+                x += widths[i] + gap;
             }
         }
 
@@ -1212,7 +1233,7 @@ namespace Gamesim.Presentation
         public const float FootnoteSize = 13f;
         /// <summary>The house-size chips' height: tall enough to read and to press beside the start.</summary>
         public const float HouseSizeChipHeight = 44f;
-        public const string HouseSizePanelName = "House size panel", FooterTextName = "Text";
+        public const string HouseSizePanelName = "House size panel";
 
         /// <summary>The house size: what it is and its range, and the count between its two controls.</summary>
         private void HouseSizePanel(RectTransform bar, float left, float panelWidth, bool compact)

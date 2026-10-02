@@ -76,23 +76,21 @@ namespace Gamesim.Presentation
         private bool browsing;
 
         /// <summary>
-        /// The frame the week was last laid out for, and whether a new one has arrived. A canvas
-        /// takes a new shape a frame after its cause - the larger text's scaler catching up with
-        /// the preference, a capture's 16:9 target over the batch canvas's 4:3 - and a card sized
-        /// to the old one stood past the screen at the larger text, its title off the top and its
-        /// Continue off the foot (weekly-recap-overview-large; UI-UX-PASS-PLAN T0). So the week is
-        /// laid out again, in LateUpdate, whenever the frame it was built for is not the one it is on.
+        /// The frame the week was last laid out for. A canvas takes a new shape a frame after its
+        /// cause - the larger text's scaler catching up with the preference, a capture's 16:9
+        /// target over the batch canvas's 4:3 - and a card sized to the old one stood past the
+        /// screen at the larger text, its title off the top and its Continue off the foot
+        /// (weekly-recap-overview-large; UI-UX-PASS-PLAN T0). So while the week is open its frame
+        /// is read every LateUpdate, as the cast screen reads its own, and a new one lays the week
+        /// out again: a canvas's own change of size need not reach this component to be seen.
         /// </summary>
         private Vector2 builtFor;
-        private bool relayout;
-
-        private void OnRectTransformDimensionsChange() { if (IsOpen) relayout = true; }
 
         private void LateUpdate()
         {
-            if (!relayout) return;
-            relayout = false;
-            if (!IsOpen || shown == null || (Room() - builtFor).sqrMagnitude <= 1f) return;
+            if (!IsOpen || shown == null) return;
+            var room = Room();
+            if (Mathf.Abs(room.x - builtFor.x) <= 2f && Mathf.Abs(room.y - builtFor.y) <= 2f) return;
             var events = EventSystem.current;
             var held = events != null && events.currentSelectedGameObject != null ? events.currentSelectedGameObject.name : null;
             Rebuild();
@@ -240,7 +238,7 @@ namespace Gamesim.Presentation
             const float footer = 84f;
             // The eyebrow and the title, pinned at the card's head outside the scroll: only the
             // body scrolls, and the title stays in view whichever tab is open and however far down.
-            const float head = Pad + 22f + 52f;
+            const float head = Pad + 22f + TitleBox + 2f;
 
             // The house dimmed behind the week rather than blacked out, and the week on a glass
             // card, as the mockups set every summary over the room it is about.
@@ -356,13 +354,16 @@ namespace Gamesim.Presentation
 
         // ---------------------------------------------------------------- the head of the week
 
+        /// <summary>The title's box: 1.3 times its 40 points, the least Inter is sure to draw a line in.</summary>
+        private const float TitleBox = 52f;
+
         /// <summary>The eyebrow and the title, in the head pinned over the scroll.</summary>
         private void Head(RectTransform top, WeeklyRecap.Week recap, float inner)
         {
             var eyebrow = EndScreenKit.Text("Eyebrow", top, browsing ? "LOOKING BACK  ·  WEEK " + recap.week : "WEEK " + recap.week + "  ·  RECAP",
                 13f, UiTheme.Heading, Pad, Pad, inner, 20f, TextAlignmentOptions.Center, UiTheme.Weight.SemiBold);
             eyebrow.characterSpacing = 4f;
-            var title = EndScreenKit.Text(TitleName, top, "WEEK " + recap.week + " RECAP", 40f, Color.white, Pad, Pad + 22f, inner, 50f,
+            var title = EndScreenKit.Text(TitleName, top, "WEEK " + recap.week + " RECAP", 40f, Color.white, Pad, Pad + 22f, inner, TitleBox,
                 TextAlignmentOptions.Center, UiTheme.Weight.Bold);
             title.characterSpacing = 3f;
             title.enableVertexGradient = true;

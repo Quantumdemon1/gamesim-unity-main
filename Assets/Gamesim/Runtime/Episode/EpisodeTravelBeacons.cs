@@ -456,9 +456,19 @@ namespace Gamesim.Episode
                         }
                         var size = chip.rect.sizeDelta * pixels;
                         // The chip hangs from the middle of its bottom edge.
-                        box = new Rect(screen.x - size.x * .5f, screen.y, size.x, size.y);
+                        var over = new Rect(screen.x - size.x * .5f, screen.y, size.x, size.y);
+                        box = over;
                         LiftClear(ref box, 2f * pixels);
                         show = bounds.Contains(box.min) && bounds.Contains(box.max) && !ChipCovered(box);
+                        // Lifted off the frame or into the chrome - a finalist under the top bar -
+                        // the name tries the other side, under what it stood clear of, before it
+                        // is put away.
+                        if (!show && box.y != over.y)
+                        {
+                            var under = over;
+                            LowerClear(ref under, 2f * pixels);
+                            if (bounds.Contains(under.min) && bounds.Contains(under.max) && !ChipCovered(under)) { box = under; show = true; }
+                        }
                     }
                 }
                 if (!show)
@@ -495,18 +505,44 @@ namespace Gamesim.Episode
         {
             for (int pass = 0; pass <= placedNames.Count + placedIcons.Count; pass++)
             {
-                bool moved = false;
-                foreach (var list in new[] { placedNames, placedIcons })
-                    foreach (var placed in list)
-                    {
-                        bool touches = box.xMin < placed.xMax + gap && box.xMax > placed.xMin - gap
-                            && box.yMin < placed.yMax + gap && box.yMax > placed.yMin - gap;
-                        if (!touches) continue;
-                        box.y = placed.yMax + gap;
-                        moved = true;
-                    }
+                bool moved = Past(placedNames, ref box, gap, true);
+                moved |= Past(placedIcons, ref box, gap, true);
                 if (!moved) return;
             }
+        }
+
+        /// <summary>
+        /// The same, the other way: moves a chip's screen rect down until it is clear of every chip
+        /// placed and every icon, for a name that lifting took off the frame or under the chrome.
+        /// </summary>
+        private void LowerClear(ref Rect box, float gap)
+        {
+            for (int pass = 0; pass <= placedNames.Count + placedIcons.Count; pass++)
+            {
+                bool moved = Past(placedNames, ref box, gap, false);
+                moved |= Past(placedIcons, ref box, gap, false);
+                if (!moved) return;
+            }
+        }
+
+        /// <summary>
+        /// Moves <paramref name="box"/> past every rect of <paramref name="placed"/> it touches,
+        /// above it when <paramref name="up"/> and below it otherwise. Indexed, not enumerated
+        /// through an array of the lists: this runs for every chip every frame.
+        /// </summary>
+        private static bool Past(List<Rect> placed, ref Rect box, float gap, bool up)
+        {
+            bool moved = false;
+            for (int i = 0; i < placed.Count; i++)
+            {
+                var other = placed[i];
+                bool touches = box.xMin < other.xMax + gap && box.xMax > other.xMin - gap
+                    && box.yMin < other.yMax + gap && box.yMax > other.yMin - gap;
+                if (!touches) continue;
+                box.y = up ? other.yMax + gap : other.yMin - gap - box.height;
+                moved = true;
+            }
+            return moved;
         }
 
         /// <summary>

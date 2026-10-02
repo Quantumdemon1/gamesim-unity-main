@@ -309,7 +309,8 @@ namespace Gamesim.Episode
                 return;
             }
             // A live ballot is the reason the player is in the chair, so it is the whole panel
-            // (mockup-08), with what the room keeps under it.
+            // (mockup-08), with what the room keeps under it: the record and the reflections follow
+            // the vote below the fold, where the cards leave them (UI-UX-PASS-PLAN T0).
             if (ballot)
             {
                 RenderPlayerDecision(state, true);
@@ -681,7 +682,7 @@ namespace Gamesim.Episode
             // UI-UX-PASS-PLAN T0). Each chip is the control it was. The caption is fixed whatever
             // the state: a control whose name changes as you use it is a control neither a test nor
             // a screen reader can refer to twice. The player's own entry is the row's summary, at
-            // its end; the chosen voter's thoughts follow the row.
+            // its end; the chosen voter's thoughts follow the row (VoterThoughts).
             var chips = new List<(string Caption, bool Active, Action Choose)>();
             string you = null;
             foreach (var voter in voters)
@@ -697,7 +698,17 @@ namespace Gamesim.Episode
                     () => { thoughtsVoterId = thoughtsVoterId == actor.id ? null : actor.id; Render(); }));
             }
             hud.FilterRow(VotersRowName, chips, you);
-            var chosen = thoughtsVoterId != null ? voters.FirstOrDefault(voter => voter.id == thoughtsVoterId && !voter.isPlayer) : null;
+        }
+
+        /// <summary>
+        /// The chosen voter's thoughts, under the voters' row. Built after the cards, so opening a
+        /// voter's thoughts never shrinks the ballot: they follow below the fold when there is no
+        /// room beside it.
+        /// </summary>
+        private void VoterThoughts(EpisodeState state)
+        {
+            if (thoughtsVoterId == null) return;
+            var chosen = EpisodeEngine.Voters(state).FirstOrDefault(voter => voter.id == thoughtsVoterId && !voter.isPlayer);
             if (chosen != null) hud.Paragraph(Thoughts(state, chosen));
         }
 
@@ -806,9 +817,13 @@ namespace Gamesim.Episode
             if (BallotIsLive(state))
             {
                 bool tieBreak = EpisodeEngine.NeedsPlayerTieBreak(state);
-                // Under the cards, where mockup-08 keeps its line: ahead of the title it read as
-                // the page's heading. Built first, with the roster, so the cards can be sized to the
-                // room the lines leave them, and moved under the cards by BallotCards (over).
+                // The decision fits at scroll 0; the context follows (UI-UX-PASS-PLAN T0). Under the
+                // cards, where mockup-08 keeps its line: ahead of the title it read as the page's
+                // heading. The line and the voters' row are built first, so the cards can keep them
+                // in the window beside them while the cards hold their floor; BallotCards moves them
+                // under the cards (over). A voter's thoughts follow them, and in the diary the
+                // record and the reflections follow those: the player votes with their memories in
+                // reach, a scroll away.
                 int over = hud.ColumnRows;
                 hud.Paragraph(tieBreak ? "The vote is tied. As HoH, you cast the deciding vote." : "Your ballot stays yours. Only the count is read.");
                 // At four there is exactly one eligible voter. That has always been true by
@@ -823,6 +838,7 @@ namespace Gamesim.Episode
                 // its review says it then.
                 hud.BallotCards(state, state.nominees, null, id => "Vote to evict " + state.Find(id).name,
                     id => OfferBallot(state, privateRoom, tieBreak, id), warning: privateRoom ? null : BallotWarning(state, state.nominees), over: over);
+                VoterThoughts(state);
                 return true;
             }
             return false;

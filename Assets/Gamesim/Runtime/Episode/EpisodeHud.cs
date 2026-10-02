@@ -1399,7 +1399,7 @@ namespace Gamesim.Episode
                 Anchor(bar, new Vector2(0, 1), new Vector2(0, 1), new Vector2(12f * s, -161f * s), new Vector2((width - 24f * s) * fill, 4f * s));
                 bar.GetComponent<Image>().raycastTarget = false;
             }
-            var reading = FixedText(rect, "Trust " + trust.ToString("0"), 11, UiTheme.Muted, new Vector2(8f * s, -167f * s), new Vector2(width - 16f * s, 14f * s));
+            var reading = FixedText(rect, TrustReading(trust), 11, UiTheme.Muted, new Vector2(8f * s, -167f * s), new Vector2(width - 16f * s, 15f * s));
             reading.alignment = TextAlignmentOptions.Center;
             return button;
         }
@@ -1971,23 +1971,70 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// A button of a fixed size and place, in the kit's secondary chrome: the glass and the
-        /// Interactive edge the strategy footer's secondary slot wears (<see cref="PinnedSecondary"/>).
-        /// It was a panel in the Surface colour, which is the stage's own ground to within a shade,
-        /// so "Plan a backdoor" under the picker, "Show the briefing" on the overview's card and the
-        /// compact objective's travel rows were bare words with nothing to press (UI-UX-PASS-PLAN T0,
-        /// sweep row 32). No pack face of its own: the talk buttons on the campaign's and free
-        /// time's cards frame the button they get in Pack 8's talk face, under this chrome's edge.
-        /// The caption is unchanged: it is the control's name and the words a test and a screen
-        /// reader find it by.
+        /// resting edge the strategy footer's secondary slot wears (<see cref="PinnedSecondary"/>),
+        /// with no hover step. It was a panel in the Surface colour, which is the stage's own ground
+        /// to within a shade, so "Plan a backdoor" under the picker, "Show the briefing" on the
+        /// overview's card and the compact objective's travel rows were bare words with nothing to
+        /// press (UI-UX-PASS-PLAN T0, sweep row 32). A button that cannot be pressed dims its edge
+        /// with its glass (<see cref="EdgeWithGlass"/>): the Button's tint reaches its target
+        /// graphic, the glass, and nothing else.
+        ///
+        /// <para>No pack face of its own. The campaign's talk buttons wear Pack 8's talk face, which
+        /// carries its own edge, so they put this chrome's away (<see cref="WearFace"/>); the talk
+        /// buttons on free time's and the vote read's cards wear this chrome as it is. The caption is
+        /// unchanged: it is the control's name and the words a test and a screen reader find it by.</para>
         /// </summary>
         private Button FixedButton(RectTransform parent,string caption,Vector2 position,Vector2 size,Action action)
         {
-            var rect=Chrome(caption,parent,UiTheme.Emphasis.Interactive); HudEmphasis.Promote(rect, UiTheme.Emphasis.Interactive);
+            var rect=Chrome(caption,parent);
             Anchor(rect,new Vector2(0,1),new Vector2(0,1),position,size);
             var button = FinishButton(rect,caption,action);
             var label = button.GetComponentInChildren<TMP_Text>();
             AutoSize(label, 18);
+            var edge = rect.Find("Border") is Transform border ? border.GetComponent<Image>() : null;
+            if (edge != null)
+            {
+                var follow = rect.gameObject.AddComponent<EdgeWithGlass>();
+                follow.Button = button; follow.Edge = edge; follow.Resting = edge.color;
+            }
             return button;
+        }
+
+        /// <summary>
+        /// Frames a fixed button in a pack face that carries its own edge, and puts the chrome's
+        /// edge away, so the button has one edge rather than the face's under the chrome's.
+        /// </summary>
+        private void WearFace(Button button, string face, float border, Color fallback, Color edge)
+        {
+            if (button == null) return;
+            var rect = (RectTransform)button.transform;
+            EndScreenKit.Frame(rect, face, border, fallback, edge);
+            var chrome = rect.Find("Border");
+            if (chrome == null) return;
+            chrome.gameObject.SetActive(false);
+            Destroy(chrome.gameObject);
+        }
+
+        /// <summary>
+        /// Dims a fixed button's edge with its glass while the button cannot be pressed - set so, or
+        /// in a group that stands its controls down - by the Button's own disabled tint, and puts it
+        /// back when it can. Read on change only: nothing is written while the state holds.
+        /// </summary>
+        private sealed class EdgeWithGlass : MonoBehaviour
+        {
+            public Selectable Button;
+            public Image Edge;
+            public Color Resting;
+            private int shown = -1;
+
+            private void LateUpdate()
+            {
+                if (Button == null || Edge == null) return;
+                int now = Button.IsInteractable() ? 1 : 0;
+                if (now == shown) return;
+                shown = now;
+                Edge.color = now == 1 ? Resting : Resting * Button.colors.disabledColor;
+            }
         }
         private Button FinishButton(RectTransform rect,string caption,Action action,float leftInset = 16f,float rightInset = 16f)
         {

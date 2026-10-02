@@ -638,9 +638,13 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// Where the player stands with a candidate, in their own words: the standing word, the trust
-        /// track and the reading - the player's own record, never what the houseguest thinks back.
+        /// track and the reading - the player's own record, never what the houseguest thinks back -
+        /// said as the decision rows say it (<see cref="TrustReading"/>). The reading may run wider
+        /// than the word and the track (<paramref name="readingWidth"/>): on a row it stands under
+        /// the pick's check, so it can take the row to its edge.
         /// </summary>
-        private void PickerStanding(RectTransform card, EpisodeState state, string id, float x, float y, float width, float scale, bool centred)
+        private void PickerStanding(RectTransform card, EpisodeState state, string id, float x, float y, float width, float scale, bool centred,
+            float readingWidth = 0f)
         {
             var kind = RelationshipWeb.KindOf(state, id);
             var tint = kind == RelationshipWeb.Kind.Neutral ? UiTheme.Muted : RelationshipWeb.StandingColour(kind);
@@ -660,8 +664,9 @@ namespace Gamesim.Episode
                 bar.GetComponent<Image>().raycastTarget = false;
             }
             y += 7f * scale;
-            var reading = SizedText(card, "Trust " + trust.ToString("0"), 11f * scale, UiTheme.Muted, 9f);
-            Anchor(reading.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(x, -y), new Vector2(width, 15f * scale));
+            var reading = SizedText(card, TrustReading(trust), 11f * scale, UiTheme.Muted, 9f);
+            Anchor(reading.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(x, -y),
+                new Vector2(Mathf.Max(width, readingWidth), 15f * scale));
             reading.alignment = centred ? TextAlignmentOptions.Center : TextAlignmentOptions.Left;
         }
 
@@ -717,26 +722,46 @@ namespace Gamesim.Episode
             return rect;
         }
 
-        /// <summary>A candidate as a row, for a house too big for cards: the photo on the left, the name and the player's own reading beside it, at the text size.</summary>
+        /// <summary>
+        /// A candidate as a row, for a house too big for cards: the photo on the left, the name and
+        /// the player's own reading beside it, at the text size.
+        ///
+        /// <para>The name has the row's room first (UI-UX-PASS-PLAN T0). Where a narrow cell leaves
+        /// it under <see cref="PickerNameRoom"/> beside the photo, the photo gives way: at sixteen
+        /// houseguests and the larger text on a 4:3 frame the cells are 203 by 125, the photo took
+        /// 95 and the name 48, and "Thompson" broke mid-word into a third line. Where two lines of
+        /// name and the full reading - the word, the track and the number - do not both fit, the
+        /// name keeps its second line and the reading goes onto one. And the names, drawn at one size
+        /// across the grid (<see cref="OneSize"/>), never go under <see cref="PickerNameFloor"/>.</para>
+        /// </summary>
         private RectTransform PickerRow(RectTransform grid, Option option, EpisodeState state, float width, float height, Action press, List<TMP_Text> names)
         {
             var rect = PickerShell(grid, option, press);
             var actor = state != null ? state.Find(option.Id) : null;
             float s = FontScale, side = height - 12f * s, photoWidth = side * .86f;
+            // Clear of the pick's check in the corner, and the name's least room beside the photo.
+            float check = 34f * s, room = PickerNameRoom * s;
+            float inner = width - (6f * s + photoWidth + 10f * s) - check;
+            if (inner < room) photoWidth = Mathf.Max(side * .4f, photoWidth - (room - inner));
             var photo = HudPrimitives.RectPortrait(rect, "Photo", Portrait(option.Id), actor, new Vector2(photoWidth, side), 6);
             photo.anchorMin = photo.anchorMax = new Vector2(0f, 1f);
             photo.pivot = new Vector2(0f, 1f);
             photo.anchoredPosition = new Vector2(6f * s, -6f * s);
             PickerRole(photo, state, option.Id, s);
-            // Clear of the pick's check in the corner.
-            float x = 6f * s + photoWidth + 10f * s, inner = Mathf.Max(24f, width - x - 34f * s);
+            float x = 6f * s + photoWidth + 10f * s;
+            inner = Mathf.Max(24f, width - x - check);
             // The name, then the reading: its word (18), its track (7) and its number (15) when the
-            // row has the height, else the word and the number on one line. The name takes two
-            // lines where the row holds them rather than ending in an ellipsis, and the lines it
-            // takes decide the block, so a one-line name leaves no blank line over its reading.
-            bool full = height >= PickerRowFull * s;
-            float line = 15f * 1.3f * s, readingBlock = (full ? 40f : 16f) * s;
-            int lines = height >= 2f * line + 2f * s + readingBlock + 8f * s ? 2 : 1;
+            // row has the height for two lines of name as well, else the word and the number on one
+            // line (16) under two lines of name, else one line of name over whichever reading fits.
+            // The lines the name takes decide the block, so a one-line name leaves no blank line
+            // over its reading.
+            float line = 15f * 1.3f * s, fullBlock = 40f * s, shortBlock = 16f * s, air = 2f * s + 8f * s;
+            int lines;
+            bool full;
+            if (height >= 2f * line + fullBlock + air) { lines = 2; full = true; }
+            else if (height >= 2f * line + shortBlock + air) { lines = 2; full = false; }
+            else { lines = 1; full = height >= PickerRowFull * s; }
+            float readingBlock = full ? fullBlock : shortBlock;
             var name = FixedText(rect, option.Label, 15, Paper, new Vector2(x, 0f), new Vector2(inner, lines * line));
             name.name = PickerNameName;
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
@@ -744,7 +769,7 @@ namespace Gamesim.Episode
             name.textWrappingMode = lines > 1 ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
             name.overflowMode = TextOverflowModes.Ellipsis;
             name.alignment = TextAlignmentOptions.TopLeft;
-            AutoSize(name, 10);
+            AutoSize(name, Mathf.Round(PickerNameFloor * s));
             names?.Add(name);
             name.ForceMeshUpdate(true);
             float nameBox = Mathf.Clamp(name.textInfo.lineCount, 1, lines) * line, block = nameBox + 2f * s + readingBlock;
@@ -752,13 +777,17 @@ namespace Gamesim.Episode
             Anchor(name.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(x, -y), new Vector2(inner, nameBox));
             if (actor == null || state == null) return rect;
             y += nameBox + 2f * s;
-            if (full) { PickerStanding(rect, state, option.Id, x, y, inner, s, false); return rect; }
+            // The reading stands under the name, below the pick's check, so it may run to the row's edge.
+            float edge = width - 8f * s;
+            if (full) { PickerStanding(rect, state, option.Id, x, y, inner, s, false, edge - x); return rect; }
             var kind = RelationshipWeb.KindOf(state, option.Id);
             var standing = SizedText(rect, RelationshipWeb.StandingWord(kind), 12f * s,
                 kind == RelationshipWeb.Kind.Neutral ? UiTheme.Muted : RelationshipWeb.StandingColour(kind), 9f);
-            Anchor(standing.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(x, -y), new Vector2(inner * .5f, 16f * s));
-            var reading = SizedText(rect, "Trust " + state.Score(state.playerId, option.Id).ToString("0"), 11f * s, UiTheme.Muted, 9f);
-            Anchor(reading.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(x + inner * .5f, -y), new Vector2(inner * .5f, 16f * s));
+            float word = Mathf.Min(inner * .5f, Mathf.Ceil(standing.GetPreferredValues(standing.text).x) + 2f);
+            Anchor(standing.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(x, -y), new Vector2(word, 16f * s));
+            var reading = SizedText(rect, TrustReading(state.Score(state.playerId, option.Id)), 11f * s, UiTheme.Muted, 9f);
+            float from = x + word + 6f * s;
+            Anchor(reading.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(from, -y), new Vector2(Mathf.Max(24f, edge - from), 16f * s));
             reading.alignment = TextAlignmentOptions.Right;
             return rect;
         }
@@ -767,6 +796,8 @@ namespace Gamesim.Episode
         private const float PickerRowFull = 76f;
         /// <summary>The shortest a candidate's row goes: a name over the standing word and the reading, on one line.</summary>
         private const float PickerRowShortest = 62f;
+        /// <summary>The least room a row's name has beside the photo, and the least its type goes to, at the resting text size.</summary>
+        private const float PickerNameRoom = 75f, PickerNameFloor = 12f;
 
         // ------------------------------------------------------------ the backdoor view
 

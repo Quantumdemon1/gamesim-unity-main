@@ -108,9 +108,6 @@ namespace Gamesim.Episode
         /// <summary>What a pinned pair stacked one over the other adds under the scroll past one pinned row; zero otherwise.</summary>
         private float pinnedExtra;
 
-        /// <summary>The height the scroll's foot gives up to the render's pinned row or pair, past the layout's own margin.</summary>
-        public float PinnedRoom => pinnedAction == null ? 0f : PinnedMargin + pinnedNoteHeight + pinnedExtra + PinnedHeight * FontScale + 10f;
-
         /// <summary>The pinned pair's row, so a test can find it the way it finds the choice rows.</summary>
         public const string PinnedPairName = "Pinned pair";
 

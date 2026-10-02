@@ -354,6 +354,76 @@ namespace Gamesim.Tests.EditMode
             Assert.That(KnownOdds.Unknowns(t, voter.id), Is.EqualTo(KnownOdds.Some), "What they said about the vote is something to go on.");
         }
 
+        /// <summary>
+        /// A person's card in the deal picker says "no read" where the read has nothing behind it -
+        /// nothing on the houseguest it is put to, which is when the table's unknowns chip shows,
+        /// and nothing on where they stand with the person the card names - and the word otherwise
+        /// (UI-UX-PASS-PLAN P1). The estimate itself does not move.
+        /// </summary>
+        [Test]
+        public void ACardSaysNoReadExactlyWhereTheReadHasNothingBehindIt()
+        {
+            var s = Season(31);
+            s.week = 6;
+            var npc = Plain(Npcs(s)[0]);
+            var x = Npcs(s)[1]; var y = Npcs(s)[2];
+            Set(s, s.playerId, npc.id, 0);
+
+            var aboutX = KnownOdds.Deal(s, npc.id, DealKind.TargetAgreement, x.id);
+            var aboutY = KnownOdds.Deal(s, npc.id, DealKind.TargetAgreement, y.id);
+            Assert.That(KnownOdds.Unknowns(s, npc.id), Is.EqualTo(KnownOdds.Many), "No read, no claim, no history: the table's chip shows.");
+            Assert.That((aboutX.aboutKnown, aboutY.aboutKnown), Is.EqualTo((false, false)));
+            Assert.That(aboutX.word, Is.EqualTo(aboutY.word).And.Not.EqualTo(KnownOdds.NoRead),
+                "The read still has a word, one guess at the player's trust of nought for every card.");
+            Assert.That(KnownOdds.CardWord(aboutX), Is.EqualTo(KnownOdds.NoRead), "So the card says it has no read,");
+            Assert.That(KnownOdds.CardWord(aboutY), Is.EqualTo(KnownOdds.NoRead), "on every card alike.");
+            Assert.That(KnownOdds.CardWord(null), Is.EqualTo(KnownOdds.NoRead), "Nothing to read is no read.");
+
+            // A standing the player learned between the two of them is something behind that card:
+            // it keeps its word, and only it.
+            Learn(s, npc.id, x.id, ClaimSource.Overheard, -60);
+            var heard = KnownOdds.Deal(s, npc.id, DealKind.TargetAgreement, x.id);
+            Assert.That(heard.unknowns, Is.EqualTo(KnownOdds.Many), "Still nothing on how they see the player: the chip still shows.");
+            Assert.That(heard.aboutKnown, Is.True);
+            Assert.That(KnownOdds.CardWord(heard), Is.EqualTo(heard.word).And.Not.EqualTo(KnownOdds.NoRead),
+                "They sound like they cannot stand them, which the card says.");
+            Assert.That(KnownOdds.CardWord(KnownOdds.Deal(s, npc.id, DealKind.TargetAgreement, y.id)), Is.EqualTo(KnownOdds.NoRead),
+                "and every other card still has no read.");
+
+            // A current read of them is something behind every card: no chip, and every word.
+            Learn(s, npc.id, s.playerId, ClaimSource.Read, 30);
+            Assert.That(KnownOdds.Unknowns(s, npc.id), Is.Not.EqualTo(KnownOdds.Many), "A read: the chip goes.");
+            foreach (var about in new[] { x, y })
+            {
+                var e = KnownOdds.Deal(s, npc.id, DealKind.TargetAgreement, about.id);
+                Assert.That(KnownOdds.CardWord(e), Is.EqualTo(e.word), about.name + ": the card says the read's word.");
+            }
+
+            // What they said about the vote is something to go on too.
+            var t = Season(32);
+            var voter = Plain(Npcs(t)[0]);
+            t.ledger.claims.Add(new ClaimRow { week = t.week, voterId = voter.id, targetId = Npcs(t)[1].id, source = ClaimSource.Told });
+            var told = KnownOdds.Deal(t, voter.id, DealKind.TargetAgreement, Npcs(t)[2].id);
+            Assert.That(told.unknowns, Is.EqualTo(KnownOdds.Some));
+            Assert.That(KnownOdds.CardWord(told), Is.EqualTo(told.word));
+        }
+
+        /// <summary>The card's word is presentation: reading it moves no chance, no roll and nothing in the state.</summary>
+        [Test]
+        public void ACardsWordMovesNothing()
+        {
+            var s = Season(33);
+            var npc = Npcs(s)[0]; var x = Npcs(s)[1];
+            uint random = s.randomState; int sequence = s.nextSequence, revision = s.revision;
+            var e = KnownOdds.Deal(s, npc.id, DealKind.TargetAgreement, x.id);
+            double chance = e.chance; string word = e.word;
+            KnownOdds.CardWord(e);
+            Assert.That((e.chance, e.word), Is.EqualTo((chance, word)), "The estimate keeps its number and its word.");
+            Assert.That(PlayerDeals.AcceptanceChance(s, npc.id, DealKind.TargetAgreement, x.id),
+                Is.EqualTo(PlayerDeals.AcceptanceChance(s, npc.id, DealKind.TargetAgreement, x.id)));
+            Assert.That((s.randomState, s.nextSequence, s.revision), Is.EqualTo((random, sequence, revision)));
+        }
+
         // ---------------------------------------------------------------- the words, and nothing else
 
         [Test]

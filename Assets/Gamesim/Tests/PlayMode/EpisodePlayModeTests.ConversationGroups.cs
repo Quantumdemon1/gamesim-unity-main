@@ -4,6 +4,7 @@ using System.Linq;
 using Gamesim.Episode;
 using Gamesim.House;
 using Gamesim.Persistence;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
@@ -493,8 +494,8 @@ namespace Gamesim.Tests.PlayMode
                         if (AllyIn(state) != listener.id)
                             Assert.That(PickerShows(verb, EpisodeHud.PickerAllyName), Is.True, open + ": the pact shows on its person's foot.");
                         if (verb == EpisodeDirector.TargetDealPickerCaption)
-                            Assert.That(PickerCells(verb, open).All(cell => cell.Find(EpisodeHud.PickerTagName) != null), Is.True,
-                                open + ": every target agreement carries the table's tag, its stakes and the player's read of the odds.");
+                            Assert.That(PickerCells(verb, open).All(cell => cell.Find(EpisodeHud.PickerTagName) != null && ChanceOn(cell.GetComponent<Button>()) != null), Is.True,
+                                open + ": every target agreement carries the table's stakes on a chip and the player's read of the odds beside it.");
                         if (houseguests == 16)
                             yield return CaptureConversation(frame + (larger ? "-large" : ""), open, verb);
                     }
@@ -550,8 +551,8 @@ namespace Gamesim.Tests.PlayMode
         /// A conversation the player came into to pitch a deal (the free-time screen's "Pitch a
         /// deal") opens on it: the promises and the pact, then the deal table with its target
         /// agreements folded under their verb row like any other picker - nobody's row until it is
-        /// pressed, then exactly the people the table offers, each with the table's own tag, the
-        /// stakes and the player's read of the odds - and a press commits that agreement. None of it
+        /// pressed, then exactly the people the table offers, each with the table's stakes on a chip
+        /// and the player's read of the odds beside it - and a press commits that agreement. None of it
         /// is drawn again under the dial, where free time has nothing left to bargain with.
         /// </summary>
         [UnityTest]
@@ -608,8 +609,13 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(PickerCells(EpisodeDirector.TargetDealPickerCaption, where).Select(cell => cell.name), Is.EquivalentTo(subjects.Select(Against)),
                 where + ": the picker holds exactly the table's target agreements, each under the caption its row had.");
             foreach (string id in subjects)
-                Assert.That(TagOn(FindButton(Against(id))), Does.EndWith(KnownOdds.Deal(state, listener.id, DealKind.TargetAgreement, id).word),
-                    where + ": '" + Against(id) + "' carries the table's tag, the player's read of the odds at its end.");
+            {
+                var card = FindButton(Against(id));
+                Assert.That(TagOn(card), Is.EqualTo(EpisodeDirector.Stakes(DealKind.TargetAgreement)),
+                    where + ": '" + Against(id) + "' carries the table's stakes on its chip,");
+                Assert.That(ChanceOn(card), Is.EqualTo(KnownOdds.CardWord(KnownOdds.Deal(state, listener.id, DealKind.TargetAgreement, id))),
+                    "and the player's read of the odds beside it, 'no read' where it has nothing behind it.");
+            }
             AssertConversationFits(false, where + " with its target agreements open");
             AssertTagsHaveRoom(where);
             AssertPickerFits(EpisodeDirector.TargetDealPickerCaption, where);
@@ -807,11 +813,17 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// An open picker's people stand inside the conversation's column, apart from one another. On
-        /// each, the face, the words and the foot's lines - the deal's tag, the player's reading and
-        /// ALLY - keep to their own places inside it, every line in a box at least 1.3 times its words
-        /// and drawn whole. The foot says what the row said at its end: the player's own reading of the
-        /// person, never theirs of the player, and ALLY exactly when the two share a pact. Measured in
-        /// the column's own units, so it holds on a captured frame as well as on the screen.
+        /// each, the face, the name, the words, the deal's chip and chance, the trust bar and the foot's
+        /// lines - the player's reading and ALLY - keep to their own places inside it, every line in a
+        /// box at least 1.3 times its words and drawn whole. The card is drawn around its caption
+        /// (UI-UX-PASS-PLAN P1): the caption is the button's first label, on screen in the muted type,
+        /// smaller than the person's name over it. The foot says what the row said at its end: the
+        /// player's own trust of the person, never theirs of the player, in the rows' words and as a bar
+        /// filled to it, and ALLY exactly when the two share a pact. A target agreement's card carries
+        /// the table's stakes on its chip and the player's read of the chance beside it - "no read"
+        /// exactly where the table's unknowns chip stands and the card's person is one the player knows
+        /// nothing of. Measured in the column's own units, so it holds on a captured frame as well as on
+        /// the screen.
         /// </summary>
         private void AssertPickerFits(string verb, string where)
         {
@@ -821,6 +833,7 @@ namespace Gamesim.Tests.PlayMode
             var bounds = LocalRect(column, column);
             var cells = PickerCells(verb, where);
             var state = director.Snapshot;
+            bool unknowns = ActiveRect(EpisodeHud.UnknownsChipName) != null;
             for (int a = 0; a < cells.Count; a++)
             {
                 var cell = cells[a];
@@ -834,13 +847,19 @@ namespace Gamesim.Tests.PlayMode
 
                 var words = cell.GetComponentsInChildren<TMP_Text>(true).Single(text => text.transform.parent == cell && text.text == cell.name);
                 var lines = new List<TMP_Text> { words };
-                foreach (string name in new[] { EpisodeHud.PickerTagName, EpisodeHud.PickerReadingName, EpisodeHud.PickerAllyName })
+                foreach (string name in new[] { EpisodeHud.PickerNameName, EpisodeHud.PickerTagName, EpisodeHud.PickerChanceName,
+                             EpisodeHud.PickerReadingName, EpisodeHud.PickerAllyName })
                 {
                     var line = cell.Find(name);
                     if (line != null && line.gameObject.activeInHierarchy) lines.Add(line.GetComponent<TMP_Text>());
                 }
-                var pieces = lines.Select(line => line.rectTransform).ToList();
+                // The tag's words stand on their chip, so the chip takes their place among the pieces.
+                var pieces = lines.Where(line => line.name != EpisodeHud.PickerTagName).Select(line => line.rectTransform).ToList();
                 if (cell.Find("Portrait") is RectTransform face) pieces.Add(face);
+                var track = cell.Find(EpisodeHud.PickerTrackName) as RectTransform;
+                if (track != null) pieces.Add(track);
+                var chip = cell.Find(EpisodeHud.PickerChipName) as RectTransform;
+                if (chip != null) pieces.Add(chip);
                 foreach (var piece in pieces)
                 {
                     var at = LocalRect(column, piece);
@@ -853,21 +872,69 @@ namespace Gamesim.Tests.PlayMode
                         about + ": " + Piece(pieces[p]) + " and " + Piece(pieces[q]) + " are drawn over each other.");
                 foreach (var line in lines) AssertLineHasRoom(line, about);
 
+                // The caption: the button's first label, the words it is known by, on screen in the muted type.
+                Assert.That(cell.GetComponentInChildren<TMP_Text>(true), Is.SameAs(words), about + ": the caption is the button's first label, as a row's is.");
+                Assert.That(words.gameObject.activeInHierarchy && words.enabled && words.color.a > .99f, Is.True, about + ": the caption is on screen.");
+                Assert.That(words.color, Is.EqualTo(UiTheme.Muted), about + ": the caption is drawn in the muted type of the verb the picker repeats.");
+
                 var person = PersonOnCell(state, cell.name);
                 Assert.That(person != null, Is.True, about + " names somebody in the house.");
+                var nameLabel = cell.Find(EpisodeHud.PickerNameName);
+                Assert.That(nameLabel != null, Is.True, about + " carries the name of who it is about.");
+                var nameText = nameLabel.GetComponent<TMP_Text>();
+                Assert.That(nameText.text, Is.EqualTo(person.name), about + ": the name is theirs.");
+                Assert.That(nameText.fontSize, Is.GreaterThan(words.fontSize),
+                    about + ": the name stands large (" + nameText.fontSize.ToString("0.#") + ") over the caption (" + words.fontSize.ToString("0.#") + ").");
+                Assert.That(LocalRect(column, nameText.rectTransform).yMin, Is.GreaterThanOrEqualTo(LocalRect(column, words.rectTransform).yMax - .5f),
+                    about + ": the name stands over the caption.");
+
+                double score = state.Score(state.playerId, person.id);
                 var reading = cell.Find(EpisodeHud.PickerReadingName);
                 Assert.That(reading != null, Is.True, about + " says the player's reading of them, as its row did.");
-                Assert.That(reading.GetComponent<TMP_Text>().text, Is.EqualTo("Trust " + state.Score(state.playerId, person.id).ToString("0")),
-                    about + ": the reading is the player's own, never theirs of the player.");
+                var readingText = reading.GetComponent<TMP_Text>();
+                Assert.That(readingText.text, Is.EqualTo(EpisodeHud.TrustReading(score)),
+                    about + ": the reading is the player's own, said so, never theirs of the player.");
+                Assert.That(track != null, Is.True, about + " carries the player's trust of them as a bar.");
+                var fill = track.Find(EpisodeHud.PickerFillName) as RectTransform;
+                Assert.That(fill != null, Is.True, about + ": the bar is filled to something.");
+                Assert.That(fill.rect.width / track.rect.width, Is.EqualTo(Mathf.Clamp01((float)(score + 100.0) / 200f)).Within(.01f),
+                    about + ": the bar is filled to the player's own trust of them, " + score.ToString("0") + ", on the scale from -100 to 100.");
+                Assert.That(fill.GetComponent<Image>().color, Is.EqualTo(readingText.color), about + ": the bar and the reading say one standing in one colour.");
                 Assert.That(cell.Find(EpisodeHud.PickerAllyName) != null, Is.EqualTo(state.Allied(state.playerId, person.id)),
                     about + ": ALLY exactly when the two share a pact.");
+
+                // A target agreement's card: the table's stakes on the chip, the player's read beside it.
+                if (verb != EpisodeDirector.TargetDealPickerCaption) continue;
+                Assert.That(chip != null, Is.True, about + " stands its stakes on a chip.");
+                var stakes = cell.Find(EpisodeHud.PickerTagName);
+                Assert.That(stakes.GetComponent<TMP_Text>().text, Is.EqualTo(EpisodeDirector.Stakes(DealKind.TargetAgreement)), about + ": the chip says the stakes.");
+                var stakesBox = LocalRect(column, (RectTransform)stakes);
+                var chipBox = LocalRect(column, chip);
+                Assert.That(stakesBox.xMin >= chipBox.xMin - .5f && stakesBox.xMax <= chipBox.xMax + .5f && stakesBox.yMin >= chipBox.yMin - .5f
+                    && stakesBox.yMax <= chipBox.yMax + .5f, Is.True, about + ": the stakes stand on their chip: " + stakesBox + " on " + chipBox + ".");
+                var estimate = KnownOdds.Deal(state, director.TalkingToId, DealKind.TargetAgreement, person.id);
+                string chance = ChanceOn(cell.GetComponent<Button>());
+                Assert.That(chance, Is.EqualTo(KnownOdds.CardWord(estimate)), about + ": the chance beside the chip is the player's read.");
+                Assert.That(chance == KnownOdds.NoRead, Is.EqualTo(unknowns && !estimate.aboutKnown),
+                    about + ": 'no read' exactly where the table says it has little to go on (" + (unknowns ? "it does" : "it does not")
+                    + ") and the player knows nothing of where they stand with " + person.name + ".");
             }
         }
 
-        /// <summary>Who a person's button is about: the houseguest whose name its caption ends with, the longest such name.</summary>
+        /// <summary>
+        /// Who a person's button is about: the houseguest whose name its caption ends with - or
+        /// carries between words, as "Call X out publicly" does - the longest such name.
+        /// </summary>
         private static ContestantState PersonOnCell(EpisodeState state, string caption) => state.contestants
-            .Where(c => !c.isPlayer && caption.EndsWith(" " + c.name, System.StringComparison.Ordinal))
+            .Where(c => !c.isPlayer && (caption.EndsWith(" " + c.name, System.StringComparison.Ordinal) || caption.Contains(" " + c.name + " ")))
             .OrderByDescending(c => c.name.Length).FirstOrDefault();
+
+        /// <summary>The player's read of the chance beside a deal's chip on a person's card, or null where the card has none.</summary>
+        private static string ChanceOn(Button button)
+        {
+            var chance = button.transform.Find(EpisodeHud.PickerChanceName);
+            return chance == null ? null : chance.GetComponent<TMP_Text>().text;
+        }
 
         /// <summary>A rectangle's corners in <paramref name="space"/>'s own units, whatever camera the canvas is drawn through.</summary>
         private static Rect LocalRect(RectTransform space, RectTransform rect)

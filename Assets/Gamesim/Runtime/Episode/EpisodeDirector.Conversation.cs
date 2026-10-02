@@ -507,15 +507,15 @@ namespace Gamesim.Episode
                     {
                         string about = subject.id;
                         if (!PlayerDeals.CanPropose(state, npc.id, kind, about, out _)) continue;
-                        hud.Tag(hud.ActionFor(about, EpisodeHud.DealProposeCaption(
+                        // A target agreement names a third houseguest, and the conversation folds them
+                        // into a picker of people (FoldedDealPanel): on each person's card the stakes
+                        // stand on a chip with the player's read of the chance beside it - "no read"
+                        // where it has nothing behind it (KnownOdds.CardWord). Drawn as a row, the tag
+                        // would sit past the row's trust reading (EpisodeHud.DealTag).
+                        hud.DealTag(hud.ActionFor(about, EpisodeHud.DealProposeCaption(
                                     DealKind.Title(kind).ToLowerInvariant() + " against " + subject.name),
                                 () => Commit(state, EpisodeCommandKind.ProposeDeal, npc.id, about, text: kind)),
-                            Stakes(kind) + " · " + Chance(state, npc.id, kind, about),
-                            // A target agreement names a third houseguest, so its row is fronted by
-                            // their portrait and already spends its right-hand end on a trust
-                            // reading. The tag has to sit left of that; the plain deal rows below
-                            // have no portrait and no reading, so they do not.
-                            EpisodeHud.TagSeat.PastReading);
+                            Stakes(kind), CardChance(state, npc.id, kind, about));
                     }
                     continue;
                 }
@@ -550,9 +550,10 @@ namespace Gamesim.Episode
         /// difference the simulation already knew.</para>
         ///
         /// <para>A tag beside the control rather than words inside it, for the same reason the
-        /// chance is: the caption is how a test and a screen reader find a button.</para>
+        /// chance is: the caption is how a test and a screen reader find a button. A read for tests:
+        /// a target agreement's card in the picker carries these words on its chip.</para>
         /// </summary>
-        private static string Stakes(string kind)
+        public static string Stakes(string kind)
         {
             switch (DealKind.DefaultTrust(kind))
             {
@@ -580,6 +581,15 @@ namespace Gamesim.Episode
         /// </summary>
         private static string Chance(EpisodeState state, string npcId, string type, string about) =>
             KnownOdds.Deal(state, npcId, type, about).word;
+
+        /// <summary>
+        /// The chance on a person's card in the deal picker (UI-UX-PASS-PLAN P1): the same read as
+        /// <see cref="Chance"/>, said as "no read" where it has nothing behind it - nothing on the
+        /// houseguest it is put to, which is when the table's "Many unknowns" chip shows, and nothing
+        /// on where they stand with the person the card names (<see cref="KnownOdds.CardWord"/>).
+        /// </summary>
+        private static string CardChance(EpisodeState state, string npcId, string type, string about) =>
+            KnownOdds.CardWord(KnownOdds.Deal(state, npcId, type, about));
 
         /// <summary>The line above a table of chances: whose read they are, and that they are not a promise.</summary>
         public static string OddsReadLine(string first) => "Each chance is your own read of " + first + ", not a promise.";

@@ -190,6 +190,29 @@ namespace Gamesim.Tests.PlayMode
             }
         }
 
+        /// <summary>
+        /// The rules line says what the pool holds (UI-UX-PASS-PLAN M0): a six-house whose player is
+        /// "You" has five names to deal, so the line says house words follow them; a house with six
+        /// names says nothing of the kind. The authored summary stays in both.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Words_TheRulesSayWhenHouseWordsFollowTheNames()
+        {
+            owner = new GameObject("Words rules"); screen = CompetitionGameScreen.Attach(owner);
+            var filled = new MiniGameRun(CompetitionMiniGames.Kind.Words, 3, Widened, Gamesim.Simulation.CompetitionDefinitions.HouseguestScramble,
+                new[] { "You", "Maya Hassan", "Jamie Roberts", "Casey Wilson", "Riley Johnson", "Taylor Kim" });
+            Assert.That(filled.DealsHouseWords, Is.True, "Five names fall short of six.");
+            yield return ShowLive(filled);
+            Assert.That(Text("Rules").text, Does.Contain(filled.Definition.Summary).And.Contain(CompetitionGameScreen.HouseWordsFollowTheNames),
+                "The rules name the house words that follow the names.");
+
+            var full = new MiniGameRun(CompetitionMiniGames.Kind.Words, 3, Widened, Gamesim.Simulation.CompetitionDefinitions.HouseguestScramble,
+                new[] { "Maya Hassan", "Jamie Roberts", "Casey Wilson", "Riley Johnson", "Taylor Kim", "Jordan Lee" });
+            Assert.That(full.DealsHouseWords, Is.False, "Six names need no house word.");
+            yield return ShowLive(full);
+            Assert.That(Text("Rules").text, Does.Contain(full.Definition.Summary).And.Not.Contain("house words"), "and the line says nothing of them.");
+        }
+
         private static void Select(string name)
         {
             var target = Object.FindObjectsByType<Button>(FindObjectsInactive.Exclude, FindObjectsSortMode.None).Single(button => button.name == name);

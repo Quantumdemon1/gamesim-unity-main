@@ -303,5 +303,37 @@ namespace Gamesim.Tests.EditMode
             Assert.That(topped.Count, Is.EqualTo(CompetitionMiniGames.FewestScrambleWords), "A house of short names is topped up from the reference's words.");
             Assert.That(topped.All(word => CompetitionMiniGames.BigBrotherWords.Contains(word)), Is.True);
         }
+
+        /// <summary>
+        /// A six-house whose player is "You" has five names long enough to scramble, so the board is
+        /// filled out with one house word - after the names, shuffled among themselves, so the first
+        /// board is a name under a rule that says names (UI-UX-PASS-PLAN M0): shuffled together, FINAL
+        /// came up first. The board says when it holds house words; a house with six names deals
+        /// none, and the plain scramble's words are its own, not a fill. Every draw is the run's
+        /// own generator's, so the deal is the same after a cancel or a reload.
+        /// </summary>
+        [Test]
+        public void TheHouseguestScrambleDealsTheNamesBeforeTheHouseWords()
+        {
+            var sixHouse = new[] { "You", "Maya Hassan", "Jamie Roberts", "Casey Wilson", "Riley Johnson", "Taylor Kim" };
+            var names = new[] { "MAYA", "JAMIE", "CASEY", "RILEY", "TAYLOR" };
+            for (uint seed = 1; seed <= 40; seed++)
+            {
+                var run = Words(seed, sixHouse);
+                Assert.That(run.DealsHouseWords, Is.True, "Five names fall short of six, so a house word fills the list.");
+                var dealt = new List<string>();
+                for (int i = 0; i < 6; i++) { dealt.Add(run.Word); run.SkipWord(); }
+                Assert.That(names, Does.Contain(dealt[0]), "Seed " + seed + ": the first board is a name, not " + dealt[0] + ".");
+                Assert.That(dealt.Take(5), Is.EquivalentTo(names), "Seed " + seed + ": every name is dealt before any house word: " + string.Join(", ", dealt));
+                Assert.That(CompetitionMiniGames.BigBrotherWords, Does.Contain(dealt[5]), "Seed " + seed + ": the house word follows them.");
+                Assert.That(names, Does.Contain(run.Word), "Seed " + seed + ": and the pool comes round to the names again.");
+                var again = Words(seed, sixHouse);
+                Assert.That(again.Word, Is.EqualTo(dealt[0]), "Seed " + seed + ": the same attempt deals the same first name.");
+            }
+            Assert.That(Words(3, new[] { "Maya Hassan", "Taylor Kim", "Casey Wilson", "Jordan Taylor", "Emma Brown", "Alex Chen" }).DealsHouseWords, Is.False,
+                "Six names need no house word.");
+            Assert.That(Words(3).DealsHouseWords, Is.False, "The plain scramble's words are its own.");
+            Assert.That(Words(3, new[] { "Jo", "Kai", "Ann" }).DealsHouseWords, Is.True, "A house of short names is all house words.");
+        }
     }
 }

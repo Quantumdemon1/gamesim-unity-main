@@ -54,18 +54,38 @@ namespace Gamesim.Presentation
 
         public bool TilePicked(int index) => picked.Contains(index);
 
+        /// <summary>
+        /// Whether the board deals the reference's words beside the house's names: a house with
+        /// fewer than <see cref="CompetitionMiniGames.FewestScrambleWords"/> names long enough to
+        /// scramble is filled out with them, after the names. The plain scramble's words are its
+        /// own, not a fill.
+        /// </summary>
+        public bool DealsHouseWords { get; private set; }
+
+        /// <summary>
+        /// The pool: the reference's words for the plain scramble, the house's first names for the
+        /// houseguest one, shuffled. A house of short names still makes a game - the reference's
+        /// words fill it out - but after the names, shuffled among themselves, so the first board of
+        /// a names game is a name under a rule that says names (UI-UX-PASS-PLAN M0): one shuffle
+        /// over names and fill together dealt FINAL first in a six-house whose player is "You".
+        /// Both draws come from the run's own generator, never the season's.
+        /// </summary>
         private void DealWords(IReadOnlyList<string> words)
         {
-            var usable = (words ?? CompetitionMiniGames.BigBrotherWords)
+            var pool = (words ?? CompetitionMiniGames.BigBrotherWords)
                 .Select(CompetitionMiniGames.ScrambleForm)
                 .Where(word => word.Length >= CompetitionMiniGames.ShortestScrambleWord && word.Length <= CompetitionMiniGames.LongestScrambleWord)
                 .Distinct().ToList();
-            // A house of short names still makes a game: the reference's words fill it out.
-            if (usable.Count < CompetitionMiniGames.FewestScrambleWords)
-                usable.AddRange(CompetitionMiniGames.BigBrotherWords.Where(word => !usable.Contains(word))
-                    .Take(CompetitionMiniGames.FewestScrambleWords - usable.Count));
-            Shuffle(usable);
-            wordPool.AddRange(usable);
+            Shuffle(pool);
+            if (words != null && pool.Count < CompetitionMiniGames.FewestScrambleWords)
+            {
+                var fill = CompetitionMiniGames.BigBrotherWords.Where(word => !pool.Contains(word))
+                    .Take(CompetitionMiniGames.FewestScrambleWords - pool.Count).ToList();
+                Shuffle(fill);
+                DealsHouseWords = fill.Count > 0;
+                pool.AddRange(fill);
+            }
+            wordPool.AddRange(pool);
             NextWord();
         }
 

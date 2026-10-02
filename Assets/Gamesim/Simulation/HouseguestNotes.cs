@@ -46,7 +46,8 @@ namespace Gamesim.Simulation
             foreach (var promise in s.promises.Where(p => (p.fromId == id && p.toId == s.playerId) || (p.fromId == s.playerId && p.toId == id)))
             {
                 bool theirs = promise.fromId == id;
-                string standing = PromiseStanding(promise.status);
+                // Their vote promise ended by their ballot is told once you know the ballot (decision 4).
+                string standing = KnownBallots.PromiseOutcomeKnown(s, promise) ? PromiseStanding(promise.status) : KnownBallots.Unresolved;
                 notes.Add(new Note
                 {
                     week = promise.week, kind = Kinds.Word,
@@ -58,7 +59,7 @@ namespace Gamesim.Simulation
             {
                 bool theirs = deal.proposerId == id;
                 string title = DealKind.Title(deal.type).ToLowerInvariant();
-                string standing = DealStanding(deal.status, theirs);
+                string standing = KnownBallots.DealOutcomeKnown(s, deal) ? DealStanding(deal.status, theirs) : KnownBallots.Unresolved;
                 // Whom it is about, where it names somebody, and how it ended where the record can say.
                 // The campaign's one-line row keeps the offer and where it stands, as it always read.
                 string about = DealKind.NamesATarget(deal.type) && s.Find(deal.targetId) != null ? " (about " + Name(deal.targetId) + ")" : "";
@@ -132,7 +133,9 @@ namespace Gamesim.Simulation
                     brief = alliance.active ? "In " + alliance.name + " with you" : alliance.name + " ended",
                 });
             }
-            foreach (var memory in s.memories.Where(m => m.ownerId == s.playerId && m.subjectId == id && !string.IsNullOrEmpty(m.text)))
+            // A memory of a vote deal's or a vote promise's ending tells the ballot that ended it:
+            // left out while that ballot is not yours to know (KnownBallots; decision 4).
+            foreach (var memory in KnownBallots.PlayerMemories(s).Where(m => m.subjectId == id && !string.IsNullOrEmpty(m.text)))
                 notes.Add(new Note { week = memory.week, kind = Kinds.Memory, text = memory.text });
 
             return notes.OrderByDescending(n => n.week).ThenBy(n => Array.IndexOf(KindOrder, n.kind)).ToList();
@@ -176,13 +179,16 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// How a deal ended, where the record can say: who broke a broken one, as
-        /// <see cref="FinalistRead.DealBreaker"/> reads it off the public record and the player's own
-        /// ballot, or "broken" blaming nobody where it cannot - deals do not record who broke them.
-        /// A voting block both partners settle at once fell apart. Anything else, where it stands.
+        /// <see cref="FinalistRead.DealBreaker"/> reads it off the public record and the ballots the
+        /// player knows, or "broken" blaming nobody where it cannot - deals do not record who broke
+        /// them. A voting block both partners settle at once fell apart. A vote deal the other party
+        /// settled by a ballot the player does not know is unresolved (decision 4). Anything else,
+        /// where it stands.
         /// </summary>
         public static string DealEnding(EpisodeState s, DealState deal, bool theirs)
         {
             if (deal == null) return "";
+            if (s != null && !KnownBallots.DealOutcomeKnown(s, deal)) return KnownBallots.Unresolved;
             if (deal.status != DealStatus.Broken || s == null) return DealStanding(deal.status, theirs);
             string breaker = FinalistRead.DealBreaker(s, deal);
             if (breaker == s.playerId) return "broken by you";

@@ -75,7 +75,7 @@ namespace Gamesim.Tests.PlayMode
                     new VoteReveal.Nominee("a", "Emma Brown", null),
                     new VoteReveal.Nominee("b", "Jordan Taylor", null),
                 },
-                new[] { new VoteReveal.Ballot("Maya Hassan", "a"), new VoteReveal.Ballot("Riley Johnson", "a") },
+                new[] { new VoteReveal.Ballot("a"), new VoteReveal.Ballot("a") },
                 "a", true);
             Assert.That(played, Is.True, "Two nominees and two ballots is a shape the reveal narrates.");
             yield return null;

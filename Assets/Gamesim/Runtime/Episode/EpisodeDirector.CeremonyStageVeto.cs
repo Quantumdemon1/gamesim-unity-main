@@ -179,7 +179,7 @@ namespace Gamesim.Episode
                     case CeremonyBeatKind.Opened:
                     {
                         ClearCues();
-                        Cut(Screen.Shot(CutSeconds));
+                        Cut(ScreenCut());
                         float intro = CeremonyPacing.FadeIn + CeremonyPacing.VetoIntro(pace);
                         float question = CeremonyPacing.VetoQuestion(pace);
                         if (holder != null)
@@ -188,7 +188,7 @@ namespace Gamesim.Episode
                                 Cut(SeatShot(holder));
                                 director.TurnHeads(state, holder, block);
                             });
-                        Schedule(intro, () => Cut(Screen.Shot(CutSeconds)));
+                        Schedule(intro, () => Cut(ScreenCut()));
                         // Each nominee in turn, waiting on the holder's word; a holder on the block is not
                         // waiting on themselves. Then the two of them together, the camera pushing in.
                         var waiting = block.Where(id => id != holder).ToList();
@@ -206,7 +206,7 @@ namespace Gamesim.Episode
                     {
                         ClearCues();
                         Hush();
-                        Cut(Screen.Shot(CutSeconds));
+                        Cut(ScreenCut());
                         if (beat.Skipped) break;
                         float decision = CeremonyPacing.VetoDecision(pace);
                         string saved = beat.SubjectId;
@@ -229,13 +229,13 @@ namespace Gamesim.Episode
                             Schedule(decision * 0.7f, () => { LookDown(first, 2f); LookDown(second, 2f); });
                         }
                         // The next page on the screen: the replacement's, or the block that goes to the vote.
-                        Schedule(decision, () => Cut(Screen.Shot(CutSeconds)));
+                        Schedule(decision, () => Cut(ScreenCut()));
                         break;
                     }
                     case CeremonyBeatKind.ReplacementNamed:
                     {
                         ClearCues();
-                        Cut(Screen.Shot(CutSeconds));
+                        Cut(ScreenCut());
                         if (beat.Skipped) break;
                         float naming = CeremonyPacing.VetoReplacement(pace);
                         string replacement = beat.SubjectId;
@@ -253,7 +253,7 @@ namespace Gamesim.Episode
                                 LookDown(replacement, 4f);
                                 director.TurnHeads(state, replacement, new[] { replacement });
                             });
-                        Schedule(naming, () => Cut(Screen.Shot(CutSeconds)));
+                        Schedule(naming, () => Cut(ScreenCut()));
                         break;
                     }
                     case CeremonyBeatKind.Closed:

@@ -421,6 +421,7 @@ namespace Gamesim.Tests.PlayMode
             public void StrikeSet() { }
             public void SendHome(string id) { }
             public bool AllHome => true;
+            public void HoldForIntroductions() { }
         }
     }
 }

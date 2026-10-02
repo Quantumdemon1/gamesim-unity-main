@@ -103,11 +103,12 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// The jury house's head, left-aligned: the people glyph, the screen's name over the jury's
-        /// size in words and a line of what the screen is, and on the right a non-interactive
-        /// "Observe only" chip with the eye, with <paramref name="aside"/> under it when there is
-        /// something that can act. The whole row carries the screen head's name, so the words a
-        /// test reads the head by are all inside it.
+        /// The jury house's head, left-aligned: the people glyph, the screen's name - when
+        /// <paramref name="title"/> gives one; the station band says it already, so the screen gives
+        /// none - over the jury's size in words and a line of what the screen is, and on the right a
+        /// non-interactive "Observe only" chip with the eye, with <paramref name="aside"/> under it
+        /// when there is something that can act. The whole row carries the screen head's name, so
+        /// the words a test reads the head by are all inside it.
         /// </summary>
         public void JuryHouseHead(string title, string headline, string line, string aside)
         {
@@ -129,10 +130,13 @@ namespace Gamesim.Episode
 
             float words = Mathf.Max(120f, width - mark - chipColumn - 2f * gap);
             PushContent(HeadColumn("Head words", head, words, 1f), words);
-            var name = FlowText(title, 15, Accent);
-            var bold = UiTheme.Font(UiTheme.Weight.Bold);
-            if (bold != null) name.font = bold;
-            name.characterSpacing = 6f;
+            if (!string.IsNullOrEmpty(title))
+            {
+                var name = FlowText(title, 15, Accent);
+                var bold = UiTheme.Font(UiTheme.Weight.Bold);
+                if (bold != null) name.font = bold;
+                name.characterSpacing = 6f;
+            }
             var big = FlowText(headline, 26, UiTheme.Glow);
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (semibold != null) big.font = semibold;

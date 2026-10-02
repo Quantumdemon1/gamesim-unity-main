@@ -185,14 +185,15 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// The opening line of the season.
+        /// The opening line of the season, in the house's own word: houseguests, as every card of
+        /// the opening calls them (UI-UX-PASS-PLAN S0).
         ///
-        /// <para><see cref="ContentCatalog"/>'s own arrival text names six and cannot be generalised
-        /// — it is recorded verbatim in a frozen replay fixture — so a built season writes its own
-        /// rather than editing that one.</para>
+        /// <para><see cref="ContentCatalog"/>'s own arrival text names six housemates and cannot be
+        /// generalised — it is recorded verbatim in a frozen replay fixture — so a built season
+        /// writes its own rather than editing that one.</para>
         /// </summary>
         private static string Arrival(int count, CastTemplates.Roster roster)
-            => Word(count) + " housemates, one new game"
+            => Word(count) + " houseguests, one new game"
                + (roster == CastTemplates.Roster.AllStars ? ", and every one of them has played before" : string.Empty)
                + ". Meet the cast, decide who to trust, and prepare for the first competition.";
 

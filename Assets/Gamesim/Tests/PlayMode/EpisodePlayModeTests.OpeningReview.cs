@@ -106,6 +106,7 @@ namespace Gamesim.Tests.PlayMode
             var sequence = Opening();
             stage.Opaque = () => sequence.GetComponentsInChildren<Image>(false)
                 .Any(image => image.name == "Scrim" && image.enabled && image.color.a >= 0.99f);
+            stage.CardUp = () => SequenceNode(sequence, "Card") != null;
             plan.Stage = stage;
             Assert.That(stage.AllHome, Is.False, "The house is out in the yard, as a walk-in cut short leaves it.");
 
@@ -114,6 +115,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(stage.Count("RestoreHome"), Is.EqualTo(1), "Everybody is put home before the first card.");
             Assert.That(stage.RestoredBehindOpaque, Has.All.True, "behind black.");
             Assert.That(stage.Count("StrikeSet"), Is.GreaterThanOrEqualTo(1), "and the front door is down.");
+            AssertHeldBeforeTheFirstCard(stage);
             sequence.SkipIntroductions();
             yield return SequenceWait(() => !sequence.IsPlaying);
         }

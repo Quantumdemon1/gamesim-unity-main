@@ -535,6 +535,7 @@ namespace Gamesim.Episode
         {
             foreach (var rect in canvas.GetComponentsInChildren<RectTransform>(true))
                 if (rect.name == name && rect != modal) rect.gameObject.SetActive(visible);
+            MarkChromeChanged();
         }
 
         private void BuildExplorationHelp()

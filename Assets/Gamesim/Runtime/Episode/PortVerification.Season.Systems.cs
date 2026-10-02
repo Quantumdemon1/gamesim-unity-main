@@ -407,8 +407,15 @@ namespace Gamesim.Episode
                 .FirstOrDefault(word => word.Length == board.Length && word.StartsWith(sofar, StringComparison.Ordinal)
                     && string.Concat(word.OrderBy(c => c)) == string.Concat(board.OrderBy(c => c)));
             if (answer == null) { yield return TryClickCompetitionControl("Skip word"); yield break; }
+            // A right word's verdict shows it spelled whole on tiles that stay controls (a pad player
+            // keeps a selection): nothing to choose until the next board is dealt. Reading the next
+            // letter past the word's end threw, the first time a walk's season dealt words first.
+            if (sofar.Length >= answer.Length) { yield return null; yield break; }
             char next = answer[sofar.Length];
-            var tile = tiles.FirstOrDefault(b => b.GetComponentInChildren<TMPro.TMP_Text>().text == next.ToString());
+            // A chosen tile stays a control, so a letter the word repeats ("MAYA") is the tile after
+            // the ones already spelled with it, not the first carrying it again.
+            int already = sofar.Count(letter => letter == next);
+            var tile = tiles.Where(b => b.GetComponentInChildren<TMPro.TMP_Text>().text == next.ToString()).Skip(already).FirstOrDefault();
             if (tile == null) { yield return null; yield break; }
             yield return TryClickCompetitionControl(tile.name);
         }

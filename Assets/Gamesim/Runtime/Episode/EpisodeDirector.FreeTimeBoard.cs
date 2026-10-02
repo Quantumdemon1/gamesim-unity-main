@@ -72,11 +72,26 @@ namespace Gamesim.Episode
         /// <summary>The page of the house's cards shown, and the free time it belongs to. View state.</summary>
         private int freeTimePage, freeTimeViewKey = -1;
         /// <summary>
-        /// What the board's panel showed at its last render - the board, or a beat's step at its first
-        /// or second press - so a render that replaces a step under the pointer is known. View state.
+        /// What the board's panel showed at its last render - the board, a houseguest's screen, or a
+        /// beat's step at its first or second press - so a render that replaces one under the pointer
+        /// is known (<see cref="Replaces"/>). View state.
         /// </summary>
         private string freeTimeView;
-        private const string FreeTimeBoardView = "board", FreeTimeStepView = "step:";
+        private const string FreeTimeBoardView = "board", FreeTimeStepView = "step:", FreeTimeHouseguestView = "houseguest:";
+
+        /// <summary>
+        /// Whether a render's view replaces the last one under the pointer: a step that goes -
+        /// answered, left by "Back to free time", or redrawn by an answer for its next press - or a
+        /// houseguest's screen and the board taking each other's place, either way (UI-UX-PASS-PLAN
+        /// U0's review): "Back to free time" in the footer's secondary slot stands where the board
+        /// draws "Stay in the house", and a card's name where the screen draws its strip and its
+        /// moves. Not the board giving way to a step, whose words column stands under what opened it,
+        /// nor one houseguest's screen to another's, whose strip stands where it stood.
+        /// </summary>
+        private static bool Replaces(string before, string now) =>
+            before != null && now != null && before != now
+            && (before.StartsWith(FreeTimeStepView, StringComparison.Ordinal)
+                || before.StartsWith(FreeTimeHouseguestView, StringComparison.Ordinal) != now.StartsWith(FreeTimeHouseguestView, StringComparison.Ordinal));
 
         /// <summary>Whether free time is on the board now, rather than its old column. A read for tests.</summary>
         public bool IsFreeTimeBoard => hud != null && phaseOpen && FreeTimeBoardBeat(projected)
@@ -100,12 +115,15 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// Whether free time is drawn as the board: the social window, with nothing that keeps a
-        /// screen of its own over it.
+        /// Whether a state's free time is the strategy stage's - the board, or a houseguest's screen
+        /// opened from its cards - by the state alone: the social window with no reflection waiting,
+        /// no legacy house event, not the Final 3's window, and a player still in the house. Every
+        /// other free time draws the old column, whose scroll stands clear of its pinned row. Pure,
+        /// for the reachability pin; the director adds that no challenge has the panel.
         /// </summary>
-        private bool FreeTimeBoardBeat(EpisodeState state)
+        public static bool FreeTimeOnTheStage(EpisodeState state)
         {
-            if (state == null || state.phase != EpisodePhase.Social || challengeActive || state.pendingDiary != null) return false;
+            if (state == null || state.phase != EpisodePhase.Social || state.pendingDiary != null) return false;
             // A legacy situation keeps the house event's band, the camera on its people and the
             // Social pin; legacy events happen only with the story off.
             if (state.houseEvents.Any(e => !e.resolved && !e.IsStory)) return false;
@@ -113,20 +131,39 @@ namespace Gamesim.Episode
             if (EpisodeHud.IsFinalThree(state)) return false;
             // A player out of the game has nothing here to spend; they keep the screen they watch from.
             var you = state.Find(state.playerId);
-            if (you == null || you.status != ContestantStatus.Active) return false;
-            // A houseguest's screen keeps its own layout until it is laid out for the stage.
-            var chosen = moveScreenId != null ? state.Find(moveScreenId) : null;
-            if (chosen != null && !chosen.isPlayer && chosen.status == ContestantStatus.Active) return false;
-            return true;
+            return you != null && you.status == ContestantStatus.Active;
         }
+
+        /// <summary>Whether free time is on the strategy stage now: its state says so, and no challenge has the panel.</summary>
+        private bool FreeTimeStageBeat(EpisodeState state) => !challengeActive && FreeTimeOnTheStage(state);
+
+        /// <summary>The houseguest whose screen is open over free time, when one is: active, and not the player. Null for the root.</summary>
+        private ContestantState HouseguestScreenChosen(EpisodeState state)
+        {
+            var chosen = state != null && moveScreenId != null ? state.Find(moveScreenId) : null;
+            return chosen != null && !chosen.isPlayer && chosen.status == ContestantStatus.Active ? chosen : null;
+        }
+
+        /// <summary>Whether free time is drawn as the board: on the stage, with no houseguest's screen over it.</summary>
+        private bool FreeTimeBoardBeat(EpisodeState state) => FreeTimeStageBeat(state) && HouseguestScreenChosen(state) == null;
+
+        /// <summary>
+        /// Whether free time is a houseguest's screen on the stage (UI-UX-PASS-PLAN U0): opened from
+        /// the board's cards, laid for the board's frame with the board's footer - the way on, "Back
+        /// to free time" in the secondary slot, and the strip - in place of the Stage's column, whose
+        /// scroll cut its rows at the pinned bar. At three and for a watcher the column is still
+        /// free time's (decision 17), and the screen keeps its old layout there.
+        /// </summary>
+        private bool HouseguestScreenBeat(EpisodeState state) => FreeTimeStageBeat(state) && HouseguestScreenChosen(state) != null;
 
         /// <summary>
         /// Draws free time's board when free time is on the strategy stage, and says whether it did:
-        /// the beat opened as the step, or the board, and the footer under either.
+        /// the beat opened as the step, or the board, and the footer under either; or a houseguest's
+        /// screen opened from the board's cards, with the footer it shares.
         /// </summary>
         private bool FreeTimeBoard(EpisodeState state)
         {
-            if (hud == null || !FreeTimeBoardBeat(state) || hud.CurrentActivityLayout != EpisodeHud.ActivityLayout.Strategy)
+            if (hud == null || hud.CurrentActivityLayout != EpisodeHud.ActivityLayout.Strategy || !FreeTimeStageBeat(state))
             {
                 freeTimeView = null;
                 return false;
@@ -134,20 +171,39 @@ namespace Gamesim.Episode
             // A new free time opens on the first page; week one has two, move-in night and the one after its eviction.
             int key = state.week * 2 + (EpisodeEngine.IsFirstNight(state) ? 0 : 1);
             if (freeTimeViewKey != key) { ForgetFreeTimeView(); freeTimeViewKey = key; }
+            var chosen = HouseguestScreenChosen(state);
+            if (chosen != null)
+            {
+                // A houseguest's screen stands where the board stood: the press on a card's name that
+                // opened it may be the first of two, and the second would land on whatever is drawn
+                // there now - a strip face, a way to spend the action, or a move that commits. The
+                // pointer is held off the panel a moment as it replaces the board, as the board does
+                // when it replaces the screen (Replaces).
+                string here = FreeTimeHouseguestView + chosen.id;
+                bool crossed = Replaces(freeTimeView, here);
+                freeTimeView = here;
+                hud.StrategyWholeWidth();
+                HouseguestScreen(state, chosen);
+                HouseguestFooter(state);
+                if (crossed) hud.HoldPointerOffPanel(EpisodeHud.PointerHoldSeconds);
+                else hud.KeepPointerHold();
+                return true;
+            }
             var open = EpisodeEngine.OpenStoryBeats(state);
             if (freeTimeOpenedBeat != null && !open.Any(beat => beat.id == freeTimeOpenedBeat)) freeTimeOpenedBeat = null;
             if (storyStepEvent != null && !open.Any(beat => beat.id == storyStepEvent)) ClearStoryStep();
             var opened = freeTimeOpenedBeat != null ? open.FirstOrDefault(beat => beat.id == freeTimeOpenedBeat) : null;
 
             // What the panel shows now - the board, or a beat's step at its first press or its second -
-            // and whether it replaces a step: answered, left by "Back to free time", or redrawn by an
-            // answer for its next press. Whatever is drawn now stands under the pointer that pressed,
-            // and the second press of a double click would land on it: a way to buy time, a move, the
-            // way on, or the person a pick commits to. Pointer presses are held off the panel a moment.
+            // and whether it replaces a step (answered, left by "Back to free time", or redrawn by an
+            // answer for its next press) or a houseguest's screen (left by "Back to free time").
+            // Whatever is drawn now stands under the pointer that pressed, and the second press of a
+            // double click would land on it: a way to buy time, a move, the way on, "Stay in the
+            // house", or the person a pick commits to. Pointer presses are held off the panel a moment.
             bool second = opened != null && storyStepEvent == opened.id && opened.choices.Any(choice => choice.optionId == storyStepOption);
             string view = opened == null ? FreeTimeBoardView
                 : FreeTimeStepView + opened.id + (second ? "/" + storyStepOption + "/" + storyStepPick : "");
-            bool replaced = freeTimeView != null && freeTimeView.StartsWith(FreeTimeStepView, StringComparison.Ordinal) && freeTimeView != view;
+            bool replaced = Replaces(freeTimeView, view);
             freeTimeView = view;
             // A focus the last render asked for, which a render in between would otherwise drop.
             hud.KeepFocusAsked();
@@ -386,6 +442,25 @@ namespace Gamesim.Episode
             string where = FreeTimeLocationLine(state);
             if (where != null) hud.PinnedNote(where, EpisodeHud.LocationCardName, false);
             else hud.PinnedNote(PhaseRule(state), EpisodeHud.FreeTimeTipName, false);
+        }
+
+        /// <summary>
+        /// The footer under a houseguest's screen on the stage (UI-UX-PASS-PLAN U0): the way on under
+        /// its headline, "Back to free time" in the secondary slot, and the strip with where the
+        /// player is over what moving on loses - the unused actions, which the Stage's column pinned
+        /// as a note under the way on - unless a storyline moving on lets pass outranks them.
+        /// </summary>
+        private void HouseguestFooter(EpisodeState state)
+        {
+            var wayOn = hud.PinnedAction(BeginNextCompetitionCaption, () => Commit(state, EpisodeCommandKind.Advance));
+            hud.DressWayOn(wayOn, EndFreeTimeHeadline, PackArt.Pack8ContinueButton);
+            hud.PinnedSecondary(BackToFreeTimeCaption, CloseHouseguestScreen);
+            AdvanceWarning(state);
+            string where = FreeTimeLocationLine(state);
+            if (where != null) hud.PinnedNote(where, EpisodeHud.LocationCardName, false);
+            else hud.PinnedNote(PhaseRule(state), EpisodeHud.FreeTimeTipName, false);
+            string unused = UnusedActionsNote(state);
+            if (unused != null) hud.PinnedNote(unused, EpisodeHud.UnusedActionsNoteName, EpisodeHud.FooterRank.Notice, true);
         }
 
         /// <summary>"Nomination room · you have it to yourself": the player's room and who else is in it, by first name.</summary>

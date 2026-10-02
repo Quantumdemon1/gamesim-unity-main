@@ -87,6 +87,7 @@ namespace Gamesim.Tests.PlayMode
             public void StrikeSet() { }
             public void SendHome(string id) { }
             public bool AllHome => true;
+            public void HoldForIntroductions() { }
         }
 
         // ---------------------------------------------------------------- the title
@@ -581,8 +582,11 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The house entry is the reference build's card: "Welcome to the House" with how many have
         /// entered under it in capitals, the card growing in from nine tenths. The season's arrival
-        /// line stands low on the screen where the reference promised a Head of Household
-        /// competition, and fades in at 2 s as that did.
+        /// line fades in at 2 s, as the reference's "Head of Household competition starting soon"
+        /// did - in the card, under the count, rather than low on the screen where the reference's
+        /// stood: there it ran edge to edge over the Continue hint (UI-UX-PASS-PLAN S0). A departure
+        /// that follows from it: the reference's card fades at 4 s, and this one holds the beat,
+        /// because the line is read inside it.
         /// </summary>
         [UnityTest]
         public IEnumerator Parity_TheHouseEntryWelcomesThenCounts()
@@ -606,9 +610,9 @@ namespace Gamesim.Tests.PlayMode
             var line = ParityLabel(sequence, "Line");
             Assert.That(line.text, Is.EqualTo(plan.ArrivalLine), "The season's arrival line, word for word,");
             Assert.That(ParityUpperCase(line), Is.True, "in capitals,");
-            Assert.That(line.transform.IsChildOf(card), Is.False, "off the card,");
-            Assert.That(line.rectTransform.anchorMin.y, Is.EqualTo(0f), "low on the screen");
-            Assert.That(line.rectTransform.anchoredPosition.y, Is.EqualTo(80f), "where the reference's line stood.");
+            Assert.That(line.transform.IsChildOf(card), Is.True, "in the card,");
+            Assert.That(line.rectTransform.position.y, Is.LessThan(entered.rectTransform.position.y), "under the count,");
+            Assert.That(Inside((RectTransform)card, line.rectTransform), Is.True, "inside the card's edge.");
             var everything = SequenceLabels(sequence).Select(label => label.text ?? string.Empty).ToArray();
             Assert.That(everything.Where(text => text.IndexOf("Head of Household", System.StringComparison.OrdinalIgnoreCase) >= 0), Is.Empty,
                 "Nothing promises a competition.");
@@ -628,6 +632,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(line.alpha, Is.Zero, "The line is still waiting for 2 s.");
             yield return ParitySeconds(2.8f - (Time.realtimeSinceStartup - start));
             Assert.That(line.alpha, Is.GreaterThan(0.5f), "and then it is up.");
+            yield return ParitySeconds(4.6f - (Time.realtimeSinceStartup - start));
+            Assert.That(card.GetComponent<CanvasGroup>().alpha, Is.GreaterThanOrEqualTo(0.99f),
+                "The card holds the beat past the reference's 4 s: the season's line is read inside it.");
+            Assert.That(line.alpha, Is.GreaterThan(0.5f), "and the line with it.");
             sequence.Skip();
             yield return null;
         }

@@ -367,6 +367,20 @@ namespace Gamesim.Tests.PlayMode
                     var stage = ScreenRect(ActiveRect("Episode panel"));
                     foreach (var card in grid.GetComponentsInChildren<Button>())
                         AssertInside(stage, (RectTransform)card.transform, where + ": '" + card.name + "'");
+                    // Every name whole and at one size across the grid: onto a second line where the
+                    // row holds it, never ended in an ellipsis, no name larger than another's
+                    // ("Avery Thomp…" at ten beside "Taylor Kim" at fifteen; UI-UX-PASS-PLAN T0).
+                    var labels = grid.GetComponentsInChildren<TMP_Text>().Where(label => label.name == EpisodeHud.PickerNameName).ToList();
+                    Assert.That(labels, Has.Count.EqualTo(candidates.Length), where + ": a name a candidate.");
+                    foreach (var label in labels)
+                    {
+                        label.ForceMeshUpdate(true);
+                        Assert.That(label.isTextTruncated, Is.False, where + ": '" + label.text + "' is cut short at " + label.fontSize.ToString("0.#") + ".");
+                        Assert.That(label.textInfo.characterInfo.Take(label.textInfo.characterCount).Count(glyph => glyph.isVisible),
+                            Is.EqualTo(label.text.Count(ch => !char.IsWhiteSpace(ch))), where + ": '" + label.text + "' draws every letter.");
+                    }
+                    Assert.That(labels.Select(label => Mathf.Round(label.fontSize * 10f)).Distinct().Count(), Is.EqualTo(1),
+                        where + ": one size of name, not " + string.Join(", ", labels.Select(label => label.text + " at " + label.fontSize.ToString("0.#"))) + ".");
                     Assert.That(FindButton("Commit nominations").transform.parent, Is.SameAs(ActiveRect("Episode panel")), where + ": the commit is pinned.");
                     var warning = FooterWords();
                     Assert.That(warning.name, Is.EqualTo(EpisodeDirector.AdvanceWarningName), where + ": the strip warns under the warning's name.");

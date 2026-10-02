@@ -787,8 +787,13 @@ namespace Gamesim.Presentation
             var pill = Plate(card, "Nickname", CastSelectArt.CategoryPill(template.Category), -(44f + RingSize), pillWidth, 20f);
             var nick = Line(pill, nickname, 12f, CastSelectArt.OnCategory(template.Category), 0f, 20f, 6f, pillWidth - 12f, TextAlignmentOptions.Center);
             if (nick != null) { var medium = UiTheme.Font(UiTheme.Weight.Medium); if (medium != null) nick.font = medium; }
-            Traits(card, template, CardWidth, -(70f + RingSize));
+            // Taller pills than the card had: at 18 the word was nine points, the smallest type on
+            // the screen beside the house-size block (UI-UX-PASS-PLAN T0).
+            Traits(card, template, CardWidth, -(70f + RingSize), TraitChipName, CardTraitHeight);
         }
+
+        /// <summary>A card's trait pill: its word is half its height, so 22 draws the word at 11 in a box twice the type.</summary>
+        public const float CardTraitHeight = 22f;
 
         /// <summary>A capsule plate centred on a card, <paramref name="y"/> from its top.</summary>
         private static RectTransform Plate(RectTransform parent, string name, Sprite sprite, float y, float plateWidth, float height)
@@ -805,22 +810,35 @@ namespace Gamesim.Presentation
             return plate;
         }
 
-        /// <summary>The traits as pills, one each, tinted by what they mean, centred across <paramref name="span"/>.</summary>
+        /// <summary>
+        /// The traits as pills, one each, tinted by what they mean, centred across
+        /// <paramref name="span"/> and inside it: a pair of long words shares the span less its
+        /// margins rather than running past it (Taylor Kim's "Competitive" and "Confrontational"
+        /// came to 215 on a card 202 wide at 22 tall; UI-UX-PASS-PLAN T0). A word sits on one line
+        /// and shrinks a little before it is cut.
+        /// </summary>
         private static void Traits(RectTransform parent, CastTemplates.Template template, float span, float y,
             string chipName = TraitChipName, float height = 18f)
         {
             var words = template.Traits;
             if (words == null || words.Length == 0) return;
+            const float gap = 6f, margin = 6f;
             var widths = new float[words.Length];
-            float total = 0f;
+            float sum = 0f;
             for (int i = 0; i < words.Length; i++)
             {
                 string word = Localisation.Text(words[i]);
                 widths[i] = Mathf.Max(50f, word.Length * height * .31f + 16f);
-                total += widths[i];
+                sum += widths[i];
             }
-            total += 6f * (words.Length - 1);
-            float x = (span - total) * .5f;
+            float gaps = gap * (words.Length - 1), room = span - 2f * margin - gaps;
+            if (sum > room && room > 0f)
+            {
+                float k = room / sum;
+                for (int i = 0; i < words.Length; i++) widths[i] *= k;
+                sum = room;
+            }
+            float x = (span - sum - gaps) * .5f;
             for (int i = 0; i < words.Length; i++)
             {
                 var chip = HudPrimitives.Chip(chipName, parent, Localisation.Text(words[i]), TraitTint(words[i]), widths[i], height);
@@ -828,7 +846,15 @@ namespace Gamesim.Presentation
                 chip.anchorMax = new Vector2(0f, 1f);
                 chip.pivot = new Vector2(0f, 1f);
                 chip.anchoredPosition = new Vector2(x, y);
-                x += widths[i] + 6f;
+                var label = chip.GetComponentInChildren<TMP_Text>();
+                if (label != null)
+                {
+                    label.textWrappingMode = TextWrappingModes.NoWrap;
+                    label.enableAutoSizing = true;
+                    label.fontSizeMax = label.fontSize;
+                    label.fontSizeMin = Mathf.Min(10f, label.fontSize);
+                }
+                x += widths[i] + gap;
             }
         }
 
@@ -1176,69 +1202,95 @@ namespace Gamesim.Presentation
                     : "No card picked. You will play as an unaffiliated newcomer.",
                 14f, chosen != null ? UiTheme.Gold : UiTheme.Muted, 22f, TextAlignmentOptions.Center);
 
+            // The house-size block was the smallest type on the screen - its range line 12 in a
+            // 16-tall box, the footnote 12, the chips' words shrunk to fit (cast-select;
+            // UI-UX-PASS-PLAN T0, sweep row 23): 13 now, in boxes 1.3 times the type, on chips tall
+            // enough to press.
             if (WideFooter)
             {
-                var bar = Row(60f);
+                var bar = Row(68f);
                 const float group = 1168f;
                 float left = -group * .5f;
-                HouseSizePanel(bar, left, 560f, true);
-                StartButtons(bar, left + 576f + 180f, 360f, left + 948f + 110f, 220f);
+                // 600 for the panel, 320 for the start: the chips beside the count want 140 each to
+                // hold their words at thirteen.
+                HouseSizePanel(bar, left, 600f, true);
+                StartButtons(bar, left + 616f + 160f, 320f, left + 948f + 110f, 220f);
                 Text("A shorter season reaches the final three sooner; it does not simplify a week.",
-                    12f, UiTheme.Muted, 18f, TextAlignmentOptions.Center);
+                    FootnoteSize, UiTheme.Muted, 20f, TextAlignmentOptions.Center);
             }
             else
             {
                 var bar = Row(64f);
                 HouseSizePanel(bar, -Mathf.Min(1040f, Width - Pad * 2f) * .5f, Mathf.Min(1040f, Width - Pad * 2f), false);
                 Text("A shorter season reaches the final three sooner; it does not simplify a week.",
-                    12f, UiTheme.Muted, 20f, TextAlignmentOptions.Center);
+                    FootnoteSize, UiTheme.Muted, 20f, TextAlignmentOptions.Center);
                 StartButtons(Row(60f), -130f, 420f, 230f, 250f);
             }
             Space(Pad * .5f);
         }
 
+        /// <summary>The least the footer's lines are set at: the house-size range, the footnote and the chips' words.</summary>
+        public const float FootnoteSize = 13f;
+        /// <summary>The house-size chips' height: tall enough to read and to press beside the start.</summary>
+        public const float HouseSizeChipHeight = 44f;
+        public const string HouseSizePanelName = "House size panel";
+
         /// <summary>The house size: what it is and its range, and the count between its two controls.</summary>
         private void HouseSizePanel(RectTransform bar, float left, float panelWidth, bool compact)
         {
             int largest = SeasonBuilder.LargestHouse(roster);
-            var panel = HudPrimitives.Fill("House size panel", bar, new Color(UiTheme.GlassFill.r, UiTheme.GlassFill.g, UiTheme.GlassFill.b, .92f), UiTheme.GlassRadius);
+            var panel = HudPrimitives.Fill(HouseSizePanelName, bar, new Color(UiTheme.GlassFill.r, UiTheme.GlassFill.g, UiTheme.GlassFill.b, .92f), UiTheme.GlassRadius);
             panel.anchorMin = panel.anchorMax = new Vector2(.5f, .5f); panel.pivot = new Vector2(0f, .5f);
-            panel.sizeDelta = new Vector2(panelWidth, compact ? 60f : 64f);
+            panel.sizeDelta = new Vector2(panelWidth, compact ? 68f : 64f);
             panel.anchoredPosition = new Vector2(left, 0f);
             panel.GetComponent<Image>().raycastTarget = false;
             UiTheme.AddBorder(panel, UiTheme.GlassRadius, new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .45f));
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             var heading = Line(panel, "HOUSE SIZE", 14f, UiTheme.Paper, -9f, 20f, 16f, 220f, TextAlignmentOptions.Left);
             if (heading != null && semibold != null) heading.font = semibold;
+            // Two lines of 13 beside the chips, in a box 1.3 times each; one line across the wide panel.
             var range = Line(panel, "Between " + SeasonBuilder.MinimumHouse + " and " + largest + " on this roster, including you.",
-                12f, UiTheme.Muted, -29f, compact ? 28f : 18f, 16f, compact ? 188f : panelWidth * .5f - 16f, TextAlignmentOptions.TopLeft);
-            if (range != null && compact) range.textWrappingMode = TextWrappingModes.Normal;
+                FootnoteSize, UiTheme.Muted, -31f, compact ? 34f : 20f, 16f, compact ? 188f : panelWidth * .5f - 16f, TextAlignmentOptions.TopLeft);
+            if (range != null) { range.fontSizeMin = FootnoteSize; if (compact) range.textWrappingMode = TextWrappingModes.Normal; }
 
-            // Fewer, the count, More - from the panel's right edge inward.
-            float fewerX = left + panelWidth - 290f;
-            float countX = left + panelWidth - 175f;
-            float moreX = left + panelWidth - 62f;
+            // Fewer, the count, More - from the panel's right edge inward: 140-wide chips either side
+            // of a 96-wide count, after the range line's 188 and a gap, in the 600 the panel has.
+            float fewerX = left + panelWidth - 319f;
+            float countX = left + panelWidth - 195f;
+            float moreX = left + panelWidth - 71f;
             if (!compact) { fewerX = 55f; countX = 250f; moreX = 435f; }
             var caption = HudPrimitives.Label("House size", bar, 16f, UiTheme.Paper, TextAlignmentOptions.Center);
             if (semibold != null) caption.font = semibold;
-            caption.text = houseSize + " houseguests, including you";
+            // The count and its noun; "including you" is the range line's, under the heading, where
+            // a box between two chips held it only at eleven points.
+            caption.text = houseSize + " houseguests";
             caption.rectTransform.anchorMin = caption.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
             caption.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            caption.rectTransform.sizeDelta = new Vector2(compact ? 100f : 210f, compact ? 44f : 26f);
+            caption.rectTransform.sizeDelta = new Vector2(compact ? 96f : 210f, compact ? 44f : 26f);
             caption.rectTransform.anchoredPosition = new Vector2(countX, 0f);
-            caption.enableAutoSizing = true; caption.fontSizeMax = compact ? 15f : 16f; caption.fontSizeMin = 11f;
+            caption.enableAutoSizing = true; caption.fontSizeMax = compact ? 15f : 16f; caption.fontSizeMin = FootnoteSize;
             caption.textWrappingMode = compact ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
 
-            Chip(bar, "Fewer houseguests", fewerX, compact ? 118f : 150f, false, () =>
+            HouseSizeChip(bar, "Fewer houseguests", fewerX, compact ? 140f : 150f, () =>
             {
                 houseSize = SeasonBuilder.ClampHouseSize(roster, Math.Max(customHouseguests.Count + 1, houseSize - 1));
                 Rebuild();
             });
-            Chip(bar, "More houseguests", moreX, compact ? 118f : 150f, false, () =>
+            HouseSizeChip(bar, "More houseguests", moreX, compact ? 140f : 150f, () =>
             {
                 houseSize = SeasonBuilder.ClampHouseSize(roster, houseSize + 1);
                 Rebuild();
             });
+        }
+
+        /// <summary>One of the house size's two chips: the footer's pill, taller, its words never under thirteen.</summary>
+        private static Button HouseSizeChip(RectTransform bar, string caption, float x, float width, Action press)
+        {
+            var chip = Chip(bar, caption, x, width, false, press);
+            ((RectTransform)chip.transform).sizeDelta = new Vector2(width, HouseSizeChipHeight);
+            var words = chip.GetComponentInChildren<TMP_Text>();
+            if (words != null) words.fontSizeMin = FootnoteSize;
+            return chip;
         }
 
         /// <summary>The one control this screen exists to reach - wide, the action blue, an arrow saying it leads on - and cancel.</summary>

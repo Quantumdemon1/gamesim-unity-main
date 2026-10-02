@@ -615,7 +615,7 @@ namespace Gamesim.Tests.PlayMode
                 var strip = ActiveRect(EpisodeHud.BreachStripName);
                 Assert.That(strip, Is.Not.Null, where + " warns.");
                 Assert.That(StripWords(strip), Is.EqualTo(expected), where + ": the dry run's words.");
-                AssertInside(window, ActiveRect(EpisodeHud.CeremonyTitleName), where + ": the title");
+                AssertInside(window, ActiveRect(EpisodeHud.MeetingHeadName), where + ": the head");
                 AssertInside(window, (RectTransform)FindButton("Do not use the veto").transform, where + ": 'Do not use the veto'");
                 AssertInside(window, ActiveRect(EpisodeHud.MeetingInfoStripName), where + ": the rule");
                 AssertInside(window, strip, where + ": the warning");

@@ -28,9 +28,10 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// One meeting, one name (UI-UX-PASS-PLAN V0, decision 14): the strip, the card on the HUD
-        /// frame, the card on the living room's screen, the episode screen's band and title, the week
-        /// chip and the status line's phase all say "veto meeting", each in its own case. The strip
-        /// and the band said VETO CEREMONY and the screen POWER OF VETO MEETING.
+        /// frame, the card on the living room's screen, the episode screen's band, the week chip and
+        /// the status line's phase all say "veto meeting", each in its own case. The strip and the
+        /// band said VETO CEREMONY, the screen POWER OF VETO MEETING, and the episode screen's title
+        /// Power of Veto Meeting under the band - a title the band now stands in for.
         /// </summary>
         [Test]
         public void TheMeetingGoesByOneName()
@@ -41,7 +42,6 @@ namespace Gamesim.Tests.EditMode
                 ("the card", CeremonyTakeover.TitleFor(CeremonySting.VetoKind)),
                 ("the living room's screen", CeremonyTakeover.MeetingTitle),
                 ("the episode screen's band", EpisodeDirector.PhaseTitle(EpisodePhase.VetoMeeting)),
-                ("the episode screen's title", EpisodeDirector.VetoMeetingTitle),
                 ("the week chip", EpisodeHud.PhaseShort(EpisodePhase.VetoMeeting)),
             };
             foreach (var (where, said) in names)

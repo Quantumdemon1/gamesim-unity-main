@@ -56,6 +56,18 @@ namespace Gamesim.Tests.PlayMode
             return cards[0];
         }
 
+        /// <summary>
+        /// Before the meeting the band names it and nothing under the band says the name again
+        /// (UI-UX-PASS-PLAN V0, as E0 took the jury house's repeat away): no title, the meeting's line
+        /// at the head of the step.
+        /// </summary>
+        private void AssertTheBandNamesTheMeeting(string where)
+        {
+            Assert.That(Words(LastActive("Phase band")), Does.Contain(EpisodeDirector.PhaseTitle(EpisodePhase.VetoMeeting)), where + ": the band names the meeting,");
+            Assert.That(ActiveRect(EpisodeHud.CeremonyTitleName), Is.Null, where + ": no title under it says the name again,");
+            Assert.That(ActiveRect(EpisodeHud.MeetingHeadName), Is.Not.Null, where + ": and the meeting's line heads the step.");
+        }
+
         /// <summary>The headline the pinned way on wears over its caption, or null.</summary>
         private string MeetingHeadlineOn(string caption)
         {
@@ -87,7 +99,7 @@ namespace Gamesim.Tests.PlayMode
                 AssertOnTheStrategyStage("Continue episode", where);
                 AssertTheMeetingFits(where);
                 var panel = ActiveRect("Episode panel");
-                Assert.That(ActiveRect(EpisodeHud.CeremonyTitleName).GetComponent<TMP_Text>().text, Is.EqualTo("Veto Meeting"));
+                AssertTheBandNamesTheMeeting(where);
 
                 var strip = ActiveRect(EpisodeHud.HouseStatusStripName);
                 Assert.That(strip, Is.Not.Null, where + " says who holds what in a strip,");
@@ -140,8 +152,7 @@ namespace Gamesim.Tests.PlayMode
                 var panel = ActiveRect("Episode panel");
                 AssertOnTheStage(panel);
                 AssertTheMeetingFits(where);
-                Assert.That(ActiveRect(EpisodeHud.CeremonyTitleName).GetComponent<TMP_Text>().text, Is.EqualTo("Veto Meeting"),
-                    "The decision names its ceremony.");
+                AssertTheBandNamesTheMeeting(where);
                 var words = PanelWords(panel);
                 Assert.That(words, Does.Contain(EpisodeDirector.HouseStatus(before)));
                 Assert.That(words, Does.Contain(EpisodeDirector.UseTheVetoEyebrow));
@@ -261,7 +272,7 @@ namespace Gamesim.Tests.PlayMode
                 content.GetComponentInParent<ScrollRect>().verticalNormalizedPosition = 1f;
                 Canvas.ForceUpdateCanvases();
                 var window = ScreenRect((RectTransform)content.parent);
-                AssertInside(window, ActiveRect(EpisodeHud.CeremonyTitleName), where + "'s title");
+                AssertInside(window, ActiveRect(EpisodeHud.MeetingHeadName), where + "'s head");
                 foreach (var nominee in before.nominees)
                     AssertInside(window, (RectTransform)FindButton(EpisodeDirector.VetoSavePickCaption(before.Find(nominee).name)).transform,
                         where + "'s pick of " + before.Find(nominee).name);

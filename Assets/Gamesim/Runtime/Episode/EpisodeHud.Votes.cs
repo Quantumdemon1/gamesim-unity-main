@@ -8,9 +8,9 @@ using UnityEngine.UI;
 namespace Gamesim.Episode
 {
     /// <summary>
-    /// The vote page's cards (Refinement Kit 6): an eviction result a week, the ballots made public
-    /// at each reveal, and the line that says what stays private. The words are the director's;
-    /// these only lay them out.
+    /// The vote page's cards (Refinement Kit 6): an eviction result a week, the ballots the player
+    /// knows of each reveal with one line counting the ones they do not, and the line that says what
+    /// stays private. The words are the director's; these only lay them out.
     /// </summary>
     public sealed partial class EpisodeHud
     {

@@ -236,10 +236,11 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// The host's line on the screen frame, in every wording the format reads - the house's
-        /// count, the Head of Household's tie-break, a sole vote, and the player spoken to on the
-        /// count and on the tie-break - stands on one line inside the face's 3 % margin, whole, drawn
-        /// no smaller than twenty points and no larger than its thirty. Boxed at the face's full
-        /// width, the tie-break's wording ended on the edge.
+        /// count, the Head of Household's tie-break, a sole vote (which names nobody: UI-UX-PASS-PLAN
+        /// B0), and the player spoken to on the count, on the tie-break and on the sole vote - stands
+        /// on one line inside the face's 3 % margin, whole, drawn no smaller than twenty points and no
+        /// larger than its thirty. Boxed at the face's full width, the tie-break's wording ended on
+        /// the edge.
         /// </summary>
         [UnityTest]
         public IEnumerator TheHostsLineFitsTheScreensFaceInEveryWording()
@@ -249,9 +250,10 @@ namespace Gamesim.Tests.PlayMode
             {
                 ("the count", Ballots(3, 1, false), false, "By a vote of 3 to 1, Jordan Taylor, you have been evicted."),
                 ("the tie-break", Ballots(2, 2, true), false, "By the Head of Household's tie-breaking vote, Jordan Taylor, you have been evicted."),
-                ("the sole vote", Ballots(1, 0, false), false, Names[0] + " cast the sole vote to evict. Jordan Taylor, you have been evicted."),
+                ("the sole vote", Ballots(1, 0, false), false, "By a single vote, Jordan Taylor, you have been evicted."),
                 ("the player evicted", Ballots(3, 1, false), true, "By a vote of 3 to 1, you have been evicted."),
                 ("the player evicted on the tie-break", Ballots(2, 2, true), true, "By the Head of Household's tie-breaking vote, you have been evicted."),
+                ("the player evicted on the sole vote", Ballots(1, 0, false), true, "By a single vote, you have been evicted."),
             };
             foreach (var wording in wordings)
             {
@@ -570,11 +572,11 @@ namespace Gamesim.Tests.PlayMode
             return people;
         }
 
-        /// <summary>The live eviction on its usual board: two votes each way and the Head of Household's tie-break for Jordan.</summary>
+        /// <summary>The live eviction on its usual board: two votes each way and the Head of Household's tie-break for Jordan. No ballot carries its voter (UI-UX-PASS-PLAN B0): the card is handed whom each went against, the deciding vote last.</summary>
         private VoteReveal Reveal(float fontScale, ScreenSurface screen = null) => Reveal(fontScale, screen, new[]
         {
-            new VoteReveal.Ballot(Names[0], Jordan), new VoteReveal.Ballot(Names[1], Casey), new VoteReveal.Ballot(Names[2], Jordan),
-            new VoteReveal.Ballot(Names[3], Casey), new VoteReveal.Ballot(Hoh, Jordan, tieBreak: true),
+            new VoteReveal.Ballot(Jordan), new VoteReveal.Ballot(Casey), new VoteReveal.Ballot(Jordan),
+            new VoteReveal.Ballot(Casey), new VoteReveal.Ballot(Jordan, tieBreak: true),
         });
 
         /// <summary>The live eviction of Jordan Taylor on <paramref name="ballots"/>, spoken to as the player when <paramref name="evictedIsPlayer"/>.</summary>
@@ -595,14 +597,14 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// A board of the house's ballots: <paramref name="forJordan"/> to evict Jordan, then
-        /// <paramref name="forCasey"/> to evict Casey, cast by the roster's names in order, and the
-        /// Head of Household's tie-break for Jordan when <paramref name="tieBreak"/>.
+        /// <paramref name="forCasey"/> to evict Casey - no ballot carries its voter (UI-UX-PASS-PLAN
+        /// B0) - and the Head of Household's tie-break for Jordan when <paramref name="tieBreak"/>.
         /// </summary>
         private static VoteReveal.Ballot[] Ballots(int forJordan, int forCasey, bool tieBreak)
         {
             var ballots = new List<VoteReveal.Ballot>();
-            for (int i = 0; i < forJordan + forCasey; i++) ballots.Add(new VoteReveal.Ballot(Names[i], i < forJordan ? Jordan : Casey));
-            if (tieBreak) ballots.Add(new VoteReveal.Ballot(Hoh, Jordan, tieBreak: true));
+            for (int i = 0; i < forJordan + forCasey; i++) ballots.Add(new VoteReveal.Ballot(i < forJordan ? Jordan : Casey));
+            if (tieBreak) ballots.Add(new VoteReveal.Ballot(Jordan, tieBreak: true));
             return ballots.ToArray();
         }
 

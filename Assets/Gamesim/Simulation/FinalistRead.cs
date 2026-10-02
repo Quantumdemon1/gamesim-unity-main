@@ -259,9 +259,10 @@ namespace Gamesim.Simulation
         /// shared that the player knows of, however it ended (why an alliance ended is worked out
         /// from scores the player never sees, so it cannot be the player's evidence), a couple the
         /// player knows of, or a warm standing the player learned. Against: the finalist put them
-        /// on the block (the ledger's power rows, a veto save included), or a reveal proved the
-        /// finalist voted to evict them (a claim kept, or a lie exposed when the ballot went to the
-        /// other nominee), or a cold standing the player learned. Both, or neither: uncertain.
+        /// on the block (the ledger's power rows, a veto save included), or the finalist's ballot
+        /// against them is one the player knows (<see cref="KnownBallots"/>: proven by the count,
+        /// a claim kept, a lie caught, a line read in the open), or a cold standing the player
+        /// learned. Both, or neither: uncertain.
         /// </summary>
         public static JurorLean Lean(EpisodeState s, string jurorId, string finalistId)
         {
@@ -296,8 +297,8 @@ namespace Gamesim.Simulation
 
             if (s.ledger?.power != null && s.ledger.power.Any(p => p.hohId == finalistId && (p.nominees.Contains(jurorId) || p.replacementId == jurorId || p.savedId == jurorId)))
                 Against(Confirmed, "nominated them");
-            if (s.ledger?.claims != null && s.ledger.claims.Any(c => c.voterId == finalistId && VotedAgainst(s, c) == jurorId))
-                Against(Confirmed, "voted to evict them");
+            foreach (int week in KnownBallots.Weeks(s))
+                if (KnownBallots.Read(s, week).TargetOf(finalistId) == jurorId) { Against(Confirmed, "voted to evict them"); break; }
 
             string name = FirstName(s, jurorId);
             if (forCertainty != null && againstCertainty == null)
@@ -306,19 +307,6 @@ namespace Gamesim.Simulation
                 return new JurorLean { jurorId = jurorId, name = name, lean = Bitter, certainty = againstCertainty, reason = againstReason };
             return new JurorLean { jurorId = jurorId, name = name, lean = Uncertain, certainty = Unknown,
                 reason = forCertainty != null ? MixedSignals : "nothing to go on" };
-        }
-
-        /// <summary>
-        /// Who a claim's voter was proven at the reveal to have voted to evict: the claimed target
-        /// when the claim was kept; when it was a lie, the other nominee on that week's final block.
-        /// Null while the claim is open, or when the week's block is not on the record.
-        /// </summary>
-        private static string VotedAgainst(EpisodeState s, ClaimRow claim)
-        {
-            if (claim.status == ClaimStatus.Kept) return claim.targetId;
-            if (claim.status != ClaimStatus.Lied) return null;
-            var week = s.ledger?.power?.LastOrDefault(p => p.week == claim.week && p.nominees.Count == 2 && p.nominees.Contains(claim.targetId));
-            return week?.nominees.FirstOrDefault(n => n != claim.targetId);
         }
 
         private static Fact Count(string label, List<JurorLean> leans, EpisodeState s)
@@ -381,7 +369,9 @@ namespace Gamesim.Simulation
                 }
             var broken = s.deals.Where(d => d.status == DealStatus.Broken && Between(d.proposerId, d.recipientId, player, finalistId)).ToList();
             int deals = broken.Count(d => BrokeADealWithYou(s, d, finalistId));
-            bool block = broken.Any(d => d.type == DealKind.VoteTogether);
+            // A voting block that fell apart says the finalist voted the other way: said once the
+            // player knows their ballot (decision 4).
+            bool block = broken.Any(d => d.type == DealKind.VoteTogether && KnownBallots.DealOutcomeKnown(s, d));
             int promises = s.promises.Count(p => p.status == PromiseStatus.Broken && p.fromId == finalistId && p.toId == player);
             var parts = acts.OrderBy(a => a.week).Select(a => "Week " + a.week + ": " + a.text).ToList();
             if (deals > 0) parts.Add(deals == 1 ? "Broke a deal with you" : "Broke " + deals + " deals with you");
@@ -402,9 +392,10 @@ namespace Gamesim.Simulation
         /// on the first ceremony in its term where one of them, as Head of Household, put the other
         /// up. A veto deal broke on the first veto in its term that one of them held and left the
         /// other on the block. A vote deal broke at the vote on its target: the player knows their
-        /// own ballot, so a deal broken where they kept it was the other's. A Final 2 deal is
-        /// settled by the final Head of Household. A voting block is settled by both at once, so by
-        /// neither; anything else, by nobody the record names.
+        /// own ballot, so a deal their ballot broke was theirs; one their ballot kept was the other's,
+        /// which the player can say only once they know the other's ballot (<see cref="KnownBallots"/>,
+        /// decision 4). A Final 2 deal is settled by the final Head of Household. A voting block is
+        /// settled by both at once, so by neither; anything else, by nobody the record names.
         /// </summary>
         public static string DealBreaker(EpisodeState s, DealState deal)
         {
@@ -437,9 +428,9 @@ namespace Gamesim.Simulation
                     foreach (var p in term.Where(p => p.tally.Count > 0 && p.nominees.Contains(deal.targetId)))
                     {
                         var ballot = s.ledger.ballots.FirstOrDefault(b => b.week == p.week && b.voterId == player);
-                        if (ballot == null) return other;
-                        bool evicted = ballot.targetId == deal.targetId;
-                        return (deal.type == DealKind.VoteEvict ? evicted : !evicted) ? other : player;
+                        bool mine = ballot != null && (deal.type == DealKind.VoteEvict ? ballot.targetId != deal.targetId : ballot.targetId == deal.targetId);
+                        if (mine) return player;
+                        return KnownBallots.Knows(s, p.week, other) ? other : null;
                     }
                     return null;
                 case DealKind.FinalTwo:

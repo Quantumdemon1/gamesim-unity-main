@@ -120,7 +120,6 @@ namespace Gamesim.Tests.EditMode
             string first = leaving.name.Split(' ')[0];
             const string after = " They'll be waiting in the jury house.";
             const string neutral = " walks to the door without looking back.";
-            const string warm = " gives you one last look before walking out the door.";
             const string cold = " glares at you from the doorway.";
             const string dealt = " pauses at the door and turns to you…";
             leaving.status = ContestantStatus.Jury;
@@ -145,14 +144,22 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(Tone(), Is.EqualTo(EpisodeDirector.GoodbyeKind.Neutral));
             }
 
-            // The player's own ballot is.
+            // The player's own ballot is - and the evicted can know it only where the count proves
+            // it from their seat (UI-UX-PASS-PLAN B0): the reveal reads the count, not the ballots.
+            Assert.That(named.Count, Is.GreaterThanOrEqualTo(4), "A fourth houseguest to vote beside the player.");
+            state.evictionResolved = true;
             var ballot = new VoteState { voterId = state.playerId, targetId = leaving.id };
+            var theirs = new VoteState { voterId = named[3].id, targetId = other.id };
             state.votes.Add(ballot);
-            Assert.That(Line(), Is.EqualTo(first + cold + after), "Your vote to evict them is a glare,");
+            state.votes.Add(theirs);
+            Assert.That(Line(), Is.EqualTo(first + neutral + after), "A split count says nothing of your ballot to the one going.");
+            Assert.That(Tone(), Is.EqualTo(EpisodeDirector.GoodbyeKind.Neutral));
+            theirs.targetId = leaving.id;
+            Assert.That(Line(), Is.EqualTo(first + cold + after), "A unanimous vote against them proves yours, and it is a glare.");
             Assert.That(Tone(), Is.EqualTo(EpisodeDirector.GoodbyeKind.Cold));
-            ballot.targetId = other.id;
-            Assert.That(Line(), Is.EqualTo(first + warm + after), "and your vote to keep them a last look.");
-            Assert.That(Tone(), Is.EqualTo(EpisodeDirector.GoodbyeKind.Warm));
+            // There is no warm goodbye: a count that evicts them never proves the player's ballot to
+            // keep them from their seat (R1 may restore one on a told source).
+            Assert.That(System.Enum.GetNames(typeof(EpisodeDirector.GoodbyeKind)), Is.EquivalentTo(new[] { "Neutral", "Cold", "Dealt" }));
             state.votes.Clear();
             state.votes.Add(new VoteState { voterId = other.id, targetId = leaving.id });
             Assert.That(Line(), Is.EqualTo(first + neutral + after), "Somebody else's vote is not yours.");
@@ -226,23 +233,42 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The screen's roster (MOCKUP-PASS-PLAN M18) needs to know who cast each ballot and how they
-        /// look: every ballot carries its voter's id, name and a copy of their look, in the order cast.
+        /// No ballot carries its voter (UI-UX-PASS-PLAN B0): the card is handed whom each went
+        /// against and nothing else - no id, no name, no look - in an order drawn fresh each play,
+        /// never the cast's and never one the record could reproduce, with the deciding vote last.
         /// </summary>
         [Test]
-        public void EachBallotCarriesItsVoterForTheScreensRoster()
+        public void NoBallotCarriesItsVoterAndTheOrderIsNotTheCasts()
         {
-            var state = new EpisodeState { playerId = "p", hohId = "h" };
-            foreach (var id in new[] { "p", "h", "a", "b", "c" })
+            var state = new EpisodeState { playerId = "p", hohId = "h", seed = 1234u, week = 2 };
+            foreach (var id in new[] { "p", "h", "a", "b", "c", "d", "e" })
                 state.contestants.Add(new ContestantState { id = id, name = id.ToUpperInvariant(), status = ContestantStatus.Active });
-            state.votes.Add(new VoteState { voterId = "c", targetId = "a" });
-            state.votes.Add(new VoteState { voterId = "p", targetId = "b" });
+            state.votes.Add(new VoteState { voterId = "p", targetId = "a" });
+            state.votes.Add(new VoteState { voterId = "c", targetId = "b" });
+            state.votes.Add(new VoteState { voterId = "d", targetId = "a" });
+            state.votes.Add(new VoteState { voterId = "e", targetId = "b" });
+            state.votes.Add(new VoteState { voterId = "h", targetId = "a", reason = "HoH tie-break" });
             var ballots = EpisodeDirector.EvictionBallots(state);
-            Assert.That(ballots.Select(ballot => ballot.VoterId), Is.EqualTo(new[] { "c", "p" }), "Who cast each, in the order cast,");
-            Assert.That(ballots.Select(ballot => ballot.VoterName), Is.EqualTo(new[] { "C", "P" }), "by name,");
-            Assert.That(ballots.Select(ballot => ballot.Character.id), Is.EqualTo(new[] { "c", "p" }), "with their look for the face,");
-            Assert.That(ballots[0].Character, Is.Not.SameAs(state.Find("c")), "copied, as the nominees' are.");
-            Assert.That(ballots.Select(ballot => ballot.TargetId), Is.EqualTo(new[] { "a", "b" }));
+            Assert.That(typeof(VoteReveal.Ballot).GetFields().Select(field => field.Name), Is.EquivalentTo(new[] { "TargetId", "TieBreak" }),
+                "A ballot has no voter, no name and no look to hand to a card.");
+            Assert.That(ballots, Has.Count.EqualTo(5));
+            Assert.That(ballots.Take(4).Select(ballot => ballot.TargetId).OrderBy(id => id), Is.EqualTo(new[] { "a", "a", "b", "b" }), "Every house ballot's target,");
+            Assert.That(ballots.Take(4).Select(ballot => ballot.TieBreak), Is.All.False);
+            Assert.That((ballots[4].TargetId, ballots[4].TieBreak), Is.EqualTo(("a", true)), "and the deciding vote last.");
+
+            // The engine casts in the cast's order; the card is handed another, drawn fresh each play
+            // - an order hashed from the seed, the week and the voters, as the keys' is, would be
+            // recoverable by anybody who ran the hash against the climbing count - so across many
+            // plays the order leaves the cast's, and the plays are not all one order.
+            string castOrder = string.Join("", state.votes.Where(vote => vote.voterId != "h").Select(vote => vote.targetId));
+            var plays = Enumerable.Range(0, 40).Select(_ => string.Join("", EpisodeDirector.EvictionBallots(state).Take(4).Select(ballot => ballot.TargetId))).ToList();
+            Assert.That(plays, Has.Some.Not.EqualTo(castOrder), "Across forty plays the order leaves the cast's at least once,");
+            Assert.That(plays.Distinct().Count(), Is.GreaterThan(1), "and it is a draw, not a fixed order.");
+            var ids = new[] { "a", "b", "c", "d", "e" };
+            Assert.That(EpisodeDirector.VoteOrder(ids), Is.EquivalentTo(ids), "Everybody's ballot is on the board, once.");
+            Assert.That(Enumerable.Range(0, 40).Select(_ => string.Join("", EpisodeDirector.VoteOrder(ids))).Distinct().Count(), Is.GreaterThan(1));
+            Assert.That(EpisodeDirector.VoteOrder(null), Is.Empty);
+            Assert.That(EpisodeDirector.EvictionBallots(null), Is.Empty);
         }
 
         /// <summary>

@@ -487,20 +487,27 @@ namespace Gamesim.Tests.EditMode
                 evicteeId = other.id, tally = new List<int> { 1, 4 } });
             state.ledger.ballots.Add(new BallotRow { week = 3, voterId = state.playerId, targetId = juror.id });
             var exchange = Asked(juror, FinaleQuestions.Ownership, FinaleQuestions.BallotReceipt, "3");
-            Assert.That(FinaleQuestions.ReceiptLine(state, exchange), Is.EqualTo("Week 3 · you voted to evict " + juror.name + "."));
+            // The reveal reads the count, not the ballots (UI-UX-PASS-PLAN B0): a 4-1 count proves
+            // nothing of the player's lone vote against them, so the receipt names no ballot.
+            Assert.That(FinaleQuestions.ReceiptLine(state, exchange), Is.EqualTo("Week 3 · your ballot that week is yours alone; they cannot know how you voted."));
             Assert.That(FinaleQuestions.ReceiptWeek(state, exchange), Is.EqualTo(3));
-            Assert.That(FinaleQuestions.Kicker(state, exchange), Is.EqualTo("Week 3 · you voted to evict them"), "The juror asking is them.");
+            Assert.That(FinaleQuestions.Kicker(state, exchange), Is.EqualTo("Week 3 · a ballot they cannot know"));
             Assert.That(FinaleQuestions.ReceiptTally(state, exchange), Is.EqualTo("(4–1)"), "The evictee's votes first.");
             Assert.That(FinaleQuestions.ReceiptSaysWhoWent(state, exchange), Is.False, "They stayed: who went is the recap headline's to add.");
             Assert.That(FinaleQuestions.RecapAdds(state, exchange), Is.True);
-            // The week they went: the line already says who.
+            // The week they went, unanimously: the count proved every ballot, the player's among them,
+            // and the line already says who went.
             state.ledger.power[0].evicteeId = juror.id;
+            state.ledger.power[0].tally = new List<int> { 5, 0 };
+            Assert.That(FinaleQuestions.ReceiptLine(state, exchange), Is.EqualTo("Week 3 · you voted to evict " + juror.name + "."));
+            Assert.That(FinaleQuestions.Kicker(state, exchange), Is.EqualTo("Week 3 · you voted to evict them"), "The juror asking is them.");
             Assert.That(FinaleQuestions.ReceiptSaysWhoWent(state, exchange), Is.True);
             Assert.That(FinaleQuestions.RecapAdds(state, exchange), Is.False);
-            // A ballot that went against the house names somebody else.
+            // A ballot that went against the house is a lone one, which no count shows them.
             state.ledger.ballots[0].targetId = other.id;
+            state.ledger.power[0].tally = new List<int> { 4, 1 };
             exchange.category = FinaleQuestions.Mistake;
-            Assert.That(FinaleQuestions.Kicker(state, exchange), Is.EqualTo("Week 3 · you voted to evict " + other.name));
+            Assert.That(FinaleQuestions.Kicker(state, exchange), Is.EqualTo("Week 3 · a ballot they cannot know"));
             Assert.That(FinaleQuestions.ReceiptSaysWhoWent(state, exchange), Is.False);
             Assert.That(FinaleQuestions.RecapAdds(state, exchange), Is.True);
         }

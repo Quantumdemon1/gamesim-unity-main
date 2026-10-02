@@ -137,10 +137,28 @@ namespace Gamesim.Presentation
         private float elapsed;
         private bool playing, reduced;
 
+        /// <summary>
+        /// The frame the card was played in. Neither it nor the next is the card's own time, nor the
+        /// meeting's on a set's screen: the first update's delta can be the frame before the card was
+        /// played, and the next's is the frame it was played in - the commit, its save and the
+        /// house's render - before anybody had seen it. Counted, a long one spent the card's reading
+        /// time, its fade in first, before it was drawn (UI-UX-PASS-PLAN V0).
+        /// </summary>
+        private int playedFrame;
+
         /// <summary>Matches the HUD's accessibility preference so a large-text player gets a large card.</summary>
         public float FontScale { get; set; } = 1f;
 
         public bool IsPlaying => playing;
+
+        /// <summary>
+        /// Holds the card where it is: its clock stops, so nothing fades, turns a page or ends, and no
+        /// press moves it on, while the click guard stays up. A hold taken as a page turns - by a
+        /// handler of that page's beat - stops the meeting on that page. For a frame taken of one
+        /// moment, which the card's unscaled clock would otherwise walk past between the moment and the
+        /// capture, as <see cref="VoteReveal.Held"/> holds the count. Cleared by the next play.
+        /// </summary>
+        public bool Held { get; set; }
 
         /// <summary>Creates the takeover as a root object in <paramref name="owner"/>'s scene.</summary>
         public static CeremonyTakeover Attach(GameObject owner)
@@ -296,6 +314,8 @@ namespace Gamesim.Presentation
             Build();
             reduced = reducedMotion;
             elapsed = 0f;
+            playedFrame = Time.frameCount;
+            Held = false;
             playing = true;
 
             var tint = Tint(kind);
@@ -358,6 +378,9 @@ namespace Gamesim.Presentation
         {
             if (!playing) return;
             CeremonyOverlays.Showing();
+            if (Held) return;
+            // Nothing from before its first frame on screen is the card's time (playedFrame).
+            if (Time.frameCount - playedFrame <= 1) return;
             elapsed += Time.unscaledDeltaTime;
             // The meeting on the set's screen keeps its own pages; the HUD's card below is as it was.
             if (meeting != null) { TickMeeting(); return; }
@@ -718,6 +741,8 @@ namespace Gamesim.Presentation
             elapsed = 0f;
             upFor = 0f;
             page = MeetingPage.Intro;
+            playedFrame = Time.frameCount;
+            Held = false;
             playing = true;
             meetingWeek.text = "WEEK " + Mathf.Max(1, script.Meeting.week);
             ShowPage(MeetingPage.Intro);
@@ -789,6 +814,7 @@ namespace Gamesim.Presentation
         private void Turn(MeetingPage to, bool skipped)
         {
             var read = meeting.Meeting;
+            bool heldBefore = Held;
             while (page < to)
             {
                 page++;
@@ -799,6 +825,9 @@ namespace Gamesim.Presentation
                     BeatReached?.Invoke(new CeremonyBeat(CeremonyBeatKind.ReplacementNamed, -1, read.replacementId, skipped));
                 // A handler that took the card down has the screen now.
                 if (!playing || meeting == null) return;
+                // A handler that held the card keeps it on the page its beat turned to (Held), however
+                // far the clock or a skip was taking it.
+                if (Held && !heldBefore) break;
             }
             ShowPage(page);
         }

@@ -100,11 +100,28 @@ namespace Gamesim.Presentation
         private bool playing, reduced;
         private string playingKind;
 
+        /// <summary>
+        /// The frame the strip was played in. Neither it nor the next is the strip's own time: the
+        /// first update's delta is the frame before the strip was played, the second's the frame it
+        /// was played in - the commit, its save and the house's render - before anybody had seen it.
+        /// Counted, a long one of either spent the strip's reading time before it was drawn: after a
+        /// frame of 2.6 seconds - a house of real bodies assembling after a load has them - the strip
+        /// was over at its first update (UI-UX-PASS-PLAN V0).
+        /// </summary>
+        private int playedFrame;
+
         /// <summary>Matches the HUD's accessibility preference so a large-text player gets a large card.</summary>
         public float FontScale { get; set; } = 1f;
 
         /// <summary>Whether the card is still on its own timer, as every sibling card reports.</summary>
         public bool IsPlaying => playing;
+
+        /// <summary>
+        /// Holds the strip where it is: its clock stops, so it neither fades nor ends. For a frame taken
+        /// of the strip beside the card it reports, held as the card is
+        /// (<see cref="CeremonyTakeover.Held"/>). Cleared by the next play.
+        /// </summary>
+        public bool Held { get; set; }
 
         /// <summary>
         /// The kind on screen, or null when no card is playing: what the director asks to keep the
@@ -148,6 +165,8 @@ namespace Gamesim.Presentation
             Build();
             reduced = reducedMotion;
             elapsed = 0f;
+            playedFrame = Time.frameCount;
+            Held = false;
             playing = true;
             playingKind = kind;
 
@@ -427,7 +446,9 @@ namespace Gamesim.Presentation
 
         private void LateUpdate()
         {
-            if (!playing || card == null) return;
+            if (!playing || card == null || Held) return;
+            // Nothing from before its first frame on screen is the strip's time (playedFrame).
+            if (Time.frameCount - playedFrame <= 1) return;
             elapsed += Time.unscaledDeltaTime;
 
             if (reduced)

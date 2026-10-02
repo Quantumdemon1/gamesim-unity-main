@@ -60,6 +60,7 @@
     <Compile Include="$(EditMode)NpcAgencyHarnessTests.cs" />
     <Compile Include="$(EditMode)HouseguestNotesTests.cs" />
     <Compile Include="$(EditMode)CommitmentsReadTests.cs" />
+    <Compile Include="$(EditMode)CommitmentRulesTests.cs" />
     <Compile Include="$(EditMode)CampaignBriefTests.cs" />
     <Compile Include="$(EditMode)WaitingOnYouTests.cs" />
     <Compile Include="$(EditMode)FinalistReadTests.cs" />

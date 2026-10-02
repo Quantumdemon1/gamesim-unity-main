@@ -295,19 +295,29 @@ namespace Gamesim.Simulation
         private static string CooledSince(EpisodeState s, string jurorId, int week)
         {
             string player = s.playerId;
+            // Under the commitment rules (C0) the record holds the week a promise or a deal broke, and a
+            // deal cools them only when the player broke it: one they broke is not the player's to
+            // answer for (X3). Before them, the guesses below and any deal between the two of them.
+            bool rules = EpisodeEngine.CommitmentRulesOn(s);
             bool Later(PromiseState p) =>
-                p.kind == PromiseKind.FinalTwo
-                // Safety and alliance loyalty break at a nomination, no later than the promise's end.
-                || ((p.kind == PromiseKind.Safety || p.kind == PromiseKind.AllianceLoyalty) && p.expiresWeek > week)
-                || p.week > week;
+                rules && p.settledWeek > 0 ? p.settledWeek > week
+                : (p.kind == PromiseKind.FinalTwo
+                   // Safety and alliance loyalty break at a nomination, no later than the promise's end.
+                   || ((p.kind == PromiseKind.Safety || p.kind == PromiseKind.AllianceLoyalty) && p.expiresWeek > week)
+                   || p.week > week);
+            bool Between(DealState d) => (d.proposerId == player && d.recipientId == jurorId) || (d.proposerId == jurorId && d.recipientId == player);
             if (s.promises.Any(p => p.fromId == player && p.toId == jurorId && p.status == PromiseStatus.Broken && Later(p)))
                 return "you broke a promise to them since";
             if (s.ledger?.replies != null && s.ledger.replies.Any(r => r.kind == ReplyCards.Plea && r.fromId == jurorId && r.replyKey == "refuse" && r.week > week))
                 return "you refused their plea since";
             if (s.ledger?.ballots != null && s.ledger.ballots.Any(b => b.voterId == player && b.targetId == jurorId && b.week > week && CouldKnowYourBallot(s, b.week, jurorId)))
                 return "you voted to evict them since";
-            if (s.deals.Any(d => d.status == DealStatus.Broken && (d.week > week || d.type == DealKind.FinalTwo)
-                && ((d.proposerId == player && d.recipientId == jurorId) || (d.proposerId == jurorId && d.recipientId == player))))
+            if (rules)
+            {
+                if (s.deals.Any(d => Between(d) && Breaches.Broke(s, d, player) && Breaches.BrokeAfter(d, week)))
+                    return "you broke a deal with them since";
+            }
+            else if (s.deals.Any(d => d.status == DealStatus.Broken && (d.week > week || d.type == DealKind.FinalTwo) && Between(d)))
                 return "a deal between you broke since";
             return null;
         }

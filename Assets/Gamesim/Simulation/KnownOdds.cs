@@ -125,9 +125,9 @@ namespace Gamesim.Simulation
             else if (type == DealKind.FinalTwo || type == DealKind.VetoUse || type == DealKind.AllianceInvite) chance -= 10;
 
             // The ledger's trust is the houseguest's own record of the player: left out, as neutral.
-            // Deals the player has broken are the player's own record, and count as the roll counts them.
-            chance -= PlayerDeals.BrokenDealPenalty * s.deals.Count(d => d.status == DealStatus.Broken
-                && (d.proposerId == s.playerId || d.recipientId == s.playerId));
+            // Deals the player has broken are the player's own record, and count as the roll counts them
+            // - under the commitment rules only the ones they broke, which are their own acts (C0, X3).
+            chance -= PlayerDeals.BrokenDealPenalty * NpcDeals.BrokenDeals(s, s.playerId);
 
             bool allied = KnownPact(s, npcId, s.playerId);
             if (allied)

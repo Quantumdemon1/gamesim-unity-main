@@ -576,3 +576,29 @@ W4 and W5 both add a notebook page, which is an expected adjacent-line merge.
 **Found on the way, for wave B and C:** X10's ceiling counts NPC-to-NPC deals; the Keep plea's `Allied` has no `a != b` guard; overheard standings are one-way; `PlayerDeals.Reasoning` answers from the hidden view (C4); the story's Spread grants knowledge of every pact containing the pair (C8, B4); the engine still accepts 'Promise to evict X' made to X, which R0 should refuse behind the boundary; move-in night's spending is cleared as its window closes, so the week's extras come back whole in week 1 even when spent that night (decision 2's two seats); the houseguest screen's own 'Back to free time' and the Pull's scene card are outside the press guard; the conversation's fit test takes over two minutes and should be split.
 
 **Floors:** the Unity-free subset 1161 to 1254; EditMode 2033 to the count in Tools/baseline.txt at the floors commit; PlayMode 744 to 772.
+
+**R0 and C0, the boundary and who broke it, built 2026-10-02** in their own worktree from `claude/nearby-render-gap` at 7991687. Schema 22, claimed now (decision 1); the story session is told by the lead.
+- **The boundary.** `commitmentRulesStartWeek` (`EpisodeEngine.EnableCommitments`, `CommitmentRulesOn`). The director starts every season under it from week one and the importer from the week after the import; the V21-to-V22 migration writes 0, so a season saved before it plays without it to its end, as with the finale rules; every season a test builds directly is off.
+  - Every outcome change below checks it, so a season without it draws the same rolls, mints the same sequence numbers and logs the same lines.
+  - Evidence: 54 seeded seasons played by a busy scripted player (studies, whispers, call-outs, promises, deals, offers answered, reads; the director's, the legacy and the strategy harness's rule sets; houses of 6, 8 and 12) digest byte for byte the same before and after, the state and every reader this slice touches at every phase change. With the rules on, 50 of the 54 move.
+- **R0 behind it.**
+  - X1: a study is one of the window's actions. The audited walk's study opt-in buys the actions move-in night lacks through the board's 'Buy an action at the whole house's expense' before its five confirmations, and checks each confirmation spends one (PortVerification.Study).
+  - X6: a pact-mate's hunt told to the player is the log line, and the player's view of the threat does not move.
+  - X7: 'Whisper about X' reaches the person the player is talking to. The conversation names them as the command's second target, which a season without the rules ignores, drawing as before; under the rules a whisper naming nobody is refused.
+  - X8: a houseguest's rumour to the player says what was said ("Alex told you Maya is the biggest threat in this house."), the player remembers who said it, and only the player's own view of its subject moves, one way, by the rumour's weight, with no roll.
+  - From the found-on-the-way list below: a promise to evict X made to X is refused.
+- **C0.**
+  - `brokenById` and `settledWeek` on deals and promises, written by every settlement under the rules. A voting bloc names nobody: both walked away from it.
+  - `Breaches` reads them for every X3 reader: the record where it names somebody; nobody for a bloc; for a deal settled before the record, `FinalistRead.DealBreaker`'s rule; for a promise, its maker.
+  - Under the rules a breach counts against whoever broke it in NPC warmth (`NpcDeals.Adjusted`), acceptance and the 'I've heard you've broken deals' line (`PlayerDeals`), the odds shown (`KnownOdds`), threat (broken promises, and trust through a ledger now written one way), the jury (`WebJuryVoting.Obligations`), Game Sense (a deal the other side broke is a note worth nothing), the jury read (only the player's own breach cools a juror, dated by the record) and `StoryOdds`.
+  - X11: a broken deal is held by the one wronged, permanently; the one who broke it keeps a record weighing nothing, so their own week still says it. A betrayal heard is held one way. A promise's outcome is recorded, kept or broken, permanently.
+- **The migration** goes through `FrozenEpisodeV21` and writes literals: 0 for the boundary, null and 0 on every deal and promise.
+
+**Where the build departs from the plan:**
+- **C0's migration** writes nothing it would have to guess (the lead's ruling): readers fall back as above. For a promise the inference would be pure, its maker, and `Breaches` reads it so; for a deal it is not, since an NPC pair's vote deal is settled by ballots no save keeps.
+- **X8's 'standing in the player's notes'** is the player's own view of the subject, the standing word on the cards and the web, with a memory the notes page reads.
+- **The walk** buys move-in night's missing actions rather than spreading five studies over the season, so every later study check still reads preparation 5.
+
+**Found on the way, for wave B and C:** the eviction vote's deal term and the strategy windows' nomination reluctance still read a broken deal between the two either way (the vote's is parity-pinned, and both are arguably a breaker's reason too); a rumour or a hunt about the player still moves the player's view of the listener through the engine's two-way path; the weekly recap's movements sum the player's record without the ballot gate; the editor's v5 QA save (`LegacySaveFixtures`) has not stripped the schema 14 and later fields since schema 14; the Your word page and the notes could read the record for the player's own breaches.
+
+**Floors:** the Unity-free subset 1328 to 1346 (`CommitmentRulesTests`, 18); EditMode adds those 18 and `PersistenceV22MigrationTests`' 6; PlayMode adds 1.

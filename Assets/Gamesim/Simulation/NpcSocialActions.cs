@@ -280,8 +280,13 @@ namespace Gamesim.Simulation
                     if (threat == null || threat.status != ContestantStatus.Active || threat.id == partner.id) return false;
                     Act(state, npc.id, partner.id, EpisodeEngine.TalkWarmth(state, npc.id, partner.id),
                         npc.name + " and " + Named(state, partner) + " talked about " + Named(state, threat), "talk");
-                    Act(state, partner.id, threat.id, EpisodeEngine.HuntImpact,
-                        "What " + Named(state, partner) + " heard from " + npc.name + " about " + Named(state, threat), "rumor");
+                    // Under the commitment rules (R0, X6) the player's view of the threat is the player's
+                    // own: told the threat has to go, they read it in the log and their view of the
+                    // threat does not move. Before them it took the hunt's weight, which could end a pact
+                    // of theirs with the threat without a word.
+                    if (!partner.isPlayer || !EpisodeEngine.CommitmentRulesOn(state))
+                        Act(state, partner.id, threat.id, EpisodeEngine.HuntImpact,
+                            "What " + Named(state, partner) + " heard from " + npc.name + " about " + Named(state, threat), "rumor");
                     if (partner.isPlayer)
                         EpisodeEngine.Log(state, "information", npc.name + " told you " + threat.name + " has to go.", state.playerId);
                     // Talk about the player reaches them as a rumour does: the reference's roll, from the strategy windows.
@@ -365,11 +370,19 @@ namespace Gamesim.Simulation
             if (subjectId == null) return false;
 
             var subject = state.Find(subjectId);
-            Act(state, listener.id, subjectId, RumorImpact,
-                "Something " + Named(state, listener) + " heard about " + Named(state, subject), "rumor");
-            if (listener.isPlayer)
-                EpisodeEngine.Log(state, "information",
-                    npc.name + " told you something about " + subject.name + ".", state.playerId);
+            // Under the commitment rules (R0, X8) a rumour told to the player says what was said, and
+            // moves only the player's own view of its subject: the subject heard nothing. Before them
+            // it moved both views through the engine's two-way path, and said only that it was said.
+            if (listener.isPlayer && EpisodeEngine.CommitmentRulesOn(state))
+                EpisodeEngine.HeardFrom(state, npc.id, subjectId, RumorImpact, subject.name + " is the biggest threat in this house");
+            else
+            {
+                Act(state, listener.id, subjectId, RumorImpact,
+                    "Something " + Named(state, listener) + " heard about " + Named(state, subject), "rumor");
+                if (listener.isPlayer)
+                    EpisodeEngine.Log(state, "information",
+                        npc.name + " told you something about " + subject.name + ".", state.playerId);
+            }
             // A rumour about the player reaches them three times in ten, from the strategy windows -
             // the reference's roll, drawn only when it could matter, so an older season spends nothing.
             if (subject.isPlayer && StrategyRules.Apply(state) && EpisodeEngine.Roll(state) < ReplyCards.GossipDiscoveryChance)

@@ -172,7 +172,13 @@ namespace Gamesim.Simulation
                         if (chance.response == OpportunityResponse.Ignored) Add(notes, Strategy, -2, when + "a vote to read, and you asked nobody.", "opportunity", chance.id, chance.week, known: true);
                         break;
                     case OpportunityKinds.Deal:
+                        // Under the commitment rules (C0, X3) a deal the other side broke is not the
+                        // player's to answer for: on the record, and it costs them nothing.
+                        var brokenAgainst = chance.outcome == OpportunityOutcome.Lost && EpisodeEngine.CommitmentRulesOn(s)
+                            ? s.deals.FirstOrDefault(d => d.id == chance.id && d.status == DealStatus.Broken && !Breaches.Broke(s, d, s.playerId)) : null;
                         if (chance.outcome == OpportunityOutcome.Won) Add(notes, Strategy, 4, when + "a deal kept (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);
+                        else if (brokenAgainst != null) Add(notes, Strategy, 0, when + "a deal broken against you (" + Source(chance) + ").", "opportunity", chance.id, chance.week,
+                            known: KnownBallots.DealOutcomeKnown(s, brokenAgainst));
                         else if (chance.outcome == OpportunityOutcome.Lost) Add(notes, Strategy, -5, when + "a deal broken (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);
                         else if (chance.response == OpportunityResponse.Expired) Add(notes, Strategy, -1, when + "an offer left on the table (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);
                         else if (chance.response == OpportunityResponse.Taken) Add(notes, Strategy, 1, when + "a deal made (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);

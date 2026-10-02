@@ -412,18 +412,20 @@ namespace Gamesim.Episode
         /// Where study preparation counts, as the season's competition rules have it. From rules 3
         /// the engine adds it on every player entry route (EpisodeEngine.CommonCompetitionBonus):
         /// the weekly competitions however they are played, and all three parts of the final Head
-        /// of Household. Before rules 3 only the weekly simulated option read it.
+        /// of Household. Before rules 3 only the weekly simulated option read it - said in the
+        /// player's words, as the button that chooses it is: "the weekly simulated HoH/Veto option"
+        /// was the engine's (UI-UX-PASS-PLAN D0, the play sweep's row 37).
         /// </summary>
         public static string StudyUse(EpisodeState state) =>
             state != null && state.competitionRulesVersion >= 3
                 ? "used in every competition you enter, however you play it, the final HoH's three parts included"
-                : "used only by the weekly simulated HoH/Veto option, not precision play or final HoH";
+                : "used only when you choose to simulate a weekly HoH or veto competition, not when you play one yourself or in the final HoH";
 
         /// <summary>The same, in the record row's few words.</summary>
         public static string StudyUseShort(EpisodeState state) =>
             state != null && state.competitionRulesVersion >= 3
                 ? "Used in every competition you enter."
-                : "Used only by the weekly simulated HoH/Veto option.";
+                : "Used only when you simulate a weekly competition.";
 
         private void RenderDiaryRecordTab(EpisodeState state, bool choice)
         {
@@ -765,7 +767,7 @@ namespace Gamesim.Episode
                     {
                         string saved = nominee;
                         if (state.hohId == state.playerId) VetoReplacements(state, saved, privateRoom);
-                        else hud.PairedActionFor(null, saved, "Save " + state.Find(saved).name + " (HoH chooses replacement)", () =>
+                        else hud.PairedActionFor(null, saved, VetoSaveCaption(state, saved), () =>
                             OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.ResolveVeto,
                                 "Use the veto to save " + state.Find(saved).name + ". The HoH chooses the replacement.", saved, useVeto: true));
                     }

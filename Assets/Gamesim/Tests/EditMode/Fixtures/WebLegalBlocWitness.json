@@ -700,21 +700,21 @@
       {
         "ownerId": "player",
         "subjectId": "jamie-roberts",
-        "text": "Nominated me in week 1.",
+        "text": "Jamie Roberts nominated me in week 1.",
         "week": 1,
         "isPrivate": false
       },
       {
         "ownerId": "taylor-kim",
         "subjectId": "jamie-roberts",
-        "text": "Nominated me in week 1.",
+        "text": "Jamie Roberts nominated me in week 1.",
         "week": 1,
         "isPrivate": false
       },
       {
         "ownerId": "casey-wilson",
         "subjectId": "jamie-roberts",
-        "text": "Nominated me in week 1.",
+        "text": "Jamie Roberts nominated me in week 1.",
         "week": 1,
         "isPrivate": false
       }
@@ -779,7 +779,7 @@
         "week": 1,
         "phase": 0,
         "kind": "conversation",
-        "text": "Maya Hassan: Build a dependable voting partnership without making promises she cannot keep.",
+        "text": "You and Maya Hassan talked about the game.",
         "audienceIds": [
           "player",
           "maya-hassan"
@@ -790,7 +790,7 @@
         "week": 1,
         "phase": 0,
         "kind": "conversation",
-        "text": "Maya Hassan: Build a dependable voting partnership without making promises she cannot keep.",
+        "text": "You and Maya Hassan talked about the game.",
         "audienceIds": [
           "player",
           "maya-hassan"
@@ -801,7 +801,7 @@
         "week": 1,
         "phase": 0,
         "kind": "conversation",
-        "text": "Maya Hassan: Build a dependable voting partnership without making promises she cannot keep.",
+        "text": "You and Maya Hassan talked about the game.",
         "audienceIds": [
           "player",
           "maya-hassan"

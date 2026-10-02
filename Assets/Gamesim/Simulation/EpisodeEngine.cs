@@ -765,7 +765,11 @@ namespace Gamesim.Simulation
                 MoodStep(guest, -2);
                 guest.stressLevel = stress[Math.Min(4, Array.IndexOf(stress, guest.stressLevel) + 2)];
             }
-            Remember(s, id, s.hohId, "Nominated me in week " + s.week + ".", false);
+            // Named: the diary's chair shows the player's latest memory as its caption, and
+            // "Nominated me in week 2." had no subject there (UI-UX-PASS-PLAN D0). The player's
+            // contestant is named "You", so a houseguest the player nominated remembers "You
+            // nominated me".
+            Remember(s, id, s.hohId, Name(s, s.hohId) + " nominated me in week " + s.week + ".", false);
             foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.fromId == s.hohId &&
                 ((p.kind == PromiseKind.Safety && p.toId == id) || (p.kind == PromiseKind.AllianceLoyalty && s.Allied(p.fromId, id)))).ToArray())
                 SettlePromise(s, promise, PromiseStatus.Broken);
@@ -1044,7 +1048,12 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.Talk:
                     Change(s, s.playerId, target.id, 4);
                     Remember(s, target.id, s.playerId, "We spent time talking in week " + s.week + ".", true);
-                    Log(s, "conversation", target.name + ": " + target.motive, s.playerId, target.id); break;
+                    // The line says what happened. It used to be the houseguest's cast-template
+                    // motive, verbatim - their goal, a lore facet the player is meant to learn
+                    // (Lore.Facets.Goal, through game talk at rapport 3 or a story's reveal) - so
+                    // one plain conversation printed it to Recent events, the toast and the recap
+                    // (UI-UX-PASS-PLAN decision 19). The goal appears only once the facet is learned.
+                    Log(s, "conversation", "You and " + target.name + " talked about the game.", s.playerId, target.id); break;
                 case EpisodeCommandKind.FormAlliance:
                     // The body moved to FormAllianceWith so a story can form one with a keyed roll;
                     // this path passes the season's own stream, exactly as it always drew.

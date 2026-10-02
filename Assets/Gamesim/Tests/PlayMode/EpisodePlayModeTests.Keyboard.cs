@@ -304,7 +304,7 @@ namespace Gamesim.Tests.PlayMode
                 bool use = replacement != null && !EpisodeEngine.VetoIsLockedAtFinalFour(state);
                 if (!use) yield return "Do not use the veto";
                 else if (state.hohId == state.playerId) yield return replacement.name;
-                else yield return "Save " + state.Find(state.nominees[0]).name + " (HoH chooses replacement)";
+                else yield return EpisodeDirector.VetoSaveCaption(state, state.nominees[0]);
                 yield break;
             }
             if (state.phase == EpisodePhase.Eviction && state.evictionStage == EvictionStage.Speeches

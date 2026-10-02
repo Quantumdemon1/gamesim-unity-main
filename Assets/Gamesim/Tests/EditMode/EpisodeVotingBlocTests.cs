@@ -85,6 +85,14 @@ namespace Gamesim.Tests.EditMode
         /// difference between "saves You" and "save yourself". No score, vote, relationship or
         /// ordering moved, because only the human-readable sentence was wrong.</para>
         ///
+        /// <para><b>And once more on 2026-10-01</b> (UI-UX-PASS-PLAN D0), six strings and nothing
+        /// else: the three Talk lines (events[1..3]) said Maya's cast-template motive verbatim -
+        /// her goal, a lore facet the player is meant to learn - and now say what happened, "You
+        /// and Maya Hassan talked about the game."; the three nomination memories read "Nominated
+        /// me in week 1." and now name the Head of Household, "Jamie Roberts nominated me in week
+        /// 1.". No command, roll, score, vote or ordering moved: the engine's <c>Log</c> and
+        /// <c>Remember</c> changed only their words.</para>
+        ///
         /// <para>If this test fails again, that is the whole point of it. Re-record only when the
         /// change to committed output is intended, and say here what moved and why.</para>
         /// </summary>

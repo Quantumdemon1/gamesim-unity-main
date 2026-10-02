@@ -664,6 +664,59 @@ namespace Gamesim.Tests.EditMode
             Assert.That(term.value, Is.GreaterThan(0), "on keeping the player.");
         }
 
+        /// <summary>
+        /// The price a nominee's veto ask carries is part of the bargain the player accepted, as a counter's
+        /// price is: struck by the same yes, its payer breaking it weighs one step heavier (decision 15), on
+        /// the player's record of them, through the settlement itself. The same price struck any other way -
+        /// named by the player, holding the veto - is the player's own ask, and weighs its own. And the rule
+        /// is the offer's, whatever the offer: a price on any offer put to the player and accepted is as heavy.
+        /// </summary>
+        [Test]
+        public void AnAcceptedAsksPriceBrokenByItsPayerWeighsOneStepHeavier()
+        {
+            var s = VetoMeeting(112, playerHolds: true);
+            var ask = Ask(s, s.nominees[0]);
+            var accepted = Apply(new EpisodeEngine(s), EpisodeCommandKind.RespondToDeal, ask.id, null, AcceptAnswer).state;
+            var price = accepted.deals.Single(IsPrice);
+            Assert.That((price.type, price.proposerId, price.recipientId), Is.EqualTo((DealKind.VoteSave, ask.proposerId, accepted.playerId)),
+                "The ask's price: their vote to keep the player, theirs to pay.");
+            double own = DealTrust.Weight(price.trustImpact), heavier = DealTrust.Weight(DealTrust.Heavier(price.trustImpact));
+            Assert.That(heavier, Is.GreaterThan(own), "A vote save has a heavier step to take.");
+            Assert.That(DealResolution.AcceptedOffer(accepted, price), Is.True, "Struck by the yes, the price is part of the offer the player accepted,");
+            Assert.That(DealResolution.BreachWeight(accepted, price), Is.EqualTo(heavier), "so broken it weighs one step heavier,");
+            Settle(accepted, price.id, DealStatus.Broken, ask.proposerId);
+            Assert.That(BrokenEntry(accepted, ask.proposerId).impactScore, Is.EqualTo(DealResolution.BrokenBase * heavier).Within(1e-9),
+                "and is held so on the player's record of the one who broke it.");
+
+            var named = VetoMeeting(112, playerHolds: true);
+            var nominee = Plain(named.Find(named.nominees[0]));
+            named.randomState = Draw(named, true, MoveChance(named, nominee.id, VetoMove, false));
+            var struck = Apply(new EpisodeEngine(named), NegotiateKind, nominee.id, null, VetoPriceOf(DealKind.VoteSave)).state;
+            var same = struck.deals.Single(IsPrice);
+            Assert.That((same.type, same.proposerId, same.recipientId, same.trustImpact), Is.EqualTo((price.type, price.proposerId, price.recipientId, price.trustImpact)),
+                "The same price, named by the player for the veto,");
+            Assert.That(DealResolution.AcceptedOffer(struck, same), Is.False, "is no offer of theirs the player accepted,");
+            Settle(struck, same.id, DealStatus.Broken, nominee.id);
+            Assert.That(BrokenEntry(struck, nominee.id).impactScore, Is.EqualTo(DealResolution.BrokenBase * own).Within(1e-9), "and broken weighs its own.");
+
+            var offered = Rules(Season(112));
+            var from = Npcs(offered)[0];
+            string offer = NpcDeals.OfferPrefix + "7";
+            offered.deals.Add(SetLink(new DealState
+            {
+                id = offer, type = DealKind.Partnership, proposerId = from.id, recipientId = offered.playerId, status = DealStatus.Active,
+                week = offered.week, expiresWeek = 0, trustImpact = DealKind.DefaultTrust(DealKind.Partnership),
+            }, PricePrefix + "7"));
+            offered.deals.Add(SetLink(new DealState
+            {
+                id = PricePrefix + "7", type = DealKind.SafetyAgreement, proposerId = from.id, recipientId = offered.playerId, status = DealStatus.Active,
+                week = offered.week, expiresWeek = offered.week, trustImpact = DealKind.DefaultTrust(DealKind.SafetyAgreement),
+            }, offer));
+            Valid(offered);
+            Assert.That(DealResolution.AcceptedOffer(offered, offered.deals.Single(IsPrice)), Is.True,
+                "A price on any offer put to the player and accepted is part of it.");
+        }
+
         // ------------------------------------------------------------ calling in a promise
 
         /// <summary>
@@ -1286,6 +1339,10 @@ namespace Gamesim.Tests.EditMode
                 });
             Valid(s);
         }
+
+        /// <summary>The breach the player holds against this houseguest last, as the settlement records it under the rules.</summary>
+        private static RelationshipEventState BrokenEntry(EpisodeState s, string breakerId) =>
+            s.relationships.Single(r => r.fromId == s.playerId && r.toId == breakerId).events.Last(e => e.type == "deal_broken");
 
         /// <summary>The settlement itself (EpisodeEngine.SettleDeals, which only commands reach): one deal, how it ended, and whose doing that was.</summary>
         private static void Settle(EpisodeState s, string dealId, string status, string actorId)

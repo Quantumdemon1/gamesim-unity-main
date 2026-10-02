@@ -109,7 +109,9 @@ namespace Gamesim.Simulation
         /// the player's word (<see cref="Negotiation.AskPrice"/>), a real deal from them to the player,
         /// standing at once, the ask and the price naming each other. Owed while the veto commitment
         /// stands; void if the player breaks it (<see cref="VoidThePrice"/>). A chance taken (C1), so a
-        /// price voided is never an offer left on the table. Nothing for an ask that carries no price.
+        /// price voided is never an offer left on the table; and part of the bargain the player's yes
+        /// accepted, so its payer breaking it weighs one step heavier, as the ask itself does (decision
+        /// 15, <see cref="DealResolution.AcceptedOffer"/>). Nothing for an ask that carries no price.
         /// </summary>
         private static void StrikeTheAskPrice(EpisodeState s, DealState ask)
         {

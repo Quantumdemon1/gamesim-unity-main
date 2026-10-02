@@ -31,7 +31,10 @@ namespace Gamesim.Simulation
     /// broken by the one it was owed to - the veto they did not use, the pact they broke - in front of
     /// the house, it is void (the engine marks it expired, which breaks nothing, as the end of a deal's
     /// week breaks nothing); kept, it stands, and is judged by its own rule. A ballot's breach voids
-    /// nothing, because the price's line would tell the ballot.</para>
+    /// nothing, because the price's line would tell the ballot. The price an offer to the player carried
+    /// is part of the bargain their yes accepted, as a counter's is, so its breach weighs one step
+    /// heavier (decision 15, <c>DealResolution.AcceptedOffer</c>); the price the player names for the
+    /// veto is their own ask, and weighs its own.</para>
     ///
     /// <para>Pure and read-only: it neither mutates the state nor draws from its generator.</para>
     /// </summary>

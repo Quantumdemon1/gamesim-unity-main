@@ -13,13 +13,16 @@ namespace Gamesim.Simulation
     /// player is shown that chance as <see cref="KnownOdds.Alliance"/> works it out from what they
     /// know (V6). A houseguest who holds forty or more against the player says no whatever the roll
     /// (the web's grudge line for a pact, as <see cref="NpcAlliances.WouldPropose"/> draws it); the
-    /// roll is drawn all the same, so every proposal draws exactly one. Either answer spends the
-    /// action, and a no is worded from what the player knows (<see cref="PlayerDeals.Reasoning"/>).
+    /// roll is drawn all the same, so every proposal draws exactly one. The one such grudge the
+    /// player can know of - the one their own walk-out from a pact with them left - the shown chance
+    /// takes too. Either answer spends the action, and a no is worded from what the player knows
+    /// (<see cref="PlayerDeals.Reasoning"/>) and logged as its own kind (<see cref="AllianceRefusedKind"/>).
     /// The deal table's alliance invitation asks the same question with the same grudge.</para>
     ///
     /// <para><b>Three at once.</b> The player holds at most <see cref="PlayerPactCap"/> pacts
     /// (decision 10). A fourth is refused before anybody is asked - by the proposal, the deal table's
-    /// invitation, the yes to an invitation put to the player, and a story's pact alike. The player's
+    /// invitation, the yes to an invitation put to the player, and a story's pact alike - and nobody
+    /// puts an invitation to a player who holds three (<see cref="NpcDeals.Offer"/>). The player's
     /// own pacts are theirs to know, so that refusal spends nothing.</para>
     ///
     /// <para><b>A pact is on the record.</b> Every pact the player comes into writes the ledger's
@@ -38,6 +41,14 @@ namespace Gamesim.Simulation
         /// <summary>A grudge this heavy refuses a pact: the web's line, the one <see cref="NpcAlliances.WouldPropose"/> draws.</summary>
         public const double AllianceGrudgeLine = 40;
 
+        /// <summary>
+        /// What walking out of a pact leaves every other member holding against whoever walked: the
+        /// web's alliance-betrayed eighty (<c>StoryAllianceLeft</c>), fading by
+        /// <see cref="Grudges.DecayPerWeek"/> a week. The one grudge the player can reckon for
+        /// themselves, since their own act wrote it (<see cref="KnownOdds.KnownWalkOut"/>).
+        /// </summary>
+        public const double AllianceLeftGrudge = 80;
+
         /// <summary>What forming a pact is worth on the ledger, either way round: the source's +30 for 'alliance-formed', which never fades.</summary>
         public const double AllianceFormedImpact = 30;
 
@@ -45,7 +56,14 @@ namespace Gamesim.Simulation
         public const string AlreadyAlliedRefusal = "You already share an active alliance.";
 
         /// <summary>Why a fourth pact is refused: the player's own three, which they can count.</summary>
-        public const string PactCapRefusal = "You already hold three alliances, the most anybody keeps at once. Leave one before you make another.";
+        public const string PactCapRefusal = "You already hold three alliances, the most you can keep at once. Leave one before you make another.";
+
+        /// <summary>
+        /// The kind of the line a refused proposal logs: its own, so it is never drawn with an
+        /// alliance's green and handshake or read as one of the week's alliance lines, which are
+        /// pacts formed and ended.
+        /// </summary>
+        public const string AllianceRefusedKind = "alliance-refused";
 
         /// <summary>The active pacts the player is in.</summary>
         public static int PlayerPactsHeld(EpisodeState s) =>
@@ -113,19 +131,20 @@ namespace Gamesim.Simulation
                 return;
             }
             string said = PlayerDeals.Reasoning(s, target.id, DealKind.AllianceInvite, false);
-            Log(s, "alliance", target.name + " turned down your alliance. “" + said + "”", s.playerId, target.id);
+            Log(s, AllianceRefusedKind, target.name + " turned down your alliance. “" + said + "”", s.playerId, target.id);
         }
 
         /// <summary>
         /// The ledger's permanent 'alliance-formed' between the player and each of their partners in
-        /// a pact they have just come into, both ways and at the source's thirty, as
+        /// a pact they have just come into who is still in the house - a pact of three or more can
+        /// carry a member already evicted - both ways and at the source's thirty, as
         /// <see cref="NpcAlliances"/> writes it for a pact between houseguests. Under the commitment
         /// rules only (C4): before them a player's pact was never on the record.
         /// </summary>
         private static void RecordPactFormed(EpisodeState s, AllianceState pact, string description)
         {
             if (!CommitmentRulesOn(s) || pact == null) return;
-            foreach (string partner in pact.members.Where(id => id != s.playerId).ToList())
+            foreach (string partner in pact.members.Where(id => id != s.playerId && s.Find(id)?.status == ContestantStatus.Active).ToList())
                 RelationshipLedger.Record(s, s.playerId, partner, "alliance-formed", AllianceFormedImpact, description);
         }
     }

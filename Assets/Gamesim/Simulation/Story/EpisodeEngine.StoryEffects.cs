@@ -35,7 +35,7 @@ namespace Gamesim.Simulation
         /// </summary>
         private static void FormAllianceWith(EpisodeState s, ContestantState target, Func<double> nextRoll)
         {
-            Require(!s.Allied(s.playerId, target.id), "You already share an active alliance.");
+            Require(!s.Allied(s.playerId, target.id), AlreadyAlliedRefusal);
             Require(s.Score(target.id, s.playerId) >= 8, "Build some trust before proposing an alliance.");
             FormPact(s, target, nextRoll);
         }

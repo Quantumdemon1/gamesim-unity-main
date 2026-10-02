@@ -430,7 +430,14 @@ namespace Gamesim.Simulation
                         "Ally to ally: who are we pretending to like today?",
                         "Alliance check-in. Any new information I should have?",
                         "Allies. What's the plan?"));
-            double trust = OwnTrust(state, npc.id);
+            // Under the commitment rules the line says only what the player could know of how they
+            // stand (ACTIONS-DEALS-ALLIANCES-PLAN C4, the knowledge gate): the player's own reading of
+            // them, held inside the band a read, an account or an overheard word put them in
+            // (KnownOdds.PresumedView). Before the rules it read how the houseguest privately sees the
+            // player, and said at every greeting - and after every reply that falls through to it, a
+            // refused deal's among them - whether that was at -15 or under, or 25 or over.
+            double trust = EpisodeEngine.CommitmentRulesOn(state) && state.relationships != null
+                ? KnownOdds.PresumedView(state, npc.id) : OwnTrust(state, npc.id);
             if (trust <= -15)
                 return Vary(state,
                     Pick(id,

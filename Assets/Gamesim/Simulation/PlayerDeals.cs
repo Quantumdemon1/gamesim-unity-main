@@ -77,7 +77,7 @@ namespace Gamesim.Simulation
                     break;
                 case DealKind.AllianceInvite:
                     if (state.Allied(state.playerId, toId))
-                        return Refuse(out reason, "You already share an active alliance.");
+                        return Refuse(out reason, EpisodeEngine.AlreadyAlliedRefusal);
                     // The player's three (ACTIONS-DEALS-ALLIANCES-PLAN C4, decision 10): under the
                     // commitment rules an invitation agreed now would make a fourth.
                     if (EpisodeEngine.InvitationPastPactCap(state, toId))

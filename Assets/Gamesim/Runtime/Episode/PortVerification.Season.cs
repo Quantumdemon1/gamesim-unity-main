@@ -413,7 +413,7 @@ namespace Gamesim.Episode
                 RequireSeason(seasonDirector.Snapshot.revision == before.revision + 1
                     && seasonDirector.Snapshot.loyaltyOaths.Any(oath => oath.playerId == before.playerId && oath.targetId == npc.Id),"An available oath button must commit the player's declaration.");
                 seasonReport.oathOutcome = "Legally earned and declared";
-                seasonReport.oathNote = "Earned through at most eighteen actual social actions, including an eligible alliance proposal; no fabricated role, score, seed, or oath state.";
+                seasonReport.oathNote = "Earned through at most eighteen actual social actions, at most one of them an alliance proposal, whatever its answer; no fabricated role, score, seed, or oath state.";
                 yield return CaptureSeason("oath-recorded",graphical);
             }
             else seasonReport.oathNote = verifyStudy

@@ -110,7 +110,8 @@ namespace Gamesim.Simulation
             // The web's rule that a grudge blocks an alliance: nobody offers a pact to somebody they
             // hold forty or more against. Behind the story boundary, where grudges exist at all.
             if (EpisodeEngine.StoryAt(state, StoryRules.Grudges)
-                && (Grudges.Severity(state, npcId, targetId) >= 40 || Grudges.Severity(state, targetId, npcId) >= 40))
+                && (Grudges.Severity(state, npcId, targetId) >= EpisodeEngine.AllianceGrudgeLine
+                    || Grudges.Severity(state, targetId, npcId) >= EpisodeEngine.AllianceGrudgeLine))
                 return false;
             // The pact cap (NPC-AGENCY-PLAN.md §3.4): pacts among houseguests stay few enough to read.
             // The player's pacts are outside it, as a story's are.

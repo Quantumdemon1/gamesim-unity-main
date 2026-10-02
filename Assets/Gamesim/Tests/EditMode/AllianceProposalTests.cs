@@ -9,11 +9,13 @@ namespace Gamesim.Tests.EditMode
     /// <summary>
     /// One way to form an alliance (ACTIONS-DEALS-ALLIANCES-PLAN C4), under the commitment rules:
     /// 'Propose an alliance' rolls once on the alliance invitation's odds, which the player is shown
-    /// as they read them (V6); a grudge of forty or more refuses whatever the roll; the player holds at
-    /// most three pacts; a no spends the action, so it is no longer a free look at how the houseguest
-    /// sees the player (X9); and a pact the player comes into is on the ledger as a pact between
-    /// houseguests is. Each is shown under the rules and, where it differs, as a season without them
-    /// still plays it. Unity-free, so the dotnet subset runs it (Tools/SimulationTests).
+    /// as they read them (V6), the grudge their own walk-out left included; a grudge of forty or more
+    /// refuses whatever the roll; the player holds at most three pacts, and nobody invites them to a
+    /// fourth; a no spends the action, so it is no longer a free look at how the houseguest sees the
+    /// player (X9), and neither is the houseguest's greeting; and a pact the player comes into is on
+    /// the ledger as a pact between houseguests is. Each is shown under the rules and, where it
+    /// differs, as a season without them still plays it. Unity-free, so the dotnet subset runs it
+    /// (Tools/SimulationTests). The screen's half is EpisodePlayModeTests.AllianceProposal.
     /// </summary>
     public sealed class AllianceProposalTests
     {
@@ -119,7 +121,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That((after.Score(asked.id, s.playerId), after.Score(s.playerId, asked.id)), Is.EqualTo((7.0, 7.0)), "No warmth moves either way.");
             Assert.That(after.relationships.Sum(r => r.events.Count), Is.EqualTo(ledger), "Nothing on the record.");
             var line = after.events.Last();
-            Assert.That(line.kind, Is.EqualTo("alliance"));
+            Assert.That(line.kind, Is.EqualTo(RefusedKind), "Its own kind: not an alliance's line, formed or ended.");
             Assert.That(line.text, Is.EqualTo(asked.name + " turned down your alliance. “" + expected + "”"));
             Assert.That(line.audienceIds, Is.EqualTo(new[] { s.playerId, asked.id }), "Between the two of them.");
 
@@ -205,7 +207,7 @@ namespace Gamesim.Tests.EditMode
                 var result = Apply(new EpisodeEngine(s), EpisodeCommandKind.FormAlliance, npc.id);
                 Assert.That(result.accepted, Is.True, result.reason);
                 var after = result.state;
-                bool refused = grudge >= EpisodeEngine.AllianceGrudgeLine;
+                bool refused = grudge >= GrudgeLine;
                 Assert.That(after.Allied(s.playerId, npc.id), Is.EqualTo(!refused), grudge + " held against the player.");
                 if (refused)
                 {
@@ -214,12 +216,17 @@ namespace Gamesim.Tests.EditMode
                     Assert.That(EpisodeEngine.SocialActionsSpent(after), Is.EqualTo(EpisodeEngine.SocialActionsSpent(s) + 1), "and the action is spent.");
                 }
 
-                // The deal table's invitation is the same question, with the same grudge.
+                // The deal table's invitation is the same question, with the same grudge - and its own
+                // roll is drawn all the same: the deal's draw, then the two of the warmth it moves
+                // either way, yes or no.
+                var dealStream = new SeededRandom(s.randomState);
+                for (int draw = 0; draw < 3; draw++) dealStream.NextDouble();
                 var deal = Apply(new EpisodeEngine(s), EpisodeCommandKind.ProposeDeal, npc.id, null, DealKind.AllianceInvite);
                 Assert.That(deal.accepted, Is.True, deal.reason);
                 Assert.That(deal.state.deals.Any(d => d.type == DealKind.AllianceInvite && d.proposerId == s.playerId), Is.EqualTo(!refused),
                     "The invitation, on the same roll: " + grudge + " held against the player.");
                 Assert.That(deal.state.Allied(s.playerId, npc.id), Is.EqualTo(!refused));
+                Assert.That(deal.state.randomState, Is.EqualTo(dealStream.State), "The invitation's roll is drawn whatever the grudge says.");
             }
 
             var free = Season(64);
@@ -283,13 +290,57 @@ namespace Gamesim.Tests.EditMode
             StoryAlliance(s, s.playerId, fourth.id);
             Assert.That(s.alliances.Count, Is.EqualTo(before), "A story brings the player into no fourth pact.");
 
+            StoryAlliance(s, s.playerId, fourth.id, Npcs(s)[4].id);
+            Assert.That(s.alliances.Count, Is.EqualTo(before), "nor into a fourth of three.");
+
+            // Without the strategy windows an agreed invitation is a deal and never a pact, so the yes
+            // is the player's to give at three as it always was.
+            var windowless = s.Clone();
+            windowless.strategyRulesStartWeek = 0;
+            var dealOnly = Apply(new EpisodeEngine(windowless), EpisodeCommandKind.RespondToDeal, "deal-ask-cap", null, EpisodeEngine.AcceptDeal);
+            Assert.That(dealOnly.accepted, Is.True, "A yes that makes no pact is allowed at three: " + dealOnly.reason);
+            Assert.That(dealOnly.state.deals.Single(d => d.id == "deal-ask-cap").status, Is.EqualTo(DealStatus.Active));
+            Assert.That(Held(dealOnly.state), Is.EqualTo(Cap), "and the player still holds three.");
+
             pacts[0].active = false;
             Assert.That(Refusal(s, fourth.id), Is.Null, "Leave one, and the fourth can be asked.");
             var asked = Apply(new EpisodeEngine(s), EpisodeCommandKind.FormAlliance, fourth.id);
             Assert.That(asked.accepted, Is.True, asked.reason);
             Set(free, Npcs(free)[4].id, free.playerId, 50);
             StoryAlliance(free, free.playerId, Npcs(free)[4].id);
-            Assert.That(Held(free), Is.EqualTo(4), "Without the rules a story's pact was not held to three either.");
+            Assert.That(Held(free), Is.EqualTo(4), "Without the rules a story's pact was not held to three either,");
+            StoryAlliance(free, free.playerId, Npcs(free)[5].id, Npcs(free)[6].id);
+            Assert.That(Held(free), Is.EqualTo(5), "nor one of three.");
+        }
+
+        /// <summary>
+        /// Nobody puts an invitation to a player who holds three pacts under the rules: a houseguest
+        /// whose partnership and safety pact with the player have grown warm asks for something else,
+        /// or nothing, where a yes would be refused. Below three, and without the rules, they ask.
+        /// </summary>
+        [Test]
+        public void UnderTheRulesNobodyInvitesAPlayerWhoHoldsThree()
+        {
+            foreach (bool rules in new[] { false, true })
+            foreach (int held in new[] { 2, 3 })
+            {
+                var s = Season(72);
+                if (rules) EpisodeEngine.EnableCommitments(s);
+                var npcs = Npcs(s);
+                var asking = npcs[6];
+                Pacts(s, held);
+                Set(s, asking.id, s.playerId, 60);
+                foreach (string kind in new[] { DealKind.Partnership, DealKind.SafetyAgreement })
+                    s.deals.Add(new DealState
+                    {
+                        id = "deal-" + kind, type = kind, proposerId = asking.id, recipientId = s.playerId, status = DealStatus.Active,
+                        week = s.week, expiresWeek = 0, trustImpact = DealKind.DefaultTrust(kind),
+                    });
+                string offer = NpcDeals.Offer(s, asking.id, s.playerId);
+                string where = (rules ? "Under the rules" : "Without them") + ", holding " + held;
+                if (rules && held == Cap) Assert.That(offer, Is.Not.EqualTo(DealKind.AllianceInvite), where + ": no invitation the player could only turn down.");
+                else Assert.That(offer, Is.EqualTo(DealKind.AllianceInvite), where + ": partners, safe and warm, make it an alliance.");
+            }
         }
 
         // ------------------------------------------------------------ a pact is on the record
@@ -349,12 +400,112 @@ namespace Gamesim.Tests.EditMode
             var join = Rules(Season(70));
             var others = Npcs(join);
             var bloc = NpcAlliances.FormFromStory(join, new List<string> { others[1].id, others[2].id });
+            // A pact of three or more keeps a member who has gone (X5): one is evicted already.
+            bloc.members.Add(others[3].id);
+            others[3].status = ContestantStatus.Evicted;
             foreach (string member in bloc.members) { Set(join, member, join.playerId, 30); Set(join, join.playerId, member, 30); }
             Invite(join, others[1].id);
             Assert.That(bloc.members, Does.Contain(join.playerId), "Brought into their pact.");
-            foreach (string member in bloc.members.Where(id => id != join.playerId))
+            foreach (string member in new[] { others[1].id, others[2].id })
                 Assert.That(Entries(join, member, join.playerId, "alliance-formed"), Has.Count.EqualTo(1),
-                    "On the record with every member: " + join.Find(member).name);
+                    "On the record with every member in the house: " + join.Find(member).name);
+            Assert.That(Entries(join, others[3].id, join.playerId, "alliance-formed"), Is.Empty,
+                "and with nobody who has left it.");
+        }
+
+        // ------------------------------------------------------------ the grudge the player can know of
+
+        /// <summary>
+        /// The one grudge the player can know of is the one their own walk-out left. Under the rules
+        /// every member of a pact the player walked out of reads 'no chance', nought, while that
+        /// grudge - what leaving leaves, less its fade since - is at the line, and a proposal to them
+        /// is turned down, the action spent: the read and the answer agree. Somebody the player never
+        /// walked out on reads as before, and twenty-one weeks on the reckoning is under the line.
+        /// Without the rules a walk-out was no gate, and the read never says it is one.
+        /// </summary>
+        [Test]
+        public void UnderTheRulesTheShownChanceKnowsTheGrudgeThePlayersOwnWalkOutLeft()
+        {
+            foreach (bool rules in new[] { false, true })
+            {
+                var s = Season(73);
+                if (rules) EpisodeEngine.EnableCommitments(s);
+                EpisodeEngine.EnableStory(s);
+                var npcs = Npcs(s);
+                var told = Plain(npcs[0]);
+                var other = Plain(npcs[1]);
+                var stranger = Plain(npcs[2]);
+                foreach (var npc in new[] { told, other, stranger }) { Set(s, npc.id, s.playerId, 100); Set(s, s.playerId, npc.id, 100); }
+                s.alliances.Add(new AllianceState
+                {
+                    id = "alliance-left", name = "The Left Pact", members = new List<string> { s.playerId, told.id, other.id }, active = true,
+                });
+                var engine = new EpisodeEngine(s);
+                // A command first, so the pact has its ledger row, as a pact the player is in always has.
+                Assert.That(Apply(engine, EpisodeCommandKind.SmallTalk, stranger.id).accepted, Is.True);
+                var walkOut = Apply(engine, EpisodeCommandKind.LeaveAlliance, told.id);
+                Assert.That(walkOut.accepted, Is.True, walkOut.reason);
+                var after = engine.Snapshot;
+                Assert.That(Grudges.Severity(after, told.id, after.playerId), Is.GreaterThanOrEqualTo(GrudgeLine), "Walking out left a grudge.");
+                Assert.That(Grudges.Severity(after, other.id, after.playerId), Is.GreaterThanOrEqualTo(GrudgeLine), "with every member.");
+                string where = rules ? "Under the rules" : "Without them";
+                if (!rules)
+                {
+                    Assert.That(Shown(after, told.id).word, Is.Not.EqualTo(NoChance), where + " a walk-out is never read as a no.");
+                    continue;
+                }
+                foreach (var member in new[] { told, other })
+                {
+                    var shown = Shown(after, member.id);
+                    Assert.That((shown.word, shown.chance), Is.EqualTo((NoChance, 0.0)),
+                        where + ", " + member.name + " holds what the player's own walk-out left, and the read says so.");
+                }
+                Assert.That(Shown(after, stranger.id).word, Is.Not.EqualTo(NoChance), where + ", somebody the player never walked out on reads as before.");
+
+                var asked = Apply(engine, EpisodeCommandKind.FormAlliance, told.id);
+                Assert.That(asked.accepted, Is.True, asked.reason);
+                Assert.That(asked.state.Allied(s.playerId, told.id), Is.False, "and the proposal is turned down, as the read said.");
+                Assert.That(asked.state.events.Last().kind, Is.EqualTo(RefusedKind));
+
+                var later = after.Clone();
+                later.week += 21;
+                Assert.That(Shown(later, told.id).word, Is.Not.EqualTo(NoChance), "Twenty-one weeks on, the reckoning is under the line.");
+            }
+        }
+
+        // ------------------------------------------------------------ what a houseguest says when you open a conversation
+
+        /// <summary>
+        /// The knowledge gate on a greeting. Under the rules how a houseguest greets the player reads
+        /// only what the player knows of where they stand - the player's own reading of them, inside
+        /// the band a read put them in - never how they privately see the player, which the greeting
+        /// said aloud every time a conversation opened. Without the rules it is unchanged.
+        /// </summary>
+        [Test]
+        public void UnderTheRulesAGreetingSaysNothingOfTheirHiddenView()
+        {
+            const string maya = ContentCatalog.MayaId;
+            foreach (bool rules in new[] { false, true })
+            {
+                var state = ContentCatalog.Create(412);
+                if (rules) EpisodeEngine.EnableCommitments(state);
+                Set(state, state.playerId, maya, 0);
+                Set(state, maya, state.playerId, 60);
+                string warm = HouseDialogue.Greeting(state, maya);
+                Set(state, maya, state.playerId, -60);
+                string cold = HouseDialogue.Greeting(state, maya);
+                if (rules) Assert.That(cold, Is.EqualTo(warm), "Under the rules how Maya privately sees the player is not said.");
+                else Assert.That(cold, Is.Not.EqualTo(warm), "Without the rules the greeting said it.");
+            }
+
+            var known = ContentCatalog.Create(412);
+            EpisodeEngine.EnableCommitments(known);
+            Set(known, known.playerId, maya, 0);
+            Set(known, maya, known.playerId, 60);
+            string unread = HouseDialogue.Greeting(known, maya);
+            known.ledger.standings.Add(new StandingRow { week = known.week, fromId = maya, toId = known.playerId, source = ClaimSource.Read, score = -60 });
+            Assert.That(HouseDialogue.Greeting(known, maya), Is.Not.EqualTo(unread),
+                "A read that found her cold on the player is the player's to know, and the greeting goes with it.");
         }
 
         // ------------------------------------------------------------ without the rules
@@ -415,7 +566,11 @@ namespace Gamesim.Tests.EditMode
                 "and a yes is answered as it always was.");
         }
 
-        // ------------------------------------------------------------ the API the screen reads
+        // ------------------------------------------------------------ the slice's own API
+        //
+        // Every name C4 added is read through these, and only these, so the file compiles against
+        // the build before it (50ebd57) with their bodies stubbed to that build's behaviour - which
+        // is how each test above was seen to fail there.
 
         /// <summary>The chance the row shows: the player's read of the invitation's (KnownOdds.Alliance).</summary>
         private static KnownOdds.Estimate Shown(EpisodeState s, string npcId) => KnownOdds.Alliance(s, npcId);
@@ -426,6 +581,12 @@ namespace Gamesim.Tests.EditMode
         private static string CapRefusal => EpisodeEngine.PactCapRefusal;
 
         private static int Cap => EpisodeEngine.PlayerPactCap;
+
+        private static double GrudgeLine => EpisodeEngine.AllianceGrudgeLine;
+
+        private static string RefusedKind => EpisodeEngine.AllianceRefusedKind;
+
+        private static string NoChance => KnownOdds.NoChance;
 
         // ------------------------------------------------------------ fixtures
 
@@ -513,9 +674,9 @@ namespace Gamesim.Tests.EditMode
             typeof(EpisodeEngine).GetMethod("AllyThroughInvitation", BindingFlags.NonPublic | BindingFlags.Static)
                 .Invoke(null, new object[] { s, npcId });
 
-        /// <summary>A story's pact between the player and a houseguest (the private StoryAlliance).</summary>
-        private static void StoryAlliance(EpisodeState s, string a, string b) =>
+        /// <summary>A story's pact of two, or of three with <paramref name="c"/> (the private StoryAlliance).</summary>
+        private static void StoryAlliance(EpisodeState s, string a, string b, string c = null) =>
             typeof(EpisodeEngine).GetMethod("StoryAlliance", BindingFlags.NonPublic | BindingFlags.Static)
-                .Invoke(null, new object[] { s, s.Find(a), s.Find(b), null, "c4-story-pact" });
+                .Invoke(null, new object[] { s, s.Find(a), s.Find(b), c == null ? null : s.Find(c), "c4-story-pact" });
     }
 }

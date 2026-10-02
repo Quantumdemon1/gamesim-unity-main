@@ -18,10 +18,12 @@ namespace Gamesim.Simulation
     /// alternative worth offering (<see cref="CounterFloor"/>) - drawn on a coin keyed to the attempt
     /// (<see cref="CounterKey"/>), never from the season's stream. Its terms are a pure function of the
     /// state and the refused proposal (<see cref="CounterTo"/>), so the screen shows them and the yes
-    /// re-derives them. Nothing waits for an answer: the counter stands while its line is the last thing
-    /// the house has said (<see cref="OpenCounter"/>) and lapses with the next thing anybody does. One
-    /// round: the yes strikes both deals with no roll at all, so nothing can be refused or countered
-    /// again; a no is a plain no. Neither is a second roll of the proposal: the yes costs its price.</para>
+    /// re-derives them. Nothing waits for an answer in any store: the counter stands while nothing the
+    /// player hears has been said since its line (<see cref="OpenCounter"/>) and lapses with the next
+    /// thing they do hear. One round: the yes strikes both deals with no roll at all, so nothing can be
+    /// refused or countered again; a no is a plain no. Neither is a second roll of the proposal: the yes
+    /// costs its price, and it is the yes to an offer, so a breach of either deal weighs one step heavier
+    /// (decision 15, <see cref="FromACounter"/>).</para>
     ///
     /// <para><b>A price.</b> A deal paid for another names it, and is named by it, through
     /// <see cref="DealState.linkedDealId"/>; the price's id says it is one (<see cref="PricePrefix"/>),
@@ -43,8 +45,14 @@ namespace Gamesim.Simulation
         /// <summary>The chance, in percent, a refused proposal must have had for a counter to be worth making: the web's 40.</summary>
         public const double CounterFloor = 40;
 
-        /// <summary>The kind of the line a counter is said in. It stands while it is the last thing said.</summary>
+        /// <summary>The kind of the line a counter is said in. It stands while nothing the player hears has been said since.</summary>
         public const string CounterEventKind = "deal-counter";
+
+        /// <summary>
+        /// How the id of the deal a taken counter strikes begins: the deal the player asked for, struck at
+        /// the houseguest's price. Its price is a <see cref="PricePrefix"/> deal linked to it.
+        /// </summary>
+        public const string CounterDealPrefix = "deal-counter-";
 
         /// <summary>A counter: the deal the player asked for, as they asked it, and the price the houseguest puts on it.</summary>
         public sealed class Counter
@@ -112,26 +120,34 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// The counter that stands with this houseguest right now, or null: under the commitment rules,
-        /// the last line the house has said is their counter - logged at the last sequence the season
-        /// minted, this week, in this phase, to the two of them - and its terms are still what the state
-        /// gives (<see cref="CounterTo"/>). Anything said since, by anybody, and it has lapsed. The line is
-        /// matched by rebuilding it (<see cref="CounterLine"/>) for each proposal it could answer, as the
-        /// readers of a deal's record rebuild the engine's sentence.
+        /// the latest counter line naming the two of them, said this week and in this phase, with nothing
+        /// the player hears said since - no later line in their audience, and no public one - and its
+        /// terms still what the state gives (<see cref="CounterTo"/>). A line between houseguests only, a
+        /// ledger row or a story's id minted after it leaves it standing: the player heard nothing. Any
+        /// line the player hears lapses it - their next word, the answer to it, another counter. The line
+        /// is matched by rebuilding it (<see cref="CounterLine"/>) for each proposal it could answer, as
+        /// the readers of a deal's record rebuild the engine's sentence.
         /// </summary>
         public static Counter OpenCounter(EpisodeState s, string npcId)
         {
-            if (!EpisodeEngine.CommitmentRulesOn(s) || string.IsNullOrEmpty(npcId) || s.events == null || s.events.Count == 0) return null;
-            var last = s.events[s.events.Count - 1];
-            if (last == null || last.kind != CounterEventKind || last.sequence != s.nextSequence - 1
-                || last.week != s.week || last.phase != s.phase || last.audienceIds == null
-                || !last.audienceIds.Contains(npcId) || !last.audienceIds.Contains(s.playerId)) return null;
+            if (!EpisodeEngine.CommitmentRulesOn(s) || string.IsNullOrEmpty(npcId) || s.events == null) return null;
+            EpisodeEvent line = null;
+            for (int i = s.events.Count - 1; i >= 0 && line == null; i--)
+            {
+                var said = s.events[i];
+                if (said == null) continue;
+                bool heard = said.audienceIds == null || said.audienceIds.Count == 0 || said.audienceIds.Contains(s.playerId);
+                if (said.kind == CounterEventKind && heard && said.audienceIds != null && said.audienceIds.Contains(npcId)) line = said;
+                else if (heard) return null;
+            }
+            if (line == null || line.week != s.week || line.phase != s.phase) return null;
             var npc = s.Find(npcId);
-            if (npc == null || last.text == null || !last.text.StartsWith(npc.name + " ", StringComparison.Ordinal)) return null;
+            if (npc == null || line.text == null || !line.text.StartsWith(npc.name + " ", StringComparison.Ordinal)) return null;
             foreach (string kind in DealKind.All)
                 foreach (string about in Abouts(s, kind, npcId))
                 {
                     var counter = CounterTo(s, npcId, kind, about);
-                    if (counter != null && CounterLine(s, counter) == last.text) return counter;
+                    if (counter != null && CounterLine(s, counter) == line.text) return counter;
                 }
             return null;
         }
@@ -197,25 +213,45 @@ namespace Gamesim.Simulation
         /// <summary>
         /// Whether a price was voided: it stopped binding because the one it was owed to broke what it
         /// bought, in front of the house. Read from the two deals as the engine left them: the price
-        /// lapsed, what it bought broken by the price's payee, not by a ballot.
+        /// lapsed, what it bought broken by the price's payee, not by a ballot - and broken while the
+        /// price still bound, so a price that had already run out its own week before then lapsed as any
+        /// deal does, and is not called void.
         /// </summary>
         public static bool Voided(EpisodeState s, DealState price)
         {
             var bought = BoughtWith(s, price);
             return bought != null && price.status == DealStatus.Expired && bought.status == DealStatus.Broken
-                   && !KnownBallots.SettledByABallot(bought) && Breaches.DealBreaker(s, bought) == price.recipientId;
+                   && !KnownBallots.SettledByABallot(bought) && Breaches.DealBreaker(s, bought) == price.recipientId
+                   && (price.expiresWeek == 0 || bought.settledWeek <= price.expiresWeek);
+        }
+
+        /// <summary>
+        /// Whether this deal came of a counter the player took: the deal they asked for, struck at the
+        /// houseguest's price (<see cref="CounterDealPrefix"/>), or that price. The yes was the player's
+        /// answer to the houseguest's offer, so a breach of either weighs one step heavier, as any offer
+        /// the player accepted does (decision 15, <see cref="DealResolution.AcceptedOffer"/>).
+        /// </summary>
+        public static bool FromACounter(EpisodeState s, DealState deal)
+        {
+            if (deal?.id == null) return false;
+            if (deal.id.StartsWith(CounterDealPrefix, StringComparison.Ordinal)) return true;
+            var bought = BoughtWith(s, deal);
+            return bought?.id != null && bought.id.StartsWith(CounterDealPrefix, StringComparison.Ordinal);
         }
 
         /// <summary>
         /// The price a nominee puts on the veto, under the commitment rules (C7): what they offer the player
         /// for their word that they will use it on them. Null for anything but a nominee's veto ask
-        /// (<see cref="NpcDeals.VetoAskPrefix"/>) put to the player, without the rules, or where no price
-        /// fits (<see cref="VetoPrice"/>): the ask is then put as it always was.
+        /// (<see cref="NpcDeals.VetoAskPrefix"/>) put to the player, without the rules, where no price fits
+        /// (<see cref="VetoPrice"/>), or once the season holds as many deals as it may
+        /// (<see cref="NpcDeals.DealCeiling"/>, validation's own bound): the ask is then put as it always
+        /// was, and the yes is never refused for a price there is no room to strike.
         /// </summary>
         public static Price AskPrice(EpisodeState s, DealState ask)
         {
             if (!EpisodeEngine.CommitmentRulesOn(s) || ask == null || ask.type != DealKind.VetoUse || ask.recipientId != s.playerId
                 || ask.id == null || !ask.id.StartsWith(NpcDeals.VetoAskPrefix, StringComparison.Ordinal)) return null;
+            if (s.deals.Count >= NpcDeals.DealCeiling) return null;
             return VetoPrice(s, ask.proposerId, null);
         }
 
@@ -589,13 +625,16 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// Why the player, holding the veto, cannot name this price to this nominee now; null when they can:
-        /// under the commitment rules, at the veto meeting before the decision, with the veto theirs to use;
-        /// a nominee on the block who is not the player; no word on the veto given already, to them or to
-        /// the other nominee (it saves one); and a price that fits (<see cref="VetoPriceFits"/>).
+        /// under the commitment rules, with room for the two deals it strikes under the player's ceiling
+        /// (<see cref="PlayerDeals.PlayerDealCeiling"/>, refused in the deal table's own words); at the veto
+        /// meeting before the decision, with the veto theirs to use; a nominee on the block who is not the
+        /// player; no word on the veto given already, to them or to the other nominee (it saves one); and a
+        /// price that fits (<see cref="VetoPriceFits"/>).
         /// </summary>
         public static string VetoPriceRefusal(EpisodeState s, string nomineeId, string kind)
         {
             if (!EpisodeEngine.CommitmentRulesOn(s)) return NotThisSeason;
+            if (s.deals.Count + 2 > PlayerDeals.PlayerDealCeiling) return TooManyArrangements;
             if (s.phase != EpisodePhase.VetoMeeting || s.vetoResolved || s.vetoHolderId != s.playerId || !StrategyRules.VetoCanBeUsed(s))
                 return "Only the veto holder can name a price, before the veto meeting decides.";
             if (string.IsNullOrEmpty(nomineeId) || nomineeId == s.playerId || !s.nominees.Contains(nomineeId))
@@ -623,6 +662,9 @@ namespace Gamesim.Simulation
 
         /// <summary>The refusal of every move in a season without the commitment rules.</summary>
         public const string NotThisSeason = "The house is not bargaining like that this season.";
+
+        /// <summary>The refusal at the player's deal ceiling, in the deal table's own words (<see cref="PlayerDeals.CanPropose"/>).</summary>
+        public const string TooManyArrangements = "You already have more arrangements than you can keep track of.";
 
         /// <summary>Whether a deal of this kind - about this houseguest, where it names one - already binds the two of them, or waits on an answer.</summary>
         public static bool Binding(EpisodeState s, string a, string b, string kind, string aboutId) =>

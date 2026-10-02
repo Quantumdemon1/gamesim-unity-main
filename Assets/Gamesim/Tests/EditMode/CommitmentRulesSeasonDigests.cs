@@ -193,10 +193,11 @@ namespace Gamesim.Tests.EditMode
             var engine = new EpisodeEngine(Season(config, size, seed, rulesOn));
             var trace = new StringBuilder();
             var lastPhase = (EpisodePhase)(-1);
-            int i = 0;
+            int i = 0, heard = 0, voided = 0;
             for (; i < 3000 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
             {
                 var s = engine.Snapshot;
+                voided += VoidLines(s, ref heard);
                 if (s.phase != lastPhase) { Checkpoint(s, trace); lastPhase = s.phase; }
                 bool done = false;
                 for (int attempt = 0; attempt < 6 && !done; attempt++)
@@ -212,6 +213,7 @@ namespace Gamesim.Tests.EditMode
                 if (!applied.accepted) { error = "week " + s.week + " " + s.phase + "/" + s.evictionStage + " " + next.kind + ": " + applied.reason; break; }
             }
             var final = engine.Snapshot;
+            voided += VoidLines(final, ref heard);
             Checkpoint(final, trace);
             if (error == null && final.phase != EpisodePhase.Finished) error = "unfinished after " + i;
             int broken = final.deals.Count(d => d.status == DealStatus.Broken), kept = final.deals.Count(d => d.status == DealStatus.Fulfilled);
@@ -240,11 +242,12 @@ namespace Gamesim.Tests.EditMode
             Count(counts, "pact-ended-turned", final.ledger.alliances.Count(r => r.why != null && r.why.StartsWith("player", StringComparison.Ordinal)
                 && r.why.EndsWith("/turned", StringComparison.Ordinal)));
             // C7, by the words and ids it writes: prices struck - the player's, a counter's, and a
-            // houseguest's, a veto's - prices voided, promises called in and fences mended.
+            // houseguest's, a veto's - prices voided (by the line that says so, not every price that
+            // lapsed), promises called in and fences mended.
             var prices = final.deals.Where(d => d.id.StartsWith("deal-price-", StringComparison.Ordinal)).ToList();
             Count(counts, "counter-taken", prices.Count(d => d.proposerId == final.playerId));
             Count(counts, "veto-price", prices.Count(d => d.recipientId == final.playerId));
-            Count(counts, "price-void", prices.Count(d => d.status == DealStatus.Expired));
+            Count(counts, "price-void", voided);
             var record = final.relationships.Where(r => r.toId == final.playerId).SelectMany(r => r.events).ToList();
             Count(counts, "called-in", record.Count(e => e.type != null && (e.type.StartsWith("promise-held:", StringComparison.Ordinal)
                 || e.type.StartsWith("promise-pressed:", StringComparison.Ordinal))));
@@ -350,12 +353,9 @@ namespace Gamesim.Tests.EditMode
         private static EpisodeCommand Negotiating(EpisodeState s, uint seed, int attempt)
         {
             if (attempt != 0 || !RulesOn(s)) return null;
-            var last = s.events.LastOrDefault();
-            if (last != null && last.kind == "deal-counter" && last.sequence == s.nextSequence - 1)
-            {
-                string npc = last.audienceIds.FirstOrDefault(id => id != s.playerId);
-                if (npc != null) return Cmd(s, EpisodeCommandKind.RespondToDeal, npc, null, Pick(s, seed, 31, 2) == 0 ? "decline" : EpisodeEngine.AcceptDeal);
-            }
+            string countering = StandingCounter(s);
+            if (countering != null)
+                return Cmd(s, EpisodeCommandKind.RespondToDeal, countering, null, Pick(s, seed, 31, 2) == 0 ? "decline" : EpisodeEngine.AcceptDeal);
             var negotiate = (EpisodeCommandKind)Enum.Parse(typeof(EpisodeCommandKind), "Negotiate");
             if (s.phase == EpisodePhase.VetoMeeting && !s.vetoResolved && s.vetoHolderId == s.playerId && s.nominees.Count == 2 && Pick(s, seed, 32, 2) == 0)
                 return Cmd(s, negotiate, s.nominees[Pick(s, seed, 33, 2)], null,
@@ -369,6 +369,40 @@ namespace Gamesim.Tests.EditMode
                 if (npcs.Count > 0) return Cmd(s, negotiate, npcs[Pick(s, seed, 36, npcs.Count)].id, null, "mend-fences");
             }
             return null;
+        }
+
+        /// <summary>
+        /// Who has a counter standing, by the engine's rule (Negotiation.OpenCounter) read from the words:
+        /// the latest line the player heard is a counter, said this week and in this phase. Lines between
+        /// houseguests only are passed over, as the player heard none of them.
+        /// </summary>
+        private static string StandingCounter(EpisodeState s)
+        {
+            for (int i = s.events.Count - 1; i >= 0; i--)
+            {
+                var said = s.events[i];
+                if (said == null || (said.audienceIds != null && said.audienceIds.Count > 0 && !said.audienceIds.Contains(s.playerId))) continue;
+                if (said.kind != "deal-counter" || said.week != s.week || said.phase != s.phase || said.audienceIds == null) return null;
+                return said.audienceIds.FirstOrDefault(id => id != s.playerId);
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// The prices voided since the last look (C7), by their line - "... no longer owe(s) ...", only ever
+        /// said of a price void - counted as they are said, since the season keeps only its last 256 lines.
+        /// </summary>
+        private static int VoidLines(EpisodeState s, ref int seen)
+        {
+            int found = 0, newest = seen;
+            for (int i = s.events.Count - 1; i >= 0 && s.events[i].sequence > seen; i--)
+            {
+                var said = s.events[i];
+                newest = Math.Max(newest, said.sequence);
+                if (said.kind == "deal-outcome" && said.text != null && said.text.Contains(" no longer owe")) found++;
+            }
+            seen = newest;
+            return found;
         }
 
         /// <summary>A busy player: every action the commitment rules touch, by <see cref="Pick"/>.</summary>

@@ -49,8 +49,8 @@ namespace Gamesim.Simulation
         /// same deal and a price on it. Only one the roll found close to yes - a chance of
         /// <see cref="Negotiation.CounterFloor"/> or more - and never an alliance a grudge refuses (C4),
         /// on the web's 70% (<see cref="Negotiation.CounterChance"/>), drawn on the attempt's own coin, so
-        /// the season's stream is exactly as a plain refusal leaves it. The counter is the last line said
-        /// (the refusal's own is said first), to the two of them, and stands until anything else is said.
+        /// the season's stream is exactly as a plain refusal leaves it. The counter is said after the
+        /// refusal's own line, to the two of them, and stands until the player hears anything else.
         /// </summary>
         private static void OfferCounter(EpisodeState s, ContestantState target, string kind, string about, double chance, int attempt)
         {
@@ -66,10 +66,12 @@ namespace Gamesim.Simulation
         /// The player's answer to the counter that stands (<see cref="Negotiation.OpenCounter"/>): a
         /// <see cref="EpisodeCommandKind.RespondToDeal"/> naming the houseguest, free, as answering any
         /// offer is. The terms are re-derived from the state, never read from the command. A yes strikes
-        /// both at once with no roll - the deal the player asked for and the price, linked to each other -
-        /// takes them as chances taken (C1), and is the yes to an offer, +4 (decision 15), its reciprocal
-        /// draw from the counter's own keyed stream. A no is a plain no: the line, and nothing moves.
-        /// Either way it is the one round.
+        /// both at once with no roll - the deal the player asked for (<see cref="Negotiation.CounterDealPrefix"/>)
+        /// and the price, linked to each other - takes them as chances taken (C1), and is the yes to an
+        /// offer (decision 15): +4, its reciprocal draw from the counter's own keyed stream, and either deal
+        /// broken weighs one step heavier (<see cref="DealResolution.AcceptedOffer"/>). Nothing it does
+        /// draws from the season's stream: the vote deal's lever line and an invitation's pact read and
+        /// write without it. A no is a plain no: the line, and nothing moves. Either way it is the one round.
         /// </summary>
         private static void AnswerCounter(EpisodeState s, EpisodeCommand c)
         {
@@ -83,7 +85,7 @@ namespace Gamesim.Simulation
             }
             string key = Negotiation.CounterKey(s, npc.id, counter.kind, counter.aboutId, s.nextSequence) + ":taken";
             var read = LeverRead(s, npc.id);
-            string boughtId = "deal-player-" + s.nextSequence, priceId = Negotiation.PricePrefix + s.nextSequence;
+            string boughtId = Negotiation.CounterDealPrefix + s.nextSequence, priceId = Negotiation.PricePrefix + s.nextSequence;
             var bought = PlayerDeals.Draft(s, npc.id, counter.kind, counter.aboutId, boughtId);
             bought.linkedDealId = priceId;
             var price = Negotiation.DraftPrice(s, counter.price, boughtId, priceId);
@@ -221,10 +223,12 @@ namespace Gamesim.Simulation
         /// A veto for a price, the web's own (the veto holder's "Leverage Veto", Demand a Deal): the player,
         /// holding the veto before the meeting, names their price to a nominee - their vote to keep the
         /// player the next time the player is on the block, or at the endgame a final two - on the web's
-        /// odds (75 and the rest of <see cref="Negotiation.Chance"/>), one roll on the season's stream.
+        /// odds (75 and the rest of <see cref="Negotiation.Chance"/>). Three draws on the season's stream:
+        /// the answer's roll, then the two reciprocal draws of the warmth it moves (<see cref="Change"/>).
         /// Taken: the player's word that they will use the veto on the nominee, and the price the nominee
         /// owes for it, struck at once and linked (the same pair a nominee's own ask makes), the nominee's
-        /// own ask answered by it, and the web's +10. Refused: the web's -5, and nothing struck.
+        /// own ask answered by it - a chance the player took, so it is never an offer left on the table -
+        /// and the web's +10. Refused: the web's -5, and nothing struck.
         /// </summary>
         private static void VetoForAPrice(EpisodeState s, ContestantState nominee, string kind)
         {
@@ -245,10 +249,14 @@ namespace Gamesim.Simulation
             s.deals.Add(Negotiation.DraftPrice(s, price, vetoId, priceId));
             Opportunity(s, vetoId, OpportunityKinds.Deal, s.week).response = OpportunityResponse.Taken;
             Opportunity(s, priceId, OpportunityKinds.Deal, s.week).response = OpportunityResponse.Taken;
-            // Their own question about the veto is answered: the player has given them their word.
+            // Their own question about the veto is answered: the player has given them their word, so the
+            // ask is on the record as a chance taken, never an offer left on the table (Game Sense).
             foreach (var ask in s.deals.Where(d => d.status == DealStatus.Proposed && d.type == DealKind.VetoUse
                          && d.proposerId == nominee.id && d.recipientId == s.playerId))
+            {
                 ask.status = DealStatus.Expired;
+                Opportunity(s, ask.id, OpportunityKinds.Deal, ask.week).response = OpportunityResponse.Taken;
+            }
             Change(s, s.playerId, nominee.id, Negotiation.VetoPriceTaken, "Took your price for the veto.", "deal_accepted");
             Remember(s, nominee.id, s.playerId, "Promised to use the veto on me, at a price, in week " + s.week + ".", true);
             Log(s, "deal", Negotiation.VetoPriceLine(s, nominee.id, price, true), s.playerId, nominee.id);

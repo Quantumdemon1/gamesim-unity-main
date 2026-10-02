@@ -79,14 +79,19 @@ namespace Gamesim.Simulation
         /// <summary>
         /// Whether this deal is an offer the player accepted under the commitment rules: a question a
         /// houseguest put to them (<see cref="NpcDeals.OfferPrefix"/>, <see cref="NpcDeals.VetoAskPrefix"/>),
-        /// which only the player's yes makes bind, that binds or was settled, and was put no earlier
-        /// than the rules' first week - so the yes was given under them too. A deal the player put to
-        /// somebody, one two houseguests struck, and one a story made are not.
+        /// which only the player's yes makes bind - or a counter the player took (C7,
+        /// <see cref="Negotiation.FromACounter"/>), the deal they asked for at the houseguest's price and
+        /// that price, which only their yes to the houseguest's offer struck - that binds or was settled,
+        /// and was put no earlier than the rules' first week - so the yes was given under them too. A deal
+        /// the player put to somebody and had agreed, one two houseguests struck, one a story made, and the
+        /// veto the player named a price for are not.
         /// </summary>
         public static bool AcceptedOffer(EpisodeState s, DealState deal) =>
             deal != null && s != null && EpisodeEngine.CommitmentRulesOn(s) && deal.week >= s.commitmentRulesStartWeek
-            && deal.recipientId == s.playerId && deal.id != null
-            && (deal.id.StartsWith(NpcDeals.OfferPrefix, StringComparison.Ordinal) || deal.id.StartsWith(NpcDeals.VetoAskPrefix, StringComparison.Ordinal))
+            && deal.id != null
+            && ((deal.recipientId == s.playerId
+                 && (deal.id.StartsWith(NpcDeals.OfferPrefix, StringComparison.Ordinal) || deal.id.StartsWith(NpcDeals.VetoAskPrefix, StringComparison.Ordinal)))
+                || Negotiation.FromACounter(s, deal))
             && (deal.status == DealStatus.Active || deal.status == DealStatus.Accepted || deal.status == DealStatus.Fulfilled || deal.status == DealStatus.Broken);
 
         /// <summary>The other party to a deal, from one party's point of view.</summary>

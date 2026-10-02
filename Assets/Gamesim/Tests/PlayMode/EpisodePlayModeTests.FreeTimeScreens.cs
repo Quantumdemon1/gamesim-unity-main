@@ -163,6 +163,32 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.HouseguestScreenFor, Is.Null, "Closing the panel forgets the screen.");
         }
 
+        /// <summary>
+        /// Before anybody is Head of Household the context card says nothing is decided
+        /// (UI-UX-PASS-PLAN D0, the play sweep's row 20): in free time - every week's, since the
+        /// rollover clears the Head of Household - it read "You are safe this week" under a HUD
+        /// saying "Awaiting HoH", because the safe line was everything that was not a role. The
+        /// words are the plan's, the same ones U0's ContextRole says.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FreeTime_YourContextSaysNothingIsDecidedBeforeAnyHeadOfHousehold()
+        {
+            yield return OpenFreeTime();
+            var state = director.Snapshot;
+            Assert.That(state.phase, Is.EqualTo(EpisodePhase.Social), "The fixture opens in free time,");
+            Assert.That(string.IsNullOrEmpty(state.hohId), Is.True, "before the week's first Head of Household.");
+            director.OpenHouseguestScreen(state.Active.First(c => !c.isPlayer).id);
+            yield return null; yield return null;
+            var context = LastActive(EpisodeHud.YourContextCardName);
+            Assert.That(context, Is.Not.Null, "The houseguest screen has its context card.");
+            Assert.That(Words(context), Does.Contain("Nothing decided yet").And.Contain("The week's roles come with the first competition.")
+                .And.Not.Contain("You are safe this week").And.Not.Contain("You are HOH").And.Not.Contain("You are on the block"));
+            director.CloseHouseguestScreen();
+            yield return null;
+            director.ClosePanels();
+            yield return null;
+        }
+
         [UnityTest]
         public IEnumerator FreeTime_AskingForInformationOpensTheConversationOnWhatYouCameToAsk()
         {

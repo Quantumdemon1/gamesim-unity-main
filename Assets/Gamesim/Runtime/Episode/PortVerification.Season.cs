@@ -244,7 +244,7 @@ namespace Gamesim.Episode
                 var replacement = EpisodeEngine.ReplacementCandidates(state).FirstOrDefault();
                 if (replacement == null) { yield return ClickSeasonButton("Do not use the veto"); yield break; }
                 if (state.hohId == state.playerId) yield return ClickSeasonButton(replacement.name,true);
-                else yield return ClickSeasonButton("Save " + state.Find(state.nominees[0]).name + " (HoH chooses replacement)");
+                else yield return ClickSeasonButton(EpisodeDirector.VetoSaveCaption(state, state.nominees[0]));
                 yield break;
             }
             // The ballot is offered only once the night reaches the vote: the stages before it

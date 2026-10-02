@@ -695,7 +695,7 @@ namespace Gamesim.Tests.PlayMode
                         caption = "Commit nominations"; break;
                     case EpisodeCommandKind.ResolveVeto:
                         caption = !next.useVeto ? "Do not use the veto" : before.hohId == before.playerId
-                            ? before.Find(next.secondTargetId).name : "Save " + before.Find(next.targetId).name + " (HoH chooses replacement)";
+                            ? before.Find(next.secondTargetId).name : EpisodeDirector.VetoSaveCaption(before, next.targetId);
                         break;
                     case EpisodeCommandKind.CastVote:
                         caption = before.phase == EpisodePhase.Jury ? "Vote for " + before.Find(next.targetId).name + " to win"

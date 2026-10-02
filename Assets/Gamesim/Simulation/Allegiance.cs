@@ -167,11 +167,13 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// A pact's members whose own commitment to the player has lapsed, under the commitment rules: a
-        /// pact of the player's only, and only those still in the house. Empty without the rules.
+        /// pact of the player's only, while the player is in the house (once they are gone it is a pact
+        /// among houseguests), and only those still in it. Empty without the rules.
         /// </summary>
         public static List<string> LapsedMembers(EpisodeState s, AllianceState alliance)
         {
-            if (!EpisodeEngine.CommitmentRulesOn(s) || alliance?.members == null || !alliance.members.Contains(s.playerId))
+            if (!EpisodeEngine.CommitmentRulesOn(s) || alliance?.members == null || !alliance.members.Contains(s.playerId)
+                || !InHouse(s, s.playerId))
                 return new List<string>();
             return alliance.members.Where(id => id != s.playerId && InHouse(s, id) && Lapsed(s, id)).ToList();
         }

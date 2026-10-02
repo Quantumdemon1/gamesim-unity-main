@@ -184,6 +184,12 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(StrategyRules.VetoWillingness(s, ally, s.playerId), Is.EqualTo(pull - StrategyRules.VetoAllyPull), "The veto pull.");
                 Assert.That(AllianceFactor(s, ally, s.playerId), Is.Zero, "The vote.");
                 Assert.That(WebVotingBlocs.FromNative(s).alliances.Single(a => a.id == PactId).members, Does.Not.Contain(ally), "The bloc they no longer answer to.");
+                var levered = s.Clone();
+                EpisodeEngine.EnableLevers(levered);
+                var calling = new EpisodeEngine(levered);
+                Assert.That(Apply(calling, EpisodeCommandKind.CallTheVote, ally, other, PactId).accepted, Is.True);
+                Assert.That(calling.Snapshot.ledger.calls.Single().defected, Is.EqualTo(new[] { ally }), "Following a call:");
+                Assert.That(calling.Snapshot.randomState, Is.EqualTo(levered.randomState), "they do not, and nothing is left to a roll.");
                 Assert.That(StrategyRules.NominationReluctance(s, s.playerId, ally), Is.EqualTo(s.Score(s.playerId, ally) + StrategyRules.AllyShield),
                     "The player's own terms are the player's.");
                 Assert.That(StrategyRules.NominationReluctance(s, other, ally), Is.EqualTo(s.Score(other, ally)), "Nobody else's terms move.");
@@ -438,6 +444,16 @@ namespace Gamesim.Tests.EditMode
                 var dto = WebEvictionVoting.FromNative(s, ally).state.alliances.Single(a => a.id == PactId);
                 Assert.That(dto.members, Is.EquivalentTo(rules ? new[] { s.playerId, ally } : new[] { s.playerId, ally, third }));
             }
+
+            // A pact the player has left the house for is one among houseguests: nobody's commitment
+            // to the player decides who answers to its bloc any more.
+            var gone = PactOfThreeInFreeTime(true, out string cold, out _);
+            var pact = gone.alliances.Single(a => a.id == PactId);
+            SetScore(gone, cold, gone.playerId, Allegiance.QuietLine - 30);
+            Assert.That(Allegiance.LapsedMembers(gone, pact), Is.EqualTo(new[] { cold }));
+            gone.Find(gone.playerId).status = ContestantStatus.Jury;
+            Assert.That(Allegiance.LapsedMembers(gone, pact), Is.Empty);
+            Assert.That(Allegiance.Following(gone, pact), Is.EqualTo(pact.members));
         }
 
         // ------------------------------------------------------------ the two terms C0 left

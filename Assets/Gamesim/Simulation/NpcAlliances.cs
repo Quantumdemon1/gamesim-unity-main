@@ -107,19 +107,48 @@ namespace Gamesim.Simulation
             if (state.Allied(npcId, targetId)) return false;
             if (ActiveAlliancesFor(state, npcId).Count >= MaximumEach) return false;
             if (ActiveAlliancesFor(state, targetId).Count >= MaximumEach) return false;
-            // The web's rule that a grudge blocks an alliance: nobody offers a pact to somebody they
-            // hold forty or more against. Behind the story boundary, where grudges exist at all.
-            if (EpisodeEngine.StoryAt(state, StoryRules.Grudges)
-                && (Grudges.Severity(state, npcId, targetId) >= EpisodeEngine.AllianceGrudgeLine
-                    || Grudges.Severity(state, targetId, npcId) >= EpisodeEngine.AllianceGrudgeLine))
-                return false;
+            if (GrudgeBetween(state, npcId, targetId)) return false;
             // The pact cap (NPC-AGENCY-PLAN.md §3.4): pacts among houseguests stay few enough to read.
             // The player's pacts are outside it, as a story's are.
             if (EpisodeEngine.AgencyOn(state) && npcId != state.playerId && targetId != state.playerId && !PactRoom(state, npcId, targetId))
                 return false;
-            return state.Score(npcId, targetId) >= MinimumRelationship
-                   && Desire(state, npcId, targetId) > ProposeThreshold;
+            return Warm(state, npcId, targetId);
         }
+
+        /// <summary>
+        /// Whether a member of a pact would have this houseguest brought into it (ACTIONS-DEALS-ALLIANCES-PLAN
+        /// C5, "Bring {name} into {pact}"): the web's own bar for a pact of more than two
+        /// (<c>AllianceManager.tsx</c>: nobody in it hostile to anybody else in it), which the port's
+        /// <c>AllyThroughInvitation</c> keeps already - the member is not below
+        /// <see cref="StrategyRules.HostilityLine"/> toward the newcomer - and the web's grudge rule either
+        /// way. Not <see cref="WouldPropose"/>'s desire: a pact that exists is not a new one the member
+        /// would have to want, and in a house where houseguests warm to each other slowly that bar let
+        /// almost nobody in (the lead's ruling). The newcomer's own three pacts are hers to answer for,
+        /// with her answer (<c>EpisodeEngine.BringIntoAlliance</c>). No roll: pure, like the rest of this class.
+        /// </summary>
+        public static bool WouldWelcome(EpisodeState state, string memberId, string inviteeId)
+        {
+            if (memberId == inviteeId) return false;
+            if (state.Find(memberId)?.status != ContestantStatus.Active) return false;
+            if (state.Find(inviteeId)?.status != ContestantStatus.Active) return false;
+            if (GrudgeBetween(state, memberId, inviteeId)) return false;
+            return state.Score(memberId, inviteeId) >= StrategyRules.HostilityLine;
+        }
+
+        /// <summary>
+        /// The web's rule that a grudge blocks an alliance: nobody offers a pact to somebody they hold
+        /// forty or more against, or who holds that against them. Behind the story boundary, where
+        /// grudges exist at all.
+        /// </summary>
+        private static bool GrudgeBetween(EpisodeState state, string a, string b) =>
+            EpisodeEngine.StoryAt(state, StoryRules.Grudges)
+            && (Grudges.Severity(state, a, b) >= EpisodeEngine.AllianceGrudgeLine
+                || Grudges.Severity(state, b, a) >= EpisodeEngine.AllianceGrudgeLine);
+
+        /// <summary>Whether one houseguest wants the other: the relationship floor and the desire threshold, both.</summary>
+        private static bool Warm(EpisodeState state, string npcId, string targetId) =>
+            state.Score(npcId, targetId) >= MinimumRelationship
+            && Desire(state, npcId, targetId) > ProposeThreshold;
 
         /// <summary>
         /// A pact a story made: two to four houseguests, no roll, the same record the weekly pass
@@ -143,6 +172,9 @@ namespace Gamesim.Simulation
                 id = "alliance-story-" + state.nextSequence++, name = name.Length > 100 ? name.Substring(0, 100) : name,
                 members = ids, active = true,
             };
+            // Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C5) a story's pact with the player in
+            // it never takes the name of one the player stands in already: the captions name them apart.
+            if (EpisodeEngine.CommitmentRulesOn(state) && ids.Contains(state.playerId)) alliance.name = PactNames.Unique(state, alliance.name);
             state.alliances.Add(alliance);
             EpisodeEngine.AllianceFormedUnderRead(state, alliance);
             for (int i = 0; i < ids.Count; i++)
@@ -262,6 +294,12 @@ namespace Gamesim.Simulation
         /// <see cref="SourLine"/>, ends it from their side. Somebody who has left the house has left every
         /// pact (X5), so only the members still in it are read, and a pact the player is no longer in
         /// the house for is a pact among houseguests.</para>
+        ///
+        /// <para>And a pact of three or more (C5, the lead's ruling on groups) goes on without the one who
+        /// turned: they are taken out of it, as a leave takes the player out and C2's cut takes a betrayer
+        /// out, and the rest of it hear "Riley Chen is out of The Trio.", the story's own words for a
+        /// defector - an act of theirs, never a number. A pact of two ends, as C3 made it; and the player's
+        /// own souring on anybody in it still ends the whole pact, as it always did.</para>
         /// </summary>
         public static void Dissolve(EpisodeState state)
         {
@@ -269,6 +307,18 @@ namespace Gamesim.Simulation
             foreach (var alliance in state.alliances.Where(a => a.active).ToList())
             {
                 var members = rules ? alliance.members.Where(id => state.Find(id)?.status == ContestantStatus.Active).ToList() : alliance.members;
+                if (rules && members.Contains(state.playerId) && Intact(state, alliance)
+                    && !members.Any(other => other != state.playerId && state.Score(state.playerId, other) < SourLine))
+                {
+                    foreach (string turned in members.Where(other => other != state.playerId && state.Score(other, state.playerId) < SourLine).ToList())
+                    {
+                        if (EpisodeEngine.TakeOutOfPact(state, alliance, turned)) break;
+                        var name = state.Find(turned)?.name ?? turned;
+                        EpisodeEngine.Log(state, "alliance", name + " is out of " + alliance.name + ".",
+                            alliance.members.Where(id => state.Find(id)?.status == ContestantStatus.Active).Concat(new[] { turned }).Distinct().ToArray());
+                    }
+                    continue;
+                }
                 bool soured = members.Contains(state.playerId)
                     ? members.Any(other => other != state.playerId && (state.Score(state.playerId, other) < SourLine
                         || (rules && state.Score(other, state.playerId) < SourLine)))

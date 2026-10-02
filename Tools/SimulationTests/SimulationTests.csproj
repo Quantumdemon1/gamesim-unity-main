@@ -65,6 +65,7 @@
     <Compile Include="$(EditMode)EveryDealDoesSomethingTests.cs" />
     <Compile Include="$(EditMode)BetrayalAndAllegianceTests.cs" />
     <Compile Include="$(EditMode)AlliesShareIntelTests.cs" />
+    <Compile Include="$(EditMode)GrowAndManageAlliancesTests.cs" />
     <!-- Explicit, and compiled out of Unity: the commitment rules' recorded-season evidence, run on demand. -->
     <Compile Include="$(EditMode)CommitmentRulesSeasonDigests.cs" />
     <Compile Include="$(EditMode)CampaignBriefTests.cs" />

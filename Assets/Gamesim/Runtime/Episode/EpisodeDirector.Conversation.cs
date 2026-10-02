@@ -310,7 +310,12 @@ namespace Gamesim.Episode
                 case EpisodeCommandKind.PromiseVote:
                 case EpisodeCommandKind.PromiseFinalTwo:
                 case EpisodeCommandKind.FormAlliance:
+                // Asking somebody into a pact is a pact with them (C5): it binds the player as a proposal does.
+                case EpisodeCommandKind.BringIntoAlliance:
                     return BindsYouTag;
+                // A pact's new name changes nothing anybody weighs, and spends no action (C5).
+                case EpisodeCommandKind.RenameAlliance:
+                    return FreeTag;
                 case EpisodeCommandKind.SwearLoyalty:
                     return BindsYouTag + " · " + FreeTag;
                 case EpisodeCommandKind.DeclineLoyalty:

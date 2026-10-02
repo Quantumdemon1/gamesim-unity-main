@@ -157,6 +157,8 @@ namespace Gamesim.Simulation
                 id = "alliance-" + s.nextSequence, name = "The " + npc.name.Split(' ')[0] + " Pact",
                 members = new List<string> { s.playerId, npcId },
             };
+            // Under the commitment rules (C5) no two of the player's standing pacts share a name.
+            if (CommitmentRulesOn(s)) pact.name = PactNames.Unique(s, pact.name);
             s.alliances.Add(pact);
             AllianceFormedUnderRead(s, pact);
             Log(s, "alliance", "You and " + npc.name + " formed a private alliance.", s.playerId, npcId);

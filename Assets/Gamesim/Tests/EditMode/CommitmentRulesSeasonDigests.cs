@@ -34,7 +34,8 @@ namespace Gamesim.Tests.EditMode
     /// evidence is for a change to the rules, and a reader's words are re-recorded with it. Each
     /// later slice behind the same boundary keeps the first half green and shows, in the second, that
     /// the same seasons reach what it changes (C1: partnerships judged, safety pacts kept, information
-    /// readings, offers accepted and broken).</para>
+    /// readings, offers accepted and broken; C5: somebody asked into a pact, a member's no, a pact
+    /// renamed - its busy moves only ever made under the rules, so the first half never sees them).</para>
     /// </summary>
     public sealed class CommitmentRulesSeasonDigests
     {
@@ -135,6 +136,13 @@ namespace Gamesim.Tests.EditMode
             Assert.That(reached.TryGetValue("AllianceMeet", out int meetings) && meetings > 0, Is.True, "Pacts met.");
             Assert.That(reached.TryGetValue("ally-claim", out int allyClaims) && allyClaims > 0, Is.True, "A meeting told the player a vote.");
             Assert.That(reached.TryGetValue("ally-claim-kept", out int allyKept) && allyKept > 0, Is.True, "The reveal judged it.");
+            // C5 (grow and manage alliances): the same seasons ask somebody into a pact, bring somebody in -
+            // the members asked only on the one asked's yes, by the web's bar for a pact of more than two -
+            // and rename one. A member's no after that yes is rare under that bar, where a member must be
+            // hostile to the newcomer (the count says how rare); GrowAndManageAlliancesTests holds it.
+            Assert.That(reached.TryGetValue("BringIntoAlliance", out int askings) && askings > 0, Is.True, "The player asked somebody into a pact.");
+            Assert.That(reached.TryGetValue("pact-joined", out int joins) && joins > 0, Is.True, "Somebody was brought into a pact.");
+            Assert.That(reached.TryGetValue("RenameAlliance", out int renames) && renames > 0, Is.True, "A pact was renamed.");
         }
 
         /// <summary>A played line's key: its rule set, size, seed and digest, without the run's counts.</summary>
@@ -217,6 +225,7 @@ namespace Gamesim.Tests.EditMode
                             if (told != null && told.source == ClaimSource.Told && told.targetId == EpisodeEngine.ProjectBallot(s, own.targetId).selectedNomineeId)
                                 Count(counts, "ally-asked-straight");
                         }
+                        CountGrowth(counts, s, result.state);
                     }
                 }
                 if (done) continue;
@@ -255,6 +264,9 @@ namespace Gamesim.Tests.EditMode
             // C6, by the record's own words: an ally's account of their vote at a meeting, and how the reveal judged it.
             Count(counts, "ally-claim", final.ledger.claims.Count(k => k.source == ClaimSource.Ally));
             Count(counts, "ally-claim-kept", final.ledger.claims.Count(k => k.source == ClaimSource.Ally && k.status == ClaimStatus.Kept));
+            // C5's groups ruling: a member who turned on a pact of the player's of three or more is taken out
+            // of it, in a story defector's words (which a story's own defector writes too); the last 256 lines only.
+            Count(counts, "pact-member-out", final.events.Count(e => e.kind == "alliance" && e.text != null && e.text.Contains(" is out of ")));
             stats = "cmds=" + i + " week=" + final.week + " deals=" + final.deals.Count + " broken=" + broken + " promisesBroken=" + brokenPromises
                 + " winner=" + final.winnerId;
             digest = Hash(trace.ToString());
@@ -270,6 +282,27 @@ namespace Gamesim.Tests.EditMode
         private static void Count(Dictionary<string, int> counts, string key, int by = 1)
         {
             counts.TryGetValue(key, out int n); counts[key] = n + by;
+        }
+
+        /// <summary>
+        /// C5's outcomes, by the words a command wrote, so the file still compiles against the build
+        /// before them: somebody brought into a pact, a member's no after the one asked said yes (the
+        /// only time the members are asked), the one asked's own no, a pact renamed, and a pact of three
+        /// or more the player walked out of going on without them.
+        /// </summary>
+        private static void CountGrowth(Dictionary<string, int> counts, EpisodeState before, EpisodeState after)
+        {
+            foreach (var e in after.events.Where(e => e.sequence >= before.nextSequence && e.text != null))
+            {
+                if (e.kind == "alliance" && e.text.Contains(" joined ")) Count(counts, "pact-joined");
+                else if (e.kind == "alliance-refused" && e.text.Contains(" won't have "))
+                    Count(counts, "pact-join-refused-by-a-member");
+                else if (e.kind == "alliance-refused" && (e.text.Contains(" turned down The ")
+                    || PactNamesOnOffer.Any(name => e.text.Contains(" turned down " + name + "."))))
+                    Count(counts, "pact-join-refused-by-the-one-asked");
+                else if (e.kind == "alliance-renamed") Count(counts, "pact-renamed");
+                else if (e.kind == "alliance" && e.text.EndsWith(" goes on without you.", StringComparison.Ordinal)) Count(counts, "pact-left-goes-on");
+            }
         }
 
         private static string Hash(string text)
@@ -381,15 +414,18 @@ namespace Gamesim.Tests.EditMode
             if (!left)
                 return s.boughtActionPoints < 2 && Pick(s, seed, 11 + attempt, 3) == 0
                     ? Cmd(s, EpisodeCommandKind.BuyActionPoint, null, null, WebSocialVocabulary.SpreadAll) : null;
-            // C6, the rules' half only: a pact of the player's meets through one of its members. A pact that
-            // has met this week refuses, and the attempt goes on to something else.
-            if (rulesOn && Pick(s, seed, 23 + attempt, 3) == 0)
+            // C6, the rules' half only: a pact of the player's meets through one of its members, on a salt of
+            // its own (clear of C5's 21-24 and C7's 31-36). A pact that has met this week refuses, and the
+            // attempt goes on to something else.
+            if (rulesOn && Pick(s, seed, 41 + attempt, 3) == 0)
             {
                 var pact = s.alliances.FirstOrDefault(p => p.active && p.members.Contains(s.playerId)
                     && p.members.Any(id => id != s.playerId && s.Find(id)?.status == ContestantStatus.Active));
                 var mate = pact?.members.Where(id => id != s.playerId).Select(s.Find).FirstOrDefault(m => m != null && m.status == ContestantStatus.Active);
                 if (mate != null) return Cmd(s, EpisodeCommandKind.AllianceMeet, mate.id, null, pact.id);
             }
+            var grow = attempt == 0 && RulesOn(s) ? GrowOrManage(s, seed, npcs) : null;
+            if (grow != null) return grow;
             var a = npcs[Pick(s, seed, 1 + attempt * 7, npcs.Count)];
             var others = npcs.Where(x => x.id != a.id).ToList();
             var b = others.Count > 0 ? others[Pick(s, seed, 2 + attempt * 7, others.Count)] : null;
@@ -423,6 +459,57 @@ namespace Gamesim.Tests.EditMode
                 case 14: return Cmd(s, EpisodeCommandKind.DiscussGame, a.id);
                 case 15: return Cmd(s, EpisodeCommandKind.HouseMeeting, null, null, EpisodeEngine.RallyTroops);
                 default: return social ? Cmd(s, EpisodeCommandKind.StudyHouse, "sneak-peek") : null;
+            }
+        }
+
+        /// <summary>
+        /// Whether the season plays the commitment rules this week, read by reflection so the file
+        /// compiles against the build before them, where it never does.
+        /// </summary>
+        private static bool RulesOn(EpisodeState s)
+        {
+            var field = typeof(EpisodeState).GetField("commitmentRulesStartWeek");
+            if (field == null) return false;
+            int start = (int)field.GetValue(s);
+            return start >= 1 && s.week >= start;
+        }
+
+        /// <summary>The web's names for a pact, which C5's rename offers (PactNames.Web), as words.</summary>
+        private static readonly string[] PactNamesOnOffer = { "The Outsiders", "Dream Team", "Power Players", "The Silent Circle", "The Hidden Council", "The Golden Crew" };
+
+        /// <summary>
+        /// C5 (grow and manage alliances), under the rules only, now and then: bring somebody into one of
+        /// the player's pacts, rename one the player founded, or leave one of three or more. The two new
+        /// kinds by number (BringIntoAlliance 59, RenameAlliance 60), and the members' say by reflection
+        /// (NpcAlliances.WouldWelcome), so the file still compiles against the build before them; a season
+        /// without the rules never comes here. The busy player asks only somebody it can see may be asked -
+        /// in no pact with the player, and not somebody it has soured on - and somebody every member would
+        /// welcome where there is anybody (a harness may peek, to reach the join), anybody otherwise.
+        /// </summary>
+        private static EpisodeCommand GrowOrManage(EpisodeState s, uint seed, List<ContestantState> npcs)
+        {
+            var mine = s.alliances.Where(p => p.active && p.members.Contains(s.playerId)).ToList();
+            if (mine.Count == 0) return null;
+            var pact = mine[Pick(s, seed, 21, mine.Count)];
+            var here = pact.members.Where(id => id != s.playerId && s.Find(id)?.status == ContestantStatus.Active).ToList();
+            switch (Pick(s, seed, 22, 8))
+            {
+                case 0:
+                case 1:
+                    var outside = npcs.Where(n => !pact.members.Contains(n.id) && !s.Allied(s.playerId, n.id)
+                        && s.Score(s.playerId, n.id) >= NpcAlliances.SourLine).ToList();
+                    var welcome = typeof(NpcAlliances).GetMethod("WouldWelcome");
+                    var welcomed = welcome == null ? new List<ContestantState>()
+                        : outside.Where(n => here.All(m => (bool)welcome.Invoke(null, new object[] { s, m, n.id }))).ToList();
+                    var asked = welcomed.Count > 0 ? welcomed : outside;
+                    return asked.Count > 0 ? Cmd(s, (EpisodeCommandKind)59, asked[Pick(s, seed, 23, asked.Count)].id, pact.id) : null;
+                case 2:
+                    return here.Count > 0 && pact.members[0] == s.playerId
+                        ? Cmd(s, (EpisodeCommandKind)60, here[0], pact.id, PactNamesOnOffer[Pick(s, seed, 24, PactNamesOnOffer.Length)]) : null;
+                case 3:
+                    return here.Count >= 2 ? Cmd(s, EpisodeCommandKind.LeaveAlliance, here[0], pact.id) : null;
+                default:
+                    return null;
             }
         }
 

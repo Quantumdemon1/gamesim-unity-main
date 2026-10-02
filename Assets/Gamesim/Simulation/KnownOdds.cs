@@ -236,14 +236,34 @@ namespace Gamesim.Simulation
         {
             if (s?.alliances == null || string.IsNullOrEmpty(npcId) || npcId == s.playerId) return false;
             if (!EpisodeEngine.CommitmentRulesOn(s) || !EpisodeEngine.StoryAt(s, StoryRules.Grudges)) return false;
+            int left = 0;
             // The cheap test first: an ended pact holding the two of them at all.
-            if (!s.alliances.Any(a => a != null && !a.active && a.members != null && a.members.Contains(s.playerId) && a.members.Contains(npcId)))
-                return false;
-            int left = AllianceRead.Yours(s)
-                .Where(p => !p.active && p.ended == AllianceRead.YouLeft && p.endedWeek > 0 && p.members.Any(m => m.id == npcId))
-                .Select(p => p.endedWeek).DefaultIfEmpty(0).Max();
+            if (s.alliances.Any(a => a != null && !a.active && a.members != null && a.members.Contains(s.playerId) && a.members.Contains(npcId)))
+                left = AllianceRead.Yours(s)
+                    .Where(p => !p.active && p.ended == AllianceRead.YouLeft && p.endedWeek > 0 && p.members.Any(m => m.id == npcId))
+                    .Select(p => p.endedWeek).DefaultIfEmpty(0).Max();
+            // A pact of three or more the player walked out of goes on without them (C5): it is no longer
+            // theirs, and their own line - told to everyone left in it - says when, while the log holds it.
+            left = Math.Max(left, LeftGoingOn(s, npcId));
             return left > 0
                 && EpisodeEngine.AllianceLeftGrudge - Grudges.DecayPerWeek * (s.week - left) >= EpisodeEngine.AllianceGrudgeLine;
+        }
+
+        /// <summary>
+        /// The latest week the player walked out of a pact of three or more with this houseguest in it,
+        /// which went on without the player (ACTIONS-DEALS-ALLIANCES-PLAN C5): their own line, told to
+        /// everybody left in it, while the log holds it. 0 for none.
+        /// </summary>
+        private static int LeftGoingOn(EpisodeState s, string npcId)
+        {
+            int week = 0;
+            if (s.events == null) return week;
+            foreach (var e in s.events)
+                if (e != null && e.kind == "alliance" && e.audienceIds != null && e.audienceIds.Contains(s.playerId) && e.audienceIds.Contains(npcId)
+                    && e.text != null && e.text.StartsWith("You left the alliance with ", StringComparison.Ordinal)
+                    && e.text.EndsWith(" goes on without you.", StringComparison.Ordinal) && e.week > week)
+                    week = e.week;
+            return week;
         }
 
         // ---------------------------------------------------------------- a plea

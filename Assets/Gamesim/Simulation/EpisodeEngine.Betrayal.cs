@@ -92,9 +92,8 @@ namespace Gamesim.Simulation
             foreach (var pact in pacts)
             {
                 var audience = new[] { s.playerId }.Concat(pact.members.Where(id => id != s.playerId)).Distinct().ToArray();
-                bool ends = pact.members.Count(id => s.Find(id)?.status == ContestantStatus.Active) <= 2;
-                if (ends) pact.active = false;
-                else pact.members.Remove(betrayer.id);
+                // A pact of two ends; a bigger one goes on without them (shared with C5's leave).
+                bool ends = TakeOutOfPact(s, pact, betrayer.id);
                 Log(s, "alliance", Allegiance.CutTiesLine(betrayer.name, pact.name, ends), audience);
             }
         }

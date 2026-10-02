@@ -67,7 +67,12 @@ namespace Gamesim.Tests.PlayMode
                 label.ForceMeshUpdate();
                 Assert.That(label.isTextOverflowing, Is.False, "'" + label.text + "' fits its box.");
             }
-            if (Application.isBatchMode) yield return CaptureFraming("conversation-unavailable");
+            // The frame shows the card (UI-UX-PASS-PLAN Z0): with the HUD drawn in the scene a metre
+            // out, the close-up's prop stood where it was (the play sweep's row 3). The card is the
+            // panel's own ground, found again after the capture renders the HUD for its frame.
+            if (Application.isBatchMode)
+                yield return CaptureFraming("conversation-unavailable", inspect: frame =>
+                    AssertThePanelIsInTheFrame(frame, LastActive("Episode panel"), "The conversation's notice card in 'conversation-unavailable'"));
 
             ButtonWithCaption("Close  [Esc]").onClick.Invoke();
             yield return null;

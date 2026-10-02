@@ -266,10 +266,12 @@ namespace Gamesim.Episode
             if (ballot) hud.SetActivityLayout(EpisodeHud.ActivityLayout.Ballot);
             else hud.SetDiaryRoomLayout();
             hud.DiaryHeader(ballot ? null : EpisodeHud.DiaryOptionsTitle);
-            // Mockup-08's bar under the vote: the player, and the rule the vote is cast under.
+            // Mockup-08's bar under the vote: the player, and the rule the vote is cast under - or,
+            // while a choice waits to be confirmed, the rule the draft is held under.
             if (ballot)
                 hud.SpeechBar(state.playerId, EpisodeHud.SelfTitle(state.Find(state.playerId)),
-                    EpisodeEngine.NeedsPlayerTieBreak(state)
+                    ballotDraft ? DraftBarLine
+                    : EpisodeEngine.NeedsPlayerTieBreak(state)
                         ? "The vote is tied, and yours decides it."
                         : "One vote, cast in private. Nobody sees it, unless you tell them.", true);
             if(!IsDiarySettled)
@@ -287,18 +289,20 @@ namespace Gamesim.Episode
                 {
                     // The ballot stays on screen while the choice waits to be confirmed, the chosen
                     // card marked - pressing the other card changes the choice, nothing is cast
-                    // until Confirm. Confirm stands straight under the cards, where mockup-08 puts
-                    // its button; the explanation follows it rather than pushing it past the fold.
+                    // until Confirm. Confirm and the way back are the pinned pair under the cards,
+                    // outside the scroll, where mockup-08 puts its button: in the column they
+                    // followed the cards, and "Back to diary (discard choice)" stood past the
+                    // panel's foot behind a scrollbar (ballot-review; UI-UX-PASS-PLAN T0). The
+                    // review's summary is the ballot's line under its heading, the draft's rule is
+                    // the bar's (DraftBarLine), and the cards take the room between.
                     bool tieBreak = EpisodeEngine.NeedsPlayerTieBreak(state);
-                    // What the ballot chosen would break of the player's word, over the cards and
-                    // Confirm - the controls it is about - so Confirm still follows the cards
+                    hud.PinnedPair(EpisodeHud.DiaryConfirmCaption, () => ConfirmDiaryDecision(reviewed),
+                        EpisodeHud.DiaryCancelCaption, () => CancelDiaryDecision(reviewed));
+                    // What the ballot chosen would break of the player's word, over the cards
                     // (EpisodeDirector.YourWord).
                     hud.BallotCards(state, state.nominees, reviewed.target, id => id == reviewed.target ? "Your choice: " + state.Find(id).name : "Choose " + state.Find(id).name + " instead",
-                        id => { if (id != reviewed.target) OfferBallot(state, true, tieBreak, id); }, warning: DraftWarning(reviewed));
-                    hud.Action(EpisodeHud.DiaryConfirmCaption, () => ConfirmDiaryDecision(reviewed));
-                    hud.Action(EpisodeHud.DiaryCancelCaption, () => CancelDiaryDecision(reviewed));
-                    hud.Paragraph(reviewed.summary);
-                    hud.Aside("Nothing has been committed yet. Confirm once to save this decision, or go back to discard it.");
+                        id => { if (id != reviewed.target) OfferBallot(state, true, tieBreak, id); },
+                        line: reviewed.summary, warning: DraftWarning(reviewed), under: 0f);
                     return;
                 }
                 RenderDiaryReview(reviewed, study, reflection);
@@ -640,6 +644,12 @@ namespace Gamesim.Episode
         /// <summary>Whose thoughts the voter roster is currently showing, if any.</summary>
         private string thoughtsVoterId;
 
+        /// <summary>The voters' row of chips, so a test can find it the way it finds the diary's tabs.</summary>
+        public const string VotersRowName = "Voters";
+
+        /// <summary>The bar's line while a ballot waits to be confirmed: the rule the draft is held under.</summary>
+        public const string DraftBarLine = "Nothing has been committed yet. Confirm once to save this decision, or go back to discard it.";
+
         /// <summary>
         /// The roster of eligible voters, with a per-voter reveal — the web build's "Thoughts"
         /// control, and the progress line that goes with it.
@@ -663,23 +673,29 @@ namespace Gamesim.Episode
 
             hud.Heading("VOTERS");
 
+            // One row of chips, not a row of the column a voter: at 68 tall each the roster ran the
+            // ballot past the panel's foot behind a scrollbar in a house of six (ballot-diary;
+            // UI-UX-PASS-PLAN T0). Each chip is the control it was. The caption is fixed whatever
+            // the state: a control whose name changes as you use it is a control neither a test nor
+            // a screen reader can refer to twice. The player's own entry is the row's summary, at
+            // its end; the chosen voter's thoughts follow the row.
+            var chips = new List<(string Caption, bool Active, Action Choose)>();
+            string you = null;
             foreach (var voter in voters)
             {
                 var actor = voter;
                 if (actor.isPlayer)
                 {
                     bool voted = state.votes.Any(vote => vote.voterId == actor.id);
-                    hud.Paragraph(HudPrimitives.WithYou(actor.name, true) + (voted ? "  ·  voted" : ""));
+                    you = HudPrimitives.WithYou(actor.name, true) + (voted ? "  ·  voted" : "");
                     continue;
                 }
-
-                // The caption is fixed whatever the state. A control whose name changes as you use
-                // it is a control neither a test nor a screen reader can refer to twice.
-                hud.ActionFor(actor.id + ":thoughts", "Thoughts · " + actor.name,
-                    () => { thoughtsVoterId = thoughtsVoterId == actor.id ? null : actor.id; Render(); });
-
-                if (thoughtsVoterId == actor.id) hud.Paragraph(Thoughts(state, actor));
+                chips.Add(("Thoughts · " + actor.name, thoughtsVoterId == actor.id,
+                    () => { thoughtsVoterId = thoughtsVoterId == actor.id ? null : actor.id; Render(); }));
             }
+            hud.FilterRow(VotersRowName, chips, you);
+            var chosen = thoughtsVoterId != null ? voters.FirstOrDefault(voter => voter.id == thoughtsVoterId && !voter.isPlayer) : null;
+            if (chosen != null) hud.Paragraph(Thoughts(state, chosen));
         }
 
         /// <summary>
@@ -787,14 +803,10 @@ namespace Gamesim.Episode
             if (BallotIsLive(state))
             {
                 bool tieBreak = EpisodeEngine.NeedsPlayerTieBreak(state);
-                // Out of the diary a card is the vote itself, cast as it is pressed: what each one
-                // would break of the player's word is said over the cards, before either is
-                // pressed (EpisodeDirector.YourWord). In the diary the card stages the choice, and
-                // its review says it then.
-                hud.BallotCards(state, state.nominees, null, id => "Vote to evict " + state.Find(id).name,
-                    id => OfferBallot(state, privateRoom, tieBreak, id), warning: privateRoom ? null : BallotWarning(state, state.nominees));
                 // Under the cards, where mockup-08 keeps its line: ahead of the title it read as
-                // the page's heading.
+                // the page's heading. Built first, with the roster, so the cards can be sized to the
+                // room the lines leave them, and moved under the cards by BallotCards (over).
+                int over = hud.ColumnRows;
                 hud.Paragraph(tieBreak ? "The vote is tied. As HoH, you cast the deciding vote." : "Your ballot stays yours. Only the count is read.");
                 // At four there is exactly one eligible voter. That has always been true by
                 // arithmetic and has never been said, which makes a sole ballot look like a bug.
@@ -802,6 +814,12 @@ namespace Gamesim.Episode
                     hud.Paragraph("At the final four only one houseguest votes, and tonight that is you. "
                         + "Your single vote decides the eviction outright.");
                 VoterRoster(state);
+                // Out of the diary a card is the vote itself, cast as it is pressed: what each one
+                // would break of the player's word is said over the cards, before either is
+                // pressed (EpisodeDirector.YourWord). In the diary the card stages the choice, and
+                // its review says it then.
+                hud.BallotCards(state, state.nominees, null, id => "Vote to evict " + state.Find(id).name,
+                    id => OfferBallot(state, privateRoom, tieBreak, id), warning: privateRoom ? null : BallotWarning(state, state.nominees), over: over);
                 return true;
             }
             return false;

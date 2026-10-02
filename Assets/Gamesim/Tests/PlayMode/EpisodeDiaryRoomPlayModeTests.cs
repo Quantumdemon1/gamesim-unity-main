@@ -277,20 +277,12 @@ namespace Gamesim.Tests.PlayMode
             ButtonWithCaption(caption).onClick.Invoke();
             yield return null; yield return null;
             if (Application.isBatchMode) yield return CaptureFraming("ballot-review");
-            // The eviction vote's own panel (mockup-08), with Confirm straight under the cards:
-            // on screen without a scroll, where the choice was just made.
+            // The eviction vote's own panel (mockup-08), with Confirm and the way back pinned under
+            // the cards, outside the scroll: on screen without a scroll, where the choice was just
+            // made (UI-UX-PASS-PLAN T0).
             Assert.That(director.GetComponentInChildren<EpisodeHud>().CurrentActivityLayout,
                 Is.EqualTo(EpisodeHud.ActivityLayout.Ballot), "A ballot in the diary is the eviction vote's panel.");
-            Canvas.ForceUpdateCanvases();
-            var viewport = ScreenRect(director.GetComponentsInChildren<RectTransform>()
-                .First(rect => rect.name == "Episode scroll" && rect.gameObject.activeInHierarchy));
-            var confirmAt = ScreenRect((RectTransform)ButtonWithCaption(EpisodeHud.DiaryConfirmCaption).transform);
-            Assert.That(confirmAt.yMin, Is.GreaterThanOrEqualTo(viewport.yMin - 1f),
-                "Confirm stands under the ballot, not past the fold of the panel.");
-            var cards = ScreenRect(director.GetComponentsInChildren<RectTransform>()
-                .First(rect => rect.name == EpisodeHud.BallotRowName && rect.gameObject.activeInHierarchy));
-            Assert.That(cards.yMin - confirmAt.yMax, Is.LessThan(confirmAt.height),
-                "Confirm follows the cards directly; the explanation comes after it.");
+            AssertBallotFits("The ballot with a choice waiting", true);
             // Mockup-08's bar under the vote, in the strip's place.
             Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == EpisodeHud.SpeechBarName && rect.gameObject.activeInHierarchy),
                 Is.True, "The ballot has its bar.");

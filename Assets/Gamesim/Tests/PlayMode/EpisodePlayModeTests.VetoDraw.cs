@@ -160,6 +160,40 @@ namespace Gamesim.Tests.PlayMode
                         Is.EqualTo("REVEAL THE DRAW"), where + "'s way on wears the draw it makes.");
                     AssertEveryLabelDraws(wayOn, where + "'s way on");
                 });
+                // On the 16:9 frame as on the batch canvas's 4:3, at both text sizes: the pool's
+                // seventh card at sixteen - the last of its first row - inside the scroll's window
+                // and the panel (UI-UX-PASS-PLAN T0; the capture read it as cut, and its pixels
+                // put it 46 units short of the shell's edge).
+                if (houseguests != 16) continue;
+                foreach (bool larger in new[] { false, true })
+                {
+                    yield return ApplyTextSize(larger);
+                    yield return OpenStation();
+                    yield return null;
+                    string size = larger ? " at the larger text" : "";
+                    yield return AtBothFrames(frame =>
+                    {
+                        string where = "The draw of sixteen" + size + " on the " + frame + " frame";
+                        var panel = LastActive("Episode panel");
+                        var content = LastActive("Episode content");
+                        var viewport = (RectTransform)content.parent;
+                        var row = LastActive(EpisodeHud.VetoDrawBoardName);
+                        Assert.That(row, Is.Not.Null, where + " has its row.");
+                        var cards = row.GetComponentsInChildren<RectTransform>().Where(rect => rect.name.StartsWith("Face · ")).ToList();
+                        Assert.That(cards, Has.Count.EqualTo(16), where + " shows the whole house.");
+                        foreach (var card in cards)
+                        {
+                            AssertWithin(OnTheHud(viewport), OnTheHud(card), where + "'s '" + card.name + "'", "the scroll's window");
+                            AssertWithin(OnTheHud(panel), OnTheHud(card), where + "'s '" + card.name + "'", "the panel");
+                        }
+                        Assert.That(content.rect.height, Is.LessThanOrEqualTo(viewport.rect.height + .5f),
+                            where + " scrolls: " + content.rect.height.ToString("0") + " in " + viewport.rect.height.ToString("0") + ".");
+                        AssertEveryLabelDraws(row, where);
+                    });
+                    director.ClosePanels();
+                    yield return null;
+                }
+                yield return ApplyTextSize(false);
             }
             // The largest house, photographed for review: how the row splits between the three by
             // right and a pool of thirteen is a judgement the owner makes by eye, and the strategy

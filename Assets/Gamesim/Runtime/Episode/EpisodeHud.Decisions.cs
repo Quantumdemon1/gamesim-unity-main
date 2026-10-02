@@ -161,13 +161,33 @@ namespace Gamesim.Episode
         /// the choice is waiting to be confirmed. A <paramref name="warning"/> - what a ballot would
         /// break of the player's word (EpisodeHud.YourWord) - stands under the line and over the
         /// cards it is about, and the cards give it the room, so what follows them stays in view.
+        ///
+        /// <para>The cards are sized to the room the scroll has after everything else the vote
+        /// holds, so the vote stands on one screen at either text size (UI-UX-PASS-PLAN T0): the
+        /// heading, the line and a warning; and under the cards, <paramref name="under"/> when the
+        /// caller says what follows them - nothing, with Confirm and its way back pinned under the
+        /// scroll - or, with <paramref name="over"/>, the rows the column holds from that index on
+        /// (<see cref="ColumnRows"/> taken before they were built: the ballot's lines and the
+        /// voters' roster), measured, and moved under the cards here; else a Confirm row. Below the
+        /// text size the card's type shrinks with the card, so its boxes stay 1.3 times their
+        /// words.</para>
         /// </summary>
         public void BallotCards(EpisodeState state, System.Collections.Generic.IList<string> nominees, string chosenId,
             Func<string, string> caption, Action<string> press,
             string heading = "EVICTION VOTE", string line = "Choose one houseguest to evict from the house.", string glyph = "gavel",
-            string warning = null)
+            string warning = null, float under = -1f, int over = -1)
         {
             string headingWords = heading;
+            var column = content.GetComponent<VerticalLayoutGroup>();
+            float spacing = column != null ? column.spacing : 12f;
+            int lead = content.childCount;
+            if (over >= 0)
+            {
+                under = 0f;
+                for (int i = Mathf.Min(over, lead); i < lead; i++)
+                    if (content.GetChild(i) is RectTransform held && held.gameObject.activeSelf)
+                        under += ColumnRowHeight(held, ContentWidth()) + spacing;
+            }
             var headingRow = new GameObject("Ballot heading", typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
             headingRow.SetParent(content, false);
             headingRow.GetComponent<LayoutElement>().minHeight = 40f * FontScale;
@@ -184,7 +204,9 @@ namespace Gamesim.Episode
             float words = Mathf.Min(title.rectTransform.sizeDelta.x, Mathf.Ceil(title.GetPreferredValues(title.text).x));
             HudPrimitives.Glyph("Ballot mark", headingRow, glyph, Paper,
                 new Vector2((ContentWidth() - words) * .5f - markSide - 10f * FontScale, -4f), markSide);
-            DecisionText(content, line, 16, Paper).alignment = TextAlignmentOptions.Center;
+            var said = DecisionText(content, line, 16, Paper);
+            said.alignment = TextAlignmentOptions.Center;
+            float lineHeight = Mathf.Max(16f * FontScale + 8f, Mathf.Ceil(said.GetPreferredValues(said.text, ContentWidth(), 0f).y));
             float warned = BallotWarningLine(warning);
 
             var row = new GameObject(BallotRowName, typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement)).GetComponent<RectTransform>();
@@ -202,18 +224,37 @@ namespace Gamesim.Episode
             {
                 var scroll = (RectTransform)modalScroll.transform;
                 float viewport = modal.sizeDelta.y + scroll.offsetMax.y - scroll.offsetMin.y;
-                // The heading, the line under it, the spacing, a warning over the cards, and a
-                // Confirm row under them.
-                fitsHeight = (viewport - (6f + 40f + 30f + 3f * 12f + 57f) * FontScale - warned) / BallotCardHeight;
+                // The column's padding, the heading, the line as it wraps, the gaps after the
+                // heading, the line and the cards, a warning over the cards, the row's own slack,
+                // and what stands under the cards.
+                float padding = column != null ? column.padding.top + column.padding.bottom : 24f;
+                float below = under >= 0f ? under : 57f * FontScale + spacing;
+                fitsHeight = (viewport - padding - 40f * FontScale - lineHeight - 3f * spacing - warned - below - 4f) / BallotCardHeight;
             }
-            float scale = Mathf.Max(Mathf.Min(FontScale, fitsWidth), Mathf.Min(1.4f * FontScale, Mathf.Min(fitsWidth, fitsHeight)));
+            float scale = Mathf.Max(Mathf.Min(BallotCardFloor * FontScale, fitsWidth), Mathf.Min(1.4f * FontScale, Mathf.Min(fitsWidth, fitsHeight)));
             row.GetComponent<LayoutElement>().minHeight = BallotCardHeight * scale + 4f;
             foreach (var id in nominees)
             {
                 string captured = id;
                 BallotCard(row, state.Find(id), caption(id), id == chosenId, scale, () => press(captured));
             }
+            // The cards and their heading take the place the caller took, and what was built there
+            // since follows them.
+            if (over >= 0)
+            {
+                int at = Mathf.Min(over, lead);
+                for (int i = lead; i < content.childCount; i++) content.GetChild(i).SetSiblingIndex(at + (i - lead));
+            }
         }
+
+        /// <summary>How many rows the column holds now: the index a caller takes before building rows the cards will stand over.</summary>
+        public int ColumnRows => content != null ? content.childCount : 0;
+
+        /// <summary>
+        /// The least a ballot card shrinks below the text size when the vote's other rows leave it
+        /// no more height: the card's type shrinks with it, so nothing under 1.3 of its words.
+        /// </summary>
+        private const float BallotCardFloor = .8f;
 
         private void BallotCard(RectTransform row, ContestantState actor, string caption, bool chosen, float scale, Action press)
         {
@@ -257,7 +298,10 @@ namespace Gamesim.Episode
             var name = FixedText(rect, actor.name, 18, Paper, new Vector2(10f * scale, -161f * scale), new Vector2(width - 20f * scale, 24f * scale));
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (semibold != null) name.font = semibold;
-            AutoSize(name, 12);
+            // The card's own scale, not the text size's: a card the vote's rows shrank below the
+            // text size keeps its name in a box 1.3 times the type.
+            name.fontSize = Mathf.RoundToInt(18f * scale);
+            AutoSize(name, 12f * scale);
 
             // Two traits as the cast screen shows them - the card is a person, not a number.
             float x = 10f * scale;
@@ -275,7 +319,8 @@ namespace Gamesim.Episode
 
             // The control's caption, on the card: what pressing it does, in the words it is known by.
             var foot = FixedText(rect, caption, 12, UiTheme.Muted, new Vector2(10f * scale, -220f * scale), new Vector2(width - 20f * scale, 22f * scale));
-            AutoSize(foot, 9);
+            foot.fontSize = Mathf.RoundToInt(12f * scale);
+            AutoSize(foot, 9f * scale);
         }
 
         private RectTransform DecisionColumn(string name, Transform parent, bool card = false)

@@ -102,7 +102,72 @@ namespace Gamesim.Episode
             // The strategy stage's footer holds the row whichever of its parts it has.
             if ((pinnedAction == null && footerStrip == null && footerSecondary == null) || modalScroll == null) return;
             var scroll = (RectTransform)modalScroll.transform;
-            scroll.offsetMin = new Vector2(scroll.offsetMin.x, PinnedMargin + pinnedNoteHeight + PinnedHeight * FontScale + 10f);
+            scroll.offsetMin = new Vector2(scroll.offsetMin.x, PinnedMargin + pinnedNoteHeight + pinnedExtra + PinnedHeight * FontScale + 10f);
+        }
+
+        /// <summary>What a pinned pair stacked one over the other adds under the scroll past one pinned row; zero otherwise.</summary>
+        private float pinnedExtra;
+
+        /// <summary>The height the scroll's foot gives up to the render's pinned row or pair, past the layout's own margin.</summary>
+        public float PinnedRoom => pinnedAction == null ? 0f : PinnedMargin + pinnedNoteHeight + pinnedExtra + PinnedHeight * FontScale + 10f;
+
+        /// <summary>The pinned pair's row, so a test can find it the way it finds the choice rows.</summary>
+        public const string PinnedPairName = "Pinned pair";
+
+        /// <summary>
+        /// Two steps pinned under the scroll as one row - a confirm and its way back - each the row
+        /// an action is, named and captioned by its caption, so every lookup by caption or by name
+        /// still finds it. Side by side as peers where the row holds both captions whole, and the
+        /// first over the second where it does not (the larger text on a narrow frame). The first is
+        /// the render's pinned action: the keyboard opens on it and the scroll stands clear of the
+        /// row. Where a pinned action already stands, both are ordinary rows of the column.
+        ///
+        /// <para>The diary's ballot review used to follow the cards with both in the column, and
+        /// "Back to diary (discard choice)" stood past the panel's foot behind a scrollbar
+        /// (ballot-review; UI-UX-PASS-PLAN T0).</para>
+        /// </summary>
+        public (Button First, Button Second) PinnedPair(string first, Action firstAction, string second, Action secondAction)
+        {
+            if (modal == null || modalScroll == null || pinnedAction != null)
+                return (Action(first, firstAction), Action(second, secondAction));
+            float s = FontScale, side = PinnedSide(), height = PinnedHeight * s, gap = 10f * s;
+            float row = Mathf.Max(0f, modal.sizeDelta.x - 2f * side);
+            // Each caption measured at the row's type: both must stand whole beside the chevron in
+            // half the row, else the pair stacks.
+            float wanted = 0f;
+            foreach (var caption in new[] { first, second })
+            {
+                var probe = NewText(modal, caption, 20, Paper);
+                probe.textWrappingMode = TextWrappingModes.NoWrap;
+                wanted = Mathf.Max(wanted, probe.GetPreferredValues(probe.text).x + 16f + 16f + 18f * s + 10f);
+                probe.gameObject.SetActive(false);
+                Destroy(probe.gameObject);
+            }
+            bool stacked = (row - gap) * .5f < wanted;
+            var pair = new GameObject(PinnedPairName, typeof(RectTransform)).GetComponent<RectTransform>();
+            pair.SetParent(modal, false);
+            pair.anchorMin = new Vector2(0f, 0f); pair.anchorMax = new Vector2(1f, 0f); pair.pivot = new Vector2(.5f, 0f);
+            pinnedExtra = stacked ? height + gap : 0f;
+            pair.offsetMin = new Vector2(side, PinnedMargin);
+            pair.offsetMax = new Vector2(-side, PinnedMargin + height + pinnedExtra);
+            HorizontalOrVerticalLayoutGroup layout = stacked
+                ? pair.gameObject.AddComponent<VerticalLayoutGroup>()
+                : pair.gameObject.AddComponent<HorizontalLayoutGroup>();
+            layout.spacing = gap;
+            layout.childControlWidth = layout.childControlHeight = true;
+            layout.childForceExpandWidth = layout.childForceExpandHeight = true;
+            var a = ActionIn(pair, first, firstAction);
+            var b = ActionIn(pair, second, secondAction);
+            foreach (var button in new[] { a, b })
+            {
+                var element = button.GetComponent<LayoutElement>();
+                if (element == null) continue;
+                element.preferredWidth = 0f; element.flexibleWidth = 1f;
+                element.minHeight = element.preferredHeight = height; element.flexibleHeight = 0f;
+            }
+            pinnedAction = (RectTransform)a.transform;
+            ApplyPinnedInset();
+            return (a, b);
         }
 
         /// <summary>The pinned action, if the render has one and it can take the focus.</summary>

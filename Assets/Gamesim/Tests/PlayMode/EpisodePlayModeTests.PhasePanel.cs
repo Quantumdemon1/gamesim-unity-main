@@ -242,6 +242,9 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.TryOpenPhasePanel(), Is.True);
             yield return null; yield return null;
             Canvas.ForceUpdateCanvases();
+            // Each save's trust reading says whose it is and stands clear of the row's chevron
+            // (UI-UX-PASS-PLAN T0): the chevron drew over the digit on a row without art.
+            AssertReadingsClearOfChevrons("The veto meeting", true);
 
             var saves = before.nominees.Select(id => ButtonWithCaption("Save " + before.Find(id).name + " (HoH chooses replacement)")).ToArray();
             Assert.That(saves[0].transform.parent.name, Is.EqualTo(EpisodeHud.ChoiceRowName));
@@ -274,6 +277,7 @@ namespace Gamesim.Tests.PlayMode
             foreach (var id in before.nominees)
                 Assert.That(FindButton("Save " + before.Find(id).name + " (HoH chooses replacement)").transform.parent.name,
                     Is.EqualTo("Episode content"), "At the larger text each save is a row of its own.");
+            AssertReadingsClearOfChevrons("The veto meeting at the larger text", true);
             director.ClosePanels();
             yield return ApplyTextSize(false);
 
@@ -286,6 +290,7 @@ namespace Gamesim.Tests.PlayMode
                 var save = FindButton("Save " + before.Find(id).name + " (HoH chooses replacement)");
                 Assert.That(save.transform.parent.name, Is.EqualTo("Episode content"), "The diary keeps its column.");
             }
+            AssertReadingsClearOfChevrons("The diary's veto review", true);
             AssertEquivalent(before, director.Snapshot);
             director.ClosePanels();
             yield return null;

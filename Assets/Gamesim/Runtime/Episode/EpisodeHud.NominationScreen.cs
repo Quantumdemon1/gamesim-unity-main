@@ -543,6 +543,7 @@ namespace Gamesim.Episode
             };
 
             var built = new Dictionary<string, RectTransform>();
+            var names = new List<TMP_Text>();
             foreach (var option in options)
             {
                 var captured = option;
@@ -557,8 +558,10 @@ namespace Gamesim.Episode
                     picked?.Invoke(first, second);
                     refresh();
                 };
-                built[option.Id] = cards ? PickerCard(grid, option, state, scale, press) : PickerRow(grid, option, state, cellWidth, cellHeight, press);
+                built[option.Id] = cards ? PickerCard(grid, option, state, scale, press, names) : PickerRow(grid, option, state, cellWidth, cellHeight, press, names);
             }
+            // One size of name across the grid: the largest every name fits its box at.
+            OneSize(names);
             foreach (var pair in built) if (pair.Key == first || pair.Key == second) MarkNominee(pair.Value, true);
 
             RectTransform planRow = null;
@@ -662,8 +665,37 @@ namespace Gamesim.Episode
             reading.alignment = centred ? TextAlignmentOptions.Center : TextAlignmentOptions.Left;
         }
 
+        /// <summary>The name on a candidate's card or row, so a test can read it whole.</summary>
+        public const string PickerNameName = "Name";
+
+        /// <summary>
+        /// Draws a set of names at one size: the largest at which every one of them fits its box,
+        /// never above their type (as KeyCeremony's roster does). Each label auto-sizes to its own
+        /// box, which drew "Avery Thomp…" at ten points beside "Taylor Kim" at fifteen on one grid
+        /// (nomination-picker-16; UI-UX-PASS-PLAN T0). Each is fitted on its own first and every
+        /// box then takes the smallest of those fits as its ceiling, so a name only ever shrinks,
+        /// and the whole set shrinks together.
+        /// </summary>
+        private static void OneSize(List<TMP_Text> names)
+        {
+            float size = float.MaxValue;
+            foreach (var name in names)
+            {
+                if (name == null) continue;
+                name.ForceMeshUpdate(true);
+                size = Mathf.Min(size, name.fontSize);
+            }
+            if (size == float.MaxValue) return;
+            foreach (var name in names)
+            {
+                if (name == null) continue;
+                name.fontSizeMax = size;
+                name.fontSize = size;
+            }
+        }
+
         /// <summary>A candidate as a card (mockup-09), scaled as a whole to <paramref name="scale"/>: the photo, the name under it, and the player's own reading.</summary>
-        private RectTransform PickerCard(RectTransform grid, Option option, EpisodeState state, float scale, Action press)
+        private RectTransform PickerCard(RectTransform grid, Option option, EpisodeState state, float scale, Action press, List<TMP_Text> names)
         {
             var rect = PickerShell(grid, option, press);
             var actor = state != null ? state.Find(option.Id) : null;
@@ -674,16 +706,19 @@ namespace Gamesim.Episode
             photo.anchoredPosition = new Vector2(0f, -6f * scale);
             PickerRole(photo, state, option.Id, scale);
             var name = SizedText(rect, option.Label, 14f * scale, Paper, 10f);
+            name.name = PickerNameName;
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (semibold != null) name.font = semibold;
             name.alignment = TextAlignmentOptions.Top;
+            name.overflowMode = TextOverflowModes.Ellipsis;
             Anchor(name.rectTransform, new Vector2(.5f, 1f), new Vector2(.5f, 1f), new Vector2(0f, -106f * scale), new Vector2(width - 10f * scale, 34f * scale));
+            names?.Add(name);
             if (actor != null && state != null) PickerStanding(rect, state, option.Id, 8f * scale, 142f * scale, width - 16f * scale, scale, true);
             return rect;
         }
 
         /// <summary>A candidate as a row, for a house too big for cards: the photo on the left, the name and the player's own reading beside it, at the text size.</summary>
-        private RectTransform PickerRow(RectTransform grid, Option option, EpisodeState state, float width, float height, Action press)
+        private RectTransform PickerRow(RectTransform grid, Option option, EpisodeState state, float width, float height, Action press, List<TMP_Text> names)
         {
             var rect = PickerShell(grid, option, press);
             var actor = state != null ? state.Find(option.Id) : null;
@@ -696,16 +731,25 @@ namespace Gamesim.Episode
             // Clear of the pick's check in the corner.
             float x = 6f * s + photoWidth + 10f * s, inner = Mathf.Max(24f, width - x - 34f * s);
             // The name, then the reading: its word (18), its track (7) and its number (15) when the
-            // row has the height, else the word and the number on one line.
+            // row has the height, else the word and the number on one line. The name takes two
+            // lines where the row holds them rather than ending in an ellipsis, and the lines it
+            // takes decide the block, so a one-line name leaves no blank line over its reading.
             bool full = height >= PickerRowFull * s;
-            float nameBox = 15f * 1.3f * s, block = nameBox + 2f * s + (full ? 40f : 16f) * s;
-            float y = Mathf.Max(6f * s, (height - block) * .5f);
-            var name = FixedText(rect, option.Label, 15, Paper, new Vector2(x, -y), new Vector2(inner, nameBox));
+            float line = 15f * 1.3f * s, readingBlock = (full ? 40f : 16f) * s;
+            int lines = height >= 2f * line + 2f * s + readingBlock + 8f * s ? 2 : 1;
+            var name = FixedText(rect, option.Label, 15, Paper, new Vector2(x, 0f), new Vector2(inner, lines * line));
+            name.name = PickerNameName;
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (semibold != null) name.font = semibold;
-            name.textWrappingMode = TextWrappingModes.NoWrap;
+            name.textWrappingMode = lines > 1 ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
             name.overflowMode = TextOverflowModes.Ellipsis;
+            name.alignment = TextAlignmentOptions.TopLeft;
             AutoSize(name, 10);
+            names?.Add(name);
+            name.ForceMeshUpdate(true);
+            float nameBox = Mathf.Clamp(name.textInfo.lineCount, 1, lines) * line, block = nameBox + 2f * s + readingBlock;
+            float y = Mathf.Max(4f * s, (height - block) * .5f);
+            Anchor(name.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(x, -y), new Vector2(inner, nameBox));
             if (actor == null || state == null) return rect;
             y += nameBox + 2f * s;
             if (full) { PickerStanding(rect, state, option.Id, x, y, inner, s, false); return rect; }

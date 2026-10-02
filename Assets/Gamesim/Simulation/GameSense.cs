@@ -239,6 +239,12 @@ namespace Gamesim.Simulation
                 if (alliance == null || !alliance.members.Contains(s.playerId)) continue;
                 string others = string.Join(", ", alliance.members.Where(id => id != s.playerId).Select(id => Name(s, id)));
                 if (row.endedWeek == 0) Add(notes, Social, 4, "Your alliance with " + others + " held to the end.", "alliance", row.id, row.startedWeek, known: true);
+                // Under the commitment rules (C2) a pact that ended in a betrayal the player can know of:
+                // a member turned on it in its life, and the player's own record says so.
+                else if (row.why.EndsWith("/betrayed", StringComparison.Ordinal)
+                    && alliance.members.Any(id => id != s.playerId && Allegiance.KnownBetrayals(s, id)
+                        .Any(e => e.week >= Allegiance.StartWeek(s, alliance) && e.week <= row.endedWeek)))
+                    Add(notes, Social, -6, "Week " + row.endedWeek + ": your alliance with " + others + " ended in a betrayal.", "alliance", row.id, row.endedWeek, known: true);
                 else if (row.why.EndsWith("/turned", StringComparison.Ordinal)) Add(notes, Social, -6, "Week " + row.endedWeek + ": your alliance with " + others + " turned on you.", "alliance", row.id, row.endedWeek, known: false);
                 else if (row.why.EndsWith("/soured", StringComparison.Ordinal)) Add(notes, Social, -3, "Week " + row.endedWeek + ": your alliance with " + others + " soured.", "alliance", row.id, row.endedWeek, known: false);
                 else if (row.endedWeek - row.startedWeek >= 3) Add(notes, Social, 2, "Your alliance with " + others + " lasted " + (row.endedWeek - row.startedWeek) + " weeks.", "alliance", row.id, row.endedWeek,

@@ -335,9 +335,10 @@ namespace Gamesim.Simulation
             }
             if (partners.Any(a => lines.Contains("You left the alliance with " + a.name + ".") && !rivals.Any(r => r.members.Contains(a.id))))
                 return YouLeft;
-            // The free exit names the pacts it ended, so its line is this pact's wherever it names it.
-            if (partners.Any(a => lines.Any(line => line.StartsWith(Allegiance.CutTiesPrefix(a.name), StringComparison.Ordinal)
-                    && line.Contains(alliance.name))))
+            // The free exit says a line to each pact it ended, naming the betrayer and the pact: this
+            // pact's only when it is that exact line (one that cut a betrayer out of a bigger pact did
+            // not end it, and a pact whose name holds another's is a different pact).
+            if (partners.Any(a => lines.Contains(Allegiance.CutTiesLine(a.name, alliance.name, true))))
                 return CutTies;
             return null;
         }

@@ -126,7 +126,8 @@ namespace Gamesim.Simulation
                 double loyalty = WebVotingBlocs.Loyalty(snapshot, pact, member.id, s.playerId, c.secondTargetId, trust);
                 // Under the commitment rules (C3) a member whose own commitment to the player has lapsed -
                 // who turned on the pact, or has gone cold on them - does not follow, and no roll is drawn
-                // for them: the refused call is how the player learns of a cooling ally.
+                // for them: the refused call is how the player learns of a cooling ally. A refusal is not a
+                // betrayal on its own; a ballot that then goes against the call is (BallotBetrayals, C2).
                 bool follows = !Allegiance.Lapsed(s, member.id) && WebVotingBlocs.Complies(loyalty, member.traits, () => Roll(s));
                 (follows ? row.followed : row.defected).Add(member.id);
             }
@@ -136,9 +137,6 @@ namespace Gamesim.Simulation
             string against = row.defected.Count == 0 ? "." : "; " + Names(s, row.defected) + (row.defected.Count == 1 ? " isn't." : " aren't.");
             Log(s, "lever", "You called it in " + alliance.name + ": evict " + Name(s, c.secondTargetId) + ". " + with + against,
                 new[] { s.playerId }.Concat(alliance.members.Where(id => id != s.playerId)).ToArray());
-            // Under the commitment rules (C2) an ally who ignores the call has turned on the pact, and
-            // said so to the player's face.
-            foreach (var id in row.defected) Betrayal(s, id, Allegiance.IgnoredCall(Name(s, c.secondTargetId)), false);
         }
 
         /// <summary>"Riley", "Riley and Sam", "Riley, Sam and Alex".</summary>
@@ -163,9 +161,17 @@ namespace Gamesim.Simulation
         private static string WantsOut(EpisodeState s, string type, string aboutId) =>
             type == DealKind.VoteEvict ? aboutId : s.nominees.FirstOrDefault(id => id != aboutId);
 
-        /// <summary>A voter's read as a lever finds it, or null where there is no vote to read or they do not vote.</summary>
-        private static VoteRead.VoterRead LeverRead(EpisodeState s, string voterId) =>
-            VoteRead.Available(s) && Voters(s).Any(v => v.id == voterId && !v.isPlayer) ? VoteRead.ReadVoter(s, voterId, ProjectBallot(s, voterId)) : null;
+        /// <summary>
+        /// A voter's read as a lever finds it, or null where there is no vote to read or they do not vote.
+        /// Read as the player knows the season (<see cref="Allegiance.AsThePlayerKnows"/>): a ballot
+        /// betrayal the player cannot see moves no lever's line.
+        /// </summary>
+        private static VoteRead.VoterRead LeverRead(EpisodeState s, string voterId)
+        {
+            if (!VoteRead.Available(s) || !Voters(s).Any(v => v.id == voterId && !v.isPlayer)) return null;
+            var known = Allegiance.AsThePlayerKnows(s);
+            return VoteRead.ReadVoter(known, voterId, ProjectBallot(known, voterId));
+        }
 
         /// <summary>
         /// A lever says what it moved, in the read's terms: "Riley: torn → leaning evict Jo (+9,
@@ -176,7 +182,8 @@ namespace Gamesim.Simulation
         private static void LeverLine(EpisodeState s, string voterId, VoteRead.VoterRead before, string wantsOutId, string why)
         {
             if (before == null || wantsOutId == null || !VoteRead.Available(s)) return;
-            var after = VoteRead.ReadVoter(s, voterId, ProjectBallot(s, voterId));
+            var known = Allegiance.AsThePlayerKnows(s);
+            var after = VoteRead.ReadVoter(known, voterId, ProjectBallot(known, voterId));
             string line;
             if (after.confidence == VoteRead.Unknown)
             {

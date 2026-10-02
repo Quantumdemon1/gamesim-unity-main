@@ -53,6 +53,14 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(after.Score(after.playerId, hoh), Is.EqualTo(before.Score(before.playerId, hoh)),
                     "Nobody's view moves: keeping the pact is the player's to choose.");
                 Valid(after);
+
+                // The way out is said where a leave is said: in free time, the campaign or a window, never at the nomination table.
+                var engine = new EpisodeEngine(after);
+                var early = Apply(engine, EpisodeCommandKind.LeaveAlliance, hoh);
+                Assert.That(early.accepted, Is.False, "Cutting ties waits for a word with them, as leaving does.");
+                Assert.That(early.reason, Is.EqualTo("Social actions are available during free time and campaigning."));
+                Assert.That(engine.Snapshot.alliances.Single(a => a.id == PactId).active, Is.True);
+                Assert.That(Allegiance.FreeExit(engine.Snapshot, hoh), Is.True, "and the week's way out is still open.");
             }
         }
 
@@ -72,27 +80,63 @@ namespace Gamesim.Tests.EditMode
             }
         }
 
+        /// <summary>
+        /// A refused call is no betrayal on its own: nothing on the record, no line, no way out, and the
+        /// member's terms still hold. It is the ballot that keeps or breaks it - one cast the other way is
+        /// a betrayal at the reveal, told by that ballot, so it is the betrayer's alone until the player
+        /// can place it.
+        /// </summary>
         [Test]
-        public void C2_AnAllyWhoIgnoresTheCallFlagsThePact()
+        public void C2_AnAllyWhoIgnoresTheCallAndVotesTheOtherWayFlagsThePactAtTheReveal()
         {
             foreach (bool rules in new[] { false, true })
             {
-                var before = CallInAPactOfThree(rules, looseView: -60, out string loyal, out string loose, out string target);
+                // Above the line their commitment lapses at, and under the loyalty that follows a call:
+                // they like the target.
+                var before = CallInAPactOfThree(rules, looseView: Allegiance.QuietLine + 5, out string loyal, out string loose, out string target, looseSparesTarget: true);
                 var engine = new EpisodeEngine(before);
                 var called = Apply(engine, EpisodeCommandKind.CallTheVote, loyal, target, PactId);
                 Assert.That(called.accepted, Is.True, called.reason);
-                var after = engine.Snapshot;
-                var call = after.ledger.calls.Single();
-                Assert.That(call.defected, Is.EqualTo(new[] { loose }), "Precondition: one of them ignored the call.");
+                var atTheCall = engine.Snapshot;
+                Assert.That(atTheCall.ledger.calls.Single().defected, Is.EqualTo(new[] { loose }), "Precondition: one of them refused the call,");
+                Assert.That(atTheCall.randomState, Is.EqualTo(before.randomState), "on loyalty alone.");
+                Assert.That(Entries(atTheCall, atTheCall.playerId, loose, Allegiance.BetrayedType), Is.Empty, "A refusal alone turns on nothing:");
+                Assert.That(Added(before, atTheCall).Where(e => e.kind == Allegiance.LogKind), Is.Empty, "no line,");
+                Assert.That(Allegiance.FreeExit(atTheCall, loose), Is.False, "no way out,");
+                Assert.That(Allegiance.Holds(atTheCall, loose, atTheCall.playerId), Is.True, "and their terms still hold.");
+
+                var after = Reveal(atTheCall);
+                Assert.That(after.votes.Single(v => v.voterId == loose).targetId, Is.Not.EqualTo(target), "Precondition: their ballot spared the target.");
                 var entries = Entries(after, after.playerId, loose, Allegiance.BetrayedType);
                 if (!rules) { Assert.That(entries, Is.Empty); continue; }
-                Assert.That(entries.Single().description,
-                    Is.EqualTo(after.Find(loose).name + " ignored your call to evict " + after.Find(target).name + " despite " + PactName + "."));
-                var line = Added(before, after).Single(e => e.kind == Allegiance.LogKind);
-                Assert.That(line.audienceIds, Is.EquivalentTo(new[] { after.playerId, loose }), "The call was refused to the player's face.");
+                string record = after.Find(loose).name + " ignored your call to evict " + after.Find(target).name + " despite " + PactName + ".";
+                Assert.That(entries.Single().description, Is.EqualTo(record));
                 Assert.That(Entries(after, after.playerId, loyal, Allegiance.BetrayedType), Is.Empty, "Whoever followed turned on nothing.");
-                Assert.That(Allegiance.FreeExit(after, loose), Is.True);
-                Assert.That(Allegiance.FreeExit(after, loyal), Is.False);
+                Assert.That(KnownBallots.Knows(after, after.week, loose), Is.False, "Precondition: the count proves nothing of it.");
+                var line = Added(atTheCall, after).Single(e => e.kind == Allegiance.LogKind);
+                Assert.That(line.text, Is.EqualTo(record));
+                Assert.That(line.audienceIds, Is.EqualTo(new[] { loose }), "Told by a ballot: to the betrayer alone.");
+                Assert.That(Allegiance.TellsABallot(after, loose, record), Is.True);
+                Assert.That(HouseguestNotes.For(after, loose).Any(n => n.text.Contains("despite " + PactName)), Is.False, "The notes do not say it,");
+                Assert.That(Allegiance.FreeExit(after, loose), Is.False, "and nothing offers a way out of what the player cannot know.");
+                Assert.That(Allegiance.Holds(after, loose, after.playerId), Is.False, "The engine holds it all the same.");
+
+                // Caught out by what they told the player: now the player knows.
+                after.ledger.claims.Add(new ClaimRow { week = after.week, voterId = loose, targetId = target, source = ClaimSource.Told, status = ClaimStatus.Lied });
+                Assert.That(KnownBallots.Knows(after, after.week, loose), Is.True);
+                Assert.That(HouseguestNotes.For(after, loose).Single(n => n.text.Contains("despite " + PactName)).text,
+                    Is.EqualTo(record.TrimEnd('.') + " · you can cut ties this week at no cost"));
+                Assert.That(Allegiance.FreeExit(after, loose), Is.True, "Once the player knows, the way out opens - this week.");
+
+                // A refusal whose ballot went the call's way all the same turns on nothing.
+                var grudging = CallInAPactOfThree(true, looseView: Allegiance.QuietLine + 5, out loyal, out loose, out target, looseVotesTargetAnyway: true);
+                var refusing = new EpisodeEngine(grudging);
+                Assert.That(Apply(refusing, EpisodeCommandKind.CallTheVote, loyal, target, PactId).accepted, Is.True);
+                Assert.That(refusing.Snapshot.ledger.calls.Single().defected, Is.EqualTo(new[] { loose }), "Precondition: they refused the call,");
+                var kept = Reveal(refusing.Snapshot);
+                Assert.That(kept.votes.Single(v => v.voterId == loose).targetId, Is.EqualTo(target), "and voted the target out anyway.");
+                Assert.That(Entries(kept, kept.playerId, loose, Allegiance.BetrayedType), Is.Empty, "Their ballot kept the call: nothing to flag.");
+                Assert.That(Added(grudging, kept).Where(e => e.kind == Allegiance.LogKind), Is.Empty);
             }
         }
 
@@ -152,6 +196,89 @@ namespace Gamesim.Tests.EditMode
             }
         }
 
+        /// <summary>
+        /// A ballot the reveal itself places - a claim it judges a lie - is the player's to know as the
+        /// betrayal is written, so the line is theirs at once, with the way out it opens.
+        /// </summary>
+        [Test]
+        public void C2_ABallotBetrayalTheRevealAlreadyPlacesIsToldWithTheWayOut()
+        {
+            var before = CampaignWithThePlayerUp(true, out string ally, out string other);
+            // The ally told the player they would vote the other nominee out.
+            before.ledger.claims.Add(new ClaimRow { week = before.week, voterId = ally, targetId = other, source = ClaimSource.Told, status = ClaimStatus.Open });
+            Valid(before);
+            var after = Reveal(before);
+            Assert.That(after.votes.Single(v => v.voterId == ally).targetId, Is.EqualTo(after.playerId), "Precondition: they voted the player out,");
+            Assert.That(KnownBallots.Knows(after, after.week, ally), Is.True, "and the reveal judged their word a lie, which places the ballot.");
+            string record = after.Find(ally).name + " voted to evict you despite " + PactName + ".";
+            var line = Added(before, after).Single(e => e.kind == Allegiance.LogKind);
+            Assert.That(line.text, Is.EqualTo(record + " You can cut ties with " + First(after, ally) + " this week at no cost, or stay allied."));
+            Assert.That(line.audienceIds, Is.EquivalentTo(new[] { after.playerId, ally }), "Told to the player, with the choice it opens.");
+            Assert.That(Allegiance.FreeExit(after, ally), Is.True);
+        }
+
+        /// <summary>
+        /// A vote deal an ally broke by their ballot is a betrayal the ballot tells, though the ballot was
+        /// not cast against the player: kept off the player's pages, and its way out shut, until they can
+        /// place it.
+        /// </summary>
+        [Test]
+        public void C2_AnAllyWhoBreaksAVoteDealByABallotNotCastAgainstThePlayerFlagsThePactPrivately()
+        {
+            foreach (bool rules in new[] { false, true })
+            {
+                var before = CampaignWithAVoteDeal(rules, out string ally, out string target, out string spared);
+                var after = Reveal(before);
+                Assert.That(after.Find(after.playerId).status, Is.EqualTo(ContestantStatus.Active));
+                Assert.That(after.votes.Single(v => v.voterId == ally).targetId, Is.EqualTo(spared), "Precondition: the ally voted the other nominee out,");
+                Assert.That(after.deals.Single(d => d.id == "deal-evict").status, Is.EqualTo(DealStatus.Broken), "and broke their vote deal by it.");
+                var entries = Entries(after, after.playerId, ally, Allegiance.BetrayedType);
+                if (!rules) { Assert.That(entries, Is.Empty); continue; }
+                string record = after.Find(ally).name + " broke a vote to evict with you despite " + PactName + ".";
+                Assert.That(entries.Single().description, Is.EqualTo(record));
+                Assert.That(Allegiance.TellsABallot(after, ally, record), Is.True, "A line a ballot tells.");
+                Assert.That(KnownBallots.Knows(after, after.week, ally), Is.False, "Precondition: the count proves nothing of it,");
+                Assert.That(KnownBallots.TellsAnUnknownBallot(after, ally, record, after.week), Is.True, "so every page that prints the record leaves it out:");
+                Assert.That(Added(before, after).Single(e => e.kind == Allegiance.LogKind).audienceIds, Is.EqualTo(new[] { ally }), "the line,");
+                Assert.That(HouseguestNotes.For(after, ally).Any(n => n.text.Contains("despite " + PactName)), Is.False, "the notes,");
+                Assert.That(Allegiance.KnownBetrayals(after, ally), Is.Empty);
+                Assert.That(Allegiance.FreeExit(after, ally), Is.False, "and the way out.");
+
+                // Caught out by what they told the player: now the player knows.
+                after.ledger.claims.Add(new ClaimRow { week = after.week, voterId = ally, targetId = target, source = ClaimSource.Told, status = ClaimStatus.Lied });
+                Assert.That(KnownBallots.TellsAnUnknownBallot(after, ally, record, after.week), Is.False);
+                Assert.That(HouseguestNotes.For(after, ally).Single(n => n.text.Contains("despite " + PactName)).text,
+                    Is.EqualTo(record.TrimEnd('.') + " · you can cut ties this week at no cost"));
+                Assert.That(Allegiance.FreeExit(after, ally), Is.True);
+            }
+        }
+
+        /// <summary>
+        /// Nothing is flagged between two who share no standing pact, nor once the player has left the
+        /// house - they leave every pact with it (X5). Each beside the same act flagged, as the control.
+        /// </summary>
+        [Test]
+        public void C2_NothingIsFlaggedWithoutASharedPactOrForAPlayerTheHouseEvicts()
+        {
+            var allied = Advance(NominationsByAnAlly(true, out string hoh));
+            Assert.That(Entries(allied, allied.playerId, hoh, Allegiance.BetrayedType), Has.Count.EqualTo(1), "Control: an ally's nomination turns on the pact.");
+            var unallied = NominationsByAnAlly(true, out hoh, pact: false);
+            var nominated = Advance(unallied);
+            Assert.That(nominated.nominees, Does.Contain(nominated.playerId), "Precondition: the same Head of Household put the player up,");
+            Assert.That(Entries(nominated, nominated.playerId, hoh, Allegiance.BetrayedType), Is.Empty, "with no pact to turn on.");
+            Assert.That(Added(unallied, nominated).Where(e => e.kind == Allegiance.LogKind), Is.Empty);
+            Assert.That(Allegiance.FreeExit(nominated, hoh), Is.False);
+
+            var kept = Reveal(CampaignWithThePlayerUp(true, out string ally, out _));
+            Assert.That(Entries(kept, kept.playerId, ally, Allegiance.BetrayedType), Has.Count.EqualTo(1), "Control: a ballot against a player the house keeps turns on the pact.");
+            var up = CampaignWithThePlayerUp(true, out ally, out _, houseKeeps: false);
+            var gone = Reveal(up);
+            Assert.That(gone.Find(gone.playerId).status, Is.Not.EqualTo(ContestantStatus.Active), "Precondition: the house voted the player out,");
+            Assert.That(gone.votes.Single(v => v.voterId == ally).targetId, Is.EqualTo(gone.playerId), "their ally with it.");
+            Assert.That(Entries(gone, gone.playerId, ally, Allegiance.BetrayedType), Is.Empty, "They left every pact with the house: nothing to turn on.");
+            Assert.That(Added(up, gone).Where(e => e.kind == Allegiance.LogKind), Is.Empty);
+        }
+
         // ------------------------------------------------------------ C2: what it changes
 
         /// <summary>
@@ -207,32 +334,98 @@ namespace Gamesim.Tests.EditMode
             }
         }
 
+        /// <summary>
+        /// A fresh pact restores the betrayer's word in that pact, never in the one they turned on: its
+        /// loyalty and its bloc still count them out while it stands beside the new one.
+        /// </summary>
+        [Test]
+        public void C2_AFreshPactDoesNotRestoreTheBetrayersTermsInThePactTheyTurnedOn()
+        {
+            var s = Protected(true, out string ally, out string third, pactOfThree: true);
+            Betray(s, ally, Allegiance.Nominated);
+            var betrayed = s.alliances.Single(a => a.id == PactId);
+            Assert.That(Allegiance.LapsedMembers(s, betrayed), Is.EqualTo(new[] { ally }), "Precondition: they count for nothing in the pact they turned on.");
+
+            s.week = 3;
+            var fresh = Pact(s, "alliance-fresh", "The Fresh Pact", s.playerId, ally);
+            Assert.That(Allegiance.Betrayed(s, ally), Is.False, "A new pact, a new word:");
+            Assert.That(Allegiance.Holds(s, ally, s.playerId), Is.True, "their terms toward the player hold again,");
+            Assert.That(Allegiance.LapsedMembers(s, fresh), Is.Empty, "in the fresh pact,");
+            Assert.That(Allegiance.LapsedMembers(s, betrayed), Is.EqualTo(new[] { ally }), "and not in the one they turned on:");
+            var blocs = WebVotingBlocs.FromNative(s).alliances;
+            Assert.That(blocs.Single(a => a.id == PactId).members, Does.Not.Contain(ally), "its bloc,");
+            Assert.That(blocs.Single(a => a.id == fresh.id).members, Does.Contain(ally));
+
+            // Their ballot weighs the fresh pact's loyalty to the player, and nothing of the betrayed one's.
+            var onlyFresh = s.Clone();
+            onlyFresh.alliances.RemoveAll(a => a.id == PactId);
+            onlyFresh.relationships.Single(r => r.fromId == onlyFresh.playerId && r.toId == ally).events.RemoveAll(e => e.type == Allegiance.BetrayedType);
+            Assert.That(AllianceFactor(s, ally, s.playerId), Is.EqualTo(AllianceFactor(onlyFresh, ally, s.playerId)), "its loyalty.");
+            Assert.That(AllianceFactor(s, third, s.playerId), Is.GreaterThan(AllianceFactor(onlyFresh, third, s.playerId)), "The loyal member's still counts.");
+        }
+
         // ------------------------------------------------------------ C2: the player's choice
 
+        /// <summary>
+        /// Cutting ties the week of the betrayal costs nothing and nobody holds it against the player. A
+        /// pact of three or more goes on without the betrayer: the player and the loyal members keep it.
+        /// </summary>
         [Test]
-        public void C2_CuttingTiesTheWeekOfTheBetrayalCostsNothingAndNobodyHoldsAGrudge()
+        public void C2_CuttingTiesTheWeekOfTheBetrayalCostsNothingAndCutsTheBetrayerOutOfAPactOfThree()
         {
             var s = PactOfThreeWithABetrayal(rules: true, out string betrayer, out string loyal);
             int spent = EpisodeEngine.SocialActionsSpent(s);
             uint stream = s.randomState;
             double theirs = s.Score(betrayer, s.playerId);
             Assert.That(Allegiance.FreeExit(s, betrayer), Is.True);
+            Assert.That(Allegiance.FreeExitKeepsAPact(s, betrayer), Is.True, "A pact of three goes on without them.");
             var engine = new EpisodeEngine(s);
             var left = Apply(engine, EpisodeCommandKind.LeaveAlliance, betrayer);
             Assert.That(left.accepted, Is.True, left.reason);
             var after = engine.Snapshot;
-            Assert.That(after.alliances.Single(a => a.id == PactId).active, Is.False, "Ties are cut.");
+            var pact = after.alliances.Single(a => a.id == PactId);
+            Assert.That(pact.active, Is.True, "The pact goes on,");
+            Assert.That(pact.members, Is.EquivalentTo(new[] { after.playerId, loyal }), "the player and the loyal member in it, the betrayer cut out.");
+            Assert.That(after.Allied(after.playerId, betrayer), Is.False);
+            Assert.That(Allegiance.Holds(after, loyal, after.playerId), Is.True, "The loyal member's word is untouched.");
             Assert.That(Grudges.Severity(after, betrayer, after.playerId), Is.Zero, "No grudge from the betrayer,");
             Assert.That(Grudges.Severity(after, loyal, after.playerId), Is.Zero, "and none from the others: no 80 grudge on a betrayal exit.");
             Assert.That(after.Score(betrayer, after.playerId), Is.EqualTo(theirs), "No warmth lost with them,");
             Assert.That(after.randomState, Is.EqualTo(stream), "so no roll drawn,");
             Assert.That(EpisodeEngine.SocialActionsSpent(after), Is.EqualTo(spent), "and no action spent.");
+            Assert.That(after.ledger.alliances.Single(r => r.id == PactId).endedWeek, Is.Zero, "The pact's row stays open.");
+            var line = after.events.Last();
+            Assert.That(line.text, Is.EqualTo("You cut ties with " + after.Find(betrayer).name + " after they turned on " + PactName + ". "
+                + First(after, betrayer) + " is out of it, the rest of you keep it, and nobody holds it against you."));
+            Assert.That(line.audienceIds, Is.EquivalentTo(new[] { after.playerId, betrayer, loyal }), "Everybody in the pact hears it.");
+            var page = AllianceRead.Yours(after).Single(p => p.id == PactId);
+            Assert.That(page.ended, Is.Null, "The alliances page shows it standing,");
+            Assert.That(page.members.Select(m => m.id), Is.EqualTo(new[] { loyal }), "without them.");
+            Assert.That(HouseDialogue.Response(after, betrayer, EpisodeCommandKind.LeaveAlliance), Is.AnyOf(BetrayersReplies), "and the betrayer knows why.");
+            Assert.That(Allegiance.FreeExit(after, betrayer), Is.False, "Cut out, there is nothing left to leave.");
+            Valid(after);
+        }
+
+        [Test]
+        public void C2_CuttingTiesInAPactOfTwoEndsIt()
+        {
+            var s = PactOfThreeWithABetrayal(rules: true, out string betrayer, out _, three: false);
+            uint stream = s.randomState;
+            Assert.That(Allegiance.FreeExitKeepsAPact(s, betrayer), Is.False);
+            var after = Leave(s, betrayer);
+            Assert.That(after.alliances.Single(a => a.id == PactId).active, Is.False, "Ties are cut, and a pact of two is over.");
+            Assert.That(Grudges.Severity(after, betrayer, after.playerId), Is.Zero, "No grudge,");
+            Assert.That(after.randomState, Is.EqualTo(stream), "and no roll.");
             Assert.That(after.ledger.alliances.Single(r => r.id == PactId).why, Does.EndWith("/betrayed"), "The ledger row's end.");
             var line = after.events.Last();
-            Assert.That(line.text, Is.EqualTo("You cut ties with " + after.Find(betrayer).name + " after they turned on " + PactName + ". Nobody holds it against you."));
-            Assert.That(line.audienceIds, Is.EquivalentTo(new[] { after.playerId, betrayer, loyal }), "Everybody in the pact hears it.");
-            Assert.That(AllianceRead.Yours(after).Single(p => p.id == PactId).ended, Is.EqualTo(AllianceRead.CutTies), "The alliances page says how it ended.");
-            Assert.That(HouseDialogue.Response(after, betrayer, EpisodeCommandKind.LeaveAlliance), Is.AnyOf(BetrayersReplies), "and the betrayer knows why.");
+            Assert.That(line.text, Is.EqualTo("You cut ties with " + after.Find(betrayer).name + " after they turned on " + PactName + ". It is over, and nobody holds it against you."));
+            Assert.That(line.audienceIds, Is.EquivalentTo(new[] { after.playerId, betrayer }));
+            Assert.That(AllianceRead.Yours(after).Single(p => p.id == PactId).ended, Is.EqualTo(AllianceRead.CutTies), "The alliances page says how it ended,");
+            var sense = GameSense.Evaluate(after).notes.Single(n => n.rowKind == "alliance" && n.rowId == PactId);
+            Assert.That(sense.text, Is.EqualTo("Week " + after.week + ": your alliance with " + after.Find(betrayer).name + " ended in a betrayal."), "and so does Game Sense,");
+            Assert.That(sense.points, Is.EqualTo(-6));
+            Assert.That(sense.known, Is.True, "from a betrayal the player can know.");
+            Assert.That(HouseDialogue.Response(after, betrayer, EpisodeCommandKind.LeaveAlliance), Is.AnyOf(BetrayersReplies), "The betrayer knows why.");
             Valid(after);
         }
 
@@ -279,6 +472,76 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Allegiance.FreeExit(on, ally), Is.False);
         }
 
+        // ------------------------------------------------------------ C2: what the player can know
+
+        /// <summary>
+        /// The vote read is the player's: two allies the player read this week, one of whom turned on them
+        /// by a ballot the player cannot place, read alike - though the engine holds the betrayal, and the
+        /// betrayer's ballot no longer weighs the pact. Once the player can place it, the read can too.
+        /// </summary>
+        [Test]
+        public void C2_TheVoteReadDoesNotTellABallotBetrayalThePlayerCannotPlace()
+        {
+            var honest = ReadInWeekTwo(true, out string ally, out _);
+            var betrayed = honest.Clone();
+            BetrayIn(betrayed, ally, Allegiance.VotedAgainst, week: 1);
+            var entry = Entries(betrayed, betrayed.playerId, ally, Allegiance.BetrayedType).Single();
+            Assert.That(KnownBallots.TellsAnUnknownBallot(betrayed, ally, entry.description, entry.week), Is.True, "Precondition: a ballot the player cannot place.");
+            Assert.That(AllianceFactor(honest, ally, honest.playerId), Is.GreaterThan(0), "The honest ally's ballot weighs the pact;");
+            Assert.That(AllianceFactor(betrayed, ally, betrayed.playerId), Is.Zero, "the betrayer's does not: the engine holds what it knows.");
+            Assert.That(VoteRead.CommitmentHidden(honest, ally) || VoteRead.CommitmentHidden(betrayed, ally), Is.False,
+                "Precondition: the player read both this week, so the read counts their pact terms.");
+            Assert.That(VoteRead.Read(honest).voters.Single(v => v.voterId == ally).knownTerms, Does.Contain("alliance"));
+            Assert.That(Json(VoteRead.Read(betrayed)), Is.EqualTo(Json(VoteRead.Read(honest))), "The read cannot tell them apart.");
+
+            // They told the player they would vote them out, and did: now the player can place it.
+            betrayed.ledger.claims.Add(new ClaimRow { week = 1, voterId = ally, targetId = betrayed.playerId, source = ClaimSource.Told, status = ClaimStatus.Kept });
+            Assert.That(KnownBallots.TellsAnUnknownBallot(betrayed, ally, entry.description, entry.week), Is.False);
+            Assert.That(Json(VoteRead.Read(betrayed)), Is.Not.EqualTo(Json(VoteRead.Read(honest))), "Known, the betrayal is the read's.");
+        }
+
+        /// <summary>
+        /// The deal table's alliance bonus and a plea's "you're allied" ask whether the ally's word holds;
+        /// the odds the player is shown ask it as the player knows it. A betrayal they can see costs the
+        /// bonus there too; one told only by a ballot they cannot place never moves what they are shown.
+        /// </summary>
+        [Test]
+        public void C2_TheDealTableAndThePleaAskWhetherTheAllysWordHoldsAndTheShownOddsAskItAsThePlayerKnowsIt()
+        {
+            foreach (bool rules in new[] { false, true })
+            {
+                var clean = ReadInWeekTwo(rules, out string ally, out _);
+                var hidden = clean.Clone();
+                BetrayIn(hidden, ally, Allegiance.VotedAgainst, week: 1);
+                var known = clean.Clone();
+                BetrayIn(known, ally, Allegiance.Nominated, week: 1);
+                double Roll(EpisodeState s) => PlayerDeals.AcceptanceChance(s, ally, DealKind.SafetyAgreement, null);
+                double Plea(EpisodeState s) => StrategyRules.Chance(s, ally, LobbyAsk.Vote, s.playerId, LobbyApproach.Pressure);
+                double ShownDeal(EpisodeState s) => KnownOdds.Deal(s, ally, DealKind.SafetyAgreement, null).chance;
+                double ShownPlea(EpisodeState s) => KnownOdds.Plea(s, ally, LobbyAsk.Vote, s.playerId, LobbyApproach.Pressure).chance;
+                if (!rules)
+                {
+                    foreach (var s in new[] { hidden, known })
+                    {
+                        Assert.That(Roll(s), Is.EqualTo(Roll(clean)), "Without the rules the record moves nothing.");
+                        Assert.That(Plea(s), Is.EqualTo(Plea(clean)));
+                        Assert.That(ShownDeal(s), Is.EqualTo(ShownDeal(clean)));
+                        Assert.That(ShownPlea(s), Is.EqualTo(ShownPlea(clean)));
+                    }
+                    continue;
+                }
+                foreach (var s in new[] { hidden, known })
+                {
+                    Assert.That(Roll(s), Is.EqualTo(Roll(clean) - 30).Within(1e-9), "The deal table's +20, and +10 for a safety pact, are the ally's word's.");
+                    Assert.That(Plea(s), Is.EqualTo(Plea(clean) - 15).Within(1e-9), "So is a plea's +15.");
+                }
+                Assert.That(ShownDeal(known), Is.EqualTo(ShownDeal(clean) - 30).Within(1e-9), "The odds shown know what the player knows,");
+                Assert.That(ShownPlea(known), Is.EqualTo(ShownPlea(clean) - 15).Within(1e-9));
+                Assert.That(ShownDeal(hidden), Is.EqualTo(ShownDeal(clean)), "and never what a ballot they cannot place would tell.");
+                Assert.That(ShownPlea(hidden), Is.EqualTo(ShownPlea(clean)));
+            }
+        }
+
         // ------------------------------------------------------------ C3: the NPC's own commitment
 
         /// <summary>
@@ -310,35 +573,55 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(told.Select(e => e.text), Is.EqualTo(new[] { "Your alliance with " + after.Find(partner).name + " has fallen apart." }),
                     "In words, the same however it soured.");
                 Assert.That(told[0].text.Any(char.IsDigit), Is.False, "and with no number.");
-                Assert.That(after.ledger.alliances.Single(r => r.id == PactId).why, Does.Not.EndWith("/left-house"));
+                Assert.That(after.ledger.alliances.Single(r => r.id == PactId).why, Does.EndWith("/turned"), "The ledger says the partner turned.");
             }
         }
 
+        /// <summary>
+        /// An ally gone cold keeps none of their terms. The player can tell only through something this
+        /// week - contact, a read of them, a call they refused - and only then do the notes say "gone
+        /// quiet", in words, and the vote read count their pact terms: one rule, so the two agree.
+        /// </summary>
         [Test]
-        public void C3_AnAllyGoneQuietKeepsNoTermsAndTheNotesSayItInWords()
+        public void C3_AnAllyGoneQuietKeepsNoTermsAndTheNotesSayItOnceThePlayerCanTell()
         {
             foreach (bool rules in new[] { false, true })
             {
-                var s = Protected(rules, out string ally, out _);
+                var s = Protected(rules, out string ally, out string other);
                 SetScore(s, ally, s.playerId, Allegiance.QuietLine - 5);
-                bool quiet = HouseguestNotes.For(s, ally).Any(n => n.kind == HouseguestNotes.Kinds.Pact && n.text.Contains("gone quiet"));
                 if (!rules)
                 {
-                    Assert.That(quiet, Is.False);
+                    Touch(s, ally);
+                    Assert.That(Quiet(s, ally), Is.False);
                     Assert.That(Allegiance.Holds(s, ally, s.playerId), Is.True, "Without the rules the pact holds whatever they think.");
                     continue;
                 }
-                var note = HouseguestNotes.For(s, ally).Single(n => n.text.Contains("gone quiet"));
-                Assert.That(note.text, Is.EqualTo(First(s, ally) + " has gone quiet on " + PactName));
-                Assert.That(note.text.Any(char.IsDigit), Is.False, "Never a number.");
-                Assert.That(note.kind, Is.EqualTo(HouseguestNotes.Kinds.Pact));
                 Assert.That(Allegiance.Holds(s, ally, s.playerId), Is.False);
                 Assert.That(StrategyRules.NominationReluctance(s, ally, s.playerId), Is.EqualTo(s.Score(ally, s.playerId)), "No shield,");
                 Assert.That(AllianceFactor(s, ally, s.playerId), Is.Zero, "no loyalty in their ballot,");
                 Assert.That(NpcAlliances.ActiveAlliancesFor(s, ally).Single().active, Is.True, "while the pact itself still stands above the line it sours at.");
-                SetScore(s, ally, s.playerId, Allegiance.QuietLine + 5);
-                Assert.That(HouseguestNotes.For(s, ally).Any(n => n.text.Contains("gone quiet")), Is.False, "Above the line, nothing to say.");
-                Assert.That(Allegiance.Holds(s, ally, s.playerId), Is.True);
+                Assert.That(Quiet(s, ally), Is.False, "Nothing this week has shown the player where they stand, so nothing says it,");
+                Assert.That(VoteRead.CommitmentHidden(s, ally), Is.True, "and the read keeps their pact terms theirs.");
+
+                var signals = new (string how, Action<EpisodeState> show)[]
+                {
+                    ("contact this week", t => Touch(t, ally)),
+                    ("a read this week", t => t.ledger.standings.Add(new StandingRow { week = t.week, fromId = ally, toId = t.playerId, source = ClaimSource.Read, score = t.Score(ally, t.playerId) })),
+                    ("a refused call this week", t => t.ledger.calls.Add(new BlocCallRow { week = t.week, allianceId = PactId, callerId = t.playerId, targetId = other, defected = new List<string> { ally } })),
+                };
+                foreach (var signal in signals)
+                {
+                    var told = s.Clone();
+                    signal.show(told);
+                    var note = HouseguestNotes.For(told, ally).Single(n => n.text.Contains("gone quiet"));
+                    Assert.That(note.text, Is.EqualTo(First(told, ally) + " has gone quiet on " + PactName), signal.how);
+                    Assert.That(note.text.Any(char.IsDigit), Is.False, "Never a number.");
+                    Assert.That(note.kind, Is.EqualTo(HouseguestNotes.Kinds.Pact));
+                    Assert.That(VoteRead.CommitmentHidden(told, ally), Is.False, "The read counts their terms when the notes speak: " + signal.how);
+                    SetScore(told, ally, told.playerId, Allegiance.QuietLine + 5);
+                    Assert.That(Quiet(told, ally), Is.False, "Above the line, nothing to say.");
+                    Assert.That(Allegiance.Holds(told, ally, told.playerId), Is.True);
+                }
             }
         }
 
@@ -357,8 +640,9 @@ namespace Gamesim.Tests.EditMode
                 if (rules)
                 {
                     Assert.That(call.defected, Is.EqualTo(new[] { loose }), "A lapsed member does not follow:");
-                    Assert.That(after.randomState, Is.EqualTo(before.randomState), "nothing was left to chance.");
-                    Assert.That(Entries(after, after.playerId, loose, Allegiance.BetrayedType), Has.Count.EqualTo(1), "and the refused call turns on the pact (C2).");
+                    Assert.That(after.randomState, Is.EqualTo(before.randomState), "nothing was left to chance,");
+                    Assert.That(Entries(after, after.playerId, loose, Allegiance.BetrayedType), Is.Empty,
+                        "and the refusal alone turns on nothing: the ballot keeps or breaks it (C2).");
                 }
                 else Assert.That(after.randomState, Is.Not.EqualTo(before.randomState), "Without the rules their loyalty was a roll.");
             }
@@ -432,6 +716,13 @@ namespace Gamesim.Tests.EditMode
                 var note = HouseguestNotes.For(s, ally).Single(n => n.kind == HouseguestNotes.Kinds.Pact);
                 Assert.That(note.text, Is.EqualTo(rules ? "You were both in " + PactName + " · " + First(s, ally) + " left the house" : "You are both in " + PactName));
             }
+
+            // The player leaves every pact with the house too, and the notes say who left.
+            var mine = PactOfThreeInFreeTime(true, out string friend, out _);
+            mine.Find(mine.playerId).status = ContestantStatus.Jury;
+            Assert.That(PactNote(mine, friend), Is.EqualTo("You were both in " + PactName + " · you left the house"));
+            mine.Find(friend).status = ContestantStatus.Jury;
+            Assert.That(PactNote(mine, friend), Is.EqualTo("You were both in " + PactName + " · you both left the house"));
         }
 
         [Test]
@@ -509,6 +800,18 @@ namespace Gamesim.Tests.EditMode
             edge.score = score;
         }
 
+        /// <summary>The player had contact with them this week: their own record of them was touched.</summary>
+        private static void Touch(EpisodeState s, string id) =>
+            s.relationships.Single(r => r.fromId == s.playerId && r.toId == id).lastInteractionWeek = s.week;
+
+        /// <summary>Whether the notes say this ally has gone quiet.</summary>
+        private static bool Quiet(EpisodeState s, string id) =>
+            HouseguestNotes.For(s, id).Any(n => n.kind == HouseguestNotes.Kinds.Pact && n.text.Contains("gone quiet"));
+
+        /// <summary>The notes' line on the pact the player shares with them.</summary>
+        private static string PactNote(EpisodeState s, string id) =>
+            HouseguestNotes.For(s, id).Single(n => n.kind == HouseguestNotes.Kinds.Pact).text;
+
         /// <summary>A pact, with the ledger row every pact a season makes has: it began this week.</summary>
         private static AllianceState Pact(EpisodeState s, string id, string name, params string[] members)
         {
@@ -522,6 +825,15 @@ namespace Gamesim.Tests.EditMode
         private static void Betray(EpisodeState s, string npcId, string act) =>
             RelationshipLedger.RecordOneWay(s, s.playerId, npcId, Allegiance.BetrayedType, Allegiance.BetrayalImpact,
                 Allegiance.Record(s.Find(npcId).name, act, s.alliances.Where(a => a.active && a.members.Contains(npcId) && a.members.Contains(s.playerId)).Select(a => a.name)));
+
+        /// <summary>The same, written in an earlier <paramref name="week"/>.</summary>
+        private static void BetrayIn(EpisodeState s, string npcId, string act, int week)
+        {
+            int now = s.week;
+            s.week = week;
+            Betray(s, npcId, act);
+            s.week = now;
+        }
 
         private static EpisodeCommand Command(EpisodeState s, EpisodeCommandKind kind, string target = null, string second = null, string text = null) =>
             new EpisodeCommand
@@ -595,10 +907,10 @@ namespace Gamesim.Tests.EditMode
             WebEvictionVoting.EvaluateNative(s, voterId).nomineeEvaluations.Single(n => n.nomineeId == nomineeId).factors.Single(f => f.code == code).value;
 
         /// <summary>
-        /// The nominations, with a Head of Household in a pact with the player who likes everybody else
-        /// and not the player: the ally puts them up.
+        /// The nominations, with a Head of Household who likes everybody else and not the player - in a
+        /// pact with them unless <paramref name="pact"/> is false: they put the player up.
         /// </summary>
-        private static EpisodeState NominationsByAnAlly(bool rules, out string hoh)
+        private static EpisodeState NominationsByAnAlly(bool rules, out string hoh, bool pact = true)
         {
             var s = Season(29);
             var npcs = Npcs(s);
@@ -606,7 +918,7 @@ namespace Gamesim.Tests.EditMode
             s.phase = EpisodePhase.Nomination;
             s.hohId = hoh;
             foreach (var other in s.contestants.Where(c => c.id != npcs[0].id)) SetScore(s, npcs[0].id, other.id, other.isPlayer ? -90 : 60);
-            Pact(s, PactId, PactName, s.playerId, hoh);
+            if (pact) Pact(s, PactId, PactName, s.playerId, hoh);
             if (rules) EpisodeEngine.EnableCommitments(s);
             Valid(s);
             return s;
@@ -657,9 +969,14 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// The campaign with a pact of three voting: a member who trusts the player and one whose view of
         /// them is <paramref name="looseView"/>. With <paramref name="warmPact"/> the pact is warm enough
-        /// that the cooler member's loyalty falls in the band a roll decides.
+        /// that the cooler member's loyalty falls in the band a roll decides. With
+        /// <paramref name="looseSparesTarget"/> the cooler member likes the target - too much to follow a
+        /// call to evict them - and is cold on the other nominee, whom the rest of the house likes. With
+        /// <paramref name="looseVotesTargetAnyway"/> they hold a grudge against the target that sinks their
+        /// loyalty to the call, and want the target out themselves.
         /// </summary>
-        private static EpisodeState CallInAPactOfThree(bool rules, double looseView, out string loyal, out string loose, out string target, bool warmPact = false)
+        private static EpisodeState CallInAPactOfThree(bool rules, double looseView, out string loyal, out string loose, out string target,
+            bool warmPact = false, bool looseSparesTarget = false, bool looseVotesTargetAnyway = false)
         {
             var s = ContentCatalog.Create(7);
             s.strategyRulesStartWeek = 1;
@@ -678,6 +995,23 @@ namespace Gamesim.Tests.EditMode
             foreach (var id in pact.members) foreach (var other in pact.members.Where(o => o != id)) SetScore(s, id, other, warmPact ? 100 : 20);
             SetScore(s, loyal, s.playerId, 80); SetScore(s, loyal, target, 0);
             SetScore(s, loose, s.playerId, looseView); SetScore(s, loose, target, 0);
+            if (looseSparesTarget)
+            {
+                SetScore(s, loose, target, 100);
+                SetScore(s, loose, npcs[2], -100);
+                foreach (var voter in npcs.Skip(5))
+                {
+                    SetScore(s, voter, target, -100);
+                    SetScore(s, voter, npcs[2], 100);
+                }
+            }
+            if (looseVotesTargetAnyway)
+            {
+                SetScore(s, loose, target, -100);
+                SetScore(s, loose, npcs[2], 100);
+                if (s.story == null) s.story = new StoryWorldState();
+                Assert.That(Grudges.Add(s, loose, target, 60, GrudgeCauses.Story), Is.Not.Null);
+            }
             if (rules) EpisodeEngine.EnableCommitments(s);
             Valid(s);
             return s;
@@ -685,9 +1019,10 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// The campaign with the player on the block beside <paramref name="other"/>: the house would keep
-        /// the player, but their ally, who struck a vote to save them, would see them go.
+        /// the player (unless <paramref name="houseKeeps"/> is false), but their ally, who struck a vote to
+        /// save them, would see them go.
         /// </summary>
-        private static EpisodeState CampaignWithThePlayerUp(bool rules, out string ally, out string other)
+        private static EpisodeState CampaignWithThePlayerUp(bool rules, out string ally, out string other, bool houseKeeps = true)
         {
             var s = Season(61);
             EpisodeEngine.EnableLevers(s);
@@ -702,7 +1037,7 @@ namespace Gamesim.Tests.EditMode
             other = npcs[1].id;
             foreach (var voter in npcs.Skip(2))
             {
-                bool turning = voter.id == ally;
+                bool turning = voter.id == ally || !houseKeeps;
                 SetScore(s, voter.id, s.playerId, turning ? -100 : 100);
                 SetScore(s, voter.id, other, turning ? 100 : -100);
             }
@@ -711,6 +1046,44 @@ namespace Gamesim.Tests.EditMode
             {
                 id = "deal-vote", type = DealKind.VoteSave, proposerId = s.playerId, recipientId = ally, targetId = s.playerId,
                 status = DealStatus.Active, week = 1, expiresWeek = 1, trustImpact = DealKind.DefaultTrust(DealKind.VoteSave),
+            });
+            if (rules) EpisodeEngine.EnableCommitments(s);
+            Valid(s);
+            return s;
+        }
+
+        /// <summary>
+        /// The campaign with two others on the block, <paramref name="target"/> and <paramref name="spared"/>,
+        /// and a vote to evict <paramref name="target"/> that the player's ally proposed - though they like
+        /// <paramref name="target"/>, dislike <paramref name="spared"/> and think nothing of the player's
+        /// word. The rest of the house votes <paramref name="target"/> out.
+        /// </summary>
+        private static EpisodeState CampaignWithAVoteDeal(bool rules, out string ally, out string target, out string spared)
+        {
+            var s = Season(61);
+            EpisodeEngine.EnableLevers(s);
+            var npcs = Npcs(s);
+            s.phase = EpisodePhase.Campaign;
+            s.hohId = npcs[0].id;
+            target = npcs[1].id;
+            spared = npcs[2].id;
+            s.nominees = new List<string> { target, spared };
+            s.vetoHolderId = npcs[0].id;
+            s.vetoPlayers = new List<string> { npcs[0].id, s.playerId, target, spared, npcs[3].id, npcs[4].id };
+            s.vetoResolved = true;
+            ally = npcs[3].id;
+            foreach (var voter in npcs.Skip(3))
+            {
+                bool breaking = voter.id == ally;
+                SetScore(s, voter.id, target, breaking ? 100 : -100);
+                SetScore(s, voter.id, spared, breaking ? -100 : 100);
+            }
+            SetScore(s, ally, s.playerId, 0);
+            Pact(s, PactId, PactName, s.playerId, ally);
+            s.deals.Add(new DealState
+            {
+                id = "deal-evict", type = DealKind.VoteEvict, proposerId = ally, recipientId = s.playerId, targetId = target,
+                status = DealStatus.Active, week = 1, expiresWeek = 1, trustImpact = DealKind.DefaultTrust(DealKind.VoteEvict),
             });
             if (rules) EpisodeEngine.EnableCommitments(s);
             Valid(s);
@@ -753,6 +1126,15 @@ namespace Gamesim.Tests.EditMode
             return s;
         }
 
+        /// <summary>The campaign of <see cref="Protected"/> in week 2, the pact made in week 1, with the ally read this week.</summary>
+        private static EpisodeState ReadInWeekTwo(bool rules, out string ally, out string other)
+        {
+            var s = Protected(rules, out ally, out other);
+            s.week = 2;
+            s.ledger.standings.Add(new StandingRow { week = 2, fromId = ally, toId = s.playerId, source = ClaimSource.Read, score = s.Score(ally, s.playerId) });
+            return s;
+        }
+
         /// <summary>Free time with a warm pact of three: the player, <paramref name="ally"/> and <paramref name="third"/>.</summary>
         private static EpisodeState PactOfThreeInFreeTime(bool rules, out string ally, out string third)
         {
@@ -769,19 +1151,21 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// Free time, with the story's grudges on and a pact of three: one member turned on it this week
+        /// Free time, with the story's grudges on and a pact of three - of two, the player and the
+        /// betrayer, without <paramref name="three"/>: one member turned on it this week
         /// (<paramref name="betray"/>), the other is loyal. The week is <paramref name="week"/>.
         /// </summary>
-        private static EpisodeState PactOfThreeWithABetrayal(bool rules, out string betrayer, out string loyal, bool betray = true, int week = 1)
+        private static EpisodeState PactOfThreeWithABetrayal(bool rules, out string betrayer, out string loyal, bool betray = true, int week = 1, bool three = true)
         {
             var s = Season(47);
             EpisodeEngine.EnableStory(s);
             var npcs = Npcs(s);
             betrayer = npcs[0].id;
             loyal = npcs[1].id;
-            Pact(s, PactId, PactName, s.playerId, betrayer, loyal);
-            foreach (var id in new[] { s.playerId, betrayer, loyal })
-                foreach (var to in new[] { s.playerId, betrayer, loyal }.Where(t => t != id)) SetScore(s, id, to, 30);
+            var members = three ? new[] { s.playerId, betrayer, loyal } : new[] { s.playerId, betrayer };
+            Pact(s, PactId, PactName, members);
+            foreach (var id in members)
+                foreach (var to in members.Where(t => t != id)) SetScore(s, id, to, 30);
             if (rules) EpisodeEngine.EnableCommitments(s);
             if (betray) Betray(s, betrayer, Allegiance.Nominated);
             s.week = week;

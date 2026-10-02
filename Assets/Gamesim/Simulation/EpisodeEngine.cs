@@ -166,7 +166,7 @@ namespace Gamesim.Simulation
                 // Under the commitment rules (C2) cutting ties with an ally who turned on the pact this
                 // week, once the player can know it, is free: no action, no warmth, no grudge. Any other
                 // leave is the social action below, as it always was.
-                case EpisodeCommandKind.LeaveAlliance when Allegiance.FreeExit(s, c.targetId): CutTies(s, s.Find(c.targetId)); break;
+                case EpisodeCommandKind.LeaveAlliance when Allegiance.FreeExit(s, c.targetId): CutTies(s, c, s.Find(c.targetId)); break;
                 default: Social(s, c); break;
             }
         }
@@ -1044,25 +1044,7 @@ namespace Gamesim.Simulation
 
         private static void Social(EpisodeState s, EpisodeCommand c)
         {
-            if (s.phase != EpisodePhase.Social && s.phase != EpisodePhase.Campaign)
-            {
-                // From the strategy windows the Head of Household can be reached before nominations,
-                // and the veto holder before the meeting. Everybody else, and everything that is not
-                // a word with them, still waits for free time.
-                if (WeekRulesOn(s) && Window(s) != Windows.None)
-                {
-                    // The week's windows (STRATEGY-LOOP-PLAN.md section 4): free roam and every word said
-                    // to somebody, in every window; the strategy windows' own rule still keeps listening
-                    // in, rumours and scheming for the free time.
-                    Require(StrategyRules.IsWindowConversation(c.kind), "That can wait for free time. Right now there is a decision to be made.");
-                }
-                else
-                {
-                    Require(StrategyRules.WindowOpen(s), "Social actions are available during free time and campaigning.");
-                    string refusal = StrategyRules.WindowRefusal(s, c.targetId, c.kind);
-                    Require(refusal == null, refusal);
-                }
-            }
+            RequireConversationWindow(s, c);
             Require(s.Find(s.playerId).status == ContestantStatus.Active, "Evicted players can follow the season but cannot influence it.");
             var target = s.Find(c.targetId);
             // Listening in names nobody: the engine draws the pair it overhears. Every other action
@@ -1142,6 +1124,34 @@ namespace Gamesim.Simulation
             // A conversation is the web's other beat trigger: it advances a story the houseguest is
             // in, raises a broken word waiting between you, and sometimes starts something new.
             if (target != null && TopicChance(c.kind) > 0) StoryConversation(s, target.id, c.kind, c.secondTargetId);
+        }
+
+        /// <summary>
+        /// Where a word with somebody can be said: free time and the campaign, and outside them only a
+        /// window the week opens. The social actions' gate, and the free exit's (C2), which is said where
+        /// a leave is said and costs nothing.
+        /// </summary>
+        private static void RequireConversationWindow(EpisodeState s, EpisodeCommand c)
+        {
+            if (s.phase != EpisodePhase.Social && s.phase != EpisodePhase.Campaign)
+            {
+                // From the strategy windows the Head of Household can be reached before nominations,
+                // and the veto holder before the meeting. Everybody else, and everything that is not
+                // a word with them, still waits for free time.
+                if (WeekRulesOn(s) && Window(s) != Windows.None)
+                {
+                    // The week's windows (STRATEGY-LOOP-PLAN.md section 4): free roam and every word said
+                    // to somebody, in every window; the strategy windows' own rule still keeps listening
+                    // in, rumours and scheming for the free time.
+                    Require(StrategyRules.IsWindowConversation(c.kind), "That can wait for free time. Right now there is a decision to be made.");
+                }
+                else
+                {
+                    Require(StrategyRules.WindowOpen(s), "Social actions are available during free time and campaigning.");
+                    string refusal = StrategyRules.WindowRefusal(s, c.targetId, c.kind);
+                    Require(refusal == null, refusal);
+                }
+            }
         }
 
         /// <summary>

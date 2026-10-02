@@ -129,7 +129,9 @@ namespace Gamesim.Simulation
             // - under the commitment rules only the ones they broke, which are their own acts (C0, X3).
             chance -= PlayerDeals.BrokenDealPenalty * NpcDeals.BrokenDeals(s, s.playerId);
 
-            bool allied = KnownPact(s, npcId, s.playerId);
+            // The roll asks whether the ally's own commitment holds (Allegiance.Holds); the player's odds
+            // ask it as the player knows it, never of a betrayal or a view they cannot see (C2, C3).
+            bool allied = KnownPact(s, npcId, s.playerId) && Allegiance.HoldsAsKnown(s, npcId);
             if (allied)
             {
                 chance += 20;
@@ -201,7 +203,7 @@ namespace Gamesim.Simulation
             switch (ask)
             {
                 case LobbyAsk.Vote:
-                    if (KnownPact(s, deciderId, s.playerId)) chance += 15;
+                    if (KnownPact(s, deciderId, s.playerId) && Allegiance.HoldsAsKnown(s, deciderId)) chance += 15;
                     string other = s.nominees.FirstOrDefault(id => id != s.playerId);
                     if (other != null && KnownPact(s, deciderId, other)) chance -= 20;
                     else if (other != null && Toward(s, e, deciderId, other) > 30) chance -= 15;

@@ -206,8 +206,9 @@ namespace Gamesim.Simulation
                         "Fine. An alliance is a hypothesis about trust; let's test it gently.",
                         "We're working together. Good."));
             // Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C2) the player cut ties the week
-            // this houseguest turned on the pact, and the player knows it: they had it coming.
-            if (acceptedAction == EpisodeCommandKind.LeaveAlliance && !SharedAlliance(state, npc.id, true) && SharedAlliance(state, npc.id, false)
+            // this houseguest turned on the pact, and the player knows it: they had it coming. A pact of
+            // two ended; a bigger one went on without them, so they share no pact at all any more.
+            if (acceptedAction == EpisodeCommandKind.LeaveAlliance && !SharedAlliance(state, npc.id, true)
                 && Allegiance.KnownThisWeek(state, npc.id))
                 return Pick(id,
                     "That's fair. I made my choice first; you're only answering it.",

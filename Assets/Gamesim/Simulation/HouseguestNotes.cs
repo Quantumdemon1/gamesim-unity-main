@@ -132,14 +132,18 @@ namespace Gamesim.Simulation
             {
                 var row = s.ledger.alliances.FirstOrDefault(x => x.id == alliance.id);
                 // Under the commitment rules somebody who has left the house has left every pact, though a
-                // pact of three or more goes on without them (X5).
-                bool left = rules && alliance.active && who.status != ContestantStatus.Active;
+                // pact of three or more goes on without them (X5): they did, or the player did.
+                bool theyLeft = who.status != ContestantStatus.Active;
+                bool youLeft = s.Find(s.playerId)?.status != ContestantStatus.Active;
+                bool left = rules && alliance.active && (theyLeft || youLeft);
+                string gone = theyLeft && youLeft ? "you both left the house" : theyLeft ? first + " left the house" : "you left the house";
                 notes.Add(new Note
                 {
                     week = row?.startedWeek ?? 0, kind = Kinds.Pact,
-                    text = left ? "You were both in " + alliance.name + " · " + first + " left the house"
+                    text = left ? "You were both in " + alliance.name + " · " + gone
                         : "You are both in " + alliance.name + (alliance.active ? "" : " · ended"),
-                    brief = left ? first + " left " + alliance.name : alliance.active ? "In " + alliance.name + " with you" : alliance.name + " ended",
+                    brief = left ? (theyLeft ? first + " left " + alliance.name : "You left " + alliance.name)
+                        : alliance.active ? "In " + alliance.name + " with you" : alliance.name + " ended",
                 });
             }
             // Under the commitment rules (C2) an ally who turned on a pact of yours, where you can know it:

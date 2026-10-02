@@ -520,7 +520,8 @@ namespace Gamesim.Simulation
                     tells = true;
             }
             // A betrayal told by a ballot (ACTIONS-DEALS-ALLIANCES-PLAN C2): the ally's vote to evict the
-            // player, or a vote deal they broke with them by it, on the player's record of them.
+            // player, a call of theirs the ally refused and then voted against, or a vote deal they broke
+            // with them by it, on the player's record of them.
             if (Allegiance.TellsABallot(s, partnerId, text)) tells = true;
             if (!tells) return false;
             return !Knows(s, week, partnerId);

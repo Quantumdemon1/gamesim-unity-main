@@ -259,8 +259,9 @@ namespace Gamesim.Simulation
             {
                 case LobbyAsk.Vote:
                     // A voter in your alliance is easier; one in the other nominee's, or close to
-                    // them, is harder: the vote is between the two of you.
-                    if (s.Allied(deciderId, s.playerId)) chance += 15;
+                    // them, is harder: the vote is between the two of you. Under the commitment rules
+                    // only an ally whose own commitment holds (Allegiance.Holds; C2, C3).
+                    if (Allegiance.Holds(s, deciderId, s.playerId)) chance += 15;
                     string other = s.nominees.FirstOrDefault(id => id != s.playerId);
                     if (other != null && s.Allied(deciderId, other)) chance -= 20;
                     else if (other != null && s.Score(deciderId, other) > 30) chance -= 15;

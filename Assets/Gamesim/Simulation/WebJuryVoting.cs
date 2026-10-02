@@ -214,7 +214,10 @@ namespace Gamesim.Simulation
                     ? Say(state, jurorId, "Their final argument was about what I value in this game.", "They made the case I came here to hear.", "What they said at the end spoke to me.")
                     : Say(state, jurorId, "Their season was the kind of game I value.", "The game they played is the one I respect.", "Their record made the case on its own.");
             }
-            if (state.Allied(jurorId, chosen.id))
+            // Under the commitment rules a juror has left every pact with the house (X5), so "in it
+            // together" reads the finale questions' rule: a pact that still stands or ended only because
+            // the juror left, and never one they turned on the player in (Allegiance.SharedToTheEnd).
+            if (EpisodeEngine.CommitmentRulesOn(state) ? Allegiance.SharedToTheEnd(state, jurorId, chosen.id) : state.Allied(jurorId, chosen.id))
                 return Say(state, jurorId, "We were in this together and I am not walking away from that now.", "We had an alliance, and I am keeping my end of it tonight.", "I do not abandon people I made plans with. This is that.");
             if (Obligations(state, jurorId, chosen.id) > 10)
                 return Say(state, jurorId, "They kept their word to me when it cost them something.", "Every deal they made me, they kept. That decides it.", "They paid for keeping a promise to me. I am paying it back.");

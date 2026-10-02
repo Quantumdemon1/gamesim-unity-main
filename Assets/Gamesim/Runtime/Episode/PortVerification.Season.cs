@@ -254,8 +254,9 @@ namespace Gamesim.Episode
                 && (state.evictionStage == EvictionStage.Voting || state.evictionStage == EvictionStage.Tiebreaker)
                 && (EpisodeEngine.Voters(state).Any(actor => actor.isPlayer) || EpisodeEngine.NeedsPlayerTieBreak(state)))
             { yield return ClickSeasonButton("Vote to evict " + state.Find(state.nominees[0]).name); yield break; }
+            // The final choice's control says both halves of it, "Take Maya · evict Taylor" (UI-UX-PASS-PLAN Q0).
             if (state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId)
-            { yield return ClickSeasonButton("Evict " + state.Active.First(actor => !actor.isPlayer).name); yield break; }
+            { yield return ClickSeasonButton(FinalChoiceWords.CaptionToEvict(state, state.Active.First(actor => !actor.isPlayer).id)); yield break; }
             if (state.phase == EpisodePhase.JuryQuestioning)
             {
                 if (!seasonReport.juryReloadVerified)

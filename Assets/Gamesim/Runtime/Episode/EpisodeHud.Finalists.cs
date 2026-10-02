@@ -13,14 +13,13 @@ namespace Gamesim.Episode
     /// <summary>
     /// The finalists as cards (ENDGAME-PLAN F2, mockups 30-32; MOCKUP-PASS M8, mockups 50 and 59):
     /// one column per finalist the player is weighing, each a card of who they are and what the
-    /// player knows about them - every line with how sure the player can be of it - and, on the
-    /// final Head of Household's decision, what taking them means, the choice's headline and the
-    /// control that makes it.
+    /// player knows about them - every line with how sure the player can be of it - and what
+    /// taking them would mean: the comparison in the window at three, and the juror's cases.
     ///
-    /// <para>The control keeps its pinned caption, <c>Evict {name}</c>; the headline over it says
-    /// what pressing it means for the column it sits in, "Take {name} to the Final 2" (the plan's
-    /// fourth principle: decorate a pinned caption, never rename it). The cards themselves are not
-    /// controls, so the only pressable things in a column are the one the caption names.</para>
+    /// <para>The final Head of Household's decision is a page of its own now (UI-UX-PASS-PLAN Q0,
+    /// EpisodeHud.FinalChoice.cs), which keeps this file's pieces of a choice: the gold edge a
+    /// choosing card lights, the ring on its control, the lights that answer to one another, and
+    /// the VS between the two.</para>
     ///
     /// <para>The card is the mockups' now: the photo beside who they are, their traits as chips
     /// and their own line in a quote box; the competition record as counts, where the player
@@ -33,9 +32,9 @@ namespace Gamesim.Episode
     {
         /// <summary>The parts a test finds by name.</summary>
         public const string FinalistColumnsName = "Finalist columns", FinalistCardPrefix = "Finalist · ",
-            FinalistHeadlineName = "Choice headline", FinalistWarningName = "Choice warning", CertaintyLegendName = "Certainty legend", FactRowName = "Fact";
+            FinalistWarningName = "Choice warning", CertaintyLegendName = "Certainty legend", FactRowName = "Fact";
 
-        /// <summary>The line under a column's warning, the VS between two columns, and a choosing card's gold edge.</summary>
+        /// <summary>The line under a choice's warning, the VS between two columns, and a choosing card's gold edge.</summary>
         public const string FinalistConsequenceName = "Choice consequence", VersusName = "Finalist versus", ChosenEdgeName = "Chosen edge";
 
         /// <summary>The legend under a finalist screen's head, in the words the cards use.</summary>
@@ -52,28 +51,20 @@ namespace Gamesim.Episode
         /// </summary>
         private const float FinaleFrameBorder = 40f, FinaleFrameGlow = 40f;
 
-        /// <summary>One finalist's column: who, what is known, and - on the decision - what taking them means and the control.</summary>
+        /// <summary>One finalist's column: who, what is known, and what taking them would mean.</summary>
         public struct FinalistColumn
         {
             public ContestantState Actor;
             public FinalistRead.Finalist Read;
             public string BulletsHeading;
             public IList<string> Bullets;
-            public string Headline, Caption;
-            /// <summary>A line in the warning colour between the headline and the control: what cannot be undone.</summary>
-            public string Warning;
-            /// <summary>A line under the warning: what the choice does, as the engine settles it. Optional.</summary>
-            public string Consequence;
-            /// <summary>What the choice would break of the player's word (ACTIONS-DEALS-ALLIANCES-PLAN V1), over its headline. Optional.</summary>
-            public string Breach;
-            public Action Choose;
             /// <summary>
             /// The juror's variant (mockup 50): the case the player on the jury reads, framed in the
             /// finale's card with a bleed photo, the name in capitals, the three numbers a juror
             /// weighs and the player's own standing and agreement with them on one line.
             /// </summary>
             public bool JurorCase;
-            /// <summary>The quote on the card, and where it was said; the card's own intro line when null (the choice's cards).</summary>
+            /// <summary>The quote on the card, and where it was said; the card's own intro line when null (the comparison's cards).</summary>
             public string Quote, QuoteSource;
         }
 
@@ -111,14 +102,8 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The columns, side by side at the resting text on a wide stage and one under another at
-        /// the larger text or on a narrow one, as the paired choices go.
-        ///
-        /// <para>Side by side, the columns are one height and each card takes up the difference, so
-        /// what sits under the cards - the headline, the warning and the control - lines up across
-        /// the row whatever each card holds. Left to their own heights, the shorter card's control sat
-        /// higher than the other's, and the two choices read as unequal. The lines under the cards
-        /// are given one height across the row for the same reason: a name that wraps in one
-        /// headline would otherwise lift that column's warning over the other's.</para>
+        /// the larger text or on a narrow one, as the paired choices go. Side by side, the columns
+        /// are one height and each card takes up the difference, so the two cards end level.
         /// </summary>
         public void FinalistColumns(IList<FinalistColumn> finalists)
         {
@@ -135,26 +120,18 @@ namespace Gamesim.Episode
             layout.childControlWidth = layout.childControlHeight = true;
             layout.childForceExpandWidth = true; layout.childForceExpandHeight = beside;
             float columnWidth = beside ? (width - gap * (finalists.Count - 1)) / finalists.Count : width;
-            var headlines = new List<TMP_Text>();
-            var consequences = new List<TMP_Text>();
-            for (int i = 0; i < finalists.Count; i++) FinalistColumnIn(row, finalists[i], columnWidth, beside, i, headlines, consequences);
-            // The columns' lights answer to one another, so one card is lit at a time.
-            var lights = row.GetComponentsInChildren<ChoiceLight>(true);
-            foreach (var light in lights) light.Group = lights;
+            for (int i = 0; i < finalists.Count; i++) FinalistColumnIn(row, finalists[i], columnWidth, beside, i);
             if (!beside) return;
-            LevelHeights(headlines, columnWidth);
-            LevelHeights(consequences, columnWidth);
-            // Two people and one choice between them: the VS stands in the gap level with their
-            // faces, a juror's photo bleeding to the card's top and a choice's under its padding.
+            // Two people and the case between them: the VS stands in the gap level with their faces,
+            // a juror's photo bleeding to the card's top and a comparison's under its padding.
             if (finalists.Count == 2)
                 Versus(row, gap, finalists[0].JurorCase ? JurorPhoto.y * s * .5f : 14f * s + ChoicePhoto.y * s * .5f);
         }
 
-        /// <summary>The photo each card's header carries: beside who they are on a choice's card, bleeding to the corner on a juror's.</summary>
+        /// <summary>The photo each card's header carries: beside who they are on a comparison's card, bleeding to the corner on a juror's.</summary>
         private static readonly Vector2 ChoicePhoto = new Vector2(104f, 128f), JurorPhoto = new Vector2(150f, 200f);
 
-        private void FinalistColumnIn(RectTransform row, FinalistColumn finalist, float width, bool level, int index,
-            List<TMP_Text> headlines, List<TMP_Text> consequences)
+        private void FinalistColumnIn(RectTransform row, FinalistColumn finalist, float width, bool level, int index)
         {
             float s = FontScale;
             var column = new GameObject("Finalist column · " + finalist.Actor.name, typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(LayoutElement))
@@ -168,78 +145,10 @@ namespace Gamesim.Episode
             element.minWidth = 0f; element.preferredWidth = width; element.flexibleWidth = 1f;
 
             PushContent(column, width);
-            bool choice = !string.IsNullOrEmpty(finalist.Caption) && finalist.Choose != null;
-            var card = FinalistCard(finalist, width, index, choice, out var chosen);
-            // The card takes whatever height the row gives the column past its own, so the lines
-            // under it sit at the foot of every column alike.
+            var card = FinalistCard(finalist, width, index);
+            // The card takes whatever height the row gives the column past its own, so the two end level.
             if (level) card.gameObject.AddComponent<LayoutElement>().flexibleHeight = 1f;
-            // Over the headline, so the card takes up its height and the lines under it - and the
-            // control - stay level with the other column's.
-            BreachLine(finalist.Breach);
-            if (!string.IsNullOrEmpty(finalist.Headline))
-            {
-                // "Take {name} to the Final 2", large and in the crown's gold: the choice in the words
-                // it has always had, made the loudest line in its column by style alone.
-                var headline = FlowText(finalist.Headline, 24, UiTheme.Gold);
-                headline.name = FinalistHeadlineName;
-                headline.alignment = TextAlignmentOptions.Center;
-                var bold = UiTheme.Font(UiTheme.Weight.Bold);
-                if (bold != null) headline.font = bold;
-                headlines.Add(headline);
-            }
-            // The warning sits on the control it is about, so it is on screen whenever the control is.
-            if (!string.IsNullOrEmpty(finalist.Warning)) WarningLine(finalist.Warning);
-            if (!string.IsNullOrEmpty(finalist.Consequence))
-            {
-                var line = FlowText(finalist.Consequence, 13, UiTheme.Muted);
-                line.name = FinalistConsequenceName;
-                line.alignment = TextAlignmentOptions.Center;
-                consequences.Add(line);
-            }
-            // The one control in the column, under the pinned caption it has always had.
-            if (choice) SelectionMark(Action(finalist.Caption, finalist.Choose), chosen);
             PopContent();
-        }
-
-        /// <summary>
-        /// Gives the lines each column carries under its card the tallest one's height, so what is
-        /// under them stays level across the row.
-        /// </summary>
-        private static void LevelHeights(List<TMP_Text> labels, float width)
-        {
-            if (labels.Count < 2) return;
-            float tallest = labels.Max(label => label.GetPreferredValues(label.text, width, 0f).y);
-            foreach (var label in labels)
-            {
-                var element = label.GetComponent<LayoutElement>();
-                if (element == null) element = label.gameObject.AddComponent<LayoutElement>();
-                element.minHeight = element.preferredHeight = Mathf.Max(element.minHeight, Mathf.Ceil(tallest));
-            }
-        }
-
-        /// <summary>The warning with the kit's warning mark before it, the two centred together over the control.</summary>
-        private void WarningLine(string words)
-        {
-            float s = FontScale;
-            var line = new GameObject("Warning line", typeof(RectTransform), typeof(HorizontalLayoutGroup)).GetComponent<RectTransform>();
-            line.SetParent(content, false);
-            var layout = line.GetComponent<HorizontalLayoutGroup>();
-            layout.spacing = 6f * s; layout.childAlignment = TextAnchor.MiddleCenter;
-            layout.childControlWidth = layout.childControlHeight = true;
-            layout.childForceExpandWidth = layout.childForceExpandHeight = false;
-            var sprite = UiTheme.Pack(PackArt.KitIconWarning);
-            if (sprite != null)
-            {
-                var mark = new GameObject("Warning mark", typeof(RectTransform), typeof(Image), typeof(LayoutElement)).GetComponent<Image>();
-                mark.rectTransform.SetParent(line, false);
-                mark.sprite = sprite; mark.color = UiTheme.Warning; mark.preserveAspect = true; mark.raycastTarget = false;
-                var side = mark.GetComponent<LayoutElement>();
-                side.minWidth = side.preferredWidth = side.minHeight = side.preferredHeight = 15f * s;
-            }
-            var warning = NewText(line, words, 13, UiTheme.Warning);
-            warning.name = FinalistWarningName;
-            warning.alignment = TextAlignmentOptions.Center;
-            warning.gameObject.AddComponent<LayoutElement>().minHeight = 13f * s + 8f;
         }
 
         /// <summary>
@@ -283,17 +192,21 @@ namespace Gamesim.Episode
         /// is the column's only one - and it listens to the same select and pointer events the
         /// Button does, so the column says which choice a press would make before it is made.
         ///
-        /// <para>The columns are one group, and one card in it is lit at a time. The pointer's column
-        /// wins while the pointer is on a control, because a click lands there whatever the keyboard
-        /// is on; with the pointer on neither, the keyboard's column is lit. Lit separately, the two
-        /// could light both cards at once.</para>
+        /// <para>The columns are one group, and one card in it is lit at a time. The keyboard's column
+        /// wins whenever the player has put the keyboard on one of the group's controls, and keeps the
+        /// light while the pointer passes over the other: Enter presses the selected control, so the
+        /// lit card is always the one Enter would take (UI-UX-PASS-PLAN Q0's review; the pointer's
+        /// column used to win, and Enter could press the unlit control). With neither control holding
+        /// the keyboard, the pointer's lights its column, a preview of what a click there would do. Lit
+        /// separately, the two could light both cards at once.</para>
         ///
-        /// <para>The keyboard lights a column only when the player put it there. Every panel opens
-        /// with the keyboard on its first control, which here is the first finalist's; a card lit
-        /// before the player has done anything would read as the game's pick, on a screen whose head
-        /// says nothing on it is a prediction. So a selection the HUD makes on its own account
-        /// (<see cref="RestoreFocus"/>) lights nothing, unless it hands back the control the player
-        /// had lit before a rebuild. The Button's own tint still shows where the keyboard is.</para>
+        /// <para>The keyboard lights a column only when the player put it there. The HUD never puts
+        /// it on one of these controls of its own accord (<see cref="MayFocusOnItsOwn"/>: the page
+        /// opens on Close), and a selection the HUD makes on its own account (<see cref="RestoreFocus"/>)
+        /// lights nothing unless it hands back the control the player had lit before a rebuild - a
+        /// card lit before the player has done anything would read as the game's pick, on a screen
+        /// whose head says nothing on it is a prediction. The Button's own tint still shows where the
+        /// keyboard is.</para>
         ///
         /// <para>No OnDisable reset: the HUD deactivates a whole panel before it destroys it, and a
         /// SetActive on the edge from inside that deactivation is one Unity refuses. A rebuilt panel
@@ -330,10 +243,12 @@ namespace Gamesim.Episode
 
             public void Apply()
             {
-                bool pointed = hovered;
+                // The player's keyboard on any of the group's controls holds the light; only without
+                // it does the pointer's control light its column.
+                bool chosen = focused;
                 if (Group != null)
-                    foreach (var light in Group) pointed |= light != null && light.hovered;
-                bool lit = pointed ? hovered : focused;
+                    foreach (var light in Group) chosen |= light != null && light.focused;
+                bool lit = chosen ? focused : hovered;
                 if (Edge != null) Edge.SetActive(lit);
                 if (Fill != null) Fill.SetActive(lit);
             }
@@ -381,7 +296,7 @@ namespace Gamesim.Episode
 
         // ------------------------------------------------------------ the card
 
-        private RectTransform FinalistCard(FinalistColumn finalist, float width, int index, bool choice, out GameObject chosen)
+        private RectTransform FinalistCard(FinalistColumn finalist, float width, int index)
         {
             float s = FontScale;
             var actor = finalist.Actor;
@@ -391,7 +306,6 @@ namespace Gamesim.Episode
             // The juror's two cases wear the finale's card, the first finalist's edge in gold and the
             // second's in the accent, as mockup 50 tells the two apart.
             if (finalist.JurorCase) FinaleFrame(card, index == 0 ? UiTheme.Gold : Accent);
-            chosen = choice ? ChosenEdge(card) : null;
             var layout = card.gameObject.AddComponent<VerticalLayoutGroup>();
             int pad = Mathf.RoundToInt(16f * s), top = Mathf.RoundToInt(14f * s);
             layout.padding = new RectOffset(pad, pad, top, pad);
@@ -482,7 +396,7 @@ namespace Gamesim.Episode
         // ------------------------------------------------------------ who they are
 
         /// <summary>
-        /// The choice's header (mockup 59): the photo on the left; beside it the name, the archetype
+        /// The comparison's header (mockup 59): the photo on the left; beside it the name, the archetype
         /// in the heading blue, age and job, the traits as chips and their own line in a quote box.
         /// </summary>
         private void ChoiceHeader(FinalistColumn finalist, float inner)
@@ -636,7 +550,7 @@ namespace Gamesim.Episode
         // ------------------------------------------------------------ what the player knows
 
         /// <summary>
-        /// The choice's facts (mockup 59): the record as counts, the player's standing as the cast
+        /// The comparison's facts (mockup 59): the record as counts, the player's standing as the cast
         /// strip's bar, the agreement and the alliances, and the jury read as three counts.
         /// </summary>
         private void ChoiceFacts(FinalistRead.Finalist read, ContestantState actor, float inner)
@@ -830,23 +744,40 @@ namespace Gamesim.Episode
         /// </summary>
         private void JurorStats(FinalistRead.Finalist read, ContestantState actor, float inner)
         {
-            float s = FontScale, gap = 8f * s, height = 48f * s;
-            var row = new GameObject("Finalist stats", typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
+            float s = FontScale, height = 48f * s;
+            var row = new GameObject(FinalistStatsName, typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
             row.SetParent(content, false);
             var element = row.GetComponent<LayoutElement>();
             element.minHeight = element.preferredHeight = height;
-            float cell = (inner - 2f * gap) / 3f;
-            StatTile(row, 0f, cell, height, null, "trophy", UiTheme.Gold, read.wins, "Comp wins");
-            StatTile(row, cell + gap, cell, height, null, "people", UiTheme.Accent, read.votesSurvived, "Votes survived");
-            StatTile(row, 2f * (cell + gap), cell, height, PackArt.KitIconShield, "veto-token", UiTheme.Heading, actor.timesNominated, "Times on block");
+            StatTiles(row, read, actor, inner, height, false);
         }
 
-        private void StatTile(RectTransform row, float x, float width, float height, string pack, string glyph, Color tint, int value, string words)
+        /// <summary>
+        /// The three public numbers' tiles across <paramref name="row"/>, <paramref name="width"/>
+        /// wide: the juror's case's, and the final choice's portrait card's, which wears them on the
+        /// pack's stat tile (<paramref name="packed"/>).
+        /// </summary>
+        private void StatTiles(RectTransform row, FinalistRead.Finalist read, ContestantState actor, float width, float height, bool packed)
+        {
+            float gap = 8f * FontScale, cell = (width - 2f * gap) / 3f;
+            StatTile(row, 0f, cell, height, null, "trophy", UiTheme.Gold, read.wins, "Comp wins", packed);
+            StatTile(row, cell + gap, cell, height, null, "people", UiTheme.Accent, read.votesSurvived, "Votes survived", packed);
+            StatTile(row, 2f * (cell + gap), cell, height, PackArt.KitIconShield, "veto-token", UiTheme.Heading, actor.timesNominated, "Times on block", packed);
+        }
+
+        private void StatTile(RectTransform row, float x, float width, float height, string pack, string glyph, Color tint, int value, string words,
+            bool packed = false)
         {
             float s = FontScale, side = 20f * s, pad = 10f * s;
             var tile = HudPrimitives.Fill("Stat tile", row, new Color(UiTheme.SurfaceRaised.r, UiTheme.SurfaceRaised.g, UiTheme.SurfaceRaised.b, .7f), 8);
             tile.anchorMin = tile.anchorMax = new Vector2(0f, 1f); tile.pivot = new Vector2(0f, 1f);
             tile.anchoredPosition = new Vector2(x, 0f); tile.sizeDelta = new Vector2(width, height);
+            // The pack's stat tile over the plain ground, its edge in the number's colour, as the
+            // finale's highlights wear it; the plain ground alone where the pack is not installed.
+            if (packed && UiTheme.Pack(PackArt.Pack9SeasonFinaleStatTileFill) != null)
+                EndScreenKit.Skin(tile, PackArt.Pack9SeasonFinaleStatTileFill, PackArt.Pack9SeasonFinaleStatTileEdge, 10f * s,
+                    new Color(UiTheme.SurfaceRaised.r, UiTheme.SurfaceRaised.g, UiTheme.SurfaceRaised.b, .9f), new Color(tint.r, tint.g, tint.b, .45f),
+                    null, UiTheme.SurfaceRaised, null, 8);
             float left = Mark("Stat mark", tile, pack, glyph, tint, new Vector2(pad, -(height - side) * .5f), side) != null ? pad + side + 8f * s : pad;
             float room = Mathf.Max(10f, width - left - 6f * s);
             var number = FixedText(tile, value.ToString(), 20, Paper, new Vector2(left, -3f * s), new Vector2(room, 26f * s));

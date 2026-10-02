@@ -701,7 +701,7 @@ namespace Gamesim.Tests.PlayMode
                         caption = before.phase == EpisodePhase.Jury ? "Vote for " + before.Find(next.targetId).name + " to win"
                             : "Vote to evict " + before.Find(next.targetId).name; break;
                     case EpisodeCommandKind.SubmitEvictionSpeech: caption = EpisodeHud.EvictionSpeechSkipCaption; break;
-                    case EpisodeCommandKind.FinalEvict: caption = "Evict " + before.Find(next.targetId).name; break;
+                    case EpisodeCommandKind.FinalEvict: caption = FinalChoiceWords.CaptionToEvict(before, next.targetId); break;
                     case EpisodeCommandKind.AnswerJury:
                         var exchange = before.juryExchanges[before.juryQuestionIndex];
                         caption = exchange.finalistId == before.playerId

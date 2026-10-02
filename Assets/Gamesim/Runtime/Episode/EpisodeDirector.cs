@@ -1490,6 +1490,14 @@ namespace Gamesim.Episode
             // And so is the finale page, in the campaign's neutral shell: Pack 9 brings cards, not a
             // shell of its own (EpisodeDirector.FinalePage.cs).
             else if (FinalePageBeat(state)) hud.StrategyStage(PackArt.Pack8CampaignShell);
+            // The final Head of Household's choice is a page of the same kit, in the same shell, laid
+            // for the frame's whole width before anything - a story beat over it included - is built
+            // (EpisodeDirector.FinalThree.cs; UI-UX-PASS-PLAN Q0).
+            else if (FinalChoiceBeat(state))
+            {
+                hud.StrategyStage(PackArt.Pack8CampaignShell);
+                hud.StrategyWholeWidth();
+            }
             else hud.SetActivityLayout(EpisodeHud.ActivityLayout.Stage);
             // The phase and week now live in the panel's fixed header band, which stays on screen
             // while this content scrolls. Repeating them as the first line of the scroll was the
@@ -1547,16 +1555,15 @@ namespace Gamesim.Episode
             // footer, in place of everything below (EpisodeDirector.FreeTimeBoard.cs).
             if (FreeTimeBoard(state)) return;
             // Who holds what this week, on one line, before whatever there is to decide: the stage
-            // stands the strip and its badges down, so this is where the roles are read. The final
-            // Head of Household's choice opens on its own gold head instead: the house is down to
-            // the three, and the two it is between are on its cards (MOCKUP-PASS M8). Not over a
-            // view at three either (the comparison, the final case, the jury house): those are
-            // screens of their own, and the roles they would sit under are the final-four week's,
-            // which stay in state until the window closes and can name a juror as a nominee.
+            // stands the strip and its badges down, so this is where the roles are read. Not over the
+            // final Head of Household's choice, whose band says it under the crown: the house is down
+            // to the three, and the two it is between are on its cards (MOCKUP-PASS M8; UI-UX-PASS-PLAN
+            // Q0). Not over a view at three either (the comparison, the final case, the jury house):
+            // those are screens of their own, and the roles they would sit under are the final-four
+            // week's, which stay in state until the window closes and can name a juror as a nominee.
             bool finalChoice = state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId;
-            if (finalChoice) FinalTwoHead();
             // The veto meeting says it in a strip across the stage's header (PACK8-PASS-PLAN B3).
-            else if (!VetoMeetingStatus(state))
+            if (!finalChoice && !VetoMeetingStatus(state))
             {
                 // Not over the campaign, whose situation card says each of these on a row of its own.
                 string houseStatus = ViewOverPreparation(state) || state.phase == EpisodePhase.Campaign ? null : HouseStatus(state);
@@ -1570,9 +1577,9 @@ namespace Gamesim.Episode
             CeremonyScreen(state);
             if (finalChoice)
             {
-                hud.Paragraph("You won the final HoH. Choose who to evict; the other housemate joins you in the final two.");
                 // The two of them side by side as cards, with what the player knows about each and
-                // what taking each means, over the controls that decide it (ENDGAME-PLAN F2).
+                // what taking each means, over the controls that decide it: one page, with nothing to
+                // scroll (ENDGAME-PLAN F2; UI-UX-PASS-PLAN Q0).
                 FinalTwoChoice(state);
                 return;
             }

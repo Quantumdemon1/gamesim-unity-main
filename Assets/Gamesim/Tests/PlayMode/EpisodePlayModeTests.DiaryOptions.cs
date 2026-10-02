@@ -86,14 +86,16 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(column.Overlaps(ScreenRect(chrome)), Is.False, "The column covers '" + name + "'.");
             }
             // The chair is captioned with what the player has to talk about: their own latest
-            // memory, under their name, clear of the column and the chrome around it.
+            // memory, as they read it (a nomination names its Head of Household, MemoryWords.Said),
+            // under their name, clear of the column and the chrome around it.
             var state = director.Snapshot;
             var latest = state.memories.LastOrDefault(memory => memory.ownerId == state.playerId);
             Assert.That(latest, Is.Not.Null, "The fixture should give the player a memory.");
             {
                 var caption = ActiveRect(EpisodeHud.ConfessionalName);
                 Assert.That(caption, Is.Not.Null, "The chair has its caption.");
-                Assert.That(caption.GetComponentsInChildren<TMPro.TMP_Text>().Select(text => text.text), Does.Contain(latest.text));
+                Assert.That(caption.GetComponentsInChildren<TMPro.TMP_Text>().Select(text => text.text),
+                    Does.Contain(Gamesim.Simulation.MemoryWords.Said(state, latest)));
                 foreach (var chrome in new[] { ActiveRect("Episode panel"), ActiveRect(CastRail.RootName), ActiveRect(IconRail.RootName) })
                     Assert.That(ScreenRect(caption).Overlaps(ScreenRect(chrome)), Is.False, "The caption covers '" + chrome.name + "'.");
             }

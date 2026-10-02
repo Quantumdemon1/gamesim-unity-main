@@ -83,8 +83,12 @@ namespace Gamesim.Presentation
         /// </summary>
         private const float RingOuter = 0.816f, RingHole = 0.711f;
 
-        /// <summary>Pack 8's veto mark against the ring: its medallion is 149 of its 192 pixels (.776), so it is drawn at 1.05 of the side to stand as large as the ring's outer edge.</summary>
-        private const float VetoMarkScale = 1.05f;
+        /// <summary>
+        /// Pack 8's veto mark against the ring: its medallion is 149 of its 192 pixels (.776), so it
+        /// is drawn at 1.05 of the side to stand as large as the ring's outer edge - here, and on the
+        /// meeting's card on the HUD frame, so the meeting's mark is one size wherever it leads.
+        /// </summary>
+        public const float VetoMarkScale = 1.05f;
 
         private CanvasGroup group;
         private RectTransform card, mark;
@@ -147,14 +151,16 @@ namespace Gamesim.Presentation
             playing = true;
             playingKind = kind;
 
-            Layout();
             var tint = Tint(kind);
             headline.text = HeadlineFor(kind);
             headline.color = tint;
             detail.text = body ?? string.Empty;
-            DressMark(kind, tint);
-
+            // Up before it is laid out: the detail is measured for its lines, and a label is
+            // measured as it is drawn only while it is awake. The group is at nothing until Apply.
+            group.alpha = 0f;
             card.gameObject.SetActive(true);
+            Layout();
+            DressMark(kind, tint);
             Apply(reduced ? 1f : 0f);
         }
 
@@ -347,18 +353,26 @@ namespace Gamesim.Presentation
             // rule is a box 1.3 times its type, the detail's included (it was 1.25).
             float headLine = Mathf.Ceil(head * 1.35f);
             float bodyLine = Mathf.Ceil(body * 1.32f);
-            float height = TopPad + headLine + Gap + bodyLine + BottomPad;
+
+            // The medallion grows with the type, and never past a one-line card's height less a
+            // margin over and under it - the same size whether the detail takes one line or two; the
+            // words start a gap to its right.
+            markSide = Mathf.Min(Mathf.Round(MarkSize * FontScale), TopPad + headLine + Gap + bodyLine + BottomPad - 24f);
+            float left = MarkInset + markSide + MarkGap;
+
+            // The detail takes a second line when its words run longer than the strip's room at
+            // their own size: on the 4:3 canvas the medallion leaves them about 400 units, and a veto
+            // meeting's sentence with two long names in it was cut after "is the" at the larger text
+            // while the status line that used to carry it stood down (UI-UX-PASS-PLAN V0 review).
+            float room = Mathf.Max(80f, CanvasWidth() - LeftInset - RightInset - left - RightPad);
+            int lines = DetailLines(room, body);
+            float height = TopPad + headLine + Gap + lines * bodyLine + BottomPad;
 
             card.offsetMin = new Vector2(LeftInset, -(TopInset + height));
             card.offsetMax = new Vector2(-RightInset, -TopInset);
             restPosition = card.anchoredPosition;
-
-            // The medallion grows with the type, and never past the card's height less a margin over
-            // and under it; the words start a gap to its right.
-            markSide = Mathf.Min(Mathf.Round(MarkSize * FontScale), height - 24f);
             mark.anchoredPosition = new Vector2(MarkInset, 0f);
             mark.sizeDelta = new Vector2(markSide, markSide);
-            float left = MarkInset + markSide + MarkGap;
 
             // The name on its one line, drawn a size or two smaller rather than run past the card's
             // edge: on the 4:3 canvas the strip is 525 wide, and NOMINATION CEREMONY at the larger
@@ -369,14 +383,46 @@ namespace Gamesim.Presentation
             headline.fontSizeMin = Mathf.Round(head * 0.6f);
             Stretch(headline.rectTransform, left, TopPad, RightPad, height - TopPad - headLine);
 
-            // Committed event text varies a lot in length and the card is only one line deep, so the
-            // detail is allowed to shrink rather than truncate. A slightly smaller sentence is a far
-            // better outcome than a name cut in half at the moment someone is evicted.
+            // Committed event text varies a lot in length and the card is one or two lines deep, so
+            // the detail is allowed to shrink rather than truncate past its second line. A slightly
+            // smaller sentence is a far better outcome than a name cut in half at the moment someone
+            // is evicted.
             detail.fontSize = body;
             detail.enableAutoSizing = true;
             detail.fontSizeMax = body;
             detail.fontSizeMin = Mathf.Max(11f, body * 0.7f);
             Stretch(detail.rectTransform, left, TopPad + headLine + Gap, RightPad, BottomPad);
+        }
+
+        /// <summary>
+        /// The canvas's width in its own units, reckoned as its scaler lays it out - the 1600x900
+        /// reference, width and height matched equally (at 4:3 that is 1385 wide) - from the size it
+        /// is drawn at: the screen, or a capture's camera. Reckoned rather than read, because the
+        /// scaler sets its factor on its own update, and a strip played in the frame it was attached
+        /// in would read the canvas at the screen's raw pixels.
+        /// </summary>
+        private float CanvasWidth()
+        {
+            var canvas = GetComponent<Canvas>();
+            var display = canvas != null ? canvas.renderingDisplaySize : new Vector2(Screen.width, Screen.height);
+            float width = Mathf.Max(1f, display.x), height = Mathf.Max(1f, display.y);
+            float scale = Mathf.Pow(2f, Mathf.Lerp(Mathf.Log(width / 1600f, 2f), Mathf.Log(height / 900f, 2f), 0.5f));
+            return width / scale;
+        }
+
+        /// <summary>
+        /// How many lines the detail needs in <paramref name="room"/> at <paramref name="size"/>:
+        /// one, or two when its words run longer than the room on one line. Past two it shrinks.
+        /// </summary>
+        private int DetailLines(float room, float size)
+        {
+            if (string.IsNullOrEmpty(detail.text)) return 1;
+            bool autoSize = detail.enableAutoSizing;
+            detail.enableAutoSizing = false;
+            detail.fontSize = size;
+            float oneLine = detail.GetPreferredValues(detail.text).x;
+            detail.enableAutoSizing = autoSize;
+            return oneLine > room ? 2 : 1;
         }
 
         private void LateUpdate()

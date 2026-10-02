@@ -10,9 +10,27 @@ namespace Gamesim.Episode
     public sealed partial class EpisodeDirector
     {
         private bool durableCommitInProgress, npcSaveSuspended;
+        // Explicit Editor diagnostics only (FreezeForReloadForDiagnostics): this director is about to
+        // be replaced by one that loads what a test just wrote to its save path, so it writes nothing.
+        private bool persistenceFrozenForDiagnostics;
         private long loadGeneration;
         // Explicit Editor diagnostics only; ordinary players always use the validated durable store.
         internal Action<EpisodeState> saveCandidateForDiagnostics = null;
+
+        /// <summary>
+        /// Explicit Editor diagnostics for a test that has just written a fixture to <see cref="SavePath"/>
+        /// and is about to reload the scene: from here on this director writes nothing to disk, and the
+        /// house's clock stops (<see cref="SuspendNpcAutonomyForDiagnostics"/>). Both used to commit while
+        /// the scene loaded. The opening plays on real time and records each finished beat as a commit,
+        /// so the frame after a long fixture search could finish a beat and save the outgoing season over
+        /// the fixture; the incoming director then came up with the default season instead.
+        /// </summary>
+        public void FreezeForReloadForDiagnostics()
+        {
+            if (!Application.isEditor) throw new InvalidOperationException("Reload diagnostics are Editor-only.");
+            SuspendNpcAutonomyForDiagnostics();
+            persistenceFrozenForDiagnostics = true;
+        }
 
         private static bool EquivalentState(EpisodeState first, EpisodeState second) => first != null && second != null
             && JToken.DeepEquals(JObject.FromObject(first, SaveJson.Serializer()), JObject.FromObject(second, SaveJson.Serializer()));
@@ -27,6 +45,8 @@ namespace Gamesim.Episode
             installed = null; failure = null;
             if (durableCommitInProgress || prepared == null || engine == null || saves == null)
             { failure = "A save transaction is already running or the episode is unavailable."; return false; }
+            if (persistenceFrozenForDiagnostics)
+            { failure = "This episode is being replaced, so nothing more is saved from it."; return false; }
             var authority = engine;
             var store = saves;
             long generation = loadGeneration;

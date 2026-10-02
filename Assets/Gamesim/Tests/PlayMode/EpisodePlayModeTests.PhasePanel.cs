@@ -243,7 +243,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null; yield return null;
             Canvas.ForceUpdateCanvases();
 
-            var saves = before.nominees.Select(id => ButtonWithCaption("Save " + before.Find(id).name + " (HoH chooses replacement)")).ToArray();
+            var saves = before.nominees.Select(id => ButtonWithCaption(EpisodeDirector.VetoSaveCaption(before, id))).ToArray();
             Assert.That(saves[0].transform.parent.name, Is.EqualTo(EpisodeHud.ChoiceRowName));
             Assert.That(saves[1].transform.parent, Is.SameAs(saves[0].transform.parent), "The nominees share one row.");
             var a = ScreenRect((RectTransform)saves[0].transform);
@@ -272,7 +272,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.TryOpenPhasePanel(), Is.True);
             yield return null; yield return null;
             foreach (var id in before.nominees)
-                Assert.That(FindButton("Save " + before.Find(id).name + " (HoH chooses replacement)").transform.parent.name,
+                Assert.That(FindButton(EpisodeDirector.VetoSaveCaption(before, id)).transform.parent.name,
                     Is.EqualTo("Episode content"), "At the larger text each save is a row of its own.");
             director.ClosePanels();
             yield return ApplyTextSize(false);
@@ -283,7 +283,7 @@ namespace Gamesim.Tests.PlayMode
             yield return OpenDiaryFixturePanel();
             foreach (var id in before.nominees)
             {
-                var save = FindButton("Save " + before.Find(id).name + " (HoH chooses replacement)");
+                var save = FindButton(EpisodeDirector.VetoSaveCaption(before, id));
                 Assert.That(save.transform.parent.name, Is.EqualTo("Episode content"), "The diary keeps its column.");
             }
             AssertEquivalent(before, director.Snapshot);

@@ -8,12 +8,14 @@ namespace Gamesim.Episode
     /// BARGAIN, beside the pact's other rows, and only in a season that plays the commitment rules.
     ///
     /// <list type="bullet">
-    /// <item><b>"Bring {name} into {pact}"</b>, in a conversation with anybody not in one of the player's
-    /// pacts, a row for each such pact. It carries what it is for and the player's read of the one asked
-    /// (<see cref="KnownOdds.Alliance"/>, the invitation's odds as the player reads them, under the note
-    /// that says so), never the roll's own number and nothing of what the members think: their say is
-    /// theirs, and only their answer tells it. A pact already holding <see cref="EpisodeEngine.LargestPact"/>
-    /// in the house draws the row locked under the reason, as a fourth pact's proposal is drawn.</item>
+    /// <item><b>"Bring {name} into {pact}"</b>, in a conversation with anybody not in a pact with the
+    /// player - a bring-in never stacks pacts - a row for each of the player's pacts. It carries what it
+    /// is for and the player's read of the one asked (<see cref="KnownOdds.Alliance"/>, the invitation's
+    /// odds as the player reads them, under the note that says so), never the roll's own number and
+    /// nothing of what the members think: their say is theirs, and only their answer tells it. A pact
+    /// already holding <see cref="EpisodeEngine.LargestPact"/> in the house draws the row locked under the
+    /// reason, as a fourth pact's proposal is drawn; somebody the player has soured on locks every row,
+    /// under one line saying the player cannot vouch for them.</item>
     /// <item><b>"Leave {pact}"</b>: with one pact between the two of them it is "Leave our alliance", the
     /// caption it always had, now naming that pact; with more, one row a pact, "Leave The Riley Pact".
     /// A pact of three or more goes on without the player, and the pill says so. The week a member
@@ -79,22 +81,28 @@ namespace Gamesim.Episode
             if (!EpisodeEngine.CommitmentRulesOn(state)) return;
             foreach (var pact in EpisodeEngine.SharedPacts(state, npc.id).Where(shared => EpisodeEngine.PlayerFounded(state, shared)).ToList())
                 RenameRows(state, npc, pact);
+            // A bring-in never stacks pacts: an ally of the player's is asked into none of their others.
+            if (state.Allied(state.playerId, npc.id)) return;
+            bool vouchSaid = false;
             foreach (var pact in state.alliances.Where(a => a.active && a.members.Contains(state.playerId) && !a.members.Contains(npc.id)).ToList())
-                BringInRow(state, npc, pact);
+                BringInRow(state, npc, pact, ref vouchSaid);
         }
 
         /// <summary>
         /// "Bring {name} into {pact}": the player's read of the one asked beside what it is for, under
         /// the note that says whose read it is - once a render, above the first chance shown - or locked
-        /// under the reason where the player can see it cannot be asked.
+        /// under the reason where the player can see it cannot be asked. A reason that is about the one
+        /// asked, not the pact - the player cannot vouch for them - is said once, over the first row it locks.
         /// </summary>
-        private void BringInRow(EpisodeState state, ContestantState npc, AllianceState pact)
+        private void BringInRow(EpisodeState state, ContestantState npc, AllianceState pact, ref bool vouchSaid)
         {
             string caption = BringInCaption(npc.name, pact.name);
             string refusal = EpisodeEngine.BringInRefusal(state, npc.id, pact);
             if (refusal != null)
             {
-                hud.Paragraph(refusal);
+                bool aboutThem = refusal == EpisodeEngine.CannotVouchRefusal(npc.name);
+                if (!aboutThem || !vouchSaid) hud.Paragraph(refusal);
+                if (aboutThem) vouchSaid = true;
                 hud.LockedAction(caption);
                 return;
             }

@@ -50,6 +50,9 @@ namespace Gamesim.Simulation
         private static void FormPact(EpisodeState s, ContestantState target, Func<double> nextRoll)
         {
             var pact = new AllianceState { id = "alliance-" + s.nextSequence, name = "The " + target.name.Split(' ')[0] + " Pact", members = new List<string> { s.playerId, target.id } };
+            // Under the commitment rules (C5) no two of the player's standing pacts share a name: the
+            // captions that name them must stay apart.
+            if (CommitmentRulesOn(s)) pact.name = PactNames.Unique(s, pact.name);
             s.alliances.Add(pact);
             ChangeWithRoll(s, s.playerId, target.id, 8, nextRoll);
             Log(s, "alliance", "You and " + target.name + " formed a private alliance.", s.playerId, target.id);

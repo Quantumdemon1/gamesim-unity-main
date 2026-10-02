@@ -9,26 +9,30 @@ namespace Gamesim.Tests.EditMode
 {
     /// <summary>
     /// Grow and manage alliances (ACTIONS-DEALS-ALLIANCES-PLAN C5), under the commitment rules: "Bring
-    /// {name} into {pact}" asks the houseguest on the alliance invitation's odds, one draw, and every
-    /// member in the house has their say through <c>NpcAlliances.WouldWelcome</c> - WouldPropose's
-    /// question asked of a pact that exists - one no refusing it and the action spent either way; a
-    /// newcomer joins at the end, so the founder, <c>members[0]</c>, never changes, and the founder calls
-    /// the bloc's vote; "Rename {pact}" is the founder's, from the names on offer, free and once a week;
-    /// and "Leave {pact}" names its pact and, in a pact of three or more, takes only the player out at
-    /// the walk-out's price. Without the rules the new kinds are refused before anything moves, and a
-    /// leave is what it always was. Unity-free, so the dotnet subset runs it (Tools/SimulationTests). The
-    /// screen's half is EpisodePlayModeTests.GrowAndManageAlliances.
+    /// {name} into {pact}" asks the houseguest on the alliance invitation's odds, one draw, her three
+    /// pacts and a grudge of forty her no whatever it says; only on her yes does every member in the
+    /// house have their say, through <c>NpcAlliances.WouldWelcome</c> - the web's bar for a pact of more
+    /// than two, nobody hostile to her - one no refusing it and the action spent either way. Nobody in a
+    /// pact with the player is asked into another, and nobody the player has soured on. A newcomer joins
+    /// at the end, so the founder, <c>members[0]</c>, never changes, and the founder calls the bloc's
+    /// vote; "Rename {pact}" is the founder's, from the names on offer, free and once a week; "Leave
+    /// {pact}" names its pact and, in a pact of three or more, takes only the player out at the
+    /// walk-out's price, and a member who turns on such a pact is taken out of it the same way; and no
+    /// two of the player's standing pacts share a name. Without the rules the new kinds are refused
+    /// before anything moves, and a leave is what it always was. Unity-free, so the dotnet subset runs it
+    /// (Tools/SimulationTests). The screen's half is EpisodePlayModeTests.GrowAndManageAlliances, and the
+    /// recap's WeeklyRecapGrowPactsTests.
     /// </summary>
     public sealed class GrowAndManageAlliancesTests
     {
         // ------------------------------------------------------------ bring {name} into {pact}: the members' say
 
         /// <summary>
-        /// Every member still in the house has their say, each by WouldWelcome and nothing else: both
-        /// welcome the newcomer, and the newcomer who says yes is in; one of them does not, and nobody is
-        /// added. Either way the action is spent and the season's stream gives one draw to the asking
-        /// (and, on a yes, the reciprocal of the warmth a pact with the player brings). A no says who
-        /// said it, to the player's face, and moves nobody.
+        /// Once the newcomer has said yes, every member still in the house has their say, each by
+        /// WouldWelcome and nothing else: both welcome her, and she is in; one of them is hostile to her,
+        /// and nobody is added. Either way the action is spent and the season's stream gives one draw to
+        /// the asking (and, on a yes, the reciprocal of the warmth a pact with the player brings). A
+        /// member's no says who said it, to the player's face, and moves nobody.
         /// </summary>
         [Test]
         public void UnderTheRulesEveryMemberHasTheirSayAndOneNoRefuses()
@@ -44,7 +48,8 @@ namespace Gamesim.Tests.EditMode
                 // The player's own view of her has room to warm.
                 Set(s, s.playerId, maya.id, 30);
                 foreach (var member in members) Set(s, member.id, maya.id, 100);
-                if (refuser >= 0) Set(s, members[refuser].id, maya.id, 10);
+                // Hostile to her: under the web's line for a pact of more than two.
+                if (refuser >= 0) Set(s, members[refuser].id, maya.id, -11);
                 string where = refuser < 0 ? "Both welcome Maya" : members[refuser].name + " does not";
                 for (int i = 0; i < members.Length; i++)
                     Assert.That(Welcome(s, members[i].id, maya.id), Is.EqualTo(i != refuser), where + ": each member's say is theirs.");
@@ -81,6 +86,71 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// Her no is the answer, and the members are never asked: they have their say only once the one
+        /// asked has said yes. A member who would not have had her is neither asked nor named - the line
+        /// is hers alone, in her own words, said to the player's face.
+        /// </summary>
+        [Test]
+        public void UnderTheRulesHerNoIsTheAnswerAndTheMembersAreNeverAsked()
+        {
+            var s = Rules(Season(84));
+            var npcs = Npcs(s);
+            var riley = Plain(npcs[0]);
+            var maya = Plain(npcs[3]);
+            var pact = Pact(s, "alliance-grow", "The Grow Pact", "player", s.playerId, riley.id);
+            Set(s, riley.id, maya.id, -11);
+            Assert.That(Welcome(s, riley.id, maya.id), Is.False, "Riley would not have had her,");
+            Set(s, maya.id, s.playerId, 0);
+            s.randomState = Draw(s, false, PlayerDeals.AcceptanceChance(s, maya.id, DealKind.AllianceInvite, null));
+            string said = PlayerDeals.Reasoning(s, maya.id, DealKind.AllianceInvite, false);
+            var stream = new SeededRandom(s.randomState);
+            stream.NextDouble();
+            var result = Apply(new EpisodeEngine(s), BringIn, maya.id, pact.id);
+            Assert.That(result.accepted, Is.True, result.reason);
+            Assert.That(result.state.randomState, Is.EqualTo(stream.State), "One draw, hers.");
+            var line = result.state.events.Last();
+            Assert.That(line.kind, Is.EqualTo(RefusedKind));
+            Assert.That(line.text, Is.EqualTo(maya.name + " turned down The Grow Pact. “" + said + "”"), "but she said no first, and only she is named:");
+            Assert.That(line.audienceIds, Is.EquivalentTo(new[] { s.playerId, maya.id }), "Riley was never asked, and hears nothing of it.");
+        }
+
+        /// <summary>
+        /// Somebody who carries three pacts already says no to a fourth whatever the draw - the draw taken
+        /// all the same - in her own words, as any no of hers: her pacts are hers to answer for, and it is
+        /// her answer, so the members are never asked. Nothing the player can see refuses the asking.
+        /// </summary>
+        [Test]
+        public void UnderTheRulesSheWhoCarriesThreePactsSaysNo()
+        {
+            var s = Rules(Season(99));
+            var npcs = Npcs(s);
+            var riley = Plain(npcs[0]);
+            var maya = Plain(npcs[3]);
+            var pact = Pact(s, "alliance-grow", "The Grow Pact", "player", s.playerId, riley.id);
+            Set(s, riley.id, maya.id, 100);
+            Warm(s, maya.id, s.playerId);
+            for (int n = 0; n < NpcAlliances.MaximumEach; n++)
+                s.alliances.Add(new AllianceState { id = "alliance-npc-full-" + n, name = "Full " + n, members = new List<string> { maya.id, npcs[4 + n].id } });
+            Assert.That(NpcAlliances.ActiveAlliancesFor(s, maya.id), Has.Count.EqualTo(NpcAlliances.MaximumEach));
+            Assert.That(Welcome(s, riley.id, maya.id), Is.True, "Riley would have her,");
+            Assert.That(Refusal(s, maya.id, pact), Is.Null, "and nothing the player can see refuses the asking.");
+            s.randomState = Draw(s, true, PlayerDeals.AcceptanceChance(s, maya.id, DealKind.AllianceInvite, null));
+            var stream = new SeededRandom(s.randomState);
+            stream.NextDouble();
+            int spent = EpisodeEngine.SocialActionsSpent(s);
+            var result = Apply(new EpisodeEngine(s), BringIn, maya.id, pact.id);
+            Assert.That(result.accepted, Is.True, result.reason);
+            var after = result.state;
+            Assert.That(after.alliances.Single(a => a.id == pact.id).members, Does.Not.Contain(maya.id), "A draw that would have said yes, and she says no:");
+            Assert.That(after.randomState, Is.EqualTo(stream.State), "the draw is taken all the same,");
+            Assert.That(EpisodeEngine.SocialActionsSpent(after), Is.EqualTo(spent + 1), "and the action is spent.");
+            var line = after.events.Last();
+            Assert.That(line.text, Is.EqualTo(maya.name + " turned down The Grow Pact. “" + PlayerDeals.Reasoning(s, maya.id, DealKind.AllianceInvite, false) + "”"),
+                "In her own words,");
+            Assert.That(line.audienceIds, Is.EquivalentTo(new[] { s.playerId, maya.id }), "her answer: the members were never asked.");
+        }
+
+        /// <summary>
         /// The houseguest asked answers as a proposal is answered (C4): one draw from the season's stream
         /// against the alliance invitation's chance, which - where the player knows every term the roll
         /// reads - is exactly the chance the row shows. A grudge of forty or more says no whatever the
@@ -91,7 +161,8 @@ namespace Gamesim.Tests.EditMode
         public void UnderTheRulesTheOneAskedAnswersOnTheOddsTheRowShows()
         {
             int yes = 0, no = 0;
-            foreach (double view in new[] { -40.0, 10, 45, 85 })
+            // From the sour line up: under it the player cannot vouch for her, and the asking is refused for nothing.
+            foreach (double view in new[] { NpcAlliances.SourLine, 10, 45, 85 })
             for (uint draw = 1; draw <= 16; draw++)
             {
                 var s = Rules(Season(82));
@@ -143,38 +214,16 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// Both no: the one asked turned it down, in their words, and the member who would not have had
-        /// them is named too - everyone who said no, to the player's face.
+        /// WouldWelcome is the web's own bar for a pact of more than two (AllianceManager.tsx: nobody in
+        /// it hostile to anybody else in it), the bar the port's invitation keeps already: the member is
+        /// not under the hostility line (-10) toward the newcomer, and no grudge of forty stands between
+        /// them either way. Not WouldPropose's floor and desire - a pact that exists is not a new one the
+        /// member must want - nor what decides only whether a new pact may be made: that the two already
+        /// share one, the member's own count, the cap on pacts among houseguests under agency. And not the
+        /// newcomer's own three, which are hers to answer for: her answer refuses them.
         /// </summary>
         [Test]
-        public void UnderTheRulesANoFromBothSidesNamesBoth()
-        {
-            var s = Rules(Season(84));
-            var npcs = Npcs(s);
-            var riley = Plain(npcs[0]);
-            var maya = Plain(npcs[3]);
-            var pact = Pact(s, "alliance-grow", "The Grow Pact", "player", s.playerId, riley.id);
-            Set(s, riley.id, maya.id, 0);
-            Set(s, maya.id, s.playerId, 0);
-            s.randomState = Draw(s, false, PlayerDeals.AcceptanceChance(s, maya.id, DealKind.AllianceInvite, null));
-            string said = PlayerDeals.Reasoning(s, maya.id, DealKind.AllianceInvite, false);
-            var result = Apply(new EpisodeEngine(s), BringIn, maya.id, pact.id);
-            Assert.That(result.accepted, Is.True, result.reason);
-            var line = result.state.events.Last();
-            Assert.That(line.text, Is.EqualTo(maya.name + " turned down The Grow Pact. “" + said + "” " + riley.name + " wouldn't have had "
-                + maya.name.Split(' ')[0] + " in it either."));
-            Assert.That(line.audienceIds, Is.EquivalentTo(new[] { s.playerId, maya.id, riley.id }));
-        }
-
-        /// <summary>
-        /// WouldWelcome is WouldPropose's question asked of a pact that exists: the same floor, desire
-        /// and grudge, and the newcomer's own three - nobody offers a pact to somebody who carries three.
-        /// It leaves out what decides only whether a new pact may be made: that the two already share
-        /// one, the member's own count (joining adds them no pact), and the cap on pacts among
-        /// houseguests under agency, which a pact of the player's is outside.
-        /// </summary>
-        [Test]
-        public void WelcomingIsProposingLessWhatDecidesOnlyANewPact()
+        public void WelcomingIsTheWebsBarForAPactOfMoreThanTwo()
         {
             // Two shared threats, so the desire clears its threshold however many pacts the member carries.
             EpisodeState Fixture(out ContestantState member, out ContestantState invitee)
@@ -194,7 +243,19 @@ namespace Gamesim.Tests.EditMode
             }
 
             var plain = Fixture(out var m, out var i);
-            Assert.That((Welcome(plain, m.id, i.id), NpcAlliances.WouldPropose(plain, m.id, i.id)), Is.EqualTo((true, true)), "Where a pact could be made, the two agree.");
+            Assert.That((Welcome(plain, m.id, i.id), NpcAlliances.WouldPropose(plain, m.id, i.id)), Is.EqualTo((true, true)), "Where a pact could be made, both say yes.");
+
+            // The bar is the hostility line, the line itself included, far under a new pact's floor.
+            foreach (var (view, welcome) in new[]
+            {
+                (StrategyRules.HostilityLine, true), (StrategyRules.HostilityLine - 0.01, false), (0.0, true), (-11.0, false),
+            })
+            {
+                var at = Fixture(out m, out i);
+                Set(at, m.id, i.id, view);
+                Assert.That(Welcome(at, m.id, i.id), Is.EqualTo(welcome), "A member at " + view + " toward her.");
+                Assert.That(NpcAlliances.WouldPropose(at, m.id, i.id), Is.False, "No new pact at " + view + ": under the floor.");
+            }
 
             var shared = Fixture(out m, out i);
             shared.alliances.Add(new AllianceState { id = "alliance-npc-shared", name = "The Shared Pact", members = new List<string> { m.id, i.id } });
@@ -220,18 +281,24 @@ namespace Gamesim.Tests.EditMode
             var others = Npcs(full);
             for (int n = 0; n < NpcAlliances.MaximumEach; n++)
                 full.alliances.Add(new AllianceState { id = "alliance-npc-full-" + n, name = "Full " + n, members = new List<string> { i.id, others[2 + n].id } });
-            Assert.That((Welcome(full, m.id, i.id), NpcAlliances.WouldPropose(full, m.id, i.id)), Is.EqualTo((false, false)),
-                "Somebody who carries three is offered no fourth, either way.");
+            Assert.That((Welcome(full, m.id, i.id), NpcAlliances.WouldPropose(full, m.id, i.id)), Is.EqualTo((true, false)),
+                "Her three are hers to answer for: the member would have her, and no new pact is offered her.");
 
-            var cold = Fixture(out m, out i);
-            Set(cold, m.id, i.id, 24);
-            Assert.That((Welcome(cold, m.id, i.id), NpcAlliances.WouldPropose(cold, m.id, i.id)), Is.EqualTo((false, false)), "Under the floor, either way.");
+            foreach (bool hers in new[] { true, false })
+            {
+                var grudging = Fixture(out m, out i);
+                EpisodeEngine.EnableStory(grudging);
+                if (hers) Grudges.Add(grudging, i.id, m.id, 40, GrudgeCauses.Story);
+                else Grudges.Add(grudging, m.id, i.id, 40, GrudgeCauses.Story);
+                Assert.That((Welcome(grudging, m.id, i.id), NpcAlliances.WouldPropose(grudging, m.id, i.id)), Is.EqualTo((false, false)),
+                    "A grudge of forty, " + (hers ? "hers" : "the member's") + ", bars it either way.");
+            }
 
-            var grudging = Fixture(out m, out i);
-            EpisodeEngine.EnableStory(grudging);
-            Grudges.Add(grudging, i.id, m.id, 40, GrudgeCauses.Story);
-            Assert.That((Welcome(grudging, m.id, i.id), NpcAlliances.WouldPropose(grudging, m.id, i.id)), Is.EqualTo((false, false)),
-                "A grudge of forty either way bars it, either way.");
+            var self = Fixture(out m, out i);
+            Assert.That(Welcome(self, m.id, m.id), Is.False, "Nobody welcomes themselves.");
+            var gone = Fixture(out m, out i);
+            gone.Find(i.id).status = ContestantStatus.Evicted;
+            Assert.That(Welcome(gone, m.id, i.id), Is.False, "Nor somebody who has left the house.");
         }
 
         // ------------------------------------------------------------ what the player can see refuses for nothing
@@ -277,14 +344,83 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Allegiance.Counted(asked.state, asked.state.alliances.Single(a => a.id == four.id)), Has.Count.EqualTo(Largest), "Four in the house now.");
         }
 
+        /// <summary>
+        /// A bring-in never stacks pacts: somebody already in a pact with the player is asked into none
+        /// of their others - refused before anybody is asked, spending nothing, with C4's own words for a
+        /// second proposal to an ally. Somebody in no pact with the player can be asked into any, and so
+        /// can a former partner once their pact has ended.
+        /// </summary>
+        [Test]
+        public void UnderTheRulesABringInNeverStacksPacts()
+        {
+            var s = Rules(Season(100));
+            var npcs = Npcs(s);
+            foreach (var npc in npcs) Warm(s, npc.id, s.playerId);
+            foreach (var a in npcs)
+                foreach (var b in npcs.Where(b => b.id != a.id)) Set(s, a.id, b.id, 100);
+            var pair = Pact(s, "alliance-pair", "The Pair", "player", s.playerId, npcs[0].id);
+            var trio = Pact(s, "alliance-trio", "The Trio", "player", s.playerId, npcs[1].id, npcs[2].id);
+            foreach (var (pact, ally) in new[] { (trio, npcs[0]), (pair, npcs[1]), (pair, npcs[2]) })
+            {
+                string where = ally.name + " into " + pact.name;
+                Assert.That(Refusal(s, ally.id, pact), Is.EqualTo(EpisodeEngine.AlreadyAlliedRefusal), where + ": the player can see it.");
+                var refused = Apply(new EpisodeEngine(s), BringIn, ally.id, pact.id);
+                Assert.That(refused.accepted, Is.False, where);
+                Assert.That(refused.reason, Is.EqualTo(EpisodeEngine.AlreadyAlliedRefusal), where);
+                Assert.That((refused.state.revision, refused.state.randomState, EpisodeEngine.SocialActionsSpent(refused.state)),
+                    Is.EqualTo((s.revision, s.randomState, EpisodeEngine.SocialActionsSpent(s))), where + ": nothing is spent.");
+            }
+            Assert.That(Refusal(s, npcs[3].id, pair), Is.Null, "Somebody in no pact with the player can be asked into either,");
+            Assert.That(Refusal(s, npcs[3].id, trio), Is.Null);
+            pair.active = false;
+            Assert.That(Refusal(s, npcs[0].id, trio), Is.Null, "and a partner whose pact with the player has ended is nobody's ally.");
+        }
+
+        /// <summary>
+        /// The player cannot vouch for somebody they have soured on: their own view of the one asked under
+        /// the sour line (-20) - theirs to know - refuses the asking before anybody is asked, free, in one
+        /// line about the one asked. At the line they can ask. The one asked's view of the player is
+        /// never a refusal: it is the asking's odds, hers to answer with.
+        /// </summary>
+        [Test]
+        public void UnderTheRulesThePlayerCannotVouchForSomebodyTheyHaveSouredOn()
+        {
+            var s = Rules(Season(101));
+            var npcs = Npcs(s);
+            var riley = Plain(npcs[0]);
+            var maya = Plain(npcs[3]);
+            var pact = Pact(s, "alliance-grow", "The Grow Pact", "player", s.playerId, riley.id);
+            Set(s, riley.id, maya.id, 100);
+            Set(s, maya.id, s.playerId, 100);
+            Set(s, s.playerId, maya.id, NpcAlliances.SourLine - 1);
+            Assert.That(Vouch(maya.name), Is.EqualTo("You can't vouch for " + maya.name + "."));
+            Assert.That(Refusal(s, maya.id, pact), Is.EqualTo(Vouch(maya.name)), "Soured on her, the player can see they cannot ask her.");
+            var refused = Apply(new EpisodeEngine(s), BringIn, maya.id, pact.id);
+            Assert.That(refused.accepted, Is.False, "The asking is refused,");
+            Assert.That(refused.reason, Is.EqualTo(Vouch(maya.name)));
+            Assert.That((refused.state.revision, refused.state.randomState, EpisodeEngine.SocialActionsSpent(refused.state)),
+                Is.EqualTo((s.revision, s.randomState, EpisodeEngine.SocialActionsSpent(s))), "and costs nothing.");
+
+            Set(s, s.playerId, maya.id, NpcAlliances.SourLine);
+            Assert.That(Refusal(s, maya.id, pact), Is.Null, "At the line, they can ask her.");
+            s.randomState = Draw(s, true, PlayerDeals.AcceptanceChance(s, maya.id, DealKind.AllianceInvite, null));
+            var asked = Apply(new EpisodeEngine(s), BringIn, maya.id, pact.id);
+            Assert.That(asked.accepted, Is.True, asked.reason);
+            Assert.That(asked.state.alliances.Single(a => a.id == pact.id).members, Does.Contain(maya.id), "And she joins.");
+
+            Set(s, s.playerId, maya.id, 100);
+            Set(s, maya.id, s.playerId, -100);
+            Assert.That(Refusal(s, maya.id, pact), Is.Null, "Her own view of the player is hers to answer with.");
+        }
+
         // ------------------------------------------------------------ the founder
 
         /// <summary>
         /// The founder is the pact's first member and never changes when it grows: a pact the player made
         /// opens with them, one they were brought into keeps its founder first (the invitation appends
-        /// the player), and whoever the player brings in joins at the end of either. Joining is on the
-        /// record with every member still in the house, both ways, as a pact's founding is - and with
-        /// nobody who has left it.
+        /// the player), and whoever the player brings in joins at the end of either - a newcomer each,
+        /// since a bring-in never stacks pacts. Joining is on the record with every member still in the
+        /// house, both ways, as a pact's founding is - and with nobody who has left it.
         /// </summary>
         [Test]
         public void UnderTheRulesTheFounderNeverChangesAndTheNewcomerIsOnTheRecordWithEveryMember()
@@ -303,18 +439,22 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Founder(mine), Is.EqualTo(s.playerId), "A pact the player made opens with them.");
 
             var maya = Plain(npcs[3]);
-            Warm(s, maya.id, s.playerId);
-            foreach (var npc in npcs.Where(npc => npc.id != maya.id)) Set(s, npc.id, maya.id, 100);
+            var sam = Plain(npcs[5]);
+            foreach (var newcomer in new[] { maya, sam })
+            {
+                Warm(s, newcomer.id, s.playerId);
+                foreach (var npc in npcs.Where(npc => npc.id != newcomer.id)) Set(s, npc.id, newcomer.id, 100);
+            }
             var engine = new EpisodeEngine(s);
-            foreach (var pact in new[] { mine, bloc })
+            foreach (var (pact, newcomer) in new[] { (mine, maya), (bloc, sam) })
             {
                 var now = engine.Snapshot;
-                now.randomState = Draw(now, true, PlayerDeals.AcceptanceChance(now, maya.id, DealKind.AllianceInvite, null));
+                now.randomState = Draw(now, true, PlayerDeals.AcceptanceChance(now, newcomer.id, DealKind.AllianceInvite, null));
                 engine = new EpisodeEngine(now);
-                var result = Apply(engine, BringIn, maya.id, pact.id);
+                var result = Apply(engine, BringIn, newcomer.id, pact.id);
                 Assert.That(result.accepted, Is.True, result.reason);
                 var grown = engine.Snapshot.alliances.Single(a => a.id == pact.id);
-                Assert.That(grown.members.Last(), Is.EqualTo(maya.id), pact.name + ": Maya joins at the end,");
+                Assert.That(grown.members.Last(), Is.EqualTo(newcomer.id), pact.name + ": " + newcomer.name + " joins at the end,");
                 Assert.That(Founder(grown), Is.EqualTo(Founder(pact)), "and the founder does not change.");
             }
             var after = engine.Snapshot;
@@ -325,7 +465,7 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(Entries(after, maya.id, member, "alliance-formed").Count(e => e.description == "The Mine Pact was joined"), Is.EqualTo(1), "both ways,");
             }
             Assert.That(Entries(after, npcs[4].id, maya.id, "alliance-formed"), Is.Empty, "and with nobody who has left it.");
-            Assert.That(Entries(after, npcs[1].id, maya.id, "alliance-formed").Single().decayable, Is.False, "It never fades.");
+            Assert.That(Entries(after, npcs[1].id, sam.id, "alliance-formed").Single().decayable, Is.False, "It never fades.");
         }
 
         /// <summary>
@@ -425,6 +565,14 @@ namespace Gamesim.Tests.EditMode
             var again = Apply(engine, Rename, riley.id, pact.id, "Dream Team");
             Assert.That(again.accepted, Is.False, "Once a week.");
             Assert.That(again.reason, Is.EqualTo(house + " has had its new name this week."));
+            // The week is kept as a story cooldown, keyed to the week and the pact, as C6's meeting is:
+            // a week whose log has rolled past the line still knows.
+            Assert.That(after.story.cooldowns.Count(c => c.key == RenameKeyOf(s.week, pact.id) && c.untilWeek == s.week + 1), Is.EqualTo(1),
+                "The rename leaves its cooldown,");
+            var rolled = engine.Snapshot;
+            rolled.events.Clear();
+            Assert.That(PactRenameRefusal(rolled, rolled.alliances.Single(a => a.id == pact.id)), Is.EqualTo(house + " has had its new name this week."),
+                "which no log can roll away.");
             var nextWeek = engine.Snapshot;
             nextWeek.week++;
             Assert.That(Apply(new EpisodeEngine(nextWeek), Rename, riley.id, pact.id, "Dream Team").accepted, Is.True, "Next week it can be renamed again.");
@@ -563,6 +711,146 @@ namespace Gamesim.Tests.EditMode
             Assert.That(notTheirs.state.revision, Is.EqualTo(s4.revision), "Nothing is spent.");
         }
 
+        // ------------------------------------------------------------ a member who turns
+
+        /// <summary>
+        /// The lead's ruling on groups: under the rules a member of the player's pact of three or more
+        /// whose own view of the player has turned (under the sour line) is taken out of it at the week's
+        /// turn (NpcAlliances.Dissolve), as a leave takes the player out, and the pact goes on - the rest
+        /// of it hear it in the story's words for a defector. Two who turned in a pact of four leave a
+        /// pair; both in a pact of three end it. A pact of two ends from their side, as C3 made it, with no
+        /// line; the player's own souring on anybody in it still ends the whole pact; and without the
+        /// rules the partner's private turn ends nothing.
+        /// </summary>
+        [Test]
+        public void UnderTheRulesAMemberWhoTurnsOnAPactOfThreeIsTakenOutAndItGoesOn()
+        {
+            EpisodeState Turned(bool rules, int size, int turned, out List<ContestantState> members)
+            {
+                var s = Season(102);
+                if (rules) EpisodeEngine.EnableCommitments(s);
+                members = Npcs(s).Take(size - 1).ToList();
+                Pact(s, "alliance-turn", "The Turn Pact", "player", new[] { s.playerId }.Concat(members.Select(m => m.id)).ToArray());
+                foreach (var m in members) { Set(s, m.id, s.playerId, 30); Set(s, s.playerId, m.id, 30); }
+                foreach (var m in members.Take(turned)) Set(s, m.id, s.playerId, NpcAlliances.SourLine - 1);
+                return s;
+            }
+            AllianceState Of(EpisodeState s) => s.alliances.Single(a => a.id == "alliance-turn");
+
+            var three = Turned(true, 3, 1, out var m3);
+            NpcAlliances.Dissolve(three);
+            Assert.That(Of(three).active, Is.True, "A pact of three goes on");
+            Assert.That(Of(three).members, Is.EqualTo(new[] { three.playerId, m3[1].id }), "without the one who turned,");
+            Assert.That(three.Allied(m3[0].id, three.playerId), Is.False, "who is allied with the player no more.");
+            var line = three.events.Last();
+            Assert.That(line.kind, Is.EqualTo("alliance"));
+            Assert.That(line.text, Is.EqualTo(m3[0].name + " is out of The Turn Pact."), "The story's own words for a defector,");
+            Assert.That(line.audienceIds, Is.EquivalentTo(new[] { three.playerId, m3[1].id, m3[0].id }), "told to everyone it concerns.");
+            Assert.That(EpisodeValidation.TryValidate(three, out string error), Is.True, error);
+
+            var four = Turned(true, 4, 2, out var m4);
+            NpcAlliances.Dissolve(four);
+            Assert.That(Of(four).active, Is.True, "Two turned in a pact of four: it goes on");
+            Assert.That(Of(four).members, Is.EqualTo(new[] { four.playerId, m4[2].id }), "as a pair, without either.");
+
+            var both = Turned(true, 3, 2, out m3);
+            NpcAlliances.Dissolve(both);
+            Assert.That(Of(both).active, Is.False, "Both turned in a pact of three: the second leaves a pair, which ends.");
+            Assert.That(Of(both).members, Is.EqualTo(new[] { both.playerId, m3[1].id }), "The first was taken out on the way.");
+
+            var two = Turned(true, 2, 1, out var m2);
+            int lines = two.events.Count;
+            NpcAlliances.Dissolve(two);
+            Assert.That(Of(two).active, Is.False, "A pact of two ends from their side, as C3 made it,");
+            Assert.That(Of(two).members, Is.EqualTo(new[] { two.playerId, m2[0].id }), "nobody taken out of it,");
+            Assert.That(two.events.Count, Is.EqualTo(lines), "and with no line, as ever.");
+
+            var mine = Turned(true, 3, 1, out m3);
+            Set(mine, mine.playerId, m3[1].id, NpcAlliances.SourLine - 1);
+            NpcAlliances.Dissolve(mine);
+            Assert.That(Of(mine).active, Is.False, "The player soured on somebody in it: the whole pact ends,");
+            Assert.That(Of(mine).members, Has.Count.EqualTo(3), "nobody taken out of it.");
+
+            var off = Turned(false, 3, 1, out m3);
+            string before = Json(off);
+            NpcAlliances.Dissolve(off);
+            Assert.That(Json(off), Is.EqualTo(before), "Without the rules a partner's private turn ends nothing.");
+        }
+
+        // ------------------------------------------------------------ the names of the player's pacts
+
+        /// <summary>
+        /// Captions name the player's pacts, so no two they stand in share a name: after C2's cut keeps
+        /// "The Riley Pact" going without Riley, a fresh pact with Riley - C4's proposal - is "The Riley
+        /// Pact II", and its own names on offer leave out the one its sister has. Without the rules pacts
+        /// are named as they always were.
+        /// </summary>
+        [Test]
+        public void UnderTheRulesNoTwoOfThePlayersStandingPactsShareAName()
+        {
+            foreach (bool rules in new[] { true, false })
+            {
+                var s = Season(103);
+                if (rules) EpisodeEngine.EnableCommitments(s);
+                var npcs = Npcs(s);
+                var riley = Plain(npcs[0]);
+                string rileys = "The " + riley.name.Split(' ')[0] + " Pact";
+                // What C2's cut leaves: the pact goes on without the betrayer, under the name it had.
+                Pact(s, "alliance-cut", rileys, "player", s.playerId, npcs[1].id);
+                Warm(s, riley.id, s.playerId);
+                s.randomState = Draw(s, true, PlayerDeals.AcceptanceChance(s, riley.id, DealKind.AllianceInvite, null));
+                var result = Apply(new EpisodeEngine(s), EpisodeCommandKind.FormAlliance, riley.id);
+                Assert.That(result.accepted, Is.True, result.reason);
+                var fresh = result.state.alliances.Last();
+                string where = rules ? "Under the rules" : "Without them";
+                Assert.That(fresh.members, Is.EquivalentTo(new[] { s.playerId, riley.id }), where + ": a fresh pact with Riley,");
+                Assert.That(fresh.name, Is.EqualTo(rules ? rileys + " II" : rileys), where + (rules ? ": named apart from the one the cut left going." : ": named as it always was."));
+                if (rules) Assert.That(Offered(result.state, fresh), Does.Not.Contain(rileys), "Its sister's name is not on offer to it.");
+            }
+
+            // Never past the save's hundred characters.
+            var full = Rules(Season(103));
+            string longest = new string('x', 100);
+            Pact(full, "alliance-long", longest, "player", full.playerId, Npcs(full)[1].id);
+            string unique = UniqueName(full, longest);
+            Assert.That(unique, Has.Length.EqualTo(100), "Cut to fit the save,");
+            Assert.That(unique, Is.EqualTo(new string('x', 97) + " II"), "and still apart.");
+            Assert.That(UniqueName(full, "The Untaken Pact"), Is.EqualTo("The Untaken Pact"), "A name no pact of theirs has is its own;");
+            Pact(full, "alliance-x", "The X Pact", "player", full.playerId, Npcs(full)[2].id);
+            Pact(full, "alliance-x2", "The X Pact II", "player", full.playerId, Npcs(full)[3].id);
+            Assert.That(UniqueName(full, "The X Pact"), Is.EqualTo("The X Pact III"), "the next numeral after those taken.");
+            full.alliances.Single(a => a.id == "alliance-x").active = false;
+            Assert.That(UniqueName(full, "The X Pact"), Is.EqualTo("The X Pact"), "A pact that has ended stands in nobody's way.");
+        }
+
+        /// <summary>
+        /// A name the player knows a pact by is not on offer: one another pact of theirs has, and one of
+        /// a pact they walked out of that goes on without them - so the readers that find a pact's lines
+        /// by its name never take one for the other. A pact of others the player cannot know of tells
+        /// them nothing: its name stays on offer.
+        /// </summary>
+        [Test]
+        public void UnderTheRulesANameThePlayerKnowsAPactByIsNotOnOffer()
+        {
+            var s = Rules(Season(104));
+            var npcs = Npcs(s);
+            var walked = Pact(s, "alliance-walked", "Dream Team", "player", s.playerId, npcs[0].id, npcs[1].id);
+            var mine = Pact(s, "alliance-mine", "The " + npcs[2].name.Split(' ')[0] + " Pact", "player", s.playerId, npcs[2].id);
+            s.alliances.Add(new AllianceState { id = "alliance-npc-unknown", name = "The Golden Crew", members = new List<string> { npcs[4].id, npcs[5].id } });
+            Assert.That(Offered(s, mine), Does.Not.Contain("Dream Team"), "Another pact of the player's has it.");
+            Assert.That(Offered(s, mine), Does.Contain("The Golden Crew"), "A pact the player cannot know of tells them nothing.");
+
+            var engine = new EpisodeEngine(s);
+            var left = Apply(engine, EpisodeCommandKind.LeaveAlliance, npcs[0].id, walked.id);
+            Assert.That(left.accepted, Is.True, left.reason);
+            var after = engine.Snapshot;
+            Assert.That(after.alliances.Single(a => a.id == walked.id).members, Is.EqualTo(new[] { npcs[0].id, npcs[1].id }), "The player walked out of Dream Team, and it goes on;");
+            Assert.That(Offered(after, after.alliances.Single(a => a.id == mine.id)), Does.Not.Contain("Dream Team"), "its name is still not on offer,");
+            var refused = Apply(engine, Rename, npcs[2].id, mine.id, "Dream Team");
+            Assert.That(refused.accepted, Is.False, "and a rename to it is refused.");
+            Assert.That(refused.reason, Is.EqualTo(NameRefusal));
+        }
+
         // ------------------------------------------------------------ without the rules
 
         /// <summary>
@@ -697,7 +985,8 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// What the one asked says (HouseDialogue): brought in, a pact's yes; their own no, a proposal's
         /// no; a member's no, what they make of not being wanted. And the one told a leave from a pact of
-        /// three answers as a leave is answered, the pact going on without the player.
+        /// three answers as a leave is answered, though no ended pact is left between them - that the pact
+        /// goes on without the player, never that it is over; a pair's leave ends it, and is answered so.
         /// </summary>
         [Test]
         public void UnderTheRulesTheOneAskedAnswersForWhatHappened()
@@ -719,8 +1008,17 @@ namespace Gamesim.Tests.EditMode
             Pact(s, "alliance-three", "The Three Pact", "player", s.playerId, npcs[0].id, npcs[1].id);
             var engine = new EpisodeEngine(s);
             Assert.That(Apply(engine, EpisodeCommandKind.LeaveAlliance, npcs[0].id, "alliance-three").accepted, Is.True);
-            Assert.That(LeftReplies, Does.Contain(HouseDialogue.Response(engine.Snapshot, npcs[0].id, EpisodeCommandKind.LeaveAlliance)),
-                "The one told answers a leave, though no ended pact is left between them.");
+            string goesOn = HouseDialogue.Response(engine.Snapshot, npcs[0].id, EpisodeCommandKind.LeaveAlliance);
+            Assert.That(GoesOnReplies, Does.Contain(goesOn), "The one told answers a leave from a pact that goes on: it goes on,");
+            Assert.That(LeftReplies, Does.Not.Contain(goesOn), "never that the alliance is over.");
+
+            var p = Rules(Season(98));
+            var pnpcs = Npcs(p);
+            Pact(p, "alliance-two", "The Two Pact", "player", p.playerId, pnpcs[0].id);
+            var pengine = new EpisodeEngine(p);
+            Assert.That(Apply(pengine, EpisodeCommandKind.LeaveAlliance, pnpcs[0].id, "alliance-two").accepted, Is.True);
+            Assert.That(LeftReplies, Does.Contain(HouseDialogue.Response(pengine.Snapshot, pnpcs[0].id, EpisodeCommandKind.LeaveAlliance)),
+                "A pair's leave ends it, and the one told says so.");
         }
 
         /// <summary>What the one asked says when a member would not have them (HouseDialogue.Response), in each voice.</summary>
@@ -734,7 +1032,18 @@ namespace Gamesim.Tests.EditMode
             "It sounds like the others aren't ready for me. Thanks for asking.",
         };
 
-        /// <summary>What the one told a leave says in its first week (HouseDialogue.Response), in each voice.</summary>
+        /// <summary>What the one told a leave from a pact that goes on without the player says in its first week (HouseDialogue.Response), in each voice.</summary>
+        private static readonly object[] GoesOnReplies =
+        {
+            "You've left us. The rest of us will keep it going, and I'll remember that you walked.",
+            "You're out. We keep the pact; you keep whatever you think you've won.",
+            "You left us. We'll hold it together without you, but it hurts.",
+            "One down, and the band plays on. Without you on lead vocals.",
+            "Noted: one member fewer. The pact continues; your place in it does not.",
+            "You've left. The rest of us are keeping it going.",
+        };
+
+        /// <summary>What the one told a leave that ends their pact says in its first week (HouseDialogue.Response), in each voice.</summary>
         private static readonly object[] LeftReplies =
         {
             "You've left our alliance. I'll treat that as a change in our agreement, not an unspoken favor.",
@@ -754,7 +1063,7 @@ namespace Gamesim.Tests.EditMode
             var maya = Plain(npcs[3]);
             inviteeId = maya.id;
             var pact = Pact(s, "alliance-asked", "The Asked Pact", "player", s.playerId, riley.id);
-            Set(s, riley.id, maya.id, welcome ? 100 : 0);
+            Set(s, riley.id, maya.id, welcome ? 100 : -11);
             Warm(s, maya.id, s.playerId);
             s.randomState = Draw(s, willing, PlayerDeals.AcceptanceChance(s, maya.id, DealKind.AllianceInvite, null));
             var result = Apply(new EpisodeEngine(s), BringIn, maya.id, pact.id);
@@ -778,7 +1087,13 @@ namespace Gamesim.Tests.EditMode
 
         private static string Refusal(EpisodeState s, string inviteeId, AllianceState pact) => EpisodeEngine.BringInRefusal(s, inviteeId, pact);
 
+        private static string Vouch(string name) => EpisodeEngine.CannotVouchRefusal(name);
+
         private static string PactRenameRefusal(EpisodeState s, AllianceState pact) => EpisodeEngine.RenameRefusal(s, pact);
+
+        private static string RenameKeyOf(int week, string pactId) => EpisodeEngine.RenameKey(week, pactId);
+
+        private static string UniqueName(EpisodeState s, string name) => PactNames.Unique(s, name);
 
         /// <summary>Who the alliances page says the player brought in, and when (AllianceRead.Pact.joined).</summary>
         private static List<(int week, string text)> Joined(AllianceRead.Pact card) => card.joined.Select(j => (j.week, j.text)).ToList();

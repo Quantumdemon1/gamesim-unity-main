@@ -221,10 +221,35 @@ namespace Gamesim.Simulation
                     "Fair enough. I gave you every reason to.");
             // Under the commitment rules (C5) a leave from a pact of three or more takes only the player
             // out, so the pact goes on without them and no ended one is left between the two: what they
-            // remember of this week says it.
+            // remember of this week says the player left, and the line this week says it went on - never
+            // that the alliance is over, which it is not.
+            bool leftThisWeek = acceptedAction == EpisodeCommandKind.LeaveAlliance && EpisodeEngine.CommitmentRulesOn(state)
+                && RememberedThisWeek(state, npc.id, state.playerId, "Left our alliance.");
+            if (leftThisWeek && LeftGoingOn(state, npc))
+                return Vary(state,
+                    Pick(id,
+                        "You've left us. The rest of us will keep it going, and I'll remember that you walked.",
+                        "You're out. We keep the pact; you keep whatever you think you've won.",
+                        "You left us. We'll hold it together without you, but it hurts.",
+                        "One down, and the band plays on. Without you on lead vocals.",
+                        "Noted: one member fewer. The pact continues; your place in it does not.",
+                        "You've left. The rest of us are keeping it going."),
+                    Pick(id,
+                        "We'll carry on without you. I'd rather you'd told me before you told the others.",
+                        "Fine. Fewer people to share the end with.",
+                        "I'll miss you in there. We're still going, just not with you.",
+                        "Walked out mid-season. The rest of us are staying for the encore.",
+                        "Membership updated. The arrangement holds for those of us still in it.",
+                        "You've gone. We'll manage."),
+                    Pick(id,
+                        "The rest of us are staying together. I'll judge what you do next on its own.",
+                        "Your call. We're still a pact, and you're on the outside of it now.",
+                        "It still stands, and I wish you were in it. I hope you know what you're doing.",
+                        "The pact survives you. Try not to take it personally.",
+                        "Your exit changes the numbers, not the pact. We go on.",
+                        "We go on without you. Good luck."));
             if (acceptedAction == EpisodeCommandKind.LeaveAlliance
-                && ((!SharedAlliance(state, npc.id, true) && SharedAlliance(state, npc.id, false))
-                    || (EpisodeEngine.CommitmentRulesOn(state) && RememberedThisWeek(state, npc.id, state.playerId, "Left our alliance."))))
+                && ((!SharedAlliance(state, npc.id, true) && SharedAlliance(state, npc.id, false)) || leftThisWeek))
                 return Vary(state,
                     Pick(id,
                         "You've left our alliance. I'll treat that as a change in our agreement, not an unspoken favor.",
@@ -622,6 +647,24 @@ namespace Gamesim.Simulation
                 if (entry.kind == "alliance" && entry.text.StartsWith(npc.name + " joined ", StringComparison.Ordinal)) return entry;
             }
             return null;
+        }
+
+        /// <summary>
+        /// Whether the player's last leave this week that this houseguest heard was from a pact that went
+        /// on without the player (C5): its line, "You left the alliance with … goes on without you.".
+        /// </summary>
+        private static bool LeftGoingOn(EpisodeState state, ContestantState npc)
+        {
+            if (state.events == null) return false;
+            for (int index = state.events.Count - 1; index >= 0; index--)
+            {
+                var entry = state.events[index];
+                if (entry == null || entry.week != state.week || entry.kind != "alliance" || entry.text == null || entry.audienceIds == null
+                    || !entry.audienceIds.Contains(npc.id) || !entry.audienceIds.Contains(state.playerId)
+                    || !entry.text.StartsWith("You left the alliance with ", StringComparison.Ordinal)) continue;
+                return entry.text.EndsWith(" goes on without you.", StringComparison.Ordinal);
+            }
+            return false;
         }
 
         /// <summary>Whether this houseguest remembers something of the player's from this week, by how it begins.</summary>

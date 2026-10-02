@@ -117,24 +117,22 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// Whether a member of a pact would have this houseguest brought into it (ACTIONS-DEALS-ALLIANCES-PLAN
-        /// C5, "Bring {name} into {pact}"): <see cref="WouldPropose"/>'s question, asked of a pact that
-        /// already exists. The same floor and desire (<see cref="MinimumRelationship"/>,
-        /// <see cref="ProposeThreshold"/>), the same grudge either way, and the invitee's own three
-        /// (<see cref="MaximumEach"/>): joining is a pact more for them, and nobody offers a pact to
-        /// somebody who carries three. What it leaves out is what decides only whether a <i>new</i> pact
-        /// may be made: that the two share one already (they welcome a partner all the more), the
-        /// member's own count (they are in this pact already, and joining adds none to it), and the cap
-        /// on pacts among houseguests (NPC-AGENCY-PLAN.md §3.4), which a pact of the player's is outside.
-        /// No roll: pure, like the rest of this class.
+        /// C5, "Bring {name} into {pact}"): the web's own bar for a pact of more than two
+        /// (<c>AllianceManager.tsx</c>: nobody in it hostile to anybody else in it), which the port's
+        /// <c>AllyThroughInvitation</c> keeps already - the member is not below
+        /// <see cref="StrategyRules.HostilityLine"/> toward the newcomer - and the web's grudge rule either
+        /// way. Not <see cref="WouldPropose"/>'s desire: a pact that exists is not a new one the member
+        /// would have to want, and in a house where houseguests warm to each other slowly that bar let
+        /// almost nobody in (the lead's ruling). The newcomer's own three pacts are hers to answer for,
+        /// with her answer (<c>EpisodeEngine.BringIntoAlliance</c>). No roll: pure, like the rest of this class.
         /// </summary>
         public static bool WouldWelcome(EpisodeState state, string memberId, string inviteeId)
         {
             if (memberId == inviteeId) return false;
             if (state.Find(memberId)?.status != ContestantStatus.Active) return false;
             if (state.Find(inviteeId)?.status != ContestantStatus.Active) return false;
-            if (ActiveAlliancesFor(state, inviteeId).Count >= MaximumEach) return false;
             if (GrudgeBetween(state, memberId, inviteeId)) return false;
-            return Warm(state, memberId, inviteeId);
+            return state.Score(memberId, inviteeId) >= StrategyRules.HostilityLine;
         }
 
         /// <summary>
@@ -174,6 +172,9 @@ namespace Gamesim.Simulation
                 id = "alliance-story-" + state.nextSequence++, name = name.Length > 100 ? name.Substring(0, 100) : name,
                 members = ids, active = true,
             };
+            // Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C5) a story's pact with the player in
+            // it never takes the name of one the player stands in already: the captions name them apart.
+            if (EpisodeEngine.CommitmentRulesOn(state) && ids.Contains(state.playerId)) alliance.name = PactNames.Unique(state, alliance.name);
             state.alliances.Add(alliance);
             EpisodeEngine.AllianceFormedUnderRead(state, alliance);
             for (int i = 0; i < ids.Count; i++)
@@ -293,6 +294,12 @@ namespace Gamesim.Simulation
         /// <see cref="SourLine"/>, ends it from their side. Somebody who has left the house has left every
         /// pact (X5), so only the members still in it are read, and a pact the player is no longer in
         /// the house for is a pact among houseguests.</para>
+        ///
+        /// <para>And a pact of three or more (C5, the lead's ruling on groups) goes on without the one who
+        /// turned: they are taken out of it, as a leave takes the player out and C2's cut takes a betrayer
+        /// out, and the rest of it hear "Riley Chen is out of The Trio.", the story's own words for a
+        /// defector - an act of theirs, never a number. A pact of two ends, as C3 made it; and the player's
+        /// own souring on anybody in it still ends the whole pact, as it always did.</para>
         /// </summary>
         public static void Dissolve(EpisodeState state)
         {
@@ -300,6 +307,18 @@ namespace Gamesim.Simulation
             foreach (var alliance in state.alliances.Where(a => a.active).ToList())
             {
                 var members = rules ? alliance.members.Where(id => state.Find(id)?.status == ContestantStatus.Active).ToList() : alliance.members;
+                if (rules && members.Contains(state.playerId) && Intact(state, alliance)
+                    && !members.Any(other => other != state.playerId && state.Score(state.playerId, other) < SourLine))
+                {
+                    foreach (string turned in members.Where(other => other != state.playerId && state.Score(other, state.playerId) < SourLine).ToList())
+                    {
+                        if (EpisodeEngine.TakeOutOfPact(state, alliance, turned)) break;
+                        var name = state.Find(turned)?.name ?? turned;
+                        EpisodeEngine.Log(state, "alliance", name + " is out of " + alliance.name + ".",
+                            alliance.members.Where(id => state.Find(id)?.status == ContestantStatus.Active).Concat(new[] { turned }).Distinct().ToArray());
+                    }
+                    continue;
+                }
                 bool soured = members.Contains(state.playerId)
                     ? members.Any(other => other != state.playerId && (state.Score(state.playerId, other) < SourLine
                         || (rules && state.Score(other, state.playerId) < SourLine)))

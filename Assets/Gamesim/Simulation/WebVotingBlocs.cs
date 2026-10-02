@@ -60,7 +60,9 @@ namespace Gamesim.Simulation
     /// <summary>
     /// Source voting-bloc-system.ts with finite canonical-ID inputs and detached
     /// outputs. This is pressure, not guaranteed votes or permission to expose
-    /// private evidence. Source founderId is deliberately not inferred from founder.
+    /// private evidence. A snapshot's founderId is the caller's to give: the native
+    /// adapter gives none without the commitment rules, and under them a pact's first
+    /// member (<see cref="FromNative"/>, ACTIONS-DEALS-ALLIANCES-PLAN C5).
     /// </summary>
     public static class WebVotingBlocs
     {
@@ -199,8 +201,8 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// Supported native scenario adapter: copies actual pact membership, no invented founder.
-        /// Before the levers, no stability and no grudges either, as it always was. Under them
+        /// Supported native scenario adapter: copies actual pact membership, and without the commitment
+        /// rules no founder. Before the levers, no stability and no grudges either, as it always was. Under them
         /// (STRATEGY-LOOP-PLAN.md §3) a pact's stability is its members' warmth for each other,
         /// the story's grudges are the round's, and a call the player made this week stands.
         /// Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C3) a pact of the player's leaves

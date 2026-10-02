@@ -128,11 +128,12 @@ namespace Gamesim.Tests.EditMode
             Assert.That(reached.TryGetValue("safety-kept", out int spared) && spared > 0, Is.True, "Safety pacts were kept.");
             Assert.That(reached.TryGetValue("information-reading", out int readings) && readings > 0, Is.True, "Information deals passed their readings.");
             Assert.That(reached.TryGetValue("accepted-offer-broken", out int accepted) && accepted > 0, Is.True, "Offers the player accepted broke.");
-            // C5 (grow and manage alliances): the same seasons ask somebody into a pact - and hear a
-            // member's no, the usual answer - and rename one. A join and a pact of three left going on are
-            // rare here (the members' say is WouldPropose's question); GrowAndManageAlliancesTests holds them.
+            // C5 (grow and manage alliances): the same seasons ask somebody into a pact, bring somebody in -
+            // the members asked only on the one asked's yes, by the web's bar for a pact of more than two -
+            // and rename one. A member's no after that yes is rare under that bar, where a member must be
+            // hostile to the newcomer (the count says how rare); GrowAndManageAlliancesTests holds it.
             Assert.That(reached.TryGetValue("BringIntoAlliance", out int askings) && askings > 0, Is.True, "The player asked somebody into a pact.");
-            Assert.That(reached.TryGetValue("pact-join-refused-by-a-member", out int noes) && noes > 0, Is.True, "A member would not have them.");
+            Assert.That(reached.TryGetValue("pact-joined", out int joins) && joins > 0, Is.True, "Somebody was brought into a pact.");
             Assert.That(reached.TryGetValue("RenameAlliance", out int renames) && renames > 0, Is.True, "A pact was renamed.");
         }
 
@@ -237,6 +238,9 @@ namespace Gamesim.Tests.EditMode
             Count(counts, "pact-ended-betrayed", final.ledger.alliances.Count(r => r.why != null && r.why.EndsWith("/betrayed", StringComparison.Ordinal)));
             Count(counts, "pact-ended-turned", final.ledger.alliances.Count(r => r.why != null && r.why.StartsWith("player", StringComparison.Ordinal)
                 && r.why.EndsWith("/turned", StringComparison.Ordinal)));
+            // C5's groups ruling: a member who turned on a pact of the player's of three or more is taken out
+            // of it, in a story defector's words (which a story's own defector writes too); the last 256 lines only.
+            Count(counts, "pact-member-out", final.events.Count(e => e.kind == "alliance" && e.text != null && e.text.Contains(" is out of ")));
             stats = "cmds=" + i + " week=" + final.week + " deals=" + final.deals.Count + " broken=" + broken + " promisesBroken=" + brokenPromises
                 + " winner=" + final.winnerId;
             digest = Hash(trace.ToString());
@@ -249,15 +253,16 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// C5's outcomes, by the words a command wrote, so the file still compiles against the build
-        /// before them: somebody brought into a pact, somebody's no to it, a pact renamed, and a pact of
-        /// three or more the player walked out of going on without them.
+        /// before them: somebody brought into a pact, a member's no after the one asked said yes (the
+        /// only time the members are asked), the one asked's own no, a pact renamed, and a pact of three
+        /// or more the player walked out of going on without them.
         /// </summary>
         private static void CountGrowth(Dictionary<string, int> counts, EpisodeState before, EpisodeState after)
         {
             foreach (var e in after.events.Where(e => e.sequence >= before.nextSequence && e.text != null))
             {
                 if (e.kind == "alliance" && e.text.Contains(" joined ")) Count(counts, "pact-joined");
-                else if (e.kind == "alliance-refused" && (e.text.Contains(" won't have ") || e.text.Contains(" wouldn't have had ")))
+                else if (e.kind == "alliance-refused" && e.text.Contains(" won't have "))
                     Count(counts, "pact-join-refused-by-a-member");
                 else if (e.kind == "alliance-refused" && (e.text.Contains(" turned down The ")
                     || PactNamesOnOffer.Any(name => e.text.Contains(" turned down " + name + "."))))
@@ -430,8 +435,9 @@ namespace Gamesim.Tests.EditMode
         /// the player's pacts, rename one the player founded, or leave one of three or more. The two new
         /// kinds by number (BringIntoAlliance 59, RenameAlliance 60), and the members' say by reflection
         /// (NpcAlliances.WouldWelcome), so the file still compiles against the build before them; a season
-        /// without the rules never comes here. The busy player asks in somebody every member would welcome
-        /// where there is anybody - a harness may peek, to reach the join - and anybody otherwise.
+        /// without the rules never comes here. The busy player asks only somebody it can see may be asked -
+        /// in no pact with the player, and not somebody it has soured on - and somebody every member would
+        /// welcome where there is anybody (a harness may peek, to reach the join), anybody otherwise.
         /// </summary>
         private static EpisodeCommand GrowOrManage(EpisodeState s, uint seed, List<ContestantState> npcs)
         {
@@ -443,7 +449,8 @@ namespace Gamesim.Tests.EditMode
             {
                 case 0:
                 case 1:
-                    var outside = npcs.Where(n => !pact.members.Contains(n.id)).ToList();
+                    var outside = npcs.Where(n => !pact.members.Contains(n.id) && !s.Allied(s.playerId, n.id)
+                        && s.Score(s.playerId, n.id) >= NpcAlliances.SourLine).ToList();
                     var welcome = typeof(NpcAlliances).GetMethod("WouldWelcome");
                     var welcomed = welcome == null ? new List<ContestantState>()
                         : outside.Where(n => here.All(m => (bool)welcome.Invoke(null, new object[] { s, m, n.id }))).ToList();

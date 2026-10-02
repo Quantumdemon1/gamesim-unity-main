@@ -13,14 +13,17 @@ namespace Gamesim.Tests.PlayMode
     /// Growing and managing the player's pacts on screen (ACTIONS-DEALS-ALLIANCES-PLAN C5), in a house
     /// that plays the commitment rules: "Bring {name} into {pact}" in BARGAIN for each of the player's
     /// pacts the houseguest is not in, carrying the player's read of the one asked under the one note
-    /// that says whose read it is, and locked under the reason at four; "Leave {pact}" a row a pact where
-    /// two are shared, the pill saying when a pact goes on without the player, and "Leave our alliance"
-    /// naming the one pact otherwise; "Rename {pact}…" opening the names on offer for a pact the player
-    /// founded, free, and locked under the reason once used that week. Without the rules none of it is
-    /// offered. Each press commits exactly what the engine's command does. Photographed in a batch run at
-    /// both text sizes, on a 16:9 frame and a 4:3 one, as 'conversation-pact-bring-in',
-    /// 'conversation-pact-leave' and 'conversation-pact-rename'. The engine's half is
-    /// GrowAndManageAlliancesTests.
+    /// that says whose read it is, and locked under the reason at four; none for an ally of the
+    /// player's, and every one locked under one line for somebody the player has soured on; "Leave
+    /// {pact}" a row a pact where two are shared, the pill saying when a pact goes on without the
+    /// player, and "Leave our alliance" naming the one pact otherwise; "Rename {pact}…" opening the names
+    /// on offer for a pact the player founded, free, and locked under the reason once used that week.
+    /// Without the rules none of it is offered. Each press commits exactly what the engine's command
+    /// does. The longest captions - a pact of four named for its people, renamed to the longest of the
+    /// web's names - fit at both text sizes. Photographed in a batch run at both text sizes, on a 16:9
+    /// frame and a 4:3 one, as 'conversation-pact-bring-in', 'conversation-pact-leave',
+    /// 'conversation-pact-rename', 'conversation-pact-longest' and 'conversation-pact-longest-ask'. The
+    /// engine's half is GrowAndManageAlliancesTests.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
@@ -76,6 +79,43 @@ namespace Gamesim.Tests.PlayMode
             var npcs = HouseNpcs(state);
             state.alliances.Add(new AllianceState { id = PairPactId, name = PairPactName, active = true, members = new List<string> { state.playerId, npcs[0].id } });
             state.alliances.Add(new AllianceState { id = TrioPactId, name = TrioPactName, active = true, members = new List<string> { state.playerId, npcs[0].id, npcs[1].id } });
+        }
+
+        /// <summary>
+        /// The rules on, the two pacts shared with the first houseguest, a third pact with the fourth, and
+        /// the player soured on the fifth: the second houseguest is an ally (in the trio), and the fifth is
+        /// somebody the player cannot vouch for.
+        /// </summary>
+        private static void AllyAndSoured(EpisodeState state)
+        {
+            EpisodeEngine.EnableCommitments(state);
+            TwoPactsShared(state);
+            var npcs = HouseNpcs(state);
+            state.alliances.Add(new AllianceState
+            {
+                id = GrowPactId, name = GrowPactName, active = true, members = new List<string> { state.playerId, npcs[3].id },
+            });
+            Reading(state, state.playerId, npcs[4].id, NpcAlliances.SourLine - 1);
+        }
+
+        /// <summary>
+        /// The longest captions C5 draws (review m7): the rules on, a pact of four the player founded,
+        /// named the house's way for the three with the longest first names ("The Riley, Jo and Sam
+        /// Pact"), and a pair with the first of them, so both of that member's leave rows name their
+        /// pacts. Its names on offer end with the longest of the web's, "The Hidden Council".
+        /// </summary>
+        private static void LongestPacts(EpisodeState state)
+        {
+            EpisodeEngine.EnableCommitments(state);
+            var ids = HouseNpcs(state)
+                .OrderByDescending(npc => npc.name.Split(' ')[0].Length).ThenBy(npc => npc.id, System.StringComparer.Ordinal)
+                .Take(3).Select(npc => npc.id).ToList();
+            state.alliances.Add(new AllianceState
+            {
+                id = GrowPactId, name = PactNames.HouseName(state, ids), active = true,
+                members = new List<string> { state.playerId }.Concat(ids).ToList(),
+            });
+            state.alliances.Add(new AllianceState { id = PairPactId, name = PairPactName, active = true, members = new List<string> { state.playerId, ids[0] } });
         }
 
         [UnityTest, Timeout(600000)]
@@ -254,6 +294,99 @@ namespace Gamesim.Tests.PlayMode
                     yield return null;
                     Assert.That(director.Snapshot.revision, Is.EqualTo(after.revision), "and commits nothing.");
                 }
+                director.ClosePanels();
+                yield return null;
+            }
+            yield return ApplyTextSize(false);
+        }
+
+        [UnityTest, Timeout(600000)]
+        public IEnumerator GrowAndManage_UnderTheRulesAnAllyIsAskedIntoNoOtherPactAndTheSouredAreLockedUnderOneLine()
+        {
+            yield return InstallTalkingHouse(8, false, AllyAndSoured);
+            yield return SettleCast();
+            var npcs = HouseNpcs(director.Snapshot);
+
+            // An ally - in the trio - is asked into none of the player's other pacts: no row, locked or open.
+            Assert.That(HasBody(npcs[1].id), Is.True, "The ally has a body to talk to.");
+            yield return TalkTo(npcs[1].id);
+            const string ally = "A conversation with an ally in the trio";
+            Assert.That(director.IsConversationOpen, Is.True, ally + ": the conversation opens.");
+            foreach (string pact in new[] { PairPactName, GrowPactName })
+                Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.BringInCaption(npcs[1].name, pact)), Is.Null, ally + ": no row asks them into " + pact + ".");
+            director.ClosePanels();
+            yield return null;
+
+            // Somebody the player has soured on: a row for each pact, every one locked, under one line
+            // about them, said once, over the first.
+            Assert.That(HasBody(npcs[4].id), Is.True, "The soured-on houseguest has a body to talk to.");
+            yield return TalkTo(npcs[4].id);
+            string soured = "A conversation with " + npcs[4].name + ", whom the player has soured on";
+            Assert.That(director.IsConversationOpen, Is.True, soured + ": the conversation opens.");
+            var rows = new[] { PairPactName, TrioPactName, GrowPactName }
+                .Select(pact => FindButton(EpisodeDirector.BringInCaption(npcs[4].name, pact))).ToList();
+            foreach (var row in rows) Assert.That(row.interactable, Is.False, soured + ": every row is drawn locked.");
+            AssertDirectlyOver(LiveLabel(EpisodeEngine.CannotVouchRefusal(npcs[4].name)), rows[0], soured + ": under one line, over the first row");
+            AssertConversationFits(false, soured);
+            int revision = director.Snapshot.revision;
+            rows[0].onClick.Invoke();
+            yield return null;
+            Assert.That(director.Snapshot.revision, Is.EqualTo(revision), soured + ": and a press commits nothing.");
+            director.ClosePanels();
+            yield return null;
+        }
+
+        [UnityTest, Timeout(600000)]
+        public IEnumerator GrowAndManage_UnderTheRulesTheLongestPactCaptionsFit()
+        {
+            foreach (bool larger in new[] { false, true })
+            {
+                string size = larger ? " at the larger text" : "";
+                yield return InstallTalkingHouse(8, false, LongestPacts);
+                yield return SettleCast();
+                yield return ApplyTextSize(larger);
+                var open = director.Snapshot;
+                var four = open.alliances.Single(a => a.id == GrowPactId);
+                var partner = open.Find(four.members[1]);
+                Assert.That(HasBody(partner.id), Is.True, "The partner in both pacts has a body to talk to.");
+
+                // A member of both: each leave row names its pact, and the four's names are open, the
+                // longest of the web's among them.
+                yield return TalkTo(partner.id);
+                string where = "A conversation with " + partner.name + ", in a pact of four and a pair" + size;
+                Assert.That(director.IsConversationOpen, Is.True, where + ": the conversation opens.");
+                string leaveFour = EpisodeDirector.LeavePactCaption(four.name);
+                Assert.That(TagOn(ButtonWithCaption(leaveFour)), Is.EqualTo(EpisodeDirector.LeaveGoesOnTag), where + ": '" + leaveFour + "', which goes on without the player;");
+                Assert.That(TagOn(ButtonWithCaption(EpisodeDirector.LeavePactCaption(PairPactName))), Is.EqualTo(EpisodeDirector.VerbTag(EpisodeCommandKind.LeaveAlliance)),
+                    where + ": the pair's own row.");
+                string verb = EpisodeDirector.RenamePickerCaption(four.name);
+                yield return PressRow(verb);
+                Assert.That(director.ConversationPicker, Is.EqualTo(verb), where + ": the four's names are open.");
+                string longest = EpisodeDirector.RenameCaption(four.name, "The Hidden Council");
+                Assert.That(ButtonWithCaption(longest), Is.Not.Null, where + ": '" + longest + "' is on offer.");
+                AssertConversationFits(larger, where + " with its names open");
+                AssertTagsHaveRoom(where);
+                yield return CaptureConversation("conversation-pact-longest" + (larger ? "-large" : ""), where, null);
+                director.ClosePanels();
+                yield return null;
+
+                // Outside both, the houseguest with the longest name: asked into the four, locked under the
+                // reason; into the pair, open.
+                var outsider = HouseNpcs(open).Where(npc => !four.members.Contains(npc.id))
+                    .OrderByDescending(npc => npc.name.Length).ThenBy(npc => npc.id, System.StringComparer.Ordinal).First();
+                Assert.That(HasBody(outsider.id), Is.True, "The one asked has a body to talk to.");
+                yield return TalkTo(outsider.id);
+                string asking = "A conversation with " + outsider.name + ", outside both" + size;
+                Assert.That(director.IsConversationOpen, Is.True, asking + ": the conversation opens.");
+                var held = director.Snapshot;
+                var locked = FindButton(EpisodeDirector.BringInCaption(outsider.name, four.name));
+                Assert.That(locked.interactable, Is.False, asking + ": the four's row is drawn locked,");
+                AssertDirectlyOver(LiveLabel(EpisodeEngine.BringInRefusal(held, outsider.id, held.alliances.Single(a => a.id == GrowPactId))), locked,
+                    asking + ": under the reason");
+                Assert.That(ButtonWithCaption(EpisodeDirector.BringInCaption(outsider.name, PairPactName)), Is.Not.Null, asking + ": and the pair's is open.");
+                AssertConversationFits(larger, asking);
+                AssertTagsHaveRoom(asking);
+                yield return CaptureConversation("conversation-pact-longest-ask" + (larger ? "-large" : ""), asking, null);
                 director.ClosePanels();
                 yield return null;
             }

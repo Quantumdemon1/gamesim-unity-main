@@ -1081,6 +1081,9 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.PromiseFinalTwo: MakePromise(s, target.id, PromiseKind.FinalTwo, null); break;
                 case EpisodeCommandKind.PromiseVote:
                     Require(s.phase == EpisodePhase.Campaign && Voters(s).Any(x => x.id == s.playerId) && s.nominees.Contains(c.secondTargetId ?? ""), "Choose a valid eviction target for your voting promise.");
+                    // Under the commitment rules (R0) a promise to vote somebody out is never made to
+                    // them: kept, it earned their thanks on the way to the jury (X2's engine half).
+                    Require(!CommitmentRulesOn(s) || c.secondTargetId != target.id, "You cannot promise somebody that you will vote them out.");
                     MakePromise(s, target.id, PromiseKind.Vote, c.secondTargetId); break;
                 case EpisodeCommandKind.ShareInformation:
                     var known = s.memories.LastOrDefault(m => m.ownerId == s.playerId && m.subjectId != target.id);
@@ -1693,6 +1696,10 @@ namespace Gamesim.Simulation
                 .Where(x => x.id != s.playerId && x.id != target.id)
                 .OrderBy(x => x.id, StringComparer.Ordinal).ToList();
             Require(audience.Count > 0, "There is nobody left to tell.");
+            // Under the commitment rules (R0, X7) a whisper reaches the person the player is talking
+            // to, whom the command names; before them the house drew a listener, after the floor's roll.
+            var listener = !loudly && CommitmentRulesOn(s) ? audience.FirstOrDefault(x => x.id == c.secondTargetId) : null;
+            Require(loudly || listener != null || !CommitmentRulesOn(s), "Choose who to whisper it to.");
 
             if (Roll(s) <= WebSocialVocabulary.RumourFloor)
             {
@@ -1706,7 +1713,7 @@ namespace Gamesim.Simulation
 
             if (!loudly)
             {
-                var heard = audience[(int)(Roll(s) * audience.Count) % audience.Count];
+                var heard = listener ?? audience[(int)(Roll(s) * audience.Count) % audience.Count];
                 double damage = WebSocialVocabulary.WhisperDamage(Roll(s));
                 // Between THEM, not between the player and either: a whisper poisons a relationship
                 // the player is not part of, which is the whole point of whispering it.
@@ -1929,6 +1936,10 @@ namespace Gamesim.Simulation
         /// </summary>
         private static void SettleDeals(EpisodeState s, List<DealResolution.Verdict> verdicts)
         {
+            // Under the commitment rules (C0) a deal says who broke it and when, and its breach is held
+            // by the one wronged and never fades (X11). Before them the record is both ways and fades,
+            // as it always was, so a season played without them settles exactly as it did.
+            bool rules = CommitmentRulesOn(s);
             foreach (var verdict in verdicts)
             {
                 var deal = verdict.deal;
@@ -1936,6 +1947,11 @@ namespace Gamesim.Simulation
                 double delta = DealResolution.Impact(deal, verdict.status);
                 bool kept = verdict.status == DealStatus.Fulfilled;
                 string title = DealKind.Title(deal.type).ToLowerInvariant();
+                if (rules)
+                {
+                    deal.settledWeek = s.week;
+                    deal.brokenById = kept ? null : verdict.actorId;
+                }
 
                 // A vote deal's outcome is a ballot (UI-UX-PASS-PLAN decision 4): the settlement is
                 // the same, but the line goes only to whoever can know it - the party whose own
@@ -1949,8 +1965,9 @@ namespace Gamesim.Simulation
                         + (kept ? " held to their " : " fell out over their ") + title + ".";
                     WriteScore(s, deal.proposerId, deal.recipientId, delta);
                     WriteScore(s, deal.recipientId, deal.proposerId, delta);
+                    // Both walked away from it, so both hold it: permanently, under the rules.
                     RelationshipLedger.Record(s, deal.proposerId, deal.recipientId,
-                        kept ? "deal_fulfilled" : "deal_broken", delta, text);
+                        kept ? "deal_fulfilled" : "deal_broken", delta, text, permanent: rules && !kept);
                     var pair = new[] { deal.proposerId, deal.recipientId };
                     Log(s, "deal-outcome", text, ballot ? pair.Where(id => id != s.playerId).ToArray() : pair);
                 }
@@ -1960,7 +1977,8 @@ namespace Gamesim.Simulation
                     string text = Name(s, verdict.actorId) + (kept ? " honoured a " : " broke a ")
                         + title + " with " + Name(s, wronged) + ".";
                     WriteScore(s, wronged, verdict.actorId, delta);
-                    RelationshipLedger.Record(s, wronged, verdict.actorId,
+                    if (rules && !kept) RecordBreach(s, wronged, verdict.actorId, delta, text);
+                    else RelationshipLedger.Record(s, wronged, verdict.actorId,
                         kept ? "deal_fulfilled" : "deal_broken", delta, text);
                     Remember(s, wronged, verdict.actorId, text, true);
                     Log(s, "deal-outcome", text, ballot ? new[] { verdict.actorId } : new[] { verdict.actorId, wronged });
@@ -1988,20 +2006,36 @@ namespace Gamesim.Simulation
                 if (Roll(s) >= DealResolution.BetrayalChance) continue;
                 double penalty = Math.Floor(DealResolution.BetrayalFloor + Roll(s) * DealResolution.BetrayalSpread);
                 WriteScore(s, witness.id, betrayerId, penalty);
-                RelationshipLedger.Record(s, witness.id, betrayerId, "heard_about_betrayal", penalty,
-                    "Heard that " + Name(s, betrayerId) + " broke a deal with " + Name(s, wronged) + ".");
+                string heard = "Heard that " + Name(s, betrayerId) + " broke a deal with " + Name(s, wronged) + ".";
+                // Under the commitment rules (C0) the one who heard holds it against the betrayer, and the
+                // betrayer holds nothing against the one who heard it; before them it was written both ways.
+                if (CommitmentRulesOn(s)) RelationshipLedger.RecordOneWay(s, witness.id, betrayerId, "heard_about_betrayal", penalty, heard);
+                else RelationshipLedger.Record(s, witness.id, betrayerId, "heard_about_betrayal", penalty, heard);
             }
         }
 
         private static void SettlePromise(EpisodeState s, PromiseState promise, PromiseStatus status)
         {
             promise.status = status;
+            // Under the commitment rules (C0) a promise says who broke it - its maker, whose act settles
+            // it - and when it was kept or broken.
+            bool rules = CommitmentRulesOn(s);
+            if (rules)
+            {
+                promise.settledWeek = s.week;
+                promise.brokenById = status == PromiseStatus.Broken ? promise.fromId : null;
+            }
             var kind = promise.kind == PromiseKind.FinalTwo ? "final_2" : promise.kind == PromiseKind.AllianceLoyalty ? "alliance_loyalty" : promise.kind.ToString().ToLowerInvariant();
             // The original PromiseSystem calls its optional-loyalty API with the default 5
             // and records a one-way event, unlike generic reciprocal social changes.
             var delta = WebRules.PromiseImpact(kind, status == PromiseStatus.Broken ? "broken" : "fulfilled");
             WriteScore(s, promise.toId, promise.fromId, delta);
             string text = Name(s, promise.fromId) + (status == PromiseStatus.Broken ? " broke" : " fulfilled") + " a " + promise.kind + " promise.";
+            // And the one promised holds the outcome on their record, kept or broken, permanently: the
+            // ledger's own rule for a word given (X11). Before the rules nothing recorded it at all.
+            if (rules)
+                RelationshipLedger.RecordOneWay(s, promise.toId, promise.fromId,
+                    status == PromiseStatus.Broken ? "promise-broken" : "promise-kept", delta, text, permanent: true);
             Remember(s, promise.toId, promise.fromId, text, true); Remember(s, promise.fromId, promise.toId, text, true);
             // A vote promise's outcome is the promiser's ballot (UI-UX-PASS-PLAN decision 4): the
             // line goes to them alone, and the promisee is told once they know the ballot

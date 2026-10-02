@@ -63,9 +63,14 @@ namespace Gamesim.Simulation
         public static double Adjusted(EpisodeState state, string readerId, string aboutId) =>
             state.Score(readerId, aboutId) - BrokenDealPenalty * BrokenDeals(state, aboutId);
 
+        /// <summary>
+        /// The broken deals held against somebody: under the commitment rules the ones they broke
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN C0, X3), before them every broken deal they were either side
+        /// of (<see cref="Breaches.CountsAgainst(EpisodeState, DealState, string)"/>). The player's own
+        /// count is what the acceptance roll and its line read too.
+        /// </summary>
         public static int BrokenDeals(EpisodeState state, string whoId) =>
-            state.deals.Count(d => d.status == DealStatus.Broken
-                                   && (d.proposerId == whoId || d.recipientId == whoId));
+            state.deals.Count(d => Breaches.CountsAgainst(state, d, whoId));
 
         /// <summary>Deals currently binding these two, in either direction.</summary>
         public static List<DealState> Between(EpisodeState state, string a, string b) =>

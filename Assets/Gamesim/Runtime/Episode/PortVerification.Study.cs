@@ -23,6 +23,11 @@ namespace Gamesim.Episode
                 && original.socialActions + StudyConfirmations <= 18,
                 "Study QA requires the legally created fresh season, not a fabricated role or prepared save.");
             studyReport.preparationAtStart = original.playerStudyBonus;
+            // Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN R0, X1) each confirmation is one
+            // of the window's actions, and move-in night seats one in a house this size: the walk buys
+            // the rest first, at the whole house's expense, through the board's own control.
+            yield return BuyStudyActions();
+            original = seasonDirector.Snapshot;
             yield return CloseSeasonPanel();
             yield return ClickSeasonButton(EpisodeHud.DiaryTravelCaption);
             yield return WaitSeasonWalk("study diary", seasonDirector.DiaryPosition);
@@ -58,9 +63,10 @@ namespace Gamesim.Episode
                 var expectedRng = new SeededRandom(before.randomState);
                 expectedRng.NextDouble(); // A local expectation only; never installed in the game.
                 RequireSeason(after.revision == before.revision + 1 && after.socialActions == before.socialActions + 1
+                    && EpisodeEngine.SocialActionsSpent(after) == EpisodeEngine.SocialActionsSpent(before) + 1
                     && after.playerStudyBonus == Math.Min(5, before.playerStudyBonus + 1)
                     && after.randomState == expectedRng.State && !seasonDirector.HasDiaryDecisionDraft,
-                    "One actual memorize confirmation must cost one action, draw once, and add one bounded preparation.");
+                    "One actual memorize confirmation must cost one of the window's actions, draw once, and add one bounded preparation.");
                 RequireSeason(after.acceptedCommandIds.Count == before.acceptedCommandIds.Count + 1
                     && after.acceptedCommandIds.Take(before.acceptedCommandIds.Count).SequenceEqual(before.acceptedCommandIds)
                     && after.nextSequence == before.nextSequence + 1 && after.events.Count == before.events.Count + 1,
@@ -75,6 +81,7 @@ namespace Gamesim.Episode
                 // This covers full trust/history, persona, NPC/player memories and future unchanged fields.
                 var unchanged = after.Clone();
                 unchanged.revision = before.revision; unchanged.socialActions = before.socialActions;
+                unchanged.windowActions = before.windowActions;
                 unchanged.playerStudyBonus = before.playerStudyBonus; unchanged.randomState = before.randomState;
                 unchanged.nextSequence = before.nextSequence; unchanged.events = before.events;
                 unchanged.acceptedCommandIds = before.acceptedCommandIds;
@@ -102,6 +109,39 @@ namespace Gamesim.Episode
             RequireSeason(seasonDirector.Snapshot.playerStudyBonus == 5, "Reload must retain the earned preparation.");
             studyReport.studySaveReloadChecks++;
         }
+
+        /// <summary>
+        /// Buys the actions five confirmations need beyond the window's own, one press of the board's
+        /// "at the whole house's expense" control each: one commit, one more of the window's actions.
+        /// Nothing to buy outside the commitment rules, where study never spent the window.
+        /// </summary>
+        private IEnumerator BuyStudyActions()
+        {
+            if (!EpisodeEngine.CommitmentRulesOn(seasonDirector.Snapshot) || MissingStudyActions(seasonDirector.Snapshot) <= 0) yield break;
+            yield return OpenSeasonStation();
+            // Counted again on arrival: the walk to the station crosses free roam, where the house goes
+            // on without the player.
+            var state = seasonDirector.Snapshot;
+            int missing = MissingStudyActions(state);
+            RequireSeason(missing <= WebSocialVocabulary.PurchaseCeiling - state.boughtActionPoints,
+                "Five study confirmations must fit in move-in night's window with the time the house will sell.");
+            for (int bought = 0; bought < missing; bought++)
+            {
+                var before = seasonDirector.Snapshot;
+                yield return ClickSeasonButton(EpisodeHud.BuySpreadCaption);
+                var after = seasonDirector.Snapshot;
+                RequireSeason(after.revision == before.revision + 1 && after.boughtActionPoints == before.boughtActionPoints + 1
+                    && EpisodeEngine.SocialActionBudget(after) == EpisodeEngine.SocialActionBudget(before) + 1
+                    && EpisodeEngine.SocialActionsSpent(after) == EpisodeEngine.SocialActionsSpent(before),
+                    "Each actual purchase must commit once and open one more of the window's actions without spending one.");
+                studyReport.actionsBought++;
+            }
+            yield return CloseSeasonPanel();
+        }
+
+        /// <summary>How many of five confirmations the window's actions left cannot pay for.</summary>
+        private static int MissingStudyActions(EpisodeState state) =>
+            StudyConfirmations - (EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state));
 
         private void RequireStudyUnchanged(EpisodeState expected, string operation)
         {
@@ -225,8 +265,9 @@ namespace Gamesim.Episode
         {
             public bool requested = true;
             public string status = "Running";
-            public string workload = "Five legal actual-UI memorize confirmations after a non-mutating review/cancel, private-state checks and save/reload; eligible weekly weighted simulations; no invented seed, role or preparation. Separate functional coverage, not profile samples.";
+            public string workload = "Five legal actual-UI memorize confirmations after a non-mutating review/cancel, each one of the window's actions (the rest of move-in night's bought through the board first), private-state checks and save/reload; eligible weekly weighted simulations; no invented seed, role or preparation. Separate functional coverage, not profile samples.";
             public bool cancelPreservedFullSnapshot, noRollBeforeConfirmation, trustPersonaMemoriesPreserved, preparationCapReached;
+            public int actionsBought;
             public int confirmations, reviewNoMutationChecks, privateEffectChecks, studySaveReloadChecks,
                 preparationAtStart, preparationAtEnd, socialActionsRemainingForOptionalOath,
                 weeklySimulatedChecks, simulatedHohChecks, simulatedVetoChecks, ineligibleWeeklyChecks,

@@ -13,6 +13,14 @@ namespace Gamesim.Tests.EditMode
     /// receipts or the player-visible log names that voter beside the nominee they voted against.
     /// The true ballots come from the private lines the engine logs to each voter, which a test may
     /// read and a screen never does.
+    ///
+    /// <para>Where it stops (UI-UX-PASS-PLAN J0, decision 8): the season report's table of every
+    /// eviction ballot, <see cref="SeasonBallots"/>, is the one reader that names a ballot the
+    /// player never learned, and it opens only when the season is over. This sentinel holds the
+    /// readers above to the rule on finished seasons, every reveal of the season on the record by
+    /// then (the PlayMode sentinel holds the screens at a reveal mid-season); the table is not
+    /// among them, and instead is read at every state a played season passes through before the
+    /// finale and found to read nothing (<see cref="TheTapesAreSealedUntilTheFinaleAndOpenThere"/>).</para>
     /// </summary>
     public sealed class BallotPrivacyTests
     {
@@ -36,8 +44,9 @@ namespace Gamesim.Tests.EditMode
         /// PlayMode sentinel's fixture gives the engine to judge: two claims the player was told, one
         /// true and one a lie, and a vote promise from a third voter for the nominee they will not vote
         /// against, so the record holds lies caught and verdicts the player cannot place.
+        /// <paramref name="each"/>, where given, sees every state the season passes through.
         /// </summary>
-        private static EpisodeState Played(uint seed)
+        private static EpisodeState Played(uint seed, Action<EpisodeState> each = null)
         {
             var engine = new EpisodeEngine(SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, seed));
             for (int guard = 0; guard < 400 && engine.Snapshot.phase != EpisodePhase.Finished; guard++)
@@ -61,7 +70,9 @@ namespace Gamesim.Tests.EditMode
                     }
                     engine = new EpisodeEngine(now);
                 }
-                Assert.That(engine.Apply(EpisodeEngineTests.NextCommand(engine.Snapshot)).accepted, Is.True);
+                var result = engine.Apply(EpisodeEngineTests.NextCommand(engine.Snapshot));
+                Assert.That(result.accepted, Is.True);
+                each?.Invoke(result.state);
             }
             Assert.That(engine.Snapshot.phase, Is.EqualTo(EpisodePhase.Finished));
             return engine.Snapshot;
@@ -211,6 +222,41 @@ namespace Gamesim.Tests.EditMode
             Assert.That(unknown, Is.GreaterThan(0), "At least one ballot the player could not place, or the sentinel guards nothing.");
             Assert.That(lies, Is.GreaterThan(0), "At least one lie caught at a reveal, or the sentinel never sees a judged claim.");
             Assert.That(withheld, Is.GreaterThan(0), "At least one verdict the player cannot place, or the memory readers guard nothing.");
+        }
+
+        /// <summary>
+        /// The sentinel's one exception, and where it begins (UI-UX-PASS-PLAN J0, decision 8). At
+        /// every state a played season passes through before the jury crowns its winner, the
+        /// season report's table is sealed and reads not one ballot, so nothing it draws can name a
+        /// ballot the player cannot place; at the finale it opens and reads every ballot the record
+        /// holds - the ones the player never placed among them, each as the engine logged it.
+        /// </summary>
+        [Test]
+        public void TheTapesAreSealedUntilTheFinaleAndOpenThere()
+        {
+            int sealedStates = 0, opened = 0, neverLearned = 0;
+            for (uint seed = 1; seed <= 6; seed++)
+            {
+                var s = Played(seed, state =>
+                {
+                    if (state.phase == EpisodePhase.Finished) return;
+                    Assert.That(SeasonBallots.Open(state), Is.False, "Week " + state.week + ", " + state.phase + ": the tapes are sealed.");
+                    Assert.That(SeasonBallots.Read(state), Is.Empty, "Week " + state.week + ", " + state.phase + ": the table reads no ballot before the finale.");
+                    sealedStates++;
+                });
+                Assert.That(SeasonBallots.Open(s), Is.True, "Seed " + seed + ": the finale opens the tapes.");
+                var tapes = SeasonBallots.Read(s);
+                foreach (var (week, voterId, targetId) in PrivateBallots(s))
+                {
+                    var row = tapes.Single(w => w.week == week).rows.SingleOrDefault(r => r.voterId == voterId);
+                    Assert.That(row?.targetId, Is.EqualTo(targetId), "Seed " + seed + ", week " + week + ": " + s.Find(voterId).name + "'s ballot is on the tapes as it was cast.");
+                    opened++;
+                    if (!KnownBallots.Read(s, week).Knows(voterId)) neverLearned++;
+                }
+            }
+            Assert.That(sealedStates, Is.GreaterThan(100), "Every state before the finale was read sealed.");
+            Assert.That(opened, Is.GreaterThan(0));
+            Assert.That(neverLearned, Is.GreaterThan(0), "The finale names ballots the player never placed, or decision 8 opens nothing.");
         }
 
         /// <summary>A finalist's lean of "voted to evict them" rests on a ballot the player knows, and the jury house's "the count showed it" on one the juror could.</summary>

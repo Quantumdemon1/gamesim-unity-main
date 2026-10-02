@@ -615,7 +615,7 @@ namespace Gamesim.Tests.PlayMode
                 var strip = ActiveRect(EpisodeHud.BreachStripName);
                 Assert.That(strip, Is.Not.Null, where + " warns.");
                 Assert.That(StripWords(strip), Is.EqualTo(expected), where + ": the dry run's words.");
-                AssertInside(window, ActiveRect(EpisodeHud.CeremonyTitleName), where + ": the title");
+                AssertInside(window, ActiveRect(EpisodeHud.MeetingHeadName), where + ": the head");
                 AssertInside(window, (RectTransform)FindButton("Do not use the veto").transform, where + ": 'Do not use the veto'");
                 AssertInside(window, ActiveRect(EpisodeHud.MeetingInfoStripName), where + ": the rule");
                 AssertInside(window, strip, where + ": the warning");
@@ -843,8 +843,8 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The final choice warns in the column whose control breaks the player's word, and only
         /// there: a Final 2 deal with one finalist is broken by taking the other. The columns stay
-        /// level side by side, and "Evict {partner}" - the walks' caption - breaks the deal as the
-        /// warning said.
+        /// level side by side, and the control that evicts the partner - "Take {other} · evict
+        /// {partner}", the walks' caption (UI-UX-PASS-PLAN Q0) - breaks the deal as the warning said.
         /// </summary>
         [UnityTest]
         public IEnumerator YourWord_TheFinalChoiceWarnsOverTheControlThatWouldBreakYourWord()
@@ -873,14 +873,19 @@ namespace Gamesim.Tests.PlayMode
                 Is.EqualTo(new[] { expected }), "The column whose control breaks the deal says so.");
             Assert.That(keeping.GetComponentsInChildren<TMP_Text>().Any(label => label.name == EpisodeHud.BreachWarningName), Is.False,
                 "The column that keeps it says nothing.");
-            var breakingControl = (RectTransform)FindButton("Evict " + seeded.Find(partner).name).transform;
-            var keepingControl = (RectTransform)FindButton("Evict " + seeded.Find(other).name).transform;
+            string breakingCaption = FinalChoiceWords.CaptionToEvict(seeded, partner);
+            Assert.That(breakingCaption, Is.EqualTo(FinalChoiceWords.Caption(seeded.Find(other).name, seeded.Find(partner).name)),
+                "The control that evicts the partner takes the other.");
+            var breakingControl = (RectTransform)FindButton(breakingCaption).transform;
+            var keepingControl = (RectTransform)FindButton(FinalChoiceWords.CaptionToEvict(seeded, other)).transform;
             Assert.That(breakingControl.IsChildOf(breaking), Is.True, "The warning stands in the column of the control it is about.");
+            Assert.That(ScreenRect(breaking.GetComponentsInChildren<TMP_Text>().Single(label => label.name == EpisodeHud.BreachWarningName).rectTransform).yMin,
+                Is.GreaterThanOrEqualTo(ScreenRect(breakingControl).yMax - 1f), "Over the control it is about.");
             if (ScreenRect(breaking).xMin >= ScreenRect(keeping).xMax - 1f || ScreenRect(keeping).xMin >= ScreenRect(breaking).xMax - 1f)
             {
                 Assert.That(Mathf.Abs(ScreenRect(breakingControl).yMin - ScreenRect(keepingControl).yMin), Is.LessThan(1f),
                     "Side by side, the two controls stay level with the warning over one of them.");
-                foreach (var part in new[] { EpisodeHud.FinalistHeadlineName, EpisodeHud.FinalistWarningName })
+                foreach (var part in new[] { EpisodeHud.FinalistWarningName, EpisodeHud.FinalistConsequenceName })
                 {
                     float a = ScreenRect(breaking.GetComponentsInChildren<TMP_Text>().Single(label => label.name == part).rectTransform).yMin;
                     float b = ScreenRect(keeping.GetComponentsInChildren<TMP_Text>().Single(label => label.name == part).rectTransform).yMin;
@@ -891,7 +896,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.Snapshot.revision, Is.EqualTo(seeded.revision), "Reading the warning commits nothing.");
             if (Application.isBatchMode) yield return CaptureFraming("breach-warning-final-choice");
 
-            ButtonWithCaption("Evict " + seeded.Find(partner).name).onClick.Invoke();
+            ButtonWithCaption(breakingCaption).onClick.Invoke();
             yield return null; yield return null;
             var after = director.Snapshot;
             Assert.That(after.revision, Is.EqualTo(seeded.revision + 1), "One command.");

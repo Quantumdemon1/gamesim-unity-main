@@ -13,11 +13,14 @@ namespace Gamesim.Episode
     /// can be of it (<see cref="FinalistRead"/>), and what taking them would mean if the player
     /// wins the final Head of Household. It commits nothing and costs nothing.</para>
     ///
-    /// <para><b>The decision</b> is the final eviction with the player as Head of Household: the
-    /// same two cards, what taking each one means, and under each card the headline "Take {name}
-    /// to the Final 2", "This decision cannot be undone" and the control that does it - the other
-    /// finalist's pinned <c>Evict {name}</c>. The warning sits on the control: the screen opens
-    /// scrolled to its first control, and a warning at the head of a tall screen was out of sight.</para>
+    /// <para><b>The decision</b> is the final eviction with the player as Head of Household: a page
+    /// on the strategy stage (UI-UX-PASS-PLAN Q0, EpisodeHud.FinalChoice.cs), a card per finalist -
+    /// the portrait card, the three public stat tiles, the jurors' chips coloured by the lean the
+    /// player can tell, the bullets of what taking them means - and under each card "This decision
+    /// cannot be undone", what the choice does, and the control that makes it, "Take Maya · evict
+    /// Taylor" (<see cref="FinalChoiceWords.Caption"/>). It was "Evict {name}" under the other
+    /// finalist's card and a gold headline that read as the button; every test and walk that
+    /// presses the choice presses the new caption through <see cref="FinalChoiceWords.CaptionToEvict"/>.</para>
     /// </summary>
     public sealed partial class EpisodeDirector
     {
@@ -81,26 +84,38 @@ namespace Gamesim.Episode
             hud.FinalistColumns(columns);
         }
 
-        /// <summary>The final Head of Household's screen's head (MOCKUP-PASS M8, mockup 59).</summary>
-        public const string FinalTwoHeadTitle = "CHOOSE WHO JOINS YOU IN THE FINAL 2";
+        /// <summary>
+        /// The line under the band on the final Head of Household's page (MOCKUP-PASS M8, mockup 59):
+        /// the band already names the screen, CHOOSE YOUR FINAL TWO, under the crown.
+        /// </summary>
         public const string FinalTwoHeadLine = "What you know about each of them, and what taking each one means. Nothing here is a prediction.";
 
-        /// <summary>The head the final Head of Household's choice opens with, in the crown's gold under the crown.</summary>
-        private void FinalTwoHead() => hud.CrownedScreenHead(FinalTwoHeadTitle, null, FinalTwoHeadLine);
+        /// <summary>
+        /// Whether the panel is the final Head of Household's page: the player's choice between two
+        /// finalists, with nothing of its own over it.
+        /// </summary>
+        private bool FinalChoiceBeat(EpisodeState s) => s != null && !challengeActive && s.pendingDiary == null
+            && s.phase == EpisodePhase.FinalEviction && s.hohId == s.playerId && FinalistRead.Others(s).Count == 2;
 
         /// <summary>
         /// What taking <paramref name="take"/> does, as the engine settles it: the other finalist
         /// joins the jury, and the jury's questions come to the two left (EpisodeFinale's exchanges,
-        /// each asked of the player with the other finalist's answer recorded beside it).
+        /// each asked of the player with the other finalist's answer recorded beside it). By the
+        /// names the page calls the two (<see cref="FinalChoiceWords.Names"/>): whole where they share
+        /// a first name.
         /// </summary>
-        public static string FinalChoiceConsequence(ContestantState take, ContestantState cut) =>
-            FinalistRead.FirstName(cut.name) + " joins the jury; you and " + FinalistRead.FirstName(take.name) + " face the jury's questions.";
+        public static string FinalChoiceConsequence(ContestantState take, ContestantState cut)
+        {
+            var (taken, gone) = FinalChoiceWords.Names(take.name, cut.name);
+            return gone + " joins the jury; you and " + taken + " face the jury's questions.";
+        }
 
         /// <summary>
-        /// The final Head of Household's choice: the two finalists as cards, what taking each means,
-        /// the warning, and under each card "Take {name} to the Final 2" over the control that
-        /// does it, which evicts the other and keeps the caption the tests and the season walks
-        /// press, <c>Evict {name}</c>. What the certainty words mean is the screen's footnote.
+        /// The final Head of Household's choice as a page (UI-UX-PASS-PLAN Q0): a card per finalist
+        /// with the player's read of them - the record, where the player stands, the jurors' leans as
+        /// chips, what taking them means - and under each card the warning, what the choice does and
+        /// the control that makes it, "Take Maya · evict Taylor", which evicts the other. Every word is
+        /// the read's (<see cref="FinalistRead"/>): nothing here is a prediction.
         /// </summary>
         private void FinalTwoChoice(EpisodeState state)
         {
@@ -109,25 +124,42 @@ namespace Gamesim.Episode
             {
                 // Not a shape the engine produces; the plain paired choice it used to be.
                 var pairs = hud.Pairs();
-                foreach (var candidate in others) { string id = candidate.id; hud.PairedActionFor(pairs, id, "Evict " + candidate.name, () => Commit(state, EpisodeCommandKind.FinalEvict, id)); }
+                foreach (var candidate in others)
+                {
+                    string id = candidate.id;
+                    hud.PairedActionFor(pairs, id, FinalChoiceWords.FallbackCaption(candidate.name), () => Commit(state, EpisodeCommandKind.FinalEvict, id));
+                }
                 return;
             }
             // Whatever the choice: the Final 2 agreements with anyone but the two finalists end broken.
-            var broken = FinalistRead.BrokenEitherWay(state);
-            if (broken.Count > 0)
-                hud.Footnote("Either way, your Final 2 " + (broken.Count == 1 ? "agreement" : "agreements") + " with "
-                    + string.Join(" and ", broken) + " (on the jury) will end broken.", UiTheme.Warning);
-            var columns = new List<EpisodeHud.FinalistColumn>();
+            var spec = new EpisodeHud.FinalChoiceSpec
+            {
+                Line = FinalTwoHeadLine,
+                EitherWay = FinalChoiceWords.EitherWay(FinalistRead.BrokenEitherWay(state)),
+                Columns = new List<EpisodeHud.FinalChoiceColumn>(),
+            };
+            // The jurors by the names their chips carry: first names, whole where two share one.
+            var jurors = FinalistRead.Jurors(state);
+            var chipNames = FinalChoiceWords.ChipNames(jurors.Select(juror => juror.name).ToList());
+            var named = new Dictionary<string, string>();
+            for (int i = 0; i < jurors.Count; i++) named[jurors[i].id] = chipNames[i];
             foreach (var take in others)
             {
                 var cut = others.First(other => other.id != take.id);
                 string cutId = cut.id;
-                columns.Add(new EpisodeHud.FinalistColumn
+                var read = FinalistRead.Read(state, take.id);
+                spec.Columns.Add(new EpisodeHud.FinalChoiceColumn
                 {
-                    Actor = take, Read = FinalistRead.Read(state, take.id),
+                    Actor = take, Read = read,
+                    // Each juror's lean toward this finalist as the player can tell it, grouped close, a grudge, no read.
+                    Jurors = FinalChoiceWords.Grouped(read.jurors).Select(lean => new EpisodeHud.FinalChoiceJuror
+                    {
+                        Id = lean.jurorId, Name = named.ContainsKey(lean.jurorId) ? named[lean.jurorId] : lean.name,
+                        Lean = lean.lean, Certainty = lean.certainty,
+                    }).ToList(),
+                    BulletsHeading = FinalChoiceWords.BulletsEyebrow(take.name, cut.name),
                     Bullets = FinalistRead.IfYouTake(state, take.id, cut.id),
-                    Headline = "Take " + take.name + " to the Final 2",
-                    Caption = "Evict " + cut.name,
+                    Caption = FinalChoiceWords.Caption(take.name, cut.name),
                     Warning = FinalChoiceWarning,
                     Consequence = FinalChoiceConsequence(take, cut),
                     // What this choice alone would break of the player's word (EpisodeDirector.YourWord).
@@ -135,8 +167,7 @@ namespace Gamesim.Episode
                     Choose = () => Commit(state, EpisodeCommandKind.FinalEvict, cutId),
                 });
             }
-            hud.FinalistColumns(columns);
-            hud.CertaintyLegend();
+            hud.FinalChoicePage(spec);
         }
     }
 }

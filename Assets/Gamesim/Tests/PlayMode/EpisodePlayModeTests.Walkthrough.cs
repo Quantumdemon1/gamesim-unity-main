@@ -25,7 +25,10 @@ namespace Gamesim.Tests.PlayMode
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
-        /// <summary>The phases worth a frame. Others are transitional and photograph identically.</summary>
+        /// <summary>
+        /// The phases worth a frame. Others are transitional and photograph identically. The week's
+        /// last frame is no phase: it is the first eviction's aftermath (<see cref="SeeTheEvictedOut"/>).
+        /// </summary>
         private static readonly Dictionary<EpisodePhase, string> WalkthroughBeats =
             new Dictionary<EpisodePhase, string>
             {
@@ -36,7 +39,6 @@ namespace Gamesim.Tests.PlayMode
                 { EpisodePhase.VetoMeeting, "veto-meeting" },
                 { EpisodePhase.Campaign, "campaign" },
                 { EpisodePhase.Eviction, "eviction" },
-                { EpisodePhase.Finished, "aftermath" },
             };
 
         [UnityTest]
@@ -177,10 +179,14 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
 
             // 05 onward — drive the episode with the same commands a player's clicks produce, and
-            // photograph each phase the first time it is reached.
+            // photograph each phase the first time it is reached, then the first eviction's
+            // aftermath. The walk out is on, as it is for a player: a batch run otherwise lets the
+            // evicted go the frame their cards end.
+            director.WalkOutsInBatchRuns = true;
             var photographed = new HashSet<EpisodePhase>();
             int index = 5;
-            for (int guard = 0; guard < 400; guard++)
+            bool aftermath = false;
+            for (int guard = 0; guard < 400 && !aftermath; guard++)
             {
                 var before = director.Snapshot;
                 if (before.phase == EpisodePhase.Finished) break;
@@ -188,6 +194,20 @@ namespace Gamesim.Tests.PlayMode
                 var result = director.Submit(NextCommand(before));
                 yield return null;
                 if (!result.accepted) continue;
+
+                // Somebody has left the house: the eviction's aftermath (UI-UX-PASS-PLAN Z0, the
+                // play sweep's row 24) is the house the player comes back to once the door has shut
+                // behind them. The step used to be the season's end, and photographed the finale's
+                // jury vote under the eviction's name.
+                if (InTheHouse(director.Snapshot) < InTheHouse(before))
+                {
+                    yield return SeeTheEvictedOut();
+                    yield return Shoot("walkthrough-" + index.ToString("00") + "-aftermath");
+                    LogBeat("aftermath", director.Snapshot);
+                    index++;
+                    aftermath = true;
+                    continue;
+                }
 
                 var phase = director.Snapshot.phase;
                 if (!WalkthroughBeats.TryGetValue(phase, out var label)) continue;
@@ -204,17 +224,63 @@ namespace Gamesim.Tests.PlayMode
             }
 
             var final = director.Snapshot;
-            if (final.phase == EpisodePhase.Finished && photographed.Add(EpisodePhase.Finished))
-            {
-                for (int frame = 0; frame < 30; frame++) yield return null;
-                yield return SettleCeremonyCards();
-                yield return Shoot("walkthrough-" + index.ToString("00") + "-aftermath");
-                LogBeat("aftermath", final);
-            }
-
             Assert.That(photographed, Is.Not.Empty,
                 "The episode was driven to " + final.phase + " without reaching a single photographable beat.");
-            Debug.Log("[Gamesim] walkthrough captured " + (photographed.Count + 4) + " frames, ending in " + final.phase + ".");
+            Assert.That(aftermath, Is.True,
+                "The episode was driven to " + final.phase + " in week " + final.week + " without an eviction, so there is no aftermath to photograph.");
+            Debug.Log("[Gamesim] walkthrough captured " + (photographed.Count + 5) + " frames, ending in " + final.phase + ".");
+        }
+
+        /// <summary>How many houseguests are still in the house.</summary>
+        private static int InTheHouse(EpisodeState state) =>
+            state.contestants.Count(actor => actor.status == ContestantStatus.Active);
+
+        /// <summary>
+        /// How long the walkthrough watches the walk out before pressing past it, in real seconds:
+        /// half the house's own limit, so the frame stays well inside the test's three minutes.
+        /// </summary>
+        private const float WalkthroughWalkOutSeconds = 20f;
+
+        /// <summary>
+        /// After an eviction commits, everything between it and the house the player comes back to:
+        /// the cards about it skipped as a player skips them, the walk out watched to the door shut
+        /// behind the evicted - pressed past, as a player may, if it runs long; its own frames are
+        /// walk-out-* - its goodbye put down, and the week's recap that follows it put away, then the
+        /// camera and the panels settled. A player evicted themselves has no walk out; the recap,
+        /// when there is one, still follows the cards.
+        /// </summary>
+        private IEnumerator SeeTheEvictedOut()
+        {
+            // The vote's reveal comes up as the commit is drawn; it is skipped once it is up.
+            float up = Time.realtimeSinceStartup + 2f;
+            while (Time.realtimeSinceStartup < up && !SceneComponents<Gamesim.Presentation.VoteReveal>().Any(card => card.IsPlaying))
+                yield return null;
+            yield return SkipReveals();
+            foreach (var card in SceneComponents<Gamesim.Presentation.CeremonyTakeover>()) card.Cancel();
+            foreach (var sting in SceneComponents<Gamesim.Presentation.CeremonySting>()) sting.Cancel();
+            yield return Frames(3);
+            float until = Time.realtimeSinceStartup + WalkthroughWalkOutSeconds;
+            while (Time.realtimeSinceStartup < until && !director.IsWeeklyRecapOpen
+                   && (director.WalkingOutId != null || director.StagedExitRunning || director.IsCeremonyStaged))
+                yield return null;
+            if (director.WalkingOutId != null)
+            {
+                director.SkipWalkOut();
+                yield return Frames(2);
+            }
+            // The goodbye the door, or the press, put on the strip: the aftermath is after it.
+            foreach (var sting in SceneComponents<Gamesim.Presentation.CeremonySting>()) sting.Cancel();
+            // The recap waits on the walk out and the stage, and opens a frame or so after the last
+            // of them - unless the season is ending, where there is none.
+            float recap = Time.realtimeSinceStartup + 2f;
+            while (Time.realtimeSinceStartup < recap && !director.IsWeeklyRecapOpen) yield return null;
+            if (director.IsWeeklyRecapOpen)
+            {
+                director.ClosePanels();
+                yield return null;
+            }
+            yield return SettleCamera();
+            yield return SettlePanels();
         }
 
         /// <summary>

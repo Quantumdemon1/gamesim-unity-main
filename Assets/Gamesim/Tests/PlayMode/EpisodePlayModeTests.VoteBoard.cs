@@ -32,8 +32,10 @@ namespace Gamesim.Tests.PlayMode
             foreach (var name in new[] { "Ballot voter", "Ballot face", "Ballot target", "Roster" })
                 Assert.That(card.GetComponentsInChildren<RectTransform>(true).Any(rect => rect.name == name), Is.False, "The board has no '" + name + "'.");
             if (hohName == null) return;
-            var labels = card.GetComponentsInChildren<TMP_Text>(true).Where(label => label.name != "Deciding voter" && label.name != "Host");
-            Assert.That(labels.Select(label => label.text), Has.None.Contains(hohName), "Only the deciding row names the Head of Household.");
+            var naming = card.GetComponentsInChildren<TMP_Text>(true)
+                .Where(label => label.name != "Deciding voter" && label.name != "Host" && (label.text ?? "").Contains(hohName))
+                .Select(label => label.name + " '" + label.text + "'").ToArray();
+            Assert.That(naming, Is.Empty, "Only the deciding row names the Head of Household: " + string.Join(", ", naming));
         }
 
         private IEnumerator CaptureBoard(ScreenSurface screen, string name)

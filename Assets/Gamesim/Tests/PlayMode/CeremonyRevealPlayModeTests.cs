@@ -473,7 +473,10 @@ namespace Gamesim.Tests.PlayMode
             foreach (var name in VoterChildren) Assert.That(Rect(card, name), Is.Null, "The board has no '" + name + "'.");
             var labels = card.GetComponentsInChildren<TMP_Text>(true).Where(label => label.name != "Deciding voter" && label.name != "Host").ToArray();
             foreach (var voter in Names.Concat(new[] { "Maya Hassan" }))
-                Assert.That(labels.Select(label => label.text), Has.None.Contains(voter), "No label on the board names " + voter + ".");
+            {
+                var naming = labels.Where(label => (label.text ?? "").Contains(voter)).Select(label => label.name + " '" + label.text + "'").ToArray();
+                Assert.That(naming, Is.Empty, "No label on the board names " + voter + ": " + string.Join(", ", naming));
+            }
         }
 
         /// <summary>
@@ -730,7 +733,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(voter.text, Is.EqualTo(longHoh));
             Assert.That(Ellipsised(voter), Is.True, "A Head of Household's name too long for the row is marked as shortened,");
             Assert.That(chip.text, Is.EqualTo("EVICT CHRISTOPHERSON"));
-            Assert.That(Ellipsised(chip), Is.True, "and so is a first name too long for the chip.");
+            // The chip draws a long first name smaller before it shortens it; either way the words stay inside the chip.
+            chip.ForceMeshUpdate(true);
+            Assert.That(Ellipsised(chip) || (!chip.isTextTruncated && chip.textBounds.size.x <= chip.rectTransform.rect.width + 0.5f), Is.True,
+                "and a first name too long for the chip is drawn smaller or shortened: '" + chip.text + "' at " + chip.fontSize.ToString("0.#")
+                + " spans " + chip.textBounds.size.x.ToString("0") + " of " + chip.rectTransform.rect.width.ToString("0") + ".");
             var result = Text(named, "Result name");
             result.ForceMeshUpdate(true);
             Assert.That(result.text, Is.EqualTo("CHRISTOPHERSON"));

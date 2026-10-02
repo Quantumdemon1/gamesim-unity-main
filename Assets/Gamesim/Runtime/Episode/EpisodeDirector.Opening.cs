@@ -475,14 +475,15 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// The labels as the opening and the ceremonies between them want them: down while either
-        /// has them down. Kept apart so a ceremony's card coming down never brings the plates back
-        /// under the opening, or the other way round. The houseguests' flags are set every time, so
-        /// a body the house takes back mid-card is down with the rest.
+        /// The labels as the opening, the ceremonies between them and the chrome want them: down
+        /// while any has them down. Kept apart so a ceremony's card coming down never brings the
+        /// plates back under the opening, or the other way round, or a board's going brings them
+        /// up under a card. The houseguests' flags are set every time, so a body the house takes
+        /// back mid-card is down with the rest.
         /// </summary>
         private void ApplyPlates()
         {
-            bool suppressed = openingPlatesDown || ceremonyPlatesDown;
+            bool suppressed = openingPlatesDown || ceremonyPlatesDown || chromePlatesDown;
             if (player != null && discSuppressed != suppressed)
             {
                 discSuppressed = suppressed;

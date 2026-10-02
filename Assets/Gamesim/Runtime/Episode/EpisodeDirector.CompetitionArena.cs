@@ -14,6 +14,10 @@ namespace Gamesim.Episode
         private GameObject competitionArenaRoot;
         private Material competitionArenaMaterial;
         private Mesh competitionStationMesh;
+        /// <summary>The arena's own overlays - the sign's words and the station discs - drawn only while nothing stands over the house.</summary>
+        private TextMeshPro competitionSign;
+        private readonly List<Renderer> competitionArenaMarks=new List<Renderer>();
+        private bool competitionOverlaysShown=true;
         private readonly Dictionary<string,HouseInteractionAnchor> competitionArenaActors=new Dictionary<string,HouseInteractionAnchor>();
         private readonly List<HouseSeatPresentation> competitionAudienceSeats=new List<HouseSeatPresentation>();
         private readonly object competitionPlayerOwner=new object();
@@ -112,6 +116,7 @@ namespace Gamesim.Episode
             {
                 competitionArenaMaterial=new Material(shader){name="Competition award accent"};
                 competitionArenaMaterial.color=state.phase==EpisodePhase.Veto?UiTheme.Award:UiTheme.Gold;
+                competitionOverlaysShown=true;
                 CreateCompetitionStationMesh();
                 AddCompetitionStationMarker(competitionPlayerStation,"Your competition station");
                 foreach(var pair in competitionArenaActors.Where(pair=>contestants.Contains(pair.Key)))
@@ -130,12 +135,18 @@ namespace Gamesim.Episode
             label.text=award+"\n"+EpisodeEngine.CompetitionCategory(state).ToUpperInvariant();
             var definition=CompetitionDefinitions.For(state);if(definition!=null)label.text+="\n"+definition.Title;
             label.color=state.phase==EpisodePhase.Veto?UiTheme.Award:UiTheme.Gold;
-            // Lifted clear of the centre gate's head: at 2.7 m the gate's neon ran through the words.
-            // Measured from the laid-out text, so the lowest line's foot stands over the gate.
+            // Lifted clear of whatever stands between the deck and the words: at 2.7 m the centre
+            // gate's neon ran through them, and lifted over the gate alone they ran through the
+            // entrance arch's lintel, half a metre higher and half a metre nearer. Measured from
+            // the laid-out text - all its lines - so the lowest line's foot stands over the top.
             label.ForceMeshUpdate();
             var laid=label.textBounds;
-            float foot=label.textInfo.characterCount>0 && laid.size.y>0f && laid.size.y<10f ? -laid.min.y : 1f;
-            sign.transform.position=new Vector3(bounds.center.x,CentreGateTop(bounds)+CompetitionSignClearance+foot,bounds.max.z-.4f);
+            bool measured=label.textInfo.characterCount>0 && laid.size.y>0f && laid.size.y<10f;
+            float foot=measured ? -laid.min.y : 1f;
+            float halfWidth=measured && laid.size.x>0f ? laid.size.x*.5f : 3f;
+            float signZ=bounds.max.z-.4f;
+            sign.transform.position=new Vector3(bounds.center.x,CompetitionSignLineTop(bounds,signZ,halfWidth)+CompetitionSignClearance+foot,signZ);
+            competitionSign=label; competitionOverlaysShown=true;
             TickCompetitionArena(); return competitionArenaStaging;
         }
 
@@ -148,29 +159,62 @@ namespace Gamesim.Episode
         /// <summary>A gate's authored height over the deck, for a yard dressed without the course.</summary>
         public const float CompetitionGateHeight=2.6f;
 
-        /// <summary>How far the sign's lowest line stands over the centre gate's head.</summary>
+        /// <summary>How far the sign's lowest line stands over the top of what stands between the deck and it.</summary>
         public const float CompetitionSignClearance=.25f;
 
         /// <summary>
-        /// The top of the course's centre gate - the one on the yard's middle - measured from its
-        /// renderers, or a gate's authored height over the deck when the yard has none.
+        /// The top of whatever stands between the deck and the sign's words: the course's centre
+        /// gate, and the yard's entrance arch over it, whose lintel is half a metre taller than the
+        /// gate's head and half a metre nearer the deck - the sign stood clear of the gate and ran
+        /// straight through the lintel (the show sweep's row 26). Every renderer on the back half
+        /// of the deck, in front of the sign and under the words' width counts, up to a lamp's
+        /// height; never the arena's own; and a gate's authored height over the deck at least, for
+        /// a yard dressed without the course.
         /// </summary>
-        private float CentreGateTop(Bounds deck)
+        private float CompetitionSignLineTop(Bounds deck,float signZ,float halfWidth)
         {
             float top=deck.max.y+CompetitionGateHeight;
-            Transform centre=null;
+            float left=deck.center.x-halfWidth,right=deck.center.x+halfWidth,ceiling=deck.max.y+CompetitionSignLineCeiling;
+            var own=competitionArenaRoot!=null?competitionArenaRoot.transform:null;
             foreach(var root in gameObject.scene.GetRootGameObjects())
-                foreach(var part in root.GetComponentsInChildren<Transform>())
+                foreach(var renderer in root.GetComponentsInChildren<Renderer>())
                 {
-                    if(!part.name.StartsWith(CompetitionGateName,System.StringComparison.Ordinal))continue;
-                    var at=part.position;
-                    if(at.x<deck.min.x || at.x>deck.max.x || at.z<deck.min.z || at.z>deck.max.z)continue;
-                    if(centre==null || Mathf.Abs(at.x-deck.center.x)<Mathf.Abs(centre.position.x-deck.center.x))centre=part;
+                    if(!renderer.enabled || renderer is ParticleSystemRenderer)continue;
+                    if(own!=null && renderer.transform.IsChildOf(own))continue;
+                    var b=renderer.bounds;
+                    if(b.center.z<deck.center.z || b.min.z>=signZ)continue;
+                    if(b.max.x<left || b.min.x>right)continue;
+                    if(b.min.x<deck.min.x || b.max.x>deck.max.x || b.min.y>ceiling)continue;
+                    top=Mathf.Max(top,b.max.y);
                 }
-            if(centre==null)return top;
-            foreach(var renderer in centre.GetComponentsInChildren<Renderer>())top=Mathf.Max(top,renderer.bounds.max.y);
             return top;
         }
+
+        /// <summary>Metres over the deck past which a thing is hung, not standing, and the sign does not climb over it.</summary>
+        public const float CompetitionSignLineCeiling=6f;
+
+        /// <summary>
+        /// The arena's own overlays - the award sign's words and the station discs - drawn only
+        /// while nothing stands over the house (UI-UX-PASS-PLAN G0): the sign read through the
+        /// competition board's glass on every game, straddling the seam between the briefing card
+        /// and the play area, and a disc's edge peeked from under the field card. The renderers
+        /// go, not the objects: the sign keeps its place and its words for the tests that read them,
+        /// and a board switched off for a frame - a capture of the yard - gets the yard back.
+        /// </summary>
+        private void SetCompetitionOverlaysVisible(bool visible)
+        {
+            if(competitionArenaRoot==null || competitionOverlaysShown==visible)return;
+            competitionOverlaysShown=visible;
+            if(competitionSign!=null)
+            {
+                var words=competitionSign.GetComponent<MeshRenderer>();
+                if(words!=null)words.enabled=visible;
+            }
+            foreach(var mark in competitionArenaMarks)if(mark!=null)mark.enabled=visible;
+        }
+
+        /// <summary>Whether the arena's sign and discs are drawn this frame. A read, for tests.</summary>
+        public bool CompetitionOverlaysShown=>competitionArenaRoot!=null && competitionOverlaysShown;
 
         private void CreateCompetitionStationMesh()
         {
@@ -191,6 +235,8 @@ namespace Gamesim.Episode
             disc.GetComponent<MeshFilter>().sharedMesh=competitionStationMesh;
             var renderer=disc.GetComponent<MeshRenderer>();renderer.sharedMaterial=competitionArenaMaterial;
             renderer.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;renderer.receiveShadows=false;
+            renderer.enabled=competitionOverlaysShown;
+            competitionArenaMarks.Add(renderer);
         }
 
         private void TickCompetitionArena()
@@ -267,6 +313,7 @@ namespace Gamesim.Episode
             if(player!=null && player.ReleaseActivityMove(competitionPlayerOwner))
                 player.GetComponent<CharacterPresentation>()?.SetFacing(float.NaN);
             competitionPlayerStation=null;
+            competitionSign=null;competitionArenaMarks.Clear();competitionOverlaysShown=true;
             if(competitionArenaRoot!=null){Destroy(competitionArenaRoot);competitionArenaRoot=null;}
             if(competitionArenaMaterial!=null){Destroy(competitionArenaMaterial);competitionArenaMaterial=null;}
             if(competitionStationMesh!=null){Destroy(competitionStationMesh);competitionStationMesh=null;}

@@ -392,14 +392,23 @@ namespace Gamesim.Episode
         /// The house in a strip of small cards, one pressed: the photo with the week's role on it, the
         /// name and where you stand, each a control that makes them the one the screen is about.
         /// </summary>
-        public void HouseguestStrip(IReadOnlyList<string> ids, string selectedId, Action<string> pick)
+        public void HouseguestStrip(IReadOnlyList<string> ids, string selectedId, Action<string> pick) => HouseguestStrip(ids, selectedId, pick, 0f);
+
+        /// <summary>
+        /// The strip with its photos no taller than <paramref name="photoCap"/> at the resting size
+        /// (zero for the card's own proportion): the briefing's glance, whose column is wide and
+        /// whose frame is short.
+        /// </summary>
+        public void HouseguestStrip(IReadOnlyList<string> ids, string selectedId, Action<string> pick, float photoCap)
         {
             if (ids == null || ids.Count == 0 || content == null) return;
             var state = director != null ? director.Snapshot : null;
             if (state == null) return;
             float s = FontScale, gap = 10f * s;
             float width = Mathf.Clamp((ContentWidth() + gap) / ids.Count - gap, 96f * s, 150f * s);
-            float photo = width * .78f, height = photo + 52f * s;
+            float photo = width * .78f;
+            if (photoCap > 0f) photo = Mathf.Min(photo, photoCap * s);
+            float height = photo + 52f * s;
             int columns = Mathf.Max(1, Mathf.Min(ids.Count, Mathf.FloorToInt((ContentWidth() + gap) / (width + gap))));
             int rows = Mathf.CeilToInt(ids.Count / (float)columns);
             var grid = new GameObject(HouseguestStripName, typeof(RectTransform), typeof(GridLayoutGroup), typeof(LayoutElement)).GetComponent<RectTransform>();
@@ -522,6 +531,32 @@ namespace Gamesim.Episode
             }
         }
 
+        /// <summary>
+        /// The same legend at the right-hand end of a section head's row, on the head's own line,
+        /// for a screen with no row to spare for it (the briefing). Laid from the left and then
+        /// hung from the right, since its width is the words'.
+        /// </summary>
+        private void StandingLegendIn(RectTransform row)
+        {
+            if (row == null) return;
+            float s = FontScale;
+            var run = new GameObject("Standing legend", typeof(RectTransform)).GetComponent<RectTransform>();
+            run.SetParent(row, false);
+            float x = 0f;
+            foreach (var kind in new[] { RelationshipWeb.Kind.Alliance, RelationshipWeb.Kind.Neutral, RelationshipWeb.Kind.Rivalry })
+            {
+                var colour = kind == RelationshipWeb.Kind.Neutral ? UiTheme.Muted : RelationshipWeb.StandingColour(kind);
+                var dot = HudPrimitives.Disc("Legend dot", run, colour);
+                Anchor(dot, new Vector2(0f, .5f), new Vector2(0f, .5f), new Vector2(x, 0f), new Vector2(10f * s, 10f * s));
+                var word = FixedText(run, RelationshipWeb.StandingWord(kind), 12, UiTheme.Muted, new Vector2(x + 14f * s, -1f * s), new Vector2(80f * s, 20f * s));
+                float wide = Mathf.Ceil(word.GetPreferredValues(word.text).x);
+                // The box as wide as the word, so the run ends where the words do.
+                word.rectTransform.sizeDelta = new Vector2(wide + 2f, 20f * s);
+                x += 14f * s + wide + 18f * s;
+            }
+            Anchor(run, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(0f, -4f * s), new Vector2(Mathf.Max(1f, x - 18f * s), 20f * s));
+        }
+
         // ------------------------------------------------------------ the moves as tiles
 
         /// <summary>
@@ -558,10 +593,16 @@ namespace Gamesim.Episode
         }
 
         /// <summary>A named grid of tiles: the free-time screens' interactions and the overview's recommended moves.</summary>
-        public void Tiles(string gridName, IList<MoveTile> tiles, TileStyle style = TileStyle.Cards)
+        public void Tiles(string gridName, IList<MoveTile> tiles, TileStyle style = TileStyle.Cards) => Tiles(gridName, tiles, style, 0f);
+
+        /// <summary>
+        /// The same grid with its cards <paramref name="cardHeight"/> tall at the resting size
+        /// (zero for the cards' own 150): the briefing's recommended moves, whose frame is short.
+        /// </summary>
+        public void Tiles(string gridName, IList<MoveTile> tiles, TileStyle style, float cardHeight)
         {
             if (tiles == null || tiles.Count == 0 || content == null) return;
-            ChoiceTiles(gridName, tiles, style);
+            ChoiceTiles(gridName, tiles, style, cardHeight);
         }
 
         /// <summary>
@@ -572,7 +613,7 @@ namespace Gamesim.Episode
         /// find it. As cards, several to a row: the glyph and the caption on top, the chips under
         /// them, the line, and the cost at the foot.
         /// </summary>
-        private void ChoiceTiles(string gridName, IList<MoveTile> tiles, TileStyle style = TileStyle.Rows)
+        private void ChoiceTiles(string gridName, IList<MoveTile> tiles, TileStyle style = TileStyle.Rows, float cardHeight = 0f)
         {
             bool compact = style == TileStyle.Compact;
             float s = FontScale, spacing = (compact ? 6f : 10f) * s;
@@ -583,7 +624,7 @@ namespace Gamesim.Episode
             // Tall enough for a caption and two lines under it at the player's text size; a card
             // stacks its chips and its foot as well. A compact row starts at one line and grows to
             // its tallest tile's words once they are measured, below.
-            float cellHeight = (cards ? 150f : compact ? CompactTileHeight : 78f) * FontScale;
+            float cellHeight = (cards ? (cardHeight > 0f ? cardHeight : 150f) : compact ? CompactTileHeight : 78f) * FontScale;
             int rows = Mathf.CeilToInt(tiles.Count / (float)columns);
             var grid = new GameObject(gridName, typeof(RectTransform), typeof(GridLayoutGroup), typeof(LayoutElement)).GetComponent<RectTransform>();
             grid.SetParent(content, false);

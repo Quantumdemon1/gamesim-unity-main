@@ -228,7 +228,7 @@ namespace Gamesim.Episode
         /// Whether the house is the thing on screen: free roam, nothing open over it, no scripted
         /// shot, no ceremony, no competition, and the HUD up.
         /// </summary>
-        private bool HouseIsTheView => IsReady && !blockedRecovery && !IsPanelOpen && !overviewOpen && !challengeActive
+        private bool HouseIsTheView => IsReady && !blockedRecovery && !IsHouseUnderChrome && !overviewOpen && !challengeActive
             && !CeremonyOverlays.OnScreen && !IsFramingCeremony && !IsCeremonyStaged && (voteReveal == null || !voteReveal.IsPlaying) && !JuryRevealPlaying
             && (takeover == null || !takeover.IsPlaying) && (keyCeremony == null || !keyCeremony.IsPlaying)
             && hud != null && hud.IsVisible && player != null

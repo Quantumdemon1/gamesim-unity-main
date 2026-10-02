@@ -23,6 +23,7 @@ namespace Gamesim.Presentation
     public sealed partial class CompetitionGameScreen : MonoBehaviour
     {
         private CanvasGroup group, controls;
+        private Canvas surface;
         private RectTransform panel, playArea, scrim;
         private Button pause, cancel, finishAction;
         private MiniGameRun run;
@@ -46,6 +47,34 @@ namespace Gamesim.Presentation
         public bool OwnsMenuInput => IsShowing || Time.frameCount <= dismissedFrame + 1;
 
         /// <summary>
+        /// Whether the board is drawn over the house this frame: shown, lit, and its canvas enabled.
+        /// What the house draws under it - the yard's sign, the station discs, the name plates -
+        /// asks this before drawing (UI-UX-PASS-PLAN G0); a capture that switches the canvas off to
+        /// photograph the yard gets the yard back.
+        /// </summary>
+        public bool IsDrawn => IsShowing && gameObject.activeInHierarchy
+            && group != null && group.alpha > 0f && (surface == null || surface.enabled);
+
+        /// <summary>Every board there is, so the house can ask whether any is drawn: the director's, or one a test stood up beside it.</summary>
+        private static readonly List<CompetitionGameScreen> live = new List<CompetitionGameScreen>();
+
+        /// <summary>Whether any competition board is drawn this frame.</summary>
+        public static bool AnyDrawn
+        {
+            get
+            {
+                for (int i = live.Count - 1; i >= 0; i--)
+                {
+                    if (live[i] == null) { live.RemoveAt(i); continue; }
+                    if (live[i].IsDrawn) return true;
+                }
+                return false;
+            }
+        }
+
+        private void OnDestroy() { live.Remove(this); }
+
+        /// <summary>
         /// A sound the screen's own beats ask for - the count, the start, the last seconds, a wave -
         /// played by whoever owns the house's audio. Only existing cues: every cue needs a recording.
         /// </summary>
@@ -62,7 +91,8 @@ namespace Gamesim.Presentation
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1600, 900); scaler.matchWidthOrHeight = .5f;
             var screen = root.AddComponent<CompetitionGameScreen>();
-            screen.group = root.GetComponent<CanvasGroup>(); screen.Hide();
+            screen.group = root.GetComponent<CanvasGroup>(); screen.surface = canvas; screen.Hide();
+            live.Add(screen);
             return screen;
         }
 

@@ -74,14 +74,16 @@ namespace Gamesim.Episode
         /// <summary>The recent-events card, named so a test can find it the way the others are found.</summary>
         public const string RecentEventsCardName = "Recent events";
 
-        /// <summary>How many events the column shows, and the longest line one of them may occupy.</summary>
+        /// <summary>How many events the column shows; each takes the two lines its row holds (<see cref="FitExcerpt"/>).</summary>
         // Three, not four. The right column is 104 + 226 live feed + 12 + this card + 12 + the
         // knowledge card, and at four rows that stack reached y 808 of a 900-high canvas while the
         // controls box starts at 746 - a 62-pixel overlap that clipped the last row of whichever
         // card was unlucky. Four events was never the point; not colliding is.
         private const int RecentEventRows = 3;
         private const int EndgameEventRows = 2;
-        private const int RecentEventLetters = 50;
+
+        /// <summary>An event's line on the Recent Events card, so a test can find it.</summary>
+        public const string RecentEventLineName = "Event line";
 
         /// <summary>
         /// The mockups' masthead: the house mark, the wordmark in the display weight, and the season
@@ -852,6 +854,7 @@ namespace Gamesim.Episode
             colours.normalColor = new Color(1f, 1f, 1f, 0f);
             colours.highlightedColor = new Color(UiTheme.SurfaceRaised.r, UiTheme.SurfaceRaised.g, UiTheme.SurfaceRaised.b, .9f);
             colours.selectedColor = colours.highlightedColor;
+            colours.disabledColor = CornerLinkDisabled;
             button.colors = colours;
             var navigation = button.navigation; navigation.mode = Navigation.Mode.None; button.navigation = navigation;
             // 20 tall for a 12, which is a 14 at the larger text size: over 1.3 times the words, as
@@ -1091,21 +1094,35 @@ namespace Gamesim.Episode
         }
 
         private RectTransform nearbyBar;
+        /// <summary>Whether the director last asked for the Nearby card: kept, so a rebuild can put it back as asked.</summary>
+        private bool nearbyWanted;
 
         /// <summary>Swaps the Nearby card in for the week card while a conversation is witnessed.</summary>
         public void SetNearby(bool visible)
         {
+            nearbyWanted = visible;
+            ApplyNearby();
+        }
+
+        /// <summary>
+        /// The Nearby card and its bar up or down as last asked, the status line standing down for
+        /// the bar. The status line is the one this render built, kept from <see cref="Begin"/>:
+        /// found by name, a rebuild's old copy - inactive, on its way out at the frame's end - came
+        /// first, so the new one stayed up over the bar's words (the play sweep's row 22).
+        /// </summary>
+        private void ApplyNearby()
+        {
             // A story's Pull outranks it: both borrow the week card's place, and the Pull is rarer.
-            if (visible && PullShowing) visible = false;
+            bool visible = nearbyWanted && !PullShowing;
             if (nearbyCard == null || nearbyCard.gameObject.activeSelf == visible) return;
             nearbyCard.gameObject.SetActive(visible);
             SyncWeekCard();
             if (nearbyBar != null)
             {
                 nearbyBar.gameObject.SetActive(visible);
-                var status = nearbyBar.parent.Find("Status");
-                if (status != null) status.gameObject.SetActive(!visible);
+                if (statusRoot != null) statusRoot.gameObject.SetActive(!visible);
             }
+            MarkChromeChanged();
         }
 
         /// <summary>The relationships card's name. Not "Relationships": that is a rail row's caption.</summary>
@@ -1145,6 +1162,7 @@ namespace Gamesim.Episode
             colours.normalColor = new Color(1f, 1f, 1f, 0f);
             colours.highlightedColor = new Color(UiTheme.SurfaceRaised.r, UiTheme.SurfaceRaised.g, UiTheme.SurfaceRaised.b, .9f);
             colours.selectedColor = colours.highlightedColor;
+            colours.disabledColor = CornerLinkDisabled;
             linkButton.colors = colours;
             var navigation = linkButton.navigation; navigation.mode = Navigation.Mode.None; linkButton.navigation = navigation;
             var words = FixedText(link, SeeAllRelationshipsCaption, 12, Accent, new Vector2(6f, -4f), new Vector2(48f, 18f));
@@ -1261,8 +1279,10 @@ namespace Gamesim.Episode
                 const float text = 56f;
                 string when = PhaseShort(entry.phase) + (entry.week != state.week ? " · Week " + entry.week : "");
                 FixedText(card, when, 11, UiTheme.Muted, new Vector2(text, y), new Vector2(width - text - 12f, 15f));
-                FixedText(card, Excerpt(StoryText.Log(state, entry), RecentEventLetters), 13, Paper,
+                var line = FixedText(card, StoryText.Log(state, entry), 13, Paper,
                     new Vector2(text, y - 15f), new Vector2(width - text - 12f, 36f));
+                line.name = RecentEventLineName;
+                FitExcerpt(line);
                 if (i + 1 < entries.Count)
                 {
                     var rule = Panel("Event divider", card, new Color(UiTheme.Outline.r, UiTheme.Outline.g, UiTheme.Outline.b, .45f), 0);
@@ -1275,6 +1295,15 @@ namespace Gamesim.Episode
 
         /// <summary>The Recent Events card's corner link. Not "See all": that is the relationships card's.</summary>
         public const string ViewAllEventsCaption = "View all";
+
+        /// <summary>
+        /// What a corner link's white ground is painted when its column cannot be pressed: nothing.
+        /// A Pressable sets no disabled colour, so under a non-interactable column - an offer's card,
+        /// a story beat, the walk-in - Unity's own disabled tint painted the white panel grey at
+        /// half alpha behind the accent words, and 'View all' was a grey blob in fourteen frames of
+        /// the play sweep (row 9). The words carry the link; the ground only ever lights for a hover.
+        /// </summary>
+        private static readonly Color CornerLinkDisabled = new Color(1f, 1f, 1f, 0f);
 
         /// <summary>
         /// The card's corner link to the whole story (MOCKUP-PASS M3): the notebook's Story page,
@@ -1291,6 +1320,7 @@ namespace Gamesim.Episode
             colours.normalColor = new Color(1f, 1f, 1f, 0f);
             colours.highlightedColor = new Color(UiTheme.SurfaceRaised.r, UiTheme.SurfaceRaised.g, UiTheme.SurfaceRaised.b, .9f);
             colours.selectedColor = colours.highlightedColor;
+            colours.disabledColor = CornerLinkDisabled;
             button.colors = colours;
             var navigation = button.navigation; navigation.mode = Navigation.Mode.None; button.navigation = navigation;
             // A letter longer than 'See all', so the box is wider: 52 still clears the chevron, and
@@ -1336,12 +1366,22 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// Trims a line to what a two-line card row holds, on a word boundary.
+        /// Trims a line to the two lines its box holds, on a word boundary, with an ellipsis where
+        /// it was cut.
         ///
         /// <para>The accessibility suite fails any copy that clips, and an engine line has no length
-        /// limit — an eviction sentence naming two people and the jury runs well past what 286 px of
-        /// card can show. Cutting it here is the difference between a column that ends in an ellipsis
-        /// and one that ends mid-word behind an invisible edge.</para>
+        /// limit — an eviction sentence naming two people and the jury runs well past what 180 units
+        /// of card can show. The box is measured, not the letters: a budget of fifty letters was two
+        /// lines of some words and three of others, and the third line, ellipsis and all, was
+        /// clipped behind the box's edge, so the row ended mid-word with nothing to say it went on
+        /// (the play sweep's row 8). Each pass takes the words back to the last whole one before the
+        /// first that did not fit, with the ellipsis measured among them, so a pass that pushes the
+        /// ellipsis over the edge takes one more word; every pass is shorter, so it ends.</para>
+        /// </summary>
+        /// <summary>
+        /// Trims a line to a budget of letters, on a word boundary, with an ellipsis where it was
+        /// cut: the overview column's row of first names, on one line beside a room's count. A row
+        /// of two lines is measured instead (<see cref="FitExcerpt"/>).
         /// </summary>
         private static string Excerpt(string value, int letters)
         {
@@ -1349,6 +1389,24 @@ namespace Gamesim.Episode
             int cut = value.LastIndexOf(' ', Mathf.Min(letters, value.Length - 1));
             if (cut < letters / 2) cut = letters;
             return value.Substring(0, cut).TrimEnd(' ', ',', ';', ':', '·') + "…";
+        }
+
+        private static void FitExcerpt(TMP_Text line)
+        {
+            string words = line.text ?? "";
+            for (int pass = 0; pass < 12 && words.Length > 1; pass++)
+            {
+                line.ForceMeshUpdate(true);
+                if (!line.isTextOverflowing) return;
+                string kept = words.EndsWith("…", System.StringComparison.Ordinal) ? words.Substring(0, words.Length - 1) : words;
+                int fits = Mathf.Clamp(line.firstOverflowCharacterIndex, 0, kept.Length);
+                // Back to the last whole word before the cut, and always at least a letter shorter.
+                int cut = fits > 1 ? kept.LastIndexOf(' ', fits - 1) : -1;
+                if (cut < 1) cut = Mathf.Max(1, fits - 1);
+                if (cut >= kept.Length) cut = kept.Length - 1;
+                words = kept.Substring(0, cut).TrimEnd(' ', ',', ';', ':', '·') + "…";
+                line.text = words;
+            }
         }
     }
 }

@@ -348,6 +348,8 @@ namespace Gamesim.Episode
             TickCeremonies();
             // After both have moved on: the chip says what a press does while a stage runs.
             TickSkipChip();
+            // And what the house draws over itself, as the chrome this frame allows it.
+            TickHouseOverlays();
             // The music follows what is on screen every frame, before anything can return early:
             // the opening's loading gate and its closing fade change in the middle of a beat, with
             // nothing rendering. A state the bed is already in costs a comparison.
@@ -478,8 +480,10 @@ namespace Gamesim.Episode
             }
             // Nothing to press while a ceremony card is up: the card takes the pointer by reading the
             // mouse, not through a raycaster, and the click that dismissed it went on to press
-            // whatever the prompt said underneath.
-            if (!IsPanelOpen && !CeremonyOverlays.OnScreen)
+            // whatever the prompt said underneath. Nor under the briefing or a board (the house's
+            // one gate, EpisodeDirector.HouseOverlays.cs): the prompt drew over the briefing's
+            // recommended row, and E answers nothing the prompt does not say.
+            if (!IsHouseUnderChrome)
             {
                 // One decision, read twice. The prompt and the key used to run the same priority
                 // chain in two places, which is two chances to disagree about what E does.
@@ -510,7 +514,8 @@ namespace Gamesim.Episode
         /// </summary>
         public void Interact()
         {
-            if (!IsReady || IsPanelOpen) return;
+            // Under the briefing the prompt says nothing, so the key does nothing: one decision.
+            if (!IsReady || IsPanelOpen || IsBriefing) return;
             // Busy at a piece of furniture, E is getting up, before it is anything else.
             if (IsPlayerHouseActivityActive && playerActivityInHouse) { FinishPlayerHouseActivity(); return; }
             switch (ChooseInteraction(out var target))

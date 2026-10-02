@@ -52,7 +52,9 @@ namespace Gamesim.Episode
             var scrollRoot = new GameObject("Dashboard scroll", typeof(RectTransform), typeof(ScrollRect));
             scrollRoot.transform.SetParent(panel, false);
             var scrollRect = (RectTransform)scrollRoot.transform;
-            Stretch(scrollRect, 16f, 14f, 16f, 14f);
+            // Ten over and under, not fourteen, and twelve of padding at the foot: the briefing's
+            // frame is short, and every unit of it is a unit of the recommended row.
+            Stretch(scrollRect, 16f, 10f, 16f, 10f);
             var viewport = Panel("Viewport", scrollRect, new Color(0f, 0f, 0f, 0f));
             Stretch(viewport, 0f, 0f, 0f, 0f);
             viewport.gameObject.AddComponent<RectMask2D>();
@@ -60,7 +62,7 @@ namespace Gamesim.Episode
             column.SetParent(viewport, false);
             column.anchorMin = new Vector2(0f, 1f); column.anchorMax = Vector2.one; column.pivot = new Vector2(.5f, 1f); column.sizeDelta = Vector2.zero;
             var layout = column.GetComponent<VerticalLayoutGroup>();
-            layout.padding = new RectOffset(8, 8, 6, 18); layout.spacing = 12;
+            layout.padding = new RectOffset(8, 8, 6, 12); layout.spacing = 12;
             layout.childControlWidth = true; layout.childControlHeight = true; layout.childForceExpandWidth = true; layout.childForceExpandHeight = false;
             column.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             var scroll = scrollRoot.GetComponent<ScrollRect>();
@@ -69,18 +71,20 @@ namespace Gamesim.Episode
 
             PushContent(column, width - 32f - 16f);
             ScreenHead(view.Title, view.Headline, view.Hint);
-            // The map is under the briefing, and the map is a way there: one row puts the briefing
-            // away and leaves the labelled house with its chips and its floor to click.
-            Action(EpisodeDirector.ShowMapCaption, director.HideBriefing);
             RolesBanner(state);
             BeginColumns(320f);
+            // The legend on the head's own line, and the glance's photos no taller than a chip's:
+            // with the map's row the briefing's main column ran 115 units past the panel's foot at
+            // the resting size on the 16:9 frame, and the recommended moves - the point of the
+            // briefing - were the rows cut (the play sweep's row 12). The briefing still scrolls at
+            // the larger text and for a house too wide for one row of faces.
             SectionHead("people", "HOUSEGUESTS AT A GLANCE", "Where you stand with everyone still in the house.");
-            StandingLegend();
+            StandingLegendIn(content.childCount > 0 ? content.GetChild(content.childCount - 1) as RectTransform : null);
             var strip = content;
-            HouseguestStrip(view.GlanceIds, null, view.PickGlance ?? (id => { }));
+            HouseguestStrip(view.GlanceIds, null, view.PickGlance ?? (id => { }), GlancePhotoHeight);
             if (strip.childCount > 0) strip.GetChild(strip.childCount - 1).name = GlanceStripName;
             SectionHead("bulb", "RECOMMENDED ACTIONS", view.RecommendedHint);
-            Tiles(RecommendedTilesName, view.Recommended, TileStyle.Cards);
+            Tiles(RecommendedTilesName, view.Recommended, TileStyle.Cards, RecommendedCardHeight);
             SideColumn();
             BeginSideCard(StrategicContextName, "STRATEGIC CONTEXT");
             ContextBlock("PLAYS", view.Plays, "No play in motion.");
@@ -90,7 +94,35 @@ namespace Gamesim.Episode
             EndSideCard();
             EndColumns();
             PopContent();
+
+            // The map is under the briefing, and the map is a way there: the panel's corner puts the
+            // briefing away and leaves the labelled house with its chips and its floor to click.
+            // In the corner, out of the flow and over it, as every other screen keeps its way out;
+            // as a row of its own it was 69 units of the foot the recommended moves did not have.
+            var map = FixedButton(panel, EpisodeDirector.ShowMapCaption, Vector2.zero, new Vector2(MapButtonWidth, MapButtonHeight), director.HideBriefing);
+            var mapRect = (RectTransform)map.transform;
+            Anchor(mapRect, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-18f, -14f), new Vector2(MapButtonWidth, MapButtonHeight));
+            mapRect.GetComponent<Image>().color = new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .9f);
+            UiTheme.AddBorder(mapRect, UiTheme.ControlRadius, Accent);
+            var mapWords = map.GetComponentInChildren<TMPro.TMP_Text>();
+            if (mapWords != null) { mapWords.alignment = TMPro.TextAlignmentOptions.Center; mapWords.color = Accent; }
         }
+
+        /// <summary>The way back to the map, in the briefing's corner: wide enough for its words at the larger text, and a row's height.</summary>
+        private const float MapButtonWidth = 200f, MapButtonHeight = 40f;
+
+        /// <summary>
+        /// The glance's photos, no taller than this at the resting size: the strip's cards are
+        /// sized to the column, and six across a wide column the photo grew to 99 and the row to
+        /// 151. The chip's face is 72, and a face is what the photo is for.
+        /// </summary>
+        private const float GlancePhotoHeight = 72f;
+
+        /// <summary>
+        /// The recommended cards' height at the resting size: the glyph and the caption, the two
+        /// chips, two lines of the description and the foot, which is 136 of the cards' own 150.
+        /// </summary>
+        private const float RecommendedCardHeight = 136f;
 
         /// <summary>One block of the strategic context: its name, then a line each, or one word when it has none.</summary>
         private void ContextBlock(string heading, List<(string title, string line)> rows, string none)

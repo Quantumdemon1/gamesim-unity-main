@@ -18,6 +18,17 @@ namespace Gamesim.Tests.EditMode
     /// </summary>
     public sealed class NegotiationTests
     {
+        /// <summary>
+        /// Negotiate is appended after C5's two kinds, as they landed, so no recorded ordinal moves: a save
+        /// and a recorded season store the number.
+        /// </summary>
+        [Test]
+        public void NegotiateIsAppendedAfterTheAlliancesKinds()
+        {
+            Assert.That((int)EpisodeCommandKind.RenameAlliance, Is.EqualTo(60), "The last kind before C7.");
+            Assert.That((int)EpisodeCommandKind.Negotiate, Is.EqualTo(61));
+        }
+
         // ------------------------------------------------------------ the counter
 
         /// <summary>

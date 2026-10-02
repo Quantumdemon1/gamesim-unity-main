@@ -29,8 +29,9 @@ namespace Gamesim.Tests.PlayMode
         /// An eight-house played to its finale in the engine, with what the B0 sentinel's fixture
         /// gives the reveal to judge: before every vote the player is told two ballots - one true,
         /// one a lie - and overhears a third voter name the nominee they will not vote against. The
-        /// first season from seed 1 whose tapes are whole, hold a lie and break a tie, or failing a
-        /// tie the first whole one with a lie.
+        /// first season from seed 1 whose tapes are whole and hold a lie told to the player, a lean
+        /// overheard that the vote went against, and a tie broken; failing that, the first whole
+        /// one with a lie.
         /// </summary>
         private static EpisodeState TapesSeason()
         {
@@ -59,8 +60,8 @@ namespace Gamesim.Tests.PlayMode
                 var season = engine.Snapshot;
                 if (season.phase != EpisodePhase.Finished) continue;
                 var tapes = SeasonBallots.Read(season);
-                if (tapes.Count < 3 || !tapes.All(week => week.Complete) || !tapes.Any(week => week.rows.Any(row => row.Lied))) continue;
-                if (tapes.Any(week => week.TieBreak != null)) return season;
+                if (tapes.Count < 3 || !SeasonBallots.Whole(season, tapes) || !tapes.Any(week => week.rows.Any(row => row.Lied))) continue;
+                if (tapes.Any(week => week.TieBreak != null) && tapes.Any(week => week.rows.Any(row => row.Changed != null))) return season;
                 if (withoutTie == null) withoutTie = season;
             }
             Assert.That(withoutTie, Is.Not.Null, "No eight-house from seed 1 finished with whole tapes and a lie on them.");
@@ -85,12 +86,23 @@ namespace Gamesim.Tests.PlayMode
             return null;
         }
 
-        /// <summary>Whether <paramref name="inner"/> lies inside <paramref name="outer"/>, measured in <paramref name="outer"/>'s own space, so a camera canvas's tilt is no part of it.</summary>
+        /// <summary>
+        /// Whether <paramref name="inner"/>'s own rect lies inside <paramref name="outer"/>'s,
+        /// measured in <paramref name="outer"/>'s own space so a camera canvas's tilt is no part of
+        /// it. Its four corners only, never its children: a card's pack frame is drawn out past the
+        /// card by design (EndScreenKit.Frame's overhang), and the frame is not the card.
+        /// </summary>
         private static bool TapesInside(RectTransform outer, RectTransform inner)
         {
-            var bounds = RectTransformUtility.CalculateRelativeRectTransformBounds(outer, inner);
+            var corners = new Vector3[4];
+            inner.GetWorldCorners(corners);
             var room = outer.rect;
-            return bounds.min.x >= room.xMin - .5f && bounds.max.x <= room.xMax + .5f && bounds.min.y >= room.yMin - .5f && bounds.max.y <= room.yMax + .5f;
+            foreach (var corner in corners)
+            {
+                var local = outer.InverseTransformPoint(corner);
+                if (local.x < room.xMin - .5f || local.x > room.xMax + .5f || local.y < room.yMin - .5f || local.y > room.yMax + .5f) return false;
+            }
+            return true;
         }
 
         private static string TapesLabel(RectTransform root, string name) =>
@@ -103,24 +115,24 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The tapes on the report now open, against the reader: a card a week in order, each with
         /// its eyebrow, who went and the count; each side's heading and its voters in order, a lie
-        /// marked exactly where the reader marks one, with what was said under it, and the ballots
-        /// the record no longer places counted on their side and named under the card; the tie-break
-        /// on its own row, and the final eviction's one vote; every label drawn whole in a box at
-        /// least 1.3 times its type and inside the section; every row inside its card, every card
-        /// inside the section. Returns how many lies it found marked.
+        /// told to the player marked exactly where the reader marks one, with what they said under
+        /// it, a lean overheard that the vote went against said in a muted line with no mark, and
+        /// the ballots the record no longer places counted on their side and named under the card;
+        /// the tie-break on its own row, and the final eviction's one vote; every label drawn whole
+        /// in a box at least 1.3 times its type and inside the section; every row inside its card,
+        /// every card inside the section. Returns how many lies and changed votes it found drawn.
         /// </summary>
-        private int AssertTheTapesOnTheReport(EpisodeState state, List<SeasonBallots.Week> tapes, string where)
+        private (int lies, int changed) AssertTheTapesOnTheReport(EpisodeState state, List<SeasonBallots.Week> tapes, string where)
         {
             Canvas.ForceUpdateCanvases();
             var section = ReportPart(SeasonReport.HouseBallotsName);
             Assert.That(section, Is.Not.Null, where + ": the report reads the tapes.");
             Assert.That(ReportLabels().Count(text => text == SeasonBallots.Heading.ToUpperInvariant()), Is.EqualTo(1), where + ": under one heading.");
-            string intro = tapes.All(week => week.Complete) ? SeasonBallots.Intro : SeasonBallots.Intro + " " + SeasonBallots.IntroIncomplete;
-            Assert.That(TapesLabel(section, "Intro"), Is.EqualTo(intro), where + ": the intro says what the marks are, and whether the record is whole.");
+            Assert.That(TapesLabel(section, "Intro"), Is.EqualTo(SeasonBallots.IntroFor(state, tapes)), where + ": the intro says what the mark is, and whether the record is whole.");
             Assert.That(LabelsUnder(section), Has.None.EqualTo(SeasonBallots.SealedLine), where + ": open, not sealed.");
             var cards = section.Cast<Transform>().OfType<RectTransform>().Where(rect => rect.name.StartsWith(SeasonReport.BallotWeekName + " ")).ToList();
             Assert.That(cards.Select(card => card.name), Is.EqualTo(tapes.Select(week => SeasonReport.BallotWeekName + " " + week.week)), where + ": a card an eviction, in order.");
-            int lies = 0;
+            int lies = 0, changed = 0;
             foreach (var week in tapes)
             {
                 string at = where + ", week " + week.week + ": ";
@@ -150,16 +162,17 @@ namespace Gamesim.Tests.PlayMode
                         at + "each voter under the nominee they voted to evict.");
                     for (int b = 0; b < ballots.Count; b++)
                     {
+                        string voter = TapesVoter(state, ballots[b]);
                         var mark = drawn[b].Find(SeasonReport.LieMarkName);
-                        Assert.That(mark != null, Is.EqualTo(ballots[b].Lied), at + TapesVoter(state, ballots[b]) + " is marked a lie exactly where the reader marks one.");
-                        if (!ballots[b].Lied)
-                        {
-                            Assert.That(TapesLabel(drawn[b], SeasonReport.LieLineName), Is.Null);
-                            continue;
-                        }
+                        Assert.That(mark != null, Is.EqualTo(ballots[b].Lied), at + voter + " is marked a lie exactly where the reader marks one: a lie told to the player.");
+                        // Under the name: the lie, or the lean the vote went against, or nothing.
+                        Assert.That(TapesLabel(drawn[b], SeasonReport.LieLineName), Is.EqualTo(SeasonBallots.LieWords(state, ballots[b])), at + voter + "'s lie, in what they told the player.");
+                        Assert.That(TapesLabel(drawn[b], SeasonReport.ChangedLineName), Is.EqualTo(SeasonBallots.ChangedWords(state, ballots[b])),
+                            at + voter + "'s overheard lean the vote went against, said plainly.");
+                        if (ballots[b].Changed != null) changed++;
+                        if (!ballots[b].Lied) continue;
                         lies++;
                         Assert.That(mark.GetComponentInChildren<TMP_Text>().text, Is.EqualTo(SeasonBallots.LieWord));
-                        Assert.That(TapesLabel(drawn[b], SeasonReport.LieLineName), Is.EqualTo(SeasonBallots.LieWords(state, ballots[b])), at + "with what they said.");
                     }
                     // The ballots against this nominee the record no longer places, counted and never guessed.
                     int missing = week.MissingAgainst(nominees[i]);
@@ -176,6 +189,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(TapesLabel(card, SeasonReport.NotOnRecordName), Is.EqualTo(SeasonBallots.MissingWords(state, week)), at + "whose ballots the record no longer holds, where it knows.");
             }
             Assert.That(lies, Is.EqualTo(tapes.Sum(week => week.rows.Count(row => row.Lied))), where + ": every lie on the tapes is marked.");
+            Assert.That(changed, Is.EqualTo(tapes.Sum(week => week.rows.Count(row => row.Changed != null))), where + ": every changed vote is said.");
 
             // Every label draws its words, whole, in a box Inter draws in, inside the section.
             AssertEveryLabelDraws(section, where + "'s tapes");
@@ -187,7 +201,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(label.isTextTruncated, Is.False, where + ": '" + label.text + "' is cut.");
             }
             AssertDecisionCopyFits(section);
-            return lies;
+            return (lies, changed);
         }
 
         /// <summary>
@@ -247,7 +261,10 @@ namespace Gamesim.Tests.PlayMode
                         }
                         Report().Show(state, _ => null, null);
                         yield return null;
-                        Assert.That(AssertTheTapesOnTheReport(state, tapes, where), Is.GreaterThan(0), where + ": a lie on the tapes, marked.");
+                        var (lies, changed) = AssertTheTapesOnTheReport(state, tapes, where);
+                        Assert.That(lies, Is.GreaterThan(0), where + ": a lie told to the player, marked.");
+                        if (tapes.Any(week => week.rows.Any(row => row.Changed != null)))
+                            Assert.That(changed, Is.GreaterThan(0), where + ": an overheard lean the vote went against, said without a mark.");
 
                         if (wide && Application.isBatchMode)
                         {

@@ -116,10 +116,16 @@ namespace Gamesim.Tests.EditMode
             Assert.That(tapes.Count, Is.EqualTo(counted.Count + 1), "A week on the tapes for every eviction, and nothing else.");
         }
 
+        /// <summary>
+        /// LIED is the lie told to the player's face and nothing else: a told claim the ballot went
+        /// against is marked, with what they told the player; an overheard lean the ballot went
+        /// against - the engine wrote the voter's lean as it stood when heard - is a vote that
+        /// changed, said in its own words with no mark; a claim kept, or none, says nothing.
+        /// </summary>
         [Test]
-        public void LiesAreMarkedExactlyWhereAJudgedClaimSaidTheOtherName()
+        public void OnlyALieToldToThePlayerIsMarkedAndAnOverheardLeanTheVoteWentAgainstIsSaidPlainly()
         {
-            int lies = 0, toldLies = 0, overheardLies = 0, kept = 0, quiet = 0;
+            int lies = 0, changed = 0, kept = 0, quiet = 0;
             for (uint seed = 1; seed <= 6; seed++)
             {
                 var counted = new Dictionary<int, List<VoteState>>();
@@ -130,32 +136,42 @@ namespace Gamesim.Tests.EditMode
                         string where = "Seed " + seed + ", week " + week.week + ", " + s.Find(row.voterId).name + ": ";
                         string ballot = counted[week.week].Single(vote => vote.voterId == row.voterId).targetId;
                         var claims = s.ledger.claims.Where(k => k.week == week.week && k.voterId == row.voterId && k.status != ClaimStatus.Open).ToList();
-                        bool saidOtherwise = claims.Any(k => k.targetId != ballot);
-                        Assert.That(row.Lied, Is.EqualTo(saidOtherwise), where + "marked a lie exactly where a judged claim named the other nominee.");
+                        bool toldOtherwise = claims.Any(k => k.source == ClaimSource.Told && k.targetId != ballot);
+                        bool heardOtherwise = claims.Any(k => k.source != ClaimSource.Told && k.targetId != ballot);
+                        Assert.That(row.Lied, Is.EqualTo(toldOtherwise), where + "marked a lie exactly where a claim told to the player named the other nominee.");
+                        Assert.That(row.Changed != null, Is.EqualTo(heardOtherwise && !toldOtherwise), where + "a lean overheard the vote went against, said plainly.");
                         if (row.Lied)
                         {
                             lies++;
+                            Assert.That(row.Lie.source, Is.EqualTo(ClaimSource.Told));
                             Assert.That(row.Lie.saidId, Is.Not.EqualTo(ballot), where + "the lie names what they said, not what they did.");
-                            Assert.That(claims.Any(k => k.targetId == row.Lie.saidId && k.source == row.Lie.source && k.status == ClaimStatus.Lied), Is.True,
+                            Assert.That(claims.Any(k => k.targetId == row.Lie.saidId && k.source == ClaimSource.Told && k.status == ClaimStatus.Lied), Is.True,
                                 where + "and it is the ledger's own claim, as the reveal judged it.");
-                            string words = SeasonBallots.LieWords(s, row);
-                            Assert.That(words, Does.EndWith(row.Lie.saidId == s.playerId ? "evict you" : "evict " + s.Find(row.Lie.saidId).name));
-                            if (row.Lie.source == ClaimSource.Told) { toldLies++; Assert.That(words, Does.StartWith("Told you they'd evict ")); }
-                            if (row.Lie.source == ClaimSource.Overheard) { overheardLies++; Assert.That(words, Does.StartWith("Overheard saying they'd evict ")); }
+                            Assert.That(SeasonBallots.LieWords(s, row), Is.EqualTo("Told you they'd evict " + (row.Lie.saidId == s.playerId ? "you" : s.Find(row.Lie.saidId).name)));
+                            Assert.That(SeasonBallots.ChangedWords(s, row), Is.Null, where + "the lie says it; nothing more.");
+                            continue;
+                        }
+                        Assert.That(SeasonBallots.LieWords(s, row), Is.Null, where + "no lie, no lie line.");
+                        if (row.Changed != null)
+                        {
+                            changed++;
+                            Assert.That(row.Changed.source, Is.EqualTo(ClaimSource.Overheard), "The fixture's only other claims are overheard.");
+                            Assert.That(row.Changed.saidId, Is.Not.EqualTo(ballot));
+                            Assert.That(SeasonBallots.ChangedWords(s, row), Is.EqualTo("Overheard saying they'd evict "
+                                + (row.Changed.saidId == s.playerId ? "you" : s.Find(row.Changed.saidId).name) + "; voted the other way"));
                         }
                         else
                         {
-                            Assert.That(SeasonBallots.LieWords(s, row), Is.Null, where + "no lie, no lie line.");
+                            Assert.That(SeasonBallots.ChangedWords(s, row), Is.Null, where + "nothing said against the ballot, nothing to say.");
                             if (claims.Count > 0) kept++;
                             else quiet++;
                         }
                     }
             }
-            Assert.That(toldLies, Is.GreaterThan(0), "A lie told to the player's face, caught and marked.");
-            Assert.That(overheardLies, Is.GreaterThan(0), "An overheard lie, caught and marked.");
-            Assert.That(lies, Is.EqualTo(toldLies + overheardLies));
-            Assert.That(kept, Is.GreaterThan(0), "A claim kept marks nothing.");
-            Assert.That(quiet, Is.GreaterThan(0), "A ballot nobody said anything about marks nothing.");
+            Assert.That(lies, Is.GreaterThan(0), "A lie told to the player's face, caught and marked.");
+            Assert.That(changed, Is.GreaterThan(0), "An overheard lean the vote went against, said without a mark.");
+            Assert.That(kept, Is.GreaterThan(0), "A claim kept says nothing.");
+            Assert.That(quiet, Is.GreaterThan(0), "A ballot nobody said anything about says nothing.");
         }
 
         // ---------------------------------------------------------------- hand-built weeks
@@ -279,7 +295,11 @@ namespace Gamesim.Tests.EditMode
             Assert.That(week.rows.Last(), Is.SameAs(week.TieBreak), "after the house's,");
             Assert.That(week.Side(npcs[1].id).Select(row => row.voterId), Is.EqualTo(new[] { npcs[3].id }), "and outside the house's count.");
             Assert.That(SeasonBallots.Eyebrow(week), Is.EqualTo("WEEK 1 · TIE BROKEN"));
-            Assert.That(SeasonBallots.CountWords(s, week), Is.EqualTo("Tied 1 to 1; " + npcs[0].name + " broke the tie."));
+            // In the words the house heard it in: the engine's eviction line, from the week's own Head of Household.
+            Assert.That(SeasonBallots.CountWords(s, week), Is.EqualTo("By a vote of 1 to 1; " + npcs[0].name + " broke the tie."));
+            s.hohId = npcs[3].id;
+            Assert.That(SeasonBallots.CountWords(s, week), Is.EqualTo(EpisodeEngine.CountTail(s, npcs[1].id, new[] { (npcs[1].id, 1), (npcs[2].id, 1) }).Replace(npcs[3].name, npcs[0].name)),
+                "The engine's own tail, with the week's Head of Household where it reads today's.");
             Assert.That(SeasonBallots.TieBreakWords(s, week), Is.EqualTo("Head of Household: broke the tie to evict " + npcs[1].name + "."));
         }
 
@@ -354,16 +374,66 @@ namespace Gamesim.Tests.EditMode
             Assert.That(SeasonBallots.SideHeading(you, yours, you.playerId), Is.EqualTo("TO EVICT YOU (2)"));
             Assert.That(yours.Sides.First(), Is.EqualTo(you.playerId));
 
-            // A lie in each of the claim's sources' words.
+            // A lean the vote went against, heard or reported, is said plainly, in its source's words, and is no lie.
             var row = new SeasonBallots.Row { voterId = npcs[3].id, targetId = npcs[2].id };
             row.said.Add(new SeasonBallots.Said { saidId = npcs[1].id, source = ClaimSource.Ally, lied = true });
-            Assert.That(SeasonBallots.LieWords(s, row), Is.EqualTo("An ally heard they'd evict " + npcs[1].name));
+            Assert.That(row.Lied, Is.False, "An ally's account the vote went against is not a lie told to the player.");
+            Assert.That(SeasonBallots.LieWords(s, row), Is.Null);
+            Assert.That(SeasonBallots.ChangedWords(s, row), Is.EqualTo("An ally heard they'd evict " + npcs[1].name + "; voted the other way"));
             row.said.Insert(0, new SeasonBallots.Said { saidId = s.playerId, source = ClaimSource.Overheard, lied = true });
-            Assert.That(SeasonBallots.LieWords(s, row), Is.EqualTo("Overheard saying they'd evict you"), "The surest source speaks for the lie.");
+            Assert.That(row.Lied, Is.False, "Nor is a lean overheard.");
+            Assert.That(SeasonBallots.ChangedWords(s, row), Is.EqualTo("Overheard saying they'd evict you; voted the other way"), "The surest source speaks for it.");
+
+            // A lie told to the player's face is the mark, and says it alone.
+            row.said.Insert(0, new SeasonBallots.Said { saidId = npcs[1].id, source = ClaimSource.Told, lied = true });
+            Assert.That(row.Lied, Is.True);
+            Assert.That(SeasonBallots.LieWords(s, row), Is.EqualTo("Told you they'd evict " + npcs[1].name));
+            Assert.That(row.Changed, Is.Null);
+            Assert.That(SeasonBallots.ChangedWords(s, row), Is.Null);
+
+            // A claim kept says nothing.
             row.said.Clear();
             row.said.Add(new SeasonBallots.Said { saidId = npcs[2].id, source = ClaimSource.Told, lied = false });
+            row.said.Add(new SeasonBallots.Said { saidId = npcs[2].id, source = ClaimSource.Overheard, lied = false });
             Assert.That(row.Lied, Is.False);
-            Assert.That(SeasonBallots.LieWords(s, row), Is.Null, "A claim kept is no lie.");
+            Assert.That(SeasonBallots.LieWords(s, row), Is.Null, "A claim kept is no lie,");
+            Assert.That(SeasonBallots.ChangedWords(s, row), Is.Null, "and no change of vote.");
+        }
+
+        /// <summary>
+        /// An eviction the ledger has no week for - a season begun before the ledger kept them - is
+        /// not left out in silence: the houseguests' own statuses count more evictions than the
+        /// tapes hold weeks, and the intro says the record is not whole, as it does for a week whose
+        /// lines are gone.
+        /// </summary>
+        [Test]
+        public void AnEvictionWithNoWeekOnTheLedgerLeavesTheTapesNotWhole()
+        {
+            var s = RolledOff(3, 0);
+            var npcs = Npcs(s);
+            npcs[1].status = ContestantStatus.Jury;
+            var tapes = SeasonBallots.Read(s);
+            Assert.That(tapes.Single().Complete, Is.True, "Week one is whole: a unanimous count proves it.");
+            Assert.That(SeasonBallots.WeeksNotOnRecord(s, tapes), Is.Zero);
+            Assert.That(SeasonBallots.Whole(s, tapes), Is.True);
+            Assert.That(SeasonBallots.IntroFor(s, tapes), Is.EqualTo(SeasonBallots.Intro));
+
+            // The one who survived week one's block went in a week the ledger never kept.
+            npcs[2].status = ContestantStatus.Evicted;
+            tapes = SeasonBallots.Read(s);
+            Assert.That(tapes.Select(week => week.week), Is.EqualTo(new[] { 1 }), "The tapes read the weeks the ledger kept,");
+            Assert.That(tapes.Single().Complete, Is.True);
+            Assert.That(SeasonBallots.WeeksNotOnRecord(s, tapes), Is.EqualTo(1), "and count the eviction they do not hold,");
+            Assert.That(SeasonBallots.Whole(s, tapes), Is.False);
+            Assert.That(SeasonBallots.IntroFor(s, tapes), Is.EqualTo(SeasonBallots.Intro + " " + SeasonBallots.IntroIncomplete), "so the intro says the record is not whole.");
+
+            // Production's removals are no eviction.
+            npcs[2].status = ContestantStatus.Expelled;
+            Assert.That(SeasonBallots.Whole(s, SeasonBallots.Read(s)), Is.True);
+
+            // A week that has lost lines is not whole either.
+            var forgotten = RolledOff(2, 1);
+            Assert.That(SeasonBallots.IntroFor(forgotten, SeasonBallots.Read(forgotten)), Is.EqualTo(SeasonBallots.Intro + " " + SeasonBallots.IntroIncomplete));
         }
     }
 }

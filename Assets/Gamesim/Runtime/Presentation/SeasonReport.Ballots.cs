@@ -12,9 +12,10 @@ namespace Gamesim.Presentation
     /// season, read out once it is over - "the tapes". A card a week: who went and by what count,
     /// then the house's ballots on two sides, one a nominee, each voter's face and name under the
     /// nominee they voted to evict, the Head of Household's deciding vote on a row of its own
-    /// outside the count, and a ballot marked LIED, with what the voter said, where a claim the
-    /// reveal judged named the other nominee. The final eviction is the last Head of Household's
-    /// one vote.
+    /// outside the count, and a ballot marked LIED, with what the voter told the player, where the
+    /// reveal judged that claim a lie. A lean overheard that the ballot went against is a vote that
+    /// changed, not a lie anyone told: it is said in a muted line under the name, with no mark. The
+    /// final eviction is the last Head of Household's one vote.
     ///
     /// <para>Before the finale the section is sealed and says so: <see cref="SeasonBallots.Read"/>
     /// returns nothing for a season still being played, so no face, no name and no count is drawn
@@ -33,7 +34,7 @@ namespace Gamesim.Presentation
     {
         /// <summary>The section's parts, by name, for a test and a screen reader.</summary>
         public const string HouseBallotsName = "House ballots", BallotWeekName = "Ballot week", BallotSideName = "Ballot side",
-            BallotRowName = "Ballot row", LieMarkName = "Lie mark", LieLineName = "Lie line", TieBreakMarkName = "Tie-break mark",
+            BallotRowName = "Ballot row", LieMarkName = "Lie mark", LieLineName = "Lie line", ChangedLineName = "Changed line", TieBreakMarkName = "Tie-break mark",
             SoleVoteMarkName = "Sole vote mark", TapesSealedName = "Tapes sealed", NotOnRecordName = "Not on the record",
             MissingBallotsName = "Missing ballots";
 
@@ -77,8 +78,7 @@ namespace Gamesim.Presentation
                 var none = EndScreenKit.Text("Empty", section, SeasonBallots.EmptyLine, 15f, UiTheme.Muted, 0f, 0f, width, 20f);
                 return EndScreenKit.Wrapped(none, width) + 6f;
             }
-            string intro = weeks.All(week => week.Complete) ? SeasonBallots.Intro : SeasonBallots.Intro + " " + SeasonBallots.IntroIncomplete;
-            var lead = EndScreenKit.Text("Intro", section, intro, 15f, UiTheme.Muted, 0f, 0f, width, 20f);
+            var lead = EndScreenKit.Text("Intro", section, SeasonBallots.IntroFor(state, weeks), 15f, UiTheme.Muted, 0f, 0f, width, 20f);
             float y = EndScreenKit.Wrapped(lead, width) + 12f;
 
             const float gap = 16f;
@@ -177,11 +177,15 @@ namespace Gamesim.Presentation
             head.characterSpacing = 2f;
             float at = EndScreenKit.Wrapped(head, width) + 6f;
             var ballots = week.Side(nomineeId).ToList();
-            // A lie in the warning's orange, filled: apart from the evicted side's red and the
-            // other side's steel, so the mark reads as a mark on either side.
+            // A lie told to the player in the warning's orange, filled: apart from the evicted
+            // side's red and the other side's steel, so the mark reads as a mark on either side. A
+            // lean overheard that the vote went against is no lie told: a muted line, no mark.
             foreach (var ballot in ballots)
-                at += BallotRow(side, s, ballot, tint, ballot.Lied ? SeasonBallots.LieWord : null, UiTheme.Warning, LieMarkName,
-                    SeasonBallots.LieWords(s, ballot), LieLineName, UiTheme.Warning, portrait, 0f, at, width) + 6f;
+                at += ballot.Lied
+                    ? BallotRow(side, s, ballot, tint, SeasonBallots.LieWord, UiTheme.Warning, LieMarkName,
+                        SeasonBallots.LieWords(s, ballot), LieLineName, UiTheme.Warning, portrait, 0f, at, width) + 6f
+                    : BallotRow(side, s, ballot, tint, null, UiTheme.Warning, LieMarkName,
+                        SeasonBallots.ChangedWords(s, ballot), ChangedLineName, UiTheme.Muted, portrait, 0f, at, width) + 6f;
             int missing = week.MissingAgainst(nomineeId);
             if (missing > 0 || ballots.Count == 0)
             {

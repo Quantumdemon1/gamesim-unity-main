@@ -16,9 +16,11 @@ namespace Gamesim.Tests.EditMode
     ///
     /// <para>Where it stops (UI-UX-PASS-PLAN J0, decision 8): the season report's table of every
     /// eviction ballot, <see cref="SeasonBallots"/>, is the one reader that names a ballot the
-    /// player never learned, and it opens only when the season is over. Every reader above keeps
-    /// the rule at every state, the finished one included; the table reads nothing at any state
-    /// before the finale (<see cref="TheTapesAreSealedUntilTheFinaleAndOpenThere"/>).</para>
+    /// player never learned, and it opens only when the season is over. This sentinel holds the
+    /// readers above to the rule on finished seasons, every reveal of the season on the record by
+    /// then (the PlayMode sentinel holds the screens at a reveal mid-season); the table is not
+    /// among them, and instead is read at every state a played season passes through before the
+    /// finale and found to read nothing (<see cref="TheTapesAreSealedUntilTheFinaleAndOpenThere"/>).</para>
     /// </summary>
     public sealed class BallotPrivacyTests
     {

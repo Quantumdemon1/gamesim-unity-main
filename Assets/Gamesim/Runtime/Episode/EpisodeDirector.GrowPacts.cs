@@ -77,7 +77,7 @@ namespace Gamesim.Episode
         private void PactRows(EpisodeState state, ContestantState npc)
         {
             if (!EpisodeEngine.CommitmentRulesOn(state)) return;
-            foreach (var pact in EpisodeEngine.SharedPacts(state, npc.id).Where(pact => EpisodeEngine.PlayerFounded(state, pact)).ToList())
+            foreach (var pact in EpisodeEngine.SharedPacts(state, npc.id).Where(shared => EpisodeEngine.PlayerFounded(state, shared)).ToList())
                 RenameRows(state, npc, pact);
             foreach (var pact in state.alliances.Where(a => a.active && a.members.Contains(state.playerId) && !a.members.Contains(npc.id)).ToList())
                 BringInRow(state, npc, pact);

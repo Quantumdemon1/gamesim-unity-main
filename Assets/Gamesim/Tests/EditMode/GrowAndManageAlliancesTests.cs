@@ -676,14 +676,14 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Apply(engine, BringIn, maya.id, pact.id).accepted, Is.True);
             var card = AllianceRead.Yours(engine.Snapshot).Single(p => p.id == pact.id);
             Assert.That(card.formed, Is.EqualTo("You formed it with " + riley.name.Split(' ')[0] + "."), "Formed with Riley,");
-            Assert.That(card.joined.Select(j => (j.week, j.text)), Is.EqualTo(new[] { (s.week, "You brought " + maya.name.Split(' ')[0] + " in.") }),
+            Assert.That(Joined(card), Is.EqualTo(new[] { (s.week, "You brought " + maya.name.Split(' ')[0] + " in.") }),
                 "and Maya brought in since.");
             Assert.That(card.members.Select(m => m.id), Is.EqualTo(new[] { riley.id, maya.id }), "Both are in it.");
 
             // Renamed since, the line still says who joined it: its hearers were the pact's.
             var renamed = Apply(engine, Rename, riley.id, pact.id, "Dream Team");
             Assert.That(renamed.accepted, Is.True, renamed.reason);
-            Assert.That(AllianceRead.Yours(engine.Snapshot).Single(p => p.id == pact.id).joined, Has.Count.EqualTo(1), "Renamed, it still knows.");
+            Assert.That(Joined(AllianceRead.Yours(engine.Snapshot).Single(p => p.id == pact.id)), Has.Count.EqualTo(1), "Renamed, it still knows.");
 
             var left = Apply(engine, EpisodeCommandKind.LeaveAlliance, riley.id, pact.id);
             Assert.That(left.accepted, Is.True, left.reason);
@@ -779,6 +779,9 @@ namespace Gamesim.Tests.EditMode
         private static string Refusal(EpisodeState s, string inviteeId, AllianceState pact) => EpisodeEngine.BringInRefusal(s, inviteeId, pact);
 
         private static string PactRenameRefusal(EpisodeState s, AllianceState pact) => EpisodeEngine.RenameRefusal(s, pact);
+
+        /// <summary>Who the alliances page says the player brought in, and when (AllianceRead.Pact.joined).</summary>
+        private static List<(int week, string text)> Joined(AllianceRead.Pact card) => card.joined.Select(j => (j.week, j.text)).ToList();
 
         private static string Founder(AllianceState pact) => EpisodeEngine.Founder(pact);
 

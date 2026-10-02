@@ -72,6 +72,40 @@ namespace Gamesim.Episode
         public static string CallTheVoteCaption(string alliance, string who) => "Call the vote in " + alliance + ": evict " + who;
 
         /// <summary>
+        /// The answers to a counter-offer (ACTIONS-DEALS-ALLIANCES-PLAN C7), by the first name of whoever
+        /// made it: "Take Maya's counter-offer", "Turn down Maya's counter-offer". New words, no other
+        /// control's: an offer's own answers keep theirs.
+        /// </summary>
+        public static string CounterAcceptCaption(string first) => "Take " + first + "'s counter-offer";
+        public static string CounterDeclineCaption(string first) => "Turn down " + first + "'s counter-offer";
+
+        /// <summary>
+        /// Calling in a promise a houseguest made the player (C7), each of the web's three ways, naming
+        /// them and what they promised: "Remind Maya of their promise of safety", "Demand Maya keep their
+        /// promise of safety", "Threaten to tell the house if Maya breaks their promise of safety".
+        /// </summary>
+        public static string CallInCaption(string approach, string first, string promised)
+        {
+            string promise = "their promise of " + promised;
+            switch (approach)
+            {
+                case Gamesim.Simulation.Negotiation.Remind: return "Remind " + first + " of " + promise;
+                case Gamesim.Simulation.Negotiation.Demand: return "Demand " + first + " keep " + promise;
+                default: return "Threaten to tell the house if " + first + " breaks " + promise;
+            }
+        }
+
+        /// <summary>Mending fences with a houseguest the player broke their word to (C7): "Mend fences with Maya".</summary>
+        public static string MendFencesCaption(string first) => "Mend fences with " + first;
+
+        /// <summary>
+        /// A veto for a price (C7), the holder's word to a nominee and what it costs them: "Use the veto on
+        /// Maya, for their vote to keep you", "Use the veto on Maya, for a final two".
+        /// </summary>
+        public static string VetoPriceCaption(string first, string kind) =>
+            "Use the veto on " + first + (kind == Gamesim.Simulation.DealKind.FinalTwo ? ", for a final two" : ", for their vote to keep you");
+
+        /// <summary>
         /// "a " or "an ", so a caption built from a deal's own title reads as English.
         ///
         /// <para>Two of the ten deal kinds begin with a vowel - Alliance Invitation and Information
@@ -403,10 +437,16 @@ namespace Gamesim.Episode
             // full run). Never under the gate: opening a panel renders before the tick clears it.
             if (!string.IsNullOrEmpty(promptAsked) && director != null && !director.IsHouseUnderChrome)
                 SetPrompt(promptAsked, promptHintAsked);
+            // The line down under a ceremony's card that says the same beat (UI-UX-PASS-PLAN V0),
+            // asked of the director now - the render a commit makes comes in the frame its card
+            // begins, before the director's next tick says so - and before the Nearby card is put
+            // back, which stands the line down by the same rule.
+            SetStatusUnderCard(director != null && director.CeremonyCardAnnouncing);
             // The Nearby card and its bar as last asked for, now that the status line they stand
             // in for is built: a render between the director's ticks used to leave the new status
             // over the bar until the next tick, and a frame is what a capture photographs.
             ApplyNearby();
+            ApplyStatusLine();
             content = null;
             if (!open && !recovery)
             {
@@ -1938,6 +1978,9 @@ namespace Gamesim.Episode
             // A panel redrawn under the pointer takes its presses back once the hold's time is up
             // (EpisodeHud.FreeTimeBoard.cs), whether or not anything renders again.
             if (pointerHeldUntil > 0f) ApplyPointerHold();
+            // A name a picker drew over a card that a row drawn after it uses as its caption comes off
+            // now the render is done (EpisodeHud.ConversationGroups.cs).
+            if (pickerNames.Count > 0) StandDownNamesThatAreCaptions();
             var events = EventSystem.current;
             if (canvas == null || !canvas.gameObject.activeInHierarchy || events == null) return;
             var overlay = ActiveOverlay();
@@ -2012,12 +2055,14 @@ namespace Gamesim.Episode
                 // reason to move the keyboard. The HUD's own rebuilds destroy the old selection, so
                 // for them this is null and the named restore below takes over as before.
                 var current = events.currentSelectedGameObject;
+                // Never, of the HUD's own accord, a control that commits the final choice: the
+                // final Head of Household's page opens on Close (MayFocusOnItsOwn).
                 var focus = eligible.FirstOrDefault(item => current != null && item.gameObject == current)
-                    ?? eligible.FirstOrDefault(item => item.name == preferredSelection)
-                    ?? OpeningControl(eligible)
+                    ?? eligible.FirstOrDefault(item => item.name == preferredSelection && MayFocusOnItsOwn(item))
+                    ?? OpeningControl(eligible.Where(MayFocusOnItsOwn).ToArray())
                     ?? PinnedSelectable(eligible)
                     ?? eligible.FirstOrDefault(item => item.name == "Go to episode screen")
-                    ?? eligible.FirstOrDefault();
+                    ?? eligible.FirstOrDefault(MayFocusOnItsOwn);
                 RestoreFocus(events, focus != null ? focus.gameObject : null);
                 restoreSelection = false;
             }
@@ -2041,9 +2086,9 @@ namespace Gamesim.Episode
             }
             if (scope != null && (selected == null || !selected.transform.IsChildOf(scope)))
             {
-                var focus = (overlay != null ? overlay : content).GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable())
+                var focus = (overlay != null ? overlay : content).GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable() && MayFocusOnItsOwn(item))
                     ?? (overlay == null && pinnedAction != null ? pinnedAction.GetComponent<Selectable>() : null)
-                    ?? scope.GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable());
+                    ?? scope.GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable() && MayFocusOnItsOwn(item));
                 RestoreFocus(events, focus != null ? focus.gameObject : null);
                 selected = events.currentSelectedGameObject;
             }
@@ -2054,6 +2099,18 @@ namespace Gamesim.Episode
                     RevealSelection(selected.transform);
             }
         }
+
+        /// <summary>
+        /// Whether the HUD may put the keyboard on <paramref name="item"/> on its own account - a
+        /// panel opening, a rebuild's restore, a lost selection's fallback. Never a control that
+        /// commits the final Head of Household's choice (it wears a <see cref="ChoiceLight"/>), unless
+        /// it is the one the player lit, handed back across a rebuild: an irreversible choice is never
+        /// left under an Enter the player did not aim (UI-UX-PASS-PLAN Q0's review). That page opens
+        /// on Close, which commits nothing; Tab or an arrow takes the keyboard to a choice, which
+        /// lights its card.
+        /// </summary>
+        private bool MayFocusOnItsOwn(Selectable item) =>
+            item != null && (item.GetComponent<ChoiceLight>() == null || (litChoice != null && item.name == litChoice));
 
         /// <summary>
         /// Selects <paramref name="target"/> on the HUD's own account rather than the player's: a

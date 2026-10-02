@@ -97,12 +97,14 @@ namespace Gamesim.Simulation
         /// Every bloc they sit in that the evaluator knows about, four points a head, capped at
         /// twenty. Knowledge-gated past the story system's bonds rules: an alliance counts once the
         /// evaluator is in it or knows of it, which is how blindsides and backdoors emerge instead of
-        /// being scripted. Every alliance without a story fact is known to all, as it always was.
+        /// being scripted. Every alliance without a story fact is known to all, as it always was. Under
+        /// the commitment rules a member who has left the house has left the bloc (ACTIONS-DEALS-ALLIANCES-PLAN
+        /// X5): only the heads still in it count (<see cref="Allegiance.Counted"/>).
         /// </summary>
         private static double AllianceThreat(EpisodeState state, string evaluatorId, string targetId) =>
             Math.Min(20, state.alliances
                 .Where(a => a.active && a.members.Contains(targetId) && Knowledge.AllianceVisibleTo(state, a, evaluatorId))
-                .Sum(a => a.members.Count * 4));
+                .Sum(a => Allegiance.Counted(state, a).Count * 4));
 
         /// <summary>
         /// What they might still do. Capped at ten by the source, though its terms reach only seven:
@@ -125,8 +127,9 @@ namespace Gamesim.Simulation
         /// </summary>
         private static double ReputationThreat(EpisodeState state, string evaluatorId, string targetId)
         {
-            double threat = Math.Min(8, state.promises
-                .Count(p => p.status == PromiseStatus.Broken && (p.fromId == targetId || p.toId == targetId)) * 3);
+            // The promises held against them: under the commitment rules the ones they broke (C0, X3);
+            // before them every broken promise they were either side of.
+            double threat = Math.Min(8, state.promises.Count(p => Breaches.CountsAgainst(state, p, targetId)) * 3);
 
             double trust = TrustScore(state, targetId, evaluatorId);
             if (trust < 35) threat += 5;

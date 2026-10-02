@@ -72,6 +72,8 @@ namespace Gamesim.Episode
 
             var lines = new List<string>();
             if (!string.IsNullOrEmpty(pact.formed)) lines.Add(Dated(pact.formedWeek, pact.formed));
+            // Who the player brought in since (ACTIONS-DEALS-ALLIANCES-PLAN C5), each in the week they joined.
+            foreach (var join in pact.joined) lines.Add(Dated(join.week, join.text));
             if (!pact.active) lines.Add(Dated(pact.endedWeek, pact.ended));
             foreach (var call in pact.calls) lines.Add(Dated(call.week, CallLine(state, call)));
             // Said only where a call could be made: a standing pact, the levers on, and the player still in the house.

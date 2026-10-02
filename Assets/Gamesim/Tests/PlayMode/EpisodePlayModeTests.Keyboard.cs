@@ -317,7 +317,7 @@ namespace Gamesim.Tests.PlayMode
                 && (EpisodeEngine.Voters(state).Any(actor => actor.isPlayer) || EpisodeEngine.NeedsPlayerTieBreak(state)))
             { yield return "Vote to evict " + state.Find(state.nominees[0]).name; yield break; }
             if (state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId)
-            { yield return "Evict " + state.Active.First(actor => !actor.isPlayer).name; yield break; }
+            { yield return FinalChoiceWords.CaptionToEvict(state, state.Active.First(actor => !actor.isPlayer).id); yield break; }
             if (state.phase == EpisodePhase.JuryQuestioning)
             {
                 var exchange = state.juryExchanges[state.juryQuestionIndex];

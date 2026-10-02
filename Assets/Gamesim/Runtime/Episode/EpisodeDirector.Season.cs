@@ -276,6 +276,9 @@ namespace Gamesim.Episode
                 EpisodeEngine.EnableAgency(fresh);
                 // The finale rules (ENDGAME-PLAN §3): history questions, the five responses, the argument.
                 EpisodeEngine.EnableFinale(fresh);
+                // The commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN R0, C0): study costs the window's
+                // action, a whisper reaches who it is told to, a breach counts against whoever broke it.
+                EpisodeEngine.EnableCommitments(fresh);
                 CharacterAppearanceSnapshots.Materialize(fresh);
                 fresh.sessionId = Guid.NewGuid().ToString("N");
                 nextStore.Save(fresh); // Stage and validate on disk before replacing the current in-memory session.

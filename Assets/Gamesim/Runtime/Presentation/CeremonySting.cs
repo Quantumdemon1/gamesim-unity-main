@@ -83,6 +83,9 @@ namespace Gamesim.Presentation
         /// </summary>
         private const float RingOuter = 0.816f, RingHole = 0.711f;
 
+        /// <summary>Pack 8's veto mark against the ring: its medallion is 149 of its 192 pixels (.776), so it is drawn at 1.05 of the side to stand as large as the ring's outer edge.</summary>
+        private const float VetoMarkScale = 1.05f;
+
         private CanvasGroup group;
         private RectTransform card, mark;
         private TMP_Text headline, detail;
@@ -306,7 +309,9 @@ namespace Gamesim.Presentation
             var authored = AuthoredMark(kind);
             if (authored != null)
             {
-                Layer(ring, authored, Color.white, markSide);
+                // Its medallion fills .776 of its picture where the pack ring's outer edge is .816
+                // of its own: drawn a twentieth larger, the two medallions stand the same size.
+                Layer(ring, authored, Color.white, markSide * VetoMarkScale);
                 core.enabled = false;
                 glyph.enabled = false;
                 return;
@@ -317,7 +322,8 @@ namespace Gamesim.Presentation
             Layer(core, UiTheme.Circle(), new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .92f), markSide * RingHole);
             var icon = Glyph(kind, out bool fromPack);
             if (icon == null) { glyph.enabled = false; return; }
-            Layer(glyph, icon, tint, markSide * (fromPack ? .5f : .4f));
+            // A pack icon's drawing fills about seven tenths of its picture; the generated set's nine.
+            Layer(glyph, icon, tint, markSide * (fromPack ? .56f : .44f));
         }
 
         private static void Layer(Image image, Sprite sprite, Color colour, float side)

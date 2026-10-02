@@ -644,6 +644,21 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// The jury strip's door at three keeps its words legible under a column that cannot be
+        /// pressed, as the other corner links do: the 'endgame-final-three' frame drew it as a grey
+        /// chip with its words lost in it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ChromeGate_TheJuryDoorKeepsItsWordsLegibleUnderANonInteractableColumn()
+        {
+            yield return InstallTheFinalThree();
+            director.ClosePanels();
+            yield return Frames(2);
+            Assert.That(director.JuryStripIsADoor(director.Snapshot), Is.True, "At three the jury strip is a door.");
+            yield return UnderANonInteractableColumn(EpisodeHud.ObjectivesCardName, card => AssertLinkLegible(card, EpisodeDirector.JuryStripCaption));
+        }
+
+        /// <summary>
         /// The card by this name under a group that cannot be pressed, held there until Unity's own
         /// tint has had its time to cross over. A render in the wait rebuilds the card without the
         /// group, so the last live copy is taken again after it, and the wait starts over on a new

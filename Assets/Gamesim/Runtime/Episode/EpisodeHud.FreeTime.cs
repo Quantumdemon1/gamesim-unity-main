@@ -390,22 +390,18 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The house in a strip of small cards, one pressed: the photo with the week's role on it, the
-        /// name and where you stand, each a control that makes them the one the screen is about.
+        /// name and where you stand, each a control that makes them the one the screen is about. Each
+        /// card no wider than <paramref name="widest"/> at the resting size, and its photo no taller
+        /// than <paramref name="photoCap"/> (zero for the card's own proportion): the briefing's
+        /// glance, whose column is wide and whose frame is short, caps its photos by name.
         /// </summary>
-        public void HouseguestStrip(IReadOnlyList<string> ids, string selectedId, Action<string> pick) => HouseguestStrip(ids, selectedId, pick, 0f);
-
-        /// <summary>
-        /// The strip with its photos no taller than <paramref name="photoCap"/> at the resting size
-        /// (zero for the card's own proportion): the briefing's glance, whose column is wide and
-        /// whose frame is short.
-        /// </summary>
-        public void HouseguestStrip(IReadOnlyList<string> ids, string selectedId, Action<string> pick, float photoCap)
+        public void HouseguestStrip(IReadOnlyList<string> ids, string selectedId, Action<string> pick, float widest = 150f, float photoCap = 0f)
         {
             if (ids == null || ids.Count == 0 || content == null) return;
             var state = director != null ? director.Snapshot : null;
             if (state == null) return;
             float s = FontScale, gap = 10f * s;
-            float width = Mathf.Clamp((ContentWidth() + gap) / ids.Count - gap, 96f * s, 150f * s);
+            float width = Mathf.Clamp((ContentWidth() + gap) / ids.Count - gap, 96f * s, Mathf.Max(96f, widest) * s);
             float photo = width * .78f;
             if (photoCap > 0f) photo = Mathf.Min(photo, photoCap * s);
             float height = photo + 52f * s;

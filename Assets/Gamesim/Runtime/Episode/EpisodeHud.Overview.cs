@@ -81,7 +81,7 @@ namespace Gamesim.Episode
             SectionHead("people", "HOUSEGUESTS AT A GLANCE", "Where you stand with everyone still in the house.");
             StandingLegendIn(content.childCount > 0 ? content.GetChild(content.childCount - 1) as RectTransform : null);
             var strip = content;
-            HouseguestStrip(view.GlanceIds, null, view.PickGlance ?? (id => { }), GlancePhotoHeight);
+            HouseguestStrip(view.GlanceIds, null, view.PickGlance ?? (id => { }), photoCap: GlancePhotoHeight);
             if (strip.childCount > 0) strip.GetChild(strip.childCount - 1).name = GlanceStripName;
             SectionHead("bulb", "RECOMMENDED ACTIONS", view.RecommendedHint);
             Tiles(RecommendedTilesName, view.Recommended, TileStyle.Cards, RecommendedCardHeight);
@@ -99,11 +99,11 @@ namespace Gamesim.Episode
             // briefing away and leaves the labelled house with its chips and its floor to click.
             // In the corner, out of the flow and over it, as every other screen keeps its way out;
             // as a row of its own it was 69 units of the foot the recommended moves did not have.
+            // In the button's own chrome: its ground and its edge are FixedButton's (the kit's
+            // secondary chrome once T0 lands), never painted over here.
             var map = FixedButton(panel, EpisodeDirector.ShowMapCaption, Vector2.zero, new Vector2(MapButtonWidth, MapButtonHeight), director.HideBriefing);
             var mapRect = (RectTransform)map.transform;
             Anchor(mapRect, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-18f, -14f), new Vector2(MapButtonWidth, MapButtonHeight));
-            mapRect.GetComponent<Image>().color = new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .9f);
-            UiTheme.AddBorder(mapRect, UiTheme.ControlRadius, Accent);
             var mapWords = map.GetComponentInChildren<TMPro.TMP_Text>();
             if (mapWords != null) { mapWords.alignment = TMPro.TextAlignmentOptions.Center; mapWords.color = Accent; }
         }

@@ -42,6 +42,16 @@ namespace Gamesim.Tests.PlayMode
                 seat = player.GetComponent<HouseSeatPresentation>();
             }
             Assert.That(pose != null && pose.IsPerforming, Is.True, verb + " never began at " + anchor.name + ".");
+            // A body still being made - its own assembly, or a change of clothes the activity asked for -
+            // is not yet the body a test reads. Under load it outlasted the wait above, and the test read
+            // no animator at the stove and the old body's hips in the hot tub (PR #22's audited run).
+            var presentation = player.GetComponent<CharacterPresentation>();
+            deadline = Time.realtimeSinceStartup + 20f;
+            while (Time.realtimeSinceStartup < deadline && presentation != null
+                   && (presentation.IsBodyAssembling || presentation.IsChangingOutfit || PlayerAnimator() == null))
+                yield return null;
+            Assert.That(presentation == null || (!presentation.IsBodyAssembling && !presentation.IsChangingOutfit && PlayerAnimator() != null),
+                Is.True, "The body " + verb + " plays on was still being made after twenty seconds.");
             // Long enough for the pose to fit and the animator to cross into the state: a third of
             // a second of cross-fade is a few hundred batchmode frames, so this waits on the clock.
             float settle = Time.realtimeSinceStartup + 1f;

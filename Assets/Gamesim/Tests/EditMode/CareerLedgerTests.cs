@@ -106,6 +106,37 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Directory.GetFiles(directory, "*.pending-*"), Is.Empty);
         }
 
+        /// <summary>
+        /// The 2026-10-02 failure: something else held the ledger for a moment and the swap threw
+        /// "Unable to remove the file to be replaced". A brief hold is waited out.
+        /// </summary>
+        [Test]
+        public void Record_WaitsOutABriefLockOnTheFile()
+        {
+            Assert.That(ledger.Record(Finished(1, ContestantStatus.Winner)), Is.True);
+            using (var held = new PersistenceTests.HeldFile(ledger.FilePath))
+            {
+                held.ReleaseAfter(50);
+                Assert.That(ledger.Record(Finished(2, ContestantStatus.RunnerUp)), Is.True);
+            }
+            Assert.That(ledger.Load().seasons.Select(s => s.sessionId), Is.EqualTo(new[] { "season-1", "season-2" }));
+            Assert.That(Directory.GetFiles(directory, "*.pending-*"), Is.Empty);
+        }
+
+        [Test]
+        public void Record_ALockThatDoesNotLiftThrowsTheIOExceptionAndChangesNothing()
+        {
+            Assert.That(ledger.Record(Finished(1, ContestantStatus.Winner)), Is.True);
+            var before = File.ReadAllBytes(ledger.FilePath);
+            using (new PersistenceTests.HeldFile(ledger.FilePath))
+            {
+                Assert.Throws<IOException>(() => ledger.Record(Finished(2, ContestantStatus.RunnerUp)));
+            }
+            Assert.That(File.ReadAllBytes(ledger.FilePath), Is.EqualTo(before), "The record on disk is untouched.");
+            Assert.That(Directory.GetFiles(directory, "*.pending-*"), Is.Empty, "The pending copy is still cleaned up.");
+            Assert.That(ledger.Load().seasons.Select(s => s.sessionId), Is.EqualTo(new[] { "season-1" }));
+        }
+
         [Test]
         public void Entry_ReadsThePlacementFromTheOrderTheJuryFilled()
         {

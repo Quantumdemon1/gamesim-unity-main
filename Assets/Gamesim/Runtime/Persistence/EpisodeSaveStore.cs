@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using Gamesim.Simulation;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -115,8 +116,7 @@ namespace Gamesim.Persistence
             {
                 SaveJson.WriteNewDurable(temporary, bytes);
                 if (!TryRead(temporary, out _, out var reason)) throw new InvalidDataException(reason);
-                if (File.Exists(path)) File.Replace(temporary, path, rotateBackup ? BackupPath : null);
-                else File.Move(temporary, path);
+                SaveJson.SwapIntoPlace(temporary, path, rotateBackup ? BackupPath : null);
             }
             finally
             {
@@ -276,6 +276,44 @@ namespace Gamesim.Persistence
             }
 
             if (!File.ReadAllBytes(path).SequenceEqual(bytes)) throw new IOException("Written bytes could not be verified.");
+        }
+
+        // How many times a swap is tried before its failure stands, and the step its waits grow by.
+        private const int SwapAttempts = 5, SwapRetryStepMilliseconds = 25;
+
+        /// <summary>
+        /// Puts a written and validated <paramref name="pending"/> file in <paramref name="target"/>'s
+        /// place: File.Replace over an existing target, keeping the old one as <paramref name="backup"/>
+        /// when one is named, or File.Move onto a new one.
+        ///
+        /// <para>On Windows a virus scan of the file just written, the search indexer or a sync client
+        /// can hold either file for a moment, and the swap then fails with a plain IOException ("being
+        /// used by another process", "Unable to remove the file to be replaced"). That is tried again
+        /// after 25, 50, 75 and 100 ms, and the last failure is thrown unchanged, so a caller that
+        /// treats an IOException as an expected save failure still sees one. Its subclasses (a missing
+        /// directory or file, a path too long) and UnauthorizedAccessException do not clear by waiting
+        /// and are thrown at once. The caller still owns the pending file and deletes it.</para>
+        ///
+        /// <para>Every attempt looks again for the target. A Replace that could not move the pending
+        /// file in can leave the target gone, deleted when no backup is named or renamed to the backup
+        /// (ERROR_UNABLE_TO_MOVE_REPLACEMENT and _2), and then the pending file moves into the empty
+        /// place.</para>
+        /// </summary>
+        public static void SwapIntoPlace(string pending, string target, string backup)
+        {
+            for (int attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    if (File.Exists(target)) File.Replace(pending, target, backup);
+                    else File.Move(pending, target);
+                    return;
+                }
+                catch (IOException error) when (error.GetType() == typeof(IOException) && attempt < SwapAttempts)
+                {
+                    Thread.Sleep(SwapRetryStepMilliseconds * attempt);
+                }
+            }
         }
 
         public static bool IsExpected(Exception error) => error is IOException || error is InvalidDataException || error is UnauthorizedAccessException

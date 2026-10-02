@@ -341,8 +341,7 @@ namespace Gamesim.Persistence
             {
                 SaveJson.WriteNewDurable(temporary, bytes);
                 Parse(File.ReadAllText(temporary, Encoding.UTF8));
-                if (File.Exists(FilePath)) File.Replace(temporary, FilePath, null);
-                else File.Move(temporary, FilePath);
+                SaveJson.SwapIntoPlace(temporary, FilePath, null);
             }
             finally
             {

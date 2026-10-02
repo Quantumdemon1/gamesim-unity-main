@@ -72,8 +72,7 @@ namespace Gamesim.Persistence
                     if (bytes.Length > MaximumBytes) throw new InvalidDataException("The houseguest exceeds the profile size limit.");
                     temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
                     SaveJson.WriteNewDurable(temporary, bytes);
-                    if (File.Exists(path)) File.Replace(temporary, path, path + ".backup");
-                    else File.Move(temporary, path);
+                    SaveJson.SwapIntoPlace(temporary, path, path + ".backup");
                     temporary = null;
                     return true;
                 }

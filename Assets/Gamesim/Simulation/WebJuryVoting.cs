@@ -74,10 +74,17 @@ namespace Gamesim.Simulation
         /// final eviction itself - so every juror's former ally scores the same 25. Until the final
         /// eviction ended alliances too, its evictee was the one juror whose former ally still read
         /// as current and scored 100.</para>
+        ///
+        /// <para>A pact of three or more goes on without the member it loses, and before the commitment
+        /// rules its evictee stayed in it, so a juror out of it still read 100 (ACTIONS-DEALS-ALLIANCES-PLAN
+        /// X5). Under them a juror has left every pact with the house, and their own commitment drives
+        /// the term (<see cref="Allegiance.JuryLoyalty"/>): 25 for a pact they shared, 0 for none or for
+        /// one they turned on the player in.</para>
         /// </summary>
         public static double AllianceLoyalty(EpisodeState state, string jurorId, string finalistId)
         {
             if (state == null) return 0;
+            if (EpisodeEngine.CommitmentRulesOn(state)) return Allegiance.JuryLoyalty(state, jurorId, finalistId);
             if (state.Allied(jurorId, finalistId)) return 100;
             // An alliance that existed and ended is not the same as never having had one. Somebody
             // who was with you and left is remembered differently from a stranger.

@@ -48,6 +48,8 @@ namespace Gamesim.Simulation
         /// </summary>
         public const string FellApart = "It fell apart.", YouLeft = "You left it.", CalledOff = "It was called off.",
             JustEnded = "It ended.";
+        /// <summary>A pact the player cut ties in after a member turned on it, at no cost (ACTIONS-DEALS-ALLIANCES-PLAN C2).</summary>
+        public const string CutTies = "You cut ties after it was betrayed.";
         /// <summary>How the player came into a pact whose invitation the record no longer holds.</summary>
         public const string BroughtIn = "You were brought into it.";
         /// <summary>A suspected pact's evidence when the line that told the player has left the record.</summary>
@@ -333,6 +335,10 @@ namespace Gamesim.Simulation
             }
             if (partners.Any(a => lines.Contains("You left the alliance with " + a.name + ".") && !rivals.Any(r => r.members.Contains(a.id))))
                 return YouLeft;
+            // The free exit names the pacts it ended, so its line is this pact's wherever it names it.
+            if (partners.Any(a => lines.Any(line => line.StartsWith(Allegiance.CutTiesPrefix(a.name), StringComparison.Ordinal)
+                    && line.Contains(alliance.name))))
+                return CutTies;
             return null;
         }
 

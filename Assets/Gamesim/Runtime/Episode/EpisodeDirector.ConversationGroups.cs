@@ -29,6 +29,9 @@ namespace Gamesim.Episode
         /// <summary>The words on the pill beside a conversation's verbs (see <see cref="Category"/>).</summary>
         public const string WarmthTag = "warmth", LearnTag = "learn", RiskTag = "risk", BindsYouTag = "binds you", FreeTag = "free";
 
+        /// <summary>The pill on "Leave our alliance" the week its houseguest turned on the pact: free, and nobody holds it against you (C2).</summary>
+        public const string FreeExitTag = FreeTag + " · no grudge";
+
         /// <summary>The four groups, as their heads read.</summary>
         public const string BondGroupTitle = "BOND", LearnGroupTitle = "LEARN", SchemeGroupTitle = "SCHEME", BargainGroupTitle = "BARGAIN";
 

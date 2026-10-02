@@ -596,9 +596,12 @@ namespace Gamesim.Episode
                 Category(EpisodeCommandKind.PromiseSafety));
             hud.Tag(hud.Action("Propose a final-two promise", () => Commit(state, EpisodeCommandKind.PromiseFinalTwo, npc.id)),
                 Category(EpisodeCommandKind.PromiseFinalTwo));
+            // The week an ally turned on the pact, leaving them costs nothing (ACTIONS-DEALS-ALLIANCES-PLAN
+            // C2): the pill says so, and the caption is the one it always was.
             hud.Tag(hud.Action(allied ? "Leave our alliance" : "Propose an alliance",
                     () => Commit(state, allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance, npc.id)),
-                Category(allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance));
+                allied && Allegiance.FreeExit(state, npc.id) ? FreeExitTag
+                    : Category(allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance));
         }
 
         /// <summary>What you have on them: the play about them as a bar, where you stand, the threads they are in, and the latest note.</summary>

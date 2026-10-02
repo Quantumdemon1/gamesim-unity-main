@@ -409,16 +409,23 @@ namespace Gamesim.Simulation
         /// between them hold them back, a broken deal and a target agreement naming the houseguest push
         /// them on, and so do this week's pleas. A season without the strategy windows reads warmth
         /// alone.</para>
+        ///
+        /// <para>Under the commitment rules an ally's shield is theirs to give: it holds only while their
+        /// own commitment to the player does, and never once they have turned on the pact
+        /// (<see cref="Allegiance.Holds"/>; C2, C3). A broken deal pushes the Head of Household on only
+        /// when the houseguest they size up broke it (<see cref="Breaches.CountsAgainst(EpisodeState, DealState, string)"/>,
+        /// as the reference's own promise term reads a broken promise): their own breach is no grievance
+        /// of theirs against the one they wronged. Before the rules either side's counted.</para>
         /// </summary>
         public static double NominationReluctance(EpisodeState s, string hohId, string id)
         {
             double reluctance = s.Score(hohId, id);
             if (!Apply(s)) return reluctance;
-            if (s.Allied(hohId, id)) reluctance += AllyShield;
+            if (Allegiance.Holds(s, hohId, id)) reluctance += AllyShield;
             foreach (var deal in s.deals.Where(d => (d.proposerId == hohId && d.recipientId == id) || (d.proposerId == id && d.recipientId == hohId)))
             {
                 if (deal.status == DealStatus.Active) reluctance += DealWeight(deal.type);
-                else if (deal.status == DealStatus.Broken) reluctance += BrokenDealWeight;
+                else if (deal.status == DealStatus.Broken && Breaches.CountsAgainst(s, deal, id)) reluctance += BrokenDealWeight;
             }
             reluctance -= TargetPull * s.deals.Count(d => d.status == DealStatus.Active && d.type == DealKind.TargetAgreement
                 && d.targetId == id && (d.proposerId == hohId || d.recipientId == hohId));
@@ -433,13 +440,14 @@ namespace Gamesim.Simulation
         /// <summary>
         /// How much the veto holder wants to save this nominee: warmth, then an ally, a veto
         /// commitment and this week's pleas for them. The reference's own rule, additively: it uses
-        /// the veto when warmth and the lobbying's influence together pass thirty.
+        /// the veto when warmth and the lobbying's influence together pass thirty. Under the commitment
+        /// rules an ally's pull holds only while their own commitment does (<see cref="Allegiance.Holds"/>).
         /// </summary>
         public static double VetoWillingness(EpisodeState s, string holderId, string nomineeId)
         {
             double willingness = s.Score(holderId, nomineeId);
             if (!Apply(s)) return willingness;
-            if (s.Allied(holderId, nomineeId)) willingness += VetoAllyPull;
+            if (Allegiance.Holds(s, holderId, nomineeId)) willingness += VetoAllyPull;
             if (NpcDeals.Between(s, holderId, nomineeId).Any(d => d.type == DealKind.VetoUse)) willingness += VetoCommitmentPull;
             willingness += s.lobbies.Where(l => l.week == s.week && l.deciderId == holderId && l.ask == LobbyAsk.Save
                 && l.subjectId == nomineeId).Sum(l => l.influence);

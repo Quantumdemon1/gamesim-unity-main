@@ -204,6 +204,11 @@ namespace Gamesim.Tests.EditMode
             Count(counts, "hunt-to-player", final.events.Count(e => e.kind == "information" && e.text.EndsWith(" has to go.", StringComparison.Ordinal)));
             Count(counts, "whisper", final.events.Count(e => e.kind == "rumour" && e.text.StartsWith("You whispered", StringComparison.Ordinal)));
             Count(counts, "study", final.events.Count(e => e.kind == "study-house"));
+            // C2 and C3, by the words they write, so the file still compiles against the build before them.
+            Count(counts, "betrayal", final.relationships.Where(r => r.fromId == final.playerId).SelectMany(r => r.events).Count(e => e.type == "alliance-betrayed"));
+            Count(counts, "pact-ended-betrayed", final.ledger.alliances.Count(r => r.why != null && r.why.EndsWith("/betrayed", StringComparison.Ordinal)));
+            Count(counts, "pact-ended-turned", final.ledger.alliances.Count(r => r.why != null && r.why.StartsWith("player", StringComparison.Ordinal)
+                && r.why.EndsWith("/turned", StringComparison.Ordinal)));
             stats = "cmds=" + i + " week=" + final.week + " deals=" + final.deals.Count + " broken=" + broken + " promisesBroken=" + brokenPromises
                 + " winner=" + final.winnerId;
             digest = Hash(trace.ToString());

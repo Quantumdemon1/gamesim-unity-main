@@ -519,6 +519,9 @@ namespace Gamesim.Simulation
                     || text == you + " and " + them + " fell out over their " + title + "." || text == them + " and " + you + " fell out over their " + title + ".")
                     tells = true;
             }
+            // A betrayal told by a ballot (ACTIONS-DEALS-ALLIANCES-PLAN C2): the ally's vote to evict the
+            // player, or a vote deal they broke with them by it, on the player's record of them.
+            if (Allegiance.TellsABallot(s, partnerId, text)) tells = true;
             if (!tells) return false;
             return !Knows(s, week, partnerId);
         }

@@ -124,7 +124,11 @@ namespace Gamesim.Simulation
             foreach (var member in members)
             {
                 double loyalty = WebVotingBlocs.Loyalty(snapshot, pact, member.id, s.playerId, c.secondTargetId, trust);
-                (WebVotingBlocs.Complies(loyalty, member.traits, () => Roll(s)) ? row.followed : row.defected).Add(member.id);
+                // Under the commitment rules (C3) a member whose own commitment to the player has lapsed -
+                // who turned on the pact, or has gone cold on them - does not follow, and no roll is drawn
+                // for them: the refused call is how the player learns of a cooling ally.
+                bool follows = !Allegiance.Lapsed(s, member.id) && WebVotingBlocs.Complies(loyalty, member.traits, () => Roll(s));
+                (follows ? row.followed : row.defected).Add(member.id);
             }
             SeasonLedger.Append(s.ledger, s.ledger.calls, row);
             string with = row.followed.Count == 0 ? "Nobody is with you"
@@ -132,6 +136,9 @@ namespace Gamesim.Simulation
             string against = row.defected.Count == 0 ? "." : "; " + Names(s, row.defected) + (row.defected.Count == 1 ? " isn't." : " aren't.");
             Log(s, "lever", "You called it in " + alliance.name + ": evict " + Name(s, c.secondTargetId) + ". " + with + against,
                 new[] { s.playerId }.Concat(alliance.members.Where(id => id != s.playerId)).ToArray());
+            // Under the commitment rules (C2) an ally who ignores the call has turned on the pact, and
+            // said so to the player's face.
+            foreach (var id in row.defected) Betrayal(s, id, Allegiance.IgnoredCall(Name(s, c.secondTargetId)), false);
         }
 
         /// <summary>"Riley", "Riley and Sam", "Riley, Sam and Alex".</summary>

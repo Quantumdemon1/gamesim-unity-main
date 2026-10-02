@@ -205,6 +205,17 @@ namespace Gamesim.Simulation
                         "Partners in crime. Mostly the polite kind.",
                         "Fine. An alliance is a hypothesis about trust; let's test it gently.",
                         "We're working together. Good."));
+            // Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C2) the player cut ties the week
+            // this houseguest turned on the pact, and the player knows it: they had it coming.
+            if (acceptedAction == EpisodeCommandKind.LeaveAlliance && !SharedAlliance(state, npc.id, true) && SharedAlliance(state, npc.id, false)
+                && Allegiance.KnownThisWeek(state, npc.id))
+                return Pick(id,
+                    "That's fair. I made my choice first; you're only answering it.",
+                    "Fine. I'd have done the same in your shoes.",
+                    "I know. I'd cut me off too. I'm sorry it came to this.",
+                    "Yeah. I figured that was coming. No hard feelings, honestly.",
+                    "Understood. My move cost me your trust. That was the price.",
+                    "Fair enough. I gave you every reason to.");
             if (acceptedAction == EpisodeCommandKind.LeaveAlliance && !SharedAlliance(state, npc.id, true) && SharedAlliance(state, npc.id, false))
                 return Vary(state,
                     Pick(id,

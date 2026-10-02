@@ -18,6 +18,13 @@ namespace Gamesim.Simulation
     ///
     /// <para>What somebody said their vote was (a claim) sits beside the computed read, with its
     /// source; a claim can be a lie, and the reveal judges it.</para>
+    ///
+    /// <para>Under the commitment rules an ally's own commitment to the player drives their alliance
+    /// and bloc terms (ACTIONS-DEALS-ALLIANCES-PLAN C3), and that commitment is theirs: the read
+    /// counts those terms as unknown until the player knows where the ally stands - a current read of
+    /// how they see the player, or a betrayal of theirs the player can know
+    /// (<see cref="CommitmentHidden"/>). Reading an ally is how the read learns whether they are
+    /// still with you; knowing the pact is not.</para>
     /// </summary>
     public static class VoteRead
     {
@@ -105,7 +112,11 @@ namespace Gamesim.Simulation
                     if (FactorKnown(s, voterId, nominee.nomineeId, factor)) { sum += factor.value; knownCodes.Add(factor.code); continue; }
                     if (factor.code == "relationship") relationshipKnownForBoth = false;
                     if (factor.code == "alliance" || factor.code == "blocPressure") alliancesKnown = false;
-                    if (factor.code == "relationship" || Math.Abs(factor.value) > 0.01) unknownCodes.Add(factor.code);
+                    // A term an ally's hidden commitment decides is counted whatever it came to: a count
+                    // that skipped it at nothing would say the ally had lapsed.
+                    if (factor.code == "relationship" || Math.Abs(factor.value) > 0.01
+                        || ((factor.code == "alliance" || factor.code == "blocPressure") && CommitmentHidden(s, voterId)))
+                        unknownCodes.Add(factor.code);
                 }
                 known[nominee.nomineeId] = sum;
             }
@@ -145,8 +156,10 @@ namespace Gamesim.Simulation
                 case "obligation": return true;
                 case "plea": return true;
                 case "alliance":
+                    if (nomineeId == s.playerId && CommitmentHidden(s, voterId)) return false;
                     return factor.evidenceIds.All(id => AllianceKnown(s, id));
                 case "blocPressure":
+                    if (CommitmentHidden(s, voterId)) return false;
                     return Math.Abs(factor.value) < 0.01 || factor.evidenceIds.All(id => AllianceKnown(s, id));
                 case "deal":
                     return factor.evidenceIds.All(id => PartyTo(s, id));
@@ -170,6 +183,21 @@ namespace Gamesim.Simulation
             if (alliance == null) return true;
             if (alliance.members.Contains(s.playerId)) return true;
             return Knowledge.Knows(Knowledge.Of(s, FactKinds.Alliance, alliance.id), s.playerId);
+        }
+
+        /// <summary>
+        /// Whether an ally's own commitment to the player is hidden from the player, under the
+        /// commitment rules (C3): the two share a standing pact, so the ally's alliance and bloc terms
+        /// are theirs to give, and the player has neither a current read of how they see them nor a
+        /// betrayal of theirs to know. Never without the rules, nor for somebody outside the player's pacts.
+        /// </summary>
+        public static bool CommitmentHidden(EpisodeState s, string voterId)
+        {
+            if (!EpisodeEngine.CommitmentRulesOn(s) || string.IsNullOrEmpty(voterId) || voterId == s.playerId
+                || !s.Allied(voterId, s.playerId)) return false;
+            if (StandingKnown(s, voterId, s.playerId)) return false;
+            int week = Allegiance.BetrayalWeek(s, voterId);
+            return !(week > 0 && Allegiance.Betrayed(s, voterId) && Allegiance.KnownBetrayals(s, voterId).Any(e => e.week == week));
         }
 
         /// <summary>A standing the player holds for the pair, learned recently enough to still be current.</summary>

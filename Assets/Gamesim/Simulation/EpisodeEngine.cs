@@ -163,6 +163,10 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.AskVote: AskVote(s, c); break;
                 case EpisodeCommandKind.ReadPerson: ReadPerson(s, c); break;
                 case EpisodeCommandKind.LockFinalArgument: LockFinalArgument(s, c); break;
+                // Under the commitment rules (C2) cutting ties with an ally who turned on the pact this
+                // week, once the player can know it, is free: no action, no warmth, no grudge. Any other
+                // leave is the social action below, as it always was.
+                case EpisodeCommandKind.LeaveAlliance when Allegiance.FreeExit(s, c.targetId): CutTies(s, s.Find(c.targetId)); break;
                 default: Social(s, c); break;
             }
         }
@@ -428,6 +432,9 @@ namespace Gamesim.Simulation
                     SettleVoteRead(s, evicted);
                     RecordReveal(s, evicted, tally.Select(x => x.count).ToList());
                     RecordJurorStanding(s, evicted);
+                    // Under the commitment rules (C2) an ally whose ballot went against the player has
+                    // turned on their pact - told to the betrayer alone, as the ballot is.
+                    BallotBetrayals(s, evicted);
                     ReconcileOpportunities(s);
                     PreparePostEvictionDiary(s, evicted);
                     break;
@@ -759,6 +766,8 @@ namespace Gamesim.Simulation
             SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Nominates, s.hohId, s.nominees.ToList()));
             Log(s, "nomination", Name(s, s.hohId) + Verb(s, s.hohId, " nominates ", " nominate ")
                 + Target(s, first, s.hohId) + " and " + Target(s, second, s.hohId) + ".");
+            // Under the commitment rules (C2) an ally who puts the player up has turned on their pact.
+            if (s.hohId != s.playerId && s.nominees.Contains(s.playerId)) Betrayal(s, s.hohId, Allegiance.Nominated, false);
         }
 
         private static void NominationEffects(EpisodeState s, string id, bool initial = true)
@@ -882,12 +891,20 @@ namespace Gamesim.Simulation
             }
             else Log(s, "veto", Name(s, s.vetoHolderId) + Verb(s, s.vetoHolderId, " declines ", " decline ")
                 + "to use the veto. Nominations stand.");
-            SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Vetoes, s.vetoHolderId,
-                nominees: blockBefore, savedId: use ? saved : null, used: use));
+            var vetoVerdicts = DealResolution.Verdicts(s, DealResolution.Vetoes, s.vetoHolderId,
+                nominees: blockBefore, savedId: use ? saved : null, used: use);
+            SettleDeals(s, vetoVerdicts);
+            // Under the commitment rules (C2) an ally who broke their veto commitment to the player has
+            // turned on their pact: the decision is the house's to see.
+            foreach (var verdict in vetoVerdicts.Where(v => v.status == DealStatus.Broken && v.actorId != null
+                         && v.actorId != s.playerId && DealResolution.Partner(v.deal, v.actorId) == s.playerId))
+                Betrayal(s, verdict.actorId, Allegiance.BrokeDeal(verdict.deal.type), false);
             // Naming a replacement is a nomination, and a safety pact with the person named is
             // broken by it exactly as it would be at the ceremony itself.
             if (use) SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Nominates, s.hohId,
                 new List<string> { replacement }));
+            // So is putting an ally up in a saved nominee's place (C2).
+            if (use && replacement == s.playerId && s.hohId != s.playerId) Betrayal(s, s.hohId, Allegiance.NamedReplacement, false);
             s.vetoResolved = true;
             RecordVeto(s, use, saved, replacement);
             // A question about a decision already taken is no longer on the table.

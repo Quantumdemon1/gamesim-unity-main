@@ -170,6 +170,14 @@ namespace Gamesim.Simulation
         public PromiseStatus status;
         public int week, expiresWeek;
         public string impact = "medium";
+        /// <summary>
+        /// Schema 22 (ACTIONS-DEALS-ALLIANCES-PLAN C0): who broke a broken promise - the one who made
+        /// it, every time, since only a promiser's act settles one - and the week the promise was
+        /// kept or broken. Written under the commitment rules (<see cref="EpisodeEngine.CommitmentRulesOn"/>);
+        /// null and 0 on a promise settled before them, which <see cref="Breaches.PromiseBreaker"/> reads.
+        /// </summary>
+        public string brokenById;
+        public int settledWeek;
         public PromiseState Clone() => (PromiseState)MemberwiseClone();
     }
 
@@ -226,7 +234,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 21;
+        public int schemaVersion = 22;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
@@ -261,6 +269,14 @@ namespace Gamesim.Simulation
         public int agencyRulesStartWeek;
         /// <summary>Schema 21: the week the finale rules begin (ENDGAME-PLAN §3); 0 for a save that never reached them.</summary>
         public int finaleRulesStartWeek;
+        /// <summary>
+        /// Schema 22: the week the commitment rules begin (ACTIONS-DEALS-ALLIANCES-PLAN R0, C0, and every
+        /// later rule of that plan): study spends the window's action, a whisper reaches the person it
+        /// is told to, what a houseguest tells the player moves only what the player thinks, a breach
+        /// counts against whoever broke it and never fades. 0 for a season that plays without them:
+        /// every season saved before they existed, and every season a test builds directly.
+        /// </summary>
+        public int commitmentRulesStartWeek;
         public List<CompetitionScore> competitionScores = new List<CompetitionScore>();
         public List<EpisodeEvent> events = new List<EpisodeEvent>();
         public List<string> acceptedCommandIds = new List<string>();

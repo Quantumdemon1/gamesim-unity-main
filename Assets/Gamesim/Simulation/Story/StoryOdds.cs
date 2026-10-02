@@ -109,11 +109,16 @@ namespace Gamesim.Simulation
                 .SelectMany(r => r.events)
                 .Any(e => !e.decayable && e.impactScore < 0 && e.type != null && e.type.StartsWith(StoryReceipts.Prefix, StringComparison.Ordinal));
 
-        /// <summary>Whether the player broke a deal or a promise with them.</summary>
+        /// <summary>
+        /// Whether the player broke a deal or a promise with them. Under the commitment rules (C0, X3)
+        /// the deal's own record says who broke it (<see cref="Breaches.Broke"/>); before them the
+        /// ledger's line was read, which both sides of a breach carried, so a deal the houseguest
+        /// broke read as the player's broken word.
+        /// </summary>
         public static bool PlayerBrokeTheirWord(EpisodeState state, string npcId) =>
             state.promises.Any(p => p.status == PromiseStatus.Broken && p.fromId == state.playerId && p.toId == npcId)
             || state.deals.Any(d => d.status == DealStatus.Broken && Pair(d.proposerId, d.recipientId, state.playerId, npcId)
-                                    && BrokeIt(state, d, state.playerId));
+                                    && (EpisodeEngine.CommitmentRulesOn(state) ? Breaches.Broke(state, d, state.playerId) : BrokeIt(state, d, state.playerId)));
 
         private static bool BrokeIt(EpisodeState state, DealState deal, string who) =>
             // The ledger records the wronged party's view of whoever broke it (EpisodeEngine.SettleDeals).

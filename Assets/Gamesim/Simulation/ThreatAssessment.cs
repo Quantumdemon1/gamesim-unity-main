@@ -125,8 +125,9 @@ namespace Gamesim.Simulation
         /// </summary>
         private static double ReputationThreat(EpisodeState state, string evaluatorId, string targetId)
         {
-            double threat = Math.Min(8, state.promises
-                .Count(p => p.status == PromiseStatus.Broken && (p.fromId == targetId || p.toId == targetId)) * 3);
+            // The promises held against them: under the commitment rules the ones they broke (C0, X3);
+            // before them every broken promise they were either side of.
+            double threat = Math.Min(8, state.promises.Count(p => Breaches.CountsAgainst(state, p, targetId)) * 3);
 
             double trust = TrustScore(state, targetId, evaluatorId);
             if (trust < 35) threat += 5;

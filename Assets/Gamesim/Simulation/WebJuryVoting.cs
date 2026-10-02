@@ -100,17 +100,20 @@ namespace Gamesim.Simulation
             if (state == null) return 0;
             double score = 0;
 
+            // A breach counts against the finalist only when they broke it, under the commitment rules
+            // (C0, X3): a juror who broke their word to a finalist does not hold it against them.
+            // Before them every breach between the two counted, whoever broke it.
             foreach (var deal in state.deals.Where(d => Between(d.proposerId, d.recipientId, jurorId, finalistId)))
             {
                 if (deal.status == DealStatus.Fulfilled) score += 20 * DealTrust.Weight(deal.trustImpact);
-                else if (deal.status == DealStatus.Broken) score -= 25 * DealTrust.Weight(deal.trustImpact);
+                else if (deal.status == DealStatus.Broken) { if (Breaches.CountsAgainst(state, deal, finalistId)) score -= 25 * DealTrust.Weight(deal.trustImpact); }
                 else if (deal.status == DealStatus.Active) score += 10;
             }
 
             foreach (var promise in state.promises.Where(p => Between(p.fromId, p.toId, jurorId, finalistId)))
             {
                 if (promise.status == PromiseStatus.Fulfilled) score += 15;
-                else if (promise.status == PromiseStatus.Broken) score -= 20;
+                else if (promise.status == PromiseStatus.Broken && Breaches.CountsAgainst(state, promise, finalistId)) score -= 20;
             }
 
             return Math.Max(-50, Math.Min(50, score));

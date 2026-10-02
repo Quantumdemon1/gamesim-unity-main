@@ -135,6 +135,8 @@ namespace Gamesim.Episode
                 && fresh.contestants.Count(actor => actor.isPlayer) == 1,"The cast screen must start a genuine default-size season.");
             // A lost EnableFinale would fall back to the catalogue's A and B and never walk the responses.
             RequireSeason(fresh.finaleRulesStartWeek == 1,"The cast screen's season must play the finale rules from its first week.");
+            // A lost EnableCommitments would leave study free and a breach held against its victim.
+            RequireSeason(fresh.commitmentRulesStartWeek == 1,"The cast screen's season must play the commitment rules from its first week.");
             CheckSaveIsIsolated();
             seasonReport.sessionId = fresh.sessionId; seasonReport.seed = fresh.seed.ToString();
             seasonReport.profileSavePath = previousSlot; seasonReport.seasonSavePath = seasonDirector.SavePath;

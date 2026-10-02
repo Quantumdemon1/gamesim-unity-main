@@ -76,9 +76,16 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(strip, Has.Some.EqualTo(EpisodeDirector.GoodbyeLine(director.Snapshot, leaving)), "with the doorway's words, where the body is,");
             Assert.That(strip.Any(text => text.StartsWith(firstName + " ") && text.EndsWith("They'll be waiting in the jury house.")), Is.True,
                 "what they do at the door, and where they are going.");
+            // And the sting's frame has the door in it (UI-UX-PASS-PLAN W0): the doorway's middle at
+            // head height, through the projection the frame is drawn with. The set's root stands at
+            // its layout's origin - the world's, for the yard - so the doorway is what is projected.
+            var door = SceneRoot(OpeningDoorSet.RootName).GetComponent<OpeningDoorSet>();
+            var doorway = door.Layout.DoorCentre + Vector3.up * 1.3f;
+            var doorSeen = InTheFrame(cameraRig.ViewCamera, doorway);
+            Assert.That(InsideTheFrame(doorSeen), Is.True, "The door is in the frame the goodbye plays on: the doorway at " + doorway.ToString("F2") + " -> "
+                + (doorSeen.HasValue ? doorSeen.Value.ToString("F2") : "behind the lens") + ".");
 
             // Through the door and off the deck behind the facade, on their own feet.
-            var door = SceneRoot(OpeningDoorSet.RootName).GetComponent<OpeningDoorSet>();
             float widest = 0f;
             var last = body.transform.position;
             while (director.WalkingOutId != null && Time.realtimeSinceStartup - began < 60f)
@@ -99,6 +106,12 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.DepartingId, Is.Null);
         }
 
+        /// <summary>
+        /// A press skips the walk out, and they go as they always did - still saying goodbye. The
+        /// line waits for the door now (UI-UX-PASS-PLAN W0), so a walk skipped short of it said
+        /// nothing at all, a juror's "They'll be waiting in the jury house." included; it says its
+        /// line as it goes, worded for a body that never reached the door.
+        /// </summary>
         [UnityTest]
         public IEnumerator WalkOut_APressLetsThemGo()
         {
@@ -109,9 +122,13 @@ namespace Gamesim.Tests.PlayMode
             SceneComponents<VoteReveal>().Single().Cancel();
             yield return Frames(3);
             Assert.That(director.WalkingOutId, Is.EqualTo(leaving));
-            // Past the guard that keeps the press that closed the last card from skipping this too.
+            // On their way - the walk's first route taken - and past the guard that keeps the press
+            // that closed the last card from skipping this too.
+            var motion = body.GetComponent<HouseNpcMotion>();
+            yield return WaitFor(() => motion.LeaseId != null && motion.LeaseId.StartsWith("departure:"), 5f, "The walk out takes its first route.");
             float settle = Time.realtimeSinceStartup + 0.5f;
             while (Time.realtimeSinceStartup < settle) yield return null;
+            Assert.That(director.WalkOutAtTheDoor, Is.False, "They are still short of the door when the press comes.");
             if (testKeyboard == null) testKeyboard = InputSystem.AddDevice<Keyboard>();
             InputSystem.QueueStateEvent(testKeyboard, new KeyboardState(Key.Enter));
             yield return null;
@@ -120,6 +137,15 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.WalkingOutId, Is.Null, "A press skips the walk out,");
             Assert.That(body.gameObject.activeInHierarchy, Is.False, "and they go as they always did.");
             Assert.That(DoorSetUp(), Is.False);
+
+            var sting = SceneComponents<CeremonySting>().Single();
+            var strip = sting.GetComponentsInChildren<TMP_Text>(true).Select(text => text.text).ToList();
+            Assert.That(sting.IsPlaying, Is.True, "They still say goodbye as they go:");
+            Assert.That(strip, Has.Some.EqualTo("GOODBYE"), "the strip says goodbye,");
+            Assert.That(strip, Has.Some.EqualTo(EpisodeDirector.GoodbyeLine(director.Snapshot, leaving, EpisodeDirector.GoodbyeMoment.Standing)),
+                "with the words for a body that never reached the door.");
+            if (director.Snapshot.Find(leaving).status == ContestantStatus.Jury)
+                Assert.That(strip.Any(text => text.EndsWith("They'll be waiting in the jury house.")), Is.True, "A juror says where they are going.");
         }
 
         [UnityTest]

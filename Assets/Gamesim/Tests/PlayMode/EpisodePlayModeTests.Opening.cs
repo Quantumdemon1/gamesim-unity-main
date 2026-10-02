@@ -405,7 +405,29 @@ namespace Gamesim.Tests.PlayMode
             public void SendOff(string id) => Calls.Add("SendOff " + id);
             public void StrikeSet() => Calls.Add("StrikeSet");
             public void SendHome(string id) { Calls.Add("SendHome " + id); sentHome.Add(id); }
-            public void HoldForIntroductions() => Calls.Add("HoldForIntroductions");
+
+            /// <summary>Asked each time the house is held for the introductions: whether a card is already up.</summary>
+            public Func<bool> CardUp;
+            public readonly List<bool> HeldWithACardUp = new List<bool>();
+
+            public void HoldForIntroductions()
+            {
+                Calls.Add("HoldForIntroductions");
+                HeldWithACardUp.Add(CardUp != null && CardUp());
+            }
+        }
+
+        /// <summary>
+        /// The house is held for the introductions once, after it was put back where the season
+        /// starts it and before the first card is up (UI-UX-PASS-PLAN S0): framed on a spot, a
+        /// houseguest is still on it when they answer.
+        /// </summary>
+        private static void AssertHeldBeforeTheFirstCard(FakeStage stage)
+        {
+            Assert.That(stage.Count("HoldForIntroductions"), Is.EqualTo(1), "The house is held for the introductions, once.");
+            Assert.That(stage.Calls.IndexOf("HoldForIntroductions"), Is.GreaterThan(stage.Calls.LastIndexOf("RestoreHome")),
+                "It is held after it is put home: " + string.Join(", ", stage.Calls));
+            CollectionAssert.AreEqual(new[] { false }, stage.HeldWithACardUp, "and before the first card is up.");
         }
 
         /// <summary>
@@ -934,6 +956,9 @@ namespace Gamesim.Tests.PlayMode
             var sequence = Opening();
             stage.Opaque = () => sequence.GetComponent<CanvasGroup>().alpha >= 0.99f
                 && sequence.GetComponentsInChildren<Image>(false).Any(image => image.name == "Scrim" && image.enabled && image.color.a >= 0.99f);
+            // Any card on screen: every earlier beat's is cleared - hidden at once - before the
+            // introductions build theirs.
+            stage.CardUp = () => SequenceNode(sequence, "Card") != null;
             sequence.Play(new string[0], plan);
 
             // The half-beat between the door opening and the walk through it is real time Continue
@@ -957,6 +982,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(stage.Count("StrikeSet"), Is.EqualTo(1), "The front door comes down.");
             Assert.That(stage.Count("RestoreHome"), Is.EqualTo(1), "The house is put back where the season started it, once.");
             CollectionAssert.AreEqual(new[] { true }, stage.RestoredBehindOpaque, "Nobody is seen jumping home: it happens behind black.");
+            AssertHeldBeforeTheFirstCard(stage);
             CollectionAssert.AreEqual(SequenceShowBeats, recorded);
             Assert.That(calls, Is.Empty);
 

@@ -76,6 +76,28 @@ namespace Gamesim.Presentation
         private TMP_Text tally;
         private Button skipIntroductions;
 
+        /// <summary>
+        /// How far across the frame the introductions' column reaches, as a share of the frame's
+        /// width from its left edge, while they are on screen; null when they are not. Read in the
+        /// canvas's own space, so it holds for an overlay and for a capture drawn through a camera
+        /// alike. The director keeps the houseguest it frames to the right of it: at 4:3 and the
+        /// larger text the card reaches nearly half way across, and a body behind it is not seen.
+        /// </summary>
+        public float? IntroductionsReach
+        {
+            get
+            {
+                if (!IsMeeting || meetColumn == null) return null;
+                var root = (RectTransform)transform;
+                var frame = root.rect;
+                if (frame.width <= 0f) return null;
+                var corners = new Vector3[4];
+                meetColumn.GetWorldCorners(corners);
+                float right = root.InverseTransformPoint(corners[2]).x;
+                return Mathf.Clamp01((right - frame.xMin) / frame.width);
+            }
+        }
+
         /// <summary>Ends the introductions: whoever has not been met gets nothing from them, as in the reference build.</summary>
         public void SkipIntroductions()
         {

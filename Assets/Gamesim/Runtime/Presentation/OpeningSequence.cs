@@ -695,11 +695,13 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// The skip pill's ground under a hint laid over the house: the raised fill with the panel
-        /// edge, behind every sibling, named <see cref="GroundName"/>.
+        /// edge, behind every sibling, named <see cref="GroundName"/>. Opaque where the pill is .98:
+        /// in linear light two per cent of the lit doorway lifts a fill this dark visibly.
         /// </summary>
         private static RectTransform Ground(RectTransform parent, int radius)
         {
-            var ground = HudPrimitives.Fill(GroundName, parent, UiTheme.SurfaceRaised, radius);
+            var fill = UiTheme.SurfaceRaised;
+            var ground = HudPrimitives.Fill(GroundName, parent, new Color(fill.r, fill.g, fill.b, 1f), radius);
             Stretch(ground);
             ground.SetAsFirstSibling();
             UiTheme.AddBorder(ground, radius, UiTheme.Outline);

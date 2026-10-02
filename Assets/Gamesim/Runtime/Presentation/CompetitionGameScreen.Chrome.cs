@@ -75,7 +75,7 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>The rules line's sentence for a names board filled out with house words, which the names come before.</summary>
-        public const string HouseWordsFollowTheNames = "Fewer than six of this season's names are long enough to scramble, so house words follow them.";
+        public const string HouseWordsFollowTheNames = "Fewer than six of this season's names can be scrambled, so house words follow them.";
 
         /// <summary>
         /// The rules the game runs, on the surface it is played on: the authored summary, and for an

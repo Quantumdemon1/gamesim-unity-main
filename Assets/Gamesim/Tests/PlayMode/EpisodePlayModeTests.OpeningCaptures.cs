@@ -122,15 +122,18 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(LowerThirdHasArrived(opening), Is.True, "The name stays up while the door opens.");
             var openThird = SequenceNode(opening, "Lower third");
             // The Continue hint on its ground on the skip pill's row, out of the lit doorway
-            // (UI-UX-PASS-PLAN S0, sweep-show 5), and the count on its chip.
+            // (UI-UX-PASS-PLAN S0, sweep-show 5), and the count on its chip, faded all the way in.
             var openHint = SequenceNode(opening, "Hint");
             var openChip = SequenceNode(opening, "Counter chip");
-            AssertOnAGround(openHint.Find("Label"), "The Continue hint as the door opens");
+            var openPill = SequenceButtons(opening, OpeningSequence.SkipCaption).Single(button => button.IsActive()).transform;
+            AssertOnAGround(openHint.Find("Label"), "The Continue hint as the door opens", shown: true);
+            AssertOnAGround(SequenceLabels(openChip).Single(label => label.name == "Counter").transform, "The reveal's count as the door opens", shown: true);
+            Assert.That(openChip.GetComponent<CanvasGroup>().alpha, Is.GreaterThanOrEqualTo(0.99f), "The count's chip has faded in.");
             yield return CaptureFraming("opening-staged-03-door-open", settle: false, inspect: frame =>
             {
                 AssertFaceIsDrawn(frame, openThird.Find("Portrait"), "The player's face in the lower third as the door opens");
-                AssertRegionHasContent(frame, CaptureRectOf(openHint), "The Continue hint on its ground, on the skip pill's row");
-                AssertRegionHasContent(frame, CaptureRectOf(openChip), "The reveal's count on its chip");
+                AssertGroundIsDrawn(frame, openHint.Find(OpeningSequence.GroundName), openPill, "The Continue hint's ground on the skip pill's row");
+                AssertGroundIsDrawn(frame, openChip.Find(OpeningSequence.GroundName), openPill, "The reveal's count's chip");
             });
 
             // 04 - the first houseguest after the player, on the mark in front of the lens. One press
@@ -210,13 +213,18 @@ namespace Gamesim.Tests.PlayMode
             // low on the screen it ran edge to edge over the Continue hint, and said "housemates".
             var entryLine = SequenceLabels(entryCard).Single(label => label.name == "Line");
             Assert.That(entryLine.text, Does.Not.Contain("housemates").IgnoreCase, "The line says houseguests, as every other card does: " + entryLine.text);
-            Assert.That(Inside((RectTransform)entryCard, entryLine.rectTransform), Is.True, "and stands in the card.");
+            Assert.That(Inside((RectTransform)entryCard, entryLine.rectTransform), Is.True, "and stands in the card,");
+            Assert.That(entryLine.alpha, Is.GreaterThanOrEqualTo(0.79f), "faded in to its 0.8,");
+            entryLine.ForceMeshUpdate();
+            Assert.That(entryLine.isTextTruncated, Is.False, "every word of it drawn.");
             var entryHint = SequenceNode(opening, "Hint");
+            var entryPill = SequenceButtons(opening, OpeningSequence.SkipCaption).Single(button => button.IsActive()).transform;
             Assert.That(SequenceWorldRect((RectTransform)entryHint).Overlaps(SequenceWorldRect(entryLine.rectTransform)), Is.False, "The line no longer crowds the Continue hint.");
+            AssertOnAGround(entryHint.Find("Label"), "The Continue hint on the house entry", shown: true);
             yield return CaptureFraming("opening-staged-06-house-entry", settle: false, inspect: frame =>
             {
                 AssertRegionHasContent(frame, CaptureRectOf(entryCard), "The house-entry card");
-                AssertRegionHasContent(frame, CaptureRectOf(entryLine.rectTransform), "The season's line in the card");
+                AssertGroundIsDrawn(frame, entryHint.Find(OpeningSequence.GroundName), entryPill, "The Continue hint's ground on the house entry");
             });
             opening.Advance();
 
@@ -266,13 +274,15 @@ namespace Gamesim.Tests.PlayMode
                 "The house shows through behind the card.");
             // The header on a ground of its own: it read through the yard's sign (UI-UX-PASS-PLAN S0, sweep-show 24).
             var column = SequenceNode(opening, "Introductions");
-            AssertOnAGround(SequenceLabels(column).Single(label => label.name == "Heading").transform, "The introductions' heading");
-            AssertOnAGround(SequenceLabels(column).Single(label => label.name == "Count").transform, "The introductions' count");
+            AssertOnAGround(SequenceLabels(column).Single(label => label.name == "Heading").transform, "The introductions' heading", shown: true);
+            AssertOnAGround(SequenceLabels(column).Single(label => label.name == "Count").transform, "The introductions' count", shown: true);
             var headerGround = column.Find(OpeningSequence.GroundName);
+            // The last choice, which the keyboard is not on: the same raised fill, at rest.
+            var restingRow = SequenceButtons(opening, "Bold").Single().transform;
             yield return CaptureFraming("opening-staged-10-meet-card", settle: true, inspect: frame =>
             {
                 AssertFaceIsDrawn(frame, card.Find("Portrait"), guests[0].name + "'s face on their card");
-                AssertRegionHasContent(frame, CaptureRectOf(headerGround), "The introductions' header on its ground");
+                AssertGroundIsDrawn(frame, headerGround, restingRow, "The introductions' header's ground");
             });
 
             // 11 - the player introduces themselves, and the houseguest answers in words and in the body.
@@ -296,6 +306,11 @@ namespace Gamesim.Tests.PlayMode
                 var hips = HipsOf(guestBody);
                 var at = hips != null ? hips.position : guestBody.transform.position + Vector3.up * 0.95f;
                 var seen = InTheFrame(cameraRig.ViewCamera, at);
+                // For the record of the drift's cause on a UMA body: how far the drawn body stands
+                // from its root on the reaction's frame, and where the root stands.
+                Debug.Log("[Gamesim] reaction frame: " + guests[0].name + "'s hips at " + at.ToString("F2") + ", root at "
+                    + guestBody.transform.position.ToString("F2") + " (" + Flat(at, guestBody.transform.position).ToString("F2") + " m apart), in the frame at "
+                    + (seen.HasValue ? seen.Value.ToString("F2") : "behind the lens") + ".");
                 Assert.That(InsideTheFrame(seen), Is.True, guests[0].name + "'s body is in the reaction's frame: hips at " + at.ToString("F2")
                     + " -> " + (seen.HasValue ? seen.Value.ToString("F2") : "behind the lens") + ".");
             });

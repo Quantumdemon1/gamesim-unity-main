@@ -584,7 +584,9 @@ namespace Gamesim.Tests.PlayMode
         /// entered under it in capitals, the card growing in from nine tenths. The season's arrival
         /// line fades in at 2 s, as the reference's "Head of Household competition starting soon"
         /// did - in the card, under the count, rather than low on the screen where the reference's
-        /// stood: there it ran edge to edge over the Continue hint (UI-UX-PASS-PLAN S0).
+        /// stood: there it ran edge to edge over the Continue hint (UI-UX-PASS-PLAN S0). A departure
+        /// that follows from it: the reference's card fades at 4 s, and this one holds the beat,
+        /// because the line is read inside it.
         /// </summary>
         [UnityTest]
         public IEnumerator Parity_TheHouseEntryWelcomesThenCounts()
@@ -630,6 +632,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(line.alpha, Is.Zero, "The line is still waiting for 2 s.");
             yield return ParitySeconds(2.8f - (Time.realtimeSinceStartup - start));
             Assert.That(line.alpha, Is.GreaterThan(0.5f), "and then it is up.");
+            yield return ParitySeconds(4.6f - (Time.realtimeSinceStartup - start));
+            Assert.That(card.GetComponent<CanvasGroup>().alpha, Is.GreaterThanOrEqualTo(0.99f),
+                "The card holds the beat past the reference's 4 s: the season's line is read inside it.");
+            Assert.That(line.alpha, Is.GreaterThan(0.5f), "and the line with it.");
             sequence.Skip();
             yield return null;
         }

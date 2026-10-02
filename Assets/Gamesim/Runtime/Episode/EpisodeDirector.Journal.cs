@@ -177,7 +177,7 @@ namespace Gamesim.Episode
                 var entries = visible.Where(e => e.week == week).ToList();
                 if (entries.Count == 0) continue;
                 hud.Heading(week == newest ? "Week " + week + " · this week" : "Week " + week, UiTheme.Gold);
-                foreach (var entry in entries) hud.Paragraph(StoryText.Log(state, entry));
+                foreach (var entry in entries) hud.Paragraph(EventLine(state, entry));
             }
         }
 

@@ -193,24 +193,33 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The rules line says what the pool holds (UI-UX-PASS-PLAN M0): a six-house whose player is
         /// "You" has five names to deal, so the line says house words follow them; a house with six
-        /// names says nothing of the kind. The authored summary stays in both.
+        /// names says nothing of the kind. The authored summary stays in both, and at the larger text
+        /// the longer line still fits its header: the rules shrink to their floor before they cut.
         /// </summary>
         [UnityTest]
-        public IEnumerator Words_TheRulesSayWhenHouseWordsFollowTheNames()
+        public IEnumerator Words_TheRulesSayWhenHouseWordsFollowTheNames([Values(1f, 1.2f)] float scale)
         {
-            owner = new GameObject("Words rules"); screen = CompetitionGameScreen.Attach(owner);
+            owner = new GameObject("Words rules"); screen = CompetitionGameScreen.Attach(owner); screen.FontScale = scale;
             var filled = new MiniGameRun(CompetitionMiniGames.Kind.Words, 3, Widened, Gamesim.Simulation.CompetitionDefinitions.HouseguestScramble,
                 new[] { "You", "Maya Hassan", "Jamie Roberts", "Casey Wilson", "Riley Johnson", "Taylor Kim" });
             Assert.That(filled.DealsHouseWords, Is.True, "Five names fall short of six.");
             yield return ShowLive(filled);
-            Assert.That(Text("Rules").text, Does.Contain(filled.Definition.Summary).And.Contain(CompetitionGameScreen.HouseWordsFollowTheNames),
+            Canvas.ForceUpdateCanvases();
+            var rules = Text("Rules");
+            Assert.That(rules.text, Does.Contain(filled.Definition.Summary).And.Contain(CompetitionGameScreen.HouseWordsFollowTheNames),
                 "The rules name the house words that follow the names.");
+            rules.ForceMeshUpdate();
+            Assert.That(rules.isTextTruncated, Is.False, "Every word of the longer line is drawn at text scale " + scale + ", at " + rules.fontSize + " pt.");
 
             var full = new MiniGameRun(CompetitionMiniGames.Kind.Words, 3, Widened, Gamesim.Simulation.CompetitionDefinitions.HouseguestScramble,
                 new[] { "Maya Hassan", "Jamie Roberts", "Casey Wilson", "Riley Johnson", "Taylor Kim", "Jordan Lee" });
             Assert.That(full.DealsHouseWords, Is.False, "Six names need no house word.");
             yield return ShowLive(full);
-            Assert.That(Text("Rules").text, Does.Contain(full.Definition.Summary).And.Not.Contain("house words"), "and the line says nothing of them.");
+            Canvas.ForceUpdateCanvases();
+            rules = Text("Rules");
+            Assert.That(rules.text, Does.Contain(full.Definition.Summary).And.Not.Contain("house words"), "and the line says nothing of them.");
+            rules.ForceMeshUpdate();
+            Assert.That(rules.isTextTruncated, Is.False, "and is drawn whole at text scale " + scale + ".");
         }
 
         private static void Select(string name)

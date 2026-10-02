@@ -262,7 +262,11 @@ namespace Gamesim.Episode
                     if (walkOutDoor != null) walkOutDoor.Open(reducedMotion);
                     // The goodbye on the strip where the body is - at the door, as its words say -
                     // rather than as the walk across the yard begins (UI-UX-PASS-PLAN W0, sweep-show 10).
-                    if (sting != null && projected != null) sting.Play(CeremonySting.WalkOutKind, GoodbyeLine(projected, walkingOutId), reducedMotion);
+                    if (sting != null && projected != null)
+                    {
+                        sting.Play(CeremonySting.WalkOutKind, GoodbyeLine(projected, walkingOutId), reducedMotion);
+                        walkOutLineSaid = true;
+                    }
                     walkOutLeg = 2;
                     return;
                 case 2:
@@ -488,6 +492,14 @@ namespace Gamesim.Episode
             if (walkingOutId == null) return;
             string leaving = walkingOutId;
             bool staged = walkOutStaged;
+            // A walk that began says its goodbye even when it ends short of the door - a press, the
+            // house giving up on it - as it did when the line played at the walk's first leg: W0
+            // moved where the line is said, not whether. Standing, since the body never reached the
+            // door. Not when a competition or the stage's end takes the frame now.
+            bool begun = staged ? stagedLeg >= StagedLeg.Walking : walkOutLeg >= 1;
+            if (begun && !walkOutLineSaid && !immediate && sting != null && projected != null)
+                sting.Play(CeremonySting.WalkOutKind, GoodbyeLine(projected, leaving, GoodbyeMoment.Standing), reducedMotion);
+            walkOutLineSaid = true;
             if (staged)
             {
                 var body = BodyFor(leaving);

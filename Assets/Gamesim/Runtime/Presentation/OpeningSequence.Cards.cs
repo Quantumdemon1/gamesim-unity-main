@@ -434,10 +434,11 @@ namespace Gamesim.Presentation
             Stretch(counter.rectTransform);
             counter.rectTransform.offsetMin = new Vector2(16f, 0f);
             counter.rectTransform.offsetMax = new Vector2(-16f, 0f);
-            // As wide as its words and never narrower than a two-digit count; a third taller than
-            // its type, as every box here is.
+            // As wide as its words with room to spare - the label has no wrap, and a count that
+            // overran it by a unit would be cut - and never narrower than "16 OF 16"; a box well over
+            // 1.3 times its type, as every box here is.
             float words = Mathf.Ceil(counter.GetPreferredValues(counter.text).x);
-            chip.sizeDelta = new Vector2(Mathf.Max(132f, words + 40f), 30f);
+            chip.sizeDelta = new Vector2(Mathf.Max(132f, words + 56f), 30f);
             chip.SetParent(root, true);
             var chipFader = Fader(chip);
             Animate(chip, CounterAt, 0.4f, t => chipFader.alpha = t);

@@ -194,10 +194,8 @@ namespace Gamesim.Episode
                 ReconcileNpcSocialWorld(); // Surface failed asynchronous bindings, without retry/teleport.
             }
             // The opening's front door has the house: its people walk where the show sends them, and
-            // nothing else ticks, as the arena's stage does below a competition. The world stays
-            // paused under it - the stage's leases are exempt - because a world the stage's restore
-            // rebuilt came back unpaused, with nothing under the opening to pause it again.
-            if (openingStage != null && openingStage.Active) { SetNpcWorldPaused(true); openingStage.Tick(); npcCaption?.Hide(); return; }
+            // nothing else ticks, as the arena's stage does below a competition.
+            if (openingStage != null && openingStage.Active) { openingStage.Tick(); npcCaption?.Hide(); return; }
             bool eligible = NpcCanAdvance && npcMeetings != null;
             SetNpcWorldPaused(!eligible);
             // Paused for the week's business, the house mills about (EpisodeDirector.Wander); free

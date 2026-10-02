@@ -155,11 +155,22 @@ namespace Gamesim.Episode
         /// <summary>
         /// The arrival line in the house's own word. A built season writes "houseguests", as every
         /// card of the opening says it; the shipped scenario's line says "housemates" and is frozen
-        /// by a replay witness (<c>SeasonBuilder.Arrival</c>), so the card reads that one in the
-        /// house's word rather than the engine's. Presentation only: the event keeps its text.
+        /// by a replay witness (<c>SeasonBuilder.Arrival</c>), so the opening's card, the Recent
+        /// events card and the notebook's story read that one in the house's word rather than the
+        /// engine's. Presentation only: the event keeps its text.
         /// </summary>
-        private static string InTheHousesWord(string line) =>
+        public static string InTheHousesWord(string line) =>
             string.IsNullOrEmpty(line) ? line : line.Replace("housemates", "houseguests").Replace("Housemates", "Houseguests");
+
+        /// <summary>
+        /// A logged line as the player reads it in the house's lists: <see cref="StoryText.Log"/>'s
+        /// rendering, with the season's arrival line in the house's word (<see cref="InTheHousesWord"/>).
+        /// </summary>
+        public static string EventLine(EpisodeState state, EpisodeEvent entry)
+        {
+            string line = StoryText.Log(state, entry);
+            return entry != null && entry.kind == "arrival" ? InTheHousesWord(line) : line;
+        }
 
         /// <summary>
         /// Which season of the show this is for the player: the finished seasons in their career
@@ -326,6 +337,7 @@ namespace Gamesim.Episode
             openingFramedGuest = true;
             introductionShot = shot;
             introductionFocusFromHips = shot.Focus - HipsOf(body, HumanoidHips(body));
+            introductionHeadFromFocus = head - shot.Focus;
             introductionFraming++;
             KeyLight(head, Quaternion.Euler(shot.Pitch, yaw, 0f), shot.Focus, shot.Distance);
             var visual = body.GetComponent<CharacterPresentation>();
@@ -450,22 +462,30 @@ namespace Gamesim.Episode
             if (visual != null) Set(visual, outcome, false);
         }
 
-        /// <summary>The shot the introduction under way is framed on, where its focus stands from the body's hips, and which framing it is - for the hold through the reaction.</summary>
+        /// <summary>The shot the introduction under way is framed on, where its focus stands from the body's hips and its head from the focus, and which framing it is - for the hold through the reaction.</summary>
         private HouseCameraRig.Shot introductionShot;
-        private Vector3 introductionFocusFromHips;
+        private Vector3 introductionFocusFromHips, introductionHeadFromFocus;
         private int introductionFraming;
 
         /// <summary>How far inside the frame, as a share of its width and height, the hips must stay before the shot is re-aimed.</summary>
         private const float HoldInFrameMargin = 0.1f;
 
+        /// <summary>How far clear of the introductions' column, as a share of the frame's width, the hips are kept; and the furthest across the frame that bound reaches, short of where the shot frames them.</summary>
+        private const float HoldClearOfTheCard = 0.05f, HoldLeftmost = 0.6f;
+
+        /// <summary>How far the body must have moved from where the shot is aimed, in metres, before it is re-aimed: a dance's sway is not a walk out of the frame.</summary>
+        private const float HoldInFrameStep = 0.2f;
+
         /// <summary>
         /// Holds the houseguest in the shot through their reaction. The shot is framed on where the
         /// body stands, and a take can carry the body away from there - a dance entered past its
         /// wind-up starts wherever its hips are then - so the shot held on an empty corner and a
-        /// lamp (UI-UX-PASS-PLAN S0, sweep-show 24). Whenever the hips leave the middle of the frame
-        /// the shot is re-aimed to keep its focus where it stood from them, at most twice a second,
-        /// until the reaction is over or the next houseguest is framed. The hips rather than the
-        /// root: where a body is drawn, not where the house stands it.
+        /// lamp (UI-UX-PASS-PLAN S0, sweep-show 24). Whenever the hips leave the part of the frame
+        /// the card leaves clear - right of the introductions' column, inside the frame's margins -
+        /// and have moved from where the shot is aimed, the shot is re-aimed to keep its focus where
+        /// it stood from them and the key light with it, at most twice a second, until the reaction
+        /// is over or the next houseguest is framed. The hips rather than the root: where a body is
+        /// drawn, not where the house stands it.
         /// </summary>
         private IEnumerator HoldInFrame(Transform body, int framing)
         {
@@ -479,16 +499,25 @@ namespace Gamesim.Episode
                 {
                     var at = HipsOf(body, hips);
                     var seen = FrameShare(camera, at);
+                    // At 4:3 and the larger text the card reaches nearly half way across the frame,
+                    // and a body behind it is not seen; on a frame the card all but covers, the bound
+                    // stops short of where the shot puts the hips, so it never chases them.
+                    var reach = opening.IntroductionsReach;
+                    float left = reach.HasValue ? Mathf.Clamp(reach.Value + HoldClearOfTheCard, HoldInFrameMargin, HoldLeftmost) : HoldInFrameMargin;
                     bool inside = seen.HasValue
-                        && seen.Value.x > HoldInFrameMargin && seen.Value.x < 1f - HoldInFrameMargin
+                        && seen.Value.x > left && seen.Value.x < 1f - HoldInFrameMargin
                         && seen.Value.y > HoldInFrameMargin && seen.Value.y < 1f - HoldInFrameMargin;
-                    if (!inside)
+                    var focus = at + introductionFocusFromHips;
+                    if (!inside && (focus - introductionShot.Focus).magnitude > HoldInFrameStep)
                     {
                         var shot = introductionShot;
-                        shot.Focus = at + introductionFocusFromHips;
+                        shot.Focus = focus;
                         shot.Seconds = 0.3f;
                         introductionShot = shot;
                         cameraRig.MoveTo(shot);
+                        // The key light goes with the shot: left where the framing put it, it lit the
+                        // spot the body had walked out of.
+                        KeyLight(focus + introductionHeadFromFocus, Quaternion.Euler(shot.Pitch, shot.Yaw, 0f), shot.Focus, shot.Distance);
                         nextAim = Time.realtimeSinceStartup + 0.5f;
                     }
                 }

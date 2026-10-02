@@ -1263,7 +1263,8 @@ namespace Gamesim.Episode
                 const float text = 56f;
                 string when = PhaseShort(entry.phase) + (entry.week != state.week ? " · Week " + entry.week : "");
                 FixedText(card, when, 11, UiTheme.Muted, new Vector2(text, y), new Vector2(width - text - 12f, 15f));
-                FixedText(card, Excerpt(StoryText.Log(state, entry), RecentEventLetters), 13, Paper,
+                // The house's word for the default season's frozen arrival line, as the opening's card says it.
+                FixedText(card, Excerpt(EpisodeDirector.EventLine(state, entry), RecentEventLetters), 13, Paper,
                     new Vector2(text, y - 15f), new Vector2(width - text - 12f, 36f));
                 if (i + 1 < entries.Count)
                 {

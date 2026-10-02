@@ -84,8 +84,13 @@ namespace Gamesim.Tests.PlayMode
                 AssertDecisionCopyFits(LastActive(EpisodeHud.FinalCaseThemesName));
                 AssertDecisionCopyFits(LastActive(EpisodeHud.FinalCaseResumeName));
                 AssertTheFinalCaseScreen(state, panel, moments, required);
-                AssertEveryLabelDraws("The final case" + (larger ? " at the larger text" : ""), panel);
-                if (!larger && Application.isBatchMode) yield return CaptureFraming("endgame-final-case", settle: false);
+                string where = "The final case" + (larger ? " at the larger text" : "");
+                AssertEveryLabelDraws(where, panel);
+                AssertAStationScreen(where);
+                AssertTheCloseUnderTheTray(early: false);
+                if (Application.isBatchMode)
+                    yield return CaptureFraming(larger ? "endgame-final-case-large" : "endgame-final-case", settle: false,
+                        inspect: frame => LogTheFit(where + " on the 16:9 frame"));
                 ButtonWithCaption(EpisodeDirector.LeaveFinalCaseCaption).onClick.Invoke();
                 yield return Frames(1);
                 Assert.That(director.InFinalCase, Is.False);
@@ -201,6 +206,59 @@ namespace Gamesim.Tests.PlayMode
             AssertDecisionCopyFits(tray);
         }
 
+        /// <summary>
+        /// A station screen - the final case, the jury house - is a screen of its own (UI-UX-PASS-PLAN
+        /// E0): on the strategy stage, with nothing pinned under it - at three the window's way on and
+        /// its unused-actions note used to stand over the columns and cut them - so its scroll runs to
+        /// the stage's foot and its content has the frame's room. Logs how far the column runs past
+        /// its viewport, so a run says what the frame holds.
+        /// </summary>
+        private void AssertAStationScreen(string where)
+        {
+            Canvas.ForceUpdateCanvases();
+            Assert.That(Hud.CurrentActivityLayout, Is.EqualTo(EpisodeHud.ActivityLayout.Strategy), where + " takes the strategy stage.");
+            var panel = LastActive("Episode panel");
+            Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.BeginNextCompetitionCaption), Is.Null, where + ": no way on is pinned under a station screen.");
+            Assert.That(panel.Find(EpisodeHud.PinnedNoteName), Is.Null, where + ": and no note under it.");
+            var pinned = panel.Cast<Transform>().Select(child => child.GetComponent<Button>())
+                .Where(button => button != null && button.IsActive() && button.name != "Close  [Esc]").Select(button => button.name).ToArray();
+            Assert.That(pinned, Is.Empty, where + " pins nothing in its footer: " + string.Join(", ", pinned));
+            var content = LastActive("Episode content");
+            var viewport = (RectTransform)content.parent;
+            Assert.That(ScreenRect(viewport).yMin - ScreenRect(panel).yMin, Is.LessThan(40f), where + "'s scroll runs to the stage's foot.");
+            LogTheFit(where);
+        }
+
+        /// <summary>How far the panel's column runs past its viewport, for the log: a scroll, or a screen that holds.</summary>
+        private void LogTheFit(string where)
+        {
+            Canvas.ForceUpdateCanvases();
+            var content = LastActive("Episode content");
+            var viewport = (RectTransform)content.parent;
+            float over = content.rect.height - viewport.rect.height;
+            Debug.Log("[Gamesim] " + where + ": the column runs " + content.rect.height.ToString("0") + " in a viewport of "
+                + viewport.rect.height.ToString("0") + (over > .5f ? ", " + over.ToString("0") + " past it." : ", and holds."));
+        }
+
+        /// <summary>
+        /// "Close your final case" is the screen's last row: under the columns and the tray, after the
+        /// lock at the Final 2 and the lock's line at three - never the full-width button over the
+        /// form it was, which made the screen's first control the one that leaves it (UI-UX-PASS-PLAN E0).
+        /// </summary>
+        private void AssertTheCloseUnderTheTray(bool early)
+        {
+            var close = (RectTransform)FindButton(EpisodeDirector.LeaveFinalCaseCaption).transform;
+            var columns = LastActive(EpisodeHud.FinalCaseColumnsName);
+            Assert.That(close.parent, Is.SameAs(columns.parent), "The way back is a row of the column, as the columns are.");
+            Assert.That(close.GetSiblingIndex(), Is.GreaterThan(columns.GetSiblingIndex()), "The way back comes under the columns,");
+            var tray = LastActive(EpisodeHud.FinalCaseTrayName);
+            if (tray != null) Assert.That(close.GetSiblingIndex(), Is.GreaterThan(tray.GetSiblingIndex()), "and under the tray.");
+            if (!early)
+                Assert.That(close.GetSiblingIndex(), Is.GreaterThan(LastActive(EpisodeHud.FinalCaseLockRowName).GetSiblingIndex()), "after the lock.");
+            var rows = close.parent.Cast<Transform>().Where(row => row.gameObject.activeSelf).ToList();
+            Assert.That(rows.Last(), Is.SameAs(close), "The way back is the screen's last row.");
+        }
+
         /// <summary>The window at three under the finale rules: a season played there from its start, installed and reloaded.</summary>
         private IEnumerator InstallTheWindowAtThreeUnderTheFinaleRules()
         {
@@ -271,8 +329,15 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(ButtonWithCaption(moment.text).transform.IsChildOf(LastActive(EpisodeHud.FinalCaseMomentsName)), Is.True, moment.reference);
                 AssertDecisionCopyFits(LastActive(EpisodeHud.FinalCaseThemesName));
                 AssertDecisionCopyFits(LastActive(EpisodeHud.FinalCaseResumeName));
-                AssertEveryLabelDraws("The final case at three" + (larger ? " at the larger text" : ""), panel);
-                if (!larger && Application.isBatchMode) yield return CaptureFraming("endgame-final-case-three", settle: false);
+                string where = "The final case at three" + (larger ? " at the larger text" : "");
+                AssertEveryLabelDraws(where, panel);
+                // A station screen at three (UI-UX-PASS-PLAN E0): the window's way on and its
+                // unused-actions note, which cut the columns at the bar, are not pinned under it.
+                AssertAStationScreen(where);
+                AssertTheCloseUnderTheTray(early: true);
+                if (Application.isBatchMode)
+                    yield return CaptureFraming(larger ? "endgame-final-case-three-large" : "endgame-final-case-three", settle: false,
+                        inspect: frame => LogTheFit(where + " on the 16:9 frame"));
 
                 // Choosing is view state: nothing commits, and closing lets it go.
                 ButtonWithCaption(FinalArgument.Label(FinalArgument.Social)).onClick.Invoke();
@@ -285,6 +350,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.InFinalCase, Is.False);
                 Assert.That(Words(LastActive(EpisodeHud.ScreenHeadName)), Does.Contain(EpisodeDirector.EndgamePreparationTitle), "Back in the window.");
                 Assert.That(Words(LastActive("Episode panel")), Does.Contain(status), "The window's own screen keeps its status line.");
+                Assert.That(FindButton(EpisodeDirector.BeginNextCompetitionCaption).transform.parent, Is.SameAs(LastActive("Episode panel")),
+                    "The window's way on is back, pinned, once the case is closed.");
                 ButtonWithCaption(EpisodeDirector.FinalCaseCaption).onClick.Invoke();
                 yield return Frames(2);
                 Assert.That(LastActive(EpisodeHud.FinalCaseThemesName).GetComponentsInChildren<Image>().Any(image => image.name == "Chosen mark"), Is.False,

@@ -390,15 +390,17 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The house in a strip of small cards, one pressed: the photo with the week's role on it, the
-        /// name and where you stand, each a control that makes them the one the screen is about.
+        /// name and where you stand, each a control that makes them the one the screen is about. A
+        /// card runs no wider than <paramref name="widest"/> at the resting text size, and no narrower
+        /// than its name needs.
         /// </summary>
-        public void HouseguestStrip(IReadOnlyList<string> ids, string selectedId, Action<string> pick)
+        public void HouseguestStrip(IReadOnlyList<string> ids, string selectedId, Action<string> pick, float widest = 150f)
         {
             if (ids == null || ids.Count == 0 || content == null) return;
             var state = director != null ? director.Snapshot : null;
             if (state == null) return;
             float s = FontScale, gap = 10f * s;
-            float width = Mathf.Clamp((ContentWidth() + gap) / ids.Count - gap, 96f * s, 150f * s);
+            float width = Mathf.Clamp((ContentWidth() + gap) / ids.Count - gap, 96f * s, Mathf.Max(96f, widest) * s);
             float photo = width * .78f, height = photo + 52f * s;
             int columns = Mathf.Max(1, Mathf.Min(ids.Count, Mathf.FloorToInt((ContentWidth() + gap) / (width + gap))));
             int rows = Mathf.CeilToInt(ids.Count / (float)columns);

@@ -148,7 +148,9 @@ namespace Gamesim.Episode
             hud.FinalCaseHead(argument != null ? "YOUR ARGUMENT IS LOCKED" : "WHAT WILL THE JURY REMEMBER?",
                 "The story of your game and three moments that prove it. Your speech opens with it, and a juror who values it weighs it.",
                 early ? "FINAL 3 · Read early" : "FINAL 2 · Jury review", "gavel", FinalCaseBrandLine);
-            hud.Action(LeaveFinalCaseCaption, CloseFinalCase);
+            // The way back, "Close your final case", is the screen's last row, under the columns and
+            // the tray: it used to be a full-width button over the form, so the screen's first
+            // control was the one that leaves it (UI-UX-PASS-PLAN E0).
 
             hud.BeginCaseColumns(.30f, .34f, .36f);
             hud.SectionHead("journal", "1 · YOUR NARRATIVE", argument != null ? "The story you locked." : "Choose how the jury remembers you.");
@@ -196,6 +198,7 @@ namespace Gamesim.Episode
                 }).ToList());
                 hud.EndCaseColumns();
                 hud.Footnote("Your final speech opens with this argument. You can still change the words, or skip the speech.");
+                hud.Action(LeaveFinalCaseCaption, CloseFinalCase);
                 return;
             }
             hud.SectionHead("star", "3 · SIGNATURE MOMENTS", required == 0 ? "None on the record yet."
@@ -227,10 +230,14 @@ namespace Gamesim.Episode
                     chosenMoments.Count + " / " + required + " selected", slots);
             }
             // At three the case is read, not locked: the lock's place says when it opens.
-            if (early) { hud.CardLine(FinalCaseLockLaterLine, 15, UiTheme.Gold); return; }
-            bool ready = ReadyToLock(state);
-            hud.FinalCaseLock(LockArgumentCaption, LockFinalArgument, ready, "Next: deliver your final speech to the jury. Locking is final.",
-                ready ? null : "Choose a narrative and " + (required == 1 ? "one moment" : required + " moments") + " to lock your argument.");
+            if (early) hud.CardLine(FinalCaseLockLaterLine, 15, UiTheme.Gold);
+            else
+            {
+                bool ready = ReadyToLock(state);
+                hud.FinalCaseLock(LockArgumentCaption, LockFinalArgument, ready, "Next: deliver your final speech to the jury. Locking is final.",
+                    ready ? null : "Choose a narrative and " + (required == 1 ? "one moment" : required + " moments") + " to lock your argument.");
+            }
+            hud.Action(LeaveFinalCaseCaption, CloseFinalCase);
         }
 
         private static string ThemeGlyph(string theme)

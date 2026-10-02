@@ -192,5 +192,23 @@ namespace Gamesim.Simulation
                 default: return 1;
             }
         }
+
+        /// <summary>
+        /// One step heavier than <paramref name="trust"/>: low to medium, medium to high, high to
+        /// critical. Critical is the heaviest there is and stays critical; anything unknown reads as
+        /// low, as <see cref="Weight"/> reads it, and goes to medium. What an offer the player
+        /// accepted stakes when it breaks, under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN
+        /// C1, decision 15; <see cref="DealResolution.BreachWeight"/>).
+        /// </summary>
+        public static string Heavier(string trust)
+        {
+            switch (trust)
+            {
+                case Critical:
+                case High: return Critical;
+                case Medium: return High;
+                default: return Medium;
+            }
+        }
     }
 }

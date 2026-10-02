@@ -311,6 +311,9 @@ namespace Gamesim.Simulation
                     Log(s, "campaign-close", "Campaigning has closed. The house votes privately to evict.");
                     Phase(s, EpisodePhase.Eviction);
                     StoryAnchor(s, StoryAnchors.EvictionEve);
+                    // Under the commitment rules (C1) an information deal passes its reading: last in
+                    // the step, as the house is about to vote and nothing more is campaigned.
+                    if (CommitmentRulesOn(s)) PassTheReadings(s);
                     break;
                 case EpisodePhase.Eviction:
                     if (s.evictionResolved)
@@ -429,6 +432,10 @@ namespace Gamesim.Simulation
                     RecordReveal(s, evicted, tally.Select(x => x.count).ToList());
                     RecordJurorStanding(s, evicted);
                     ReconcileOpportunities(s);
+                    // Under the commitment rules (C1, X4) whatever still bound the evictee ends as
+                    // they leave - after the chances are reconciled, so a deal the player took is on
+                    // the record as taken.
+                    if (CommitmentRulesOn(s)) EndWithTheEvictee(s, evicted);
                     PreparePostEvictionDiary(s, evicted);
                     break;
                 case EpisodePhase.FinalEviction:
@@ -438,6 +445,9 @@ namespace Gamesim.Simulation
                     var finalOptions = WebEvictionVoting.FromNative(finalContext, s.hohId);
                     // Match the source fast-forward final-selection caller, which supplies no memory/persona context.
                     finalOptions.memories.Clear(); finalOptions.playerPersonaLabel = null;
+                    // Under the commitment rules (C1) a final two deal is a real obligation in the
+                    // choice, not the web's deal term alone (about 4.5 points after its weight).
+                    if (CommitmentRulesOn(s)) finalOptions.obligations.AddRange(FinalTwoTerms(s, s.hohId, finalContext.nominees));
                     FinalEvict(s, WebEvictionVoting.Evaluate(finalOptions).selectedNomineeId); break;
                 case EpisodePhase.JuryQuestioning:
                     Require(s.juryExchanges[s.juryQuestionIndex].completed, "Answer the current question or skip questioning.");
@@ -888,6 +898,10 @@ namespace Gamesim.Simulation
             // broken by it exactly as it would be at the ceremony itself.
             if (use) SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Nominates, s.hohId,
                 new List<string> { replacement }));
+            // Under the commitment rules (C1) the Head of Household's nominating is done for the
+            // week, so a safety pact of theirs with somebody they spared is kept - and the one spared
+            // thinks the better of them for it, at the pact's weight. Before them it could only break.
+            if (CommitmentRulesOn(s)) SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Spares, s.hohId, s.nominees.ToList()));
             s.vetoResolved = true;
             RecordVeto(s, use, saved, replacement);
             // A question about a decision already taken is no longer on the table.
@@ -953,7 +967,7 @@ namespace Gamesim.Simulation
         {
             Require(s.Active.Count() == 3 && s.Active.Any(c => c.id == target && c.id != s.hohId), "Choose one of the other finalists to evict.");
             var selected = s.Active.Single(c => c.id != target && c.id != s.hohId).id;
-            foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.FinalTwo && p.fromId == s.hohId).ToArray())
+            foreach (var promise in s.promises.Where(p => FinalChoiceSettles(s, p, s.hohId)).ToArray())
                 SettlePromise(s, promise, promise.toId == selected ? PromiseStatus.Fulfilled : PromiseStatus.Broken);
             SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Selects, s.hohId, selectedId: selected));
             RecordFinalEviction(s, target, s.Active.Where(c => c.id != s.hohId).Select(c => c.id).ToList());
@@ -978,6 +992,10 @@ namespace Gamesim.Simulation
             // line the status bar shows.
             TellThePlayerWhichAlliancesEnded(s, ended.Where(a => a.members.Contains(s.playerId)).ToList());
             ReconcileOpportunities(s);
+            // Under the commitment rules (C1, X4) whatever still bound the one evicted ends with them,
+            // as at the weekly eviction: after the reconcile, so a deal the player took stays on the
+            // record as taken, and drawing nothing.
+            if (CommitmentRulesOn(s)) EndWithTheEvictee(s, target);
         }
 
         private static void ResolveJury(EpisodeState s)
@@ -1907,7 +1925,10 @@ namespace Gamesim.Simulation
                 // The offer lapsed at the end of this week; the arrangement it becomes runs for as
                 // long as its own kind runs for, which for a final two or a partnership is no limit.
                 deal.expiresWeek = PlayerDeals.Draft(s, deal.proposerId, deal.type, deal.targetId, deal.id).expiresWeek;
-                Change(s, s.playerId, deal.proposerId, PlayerDeals.AcceptedImpact,
+                // Under the commitment rules (C1, decision 15) a yes is a commitment, not free
+                // warmth: +4 rather than +12, and the offer weighs one step heavier if it breaks
+                // (DealResolution.BreachWeight). The same two draws either way.
+                Change(s, s.playerId, deal.proposerId, CommitmentRulesOn(s) ? PlayerDeals.CommittedAcceptedImpact : PlayerDeals.AcceptedImpact,
                     "Took me up on a " + title + ".", "deal_accepted");
                 Remember(s, s.playerId, deal.proposerId, "I accepted a " + title + " from " + from.name + ".", true);
                 Log(s, "deal", "You accepted a " + title + " from " + from.name + ".", s.playerId, deal.proposerId);
@@ -1944,7 +1965,10 @@ namespace Gamesim.Simulation
             {
                 var deal = verdict.deal;
                 deal.status = verdict.status;
-                double delta = DealResolution.Impact(deal, verdict.status);
+                // Under the commitment rules (C1) an offer the player accepted weighs one step
+                // heavier when it breaks; every other deal, and every deal before the rules, weighs
+                // its own trust (DealResolution.BreachWeight).
+                double delta = DealResolution.Impact(s, deal, verdict.status);
                 bool kept = verdict.status == DealStatus.Fulfilled;
                 string title = DealKind.Title(deal.type).ToLowerInvariant();
                 if (rules)
@@ -1956,9 +1980,10 @@ namespace Gamesim.Simulation
                 // A vote deal's outcome is a ballot (UI-UX-PASS-PLAN decision 4): the settlement is
                 // the same, but the line goes only to whoever can know it - the party whose own
                 // ballot decided it, and never the player as the other party, who is told once they
-                // know the ballot (KnownBallots.DealOutcomeKnown). Every other deal's line goes to
+                // know the ballot (KnownBallots.DealOutcomeKnown). So is a partnership's under the
+                // commitment rules (C1), which only the vote settles. Every other deal's line goes to
                 // the pair, as it always did.
-                bool ballot = KnownBallots.IsVoteDeal(deal.type);
+                bool ballot = KnownBallots.SettledByABallot(deal);
                 if (verdict.actorId == null)
                 {
                     string text = Name(s, deal.proposerId) + " and " + Name(s, deal.recipientId)
@@ -1982,7 +2007,11 @@ namespace Gamesim.Simulation
                         kept ? "deal_fulfilled" : "deal_broken", delta, text);
                     Remember(s, wronged, verdict.actorId, text, true);
                     Log(s, "deal-outcome", text, ballot ? new[] { verdict.actorId } : new[] { verdict.actorId, wronged });
-                    if (!kept) StoryWordBroken(s, wronged, verdict.actorId, GrudgeCauses.DealBroken, 60);
+                    // A breach the player suffered by somebody else's ballot raises no reckoning for them
+                    // under the commitment rules (C1): the story's "You Broke Your Word" would tell them a
+                    // ballot they may not know (decision 4). The memory and the line wait for the ballot.
+                    bool theirBallotAgainstYou = rules && ballot && wronged == s.playerId;
+                    if (!kept && !theirBallotAgainstYou) StoryWordBroken(s, wronged, verdict.actorId, GrudgeCauses.DealBroken, 60);
                 }
 
                 if (!kept) SpreadBetrayal(s, deal, verdict.actorId);

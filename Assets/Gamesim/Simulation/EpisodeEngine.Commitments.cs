@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 
@@ -14,6 +15,14 @@ namespace Gamesim.Simulation
     /// them, a promise to vote somebody out is never made to them, and a deal or a promise records
     /// who broke it and when (C0) - so every reader, the eviction vote's included, holds a breach
     /// against whoever broke it (<see cref="Breaches"/>), and the record of it never fades (X11).
+    ///
+    /// <para>And every deal does something (C1): an information deal passes the player one reading a
+    /// week (<see cref="PassTheReadings"/>), a partnership is judged at the vote and a safety pact is
+    /// kept by being spared (<see cref="DealResolution"/>), a final two deal is an obligation in the
+    /// final Head of Household's choice (<see cref="FinalTwoTerms"/>), deals and final two promises
+    /// end with an evictee and the final choice passes over anybody gone (X4,
+    /// <see cref="EndWithTheEvictee"/>), a vote deal both parties broke names neither, and accepting
+    /// an offer is +4 and commits the player: broken, it weighs one step heavier (decision 15).</para>
     ///
     /// <para>Keyed to <see cref="EpisodeState.commitmentRulesStartWeek"/>: before it a season plays
     /// exactly as it did, roll for roll and line for line. The director starts every season under
@@ -91,5 +100,111 @@ namespace Gamesim.Simulation
             RelationshipLedger.RecordOneWay(s, wrongedId, breakerId, "deal_broken", delta, text, permanent: true);
             RelationshipLedger.RecordOneWay(s, breakerId, wrongedId, "deal_broken", 0, text, permanent: true);
         }
+
+        // ---------------------------------------------------------------- C1: every deal does something
+
+        /// <summary>
+        /// Somebody has left the house, under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C1,
+        /// X4): every deal that still binds them - one they are a party to, an offer they made or were
+        /// made, one that names them - ends, and so does every final two promise made to them or by
+        /// them. An ending is not a breach, as a deal whose week has passed is not
+        /// (<see cref="NpcDeals"/>' expiry): nobody failed anybody when a partner was voted out, so
+        /// nothing is written to anybody's record, nothing is logged and nothing is drawn. Before the
+        /// rules they stood, and the final eviction broke every final two still standing with somebody
+        /// already on the jury - a deal at −45 and a grudge, −50 with the jury - for a word nobody could
+        /// keep.
+        /// </summary>
+        private static void EndWithTheEvictee(EpisodeState s, string evictedId)
+        {
+            if (string.IsNullOrEmpty(evictedId)) return;
+            foreach (var deal in s.deals.Where(d => DealStatus.Binds(d.status)
+                         && (d.proposerId == evictedId || d.recipientId == evictedId || d.targetId == evictedId)))
+                deal.status = DealStatus.Expired;
+            foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.FinalTwo
+                         && (p.fromId == evictedId || p.toId == evictedId)))
+                promise.status = PromiseStatus.Expired;
+        }
+
+        /// <summary>
+        /// Whether the final choice settles this promise: a final two promise the final Head of
+        /// Household made that still stands - and, under the commitment rules (C1, X4), made to
+        /// somebody still in the house. One to a juror ended as they left; one that did not (a season
+        /// that took the rules on later) is passed over, not broken. The engine's final eviction and
+        /// the decision screen's dry run (<see cref="CommitmentsRead"/>) both ask this.
+        /// </summary>
+        public static bool FinalChoiceSettles(EpisodeState s, PromiseState p, string hohId) =>
+            p != null && p.status == PromiseStatus.Active && p.kind == PromiseKind.FinalTwo && p.fromId == hohId
+            && (!CommitmentRulesOn(s) || s.Find(p.toId)?.status == ContestantStatus.Active);
+
+        /// <summary>
+        /// What a final two deal weighs in the final Head of Household's choice under the commitment
+        /// rules, at its whole: the evaluator's own decisive margin (a lean of 25 is "decisive"), so a
+        /// final two the Head of Household still means outweighs any lean short of a decisive one.
+        /// </summary>
+        public const double FinalTwoObligation = 25;
+
+        /// <summary>
+        /// A final two deal in the final Head of Household's choice (C1): an obligation term on the
+        /// finalist it would take, as a vote deal is a term in a ballot (<see cref="Obligations"/>),
+        /// and scaled the same way - by the Head of Household's view of that finalist (nothing at zero
+        /// or below, whole at fifty) and by their word (Loyal ×1.5, Sneaky ×0). A final two deal used
+        /// to be the web's deal term alone, about 4.5 points after its weight, which decided nothing.
+        /// Only a deal with one of the two finalists: one with a juror is no longer a choice. Empty for
+        /// a Head of Household who is the player, whose choice is their own. No roll.
+        /// </summary>
+        public static List<WebVoteObligation> FinalTwoTerms(EpisodeState s, string hohId, IReadOnlyList<string> finalists)
+        {
+            var terms = new List<WebVoteObligation>();
+            var hoh = s?.Find(hohId);
+            if (hoh == null || hoh.isPlayer || finalists == null) return terms;
+            double word = hoh.traits.Contains("Sneaky") ? 0 : hoh.traits.Contains("Loyal") ? LoyalObligation : 1;
+            foreach (var deal in s.deals.Where(d => d.status == DealStatus.Active && d.type == DealKind.FinalTwo))
+            {
+                string partner = DealResolution.Partner(deal, hohId);
+                if (partner == null || !finalists.Contains(partner) || s.Find(partner)?.status != ContestantStatus.Active) continue;
+                double scale = Math.Max(0, Math.Min(1, s.Score(hohId, partner) / ObligationFullView));
+                double value = FinalTwoObligation * scale * word;
+                if (value == 0) continue;
+                var term = terms.FirstOrDefault(t => t.nomineeId == partner);
+                if (term == null) terms.Add(term = new WebVoteObligation { nomineeId = partner, code = "obligation" });
+                term.value += value;
+                term.evidenceIds.Add(deal.id);
+            }
+            return terms;
+        }
+
+        /// <summary>
+        /// An information deal does something (C1): each week, as campaigning closes and the house
+        /// is about to vote, a partner of the player's who casts a ballot this week tells them where
+        /// it is going. It is the same claim an answered "where's your head at" is - told to the
+        /// player's face (<see cref="ClaimSource.Told"/>), on the ledger's claims, read by the whip
+        /// count, and judged at the reveal like every other (kept, or a lie that costs them with the
+        /// player). What they say is their ballot as it stands (<see cref="ProjectBallot"/>), honestly:
+        /// that is the deal, a fact that is theirs to give, never a number. A partner who casts no
+        /// ballot this week - the Head of Household, somebody on the block - has no vote to share.
+        /// One a week for each partner, however many deals; no roll; nothing for a player out of the
+        /// house. No memory either, as with the asked claim: a memory naming somebody counts in the
+        /// web's vote term.
+        /// </summary>
+        private static void PassTheReadings(EpisodeState s)
+        {
+            var player = s.Find(s.playerId);
+            if (player == null || player.status != ContestantStatus.Active || !VoteRead.Available(s)) return;
+            var voters = new HashSet<string>(Voters(s).Where(v => !v.isPlayer).Select(v => v.id));
+            var told = new HashSet<string>();
+            foreach (var deal in s.deals.Where(d => d.status == DealStatus.Active && d.type == DealKind.InformationSharing).ToList())
+            {
+                string partner = DealResolution.Partner(deal, s.playerId);
+                if (partner == null || !voters.Contains(partner) || !told.Add(partner)) continue;
+                string target = ProjectBallot(s, partner).selectedNomineeId;
+                if (string.IsNullOrEmpty(target)) continue;
+                SeasonLedger.Append(s.ledger, s.ledger.claims, new ClaimRow { week = s.week, voterId = partner, targetId = target, source = ClaimSource.Told });
+                Log(s, "vote-read", ReadingLine(Name(s, partner), Target(s, target, partner)), s.playerId, partner);
+            }
+        }
+
+        /// <summary>The line an information deal's reading is told in: "Alex kept you in the loop, as your information deal has it: they're voting to evict Maya."</summary>
+        public static string ReadingLine(string partnerName, string evicting) =>
+            partnerName + " kept you in the loop, as your information deal has it: they're voting to evict " + evicting + ".";
     }
 }

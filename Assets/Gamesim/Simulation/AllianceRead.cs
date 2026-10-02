@@ -373,6 +373,9 @@ namespace Gamesim.Simulation
         private static List<Deal> Deals(EpisodeState s, AllianceState alliance)
         {
             var others = alliance.members.Where(id => id != s.playerId).ToList();
+            // Under the commitment rules a deal the vote settled - a partnership too (C1) - says how it
+            // ended once the player knows the ballot that settled it (KnownBallots).
+            bool rules = EpisodeEngine.CommitmentRulesOn(s);
             return s.deals.Where(d => d != null && d.type != DealKind.AllianceInvite
                     && (d.status == DealStatus.Accepted || d.status == DealStatus.Active || d.status == DealStatus.Fulfilled || d.status == DealStatus.Broken)
                     && ((d.proposerId == s.playerId && others.Contains(d.recipientId)) || (d.recipientId == s.playerId && others.Contains(d.proposerId))))
@@ -381,10 +384,11 @@ namespace Gamesim.Simulation
                 {
                     string with = d.proposerId == s.playerId ? d.recipientId : d.proposerId;
                     string about = string.IsNullOrEmpty(d.targetId) ? "" : ", on " + (d.targetId == s.playerId ? "you" : First(s, d.targetId));
+                    string standing = rules && !KnownBallots.DealOutcomeKnown(s, d) ? KnownBallots.Unresolved : HouseguestNotes.DealStanding(d.status, d.proposerId == with);
                     return new Deal
                     {
                         week = d.week, withId = with, type = d.type, status = d.status,
-                        text = DealKind.Title(d.type) + " with " + First(s, with) + about + " · " + HouseguestNotes.DealStanding(d.status, d.proposerId == with),
+                        text = DealKind.Title(d.type) + " with " + First(s, with) + about + " · " + standing,
                     };
                 }).ToList();
         }

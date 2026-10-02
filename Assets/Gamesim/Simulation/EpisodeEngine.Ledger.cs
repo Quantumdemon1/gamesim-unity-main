@@ -185,13 +185,18 @@ namespace Gamesim.Simulation
         public static void ReconcileOpportunities(EpisodeState s)
         {
             if (s?.ledger == null) return;
+            bool rules = CommitmentRulesOn(s);
             foreach (var deal in s.deals.Where(d => d.proposerId == s.playerId || d.recipientId == s.playerId))
             {
                 var row = Opportunity(s, deal.id, OpportunityKinds.Deal, deal.week);
                 row.source = deal.type + (deal.targetId != null ? ":" + deal.targetId : "");
                 row.note = (deal.proposerId == s.playerId ? "put to " + deal.recipientId : "offered by " + deal.proposerId) + ", " + deal.status;
+                // Under the commitment rules (C1, X4) a deal ends with an evictee, after the reveal's
+                // reconcile has seen it taken: a deal the player took and that then ended is still a
+                // deal they took, not an offer left on the table.
+                bool takenBefore = rules && row.response == OpportunityResponse.Taken;
                 row.response = deal.status == DealStatus.Declined ? OpportunityResponse.Declined
-                    : deal.status == DealStatus.Expired ? OpportunityResponse.Expired
+                    : deal.status == DealStatus.Expired ? (takenBefore ? OpportunityResponse.Taken : OpportunityResponse.Expired)
                     : deal.status == DealStatus.Proposed ? OpportunityResponse.Ignored : OpportunityResponse.Taken;
                 row.outcome = deal.status == DealStatus.Fulfilled ? OpportunityOutcome.Won
                     : deal.status == DealStatus.Broken ? OpportunityOutcome.Lost : OpportunityOutcome.NotApplicable;

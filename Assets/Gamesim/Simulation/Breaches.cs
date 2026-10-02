@@ -20,7 +20,8 @@ namespace Gamesim.Simulation
         /// <summary>
         /// Who broke a broken deal: the settlement's record where it names somebody (schema 22); nobody
         /// where it settled under the commitment rules naming nobody - a voting bloc, which both
-        /// parties settle at once; and for a deal settled before the record existed,
+        /// parties settle at once, or a vote deal both of them broke (C1); and for a deal settled
+        /// before the record existed,
         /// <see cref="FinalistRead.DealBreaker"/>'s rule, which reads the public record and the
         /// ballots the player knows, and names a breaker only for a deal the player was party to.
         /// Null for a deal that is not broken.
@@ -34,13 +35,27 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// Whether this houseguest broke this deal: its breaker, or either side of a voting bloc that
-        /// fell apart - each voted their own way, so each walked away from it.
+        /// Whether this houseguest broke this deal: its breaker, or either side of a deal both of them
+        /// broke at once (<see cref="BrokenByBoth"/>) - each voted their own way, so each walked away
+        /// from it.
         /// </summary>
         public static bool Broke(EpisodeState s, DealState deal, string whoId) =>
             deal != null && deal.status == DealStatus.Broken && !string.IsNullOrEmpty(whoId)
             && (deal.proposerId == whoId || deal.recipientId == whoId)
-            && (deal.type == DealKind.VoteTogether || DealBreaker(s, deal) == whoId);
+            && (BrokenByBoth(deal) || DealBreaker(s, deal) == whoId);
+
+        /// <summary>
+        /// Whether a broken deal was broken by both of its parties at once: a voting bloc that fell
+        /// apart, and - under the commitment rules, on the record (ACTIONS-DEALS-ALLIANCES-PLAN C1) - a
+        /// vote deal both of them voted against, which its settlement names nobody for. Before the
+        /// rules such a vote deal named the first of the two as its breaker, and the second as the one
+        /// wronged.
+        /// </summary>
+        public static bool BrokenByBoth(DealState deal) =>
+            deal != null && deal.status == DealStatus.Broken
+            && (deal.type == DealKind.VoteTogether
+                || (deal.settledWeek > 0 && string.IsNullOrEmpty(deal.brokenById)
+                    && (deal.type == DealKind.VoteSave || deal.type == DealKind.VoteEvict)));
 
         /// <summary>
         /// Whether a broken deal counts against this houseguest when anybody sizes them up: under the

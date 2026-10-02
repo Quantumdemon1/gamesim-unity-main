@@ -9,19 +9,22 @@ namespace Gamesim.Simulation
     /// against what the reveal showed, the deals and promises that ended that week and how, the calls
     /// they made in their alliances and who followed, and their Game Sense so far.
     ///
-    /// <para><b>Only what the player can know after the reveal.</b> The reveal reads every ballot
-    /// aloud, so a claim is judged against a ballot the whole house heard, and the whip count against
-    /// the evictee. A deal or a promise is judged by the outcome line the player was told, in the words
-    /// they were told it, in the week it was told: for a deal, the player's own copy of that line on
-    /// their record with the other party, which outlasts the log; for a promise, the log line, which
-    /// keeps the house's last 256 lines, and the player's own memory of it, which keeps their last 30.
-    /// A promise from a week both have rolled past is not on the list, so a review of an early week in
-    /// a long season can show fewer promises than that week ended. A call is judged, in the week still
-    /// on screen, by the ballots the reveal read; in an earlier week, whose ballots are gone, by what
-    /// each member said at the call. Game Sense is the verdict's own notes, the known ones only
-    /// (<see cref="GameSense.Note.known"/>): its strategy face is made of public and player-owned
-    /// rows, while its competitions face rests on odds and its social face on how the house sees the
-    /// player, neither of which anybody is shown mid-season.</para>
+    /// <para><b>Only what the player can know after the reveal.</b> The reveal reads the count, not
+    /// the ballots (UI-UX-PASS-PLAN B0): a claim is judged against the ballot as the player knows it
+    /// (<see cref="KnownBallots"/> - their own, the tie-break, what the count proves, what they were
+    /// told and the reveal judged), and is "not known" where they cannot place it; the whip count
+    /// against the evictee. A deal or a promise is judged by the outcome line the player was told, in
+    /// the words they were told it, in the week it was told: for a deal, the player's own copy of
+    /// that line on their record with the other party, which outlasts the log; for a promise, the log
+    /// line, which keeps the house's last 256 lines, and the player's own memory of it, which keeps
+    /// their last 30. A vote deal or a vote promise the other party settled by their ballot reads
+    /// unresolved until the player knows that ballot (decision 4). A promise from a week both have
+    /// rolled past is not on the list, so a review of an early week in a long season can show fewer
+    /// promises than that week ended. A call's members are judged by their ballots where the player
+    /// knows them, and otherwise by what each member said at the call. Game Sense is the verdict's
+    /// own notes, the known ones only (<see cref="GameSense.Note.known"/>): its strategy face is made
+    /// of public and player-owned rows, while its competitions face rests on odds and its social face
+    /// on how the house sees the player, neither of which anybody is shown mid-season.</para>
     ///
     /// <para>Plain data read from committed state: nothing here rolls, writes or changes an outcome.
     /// The plays and threads the player advanced are not repeated here: the recap's acts already list
@@ -44,7 +47,7 @@ namespace Gamesim.Simulation
             public const string WhipCount = "whip count", Claim = "claim", Deal = "deal", Promise = "promise", Call = "call", Member = "member";
         }
 
-        /// <summary>What a call member's verdict rests on: the ballot the reveal read, or what they said at the call.</summary>
+        /// <summary>What a call member's verdict rests on: the ballot as the player knows it, or what they said at the call.</summary>
         public static class Bases
         {
             public const string Ballot = "ballot", Call = "call";
@@ -124,10 +127,14 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// The whip count the player cast their ballot on, judged against the evictee, and every
-        /// claim of the week, judged against the ballot the reveal read for that voter.
+        /// claim of the week, judged against that voter's ballot as the player knows it: right where
+        /// the known ballot is what they said, wrong where it is not, and not known where the player
+        /// cannot place it. The count can prove a claim false on its own - every ballot is placed
+        /// when the vote is unanimous - without the house ever reading a ballot aloud.
         /// </summary>
         private static void Reads(EpisodeState s, int week, PowerRow power, bool revealed, List<Line> lines)
         {
+            var sheet = KnownBallots.Read(s, week);
             var ballot = s.ledger.ballots.LastOrDefault(b => b.week == week && b.voterId == s.playerId);
             if (ballot != null)
             {
@@ -158,19 +165,18 @@ namespace Gamesim.Simulation
                     : claim.source == ClaimSource.Overheard ? "Overheard: " + Who(s, claim.voterId) + voting
                     : "An ally heard " + Who(s, claim.voterId) + voting;
                 var line = new Line { kind = Kinds.Claim, aboutId = claim.voterId };
-                if (claim.status == ClaimStatus.Kept) { line.verdict = Verdicts.Right; line.text = said + ", and voted that way."; }
-                else if (claim.status == ClaimStatus.Lied)
+                var known = sheet.Of(claim.voterId);
+                if (known != null && known.Certain && known.targetId == claim.targetId) { line.verdict = Verdicts.Right; line.text = said + ", and voted that way."; }
+                else if (known != null && known.Certain)
                 {
                     line.verdict = Verdicts.Wrong;
-                    // The block was two; the ballot that was not the claim's was the other's.
-                    string other = power != null && power.nominees.Count == 2 && power.nominees.Contains(claim.targetId)
-                        ? power.nominees.First(id => id != claim.targetId) : null;
-                    line.text = said + (other != null ? ", and voted to evict " + (other == s.playerId ? "you" : Whom(s, other)) + "." : ", and voted the other way.");
+                    line.text = said + ", and voted to evict " + (known.targetId == s.playerId ? "you" : Whom(s, known.targetId)) + ".";
                 }
                 else
                 {
                     line.verdict = Verdicts.NotKnown;
-                    line.text = said + (revealed ? ". Their vote never came." : ". The vote is still to come.");
+                    line.text = said + (!revealed ? ". The vote is still to come."
+                        : claim.status == ClaimStatus.Open ? ". Their vote never came." : ". How they voted is not known.");
                 }
                 lines.Add(line);
             }
@@ -195,8 +201,17 @@ namespace Gamesim.Simulation
                 var line = new Line { kind = Kinds.Deal, verdict = kept ? Verdicts.Kept : Verdicts.Broken, aboutId = partner };
                 if (ReadDeal(s, record.description, partner, out string actorId, out string type, out bool said) && said == kept)
                 {
-                    line.byId = actorId;
                     string what = DealWords(type);
+                    // A vote deal the other party settled by their ballot - or that the two of them
+                    // settled together - is told once the player knows that ballot (decision 4).
+                    if (KnownBallots.IsVoteDeal(type) && actorId != s.playerId && !KnownBallots.Knows(s, week, partner))
+                    {
+                        line.verdict = Verdicts.NotKnown;
+                        line.text = "The " + what + " with " + Whom(s, partner) + " is " + KnownBallots.Unresolved + ".";
+                        lines.Add(line);
+                        continue;
+                    }
+                    line.byId = actorId;
                     line.text = actorId == null
                         ? "You and " + Whom(s, partner) + (kept ? " held to your " : " fell out over your ") + what + "."
                         : actorId == s.playerId
@@ -273,7 +288,7 @@ namespace Gamesim.Simulation
             {
                 int heard = told.Count(x => x == outcome);
                 int recalled = Math.Min(remembered.Count(x => x == outcome), PromisesItCouldBe(s, week, outcome.text, outcome.partner));
-                for (int i = 0; i < Math.Max(heard, recalled); i++) lines.Add(PromiseLine(s, outcome.text, outcome.partner));
+                for (int i = 0; i < Math.Max(heard, recalled); i++) lines.Add(PromiseLine(s, week, outcome.text, outcome.partner));
             }
         }
 
@@ -291,14 +306,21 @@ namespace Gamesim.Simulation
                 && p.week <= week && (p.expiresWeek == 0 || week <= p.expiresWeek));
         }
 
-        private static Line PromiseLine(EpisodeState s, string text, string partner)
+        private static Line PromiseLine(EpisodeState s, int week, string text, string partner)
         {
             var line = new Line { kind = Kinds.Promise, aboutId = partner };
             if (ReadPromise(s, text, partner, out string fromId, out PromiseKind kind, out bool kept))
             {
+                string what = PromiseWords(kind);
+                // Their vote promise ended by their ballot: told once the player knows it (decision 4).
+                if (kind == PromiseKind.Vote && fromId != s.playerId && !KnownBallots.Knows(s, week, partner))
+                {
+                    line.verdict = Verdicts.NotKnown;
+                    line.text = "Their " + what + " to you is " + KnownBallots.Unresolved + ".";
+                    return line;
+                }
                 line.verdict = kept ? Verdicts.Kept : Verdicts.Broken;
                 line.byId = fromId;
-                string what = PromiseWords(kind);
                 line.text = fromId == s.playerId
                     ? "You " + (kept ? "kept" : "broke") + " your " + what + " to " + Whom(s, partner) + "."
                     : Who(s, partner) + " " + (kept ? "kept" : "broke") + " their " + what + " to you.";
@@ -333,16 +355,15 @@ namespace Gamesim.Simulation
         // ---------------------------------------------------------------- calls
 
         /// <summary>
-        /// Each call the player made this week: its own line, then each member who could vote. In the
-        /// week still on screen the reveal has read every ballot aloud, and those ballots are the
-        /// verdict: followed if they voted out who was called, defected if not, whatever they said at
-        /// the call. An earlier week's ballots are gone with its turn, so its members stand as they
-        /// said at the call. Each line says which it rests on.
+        /// Each call the player made this week: its own line, then each member who could vote. A
+        /// member whose ballot the player knows (<see cref="KnownBallots"/>) is judged by it: followed
+        /// if they voted out who was called, defected if not, whatever they said at the call. A member
+        /// whose ballot the player cannot place stands as they said at the call. Each line says which
+        /// it rests on. Never a ballot the reveal kept private.
         /// </summary>
         private static void Calls(EpisodeState s, int week, PowerRow power, bool revealed, List<Line> lines)
         {
-            // The live week's ballots, once the reveal has read them; never a ballot still private.
-            bool ballots = revealed && week == s.week && s.evictionResolved;
+            var sheet = KnownBallots.Read(s, week);
             foreach (var call in s.ledger.calls.Where(c => c.week == week && c.callerId == s.playerId))
             {
                 string pact = s.alliances.FirstOrDefault(a => a.id == call.allianceId)?.name ?? "your alliance";
@@ -354,14 +375,14 @@ namespace Gamesim.Simulation
                 foreach (var id in call.followed.Concat(call.defected))
                 {
                     bool said = call.followed.Contains(id);
-                    var vote = ballots ? s.votes.FirstOrDefault(v => v.voterId == id) : null;
+                    string known = sheet.TargetOf(id);
                     var line = new Line { kind = Kinds.Member, aboutId = id };
-                    if (vote != null)
+                    if (known != null)
                     {
-                        bool voted = vote.targetId == call.targetId;
+                        bool voted = known == call.targetId;
                         line.verdict = voted ? Verdicts.Followed : Verdicts.Defected;
                         line.basis = Bases.Ballot;
-                        string ballot = voted ? "voted out " + target : "voted to evict " + Whom(s, vote.targetId);
+                        string ballot = voted ? "voted out " + target : "voted to evict " + Whom(s, known);
                         line.text = Who(s, id) + (said ? " was with you at the call, " + (voted ? "and " : "then ") + ballot + "."
                             : " was not with you at the call, " + (voted ? "then " + ballot + " anyway." : "and " + ballot + "."));
                     }

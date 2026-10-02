@@ -109,14 +109,20 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void EveryBallotTheRevealShowedIsInTheRecap()
+        public void TheRecapHoldsTheCountAndThePlayersOwnBallotAndNobodyElses()
         {
             var state = PlayedSeason(5u);
             int week = state.events.First(e => e.kind == "vote-reveal").week;
-            var shown = state.events.Where(e => e.week == week && e.kind == "vote-reveal")
+            // The reveal reads the house only the count, on the eviction line; each ballot's own line
+            // is its voter's alone, so the player hears theirs and nobody else's.
+            var heard = state.events.Where(e => e.week == week && (e.kind == "eviction"
+                    || (e.kind == "vote-reveal" && e.audienceIds != null && e.audienceIds.Contains(state.playerId))))
                 .OrderBy(e => e.sequence).Select(e => e.text).ToList();
 
-            CollectionAssert.AreEqual(shown, WeeklyRecap.Build(state, week).ballots);
+            var ballots = WeeklyRecap.Build(state, week).ballots;
+            CollectionAssert.AreEqual(heard, ballots);
+            Assert.That(ballots.Any(line => line.Contains("By a vote of") || line.Contains("By a single vote")), Is.True, "The count rides the eviction line.");
+            Assert.That(ballots.Count(line => line.Contains(" voted to evict ")), Is.LessThanOrEqualTo(1), "At most the player's own ballot is read as a ballot.");
         }
 
         // ---------------------------------------------------------------- the parsers

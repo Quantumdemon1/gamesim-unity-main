@@ -392,8 +392,10 @@ namespace Gamesim.Presentation
         public const string Pack9SeasonFinaleWinnerCardHalo = "Pack9_CeremonyFinale/SeasonFinale/winner_card_halo";
         /// <summary>
         /// The twelve icons once more under one folder (the pack's Icons_PNG), 128 px each: eleven are
-        /// byte for byte the per-screen icons above; ic_key is the key at 128, where
-        /// <see cref="Pack9NominationCeremonyKeyIcon"/> is a 256 px drawing of its own.
+        /// byte for byte the per-screen icons above; ic_key is the key at 128, centred, where
+        /// <see cref="Pack9NominationCeremonyKeyIcon"/> is the same 128 px drawing sitting top-left in
+        /// a 256 canvas, and <see cref="Pack9NominationCeremonyHohCrownIcon"/> the crown off-centre in
+        /// 160 - so the cards draw the Icons/ twins first.
         /// </summary>
         public const string Pack9IconsIcAnonymous = "Pack9_CeremonyFinale/Icons/ic_anonymous";
         public const string Pack9IconsIcBallot = "Pack9_CeremonyFinale/Icons/ic_ballot";

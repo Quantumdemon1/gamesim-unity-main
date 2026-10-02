@@ -15,9 +15,11 @@ namespace Gamesim.Tests.PlayMode
     /// key hangs left of the whole title on every play of the card, not only the first; the set's
     /// screen frame stands on an opaque ground, so the screen's own lit face no longer glows through
     /// the glass; every label on both frames of both ceremony cards stands inside the card, clear of
-    /// its edge, in a box Inter draws in, and on the screen frames no two cross; the screen frame
-    /// carries a roster of the house whose chips say only what the keys have said; and the key
-    /// stands on its pedestal through every beat, gold only while the last key waits.
+    /// its edge, in a box Inter draws in, and on the screen frames no two cross; the host's line
+    /// fits the screen's face in every wording the format reads; the screen frame carries a roster
+    /// of the house whose chips say only what the keys have said, its names and the block's drawn
+    /// at one size and never above their type; and the key stands on its pedestal through every
+    /// beat, gold only while the last key waits.
     ///
     /// <para>Each card is attached to a plain owner, as <see cref="CeremonyGlassPlayModeTests"/> does,
     /// and the screen frame is mounted on a board measured the way the set's screen is, so what is
@@ -97,10 +99,13 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The glass alone let fifteen percent of the screen's lit face through the card: a warm blob
         /// in the band and lighter diagonals from the corners. On the screen frame the column's first
-        /// child is a ground tinted opaque, and a frame of the card's first beat on the screen's shot
-        /// reads the card's own colour where the blob was and in the band's middle - nearer the card's
-        /// colour than the bright, unlit board behind it, which is read beside the card for the
-        /// comparison. The HUD's card keeps its 85 % glass over the room.
+        /// child is a ground tinted opaque and drawn with a fill that is opaque - the pack's panel
+        /// fill, tinted opaque, is 236 of 255 at its centre, and the nineteen parts of the bright
+        /// board it let through lifted the band's pixels to three times the ground's - and a frame
+        /// of the card's first beat on the screen's shot reads the card's own colour where the blob
+        /// was and in the band's middle, nearer the card's colour than the bright, unlit board behind
+        /// it, which is read beside the card for the comparison. The HUD's card keeps its 85 % glass
+        /// over the room.
         /// </summary>
         [UnityTest]
         public IEnumerator TheScreenFrameStandsOnAnOpaqueGround()
@@ -112,6 +117,10 @@ namespace Gamesim.Tests.PlayMode
             var ground = column.GetChild(0).GetComponent<Image>();
             Assert.That(column.GetChild(0).name, Is.EqualTo("Screen ground"), "The column's first child on the screen frame is the ground.");
             Assert.That(ground.color.a, Is.EqualTo(1f).Within(0.001f), "and its tint is opaque.");
+            var fill = ground.sprite;
+            Assert.That(fill != null && fill.texture != null && fill.texture.isReadable, Is.True, "The ground is drawn with the kit's own fill, which the test can read,");
+            Assert.That(fill.texture.GetPixel(fill.texture.width / 2, fill.texture.height / 2).a, Is.EqualTo(1f).Within(0.002f),
+                "and that fill is opaque at its centre: the pack's panel fill is 236 of 255 there, and the board behind the card showed through the rest.");
             var glass = Rect(keys, "Card glass").GetComponent<Image>();
             Assert.That(glass.color.a, Is.EqualTo(UiTheme.GlassFill.a).Within(0.005f), "The glass over it is still the glass.");
             Assert.That(keys.KeysShown, Is.Zero, "The first beat: the Head of Household's line and the unlit keys.");
@@ -184,7 +193,8 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
                 AssertLabelsStandInsideTheCard(reveal, "The live eviction on the HUD, before the votes" + size);
                 reveal.SkipToResult();
-                yield return null;
+                // The board gives way to the result over ResultFade of the card's own clock.
+                yield return new WaitForSecondsRealtime(0.5f);
                 AssertLabelsStandInsideTheCard(reveal, "The live eviction on the HUD, the result" + size);
                 reveal.Cancel();
 
@@ -217,9 +227,51 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             AssertLabelsStandInsideTheCard(board, "The live eviction on the screen, before the votes");
             board.SkipToResult();
-            yield return null;
+            yield return new WaitForSecondsRealtime(0.5f);
             AssertLabelsStandInsideTheCard(board, "The live eviction on the screen, the result");
             board.Cancel();
+        }
+
+        // ------------------------------------------------------------------ the host's line (N0, 6.4)
+
+        /// <summary>
+        /// The host's line on the screen frame, in every wording the format reads - the house's
+        /// count, the Head of Household's tie-break, a sole vote (which names nobody: UI-UX-PASS-PLAN
+        /// B0), and the player spoken to on the count, on the tie-break and on the sole vote - stands
+        /// on one line inside the face's 3 % margin, whole, drawn no smaller than twenty points and no
+        /// larger than its thirty. Boxed at the face's full width, the tie-break's wording ended on
+        /// the edge.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TheHostsLineFitsTheScreensFaceInEveryWording()
+        {
+            var screen = Screen();
+            var wordings = new (string What, VoteReveal.Ballot[] Board, bool PlayerEvicted, string Line)[]
+            {
+                ("the count", Ballots(3, 1, false), false, "By a vote of 3 to 1, Jordan Taylor, you have been evicted."),
+                ("the tie-break", Ballots(2, 2, true), false, "By the Head of Household's tie-breaking vote, Jordan Taylor, you have been evicted."),
+                ("the sole vote", Ballots(1, 0, false), false, "By a single vote, Jordan Taylor, you have been evicted."),
+                ("the player evicted", Ballots(3, 1, false), true, "By a vote of 3 to 1, you have been evicted."),
+                ("the player evicted on the tie-break", Ballots(2, 2, true), true, "By the Head of Household's tie-breaking vote, you have been evicted."),
+                ("the player evicted on the sole vote", Ballots(1, 0, false), true, "By a single vote, you have been evicted."),
+            };
+            foreach (var wording in wordings)
+            {
+                string where = "The live eviction on the screen, " + wording.What;
+                var board = Reveal(1f, screen, wording.Board, wording.PlayerEvicted);
+                yield return null;
+                board.SkipToResult();
+                yield return new WaitForSecondsRealtime(0.5f);
+                var host = Text(board, "Host");
+                Assert.That(host.text, Is.EqualTo(wording.Line), where + ": the host's line.");
+                AssertLabelsStandInsideTheCard(board, where);
+                host.ForceMeshUpdate(true);
+                Assert.That(host.textInfo.lineCount, Is.EqualTo(1), where + ": the host's line is drawn on one line.");
+                Assert.That(host.isTextTruncated, Is.False, where + ": the host's line loses its tail.");
+                Assert.That(host.fontSize, Is.GreaterThanOrEqualTo(20f - 0.05f).And.LessThanOrEqualTo(30f + 0.05f),
+                    where + ": the host's line is drawn at " + host.fontSize.ToString("0.#") + " points, not between twenty and its thirty.");
+                board.Cancel();
+            }
         }
 
         // ------------------------------------------------------------------ the roster (N1, 6.5)
@@ -340,6 +392,80 @@ namespace Gamesim.Tests.PlayMode
             }
         }
 
+        /// <summary>
+        /// The roster's names are drawn at one size - the largest at which every one of them fits
+        /// its box - and never above their type: auto-sized each to its own box, "Noah Kim" stood at
+        /// the full thirty points beside "Riley Johnson" at twenty on the same row (the
+        /// nomination-card-roster-8 capture), two weights of name on one roster. The same for the
+        /// block's two names, on the screen and on the HUD at both text sizes.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TheNamesOnTheRosterAndTheBlockAreOneSizeAndNeverAboveTheirType()
+        {
+            var screen = Screen();
+            foreach (int house in new[] { 6, 8, 16 })
+            {
+                string where = "A house of " + house;
+                var keys = Keys(house - 3, CeremonyPace.Suspenseful, 1f, screen);
+                yield return null;
+                AssertNamesAreOneSize(keys, "Roster name", 36f, where + ", the roster");
+                keys.SkipToResult();
+                yield return null;
+                AssertNamesAreOneSize(keys, "Roster name", 36f, where + ", the roster at the block");
+                AssertNamesAreOneSize(keys, "Nominee", 28f, where + ", the block");
+                keys.Cancel();
+            }
+            foreach (float fontScale in new[] { 1f, LargeText })
+            {
+                var hud = Keys(3, CeremonyPace.Quick, fontScale);
+                yield return null;
+                hud.SkipToResult();
+                yield return null;
+                AssertNamesAreOneSize(hud, "Nominee", 15f * fontScale, "The HUD's block at " + fontScale);
+                hud.Cancel();
+            }
+        }
+
+        /// <summary>
+        /// Every live label named <paramref name="name"/> on the card is drawn whole at one size, no
+        /// larger than <paramref name="type"/>; and when that size is under the type, some name at
+        /// the type would overrun its box - the set is shrunk only as far as its longest name needs.
+        /// </summary>
+        private static void AssertNamesAreOneSize(KeyCeremony keys, string name, float type, string where)
+        {
+            Canvas.ForceUpdateCanvases();
+            var names = keys.GetComponentsInChildren<TMP_Text>().Where(label => label.name == name && label.gameObject.activeInHierarchy).ToArray();
+            Assert.That(names, Is.Not.Empty, where + ": no '" + name + "' is up.");
+            foreach (var label in names) label.ForceMeshUpdate(true);
+            float size = names.Min(label => label.fontSize);
+            foreach (var label in names)
+            {
+                string what = where + ": '" + label.text + "' (" + name + ")";
+                Assert.That(label.fontSize, Is.LessThanOrEqualTo(type + 0.01f),
+                    what + " is drawn at " + label.fontSize.ToString("0.##") + ", above its type's " + type + ".");
+                Assert.That(label.fontSize, Is.EqualTo(size).Within(0.1f),
+                    what + " is drawn at " + label.fontSize.ToString("0.##") + " where another is at " + size.ToString("0.##") + ": two weights of name.");
+                Assert.That(label.isTextTruncated, Is.False, what + " loses its tail.");
+            }
+            if (size >= type - 0.5f) return;
+            Assert.That(names.Any(label => WordsWidth(label) * type / label.fontSize > label.rectTransform.rect.width - 0.5f), Is.True,
+                where + ": the names are drawn at " + size.ToString("0.##") + " though every one of them fits its box at " + type + ".");
+        }
+
+        /// <summary>The width of the words a label draws, in its own units: from the first visible character's origin to the last's advance.</summary>
+        private static float WordsWidth(TMP_Text label)
+        {
+            var info = label.textInfo;
+            float xMin = float.MaxValue, xMax = float.MinValue;
+            for (int i = 0; i < info.characterCount; i++)
+            {
+                var glyph = info.characterInfo[i];
+                if (!glyph.isVisible) continue;
+                xMin = Mathf.Min(xMin, glyph.origin); xMax = Mathf.Max(xMax, glyph.xAdvance);
+            }
+            return xMin > xMax ? 0f : xMax - xMin;
+        }
+
         // ------------------------------------------------------------------ the key on its pedestal (N1, 6.6)
 
         /// <summary>
@@ -446,7 +572,15 @@ namespace Gamesim.Tests.PlayMode
             return people;
         }
 
-        private VoteReveal Reveal(float fontScale, ScreenSurface screen = null)
+        /// <summary>The live eviction on its usual board: two votes each way and the Head of Household's tie-break for Jordan. No ballot carries its voter (UI-UX-PASS-PLAN B0): the card is handed whom each went against, the deciding vote last.</summary>
+        private VoteReveal Reveal(float fontScale, ScreenSurface screen = null) => Reveal(fontScale, screen, new[]
+        {
+            new VoteReveal.Ballot(Jordan), new VoteReveal.Ballot(Casey), new VoteReveal.Ballot(Jordan),
+            new VoteReveal.Ballot(Casey), new VoteReveal.Ballot(Jordan, tieBreak: true),
+        });
+
+        /// <summary>The live eviction of Jordan Taylor on <paramref name="ballots"/>, spoken to as the player when <paramref name="evictedIsPlayer"/>.</summary>
+        private VoteReveal Reveal(float fontScale, ScreenSurface screen, VoteReveal.Ballot[] ballots, bool evictedIsPlayer = false)
         {
             var reveal = VoteReveal.Attach(owner);
             props.Add(reveal.gameObject);
@@ -456,16 +590,22 @@ namespace Gamesim.Tests.PlayMode
                 new VoteReveal.Nominee(Jordan, "Jordan Taylor", null),
                 new VoteReveal.Nominee(Casey, "Casey Wilson", null),
             };
-            // No ballot carries its voter (UI-UX-PASS-PLAN B0): the card is handed whom each went
-            // against, and the deciding vote last.
-            var ballots = new[]
-            {
-                new VoteReveal.Ballot(Jordan), new VoteReveal.Ballot(Casey), new VoteReveal.Ballot(Jordan),
-                new VoteReveal.Ballot(Casey), new VoteReveal.Ballot(Jordan, tieBreak: true),
-            };
-            Assert.That(reveal.Play(4, block, ballots, Jordan, true, CeremonyPace.Quick, Hoh, false, false, screen), Is.True,
+            Assert.That(reveal.Play(4, block, ballots, Jordan, true, CeremonyPace.Quick, Hoh, false, evictedIsPlayer, screen), Is.True,
                 "Two nominees and a ballot is a shape the reveal narrates.");
             return reveal;
+        }
+
+        /// <summary>
+        /// A board of the house's ballots: <paramref name="forJordan"/> to evict Jordan, then
+        /// <paramref name="forCasey"/> to evict Casey - no ballot carries its voter (UI-UX-PASS-PLAN
+        /// B0) - and the Head of Household's tie-break for Jordan when <paramref name="tieBreak"/>.
+        /// </summary>
+        private static VoteReveal.Ballot[] Ballots(int forJordan, int forCasey, bool tieBreak)
+        {
+            var ballots = new List<VoteReveal.Ballot>();
+            for (int i = 0; i < forJordan + forCasey; i++) ballots.Add(new VoteReveal.Ballot(i < forJordan ? Jordan : Casey));
+            if (tieBreak) ballots.Add(new VoteReveal.Ballot(Jordan, tieBreak: true));
+            return ballots.ToArray();
         }
 
         /// <summary>
@@ -591,9 +731,12 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(glass, Is.Not.Null, where + ": no 'Card glass' to stand on.");
             var frame = OnTheCard(card, glass);
             float inset = frame.height * 0.03f;
+            // A label a group has faded out - the board under the result, once the swap has run - is
+            // not on the card, whatever its box says.
             var labels = card.GetComponentsInChildren<TMP_Text>()
                 .Where(label => label.enabled && label.gameObject.activeInHierarchy && !string.IsNullOrWhiteSpace(label.text)
-                    && !outsideByDesign.Contains(label.name)).ToArray();
+                    && !outsideByDesign.Contains(label.name)
+                    && label.GetComponentsInParent<CanvasGroup>(true).All(group => group.alpha > 0.01f)).ToArray();
             Assert.That(labels, Is.Not.Empty, where + ": no label is up.");
             foreach (var label in labels)
             {

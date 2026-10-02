@@ -456,9 +456,19 @@ namespace Gamesim.Episode
                         }
                         var size = chip.rect.sizeDelta * pixels;
                         // The chip hangs from the middle of its bottom edge.
-                        box = new Rect(screen.x - size.x * .5f, screen.y, size.x, size.y);
-                        LiftClearOfPlacedNames(ref box, 2f * pixels);
+                        var over = new Rect(screen.x - size.x * .5f, screen.y, size.x, size.y);
+                        box = over;
+                        LiftClear(ref box, 2f * pixels);
                         show = bounds.Contains(box.min) && bounds.Contains(box.max) && !ChipCovered(box);
+                        // Lifted off the frame or into the chrome - a finalist under the top bar -
+                        // the name tries the other side, under what it stood clear of, before it
+                        // is put away.
+                        if (!show && box.y != over.y)
+                        {
+                            var under = over;
+                            LowerClear(ref under, 2f * pixels);
+                            if (bounds.Contains(under.min) && bounds.Contains(under.max) && !ChipCovered(under)) { box = under; show = true; }
+                        }
                     }
                 }
                 if (!show)
@@ -477,26 +487,62 @@ namespace Gamesim.Episode
             namesShowing = any;
         }
 
+        /// <summary>The icons placed this frame, in screen pixels, with their badges' reach: a name chip stands clear of them.</summary>
+        private readonly List<Rect> placedIcons = new List<Rect>();
+
         /// <summary>
         /// Moves a chip's screen rect up until it is at least <paramref name="gap"/> clear of every
-        /// chip placed before it this frame. Each move takes it above one placed chip's top, and it
-        /// only ever goes up, so it passes each placed chip at most once and the loop ends.
+        /// chip placed before it this frame and of every icon on screen. Each move takes it above
+        /// one placed rect's top, and it only ever goes up, so it passes each at most once and the
+        /// loop ends.
+        ///
+        /// <para>The icons too: a chip is drawn under them, so a houseguest standing at a room's
+        /// icon wore their name half under it, and what showed read as the icon's own - the yard's
+        /// count of one over the tail of "Taylor" read "1 of" on its badge (endgame-final-three;
+        /// UI-UX-PASS-PLAN T0).</para>
         /// </summary>
-        private void LiftClearOfPlacedNames(ref Rect box, float gap)
+        private void LiftClear(ref Rect box, float gap)
         {
-            for (int pass = 0; pass <= placedNames.Count; pass++)
+            for (int pass = 0; pass <= placedNames.Count + placedIcons.Count; pass++)
             {
-                bool moved = false;
-                foreach (var placed in placedNames)
-                {
-                    bool touches = box.xMin < placed.xMax + gap && box.xMax > placed.xMin - gap
-                        && box.yMin < placed.yMax + gap && box.yMax > placed.yMin - gap;
-                    if (!touches) continue;
-                    box.y = placed.yMax + gap;
-                    moved = true;
-                }
+                bool moved = Past(placedNames, ref box, gap, true);
+                moved |= Past(placedIcons, ref box, gap, true);
                 if (!moved) return;
             }
+        }
+
+        /// <summary>
+        /// The same, the other way: moves a chip's screen rect down until it is clear of every chip
+        /// placed and every icon, for a name that lifting took off the frame or under the chrome.
+        /// </summary>
+        private void LowerClear(ref Rect box, float gap)
+        {
+            for (int pass = 0; pass <= placedNames.Count + placedIcons.Count; pass++)
+            {
+                bool moved = Past(placedNames, ref box, gap, false);
+                moved |= Past(placedIcons, ref box, gap, false);
+                if (!moved) return;
+            }
+        }
+
+        /// <summary>
+        /// Moves <paramref name="box"/> past every rect of <paramref name="placed"/> it touches,
+        /// above it when <paramref name="up"/> and below it otherwise. Indexed, not enumerated
+        /// through an array of the lists: this runs for every chip every frame.
+        /// </summary>
+        private static bool Past(List<Rect> placed, ref Rect box, float gap, bool up)
+        {
+            bool moved = false;
+            for (int i = 0; i < placed.Count; i++)
+            {
+                var other = placed[i];
+                bool touches = box.xMin < other.xMax + gap && box.xMax > other.xMin - gap
+                    && box.yMin < other.yMax + gap && box.yMax > other.yMin - gap;
+                if (!touches) continue;
+                box.y = up ? other.yMax + gap : other.yMin - gap - box.height;
+                moved = true;
+            }
+            return moved;
         }
 
         /// <summary>
@@ -596,7 +642,11 @@ namespace Gamesim.Episode
             var frame = root.rect;
             bool any = false;
             // Middle to edge of an icon, in screen pixels, with a little air.
-            float margin = (Side * .5f + 6f) * scale * canvas.scaleFactor;
+            float pixels = scale * canvas.scaleFactor;
+            float margin = (Side * .5f + 6f) * pixels;
+            // The icons' footprints this frame, with their badges' reach, for the name chips to clear.
+            float footprint = (Side * .5f + 8f) * pixels;
+            placedIcons.Clear();
             foreach (var beacon in beacons)
             {
                 bool special = beacon.room == stationRoom || beacon.room == "Private";
@@ -630,6 +680,7 @@ namespace Gamesim.Episode
                 }
                 if (!beacon.rect.gameObject.activeSelf) beacon.rect.gameObject.SetActive(true);
                 any = true;
+                placedIcons.Add(new Rect(screen.x - footprint, screen.y - footprint, 2f * footprint, 2f * footprint));
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(root, screen, UiCamera, out var local);
                 beacon.rect.anchoredPosition = local - frame.min;
                 beacon.group.alpha = fade;

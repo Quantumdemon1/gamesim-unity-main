@@ -286,7 +286,7 @@ namespace Gamesim.Episode
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             challengeMeter = null; challengeCaption = null;
             modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
-            fitToContent = false; pinnedAction = null; pinnedNoteHeight = 0f; contentCap = 0f; nearbyCard = null; nearbyBar = null;
+            fitToContent = false; pinnedAction = null; pinnedNoteHeight = 0f; pinnedExtra = 0f; contentCap = 0f; nearbyCard = null; nearbyBar = null;
             ForgetStrategyStage();
             activityLayout = ActivityLayout.Standard; relationshipRoot = null;
             ResetColumns(); columnsRow = mainColumn = sideColumn = null; sideCard = null;
@@ -1142,7 +1142,7 @@ namespace Gamesim.Episode
             if (PickerTag(target, text)) return;
             // A row carrying a trust reading has already spent its right-hand end on it: a tag
             // seated at the row's end sat on top of "Trust 9" (the Vent and rumour rows).
-            if (seat == TagSeat.RowEnd && readingRows.Contains(target)) seat = TagSeat.PastReading;
+            if (seat == TagSeat.RowEnd && readingRows.ContainsKey(target)) seat = TagSeat.PastReading;
             var chip = Panel("Tag",target.transform,new Color(Accent.r,Accent.g,Accent.b,.16f));
             // Wide enough for what is in it. A row-end tag was a fixed 104, which was right while it
             // held one word and wrong the moment a deal row started carrying its stakes as well as
@@ -1157,14 +1157,13 @@ namespace Gamesim.Episode
                 Anchor(chip,new Vector2(0,0),new Vector2(0,0),new Vector2(10f * FontScale,6f * FontScale),size);
             else
                 // Clear of whatever already owns the row's right-hand end, which is not the same for
-                // every row. A plain row spends it on the chevron Action() pins 18 wide at -16. A row
-                // fronted by a portrait spends it on the trust reading at -16 width 74 and, when the
-                // two are allied, an ALLY tag at -96 width 48 - which its own doc comment says out
-                // loud. A tag anchored at -12 sat on top of all of them: invisible while it held one
+                // every row. A plain row spends it on the chevron Action() pins 18 wide at -16. An
+                // annotated row spends it on the trust reading, the chevron it stands left of and,
+                // when the two are allied, an ALLY tag - the reserve Annotate recorded for the row.
+                // A tag anchored at -12 sat on top of all of them: invisible while it held one
                 // short word, plainly wrong once it held stakes AND odds. isTextOverflowing cannot
                 // see any of this, because nothing is clipped - the labels are simply in one place.
-                Anchor(chip,new Vector2(1,.5f),new Vector2(1,.5f),
-                    new Vector2(seat == TagSeat.PastReading ? -(96f + 48f + 10f) : -(16f + 18f + 8f),0f),size);
+                Anchor(chip,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-TagSeatX(target, seat),0f),size);
             chip.GetComponent<Image>().raycastTarget = false;
             var label = FixedText(chip,text,12,Accent,Vector2.zero,size);
             label.alignment = TextAlignmentOptions.Center;
@@ -1200,13 +1199,36 @@ namespace Gamesim.Episode
             }
         }
 
+        /// <summary>How far in from a row's right edge a tag seats: past the chevron, or past the reading, the chevron and any ALLY tag on an annotated row.</summary>
+        private float TagSeatX(Button target, TagSeat seat)
+        {
+            float rowEnd = 16f + 18f * FontScale + RowEndAir;
+            return seat == TagSeat.PastReading && readingRows.TryGetValue(target, out float reserve) ? reserve + 2f : rowEnd;
+        }
+
         /// <summary>The narrowest a row's caption may be left beside its tag, at the resting text size; narrower, the tag goes under it.</summary>
         public const float MinCaptionWidth = 200f;
         private const float TagUnderInset = 6f;
         /// <summary>The rows whose tag went under the caption, and the room it takes there; cleared with each rebuild.</summary>
         private readonly Dictionary<LayoutElement, float> tagUnder = new Dictionary<LayoutElement, float>();
-        /// <summary>The rows <see cref="Annotate"/> gave a trust reading; cleared with each rebuild.</summary>
-        private readonly HashSet<Button> readingRows = new HashSet<Button>();
+        /// <summary>
+        /// The rows <see cref="Annotate"/> gave a trust reading, and how much of each row's right-hand
+        /// end the reading, the chevron and any ALLY tag take between them; cleared with each rebuild.
+        /// </summary>
+        private readonly Dictionary<Button, float> readingRows = new Dictionary<Button, float>();
+
+        /// <summary>The name of the trust reading on an annotated row, so a test can find it beside the chevron.</summary>
+        public const string TrustReadingName = "Trust reading";
+
+        /// <summary>
+        /// The words of an annotated row's trust reading. The number is the player's own feeling
+        /// (<c>Score(player -> them)</c>), and the words say so: beside "Save Riley Johnson" a bare
+        /// "Trust -4" read as a forecast of the save (UI-UX-PASS-PLAN T0, sweep row 25).
+        /// </summary>
+        public static string TrustReading(double trust) => "Your trust " + trust.ToString("0");
+
+        /// <summary>The reading's box and the ALLY tag's beside it, at the resting text size, and the air between the row's end pieces.</summary>
+        private const float TrustReadingWidth = 112f, AllyTagWidth = 48f, RowEndAir = 8f;
 
         /// <summary>A petal's category: a small badge seated on the disc's lower rim.</summary>
         private void PetalTag(Button petal, string text)
@@ -1377,7 +1399,7 @@ namespace Gamesim.Episode
                 Anchor(bar, new Vector2(0, 1), new Vector2(0, 1), new Vector2(12f * s, -161f * s), new Vector2((width - 24f * s) * fill, 4f * s));
                 bar.GetComponent<Image>().raycastTarget = false;
             }
-            var reading = FixedText(rect, "Trust " + trust.ToString("0"), 11, UiTheme.Muted, new Vector2(8f * s, -167f * s), new Vector2(width - 16f * s, 14f * s));
+            var reading = FixedText(rect, TrustReading(trust), 11, UiTheme.Muted, new Vector2(8f * s, -167f * s), new Vector2(width - 16f * s, 15f * s));
             reading.alignment = TextAlignmentOptions.Center;
             return button;
         }
@@ -1436,7 +1458,21 @@ namespace Gamesim.Episode
             double trust = state.Score(state.playerId, contestantId);
             bool allied = state.Allied(state.playerId, contestantId);
             var rect = (RectTransform)button.transform;
-            float reserved = allied ? 150f : 96f;
+            float s = FontScale;
+            // The reading stands left of the row's chevron where the row has one - the plain row a
+            // houseguest without art gets, and every PairedActionFor row on such a copy. Both used
+            // to sit at -16, and the chevron drew over the digit: "Trust -N" on "Save Riley Johnson
+            // (HoH chooses replacement)" and "Trust 0" on "Propose a vote to keep Emma Brown"
+            // (phase-veto, conversation-grouped-promise; UI-UX-PASS-PLAN T0). A row fronted by a
+            // face has no chevron, and the reading keeps the end. The boxes are 1.3 times their type
+            // at either text size: Inter draws nothing in a box under 1.21 of it, and the old 22 for
+            // an 18 at the larger text was 1.22.
+            var chevron = rect.Find("Chevron") as RectTransform;
+            float readingRight = 16f + (chevron != null ? chevron.sizeDelta.x + RowEndAir : 0f);
+            float readingWidth = TrustReadingWidth * s, allyWidth = AllyTagWidth * s;
+            float box = Mathf.RoundToInt(15 * s) * 1.3f;
+            float allyRight = readingRight + readingWidth + RowEndAir;
+            float reserved = (allied ? allyRight + allyWidth : readingRight + readingWidth) + RowEndAir;
 
             // The card's face carries what the house has done to this person: the ring reads the
             // player's own standing with them, the badge reads the role the week has given them.
@@ -1463,16 +1499,18 @@ namespace Gamesim.Episode
             if (allied)
             {
                 var tag = NewText(rect,"ALLY",14,UiTheme.Allied);
-                Anchor(tag.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-96f,0f),new Vector2(48,22));
+                Anchor(tag.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-allyRight,0f),new Vector2(allyWidth,box));
                 tag.alignment = TextAlignmentOptions.Right;
             }
 
-            readingRows.Add(button);
-            var reading = NewText(rect,"Trust " + trust.ToString("0"),15,
+            readingRows[button] = reserved;
+            var reading = NewText(rect,TrustReading(trust),15,
                 // The same set as the portrait ring and the ALLY tag above.
                 trust > 5 ? UiTheme.Allied : trust < -5 ? UiTheme.Conflict : UiTheme.Muted);
-            Anchor(reading.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-16f,0f),new Vector2(74,22));
+            reading.name = TrustReadingName;
+            Anchor(reading.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-readingRight,0f),new Vector2(readingWidth,box));
             reading.alignment = TextAlignmentOptions.Right;
+            reading.textWrappingMode = TextWrappingModes.NoWrap;
         }
 
         /// <summary>
@@ -1931,13 +1969,72 @@ namespace Gamesim.Episode
             content.anchoredPosition = position;
         }
 
+        /// <summary>
+        /// A button of a fixed size and place, in the kit's secondary chrome: the glass and the
+        /// resting edge the strategy footer's secondary slot wears (<see cref="PinnedSecondary"/>),
+        /// with no hover step. It was a panel in the Surface colour, which is the stage's own ground
+        /// to within a shade, so "Plan a backdoor" under the picker, "Show the briefing" on the
+        /// overview's card and the compact objective's travel rows were bare words with nothing to
+        /// press (UI-UX-PASS-PLAN T0, sweep row 32). A button that cannot be pressed dims its edge
+        /// with its glass (<see cref="EdgeWithGlass"/>): the Button's tint reaches its target
+        /// graphic, the glass, and nothing else.
+        ///
+        /// <para>No pack face of its own. The campaign's talk buttons wear Pack 8's talk face, which
+        /// carries its own edge, so they put this chrome's away (<see cref="WearFace"/>); the talk
+        /// buttons on free time's and the vote read's cards wear this chrome as it is. The caption is
+        /// unchanged: it is the control's name and the words a test and a screen reader find it by.</para>
+        /// </summary>
         private Button FixedButton(RectTransform parent,string caption,Vector2 position,Vector2 size,Action action)
         {
-            var rect=Panel(caption,parent,Surface); Anchor(rect,new Vector2(0,1),new Vector2(0,1),position,size);
+            var rect=Chrome(caption,parent);
+            Anchor(rect,new Vector2(0,1),new Vector2(0,1),position,size);
             var button = FinishButton(rect,caption,action);
             var label = button.GetComponentInChildren<TMP_Text>();
             AutoSize(label, 18);
+            var edge = rect.Find("Border") is Transform border ? border.GetComponent<Image>() : null;
+            if (edge != null)
+            {
+                var follow = rect.gameObject.AddComponent<EdgeWithGlass>();
+                follow.Button = button; follow.Edge = edge; follow.Resting = edge.color;
+            }
             return button;
+        }
+
+        /// <summary>
+        /// Frames a fixed button in a pack face that carries its own edge, and puts the chrome's
+        /// edge away, so the button has one edge rather than the face's under the chrome's.
+        /// </summary>
+        private void WearFace(Button button, string face, float border, Color fallback, Color edge)
+        {
+            if (button == null) return;
+            var rect = (RectTransform)button.transform;
+            EndScreenKit.Frame(rect, face, border, fallback, edge);
+            var chrome = rect.Find("Border");
+            if (chrome == null) return;
+            chrome.gameObject.SetActive(false);
+            Destroy(chrome.gameObject);
+        }
+
+        /// <summary>
+        /// Dims a fixed button's edge with its glass while the button cannot be pressed - set so, or
+        /// in a group that stands its controls down - by the Button's own disabled tint, and puts it
+        /// back when it can. Read on change only: nothing is written while the state holds.
+        /// </summary>
+        private sealed class EdgeWithGlass : MonoBehaviour
+        {
+            public Selectable Button;
+            public Image Edge;
+            public Color Resting;
+            private int shown = -1;
+
+            private void LateUpdate()
+            {
+                if (Button == null || Edge == null) return;
+                int now = Button.IsInteractable() ? 1 : 0;
+                if (now == shown) return;
+                shown = now;
+                Edge.color = now == 1 ? Resting : Resting * Button.colors.disabledColor;
+            }
         }
         private Button FinishButton(RectTransform rect,string caption,Action action,float leftInset = 16f,float rightInset = 16f)
         {

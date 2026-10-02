@@ -834,7 +834,8 @@ namespace Gamesim.Episode
             return height;
         }
 
-        private const float JuryStripLinkWidth = 92f;
+        /// <summary>The strip's door, wide enough for "Jury house" at the larger text's 14 without shrinking, and its chevron.</summary>
+        public const float JuryStripLinkWidth = 104f;
 
         /// <summary>
         /// The jury strip's door (the owner's decision 42, MOCKUP-PASS M14): a corner link drawn as
@@ -852,6 +853,10 @@ namespace Gamesim.Episode
             colours.normalColor = new Color(1f, 1f, 1f, 0f);
             colours.highlightedColor = new Color(UiTheme.SurfaceRaised.r, UiTheme.SurfaceRaised.g, UiTheme.SurfaceRaised.b, .9f);
             colours.selectedColor = colours.highlightedColor;
+            // Clear while the column cannot be pressed too: the default disabled tint painted the
+            // white ground grey over the words whenever the column stood down behind a card (the
+            // grey blob at the strip's end in endgame-final-three; UI-UX-PASS-PLAN T0).
+            colours.disabledColor = new Color(1f, 1f, 1f, 0f);
             button.colors = colours;
             var navigation = button.navigation; navigation.mode = Navigation.Mode.None; button.navigation = navigation;
             // 20 tall for a 12, which is a 14 at the larger text size: over 1.3 times the words, as

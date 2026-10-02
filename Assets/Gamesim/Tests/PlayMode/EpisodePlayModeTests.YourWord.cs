@@ -754,7 +754,7 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The diary's reviews say what the decision under review would break, over Confirm: the
         /// Head of Household's nominations, the holder keeping the block, and a ballot - whose
-        /// warning stands over the cards with Confirm still straight under them and in view.
+        /// warning stands over the cards, in view with them, Confirm and its way back pinned under them.
         /// Reviewing and going back commits nothing; confirming breaks what the review said.
         /// </summary>
         [UnityTest]
@@ -803,7 +803,7 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             yield return null;
 
-            // A ballot under review: over the cards, and Confirm still straight under them, in view.
+            // A ballot under review: over the cards, the cards in view, Confirm and the way back pinned under them.
             yield return InstallWalkedYourWord(s => s.phase == EpisodePhase.Eviction && !s.evictionResolved && s.evictionStage == EvictionStage.Voting
                     && EpisodeEngine.Voters(s).Any(voter => voter.isPlayer) && !s.votes.Any(vote => vote.voterId == s.playerId),
                 // Promised to another voter or, where the player votes alone at four, to the Head of Household.
@@ -821,11 +821,10 @@ namespace Gamesim.Tests.PlayMode
             yield return null; yield return null;
             var warning = AssertWarnedOverConfirm("The ballot under review", expected);
             var cards = ScreenRect(LastActive(EpisodeHud.BallotRowName));
-            var confirm = ScreenRect((RectTransform)FindButton(EpisodeHud.DiaryConfirmCaption).transform);
             Assert.That(ScreenRect(warning.rectTransform).yMin, Is.GreaterThanOrEqualTo(cards.yMax - .5f), "over the cards it is about,");
-            Assert.That(cards.yMin - confirm.yMax, Is.LessThan(confirm.height), "with Confirm still straight under the cards,");
-            var viewport = ScreenRect((RectTransform)LastActive("Episode content").parent);
-            Assert.That(confirm.yMin, Is.GreaterThanOrEqualTo(viewport.yMin - 1f), "and in view, not past the fold.");
+            // and the decision in view with its warning: the cards whole at scroll 0, Confirm and
+            // the way back pinned under them (UI-UX-PASS-PLAN T0).
+            AssertTheDecisionFitsAtScrollZero("The ballot under review", true, false);
             if (Application.isBatchMode) yield return CaptureFraming("breach-warning-diary-ballot");
             ButtonWithCaption(EpisodeHud.DiaryCancelCaption).onClick.Invoke();
             yield return null; yield return null;

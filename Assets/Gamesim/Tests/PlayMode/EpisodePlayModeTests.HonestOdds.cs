@@ -127,14 +127,17 @@ namespace Gamesim.Tests.PlayMode
                 Is.Not.EqualTo(KnownOdds.Word(PlayerDeals.AcceptanceChance(state, id, DealKind.TargetAgreement, loathed))),
                 "The roll's words differ across the rows.");
             // The target agreements wait behind their verb row in the grouped conversation (V5): one
-            // press opens them, each under the caption and with the tag its row had.
+            // press opens them, each under the caption its row had, the stakes on a chip and the
+            // player's read of the odds beside it (UI-UX-PASS-PLAN P1).
             ButtonWithCaption(EpisodeDirector.TargetDealPickerCaption).onClick.Invoke();
             yield return null;
-            var against = subjects.Select(about => TagWords(FindButton(EpisodeHud.DealProposeCaption(
-                    DealKind.Title(DealKind.TargetAgreement).ToLowerInvariant() + " against " + state.Find(about).name)))
-                .Split(TagSeparator, System.StringSplitOptions.None).Last()).Distinct().ToList();
-            Assert.That(against, Is.EqualTo(new[] { KnownOdds.Deal(state, id, DealKind.TargetAgreement, subjects[0]).word }),
-                "Lining the rows up says nothing about whom they like or who they are secretly with.");
+            Assert.That(subjects.Select(about => KnownOdds.Deal(state, id, DealKind.TargetAgreement, about).word).Distinct().Count(), Is.EqualTo(1),
+                "Lining the reads up says nothing about whom they like or who they are secretly with.");
+            var against = subjects.Select(about => ChanceOn(FindButton(EpisodeHud.DealProposeCaption(
+                    DealKind.Title(DealKind.TargetAgreement).ToLowerInvariant() + " against " + state.Find(about).name)))).Distinct().ToList();
+            Assert.That(against, Is.EqualTo(new[] { KnownOdds.NoRead }),
+                "And with nothing on them - no read, no claim, no history, nothing on whom they like - every card says it has no read, "
+                + "rather than one guess a dozen times.");
 
             Assert.That(ShownText(), Does.Contain(EpisodeDirector.OddsReadLine(FinalistRead.FirstName(npc.name))),
                 "The table says the odds are the player's read, not a promise.");

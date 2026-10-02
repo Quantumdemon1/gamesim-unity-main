@@ -68,7 +68,7 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The colour a capture drew six pixels inside a rect's left edge, halfway up it and
         /// <paramref name="up"/> pixels above that. Only inside a capture's inspection, while the
-        /// overlays are drawn through the view camera.
+        /// overlays are drawn through the capture's lens.
         /// </summary>
         private Color InsideLeftEdge(Texture2D frame, Transform rect, float up = 0f)
         {
@@ -84,9 +84,11 @@ namespace Gamesim.Tests.PlayMode
         /// <paramref name="reference"/>'s - a control filled with the same raised colour, drawn
         /// through the same camera in the same frame (the skip pill on the show's beats, an
         /// unselected choice row on the introductions) - and the same, within .04, four pixels above
-        /// and below: one fill, not the house behind it. A frame drawn through the view camera is
-        /// tonemapped and its depth of field reaches the overlays, so the raised colour is not its
-        /// authored value there; a reference through the same camera is.
+        /// and below: one fill, not the house behind it. The raised colour is blended over whatever
+        /// the house shows through its last few per cent, so it is read against a reference drawn
+        /// the same way in the same frame rather than against its authored value. (Until
+        /// UI-UX-PASS-PLAN Z0 the overlays were drawn through the view camera itself, tonemapped and
+        /// under its depth of field; the reference held through that too.)
         /// </summary>
         private void AssertGroundIsDrawn(Texture2D frame, Transform ground, Transform reference, string what)
         {

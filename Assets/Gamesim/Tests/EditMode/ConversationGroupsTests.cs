@@ -163,6 +163,12 @@ namespace Gamesim.Tests.EditMode
             Assert.That(EpisodeDirector.VentCaption("Jo"), Is.EqualTo("Vent about Jo"), "The people keep the words their rows had.");
             Assert.That(EpisodeDirector.LieCaption("Jo"), Is.EqualTo("Tell them something untrue about Jo"));
             Assert.That(EpisodeDirector.PromiseToEvictCaption("Jo"), Is.EqualTo("Promise to evict Jo"));
+            // Every picker's people, word for word, the cards drawn around them since P1 (UI-UX-PASS-PLAN):
+            // the name over the caption is decoration, and the caption is still the control's.
+            Assert.That(EpisodeHud.WhisperCaption("Jo"), Is.EqualTo("Whisper about Jo"));
+            Assert.That(EpisodeHud.CalloutCaption("Jo"), Is.EqualTo("Call Jo out publicly"));
+            Assert.That(EpisodeHud.DealProposeCaption(DealKind.Title(DealKind.TargetAgreement).ToLowerInvariant() + " against Jo"),
+                Is.EqualTo("Propose a target agreement against Jo"));
         }
 
         [Test]

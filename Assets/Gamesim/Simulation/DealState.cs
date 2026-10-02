@@ -48,6 +48,16 @@ namespace Gamesim.Simulation
         /// </summary>
         public string trustImpact = DealTrust.Medium;
 
+        /// <summary>
+        /// Schema 22 (ACTIONS-DEALS-ALLIANCES-PLAN C0): who broke a broken deal, as the verdict that
+        /// settled it named them - null for a voting bloc, which both parties settle at once - and the
+        /// week a verdict kept or broke it. Written under the commitment rules
+        /// (<see cref="EpisodeEngine.CommitmentRulesOn"/>); null and 0 on a deal settled before them,
+        /// which <see cref="Breaches.DealBreaker"/> reads by <see cref="FinalistRead.DealBreaker"/>'s rule.
+        /// </summary>
+        public string brokenById;
+        public int settledWeek;
+
         public DealState Clone() => (DealState)MemberwiseClone();
     }
 

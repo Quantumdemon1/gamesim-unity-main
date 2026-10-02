@@ -134,5 +134,22 @@ namespace Gamesim.Tests.EditMode
             Assert.That(EpisodeDirector.FreeTimeCostLine(unreset),
                 Is.EqualTo(EpisodeDirector.FreeTimeCostCopy + " Unspent actions are lost when you begin the next competition; actions you buy come back every week."));
         }
+
+        /// <summary>
+        /// Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN R0, X1) a study in the diary room
+        /// is one of the window's actions, and the card says so; a season without the rules, where a
+        /// study never spent the window, keeps the copy it had.
+        /// </summary>
+        [Test]
+        public void TheCostCopySaysAStudySpendsAnActionUnderTheCommitmentRules()
+        {
+            var night = MoveIn(8);
+            Assert.That(EpisodeDirector.FreeTimeCostCopyFor(night), Is.EqualTo(EpisodeDirector.FreeTimeCostCopy));
+            Assert.That(EpisodeDirector.FreeTimeCostCopy, Does.Not.Contain("stud"));
+            EpisodeEngine.EnableCommitments(night);
+            Assert.That(EpisodeDirector.FreeTimeCostCopyFor(night), Is.EqualTo(EpisodeDirector.FreeTimeCostCopyWithStudy));
+            Assert.That(EpisodeDirector.FreeTimeCostCopyWithStudy, Does.Contain("studying the house each spend one action"));
+            Assert.That(EpisodeDirector.FreeTimeCostLine(night), Does.StartWith(EpisodeDirector.FreeTimeCostCopyWithStudy + " "));
+        }
     }
 }

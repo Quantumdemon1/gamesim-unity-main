@@ -472,6 +472,11 @@ namespace Gamesim.Tests.PlayMode
         /// legible, whether it fits, or whether it collides with the thing beside it, and the last
         /// time that shortcut was taken on this project it hid twelve portraits rendering as black
         /// squares.</para>
+        ///
+        /// <para>Both frames show the panel (UI-UX-PASS-PLAN Z0): the six-house close-up stands its
+        /// lens against a prop, and with the HUD drawn in the scene a metre out the prop stood where
+        /// the conversation's column was, so the frames said nothing about its copy (the play
+        /// sweep's row 3). Its ground shows in every ninth of the column now.</para>
         /// </summary>
         [UnityTest]
         public IEnumerator Conversation_CapturesThePanelForReview()
@@ -499,7 +504,8 @@ namespace Gamesim.Tests.PlayMode
                 + ", deal rows " + director.GetComponentsInChildren<TMPro.TMP_Text>(true)
                     .Count(label => label.gameObject.activeInHierarchy && label.text.Contains("stakes")));
 
-            yield return CaptureFraming("conversation-panel");
+            yield return CaptureFraming("conversation-panel",
+                panel: (() => LastActive(Gamesim.Episode.EpisodeHud.ConversationColumnName), "The conversation's column"));
             AssertNothingInThePanelIsClipped("with the topics showing");
 
             // And again at the foot of the scroll, because the deal rows are down there. The first
@@ -513,7 +519,17 @@ namespace Gamesim.Tests.PlayMode
                 scroll.verticalNormalizedPosition = 0f;
                 Canvas.ForceUpdateCanvases();
                 yield return null;
-                yield return CaptureFraming("conversation-panel-deals");
+                // The capture lays the HUD out again for its frame, and the panel it rebuilds opens at
+                // the top of its scroll: the foot is asked for again once it has.
+                yield return CaptureFraming("conversation-panel-deals",
+                    arrange: () =>
+                    {
+                        var foot = director.GetComponentsInChildren<UnityEngine.UI.ScrollRect>(true)
+                            .LastOrDefault(rect => rect.gameObject.activeInHierarchy && rect.vertical);
+                        Assert.That(foot, Is.Not.Null, "The conversation's column scrolls.");
+                        foot.verticalNormalizedPosition = 0f;
+                    },
+                    panel: (() => LastActive(Gamesim.Episode.EpisodeHud.ConversationColumnName), "The conversation's column"));
                 AssertNothingInThePanelIsClipped("with the deals showing");
             }
 

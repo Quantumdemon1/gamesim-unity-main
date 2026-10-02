@@ -170,7 +170,11 @@ namespace Gamesim.Simulation
                 Add("promise:" + promise.id, Emotional, promise.week,
                     "Week " + promise.week + ": you promised " + Name(s, promise.toId) + " " + HouseguestNotes.PromiseWord(promise.kind) + ", and kept it.",
                     "In week " + promise.week + ", I gave " + Name(s, promise.toId) + " my word, and I kept it.");
-            foreach (var deal in s.deals.Where(x => x.status == DealStatus.Fulfilled && (x.proposerId == player || x.recipientId == player)))
+            // Under the commitment rules a deal the vote settled - a partnership too (C1) - is one the
+            // player can claim only once they know the ballot that kept it (KnownBallots).
+            bool rules = EpisodeEngine.CommitmentRulesOn(s);
+            foreach (var deal in s.deals.Where(x => x.status == DealStatus.Fulfilled && (x.proposerId == player || x.recipientId == player)
+                         && (!rules || KnownBallots.DealOutcomeKnown(s, x))))
             {
                 string other = deal.proposerId == player ? deal.recipientId : deal.proposerId;
                 string title = DealKind.Title(deal.type).ToLowerInvariant();

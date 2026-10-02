@@ -29,6 +29,13 @@ namespace Gamesim.Episode
         /// <summary>The words on the pill beside a conversation's verbs (see <see cref="Category"/>).</summary>
         public const string WarmthTag = "warmth", LearnTag = "learn", RiskTag = "risk", BindsYouTag = "binds you", FreeTag = "free";
 
+        /// <summary>
+        /// The pill on "Leave our alliance" the week its houseguest turned on the pact (C2): free, and
+        /// nobody holds it against you. In a pact of three or more it cuts the betrayer out and the
+        /// rest of you keep the pact, and the pill says that instead.
+        /// </summary>
+        public const string FreeExitTag = FreeTag + " · no grudge", FreeExitCutOutTag = FreeTag + " · cuts them out";
+
         /// <summary>The four groups, as their heads read.</summary>
         public const string BondGroupTitle = "BOND", LearnGroupTitle = "LEARN", SchemeGroupTitle = "SCHEME", BargainGroupTitle = "BARGAIN";
 
@@ -147,8 +154,10 @@ namespace Gamesim.Episode
                     about => Commit(state, EpisodeCommandKind.SpreadLie, npc.id, about));
                 if (!window)
                 {
+                    // Told to the person in front of you (R0, X7): the engine reaches them under the
+                    // commitment rules, and before those rules it drew a listener as it always did.
                     PersonPicker(npc, WhisperPickerCaption, Category(EpisodeCommandKind.SpreadRumor), others, about => EpisodeHud.WhisperCaption(about.name),
-                        about => Commit(state, EpisodeCommandKind.SpreadRumor, about, text: EpisodeEngine.WhisperCampaign));
+                        about => Commit(state, EpisodeCommandKind.SpreadRumor, about, npc.id, text: EpisodeEngine.WhisperCampaign));
                     PersonPicker(npc, CalloutPickerCaption, Category(EpisodeCommandKind.SpreadRumor), others, about => EpisodeHud.CalloutCaption(about.name),
                         about => Commit(state, EpisodeCommandKind.SpreadRumor, about, text: EpisodeEngine.PublicCallout));
                     hud.Tag(hud.Action("Work against them quietly", () => Commit(state, EpisodeCommandKind.SchemeAgainst, npc.id)),
@@ -159,7 +168,9 @@ namespace Gamesim.Episode
             // BARGAIN: what carries no chance first - the promises and the pact, a promise about the
             // vote, and calling it through an ally - then the deal table, whose heading and note on
             // the odds speak only for the rows under them: an offer waiting, then what could be put.
-            // The came-to-deal path draws the promises before the table for the same reason.
+            // The came-to-deal path draws the promises before the table for the same reason. Under
+            // the commitment rules the pact carries the invitation's chance (C4), and the note on the
+            // odds comes above it instead, once (ProposeAllianceRow).
             var promised = PromiseToEvictTargets(state, npc.id);
             var calls = Calls(state, npc);
             if (!cameToDeal || promised.Count > 0 || calls.Count > 0)

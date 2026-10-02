@@ -29,7 +29,10 @@ namespace Gamesim.Simulation
     /// counted however it ended, because a pact the player is not in ends on scores the player
     /// never sees;</item>
     /// <item>the ledger's trust, the houseguest's private record of the player: left out, read as
-    /// neutral.</item>
+    /// neutral;</item>
+    /// <item>a grudge, which refuses an alliance under the commitment rules whatever the roll: only
+    /// the one the player's own walk-out left, reckoned from what walking out leaves and how it
+    /// fades (<see cref="KnownWalkOut"/>).</item>
     /// </list>
     ///
     /// <para><b>How much it has to go on.</b> <see cref="Estimate.unknowns"/> says how little the
@@ -61,7 +64,7 @@ namespace Gamesim.Simulation
         /// <summary>One chance as shown: the number and its word, and how much the read behind it could not see.</summary>
         public sealed class Estimate
         {
-            /// <summary>The chance in percent from the known terms alone, clamped as the roll's is. Never the roll's own.</summary>
+            /// <summary>The chance in percent from the known terms alone, clamped as the roll's is - or nought where a grudge the player knows of refuses the ask (<see cref="grudge"/>). Never the roll's own.</summary>
             public double chance;
             public string word = Unlikely;
             /// <summary><see cref="Few"/>, <see cref="Some"/> or <see cref="Many"/>.</summary>
@@ -71,7 +74,16 @@ namespace Gamesim.Simulation
             public int history;
             /// <summary>Whether the player knows anything of where the houseguest stands with the third person the ask is about; true when it is about nobody else.</summary>
             public bool aboutKnown = true;
+            /// <summary>
+            /// Whether the player knows of a grudge that refuses this ask whatever its chance: under the
+            /// commitment rules, the one their own walk-out from a pact with the houseguest left
+            /// (<see cref="KnownWalkOut"/>). The chance is then nought and the word <see cref="NoChance"/>.
+            /// </summary>
+            public bool grudge;
         }
+
+        /// <summary>The word for an ask the player knows a grudge refuses: no roll can say yes to it.</summary>
+        public const string NoChance = "no chance";
 
         /// <summary>"about even" rather than "51%", so the chip reads as a judgement and not a promise.</summary>
         public static string Word(double chance)
@@ -82,6 +94,27 @@ namespace Gamesim.Simulation
             if (chance >= 25) return AStretch;
             return Unlikely;
         }
+
+        /// <summary>What a person's card in a picker says of a chance with nothing behind it (<see cref="CardWord"/>).</summary>
+        public const string NoRead = "no read";
+
+        /// <summary>
+        /// The chance as a person's card in the conversation's deal picker says it (UI-UX-PASS-PLAN
+        /// P1): <see cref="NoRead"/> where the estimate has nothing behind it, and its word otherwise.
+        ///
+        /// <para>Nothing behind it is <see cref="Many"/> unknowns about the houseguest the deal is put
+        /// to - no current read, no claim about the vote, little history, which is exactly when the
+        /// table above says "Many unknowns" - and nothing known of where they stand with the person the
+        /// card names (<see cref="Estimate.aboutKnown"/>). A grid of a dozen target agreements each
+        /// reading "about even" at the player's own trust of nought said one guess a dozen times as
+        /// if it were a dozen reads (the play sweep's row 15). A card whose person the player does
+        /// know something of - a pact they know of, a standing they learned - keeps its word, because
+        /// that word carries what the player knows.</para>
+        ///
+        /// <para>Words only: the estimate, and the roll, are untouched.</para>
+        /// </summary>
+        public static string CardWord(Estimate e) =>
+            e == null || (e.unknowns == Many && !e.aboutKnown) ? NoRead : e.word;
 
         // ---------------------------------------------------------------- a deal
 
@@ -104,11 +137,13 @@ namespace Gamesim.Simulation
             else if (type == DealKind.FinalTwo || type == DealKind.VetoUse || type == DealKind.AllianceInvite) chance -= 10;
 
             // The ledger's trust is the houseguest's own record of the player: left out, as neutral.
-            // Deals the player has broken are the player's own record, and count as the roll counts them.
-            chance -= PlayerDeals.BrokenDealPenalty * s.deals.Count(d => d.status == DealStatus.Broken
-                && (d.proposerId == s.playerId || d.recipientId == s.playerId));
+            // Deals the player has broken are the player's own record, and count as the roll counts them
+            // - under the commitment rules only the ones they broke, which are their own acts (C0, X3).
+            chance -= PlayerDeals.BrokenDealPenalty * NpcDeals.BrokenDeals(s, s.playerId);
 
-            bool allied = KnownPact(s, npcId, s.playerId);
+            // The roll asks whether the ally's own commitment holds (Allegiance.Holds); the player's odds
+            // ask it as the player knows it, never of a betrayal or a view they cannot see (C2, C3).
+            bool allied = KnownPact(s, npcId, s.playerId) && Allegiance.HoldsAsKnown(s, npcId);
             if (allied)
             {
                 chance += 20;
@@ -158,7 +193,57 @@ namespace Gamesim.Simulation
 
             if (type == DealKind.Partnership && allied) chance += 15;
 
-            return Finish(e, chance);
+            Finish(e, chance);
+            // Under the commitment rules a grudge of forty or more refuses an alliance whatever the
+            // roll (C4), and the player knows of the one their own walk-out left (KnownWalkOut).
+            if (type == DealKind.AllianceInvite && KnownWalkOut(s, npcId))
+            {
+                e.grudge = true;
+                e.chance = 0;
+                e.word = NoChance;
+            }
+            return e;
+        }
+
+        // ---------------------------------------------------------------- an alliance
+
+        /// <summary>
+        /// The chance shown beside 'Propose an alliance' under the commitment rules
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN C4): the alliance invitation's, worked out as the deal table
+        /// works it out (<see cref="Deal"/>), because the invitation's roll is the one a proposal draws
+        /// (<see cref="EpisodeEngine.AllianceChance"/>). Where the player knows every term that roll
+        /// reads, the two are equal.
+        ///
+        /// <para>A grudge of forty or more refuses whatever the chance. One such grudge the player can
+        /// know of, because their own act wrote it: walking out of a pact leaves every other member
+        /// holding <see cref="EpisodeEngine.AllianceLeftGrudge"/> against them, fading two a week. While
+        /// that reckoning stays at the line, the shown chance is nought, said <see cref="NoChance"/>
+        /// (<see cref="KnownWalkOut"/>). Any other grudge - for a nomination, a broken word, a story's
+        /// falling-out - is the houseguest's own and never shown, and a walk-out's grudge a story has
+        /// since eased still reads as the player reckons it.</para>
+        /// </summary>
+        public static Estimate Alliance(EpisodeState s, string npcId) => Deal(s, npcId, DealKind.AllianceInvite, null);
+
+        /// <summary>
+        /// Whether the player knows this houseguest still holds what the player's own walk-out from a
+        /// pact with them left: under the commitment rules and where grudges exist, a pact of the
+        /// player's with them that the player left, as the alliances page says it ("You left it.",
+        /// <see cref="AllianceRead.YouLeft"/>, from the player's own line while the log holds it),
+        /// whose <see cref="EpisodeEngine.AllianceLeftGrudge"/>, less <see cref="Grudges.DecayPerWeek"/>
+        /// a week since, is still at <see cref="EpisodeEngine.AllianceGrudgeLine"/> or more.
+        /// </summary>
+        public static bool KnownWalkOut(EpisodeState s, string npcId)
+        {
+            if (s?.alliances == null || string.IsNullOrEmpty(npcId) || npcId == s.playerId) return false;
+            if (!EpisodeEngine.CommitmentRulesOn(s) || !EpisodeEngine.StoryAt(s, StoryRules.Grudges)) return false;
+            // The cheap test first: an ended pact holding the two of them at all.
+            if (!s.alliances.Any(a => a != null && !a.active && a.members != null && a.members.Contains(s.playerId) && a.members.Contains(npcId)))
+                return false;
+            int left = AllianceRead.Yours(s)
+                .Where(p => !p.active && p.ended == AllianceRead.YouLeft && p.endedWeek > 0 && p.members.Any(m => m.id == npcId))
+                .Select(p => p.endedWeek).DefaultIfEmpty(0).Max();
+            return left > 0
+                && EpisodeEngine.AllianceLeftGrudge - Grudges.DecayPerWeek * (s.week - left) >= EpisodeEngine.AllianceGrudgeLine;
         }
 
         // ---------------------------------------------------------------- a plea
@@ -180,7 +265,7 @@ namespace Gamesim.Simulation
             switch (ask)
             {
                 case LobbyAsk.Vote:
-                    if (KnownPact(s, deciderId, s.playerId)) chance += 15;
+                    if (KnownPact(s, deciderId, s.playerId) && Allegiance.HoldsAsKnown(s, deciderId)) chance += 15;
                     string other = s.nominees.FirstOrDefault(id => id != s.playerId);
                     if (other != null && KnownPact(s, deciderId, other)) chance -= 20;
                     else if (other != null && Toward(s, e, deciderId, other) > 30) chance -= 15;

@@ -110,7 +110,8 @@ namespace Gamesim.Simulation
             // The web's rule that a grudge blocks an alliance: nobody offers a pact to somebody they
             // hold forty or more against. Behind the story boundary, where grudges exist at all.
             if (EpisodeEngine.StoryAt(state, StoryRules.Grudges)
-                && (Grudges.Severity(state, npcId, targetId) >= 40 || Grudges.Severity(state, targetId, npcId) >= 40))
+                && (Grudges.Severity(state, npcId, targetId) >= EpisodeEngine.AllianceGrudgeLine
+                    || Grudges.Severity(state, targetId, npcId) >= EpisodeEngine.AllianceGrudgeLine))
                 return false;
             // The pact cap (NPC-AGENCY-PLAN.md §3.4): pacts among houseguests stay few enough to read.
             // The player's pacts are outside it, as a story's are.
@@ -253,15 +254,26 @@ namespace Gamesim.Simulation
         /// used to read both directions, so the partner's private feeling - a number the player
         /// has no way to know - could end the player's alliance, and the ending itself was the
         /// only way the player ever learned it. Houseguests' own pacts still read both.</para>
+        ///
+        /// <para><b>Under the commitment rules</b> (ACTIONS-DEALS-ALLIANCES-PLAN C3) the player's pacts
+        /// are two-sided again, the warning first: a partner whose own view of the player has fallen
+        /// under <see cref="Allegiance.QuietLine"/> has gone quiet - they ignore the player's call, a read
+        /// says how they see the player, and the notes say so in words - and one who has turned, under
+        /// <see cref="SourLine"/>, ends it from their side. Somebody who has left the house has left every
+        /// pact (X5), so only the members still in it are read, and a pact the player is no longer in
+        /// the house for is a pact among houseguests.</para>
         /// </summary>
         public static void Dissolve(EpisodeState state)
         {
+            bool rules = EpisodeEngine.CommitmentRulesOn(state);
             foreach (var alliance in state.alliances.Where(a => a.active).ToList())
             {
-                bool soured = alliance.members.Contains(state.playerId)
-                    ? alliance.members.Any(other => other != state.playerId && state.Score(state.playerId, other) < SourLine)
-                    : alliance.members.Any(one =>
-                        alliance.members.Any(other => one != other && state.Score(one, other) < SourLine));
+                var members = rules ? alliance.members.Where(id => state.Find(id)?.status == ContestantStatus.Active).ToList() : alliance.members;
+                bool soured = members.Contains(state.playerId)
+                    ? members.Any(other => other != state.playerId && (state.Score(state.playerId, other) < SourLine
+                        || (rules && state.Score(other, state.playerId) < SourLine)))
+                    : members.Any(one =>
+                        members.Any(other => one != other && state.Score(one, other) < SourLine));
                 if (soured || !Intact(state, alliance)) alliance.active = false;
             }
         }

@@ -46,14 +46,17 @@ namespace Gamesim.Tests.PlayMode
         /// waits for the chrome to come back, rebuilt, before anything reaches for it. The
         /// endgame's cards are skipped with them: the chrome stands aside for those as well
         /// (MOCKUP-PASS-PLAN M2), so a walk pressing the house's controls under one would be
-        /// pressing controls nobody can see.
+        /// pressing controls nobody can see. So is the veto meeting's card on the HUD frame, which
+        /// holds the chrome as they do (UI-UX-PASS-PLAN V0); never the meeting on a set's screen,
+        /// whose stage the staged walks skip as a stage.
         /// </summary>
         private IEnumerator SkipReveals()
         {
             var playing = SceneComponents<KeyCeremony>().Where(card => card.IsPlaying).ToList();
             var reveals = SceneComponents<VoteReveal>().Where(card => card.IsPlaying).ToList();
             var jury = SceneComponents<JuryReveal>().Where(card => card.IsPlaying).ToList();
-            var endgame = SceneComponents<CeremonyTakeover>().Where(card => EpisodeDirector.IsEndgameCard(card.PlayingKind)).ToList();
+            var endgame = SceneComponents<CeremonyTakeover>().Where(card => EpisodeDirector.IsEndgameCard(card.PlayingKind)
+                || card.PlayingKind == CeremonySting.VetoKind && card.Surface == null).ToList();
             if (playing.Count == 0 && reveals.Count == 0 && jury.Count == 0 && endgame.Count == 0) yield break;
             foreach (var card in playing) card.Cancel();
             foreach (var card in reveals) card.Cancel();

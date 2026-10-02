@@ -358,14 +358,35 @@ namespace Gamesim.Tests.PlayMode
                     + ". Runner-up: " + finale.Find(finale.runnerUpId).name + "."), Is.True);
         }
 
+        [UnityTest]
+        public IEnumerator Reload_ADirectorFrozenForAReloadWritesNothingToItsSavePath()
+        {
+            var path = director.SavePath;
+            // An explicit save writes the season, as every commit does...
+            if (File.Exists(path)) File.Delete(path);
+            director.SaveNow();
+            yield return null;
+            Assert.That(File.Exists(path), Is.True, "An explicit save writes the season to the save path.");
+            // ...and once a test has frozen the director for a reload, nothing does: what the test
+            // wrote there is the season the reload is for.
+            File.Delete(path);
+            director.FreezeForReloadForDiagnostics();
+            director.SaveNow();
+            yield return null;
+            Assert.That(File.Exists(path), Is.False, "A director frozen for a reload writes nothing.");
+        }
+
         private IEnumerator ReloadEpisode()
         {
-            // The outgoing director's clock must not commit while the scene changes: a fixture just
-            // written to its save path is the season this reload is for, and an NPC tick committed
+            // The outgoing director must write nothing while the scene changes: a fixture just
+            // written to its save path is the season this reload is for. An NPC tick committed
             // during the load saved the outgoing season over it, so a fresh default season came
             // back instead (a rules-4 install read rules 1, a finale fixture another session; the
-            // second half of wave A's UMA run). The incoming director's clock is its own.
-            if (director != null) director.SuspendNpcAutonomyForDiagnostics();
+            // second half of wave A's UMA run). So did the opening: its beats run on real time and
+            // each finished one is a commit, so the frame after a long fixture search could finish
+            // one (a final-three fixture came back as the default season in wave B's first run).
+            // The incoming director's clock and saves are its own.
+            if (director != null) director.FreezeForReloadForDiagnostics();
             // The expectations go in the order the logs arrive, because that is the order LogAssert
             // matches them in. Each pass over the logs offers every unhandled log to the expectation
             // at the head of the queue only, and a new pass runs only when a new log arrives. The

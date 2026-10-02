@@ -50,6 +50,13 @@ namespace Gamesim.Simulation
             public static readonly string[] All = { Open, Kept, Broken, Lapsed, Unresolved };
         }
 
+        /// <summary>
+        /// The status of a price voided because what it paid for was broken by the one it was owed to
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN C7, <see cref="Negotiation.Voided"/>): its outcome stays lapsed,
+        /// since nobody broke it, and the words say why.
+        /// </summary>
+        public const string VoidedWord = "void: what it paid for was broken";
+
         /// <summary>One commitment the player is a party to, as the page says it.</summary>
         public sealed class Commitment
         {
@@ -185,7 +192,17 @@ namespace Gamesim.Simulation
                 if (d.status == DealStatus.Broken && !withheld) c.brokenById = FinalistRead.DealBreaker(s, d);
                 c.binds = DealBinds(s, d);
                 c.status = withheld ? KnownBallots.Unresolved : DealStatusWord(d, yours, c.brokenById, player);
+                // A price voided because what it paid for was broken (C7) says so, rather than "lapsed".
+                if (!withheld && Negotiation.Voided(s, d)) c.status = VoidedWord;
                 c.term = Term(s, c);
+                // Under the commitment rules an open-ended deal ends when one of the two leaves the house
+                // (C1, X4): its term says so, as an oath's does, rather than "never expires".
+                if (EpisodeEngine.CommitmentRulesOn(s) && d.status == DealStatus.Expired && d.expiresWeek == 0)
+                {
+                    string leaver = s.Find(other).status != ContestantStatus.Active ? other
+                        : s.Find(player).status != ContestantStatus.Active ? player : null;
+                    if (leaver != null) { c.untilWeek = LeftWeek(s, leaver); c.term = UntilLeft(s, leaver); }
+                }
                 into.Add(c);
             }
         }
@@ -397,6 +414,13 @@ namespace Gamesim.Simulation
         private static string DealBinds(EpisodeState s, DealState d)
         {
             bool named = s.Find(d.targetId) != null;
+            // Under the commitment rules a partnership is judged at the vote and an information deal
+            // passes its reading as the house votes (C1): what they bind is what is judged.
+            if (EpisodeEngine.CommitmentRulesOn(s))
+            {
+                if (d.type == DealKind.Partnership) return "not to vote each other out";
+                if (d.type == DealKind.InformationSharing) return "to tell you where their vote is going, each week they vote";
+            }
             switch (d.type)
             {
                 case DealKind.TargetAgreement: return named ? "to put " + Named(s, d.targetId) + " up, not each other" : "to put the same person up";
@@ -502,7 +526,9 @@ namespace Gamesim.Simulation
                     return DealStanding(s, DealKind.VetoUse, DealKind.SafetyAgreement, DealKind.TargetAgreement)
                         || PromiseStanding(s, PromiseKind.Safety, PromiseKind.AllianceLoyalty) || OathStanding(s);
                 case DecisionKinds.Vote:
-                    return DealStanding(s, DealKind.VoteSave, DealKind.VoteEvict) || PromiseStanding(s, PromiseKind.Vote) || OathStanding(s);
+                    return DealStanding(s, DealKind.VoteSave, DealKind.VoteEvict) || PromiseStanding(s, PromiseKind.Vote) || OathStanding(s)
+                        // Under the commitment rules the vote judges a partnership too (C1).
+                        || (EpisodeEngine.CommitmentRulesOn(s) && DealStanding(s, DealKind.Partnership));
                 case DecisionKinds.FinalEviction:
                     return DealStanding(s, DealKind.FinalTwo) || PromiseStanding(s, PromiseKind.FinalTwo);
                 default:
@@ -703,7 +729,9 @@ namespace Gamesim.Simulation
                     if (selected == null) return breaches;
                     foreach (var verdict in DealResolution.Verdicts(s, DealResolution.Selects, player, selectedId: selected))
                         if (verdict.status == DealStatus.Broken) breaches.Add(DealBreach(s, verdict.deal, decision));
-                    foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.FinalTwo && p.fromId == player))
+                    // The engine's own test of which promises the final choice settles: under the
+                    // commitment rules, none made to somebody already gone (C1, X4).
+                    foreach (var promise in s.promises.Where(p => EpisodeEngine.FinalChoiceSettles(s, p, player)))
                         if (promise.toId != selected) breaches.Add(PromiseBreach(s, promise, decision));
                     return breaches;
                 default:
@@ -732,9 +760,10 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// The ballot, judged on the player's own: every standing vote promise of theirs that names
-        /// somebody else, an oath with the nominee, and - under the levers - a vote deal the
-        /// player's ballot alone breaks (DealResolution.VoteDeal reads only the ballots it is given).
-        /// Nothing unless it is a ballot the player can cast now (<see cref="CanCast"/>).
+        /// somebody else, an oath with the nominee, under the levers a vote deal the player's ballot
+        /// alone breaks (DealResolution.VoteDeal reads only the ballots it is given), and under the
+        /// commitment rules a partnership with the nominee the ballot names (C1). Nothing unless it
+        /// is a ballot the player can cast now (<see cref="CanCast"/>).
         /// </summary>
         private static List<Breach> BallotRules(EpisodeState s, Decision decision, List<Breach> breaches)
         {
@@ -744,8 +773,12 @@ namespace Gamesim.Simulation
                 if (promise.targetId != target) breaches.Add(PromiseBreach(s, promise, decision));
             var oath = s.loyaltyOaths.FirstOrDefault(o => (o.playerId == player && o.targetId == target) || (o.playerId == target && o.targetId == player));
             if (oath != null) breaches.Add(OathBreach(s, oath, decision));
-            if (!EpisodeEngine.LeverRulesOn(s)) return breaches;
             var ballot = new List<VoteState> { new VoteState { voterId = player, targetId = target, reason = "dry run" } };
+            if (EpisodeEngine.CommitmentRulesOn(s))
+                foreach (var deal in s.deals.Where(d => d.status == DealStatus.Active && d.type == DealKind.Partnership && (d.proposerId == player || d.recipientId == player)))
+                    if (DealResolution.PartnershipAtTheVote(deal, ballot, s.nominees, out string actor) == DealStatus.Broken && actor == player)
+                        breaches.Add(DealBreach(s, deal, decision));
+            if (!EpisodeEngine.LeverRulesOn(s)) return breaches;
             foreach (var deal in s.deals.Where(d => d.status == DealStatus.Active && (d.proposerId == player || d.recipientId == player)))
             {
                 if (deal.type != DealKind.VoteSave && deal.type != DealKind.VoteEvict) continue;

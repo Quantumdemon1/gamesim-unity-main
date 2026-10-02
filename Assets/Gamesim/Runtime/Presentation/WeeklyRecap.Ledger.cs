@@ -293,9 +293,15 @@ namespace Gamesim.Presentation
                 + events.Count(e => Seen(e) && e.kind == "alliance" && Says(e, "fallen apart", "left the alliance", "is finished", "is out of"));
             if (broken > 0)
                 readings.Add(new Reading { label = "Trust tested", evidence = broken == 1 ? "A broken promise, deal or alliance reached you." : broken + " broken promises, deals or alliances reached you." });
-            int formed = events.Count(e => Seen(e) && e.kind == "alliance" && Says(e, "formed", "brought you into", "joined"));
+            // Somebody brought into a pact of the player's (ACTIONS-DEALS-ALLIANCES-PLAN C5, "Maya Hassan
+            // joined The Riley Pact.") grew one; it formed none.
+            bool Joined(EpisodeEvent e) => e.kind == "alliance" && e.text != null && e.text.Contains(" joined ") && !Says(e, "formed", "brought you into");
+            int formed = events.Count(e => Seen(e) && e.kind == "alliance" && Says(e, "formed", "brought you into", "joined") && !Joined(e));
             if (formed > 0)
                 readings.Add(new Reading { label = "Alliances forming", evidence = formed == 1 ? "An alliance formed that you saw." : formed + " alliances formed that you saw." });
+            int joined = events.Count(e => Seen(e) && Joined(e));
+            if (joined > 0)
+                readings.Add(new Reading { label = "Alliances growing", evidence = joined == 1 ? "Somebody joined an alliance of yours." : joined + " people joined alliances of yours." });
             if (readings.Count == 0)
                 readings.Add(new Reading { label = "A quiet week", evidence = "Nothing you saw split the house." });
             return readings.Take(3).ToList();

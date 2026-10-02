@@ -48,6 +48,28 @@ namespace Gamesim.Simulation
         /// </summary>
         public string trustImpact = DealTrust.Medium;
 
+        /// <summary>
+        /// Schema 22 (ACTIONS-DEALS-ALLIANCES-PLAN C0): who broke a broken deal, as the verdict that
+        /// settled it named them - null for a voting bloc, which both parties settle at once - and the
+        /// week a verdict kept or broke it. Written under the commitment rules
+        /// (<see cref="EpisodeEngine.CommitmentRulesOn"/>); null and 0 on a deal settled before them,
+        /// which <see cref="Breaches.DealBreaker"/> reads by <see cref="FinalistRead.DealBreaker"/>'s rule.
+        /// </summary>
+        public string brokenById;
+        public int settledWeek;
+
+        /// <summary>
+        /// Schema 22 (ACTIONS-DEALS-ALLIANCES-PLAN C7): the deal this one is struck together with, by id -
+        /// a deal and the price paid for it name each other (<see cref="Negotiation"/>). A nominee's veto
+        /// ask and the vote save or final two they give for it; the veto the player holds and the price
+        /// they named for it; a deal the player asked for and the price a houseguest's counter-offer put
+        /// on it. Exactly one of the two is the price (<see cref="Negotiation.PricePrefix"/>), owed while
+        /// what it bought stands and void once the one it was owed to breaks what it bought. Written only
+        /// under the commitment rules (<see cref="EpisodeEngine.CommitmentRulesOn"/>); null on every other
+        /// deal, and on every deal of a season saved before it.
+        /// </summary>
+        public string linkedDealId;
+
         public DealState Clone() => (DealState)MemberwiseClone();
     }
 
@@ -180,6 +202,24 @@ namespace Gamesim.Simulation
                 case High: return 2;
                 case Medium: return 1.5;
                 default: return 1;
+            }
+        }
+
+        /// <summary>
+        /// One step heavier than <paramref name="trust"/>: low to medium, medium to high, high to
+        /// critical. Critical is the heaviest there is and stays critical; anything unknown reads as
+        /// low, as <see cref="Weight"/> reads it, and goes to medium. What an offer the player
+        /// accepted stakes when it breaks, under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN
+        /// C1, decision 15; <see cref="DealResolution.BreachWeight"/>).
+        /// </summary>
+        public static string Heavier(string trust)
+        {
+            switch (trust)
+            {
+                case Critical:
+                case High: return Critical;
+                case Medium: return High;
+                default: return Medium;
             }
         }
     }

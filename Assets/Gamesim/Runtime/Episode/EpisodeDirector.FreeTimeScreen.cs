@@ -596,9 +596,45 @@ namespace Gamesim.Episode
                 Category(EpisodeCommandKind.PromiseSafety));
             hud.Tag(hud.Action("Propose a final-two promise", () => Commit(state, EpisodeCommandKind.PromiseFinalTwo, npc.id)),
                 Category(EpisodeCommandKind.PromiseFinalTwo));
-            hud.Tag(hud.Action(allied ? "Leave our alliance" : "Propose an alliance",
-                    () => Commit(state, allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance, npc.id)),
-                Category(allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance));
+            bool rules = EpisodeEngine.CommitmentRulesOn(state);
+            // The week an ally turned on the pact, leaving them costs nothing (ACTIONS-DEALS-ALLIANCES-PLAN
+            // C2): the pill says so - and, in a pact of three or more, that it cuts them out of it - and
+            // the caption is the one it always was.
+            bool free = allied && Allegiance.FreeExit(state, npc.id);
+            if (!allied && rules) ProposeAllianceRow(state, npc);
+            // Under the rules any other leave names its pact, and leaves a pact of three or more going on
+            // without the player (C5).
+            else if (allied && rules && !free) LeaveRows(state, npc);
+            else
+                hud.Tag(hud.Action(allied ? "Leave our alliance" : "Propose an alliance",
+                        () => Commit(state, allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance, npc.id)),
+                    free ? (Allegiance.FreeExitKeepsAPact(state, npc.id) ? FreeExitCutOutTag : FreeExitTag)
+                        : Category(allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance));
+            // Growing and naming the player's pacts (C5), under the rules only.
+            PactRows(state, npc);
+        }
+
+        /// <summary>
+        /// 'Propose an alliance' under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C4). It rolls
+        /// on the alliance invitation's odds and a no spends the action, so the row carries the
+        /// player's read of the chance as a deal's row does (<see cref="KnownOdds.Alliance"/>, never the
+        /// roll's own number), under the note that says whose read it is - once a render, above the
+        /// first chance the conversation shows. At the player's three pacts it is drawn locked, under
+        /// the line that says why, as an offer's yes that cannot be given is: same caption, nothing
+        /// committed, and nothing about the houseguest told.
+        /// </summary>
+        private void ProposeAllianceRow(EpisodeState state, ContestantState npc)
+        {
+            string refusal = EpisodeEngine.AllianceRefusal(state, npc.id);
+            if (refusal != null)
+            {
+                hud.Paragraph(refusal);
+                hud.LockedAction("Propose an alliance");
+                return;
+            }
+            OddsAreYourRead(state, npc);
+            hud.Tag(hud.Action("Propose an alliance", () => Commit(state, EpisodeCommandKind.FormAlliance, npc.id)),
+                Category(EpisodeCommandKind.FormAlliance) + " · " + KnownOdds.Alliance(state, npc.id).word);
         }
 
         /// <summary>What you have on them: the play about them as a bar, where you stand, the threads they are in, and the latest note.</summary>

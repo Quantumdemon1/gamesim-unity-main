@@ -204,6 +204,10 @@ namespace Gamesim.Simulation
         {
             var finalists = new HashSet<string>(Others(s).Select(c => c.id));
             var names = new List<string>();
+            // Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C1, X4) the final eviction breaks
+            // nothing with somebody already gone: their deals and final two promises ended as they
+            // left, and the choice passes over any that did not.
+            if (EpisodeEngine.CommitmentRulesOn(s)) return names;
             foreach (var deal in s.deals.Where(d => d.type == DealKind.FinalTwo && d.status == DealStatus.Active
                 && (d.proposerId == s.playerId || d.recipientId == s.playerId)))
             {
@@ -436,6 +440,15 @@ namespace Gamesim.Simulation
                 case DealKind.FinalTwo:
                     var chose = rows.Where(Final).OrderBy(p => p.week).LastOrDefault();
                     return chose != null && (chose.hohId == player || chose.hohId == other) ? chose.hohId : null;
+                case DealKind.Partnership:
+                    // Only the vote settles one, under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN
+                    // C1), and the record says who: the player's own ballot, known to them, or the
+                    // other's, told once the player knows it (KnownBallots). Before them none broke.
+                    return deal.settledWeek > 0 && KnownBallots.DealOutcomeKnown(s, deal) ? deal.brokenById : null;
+                case DealKind.InformationSharing:
+                    // Only a lie the reveal caught breaks one, under the commitment rules (C1), and the
+                    // player was told that lie and the ballot it hid. Before them none broke.
+                    return deal.settledWeek > 0 ? deal.brokenById : null;
                 default:
                     return null;
             }
@@ -460,7 +473,11 @@ namespace Gamesim.Simulation
                 .Select(a => PlayerAlliedSince(s, a))
                 .Where(week => week > 0).ToList();
             if (weeks.Count > 0) parts.Add("Allied since week " + weeks.Min());
-            int kept = s.deals.Count(d => d.status == DealStatus.Fulfilled && Between(d.proposerId, d.recipientId, s.playerId, finalistId));
+            // Under the commitment rules a deal the vote settled - a partnership too (C1) - is told once
+            // the player knows the ballot that kept it (KnownBallots).
+            bool rules = EpisodeEngine.CommitmentRulesOn(s);
+            int kept = s.deals.Count(d => d.status == DealStatus.Fulfilled && Between(d.proposerId, d.recipientId, s.playerId, finalistId)
+                && (!rules || KnownBallots.DealOutcomeKnown(s, d)));
             if (kept > 0) parts.Add(kept == 1 ? "Kept a deal with you" : "Kept " + kept + " deals with you");
             var acts = TowardYou(s, finalistId);
             if (acts.certainty == Confirmed) parts.Add(acts.value);

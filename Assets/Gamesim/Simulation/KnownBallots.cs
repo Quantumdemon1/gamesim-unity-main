@@ -414,14 +414,31 @@ namespace Gamesim.Simulation
             type == DealKind.VoteTogether || type == DealKind.VoteSave || type == DealKind.VoteEvict;
 
         /// <summary>
-        /// Whether the player can know how a vote deal of theirs ended. The engine settles it by the
-        /// true ballots; the player is told only once they know the other party's - their own ballot
-        /// settles it alone where it was theirs that broke it. Any other deal, an unsettled one, or
-        /// one between two other houseguests: yes.
+        /// A kind of deal whose ending a line of record can only have learned from a ballot: the vote
+        /// deals, and a partnership, which under the commitment rules only the vote settles
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN C1) - and before them nothing settled at all, so no line
+        /// tells one's ending.
+        /// </summary>
+        public static bool IsBallotKind(string type) => IsVoteDeal(type) || type == DealKind.Partnership;
+
+        /// <summary>
+        /// Whether this deal was settled by the vote: a vote deal, or a partnership settled under the
+        /// commitment rules (C1), which the record says by its week. A partnership a season brought in
+        /// already broken (a web import) was not.
+        /// </summary>
+        public static bool SettledByABallot(DealState d) =>
+            d != null && (IsVoteDeal(d.type) || (d.type == DealKind.Partnership && d.settledWeek > 0));
+
+        /// <summary>
+        /// Whether the player can know how a vote deal of theirs ended - and, under the commitment
+        /// rules, a partnership (C1), which the vote settles too. The engine settles it by the true
+        /// ballots; the player is told only once they know the other party's - their own ballot
+        /// settles it alone where it was theirs that broke it, or where theirs was the only one that
+        /// counted. Any other deal, an unsettled one, or one between two other houseguests: yes.
         /// </summary>
         public static bool DealOutcomeKnown(EpisodeState s, DealState d)
         {
-            if (s == null || d == null || !IsVoteDeal(d.type)) return true;
+            if (s == null || d == null || !SettledByABallot(d)) return true;
             if (d.status != DealStatus.Fulfilled && d.status != DealStatus.Broken) return true;
             string player = s.playerId;
             if (d.proposerId != player && d.recipientId != player) return true;
@@ -470,10 +487,11 @@ namespace Gamesim.Simulation
             return 0;
         }
 
-        /// <summary>The week the reveal judged a vote deal: the first on the record in its term in which a party voted on it - with the house, or as the Head of Household breaking a tie. 0 where the record cannot say.</summary>
+        /// <summary>The week the reveal judged a vote deal: the first on the record in its term in which a party voted on it - with the house, or as the Head of Household breaking a tie. 0 where the record cannot say. A partnership's is its record's (C1).</summary>
         public static int DealSettledWeek(EpisodeState s, DealState d, string partnerId)
         {
             if (s == null || d == null) return 0;
+            if (d.type == DealKind.Partnership) return Math.Max(0, d.settledWeek);
             int last = d.expiresWeek >= d.week && d.expiresWeek > 0 ? d.expiresWeek : s.week;
             foreach (int week in Weeks(s))
             {
@@ -510,7 +528,9 @@ namespace Gamesim.Simulation
             string them = partner.name, you = player.name;
             bool tells = false;
             if (text == them + " broke a Vote promise." || text == them + " fulfilled a Vote promise.") tells = true;
-            foreach (var kind in new[] { DealKind.VoteTogether, DealKind.VoteSave, DealKind.VoteEvict })
+            // A partnership's ending is a ballot too, under the commitment rules (C1); before them no
+            // line ever told one.
+            foreach (var kind in new[] { DealKind.VoteTogether, DealKind.VoteSave, DealKind.VoteEvict, DealKind.Partnership })
             foreach (var spelling in DealKind.Titles(kind))
             {
                 string title = spelling.ToLowerInvariant();
@@ -519,6 +539,10 @@ namespace Gamesim.Simulation
                     || text == you + " and " + them + " fell out over their " + title + "." || text == them + " and " + you + " fell out over their " + title + ".")
                     tells = true;
             }
+            // A betrayal told by a ballot (ACTIONS-DEALS-ALLIANCES-PLAN C2): the ally's vote to evict the
+            // player, a call of theirs the ally refused and then voted against, or a vote deal they broke
+            // with them by it, on the player's record of them.
+            if (Allegiance.TellsABallot(s, partnerId, text)) tells = true;
             if (!tells) return false;
             return !Knows(s, week, partnerId);
         }

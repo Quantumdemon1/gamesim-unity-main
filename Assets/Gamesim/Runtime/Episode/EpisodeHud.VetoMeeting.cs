@@ -89,16 +89,22 @@ namespace Gamesim.Episode
         /// <summary>Where the column's next row will stand: the place a row built later is moved back to.</summary>
         public int MeetingColumnMark() => content != null ? content.childCount : -1;
 
+        /// <summary>The meeting's line where it heads the step alone, by the name a test finds it by.</summary>
+        public const string MeetingHeadName = "Meeting head";
+
         /// <summary>
         /// The meeting's title and its line, centred as the mockups set them: the ceremony's own
         /// title - the name a test reads it by - without the week's eyebrow, which the phase band
-        /// already says.
+        /// already says. With no title the line heads the step alone (<see cref="MeetingHeadName"/>):
+        /// before the meeting the band says VETO MEETING, and a title under it said the name a
+        /// second time (UI-UX-PASS-PLAN V0, as E0 took the jury house's repeat away).
         /// </summary>
         public void MeetingTitle(string title, string line)
         {
             if (content == null) return;
             int first = content.childCount;
-            CeremonyTitle(null, title, line, UiTheme.Gold);
+            if (!string.IsNullOrEmpty(title)) CeremonyTitle(null, title, line, UiTheme.Gold);
+            else if (!string.IsNullOrEmpty(line)) FlowText(line, BodySize, Paper).gameObject.name = MeetingHeadName;
             for (int i = first; i < content.childCount; i++)
             {
                 var text = content.GetChild(i).GetComponent<TMP_Text>();

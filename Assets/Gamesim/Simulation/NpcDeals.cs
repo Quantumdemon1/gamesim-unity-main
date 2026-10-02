@@ -50,6 +50,14 @@ namespace Gamesim.Simulation
         /// <summary>What validation lets a season hold, so the pass stops short of it.</summary>
         public const int DealCeiling = 200;
 
+        /// <summary>
+        /// How the id of a question put to the player begins: a weekly offer (<see cref="Propose"/>)
+        /// or a nominee's veto ask (<see cref="AskForTheVeto"/>). Only the player's answer makes one
+        /// bind, so a deal with either that is or was binding is one the player accepted
+        /// (<see cref="DealResolution.AcceptedOffer"/>).
+        /// </summary>
+        public const string OfferPrefix = "deal-ask-", VetoAskPrefix = "deal-veto-";
+
         // ---------------------------------------------------------------- reading the room
 
         /// <summary>
@@ -63,9 +71,14 @@ namespace Gamesim.Simulation
         public static double Adjusted(EpisodeState state, string readerId, string aboutId) =>
             state.Score(readerId, aboutId) - BrokenDealPenalty * BrokenDeals(state, aboutId);
 
+        /// <summary>
+        /// The broken deals held against somebody: under the commitment rules the ones they broke
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN C0, X3), before them every broken deal they were either side
+        /// of (<see cref="Breaches.CountsAgainst(EpisodeState, DealState, string)"/>). The player's own
+        /// count is what the acceptance roll and its line read too.
+        /// </summary>
         public static int BrokenDeals(EpisodeState state, string whoId) =>
-            state.deals.Count(d => d.status == DealStatus.Broken
-                                   && (d.proposerId == whoId || d.recipientId == whoId));
+            state.deals.Count(d => Breaches.CountsAgainst(state, d, whoId));
 
         /// <summary>Deals currently binding these two, in either direction.</summary>
         public static List<DealState> Between(EpisodeState state, string a, string b) =>
@@ -118,8 +131,11 @@ namespace Gamesim.Simulation
             bool partnership = Has(state, npcId, targetId, DealKind.Partnership);
             bool safety = Has(state, npcId, targetId, DealKind.SafetyAgreement);
 
-            // Already partners and already safe: make it an alliance.
-            if (partnership && safety && warmth > UpgradeWarmth && !allied)
+            // Already partners and already safe: make it an alliance - unless, under the commitment
+            // rules, the player it would be put to holds as many pacts as they may (C4, decision 10),
+            // and could only turn it down. The agency rung below counts them through WouldPropose.
+            if (partnership && safety && warmth > UpgradeWarmth && !allied
+                && !(target.isPlayer && EpisodeEngine.InvitationPastPactCap(state, npcId)))
                 return DealKind.AllianceInvite;
 
             // Under agency a houseguest looking for a partner asks the one they want, when that is
@@ -236,7 +252,7 @@ namespace Gamesim.Simulation
             // week, not whether anything is still waiting — otherwise clearing the table would
             // refill it, and a player who answers promptly would be asked more than one who does not.
             if (state.deals.Any(d => d.recipientId == state.playerId && d.week == state.week
-                                     && d.id.StartsWith("deal-ask-", StringComparison.Ordinal))) return;
+                                     && d.id.StartsWith(OfferPrefix, StringComparison.Ordinal))) return;
 
             var offers = state.contestants
                 .Where(npc => npc.status == ContestantStatus.Active && !npc.isPlayer)
@@ -256,7 +272,7 @@ namespace Gamesim.Simulation
                 if (!types.Add(offer.kind)) continue;
                 state.deals.Add(new DealState
                 {
-                    id = "deal-ask-" + state.nextSequence,
+                    id = OfferPrefix + state.nextSequence,
                     type = offer.kind,
                     proposerId = offer.npc.id,
                     recipientId = state.playerId,
@@ -308,7 +324,7 @@ namespace Gamesim.Simulation
                 if (state.deals.Count >= DealCeiling) return;
                 state.deals.Add(new DealState
                 {
-                    id = "deal-veto-" + state.nextSequence,
+                    id = VetoAskPrefix + state.nextSequence,
                     type = DealKind.VetoUse,
                     proposerId = npc.id,
                     recipientId = state.playerId,

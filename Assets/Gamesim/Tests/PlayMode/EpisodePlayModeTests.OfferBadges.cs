@@ -624,26 +624,25 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// Runs <paramref name="check"/> on the HUD laid out for a frame of this shape, as a capture
-        /// lays it out: the overlays drawn through the view camera into a target of that size, a
-        /// frame for the canvas to take its shape, then the HUD rendered for it and read once the
-        /// render's replaced parts are gone. Measure with <see cref="OnTheHud"/> inside it.
+        /// lays it out: through the capture's lens (<see cref="CaptureLens"/>) on a target of that
+        /// size, a frame for the canvas to take its shape, then the HUD rendered for it and read once
+        /// the render's replaced parts are gone. Measure with <see cref="OnTheHud"/> inside it. With
+        /// <paramref name="pixelAligned"/> false the lens stands off the frame's pixels, so a canvas's
+        /// world corners are not its pixels there and only its camera says where it is drawn. That
+        /// is a pass of its own only through the overlay camera (option B): when this run's lens is
+        /// the view camera's (option A), every pass already stands off the pixels, and this one is
+        /// skipped with a line in the log.
         /// </summary>
-        private IEnumerator AtFrame(int width, int height, System.Action check)
+        private IEnumerator AtFrame(int width, int height, System.Action check, bool pixelAligned = true)
         {
-            var camera = cameraRig.ViewCamera;
-            var overlays = Object.FindObjectsByType<Canvas>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
-                .Where(canvas => canvas.renderMode == RenderMode.ScreenSpaceOverlay).ToArray();
-            var texture = new RenderTexture(width, height, 24);
-            var previousTarget = camera.targetTexture;
+            if (!pixelAligned && !CaptureLens.DrawsThroughTheOverlay(cameraRig.ViewCamera))
+            {
+                Debug.Log("[Gamesim] capture lens: the view camera's this run, whose every frame stands off the pixels; the pass asked off them is skipped.");
+                yield break;
+            }
+            var lens = new CaptureLens(cameraRig.ViewCamera, width, height, pixelAligned);
             try
             {
-                camera.targetTexture = texture;
-                foreach (var canvas in overlays)
-                {
-                    canvas.renderMode = RenderMode.ScreenSpaceCamera;
-                    canvas.worldCamera = camera;
-                    canvas.planeDistance = Mathf.Max(camera.nearClipPlane + 0.1f, 1f);
-                }
                 Canvas.ForceUpdateCanvases();
                 yield return null; yield return null;
                 Canvas.ForceUpdateCanvases();
@@ -657,11 +656,7 @@ namespace Gamesim.Tests.PlayMode
             }
             finally
             {
-                camera.targetTexture = previousTarget;
-                foreach (var canvas in overlays)
-                    if (canvas != null) canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                texture.Release();
-                Object.Destroy(texture);
+                lens.Dispose();
             }
             // And back to the screen's own shape, for whatever the test reads next.
             Canvas.ForceUpdateCanvases();

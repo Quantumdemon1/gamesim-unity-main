@@ -913,7 +913,8 @@ namespace Gamesim.Presentation
                 foreach (var rival in rivals.Take(ListLimit))
                     PersonRow(column, rival, RivalWord(state, rival.id), UiTheme.Conflict, scale, font, portrait);
 
-                var secrets = state.memories.Where(m => m.ownerId == state.playerId)
+                // The player's memories as they may know them (KnownBallots.PlayerMemories; decision 4).
+                var secrets = KnownBallots.PlayerMemories(state)
                     .OrderByDescending(m => m.week).ToList();
                 SectionHeading(column, SecretsHeading, secrets.Count, scale, font);
                 if (secrets.Count == 0) Note(column, "Nothing yet.", scale, font);
@@ -951,7 +952,9 @@ namespace Gamesim.Presentation
                 foreach (var line in between.Take(ListLimit))
                     TextRow(column, "handshake", UiTheme.AccentDeep, line, scale, font);
 
-                var known = state.memories.Where(m => m.ownerId == state.playerId && m.subjectId == focus.id)
+                // A memory of a vote deal's or a vote promise's ending tells the ballot that ended
+                // it: left out while that ballot is not the player's to know (KnownBallots; decision 4).
+                var known = KnownBallots.PlayerMemories(state).Where(m => m.subjectId == focus.id)
                     .OrderByDescending(m => m.week).ToList();
                 SectionHeading(column, KnownHeading, known.Count, scale, font);
                 if (known.Count == 0) Note(column, "Nothing recorded yet.", scale, font);
@@ -961,7 +964,8 @@ namespace Gamesim.Presentation
 
                 var record = state.relationships.FirstOrDefault(r => r.fromId == state.playerId && r.toId == focus.id);
                 var history = record != null
-                    ? record.events.Where(e => !string.IsNullOrEmpty(e.description)).OrderByDescending(e => e.sequence).ToList()
+                    ? record.events.Where(e => !string.IsNullOrEmpty(e.description)
+                        && !KnownBallots.TellsAnUnknownBallot(state, focus.id, e.description, e.week)).OrderByDescending(e => e.sequence).ToList()
                     : new List<RelationshipEventState>();
                 SectionHeading(column, HistoryHeading, history.Count, scale, font);
                 if (history.Count == 0) Note(column, "Nothing yet.", scale, font);

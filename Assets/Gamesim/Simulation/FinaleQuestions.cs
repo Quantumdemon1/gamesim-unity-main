@@ -400,7 +400,13 @@ namespace Gamesim.Simulation
                     return "Week " + week + " · you held the house, and " + Name(power.evicteeId) + " went.";
                 case BallotReceipt:
                     var ballot = ledger.ballots.FirstOrDefault(b => b.week == week && b.voterId == player);
-                    return ballot == null ? null : "Week " + week + " · you voted to evict " + Name(ballot.targetId) + ".";
+                    if (ballot == null) return null;
+                    // The reveal reads the count, not the ballots: the receipt names the player's
+                    // ballot only where the juror could know it (UI-UX-PASS-PLAN B0). The question
+                    // itself was chosen by the engine, which still reads the box; wave B moves that.
+                    if (!JuryHouseRead.CouldKnowYourBallot(s, week, juror))
+                        return "Week " + week + " · your ballot that week is yours alone; they cannot know how you voted.";
+                    return "Week " + week + " · you voted to evict " + Name(ballot.targetId) + ".";
                 case ReplyReceipt:
                     var reply = ledger.replies.FirstOrDefault(r => r.cardId == id);
                     return reply == null ? null : "Week " + reply.week + " · they asked you for your vote, and you said no.";
@@ -490,7 +496,8 @@ namespace Gamesim.Simulation
                 case BallotReceipt:
                     if (week == null) return null;
                     var ballot = ledger.ballots.First(b => b.week == week.Value && b.voterId == player);
-                    words = "you voted to evict " + (ballot.targetId == juror ? "them" : s.Find(ballot.targetId)?.name ?? "somebody");
+                    words = !JuryHouseRead.CouldKnowYourBallot(s, week.Value, juror) ? "a ballot they cannot know"
+                        : "you voted to evict " + (ballot.targetId == juror ? "them" : s.Find(ballot.targetId)?.name ?? "somebody");
                     break;
                 case ReplyReceipt: words = "you turned down their plea"; break;
                 case CallReceipt: words = "you called the vote in your alliance"; break;

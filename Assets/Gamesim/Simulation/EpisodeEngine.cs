@@ -402,10 +402,18 @@ namespace Gamesim.Simulation
                     s.evictionStage = EvictionStage.Results;
                     s.jurySentiment = WebJurySentiment.AddJuror(s.jurySentiment, evicted, Name(s, evicted), s.Score(s.playerId, evicted));
                     s.oathOpportunities.Remove(evicted);
+                    // The reveal reads the count, never the ballots (UI-UX-PASS-PLAN B0): the
+                    // eviction line carries the house's count on its tail - the Head of Household's
+                    // deciding vote named, since the format reads it live - and each ballot's line is
+                    // the voter's own, logged to them alone in the words it always had. The reveal
+                    // logs no line of its own: the story mints its cycle and house-event ids from the
+                    // sequence, so one more event here would re-roll a recorded season from its first
+                    // eviction. What the player knows of the others is KnownBallots' to say: their
+                    // own, the tie-break, what the count proves, what they were told.
                     Log(s, "eviction", Name(s, evicted) + Verb(s, evicted, " is evicted and joins ", " are evicted and join ")
-                        + "the jury.");
+                        + "the jury. " + CountTail(s, evicted, tally.Select(x => (x.id, x.count)).ToList()));
                     foreach (var vote in s.votes) Log(s, "vote-reveal", Name(s, vote.voterId) + " voted to evict "
-                        + Target(s, vote.targetId, vote.voterId) + ". " + vote.reason);
+                        + Target(s, vote.targetId, vote.voterId) + ". " + vote.reason, vote.voterId);
                     SettleVoteRead(s, evicted);
                     RecordReveal(s, evicted, tally.Select(x => x.count).ToList());
                     RecordJurorStanding(s, evicted);
@@ -897,6 +905,25 @@ namespace Gamesim.Simulation
                 Log(s, "eviction-speech", Name(s, nomineeId) + ": "
                     + s.evictionSpeeches.Last(x => x.speakerId == nomineeId).text);
             }
+        }
+
+        /// <summary>
+        /// The count on the tail of the eviction line: "By a vote of 3 to 1." - the house's count,
+        /// the evictee's first - and the Head of Household's deciding vote named when the house tied
+        /// ("By a vote of 2 to 2; Maya Hassan broke the tie.", "you broke the tie" for a player Head
+        /// of Household, who is spoken to), since the format reads that live. A single voter is "By a
+        /// single vote.", naming nobody. The line still opens with the evictee's name, which the
+        /// readers parse the subject from.
+        /// </summary>
+        public static string CountTail(EpisodeState s, string evicted, IReadOnlyList<(string id, int count)> tally)
+        {
+            int against = tally.FirstOrDefault(x => x.id == evicted).count;
+            int others = tally.Where(x => x.id != evicted).Sum(x => x.count);
+            if (against + others == 1) return "By a single vote.";
+            string tail = "By a vote of " + against + " to " + others;
+            if (against == others && !string.IsNullOrEmpty(s.hohId))
+                tail += "; " + (s.hohId == s.playerId ? "you" : Name(s, s.hohId)) + " broke the tie";
+            return tail + ".";
         }
 
         private static void Vote(EpisodeState s, string voter, string target, string reason)
@@ -1890,6 +1917,12 @@ namespace Gamesim.Simulation
                 bool kept = verdict.status == DealStatus.Fulfilled;
                 string title = DealKind.Title(deal.type).ToLowerInvariant();
 
+                // A vote deal's outcome is a ballot (UI-UX-PASS-PLAN decision 4): the settlement is
+                // the same, but the line goes only to whoever can know it - the party whose own
+                // ballot decided it, and never the player as the other party, who is told once they
+                // know the ballot (KnownBallots.DealOutcomeKnown). Every other deal's line goes to
+                // the pair, as it always did.
+                bool ballot = KnownBallots.IsVoteDeal(deal.type);
                 if (verdict.actorId == null)
                 {
                     string text = Name(s, deal.proposerId) + " and " + Name(s, deal.recipientId)
@@ -1898,7 +1931,8 @@ namespace Gamesim.Simulation
                     WriteScore(s, deal.recipientId, deal.proposerId, delta);
                     RelationshipLedger.Record(s, deal.proposerId, deal.recipientId,
                         kept ? "deal_fulfilled" : "deal_broken", delta, text);
-                    Log(s, "deal-outcome", text, deal.proposerId, deal.recipientId);
+                    var pair = new[] { deal.proposerId, deal.recipientId };
+                    Log(s, "deal-outcome", text, ballot ? pair.Where(id => id != s.playerId).ToArray() : pair);
                 }
                 else
                 {
@@ -1909,7 +1943,7 @@ namespace Gamesim.Simulation
                     RelationshipLedger.Record(s, wronged, verdict.actorId,
                         kept ? "deal_fulfilled" : "deal_broken", delta, text);
                     Remember(s, wronged, verdict.actorId, text, true);
-                    Log(s, "deal-outcome", text, verdict.actorId, wronged);
+                    Log(s, "deal-outcome", text, ballot ? new[] { verdict.actorId } : new[] { verdict.actorId, wronged });
                     if (!kept) StoryWordBroken(s, wronged, verdict.actorId, GrudgeCauses.DealBroken, 60);
                 }
 
@@ -1949,7 +1983,11 @@ namespace Gamesim.Simulation
             WriteScore(s, promise.toId, promise.fromId, delta);
             string text = Name(s, promise.fromId) + (status == PromiseStatus.Broken ? " broke" : " fulfilled") + " a " + promise.kind + " promise.";
             Remember(s, promise.toId, promise.fromId, text, true); Remember(s, promise.fromId, promise.toId, text, true);
-            Log(s, "promise-outcome", text, promise.fromId, promise.toId);
+            // A vote promise's outcome is the promiser's ballot (UI-UX-PASS-PLAN decision 4): the
+            // line goes to them alone, and the promisee is told once they know the ballot
+            // (KnownBallots.PromiseOutcomeKnown). Every other promise's line goes to the pair.
+            if (promise.kind == PromiseKind.Vote) Log(s, "promise-outcome", text, promise.fromId);
+            else Log(s, "promise-outcome", text, promise.fromId, promise.toId);
             if (status == PromiseStatus.Broken) StoryWordBroken(s, promise.toId, promise.fromId, GrudgeCauses.PromiseBroken, 60);
             if (status == PromiseStatus.Broken)
             {

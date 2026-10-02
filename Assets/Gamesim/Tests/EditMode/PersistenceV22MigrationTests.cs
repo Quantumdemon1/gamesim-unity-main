@@ -12,12 +12,12 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// Schema 22: the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN R0, C0). A v21 save gains them
+    /// Schema 22: the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN R0, C0, C7). A v21 save gains them
     /// switched off - a rules week of 0, so a season saved before them plays without them to its end -
-    /// and on every deal and every promise the two fields only a settlement under the rules fills,
-    /// empty. The migration never guesses who broke something: a reader under the rules reads a deal
-    /// settled before the record by FinalistRead.DealBreaker's rule, and a promise by its maker.
-    /// Nothing else in the save moves.
+    /// on every deal and every promise the two fields only a settlement under the rules fills, empty, and
+    /// on every deal the link only a negotiation under the rules writes (C7), empty. The migration never
+    /// guesses who broke something: a reader under the rules reads a deal settled before the record by
+    /// FinalistRead.DealBreaker's rule, and a promise by its maker. Nothing else in the save moves.
     /// </summary>
     public sealed class PersistenceV22MigrationTests
     {
@@ -83,7 +83,11 @@ namespace Gamesim.Tests.EditMode
                 {
                     Assert.That(row["brokenById"].Type, Is.EqualTo(JTokenType.Null), name + " " + row["id"]);
                     Assert.That((int)row["settledWeek"], Is.Zero, name + " " + row["id"]);
+                    // C7: every deal gains its link, empty; a promise has none.
+                    if (name == "deals") Assert.That(row["linkedDealId"].Type, Is.EqualTo(JTokenType.Null), name + " " + row["id"]);
+                    else Assert.That(row.Property("linkedDealId"), Is.Null, name + " " + row["id"]);
                 }
+            Assert.That(((JArray)migrated["deals"]).Count, Is.GreaterThan(0), "The fixture has deals for the link to be written on.");
 
             var projection = PersistenceMigrationTests.StripSchema22((JObject)migrated.DeepClone());
             projection["schemaVersion"] = 21;
@@ -109,6 +113,8 @@ namespace Gamesim.Tests.EditMode
             var promise = state.promises.Single(p => p.id == "promise-pact");
             Assert.That(deal.brokenById, Is.Null, "Who broke it was never recorded, so the migration writes nothing.");
             Assert.That(promise.brokenById, Is.Null);
+            Assert.That(state.deals.All(d => d.linkedDealId == null), Is.True, "No deal of a v21 save was a price or bought with one.");
+            Assert.That(state.deals.Any(Negotiation.IsPrice), Is.False);
 
             // The same season under the rules, as an import's or a later rule's would be.
             state.commitmentRulesStartWeek = state.week;
@@ -153,6 +159,13 @@ namespace Gamesim.Tests.EditMode
             old = V21WithABreach(out _);
             ((JObject)((JArray)old["promises"]).First(p => (string)p["id"] == "promise-pact"))["settledWeek"] = 1;
             Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(old, out _));
+            // C7's link, empty or naming a deal, is no more a v21 field than the record is.
+            foreach (var link in new JToken[] { JValue.CreateNull(), new JValue("deal-pact") })
+            {
+                old = V21WithABreach(out _);
+                ((JObject)((JArray)old["deals"]).First(d => (string)d["id"] == "deal-pact"))["linkedDealId"] = link;
+                Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(old, out _), "linkedDealId " + link);
+            }
         }
 
         [Test]
@@ -212,6 +225,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(loaded.commitmentRulesStartWeek, Is.Zero, "It plays without the rules to its end.");
             Assert.That(loaded.deals.All(d => d.brokenById == null && d.settledWeek == 0), Is.True, "No deal's breaker is guessed.");
             Assert.That(loaded.promises.All(p => p.brokenById == null && p.settledWeek == 0), Is.True, "Nor any promise's.");
+            Assert.That(loaded.deals.All(d => d.linkedDealId == null), Is.True, "Nor any deal's link (C7).");
             Assert.That(EpisodeValidation.TryValidate(loaded, out var error), Is.True, error);
 
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(payload, out bool changed);

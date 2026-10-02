@@ -35,7 +35,8 @@ namespace Gamesim.Tests.EditMode
     /// later slice behind the same boundary keeps the first half green and shows, in the second, that
     /// the same seasons reach what it changes (C1: partnerships judged, safety pacts kept, information
     /// readings, offers accepted and broken; C5: somebody asked into a pact, a member's no, a pact
-    /// renamed - its busy moves only ever made under the rules, so the first half never sees them).</para>
+    /// renamed; C7: counters taken, the veto bought, prices voided, promises called in, fences mended -
+    /// their busy moves only ever made under the rules, so the first half never sees them).</para>
     /// </summary>
     public sealed class CommitmentRulesSeasonDigests
     {
@@ -143,6 +144,13 @@ namespace Gamesim.Tests.EditMode
             Assert.That(reached.TryGetValue("BringIntoAlliance", out int askings) && askings > 0, Is.True, "The player asked somebody into a pact.");
             Assert.That(reached.TryGetValue("pact-joined", out int joins) && joins > 0, Is.True, "Somebody was brought into a pact.");
             Assert.That(reached.TryGetValue("RenameAlliance", out int renames) && renames > 0, Is.True, "A pact was renamed.");
+            // C7 (negotiation): the same seasons reach each of its rules.
+            Assert.That(reached.TryGetValue("counter-taken", out int countered) && countered > 0, Is.True, "Counters were taken, and paid for.");
+            Assert.That(reached.TryGetValue("veto-price", out int vetoPrices) && vetoPrices > 0, Is.True, "The veto was bought with a price.");
+            Assert.That(reached.TryGetValue("price-void", out int voided) && voided > 0, Is.True, "Prices were voided.");
+            Assert.That(vetoPrices + countered, Is.GreaterThan(voided), "and some stood.");
+            Assert.That(reached.TryGetValue("called-in", out int calledIn) && calledIn > 0, Is.True, "Promises were called in.");
+            Assert.That(reached.TryGetValue("amends", out int amends) && amends > 0, Is.True, "Fences were mended.");
         }
 
         /// <summary>A played line's key: its rule set, size, seed and digest, without the run's counts.</summary>
@@ -200,10 +208,11 @@ namespace Gamesim.Tests.EditMode
             var engine = new EpisodeEngine(Season(config, size, seed, rulesOn));
             var trace = new StringBuilder();
             var lastPhase = (EpisodePhase)(-1);
-            int i = 0;
+            int i = 0, heard = 0, voided = 0;
             for (; i < 3000 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
             {
                 var s = engine.Snapshot;
+                voided += VoidLines(s, ref heard);
                 if (s.phase != lastPhase) { Checkpoint(s, trace); lastPhase = s.phase; }
                 bool done = false;
                 for (int attempt = 0; attempt < 6 && !done; attempt++)
@@ -234,6 +243,7 @@ namespace Gamesim.Tests.EditMode
                 if (!applied.accepted) { error = "week " + s.week + " " + s.phase + "/" + s.evictionStage + " " + next.kind + ": " + applied.reason; break; }
             }
             var final = engine.Snapshot;
+            voided += VoidLines(final, ref heard);
             Checkpoint(final, trace);
             if (error == null && final.phase != EpisodePhase.Finished) error = "unfinished after " + i;
             int broken = final.deals.Count(d => d.status == DealStatus.Broken), kept = final.deals.Count(d => d.status == DealStatus.Fulfilled);
@@ -267,6 +277,17 @@ namespace Gamesim.Tests.EditMode
             // C5's groups ruling: a member who turned on a pact of the player's of three or more is taken out
             // of it, in a story defector's words (which a story's own defector writes too); the last 256 lines only.
             Count(counts, "pact-member-out", final.events.Count(e => e.kind == "alliance" && e.text != null && e.text.Contains(" is out of ")));
+            // C7, by the words and ids it writes: prices struck - the player's, a counter's, and a
+            // houseguest's, a veto's - prices voided (by the line that says so, not every price that
+            // lapsed), promises called in and fences mended.
+            var prices = final.deals.Where(d => d.id.StartsWith("deal-price-", StringComparison.Ordinal)).ToList();
+            Count(counts, "counter-taken", prices.Count(d => d.proposerId == final.playerId));
+            Count(counts, "veto-price", prices.Count(d => d.recipientId == final.playerId));
+            Count(counts, "price-void", voided);
+            var record = final.relationships.Where(r => r.toId == final.playerId).SelectMany(r => r.events).ToList();
+            Count(counts, "called-in", record.Count(e => e.type != null && (e.type.StartsWith("promise-held:", StringComparison.Ordinal)
+                || e.type.StartsWith("promise-pressed:", StringComparison.Ordinal))));
+            Count(counts, "amends", record.Count(e => e.type == "amends-made" || e.type == "amends-refused"));
             stats = "cmds=" + i + " week=" + final.week + " deals=" + final.deals.Count + " broken=" + broken + " promisesBroken=" + brokenPromises
                 + " winner=" + final.winnerId;
             digest = Hash(trace.ToString());
@@ -316,7 +337,8 @@ namespace Gamesim.Tests.EditMode
         {
             var o = JObject.FromObject(s);
             o.Remove("schemaVersion"); o.Remove("commitmentRulesStartWeek");
-            foreach (var row in ((JArray)o["deals"]).OfType<JObject>()) { row.Remove("brokenById"); row.Remove("settledWeek"); }
+            // Schema 22's deal fields - C7's link with C0's record - which a season without the rules leaves null and 0.
+            foreach (var row in ((JArray)o["deals"]).OfType<JObject>()) { row.Remove("brokenById"); row.Remove("settledWeek"); row.Remove("linkedDealId"); }
             foreach (var row in ((JArray)o["promises"]).OfType<JObject>()) { row.Remove("brokenById"); row.Remove("settledWeek"); }
             trace.Append(o.ToString(Formatting.None)).Append('\n');
             var people = s.contestants.ToList();
@@ -382,6 +404,68 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// C7's moves, under the rules only - by their words, and the command kind by name, so the file
+        /// still compiles against the build before the rules and a season without them is given exactly
+        /// what it always was. A counter that stands is answered, yes or no; holding the veto before the
+        /// meeting, a price is named to a nominee; and now and then a promise owed is called in, or fences
+        /// are mended with somebody (which the engine refuses where the player broke nothing).
+        /// </summary>
+        private static EpisodeCommand Negotiating(EpisodeState s, uint seed, int attempt)
+        {
+            if (attempt != 0 || !RulesOn(s)) return null;
+            string countering = StandingCounter(s);
+            if (countering != null)
+                return Cmd(s, EpisodeCommandKind.RespondToDeal, countering, null, Pick(s, seed, 31, 2) == 0 ? "decline" : EpisodeEngine.AcceptDeal);
+            var negotiate = (EpisodeCommandKind)Enum.Parse(typeof(EpisodeCommandKind), "Negotiate");
+            if (s.phase == EpisodePhase.VetoMeeting && !s.vetoResolved && s.vetoHolderId == s.playerId && s.nominees.Count == 2 && Pick(s, seed, 32, 2) == 0)
+                return Cmd(s, negotiate, s.nominees[Pick(s, seed, 33, 2)], null,
+                    "veto-price:" + (s.Active.Count() <= NpcDeals.EndgameSize ? DealKind.FinalTwo : DealKind.VoteSave));
+            if ((s.phase == EpisodePhase.Social || s.phase == EpisodePhase.Campaign) && Pick(s, seed, 34, 4) == 0)
+            {
+                var owed = s.promises.FirstOrDefault(p => p.toId == s.playerId && p.status == PromiseStatus.Active
+                    && (p.kind == PromiseKind.Safety || p.kind == PromiseKind.FinalTwo));
+                if (owed != null) return Cmd(s, negotiate, owed.fromId, owed.id, "call-in:" + new[] { "remind", "demand", "threaten" }[Pick(s, seed, 35, 3)]);
+                var npcs = s.Active.Where(c => !c.isPlayer).ToList();
+                if (npcs.Count > 0) return Cmd(s, negotiate, npcs[Pick(s, seed, 36, npcs.Count)].id, null, "mend-fences");
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Who has a counter standing, by the engine's rule (Negotiation.OpenCounter) read from the words:
+        /// the latest line the player heard is a counter, said this week and in this phase. Lines between
+        /// houseguests only are passed over, as the player heard none of them.
+        /// </summary>
+        private static string StandingCounter(EpisodeState s)
+        {
+            for (int i = s.events.Count - 1; i >= 0; i--)
+            {
+                var said = s.events[i];
+                if (said == null || (said.audienceIds != null && said.audienceIds.Count > 0 && !said.audienceIds.Contains(s.playerId))) continue;
+                if (said.kind != "deal-counter" || said.week != s.week || said.phase != s.phase || said.audienceIds == null) return null;
+                return said.audienceIds.FirstOrDefault(id => id != s.playerId);
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// The prices voided since the last look (C7), by their line - "... no longer owe(s) ...", only ever
+        /// said of a price void - counted as they are said, since the season keeps only its last 256 lines.
+        /// </summary>
+        private static int VoidLines(EpisodeState s, ref int seen)
+        {
+            int found = 0, newest = seen;
+            for (int i = s.events.Count - 1; i >= 0 && s.events[i].sequence > seen; i--)
+            {
+                var said = s.events[i];
+                newest = Math.Max(newest, said.sequence);
+                if (said.kind == "deal-outcome" && said.text != null && said.text.Contains(" no longer owe")) found++;
+            }
+            seen = newest;
+            return found;
+        }
+
+        /// <summary>
         /// A busy player: every action the commitment rules touch, by <see cref="Pick"/>. Under the rules
         /// only (<paramref name="rulesOn"/>), so the half without them plays the recorded seasons' own
         /// commands, a pact of the player's meets now and then (C6).
@@ -391,6 +475,8 @@ namespace Gamesim.Tests.EditMode
             if (s.pendingDiary != null) return null;
             var me = s.Find(s.playerId);
             if (me == null || me.status != ContestantStatus.Active) return null;
+            var negotiating = Negotiating(s, seed, attempt);
+            if (negotiating != null) return negotiating;
             if (attempt == 0)
             {
                 var beat = AnswerBeat(s);

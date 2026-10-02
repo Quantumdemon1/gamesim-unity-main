@@ -118,6 +118,9 @@ namespace Gamesim.Simulation
                 // Its own case, not the default: Social() would charge an interaction for it, and
                 // the first night's introductions are free, as they are in the reference build.
                 case EpisodeCommandKind.Introduce: Introduce(s, c); break;
+                // Under the commitment rules (C7) a counter that stands is answered as an offer is, free,
+                // by naming the houseguest who made it: there is no deal waiting for it to name.
+                case EpisodeCommandKind.RespondToDeal when Negotiation.OpenCounter(s, c.targetId) != null: AnswerCounter(s, c); break;
                 case EpisodeCommandKind.RespondToDeal: RespondToDeal(s, c); break;
                 case EpisodeCommandKind.BuyActionPoint: BuyActionPoint(s, c); break;
                 // Not a social action: the situation came to the player, and charging them
@@ -1131,6 +1134,8 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.SchemeAgainst: SchemeAgainst(s, target); break;
                 case EpisodeCommandKind.ProposeDeal: ProposeDeal(s, target, c); break;
                 case EpisodeCommandKind.CallTheVote: CallTheVote(s, target, c); break;
+                // The web's situation moves (C7), under the commitment rules only.
+                case EpisodeCommandKind.Negotiate: Negotiate(s, target, c); break;
                 case EpisodeCommandKind.SmallTalk:
                     Converse(s, target, WebSocialVocabulary.SmallTalk(Roll(s)),
                         "You passed the time with " + target.name + "."); break;
@@ -1168,25 +1173,10 @@ namespace Gamesim.Simulation
         /// </summary>
         private static void RequireConversationWindow(EpisodeState s, EpisodeCommand c)
         {
-            if (s.phase != EpisodePhase.Social && s.phase != EpisodePhase.Campaign)
-            {
-                // From the strategy windows the Head of Household can be reached before nominations,
-                // and the veto holder before the meeting. Everybody else, and everything that is not
-                // a word with them, still waits for free time.
-                if (WeekRulesOn(s) && Window(s) != Windows.None)
-                {
-                    // The week's windows (STRATEGY-LOOP-PLAN.md section 4): free roam and every word said
-                    // to somebody, in every window; the strategy windows' own rule still keeps listening
-                    // in, rumours and scheming for the free time.
-                    Require(StrategyRules.IsWindowConversation(c.kind), "That can wait for free time. Right now there is a decision to be made.");
-                }
-                else
-                {
-                    Require(StrategyRules.WindowOpen(s), "Social actions are available during free time and campaigning.");
-                    string refusal = StrategyRules.WindowRefusal(s, c.targetId, c.kind);
-                    Require(refusal == null, refusal);
-                }
-            }
+            // The rule itself is ConversationWindowRefusal's (EpisodeEngine.Negotiation.cs), so a screen can
+            // ask it before it offers a word; refused here in the same words.
+            string refusal = ConversationWindowRefusal(s, c.targetId, c.kind);
+            Require(refusal == null, refusal);
         }
 
         /// <summary>
@@ -1913,6 +1903,9 @@ namespace Gamesim.Simulation
         {
             string type = (c.text ?? string.Empty).Trim();
             string about = c.secondTargetId;
+            // The attempt's own sequence, before anything is minted: a refusal's counter is drawn on a coin
+            // keyed to it (C7), so every attempt has one of its own.
+            int attempt = s.nextSequence;
             Require(PlayerDeals.CanPropose(s, target.id, type, about, out string refusal), refusal);
 
             double chance = PlayerDeals.AcceptanceChance(s, target.id, type, about);
@@ -1945,6 +1938,9 @@ namespace Gamesim.Simulation
                 "Turned down a " + title + " from you.", "deal_refused");
             Log(s, "deal", target.name + " turned down a " + title + ". “" + said + "”",
                 s.playerId, target.id);
+            // Under the commitment rules (C7) a houseguest who was close to yes may come back with the
+            // same deal and a price on it, on a keyed coin: the season's stream is as a plain refusal left it.
+            if (CommitmentRulesOn(s)) OfferCounter(s, target, type, about, chance, attempt);
         }
 
         /// <summary>
@@ -1990,6 +1986,8 @@ namespace Gamesim.Simulation
                 Remember(s, s.playerId, deal.proposerId, "I accepted a " + title + " from " + from.name + ".", true);
                 Log(s, "deal", "You accepted a " + title + " from " + from.name + ".", s.playerId, deal.proposerId);
                 if (deal.type == DealKind.AllianceInvite) AllyThroughInvitation(s, deal.proposerId);
+                // Under the commitment rules (C7) a nominee's veto ask carries a price, struck with the yes.
+                if (CommitmentRulesOn(s)) StrikeTheAskPrice(s, deal);
                 return;
             }
 
@@ -2079,6 +2077,9 @@ namespace Gamesim.Simulation
                 }
 
                 if (!kept) SpreadBetrayal(s, deal, verdict.actorId);
+                // Under the commitment rules (C7) a price is void once the one it was owed to breaks what it
+                // bought: last, so nothing above draws or mints any differently for it.
+                if (rules && !kept) VoidThePrice(s, deal, verdict.actorId);
             }
         }
 

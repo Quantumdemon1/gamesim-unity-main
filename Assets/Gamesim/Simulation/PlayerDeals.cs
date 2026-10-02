@@ -72,7 +72,10 @@ namespace Gamesim.Simulation
                 return Refuse(out reason, "The house is not making deals this week.");
             if (state.deals.Count >= PlayerDealCeiling)
                 return Refuse(out reason, "You already have more arrangements than you can keep track of.");
-            if (NpcDeals.Between(state, state.playerId, toId).Any(d => d.type == type))
+            // A price binds only what it names (C7, under the commitment rules, where prices are struck): an
+            // open vote to keep the player, owed for the veto, is no vote deal about anybody else.
+            if (NpcDeals.Between(state, state.playerId, toId).Any(d => d.type == type
+                    && (!Negotiation.IsPrice(d) || d.targetId == (DealKind.NamesATarget(type) ? aboutId : null))))
                 return Refuse(out reason, "You already have that arrangement with " + target.name + ".");
 
             switch (type)

@@ -159,8 +159,26 @@ namespace Gamesim.Simulation
                         || (d.status == DealStatus.Broken && d.brokenById == null
                             && d.type != DealKind.VoteTogether && d.type != DealKind.VoteSave && d.type != DealKind.VoteEvict)))))
                 return Fail(out error, "Invalid deal settlement.");
+            // Schema 22 (C7): a deal and the price paid for it name each other, both ways - the same two
+            // houseguests, struck the same week, exactly one of the two a price (Negotiation.PricePrefix) -
+            // and a price is never without what it bought.
+            foreach (var deal in s.deals)
+            {
+                bool price = Negotiation.IsPrice(deal);
+                if (deal.linkedDealId == null)
+                {
+                    if (price) return Fail(out error, "Invalid deal link.");
+                    continue;
+                }
+                var link = s.deals.FirstOrDefault(x => x.id == deal.linkedDealId);
+                if (link == null || ReferenceEquals(link, deal) || link.linkedDealId != deal.id || link.week != deal.week
+                    || !((deal.proposerId == link.proposerId && deal.recipientId == link.recipientId)
+                         || (deal.proposerId == link.recipientId && deal.recipientId == link.proposerId))
+                    || price == Negotiation.IsPrice(link))
+                    return Fail(out error, "Invalid deal link.");
+            }
             // The commitment rules write those records, so a season that never played them holds none.
-            if (s.commitmentRulesStartWeek == 0 && (s.deals.Any(d => d.brokenById != null || d.settledWeek != 0)
+            if (s.commitmentRulesStartWeek == 0 && (s.deals.Any(d => d.brokenById != null || d.settledWeek != 0 || d.linkedDealId != null)
                     || s.promises.Any(p => p.brokenById != null || p.settledWeek != 0)))
                 return Fail(out error, "A season without the commitment rules has none of their records.");
             if (s.dealRulesStartWeek < 1 || s.dealRulesStartWeek > Math.Min(101, s.week + 1))

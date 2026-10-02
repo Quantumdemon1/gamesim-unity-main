@@ -165,14 +165,16 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The nominee on this week's block the player has already given their word on the veto
-        /// to, other than <paramref name="askingId"/>, or null. Read from the player's own deals.
+        /// to, other than <paramref name="askingId"/>, or null. Read from the player's own deals,
+        /// either way round: a nominee's ask the player took, or - under the commitment rules (C7) - a
+        /// price the player named for the veto, which the player proposed.
         /// </summary>
         public static string VetoPromisedTo(EpisodeState state, string askingId) =>
             state == null ? null
-                : state.deals.Where(d => d.type == DealKind.VetoUse && d.recipientId == state.playerId && d.proposerId != askingId
-                        && d.week == state.week && (d.status == DealStatus.Active || d.status == DealStatus.Accepted)
-                        && state.nominees.Contains(d.proposerId))
-                    .Select(d => d.proposerId).FirstOrDefault();
+                : state.deals.Where(d => d.type == DealKind.VetoUse && d.week == state.week
+                        && (d.status == DealStatus.Active || d.status == DealStatus.Accepted))
+                    .Select(d => DealResolution.Partner(d, state.playerId))
+                    .FirstOrDefault(other => other != null && other != askingId && state.nominees.Contains(other));
 
         /// <summary>
         /// Above the other nominee's locked accept, once the player has said yes to one veto ask: why

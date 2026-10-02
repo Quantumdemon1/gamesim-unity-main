@@ -196,6 +196,20 @@ namespace Gamesim.Simulation
                 term.value += value;
                 term.evidenceIds.Add(deal.id);
             }
+            // A final two promise the player called in (C7) is the same obligation, times how hard they held
+            // its maker to it (Negotiation.HeldTo): a promise never called in weighs nothing here, as before.
+            foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.FinalTwo && p.fromId == hohId))
+            {
+                double hold = Negotiation.HeldTo(s, promise);
+                if (hold <= 0 || !finalists.Contains(promise.toId) || s.Find(promise.toId)?.status != ContestantStatus.Active) continue;
+                double scale = Math.Max(0, Math.Min(1, s.Score(hohId, promise.toId) / ObligationFullView));
+                double value = FinalTwoObligation * scale * word * hold;
+                if (value == 0) continue;
+                var term = terms.FirstOrDefault(t => t.nomineeId == promise.toId);
+                if (term == null) terms.Add(term = new WebVoteObligation { nomineeId = promise.toId, code = "obligation" });
+                term.value += value;
+                term.evidenceIds.Add("promise:" + promise.id);
+            }
             return terms;
         }
 

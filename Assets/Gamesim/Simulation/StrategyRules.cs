@@ -435,6 +435,9 @@ namespace Gamesim.Simulation
                 if (plea.ask == LobbyAsk.Spare) reluctance += plea.influence;
                 else if (plea.ask == LobbyAsk.Target) reluctance -= plea.influence;
             }
+            // Under the commitment rules (C7) a promise of safety the player called in holds its maker to
+            // it: a safety deal's weight, times how hard it was held. Nothing in any other season.
+            reluctance += Negotiation.SafetyHeld(s, hohId, id);
             return reluctance;
         }
 

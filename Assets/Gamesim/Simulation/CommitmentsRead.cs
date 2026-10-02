@@ -50,6 +50,13 @@ namespace Gamesim.Simulation
             public static readonly string[] All = { Open, Kept, Broken, Lapsed, Unresolved };
         }
 
+        /// <summary>
+        /// The status of a price voided because what it paid for was broken by the one it was owed to
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN C7, <see cref="Negotiation.Voided"/>): its outcome stays lapsed,
+        /// since nobody broke it, and the words say why.
+        /// </summary>
+        public const string VoidedWord = "void: what it paid for was broken";
+
         /// <summary>One commitment the player is a party to, as the page says it.</summary>
         public sealed class Commitment
         {
@@ -185,6 +192,8 @@ namespace Gamesim.Simulation
                 if (d.status == DealStatus.Broken && !withheld) c.brokenById = FinalistRead.DealBreaker(s, d);
                 c.binds = DealBinds(s, d);
                 c.status = withheld ? KnownBallots.Unresolved : DealStatusWord(d, yours, c.brokenById, player);
+                // A price voided because what it paid for was broken (C7) says so, rather than "lapsed".
+                if (!withheld && Negotiation.Voided(s, d)) c.status = VoidedWord;
                 c.term = Term(s, c);
                 // Under the commitment rules an open-ended deal ends when one of the two leaves the house
                 // (C1, X4): its term says so, as an oath's does, rather than "never expires".

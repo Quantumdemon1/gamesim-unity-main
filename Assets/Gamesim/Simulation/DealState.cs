@@ -58,6 +58,18 @@ namespace Gamesim.Simulation
         public string brokenById;
         public int settledWeek;
 
+        /// <summary>
+        /// Schema 22 (ACTIONS-DEALS-ALLIANCES-PLAN C7): the deal this one is struck together with, by id -
+        /// a deal and the price paid for it name each other (<see cref="Negotiation"/>). A nominee's veto
+        /// ask and the vote save or final two they give for it; the veto the player holds and the price
+        /// they named for it; a deal the player asked for and the price a houseguest's counter-offer put
+        /// on it. Exactly one of the two is the price (<see cref="Negotiation.PricePrefix"/>), owed while
+        /// what it bought stands and void once the one it was owed to breaks what it bought. Written only
+        /// under the commitment rules (<see cref="EpisodeEngine.CommitmentRulesOn"/>); null on every other
+        /// deal, and on every deal of a season saved before it.
+        /// </summary>
+        public string linkedDealId;
+
         public DealState Clone() => (DealState)MemberwiseClone();
     }
 

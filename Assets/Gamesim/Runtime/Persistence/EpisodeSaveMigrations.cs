@@ -35,7 +35,9 @@ namespace Gamesim.Persistence
         /// settlement under the rules fills, empty - who broke it, and the week it was settled. Never a
         /// guess: a reader that needs who broke a deal settled before the record existed reads it by
         /// <see cref="FinalistRead.DealBreaker"/>'s rule (<see cref="Breaches.DealBreaker"/>), and a
-        /// promise by its maker. Hand-written literals, never the live type.
+        /// promise by its maker. And on every deal the link only a negotiation under the rules writes
+        /// (C7, <see cref="DealState.linkedDealId"/>), empty: no deal of a season saved before them was
+        /// a price or bought with one. Hand-written literals, never the live type.
         /// </summary>
         public static JObject UpgradeV21ToV22(JObject original)
         {
@@ -47,6 +49,7 @@ namespace Gamesim.Persistence
                 {
                     row.Add("brokenById", JValue.CreateNull());
                     row.Add("settledWeek", 0);
+                    if (name == "deals") row.Add("linkedDealId", JValue.CreateNull());
                 }
             result["schemaVersion"] = 22;
             return result;

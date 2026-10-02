@@ -1402,6 +1402,8 @@ namespace Gamesim.Episode
                     + "  ·  " + ActionsLeft(state) + " left");
                 hud.NpcDialogue(state, npc.id, lastSocialAction, standingLineBefore);
                 if (lastSocialAction.HasValue) hud.OutcomeChips(lastSocialDelta);
+                // A counter to the proposal just turned down (C7) is answered here or not at all: first.
+                CounterCard(state, npc);
                 // What the player came for, first (their screen's "Ask for information" or "Pitch a
                 // deal"): the rows it names are drawn here and not again below.
                 bool cameToAsk = conversationIntent == IntentAsk, cameToDeal = conversationIntent == IntentDeal;

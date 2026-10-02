@@ -627,7 +627,9 @@ namespace Gamesim.Episode
             switch (offer.type)
             {
                 case DealKind.VetoUse:
-                    return who + " is on the block and wants your word that you will use the veto on them.";
+                    // Under the commitment rules (C7) the ask carries a price, struck with the yes.
+                    string price = Negotiation.AskPriceLine(state, offer);
+                    return who + " is on the block and wants your word that you will use the veto on them." + (price == null ? "" : " " + price);
                 case DealKind.VoteSave:
                     return who + " wants your vote to keep " + (about ?? "them") + " in the house this week.";
                 case DealKind.VoteEvict:

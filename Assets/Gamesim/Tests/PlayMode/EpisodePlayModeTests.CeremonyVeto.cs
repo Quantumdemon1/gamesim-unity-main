@@ -230,7 +230,13 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(takeover.Surface.Room, Is.EqualTo("Living"));
                 float decisionBy = CeremonyPacing.FadeIn + CeremonyPacing.VetoIntro(takeover.MeetingPace) + CeremonyPacing.VetoQuestion(takeover.MeetingPace);
                 yield return WaitFor(() => takeover.Page == CeremonyTakeover.MeetingPage.Decision, decisionBy + 3f, "the decision is on the screen");
-                if (Application.isBatchMode) yield return CaptureTheScreen(takeover.Surface, used ? "ceremony-stage-veto-used" : "ceremony-stage-veto-not-used");
+                // The frame from the stage's cut to the screen, with no body in the meeting's card
+                // (UI-UX-PASS-PLAN K0): the card is the mounted canvas's whole frame, "Veto meeting".
+                if (Application.isBatchMode)
+                {
+                    string frameName = used ? "ceremony-stage-veto-used" : "ceremony-stage-veto-not-used";
+                    yield return CaptureTheScreen(takeover.Surface, frameName, frame => AssertNoBodyStandsInTheCard(takeover, frameName, "Veto meeting"));
+                }
                 yield return WaitFor(() => !takeover.IsPlaying, takeover.MeetingDuration + 3f, "the meeting plays to its end");
 
                 var expected = used

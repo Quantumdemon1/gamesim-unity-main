@@ -546,12 +546,19 @@ namespace Gamesim.Tests.PlayMode
         /// No body stands in the card on the screen's shot: every active houseguest's and the
         /// player's hips, projected through the view camera as the frame was, fall outside the card's
         /// rect in that frame. The hips, because a seat moves the visual body and leaves the root at
-        /// the chair's approach; the root where a body has no humanoid rig.
+        /// the chair's approach; the root where a body has no humanoid rig. The card is the rect named
+        /// <paramref name="rectName"/> under <paramref name="card"/>: the keys' and the vote's "Card",
+        /// the veto meeting's "Veto meeting", which is the mounted canvas's whole frame (UI-UX-PASS-PLAN K0).
         /// </summary>
-        private void AssertNoBodyStandsInTheCard(KeyCeremony keys, string name)
+        private void AssertNoBodyStandsInTheCard(Component card, string name, string rectName = "Card")
         {
             var camera = cameraRig.ViewCamera;
-            var card = keys.GetComponentsInChildren<RectTransform>(true).First(rect => rect.name == "Card");
+            var cardRect = card.GetComponentsInChildren<RectTransform>(true).First(rect => rect.name == rectName);
+            AssertNoBodyStandsIn(camera, cardRect, name);
+        }
+
+        private void AssertNoBodyStandsIn(Camera camera, RectTransform card, string name)
+        {
             var corners = new Vector3[4];
             card.GetWorldCorners(corners);
             float xMin = 1f, xMax = 0f, yMin = 1f, yMax = 0f;
@@ -641,10 +648,11 @@ namespace Gamesim.Tests.PlayMode
             while (Time.realtimeSinceStartup < facesBy && vote.VotesShown == shown && !vote.ShowingResult && AnyBoundFaceIsStillMissing())
                 yield return null;
             // The living room's real screen names nobody (UI-UX-PASS-PLAN B0): no voter's child, and
-            // the Head of Household only on the deciding row.
+            // the Head of Household only on the deciding row. And no body stands in the board (K0):
+            // the hot seats face the screen two metres off, and the shot stands past them.
             var staged = director.Snapshot;
             AssertBoardNamesNobody(vote, staged.hohId != null && staged.hohId != staged.playerId ? staged.Find(staged.hohId)?.name : null);
-            yield return CaptureTheScreen(screen, "ceremony-stage-vote-screen", waitForFaces: false);
+            yield return CaptureTheScreen(screen, "ceremony-stage-vote-screen", frame => AssertNoBodyStandsInTheCard(vote, "ceremony-stage-vote-screen"), waitForFaces: false);
             yield return WaitFor(() => vote.ShowingResult, 60f, "the result is read");
             // The board hands over to the result block over the result's first moment.
             yield return new WaitForSecondsRealtime(0.6f);
@@ -661,12 +669,14 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// A frame of a card on its screen: while <paramref name="waitForFaces"/>, the faces the card
         /// has bound given their time to land (bounded, as CaptureFraming's own settle is - a frame of
-        /// empty discs says nothing about the screen), then the rig on the screen's own shot for two
-        /// frames, then the capture, handed to <paramref name="inspect"/> while the camera still
-        /// holds it. The rig is put on the shot after the wait, since the stage's cuts move it
-        /// between beats. The wait is for a frame of a beat that holds - the keys' roster, the block
-        /// - and not for one the card moves off on its own clock: the vote's result holds 1.9 seconds
-        /// at the quick pace, and a wait of ten here saw it come and go before the frame.
+        /// empty discs says nothing about the screen), then the rig on the stage's own cut to the
+        /// screen - the screen's shot with the lens kept clear of bodies (UI-UX-PASS-PLAN K0), or the
+        /// plain shot when nothing is staged - for two frames, then the capture, handed to
+        /// <paramref name="inspect"/> while the camera still holds it. The rig is put on the shot
+        /// after the wait, since the stage's cuts move it between beats. The wait is for a frame of a
+        /// beat that holds - the keys' roster, the block - and not for one the card moves off on its
+        /// own clock: the vote's result holds 1.9 seconds at the quick pace, and a wait of ten here
+        /// saw it come and go before the frame.
         /// </summary>
         private IEnumerator CaptureTheScreen(ScreenSurface screen, string name, System.Action<Texture2D> inspect = null, bool waitForFaces = true)
         {
@@ -675,7 +685,10 @@ namespace Gamesim.Tests.PlayMode
                 float until = Time.realtimeSinceStartup + 10f;
                 while (Time.realtimeSinceStartup < until && AnyBoundFaceIsStillMissing()) yield return null;
             }
-            cameraRig.MoveTo(screen.Shot());
+            var cut = director.CeremonyScreenShot ?? screen.Shot();
+            Debug.Log("[Gamesim] " + name + ": the screen's cut stands at pitch " + cut.Pitch.ToString("0.#") + ", yaw "
+                + (cut.Yaw - screen.LookYaw).ToString("0.#") + " off the face's axis, " + cut.Distance.ToString("0.00") + " m out.");
+            cameraRig.MoveTo(cut);
             yield return Frames(2);
             yield return CaptureFraming(name, settle: false, inspect: inspect);
         }
@@ -736,6 +749,13 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.CeremonyStageSeated, Is.EqualTo(state.Active.Count() - 1),
                 "Everyone but the Head of Household is in a chair eight seconds into the card:\n" + StageReport("the seats"));
             yield return CaptureTable("ceremony-stage-full-house-table-later");
+            // The screen's cut at a full house (UI-UX-PASS-PLAN K0), where the Head of Household's mark
+            // once stood them before the screen and the ring's nearest chairs crowd the lens: no
+            // body's hips in the card, with the stage's cut raised or swung to clear them if need be.
+            var keys = SceneComponents<KeyCeremony>().Single();
+            if (Application.isBatchMode && keys.IsPlaying && keys.Surface != null)
+                yield return CaptureTheScreen(keys.Surface, "ceremony-stage-full-house-key-screen",
+                    frame => AssertNoBodyStandsInTheCard(keys, "ceremony-stage-full-house-key-screen"));
             yield return SkipReveals();
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "the stage ends with the card");
         }

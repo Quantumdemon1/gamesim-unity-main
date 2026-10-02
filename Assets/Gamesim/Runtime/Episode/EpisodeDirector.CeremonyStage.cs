@@ -76,6 +76,13 @@ namespace Gamesim.Episode
         public ScreenSurface CeremonyStageScreen => IsCeremonyStaged ? ceremonyStage.Screen : null;
 
         /// <summary>
+        /// The staged ceremony's cut to its screen as the stage would cut it now, with the lens kept
+        /// clear of the bodies in the house (UI-UX-PASS-PLAN K0); null when nothing is staged. A read
+        /// for tests, which put the rig on it before a frame of the card.
+        /// </summary>
+        public HouseCameraRig.Shot? CeremonyScreenShot => IsCeremonyStaged ? ceremonyStage.ScreenCut() : (HouseCameraRig.Shot?)null;
+
+        /// <summary>
         /// The staged ceremony's report of where everybody it placed has got to, one line each, or
         /// null when nothing is staged. The stage logs the same report at its card's start and at
         /// its release; this is for a test to read it when it likes.
@@ -776,7 +783,7 @@ namespace Gamesim.Episode
                 if (!up) { cardStarted = false; End(true); return; }
                 if (!CardPlaying) { End(true); return; }
                 Debug.Log(Report("card start"));
-                Cut(Screen.Shot(CutSeconds));
+                Cut(ScreenCut());
                 if (Kind == CeremonySting.EvictionKind) LightTheHotSeats();
             }
 
@@ -910,13 +917,13 @@ namespace Gamesim.Episode
                 {
                     case CeremonyBeatKind.Opened:
                         ClearCues();
-                        Cut(Screen.Shot(CutSeconds));
+                        Cut(ScreenCut());
                         break;
                     case CeremonyBeatKind.KeyShown:
                         keysShown = beat.Index + 1;
                         if (beat.Skipped) break;
                         ClearCues();
-                        Cut(Screen.Shot(CutSeconds));
+                        Cut(ScreenCut());
                         // The screen for half the key's hold, then the face: whoever is safe, relieved,
                         // with the neighbours glancing at them and the Head of Household looking on.
                         float hold = card != null ? card.KeyHoldSeconds : 2f;
@@ -930,7 +937,7 @@ namespace Gamesim.Episode
                         break;
                     case CeremonyBeatKind.LastKeyPending:
                         ClearCues();
-                        Cut(Screen.Shot(CutSeconds));
+                        Cut(ScreenCut());
                         // The screen holds the gold key; the camera pushes in on those still waiting.
                         float beatSeconds = card != null ? card.LastKeyBeatSeconds : 1.8f;
                         Schedule(0.6f / speed, () =>
@@ -946,7 +953,7 @@ namespace Gamesim.Episode
                         break;
                     case CeremonyBeatKind.BlockShown:
                         ClearCues();
-                        Cut(Screen.Shot(CutSeconds));
+                        Cut(ScreenCut());
                         var block = (state.nominees ?? new List<string>()).Where(id => placeOf.ContainsKey(id)).ToList();
                         director.TurnHeads(state, block.FirstOrDefault(), state.nominees);
                         float blockHold = card != null ? card.BlockHoldSeconds : 3.6f;
@@ -987,12 +994,12 @@ namespace Gamesim.Episode
                 {
                     case CeremonyBeatKind.Opened:
                         ClearCues();
-                        Cut(Screen.Shot(CutSeconds));
+                        Cut(ScreenCut());
                         break;
                     case CeremonyBeatKind.VoteShown:
                         if (beat.Skipped) break;
                         ClearCues();
-                        Cut(Screen.Shot(CutSeconds));
+                        Cut(ScreenCut());
                         float hold = card != null ? card.VoteHoldSeconds : 1.8f;
                         string against = beat.SubjectId;
                         // The cuts between votes land on the nominees and, every third vote, on the
@@ -1007,7 +1014,7 @@ namespace Gamesim.Episode
                             else Cut(nominees.Count == 2 ? PairShot(nominees[0], nominees[1]) : SeatShot(against));
                             if (against != null) LookDown(against, 0.8f);
                         });
-                        Schedule(hold * 0.9f / speed, () => Cut(Screen.Shot(CutSeconds)));
+                        Schedule(hold * 0.9f / speed, () => Cut(ScreenCut()));
                         break;
                     case CeremonyBeatKind.LastVotePending:
                         ClearCues();
@@ -1024,11 +1031,11 @@ namespace Gamesim.Episode
                     case CeremonyBeatKind.TieCalled:
                     case CeremonyBeatKind.TieBroken:
                         ClearCues();
-                        Cut(Screen.Shot(CutSeconds));
+                        Cut(ScreenCut());
                         break;
                     case CeremonyBeatKind.ResultShown:
                         ClearCues();
-                        Cut(Screen.Shot(CutSeconds));
+                        Cut(ScreenCut());
                         string leaving = beat.SubjectId;
                         string staying = nominees.FirstOrDefault(id => id != leaving);
                         leavingId = leaving; survivorId = staying;
@@ -1382,6 +1389,45 @@ namespace Gamesim.Episode
                 director.cameraRig.MoveTo(shot);
             }
 
+            /// <summary>The bodies a cut to the screen keeps its lens clear of, gathered afresh at each cut. Reused, never shared.</summary>
+            private readonly List<ScreenSurface.Body> bodiesInTheShot = new List<ScreenSurface.Body>();
+
+            /// <summary>
+            /// The cut to the screen with the lens kept clear of bodies (UI-UX-PASS-PLAN K0): the
+            /// screen's own shot unless somebody in the house - a houseguest still walking to a
+            /// chair, the Head of Household at a mark, a seat the shot stands past - is between the
+            /// lens and the card, when it is raised or swung round the face by the least that clears
+            /// them, or by what clears the most of them when nothing clears them all. The marks
+            /// beside the screen (CeremonySets, N1) are the first line of defence; this is the second.
+            /// Gathered at the cut, because the house moves between beats.
+            /// </summary>
+            public HouseCameraRig.Shot ScreenCut()
+            {
+                bodiesInTheShot.Clear();
+                if (director.housemates != null)
+                    foreach (var npc in director.housemates)
+                        if (npc != null && npc.gameObject.activeInHierarchy) bodiesInTheShot.Add(BodyOf(npc));
+                if (director.player != null && director.player.gameObject.activeInHierarchy) bodiesInTheShot.Add(BodyOf(director.player));
+                return Screen.ShotClearOf(bodiesInTheShot, CutSeconds);
+            }
+
+            /// <summary>
+            /// A body as the shot sees it: the visual body's feet where a seat has moved it off its
+            /// root, the rig's head bone where the body has one (a seat lowers it; a body can stand
+            /// away from its root), and a houseguest's height over the feet otherwise.
+            /// </summary>
+            private static ScreenSurface.Body BodyOf(Component body)
+            {
+                var seat = body.GetComponent<HouseSeatPresentation>();
+                bool seated = seat != null && seat.Active;
+                var feet = seated ? seat.VisualFeet : body.transform.position;
+                var visual = body.GetComponent<CharacterPresentation>();
+                var crown = Vector3.up * 0.15f;
+                var head = visual != null && visual.HeadBone != null ? visual.HeadBone.position + crown
+                    : seated ? seat.VisualFocus + crown : feet + Vector3.up * ScreenSurface.StandingHeight;
+                return new ScreenSurface.Body(feet, head);
+            }
+
             /// <summary>The wide from across the set, looking at the screen over the chairs, as the house gathers.</summary>
             /// <summary>
             /// The establishing wide. On the gallery it looks over the U's base at the red chairs and
@@ -1406,7 +1452,7 @@ namespace Gamesim.Episode
             /// <summary>A medium shot of somebody in their place, from in front of them.</summary>
             private HouseCameraRig.Shot SeatShot(string id)
             {
-                if (id == null || !placeOf.TryGetValue(id, out var place)) return Screen.Shot(CutSeconds);
+                if (id == null || !placeOf.TryGetValue(id, out var place)) return ScreenCut();
                 var focus = FaceOf(id, place);
                 return new HouseCameraRig.Shot
                 {
@@ -1454,7 +1500,7 @@ namespace Gamesim.Episode
                     centre += FaceOf(id, place); count++;
                     facing += new Vector2(Mathf.Sin(place.Facing * Mathf.Deg2Rad), Mathf.Cos(place.Facing * Mathf.Deg2Rad));
                 }
-                if (count == 0) return Screen.Shot(CutSeconds);
+                if (count == 0) return ScreenCut();
                 centre /= count;
                 yaw = Mathf.Atan2(facing.x, facing.y) * Mathf.Rad2Deg + 180f;
                 return new HouseCameraRig.Shot

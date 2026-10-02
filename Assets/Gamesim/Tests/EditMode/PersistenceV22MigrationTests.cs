@@ -177,6 +177,58 @@ namespace Gamesim.Tests.EditMode
             Assert.That(JToken.DeepEquals(migrated["finalArgument"], argument), Is.True);
         }
 
+        private static string V21FixturePath =>
+#if UNITY_EDITOR
+            Path.Combine(UnityEngine.Application.dataPath, "Gamesim", "Tests", "EditMode", "Fixtures", "V21CommitmentsSave.json");
+#else
+            Path.Combine(AppContext.BaseDirectory, "V21CommitmentsSave.json");
+#endif
+
+        /// <summary>
+        /// A save the schema 21 build wrote itself (Fixtures/README.md), not a current capture with the
+        /// new fields taken off: through the whole chain it gains the rules switched off and empty
+        /// records and nothing else, and what that build settled reads, once the rules are on, by
+        /// DealBreaker's rule for the deal and by its maker for the promise.
+        /// </summary>
+        [Test]
+        public void ASaveTheV21BuildWroteLoadsThroughTheChain()
+        {
+            var written = JObject.Parse(File.ReadAllText(V21FixturePath));
+            var payload = (JObject)written["state"];
+            Assert.That((int)payload["schemaVersion"], Is.EqualTo(21), "The fixture is the schema 21 build's own save.");
+            Assert.That(payload["commitmentRulesStartWeek"], Is.Null, "and it knows nothing of the commitment rules.");
+
+            using var files = new Files();
+            File.Copy(V21FixturePath, files.Store.SavePath);
+            var originalBytes = File.ReadAllBytes(files.Store.SavePath);
+            Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
+            Assert.That(message, Does.Contain("Schema 21").And.Contain("schema 22 in memory"));
+            Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(originalBytes), "Loading must not rewrite the file.");
+            Assert.That(loaded.schemaVersion, Is.EqualTo(22));
+            Assert.That(loaded.commitmentRulesStartWeek, Is.Zero, "It plays without the rules to its end.");
+            Assert.That(loaded.deals.All(d => d.brokenById == null && d.settledWeek == 0), Is.True, "No deal's breaker is guessed.");
+            Assert.That(loaded.promises.All(p => p.brokenById == null && p.settledWeek == 0), Is.True, "Nor any promise's.");
+            Assert.That(EpisodeValidation.TryValidate(loaded, out var error), Is.True, error);
+
+            var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(payload, out bool changed);
+            Assert.That(changed, Is.True);
+            var projection = PersistenceMigrationTests.StripSchema22((JObject)migrated.DeepClone());
+            projection["schemaVersion"] = 21;
+            Assert.That(JToken.DeepEquals(projection, payload), Is.True, "Take schema 22's fields back off and the save is the v21 build's.");
+
+            var pact = loaded.deals.Single(d => d.id == "deal-pact");
+            var promise = loaded.promises.Single(p => p.id == "promise-pact");
+            Assert.That(pact.status, Is.EqualTo(DealStatus.Broken), "The Head of Household put their safety partner up,");
+            Assert.That(promise.status, Is.EqualTo(PromiseStatus.Broken), "and broke their promise of safety.");
+            Assert.That(loaded.deals.Single(d => d.id == "deal-bloc").status, Is.EqualTo(DealStatus.Fulfilled), "The bloc held.");
+            loaded.commitmentRulesStartWeek = loaded.week;
+            Assert.That(EpisodeValidation.TryValidate(loaded, out error), Is.True, error);
+            Assert.That(Breaches.DealBreaker(loaded, pact), Is.EqualTo(loaded.hohId), "Read by the record the v21 build kept: who put whom up.");
+            Assert.That(Breaches.DealBreaker(loaded, pact), Is.EqualTo(FinalistRead.DealBreaker(loaded, pact)));
+            Assert.That(Breaches.PromiseBreaker(promise), Is.EqualTo(loaded.hohId), "A promise is broken by its maker.");
+            Assert.That(Breaches.CountsAgainst(loaded, pact, loaded.playerId), Is.False, "The player it was broken against is not held to it.");
+        }
+
         [Test]
         public void AV21SaveOnDiskLoadsUnchangedAndOnlyRewritesOnAnExplicitSave()
         {

@@ -28,6 +28,19 @@ namespace Gamesim.Simulation
     [Serializable] public sealed class WebVoteDeal
     {
         public string id, proposerId, recipientId, type, status, targetHouseguestId;
+
+        /// <summary>
+        /// Native, not the web's (ACTIONS-DEALS-ALLIANCES-PLAN C0): who broke it, as
+        /// <see cref="Breaches.DealBreaker"/> reads it. Null on an imported web round.
+        /// </summary>
+        public string brokenById;
+
+        /// <summary>
+        /// Native: whether the season holds a breach against whoever broke it alone - the
+        /// commitment rules. False on an imported web round and on every season without the rules,
+        /// where the threat term holds a broken deal against both sides, as the web does.
+        /// </summary>
+        public bool heldByBreaker;
     }
 
     [Serializable] public sealed class WebVoteRelationshipArc
@@ -141,6 +154,9 @@ namespace Gamesim.Simulation
             if (state.nominees.Count != 2 || state.Find(voterId) == null)
                 throw new ArgumentException("Voting requires a known voter and two nominees.");
             var active = state.Active.Select(NativeContestant).ToList();
+            // Under the commitment rules (C0, X3) a breach is held against whoever broke it, here as in
+            // every other reader; who that was is read only where it is used.
+            bool heldByBreaker = EpisodeEngine.CommitmentRulesOn(state);
             var options = new WebVoteOptions
             {
                 voter = NativeContestant(state.Find(voterId)),
@@ -170,7 +186,9 @@ namespace Gamesim.Simulation
                     deals = state.deals.Select(d => new WebVoteDeal
                     {
                         id = d.id, proposerId = d.proposerId, recipientId = d.recipientId,
-                        type = d.type, status = d.status, targetHouseguestId = d.targetId
+                        type = d.type, status = d.status, targetHouseguestId = d.targetId,
+                        heldByBreaker = heldByBreaker,
+                        brokenById = heldByBreaker ? Breaches.DealBreaker(state, d) : null,
                     }).ToList()
                 },
                 memories = state.memories.Where(m => m.ownerId == voterId).Reverse().Take(10).Select(m => m.text).ToList(),
@@ -279,11 +297,24 @@ namespace Gamesim.Simulation
             double alliance = Math.Min(20, state.alliances.Where(a => Active(a) && a.members.Contains(target.id)).Sum(a => a.members.Count * 4));
             double potential = (target.stats.competition / 10) * 3 + (target.stats.strategic / 10) * 2;
             if (target.stats.social >= 7 && target.stats.strategic >= 7) potential += 2;
-            double broken = Math.Min(8, state.deals.Count(d => d.status == "broken" && (d.proposerId == target.id || d.recipientId == target.id)) * 3);
+            double broken = Math.Min(8, state.deals.Count(d => d.status == "broken" && HeldAgainst(d, target.id)) * 3);
             var arc = target.isPlayer ? state.relationshipArcs.FirstOrDefault(a => a.npcId == evaluator.id) : null;
             double arcThreat = arc?.arcType == "rivalry" ? Math.Min(7, Math.Floor(arc.intensity / 15)) :
                 arc?.arcType == "friendship" ? -Math.Min(5, Math.Floor(arc.intensity / 20)) : 0;
             return Clamp(competition + social + alliance + Math.Min(10, potential) + broken + arcThreat, 0, 100);
+        }
+
+        /// <summary>
+        /// Whether a broken deal adds to this houseguest's threat. The web holds it against both
+        /// sides. Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C0) it is held against
+        /// whoever broke it - both sides of a voting bloc, which each walked away from - and never
+        /// against the one wronged: a Head of Household who nominates their safety partner does not
+        /// put them up with three more points of threat in every ballot besides.
+        /// </summary>
+        private static bool HeldAgainst(WebVoteDeal d, string id)
+        {
+            bool pair = d.proposerId == id || d.recipientId == id;
+            return d.heldByBreaker ? d.brokenById == id || (d.type == DealKind.VoteTogether && pair) : pair;
         }
 
         private static EvidenceValue AllianceLoyalty(string evaluatorId, string targetId, WebVoteState state)

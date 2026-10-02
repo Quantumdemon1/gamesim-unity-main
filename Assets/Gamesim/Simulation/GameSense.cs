@@ -176,10 +176,15 @@ namespace Gamesim.Simulation
                         // player's to answer for: on the record, and it costs them nothing.
                         var brokenAgainst = chance.outcome == OpportunityOutcome.Lost && EpisodeEngine.CommitmentRulesOn(s)
                             ? s.deals.FirstOrDefault(d => d.id == chance.id && d.status == DealStatus.Broken && !Breaches.Broke(s, d, s.playerId)) : null;
-                        if (chance.outcome == OpportunityOutcome.Won) Add(notes, Strategy, 4, when + "a deal kept (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);
+                        // How a vote deal ended is a ballot the player may not know - a voting bloc broken
+                        // by both of them included - so a note on its ending waits for the weekly recap
+                        // until they do. The verdict counts it either way.
+                        var settled = s.deals.FirstOrDefault(d => d.id == chance.id);
+                        bool endingKnown = settled == null || KnownBallots.DealOutcomeKnown(s, settled);
+                        if (chance.outcome == OpportunityOutcome.Won) Add(notes, Strategy, 4, when + "a deal kept (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: endingKnown);
                         else if (brokenAgainst != null) Add(notes, Strategy, 0, when + "a deal broken against you (" + Source(chance) + ").", "opportunity", chance.id, chance.week,
                             known: KnownBallots.DealOutcomeKnown(s, brokenAgainst));
-                        else if (chance.outcome == OpportunityOutcome.Lost) Add(notes, Strategy, -5, when + "a deal broken (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);
+                        else if (chance.outcome == OpportunityOutcome.Lost) Add(notes, Strategy, -5, when + "a deal broken (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: endingKnown);
                         else if (chance.response == OpportunityResponse.Expired) Add(notes, Strategy, -1, when + "an offer left on the table (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);
                         else if (chance.response == OpportunityResponse.Taken) Add(notes, Strategy, 1, when + "a deal made (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);
                         break;

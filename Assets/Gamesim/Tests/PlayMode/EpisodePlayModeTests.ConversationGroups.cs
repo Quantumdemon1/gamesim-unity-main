@@ -388,6 +388,53 @@ namespace Gamesim.Tests.PlayMode
             }
         }
 
+        /// <summary>
+        /// "Whisper about X" in Y's conversation is told to Y (ACTIONS-DEALS-ALLIANCES-PLAN R0, X7):
+        /// the picker's person is who it is about and the conversation names who hears it. Under the
+        /// commitment rules a whisper naming nobody is refused, so the press must commit exactly the
+        /// engine's whisper about X to Y - its roll, its damage and its line.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ConversationGroups_AWhisperIsToldToThePersonThePlayerIsTalkingTo()
+        {
+            yield return InstallTalkingHouse(8, false, state => EpisodeEngine.EnableCommitments(state));
+            var listener = Listener(director.Snapshot);
+            yield return TalkTo(listener.id);
+            Assert.That(director.IsConversationOpen, Is.True, "The conversation opens.");
+            var about = director.Snapshot.Active.First(c => !c.isPlayer && c.id != listener.id);
+            yield return PressRow(EpisodeDirector.WhisperPickerCaption);
+            Assert.That(director.ConversationPicker, Is.EqualTo(EpisodeDirector.WhisperPickerCaption), "The whisper's people are open.");
+
+            // Read once the picker is open: what the press is measured against.
+            var before = director.Snapshot;
+            Assert.That(EpisodeEngine.CommitmentRulesOn(before), Is.True, "The house plays the commitment rules.");
+            EpisodeCommand Whisper(string to) => new EpisodeCommand
+            {
+                id = "whisper-expectation-" + (to ?? "nobody"), actorId = before.playerId, kind = EpisodeCommandKind.SpreadRumor,
+                targetId = about.id, secondTargetId = to, text = EpisodeEngine.WhisperCampaign,
+                expectedRevision = before.revision, expectedPhase = before.phase,
+            };
+            var toThem = new EpisodeEngine(before).Apply(Whisper(listener.id));
+            Assert.That(toThem.accepted, Is.True, toThem.reason);
+            var toNobody = new EpisodeEngine(before).Apply(Whisper(null));
+            Assert.That(toNobody.accepted, Is.False, "Naming nobody is refused, so a press that commits named somebody.");
+
+            ButtonWithCaption(EpisodeHud.WhisperCaption(about.name)).onClick.Invoke();
+            yield return null;
+            var after = director.Snapshot;
+            Assert.That(after.revision, Is.EqualTo(before.revision + 1), "One press, one command.");
+            Assert.That(after.randomState, Is.EqualTo(toThem.state.randomState), "It drew what the whisper to them draws,");
+            foreach (var other in after.Active.Where(c => !c.isPlayer && c.id != about.id))
+                Assert.That(after.Score(other.id, about.id), Is.EqualTo(toThem.state.Score(other.id, about.id)),
+                    "moved what it moves in " + other.name + "'s view of " + about.name + ",");
+            var line = after.events.Last(e => e.kind == "rumour" || e.kind == "rumour-backfire");
+            Assert.That(line.text, Is.EqualTo(toThem.state.events.Last(e => e.kind == "rumour" || e.kind == "rumour-backfire").text), "and wrote its line.");
+            if (line.kind == "rumour")
+                Assert.That(line.text, Is.EqualTo("You whispered about " + about.name + " to " + listener.name + "."), "Told to the one in front of the player.");
+            director.ClosePanels();
+            yield return null;
+        }
+
         [UnityTest]
         public IEnumerator ConversationGroups_AnOpenPickerIsOnTheKeyboardRingAndEnterCommitsAPerson()
         {

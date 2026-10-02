@@ -314,7 +314,10 @@ namespace Gamesim.Simulation
                 return "you voted to evict them since";
             if (rules)
             {
-                if (s.deals.Any(d => Between(d) && Breaches.Broke(s, d, player) && Breaches.BrokeAfter(d, week)))
+                // Only one the player can know broke: a voting bloc is broken by both of them, and how
+                // a vote deal ended is a ballot the player may not know (KnownBallots).
+                if (s.deals.Any(d => Between(d) && Breaches.Broke(s, d, player) && Breaches.BrokeAfter(d, week)
+                        && KnownBallots.DealOutcomeKnown(s, d)))
                     return "you broke a deal with them since";
             }
             else if (s.deals.Any(d => d.status == DealStatus.Broken && (d.week > week || d.type == DealKind.FinalTwo) && Between(d)))

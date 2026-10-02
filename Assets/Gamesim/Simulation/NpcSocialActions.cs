@@ -283,10 +283,16 @@ namespace Gamesim.Simulation
                     // Under the commitment rules (R0, X6) the player's view of the threat is the player's
                     // own: told the threat has to go, they read it in the log and their view of the
                     // threat does not move. Before them it took the hunt's weight, which could end a pact
-                    // of theirs with the threat without a word.
-                    if (!partner.isPlayer || !EpisodeEngine.CommitmentRulesOn(state))
-                        Act(state, partner.id, threat.id, EpisodeEngine.HuntImpact,
-                            "What " + Named(state, partner) + " heard from " + npc.name + " about " + Named(state, threat), "rumor");
+                    // of theirs with the threat without a word. And a hunt with the player as its threat
+                    // moves the pact-mate's view of the player, not the player's view of the pact-mate:
+                    // the player was not there.
+                    string heardHunt = "What " + Named(state, partner) + " heard from " + npc.name + " about " + Named(state, threat);
+                    if (!EpisodeEngine.CommitmentRulesOn(state))
+                        Act(state, partner.id, threat.id, EpisodeEngine.HuntImpact, heardHunt, "rumor");
+                    else if (threat.isPlayer)
+                        EpisodeEngine.HeardAbout(state, partner.id, EpisodeEngine.HuntImpact, heardHunt, "rumor");
+                    else if (!partner.isPlayer)
+                        Act(state, partner.id, threat.id, EpisodeEngine.HuntImpact, heardHunt, "rumor");
                     if (partner.isPlayer)
                         EpisodeEngine.Log(state, "information", npc.name + " told you " + threat.name + " has to go.", state.playerId);
                     // Talk about the player reaches them as a rumour does: the reference's roll, from the strategy windows.
@@ -371,10 +377,16 @@ namespace Gamesim.Simulation
 
             var subject = state.Find(subjectId);
             // Under the commitment rules (R0, X8) a rumour told to the player says what was said, and
-            // moves only the player's own view of its subject: the subject heard nothing. Before them
-            // it moved both views through the engine's two-way path, and said only that it was said.
-            if (listener.isPlayer && EpisodeEngine.CommitmentRulesOn(state))
+            // moves only the player's own view of its subject: the subject heard nothing. A rumour
+            // about the player moves only the listener's view of them: the player heard nothing.
+            // Before the rules both went through the engine's two-way path, and a rumour to the
+            // player said only that something was said.
+            bool rules = EpisodeEngine.CommitmentRulesOn(state);
+            if (listener.isPlayer && rules)
                 EpisodeEngine.HeardFrom(state, npc.id, subjectId, RumorImpact, subject.name + " is the biggest threat in this house");
+            else if (subject.isPlayer && rules)
+                EpisodeEngine.HeardAbout(state, listener.id, RumorImpact,
+                    "Something " + Named(state, listener) + " heard about " + Named(state, subject), "rumor");
             else
             {
                 Act(state, listener.id, subjectId, RumorImpact,

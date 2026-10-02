@@ -202,6 +202,62 @@ namespace Gamesim.Tests.EditMode
             }
         }
 
+        [Test]
+        public void X8_UnderTheRulesARumourAboutAPactMateDoesNotEndThePactWithoutAWord()
+        {
+            // The player's view of a pact-mate a hair above the line a pact sours at: a rumour's weight
+            // would take it under, and the pact would end at the week's turn with nothing said.
+            var s = RumourToThePlayer(true, out string teller, out string subject, (state, about) =>
+            {
+                state.alliances.Add(new AllianceState { id = "alliance-mates", name = "The Mates", members = new List<string> { state.playerId, about }, active = true });
+                SetScore(state, state.playerId, about, NpcAlliances.SourLine + 2);
+            });
+            double before = s.Score(s.playerId, subject);
+            int memories = s.memories.Count(m => m.ownerId == s.playerId);
+            Assert.That(NpcSocialActions.Perform(s, teller, NpcActionKind.SpreadInfo), Is.True);
+            Assert.That(s.events.Last().text, Is.EqualTo(s.Find(teller).name + " told you " + s.Find(subject).name + " is the biggest threat in this house."),
+                "The line says what was said,");
+            Assert.That(s.memories.Count(m => m.ownerId == s.playerId), Is.EqualTo(memories + 1), "and the player remembers who said it,");
+            Assert.That(s.Score(s.playerId, subject), Is.EqualTo(before), "but their view of a pact-mate is theirs to change.");
+            Assert.That(Entries(s, s.playerId, subject, "rumor").Last().impactScore, Is.Zero, "On the record, weighing nothing.");
+            NpcAlliances.Dissolve(s);
+            Assert.That(s.alliances.Single(a => a.id == "alliance-mates").active, Is.True, "The pact stands.");
+        }
+
+        // ------------------------------------------------------------ talk about the player, which the player never heard
+
+        [Test]
+        public void UnderTheRulesARumourAboutThePlayerMovesOnlyTheListenersView()
+        {
+            foreach (bool rules in new[] { false, true })
+            {
+                var s = RumourAboutThePlayer(rules, out string teller, out string listener);
+                double mine = s.Score(s.playerId, listener), theirs = s.Score(listener, s.playerId);
+                Assert.That(NpcSocialActions.Perform(s, teller, NpcActionKind.SpreadInfo), Is.True);
+                Assert.That(s.Score(listener, s.playerId), Is.EqualTo(theirs + NpcSocialActions.RumorImpact), "Either way the one told thinks less of the player.");
+                if (rules)
+                {
+                    Assert.That(s.Score(s.playerId, listener), Is.EqualTo(mine), "The player heard nothing, and their view of the listener is their own.");
+                    Assert.That(Entries(s, s.playerId, listener, "rumor"), Is.Empty, "Nothing on the player's record either.");
+                }
+                else Assert.That(s.Score(s.playerId, listener), Is.Not.EqualTo(mine), "Without the rules the engine's two-way path moved the player's view too.");
+            }
+        }
+
+        [Test]
+        public void UnderTheRulesAHuntOfThePlayerMovesOnlyThePactMatesView()
+        {
+            foreach (bool rules in new[] { false, true })
+            {
+                var s = HuntOfThePlayer(rules, out string hunter, out string mate);
+                double mine = s.Score(s.playerId, mate), theirs = s.Score(mate, s.playerId);
+                Assert.That(Pursue(s, hunter), Is.True);
+                Assert.That(s.Score(mate, s.playerId), Is.EqualTo(theirs + EpisodeEngine.HuntImpact), "Either way the pact-mate thinks less of the player.");
+                if (rules) Assert.That(s.Score(s.playerId, mate), Is.EqualTo(mine), "The player was not there, and their view of the pact-mate is their own.");
+                else Assert.That(s.Score(s.playerId, mate), Is.Not.EqualTo(mine), "Without the rules the hunt wrote into the player's view too.");
+            }
+        }
+
         // ------------------------------------------------------------ a promise to evict made to the one it names
 
         [Test]
@@ -280,6 +336,105 @@ namespace Gamesim.Tests.EditMode
                     Assert.That(StoryOdds.PlayerBrokeTheirWord(after, hoh), Is.True, "and the story said the player broke their word.");
                     Assert.That(PlayerDeals.AcceptanceChance(after, bystander, DealKind.Partnership, null),
                         Is.LessThan(PlayerDeals.AcceptanceChance(Without(after, "deal-pact"), bystander, DealKind.Partnership, null)));
+                }
+            }
+        }
+
+        [Test]
+        public void C0_UnderTheRulesTheEvictionVoteHoldsABreachOnlyAgainstWhoeverBrokeIt()
+        {
+            foreach (bool rules in new[] { false, true })
+            {
+                var after = NominatedByAPartner(rules, out string hoh);
+                string player = after.playerId;
+                Assert.That(after.nominees, Does.Contain(player), "The Head of Household put their safety partner up.");
+                string voter = EpisodeEngine.Voters(after).First(v => !v.isPlayer).id;
+                var clean = Without(after, "deal-pact");
+                if (rules)
+                {
+                    Assert.That(VoteThreat(after, voter, player), Is.EqualTo(VoteThreat(clean, voter, player)),
+                        "On the block for the pact somebody else broke, and no more of a threat in any ballot for it.");
+                    Assert.That(VoteThreat(after, voter, hoh), Is.EqualTo(VoteThreat(clean, voter, hoh) + 3), "The one who broke it carries it.");
+                }
+                else
+                {
+                    Assert.That(VoteThreat(after, voter, player), Is.EqualTo(VoteThreat(clean, voter, player) + 3),
+                        "Without the rules every ballot held it against the one wronged too: three points of threat.");
+                    Assert.That(VoteThreat(after, voter, hoh), Is.EqualTo(VoteThreat(clean, voter, hoh) + 3));
+                }
+            }
+        }
+
+        [Test]
+        public void C0_UnderTheRulesAVotingBlocThatFellApartNamesNobodyAndIsSettled()
+        {
+            foreach (bool rules in new[] { false, true })
+            {
+                var s = Campaign(rules);
+                var voters = EpisodeEngine.Voters(s).Where(v => !v.isPlayer).Select(v => v.id).ToList();
+                string a = voters[0], b = voters[1];
+                s.deals.Add(new DealState
+                {
+                    id = "deal-bloc", type = DealKind.VoteTogether, proposerId = a, recipientId = b, status = DealStatus.Active,
+                    week = s.week, expiresWeek = s.week + 1, trustImpact = DealKind.DefaultTrust(DealKind.VoteTogether),
+                });
+                // Each of them would gladly see a different nominee go.
+                SetScore(s, a, s.nominees[0], 100); SetScore(s, a, s.nominees[1], -100);
+                SetScore(s, b, s.nominees[0], -100); SetScore(s, b, s.nominees[1], 100);
+                Valid(s);
+                Assert.That(WebEvictionVoting.EvaluateNative(s, a).selectedNomineeId, Is.Not.EqualTo(WebEvictionVoting.EvaluateNative(s, b).selectedNomineeId),
+                    "The fixture splits the bloc's ballots.");
+                var engine = new EpisodeEngine(s);
+                for (int i = 0; i < 40 && !engine.Snapshot.evictionResolved; i++)
+                {
+                    var result = engine.Apply(EpisodeEngineTests.NextCommand(engine.Snapshot));
+                    Assert.That(result.accepted, Is.True, result.reason);
+                }
+                var after = engine.Snapshot;
+                Assert.That(after.evictionResolved, Is.True);
+                var bloc = after.deals.Single(d => d.id == "deal-bloc");
+                Assert.That(bloc.status, Is.EqualTo(DealStatus.Broken), "They voted their own ways.");
+                Assert.That(bloc.brokenById, Is.Null, "A voting bloc names nobody: both walked away from it.");
+                Assert.That(EpisodeValidation.TryValidate(after, out var error), Is.True, error);
+                var held = Entries(after, a, b, "deal_broken").Concat(Entries(after, b, a, "deal_broken")).ToList();
+                Assert.That(held, Has.Count.EqualTo(2), "Each holds it against the other.");
+                Assert.That(after.relationships.SelectMany(r => r.events).Any(e => e.type == "heard_about_betrayal"), Is.False,
+                    "Nobody in particular broke it, so there is no betrayal for the house to hear of.");
+                if (rules)
+                {
+                    Assert.That(bloc.settledWeek, Is.EqualTo(after.week), "Settled at the vote, on the record.");
+                    Assert.That(held.All(e => !e.decayable), Is.True, "and held permanently.");
+                    Assert.That(Breaches.Broke(after, bloc, a) && Breaches.Broke(after, bloc, b), Is.True);
+                }
+                else
+                {
+                    Assert.That(bloc.settledWeek, Is.Zero, "A season without the rules writes none of their records.");
+                    Assert.That(held.All(e => e.decayable), Is.True);
+                }
+            }
+        }
+
+        [Test]
+        public void C0_UnderTheRulesTheHouseHoldsABetrayalItHeardOfOneWay()
+        {
+            foreach (bool rules in new[] { false, true })
+            {
+                List<(string witness, RelationshipEventState heard)> heard = null;
+                string hoh = null;
+                EpisodeState after = null;
+                for (uint seed = 29; seed < 60 && (heard == null || heard.Count == 0); seed++)
+                {
+                    after = NominatedByAPartner(rules, out hoh, seed);
+                    string betrayer = hoh;
+                    heard = after.contestants.Where(c => c.id != betrayer && c.id != after.playerId)
+                        .SelectMany(c => Entries(after, c.id, betrayer, "heard_about_betrayal").Select(e => (c.id, e))).ToList();
+                }
+                Assert.That(heard, Is.Not.Empty, "Word of the broken pact got around.");
+                foreach (var (witness, entry) in heard)
+                {
+                    var back = Entries(after, hoh, witness, "heard_about_betrayal");
+                    if (rules) Assert.That(back, Is.Empty, "The betrayer holds nothing against the one who heard of it.");
+                    else Assert.That(back.Single().impactScore, Is.EqualTo(entry.impactScore), "Without the rules it was written both ways.");
                 }
             }
         }
@@ -523,6 +678,29 @@ namespace Gamesim.Tests.EditMode
             promise.status = PromiseStatus.Broken; promise.settledWeek = -1; Invalid(s, "Invalid promise settlement.");
             promise.settledWeek = 1; Valid(s);
 
+            // Who broke it and when are written together, at the settlement: a broken, settled deal
+            // other than a voting bloc names somebody, and a broken, settled promise names its maker,
+            // whose act settled it - never the one it was made to.
+            deal.brokenById = null; Invalid(s, "Invalid deal settlement.");
+            deal.type = DealKind.VoteTogether; Valid(s);
+            deal.type = DealKind.SafetyAgreement; deal.brokenById = npcs[0].id; deal.settledWeek = 0; Invalid(s, "Invalid deal settlement.");
+            deal.settledWeek = 1; Valid(s);
+            promise.brokenById = null; Invalid(s, "Invalid promise settlement.");
+            promise.brokenById = s.playerId; Invalid(s, "Invalid promise settlement.");
+            promise.brokenById = npcs[1].id; promise.settledWeek = 0; Invalid(s, "Invalid promise settlement.");
+            promise.settledWeek = 1; Valid(s);
+            // Nor settled before the rules that write them: here the rules start next week.
+            s.commitmentRulesStartWeek = 2;
+            Invalid(s, "Invalid promise settlement.");
+            promise.brokenById = null; promise.settledWeek = 0; promise.status = PromiseStatus.Expired;
+            Invalid(s, "Invalid deal settlement.");
+            deal.brokenById = null; deal.settledWeek = 0;
+            Valid(s);
+            s.commitmentRulesStartWeek = 1;
+            deal.brokenById = npcs[0].id; deal.settledWeek = 1;
+            promise.status = PromiseStatus.Broken; promise.brokenById = npcs[1].id; promise.settledWeek = 1;
+            Valid(s);
+
             s.commitmentRulesStartWeek = 0;
             Invalid(s, "A season without the commitment rules has none of their records.");
             deal.brokenById = null; deal.settledWeek = 0; promise.brokenById = null; promise.settledWeek = 0;
@@ -643,8 +821,8 @@ namespace Gamesim.Tests.EditMode
             .GetMethod("Pursue", BindingFlags.NonPublic | BindingFlags.Static)
             .Invoke(null, new object[] { s, s.Find(npcId) });
 
-        /// <summary>A house of three where the teller's draw falls on the player, and the subject is the third.</summary>
-        private static EpisodeState RumourToThePlayer(bool rules, out string teller, out string subject)
+        /// <summary>A house of three where the teller's draw falls on the player, and the subject is the third, shaped by <paramref name="shape"/> before the draw.</summary>
+        private static EpisodeState RumourToThePlayer(bool rules, out string teller, out string subject, Action<EpisodeState, string> shape = null)
         {
             for (uint roll = 1; roll < 64; roll++)
             {
@@ -655,6 +833,7 @@ namespace Gamesim.Tests.EditMode
                 subject = npcs[1].id;
                 SetScore(s, teller, s.playerId, 100);
                 SetScore(s, teller, subject, -100);
+                shape?.Invoke(s, subject);
                 s.randomState = roll * 2654435761u;
                 var probe = s.Clone();
                 NpcSocialActions.Perform(probe, teller, NpcActionKind.SpreadInfo);
@@ -664,6 +843,57 @@ namespace Gamesim.Tests.EditMode
             Assert.Fail("No roll drew the player as the listener.");
             teller = subject = null;
             return null;
+        }
+
+        /// <summary>A house of three where the teller, worried about the player, draws the third houseguest to tell.</summary>
+        private static EpisodeState RumourAboutThePlayer(bool rules, out string teller, out string listener)
+        {
+            for (uint roll = 1; roll < 64; roll++)
+            {
+                var s = Season(47, 3);
+                if (rules) EpisodeEngine.EnableCommitments(s);
+                var npcs = Npcs(s);
+                teller = npcs[0].id;
+                listener = npcs[1].id;
+                SetScore(s, teller, listener, 100);
+                SetScore(s, teller, s.playerId, -100);
+                s.randomState = roll * 2654435761u;
+                var probe = s.Clone();
+                string about = "Something " + s.Find(listener).name + " heard about you";
+                NpcSocialActions.Perform(probe, teller, NpcActionKind.SpreadInfo);
+                if (Entries(probe, listener, probe.playerId, "rumor").Any(e => e.description == about)) return s;
+            }
+            Assert.Fail("No roll drew the third houseguest as the listener.");
+            teller = listener = null;
+            return null;
+        }
+
+        /// <summary>A pact of two houseguests with the player as their common threat: the hunter's turn is a hunt, with their pact-mate, against the player.</summary>
+        private static EpisodeState HuntOfThePlayer(bool rules, out string hunter, out string mate)
+        {
+            var s = Season(23, 6);
+            s.agencyRulesStartWeek = 1;
+            if (rules) EpisodeEngine.EnableCommitments(s);
+            var npcs = Npcs(s);
+            hunter = npcs[0].id;
+            mate = npcs[1].id;
+            s.alliances.Add(new AllianceState { id = "alliance-hunters", name = "The Hunters", members = new List<string> { hunter, mate }, active = true });
+            SetScore(s, hunter, s.playerId, -50);
+            SetScore(s, mate, s.playerId, -50);
+            var agenda = NpcAgendas.Of(s, hunter);
+            Assert.That(agenda.kind, Is.EqualTo(Agendas.Hunt));
+            Assert.That(agenda.partnerId, Is.EqualTo(mate));
+            Assert.That(agenda.targetId, Is.EqualTo(s.playerId));
+            return s;
+        }
+
+        /// <summary>The threat a voter's ballot weighs a houseguest by: the eviction evaluator's own term, as the native adapter feeds it.</summary>
+        private static double VoteThreat(EpisodeState s, string voterId, string targetId)
+        {
+            var options = WebEvictionVoting.FromNative(s, voterId);
+            var target = options.state.allActive.Single(c => c.id == targetId);
+            return (double)typeof(WebEvictionVoting).GetMethod("Threat", BindingFlags.NonPublic | BindingFlags.Static)
+                .Invoke(null, new object[] { options.voter, target, options.state });
         }
 
         /// <summary>A campaign with the player voting and two houseguests on the block.</summary>

@@ -117,12 +117,14 @@ namespace Gamesim.Episode
         /// </summary>
         private IEnumerator BuyStudyActions()
         {
+            if (!EpisodeEngine.CommitmentRulesOn(seasonDirector.Snapshot) || MissingStudyActions(seasonDirector.Snapshot) <= 0) yield break;
+            yield return OpenSeasonStation();
+            // Counted again on arrival: the walk to the station crosses free roam, where the house goes
+            // on without the player.
             var state = seasonDirector.Snapshot;
-            int missing = StudyConfirmations - (EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state));
-            if (!EpisodeEngine.CommitmentRulesOn(state) || missing <= 0) yield break;
+            int missing = MissingStudyActions(state);
             RequireSeason(missing <= WebSocialVocabulary.PurchaseCeiling - state.boughtActionPoints,
                 "Five study confirmations must fit in move-in night's window with the time the house will sell.");
-            yield return OpenSeasonStation();
             for (int bought = 0; bought < missing; bought++)
             {
                 var before = seasonDirector.Snapshot;
@@ -136,6 +138,10 @@ namespace Gamesim.Episode
             }
             yield return CloseSeasonPanel();
         }
+
+        /// <summary>How many of five confirmations the window's actions left cannot pay for.</summary>
+        private static int MissingStudyActions(EpisodeState state) =>
+            StudyConfirmations - (EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state));
 
         private void RequireStudyUnchanged(EpisodeState expected, string operation)
         {

@@ -61,6 +61,8 @@
     <Compile Include="$(EditMode)HouseguestNotesTests.cs" />
     <Compile Include="$(EditMode)CommitmentsReadTests.cs" />
     <Compile Include="$(EditMode)CommitmentRulesTests.cs" />
+    <!-- Explicit, and compiled out of Unity: the commitment rules' recorded-season evidence, run on demand. -->
+    <Compile Include="$(EditMode)CommitmentRulesSeasonDigests.cs" />
     <Compile Include="$(EditMode)CampaignBriefTests.cs" />
     <Compile Include="$(EditMode)WaitingOnYouTests.cs" />
     <Compile Include="$(EditMode)FinalistReadTests.cs" />

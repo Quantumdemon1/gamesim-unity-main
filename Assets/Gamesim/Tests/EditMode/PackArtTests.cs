@@ -43,9 +43,12 @@ namespace Gamesim.Tests.EditMode
                 string asset = "Assets/Gamesim/Resources/Packs/" + path + ".png";
                 Assert.That(UiPackCatalogue.TryGet(asset, out var entry), Is.True, name + " is not in the catalogue.");
                 // Packs 1-5 name their 9-slices; Kit 6's manifest says which of its sprites are sliced,
-                // and the catalogue carries that - so a Kit 6 name has only to be a UI sprite.
+                // and the catalogue carries that - so a Kit 6 name has only to be a UI sprite. Pack 9
+                // slices every edge and fill of a frame (card_edge_rest, panel_fill, action_tile_focus_edge).
                 bool kit6 = path.StartsWith("Kit6_Refinement/");
-                bool sliced = kit6 ? entry.Kind == UiPackCatalogue.Kind.UiSliced : path.EndsWith("_9slice");
+                bool sliced = kit6 ? entry.Kind == UiPackCatalogue.Kind.UiSliced
+                    : path.StartsWith(Pack9Root) ? Pack9Frame(path)
+                    : path.EndsWith("_9slice");
                 Assert.That(entry.Kind, Is.EqualTo(sliced ? UiPackCatalogue.Kind.UiSliced : UiPackCatalogue.Kind.UiSprite), name);
                 var sprite = UiTheme.Pack(path);
                 if (sliced) Assert.That(sprite.border, Is.EqualTo(entry.Border), name + "'s slice border.");
@@ -98,7 +101,53 @@ namespace Gamesim.Tests.EditMode
             }
         }
 
-        private static string Asset(string path) => "Assets/Gamesim/Resources/Packs/" + path + ".png";
+        private const string Packs = "Assets/Gamesim/Resources/Packs/";
+        private const string Pack9Root = "Pack9_CeremonyFinale/";
+
+        private static string Asset(string path) => Packs + path + ".png";
+
+        /// <summary>Pack 9's frames, by the segment of the name (bb_ui_pack9.kind_for): an edge or a fill.</summary>
+        private static bool Pack9Frame(string path)
+        {
+            var segments = path.Substring(path.LastIndexOf('/') + 1).Split('_');
+            return segments.Contains("edge") || segments.Contains("fill");
+        }
+
+        /// <summary>
+        /// Pack 9 is imported whole and every one of its 62 images is named exactly once, by the rule
+        /// Pack9{Category}{File} (UI-UX-PASS-PLAN P0), so the slices built against the names in parallel
+        /// can write them without looking. Unlike Pack 8, the pack's byte-for-byte twins are each named:
+        /// the pack is laid out by screen and each screen's slice draws its own folder's copy. The
+        /// twins are pinned here - 62 files, 33 pictures, 23 groups - so a later pass that folds them,
+        /// or a re-export that changes one, is seen.
+        /// </summary>
+        [Test]
+        public void Pack9NamesEachOfItsImagesOnce()
+        {
+            var named = Named().Where(entry => entry.Path.StartsWith(Pack9Root)).ToArray();
+            var listed = UiPackCatalogue.All.Select(entry => entry.Path)
+                .Where(path => path.StartsWith(Packs + Pack9Root))
+                .Select(path => path.Substring(Packs.Length, path.Length - Packs.Length - ".png".Length)).ToArray();
+            Assert.That(listed, Has.Length.EqualTo(62), "The catalogue's Pack 9.");
+            Assert.That(named.Select(entry => entry.Path), Is.EquivalentTo(listed), "Every image of Pack 9 named, and none twice.");
+            foreach (var (name, path) in named)
+            {
+                var parts = path.Substring(Pack9Root.Length).Split('/');
+                Assert.That(parts, Has.Length.EqualTo(2), path + " sits one folder under the pack.");
+                string expected = "Pack9" + parts[0] + string.Concat(parts[1].Split('_').Select(piece => char.ToUpperInvariant(piece[0]) + piece.Substring(1)));
+                Assert.That(name, Is.EqualTo(expected), path + " is named by the rule Pack9{Category}{File}.");
+            }
+            using (var md5 = System.Security.Cryptography.MD5.Create())
+            {
+                var pictures = named.GroupBy(entry => System.BitConverter.ToString(md5.ComputeHash(System.IO.File.ReadAllBytes(Asset(entry.Path))))).ToArray();
+                var twins = pictures.Where(group => group.Count() > 1)
+                    .Select(group => string.Join(" = ", group.Select(entry => entry.Name).OrderBy(entry => entry, System.StringComparer.Ordinal)))
+                    .OrderBy(group => group, System.StringComparer.Ordinal).ToArray();
+                Assert.That(pictures, Has.Length.EqualTo(33), "The pack's 33 pictures under 62 names: " + string.Join("; ", twins));
+                Assert.That(twins, Has.Length.EqualTo(23), "Eleven Icons/ twins of the per-screen icons (ic_key is its own drawing), and twelve frame or ring twins.");
+                Assert.That(twins.Count(group => group.Contains("Pack9Icons")), Is.EqualTo(11), string.Join("; ", twins));
+            }
+        }
 
         /// <summary>
         /// Pack 8's draw slots are named _9slice and import sliced, but they are circles with a stretch

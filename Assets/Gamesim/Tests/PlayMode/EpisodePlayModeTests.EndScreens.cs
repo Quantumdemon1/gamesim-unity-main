@@ -17,7 +17,7 @@ namespace Gamesim.Tests.PlayMode
     /// frames. The season's end: the winner and runner-up, the five cards, the standings, the jury's
     /// ballots and the weeks side by side, the career under them, the tabs that scroll to the detail -
     /// the counts told as the house tells them, a tie as a tie. The week's end: who left and where
-    /// they finished, the five headline facts, and five tabs that each show a part of the week with
+    /// they finished, the five headline facts, and six tabs that each show a part of the week with
     /// one Continue at the foot whichever is open. Reading either commits nothing.
     /// </summary>
     public sealed partial class EpisodePlayModeTests

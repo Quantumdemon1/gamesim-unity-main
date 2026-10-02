@@ -56,6 +56,55 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// Put at the screen by the rail's "Go to episode screen" - a warp lands the player there
+        /// with "E to open" - a second press of the button is the screen: it opens instead of
+        /// leaving them to find E. The owner stood there on the first night with the status line
+        /// saying "E to open", pressed E to no effect, and had no other way in. Only after a warp:
+        /// a short trip on foot stays a walk (Travel_AnErrandWalksNearRunsFurtherAndIsSimplyThereFromAfar).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Prompt_TheRailsButtonPressedAgainAtTheScreenOpensIt()
+        {
+            director.ClosePanels();
+            WarpPlayer(new Vector3(0f, 0f, 14f));
+            yield return null;
+            director.GoToStation();
+            Assert.That(director.LastTravel, Is.EqualTo(EpisodeDirector.TravelKind.Warp), "From the yard the button warps the player to the screen.");
+            yield return null;
+            Assert.That(director.IsPhasePanelOpen, Is.False, "Arriving by the button opens nothing by itself.");
+            director.GoToStation();
+            yield return null;
+            Assert.That(director.IsPhasePanelOpen, Is.True, "Pressed again at the screen, the button opens it.");
+            Assert.That(director.IsConversationOpen, Is.False, "And nothing else, whoever idles beside it.");
+            director.ClosePanels();
+            yield return null;
+        }
+
+        /// <summary>
+        /// A card the last play session showed holds nothing in this one. The editor can start play
+        /// without reloading the domain, so the stamp outlives the session that wrote it; play's
+        /// start forgets it, and the prompt is back on the next frame.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Prompt_ACardShownLastSessionHoldsNothingThisOne()
+        {
+            director.ClosePanels();
+            WarpPlayer(director.StationPosition);
+            yield return null;
+            yield return null;
+            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.InteractCaption), Is.Not.Null, "At the screen, the prompt offers something to press.");
+            Gamesim.Presentation.CeremonyOverlays.Showing();
+            yield return null;
+            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.InteractCaption), Is.Null, "Under a card, the prompt stands down.");
+            Gamesim.Presentation.CeremonyOverlays.Forget();
+            yield return null;
+            yield return null;
+            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.InteractCaption), Is.Not.Null, "What play's start forgets holds nothing: the prompt is back.");
+            director.ClosePanels();
+            yield return null;
+        }
+
+        /// <summary>
         /// Nothing to press under a ceremony card. The card takes the pointer by reading the mouse,
         /// not through a raycaster, so a prompt left up beneath it took the click that dismissed
         /// the card as a press of its own - and got the player out of bed.

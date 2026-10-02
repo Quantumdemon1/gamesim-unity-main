@@ -33,8 +33,19 @@ namespace Gamesim.Presentation
     /// <para>It plays in one of two frames. On the HUD it is the board under the top bar, 420 wide,
     /// as mockup-10 draws it. On the set's ceremony screen (<see cref="ScreenSurface"/>, the
     /// ceremony cut scenes) it is the screen's whole face: the same card at the screen's own shape,
-    /// the face at most of the screen's height and the keys along its foot at key size, so a camera
-    /// cut to the screen reads it the way the room does. Every child keeps its name in both.</para>
+    /// the keys along its foot at key size, so a camera cut to the screen reads it the way the room
+    /// does. Every child keeps its name in both.</para>
+    ///
+    /// <para>The screen's frame is the owner's nomination mockup as well (UI-UX-PASS-PLAN N1,
+    /// decision 9): a roster of ring discs across the middle - the Head of Household first with the
+    /// crown, every houseguest with a name - with a chip under each that stays empty until the card
+    /// says so: HOH from the start, SAFE as that key comes out, NOMINATED only at the block, so the
+    /// roster never says who is on the block before the keys do. The key stands on its pedestal in
+    /// the middle of the roster through every beat, lit blue, and goes gold only while the last key
+    /// waits. The stage's own beat - the safe face as a key comes out, the two nominees at the
+    /// block - plays over the pedestal in the roster's middle column, where the room's cuts expect
+    /// to see it. The HUD's board has no roster and no pedestal: it is drawn as it always was, the
+    /// gold key alone on its stage while the last key waits.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class KeyCeremony : MonoBehaviour
@@ -76,15 +87,19 @@ namespace Gamesim.Presentation
         public event System.Action<CeremonyBeat> BeatReached;
 
         private CanvasGroup group;
-        private RectTransform column, scrim, slotRow, stage;
+        private RectTransform column, scrim, slotRow, stage, faces, rosterRow, titleMark;
+        private Image heldKey;
         private TMP_Text eyebrow, title, hohLine, progress, controls, speedMark;
         private readonly List<RectTransform> slots = new List<RectTransform>();
+        private readonly List<RosterEntry> roster = new List<RosterEntry>();
         private List<Person> safe = new List<Person>();
         private List<Person> nominated = new List<Person>();
+        private List<Person> cast = new List<Person>();
+        private string hohName;
         private CeremonyPace pace = CeremonyPace.Suspenseful;
         private int shown = -1;
         private float elapsed, upFor, speed = 1f;
-        private bool playing, reduced, blockShown, lastKeyPending, usingPad;
+        private bool playing, reduced, blockShown, lastKeyPending, usingPad, markPlaced;
         private Frame frame;
         private ScreenSurface surface;
 
@@ -161,15 +176,20 @@ namespace Gamesim.Presentation
         /// to hand out, or nobody on the block — and the generic card plays instead, so the beat is
         /// never silent. The keys come out in the order given, so the caller decides that order; it
         /// must not be one that says who is safe before the card does. With a <paramref name="screen"/>
-        /// the card plays on that screen's face instead of the HUD.
+        /// the card plays on that screen's face instead of the HUD, with a roster of the house across
+        /// it: <paramref name="roster"/> in cast order with the Head of Household first, or, when the
+        /// caller gives none, the Head of Household by name, then whoever draws a key, then the block.
         /// </summary>
         public bool Play(int week, string hohName, bool hohIsPlayer, IList<Person> safeHouseguests,
-            IList<Person> block, bool reducedMotion, CeremonyPace pace = CeremonyPace.Suspenseful, ScreenSurface screen = null)
+            IList<Person> block, bool reducedMotion, CeremonyPace pace = CeremonyPace.Suspenseful, ScreenSurface screen = null,
+            IList<Person> roster = null)
         {
             if (safeHouseguests == null || block == null || block.Count == 0) return false;
 
             safe = new List<Person>(safeHouseguests);
             nominated = new List<Person>(block);
+            this.hohName = hohName;
+            cast = roster != null ? new List<Person>(roster) : DefaultRoster(hohName);
             this.pace = pace;
             surface = screen;
             frame = screen != null ? Frame.OnScreen(safe.Count) : Frame.Hud(Mathf.Max(0.5f, FontScale));
@@ -200,6 +220,16 @@ namespace Gamesim.Presentation
             group.alpha = reduced ? 1f : 0f;
             Beat(new CeremonyBeat(CeremonyBeatKind.Opened));
             return true;
+        }
+
+        /// <summary>The roster when the caller gives none: the Head of Household by name, then the keys' holders, then the block.</summary>
+        private List<Person> DefaultRoster(string hoh)
+        {
+            var people = new List<Person>();
+            if (!string.IsNullOrEmpty(hoh)) people.Add(new Person(null, hoh, null));
+            people.AddRange(safe);
+            people.AddRange(nominated);
+            return people;
         }
 
         public void Cancel()
@@ -278,6 +308,20 @@ namespace Gamesim.Presentation
             if (elapsed >= KeysEnd && !blockShown) Block(false);
         }
 
+        /// <summary>
+        /// The title's mark, placed once more from the title as drawn, on the card's first playing
+        /// frame. Build measures the title awake, so this normally moves it by nothing; it is the
+        /// guard for a build that measured a label before its Awake - the week-two defect (UI-UX-PASS
+        /// 1.2), where a tenth of the title's width hung the mark over the T - whatever order the
+        /// card is built and activated in.
+        /// </summary>
+        private void LateUpdate()
+        {
+            if (!playing || markPlaced) return;
+            markPlaced = true;
+            PlaceTitleMark();
+        }
+
         private static float Eased(float t) => 1f - (1f - t) * (1f - t);
 
         /// <summary>How many keys are out at <paramref name="t"/> on the card's clock.</summary>
@@ -333,6 +377,7 @@ namespace Gamesim.Presentation
             for (int i = 0; i < slots.Count; i++)
                 slots[i].GetComponent<Image>().color = i < count ? UiTheme.Positive
                     : pending && i == slots.Count - 1 ? UiTheme.Gold : UiTheme.Outline;
+            DressRoster(count, false);
 
             if (pending)
             {
@@ -378,6 +423,7 @@ namespace Gamesim.Presentation
             progress.text = nominated.Count == 2 ? "Nominated for eviction" : "On the block";
             // The mockup's subtitle once the keys are out: the screen now shows who they are.
             hohLine.text = nominated.Count == 1 ? "Tonight's Nominee" : "Tonight's Nominees";
+            DressRoster(safe.Count, true);
             StageBlock();
             Raise(HouseAudio.Cue.Nomination);
             Beat(new CeremonyBeat(CeremonyBeatKind.BlockShown, -1, nominated.Count > 0 ? nominated[0].Id : null, skipped));
@@ -386,16 +432,17 @@ namespace Gamesim.Presentation
         /// <summary>
         /// The card's frame: how big its parts are and where they sit, in canvas units. The HUD's
         /// is the board under the top bar at the standard text size, scaled by the large-text
-        /// preference; the screen's is the screen's whole face at 3:2, the face at most of its
-        /// height, the keys along the foot at key size - each about a twelfth of the width, closer
-        /// together only when more keys are in play than that leaves room for.
+        /// preference; the screen's is the screen's whole face at 3:2, the roster's band over half
+        /// its height, the keys along the foot at key size - each about a twelfth of the width,
+        /// closer together only when more keys are in play than that leaves room for - and the
+        /// HUD's margin under the controls line, so nothing is drawn on the face's edge.
         /// </summary>
         private readonly struct Frame
         {
             public readonly bool Screen;
             /// <summary>The column's size, and how far under the top of the canvas it hangs.</summary>
             public readonly float Width, Height, Top;
-            /// <summary>One face on the stage; the block's faces, side by side, and their spacing.</summary>
+            /// <summary>One face on the stage (the beat's disc, on the screen); the block's faces, side by side, and their spacing.</summary>
             public readonly float SlotW, SlotH, BlockW, BlockH, BlockStep;
             /// <summary>A key's size and the spacing of the row.</summary>
             public readonly float Pip, Step;
@@ -430,16 +477,98 @@ namespace Gamesim.Presentation
                     12f * scale, 30f * scale);
             }
 
-            /// <summary>The set's screen: its whole face, the safe face over half its height, the keys at key size.</summary>
+            /// <summary>
+            /// The set's screen: its whole face, the roster's band from the Head of Household's line
+            /// to the keys, the keys at key size, and thirty units of air under the controls line
+            /// (the HUD's own margin, 12 of 330), where the line used to end four units off the edge.
+            /// The eyebrow starts 3 % of the face's height inside its top and ends where the title
+            /// starts; no two rows' boxes cross.
+            /// </summary>
             public static Frame OnScreen(int keys)
             {
                 const float text = 2.4f;
                 float step = keys > 0 ? Mathf.Min(96f, 1100f / keys) : 96f;
-                return new Frame(true, ScreenSurface.ReferenceWidth, ScreenSurface.ReferenceHeight, 0f, 330f, 425f, 300f, 386f, 380f,
-                    Mathf.Min(76f, step * 0.8f), step, text,
-                    -22f, 38f, -60f, 72f, 58f, -136f, 52f, -194f, -630f, 88f, -720f, 40f, float.NaN, float.NaN, 0f, -762f, 36f,
-                    float.NaN, 0f, 16f);
+                return new Frame(true, ScreenSurface.ReferenceWidth, ScreenSurface.ReferenceHeight, 0f, ScreenRoster.BeatFace, ScreenRoster.BandHeight,
+                    ScreenRoster.BlockFace, ScreenRoster.BlockFace, ScreenRoster.BlockStep, Mathf.Min(76f, step * 0.8f), step, text,
+                    -24f, 36f, -60f, 72f, 58f, -136f, 52f, ScreenRoster.BandTop, -596f, 88f, -690f, 40f, float.NaN, float.NaN, 0f,
+                    -734f, 36f, float.NaN, 0f, 16f);
             }
+        }
+
+        /// <summary>
+        /// The screen frame's roster and stage, in canvas units on the 1200 × 800 face (the owner's
+        /// mockup, UI-UX-PASS-PLAN decision 9). The band runs from the Head of Household's line to the
+        /// keys; its middle column is the stage's - the key on its pedestal, the beat's face over it -
+        /// and the roster stands either side of that column: one row of 104-unit faces three a side
+        /// up to six, two rows of 88-unit faces three a side to twelve, two rows of 78-unit faces four
+        /// a side from thirteen, so a full house of sixteen is two rows of eight. A face takes the
+        /// room its ring art does - the pack's ring is drawn larger than the face by the hole's share
+        /// of it, its glow in the quad's corners - so no ring reaches into a line above or a name
+        /// below; the rows fit the band with air to spare (227 in one row; 2 × 196 + 8 = 400 and
+        /// 2 × 179 + 8 = 366 in two, of 408). Every name is in a box at least 1.3 times its type.
+        /// </summary>
+        private static class ScreenRoster
+        {
+            public const float BandTop = -188f, BandHeight = 408f;
+            /// <summary>The stage's column in the band's middle, which the roster leaves clear.</summary>
+            public const float Column = 300f;
+            /// <summary>Faces to six, in one row: a disc on a step, three a side, with a name and a chip under each.</summary>
+            public const float Face = 104f, Step = 140f, NamePt = 36f, NameH = 47f, ChipH = 28f, ChipPt = 16f;
+            /// <summary>Faces from seven to twelve, in two rows, three a side.</summary>
+            public const float MidFace = 88f, MidNamePt = 30f, MidNameH = 40f, MidChipH = 26f, MidChipPt = 14f;
+            /// <summary>Faces from thirteen, in two rows, four a side.</summary>
+            public const float SmallFace = 78f, SmallStep = 105f, SmallNamePt = 28f, SmallNameH = 37f, SmallChipH = 26f, SmallChipPt = 14f;
+            public const int Side = 3, SmallSide = 4, OneRow = 6, ThreeASide = 12;
+            /// <summary>
+            /// The chips and the names are as wide as the step allows and their words are drawn
+            /// smaller to fit: NOMINATED at 16 points is about a hundred units.
+            /// </summary>
+            public const float Ring = 4f, Gap = 4f, RowGap = 8f, NameMinPt = 12f, ChipMinPt = 10f, Air = 2f, Inset = 8f;
+            /// <summary>The pack ring's hole as a share of its size (its edge at 91 of 128), so a ring is drawn to hug the face it rings.</summary>
+            public const float RingHole = 0.711f;
+
+            /// <summary>
+            /// The stage's beat over the pedestal: the safe face, and the block's two. Each hangs with
+            /// its ring art's top a little under the band's top, and its name under the art. The
+            /// block's two stand 66 either side of the axis at 112, so each one's ring art (157.5
+            /// square) ends at 144.8, nine units short of the roster's innermost name boxes, which
+            /// start 154 out on every roster shape; at 120 on a 156 step the art reached 162.4 and
+            /// crossed the first row's names on a two-row roster. Their names are 128 wide, two
+            /// units apart in the middle.
+            /// </summary>
+            public const float BeatFace = 140f, BeatRing = 5f, BeatNamePt = 30f, BeatNameH = 40f, BeatNameW = 280f,
+                BeatChipW = 120f, BeatChipH = 44f, BeatChipPt = 26f;
+            public const float BlockFace = 112f, BlockRing = 4f, BlockStep = 132f, BlockNameW = 128f, BlockNamePt = 28f, BlockNameH = 37f;
+
+            /// <summary>The key on its pedestal, under the beat's names: the glyph's size and its top under the band's top, and the pedestal's width.</summary>
+            public const float KeySize = 100f, KeyY = -246f, Pedestal = 187f;
+            /// <summary>The pedestal's top surface, as a share of its height from the image's top (measured on the mask: 114 of 256).</summary>
+            public const float PedestalSurface = 0.445f;
+
+            /// <summary>The room a face's ring art takes, square: the face over the hole's share of the ring.</summary>
+            public static float Footprint(float face) => face / RingHole;
+        }
+
+        /// <summary>The roster's sizes for a house: the faces, their step and how many stand a side, the names' and the chips' type and boxes.</summary>
+        private readonly struct RosterSizes
+        {
+            public readonly float Face, Step, NamePt, NameH, ChipH, ChipPt;
+            public readonly int Side, Rows;
+
+            private RosterSizes(float face, float step, int side, int rows, float namePt, float nameH, float chipH, float chipPt)
+            {
+                Face = face; Step = step; Side = side; Rows = rows; NamePt = namePt; NameH = nameH; ChipH = chipH; ChipPt = chipPt;
+            }
+
+            public static RosterSizes For(int houseguests) =>
+                houseguests <= ScreenRoster.OneRow
+                    ? new RosterSizes(ScreenRoster.Face, ScreenRoster.Step, ScreenRoster.Side, 1, ScreenRoster.NamePt, ScreenRoster.NameH,
+                        ScreenRoster.ChipH, ScreenRoster.ChipPt)
+                    : houseguests <= ScreenRoster.ThreeASide
+                        ? new RosterSizes(ScreenRoster.MidFace, ScreenRoster.Step, ScreenRoster.Side, 2, ScreenRoster.MidNamePt,
+                            ScreenRoster.MidNameH, ScreenRoster.MidChipH, ScreenRoster.MidChipPt)
+                        : new RosterSizes(ScreenRoster.SmallFace, ScreenRoster.SmallStep, ScreenRoster.SmallSide, 2, ScreenRoster.SmallNamePt,
+                            ScreenRoster.SmallNameH, ScreenRoster.SmallChipH, ScreenRoster.SmallChipPt);
         }
 
         private void Build()
@@ -453,6 +582,7 @@ namespace Gamesim.Presentation
             {
                 foreach (Transform child in column) Destroy(child.gameObject);
                 slots.Clear();
+                roster.Clear();
             }
             else
             {
@@ -480,12 +610,19 @@ namespace Gamesim.Presentation
                 column.pivot = new Vector2(.5f, 1f);
             }
 
+            // Awake before anything is measured. A label made under a column Cancel had deactivated
+            // has not run Awake, and TextMesh Pro measures an un-awake label at a tenth of its width
+            // (TMP_Text's m_isOrthographic is set in Awake): from week two the title's mark hung
+            // over the T of NOMINATION (UI-UX-PASS-PLAN 1.2). The group's alpha is still nothing,
+            // so nothing shows before Play wants it to.
+            column.gameObject.SetActive(true);
+
             var f = frame;
             float scale = f.Text;
             float width = f.Width;
             column.anchoredPosition = new Vector2(0f, -f.Top);
             column.sizeDelta = new Vector2(width, f.Height);
-            CardGlass(column, f.Glass, f.Neon);
+            CardGlass(column, f.Glass, f.Neon, f.Screen);
 
             eyebrow = HudPrimitives.Label("Week", column, 11f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
             eyebrow.characterSpacing = 10f;
@@ -498,32 +635,44 @@ namespace Gamesim.Presentation
             Place(speedMark.rectTransform, 150f * scale, f.EyebrowH, f.EyebrowY, width * .5f - 87f * scale);
             speedMark.gameObject.SetActive(false);
 
-            // A trophy and the title in the display weight, in the glow blue the board is lit in.
+            // The key and the title in the display weight, in the glow blue the board is lit in.
             title = HudPrimitives.Label("Title", column, 22f * scale, UiTheme.Glow, TextAlignmentOptions.Center);
             var bold = UiTheme.Font(UiTheme.Weight.Bold);
             if (bold != null) title.font = bold;
             title.characterSpacing = 3f;
             title.text = "NOMINATION CEREMONY";
             Place(title.rectTransform, width, f.TitleH, f.TitleY);
-            float titleWidth = title.GetPreferredValues(title.text).x;
-            var trophy = HudPrimitives.Glyph("Title mark", column, "trophy", UiTheme.Glow, Vector2.zero, f.Trophy);
-            if (trophy != null)
+            // The mark is the key the card is about - the pack's, the generated one without the
+            // pack - and never inside the title: it hangs left of the whole word, measured now that
+            // the title is awake, and measured again as drawn on the first playing frame.
+            titleMark = null;
+            var mark = Mark("Title mark", column, KeyArt(), UiTheme.Glow, f.Trophy);
+            if (mark != null)
             {
-                var mark = trophy.rectTransform;
-                mark.anchorMin = mark.anchorMax = new Vector2(.5f, 1f);
-                mark.pivot = new Vector2(1f, 1f);
-                mark.anchoredPosition = new Vector2(-(titleWidth * .5f) - 8f * scale, f.TitleY - 3f * scale);
+                titleMark = mark.rectTransform;
+                titleMark.anchorMin = titleMark.anchorMax = new Vector2(.5f, 1f);
+                titleMark.pivot = new Vector2(1f, 1f);
             }
+            PlaceTitleMark();
+            markPlaced = false;
 
             hohLine = HudPrimitives.Label("HoH", column, 15f * scale, UiTheme.Accent, TextAlignmentOptions.Center);
             var medium = UiTheme.Font(UiTheme.Weight.Medium);
             if (medium != null) hohLine.font = medium;
             Place(hohLine.rectTransform, width, f.HohH, f.HohY);
 
-            // The stage: whichever faces the ceremony is on right now.
+            // The stage: on the screen the key on its pedestal through every beat, and over it
+            // whichever faces the ceremony is on right now; on the HUD the faces alone.
             stage = new GameObject("Stage", typeof(RectTransform)).GetComponent<RectTransform>();
             stage.SetParent(column, false);
             Place(stage, width, f.SlotH, f.StageY);
+            heldKey = null;
+            if (f.Screen) BuildPedestal();
+            faces = new GameObject("Stage faces", typeof(RectTransform)).GetComponent<RectTransform>();
+            faces.SetParent(stage, false);
+            Place(faces, width, f.SlotH, 0f);
+
+            if (f.Screen) BuildRoster();
 
             // One key per houseguest who draws, lit as each is handed out.
             slotRow = new GameObject("Keys", typeof(RectTransform)).GetComponent<RectTransform>();
@@ -595,42 +744,190 @@ namespace Gamesim.Presentation
         private const float SlotWidth = 104f;
         private const float SlotHeight = 134f;
 
+        /// <summary>
+        /// Hangs the title's mark left of the title as drawn: its right edge a short gap off the
+        /// text's left edge, read from the text's own bounds once the label has a mesh, and from its
+        /// preferred width before it has one. Both readings are right only on an awake label, which
+        /// is why Build activates the column first.
+        /// </summary>
+        private void PlaceTitleMark()
+        {
+            if (titleMark == null || title == null) return;
+            float scale = frame.Text;
+            float left = -title.GetPreferredValues(title.text).x * .5f;
+            if (title.gameObject.activeInHierarchy)
+            {
+                title.ForceMeshUpdate();
+                var bounds = title.textBounds;
+                if (bounds.size.x > 0f) left = bounds.min.x;
+            }
+            titleMark.anchoredPosition = new Vector2(left - 8f * scale, frame.TitleY - 3f * scale);
+        }
+
+        /// <summary>
+        /// The key the card is about, for its mark and its stage: the pack's key at 128 (Icons/ic_key),
+        /// then the pack's NominationCeremony/key_icon - which ships the same 128-pixel drawing in
+        /// the top-left corner of a 256 canvas, so it is the fallback and not the first choice - and
+        /// the generated icon without the pack. Null in a clone with neither.
+        /// </summary>
+        private static Sprite KeyArt()
+        {
+            var sprite = UiTheme.Pack(PackArt.Pack9IconsIcKey);
+            if (sprite == null) sprite = UiTheme.Pack(PackArt.Pack9NominationCeremonyKeyIcon);
+            if (sprite == null) sprite = UiTheme.Icon("key");
+            return sprite;
+        }
+
+        /// <summary>The Head of Household's crown for the roster's badge: the pack's at 128, then its 160 twin (the same drawing, off-centre), then the generated one.</summary>
+        private static Sprite CrownArt()
+        {
+            var sprite = UiTheme.Pack(PackArt.Pack9IconsIcCrown);
+            if (sprite == null) sprite = UiTheme.Pack(PackArt.Pack9NominationCeremonyHohCrownIcon);
+            if (sprite == null) sprite = UiTheme.Icon("crown");
+            return sprite;
+        }
+
+        /// <summary>
+        /// One of the pack's marks, drawn whole at <paramref name="side"/> square and tinted, hung
+        /// from <paramref name="parent"/>'s top-left like <see cref="HudPrimitives.Glyph"/>. Null,
+        /// and nothing drawn, without a sprite: every caller keeps the plainer shape it drew before.
+        /// </summary>
+        private static Image Mark(string name, Transform parent, Sprite sprite, Color tint, float side)
+        {
+            if (sprite == null) return null;
+            var rect = new GameObject(name, typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+            rect.SetParent(parent, false);
+            rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0f, 1f);
+            rect.sizeDelta = new Vector2(side, side);
+            var image = rect.GetComponent<Image>();
+            image.sprite = sprite;
+            image.type = Image.Type.Simple;
+            image.color = tint;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        /// <summary>
+        /// The key on its pedestal, the screen stage's own fixture: the pack's pedestal mask lit in
+        /// the board's blue, and the key standing upright on its top surface, blue through every beat
+        /// and gold only while the last key waits. Both are the stage's children under whatever
+        /// faces the beat puts up, so Show(0) no longer leaves the stage empty (the owner's frame,
+        /// UI-UX-PASS-PLAN 1.2). The HUD's board has neither: its two nominee frames stand 44 units
+        /// apart at the block, and a key between them showed through the gap. The glyph keeps its
+        /// name, "Last key": the suite counts the key slots by the "Key " prefix, and this is not one.
+        /// </summary>
+        private void BuildPedestal()
+        {
+            float keyBottom = ScreenRoster.KeyY - ScreenRoster.KeySize;
+            var pedestal = Mark("Pedestal", stage, UiTheme.Pack(PackArt.Pack9NominationCeremonyKeyPedestalMask),
+                new Color(UiTheme.Glow.r, UiTheme.Glow.g, UiTheme.Glow.b, 0.6f), ScreenRoster.Pedestal);
+            if (pedestal != null)
+            {
+                float height = ScreenRoster.Pedestal * 0.5f;
+                // The key stands on the surface, which sits under the mask's top by a measured share.
+                Place(pedestal.rectTransform, ScreenRoster.Pedestal, height, keyBottom + height * ScreenRoster.PedestalSurface);
+            }
+            var held = Mark("Last key", stage, KeyArt(), UiTheme.Glow, ScreenRoster.KeySize);
+            if (held == null) return;
+            var key = held.rectTransform;
+            key.anchorMin = key.anchorMax = new Vector2(.5f, 1f);
+            key.pivot = new Vector2(.5f, .5f);
+            key.anchoredPosition = new Vector2(0f, ScreenRoster.KeyY - ScreenRoster.KeySize * .5f);
+            // The pack draws its key lying down, bow to the left; a quarter turn stands it on its
+            // teeth with the bow up, the way the mockup's key stands on its podium.
+            key.localRotation = Quaternion.Euler(0f, 0f, -90f);
+            heldKey = held;
+        }
+
+        /// <summary>Lights the screen's key gold while the last key waits, and blue through every other beat.</summary>
+        private void LightTheKey(bool gold)
+        {
+            if (heldKey != null) heldKey.color = gold ? UiTheme.Gold : UiTheme.Glow;
+        }
+
         /// <summary>Draws one houseguest on the stage, or clears it.</summary>
         private void Stage(Person? person, string badge, Color tint)
         {
-            for (int i = stage.childCount - 1; i >= 0; i--) Destroy(stage.GetChild(i).gameObject);
+            ClearFaces();
+            LightTheKey(false);
             if (person == null) return;
+
+            if (frame.Screen)
+            {
+                BeatFace(person.Value, badge, tint);
+                return;
+            }
 
             float scale = frame.Text;
             var slot = Slot(person.Value, 0f, frame.SlotW, frame.SlotH, tint, "Name");
             if (string.IsNullOrEmpty(badge)) return;
-            // The word the key means, pinned to the photo's shoulder. On the set's screen it sits
-            // just inside the photo's top edge rather than across it: across it, at the screen's
-            // scale, it covered the foot of the Head of Household's line above (MOCKUP-PASS-PLAN M2).
+            // The word the key means, pinned to the photo's shoulder.
             float chipHeight = 20f * scale;
             var chip = HudPrimitives.Fill("Badge", slot, tint, 4);
             chip.anchorMin = chip.anchorMax = new Vector2(.5f, 1f);
             chip.pivot = new Vector2(.5f, .5f);
-            chip.anchoredPosition = frame.Screen ? new Vector2(0f, -chipHeight * .5f) : Vector2.zero;
+            chip.anchoredPosition = Vector2.zero;
             chip.sizeDelta = new Vector2(70f * scale, chipHeight);
             chip.GetComponent<Image>().raycastTarget = false;
-            var chipText = HudPrimitives.Label("Badge text", chip, 12f * scale, UiTheme.Ink, TextAlignmentOptions.Center);
+            BadgeText(chip, badge, 12f * scale, UiTheme.Ink);
+        }
+
+        private void ClearFaces()
+        {
+            if (faces == null) return;
+            for (int i = faces.childCount - 1; i >= 0; i--) Destroy(faces.GetChild(i).gameObject);
+        }
+
+        private static TMP_Text BadgeText(RectTransform chip, string badge, float size, Color colour)
+        {
+            var chipText = HudPrimitives.Label("Badge text", chip, size, colour, TextAlignmentOptions.Center);
             chipText.text = badge;
             chipText.rectTransform.anchorMin = Vector2.zero;
             chipText.rectTransform.anchorMax = Vector2.one;
             chipText.rectTransform.offsetMin = Vector2.zero;
             chipText.rectTransform.offsetMax = Vector2.zero;
+            return chipText;
         }
 
         /// <summary>
-        /// The stage during the beat before the last key: the key itself, held up in the gold of the
-        /// slot waiting for it, and nobody's face. Its name deliberately does not begin with "Key ",
-        /// the prefix the suite counts the key slots by.
+        /// The beat's face on the screen's frame: a ring disc over the pedestal in the roster's
+        /// middle column, as the vote's and the roster's faces are drawn, hung with its ring art's
+        /// top a little under the band's top, the word the key means in a chip pinned inside the
+        /// disc's top - under the foot of the Head of Household's line, as the chip on the photo was
+        /// moved to be (MOCKUP-PASS-PLAN M2) - and the name under the ring art.
+        /// </summary>
+        private void BeatFace(Person person, string badge, Color tint)
+        {
+            float face = frame.SlotW;
+            float footprint = ScreenRoster.Footprint(face);
+            float centre = -(footprint * .5f + ScreenRoster.Air);
+            var rim = Disc(faces, "Stage face", person, tint, face, ScreenRoster.BeatRing, RingArtFor(tint), new Vector2(0f, centre));
+            NameUnder(faces, "Name", person.Name, ScreenRoster.BeatNamePt, ScreenRoster.BeatNameW, ScreenRoster.BeatNameH,
+                centre - footprint * .5f - ScreenRoster.Gap, 0f, UiTheme.Weight.SemiBold);
+            if (string.IsNullOrEmpty(badge)) return;
+            var chip = HudPrimitives.Fill("Badge", rim, tint, Mathf.RoundToInt(ScreenRoster.BeatChipH * .5f) - 1);
+            chip.anchorMin = chip.anchorMax = new Vector2(.5f, 1f);
+            chip.pivot = new Vector2(.5f, 1f);
+            chip.anchoredPosition = new Vector2(0f, -2f);
+            chip.sizeDelta = new Vector2(ScreenRoster.BeatChipW, ScreenRoster.BeatChipH);
+            var art = chip.GetComponent<Image>();
+            art.raycastTarget = false;
+            UiTheme.PackSliced(art, PackArt.Pack9NominationCeremonyStatusTagFill, ScreenRoster.BeatChipH * .5f - 2f, tint);
+            BadgeText(chip, badge, ScreenRoster.BeatChipPt, UiTheme.OnColor(tint));
+        }
+
+        /// <summary>
+        /// The stage during the beat before the last key: the key itself, gold, and nobody's face -
+        /// the screen's key on its pedestal lit gold, or the HUD's gold key alone on its stage, as
+        /// its board always drew it.
         /// </summary>
         private void StageLastKey()
         {
-            Stage(null, null, UiTheme.Accent);
-            var held = HudPrimitives.Glyph("Last key", stage, "key", UiTheme.Gold, Vector2.zero, 64f * frame.Text);
+            ClearFaces();
+            if (frame.Screen) { LightTheKey(true); return; }
+            var held = Mark("Last key", faces, KeyArt(), UiTheme.Gold, 64f * frame.Text);
             if (held == null) return;
             var rect = held.rectTransform;
             rect.anchorMin = rect.anchorMax = new Vector2(.5f, .5f);
@@ -638,27 +935,53 @@ namespace Gamesim.Presentation
             rect.anchoredPosition = Vector2.zero;
         }
 
-        /// <summary>The block, both nominees side by side in their frames (mockup-10).</summary>
+        /// <summary>
+        /// The block, both nominees side by side in their frames (mockup-10) - ring discs on the
+        /// screen's frame - with their names at one size, as the roster's are.
+        /// </summary>
         private void StageBlock()
         {
-            for (int i = stage.childCount - 1; i >= 0; i--) Destroy(stage.GetChild(i).gameObject);
+            ClearFaces();
+            LightTheKey(false);
 
             float step = frame.BlockStep;
             float start = -(nominated.Count - 1) * step * 0.5f;
+            var names = new List<TMP_Text>(nominated.Count);
+            if (frame.Screen)
+            {
+                float face = frame.BlockW;
+                float footprint = ScreenRoster.Footprint(face);
+                float centre = -(footprint * .5f + ScreenRoster.Air);
+                for (int i = 0; i < nominated.Count; i++)
+                {
+                    float x = start + i * step;
+                    var rim = Disc(faces, "Nominee face", nominated[i], UiTheme.Conflict, face, ScreenRoster.BlockRing,
+                        RingArtFor(UiTheme.Conflict), new Vector2(x, centre));
+                    HudPrimitives.AddRoleMark(rim, HudPrimitives.RoleMark.Nominee, face);
+                    names.Add(NameUnder(faces, "Nominee", nominated[i].Name, ScreenRoster.BlockNamePt, ScreenRoster.BlockNameW, ScreenRoster.BlockNameH,
+                        centre - footprint * .5f - ScreenRoster.Gap, x, UiTheme.Weight.SemiBold));
+                }
+                OneSize(names);
+                return;
+            }
+
             for (int i = 0; i < nominated.Count; i++)
-                Slot(nominated[i], start + i * step, frame.BlockW, frame.BlockH, UiTheme.Conflict, "Nominee");
+                Slot(nominated[i], start + i * step, frame.BlockW, frame.BlockH, UiTheme.Conflict, "Nominee", names);
+            OneSize(names);
         }
 
         /// <summary>
-        /// One face on the screen: the pack's slot frame, the photo inside it, and a name plate
+        /// One face on the HUD's board: the pack's slot frame, the photo inside it, and a name plate
         /// across the photo's foot. The plate's label is named <paramref name="label"/> - the block's
-        /// are "Nominee", which is how the suite counts who is on it.
+        /// are "Nominee", which is how the suite counts who is on it - and is added to
+        /// <paramref name="names"/> when the caller wants it, to size a set of plates together.
         /// </summary>
-        private RectTransform Slot(Person person, float x, float slotWidth, float slotHeight, Color tint, string label)
+        private RectTransform Slot(Person person, float x, float slotWidth, float slotHeight, Color tint, string label,
+            List<TMP_Text> names = null)
         {
             float scale = frame.Text;
             var slot = new GameObject("Nominee slot", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
-            slot.SetParent(stage, false);
+            slot.SetParent(faces, false);
             Place(slot, slotWidth, slotHeight, 0f, x);
             var frameImage = slot.GetComponent<Image>();
             frameImage.raycastTarget = false;
@@ -688,7 +1011,246 @@ namespace Gamesim.Presentation
             name.enableAutoSizing = true; name.fontSizeMax = name.fontSize; name.fontSizeMin = Mathf.Min(10f * scale, name.fontSize);
             name.rectTransform.anchorMin = Vector2.zero; name.rectTransform.anchorMax = Vector2.one;
             name.rectTransform.offsetMin = new Vector2(4f * scale, 0f); name.rectTransform.offsetMax = new Vector2(-4f * scale, 0f);
+            names?.Add(name);
             return slot;
+        }
+
+        // ------------------------------------------------------------ the screen's roster (decision 9)
+
+        /// <summary>One houseguest on the roster: the disc, its ring art, the chip and the badges the beats add.</summary>
+        private sealed class RosterEntry
+        {
+            public Person Person;
+            public bool HeadOfHousehold;
+            public float Face;
+            public RectTransform Rim, Chip, NomineeMark;
+            public Image RimDisc, RingArt, ChipArt;
+            public TMP_Text Name, ChipText;
+        }
+
+        /// <summary>
+        /// The roster across the band, either side of the stage's column: a disc, a name and an empty
+        /// chip for everyone in the house in the order given, the Head of Household first with the
+        /// crown and the HOH chip. Reading order is the mockup's - left to right, top to bottom - so
+        /// the Head of Household is the first face of the first row. The names are drawn at one size,
+        /// the largest at which every one of them fits its box (<see cref="OneSize"/>). The labels are
+        /// named "Roster name" and "Roster badge text", never "Nominee" (the block's count) nor
+        /// anything starting with "Key " (the key slots' count).
+        /// </summary>
+        private void BuildRoster()
+        {
+            roster.Clear();
+            int n = cast.Count;
+            if (n == 0) return;
+            var sizes = RosterSizes.For(n);
+            float footprint = ScreenRoster.Footprint(sizes.Face);
+            float rowH = footprint + ScreenRoster.Gap + sizes.NameH + ScreenRoster.Gap * .5f + sizes.ChipH;
+            float blockH = sizes.Rows * rowH + (sizes.Rows - 1) * ScreenRoster.RowGap;
+            float top = -(ScreenRoster.BandHeight - blockH) * .5f;
+            float nameW = sizes.Step - ScreenRoster.Inset;
+
+            rosterRow = new GameObject("Roster", typeof(RectTransform)).GetComponent<RectTransform>();
+            rosterRow.SetParent(column, false);
+            Place(rosterRow, frame.Width, ScreenRoster.BandHeight, ScreenRoster.BandTop);
+
+            int first = sizes.Rows == 1 ? n : (n + 1) / 2;
+            int index = 0;
+            for (int row = 0; row < sizes.Rows; row++)
+            {
+                int count = row == 0 ? first : n - first;
+                float rowTop = top - row * (rowH + ScreenRoster.RowGap);
+                // A row short of full keeps to the slots nearest the column, more on the left when
+                // the count is odd, so the Head of Household is still read first.
+                int left = Mathf.Min(sizes.Side, (count + 1) / 2), right = Mathf.Min(sizes.Side, count - left);
+                for (int i = 0; i < left + right; i++)
+                {
+                    bool onLeft = i < left;
+                    int slot = onLeft ? left - 1 - i : i - left;     // 0 is the slot nearest the column
+                    float x = (onLeft ? -1f : 1f) * (ScreenRoster.Column * .5f + sizes.Step * .5f + slot * sizes.Step);
+                    var person = cast[index];
+                    bool hoh = index == 0 && !string.IsNullOrEmpty(hohName);
+                    var entry = new RosterEntry { Person = person, HeadOfHousehold = hoh, Face = sizes.Face };
+                    var ringColour = hoh ? UiTheme.Gold : UiTheme.Brass;
+                    entry.Rim = Disc(rosterRow, "Roster face", person, ringColour, sizes.Face, ScreenRoster.Ring,
+                        RingArtFor(ringColour), new Vector2(x, rowTop - footprint * .5f));
+                    entry.RimDisc = entry.Rim.GetComponent<Image>();
+                    entry.RingArt = RingArtOf(entry.Rim);
+                    if (hoh)
+                    {
+                        var crown = HudPrimitives.AddRoleMark(entry.Rim, HudPrimitives.RoleMark.HeadOfHousehold, sizes.Face);
+                        SwapRoleGlyph(crown, CrownArt());
+                    }
+                    float nameTop = rowTop - footprint - ScreenRoster.Gap;
+                    entry.Name = NameUnder(rosterRow, "Roster name", person.Name, sizes.NamePt, nameW, sizes.NameH, nameTop, x, UiTheme.Weight.Medium);
+
+                    float chipTop = nameTop - sizes.NameH - ScreenRoster.Gap * .5f;
+                    entry.Chip = HudPrimitives.Fill("Roster badge", rosterRow, UiTheme.Muted, Mathf.RoundToInt(sizes.ChipH * .5f) - 1);
+                    Place(entry.Chip, nameW, sizes.ChipH, chipTop, x);
+                    entry.ChipArt = entry.Chip.GetComponent<Image>();
+                    entry.ChipArt.raycastTarget = false;
+                    UiTheme.PackSliced(entry.ChipArt, PackArt.Pack9NominationCeremonyStatusTagFill, sizes.ChipH * .5f - 2f, UiTheme.Muted);
+                    entry.ChipText = HudPrimitives.Label("Roster badge text", entry.Chip, sizes.ChipPt, UiTheme.Ink, TextAlignmentOptions.Center);
+                    var medium = UiTheme.Font(UiTheme.Weight.Medium);
+                    if (medium != null) entry.ChipText.font = medium;
+                    entry.ChipText.characterSpacing = 1f;
+                    // One word on one line, drawn smaller rather than cut: the HUD's labels truncate.
+                    entry.ChipText.textWrappingMode = TextWrappingModes.NoWrap;
+                    entry.ChipText.enableAutoSizing = true;
+                    entry.ChipText.fontSizeMax = sizes.ChipPt;
+                    entry.ChipText.fontSizeMin = ScreenRoster.ChipMinPt;
+                    entry.ChipText.text = string.Empty;
+                    entry.ChipText.rectTransform.anchorMin = Vector2.zero;
+                    entry.ChipText.rectTransform.anchorMax = Vector2.one;
+                    entry.ChipText.rectTransform.offsetMin = new Vector2(6f, 0f);
+                    entry.ChipText.rectTransform.offsetMax = new Vector2(-6f, 0f);
+                    entry.Chip.gameObject.SetActive(false);
+                    roster.Add(entry);
+                    index++;
+                }
+            }
+            var names = new List<TMP_Text>(roster.Count);
+            foreach (var entry in roster) names.Add(entry.Name);
+            OneSize(names);
+            DressRoster(0, false);
+        }
+
+        /// <summary>
+        /// What the roster says at this beat: HOH on the Head of Household from the start, SAFE on
+        /// each of the first <paramref name="keysOut"/> keys' holders as that key comes out, and
+        /// NOMINATED, with the target, on the block only once <paramref name="block"/> is up. Every
+        /// other chip stays empty, so the roster says nothing the keys have not.
+        /// </summary>
+        private void DressRoster(int keysOut, bool block)
+        {
+            foreach (var entry in roster)
+            {
+                string id = entry.Person.Id;
+                int key = id == null ? -1 : safe.FindIndex(p => p.Id == id);
+                bool onBlock = block && id != null && nominated.Exists(p => p.Id == id);
+                string word = entry.HeadOfHousehold ? "HOH" : key >= 0 && key < keysOut ? "SAFE" : onBlock ? "NOMINATED" : null;
+                var tint = entry.HeadOfHousehold ? UiTheme.Gold : word == "SAFE" ? UiTheme.Positive : onBlock ? UiTheme.Conflict : UiTheme.Brass;
+
+                entry.RimDisc.color = tint;
+                SetRingArt(entry.RingArt, RingArtFor(tint), tint);
+                if (word == null) entry.Chip.gameObject.SetActive(false);
+                else
+                {
+                    entry.Chip.gameObject.SetActive(true);
+                    entry.ChipArt.color = tint;
+                    entry.ChipText.text = word;
+                    entry.ChipText.color = UiTheme.OnColor(tint);
+                }
+                if (onBlock && entry.NomineeMark == null)
+                    entry.NomineeMark = HudPrimitives.AddRoleMark(entry.Rim, HudPrimitives.RoleMark.Nominee, entry.Face);
+            }
+        }
+
+        /// <summary>
+        /// A ring disc as the kit draws one, under <paramref name="parent"/> at <paramref name="at"/>
+        /// from its top-centre, named <paramref name="name"/>: the pack's ring - drawn larger than
+        /// the face by the hole's share, so the ring hugs the face and its glow stands outside -
+        /// where the pack is there, and the kit's plain ring where it is not.
+        /// </summary>
+        private static RectTransform Disc(Transform parent, string name, Person person, Color ring, float face, float ringWidth,
+            Sprite ringArt, Vector2 at)
+        {
+            var rim = HudPrimitives.Portrait(parent, person.Portrait, ring, face, ringArt != null ? 0f : ringWidth, false, person.Character);
+            rim.name = name;
+            rim.anchorMin = rim.anchorMax = new Vector2(.5f, 1f);
+            rim.pivot = new Vector2(.5f, .5f);
+            rim.anchoredPosition = at;
+            if (ringArt == null) return rim;
+            float size = ScreenRoster.Footprint(face);
+            var art = new GameObject("Ring art", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+            art.SetParent(rim, false);
+            art.SetAsFirstSibling();
+            art.anchorMin = art.anchorMax = new Vector2(.5f, .5f);
+            art.pivot = new Vector2(.5f, .5f);
+            art.anchoredPosition = Vector2.zero;
+            art.sizeDelta = new Vector2(size, size);
+            var image = art.GetComponent<Image>();
+            image.sprite = ringArt;
+            image.type = Image.Type.Simple;
+            image.preserveAspect = true;
+            image.color = ring;
+            image.raycastTarget = false;
+            return rim;
+        }
+
+        private static Image RingArtOf(RectTransform rim)
+        {
+            foreach (Transform child in rim) if (child.name == "Ring art") return child.GetComponent<Image>();
+            return null;
+        }
+
+        /// <summary>
+        /// The pack's ring for a tint: the glowing one on the block, the plain one for everybody
+        /// else. The pack's safe_ring is portrait_ring's picture and its nominee_ring is
+        /// portrait_ring_glow's, so the rings are told apart by tint, not by file.
+        /// </summary>
+        private static Sprite RingArtFor(Color tint) =>
+            tint == UiTheme.Conflict ? UiTheme.Pack(PackArt.Pack9NominationCeremonyNomineeRing) : UiTheme.Pack(PackArt.Pack9NominationCeremonySafeRing);
+
+        private static void SetRingArt(Image art, Sprite sprite, Color tint)
+        {
+            if (art == null) return;
+            if (sprite != null) art.sprite = sprite;
+            art.color = tint;
+        }
+
+        /// <summary>The pack's crown on the badge's glyph where the pack is there; the generated crown stays otherwise.</summary>
+        private static void SwapRoleGlyph(RectTransform badge, Sprite art)
+        {
+            if (badge == null || art == null) return;
+            foreach (Transform child in badge)
+            {
+                if (child.name != "Role glyph") continue;
+                var image = child.GetComponent<Image>();
+                if (image != null) image.sprite = art;
+            }
+        }
+
+        /// <summary>A name under a face, on one line: drawn smaller rather than wrapped when the box is narrower than it.</summary>
+        private static TMP_Text NameUnder(Transform parent, string name, string text, float size, float width, float height, float y, float x,
+            UiTheme.Weight weight)
+        {
+            var label = HudPrimitives.Label(name, parent, size, UiTheme.Paper, TextAlignmentOptions.Center);
+            var font = UiTheme.Font(weight);
+            if (font != null) label.font = font;
+            label.text = text ?? string.Empty;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.enableAutoSizing = true;
+            label.fontSizeMax = size;
+            label.fontSizeMin = Mathf.Min(ScreenRoster.NameMinPt, size);
+            Place(label.rectTransform, width, height, y, x);
+            return label;
+        }
+
+        /// <summary>
+        /// Draws a set of names at one size: the largest at which every one of them fits its box,
+        /// never above their type. Each label auto-sizes to its own box, which drew "Noah Kim" at
+        /// the full thirty points beside "Riley Johnson" at twenty on the same row - two weights of
+        /// name on one roster (the nomination-card-roster-8 capture). Each is fitted on its own
+        /// first and every box then takes the smallest of those fits as its ceiling, so a name only
+        /// ever shrinks, and the whole set shrinks together. A label not yet awake measures nothing
+        /// and keeps its type, which leaves the set auto-sized name by name.
+        /// </summary>
+        private static void OneSize(List<TMP_Text> names)
+        {
+            float size = float.MaxValue;
+            foreach (var name in names)
+            {
+                if (name == null) continue;
+                name.ForceMeshUpdate(true);
+                size = Mathf.Min(size, name.fontSize);
+            }
+            if (size == float.MaxValue) return;
+            foreach (var name in names)
+            {
+                if (name == null) continue;
+                name.fontSizeMax = size;
+                name.fontSize = size;
+            }
         }
 
         /// <summary>
@@ -697,9 +1259,17 @@ namespace Gamesim.Presentation
         /// it. Built as the column's first child so every piece of the ceremony draws over it, and
         /// stretched to the column so it grows with the large-text preference. Its name deliberately
         /// does not begin with "Key ": that prefix is how the suite counts the ceremony's key slots.
-        /// On the set's screen the glass is the screen's own ground, flush with the face.
+        ///
+        /// <para>On the set's screen the glass stands on a ground of its own, a plain fill in ink at
+        /// full alpha, as the column's very first child: through 85 % glass alone the screen's own
+        /// lit face showed as a warm blob in the band and lighter diagonals from the corners
+        /// (UI-UX-PASS-PLAN 1.2). The ground is the kit's own rounded fill and not the pack's
+        /// ceremony panel: that sprite is a flat white whose centre is 236 of 255, and through the
+        /// nineteen in 255 it let pass the bright board behind the card lifted the band's pixels
+        /// (0.13 where the ground is 0.04, the frames being blended in linear light). The HUD's
+        /// card keeps its glass over the room.</para>
         /// </summary>
-        private static RectTransform CardGlass(RectTransform column, float glassMargin, float neonMargin)
+        private static RectTransform CardGlass(RectTransform column, float glassMargin, float neonMargin, bool screen)
         {
             var glass = HudPrimitives.Fill("Card glass", column, UiTheme.GlassFill, UiTheme.GlassRadius);
             glass.SetAsFirstSibling();
@@ -708,6 +1278,17 @@ namespace Gamesim.Presentation
             glass.offsetMin = new Vector2(-glassMargin, -glassMargin);
             glass.offsetMax = new Vector2(glassMargin, glassMargin);
             UiTheme.Glass(glass, UiTheme.GlassRadius);
+            if (screen)
+            {
+                var ink = new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 1f);
+                var ground = HudPrimitives.Fill("Screen ground", column, ink, UiTheme.GlassRadius);
+                ground.SetAsFirstSibling();
+                ground.anchorMin = Vector2.zero;
+                ground.anchorMax = Vector2.one;
+                ground.offsetMin = new Vector2(-glassMargin, -glassMargin);
+                ground.offsetMax = new Vector2(glassMargin, glassMargin);
+                ground.GetComponent<Image>().raycastTarget = false;
+            }
             // The board's neon: the pack's danger frame, its baked glow outside the glass's edge.
             var neon = new GameObject("Screen frame", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
             neon.SetParent(column, false);

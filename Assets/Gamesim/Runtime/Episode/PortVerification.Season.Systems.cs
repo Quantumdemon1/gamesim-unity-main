@@ -101,6 +101,11 @@ namespace Gamesim.Episode
         {
             var item = HouseEvents.Pending(state);
             RequireSeason(item != null && item.choices.Count > 0, "A pending situation must offer at least one choice.");
+            // Free time's board shows the first beat waiting as a banner (EpisodeDirector.FreeTimeBoard.cs),
+            // and its Answer opens the beat as the step, where its options are. View state: the step's
+            // one commit is still the option below.
+            if (item.IsStory && HasSeasonButton(EpisodeDirector.AnswerBeatCaption))
+                yield return ClickSeasonButton(EpisodeDirector.AnswerBeatCaption);
             if (seasonReport.houseEventsResolved == 0) yield return CaptureSeason("house-event", graphical);
 
             // A story beat's first option may be locked, may name somebody or may be a rule break;

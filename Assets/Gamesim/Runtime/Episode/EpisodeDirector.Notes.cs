@@ -35,6 +35,8 @@ namespace Gamesim.Episode
                 ("Your reads", notesFilter == NotesFilter.YourReads, () => { notesFilter = NotesFilter.YourReads; Render(); }),
             };
             hud.FilterRow("Notes filters", tabs);
+            // A page of its own, not a filter: a door in the head to every commitment you are a party to (EpisodeDirector.YourWord.cs).
+            hud.PageDoor(YourWordCaption, () => ShowNotebookSection(NotebookSection.Word));
             // The mark exists in every state: it is what the rail scrolls to.
             hud.Mark(NotebookSection.Notes);
 

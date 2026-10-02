@@ -118,7 +118,9 @@ namespace Gamesim.Episode
                 Caption = OverviewStationCaption, Glyph = "camera",
                 Description = freeTime ? "You've done what you can. End free time and begin the competition." : "Continue the week where it is decided.",
                 Value = "Safe choice", ValueTint = UiTheme.Allied, Corner = freeTime ? "Ends free time" : "Next step", CornerTint = UiTheme.Muted,
-                Foot = freeTime && left > 0 ? left + (left == 1 ? " unused action" : " unused actions") + " will be lost." : null,
+                // What moving on loses, as free time's board says it: on move-in night what was
+                // bought carries into the week, so it is not counted lost.
+                Foot = freeTime ? UnusedActionsNote(state) : null,
                 Choose = () => { EndOverview(); GoToStation(); },
             });
             return tiles;

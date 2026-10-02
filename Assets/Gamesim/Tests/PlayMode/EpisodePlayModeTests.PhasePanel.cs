@@ -59,12 +59,13 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Free time on the episode screen: the panel grows with what it holds instead of leaving a
-        /// 174-unit strip to scroll, stays clear of the chrome around it, and pins the way on under
-        /// the scroll - "Begin the next competition" used to sit under the meter, the house-wide
-        /// actions and Listen in. The house is a grid of cards, each one press from walking over to
-        /// talk, and the moves that name nobody are tiles (playtest, 2026-09-28); the rules the panel
-        /// states (the budget, the odds of listening in) are all still said, on the tile they belong to.
+        /// Free time on the episode screen: a board on the strategy stage (ACTIONS-DEALS-ALLIANCES-PLAN
+        /// F1), from under the top bar to the frame's foot, clear of the chrome around it, with the way
+        /// on pinned in its footer beside "Stay in the house" - "Begin the next competition" used to
+        /// sit at the foot of a scroll. The house is a row of cards, each one press from walking over
+        /// to talk, and the moves that name nobody are tiles; the rules the panel states (the budget,
+        /// what costs an action, the odds of listening in, the price of more time) are all still said,
+        /// and none of it scrolls.
         /// </summary>
         [UnityTest]
         public IEnumerator PhasePanel_FreeTimePinsTheWayOnAndKeepsItsRules()
@@ -82,20 +83,16 @@ namespace Gamesim.Tests.PlayMode
             var hud = director.GetComponentInChildren<EpisodeHud>();
             Assume.That(hud.CurrentActivityLayout, Is.Not.EqualTo(EpisodeHud.ActivityLayout.HouseEvent),
                 "The fixture's free time has no house event pending.");
-            Assert.That(hud.CurrentActivityLayout, Is.EqualTo(EpisodeHud.ActivityLayout.Stage), "Free time takes the stage.");
+            Assert.That(hud.CurrentActivityLayout, Is.EqualTo(EpisodeHud.ActivityLayout.Strategy), "Free time takes the strategy stage.");
+            AssertOnTheStrategyStage("Begin the next competition", "Free time", EpisodeDirector.StayInTheHouseCaption);
 
             var panel = ActiveRect("Episode panel");
             var begin = ButtonWithCaption("Begin the next competition");
-            Assert.That(begin.transform.parent, Is.SameAs(panel), "The way on is pinned to the panel, not in its scroll.");
-            AssertInside(ScreenRect(panel), (RectTransform)begin.transform, "'Begin the next competition'");
             Assert.That(panel.rect.height, Is.GreaterThan(300f), "Free time holds more than the docked strip showed.");
-            AssertOnTheStage(panel);
             AssertClearOfTheChrome(panel);
-            AssertScrollClearOfPinned(panel, begin);
             // The rail stays up beside the stage, its groups under their names.
             var railLabels = director.GetComponentsInChildren<TMP_Text>().Where(text => text.name == "Rail label").Select(text => text.text).ToArray();
             Assert.That(railLabels, Does.Contain("PLAY").And.Contain("NOTEBOOK & SETTINGS"));
-            // The column's last control scrolls into view above the pinned row, not under it.
             var listen = ButtonWithCaption("Listen in on a conversation");
             var moves = ActiveRect(EpisodeHud.HouseMovesName);
             Assert.That(moves, Is.Not.Null, "The moves that name nobody are tiles,");
@@ -103,23 +100,26 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ButtonWithCaption(EpisodeHud.RallyHouseCaption).transform.IsChildOf(moves), Is.True, "and the house meeting.");
             // The house as cards: everybody still in it, each with a way to walk over and talk.
             var cards = ActiveRect(EpisodeHud.HouseCardsName);
-            Assert.That(cards, Is.Not.Null, "The house is a grid of cards.");
+            Assert.That(cards, Is.Not.Null, "The house is a row of cards.");
             var state = director.Snapshot;
             foreach (var actor in state.Active.Where(c => !c.isPlayer))
                 Assert.That(ButtonWithCaption(EpisodeHud.CastTalkCaption(actor.name.Split(' ')[0])).transform.IsChildOf(cards), Is.True, actor.name + " is a card with a way to talk to them.");
 
             string words = string.Join("\n", PanelWords(panel));
-            Assert.That(words, Does.Contain("seven times in ten"), "Listening in still says its odds.");
-            Assert.That(words, Does.Contain(EpisodeDirector.BudgetRule(state)), "and the week still says its budget.");
+            Assert.That(listen.GetComponentsInChildren<TMP_Text>().Select(text => text.text), Does.Contain("Works 7 in 10"), "Listening in still says its odds.");
+            Assert.That(words, Does.Contain(EpisodeDirector.BudgetRule(state)), "and the week still says its budget,");
+            Assert.That(words, Does.Contain(EpisodeDirector.FreeTimeCostLine(state)), "and what costs an action and what is free.");
             Assert.That(words, Does.Not.Contain("Out of interactions?"), "The paragraphs are gone;");
-            Assert.That(words, Does.Contain("goodwill"), "the price of more time is on its tile.");
+            Assert.That(words, Does.Contain("goodwill"), "the price of more time is beside the count.");
 
-            // The hint says "Scroll for more" exactly when there is more.
+            // Nothing scrolls, and the hint, stood down, still says so.
             var content = ActiveRect("Episode content");
             var viewport = (RectTransform)content.parent;
+            Assert.That(content.rect.height, Is.LessThanOrEqualTo(viewport.rect.height + .5f),
+                "Free time fits the stage without a scroll: " + content.rect.height.ToString("0") + " in " + viewport.rect.height.ToString("0") + ".");
             string hint = panel.Find(EpisodeHud.PanelHintName).GetComponent<TMP_Text>().text;
-            Assert.That(hint, Is.EqualTo(content.rect.height > viewport.rect.height + .5f
-                ? EpisodeHud.PanelHintScrollCopy : EpisodeHud.PanelHintCopy));
+            Assert.That(hint, Is.EqualTo(EpisodeHud.PanelHintCopy));
+            Assert.That(begin.transform.parent, Is.SameAs(panel), "The way on is pinned to the panel, not in its scroll.");
             if (Application.isBatchMode) yield return CaptureFraming("phase-free-time");
             director.ClosePanels();
             yield return null;

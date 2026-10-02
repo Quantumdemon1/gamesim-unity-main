@@ -237,6 +237,8 @@ namespace Gamesim.Episode
             if (npc == null || !CanTalk(npc)) return false;
             PauseNpcSocialForPanel();
             if (blockedRecovery) return false;
+            // A conversation opens with every person picker shut (EpisodeDirector.ConversationGroups.cs).
+            conversationPick = null;
             ClosePanels(); focusedNpc = npc; player.SetInputEnabled(false); cameraRig.SetConversationFocus(player.transform, npc.transform);
             // The houseguest has the floor, said here rather than inherited: the house's own chats
             // hand the floor back and forth every tick, and left it with whoever last had it - for
@@ -247,68 +249,88 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// A social action's category, drawn as a pill beside the control.
+        /// The pill drawn beside a control: in a conversation, what the move is for; on the house's
+        /// moves and the decision screens, the category they have always carried.
         ///
-        /// <para>The grouping is real rather than invented: these commands already divide by what
-        /// they commit. Talking and sharing information move a relationship and nothing else;
-        /// promises and alliances write a binding record that comes due later; studying the house
-        /// banks a competition bonus and touches no one. Unlike the confession "risk" badges, which
-        /// have no counterpart in this simulation at all, this is a name for structure that is
-        /// already there.</para>
+        /// <para>A conversation's verbs say what they are for (ACTIONS-DEALS-ALLIANCES-PLAN V5, V6):
+        /// warmth for the ones that only bring the two of you closer, learn for the ones that tell you
+        /// something, risk for the ones that can turn on you, binds you for the ones that come due
+        /// later, and free beside any that spends no action. Each is what the engine does, not what
+        /// the verb sounds like: venting was filed as social for its whole life while a listener who
+        /// does not already dislike its subject takes ten off you half the time, and the pill is the
+        /// only warning a player gets before an action is spent on it.</para>
+        ///
+        /// <para>The house's moves, the plea and the deal table keep the words their tiles and rows
+        /// have always shown: their screens read these, and those screens are not the conversation.</para>
         /// </summary>
         private static string Category(EpisodeCommandKind kind)
         {
             switch (kind)
             {
-                case EpisodeCommandKind.Talk:
-                case EpisodeCommandKind.ShareInformation:
-                case EpisodeCommandKind.AskForIntel:
-                case EpisodeCommandKind.AskVote:
-                case EpisodeCommandKind.VentAbout:
+                // Closer, and nothing that can rebound: the safe topics, an afternoon together, a
+                // thing you know handed over, and the room acts (D-E). The suite's invitation is
+                // warmth too: those left out think a little less of you, but that is its known
+                // price, not a roll that can land against you.
                 case EpisodeCommandKind.SmallTalk:
                 case EpisodeCommandKind.PersonalChat:
                 case EpisodeCommandKind.RelationshipBuilding:
-                // The room acts (D-E): time spent, nothing that can rebound.
+                case EpisodeCommandKind.StrategicDiscussion:
+                case EpisodeCommandKind.Talk:
+                case EpisodeCommandKind.ShareInformation:
                 case EpisodeCommandKind.PillowTalk:
                 case EpisodeCommandKind.Cook:
                 case EpisodeCommandKind.InviteUp:
                 case EpisodeCommandKind.PublicDefense:
                 case EpisodeCommandKind.AllianceMeet:
                 case EpisodeCommandKind.PlayAGame:
-                    return "social";
-                // Their own category for the same reason Eavesdrop and SpreadLie have one: these
-                // are the conversations that can rebound, and the chip is the only warning before
-                // an action is spent on one.
+                    return WarmthTag;
+                case EpisodeCommandKind.AskForIntel:
+                    return LearnTag;
+                // The question and the look are free, once a week each, and neither is safe: a read
+                // they notice costs three with them, and a voter caught lying about their vote at the
+                // reveal sours things between you both ways.
+                case EpisodeCommandKind.AskVote:
+                case EpisodeCommandKind.ReadPerson:
+                    return LearnTag + " · " + RiskTag + " · " + FreeTag;
+                // A roll that can land against you: talking game (-5), a secret (-15), venting to
+                // someone who does not share it (-10), a lie found out, a rumour traced back.
                 case EpisodeCommandKind.DiscussGame:
                 case EpisodeCommandKind.ShareSecret:
-                case EpisodeCommandKind.SpreadRumor:
-                case EpisodeCommandKind.HouseMeeting:
-                    return "risky";
-                case EpisodeCommandKind.StrategicDiscussion:
-                case EpisodeCommandKind.ReadPerson:
-                case EpisodeCommandKind.CallTheVote:
-                case EpisodeCommandKind.BuyActionPoint:
-                    return "strategic";
-                // Their own category on purpose. These are the actions that can rebound on you, and
-                // the chip is the only warning before you spend an action on one.
-                case EpisodeCommandKind.Eavesdrop:
+                case EpisodeCommandKind.VentAbout:
                 case EpisodeCommandKind.SpreadLie:
+                case EpisodeCommandKind.SpreadRumor:
+                    return RiskTag;
+                // Their relationships take the damage and nothing comes back to you.
                 case EpisodeCommandKind.SchemeAgainst:
+                    return "undermines them";
+                // Not a roll: leaving costs fifteen with them, every time.
+                case EpisodeCommandKind.LeaveAlliance:
+                    return "costs warmth";
+                case EpisodeCommandKind.PromiseSafety:
+                case EpisodeCommandKind.PromiseVote:
+                case EpisodeCommandKind.PromiseFinalTwo:
+                case EpisodeCommandKind.FormAlliance:
+                    return BindsYouTag;
+                case EpisodeCommandKind.SwearLoyalty:
+                    return BindsYouTag + " · " + FreeTag;
+                case EpisodeCommandKind.DeclineLoyalty:
+                    return FreeTag;
+                // The members who follow vote where you point them, and the ones who do not are named.
+                case EpisodeCommandKind.CallTheVote:
+                    return "steers the vote";
+                case EpisodeCommandKind.CompPractice:
+                    return "practice";
+                // The house's moves, the plea, the deal table and the decision screens.
+                case EpisodeCommandKind.HouseMeeting:
+                case EpisodeCommandKind.Eavesdrop:
                     return "risky";
+                case EpisodeCommandKind.BuyActionPoint:
                 case EpisodeCommandKind.SetBackdoorPlan:
                 case EpisodeCommandKind.ProposeDeal:
                 case EpisodeCommandKind.RespondToDeal:
                 case EpisodeCommandKind.Lobby:
                     return "strategic";
-                case EpisodeCommandKind.PromiseSafety:
-                case EpisodeCommandKind.PromiseVote:
-                case EpisodeCommandKind.PromiseFinalTwo:
-                case EpisodeCommandKind.FormAlliance:
-                case EpisodeCommandKind.LeaveAlliance:
-                case EpisodeCommandKind.SwearLoyalty:
-                    return "strategic";
                 case EpisodeCommandKind.StudyHouse:
-                case EpisodeCommandKind.CompPractice:
                     return "preparation";
                 default:
                     return null;
@@ -440,6 +462,9 @@ namespace Gamesim.Episode
         /// find it, and a number that moves every time the relationship does would make the control
         /// unfindable. Showing it at all is the reference's choice — it puts the odds on the screen
         /// rather than making the player guess.</para>
+        ///
+        /// <para>The odds are the player's read of the houseguest (<see cref="KnownOdds"/>), never
+        /// the roll's own number, and the table says so above its first row.</para>
         /// </summary>
         private void DealPanel(EpisodeState state, ContestantState npc)
         {
@@ -449,16 +474,27 @@ namespace Gamesim.Episode
                 string id = offer.id;
                 hud.Heading("AN OFFER FROM " + npc.name.ToUpperInvariant());
                 hud.Paragraph(DealSentence(state, offer));
-                hud.Tag(hud.ActionFor(id, EpisodeHud.DealAcceptCaption,
-                        () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: EpisodeEngine.AcceptDeal)),
-                    Category(EpisodeCommandKind.RespondToDeal));
+                // A locked yes is not a strategic move the player can make, so it carries no category.
+                var accept = OfferAccept(state, offer);
+                if (accept.interactable) hud.Tag(accept, Category(EpisodeCommandKind.RespondToDeal));
                 hud.ActionFor(id, EpisodeHud.DealDeclineCaption,
                     () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: "decline"));
             }
 
             var offers = PlayerDeals.Available(state, npc.id);
-            if (offers.Count == 0) return;
+            if (offers.Count == 0)
+            {
+                // Past the season's deal ceiling every row below went without a word (X10). How the
+                // ceiling counts is wave B's to change; the table says why it is empty.
+                if (PastTheDealCeiling(state))
+                {
+                    hud.Heading("WHAT YOU COULD PUT TO " + npc.name.ToUpperInvariant());
+                    hud.Paragraph(DealCeilingLine);
+                }
+                return;
+            }
             hud.Heading("WHAT YOU COULD PUT TO " + npc.name.ToUpperInvariant());
+            OddsAreYourRead(state, npc);
             foreach (string type in offers)
             {
                 string kind = type;
@@ -535,16 +571,45 @@ namespace Gamesim.Episode
         /// stops. And it stays out of the caption, because the caption is how a test and a screen
         /// reader find the button, and a number that moves with the relationship would make it
         /// unfindable.</para>
+        ///
+        /// <para>The player's read, not the roll's number (ACTIONS-DEALS-ALLIANCES-PLAN V6). The roll
+        /// reads how the houseguest privately sees the player, the person a deal is about and the
+        /// pacts they are secretly in; shown per row, it let a player compare "against A, B, C" and
+        /// read off whom they like and who they are secretly with. The roll is unchanged, so the
+        /// answer can differ from the word.</para>
         /// </summary>
-        private static string Chance(EpisodeState state, string npcId, string type, string about)
+        private static string Chance(EpisodeState state, string npcId, string type, string about) =>
+            KnownOdds.Deal(state, npcId, type, about).word;
+
+        /// <summary>The line above a table of chances: whose read they are, and that they are not a promise.</summary>
+        public static string OddsReadLine(string first) => "Each chance is your own read of " + first + ", not a promise.";
+
+        /// <summary>What follows it when the read has nothing behind it, beside the unknowns chip.</summary>
+        public const string LittleToGoOnLine = "You have little to go on: no read on them, nothing said about the vote, little history.";
+
+        /// <summary>
+        /// Above the odds, what they are: the player's own read of the houseguest, not a promise -
+        /// and, when the player has no read of them, no claim from them and little history with
+        /// them, a chip and a line that say how little the read has to go on. Once a render: a
+        /// conversation that draws the plea's chances and the deal table's explains them above the
+        /// first, and the second says nothing more (<see cref="EpisodeHud.ExplainOdds"/>).
+        /// </summary>
+        private void OddsAreYourRead(EpisodeState state, ContestantState npc)
         {
-            double chance = PlayerDeals.AcceptanceChance(state, npcId, type, about);
-            if (chance >= 75) return "likely";
-            if (chance >= 55) return "favourable";
-            if (chance >= 45) return "about even";
-            if (chance >= 25) return "a stretch";
-            return "unlikely";
+            bool little = KnownOdds.Unknowns(state, npc.id) == KnownOdds.Many;
+            hud.ExplainOdds(OddsReadLine(FinalistRead.FirstName(npc.name)) + (little ? " " + LittleToGoOnLine : ""), little);
         }
+
+        /// <summary>
+        /// Why the deal table is empty: the season has reached <see cref="PlayerDeals.PlayerDealCeiling"/>.
+        /// It counts every deal the season has written, as the refusal does, so nothing new can be
+        /// put to anybody (X10; the count itself is wave B's).
+        /// </summary>
+        public const string DealCeilingLine = "No new deal can be put to anybody: the season has reached its limit of deals.";
+
+        /// <summary>Whether the deal table is empty because the season has reached its deal ceiling: the refusal <see cref="PlayerDeals.CanPropose"/> makes before any other.</summary>
+        public static bool PastTheDealCeiling(EpisodeState state) =>
+            state != null && state.week >= state.dealRulesStartWeek && state.deals.Count >= PlayerDeals.PlayerDealCeiling;
 
         /// <summary>What the houseguest is actually asking for, in words.</summary>
         private static string DealSentence(EpisodeState state, DealState offer)

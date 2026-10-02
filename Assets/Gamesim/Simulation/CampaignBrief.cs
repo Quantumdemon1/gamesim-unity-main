@@ -154,7 +154,8 @@ namespace Gamesim.Simulation
                 foreach (var note in HouseguestNotes.For(s, who.id))
                 {
                     if (Array.IndexOf(IntelNotes, note.kind) < 0) continue;
-                    found.Add((new Intel { week = note.week, text = note.text }, 1, index++));
+                    // A card's row is one short line: a note that says more on its page says less here.
+                    found.Add((new Intel { week = note.week, text = note.compact ?? note.text }, 1, index++));
                 }
             return found.OrderByDescending(x => x.line.week).ThenBy(x => x.rank).ThenBy(x => x.order)
                 .Select(x => x.line).Take(count).ToList();

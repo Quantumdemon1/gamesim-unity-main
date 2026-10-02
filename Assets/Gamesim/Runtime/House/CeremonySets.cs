@@ -244,28 +244,82 @@ namespace Gamesim.House
             var toHead = new Vector3(Mathf.Cos(headAngle * Mathf.Deg2Rad), 0f, Mathf.Sin(headAngle * Mathf.Deg2Rad));
             var aside = Vector3.Cross(Vector3.up, toHead).normalized;
             var approaches = CeremonySeating.Anchors(scene, CeremonySeating.NominationSeat).Select(a => a.Approach).ToList();
-            // The Head of Household's mark, a shade off the line so the holder's fits beside it.
+            bool Clear(Vector3 at) => approaches.All(approach => Flat(approach, at) >= HeadMarkClearance);
+            // The Head of Household's mark: beside the screen, as the living room's is, where no
+            // body stands in the screen shot. On the head's line it stood a step out from the ring,
+            // which put the holder 0.8 m in front of the screen shot's lens and their head over
+            // forty percent of the card (UI-UX-PASS-PLAN 1.2). Without a screen to stand beside, a
+            // shade off the line, as before, so the holder's mark fits beside it.
             var head = centre + toHead * (radius + 0.6f) + aside * 0.2f;
+            if (screen != null)
+            {
+                var beside = HeadMarkBesideTheScreen(scene, screen, centre, toHead, aside, head, Clear);
+                if (beside.HasValue) head = beside.Value;
+            }
             HouseInteractionAnchor.Create(root, CeremonySeating.NominationHead, NominationRoom, 0, head, YawToward(head, centre), false);
             // The veto holder's: the dressed place a step aside, or the nearest of a few places
             // further in and further out that clear every approach and the head's own mark.
             float[] sides = { -0.9f, -0.7f, -0.5f, -0.35f };
             float[] steps = { 0.6f, 0.85f, 1.1f };
             Vector3 holder = centre + toHead * (radius + 0.6f) + aside * -0.9f;
-            bool Clear(Vector3 at) => Flat(at, head) >= HeadMarkClearance && approaches.All(approach => Flat(approach, at) >= HeadMarkClearance);
-            if (!Clear(holder))
+            bool ClearOfTheHead(Vector3 at) => Flat(at, head) >= HeadMarkClearance && Clear(at);
+            if (!ClearOfTheHead(holder))
                 foreach (float step in steps)
                 {
                     bool found = false;
                     foreach (float side in sides)
                     {
                         var at = centre + toHead * (radius + step) + aside * side;
-                        if (!Clear(at)) continue;
+                        if (!ClearOfTheHead(at)) continue;
                         holder = at; found = true; break;
                     }
                     if (found) break;
                 }
             HouseInteractionAnchor.Create(root, CeremonySeating.NominationHead, NominationRoom, 1, holder, YawToward(holder, centre), false);
+        }
+
+        /// <summary>How far in front of the screen's face the Head of Household stands: past the set's stage lip (0.3 m) and a body's radius.</summary>
+        public const float HeadMarkFromScreen = 0.7f;
+        /// <summary>How far past the face's half-width they stand: a body's half-width and a hand, so no part of them is in the shot.</summary>
+        public const float HeadMarkBesideScreen = 0.4f;
+
+        /// <summary>
+        /// The Head of Household's place beside the screen: a step in front of the face and a half-width
+        /// of it plus clearance to the side of its axis - the side away from the veto holder's mark -
+        /// so the screen shot (<see cref="ScreenSurface.Shot"/>, 2.2 m back from a 1.5 m face at 40
+        /// degrees) has no body in it. Stepped further aside, then further out, while it is within a
+        /// chair's approach's clearance, inside furniture, or off the floor the house walks - judged
+        /// only where the head's line itself is on a NavMesh, since a preview scene has none - and
+        /// snapped onto the mesh where there is one, so an arrival at the mark is an arrival on the
+        /// floor. Null when no such place clears, and the mark stays on the head's line.
+        /// </summary>
+        private static Vector3? HeadMarkBesideTheScreen(Scene scene, ScreenSurface screen, Vector3 centre, Vector3 toHead, Vector3 aside,
+            Vector3 headLine, System.Func<Vector3, bool> clear)
+        {
+            var face = screen.Centre; face.y = centre.y;
+            var inward = -toHead;
+            bool walkableHere = TryWalkable(headLine, out _);
+            float[] besides = { 0f, 0.2f, 0.4f, 0.6f };
+            float[] fronts = { 0f, 0.2f, 0.4f };
+            foreach (float front in fronts)
+                foreach (float beside in besides)
+                {
+                    var at = face + inward * (HeadMarkFromScreen + front) + aside * (screen.Width * 0.5f + HeadMarkBesideScreen + beside);
+                    if (!clear(at) || InsideFurniture(scene, at)) continue;
+                    if (!walkableHere) return at;
+                    if (TryWalkable(at, out var onTheFloor) && clear(onTheFloor) && !InsideFurniture(scene, onTheFloor)) return onTheFloor;
+                }
+            return null;
+        }
+
+        /// <summary>Whether a body can stand here on the floor the house walks: a NavMesh point within a stride, which is the place to stand.</summary>
+        private static bool TryWalkable(Vector3 at, out Vector3 onTheFloor)
+        {
+            onTheFloor = at;
+            if (!NavMesh.SamplePosition(at, out var hit, 0.5f, NavMesh.AllAreas)) return false;
+            if (Flat(hit.position, at) >= 0.3f || Mathf.Abs(hit.position.y - at.y) >= 0.5f) return false;
+            onTheFloor = hit.position;
+            return true;
         }
 
         // ------------------------------------------------------------ the living room

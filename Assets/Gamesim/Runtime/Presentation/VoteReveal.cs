@@ -632,6 +632,8 @@ namespace Gamesim.Presentation
                 CountY, CountH, CountPt, CaptionY, CaptionH, CaptionPt, VersusSize, VersusY, VersusPt, DotsY, DotsH, Pip, Step,
                 TieMarkY, TieMarkW, TieMarkH, TieMarkDx, TiePt, ProgressY, ProgressH, ProgressPt, HostY, HostH, HostPt,
                 BannerY, BannerW, BannerH, BannerPt, ControlsY, ControlsH, ControlsPt, GlassX, GlassY, Ring;
+            /// <summary>The host's line's box, and the smallest type it may shrink to on one line: the card's width and two thirds of its type unless the frame says otherwise.</summary>
+            public readonly float HostW, HostMinPt;
 
             private Frame(bool screen, float width, float height, float portrait, float slot, float eyebrowY, float eyebrowH,
                 float eyebrowPt, float titleY, float titleH, float titlePt, float rimY, float nameY, float nameH, float namePt,
@@ -639,10 +641,13 @@ namespace Gamesim.Presentation
                 float versusY, float versusPt, float dotsY, float dotsH, float pip, float step, float tieMarkY, float tieMarkW,
                 float tieMarkH, float tieMarkDx, float tiePt, float progressY, float progressH, float progressPt, float hostY,
                 float hostH, float hostPt, float bannerY, float bannerW, float bannerH, float bannerPt, float controlsY,
-                float controlsH, float controlsPt, float glassX, float glassY, float ring, float columnX = float.NaN)
+                float controlsH, float controlsPt, float glassX, float glassY, float ring, float columnX = float.NaN,
+                float hostW = float.NaN, float hostMinPt = float.NaN)
             {
                 Screen = screen; Width = width; Height = height; Portrait = portrait; Slot = slot;
                 ColumnX = float.IsNaN(columnX) ? slot * 0.5f : columnX;
+                HostW = float.IsNaN(hostW) ? width : hostW;
+                HostMinPt = float.IsNaN(hostMinPt) ? hostPt * 0.66f : hostMinPt;
                 EyebrowY = eyebrowY; EyebrowH = eyebrowH; EyebrowPt = eyebrowPt; TitleY = titleY; TitleH = titleH; TitlePt = titlePt;
                 RimY = rimY; NameY = nameY; NameH = nameH; NamePt = namePt; CountY = countY; CountH = countH; CountPt = countPt;
                 CaptionY = captionY; CaptionH = captionH; CaptionPt = captionPt; VersusSize = versusSize; VersusY = versusY; VersusPt = versusPt;
@@ -652,14 +657,19 @@ namespace Gamesim.Presentation
                 ControlsY = controlsY; ControlsH = controlsH; ControlsPt = controlsPt; GlassX = glassX; GlassY = glassY; Ring = ring;
             }
 
-            /// <summary>The HUD's card: 880 wide, the two faces 104 across at the standard text size.</summary>
+            /// <summary>
+            /// The HUD's card: 880 wide, the two faces 104 across at the standard text size. The
+            /// title's, the names' and the figures' boxes are 1.3 of their type and a little over
+            /// (63 for 48, 25 for 19, 76 for 58): they were 1.24 to 1.26, which Inter's 1.21 line
+            /// drew only because caps and digits have no descenders (UI-UX-PASS-PLAN N0).
+            /// </summary>
             public static Frame Hud(float s)
             {
                 const float portrait = 104f;
                 float top = 100f + portrait;
                 return new Frame(false, 880f * s, (top + 296f) * s, portrait * s, 300f * s,
-                    0f, 22f * s, 15f * s, -26f * s, 60f * s, 48f * s, -100f * s,
-                    -(top + 14f) * s, 24f * s, 19f * s, -(top + 36f) * s, 72f * s, 58f * s, -(top + 104f) * s, 18f * s, 12f * s,
+                    0f, 22f * s, 15f * s, -26f * s, 63f * s, 48f * s, -100f * s,
+                    -(top + 14f) * s, 25f * s, 19f * s, -(top + 36f) * s, 76f * s, 58f * s, -(top + 104f) * s, 18f * s, 12f * s,
                     62f * s, -(100f + portrait * 0.4f) * s, 22f * s, -(top + 130f) * s, 20f * s, 11f * s, 20f * s,
                     -(top + 60f) * s, 56f * s, 24f * s, 70f * s, 12f * s, -(top + 156f) * s, 22f * s, 16f * s,
                     -(top + 184f) * s, 26f * s, 18f * s, -(top + 218f) * s, 560f * s, 44f * s, 22f * s,
@@ -670,15 +680,26 @@ namespace Gamesim.Presentation
             /// The living room's screen: its whole face, the two faces 160 across at the sides with
             /// their counts 84 high under them, the roster between them (<see cref="ScreenBoard"/>),
             /// and a small VS disc over the roster. The HOH chip goes under the figure it marks,
-            /// since beside it would run off the face. The foot is as it was.
+            /// since beside it would run off the face. The foot has the HUD's margin (UI-UX-PASS-PLAN
+            /// N0): the controls line at the key ceremony's 26 points in a 36 box, −740 to −776, where
+            /// it was 13 points in an 18 box ending on the edge; above it the banner at 34 points in
+            /// 46 (−692 to −738), the host's line (−650 to −690), the progress line (−612 to −648) and
+            /// the pips' row at its own height (−582 to −610), two units under the roster's seventh
+            /// row at a full house. The eyebrow (21 points in 28) starts 3 % of the face's height
+            /// inside its top and ends where the title (63 points in 82) starts, and the title ends
+            /// where THE VOTE starts: no two rows' boxes cross. The host's line is boxed
+            /// <see cref="ScreenBoard.HostInset"/> inside the face a side and shrinks on its one line
+            /// to twenty points at the least, so its longest wording - the tie-break's, which at thirty
+            /// points spans the whole face - ends inside the face's 3 % margin.
             /// </summary>
             public static Frame OnScreen() => new Frame(true, ScreenSurface.ReferenceWidth, ScreenSurface.ReferenceHeight, 160f, 220f,
-                -16f, 36f, 26f, -52f, 84f, 64f, -176f,
+                -24f, 28f, 21f, -52f, 82f, 63f, -176f,
                 -354f, 40f, 28f, -394f, 110f, 84f, float.NaN, 0f, 0f,
-                56f, -174f, 22f, -590f, 40f, 24f, 40f,
-                -508f, 96f, 40f, 0f, 26f, -636f, 36f, 26f,
-                -676f, 40f, 30f, -724f, 720f, 56f, 40f,
-                -782f, 18f, 13f, 0f, 0f, 6f, 470f);
+                56f, -174f, 22f, -582f, 28f, 24f, 40f,
+                -508f, 96f, 40f, 0f, 26f, -612f, 36f, 26f,
+                -650f, 40f, 30f, -692f, 720f, 46f, 34f,
+                -740f, 36f, 26f, 0f, 0f, 6f, 470f,
+                ScreenSurface.ReferenceWidth - 2f * ScreenBoard.HostInset, ScreenBoard.HostMinPt);
         }
 
         /// <summary>
@@ -695,6 +716,15 @@ namespace Gamesim.Presentation
 
             /// <summary>The band the board stands in, and the result block after it.</summary>
             public const float BandTop = -176f, BandBottom = -584f;
+
+            /// <summary>
+            /// How far inside the face's edge the host's line is boxed, a side, and the smallest type
+            /// it shrinks to on its one line. The face's margin is 3 % of its height (24): boxed at
+            /// the full width the tie-break's wording ended on the edge, and at 28 a side the box is
+            /// 1144, which the longest line fits at about 28 points; twenty points carries about a
+            /// hundred and fifteen characters.
+            /// </summary>
+            public const float HostInset = 28f, HostMinPt = 20f;
 
             /// <summary>The roster: its top, its rows, and one column or two.</summary>
             public const float RosterY = -242f, Row = 44f, Gap = 5f, OneWide = 520f, TwoWide = 322f, Between = 16f;
@@ -923,9 +953,10 @@ namespace Gamesim.Presentation
             var medium = UiTheme.Font(UiTheme.Weight.Medium);
             if (medium != null) host.font = medium;
             // One line, drawn smaller rather than cut: a long name would wrap the verdict onto a second
-            // line the box truncates, and "...Jordan Taylor, you" is not a result.
-            host.enableAutoSizing = true; host.fontSizeMax = host.fontSize; host.fontSizeMin = f.HostPt * 0.66f;
-            Place(host.rectTransform, width, f.HostH, f.HostY);
+            // line the box truncates, and "...Jordan Taylor, you" is not a result. The box is the
+            // frame's - inside the screen face's margin, where the full width ended on the edge.
+            host.enableAutoSizing = true; host.fontSizeMax = host.fontSize; host.fontSizeMin = f.HostMinPt;
+            Place(host.rectTransform, f.HostW, f.HostH, f.HostY);
 
             banner = HudPrimitives.Fill("Result banner", column, UiTheme.Danger, UiTheme.ControlRadius);
             Place(banner, f.BannerW, f.BannerH, f.BannerY);

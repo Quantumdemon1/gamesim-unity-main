@@ -264,9 +264,14 @@ namespace Gamesim.Simulation
                         ? TargetFor(state, offer.npc.id, state.playerId, offer.kind) : null,
                     status = DealStatus.Proposed,
                     week = state.week,
-                    // The OFFER lapses at the end of the week it was made, even where the deal it
-                    // would become is open-ended. An unanswered question left standing all season is
-                    // a list that only grows; accepting recomputes the term from the deal's own rule.
+                    // The OFFER is this week's, even where the deal it would become is open-ended.
+                    // Expire writes it off at the first Settle of a later week, and the first of
+                    // those runs as next week's campaign opens: an unanswered offer outlives the
+                    // week's turn and next week's nominations and veto, and goes as that campaign
+                    // opens. One filed in the final four's week - at its campaign, or as the Final
+                    // 3's window opens - is never written off: no Settle runs in a later week. An
+                    // unanswered question left standing all season is a list that only grows;
+                    // accepting recomputes the term from the deal's own rule.
                     expiresWeek = state.week,
                     trustImpact = DealKind.DefaultTrust(offer.kind),
                 });

@@ -47,6 +47,11 @@ namespace Gamesim.Presentation
     /// player's alliance on the partner's private score, without a word - is gone: the player's
     /// alliance now sours only on the player's own reading, and its ending is told.)</para>
     ///
+    /// <para>A disc on the face says something of that houseguest's waits on the player: an offer,
+    /// a question about the veto, or a visit waiting on an answer (ACTIONS-DEALS-ALLIANCES-PLAN V2),
+    /// read from what is pending with <see cref="WaitingOnYou"/>, which lists only what was put to
+    /// the player. It is decoration named by its words, which the objective's line says in full.</para>
+    ///
     /// <para>Rebuilt from committed state on each HUD render and never animated per frame: the rail
     /// shows what the simulation holds and holds no opinion of its own.</para>
     /// </summary>
@@ -71,6 +76,14 @@ namespace Gamesim.Presentation
         public const string BadgeName = "Badge";
         public const string StandingTagName = "Standing tag";
         public const string StandingWordName = "Standing word";
+
+        /// <summary>
+        /// The badge a chip wears while something of that houseguest's waits on the player, named
+        /// by the words it stands for (ACTIONS-DEALS-ALLIANCES-PLAN V2): an offer or a question about
+        /// the veto, or a visit waiting on an answer. Never "Badge": the role pill keeps that name.
+        /// </summary>
+        public const string OfferWaitingName = "Offer waiting", AnswerWaitingName = "Waiting on your answer";
+        public const string WaitingGlyphName = "Waiting glyph";
 
         // The pills at the ring's foot. The role badge always had these numbers inline.
         private const float BadgeWidth = 46f;
@@ -254,10 +267,13 @@ namespace Gamesim.Presentation
             float width = (wide ? WideRailWidth(order.Count, finalists) : RailWidth(order.Count)) * scale;
             root.sizeDelta = new Vector2(width, EntryHeight * scale);
 
+            // What waits on the player, from whom: read once a render, from pending state alone. Not
+            // while a competition is played, when the strip is its entrants' and nobody can answer.
+            var waiting = CompetitionField == null ? WaitingOnYou.Read(state) : null;
             for (int index = 0; index < order.Count; index++)
             {
-                if (wide) WideEntry(root, state, order[index], index, scale, font, portrait, onSelect, followedId, finalists);
-                else Entry(root, state, order[index], index, scale, font, portrait, onSelect, followedId);
+                if (wide) WideEntry(root, state, order[index], index, scale, font, portrait, onSelect, followedId, finalists, waiting);
+                else Entry(root, state, order[index], index, scale, font, portrait, onSelect, followedId, waiting);
             }
 
             // The mockups end the strip on a line of the show's own voice, where there is room for
@@ -553,7 +569,7 @@ namespace Gamesim.Presentation
         private static RectTransform Entry(
             RectTransform root, EpisodeState state, ContestantState actor, int index, float scale,
             TMP_FontAsset font, System.Func<string, Texture> portrait, System.Action<string> onSelect,
-            string followedId = null)
+            string followedId = null, WaitingOnYou.Reading waiting = null)
         {
             var standing = Read(state, actor);
             bool isPlayer = actor.isPlayer || actor.id == state.playerId;
@@ -719,6 +735,17 @@ namespace Gamesim.Presentation
             }
             StatusRow(entry, badgeChip, badge, tag, word, scale);
 
+            // Something of theirs waiting on the player: a disc on the ring's right, opposite the
+            // mood's target on its left, under the role's shoulder and above the pills at its foot.
+            var waits = WaitingBadge(entry, waiting, actor.id, Mathf.Max(12f, ring * .33f));
+            if (waits != null)
+            {
+                float side = waits.sizeDelta.x;
+                waits.anchorMin = waits.anchorMax = new Vector2(.5f, 1f);
+                waits.pivot = new Vector2(.5f, .5f);
+                waits.anchoredPosition = new Vector2(ring * .5f - side * .28f, -(top + ring * .5f) - side * .2f);
+            }
+
             // A portrait is a button: click it and the camera follows that houseguest. The button
             // carries the name chip as its caption, so the keyboard and a screen reader find it the
             // way they find every other control. The hit graphic is the last child rather than the
@@ -758,7 +785,7 @@ namespace Gamesim.Presentation
         private static RectTransform WideEntry(
             RectTransform root, EpisodeState state, ContestantState actor, int index, float scale,
             TMP_FontAsset font, System.Func<string, Texture> portrait, System.Action<string> onSelect,
-            string followedId, bool finalist = false)
+            string followedId, bool finalist = false, WaitingOnYou.Reading waiting = null)
         {
             var standing = Read(state, actor);
             bool isPlayer = actor.isPlayer || actor.id == state.playerId;
@@ -909,6 +936,15 @@ namespace Gamesim.Presentation
                 TraitColumn(entry, actor, traitsX, FinalistEntryWidth - traitsX - 8f, scale, font, standing.Dim);
             }
 
+            // Something of theirs waiting on the player: a disc in the photo's top corner, the end
+            // of the face the role pill at its foot and the words column beside it leave alone.
+            var waits = WaitingBadge(entry, waiting, actor.id, 18f * scale);
+            if (waits != null)
+            {
+                float side = waits.sizeDelta.x;
+                Place(waits, (5f + photoWidth - 3f) * scale - side, photoTop + 3f * scale, side, side);
+            }
+
             if (onSelect == null) return entry;
             string id = actor.id;
             var hit = HudPrimitives.Fill("Press", entry, new Color(1f, 1f, 1f, 0f), ChipRadius);
@@ -1012,6 +1048,53 @@ namespace Gamesim.Presentation
             raw.rectTransform.offsetMin = new Vector2(1.5f, 1.5f); raw.rectTransform.offsetMax = new Vector2(-1.5f, -1.5f);
             raw.texture = face;
             raw.raycastTarget = false;
+        }
+
+        /// <summary>
+        /// The disc a chip wears while something of that houseguest's waits on the player
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN V2): a handshake for an offer or a question about the veto,
+        /// a speech bubble for a visit waiting on an answer, on the strategy colour inside an ink
+        /// ring that keeps it legible on any face. Named by its words - <see cref="OfferWaitingName"/>,
+        /// <see cref="AnswerWaitingName"/> - which the objective's line says in full; the disc
+        /// decorates them, as the role mark decorates the role pill. It takes no click and holds no
+        /// control or copy, so the chip stays the one control and keeps its labels. Null with
+        /// nothing waiting from them; never for anything between two houseguests, which the reading
+        /// does not list. The caller places it.
+        /// </summary>
+        private static RectTransform WaitingBadge(RectTransform entry, WaitingOnYou.Reading waiting, string id, float size)
+        {
+            if (waiting == null || string.IsNullOrEmpty(id)) return null;
+            bool offer = waiting.OfferFrom(id);
+            if (!offer && !waiting.AnswerFrom(id)) return null;
+            var badge = Disc(offer ? OfferWaitingName : AnswerWaitingName, entry, UiTheme.Ink);
+            badge.sizeDelta = new Vector2(size, size);
+            var ground = Disc("Waiting ground", badge, UiTheme.Strategic);
+            ground.anchorMin = Vector2.zero; ground.anchorMax = Vector2.one;
+            float rim = Mathf.Max(1f, size * .08f);
+            ground.offsetMin = new Vector2(rim, rim);
+            ground.offsetMax = new Vector2(-rim, -rim);
+
+            var ink = UiTheme.OnColor(UiTheme.Strategic);
+            var glyph = UiTheme.Icon(offer ? "handshake" : "chat");
+            // A clone that has not generated the glyph set gets a pip: the same fact, less finely drawn.
+            var art = glyph != null
+                ? new GameObject(WaitingGlyphName, typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>()
+                : Disc(WaitingGlyphName, ground, ink);
+            art.SetParent(ground, false);
+            art.anchorMin = art.anchorMax = new Vector2(.5f, .5f);
+            art.pivot = new Vector2(.5f, .5f);
+            art.anchoredPosition = Vector2.zero;
+            float inner = glyph != null ? .62f : .34f;
+            art.sizeDelta = new Vector2(size * inner, size * inner);
+            if (glyph != null)
+            {
+                var image = art.GetComponent<Image>();
+                image.sprite = glyph;
+                image.color = ink;
+                image.preserveAspect = true;
+                image.raycastTarget = false;
+            }
+            return badge;
         }
 
         private static void Place(RectTransform rect, float x, float top, float width, float height)

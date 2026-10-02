@@ -496,7 +496,14 @@ namespace Gamesim.Tests.PlayMode
             yield return SkipReveals();
         }
 
-        /// <summary>The look sheet's frames of the staged keys: the screen shot and the block, for the owner to judge the sizes by.</summary>
+        /// <summary>
+        /// The look sheet's frames of the staged keys: the screen shot with a key out, and the block,
+        /// for the owner to judge the sizes by - each with the rig put back on the screen's own shot,
+        /// since the block's beat has already scheduled its cuts to the nominees' seats by the frame
+        /// it turns ShowingBlock on (the old block frame was a three-shot of chairs). In both, no
+        /// body's hips stand in the card: the Head of Household's mark used to put them 0.8 m in front
+        /// of the lens, their head over forty percent of the card (UI-UX-PASS-PLAN N1).
+        /// </summary>
         [UnityTest]
         public IEnumerator CeremonyStage_CapturesTheKeysOnTheScreenAndTheBlock()
         {
@@ -507,18 +514,111 @@ namespace Gamesim.Tests.PlayMode
             yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing,
                 EpisodeDirector.SummonsHardSeconds(CeremonyPace.Suspenseful) + 6f, "the card plays");
             var keys = SceneComponents<KeyCeremony>().Single();
+            var screen = keys.Surface;
+            Assert.That(screen, Is.Not.Null, "The keys play on the set's screen.");
             yield return WaitFor(() => keys.KeysShown >= 1, 12f, "the first key is out");
-            yield return CaptureFraming("ceremony-stage-key-screen", settle: false);
+            // The house given a moment to reach its places, so the frame is the one the player sees;
+            // the frame is taken either way, and the report says where everybody got to.
+            float by = Time.realtimeSinceStartup + 4f;
+            while (director.CeremonyStageInPlace < director.CeremonyStagePlaces && Time.realtimeSinceStartup < by) yield return null;
+            yield return CaptureTheScreen(screen, "ceremony-stage-key-screen", frame => AssertNoBodyStandsInTheCard(keys, "ceremony-stage-key-screen"));
             yield return WaitFor(() => keys.ShowingBlock, 40f, "the block is up");
-            yield return CaptureFraming("ceremony-stage-block", settle: false);
+            yield return CaptureTheScreen(screen, "ceremony-stage-block", frame => AssertNoBodyStandsInTheCard(keys, "ceremony-stage-block"));
             yield return SkipReveals();
+        }
+
+        /// <summary>
+        /// Where <paramref name="world"/> lands in the frame the camera draws, as a share of its width
+        /// and height from the bottom-left, through the projection the frame is drawn with - the
+        /// inverse of <see cref="HousePlayerController.ScreenRay"/>, since the rig's blended lens is
+        /// a hand-set matrix a screen-point call would ignore. Null behind the lens.
+        /// </summary>
+        private static Vector2? InTheFrame(Camera camera, Vector3 world)
+        {
+            var view = camera.worldToCameraMatrix.MultiplyPoint(world);
+            if (view.z >= 0f) return null;
+            var clip = camera.projectionMatrix * new Vector4(view.x, view.y, view.z, 1f);
+            if (Mathf.Abs(clip.w) < 1e-6f) return null;
+            return new Vector2((clip.x / clip.w + 1f) * 0.5f, (clip.y / clip.w + 1f) * 0.5f);
+        }
+
+        /// <summary>
+        /// No body stands in the card on the screen's shot: every active houseguest's and the
+        /// player's hips, projected through the view camera as the frame was, fall outside the card's
+        /// rect in that frame. The hips, because a seat moves the visual body and leaves the root at
+        /// the chair's approach; the root where a body has no humanoid rig.
+        /// </summary>
+        private void AssertNoBodyStandsInTheCard(KeyCeremony keys, string name)
+        {
+            var camera = cameraRig.ViewCamera;
+            var card = keys.GetComponentsInChildren<RectTransform>(true).First(rect => rect.name == "Card");
+            var corners = new Vector3[4];
+            card.GetWorldCorners(corners);
+            float xMin = 1f, xMax = 0f, yMin = 1f, yMax = 0f;
+            foreach (var corner in corners)
+            {
+                var at = InTheFrame(camera, corner);
+                Assert.That(at.HasValue, Is.True, name + ": the card's corner is behind the lens.");
+                xMin = Mathf.Min(xMin, at.Value.x); xMax = Mathf.Max(xMax, at.Value.x);
+                yMin = Mathf.Min(yMin, at.Value.y); yMax = Mathf.Max(yMax, at.Value.y);
+            }
+            var cardRect = Rect.MinMaxRect(xMin, yMin, xMax, yMax);
+            Assert.That(cardRect.width, Is.GreaterThan(0.3f), name + ": the card fills the frame " + cardRect + ".");
+
+            var bodies = SceneComponents<HouseNpc>().Where(npc => npc.gameObject.activeInHierarchy)
+                .Select(npc => (npc.Id, (Component)npc)).Concat(new[] { ("the player", (Component)player) });
+            var inside = new List<string>();
+            foreach (var (id, body) in bodies)
+            {
+                var hips = HipsOf(body);
+                var at = hips != null ? hips.position : body.transform.position + Vector3.up * 0.95f;
+                var point = InTheFrame(camera, at);
+                if (point.HasValue && cardRect.Contains(point.Value))
+                    inside.Add(id + " at " + at.ToString("F2") + " -> " + point.Value.ToString("F2"));
+            }
+            Assert.That(inside, Is.Empty, name + ": a body stands in the card " + cardRect + " on the screen's shot: "
+                + string.Join("; ", inside) + "\n" + StageReport(name));
+        }
+
+        /// <summary>
+        /// The title's mark on a live card hangs wholly left of the title's words as drawn, in the
+        /// card's own space: the week-two defect (UI-UX-PASS-PLAN 1.2) put it over the T, measured
+        /// from a label that had not run Awake.
+        /// </summary>
+        private static void AssertTheTitleMarkClearsTheTitle(KeyCeremony keys, string where)
+        {
+            Canvas.ForceUpdateCanvases();
+            var rects = keys.GetComponentsInChildren<RectTransform>(true);
+            var space = rects.First(rect => rect.name == "Card");
+            var title = keys.GetComponentsInChildren<TMPro.TMP_Text>(true).First(label => label.name == "Title");
+            var mark = rects.FirstOrDefault(rect => rect.name == "Title mark");
+            Assert.That(mark, Is.Not.Null, where + ": the card has no 'Title mark'.");
+            title.ForceMeshUpdate();
+            Rect OnTheCard(Vector3 a, Vector3 b)
+            {
+                var low = space.InverseTransformPoint(a);
+                var high = space.InverseTransformPoint(b);
+                return Rect.MinMaxRect(Mathf.Min(low.x, high.x), Mathf.Min(low.y, high.y), Mathf.Max(low.x, high.x), Mathf.Max(low.y, high.y));
+            }
+            var bounds = title.textBounds;
+            var words = OnTheCard(title.rectTransform.TransformPoint(bounds.min), title.rectTransform.TransformPoint(bounds.max));
+            var corners = new Vector3[4];
+            mark.GetWorldCorners(corners);
+            var glyph = OnTheCard(corners[0], corners[2]);
+            Assert.That(words.width, Is.GreaterThan(100f), where + ": the title was measured as drawn (" + words + ").");
+            Assert.That(glyph.Overlaps(words), Is.False, where + ": the mark " + glyph + " crosses the title's words " + words + ".");
+            Assert.That(glyph.xMax, Is.LessThan(words.xMin), where + ": the mark hangs left of the whole title.");
         }
 
         /// <summary>
         /// The look sheet's frames of the vote on the living room's screen (MOCKUP-PASS-PLAN M18): the
         /// roster with votes on it, and the result read in lines once the board has given way. The
         /// stage cuts to the hot seats between votes, so each frame puts the rig on the screen's own
-        /// shot first.
+        /// shot first. Neither frame waits ten seconds for the board's faces: the card runs on its
+        /// own clock, and that wait at the first frame ran the whole count, the result and the fade
+        /// out before the result was asked for. The board's faces get the rest of the beat the first
+        /// frame is of, and the result's frame - which has no faces on it - is asserted to be of the
+        /// result as it is taken.
         /// </summary>
         [UnityTest]
         public IEnumerator CeremonyStage_CapturesTheVoteOnTheLivingScreenAndItsResult()
@@ -533,12 +633,20 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(vote.Surface, Is.Not.Null, "on the living room's screen");
             var screen = vote.Surface;
             yield return WaitFor(() => vote.VotesShown >= 2, 20f, "two votes are on the board");
-            yield return CaptureTheScreen(screen, "ceremony-stage-vote-screen");
+            // The board's faces given their time to land, but only this beat's: the wait ends with
+            // the next vote, so the frame is still of a board with two votes on it and the card is
+            // never outrun.
+            int shown = vote.VotesShown;
+            float facesBy = Time.realtimeSinceStartup + 10f;
+            while (Time.realtimeSinceStartup < facesBy && vote.VotesShown == shown && !vote.ShowingResult && AnyBoundFaceIsStillMissing())
+                yield return null;
+            yield return CaptureTheScreen(screen, "ceremony-stage-vote-screen", waitForFaces: false);
             yield return WaitFor(() => vote.ShowingResult, 60f, "the result is read");
             // The board hands over to the result block over the result's first moment.
             yield return new WaitForSecondsRealtime(0.6f);
             Assert.That(vote.IsPlaying, Is.True, "The result is still up to be photographed.");
-            yield return CaptureTheScreen(screen, "ceremony-stage-vote-result");
+            yield return CaptureTheScreen(screen, "ceremony-stage-vote-result",
+                frame => Assert.That(vote.IsPlaying && vote.ShowingResult, Is.True, "The result is up as its frame is taken."), waitForFaces: false);
             yield return SkipReveals();
             yield return WaitFor(() => !director.StagedExitRunning, EpisodeDirector.GoodbyeSeconds + EpisodeDirector.WalkOutSeconds + 2f,
                 "the goodbye and the walk-out end");
@@ -546,12 +654,26 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world outlives the walk out.");
         }
 
-        /// <summary>A frame of a card on its screen: the rig on the screen's own shot for two frames, then the capture.</summary>
-        private IEnumerator CaptureTheScreen(ScreenSurface screen, string name)
+        /// <summary>
+        /// A frame of a card on its screen: while <paramref name="waitForFaces"/>, the faces the card
+        /// has bound given their time to land (bounded, as CaptureFraming's own settle is - a frame of
+        /// empty discs says nothing about the screen), then the rig on the screen's own shot for two
+        /// frames, then the capture, handed to <paramref name="inspect"/> while the camera still
+        /// holds it. The rig is put on the shot after the wait, since the stage's cuts move it
+        /// between beats. The wait is for a frame of a beat that holds - the keys' roster, the block
+        /// - and not for one the card moves off on its own clock: the vote's result holds 1.9 seconds
+        /// at the quick pace, and a wait of ten here saw it come and go before the frame.
+        /// </summary>
+        private IEnumerator CaptureTheScreen(ScreenSurface screen, string name, System.Action<Texture2D> inspect = null, bool waitForFaces = true)
         {
+            if (waitForFaces)
+            {
+                float until = Time.realtimeSinceStartup + 10f;
+                while (Time.realtimeSinceStartup < until && AnyBoundFaceIsStillMissing()) yield return null;
+            }
             cameraRig.MoveTo(screen.Shot());
             yield return Frames(2);
-            yield return CaptureFraming(name, settle: false);
+            yield return CaptureFraming(name, settle: false, inspect: inspect);
         }
 
         // ---------------------------------------------------------------- the full house (CEREMONY-CUTSCENES-PLAN §7.1)

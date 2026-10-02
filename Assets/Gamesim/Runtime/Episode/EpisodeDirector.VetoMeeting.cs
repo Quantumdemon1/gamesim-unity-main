@@ -47,6 +47,16 @@ namespace Gamesim.Episode
         /// <summary>The caption of a choice of whom to save, when the player is Head of Household and holder: a pick, not a commit.</summary>
         public static string VetoSavePickCaption(string name) => "Save " + name;
 
+        /// <summary>
+        /// The caption of a save at the meeting, the one the walks press: "Save Emma Brown (HoH
+        /// chooses replacement)", and for a holder saving themself from the block "Save yourself
+        /// (HoH chooses replacement)". The player's contestant is named "You", so the button read
+        /// "Save You" (UI-UX-PASS-PLAN D0, the play sweep's row 30); every reader builds the caption
+        /// here, so the walks and the tests press what the screen says.
+        /// </summary>
+        public static string VetoSaveCaption(EpisodeState state, string id) =>
+            "Save " + (id == state.playerId ? "yourself" : state.Find(id).name) + " (HoH chooses replacement)";
+
         /// <summary>Whom the player, Head of Household and holder at once, has picked to save this week: the screen's, never saved.</summary>
         private string vetoSavePick;
         private int vetoSavePickWeek;
@@ -238,7 +248,7 @@ namespace Gamesim.Episode
                     foreach (var nominee in state.nominees)
                     {
                         string saved = nominee;
-                        hud.MeetingGoldFrame(hud.PairedActionFor(saves, saved, "Save " + state.Find(saved).name + " (HoH chooses replacement)", () =>
+                        hud.MeetingGoldFrame(hud.PairedActionFor(saves, saved, VetoSaveCaption(state, saved), () =>
                             OfferPlayerDecision(state, false, EpisodeCommandKind.ResolveVeto,
                                 "Use the veto to save " + state.Find(saved).name + ". The HoH chooses the replacement.", saved, useVeto: true)));
                     }

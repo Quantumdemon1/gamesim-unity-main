@@ -839,7 +839,8 @@ namespace Gamesim.Episode
                     if (competitionCard != null)
                         competitionCard.Play(CompetitionTitle(result.state),
                             EpisodeEngine.CompetitionCategory(wasPhase, wasWeek, result.state.competitionRulesVersion, result.state.seed), result.state.week,
-                            standings, reducedMotion, CompetitionPerformanceExplanation(result.state), pendingAttemptLine ?? ThrowAttemptLine(result.state));
+                            standings, reducedMotion, CompetitionPerformanceExplanation(result.state), pendingAttemptLine ?? ThrowAttemptLine(result.state),
+                            WinnersMark(wasPhase));
                     React(CompetitionWinnerId(result.state, standings), CharacterPresentation.Reaction.Cheered);
                 }
 
@@ -1198,7 +1199,7 @@ namespace Gamesim.Episode
             RenderDiaryRecord(state);
             // The player's memories as they may know them: one that tells a ballot the reveal kept
             // private waits for the ballot (KnownBallots.PlayerMemories; decision 4).
-            foreach (var memory in KnownBallots.PlayerMemories(state)) hud.Paragraph("Week " + memory.week + ": " + memory.text);
+            foreach (var memory in KnownBallots.PlayerMemories(state)) hud.Paragraph("Week " + memory.week + ": " + MemoryWords.Said(state, memory));
             RenderStorySoFar(state);
         }
 
@@ -1515,16 +1516,11 @@ namespace Gamesim.Episode
                 else
                 {
                     hud.Action("Review competition results", () => ReviewCompetitionResult(state));
-                    // Ranked as the engine ranks them: the stable order by score, the first the winner.
+                    // Ranked as the engine ranks them, as rows: a face, a name, the winner's badge -
+                    // the crown, or the veto's medal - and no score (UI-UX-PASS-PLAN C0). The rows
+                    // are the result card's own standings, so the two never disagree.
                     hud.Section("FINAL STANDINGS");
-                    var standings = state.competitionScores.OrderByDescending(x => x.score).ToList();
-                    for (int rank = 0; rank < standings.Count; rank++)
-                    {
-                        var who = state.Find(standings[rank].contestantId);
-                        if (who == null) continue;
-                        hud.Paragraph((rank + 1) + ".  " + HudPrimitives.WithYou(who.name, who.isPlayer) + "   "
-                            + standings[rank].score.ToString("0.00") + (rank == 0 ? "  \u00b7  winner" : ""));
-                    }
+                    hud.CompetitionStandings(CompetitionStandings(state), WinnersMark(state.phase));
                     // The way on, pinned: it used to sit under the standings, well past the fold.
                     AdvanceWarning(state);
                     hud.PinnedAction("Continue to the next ceremony", () => Commit(state, EpisodeCommandKind.Advance));

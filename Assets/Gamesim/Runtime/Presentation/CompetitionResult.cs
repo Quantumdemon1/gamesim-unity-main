@@ -16,6 +16,7 @@ namespace Gamesim.Presentation
         public readonly struct Standing
         {
             public readonly string Name;
+            /// <summary>The engine's composite score, which orders the rows; the card never draws it (UI-UX-PASS-PLAN decision 12).</summary>
             public readonly double Score;
             public readonly bool IsWinner, IsPlayer;
             public readonly Texture Portrait;
@@ -37,6 +38,7 @@ namespace Gamesim.Presentation
         private string playedAward, playedCategory, playedExplanation, playedAttempt;
         private int playedWeek;
         private IList<Standing> playedStandings;
+        private HudPrimitives.RoleMark? playedMark;
         private Vector2 builtFor;
         public float FontScale { get; set; } = 1f;
         public bool IsPlaying => playing;
@@ -58,12 +60,17 @@ namespace Gamesim.Presentation
         /// <summary>
         /// Shows the committed standings. <paramref name="attempt"/> is the player's own attempt in
         /// the game's own measure ("7 / 9 targets hit · performance 78%"), when there is one to say.
+        /// <paramref name="winnersMark"/> is the badge on the winner's face - the crown, or the
+        /// veto's medal - decided by the director for this card and the HUD's standings alike;
+        /// left out, the card reads it from the award as the game screen does.
         /// </summary>
-        public bool Play(string award,string category,int week,IList<Standing> standings,bool reducedMotion,string explanation=null,string attempt=null)
+        public bool Play(string award,string category,int week,IList<Standing> standings,bool reducedMotion,string explanation=null,string attempt=null,
+            HudPrimitives.RoleMark? winnersMark=null)
         {
             if(standings==null||standings.Count==0)return false;
             playedAward=award;playedCategory=category;playedWeek=week;playedStandings=standings;playedExplanation=explanation;playedAttempt=attempt;
-            Build(award,category,week,standings,explanation);
+            playedMark=winnersMark;
+            Build(award,category,week,standings,explanation,winnersMark);
             reduced=reducedMotion;elapsed=0;playing=true;
             group.alpha=reduced?1:.01f;group.interactable=true;group.blocksRaycasts=true;
             column.gameObject.SetActive(true);scrim.gameObject.SetActive(true);
@@ -100,7 +107,7 @@ namespace Gamesim.Presentation
             bool details=showingDetails;
             var selected=EventSystem.current!=null?EventSystem.current.currentSelectedGameObject:null;
             string selectedName=selected!=null&&selected.transform.IsChildOf(transform)?selected.name:null;
-            Build(playedAward,playedCategory,playedWeek,playedStandings,playedExplanation);
+            Build(playedAward,playedCategory,playedWeek,playedStandings,playedExplanation,playedMark);
             column.gameObject.SetActive(true);
             if(details){showingDetails=true;standingsPanel.gameObject.SetActive(false);detailsPanel.gameObject.SetActive(true);
                 detailsButton.GetComponentInChildren<TMP_Text>().text="Back to standings";}
@@ -128,6 +135,8 @@ namespace Gamesim.Presentation
         private const float MinimumHeight = 500f;
         /// <summary>The margin the card keeps from the frame's edge.</summary>
         private const float FrameEdge = 24f;
+        /// <summary>The ink under the glass: near opaque, so nothing of the HUD reads through the card.</summary>
+        private const float CardGroundAlpha = .92f;
         /// <summary>How much the card is scaled to fill the frame; everything on it scales together.</summary>
         private float cardScale = 1f;
 
@@ -156,13 +165,14 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// The result as a broadcast card over the room (mockup-05's language): the award under a
-        /// trophy, the winner lit in gold, the committed standings as bars, and the two controls -
+        /// trophy, the winner lit in gold, the committed standings as rows of faces and names (never
+        /// the engine's numbers: UI-UX-PASS-PLAN decision 12), and the two controls -
         /// on a card sized to the field rather than a 1180-by-780 slab over a 97 % scrim, which put
         /// the whole house and every piece of chrome behind black for as long as the result stayed
         /// up. The result still owns input until Continue: the ground under it takes the clicks
         /// it always took, it just no longer paints the room out.
         /// </summary>
-        private void Build(string award,string category,int week,IList<Standing> standings,string explanation)
+        private void Build(string award,string category,int week,IList<Standing> standings,string explanation,HudPrimitives.RoleMark? badge)
         {
             if(column!=null){column.gameObject.SetActive(false);Destroy(column.gameObject);}
             if(scrim==null)
@@ -191,6 +201,11 @@ namespace Gamesim.Presentation
             column=new GameObject("Card",typeof(RectTransform)).GetComponent<RectTransform>();column.SetParent(transform,false);
             column.anchorMin=column.anchorMax=new Vector2(.5f,.5f);column.pivot=new Vector2(.5f,.5f);
             column.sizeDelta=new Vector2(width,height);
+            // An opaque ground under the glass, in ink: through the glass alone the HUD's own text
+            // read through the card's foot (UI-UX-PASS-PLAN C0; the sweeps' rows 28 and 50). The
+            // room still shows round the card through the scrim; the glass keeps its edge and glow.
+            var ground=HudPrimitives.Fill("Card ground",column,new Color(UiTheme.Ink.r,UiTheme.Ink.g,UiTheme.Ink.b,CardGroundAlpha),UiTheme.GlassRadius);
+            ground.anchorMin=Vector2.zero;ground.anchorMax=Vector2.one;ground.offsetMin=ground.offsetMax=Vector2.zero;
             var glass=HudPrimitives.Fill("Card glass",column,UiTheme.GlassFill,UiTheme.GlassRadius);
             glass.anchorMin=Vector2.zero;glass.anchorMax=Vector2.one;glass.offsetMin=glass.offsetMax=Vector2.zero;
             UiTheme.Glass(glass,UiTheme.GlassRadius);
@@ -230,7 +245,7 @@ namespace Gamesim.Presentation
             }
             var portrait=HudPrimitives.Portrait(column,winner.Portrait,UiTheme.Gold,64*scale,3*scale,false,winner.Character);
             Place(portrait,34*scale,(84*fs+(fs-1)*10)*scale,70*scale,70*scale);
-            var line=Label("Winner",column,winner.IsPlayer?winner.Name+" \u00b7 You win!":winner.Name+" wins!",24,120,92*fs,inner/scale-90,36*fs,UiTheme.Gold);
+            var line=Label("Winner",column,winner.IsPlayer?"You win!":winner.Name+" wins!",24,120,92*fs,inner/scale-90,36*fs,UiTheme.Gold);
             var semibold=UiTheme.Font(UiTheme.Weight.SemiBold);if(semibold!=null)line.font=semibold;
             Fit(line,14);
             // The player's own attempt, in the game's own measure, where the player played one.
@@ -243,11 +258,17 @@ namespace Gamesim.Presentation
             standingsPanel=new GameObject("Competition standings",typeof(RectTransform)).GetComponent<RectTransform>();
             standingsPanel.SetParent(column,false);standingsPanel.anchorMin=Vector2.zero;standingsPanel.anchorMax=Vector2.one;
             standingsPanel.offsetMin=standingsPanel.offsetMax=Vector2.zero;
-            var heading=Label("Standings heading",standingsPanel,"COMMITTED STANDINGS  \u00b7  Scores are relative to this competition",11,32,headerHeight-24*fs,inner/scale,18*fs,UiTheme.Muted);
+            var heading=Label("Standings heading",standingsPanel,CompetitionWords.StandingsHeading,11,32,headerHeight-24*fs,inner/scale,18*fs,UiTheme.Muted);
             heading.characterSpacing=4f;Fit(heading,9);
-            double best=0;foreach(var entry in standings)best=System.Math.Max(best,entry.Score);if(best<=0)best=1;
-            float barX=320f, barWidth=inner/scale-barX-80f;
+            // The rows say the order, a face and a name, and the winner's word; never the engine's
+            // composite score or a bar proportioned to it (UI-UX-PASS-PLAN decision 12). The one
+            // number the card shows is the player's own attempt, above, in the game's own measure.
+            // The winner's badge on their face: the crown, or the veto's medal - the director's
+            // word for this card and the HUD's standings alike, or read from the award as the game
+            // screen reads it when the card is played on its own.
+            var winnersMark=badge??(awardName.ToUpperInvariant().Contains("VETO")?HudPrimitives.RoleMark.VetoHolder:HudPrimitives.RoleMark.HeadOfHousehold);
             float face=(rowHeight-10f);
+            const float WordWidth=96f;
             for(int i=0;i<standings.Count;i++)
             {
                 var entry=standings[i];float y=headerHeight+i*rowHeight;
@@ -263,26 +284,30 @@ namespace Gamesim.Presentation
                 rim.name="Row portrait";
                 rim.anchorMin=rim.anchorMax=new Vector2(0f,.5f);rim.pivot=new Vector2(.5f,.5f);
                 rim.anchoredPosition=new Vector2((40f+face*.5f)*scale,0f);
+                if(entry.IsWinner)HudPrimitives.AddRoleMark(rim,winnersMark,face*scale);
+                float nameWidth=inner/scale-(48+face)-(entry.IsWinner?WordWidth+16f:16f);
                 var name=Label("Name",row,HudPrimitives.WithYou(entry.Name,entry.IsPlayer)+(string.IsNullOrEmpty(entry.Note)?"":"  ·  "+entry.Note),
-                    15,48+face,0,barX-58-face,rowHeight-4,entry.IsWinner?UiTheme.Gold:UiTheme.Paper);
+                    15,48+face,0,nameWidth,rowHeight-4,entry.IsWinner?UiTheme.Gold:UiTheme.Paper);
                 name.alignment=TextAlignmentOptions.MidlineLeft;Fit(name,11);
-                var track=HudPrimitives.Fill("Track",row,new Color(UiTheme.Outline.r,UiTheme.Outline.g,UiTheme.Outline.b,.5f),3);
-                Place(track,barX*scale,((rowHeight-4)*.5f-3)*scale,barWidth*scale,6*scale);
-                var bar=HudPrimitives.Fill("Bar",row,entry.IsWinner?UiTheme.Gold:UiTheme.Glow,3);
-                Place(bar,barX*scale,((rowHeight-4)*.5f-3)*scale,Mathf.Max(2,barWidth*scale*Mathf.Clamp01((float)(entry.Score/best))),6*scale);
-                var score=Label("Score",row,entry.Score.ToString("0.00"),14,barX+barWidth+10,0,62,rowHeight-4,UiTheme.Paper);
-                score.alignment=TextAlignmentOptions.MidlineRight;
+                if(entry.IsWinner)
+                {
+                    var word=Label("Winner word",row,"WINNER",11,inner/scale-WordWidth-12f,0,WordWidth,rowHeight-4,UiTheme.Gold);
+                    word.alignment=TextAlignmentOptions.MidlineRight;word.characterSpacing=3f;
+                    if(semibold!=null)word.font=semibold;
+                }
             }
             float footer=height/scale-footerHeight;
-            var note=Label("Performance explanation",standingsPanel,"Character statistics, modifiers and seeded rolls determine placement. Choose Score details to review the available explanation. Perfect performance does not guarantee a win.",
-                12,32,footer-4,inner/scale,36*fs,UiTheme.Muted);
+            // One line in the player's words where the engine's used to be (UI-UX-PASS-PLAN D0).
+            var note=Label("Performance explanation",standingsPanel,CompetitionWords.ResultFooter,12,32,footer-4,inner/scale,36*fs,UiTheme.Muted);
             Fit(note,9);
             detailsPanel=new GameObject("Competition score details",typeof(RectTransform)).GetComponent<RectTransform>();
             detailsPanel.SetParent(column,false);detailsPanel.anchorMin=Vector2.zero;detailsPanel.anchorMax=Vector2.one;
             detailsPanel.offsetMin=detailsPanel.offsetMax=Vector2.zero;
-            var detailsHeading=Label("Score details heading",detailsPanel,"SCORING EXPLANATION \u00b7 Committed result",14,32,headerHeight-28*fs,inner/scale,22*fs,UiTheme.Heading);
+            // The details in words: how the player entered, what they brought, and that the rest
+            // was the day (CompetitionWords.Explanation) - never the engine's arithmetic.
+            var detailsHeading=Label("Score details heading",detailsPanel,CompetitionWords.DetailsHeading,14,32,headerHeight-28*fs,inner/scale,22*fs,UiTheme.Heading);
             if(semibold!=null)detailsHeading.font=semibold;
-            var full=Label("Full performance explanation",detailsPanel,explanation??"Character statistics, modifiers and seeded rolls determine placement. Minigame performance provides a bounded bonus, so perfect play does not guarantee a win.",
+            var full=Label("Full performance explanation",detailsPanel,explanation??CompetitionWords.DetailsFallback,
                 16,32,headerHeight,inner/scale,footer-headerHeight-12,UiTheme.Paper);
             Fit(full,10);
             detailsPanel.gameObject.SetActive(false);

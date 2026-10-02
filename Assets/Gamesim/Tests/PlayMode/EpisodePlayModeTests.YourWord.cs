@@ -426,7 +426,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(StripWords(strip), Is.EqualTo(expected), where + ": the dry run's words.");
                 Assert.That(strip.GetComponentsInChildren<Button>(), Is.Empty, "A warning is a label, never a control.");
                 foreach (var nominee in seeded.nominees)
-                    Assert.That(FindButton("Save " + seeded.Find(nominee).name + " (HoH chooses replacement)"), Is.Not.Null, where + ": the save is still there.");
+                    Assert.That(FindButton(EpisodeDirector.VetoSaveCaption(seeded, nominee)), Is.Not.Null, where + ": the save is still there.");
                 Assert.That(FindButton("Do not use the veto"), Is.Not.Null, where + ": and keeping the block.");
                 var panel = ActiveRect("Episode panel");
                 AssertEveryLabelDraws(panel, where);

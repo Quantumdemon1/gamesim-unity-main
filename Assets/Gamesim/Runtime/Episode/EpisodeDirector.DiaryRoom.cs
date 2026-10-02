@@ -318,11 +318,12 @@ namespace Gamesim.Episode
                 return;
             }
             // What the player has to talk about in here, as mockup-11 captions the chair: their
-            // own latest memory under their name - one they may know (KnownBallots.PlayerMemories).
+            // own latest memory under their name - one they may know (KnownBallots.PlayerMemories),
+            // with its subject named where the engine's text leaves it out (MemoryWords.Said).
             var latest = KnownBallots.PlayerMemories(state).LastOrDefault();
             var self = state.Find(state.playerId);
             if (latest != null && self != null)
-                hud.Confessional((self.name ?? "You").Split(' ')[0], latest.text);
+                hud.Confessional((self.name ?? "You").Split(' ')[0], MemoryWords.Said(state, latest));
             // Refinement Kit 6's three tabs, in place of one column that ran the decision, the
             // record's rules and every memory together. The decision's tab opens first when there
             // is something to choose; otherwise the record does. A tab is view state: choosing
@@ -416,18 +417,20 @@ namespace Gamesim.Episode
         /// Where study preparation counts, as the season's competition rules have it. From rules 3
         /// the engine adds it on every player entry route (EpisodeEngine.CommonCompetitionBonus):
         /// the weekly competitions however they are played, and all three parts of the final Head
-        /// of Household. Before rules 3 only the weekly simulated option read it.
+        /// of Household. Before rules 3 only the weekly simulated option read it - said in the
+        /// player's words, as the button that chooses it is: "the weekly simulated HoH/Veto option"
+        /// was the engine's (UI-UX-PASS-PLAN D0, the play sweep's row 37).
         /// </summary>
         public static string StudyUse(EpisodeState state) =>
             state != null && state.competitionRulesVersion >= 3
                 ? "used in every competition you enter, however you play it, the final HoH's three parts included"
-                : "used only by the weekly simulated HoH/Veto option, not precision play or final HoH";
+                : "used only when you choose to simulate a weekly HoH or veto competition, not when you play one yourself or in the final HoH";
 
         /// <summary>The same, in the record row's few words.</summary>
         public static string StudyUseShort(EpisodeState state) =>
             state != null && state.competitionRulesVersion >= 3
                 ? "Used in every competition you enter."
-                : "Used only by the weekly simulated HoH/Veto option.";
+                : "Used only when you simulate a weekly competition.";
 
         private void RenderDiaryRecordTab(EpisodeState state, bool choice)
         {
@@ -466,7 +469,7 @@ namespace Gamesim.Episode
             hud.DiarySection("YOUR PRIVATE REFLECTIONS");
             var memories = KnownBallots.PlayerMemories(state).Reverse().Take(20).ToArray();
             if (memories.Length == 0) hud.Aside("You have no recorded personal memories yet. Explore and talk to the housemates.");
-            foreach (var memory in memories) hud.Aside("Week " + memory.week + ": " + memory.text);
+            foreach (var memory in memories) hud.Aside("Week " + memory.week + ": " + MemoryWords.Said(state, memory));
         }
 
         /// <summary>
@@ -718,7 +721,7 @@ namespace Gamesim.Episode
 
             string recalled = remembered == null
                 ? "You have nothing specific on them this season."
-                : "Week " + remembered.week + ": " + remembered.text;
+                : "Week " + remembered.week + ": " + MemoryWords.Said(state, remembered);
 
             bool allied = state.Allied(state.playerId, voter.id);
             return standing + " " + recalled
@@ -781,7 +784,7 @@ namespace Gamesim.Episode
                     {
                         string saved = nominee;
                         if (state.hohId == state.playerId) VetoReplacements(state, saved, privateRoom);
-                        else hud.PairedActionFor(null, saved, "Save " + state.Find(saved).name + " (HoH chooses replacement)", () =>
+                        else hud.PairedActionFor(null, saved, VetoSaveCaption(state, saved), () =>
                             OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.ResolveVeto,
                                 "Use the veto to save " + state.Find(saved).name + ". The HoH chooses the replacement.", saved, useVeto: true));
                     }

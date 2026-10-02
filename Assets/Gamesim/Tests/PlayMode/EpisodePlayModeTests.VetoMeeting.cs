@@ -102,7 +102,7 @@ namespace Gamesim.Tests.PlayMode
 
                 Assert.That(ButtonWithCaptionOrNull("Do not use the veto"), Is.Null, "The houseguest decides at the press:");
                 foreach (var id in before.nominees)
-                    Assert.That(ButtonWithCaptionOrNull("Save " + before.Find(id).name + " (HoH chooses replacement)"), Is.Null, "nothing to use,");
+                    Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.VetoSaveCaption(before, id)), Is.Null, "nothing to use,");
                 Assert.That(PanelWords(panel).Any(words => words.Contains(" saves ") || words.Contains(" using the veto on ")), Is.False,
                     "and nothing says what they will do.");
                 Assert.That(MeetingHeadlineOn("Continue episode"), Is.EqualTo(EpisodeDirector.HoldTheMeetingHeadline), "The way on wears the mockup's words.");
@@ -147,7 +147,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(words, Does.Contain(EpisodeDirector.UseTheVetoEyebrow));
                 Assert.That(words, Does.Contain(EpisodeDirector.VetoInfoLine));
 
-                var saves = before.nominees.Select(id => FindButton("Save " + before.Find(id).name + " (HoH chooses replacement)")).ToArray();
+                var saves = before.nominees.Select(id => FindButton(EpisodeDirector.VetoSaveCaption(before, id))).ToArray();
                 if (!larger)
                 {
                     Assert.That(saves[0].transform.parent.name, Is.EqualTo(EpisodeHud.ChoiceRowName));
@@ -282,6 +282,42 @@ namespace Gamesim.Tests.PlayMode
                 AssertNoMeetingLabelOverflows(panel, where);
             });
             Assert.That(director.Snapshot.vetoResolved, Is.False, "Opening the decision decides nothing.");
+        }
+
+        /// <summary>
+        /// A holder on the block is offered to save themself: the save reads "Save yourself (HoH
+        /// chooses replacement)", never "Save You" - the player's contestant is named "You"
+        /// (UI-UX-PASS-PLAN D0, the play sweep's row 30) - and the other nominee's save keeps their
+        /// name. Both at both text sizes; neither press is made.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator VetoMeeting_AHolderOnTheBlockIsOfferedToSaveThemself()
+        {
+            yield return InstallStrategySeason(57, state =>
+            {
+                AtVetoMeeting(state, true);
+                state.nominees[0] = state.playerId;
+            });
+            var before = director.Snapshot;
+            Assert.That(before.vetoHolderId, Is.EqualTo(before.playerId));
+            Assert.That(before.nominees, Does.Contain(before.playerId), "The holder is on the block.");
+            string other = before.nominees.Single(id => id != before.playerId);
+            Assert.That(EpisodeDirector.VetoSaveCaption(before, before.playerId), Is.EqualTo("Save yourself (HoH chooses replacement)"));
+            Assert.That(EpisodeDirector.VetoSaveCaption(before, other), Is.EqualTo("Save " + before.Find(other).name + " (HoH chooses replacement)"));
+            yield return AtBothTextSizes(larger =>
+            {
+                string where = "The holder's own save" + (larger ? " at the larger text" : "");
+                AssertTheMeetingFits(where);
+                var own = ButtonWithCaption("Save yourself (HoH chooses replacement)");
+                Assert.That(own.IsInteractable(), Is.True, where + " is a live control.");
+                Assert.That(ButtonWithCaptionOrNull("Save You (HoH chooses replacement)"), Is.Null, where + ": never 'Save You'.");
+                Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.VetoSaveCaption(before, other)), Is.Not.Null, where + ": the other nominee's save keeps their name.");
+                Assert.That(FindButton("Do not use the veto"), Is.Not.Null, where + ": and keeping the block.");
+                var panel = ActiveRect("Episode panel");
+                AssertEveryLabelDraws(panel, where);
+                AssertNoMeetingLabelOverflows(panel, where);
+            });
+            Assert.That(director.Snapshot.vetoResolved, Is.False, "Reading the saves decides nothing.");
         }
 
         /// <summary>

@@ -254,6 +254,12 @@ namespace Gamesim.Tests.PlayMode
             var card = SceneComponents<CompetitionResult>().Single();
             Assert.That(Labelled(card, "Player attempt"), Is.EqualTo("You threw it and won anyway: you got lucky"));
             Assert.That(after.events.Last(e => e.kind == "competition-performance").text, Does.Contain("It lowers only your own score"),
+                "The engine's record says how a throw can still win.");
+            // Score details say it too, in the player's words (UI-UX-PASS-PLAN C0): never the record's arithmetic.
+            yield return new WaitForSecondsRealtime(.3f);
+            card.GetComponentsInChildren<Button>().Single(button => button.name == "Review competition score details").onClick.Invoke();
+            yield return null;
+            Assert.That(Labelled(card, "Full performance explanation"), Does.StartWith("You threw it").And.Contain("the day can still hand you the win"),
                 "Score details say how a throw can still win.");
         }
 

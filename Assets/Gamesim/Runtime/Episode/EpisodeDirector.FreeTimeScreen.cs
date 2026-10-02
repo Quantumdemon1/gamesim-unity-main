@@ -478,6 +478,11 @@ namespace Gamesim.Episode
             // At three the final-four week's roles are still in state until the window closes; what
             // matters now is the final Head of Household (ENDGAME-PLAN F1).
             if (Preparing(state)) { role = "You are in the Final 3"; why = "The final Head of Household is next."; }
+            // Before anybody is Head of Household nothing is decided, and nobody is safe: every
+            // week's free time comes first (the rollover clears the Head of Household), and the
+            // safe line used to be everything that was not a role (UI-UX-PASS-PLAN D0, the play
+            // sweep's row 20). The words are the plan's, shared with U0's ContextRole.
+            else if (string.IsNullOrEmpty(state.hohId)) { role = "Nothing decided yet"; why = "The week's roles come with the first competition."; }
             else if (state.playerId == state.hohId) { role = "You are HOH"; why = "You can set the tone this week."; }
             else if (state.nominees != null && state.nominees.Contains(state.playerId)) { role = "You are on the block"; why = "Campaign for the votes you need."; }
             else if (state.playerId == state.vetoHolderId) { role = "You hold the veto"; why = "The meeting is yours to call."; }

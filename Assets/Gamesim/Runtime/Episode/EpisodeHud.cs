@@ -45,8 +45,10 @@ namespace Gamesim.Episode
         public const string DiaryCancelReflectionCaption = "Back to reflection (discard answer)";
         public const string OathDeclareCaption = "Declare my loyalty";
         public const string OathDeclineCaption = "Pass on this loyalty declaration";
-        public const string StudyMemorizeCaption = "Memorize the layout · review";
-        public const string StudySneakCaption = "Sneak a peek at production notes · review";
+        // Captioned by what they do: the "· review" the cards wore explained nothing - the press
+        // opens the review under the pending tab, which the diary says itself (UI-UX-PASS-PLAN D0).
+        public const string StudyMemorizeCaption = "Memorize the layout";
+        public const string StudySneakCaption = "Sneak a peek at production notes";
         public const string StudyConfirmCaption = "Confirm study · use 1 social action";
         public const string StudyCancelCaption = "Back to diary (discard study)";
         public const string SimulateCompetitionCaption = "Simulate competition · weighted rules";
@@ -132,10 +134,15 @@ namespace Gamesim.Episode
         /// <para>Each says what it is for rather than what it is called, because the difference
         /// between them is the whole point: small talk is safe and slight, a secret is the largest
         /// swing in the game in either direction.</para>
+        ///
+        /// <para>"Build the bond" was "Spend real time with them", a petal the dial seated beside
+        /// "Spend time together" (Talk, the plain conversation the walks press): two commands under
+        /// indistinguishable captions. Renamed deliberately, with its tests (UI-UX-PASS-PLAN
+        /// decision 18); Talk's petal keeps its words.</para>
         /// </summary>
         public const string SmallTalkCaption = "Make small talk";
         public const string PersonalChatCaption = "Tell them something personal";
-        public const string RelationshipBuildingCaption = "Spend real time with them";
+        public const string RelationshipBuildingCaption = "Build the bond";
         public const string StrategicDiscussionCaption = "Talk tactics";
         public const string DiscussGameCaption = "Talk game openly";
         public const string ShareSecretCaption = "Trust them with a secret";

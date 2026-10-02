@@ -206,9 +206,10 @@ namespace Gamesim.Simulation
         /// player's face (<see cref="ClaimSource.Told"/>), on the ledger's claims, read by the whip
         /// count, and judged at the reveal like every other. Their word is as good as it is to anybody
         /// who asks (<see cref="VoteHonesty"/>: Loyal always, Sneaky one time in four, anybody else by
-        /// how they see the player), drawn on a coin keyed to the week and the partner, so the season's
-        /// stream is untouched; a lie names the nominee they are not voting out. The deal obliges an
-        /// answer, so nobody deflects. A partner caught lying at the reveal has broken the deal
+        /// how they see the player; and, since C6, an ally always: <see cref="AnswerHonesty"/>), drawn
+        /// on a coin keyed to the week and the partner, so the season's stream is untouched; a lie
+        /// names the nominee they are not voting out. The deal obliges an answer, so nobody
+        /// deflects. A partner caught lying at the reveal has broken the deal
         /// (<see cref="BreakTheDealsOfLyingPartners"/>). A partner who casts no ballot this week - the
         /// Head of Household, somebody on the block - has no vote to share. One a week for each
         /// partner, however many deals; nothing for a player out of the house; no memory, as with the
@@ -226,7 +227,8 @@ namespace Gamesim.Simulation
                 if (partner == null || !voters.Contains(partner) || !told.Add(partner)) continue;
                 string truth = ProjectBallot(s, partner).selectedNomineeId;
                 if (string.IsNullOrEmpty(truth)) continue;
-                bool honest = StoryRandom.Chance(s, ReadingKey(s, partner), VoteHonesty(s.Find(partner), s.Score(partner, s.playerId)));
+                // As good as their word to anybody who asks: an ally's is the truth (C6, AnswerHonesty).
+                bool honest = StoryRandom.Chance(s, ReadingKey(s, partner), AnswerHonesty(s, s.Find(partner)));
                 string stated = honest ? truth : s.nominees.FirstOrDefault(id => id != truth);
                 if (string.IsNullOrEmpty(stated)) continue;
                 SeasonLedger.Append(s.ledger, s.ledger.claims, new ClaimRow { week = s.week, voterId = partner, targetId = stated, source = ClaimSource.Told });

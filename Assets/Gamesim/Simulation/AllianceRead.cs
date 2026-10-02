@@ -31,9 +31,10 @@ namespace Gamesim.Simulation
     /// evidence never appears, not even as an unknown, and nothing the player cannot know of one is
     /// said either: not its name, not when it formed, not whether it still stands. One card is one
     /// set of people, however many records share it, so two pacts of the same people read as one and
-    /// say nothing more. No listen-in, read or claim names a pact today: an overheard pair is a
-    /// standing, and <see cref="ClaimSource.Ally"/> is declared and never written. When one does,
-    /// it is evidence here.</para>
+    /// say nothing more. No listen-in, read or claim names another houseguest's pact: an overheard
+    /// pair is a standing, and an ally's claim (<see cref="ClaimSource.Ally"/>, written since
+    /// ACTIONS-DEALS-ALLIANCES-PLAN C6) is a member's own word at a meeting of a pact the player is
+    /// in, so it is evidence of no other pact.</para>
     ///
     /// <para>Pure and read-only, like <see cref="FinalistRead"/>: it neither mutates the state nor
     /// draws from its generator, and it lives in the simulation so the Unity-free subset tests it.</para>

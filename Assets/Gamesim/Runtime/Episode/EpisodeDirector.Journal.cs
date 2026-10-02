@@ -555,8 +555,9 @@ namespace Gamesim.Episode
         private static List<string> ReadLines(EpisodeState state, VoteRead.VoterRead read)
         {
             var lines = new List<string>();
+            // An ally's claim is their own word to the pact at a meeting (ACTIONS-DEALS-ALLIANCES-PLAN C6).
             foreach (var claim in read.claims)
-                lines.Add((claim.source == ClaimSource.Told ? "Told you: evict " : claim.source == ClaimSource.Overheard ? "Overheard: evict " : "An ally heard: evict ")
+                lines.Add((claim.source == ClaimSource.Told ? "Told you: evict " : claim.source == ClaimSource.Overheard ? "Overheard: evict " : "Told the pact: evict ")
                     + state.Find(claim.targetId).name + " (week " + claim.week + ")");
             if (read.knownTerms.Count > 0) lines.Add("You know: " + string.Join(", ", read.knownTerms.Select(TermWords)) + ".");
             if (read.unknownTerms > 0)

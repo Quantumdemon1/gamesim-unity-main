@@ -160,10 +160,11 @@ namespace Gamesim.Simulation
                 // What they said, as the notes say it; a claim naming the player says so plainly.
                 bool you = claim.targetId == s.playerId;
                 string voting = you ? " is voting you out" : " is voting out " + Whom(s, claim.targetId);
+                // An ally's claim is their own word to the pact at a meeting (ACTIONS-DEALS-ALLIANCES-PLAN C6).
                 string said = claim.source == ClaimSource.Told
                         ? Who(s, claim.voterId) + (you ? " told you they would vote you out" : " told you: evict " + Whom(s, claim.targetId))
                     : claim.source == ClaimSource.Overheard ? "Overheard: " + Who(s, claim.voterId) + voting
-                    : "An ally heard " + Who(s, claim.voterId) + voting;
+                    : Who(s, claim.voterId) + (you ? " told the pact they would vote you out" : " told the pact: evict " + Whom(s, claim.targetId));
                 var line = new Line { kind = Kinds.Claim, aboutId = claim.voterId };
                 var known = sheet.Of(claim.voterId);
                 if (known != null && known.Certain && known.targetId == claim.targetId) { line.verdict = Verdicts.Right; line.text = said + ", and voted that way."; }

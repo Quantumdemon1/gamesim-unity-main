@@ -194,7 +194,8 @@ namespace Gamesim.Simulation
         /// Whether an ally's own commitment to the player is hidden from the player, under the
         /// commitment rules (C3): the two share a standing pact, so the ally's alliance and bloc terms
         /// are theirs to give, and the player cannot tell this week where the ally stands - no read of
-        /// them this week, no refused call, no contact and no betrayal of theirs to know
+        /// them this week, no refused call, no question about the vote they would not answer (C6), no
+        /// contact and no betrayal of theirs to know
         /// (<see cref="Allegiance.CommitmentKnown"/>, the rule the notes' "gone quiet" line keeps too).
         /// Never without the rules, nor for somebody outside the player's pacts.
         /// </summary>

@@ -78,15 +78,20 @@ namespace Gamesim.Simulation
             }
             foreach (var claim in s.ledger.claims.Where(c => c.voterId == id))
             {
+                // An ally's claim is their own word to the pact at a meeting (ACTIONS-DEALS-ALLIANCES-PLAN
+                // C6), told as it was said; a ballot that went against it is a vote that changed, as the
+                // season's tapes say it, and costs them nothing - only a lie told to the player's face does.
+                bool ally = claim.source == ClaimSource.Ally;
                 string how = claim.source == ClaimSource.Told ? first + " told you: evict "
                     : claim.source == ClaimSource.Overheard ? "Overheard: " + first + " is voting out "
-                    : "An ally heard " + first + " is voting out ";
-                string verdict = claim.status == ClaimStatus.Kept ? " · and did" : claim.status == ClaimStatus.Lied ? " · a lie" : "";
+                    : "Told the pact they'd vote out ";
+                string verdict = claim.status == ClaimStatus.Kept ? " · and did"
+                    : claim.status == ClaimStatus.Lied ? (ally ? " · voted the other way" : " · a lie") : "";
                 notes.Add(new Note
                 {
                     week = claim.week, kind = Kinds.Vote, text = how + Name(claim.targetId) + verdict,
-                    brief = claim.status == ClaimStatus.Lied ? "Lied to you about the vote"
-                        : claim.status == ClaimStatus.Kept ? "Told you the truth about the vote"
+                    brief = claim.status == ClaimStatus.Lied ? (ally ? "Voted the other way" : "Lied to you about the vote")
+                        : claim.status == ClaimStatus.Kept ? (ally ? "Told the pact the truth about the vote" : "Told you the truth about the vote")
                         : "Says: evict " + FirstName(Name(claim.targetId)),
                 });
             }

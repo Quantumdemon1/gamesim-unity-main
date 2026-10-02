@@ -58,6 +58,7 @@ namespace Gamesim.Simulation
         /// "Where's your head at on the vote?" They answer with their leaning, or a lie, or nothing.
         /// The claim is the record; no memory is written, because a memory naming "you" counts for
         /// the player in every ballot they are on the block for (the web's memory term matches names).
+        /// Under the commitment rules an ally answers with their leaning, always (C6, <see cref="SharesIntel"/>).
         /// </summary>
         private static void AskVote(EpisodeState s, EpisodeCommand c)
         {
@@ -68,8 +69,13 @@ namespace Gamesim.Simulation
                 "Ask somebody who votes this week.");
             Require(!AskedThisWeek(s, target.id), "You already asked " + target.name + " this week.");
             double view = s.Score(target.id, s.playerId);
+            // Under the commitment rules an ally answers straight (ACTIONS-DEALS-ALLIANCES-PLAN C6): in
+            // a pact with the player that holds from their side as far as the player can know, they never
+            // deflect and never lie. A member gone cold, or whose betrayal the player knows of, answers as
+            // anybody does. Never without the rules.
+            bool ally = SharesIntel(s, target.id);
             // A strategist who is not close to you keeps it to themselves. No roll: nothing to keep.
-            if (target.traits.Contains("Strategic") && !target.traits.Contains("Loyal") && view < 25)
+            if (!ally && target.traits.Contains("Strategic") && !target.traits.Contains("Loyal") && view < 25)
             {
                 // The week's ask all the same: on the record as one, or a free question could be put again and again.
                 AddStanding(s, target.id, s.playerId, ClaimSource.Deflected, 0);
@@ -77,8 +83,9 @@ namespace Gamesim.Simulation
                 return;
             }
             var truth = ProjectBallot(s, target.id);
-            double honesty = VoteHonesty(target, view);
-            bool honest = Roll(s) < honesty;
+            // An ally's answer is decided, so nothing is drawn for it (C6); anybody else's word is a roll
+            // on how they see the player, as it always was.
+            bool honest = ally || Roll(s) < VoteHonesty(target, view);
             string stated = honest ? truth.selectedNomineeId : s.nominees.First(id => id != truth.selectedNomineeId);
             SeasonLedger.Append(s.ledger, s.ledger.claims, new ClaimRow { week = s.week, voterId = target.id, targetId = stated, source = ClaimSource.Told });
             Log(s, "vote-read", "You asked " + target.name + " where their head is at. \"" + Name(s, stated) + ".\"", s.playerId, target.id);
@@ -88,7 +95,8 @@ namespace Gamesim.Simulation
         /// How likely a voter is to tell the player the truth about their vote: a Loyal one always, a
         /// Sneaky one one time in four, anybody else by how they see the player - an even chance at a
         /// view of zero, from a fifth to nineteen in twenty. What an asked voter says, and what an
-        /// information partner passes on (<see cref="PassTheReadings"/>).
+        /// information partner passes on (<see cref="PassTheReadings"/>) - unless, under the commitment
+        /// rules, they are the player's ally, whose word is the truth (<see cref="AnswerHonesty"/>, C6).
         /// </summary>
         public static double VoteHonesty(ContestantState voter, double viewOfPlayer) =>
             voter.traits.Contains("Loyal") ? 1 : voter.traits.Contains("Sneaky") ? 0.25

@@ -30,10 +30,11 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// Lines that are a record of what was said, never a ballot read, by the words they open
         /// with: a voter's own stated lean on a whip count ("Says: evict") and the claims the player
-        /// gathered ("Overheard", "An ally heard"). Nothing else is excused by its words; the jury's
+        /// gathered ("Overheard", and an ally's own word at a meeting of the player's pact, "Told the
+        /// pact" - ACTIONS-DEALS-ALLIANCES-PLAN C6). Nothing else is excused by its words; the jury's
         /// ballots at the finale are public (decision 7) and are left out by their kind.
         /// </summary>
-        private static readonly string[] AccountPrefixes = { "Says: evict", "Overheard", "An ally heard" };
+        private static readonly string[] AccountPrefixes = { "Says: evict", "Overheard", "Told the pact" };
 
         /// <summary>The kinds of line the finale reads in the open: the jury's ballots and the crowning (decision 7).</summary>
         private static readonly string[] PublicFinaleKinds = { "jury-vote", "jury-tie", "winner" };

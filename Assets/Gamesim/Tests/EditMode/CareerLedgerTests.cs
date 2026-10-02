@@ -137,6 +137,56 @@ namespace Gamesim.Tests.EditMode
             Assert.That(ledger.Load().seasons.Select(s => s.sessionId), Is.EqualTo(new[] { "season-1" }));
         }
 
+        /// <summary>
+        /// A hold that shares nothing - a backup or sync client copying the record - stops the read
+        /// before the write. That read used to take the locked file for a damaged one and try to set
+        /// it aside; while the hold lasted the move failed too and the finished season was quietly
+        /// not recorded. The read now waits the hold out.
+        /// </summary>
+        [Test]
+        public void Record_WaitsOutABriefExclusiveHoldOnTheFile()
+        {
+            Assert.That(ledger.Record(Finished(1, ContestantStatus.Winner)), Is.True);
+            using (var held = new PersistenceTests.HeldFile(ledger.FilePath, FileShare.None))
+            {
+                held.ReleaseAfter(50);
+                Assert.That(ledger.Record(Finished(2, ContestantStatus.RunnerUp)), Is.True, ledger.Notice);
+            }
+            Assert.That(ledger.Load().seasons.Select(s => s.sessionId), Is.EqualTo(new[] { "season-1", "season-2" }));
+            Assert.That(ledger.Notice, Is.Null);
+            Assert.That(Directory.GetFiles(directory, "career.json.damaged-*"), Is.Empty);
+        }
+
+        /// <summary>
+        /// A hold that outlasts the wait is not damage either. The record stays where it is and as it
+        /// is, the season is refused rather than written over a file nobody could read, and the notice
+        /// says the file could not be opened, not that it was set aside. Once the hold lifts the record
+        /// reads back whole and the season joins it.
+        ///
+        /// <para>FileShare.Delete is the hold that shows why: it refuses reads but lets the file be
+        /// renamed, so a ledger that archived on any read failure would set a good career aside and
+        /// start again from nothing. FileShare.None refuses the rename as well.</para>
+        /// </summary>
+        [TestCase(FileShare.None)]
+        [TestCase(FileShare.Delete)]
+        public void Record_AHoldThatDoesNotLiftIsNotTakenForDamage(FileShare share)
+        {
+            Assert.That(ledger.Record(Finished(1, ContestantStatus.Winner)), Is.True);
+            var before = File.ReadAllBytes(ledger.FilePath);
+            using (new PersistenceTests.HeldFile(ledger.FilePath, share))
+            {
+                Assert.Throws<IOException>(() => File.ReadAllText(ledger.FilePath), "The hold refuses reads.");
+                Assert.That(ledger.Record(Finished(2, ContestantStatus.RunnerUp)), Is.False);
+                Assert.That(ledger.Notice, Does.Contain("could not be opened"));
+                Assert.That(ledger.Notice, Does.Not.Contain("set aside"));
+                Assert.That(Directory.GetFiles(directory, "career.json.damaged-*"), Is.Empty);
+            }
+            Assert.That(File.ReadAllBytes(ledger.FilePath), Is.EqualTo(before), "The record is where it was, untouched.");
+            Assert.That(ledger.Record(Finished(2, ContestantStatus.RunnerUp)), Is.True, ledger.Notice);
+            Assert.That(ledger.Load().seasons.Select(s => s.sessionId), Is.EqualTo(new[] { "season-1", "season-2" }));
+            Assert.That(ledger.Notice, Is.Null);
+        }
+
         [Test]
         public void Entry_ReadsThePlacementFromTheOrderTheJuryFilled()
         {

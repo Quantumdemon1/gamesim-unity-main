@@ -158,6 +158,12 @@ namespace Gamesim.Persistence
         /// <summary>
         /// The record on disk, or an empty one. A damaged file is moved aside and reported through
         /// <see cref="Notice"/>; it is never trusted and never silently replaced.
+        ///
+        /// <para>A file that could not be opened is not a damaged one. Another process holding it
+        /// for a moment is waited out (<see cref="SaveJson.ReadText"/>); a hold that outlasts the wait,
+        /// or a denied path, leaves the file where it is and blocks <see cref="Record"/> until a later
+        /// load can read it. Setting it aside instead would restart a good career from nothing the
+        /// moment the hold lifted.</para>
         /// </summary>
         public CareerRecord Load()
         {
@@ -166,9 +172,20 @@ namespace Gamesim.Persistence
                 Notice = null;
                 blocked = false;
                 if (!File.Exists(FilePath)) return new CareerRecord();
+                string json;
                 try
                 {
-                    return Parse(File.ReadAllText(FilePath, Encoding.UTF8));
+                    json = SaveJson.ReadText(FilePath);
+                }
+                catch (Exception error) when (SaveJson.IsFilesystemError(error))
+                {
+                    blocked = true;
+                    Notice = "The career record could not be opened just now; it is left as it is. " + SaveJson.Explain(error);
+                    return new CareerRecord();
+                }
+                try
+                {
+                    return Parse(json);
                 }
                 catch (Exception error) when (SaveJson.IsExpected(error))
                 {
@@ -186,7 +203,8 @@ namespace Gamesim.Persistence
 
         /// <summary>
         /// Adds a finished season. Returns false when the season is not finished, was already
-        /// recorded, or the file on disk is unreadable and could not be moved out of the way.
+        /// recorded, or the file on disk could not be opened, or is unreadable and could not be
+        /// moved out of the way.
         /// </summary>
         public bool Record(EpisodeState state)
         {
@@ -340,7 +358,7 @@ namespace Gamesim.Persistence
             try
             {
                 SaveJson.WriteNewDurable(temporary, bytes);
-                Parse(File.ReadAllText(temporary, Encoding.UTF8));
+                Parse(SaveJson.ReadText(temporary));
                 SaveJson.SwapIntoPlace(temporary, FilePath, null);
             }
             finally

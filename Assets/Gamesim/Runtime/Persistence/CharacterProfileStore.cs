@@ -121,7 +121,7 @@ namespace Gamesim.Persistence
             {
                 if (!File.Exists(path)) throw new FileNotFoundException("Houseguest profile not found.");
                 if (new FileInfo(path).Length > MaximumBytes) throw new InvalidDataException("The houseguest exceeds the profile size limit.");
-                var envelope = SaveJson.ParseObject(File.ReadAllText(path));
+                var envelope = SaveJson.ParseObject(SaveJson.ReadText(path));
                 if (envelope.Properties().Count() != 4 || (string)envelope["format"] != Format
                     || envelope["version"]?.Type != JTokenType.Integer || (int)envelope["version"] != 1
                     || envelope["checksum"]?.Type != JTokenType.String || envelope["profile"] is not JObject payload)

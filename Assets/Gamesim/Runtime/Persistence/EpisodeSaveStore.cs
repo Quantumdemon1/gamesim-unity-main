@@ -48,8 +48,15 @@ namespace Gamesim.Persistence
             lock (gate)
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
-                if (File.Exists(path) && !TryRead(path, out _, out _))
+                if (File.Exists(path) && !TryRead(path, out _, out _, out var unopened))
+                {
+                    // A save that could not be opened - held past the wait, or denied - may be fine.
+                    // It still blocks the overwrite, as the IOException of a failed save rather than
+                    // the verdict that the file is damaged and needs recovering.
+                    if (unopened != null)
+                        throw new IOException("The current save could not be opened to check it before saving; it was left as it is.", unopened);
                     throw new InvalidDataException("The current save is unreadable. Choose backup recovery or another slot before saving; existing copies were preserved.");
+                }
                 Install(bytes, rotateBackup: true);
             }
         }
@@ -129,15 +136,22 @@ namespace Gamesim.Persistence
             }
         }
 
-        private static bool TryRead(string file, out EpisodeState state, out string message)
+        private static bool TryRead(string file, out EpisodeState state, out string message) =>
+            TryRead(file, out state, out message, out _);
+
+        /// <param name="unopened">The filesystem error when the file could not be read at all, which
+        /// says nothing about its content (<see cref="SaveJson.IsFilesystemError"/>); null when it was
+        /// read, is absent, or failed on what it holds.</param>
+        private static bool TryRead(string file, out EpisodeState state, out string message, out Exception unopened)
         {
             state = null;
+            unopened = null;
             message = "No local save exists in this slot.";
             try
             {
                 if (!File.Exists(file)) return false;
                 if (new FileInfo(file).Length > SaveJson.MaximumBytes) throw new InvalidDataException("Save exceeds the supported size limit.");
-                var envelope = SaveJson.ParseObject(File.ReadAllText(file, Encoding.UTF8));
+                var envelope = SaveJson.ParseObject(SaveJson.ReadText(file));
                 if (envelope.Properties().Any(property => !new[] { "format", "version", "savedAt", "checksum", "state" }.Contains(property.Name))
                     || (string)envelope["format"] != Format || envelope["version"]?.Type != JTokenType.Integer
                     || (long)envelope["version"] != 1)
@@ -170,6 +184,7 @@ namespace Gamesim.Persistence
             }
             catch (Exception error) when (SaveJson.IsExpected(error))
             {
+                if (SaveJson.IsFilesystemError(error)) unopened = error;
                 message = "Local save could not be loaded: " + SaveJson.Explain(error);
                 return false;
             }
@@ -278,8 +293,9 @@ namespace Gamesim.Persistence
             if (!File.ReadAllBytes(path).SequenceEqual(bytes)) throw new IOException("Written bytes could not be verified.");
         }
 
-        // How many times a swap is tried before its failure stands, and the step its waits grow by.
-        private const int SwapAttempts = 5, SwapRetryStepMilliseconds = 25;
+        // How many times a step that meets another process's hold on a file is tried before its
+        // failure stands, and the step its waits grow by.
+        private const int HoldAttempts = 5, HoldWaitStepMilliseconds = 25;
 
         /// <summary>
         /// Puts a written and validated <paramref name="pending"/> file in <paramref name="target"/>'s
@@ -299,19 +315,48 @@ namespace Gamesim.Persistence
         /// (ERROR_UNABLE_TO_MOVE_REPLACEMENT and _2), and then the pending file moves into the empty
         /// place.</para>
         /// </summary>
-        public static void SwapIntoPlace(string pending, string target, string backup)
+        public static void SwapIntoPlace(string pending, string target, string backup) => WaitOutHolds(() =>
+        {
+            if (File.Exists(target)) File.Replace(pending, target, backup);
+            else File.Move(pending, target);
+        });
+
+        /// <summary>
+        /// A store's file as text, read as UTF-8, waiting out a hold on it the way
+        /// <see cref="SwapIntoPlace"/> does.
+        ///
+        /// <para>A backup or sync client copying the file can open it exclusively for a moment, and
+        /// the read then fails with a plain IOException ("Sharing violation on path ...") that says
+        /// nothing about what the file holds. That is tried again on the swap's schedule and the last
+        /// failure is thrown unchanged. A caller tells it from damage with
+        /// <see cref="IsFilesystemError"/>: a file that could not be opened is never set aside or
+        /// refused as damaged.</para>
+        /// </summary>
+        public static string ReadText(string path)
+        {
+            string text = null;
+            WaitOutHolds(() => text = File.ReadAllText(path, Encoding.UTF8));
+            return text;
+        }
+
+        /// <summary>
+        /// Runs <paramref name="step"/>, and runs it again after 25, 50, 75 and 100 ms while it fails
+        /// with a plain IOException, the sharing violation another process's brief hold produces. The
+        /// last attempt's failure is thrown unchanged. Its subclasses (a missing directory or file, a
+        /// path too long) and UnauthorizedAccessException do not clear by waiting and are thrown at once.
+        /// </summary>
+        private static void WaitOutHolds(Action step)
         {
             for (int attempt = 1; ; attempt++)
             {
                 try
                 {
-                    if (File.Exists(target)) File.Replace(pending, target, backup);
-                    else File.Move(pending, target);
+                    step();
                     return;
                 }
-                catch (IOException error) when (error.GetType() == typeof(IOException) && attempt < SwapAttempts)
+                catch (IOException error) when (error.GetType() == typeof(IOException) && attempt < HoldAttempts)
                 {
-                    Thread.Sleep(SwapRetryStepMilliseconds * attempt);
+                    Thread.Sleep(HoldWaitStepMilliseconds * attempt);
                 }
             }
         }
@@ -319,6 +364,14 @@ namespace Gamesim.Persistence
         public static bool IsExpected(Exception error) => error is IOException || error is InvalidDataException || error is UnauthorizedAccessException
             || error is JsonException || error is ArgumentException || error is OverflowException || error is FormatException
             || error is InvalidCastException;
+
+        /// <summary>
+        /// True when a file could not be reached, rather than for anything in it: a hold that outlasted
+        /// the wait, a path that is denied, missing or too long. The file may be perfectly good, so this
+        /// is a failed read or save and never a reason to set the file aside or refuse it as damaged.
+        /// Every other expected failure is about the content.
+        /// </summary>
+        public static bool IsFilesystemError(Exception error) => error is IOException || error is UnauthorizedAccessException;
 
         /// <summary>
         /// What a failure may say to the player. A filesystem error names the file it could not
@@ -329,7 +382,7 @@ namespace Gamesim.Persistence
         /// suites assert on them.
         /// </summary>
         public static string Explain(Exception error) =>
-            error is IOException || error is UnauthorizedAccessException
+            IsFilesystemError(error)
                 ? "(" + error.GetType().Name + ")"
                 : error.Message;
 

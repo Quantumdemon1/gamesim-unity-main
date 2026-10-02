@@ -208,6 +208,61 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Directory.GetFiles(directory, "*.pending-*"), Is.Empty, "The pending copy is still cleaned up.");
         }
 
+        /// <summary>
+        /// A hold that shares nothing - a backup or sync client copying the save - stops the read
+        /// that checks the current save before replacing it. That read used to take the locked
+        /// file for an unreadable one and refuse the save as damaged; it now waits the hold out
+        /// as the swap does.
+        /// </summary>
+        [Test]
+        public void Save_WaitsOutABriefExclusiveHoldOnTheSave()
+        {
+            var first = ContentCatalog.Create(17);
+            store.Save(first);
+            var firstBytes = File.ReadAllBytes(store.SavePath);
+            var second = first.Clone();
+            second.revision = 1;
+            using (var held = new HeldFile(store.SavePath, FileShare.None))
+            {
+                held.ReleaseAfter(50);
+                store.Save(second);
+            }
+            Assert.That(store.TryLoad(out var loaded, out var message), Is.True, message);
+            Assert.That(loaded.revision, Is.EqualTo(1));
+            Assert.That(File.ReadAllBytes(store.BackupPath), Is.EqualTo(firstBytes));
+            Assert.That(Directory.GetFiles(directory, "*.pending-*"), Is.Empty);
+        }
+
+        /// <summary>
+        /// An exclusive hold that outlasts the wait still blocks the overwrite, but as a failed
+        /// save - an IOException carrying the sharing violation - and not as the
+        /// InvalidDataException that calls the save damaged and sends the player to backup
+        /// recovery (<see cref="DamagedPrimary_BlocksOverwriteAndRequiresExplicitBackupRecovery"/>).
+        /// Nothing on disk moves, and once the hold lifts the save is the good one it always was.
+        /// </summary>
+        [Test]
+        public void Save_AnExclusiveHoldThatDoesNotLiftIsAFailedSaveNotADamagedOne()
+        {
+            var first = ContentCatalog.Create(17);
+            store.Save(first);
+            var before = File.ReadAllBytes(store.SavePath);
+            var second = first.Clone();
+            second.revision = 1;
+            using (new HeldFile(store.SavePath, FileShare.None))
+            {
+                var error = Assert.Throws<IOException>(() => store.Save(second));
+                Assert.That(error.InnerException, Is.TypeOf<IOException>(), "The read's own failure is kept.");
+            }
+            Assert.That(File.ReadAllBytes(store.SavePath), Is.EqualTo(before));
+            Assert.That(File.Exists(store.BackupPath), Is.False, "Nothing rotated into the backup.");
+            Assert.That(Directory.GetFiles(directory, "*.pending-*"), Is.Empty);
+            Assert.That(store.TryLoad(out var loaded, out var message), Is.True, message);
+            Assert.That(loaded.revision, Is.EqualTo(first.revision));
+            store.Save(second);
+            Assert.That(store.TryLoad(out loaded, out message), Is.True, message);
+            Assert.That(loaded.revision, Is.EqualTo(1));
+        }
+
         [TestCase(0)]
         [TestCase(1)]
         [TestCase(2)]
@@ -288,19 +343,21 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// Another process's handle on a save file, held the way a virus scan or the search indexer
-        /// holds one: open for reading, sharing reads but not deletion. The stores' own reads before
-        /// a write go through, as they do in the field, and only the swap that replaces the file
-        /// meets the lock. FileShare.None would stop those reads first and never reach the swap.
+        /// Another process's handle on a save file. By default it is held the way a virus scan or
+        /// the search indexer holds one: open for reading, sharing reads but not deletion. The
+        /// stores' own reads before a write go through, as they do in the field, and only the swap
+        /// that replaces the file meets the lock. <see cref="FileShare.None"/> holds it the way a
+        /// backup or sync client copying it can, sharing nothing, and then those reads meet the
+        /// lock first.
         /// </summary>
         internal sealed class HeldFile : IDisposable
         {
             private readonly FileStream stream;
             private Thread releaser;
 
-            public HeldFile(string path)
+            public HeldFile(string path, FileShare share = FileShare.Read)
             {
-                stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+                stream = new FileStream(path, FileMode.Open, FileAccess.Read, share);
             }
 
             /// <summary>Lets go from another thread after the given time, while the write is waiting.</summary>

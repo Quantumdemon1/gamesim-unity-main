@@ -50,6 +50,14 @@ namespace Gamesim.Simulation
         /// <summary>What validation lets a season hold, so the pass stops short of it.</summary>
         public const int DealCeiling = 200;
 
+        /// <summary>
+        /// How the id of a question put to the player begins: a weekly offer (<see cref="Propose"/>)
+        /// or a nominee's veto ask (<see cref="AskForTheVeto"/>). Only the player's answer makes one
+        /// bind, so a deal with either that is or was binding is one the player accepted
+        /// (<see cref="DealResolution.AcceptedOffer"/>).
+        /// </summary>
+        public const string OfferPrefix = "deal-ask-", VetoAskPrefix = "deal-veto-";
+
         // ---------------------------------------------------------------- reading the room
 
         /// <summary>
@@ -244,7 +252,7 @@ namespace Gamesim.Simulation
             // week, not whether anything is still waiting — otherwise clearing the table would
             // refill it, and a player who answers promptly would be asked more than one who does not.
             if (state.deals.Any(d => d.recipientId == state.playerId && d.week == state.week
-                                     && d.id.StartsWith("deal-ask-", StringComparison.Ordinal))) return;
+                                     && d.id.StartsWith(OfferPrefix, StringComparison.Ordinal))) return;
 
             var offers = state.contestants
                 .Where(npc => npc.status == ContestantStatus.Active && !npc.isPlayer)
@@ -264,7 +272,7 @@ namespace Gamesim.Simulation
                 if (!types.Add(offer.kind)) continue;
                 state.deals.Add(new DealState
                 {
-                    id = "deal-ask-" + state.nextSequence,
+                    id = OfferPrefix + state.nextSequence,
                     type = offer.kind,
                     proposerId = offer.npc.id,
                     recipientId = state.playerId,
@@ -316,7 +324,7 @@ namespace Gamesim.Simulation
                 if (state.deals.Count >= DealCeiling) return;
                 state.deals.Add(new DealState
                 {
-                    id = "deal-veto-" + state.nextSequence,
+                    id = VetoAskPrefix + state.nextSequence,
                     type = DealKind.VetoUse,
                     proposerId = npc.id,
                     recipientId = state.playerId,

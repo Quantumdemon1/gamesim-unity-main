@@ -148,14 +148,16 @@ namespace Gamesim.Simulation
             // Schema 22 (C0): the week a kept or broken deal was settled - no earlier than it was struck,
             // nor than the rules that write it - and, on a broken one, who broke it, one of its two
             // sides: written together, at the settlement, or not at all. A voting bloc may name
-            // nobody, since both walked away from it; every other broken deal names somebody. 0 and
-            // null on one settled before the rules.
+            // nobody, since both walked away from it, and so may a vote deal, which both of its sides
+            // can break at the one vote (C1); every other broken deal names somebody. 0 and null on
+            // one settled before the rules.
             if (s.deals.Any(d => (d.brokenById != null && (d.status != DealStatus.Broken || d.settledWeek == 0
                         || (d.brokenById != d.proposerId && d.brokenById != d.recipientId)))
                     || d.settledWeek < 0 || d.settledWeek > s.week
                     || (d.settledWeek > 0 && (d.settledWeek < d.week || d.settledWeek < s.commitmentRulesStartWeek
                         || (d.status != DealStatus.Fulfilled && d.status != DealStatus.Broken)
-                        || (d.status == DealStatus.Broken && d.type != DealKind.VoteTogether && d.brokenById == null)))))
+                        || (d.status == DealStatus.Broken && d.brokenById == null
+                            && d.type != DealKind.VoteTogether && d.type != DealKind.VoteSave && d.type != DealKind.VoteEvict)))))
                 return Fail(out error, "Invalid deal settlement.");
             // The commitment rules write those records, so a season that never played them holds none.
             if (s.commitmentRulesStartWeek == 0 && (s.deals.Any(d => d.brokenById != null || d.settledWeek != 0)

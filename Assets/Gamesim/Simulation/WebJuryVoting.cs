@@ -102,11 +102,12 @@ namespace Gamesim.Simulation
 
             // A breach counts against the finalist only when they broke it, under the commitment rules
             // (C0, X3): a juror who broke their word to a finalist does not hold it against them.
-            // Before them every breach between the two counted, whoever broke it.
+            // Before them every breach between the two counted, whoever broke it. And under them an
+            // offer the player accepted weighs one step heavier broken (C1, decision 15).
             foreach (var deal in state.deals.Where(d => Between(d.proposerId, d.recipientId, jurorId, finalistId)))
             {
                 if (deal.status == DealStatus.Fulfilled) score += 20 * DealTrust.Weight(deal.trustImpact);
-                else if (deal.status == DealStatus.Broken) { if (Breaches.CountsAgainst(state, deal, finalistId)) score -= 25 * DealTrust.Weight(deal.trustImpact); }
+                else if (deal.status == DealStatus.Broken) { if (Breaches.CountsAgainst(state, deal, finalistId)) score -= 25 * DealResolution.BreachWeight(state, deal); }
                 else if (deal.status == DealStatus.Active) score += 10;
             }
 

@@ -385,13 +385,17 @@ namespace Gamesim.Simulation
         private static void Knows(EpisodeState s, Juror juror)
         {
             string player = s.playerId, id = juror.id;
+            // Under the commitment rules a deal or a vote promise the juror's own ballot settled - a
+            // partnership too (C1) - says how it ended once the player knows that ballot (KnownBallots).
+            bool rules = EpisodeEngine.CommitmentRulesOn(s);
             foreach (var alliance in s.alliances.Where(a => a.members.Contains(player) && a.members.Contains(id)))
                 juror.knows.Add("You shared " + alliance.name + (alliance.active ? "." : ", now ended."));
             foreach (var deal in s.deals.Where(d => (d.proposerId == player && d.recipientId == id) || (d.proposerId == id && d.recipientId == player)))
-                juror.knows.Add(DealKind.Title(deal.type) + ": " + HouseguestNotes.DealStanding(deal.status, deal.proposerId == id) + ".");
+                juror.knows.Add(DealKind.Title(deal.type) + ": " + (rules && !KnownBallots.DealOutcomeKnown(s, deal) ? KnownBallots.Unresolved
+                    : HouseguestNotes.DealStanding(deal.status, deal.proposerId == id)) + ".");
             foreach (var promise in s.promises.Where(p => (p.fromId == player && p.toId == id) || (p.fromId == id && p.toId == player)))
                 juror.knows.Add((promise.fromId == player ? "You promised them " : "They promised you ") + HouseguestNotes.PromiseWord(promise.kind)
-                    + ": " + HouseguestNotes.PromiseStanding(promise.status) + ".");
+                    + ": " + (rules && !KnownBallots.PromiseOutcomeKnown(s, promise) ? KnownBallots.Unresolved : HouseguestNotes.PromiseStanding(promise.status)) + ".");
             // The player's ballot against them is theirs to know only where the count showed it
             // (UI-UX-PASS-PLAN B0: the reveal reads the count, not the ballots).
             int votes = s.ledger?.ballots?.Count(b => b.voterId == player && b.targetId == id && CouldKnowYourBallot(s, b.week, id)) ?? 0;

@@ -77,13 +77,22 @@ namespace Gamesim.Simulation
                 return;
             }
             var truth = ProjectBallot(s, target.id);
-            double honesty = target.traits.Contains("Loyal") ? 1 : target.traits.Contains("Sneaky") ? 0.25
-                : Math.Max(0.2, Math.Min(0.95, 0.5 + view / 100));
+            double honesty = VoteHonesty(target, view);
             bool honest = Roll(s) < honesty;
             string stated = honest ? truth.selectedNomineeId : s.nominees.First(id => id != truth.selectedNomineeId);
             SeasonLedger.Append(s.ledger, s.ledger.claims, new ClaimRow { week = s.week, voterId = target.id, targetId = stated, source = ClaimSource.Told });
             Log(s, "vote-read", "You asked " + target.name + " where their head is at. \"" + Name(s, stated) + ".\"", s.playerId, target.id);
         }
+
+        /// <summary>
+        /// How likely a voter is to tell the player the truth about their vote: a Loyal one always, a
+        /// Sneaky one one time in four, anybody else by how they see the player - an even chance at a
+        /// view of zero, from a fifth to nineteen in twenty. What an asked voter says, and what an
+        /// information partner passes on (<see cref="PassTheReadings"/>).
+        /// </summary>
+        public static double VoteHonesty(ContestantState voter, double viewOfPlayer) =>
+            voter.traits.Contains("Loyal") ? 1 : voter.traits.Contains("Sneaky") ? 0.25
+                : Math.Max(0.2, Math.Min(0.95, 0.5 + viewOfPlayer / 100));
 
         /// <summary>Reading a person: on a hit, how they see you becomes known; on a miss, they may notice.</summary>
         private static void ReadPerson(EpisodeState s, EpisodeCommand c)
@@ -176,6 +185,9 @@ namespace Gamesim.Simulation
             }
             foreach (var row in s.ledger.ballots.Where(b => b.week == s.week && b.voterId == s.playerId))
                 row.correct = row.readBefore != null && row.readBefore == evicted;
+            // Under the commitment rules (C1) an information partner the reveal caught lying broke
+            // their deal: telling the player the truth was the deal.
+            if (CommitmentRulesOn(s)) BreakTheDealsOfLyingPartners(s);
         }
 
         /// <summary>

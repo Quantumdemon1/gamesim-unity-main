@@ -41,6 +41,13 @@ namespace Gamesim.Simulation
         /// where the threat term holds a broken deal against both sides, as the web does.
         /// </summary>
         public bool heldByBreaker;
+
+        /// <summary>
+        /// Native, under the commitment rules: both sides broke it at once - a voting bloc that fell
+        /// apart, or a vote deal both of them voted against (ACTIONS-DEALS-ALLIANCES-PLAN C1,
+        /// <see cref="Breaches.BrokenByBoth"/>) - so it is held against each. False otherwise.
+        /// </summary>
+        public bool brokenByBoth;
     }
 
     [Serializable] public sealed class WebVoteRelationshipArc
@@ -189,6 +196,7 @@ namespace Gamesim.Simulation
                         type = d.type, status = d.status, targetHouseguestId = d.targetId,
                         heldByBreaker = heldByBreaker,
                         brokenById = heldByBreaker ? Breaches.DealBreaker(state, d) : null,
+                        brokenByBoth = heldByBreaker && Breaches.BrokenByBoth(d),
                     }).ToList()
                 },
                 memories = state.memories.Where(m => m.ownerId == voterId).Reverse().Take(10).Select(m => m.text).ToList(),
@@ -307,14 +315,15 @@ namespace Gamesim.Simulation
         /// <summary>
         /// Whether a broken deal adds to this houseguest's threat. The web holds it against both
         /// sides. Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C0) it is held against
-        /// whoever broke it - both sides of a voting bloc, which each walked away from - and never
-        /// against the one wronged: a Head of Household who nominates their safety partner does not
-        /// put them up with three more points of threat in every ballot besides.
+        /// whoever broke it - both sides of a voting bloc, which each walked away from, and of a vote
+        /// deal both of them broke (C1) - and never against the one wronged: a Head of Household who
+        /// nominates their safety partner does not put them up with three more points of threat in
+        /// every ballot besides.
         /// </summary>
         private static bool HeldAgainst(WebVoteDeal d, string id)
         {
             bool pair = d.proposerId == id || d.recipientId == id;
-            return d.heldByBreaker ? d.brokenById == id || (d.type == DealKind.VoteTogether && pair) : pair;
+            return d.heldByBreaker ? d.brokenById == id || ((d.type == DealKind.VoteTogether || d.brokenByBoth) && pair) : pair;
         }
 
         private static EvidenceValue AllianceLoyalty(string evaluatorId, string targetId, WebVoteState state)

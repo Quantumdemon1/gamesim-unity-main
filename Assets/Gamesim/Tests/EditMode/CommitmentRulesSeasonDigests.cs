@@ -31,7 +31,10 @@ namespace Gamesim.Tests.EditMode
     ///
     /// <para>Explicit: run with <c>dotnet test Tools/SimulationTests --filter "FullyQualifiedName~CommitmentRulesSeasonDigests"</c>.
     /// A copy change in one of the digested readers moves every digest without moving a season; the
-    /// evidence is for a change to the rules, and a reader's words are re-recorded with it.</para>
+    /// evidence is for a change to the rules, and a reader's words are re-recorded with it. Each
+    /// later slice behind the same boundary keeps the first half green and shows, in the second, that
+    /// the same seasons reach what it changes (C1: partnerships judged, safety pacts kept, information
+    /// readings, offers accepted and broken).</para>
     /// </summary>
     public sealed class CommitmentRulesSeasonDigests
     {
@@ -117,6 +120,13 @@ namespace Gamesim.Tests.EditMode
             Assert.That(reached.TryGetValue("study", out int studies) && studies > 0, Is.True, "The player studied.");
             Assert.That(reached.TryGetValue("whisper", out int whispers) && whispers > 0, Is.True, "The player whispered.");
             Assert.That(reached.TryGetValue("deal-broken", out int broken) && broken > 0, Is.True, "Deals broke.");
+            // C1 (every deal does something): the same seasons reach each of its rules.
+            reached.TryGetValue("partnership-broken", out int partnershipsBroken);
+            reached.TryGetValue("partnership-kept", out int partnershipsKept);
+            Assert.That(partnershipsBroken + partnershipsKept, Is.GreaterThan(0), "Partnerships were judged at the vote.");
+            Assert.That(reached.TryGetValue("safety-kept", out int spared) && spared > 0, Is.True, "Safety pacts were kept.");
+            Assert.That(reached.TryGetValue("information-reading", out int readings) && readings > 0, Is.True, "Information deals passed their readings.");
+            Assert.That(reached.TryGetValue("accepted-offer-broken", out int accepted) && accepted > 0, Is.True, "Offers the player accepted broke.");
         }
 
         /// <summary>A played line's key: its rule set, size, seed and digest, without the run's counts.</summary>
@@ -204,6 +214,17 @@ namespace Gamesim.Tests.EditMode
             Count(counts, "hunt-to-player", final.events.Count(e => e.kind == "information" && e.text.EndsWith(" has to go.", StringComparison.Ordinal)));
             Count(counts, "whisper", final.events.Count(e => e.kind == "rumour" && e.text.StartsWith("You whispered", StringComparison.Ordinal)));
             Count(counts, "study", final.events.Count(e => e.kind == "study-house"));
+            // C1's rules: a partnership judged at the vote - broken, or kept and standing, which leaves a
+            // record both ways - a safety pact kept, an information deal's reading (the last 256 lines
+            // only) and its breach by a lie, and an offer the player accepted that then broke.
+            Count(counts, "partnership-broken", final.deals.Count(d => d.type == DealKind.Partnership && d.status == DealStatus.Broken));
+            Count(counts, "partnership-kept", final.relationships.Sum(r => r.events.Count(e => e.type == "deal_fulfilled"
+                && e.description != null && e.description.Contains(" honoured a partnership with "))) / 2);
+            Count(counts, "safety-kept", final.deals.Count(d => d.type == DealKind.SafetyAgreement && d.status == DealStatus.Fulfilled));
+            Count(counts, "information-reading", final.events.Count(e => e.kind == "vote-read" && e.text.Contains(" kept you in the loop")));
+            Count(counts, "information-lie", final.deals.Count(d => d.type == DealKind.InformationSharing && d.status == DealStatus.Broken));
+            Count(counts, "accepted-offer-broken", final.deals.Count(d => d.status == DealStatus.Broken && d.recipientId == final.playerId
+                && (d.id.StartsWith("deal-ask-", StringComparison.Ordinal) || d.id.StartsWith("deal-veto-", StringComparison.Ordinal))));
             stats = "cmds=" + i + " week=" + final.week + " deals=" + final.deals.Count + " broken=" + broken + " promisesBroken=" + brokenPromises
                 + " winner=" + final.winnerId;
             digest = Hash(trace.ToString());

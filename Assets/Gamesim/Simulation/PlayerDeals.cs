@@ -37,6 +37,16 @@ namespace Gamesim.Simulation
         /// <summary>What striking a bargain is worth on the ledger, either way round.</summary>
         public const double AcceptedImpact = 12, RefusedImpact = -4;
 
+        /// <summary>
+        /// What accepting a houseguest's offer is worth under the commitment rules
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN C1, decision 15): +4, not <see cref="AcceptedImpact"/>'s +12.
+        /// Answering costs no action, so +12 for every yes made accepting everything the dominant
+        /// play; under the rules the yes is a commitment instead, and an offer accepted and then
+        /// broken weighs one step heavier (<see cref="DealResolution.BreachWeight"/>). A deal the
+        /// player puts to somebody, which costs an action and a roll, keeps its +12.
+        /// </summary>
+        public const double CommittedAcceptedImpact = 4;
+
         /// <summary>How many deals a season lets the player hold at once, proposals included.</summary>
         public const int PlayerDealCeiling = 40;
 

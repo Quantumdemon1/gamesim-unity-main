@@ -203,8 +203,9 @@ namespace Gamesim.Simulation
                 {
                     string what = DealWords(type);
                     // A vote deal the other party settled by their ballot - or that the two of them
-                    // settled together - is told once the player knows that ballot (decision 4).
-                    if (KnownBallots.IsVoteDeal(type) && actorId != s.playerId && !KnownBallots.Knows(s, week, partner))
+                    // settled together - is told once the player knows that ballot (decision 4). So
+                    // is a partnership, which under the commitment rules only the vote settles (C1).
+                    if (KnownBallots.IsBallotKind(type) && actorId != s.playerId && !KnownBallots.Knows(s, week, partner))
                     {
                         line.verdict = Verdicts.NotKnown;
                         line.text = "The " + what + " with " + Whom(s, partner) + " is " + KnownBallots.Unresolved + ".";

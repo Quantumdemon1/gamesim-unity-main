@@ -202,6 +202,8 @@ namespace Gamesim.Episode
         private Slider challengeMeter;
         private RectTransform modal;
         private ScrollRect modalScroll;
+        /// <summary>The status line this render built: the live one, which a name lookup after a rebuild does not find first.</summary>
+        private RectTransform statusRoot;
         private string preferredSelection, retainedImportPath = "";
         private string retainedSpeech = "", speechSession, speechSpeaker;
         /// <summary>The locked argument the speech editor was last filled from, so a draft the player cleared stays clear.</summary>
@@ -284,9 +286,10 @@ namespace Gamesim.Episode
             // open one keeps the one they did.
             if (!open || modal == null) litChoice = null;
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
+            MarkChromeChanged();
             challengeMeter = null; challengeCaption = null;
             modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
-            fitToContent = false; pinnedAction = null; pinnedNoteHeight = 0f; pinnedExtra = 0f; contentCap = 0f; nearbyCard = null; nearbyBar = null;
+            fitToContent = false; pinnedAction = null; pinnedNoteHeight = 0f; pinnedExtra = 0f; contentCap = 0f; nearbyCard = null; nearbyBar = null; statusRoot = null;
             ForgetStrategyStage();
             activityLayout = ActivityLayout.Standard; relationshipRoot = null;
             ResetColumns(); columnsRow = mainColumn = sideColumn = null; sideCard = null;
@@ -346,6 +349,7 @@ namespace Gamesim.Episode
             // was the widest thing in the frame. Never wider than the room between the controls on
             // either side, so the expanded help box still cannot reach it.
             var status = Chrome("Status",canvas.transform);
+            statusRoot = status;
             var statusBounds = ((RectTransform)canvas.transform).rect;
             // Never narrower than a caption: on a run's first frame the canvas can still be the raw
             // screen, and at 640 wide the room between the gutters came to -2 - the toast was built
@@ -392,6 +396,10 @@ namespace Gamesim.Episode
             var promptCaption = FixedText(promptRoot, InteractCaption, 12, Accent, Vector2.zero, new Vector2(10, 10));
             promptCaption.gameObject.SetActive(false);
             promptRoot.gameObject.SetActive(false);
+            // The Nearby card and its bar as last asked for, now that the status line they stand
+            // in for is built: a render between the director's ticks used to leave the new status
+            // over the bar until the next tick, and a frame is what a capture photographs.
+            ApplyNearby();
             content = null;
             if (!open && !recovery)
             {
@@ -1617,6 +1625,7 @@ namespace Gamesim.Episode
                 Destroy(child.gameObject);
             }
             FollowChip(name);
+            MarkChromeChanged();
         }
 
         private void FollowChip(string name)
@@ -1654,7 +1663,8 @@ namespace Gamesim.Episode
             if (prompt == null) return;
             prompt.text = Localisation.Text(value);
             var root = (RectTransform)prompt.transform.parent;
-            root.gameObject.SetActive(!string.IsNullOrEmpty(value));
+            bool shown = !string.IsNullOrEmpty(value);
+            if (root.gameObject.activeSelf != shown) { root.gameObject.SetActive(shown); MarkChromeChanged(); }
             if (promptHint == null) return;
             bool hinted = !string.IsNullOrEmpty(value) && !string.IsNullOrEmpty(hint);
             if (hinted)
@@ -1674,7 +1684,7 @@ namespace Gamesim.Episode
         private TMP_Text promptHint;
         /// <summary>The prompt's height, and its height with a hint line under its words: the line's 22 and the same 6 of air under it.</summary>
         private const float PromptHeight = 52f, PromptHintedHeight = 74f;
-        public void SetVisible(bool value) { if(canvas!=null) canvas.gameObject.SetActive(value); }
+        public void SetVisible(bool value) { if(canvas!=null) canvas.gameObject.SetActive(value); MarkChromeChanged(); }
         public bool IsVisible => canvas != null && canvas.gameObject.activeSelf;
 
         /// <summary>
@@ -1694,6 +1704,7 @@ namespace Gamesim.Episode
             group.alpha = on ? 0f : 1f;
             group.blocksRaycasts = !on && interactive;
             IsCinematic = on;
+            MarkChromeChanged();
         }
 
         /// <summary>Whether the HUD is stepped aside for a cinematic.</summary>
@@ -1719,6 +1730,7 @@ namespace Gamesim.Episode
                 group.alpha = 0f; group.blocksRaycasts = false;
             }
             else { group.alpha = heldAlpha; group.blocksRaycasts = heldRaycasts; }
+            MarkChromeChanged();
         }
 
         /// <summary>Whether the chrome is stepped aside for a ceremony reveal.</summary>
@@ -1734,16 +1746,43 @@ namespace Gamesim.Episode
         /// </summary>
         public bool Covers(Vector2 screen)
         {
-            if (canvas == null || !canvas.gameObject.activeInHierarchy) return false;
-            var frame = ((RectTransform)canvas.transform).rect;
-            float whole = Mathf.Max(1f, frame.width * frame.height);
-            foreach (Transform child in canvas.transform)
-            {
-                if (!child.gameObject.activeInHierarchy || !(child is RectTransform rect)) continue;
-                var size = rect.rect.size;
-                if (size.x * size.y > whole * .6f) continue;
-                if (RectTransformUtility.RectangleContainsScreenPoint(rect, screen, null)) return true;
-            }
+            GatherChrome();
+            for (int i = 0; i < chromeRects.Count; i++)
+                if (chromeRects[i].Contains(screen)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Whether a piece of the chrome stands over any of a screen rect, in pixels: an icon over a
+        /// room with the name under it, a room's chip on the map, an endgame name chip. Half under a
+        /// card, a name reads as another name, so the house asks about the whole of a thing, not the
+        /// point it hangs from. With <paramref name="containers"/>, a panel the size of the frame
+        /// counts too. The shade under the top bar counts, as it always has for the icons.
+        /// </summary>
+        public bool CoversAny(Rect box, bool containers = false)
+        {
+            GatherChrome();
+            for (int i = 0; i < chromeRects.Count; i++)
+                if (chromeRects[i].Overlaps(box)) return true;
+            if (containers)
+                for (int i = 0; i < chromeContainers.Count; i++)
+                    if (chromeContainers[i].Overlaps(box)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Whether the chrome covers a houseguest's name plate, in pixels: every piece and every
+        /// panel, however much of the frame it takes - a plate behind the notebook's glass is behind
+        /// glass - but two. The shade under the top bar is a gradient fading to nothing, and
+        /// mockup-12 hangs the name of the one you are talking to just under the bar. And a
+        /// conversation's stage is a scrim the pair are seen through, not a card: there a plate
+        /// stands clear of the conversation's column and its dial instead (UI-UX-PASS-PLAN H0).
+        /// </summary>
+        public bool CoversPlate(Rect box)
+        {
+            GatherChrome();
+            for (int i = 0; i < plateChrome.Count; i++)
+                if (plateChrome[i].Overlaps(box)) return true;
             return false;
         }
 
@@ -1757,31 +1796,97 @@ namespace Gamesim.Episode
         public void ChromeOnScreen(List<Rect> into)
         {
             into.Clear();
+            GatherChrome();
+            into.AddRange(chromeRects);
+        }
+
+        /// <summary><see cref="GatherChrome"/>'s corners, asked for on every frame something stands clear of the chrome. Reused.</summary>
+        private readonly Vector3[] chromeCorners = new Vector3[4];
+
+        /// <summary>
+        /// The chrome's screen rects this frame: the pieces, the containers the size of the frame
+        /// apart from them, and what a name plate stands clear of (<see cref="CoversPlate"/>).
+        /// </summary>
+        private readonly List<Rect> chromeRects = new List<Rect>(), chromeContainers = new List<Rect>(), plateChrome = new List<Rect>();
+        private int chromeFrame = -1, chromeVersion, chromeSeen;
+
+        /// <summary>
+        /// Says the chrome changed under a reader this frame - a rebuild, a card shown or put away,
+        /// the HUD stepping aside - so the next <see cref="Covers"/> gathers it again.
+        /// </summary>
+        private void MarkChromeChanged() => chromeVersion++;
+
+        /// <summary>
+        /// The camera a screen point is measured against: none for the overlay the HUD is, the
+        /// canvas's own when something - a test capture - has turned it into a camera canvas. An
+        /// overlay's world corners are its screen pixels; through a camera they are metres in front
+        /// of the lens, and asked as pixels they covered nothing, so every icon and plate drew under
+        /// the cards in every frame photographed.
+        /// </summary>
+        private Camera UiCamera => canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+
+        /// <summary>
+        /// Collects the chrome's screen rects once a frame: every active child of the canvas, by its
+        /// world corners through the canvas's camera. All four corners, for a piece turned on its
+        /// canvas. Asked first whether this frame's are already gathered: the icons over the rooms
+        /// ask twice an icon a frame, and a next stop waiting for a clear spot up to fifty times
+        /// more. Gathered again when the chrome is marked changed, and empty while the HUD is off,
+        /// held for a reveal or stepped aside for a cinematic, since none of it is drawn then.
+        /// </summary>
+        private void GatherChrome()
+        {
+            if (chromeFrame == Time.frameCount && chromeSeen == chromeVersion) return;
+            chromeFrame = Time.frameCount; chromeSeen = chromeVersion;
+            chromeRects.Clear(); chromeContainers.Clear(); plateChrome.Clear();
             if (canvas == null || !canvas.gameObject.activeInHierarchy || revealHold) return;
-            var group = canvas.GetComponent<CanvasGroup>();
-            if (group != null && group.alpha <= .01f) return;
-            var frame = ((RectTransform)canvas.transform).rect;
+            if (canvas.TryGetComponent<CanvasGroup>(out var group) && group.alpha <= .01f) return;
+            var root = (RectTransform)canvas.transform;
+            var frame = root.rect;
             float whole = Mathf.Max(1f, frame.width * frame.height);
-            var corners = chromeCorners;
-            foreach (Transform child in canvas.transform)
+            var eye = UiCamera;
+            bool conversation = activityLayout == ActivityLayout.Conversation;
+            // By index: a foreach over a Transform makes an enumerator every time it is asked.
+            for (int i = 0; i < root.childCount; i++)
             {
+                var child = root.GetChild(i);
                 if (!child.gameObject.activeInHierarchy || !(child is RectTransform rect)) continue;
+                // Faded out by a group of its own, a piece draws nothing to stand clear of - unless
+                // it is arriving: a reveal starts at nothing, and the status line it brings in is
+                // chrome from its first frame, or every icon under it would blink up as it lands.
+                if (child.TryGetComponent<CanvasGroup>(out var own) && own.alpha <= .01f && !child.TryGetComponent<HudReveal>(out _)) continue;
                 var size = rect.rect.size;
                 // A holder with no size draws nothing to stand clear of.
-                if (size.x <= 0f || size.y <= 0f || size.x * size.y > whole * .6f) continue;
-                // An overlay canvas's world corners are its screen pixels; all four, for a piece
-                // turned on its canvas.
-                rect.GetWorldCorners(corners);
-                float left = Mathf.Min(Mathf.Min(corners[0].x, corners[1].x), Mathf.Min(corners[2].x, corners[3].x));
-                float right = Mathf.Max(Mathf.Max(corners[0].x, corners[1].x), Mathf.Max(corners[2].x, corners[3].x));
-                float bottom = Mathf.Min(Mathf.Min(corners[0].y, corners[1].y), Mathf.Min(corners[2].y, corners[3].y));
-                float top = Mathf.Max(Mathf.Max(corners[0].y, corners[1].y), Mathf.Max(corners[2].y, corners[3].y));
-                into.Add(Rect.MinMaxRect(left, bottom, right, top));
+                if (size.x <= 0f || size.y <= 0f) continue;
+                var box = ScreenBox(rect, eye);
+                (size.x * size.y > whole * .6f ? chromeContainers : chromeRects).Add(box);
+                // A plate's chrome is everything but two (CoversPlate): the shade under the top bar,
+                // a gradient fading to nothing, and a conversation's stage, a scrim the pair are seen
+                // through - whose column and dial stand in for it.
+                if (child.name == TopShadeName) continue;
+                if (conversation && rect == modal)
+                {
+                    if (conversationColumn != null && conversationColumn.gameObject.activeInHierarchy) plateChrome.Add(ScreenBox(conversationColumn, eye));
+                    if (dialRoot != null && dialRoot.gameObject.activeInHierarchy) plateChrome.Add(ScreenBox(dialRoot, eye));
+                    continue;
+                }
+                plateChrome.Add(box);
             }
         }
 
-        /// <summary><see cref="ChromeOnScreen"/>'s corners, asked for on every frame a stage runs. Reused.</summary>
-        private readonly Vector3[] chromeCorners = new Vector3[4];
+        /// <summary>A rect's screen rect, in pixels, through <paramref name="eye"/>; none for an overlay, whose world corners are its pixels.</summary>
+        private Rect ScreenBox(RectTransform rect, Camera eye)
+        {
+            var corners = chromeCorners;
+            rect.GetWorldCorners(corners);
+            float left = float.MaxValue, right = float.MinValue, bottom = float.MaxValue, top = float.MinValue;
+            for (int i = 0; i < 4; i++)
+            {
+                Vector2 at = eye == null ? (Vector2)corners[i] : RectTransformUtility.WorldToScreenPoint(eye, corners[i]);
+                left = Mathf.Min(left, at.x); right = Mathf.Max(right, at.x);
+                bottom = Mathf.Min(bottom, at.y); top = Mathf.Max(top, at.y);
+            }
+            return Rect.MinMaxRect(left, bottom, right, top);
+        }
 
         private void OnDestroy() { if(canvas!=null) Destroy(canvas.gameObject); }
 

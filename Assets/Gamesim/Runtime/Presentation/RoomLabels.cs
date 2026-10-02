@@ -41,6 +41,31 @@ namespace Gamesim.Presentation
         public bool IsShowing => root != null;
         public int Count => chips.Count;
 
+        /// <summary>
+        /// Whether every chip is down: the briefing, a panel or a board over the house
+        /// (UI-UX-PASS-PLAN G0). The chips are world-space and the chrome is glass, so a chip under
+        /// it read through - "COMPETITION YARD" behind the briefing's subtitle.
+        /// </summary>
+        public bool Hidden { get; set; }
+
+        /// <summary>
+        /// Whether the HUD's chrome covers a screen rect, in pixels; null covers nothing. A chip any
+        /// of which is under the chrome is down: half under the right column, a room's name reads
+        /// as another room's.
+        /// </summary>
+        public System.Func<Rect, bool> Covered { get; set; }
+
+        /// <summary>How many chips are drawn this frame. A read, for tests.</summary>
+        public int ShownCount
+        {
+            get
+            {
+                int shown = 0;
+                foreach (var chip in chips) if (chip != null && chip.gameObject.activeInHierarchy) shown++;
+                return shown;
+            }
+        }
+
         /// <summary>A room marker's name as the set paints it on the floor.</summary>
         public static string Title(string roomName)
         {
@@ -162,6 +187,7 @@ namespace Gamesim.Presentation
             }
             eyeCamera = eye;
             Face();
+            PlaceChips();
         }
 
         /// <summary>
@@ -212,7 +238,7 @@ namespace Gamesim.Presentation
             root = null;
         }
 
-        private void LateUpdate() { Face(); PlaceHotspots(); }
+        private void LateUpdate() { Face(); PlaceChips(); }
 
         private void Face()
         {
@@ -224,27 +250,40 @@ namespace Gamesim.Presentation
 
         private readonly Vector3[] corners = new Vector3[4];
 
-        /// <summary>Each hotspot over its chip's four corners, as the camera projects them this frame.</summary>
-        private void PlaceHotspots()
+        /// <summary>
+        /// Each chip shown or down for the frame - down while every chip is (<see cref="Hidden"/>),
+        /// behind the camera, or under the chrome (<see cref="Covered"/>) - and each hotspot over
+        /// its chip's four corners, as the camera projects them this frame.
+        /// </summary>
+        private void PlaceChips()
         {
             var eye = eyeCamera != null ? eyeCamera : Camera.main;
-            if (eye == null || hotspotLayer == null) return;
-            float fit = hotspotLayer.lossyScale.x > 0f ? 1f / hotspotLayer.lossyScale.x : 1f;
-            for (int i = 0; i < hotspots.Count && i < chips.Count; i++)
+            if (eye == null) return;
+            float fit = hotspotLayer != null && hotspotLayer.lossyScale.x > 0f ? 1f / hotspotLayer.lossyScale.x : 1f;
+            for (int i = 0; i < chips.Count; i++)
             {
-                if (hotspots[i] == null || chips[i] == null) continue;
-                chips[i].GetWorldCorners(corners);
+                var chip = chips[i];
+                if (chip == null) continue;
+                bool shown = !Hidden;
                 Vector2 low = new Vector2(float.MaxValue, float.MaxValue), high = new Vector2(float.MinValue, float.MinValue);
-                bool behind = false;
-                foreach (var corner in corners)
+                if (shown)
                 {
-                    var screen = eye.WorldToScreenPoint(corner);
-                    if (screen.z <= 0f) behind = true;
-                    low = Vector2.Min(low, screen); high = Vector2.Max(high, screen);
+                    chip.GetWorldCorners(corners);
+                    foreach (var corner in corners)
+                    {
+                        var screen = eye.WorldToScreenPoint(corner);
+                        if (screen.z <= 0f) shown = false;
+                        low = Vector2.Min(low, screen); high = Vector2.Max(high, screen);
+                    }
+                    if (shown && Covered != null && Covered(Rect.MinMaxRect(low.x, low.y, high.x, high.y))) shown = false;
                 }
-                hotspots[i].gameObject.SetActive(!behind);
-                hotspots[i].anchoredPosition = low * fit;
-                hotspots[i].sizeDelta = (high - low) * fit;
+                if (chip.gameObject.activeSelf != shown) chip.gameObject.SetActive(shown);
+                var spot = i < hotspots.Count ? hotspots[i] : null;
+                if (spot == null) continue;
+                if (spot.gameObject.activeSelf != shown) spot.gameObject.SetActive(shown);
+                if (!shown) continue;
+                spot.anchoredPosition = low * fit;
+                spot.sizeDelta = (high - low) * fit;
             }
         }
     }

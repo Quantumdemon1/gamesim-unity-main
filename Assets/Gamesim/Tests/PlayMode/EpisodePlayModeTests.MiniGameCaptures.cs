@@ -75,7 +75,10 @@ namespace Gamesim.Tests.PlayMode
                     probe.Show(run, "Head of Household · " + definition.Title, field, true, i => run.Flip(i), () => run.Tap(), d => run.Tap(d),
                         () => run.SetHolding(!run.Holding), () => { });
                     yield return null;
-                    if (definition == CompetitionDefinitions.All[0] && Application.isBatchMode) yield return CaptureFraming("minigame-count", false);
+                    // G0's frame: through the capture's own lens, no world label reads through the
+                    // board's cards - the yard's sign, a plate, a station disc.
+                    if (definition == CompetitionDefinitions.All[0] && Application.isBatchMode)
+                        yield return CaptureFraming("minigame-count", false, inspect: _ => AssertNoWorldLabelOnTheBoard(probe, "The minigame-count frame", false));
                     probe.AdvanceReady(4f);
                     if (definition.Pattern == CompetitionPattern.PreviewPairs)
                     {

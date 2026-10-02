@@ -49,10 +49,10 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// How every final part is scored, said on the game screen's challenge card beside the game's
-        /// own rules. True of all three: the committed scores are statistics, earned bonuses,
-        /// performance and seeded rolls, and the highest wins.
+        /// own rules, in the player's words (UI-UX-PASS-PLAN decision 12): who they are and how the
+        /// day goes both count, and the highest wins. True of all three.
         /// </summary>
-        public const string ScoringLine = "Highest score wins · statistics and seeded rolls count";
+        public const string ScoringLine = "Highest score wins · who you are and the day both count";
 
         /// <summary>The part a phase plays, 1 to 3, or 0 outside the final Head of Household.</summary>
         public static int PartOf(EpisodePhase phase) =>

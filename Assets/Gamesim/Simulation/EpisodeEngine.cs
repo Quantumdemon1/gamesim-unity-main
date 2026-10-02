@@ -170,6 +170,17 @@ namespace Gamesim.Simulation
         public static bool IsCompetition(EpisodePhase phase) => phase == EpisodePhase.HoH || phase == EpisodePhase.Veto ||
             phase == EpisodePhase.FinalHoHPart1 || phase == EpisodePhase.FinalHoHPart2 || phase == EpisodePhase.FinalHoHPart3;
 
+        /// <summary>
+        /// The engine's own lines, never shown as a line of the story: the phase markers, and the
+        /// competition's committed standings and performance arithmetic, which are the record's
+        /// and not something anybody in the house sees (UI-UX-PASS-PLAN decision 12). The readers
+        /// that list events for the player leave them out; a reader that counts events by kind
+        /// reads <see cref="EpisodeState.events"/> as it always did. A kind, not an audience: an
+        /// audience can only name houseguests, and a recorded season's audiences do not move.
+        /// </summary>
+        public static bool IsScaffolding(string kind) =>
+            kind == "phase" || kind == "competition-standings" || kind == "competition-performance";
+
         public static IEnumerable<ContestantState> CompetitionPlayers(EpisodeState s)
         {
             if (s.phase == EpisodePhase.Veto) return s.Active.Where(c => s.vetoPlayers.Contains(c.id));

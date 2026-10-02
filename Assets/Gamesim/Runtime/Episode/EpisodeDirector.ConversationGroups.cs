@@ -173,7 +173,9 @@ namespace Gamesim.Episode
             // odds comes above it instead, once (ProposeAllianceRow).
             var promised = PromiseToEvictTargets(state, npc.id);
             var calls = Calls(state, npc);
-            if (!cameToDeal || promised.Count > 0 || calls.Count > 0)
+            // The web's situation moves (C7): a promise called in, fences mended, a veto for a price.
+            bool moves = HasNegotiationRows(state, npc, out _, out _, out _);
+            if (!cameToDeal || promised.Count > 0 || calls.Count > 0 || moves)
             {
                 hud.ConversationGroup(BargainGroupTitle, "handshake", BargainLine);
                 if (!cameToDeal) DealRows(state, npc, allied);
@@ -190,6 +192,7 @@ namespace Gamesim.Episode
                             () => Commit(state, EpisodeCommandKind.CallTheVote, npc.id, about, text: allianceId)),
                         Category(EpisodeCommandKind.CallTheVote), EpisodeHud.TagSeat.PastReading);
                 }
+                if (moves) NegotiationRows(state, npc);
                 if (!cameToDeal) FoldedDealPanel(state, npc);
             }
 

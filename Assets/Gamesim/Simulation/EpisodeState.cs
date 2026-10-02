@@ -605,7 +605,17 @@ namespace Gamesim.Simulation
         /// Schema 21 (ENDGAME-PLAN F4b): the player finalist locks their final argument, the theme's
         /// key in <c>secondTargetId</c> and the moments' references in <c>text</c>, one to a line.
         /// </summary>
-        LockFinalArgument
+        LockFinalArgument,
+        /// <summary>
+        /// Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C7): one of the web's situation moves,
+        /// said to <c>targetId</c> and named by <c>text</c> (<see cref="Negotiation"/>) - calling in a
+        /// promise they owe the player (<c>call-in:remind</c>, <c>call-in:demand</c>, <c>call-in:threaten</c>,
+        /// the promise's id in <c>secondTargetId</c>), mending fences after a breach of the player's
+        /// (<c>mend-fences</c>), or naming a price for using the veto on a nominee
+        /// (<c>veto-price:vote_save</c>, <c>veto-price:final_two</c>). A social action; a season
+        /// without the rules refuses it.
+        /// </summary>
+        Negotiate
     }
 
     /// <summary>

@@ -72,6 +72,40 @@ namespace Gamesim.Episode
         public static string CallTheVoteCaption(string alliance, string who) => "Call the vote in " + alliance + ": evict " + who;
 
         /// <summary>
+        /// The answers to a counter-offer (ACTIONS-DEALS-ALLIANCES-PLAN C7), by the first name of whoever
+        /// made it: "Take Maya's counter-offer", "Turn down Maya's counter-offer". New words, no other
+        /// control's: an offer's own answers keep theirs.
+        /// </summary>
+        public static string CounterAcceptCaption(string first) => "Take " + first + "'s counter-offer";
+        public static string CounterDeclineCaption(string first) => "Turn down " + first + "'s counter-offer";
+
+        /// <summary>
+        /// Calling in a promise a houseguest made the player (C7), each of the web's three ways, naming
+        /// them and what they promised: "Remind Maya of their promise of safety", "Demand Maya keep their
+        /// promise of safety", "Threaten to tell the house if Maya breaks their promise of safety".
+        /// </summary>
+        public static string CallInCaption(string approach, string first, string promised)
+        {
+            string promise = "their promise of " + promised;
+            switch (approach)
+            {
+                case Gamesim.Simulation.Negotiation.Remind: return "Remind " + first + " of " + promise;
+                case Gamesim.Simulation.Negotiation.Demand: return "Demand " + first + " keep " + promise;
+                default: return "Threaten to tell the house if " + first + " breaks " + promise;
+            }
+        }
+
+        /// <summary>Mending fences with a houseguest the player broke their word to (C7): "Mend fences with Maya".</summary>
+        public static string MendFencesCaption(string first) => "Mend fences with " + first;
+
+        /// <summary>
+        /// A veto for a price (C7), the holder's word to a nominee and what it costs them: "Use the veto on
+        /// Maya, for their vote to keep you", "Use the veto on Maya, for a final two".
+        /// </summary>
+        public static string VetoPriceCaption(string first, string kind) =>
+            "Use the veto on " + first + (kind == Gamesim.Simulation.DealKind.FinalTwo ? ", for a final two" : ", for their vote to keep you");
+
+        /// <summary>
         /// "a " or "an ", so a caption built from a deal's own title reads as English.
         ///
         /// <para>Two of the ten deal kinds begin with a vowel - Alliance Invitation and Information

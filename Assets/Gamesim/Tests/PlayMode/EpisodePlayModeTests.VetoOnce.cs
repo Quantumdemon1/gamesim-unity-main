@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Gamesim.Episode;
 using Gamesim.House;
 using Gamesim.Presentation;
@@ -25,11 +26,41 @@ namespace Gamesim.Tests.PlayMode
     /// once the Head of Household has named them there, and never on a page before.
     ///
     /// <para>Every wait is on the real clock or on the cards' own state, never a count of frames: the
-    /// cards run on the unscaled clock, and a batchmode frame is a fraction of a millisecond.</para>
+    /// cards run on the unscaled clock, and a batchmode frame is a fraction of a millisecond. Nor is
+    /// anything asserted at a moment the cards' clocks choose: a long frame - a house of real bodies
+    /// has them - carries a card past its end, so a card a test needs up is held up
+    /// (<see cref="CeremonyTakeover.Held"/>, <see cref="CeremonySting.Held"/>), and what a card's
+    /// whole life must keep to is sampled over all of it.</para>
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
         private static CeremonySting Strip() => SceneComponents<CeremonySting>().Single();
+
+        /// <summary>
+        /// The pace and the motion of the test's own, set on the director and handed to the rig, the
+        /// HUD and the bodies as the settings hand them - the pace's setter applies the preferences:
+        /// a fixture's director ignores the player's, so it is suspenseful and moving only because
+        /// nothing said otherwise.
+        /// </summary>
+        private void SetThePaceAndTheMotion(CeremonyPace pace, bool reduced)
+        {
+            typeof(EpisodeDirector).GetField("reducedMotion", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(director, reduced);
+            director.SetCeremonyPace(pace);
+        }
+
+        /// <summary>
+        /// Calls off the cuts a staged ceremony has scheduled - the faces it cuts to between the
+        /// screen's shots, on its own clock - so a frame of a held page is taken on the screen's cut
+        /// it was put on: a card's hold stops the card's clock, not the stage's.
+        /// </summary>
+        private void CallOffTheStagesCuts()
+        {
+            var stage = typeof(EpisodeDirector).GetField("ceremonyStage", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(director);
+            Assert.That(stage, Is.Not.Null, "A ceremony is staged.");
+            var stop = stage.GetType().GetMethod("StopTheWatch", BindingFlags.Instance | BindingFlags.Public);
+            Assert.That(stop, Is.Not.Null, "The stage can call off its cuts.");
+            stop.Invoke(stage, null);
+        }
 
         /// <summary>
         /// Whether the status line is on screen: this render's line up, with words in it, on a HUD that
@@ -81,21 +112,26 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// On the HUD frame - a batch run, reduced motion, a house that cannot be staged - the meeting's
         /// card and the strip reporting it play together with the chrome aside, as under the endgame's
-        /// cards: every frame from the commit on - the waits included - the strip and the status line
-        /// are never up together, the line is never up under the card, the chrome never comes back
-        /// while the card is up, and the meeting's sentence is never on screen twice. The line comes
-        /// back with the director's words once both are gone. A press that moves the card on early
-        /// takes the strip with it. The strip and the card give the meeting one name, and nothing else
-        /// on screen gives it another. A frame of the card and the strip for the look sheet, in a
-        /// batch run.
+        /// cards. Sampled every frame of the cards' lives from the commit on - a held capture's frames
+        /// excepted, which assert the same of the frame they take - the strip and the status line are
+        /// never up together, the line is never up under the card, the chrome never comes back while
+        /// the card is up, and the meeting's sentence is never on screen twice; once both are gone the
+        /// line comes back with the director's words. Nothing is asserted at a moment the cards' clocks
+        /// choose: a long frame carries both past their ends. The used veto's run is the reduced-motion
+        /// player's, whose card and strip are whole from the commit's frame - the frame the look sheet
+        /// takes in a batch run, held there for it. The unused veto's run has the motion on, and its card
+        /// is pressed away the frame after the commit's: the strip goes with it. The strip and the card
+        /// give the meeting one name, and nothing else on screen gives it another.
         /// </summary>
         [UnityTest]
         public IEnumerator VetoOnce_OnTheHudFrameTheMeetingIsAnnouncedOnceUnderOneName([Values(true, false)] bool used)
         {
             yield return InstallStrategySeason(used ? 81u : 82u, state => AtVetoMeeting(state, playerHolds: true));
             HoldTheHouseForTheFixture();
-            // The card on the HUD frame in any run: an interactive run would stage the meeting.
+            // The card on the HUD frame in any run - an interactive run would stage the meeting - at a
+            // pace and a motion of the test's own.
             director.CeremonyStages = false;
+            SetThePaceAndTheMotion(CeremonyPace.Suspenseful, reduced: used);
             var before = director.Snapshot;
             var block = before.nominees.ToList();
             var takeover = SceneComponents<CeremonyTakeover>().Single();
@@ -126,7 +162,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(title.text.ToUpperInvariant(), Is.EqualTo(headline.text), "and the card the same meeting.");
             AssertTheMeetingHasOneName("The commit's frame");
 
-            // Every frame, the waits' included.
+            // Every frame of the cards' lives, from the commit's own.
             int frames = 0, together = 0, underCard = 0, unheld = 0, twice = 0;
             void Sample()
             {
@@ -137,29 +173,37 @@ namespace Gamesim.Tests.PlayMode
                 if (takeover.IsPlaying && !Hud.IsHeldForReveal) unheld++;
                 if ((strip.IsPlaying || takeover.IsPlaying) && TimesOnScreen(sentence) > 1) twice++;
             }
-            IEnumerator Sampled(float seconds)
-            {
-                float until = Time.realtimeSinceStartup + seconds;
-                while (Time.realtimeSinceStartup < until) { Sample(); yield return null; }
-            }
+            Sample();
 
-            if (used && Application.isBatchMode)
+            if (used)
             {
-                // Past both entrances, inside the strip's hold.
-                yield return Sampled(0.45f);
-                Assert.That(strip.IsPlaying && takeover.IsPlaying, Is.True, "The strip and the card are up for their frame.");
-                yield return CaptureFraming("veto-meeting-sting", settle: false, inspect: frame =>
+                // Reduced motion neither fades the card in nor the strip: both are whole from the commit's frame.
+                Assert.That(takeover.GetComponent<CanvasGroup>().alpha, Is.EqualTo(1f).Within(.001f), "Under reduced motion the card is whole from the commit's frame,");
+                Assert.That(strip.GetComponent<CanvasGroup>().alpha, Is.EqualTo(1f).Within(.001f), "and so is the strip.");
+                if (Application.isBatchMode)
                 {
-                    Assert.That(strip.IsPlaying, Is.True, "The strip is up as its frame is taken,");
-                    Assert.That(Hud.IsHeldForReveal, Is.True, "the chrome aside,");
-                    Assert.That(LastActive("Status"), Is.Null, "and the status line down through the capture's own render.");
-                });
+                    // Photographed as the commit left them, held there: their clocks stop for the capture,
+                    // so no frame it spends - a long one, on a house of real bodies - walks either off.
+                    takeover.Held = strip.Held = true;
+                    try
+                    {
+                        yield return CaptureFraming("veto-meeting-sting", settle: false, inspect: frame =>
+                        {
+                            Assert.That(strip.IsPlaying && takeover.IsPlaying, Is.True, "The strip and the card are up as their frame is taken,");
+                            Assert.That(Hud.IsHeldForReveal, Is.True, "the chrome aside,");
+                            Assert.That(LastActive("Status"), Is.Null, "and the status line down through the capture's own render.");
+                        });
+                    }
+                    finally { takeover.Held = false; strip.Held = false; }
+                    Sample();
+                }
             }
-            else if (!used)
+            else
             {
-                // A press moves the card on once it has been read: on the HUD frame the strip goes with it.
-                yield return Sampled(0.8f);
-                Assert.That(takeover.IsPlaying && strip.IsPlaying, Is.True, "The card and the strip are still up to be pressed away.");
+                // A press moves the card on: pressed away the frame after the commit's, on the HUD frame
+                // the strip goes with it.
+                yield return null;
+                Sample();
                 takeover.Cancel();
                 Sample();
                 yield return null;
@@ -167,7 +211,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(Hud.IsHeldForReveal, Is.False, "and gives the chrome back.");
             }
 
-            float by = Time.realtimeSinceStartup + 6f;
+            float by = Time.realtimeSinceStartup + 10f;
             while ((strip.IsPlaying || takeover.IsPlaying) && Time.realtimeSinceStartup < by)
             {
                 Sample();
@@ -212,6 +256,7 @@ namespace Gamesim.Tests.PlayMode
             yield return InstallStrategySeason(84, state => AtVetoMeeting(state, playerHolds: true));
             HoldTheHouseForTheFixture();
             director.CeremonyStages = false;
+            SetThePaceAndTheMotion(CeremonyPace.Suspenseful, reduced: false);
             var takeover = SceneComponents<CeremonyTakeover>().Single();
             yield return OpenStation();
             yield return null;
@@ -229,8 +274,9 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Hud.IsHeldForReveal, Is.True, "and the chrome aside while the card is up.");
             Assert.That(TimesOnScreen(sentence), Is.EqualTo(1), "The meeting's sentence is on screen once: the strip's.");
 
+            // Every frame of the card's life: whenever it ends, nothing is waited on but its end.
             int frames = 0, unheld = 0, twice = 0;
-            float by = Time.realtimeSinceStartup + 6f;
+            float by = Time.realtimeSinceStartup + 10f;
             while (takeover.IsPlaying && Time.realtimeSinceStartup < by)
             {
                 frames++;
@@ -260,6 +306,7 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator VetoOnce_AStagedMeetingSkippedAtOnceNeverShowsTheStripAndTheLineTogether()
         {
             yield return InstallStagedSeason(83, state => AtVetoMeeting(state, playerHolds: true));
+            SetThePaceAndTheMotion(CeremonyPace.Suspenseful, reduced: false);
             var takeover = SceneComponents<CeremonyTakeover>().Single();
             var strip = Strip();
             var command = NextCommand(director.Snapshot);
@@ -363,9 +410,13 @@ namespace Gamesim.Tests.PlayMode
         /// question or the decision; the replacement's page puts REPLACEMENT on theirs; and the block
         /// that goes to the vote keeps it there, under ON THE BLOCK, where the two faces on it read
         /// ON THE BLOCK alike. Every pill is the kit's and draws its word, at both text sizes (the
-        /// screen's frame keeps its own type, so both read the same). Every frame is watched and each
-        /// page is read a frame after it turns; the replacement's page and the last must be read, and
-        /// an earlier page a long frame skipped past is checked wherever it was seen.
+        /// screen's frame keeps its own type, so both read the same). Each page is held as it turns -
+        /// the holder's as the card opens, the decision and the naming by their beats, any other at
+        /// the test's first sight of it - and read a frame later, once the last page's faces are gone;
+        /// the block that goes to the vote is reached from the naming by the skip a press makes, held
+        /// too. No long frame walks a page off the screen before it is read: the holder's page, the
+        /// decision, the replacement's page and the last are read every run, the question wherever a
+        /// frame let it be seen.
         /// </summary>
         [UnityTest]
         public IEnumerator VetoOnce_TheScreenNamesTheReplacementOnceTheyAreNamed([Values(false, true)] bool larger)
@@ -390,21 +441,36 @@ namespace Gamesim.Tests.PlayMode
 
             var takeover = SceneComponents<CeremonyTakeover>().Single();
             takeover.FontScale = larger ? 1.2f : 1f;
-            // The suspenseful pace: each page holds about three seconds.
-            Assert.That(takeover.PlayVetoMeeting(script, false, CeremonyPace.Suspenseful, screen), Is.True,
-                "The meeting plays on the living room's screen.");
+            // The decision and the naming hold the card on their pages as they turn to them.
+            void HoldOnTheBeat(CeremonyBeat beat)
+            {
+                if (beat.Kind == CeremonyBeatKind.VetoDecided || beat.Kind == CeremonyBeatKind.ReplacementNamed) takeover.Held = true;
+            }
+            takeover.BeatReached += HoldOnTheBeat;
             try
             {
+                // At the suspenseful pace under reduced motion: each page whole from the frame it turns,
+                // and the holder's held as the card opens.
+                Assert.That(takeover.PlayVetoMeeting(script, true, CeremonyPace.Suspenseful, screen), Is.True,
+                    "The meeting plays on the living room's screen.");
+                takeover.Held = true;
                 var root = takeover.GetComponentsInChildren<RectTransform>().Single(rect => rect.name == "Veto meeting");
                 var read = new HashSet<CeremonyTakeover.MeetingPage>();
-                CeremonyTakeover.MeetingPage? last = null;
-                float by = Time.realtimeSinceStartup + takeover.MeetingDuration + 2f;
+                float by = Time.realtimeSinceStartup + takeover.MeetingDuration + 5f;
                 while (takeover.PlayingMeeting && !read.Contains(CeremonyTakeover.MeetingPage.Final) && Time.realtimeSinceStartup < by)
                 {
+                    if (!takeover.Held)
+                    {
+                        // A page no beat held, at the test's first sight of it: held where it is.
+                        if (takeover.Page.HasValue && !read.Contains(takeover.Page.Value)) takeover.Held = true;
+                        else { yield return null; continue; }
+                    }
+                    // Read a frame after it was held, once the last page's faces - destroyed at the end
+                    // of the frame it turned in - are gone.
+                    yield return null;
+                    if (!takeover.Page.HasValue) break;
                     var page = takeover.Page;
-                    // A page is read the frame after it turned, once the last page's faces - destroyed at
-                    // the end of the frame it turned in - are gone, and read once.
-                    if (page.HasValue && page == last && read.Add(page.Value))
+                    if (read.Add(page.Value))
                     {
                         var badges = MeetingBadgesByName(takeover);
                         string where = page.Value + " page" + (larger ? " at the larger text" : "");
@@ -438,14 +504,19 @@ namespace Gamesim.Tests.PlayMode
                         }
                         AssertEveryLabelDraws(root, where);
                     }
-                    last = page;
-                    yield return null;
+                    // From the naming straight to the block that goes to the vote, as a press takes it,
+                    // still held; every other page goes on at its own pace.
+                    if (page == CeremonyTakeover.MeetingPage.Replacement) takeover.SkipToResult();
+                    else takeover.Held = false;
                 }
-                Assert.That(read, Does.Contain(CeremonyTakeover.MeetingPage.Replacement), "The replacement's page was read: " + string.Join(", ", read));
-                Assert.That(read, Does.Contain(CeremonyTakeover.MeetingPage.Final), "The block that goes to the vote was read: " + string.Join(", ", read));
+                foreach (var page in new[] { CeremonyTakeover.MeetingPage.Intro, CeremonyTakeover.MeetingPage.Decision,
+                             CeremonyTakeover.MeetingPage.Replacement, CeremonyTakeover.MeetingPage.Final })
+                    Assert.That(read, Does.Contain(page), "The " + page + " page was read: " + string.Join(", ", read));
             }
             finally
             {
+                takeover.BeatReached -= HoldOnTheBeat;
+                takeover.Held = false;
                 takeover.Cancel();
                 takeover.FontScale = 1f;
             }
@@ -474,6 +545,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(takeover.PlayVetoMeeting(script, false, CeremonyPace.Quick, screen), Is.True, "The meeting plays on the living room's screen.");
             try
             {
+                // Held there, so the quick pace's last page is still up the frame it is read.
+                takeover.Held = true;
                 takeover.SkipToResult();
                 Assert.That(takeover.Page, Is.EqualTo(CeremonyTakeover.MeetingPage.Final), "A skip turns to the block that goes to the vote.");
                 yield return null;
@@ -483,7 +556,7 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(pair.Value, Is.EqualTo(new[] { CeremonyTakeover.OnTheBlockBadge }), pair.Key + " is on the block, and nobody is a replacement.");
                 AssertTheMeetingsPillsAreTheKits(takeover, "The block kept");
             }
-            finally { takeover.Cancel(); }
+            finally { takeover.Held = false; takeover.Cancel(); }
             yield return Frames(2);
         }
 
@@ -491,41 +564,67 @@ namespace Gamesim.Tests.PlayMode
         /// The look sheet's frames of the replacement on the living room's screen, as a staged meeting
         /// plays them (the review's m4): the replacement's page and the block that goes to the vote,
         /// each on the stage's own cut to the screen with the lens kept clear of the house
-        /// (UI-UX-PASS-PLAN K0), and no body in the card as it is taken. Batch runs only.
+        /// (UI-UX-PASS-PLAN K0), and no body in the card as it is taken. A frame of a house of real
+        /// bodies can outlast a page, so the card is held the moment the Head of Household names the
+        /// replacement, the stage's own cuts to the faces called off, and the block that goes to the
+        /// vote reached from there by the skip a press makes, still held: the page asserted in each
+        /// frame is the page put up for it. Batch runs only.
         /// </summary>
         [UnityTest]
         public IEnumerator VetoOnce_CapturesTheReplacementOnTheStagedScreen()
         {
             if (!Application.isBatchMode) yield break;
             yield return InstallStagedSeason(85, state => AtVetoMeeting(state, playerHolds: true));
+            SetThePaceAndTheMotion(CeremonyPace.Suspenseful, reduced: false);
             var takeover = SceneComponents<CeremonyTakeover>().Single();
-            var command = NextCommand(director.Snapshot);
-            Assert.That(command.kind, Is.EqualTo(EpisodeCommandKind.ResolveVeto), "The player holds the veto and decides.");
-            Assert.That(command.useVeto, Is.True, "and uses it: a replacement is named.");
-            var result = director.Submit(command);
-            Assert.That(result.accepted, Is.True, result.reason);
-            Assert.That(director.IsCeremonyStaged, Is.True, "The veto meeting is staged in the house.");
-            director.SkipCeremonySummons();
-            yield return WaitFor(() => takeover.PlayingMeeting, 3f, "the meeting plays once the summons is skipped");
-            var screen = takeover.Surface;
-            foreach (var (page, frameName) in new[]
-                     {
-                         (CeremonyTakeover.MeetingPage.Replacement, "ceremony-stage-veto-replacement"),
-                         (CeremonyTakeover.MeetingPage.Final, "ceremony-stage-veto-final"),
-                     })
+            void HoldOnTheNaming(CeremonyBeat beat)
             {
-                yield return WaitFor(() => takeover.Page == page, takeover.MeetingDuration + 3f, "the meeting turns to its " + page + " page");
-                // Taken at once, on the cut the page arrived with: the stage cuts to the Head of
-                // Household a quarter of the replacement's page in, and the card is bound already.
-                yield return CaptureTheScreen(screen, frameName, frame =>
+                if (beat.Kind == CeremonyBeatKind.ReplacementNamed) takeover.Held = true;
+            }
+            takeover.BeatReached += HoldOnTheNaming;
+            int committed = -1;
+            try
+            {
+                var command = NextCommand(director.Snapshot);
+                Assert.That(command.kind, Is.EqualTo(EpisodeCommandKind.ResolveVeto), "The player holds the veto and decides.");
+                Assert.That(command.useVeto, Is.True, "and uses it: a replacement is named.");
+                var result = director.Submit(command);
+                Assert.That(result.accepted, Is.True, result.reason);
+                committed = result.state.revision;
+                Assert.That(director.IsCeremonyStaged, Is.True, "The veto meeting is staged in the house.");
+                director.SkipCeremonySummons();
+                yield return WaitFor(() => takeover.PlayingMeeting, 3f, "the meeting plays once the summons is skipped");
+                var screen = takeover.Surface;
+
+                yield return WaitFor(() => takeover.Held, takeover.MeetingDuration + 3f, "the Head of Household names the replacement");
+                Assert.That(takeover.Page, Is.EqualTo(CeremonyTakeover.MeetingPage.Replacement), "The card is held on the replacement's page,");
+                // The stage cuts to the Head of Household and the replacement on its own clock, which the
+                // card's hold does not stop: called off, the rig stays on the screen's cut for the frame.
+                CallOffTheStagesCuts();
+                yield return CaptureTheScreen(screen, "ceremony-stage-veto-replacement", frame =>
                 {
-                    Assert.That(takeover.Page, Is.EqualTo(page), frameName + ": the " + page + " page is up as its frame is taken.");
-                    AssertNoBodyStandsInTheCard(takeover, screen, frameName, "Veto meeting");
+                    Assert.That(takeover.Page, Is.EqualTo(CeremonyTakeover.MeetingPage.Replacement),
+                        "ceremony-stage-veto-replacement: the Replacement page is up as its frame is taken.");
+                    AssertNoBodyStandsInTheCard(takeover, screen, "ceremony-stage-veto-replacement", "Veto meeting");
                 }, waitForFaces: false);
+
+                takeover.SkipToResult();
+                Assert.That(takeover.Page, Is.EqualTo(CeremonyTakeover.MeetingPage.Final), "A skip turns the held card to the block that goes to the vote.");
+                yield return CaptureTheScreen(screen, "ceremony-stage-veto-final", frame =>
+                {
+                    Assert.That(takeover.Page, Is.EqualTo(CeremonyTakeover.MeetingPage.Final),
+                        "ceremony-stage-veto-final: the Final page is up as its frame is taken.");
+                    AssertNoBodyStandsInTheCard(takeover, screen, "ceremony-stage-veto-final", "Veto meeting");
+                }, waitForFaces: false);
+            }
+            finally
+            {
+                takeover.BeatReached -= HoldOnTheNaming;
+                takeover.Held = false;
             }
             takeover.Cancel();
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "the stage ends with the card");
-            Assert.That(director.Snapshot.revision, Is.EqualTo(result.state.revision), "The stage commits nothing.");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(committed), "The stage commits nothing.");
         }
     }
 }

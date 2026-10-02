@@ -519,7 +519,16 @@ namespace Gamesim.Tests.PlayMode
                 scroll.verticalNormalizedPosition = 0f;
                 Canvas.ForceUpdateCanvases();
                 yield return null;
+                // The capture lays the HUD out again for its frame, and the panel it rebuilds opens at
+                // the top of its scroll: the foot is asked for again once it has.
                 yield return CaptureFraming("conversation-panel-deals",
+                    arrange: () =>
+                    {
+                        var foot = director.GetComponentsInChildren<UnityEngine.UI.ScrollRect>(true)
+                            .LastOrDefault(rect => rect.gameObject.activeInHierarchy && rect.vertical);
+                        Assert.That(foot, Is.Not.Null, "The conversation's column scrolls.");
+                        foot.verticalNormalizedPosition = 0f;
+                    },
                     panel: (() => LastActive(Gamesim.Episode.EpisodeHud.ConversationColumnName), "The conversation's column"));
                 AssertNothingInThePanelIsClipped("with the deals showing");
             }

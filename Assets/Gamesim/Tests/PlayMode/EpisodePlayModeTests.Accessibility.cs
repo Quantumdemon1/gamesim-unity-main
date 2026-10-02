@@ -309,6 +309,10 @@ namespace Gamesim.Tests.PlayMode
         /// (<see cref="AssertRegionHasContent"/>). A whole-frame check cannot tell a face from the
         /// empty disc it lands in.</para>
         ///
+        /// <para><paramref name="arrange"/>, when given, runs once the HUD has been laid out again for
+        /// the frame, with a frame after it: the render rebuilds the panels, so a scroll the caller
+        /// set before the capture is set again here.</para>
+        ///
         /// <para><paramref name="panel"/>, when given, finds the panel the frame was taken for, and
         /// the capture proves it is in the frame: its rect is not one flat colour, and with its ground
         /// painted the probe's magenta a frame before the frame is drawn again - a colour set and
@@ -320,7 +324,7 @@ namespace Gamesim.Tests.PlayMode
         /// say otherwise: 1200 by 900 photographs a 4:3 layout as the batch canvas laid it out.</para>
         /// </summary>
         private IEnumerator CaptureFraming(string name, bool settle = true, Action<Texture2D> inspect = null, int width = 1600, int height = 900,
-            (Func<RectTransform> Find, string What)? panel = null)
+            (Func<RectTransform> Find, string What)? panel = null, Action arrange = null)
         {
             var lens = new CaptureLens(cameraRig.ViewCamera, width, height);
             Texture2D readback = null, probe = null;
@@ -347,6 +351,12 @@ namespace Gamesim.Tests.PlayMode
                 // unusable for judging a screen against its mockup.
                 RenderHudForTheCurrentCanvas();
                 yield return null;
+                if (arrange != null)
+                {
+                    arrange();
+                    Canvas.ForceUpdateCanvases();
+                    yield return null;
+                }
                 yield return lens.MakeSureTheCanvasesAreDrawn();
                 readback = lens.Read();
                 var path = System.IO.Path.GetFullPath(System.IO.Path.Combine(

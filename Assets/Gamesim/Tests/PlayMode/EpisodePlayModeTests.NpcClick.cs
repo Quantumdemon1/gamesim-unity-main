@@ -504,8 +504,8 @@ namespace Gamesim.Tests.PlayMode
                 + ", deal rows " + director.GetComponentsInChildren<TMPro.TMP_Text>(true)
                     .Count(label => label.gameObject.activeInHierarchy && label.text.Contains("stakes")));
 
-            yield return CaptureFraming("conversation-panel", inspect: frame =>
-                AssertThePanelIsInTheFrame(frame, LastActive(Gamesim.Episode.EpisodeHud.ConversationColumnName), "The conversation's column in 'conversation-panel'"));
+            yield return CaptureFraming("conversation-panel",
+                panel: (() => LastActive(Gamesim.Episode.EpisodeHud.ConversationColumnName), "The conversation's column"));
             AssertNothingInThePanelIsClipped("with the topics showing");
 
             // And again at the foot of the scroll, because the deal rows are down there. The first
@@ -519,8 +519,8 @@ namespace Gamesim.Tests.PlayMode
                 scroll.verticalNormalizedPosition = 0f;
                 Canvas.ForceUpdateCanvases();
                 yield return null;
-                yield return CaptureFraming("conversation-panel-deals", inspect: frame =>
-                    AssertThePanelIsInTheFrame(frame, LastActive(Gamesim.Episode.EpisodeHud.ConversationColumnName), "The conversation's column in 'conversation-panel-deals'"));
+                yield return CaptureFraming("conversation-panel-deals",
+                    panel: (() => LastActive(Gamesim.Episode.EpisodeHud.ConversationColumnName), "The conversation's column"));
                 AssertNothingInThePanelIsClipped("with the deals showing");
             }
 

@@ -319,6 +319,7 @@ namespace Gamesim.Tests.PlayMode
             {
                 Canvas.ForceUpdateCanvases();
                 yield return null;
+                yield return lens.MakeSureTheCanvasesAreDrawn();
                 readback = lens.Read();
 
                 var path = System.IO.Path.GetFullPath(System.IO.Path.Combine(

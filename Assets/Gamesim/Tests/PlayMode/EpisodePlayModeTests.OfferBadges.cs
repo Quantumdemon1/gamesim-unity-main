@@ -628,10 +628,18 @@ namespace Gamesim.Tests.PlayMode
         /// size, a frame for the canvas to take its shape, then the HUD rendered for it and read once
         /// the render's replaced parts are gone. Measure with <see cref="OnTheHud"/> inside it. With
         /// <paramref name="pixelAligned"/> false the lens stands off the frame's pixels, so a canvas's
-        /// world corners are not its pixels there and only its camera says where it is drawn.
+        /// world corners are not its pixels there and only its camera says where it is drawn. That
+        /// is a pass of its own only through the overlay camera (option B): when this run's lens is
+        /// the view camera's (option A), every pass already stands off the pixels, and this one is
+        /// skipped with a line in the log.
         /// </summary>
         private IEnumerator AtFrame(int width, int height, System.Action check, bool pixelAligned = true)
         {
+            if (!pixelAligned && !CaptureLens.DrawsThroughTheOverlay(cameraRig.ViewCamera))
+            {
+                Debug.Log("[Gamesim] capture lens: the view camera's this run, whose every frame stands off the pixels; the pass asked off them is skipped.");
+                yield break;
+            }
             var lens = new CaptureLens(cameraRig.ViewCamera, width, height, pixelAligned);
             try
             {

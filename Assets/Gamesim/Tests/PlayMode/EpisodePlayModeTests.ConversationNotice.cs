@@ -71,8 +71,8 @@ namespace Gamesim.Tests.PlayMode
             // out, the close-up's prop stood where it was (the play sweep's row 3). The card is the
             // panel's own ground, found again after the capture renders the HUD for its frame.
             if (Application.isBatchMode)
-                yield return CaptureFraming("conversation-unavailable", inspect: frame =>
-                    AssertThePanelIsInTheFrame(frame, LastActive("Episode panel"), "The conversation's notice card in 'conversation-unavailable'"));
+                yield return CaptureFraming("conversation-unavailable",
+                    panel: (() => LastActive("Episode panel"), "The conversation's notice card"));
 
             ButtonWithCaption("Close  [Esc]").onClick.Invoke();
             yield return null;

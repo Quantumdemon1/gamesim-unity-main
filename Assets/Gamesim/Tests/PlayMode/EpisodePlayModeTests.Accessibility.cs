@@ -167,6 +167,7 @@ namespace Gamesim.Tests.PlayMode
                 {
                     Canvas.ForceUpdateCanvases();
                     yield return null;
+                    yield return lens.MakeSureTheCanvasesAreDrawn();
                     readback = lens.Read();
 
                     var pixels = readback.GetPixels32();
@@ -303,23 +304,29 @@ namespace Gamesim.Tests.PlayMode
         ///
         /// <para><paramref name="inspect"/>, when given, is handed the frame before it is thrown
         /// away, while the lens is still up: a <see cref="RectTransform"/>'s world corners projected
-        /// through its canvas's camera (<see cref="LensOf"/>) are then its pixels in the frame -
-        /// and, the lens standing on the frame's pixels, so are its world corners themselves - which
-        /// is how a caller asks whether a portrait or a card actually drew where it stands
-        /// (<see cref="AssertRegionHasContent"/>), and whether a panel is in the frame at all
-        /// (<see cref="AssertThePanelIsInTheFrame"/>). A whole-frame check cannot tell a face from
-        /// the empty disc it lands in.</para>
+        /// through its canvas's camera (<see cref="LensOf"/>) are then its pixels in the frame,
+        /// which is how a caller asks whether a portrait or a card actually drew where it stands
+        /// (<see cref="AssertRegionHasContent"/>). A whole-frame check cannot tell a face from the
+        /// empty disc it lands in.</para>
+        ///
+        /// <para><paramref name="panel"/>, when given, finds the panel the frame was taken for, and
+        /// the capture proves it is in the frame: its rect is not one flat colour, and with its ground
+        /// painted the probe's magenta a frame before the frame is drawn again - a colour set and
+        /// drawn in one frame is not yet the canvas's - the paint shows in every ninth of it
+        /// (<see cref="AssertTheGroundShowsEverywhere"/>). The panel is found again after that
+        /// frame, and a new copy painted too: the HUD can render in between.</para>
         ///
         /// <para>The frame is 1600 by 900 unless <paramref name="width"/> and <paramref name="height"/>
         /// say otherwise: 1200 by 900 photographs a 4:3 layout as the batch canvas laid it out.</para>
         /// </summary>
-        private IEnumerator CaptureFraming(string name, bool settle = true, Action<Texture2D> inspect = null, int width = 1600, int height = 900)
+        private IEnumerator CaptureFraming(string name, bool settle = true, Action<Texture2D> inspect = null, int width = 1600, int height = 900,
+            (Func<RectTransform> Find, string What)? panel = null)
         {
             var lens = new CaptureLens(cameraRig.ViewCamera, width, height);
-            Texture2D readback = null;
+            Texture2D readback = null, probe = null;
+            var painted = new List<(Image Ground, Color Was)>();
             try
             {
-                captureLens = lens;
                 // Let queued portraits land first: a frame with empty discs where the faces go
                 // cannot say what the screen looks like. The studio builds one look at a time, so
                 // in a short filtered run the queue can still be working seconds after the panel
@@ -340,6 +347,7 @@ namespace Gamesim.Tests.PlayMode
                 // unusable for judging a screen against its mockup.
                 RenderHudForTheCurrentCanvas();
                 yield return null;
+                yield return lens.MakeSureTheCanvasesAreDrawn();
                 readback = lens.Read();
                 var path = System.IO.Path.GetFullPath(System.IO.Path.Combine(
                     Application.dataPath, "..", name + ".png"));
@@ -352,12 +360,34 @@ namespace Gamesim.Tests.PlayMode
                 AssertNotBlank(readback, name);
                 // Before the finally: the frame is destroyed there and the canvases go back to overlays.
                 inspect?.Invoke(readback);
+
+                if (panel.HasValue)
+                {
+                    string what = panel.Value.What + " in '" + name + "'";
+                    var found = panel.Value.Find();
+                    AssertRegionHasContent(readback, PanelInterior(found, readback, what), what);
+                    PaintTheGround(found, painted, what);
+                    for (int wait = 0; wait < 5; wait++)
+                    {
+                        yield return null;
+                        var now = panel.Value.Find();
+                        if (now == found) break;
+                        // The HUD rendered again - a body finishing its assembly rebuilds it - and the
+                        // panel in the frame is a new copy: painted too, and given its frame.
+                        found = now;
+                        PaintTheGround(found, painted, what);
+                    }
+                    probe = lens.Read();
+                    AssertTheGroundShowsEverywhere(readback, probe, PanelInterior(found, readback, what), what);
+                }
             }
             finally
             {
-                captureLens = null;
+                foreach (var (ground, was) in painted)
+                    if (ground != null) ground.color = was;
                 lens.Dispose();
                 if (readback != null) Object.Destroy(readback);
+                if (probe != null) Object.Destroy(probe);
             }
             // And back to the layout the rest of the test is measuring.
             Canvas.ForceUpdateCanvases();

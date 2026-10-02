@@ -193,7 +193,8 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
                 AssertLabelsStandInsideTheCard(reveal, "The live eviction on the HUD, before the votes" + size);
                 reveal.SkipToResult();
-                yield return null;
+                // The board gives way to the result over ResultFade of the card's own clock.
+                yield return new WaitForSecondsRealtime(0.5f);
                 AssertLabelsStandInsideTheCard(reveal, "The live eviction on the HUD, the result" + size);
                 reveal.Cancel();
 
@@ -226,7 +227,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             AssertLabelsStandInsideTheCard(board, "The live eviction on the screen, before the votes");
             board.SkipToResult();
-            yield return null;
+            yield return new WaitForSecondsRealtime(0.5f);
             AssertLabelsStandInsideTheCard(board, "The live eviction on the screen, the result");
             board.Cancel();
         }
@@ -258,7 +259,7 @@ namespace Gamesim.Tests.PlayMode
                 var board = Reveal(1f, screen, wording.Board, wording.PlayerEvicted);
                 yield return null;
                 board.SkipToResult();
-                yield return null;
+                yield return new WaitForSecondsRealtime(0.5f);
                 var host = Text(board, "Host");
                 Assert.That(host.text, Is.EqualTo(wording.Line), where + ": the host's line.");
                 AssertLabelsStandInsideTheCard(board, where);
@@ -728,9 +729,12 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(glass, Is.Not.Null, where + ": no 'Card glass' to stand on.");
             var frame = OnTheCard(card, glass);
             float inset = frame.height * 0.03f;
+            // A label a group has faded out - the board under the result, once the swap has run - is
+            // not on the card, whatever its box says.
             var labels = card.GetComponentsInChildren<TMP_Text>()
                 .Where(label => label.enabled && label.gameObject.activeInHierarchy && !string.IsNullOrWhiteSpace(label.text)
-                    && !outsideByDesign.Contains(label.name)).ToArray();
+                    && !outsideByDesign.Contains(label.name)
+                    && label.GetComponentsInParent<CanvasGroup>(true).All(group => group.alpha > 0.01f)).ToArray();
             Assert.That(labels, Is.Not.Empty, where + ": no label is up.");
             foreach (var label in labels)
             {

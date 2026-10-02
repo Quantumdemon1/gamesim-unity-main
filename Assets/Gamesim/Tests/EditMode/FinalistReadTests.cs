@@ -373,6 +373,10 @@ namespace Gamesim.Tests.EditMode
             s.ledger.power.Add(new PowerRow { week = 6, hohId = them, nominees = new List<string> { you, target.id }, evicteeId = target.id, tally = new List<int> { 2, 1 } });
             s.ledger.power.Add(new PowerRow { week = 7, hohId = other.id, vetoHolderId = them, nominees = new List<string> { you, target.id }, evicteeId = you, tally = new List<int> { 2, 0 } });
             s.ledger.ballots.Add(new BallotRow { week = 5, voterId = you, targetId = target.id });
+            // The finalist's ballot that week is known: they said the target and voted the other way,
+            // and the reveal caught it (KnownBallots). Without a known ballot a vote deal they
+            // settled would be unresolved, not theirs.
+            s.ledger.claims.Add(new ClaimRow { week = 5, voterId = them, targetId = target.id, source = ClaimSource.Told, status = ClaimStatus.Lied });
             DealState Deal(string id, string type, int week, int expires, string targetId = null)
             {
                 var deal = new DealState { id = id, type = type, proposerId = you, recipientId = them, targetId = targetId, status = DealStatus.Broken, week = week, expiresWeek = expires };

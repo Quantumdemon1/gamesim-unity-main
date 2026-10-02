@@ -15,7 +15,8 @@ namespace Gamesim.Presentation
     ///
     /// <para><b>Evidence only, as mid-season must be.</b> The ids, the block, the veto, the evictee
     /// and the count come from the ledger's power row for the week, which survives the event log's
-    /// cap. The ballots are the reveal's public lines. The quote is the evictee's own speech from the
+    /// cap. The ballots are the ones the player knows (<see cref="KnownBallots"/>), each with its
+    /// basis, and a count of the ones they do not. The quote is the evictee's own speech from the
     /// block, said before the vote, and nothing else: no line is written in anybody's voice. The
     /// house's temperature is named from what the player saw - the count, who held the power, the
     /// broken word that reached them, the alliance moves they were told - with the evidence under
@@ -23,11 +24,17 @@ namespace Gamesim.Presentation
     /// </summary>
     public static partial class WeeklyRecap
     {
-        /// <summary>One ballot from the reveal, by id: who voted to evict whom, and the reason they gave.</summary>
+        /// <summary>One ballot the player knows, by id: who voted to evict whom, how the player knows it, and the reason where a line read in the open gave one.</summary>
         public sealed class Ballot
         {
             public string voterId, targetId, reason;
             public bool tieBreak;
+            /// <summary>One of <see cref="KnownBallots.Basis"/>.</summary>
+            public string basis;
+            /// <summary>What the voter said, where the ballot is known by a claim; null otherwise.</summary>
+            public string saidId;
+            /// <summary>A claim the reveal caught out.</summary>
+            public bool lied;
         }
 
         /// <summary>One of the week's key moments: its kind, whose face it carries, its title and its line.</summary>
@@ -56,8 +63,10 @@ namespace Gamesim.Presentation
             public int remaining;
             /// <summary>The evictee's own words from the block, said before the vote; null where none were kept.</summary>
             public string evicteeQuote;
-            /// <summary>The reveal's ballots, in the order they were read.</summary>
+            /// <summary>The ballots the player knows: their own first, then the tie-break, then the cast's order.</summary>
             public List<Ballot> votes = new List<Ballot>();
+            /// <summary>How many of the week's ballots the player cannot place.</summary>
+            public int unknownBallots;
             public List<Moment> keyMoments = new List<Moment>();
             /// <summary>The evictee's season, in public facts.</summary>
             public List<string> exitRecord = new List<string>();
@@ -118,19 +127,20 @@ namespace Gamesim.Presentation
                 recap.evicteeQuote = string.IsNullOrWhiteSpace(words) ? null : words.Trim();
             }
 
-            string hohName = state.Find(recap.hohId)?.name ?? recap.headOfHousehold;
-            foreach (var line in events.Where(e => e.kind == "vote-reveal" && (e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId))))
+            // The ballots as the player knows them (KnownBallots), never the box or the house's lines;
+            // the count from the ledger's tally, which pairs each nominee with their votes.
+            var sheet = KnownBallots.Read(state, week);
+            foreach (var known in sheet.ballots.Where(b => b.Known))
+                recap.votes.Add(new Ballot
+                {
+                    voterId = known.voterId, targetId = known.targetId, reason = known.reason,
+                    tieBreak = known.basis == KnownBallots.Basis.TieBreak, basis = known.basis, saidId = known.saidId, lied = known.Lied,
+                });
+            recap.unknownBallots = sheet.Unknown;
+            if (sheet.Revealed && recap.evictedId != null)
             {
-                var read = VoteRecords.ReadBallot(state, line.text, hohName);
-                if (read?.VoterId == null || read.TargetId == null) continue;
-                recap.votes.Add(new Ballot { voterId = read.VoterId, targetId = read.TargetId, reason = read.Reason, tieBreak = read.TieBreak });
-            }
-            // The count from the reveal's ballots; where the log has lost them, from the ledger's
-            // tally, which pairs each nominee with their votes.
-            if (recap.votes.Any(v => !v.tieBreak))
-            {
-                recap.against = recap.votes.Count(v => !v.tieBreak && v.targetId == recap.evictedId);
-                recap.others = recap.votes.Count(v => !v.tieBreak && v.targetId != recap.evictedId);
+                recap.against = sheet.Against(recap.evictedId);
+                recap.others = sheet.tally.Sum() - recap.against;
             }
             else if (power != null && power.tally.Count == power.nominees.Count && power.tally.Count > 0 && recap.evictedId != null)
             {

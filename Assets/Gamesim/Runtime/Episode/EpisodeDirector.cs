@@ -1196,7 +1196,9 @@ namespace Gamesim.Episode
                     ? "You declared loyalty to " + state.Find(oath.targetId).name
                     : state.Find(oath.playerId).name + " declared loyalty to you") + ". " + OathNotebookNote);
             RenderDiaryRecord(state);
-            foreach (var memory in state.memories.Where(m => m.ownerId == state.playerId)) hud.Paragraph("Week " + memory.week + ": " + memory.text);
+            // The player's memories as they may know them: one that tells a ballot the reveal kept
+            // private waits for the ballot (KnownBallots.PlayerMemories; decision 4).
+            foreach (var memory in KnownBallots.PlayerMemories(state)) hud.Paragraph("Week " + memory.week + ": " + memory.text);
             RenderStorySoFar(state);
         }
 
@@ -1324,7 +1326,7 @@ namespace Gamesim.Episode
                     hud.Mark(NotebookSection.Network);
                     // Mockup-07's bar: the player, and where they stand by their own reading.
                     int allies = RelationshipWeb.Allies(state).Count, rivals = RelationshipWeb.Rivals(state).Count;
-                    int known = state.memories.Count(memory => memory.ownerId == state.playerId);
+                    int known = KnownBallots.PlayerMemories(state).Count();
                     hud.SpeechBar(state.playerId, EpisodeHud.SelfTitle(state.Find(state.playerId)),
                         "By your own reading: " + allies + (allies == 1 ? " ally, " : " allies, ") + rivals
                         + (rivals == 1 ? " rival, " : " rivals, ") + known + (known == 1 ? " thing" : " things") + " you know.", true);

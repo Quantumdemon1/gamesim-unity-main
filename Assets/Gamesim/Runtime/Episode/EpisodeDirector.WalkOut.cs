@@ -420,8 +420,8 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// At the door, by how they leave things with the player (CEREMONY-CUTSCENES-PLAN §7.6, 5A):
-        /// a warm or dealt goodbye stops and turns back - to the lens, where the player's own eye is
-        /// - for the evicted take; a cold or an unmoved one walks straight on.
+        /// a dealt goodbye stops and turns back - to the lens, where the player's own eye is - for
+        /// the evicted take; a cold or an unmoved one walks straight on.
         /// </summary>
         private void TakeTheLastLook(Transform body)
         {
@@ -429,7 +429,7 @@ namespace Gamesim.Episode
             var visual = body != null ? body.GetComponent<CharacterPresentation>() : null;
             if (visual == null) return;
             visual.LookAt(null, 0f);
-            if (walkOutTone != GoodbyeKind.Dealt && walkOutTone != GoodbyeKind.Warm) return;
+            if (walkOutTone != GoodbyeKind.Dealt) return;
             if (cameraRig != null) visual.SetFacing(cameraRig.Yaw + 180f);
             visual.React(CharacterPresentation.Reaction.Evicted);
             stagedLookUntil = Time.unscaledTime + LastLookSeconds;
@@ -660,18 +660,22 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// How the evicted leave things with the player, as far as the player knows (MOCKUP-PASS-PLAN
-        /// decision 6A): a deal between them, the player's own vote or nomination against them, the
-        /// player's vote to keep them, or none of these. Never their hidden feeling toward the
-        /// player, which the line used to give away as they walked out to the jury.
+        /// How the evicted leave things with the player, as far as the evicted could know
+        /// (MOCKUP-PASS-PLAN decision 6A; UI-UX-PASS-PLAN B0): a deal between them, the player's
+        /// nomination of them, the player's ballot against them where the count proved it to the one
+        /// going, or none of these. Never their hidden feeling toward the player, which the line used
+        /// to give away as they walked out to the jury, and never a ballot the reveal kept private. A
+        /// warm goodbye - the player's ballot to keep them - is one a count that evicts them never
+        /// proves from their seat, so there is none: R1 may restore it on a told source.
         /// </summary>
-        public enum GoodbyeKind { Neutral, Warm, Cold, Dealt }
+        public enum GoodbyeKind { Neutral, Cold, Dealt }
 
         /// <summary>
-        /// The goodbye's tone, from what the player knows: a deal between them that still binds;
-        /// otherwise cold for the player's ballot against them, or for a player Head of Household
-        /// with them on the block; warm for the player's ballot for the other nominee; neutral
-        /// otherwise. Pure: it reads the committed state and draws nothing.
+        /// The goodbye's tone, from what the evicted could know: a deal between them that still
+        /// binds; otherwise cold for a player Head of Household with them on the block, or for the
+        /// player's ballot against them where the count proved it from the evicted's own seat
+        /// (<see cref="KnownBallots.ProvenFor"/>: a unanimous vote, or the player's tie-break);
+        /// neutral otherwise. Pure: it reads the committed state and draws nothing.
         /// </summary>
         public static GoodbyeKind GoodbyeTone(EpisodeState state, string id)
         {
@@ -680,11 +684,10 @@ namespace Gamesim.Episode
             bool dealt = state.deals != null && state.deals.Any(d => DealStatus.Binds(d.status) && d.status != DealStatus.Proposed
                 && ((d.proposerId == id && d.recipientId == you) || (d.proposerId == you && d.recipientId == id)));
             if (dealt) return GoodbyeKind.Dealt;
-            var ballot = state.votes != null ? state.votes.FirstOrDefault(vote => vote.voterId == you) : null;
             bool nominated = state.hohId == you && state.nominees != null && state.nominees.Contains(id);
-            if (nominated || (ballot != null && ballot.targetId == id)) return GoodbyeKind.Cold;
-            if (ballot != null && !string.IsNullOrEmpty(ballot.targetId)) return GoodbyeKind.Warm;
-            return GoodbyeKind.Neutral;
+            if (nominated) return GoodbyeKind.Cold;
+            KnownBallots.ProvenFor(state, state.week, id).TryGetValue(you, out var yours);
+            return yours == id ? GoodbyeKind.Cold : GoodbyeKind.Neutral;
         }
 
         /// <summary>
@@ -701,7 +704,6 @@ namespace Gamesim.Episode
             switch (GoodbyeTone(state, id))
             {
                 case GoodbyeKind.Dealt: opener = name + " pauses at the door and turns to you…"; break;
-                case GoodbyeKind.Warm: opener = name + " gives you one last look before walking out the door."; break;
                 case GoodbyeKind.Cold: opener = name + " glares at you from the doorway."; break;
                 default: opener = name + " walks to the door without looking back."; break;
             }

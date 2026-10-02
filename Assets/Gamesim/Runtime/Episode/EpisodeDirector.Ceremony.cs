@@ -238,29 +238,31 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// The committed ballots, in the order the house cast them.
+        /// The committed ballots, whom each went against and nothing else, in an order that is not
+        /// the cast's.
         ///
         /// <para>Read from state rather than re-derived, so the card counts to the same total the
-        /// save holds. It carries who voted and for whom — both already public at the reveal, which
-        /// is the moment the engine logs them as <c>vote-reveal</c> events.</para>
+        /// save holds. No ballot carries its voter (UI-UX-PASS-PLAN B0): the card reads the count,
+        /// never who cast what, and a card handed voters would be one line from drawing them. The
+        /// house's ballots are shuffled afresh each time the card plays (<see cref="VoteOrder"/>) -
+        /// presentation only, no draw from the season's generator and nothing hashed from the record
+        /// - because the engine casts them in the cast's order, and a count that climbed in that
+        /// order, or in one anybody could recompute, would say whose vote each was.</para>
         ///
         /// <para>The Head of Household votes only to break a tie, and the engine's tally leaves that
         /// vote out; the card has to know it is the tie-break, or it counts it with the house's and
-        /// a 2-2 tie reads 3-2.</para>
-        ///
-        /// <para>Each ballot also carries its voter's id and look, for the voter's row and face on
-        /// the living room's screen (MOCKUP-PASS-PLAN M18). Presentation only: nothing is saved.</para>
+        /// a 2-2 tie reads 3-2. It comes last, as the format reads it.</para>
         /// </summary>
         public static List<VoteReveal.Ballot> EvictionBallots(EpisodeState state)
         {
             var ballots = new List<VoteReveal.Ballot>();
             if (state?.votes == null) return ballots;
-            foreach (var vote in state.votes)
-            {
-                var voter = state.Find(vote.voterId);
-                ballots.Add(new VoteReveal.Ballot(vote.voterId, voter?.name ?? "A housemate", vote.targetId,
-                    !string.IsNullOrEmpty(state.hohId) && vote.voterId == state.hohId, voter));
-            }
+            bool TieBreak(VoteState vote) => !string.IsNullOrEmpty(state.hohId) && vote.voterId == state.hohId;
+            var house = state.votes.Where(vote => vote != null && !TieBreak(vote)).ToList();
+            foreach (var id in VoteOrder(house.Select(vote => vote.voterId)))
+                ballots.Add(new VoteReveal.Ballot(house.First(vote => vote.voterId == id).targetId));
+            foreach (var vote in state.votes.Where(vote => vote != null && TieBreak(vote)))
+                ballots.Add(new VoteReveal.Ballot(vote.targetId, true));
             return ballots;
         }
 

@@ -304,7 +304,7 @@ namespace Gamesim.Simulation
                 return "you broke a promise to them since";
             if (s.ledger?.replies != null && s.ledger.replies.Any(r => r.kind == ReplyCards.Plea && r.fromId == jurorId && r.replyKey == "refuse" && r.week > week))
                 return "you refused their plea since";
-            if (s.ledger?.ballots != null && s.ledger.ballots.Any(b => b.voterId == player && b.targetId == jurorId && b.week > week))
+            if (s.ledger?.ballots != null && s.ledger.ballots.Any(b => b.voterId == player && b.targetId == jurorId && b.week > week && CouldKnowYourBallot(s, b.week, jurorId)))
                 return "you voted to evict them since";
             if (s.deals.Any(d => d.status == DealStatus.Broken && (d.week > week || d.type == DealKind.FinalTwo)
                 && ((d.proposerId == player && d.recipientId == jurorId) || (d.proposerId == jurorId && d.recipientId == player))))
@@ -313,6 +313,15 @@ namespace Gamesim.Simulation
         }
 
         private static string Word(double score) => score >= FinalistRead.WarmStanding ? "warm on you" : score <= FinalistRead.ColdStanding ? "cold on you" : "not sure about you";
+
+        /// <summary>
+        /// Whether a juror could know the player's ballot in <paramref name="week"/> from their own
+        /// seat: the count's proof, or the player's tie-break (<see cref="KnownBallots.ProvenFor"/>).
+        /// The reveal reads the count, never the ballots, so a ballot the count did not prove is
+        /// nothing a juror can hold against the player. Telling them is wave B's.
+        /// </summary>
+        public static bool CouldKnowYourBallot(EpisodeState s, int week, string jurorId) =>
+            KnownBallots.ProvenFor(s, week, jurorId).ContainsKey(s.playerId);
 
         public static Juror ReadJuror(EpisodeState s, string jurorId)
         {
@@ -370,8 +379,10 @@ namespace Gamesim.Simulation
             foreach (var promise in s.promises.Where(p => (p.fromId == player && p.toId == id) || (p.fromId == id && p.toId == player)))
                 juror.knows.Add((promise.fromId == player ? "You promised them " : "They promised you ") + HouseguestNotes.PromiseWord(promise.kind)
                     + ": " + HouseguestNotes.PromiseStanding(promise.status) + ".");
-            int votes = s.ledger?.ballots?.Count(b => b.voterId == player && b.targetId == id) ?? 0;
-            if (votes > 0) juror.knows.Add("You voted to evict them " + (votes == 1 ? "once" : votes + " times") + ", in the open.");
+            // The player's ballot against them is theirs to know only where the count showed it
+            // (UI-UX-PASS-PLAN B0: the reveal reads the count, not the ballots).
+            int votes = s.ledger?.ballots?.Count(b => b.voterId == player && b.targetId == id && CouldKnowYourBallot(s, b.week, id)) ?? 0;
+            if (votes > 0) juror.knows.Add("You voted to evict them " + (votes == 1 ? "once" : votes + " times") + ", and the count showed it.");
             string game = SawYourGame(s, juror);
             if (game != null) juror.knows.Add(game);
             var goodbye = Goodbye(s, id);
@@ -481,7 +492,7 @@ namespace Gamesim.Simulation
                 lines.Add((act.week, act.text));
             if (read != null) lines.Add((read.week, "your read: " + Word(read.score)));
             if (s.ledger?.ballots != null)
-                foreach (var b in s.ledger.ballots.Where(b => b.voterId == player && b.targetId == id))
+                foreach (var b in s.ledger.ballots.Where(b => b.voterId == player && b.targetId == id && CouldKnowYourBallot(s, b.week, id)))
                     lines.Add((b.week, "you voted to evict them"));
             if (s.ledger?.replies != null)
                 foreach (var r in s.ledger.replies.Where(r => r.fromId == id))

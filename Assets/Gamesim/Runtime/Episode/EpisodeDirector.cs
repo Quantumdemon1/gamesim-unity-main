@@ -1115,6 +1115,7 @@ namespace Gamesim.Episode
         {
             var state = engine.Snapshot;
             projected = state;
+            HousePublicDisplays.Project(gameObject.scene,state);
             playerIsActive = state.Find(state.playerId).status == ContestantStatus.Active;
             promptNpc = null; npcPrompt = null;
             // Finale night brings the jury back into the living room; their places are chosen once.

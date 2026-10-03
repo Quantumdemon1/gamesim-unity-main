@@ -125,6 +125,7 @@ namespace Gamesim.Presentation
         private CharacterDraft retainedDraft;
         private string resumeError;
         private CharacterCreator creator;
+        private string pendingSlotFocus;
         private CharacterProfileStore profileStore;
         private readonly CharacterProfileBrowser profileBrowser = new CharacterProfileBrowser();
         public CharacterProfileStore ProfileStore => profileStore ?? (profileStore = new CharacterProfileStore());
@@ -181,6 +182,7 @@ namespace Gamesim.Presentation
             // footer's row are laid out for the frame, so a new frame gets a new layout.
             var size = ((RectTransform)transform).rect.size;
             if (Mathf.Abs(size.x - builtFor.x) > 2f || Mathf.Abs(size.y - builtFor.y) > 2f) Rebuild();
+            RestoreSlotFocus();
             // A houseguest with no glamour photo shows their rendered face, filled in as it lands.
             foreach (var item in portraits)
             {
@@ -294,6 +296,7 @@ namespace Gamesim.Presentation
             customHouseguests.Clear();
             profileBrowser.Reset();
             retainedDraft = null;
+            pendingSlotFocus = null;
             resumeError = null;
             scrollToTop = true;
             houseSize = SeasonBuilder.ClampHouseSize(roster, SeasonBuilder.DefaultHouseSize);
@@ -1393,8 +1396,28 @@ namespace Gamesim.Presentation
             {
                 // This changes the proposed cast instance only, not its library profile or the player's setup.
                 customHouseguests[slot] = CharacterProfile.FromDraft(profile.id, changed);
-                Resume();
-            }, Resume);
+                ResumeCastSlot(slot);
+            }, () => ResumeCastSlot(slot));
+        }
+
+        private void ResumeCastSlot(int slot)
+        {
+            Resume();
+            pendingSlotFocus = "Edit slot " + (slot + 1);
+            RestoreSlotFocus();
+        }
+
+        // The creator rebuilt its controls while the cast was asleep. Return to the edited slot,
+        // keeping the existing scroll/filter; the HUD then retains this selection when it rewires.
+        private void RestoreSlotFocus()
+        {
+            if (pendingSlotFocus == null || !IsShowing) return;
+            var events = EventSystem.current;
+            if (events == null || events.alreadySelecting) return;
+            var button = GetComponentsInChildren<Button>()
+                .FirstOrDefault(item => item.name == pendingSlotFocus && item.IsActive() && item.IsInteractable());
+            pendingSlotFocus = null;
+            if (button != null) events.SetSelectedGameObject(button.gameObject);
         }
 
         /// <summary>Brings the screen back with the player's roster, filter and pick intact.</summary>

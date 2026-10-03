@@ -33,7 +33,7 @@ namespace Gamesim.Presentation
             public string basis;
             /// <summary>What the voter said, where the ballot is known by a claim; null otherwise.</summary>
             public string saidId;
-            /// <summary>A claim the reveal caught out.</summary>
+            /// <summary>A claim the reveal caught out. Worded by <see cref="KnownBallots.SaidWords"/>: of an ally's account, a vote that changed, never a lie.</summary>
             public bool lied;
         }
 

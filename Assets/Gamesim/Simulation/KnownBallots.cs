@@ -102,8 +102,31 @@ namespace Gamesim.Simulation
             /// <summary>Whether it is placed beyond doubt: everything known here is, since an unjudged claim never makes a ballot.</summary>
             public bool Certain => Known && basis != Basis.Unknown && verdict != ClaimStatus.Open;
 
-            /// <summary>A claim the reveal caught out: the voter said one name and cast the other.</summary>
+            /// <summary>A claim the reveal caught out: the voter said one name and cast the other. Of an ally's account, a vote that changed and no lie told to the player (<see cref="SaidWords"/>).</summary>
             public bool Lied => verdict == ClaimStatus.Lied;
+        }
+
+        /// <summary>
+        /// What the tag beside a known ballot adds where the ballot went against what the voter said:
+        /// the notebook's Known ballots and the recap's vote breakdown say it in these words, each with
+        /// the name as it calls people. What the voter told the player to their face is a lie the
+        /// reveal caught: " · said Maya Hassan, a lie". An ally's account is the member's own word to
+        /// the pact at a meeting (ACTIONS-DEALS-ALLIANCES-PLAN C6), true when it was said and costing
+        /// them nothing, so a ballot that went against it is a vote that changed, as the notes and the
+        /// season's tapes say it: " · told the pact they'd evict Maya Hassan; voted the other way" -
+        /// never "a lie". An overheard lean keeps its words until the copy pass the plan leaves it for.
+        /// <paramref name="brief"/> is for a tag held to one line under a face - the recap overview's
+        /// vote card, some 140 across on a 4:3 screen at the larger text and 132 on a 5:4, where the
+        /// whole of an ally's words was cut off at "told the pact they'd evict" and even the notes'
+        /// "voted the other way" lost its last word - and there an ally's account says only
+        /// " · vote changed", the vote that changed in two words; a lie keeps the short words it
+        /// always had there. Empty where the claim was kept, or there was none.
+        /// </summary>
+        public static string SaidWords(string basis, bool lied, string saidName, bool brief = false)
+        {
+            if (!lied || string.IsNullOrEmpty(saidName)) return "";
+            if (basis != Basis.Reported) return " · said " + saidName + ", a lie";
+            return brief ? " · vote changed" : " · told the pact they'd evict " + saidName + "; voted the other way";
         }
 
         /// <summary>A week's vote as the player knows it.</summary>

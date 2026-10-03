@@ -439,6 +439,64 @@ namespace Gamesim.Tests.EditMode
             }
         }
 
+        [Test]
+        public void C6_TheVotesCardAndTheRecapSayAnAllysChangedVoteAsTheNotesDoAndALieToYourFaceAsALie()
+        {
+            // One member tells the pact their ballot at the meeting, and it then moves the other way; the
+            // other tells the player to their face a name they will not vote. The reveal judges both lied.
+            var s = CampaignWithAPactOfThree(true, out string first, out string second);
+            var met = Meet(s, first);
+            string told = met.ledger.claims.Single().targetId, other = met.nominees.First(id => id != told);
+            SetScore(met, first, told, 100);
+            SetScore(met, first, other, -100);
+            string said = met.nominees[0], cast = met.nominees[1];
+            SetScore(met, second, said, 100);
+            SetScore(met, second, cast, -100);
+            met.ledger.claims.Add(new ClaimRow { week = met.week, voterId = second, targetId = said, source = ClaimSource.Told });
+            Valid(met);
+            var after = Reveal(met);
+            var sheet = KnownBallots.Read(after, s.week);
+            var ally = sheet.Of(first);
+            var liar = sheet.Of(second);
+            Assert.That((ally.targetId, ally.basis, ally.saidId, ally.Lied), Is.EqualTo((other, KnownBallots.Basis.Reported, told, true)),
+                "Precondition: the ally's account is judged lied, as every claim the ballot went against is.");
+            Assert.That((liar.targetId, liar.basis, liar.saidId, liar.Lied), Is.EqualTo((cast, KnownBallots.Basis.Told, said, true)),
+                "Precondition: the lie told to the player's face is caught.");
+
+            // The notebook's Votes card calls them by their names, the recap by their first names: the
+            // same words either way, the member's own word to the pact and a vote that changed.
+            foreach (bool byFirstName in new[] { false, true })
+            {
+                string label = byFirstName ? "The recap" : "The notebook";
+                string Called(string id) => byFirstName ? FinalistRead.FirstName(after.Find(id).name) : after.Find(id).name;
+                string changed = KnownBallots.SaidWords(ally.basis, ally.Lied, Called(told));
+                Assert.That(changed, Is.EqualTo(" · told the pact they'd evict " + Called(told) + "; voted the other way"),
+                    label + ": an ally's account the ballot went against, as the notes and the season's tapes say it.");
+                Assert.That(changed, Does.Not.Contain("a lie").And.Not.Contain("Lied"), label + ": never a lie.");
+                Assert.That(KnownBallots.SaidWords(liar.basis, liar.Lied, Called(said)), Is.EqualTo(" · said " + Called(said) + ", a lie"),
+                    label + ": a lie told to the player's face is still a lie.");
+                Assert.That(KnownBallots.SaidWords(KnownBallots.Basis.Overheard, true, Called(said)), Is.EqualTo(" · said " + Called(said) + ", a lie"),
+                    label + ": an overheard lean keeps its words until the copy pass.");
+            }
+            Assert.That(KnownBallots.SaidWords(KnownBallots.Basis.Reported, false, after.Find(told).name), Is.Empty, "A claim kept adds nothing.");
+            Assert.That(KnownBallots.SaidWords(KnownBallots.Basis.Told, false, after.Find(said).name), Is.Empty);
+
+            // The recap overview's row under a face is one line, too narrow for the whole of it (it was
+            // cut off at "told the pact they'd evict"), and at the larger text on a 4:3 or 5:4 screen
+            // too narrow even for the notes' brief (cut off at "voted the other"): there an ally's
+            // changed vote is said in two words, whatever the name; a lie keeps the words it always had.
+            string FirstOf(string id) => FinalistRead.FirstName(after.Find(id).name);
+            string row = KnownBallots.SaidWords(ally.basis, ally.Lied, FirstOf(told), true);
+            string brief = HouseguestNotes.For(after, first).Single(n => n.kind == HouseguestNotes.Kinds.Vote).brief;
+            Assert.That(row, Is.EqualTo(" · vote changed"), "The recap's row: an ally's changed vote, short,");
+            Assert.That(row.Length, Is.LessThan((" · " + brief).Length), "shorter than the notes' brief (" + brief + "), which lost its last word there,");
+            Assert.That(row, Does.Not.Contain(FirstOf(told)).And.Not.Contain("a lie"), "with no name to run long, and never a lie.");
+            Assert.That(KnownBallots.SaidWords(liar.basis, liar.Lied, FirstOf(said), true), Is.EqualTo(" · said " + FirstOf(said) + ", a lie"),
+                "The recap's row: a lie told to the player's face is still a lie.");
+            Assert.That(KnownBallots.SaidWords(KnownBallots.Basis.Overheard, true, FirstOf(said), true), Is.EqualTo(" · said " + FirstOf(said) + ", a lie"));
+            Assert.That(KnownBallots.SaidWords(KnownBallots.Basis.Reported, false, FirstOf(told), true), Is.Empty, "The recap's row: a claim kept adds nothing.");
+        }
+
         // ------------------------------------------------------------ the meeting: once a week
 
         [Test]

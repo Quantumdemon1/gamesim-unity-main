@@ -175,6 +175,43 @@ namespace Gamesim.Tests.EditMode
             finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
         }
 
+        /// <summary>
+        /// A profile held for a moment by something that shares nothing - a backup or sync client
+        /// copying it - is waited out rather than read as damaged: the load does not fall back to the
+        /// previous copy, and a save does not refuse the file it could not open.
+        /// </summary>
+        [Test]
+        public void ABriefExclusiveHoldOnAProfileIsWaitedOutRatherThanReadAsDamage()
+        {
+            string root = Path.Combine(Path.GetTempPath(), "GamesimProfileTests-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var library = new CharacterProfileStore(root);
+                var profile = CharacterProfile.FromDraft(Guid.NewGuid().ToString("N"), Draft());
+                Assert.That(library.Save(profile, out var error), Is.True, error);
+                profile.name = profile.contestant.name = "Updated";
+                Assert.That(library.Save(profile, out error), Is.True, error);
+                string path = Path.Combine(root, profile.id + ".json");
+                using (var held = new PersistenceTests.HeldFile(path, FileShare.None))
+                {
+                    held.ReleaseAfter(50);
+                    Assert.That(library.TryLoad(profile.id, out var loaded, out error), Is.True, error);
+                    Assert.That(error, Is.Null, "Read from the profile itself, not recovered from its backup.");
+                    Assert.That(loaded.name, Is.EqualTo("Updated"));
+                }
+                profile.name = profile.contestant.name = "Renamed";
+                using (var held = new PersistenceTests.HeldFile(path, FileShare.None))
+                {
+                    held.ReleaseAfter(50);
+                    Assert.That(library.Save(profile, out error), Is.True, error);
+                }
+                Assert.That(library.TryLoad(profile.id, out var saved, out error), Is.True, error);
+                Assert.That(error, Is.Null);
+                Assert.That(saved.name, Is.EqualTo("Renamed"));
+            }
+            finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+        }
+
         [Test]
         public void RepeatedLibraryProfilesBecomeDistinctIndependentCustomCastSlots()
         {

@@ -5,6 +5,8 @@ using System.Linq;
 using Gamesim.Persistence;
 using Gamesim.Simulation;
 using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace Gamesim.Tests.EditMode
 {
@@ -104,6 +106,233 @@ namespace Gamesim.Tests.EditMode
             Assert.That(seasons.Select(s => s.sessionId), Is.EqualTo(new[] { "season-1", "season-3" }));
             Assert.That(File.Exists(ledger.FilePath), Is.True);
             Assert.That(Directory.GetFiles(directory, "*.pending-*"), Is.Empty);
+        }
+
+        /// <summary>
+        /// The 2026-10-02 failure: something else held the ledger for a moment and the swap threw
+        /// "Unable to remove the file to be replaced". A brief hold is waited out.
+        /// </summary>
+        [Test]
+        public void Record_WaitsOutABriefLockOnTheFile()
+        {
+            Assert.That(ledger.Record(Finished(1, ContestantStatus.Winner)), Is.True);
+            using (var held = new PersistenceTests.HeldFile(ledger.FilePath))
+            {
+                held.ReleaseAfter(50);
+                Assert.That(ledger.Record(Finished(2, ContestantStatus.RunnerUp)), Is.True);
+            }
+            Assert.That(ledger.Load().seasons.Select(s => s.sessionId), Is.EqualTo(new[] { "season-1", "season-2" }));
+            Assert.That(Directory.GetFiles(directory, "*.pending-*"), Is.Empty);
+        }
+
+        /// <summary>
+        /// A lock that does not lift fails the record as it fails a save. The hold refuses the swap
+        /// under Windows' sharing rules only (<see cref="PersistenceTests.HeldFile"/>).
+        /// </summary>
+        [Test]
+        [UnityPlatform(RuntimePlatform.WindowsEditor)]
+        public void Record_ALockThatDoesNotLiftThrowsTheIOExceptionAndChangesNothing()
+        {
+            Assert.That(ledger.Record(Finished(1, ContestantStatus.Winner)), Is.True);
+            var before = File.ReadAllBytes(ledger.FilePath);
+            using (new PersistenceTests.HeldFile(ledger.FilePath))
+            {
+                Assert.Throws<IOException>(() => ledger.Record(Finished(2, ContestantStatus.RunnerUp)));
+            }
+            Assert.That(File.ReadAllBytes(ledger.FilePath), Is.EqualTo(before), "The record on disk is untouched.");
+            Assert.That(Directory.GetFiles(directory, "*.pending-*"), Is.Empty, "The pending copy is still cleaned up.");
+            Assert.That(ledger.Load().seasons.Select(s => s.sessionId), Is.EqualTo(new[] { "season-1" }));
+        }
+
+        /// <summary>
+        /// A hold that shares nothing - a backup or sync client copying the record - stops the read
+        /// before the write. That read used to take the locked file for a damaged one and try to set
+        /// it aside; while the hold lasted the move failed too and the finished season was quietly
+        /// not recorded. The read now waits the hold out.
+        /// </summary>
+        [Test]
+        public void Record_WaitsOutABriefExclusiveHoldOnTheFile()
+        {
+            Assert.That(ledger.Record(Finished(1, ContestantStatus.Winner)), Is.True);
+            using (var held = new PersistenceTests.HeldFile(ledger.FilePath, FileShare.None))
+            {
+                held.ReleaseAfter(50);
+                Assert.That(ledger.Record(Finished(2, ContestantStatus.RunnerUp)), Is.True, ledger.Notice);
+            }
+            Assert.That(ledger.Load().seasons.Select(s => s.sessionId), Is.EqualTo(new[] { "season-1", "season-2" }));
+            Assert.That(ledger.Notice, Is.Null);
+            Assert.That(Directory.GetFiles(directory, "career.json.damaged-*"), Is.Empty);
+        }
+
+        /// <summary>
+        /// A hold that outlasts the wait is not damage either. The record stays where it is and as it
+        /// is, the season is refused rather than written over a file nobody could read, and the notice
+        /// says the file could not be opened, not that it was set aside. Once the hold lifts the record
+        /// reads back whole and the season joins it.
+        ///
+        /// <para>FileShare.Delete is the hold that shows why: it refuses reads but lets the file be
+        /// renamed, so a ledger that archived on any read failure would set a good career aside and
+        /// start again from nothing. In Windows FileShare.None refuses the rename as well; Mono on
+        /// Linux and macOS renames through any hold, so there the FileShare.None case is the one that
+        /// shows it. Only Windows refuses a read through a FileShare.Delete hold
+        /// (<see cref="PersistenceTests.HeldFile"/>), so other editors skip that case. Skipped, not
+        /// inconclusive: a command-line run counts an inconclusive test as a failure.</para>
+        /// </summary>
+        [TestCase(FileShare.None)]
+        [TestCase(FileShare.Delete)]
+        public void Record_AHoldThatDoesNotLiftIsNotTakenForDamage(FileShare share)
+        {
+            if (share == FileShare.Delete && Application.platform != RuntimePlatform.WindowsEditor)
+                Assert.Ignore("Mono on Linux and macOS lets a read through a FileShare.Delete hold.");
+            Assert.That(ledger.Record(Finished(1, ContestantStatus.Winner)), Is.True);
+            var before = File.ReadAllBytes(ledger.FilePath);
+            using (new PersistenceTests.HeldFile(ledger.FilePath, share))
+            {
+                Assert.Throws<IOException>(() => File.ReadAllText(ledger.FilePath), "The hold refuses reads.");
+                Assert.That(ledger.Record(Finished(2, ContestantStatus.RunnerUp)), Is.False);
+                Assert.That(ledger.Notice, Does.Contain("could not be opened"));
+                Assert.That(ledger.Notice, Does.Not.Contain("set aside"));
+                Assert.That(Directory.GetFiles(directory, "career.json.damaged-*"), Is.Empty);
+            }
+            Assert.That(File.ReadAllBytes(ledger.FilePath), Is.EqualTo(before), "The record is where it was, untouched.");
+            Assert.That(ledger.Record(Finished(2, ContestantStatus.RunnerUp)), Is.True, ledger.Notice);
+            Assert.That(ledger.Load().seasons.Select(s => s.sessionId), Is.EqualTo(new[] { "season-1", "season-2" }));
+            Assert.That(ledger.Notice, Is.Null);
+        }
+
+        /// <summary>
+        /// A record that could not be opened loads as no seasons, and that count was all the
+        /// settings panel looked at: it drew no reset, so a file that never opened again refused
+        /// every finale with no way out in the game. The panel reads Blocked now, and the reset it
+        /// offers is the way out: the record is set aside whole, the block goes with it, and the
+        /// next finale starts a fresh record.
+        /// </summary>
+        [Test]
+        public void Load_ARecordThatCannotBeOpenedIsBlocked_AndResetIsTheWayOut()
+        {
+            Assert.That(ledger.Record(Finished(1, ContestantStatus.Winner)), Is.True);
+            Assert.That(ledger.Blocked, Is.False, "A record that reads is not blocked.");
+            var before = File.ReadAllBytes(ledger.FilePath);
+            using (new PersistenceTests.HeldFile(ledger.FilePath, FileShare.None))
+            {
+                Assert.That(ledger.Load().seasons, Is.Empty, "What the panel is given: no seasons,");
+                Assert.That(ledger.Blocked, Is.True, "and a record in the way, so it offers the reset.");
+                Assert.That(ledger.Notice, Is.EqualTo(CareerLedger.UnopenedNotice(new IOException())),
+                    "A hold that outlasted the wait is the one notice that says \"just now\".");
+            }
+            var archived = ledger.Reset();
+            Assert.That(archived, Is.Not.Null);
+            Assert.That(File.ReadAllBytes(archived), Is.EqualTo(before), "Set aside whole, not deleted.");
+            Assert.That(ledger.Blocked, Is.False, "With the file moved, nothing is in the way.");
+            Assert.That(ledger.Record(Finished(2, ContestantStatus.RunnerUp)), Is.True, ledger.Notice);
+            Assert.That(ledger.Load().seasons.Select(s => s.sessionId), Is.EqualTo(new[] { "season-2" }));
+        }
+
+        /// <summary>
+        /// Only another process's hold lifts by itself, so only a plain IOException that outlasted
+        /// the wait says "just now". A denied path - an ACL carried over by a restore, a file
+        /// encrypted under another account - and the IOException subclasses do not clear by
+        /// waiting: their notice promises no later load and names the reset in Settings.
+        ///
+        /// <para>Of these only a denied read can be made on a real file, and only through a tool
+        /// outside the .NET Standard 2.1 profile, so these are the exceptions File.ReadAllText
+        /// throws, given to the wording <see cref="CareerLedger.Load"/> uses. The test above ties
+        /// that wording to a real hold, and the one below to a real denied read.</para>
+        /// </summary>
+        [Test]
+        public void UnopenedNotice_PromisesALaterLoadOnlyForAHold()
+        {
+            var hold = CareerLedger.UnopenedNotice(new IOException("Sharing violation on path " + ledger.FilePath));
+            Assert.That(hold, Does.StartWith("The career record could not be opened just now; it is left as it is."));
+            Assert.That(hold, Does.Not.Contain("Settings"), "A hold lifts; there is nothing to do.");
+            Assert.That(hold, Does.EndWith("(IOException)"));
+
+            var lasting = new Exception[]
+            {
+                new UnauthorizedAccessException("Access to the path '" + ledger.FilePath + "' is denied."),
+                new PathTooLongException(),
+            };
+            foreach (var error in lasting)
+            {
+                var notice = CareerLedger.UnopenedNotice(error);
+                var kind = error.GetType().Name;
+                Assert.That(notice, Does.StartWith("The career record could not be opened; it is left as it is."), kind);
+                Assert.That(notice, Does.Not.Contain("just now"), kind + " does not lift by waiting.");
+                Assert.That(notice, Does.Contain("Resetting it in Settings sets it aside"), kind + ": the way out is named.");
+                Assert.That(notice, Does.EndWith("(" + kind + ")"));
+                Assert.That(notice, Does.Not.Contain(directory), "The path, with the player's user name in it, is never shown.");
+            }
+        }
+
+        /// <summary>
+        /// The same wording from a real load. A record its own user may not read - what an ACL
+        /// carried over by a restore does - is refused at once rather than waited out, and Load
+        /// gives it the notice that names the way out, not the hold's "just now". The load blocks
+        /// the record and never sets it aside itself. The reset still moves it whole, because only
+        /// the read is denied: the rename needs other rights.
+        ///
+        /// <para>It runs in every editor, the Windows one included: acceptance runs there and
+        /// counts a skipped test as a failed run, and it is where a player's record would meet a
+        /// foreign ACL. <see cref="SetReadable"/> takes the read away with icacls in Windows and
+        /// chmod elsewhere. Only a user the denial does not stop - root, which reads a mode-000
+        /// file anyway - skips it.</para>
+        /// </summary>
+        [Test]
+        public void Load_ARecordItsUserMayNotReadNamesTheResetInSettings()
+        {
+            Assert.That(ledger.Record(Finished(1, ContestantStatus.Winner)), Is.True);
+            var before = File.ReadAllBytes(ledger.FilePath);
+            SetReadable(ledger.FilePath, false);
+            try
+            {
+                File.ReadAllBytes(ledger.FilePath);
+                Assert.Ignore("This user reads the file anyway, as root reads a mode-000 one, so nothing here refuses the read.");
+            }
+            catch (UnauthorizedAccessException) { }
+
+            Assert.That(ledger.Load().seasons, Is.Empty);
+            Assert.That(ledger.Blocked, Is.True, "The record is in the way, so Settings offers the reset.");
+            Assert.That(ledger.Notice, Is.EqualTo(CareerLedger.UnopenedNotice(new UnauthorizedAccessException())),
+                "A denied read is not a hold: no \"just now\", and the reset in Settings is named.");
+            Assert.That(ledger.Record(Finished(2, ContestantStatus.RunnerUp)), Is.False, "Nothing is written over a record nobody could read.");
+            Assert.That(Directory.GetFiles(directory, "career.json.damaged-*"), Is.Empty, "The load never sets it aside by itself.");
+
+            var archived = ledger.Reset();
+            Assert.That(archived, Is.Not.Null, "The folder still allows the rename: the reset is the way out.");
+            Assert.That(ledger.Blocked, Is.False);
+            SetReadable(archived, true);
+            Assert.That(File.ReadAllBytes(archived), Is.EqualTo(before), "Set aside whole, not deleted.");
+            Assert.That(ledger.Record(Finished(2, ContestantStatus.RunnerUp)), Is.True, ledger.Notice);
+        }
+
+        /// <summary>
+        /// Takes this user's read of a file away, or gives it back, for the test above: the .NET
+        /// Standard 2.1 profile has no call that sets a file's ACL or mode.
+        ///
+        /// <para>In Windows, icacls denies Everyone (S-1-1-0, so no account name to look up) the
+        /// read-data right alone. That refuses the owner and an elevated editor too, since a read
+        /// without backup semantics never bypasses a deny, while File.Exists, the rename and the
+        /// TearDown delete use other rights and still go through. Removing the deny gives the read
+        /// back. Elsewhere chmod sets mode 000, and 600 to give it back.</para>
+        /// </summary>
+        private static void SetReadable(string path, bool readable)
+        {
+            var start = Application.platform == RuntimePlatform.WindowsEditor
+                ? new System.Diagnostics.ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "icacls.exe"),
+                    "\"" + path + "\" " + (readable ? "/remove:d *S-1-1-0" : "/deny *S-1-1-0:(RD)"))
+                : new System.Diagnostics.ProcessStartInfo("chmod", (readable ? "600" : "000") + " \"" + path + "\"");
+            start.UseShellExecute = false;
+            start.CreateNoWindow = true;
+            start.RedirectStandardOutput = true;
+            start.RedirectStandardError = true;
+            using (var process = System.Diagnostics.Process.Start(start))
+            {
+                // A line or two each, well inside a pipe's buffer, so reading one after the other cannot stall.
+                var said = process.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd();
+                process.WaitForExit();
+                Assert.That(process.ExitCode, Is.EqualTo(0),
+                    Path.GetFileName(start.FileName) + (readable ? " giving back " : " denying ") + Path.GetFileName(path) + ": " + said.Trim());
+            }
         }
 
         [Test]

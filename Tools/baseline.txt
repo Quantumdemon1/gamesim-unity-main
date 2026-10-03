@@ -9,7 +9,7 @@
 # Raise a floor in the same commit that adds tests; never lower one to make a red run green.
 #
 #   <assembly> <minimum tests>
-Gamesim.EditModeTests 2232
+Gamesim.EditModeTests 2242
 Gamesim.PlayModeTests 863
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 Gamesim.Uma.PlayModeTests 64

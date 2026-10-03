@@ -149,6 +149,15 @@ namespace Gamesim.Persistence
         /// <summary>What the last load had to say when the file was not simply fine or absent.</summary>
         public string Notice { get; private set; }
 
+        /// <summary>
+        /// True while the file in place is one the last load could not use: it could not be opened,
+        /// or it could not be read and could not be set aside either. <see cref="Record"/> refuses
+        /// every season until a load reads it, and the record that load returned is empty, so the
+        /// settings panel shows no seasons. It offers <see cref="Reset"/> on this instead: a file
+        /// that never opens again would otherwise refuse every finale with no way out in the game.
+        /// </summary>
+        public bool Blocked { get { lock (gate) return blocked; } }
+
         public CareerLedger(string directory)
         {
             if (string.IsNullOrWhiteSpace(directory)) throw new ArgumentException("A directory is required.", nameof(directory));
@@ -158,6 +167,14 @@ namespace Gamesim.Persistence
         /// <summary>
         /// The record on disk, or an empty one. A damaged file is moved aside and reported through
         /// <see cref="Notice"/>; it is never trusted and never silently replaced.
+        ///
+        /// <para>A file that could not be opened is not a damaged one. Another process holding it
+        /// for a moment is waited out (<see cref="SaveJson.ReadText"/>); a hold that outlasts the wait,
+        /// or a denied path, leaves the file where it is and blocks <see cref="Record"/> until a later
+        /// load can read it. Setting it aside instead would restart a good career from nothing the
+        /// moment the hold lifted. Only the player sets such a file aside, from Settings
+        /// (<see cref="Blocked"/>), and the notice says so when waiting will not help
+        /// (<see cref="UnopenedNotice"/>).</para>
         /// </summary>
         public CareerRecord Load()
         {
@@ -166,9 +183,20 @@ namespace Gamesim.Persistence
                 Notice = null;
                 blocked = false;
                 if (!File.Exists(FilePath)) return new CareerRecord();
+                string json;
                 try
                 {
-                    return Parse(File.ReadAllText(FilePath, Encoding.UTF8));
+                    json = SaveJson.ReadText(FilePath);
+                }
+                catch (Exception error) when (SaveJson.IsFilesystemError(error))
+                {
+                    blocked = true;
+                    Notice = UnopenedNotice(error);
+                    return new CareerRecord();
+                }
+                try
+                {
+                    return Parse(json);
                 }
                 catch (Exception error) when (SaveJson.IsExpected(error))
                 {
@@ -185,8 +213,23 @@ namespace Gamesim.Persistence
         }
 
         /// <summary>
+        /// What <see cref="Notice"/> says when the file is there but could not be opened. Only a plain
+        /// IOException is another process's hold, the one failure <see cref="SaveJson.ReadText"/>
+        /// waits out: one that outlasted the wait lifts in its own time, so the record is out of
+        /// reach "just now". A denied path and the IOException subclasses (a path too long, a drive
+        /// gone) do not clear by waiting, so their notice promises no later load and names the way
+        /// out instead: the reset in Settings, which sets the file aside rather than deleting it.
+        /// </summary>
+        public static string UnopenedNotice(Exception error) =>
+            (error.GetType() == typeof(IOException)
+                ? "The career record could not be opened just now; it is left as it is. "
+                : "The career record could not be opened; it is left as it is. Resetting it in Settings sets it aside and starts a fresh one. ")
+            + SaveJson.Explain(error);
+
+        /// <summary>
         /// Adds a finished season. Returns false when the season is not finished, was already
-        /// recorded, or the file on disk is unreadable and could not be moved out of the way.
+        /// recorded, or the file on disk could not be opened, or is unreadable and could not be
+        /// moved out of the way.
         /// </summary>
         public bool Record(EpisodeState state)
         {
@@ -204,14 +247,18 @@ namespace Gamesim.Persistence
 
         /// <summary>
         /// Starts a fresh record. The old one is moved aside under a dated name and the path is
-        /// returned; null when there was nothing to reset.
+        /// returned; null when there was nothing to reset, and also when the file could not be
+        /// moved, which a caller tells apart by the file still being at <see cref="FilePath"/>.
         /// </summary>
         public string Reset()
         {
             lock (gate)
             {
                 Notice = null;
-                return File.Exists(FilePath) ? Archive("reset") : null;
+                var archived = File.Exists(FilePath) ? Archive("reset") : null;
+                // A block is the file in the way. Once it has moved, nothing blocks the next season.
+                if (!File.Exists(FilePath)) blocked = false;
+                return archived;
             }
         }
 
@@ -340,9 +387,8 @@ namespace Gamesim.Persistence
             try
             {
                 SaveJson.WriteNewDurable(temporary, bytes);
-                Parse(File.ReadAllText(temporary, Encoding.UTF8));
-                if (File.Exists(FilePath)) File.Replace(temporary, FilePath, null);
-                else File.Move(temporary, FilePath);
+                Parse(SaveJson.ReadText(temporary));
+                SaveJson.SwapIntoPlace(temporary, FilePath, null);
             }
             finally
             {

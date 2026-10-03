@@ -41,6 +41,9 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(creator.IsShowing, Is.True);
             Assert.That(cast.IsShowing, Is.False);
             Assert.That(creator.GetComponentsInChildren<Button>().Any(button => Caption(button) == CharacterCreator.StartCaption), Is.False);
+            Assert.That(creator.Mode, Is.EqualTo(CharacterCreator.EntryMode.Detailed), "A cast edit opens the full editor.");
+            Click(creator, CharacterCreator.QuickCaption);
+            Assert.That(creator.Mode, Is.EqualTo(CharacterCreator.EntryMode.Quick));
             creator.Draft.Name = "Edited NPC";
             Click(creator, CharacterCreator.ApplySlotCaption);
             yield return null;
@@ -50,6 +53,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(slots[1].name, Is.EqualTo(profile.name));
             Assert.That(profile.name, Is.Not.EqualTo("Edited NPC"));
             Click(cast, "Edit slot 1");
+            Assert.That(creator.Mode, Is.EqualTo(CharacterCreator.EntryMode.Detailed), "Each explicit edit begins in Detailed.");
             creator.Draft.Name = "Discard this";
             Click(creator, CharacterCreator.CancelSlotCaption);
             yield return null;

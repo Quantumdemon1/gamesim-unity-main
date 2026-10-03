@@ -71,9 +71,8 @@ namespace Gamesim.Episode
             private Vector3 deck, door, mark, exit;
             private OpeningDoorSet set;
             private bool begun, ended;
-            // Who is waiting for the leaves to clear before walking through, and how open that is.
+            // Who is waiting for the leaves to clear the whole body and route before walking through.
             private string throughWhenClear;
-            private const float DoorClearOpenness = 0.35f;
 
             public bool Placed { get; private set; }
 
@@ -85,12 +84,17 @@ namespace Gamesim.Episode
                 director = owner;
                 rooms = query;
                 filter = new NavMeshQueryFilter { agentTypeID = owner.player.Agent.agentTypeID, areaMask = owner.player.Agent.areaMask };
-                radius = 0.35f; height = 1.9f;
+                radius = Mathf.Max(0.35f, owner.player.Agent.radius); height = 1.9f;
+                var playerCapsule = owner.player.GetComponent<CapsuleCollider>();
+                if (playerCapsule != null)
+                    radius = Mathf.Max(radius, playerCapsule.radius * Mathf.Max(Mathf.Abs(playerCapsule.transform.lossyScale.x), Mathf.Abs(playerCapsule.transform.lossyScale.z)));
                 foreach (var npc in owner.housemates)
                 {
                     var capsule = npc != null ? npc.GetComponent<CapsuleCollider>() : null;
                     if (capsule == null) continue;
-                    radius = Mathf.Max(radius, capsule.radius);
+                    radius = Mathf.Max(radius, capsule.radius * Mathf.Max(Mathf.Abs(capsule.transform.lossyScale.x), Mathf.Abs(capsule.transform.lossyScale.z)));
+                    var agent = npc.GetComponent<NavMeshAgent>();
+                    if (agent != null) radius = Mathf.Max(radius, agent.radius);
                     height = Mathf.Max(height, capsule.height);
                 }
             }
@@ -309,16 +313,24 @@ namespace Gamesim.Episode
             /// <summary>
             /// Walks them through once the leaves are out of their way. The leaves shut flush and rattle
             /// shut for 0.3 s before they swing, and a walk begun with the door was through a closed
-            /// leaf before it moved - the reference's leaves stand ajar with a slot down the middle, so
-            /// its walker could go at once. Held here, the walk starts a third of the way into the
-            /// swing, and the leaves are three quarters open by the time anybody reaches them.
+            /// leaf before it moved. Clearance is measured for the whole route and body against both
+            /// leaves, including their handles: navigation can move a long way on a slow frame, so
+            /// the walk cannot rely on the leaves opening further before the actor reaches them.
             /// </summary>
             public bool ThroughDoor(string id)
             {
                 if (!Placed || ended) return false;
-                if (set != null && set.Openness < DoorClearOpenness) { throughWhenClear = id; return true; }
+                if (!DoorClears(id)) { throughWhenClear = id; return true; }
                 throughWhenClear = null;
                 return Send(id, mark);
+            }
+
+            private bool DoorClears(string id)
+            {
+                if (set == null) return true;
+                var visual = Visual(id);
+                // Use the actor's current start, including the approach's arrival tolerance.
+                return visual != null && set.CanWalkThrough(visual.transform.position, mark, radius);
             }
             public bool OnMark(string id) => Arrived(id, mark);
 
@@ -449,7 +461,7 @@ namespace Gamesim.Episode
             {
                 if (!Active) return;
                 if (begun && director.npcMeetings != null) director.npcMeetings.ResumeOpeningActors();
-                if (throughWhenClear != null && (set == null || set.Openness >= DoorClearOpenness))
+                if (throughWhenClear != null && DoorClears(throughWhenClear))
                 {
                     var id = throughWhenClear;
                     throughWhenClear = null;

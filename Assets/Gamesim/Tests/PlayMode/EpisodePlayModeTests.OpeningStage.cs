@@ -107,8 +107,12 @@ namespace Gamesim.Tests.PlayMode
             while (true)
             {
                 var set = Object.FindFirstObjectByType<OpeningDoorSet>();
-                if (set != null && set.Openness < 0.5f)
+                if (set != null)
                 {
+                    // Read the actual leaf meshes at every angle as well as the original closed-
+                    // doorway guard. A fixed half-open cutoff missed bodies clipping a leaf later
+                    // in its swing; this observation is independent of the runtime's route query.
+                    var leaves = set.GetComponentsInChildren<MeshFilter>().Where(mesh => mesh.name == "Leaf").ToArray();
                     var bodies = SceneComponents<HouseNpc>().Where(npc => npc.gameObject.activeInHierarchy)
                         .Select(npc => (npc.DisplayName, (Component)npc)).ToList();
                     if (player != null) bodies.Add(("the player", player));
@@ -117,9 +121,11 @@ namespace Gamesim.Tests.PlayMode
                         var root = who.transform.position;
                         var pelvis = HumanoidHips(who, hips);
                         var at = pelvis != null ? pelvis.position : root;
-                        if (at.z > OpeningDoorSet.ApertureMinZ && at.z < OpeningDoorSet.ApertureMaxZ
-                            && at.x > OpeningDoorSet.FacadeFrontX - leafThickness - body && at.x < OpeningDoorSet.FacadeFrontX + reach
-                            && recorded.Add("leaves " + name))
+                        bool inClosedDoorway = set.Openness < 0.5f && at.z > OpeningDoorSet.ApertureMinZ && at.z < OpeningDoorSet.ApertureMaxZ
+                            && at.x > OpeningDoorSet.FacadeFrontX - leafThickness - body && at.x < OpeningDoorSet.FacadeFrontX + reach;
+                        bool touchesLeaf = leaves.Any(mesh => mesh.sharedMesh != null && Flat(at,
+                            mesh.transform.TransformPoint(mesh.sharedMesh.bounds.ClosestPoint(mesh.transform.InverseTransformPoint(at)))) < body);
+                        if ((inClosedDoorway || touchesLeaf) && recorded.Add("leaves " + name))
                             inTheLeaves.Add(name + " at x " + at.x.ToString("0.00") + (pelvis != null ? " (hips; root at x " + root.x.ToString("0.00") + ")" : " (root)")
                                             + " with the door " + set.Openness.ToString("0.00") + " open");
                         if (set.Openness < 0.01f && pelvis != null && Flat(root, DoorMarkForTests) < onTheMark

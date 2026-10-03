@@ -16,6 +16,14 @@ namespace Gamesim.Episode
         public const string ConfirmResetCareerCaption = "Yes, set the record aside and start fresh";
         public const string KeepCareerCaption = "Keep the career record";
 
+        /// <summary>
+        /// What the settings panel says instead of a season count when the record is there but could
+        /// not be read. The load had no seasons to give, but the file may hold many, and "No finished
+        /// seasons yet" right above the reset would invite the player to set a good career aside
+        /// while another program holds it for a moment.
+        /// </summary>
+        public const string UnreadCareerLine = "Your career record could not be read, so its seasons are not shown.";
+
         private CareerLedger career;
         private bool careerResetArmed;
 
@@ -58,13 +66,14 @@ namespace Gamesim.Episode
             if (career == null) return;
             hud.Heading("YOUR CAREER");
             var summary = CareerNow();
-            hud.Paragraph(summary.Seasons == 0
-                ? "No finished seasons yet. A season joins the record when its jury has voted."
+            // A record the load could not use reads as no seasons, but it is still on disk and
+            // refuses every finale until it is read or set aside: the panel does not call it empty,
+            // and the reset is its way out.
+            bool blocked = career.Blocked && File.Exists(career.FilePath);
+            hud.Paragraph(blocked ? UnreadCareerLine
+                : summary.Seasons == 0 ? "No finished seasons yet. A season joins the record when its jury has voted."
                 : summary.Line() + ".");
             if (career.Notice != null) hud.Paragraph(career.Notice);
-            // A record the load could not use reads as no seasons, but it is still on disk and
-            // refuses every finale until it is read or set aside: the reset is its way out.
-            bool blocked = career.Blocked && File.Exists(career.FilePath);
             if (summary.Seasons == 0 && !blocked) { careerResetArmed = false; return; }
             if (!careerResetArmed)
             {

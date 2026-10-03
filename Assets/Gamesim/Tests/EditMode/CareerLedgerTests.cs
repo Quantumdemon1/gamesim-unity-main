@@ -236,8 +236,9 @@ namespace Gamesim.Tests.EditMode
         ///
         /// <para>No editor can deny its own user a read portably (the .NET Standard 2.1 profile has
         /// no ACL or file-mode call, and root reads anything), so these are the exceptions
-        /// File.ReadAllText throws, given to the wording <see cref="CareerLedger.Load"/> uses; the
-        /// test above ties that wording to a real hold.</para>
+        /// File.ReadAllText throws, given to the wording <see cref="CareerLedger.Load"/> uses. The
+        /// test above ties that wording to a real hold, and the one below to a real denied read
+        /// where an editor can take its user's read away.</para>
         /// </summary>
         [Test]
         public void UnopenedNotice_PromisesALaterLoadOnlyForAHold()
@@ -261,6 +262,58 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(notice, Does.Contain("Resetting it in Settings sets it aside"), kind + ": the way out is named.");
                 Assert.That(notice, Does.EndWith("(" + kind + ")"));
                 Assert.That(notice, Does.Not.Contain(directory), "The path, with the player's user name in it, is never shown.");
+            }
+        }
+
+        /// <summary>
+        /// The same wording from a real load. A record its own user may not read - a file with mode
+        /// 000 here, what an ACL carried over by a restore does in Windows - is refused at once
+        /// rather than waited out, and Load gives it the notice that names the way out, not the
+        /// hold's "just now". The load blocks the record and never sets it aside itself. The reset
+        /// still moves it whole, because the folder allows the rename that the file refuses the
+        /// read.
+        ///
+        /// <para>Only a Linux or macOS editor can take its user's read away without an ACL call,
+        /// and root reads a mode-000 file anyway. The test is skipped in the Windows editor and
+        /// wherever the read still goes through.</para>
+        /// </summary>
+        [Test]
+        [UnityPlatform(exclude = new[] { RuntimePlatform.WindowsEditor })]
+        public void Load_ARecordItsUserMayNotReadNamesTheResetInSettings()
+        {
+            Assert.That(ledger.Record(Finished(1, ContestantStatus.Winner)), Is.True);
+            var before = File.ReadAllBytes(ledger.FilePath);
+            SetFileMode(ledger.FilePath, "000");
+            try
+            {
+                File.ReadAllBytes(ledger.FilePath);
+                Assert.Ignore("This user reads a file with mode 000, as root does, so nothing here refuses the read.");
+            }
+            catch (UnauthorizedAccessException) { }
+
+            Assert.That(ledger.Load().seasons, Is.Empty);
+            Assert.That(ledger.Blocked, Is.True, "The record is in the way, so Settings offers the reset.");
+            Assert.That(ledger.Notice, Is.EqualTo(CareerLedger.UnopenedNotice(new UnauthorizedAccessException())),
+                "A denied read is not a hold: no \"just now\", and the reset in Settings is named.");
+            Assert.That(ledger.Record(Finished(2, ContestantStatus.RunnerUp)), Is.False, "Nothing is written over a record nobody could read.");
+            Assert.That(Directory.GetFiles(directory, "career.json.damaged-*"), Is.Empty, "The load never sets it aside by itself.");
+
+            var archived = ledger.Reset();
+            Assert.That(archived, Is.Not.Null, "The folder still allows the rename: the reset is the way out.");
+            Assert.That(ledger.Blocked, Is.False);
+            SetFileMode(archived, "600");
+            Assert.That(File.ReadAllBytes(archived), Is.EqualTo(before), "Set aside whole, not deleted.");
+            Assert.That(ledger.Record(Finished(2, ContestantStatus.RunnerUp)), Is.True, ledger.Notice);
+        }
+
+        /// <summary>chmod, for the test above: the .NET Standard 2.1 profile has no call that sets a file's mode.</summary>
+        private static void SetFileMode(string path, string mode)
+        {
+            var start = new System.Diagnostics.ProcessStartInfo("chmod", mode + " \"" + path + "\"") { UseShellExecute = false };
+            using (var chmod = System.Diagnostics.Process.Start(start))
+            {
+                chmod.WaitForExit();
+                Assert.That(chmod.ExitCode, Is.EqualTo(0), "chmod " + mode + " " + Path.GetFileName(path));
             }
         }
 

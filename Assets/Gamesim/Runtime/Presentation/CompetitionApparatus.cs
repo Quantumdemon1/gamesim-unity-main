@@ -28,6 +28,7 @@ namespace Gamesim.Presentation
         private readonly List<Renderer> overlays = new List<Renderer>();
         private readonly List<Mesh> meshes = new List<Mesh>();
         private readonly List<Material> materials = new List<Material>();
+        private readonly List<MeshFilter> solidMeshes=new List<MeshFilter>();
         private readonly List<Renderer> indicators = new List<Renderer>();
         private readonly List<TMP_Text> glyphs = new List<TMP_Text>();
         private readonly Dictionary<Renderer,Renderer> repeaters = new Dictionary<Renderer,Renderer>();
@@ -321,13 +322,19 @@ namespace Gamesim.Presentation
             return apparatus != null && apparatus.overlays.Contains(renderer);
         }
 
+        public bool Fits(CompetitionStageFootprint footprint)
+        {
+            foreach(var mesh in solidMeshes)if(!footprint.Contains(mesh))return false;
+            return true;
+        }
+
         private Renderer Part(string name, Vector3 position, Vector3 scale, Material material)
         {
             var part = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
             part.transform.SetParent(transform, false);
             part.transform.localPosition = position;
             part.transform.localScale = scale;
-            part.GetComponent<MeshFilter>().sharedMesh = box;
+            var mesh=part.GetComponent<MeshFilter>();mesh.sharedMesh = box;solidMeshes.Add(mesh);
             var renderer = part.GetComponent<MeshRenderer>();
             renderer.sharedMaterial = material;
             renderer.shadowCastingMode = ShadowCastingMode.Off;

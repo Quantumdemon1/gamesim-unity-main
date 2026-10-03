@@ -29,6 +29,15 @@ anchor, collider, agent and simulation are not moved or reconfigured. Words are
 gated under the existing HUD; solids remain as the stage. Releasing a stage
 destroys its owned mesh/material instances.
 
+Placement reserves the complete oriented family envelope, the actor, and the
+native arrival tolerance before leasing a route. It queries every solid physics
+layer, including Furniture, and checks the whole envelope against the yard floor
+and other station/audience reservations. Raised grip fitting also has a bounded
+shoulder/arm envelope; if the actual solids exceed their reservation, the attempt
+returns to the briefing without moving the actor. Apparatus remains hidden until
+every approach route finishes, so scenery cannot obstruct an entrant still
+crossing the stage.
+
 `CompetitionInstrumentPose` runs after the existing humanoid animation. It fits
 the endurance bar from actual shoulder position and arm lengths, applies two
 arm rotations to place the hands on the real handle, and gives a short right-arm
@@ -50,7 +59,7 @@ gating, resource release, memory disclosure and repeated presentation reads
 against an identically seeded control run. No new scoring implementation is
 duplicated in the instrument.
 
-The four `EpisodePlayModeTests.Apparatus_InHouse...` tests use real station
+The `EpisodePlayModeTests.Apparatus_InHouse...` tests use real station
 arrival, actual mouse/keyboard game input, and cancel/release or a kept ranked
 roll. Batch runs capture the actual director attempt and pose; they do not
 substitute a fixture game or call a gameplay handler directly. With an active
@@ -65,6 +74,19 @@ Expected PNGs at the isolated project root:
 - `competition-apparatus-endurance-world.png` and `-endurance-ui.png`
 - `competition-apparatus-signals-world.png` and `-signals-ui.png`
 - `competition-apparatus-dice-world.png`, `-dice-ui.png`, `-dice-result.png`
+- `competition-apparatus-words-ready-world.png` and `-words-ready-ui.png`
+- Corresponding `words-running`, `words-paused` and `words-resumed` world/UI pairs
+- `competition-apparatus-full-field-mental.png`, `-endurance.png`, `-luck.png`
+
+The word fixture uses real Pause/Resume pointer input and real letter keys. Ready
+and paused readouts show `?` on both console faces; a stopped timer, the same
+puzzle and selected letters are asserted across resume. The largest valid regular
+roster has twelve entrants. Its fixture stages all twelve for mental, endurance
+and dice apparatus around representative rear towers, a studio camera and a solid
+that clears an actor capsule but would intersect its former forward console.
+It verifies fitted meshes, complete reservations and neighbouring participant
+clearance, then captures the full field. These temporary solids complement the
+integrated review with the actual authored house amenities.
 
 Review the actual pictures for console clearance, readable front/back output,
 hands touching the raised bar, shoulders/elbows, fingers, pad/dice contact,

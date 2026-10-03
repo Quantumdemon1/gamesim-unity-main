@@ -3,11 +3,13 @@ using System.Collections;
 using System.Linq;
 using System.Reflection;
 using Gamesim.Presentation;
+using Gamesim.House;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
 
 namespace Gamesim.Tests.PlayMode
@@ -16,12 +18,14 @@ namespace Gamesim.Tests.PlayMode
     public sealed class CompetitionApparatusPlayModeTests
     {
         private GameObject owner;
+        private Scene footprintScene;
 
         [UnityTearDown]
         public IEnumerator Cleanup()
         {
             if(owner!=null)Object.Destroy(owner);
             yield return null;yield return null;
+            if(footprintScene.IsValid() && footprintScene.isLoaded)yield return SceneManager.UnloadSceneAsync(footprintScene);
         }
 
         private CompetitionApparatus Make(CompetitionDefinition definition)
@@ -79,6 +83,34 @@ namespace Gamesim.Tests.PlayMode
         private static CompetitionApparatus.Family Expected(string category)=>category=="Mental"?CompetitionApparatus.Family.PairConsole
             :category=="Endurance"?CompetitionApparatus.Family.GripRig:category=="Luck"?CompetitionApparatus.Family.DiceTray
             :category=="Social"?CompetitionApparatus.Family.WordConsole:CompetitionApparatus.Family.Signals;
+
+        [UnityTest]
+        public IEnumerator Apparatus_WholeFootprintRejectsFurnitureBeyondTheActorAndDifferentlyFacingNeighbours()
+        {
+            owner=new GameObject("Footprint test ownership");
+            footprintScene=SceneManager.CreateScene("Competition footprint "+Guid.NewGuid().ToString("N"),new CreateSceneParameters(LocalPhysicsMode.Physics3D));
+            SceneManager.MoveGameObjectToScene(owner,footprintScene);
+            var floor=owner.AddComponent<BoxCollider>();floor.center=new Vector3(0,-.15f,0);floor.size=new Vector3(30,.3f,20);
+            var obstacle=new GameObject("Rear-yard furniture beyond body",typeof(BoxCollider));obstacle.transform.SetParent(owner.transform,false);
+            obstacle.layer=HouseLayers.Furniture;obstacle.transform.position=new Vector3(0,1.5f,.90f);
+            obstacle.GetComponent<BoxCollider>().size=new Vector3(.5f,3,.5f);
+            var footprint=CompetitionStageFootprint.Station(CompetitionApparatus.Family.WordConsole,Vector3.zero,0,.35f,1.9f);
+            Assert.That(Vector3.Distance(obstacle.GetComponent<Collider>().ClosestPoint(Vector3.up),Vector3.up),Is.GreaterThan(.35f),"The solid is beyond the actor capsule, not inside its torso.");
+            Physics.SyncTransforms();var hits=new Collider[64];
+            Assert.That(footprint.HasStaticClearance(footprintScene.GetPhysicsScene(),floor,hits),Is.False,"Sight ignores Furniture; whole-apparatus placement must still reject it.");
+            obstacle.transform.position=new Vector3(9,1.5f,8);Physics.SyncTransforms();
+            Assert.That(footprint.HasStaticClearance(footprintScene.GetPhysicsScene(),floor,hits),Is.True);
+            Assert.That(footprint.FitsOn(floor.bounds),Is.True);
+            var offDeck=CompetitionStageFootprint.Station(CompetitionApparatus.Family.WordConsole,new Vector3(0,0,9.8f),0,.35f,1.9f);
+            Assert.That(offDeck.FitsOn(floor.bounds),Is.False,"A capsule centre on the deck does not place the whole console on it.");
+            var neighbour=CompetitionStageFootprint.Station(CompetitionApparatus.Family.PairConsole,new Vector3(0,0,1.8f),180,.35f,1.9f);
+            Assert.That(Vector3.Distance(Vector3.zero,new Vector3(0,0,1.8f)),Is.GreaterThan(1.26f),"The former actor-spacing check would accept this pair.");
+            Assert.That(footprint.Overlaps(neighbour),Is.True,"Opposite approach directions must not put their console backs through one another.");
+            var clear=CompetitionStageFootprint.Station(CompetitionApparatus.Family.PairConsole,new Vector3(3,0,1.8f),37,.35f,1.9f);
+            Assert.That(footprint.Overlaps(clear),Is.False);
+            Assert.That(footprint.Overlaps(CompetitionStageFootprint.Actor(new Vector3(0,0,1.1f),.35f,1.9f)),Is.True,"An audience body reserves space too.");
+            yield return null;
+        }
 
         [UnityTest]
         public IEnumerator Apparatus_WordsHideThePuzzleOnReadyAndPauseAndRestoreTheSamePickedTiles()

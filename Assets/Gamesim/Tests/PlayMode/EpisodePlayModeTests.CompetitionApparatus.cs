@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Gamesim.House;
+using Gamesim.Persistence;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
@@ -11,6 +12,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 using Object=UnityEngine.Object;
@@ -22,13 +24,23 @@ namespace Gamesim.Tests.PlayMode
         private CompetitionApparatus PlayerInstrument()=>SceneComponents<CompetitionApparatus>()
             .Single(instrument=>instrument.ActorId==director.Snapshot.playerId);
 
-        private IEnumerator EnterInstrumentAttempt(string category,bool ranked=false,bool stopAtReady=false)
+        private IEnumerator EnterInstrumentAttempt(string category,bool ranked=false,bool stopAtReady=false,int houseSize=0)
         {
-            yield return InstallRules4AtFirstHoH(SeedOpeningWith(category));
+            if(houseSize==0)yield return InstallRules4AtFirstHoH(SeedOpeningWith(category));
+            else
+            {
+                var initial=SeasonBuilder.Create(new SeasonBuilder.Choice{HouseSize=houseSize},SeedOpeningWith(category));
+                Assert.That(EpisodeValidation.TryValidate(initial,out var reason),Is.True,reason);
+                new EpisodeSaveStore(director.SavePath).Save(initial);yield return ReloadEpisode();yield return WaitForNpcRuntimeBinding();
+                WarpPlayer(director.StationPosition);Assert.That(director.TryOpenPhasePanel(),Is.True);
+                ButtonWithCaption("Begin the next competition").onClick.Invoke();yield return null;
+                WarpPlayer(director.StationPosition);Assert.That(director.TryOpenPhasePanel(),Is.True);yield return null;
+            }
             yield return SettleCast();
             typeof(Gamesim.Episode.EpisodeDirector).GetField("reducedMotion",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(director,false);
             cameraRig.SetReducedMotion(false);
             var before=director.Snapshot;
+            if(houseSize>0)InstallRepresentativeYardSolids();
             Vector3 start=player.transform.position;float radius=player.Agent.radius,height=player.Agent.height;
             ButtonWithCaption(ranked?CompetitionMiniGames.EnterCaption(CompetitionMiniGames.For(category)):"Practice this competition").onClick.Invoke();
             Assert.That(player.transform.position,Is.EqualTo(start),"Opening the apparatus claims a route and does not warp the body.");
@@ -59,6 +71,52 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.Snapshot.randomState,Is.EqualTo(before.randomState),"Staging and countdown do not draw from the season.");
             foreach(var other in SceneComponents<CompetitionApparatus>().Where(other=>other.ActorId!=instrument.ActorId))
                 Assert.That(other.ProgressText,Is.EqualTo("Ready"),"Another entrant's hidden performance is not invented or shown.");
+        }
+
+        private GameObject InstallRepresentativeYardSolids()
+        {
+            var floor=SceneComponents<BoxCollider>().Single(collider=>collider.name=="Competition yard floor");var bounds=floor.bounds;
+            var owner=new GameObject("Representative yard solid fixtures");SceneManager.MoveGameObjectToScene(owner,director.gameObject.scene);
+            Action<string,Vector3,Vector3> put=(name,position,size)=>
+            {
+                var prop=GameObject.CreatePrimitive(PrimitiveType.Cube);prop.name=name;prop.layer=HouseLayers.Furniture;
+                prop.transform.SetParent(owner.transform,false);prop.transform.position=position;prop.transform.localScale=size;
+            };
+            put("Rear left light tower volume",new Vector3(bounds.center.x-bounds.size.x*.28f,bounds.max.y+1.5f,bounds.center.z+bounds.size.z*.43f),new Vector3(1,3,1));
+            put("Rear right light tower volume",new Vector3(bounds.center.x+bounds.size.x*.28f,bounds.max.y+1.5f,bounds.center.z+bounds.size.z*.43f),new Vector3(1,3,1));
+            put("Studio camera volume",new Vector3(bounds.center.x-bounds.size.x*.43f,bounds.max.y+.85f,bounds.center.z-bounds.size.z*.25f),new Vector3(.95f,1.7f,.95f));
+            // This front console-height prop clears an actor centred on a grid station while
+            // obstructing the former .8m apparatus projection into its native forward route.
+            put("Console-only clearance challenge",new Vector3(bounds.center.x,bounds.max.y+1,bounds.min.z+2.6f),new Vector3(.50f,2,.50f));
+            Physics.SyncTransforms();return owner;
+        }
+
+        [UnityTest]
+        public IEnumerator Apparatus_InHouseLargestFieldReservesWholeFamiliesAroundYardSolidsAndNeighbours()
+        {
+            int largest=SeasonBuilder.LargestHouse(CastTemplates.Roster.Regular);Assert.That(largest,Is.EqualTo(12));
+            foreach(string category in new[]{"Mental","Endurance","Luck"})
+            {
+                yield return EnterInstrumentAttempt(category,houseSize:largest);var before=director.Snapshot;
+                var instruments=SceneComponents<CompetitionApparatus>().ToArray();
+                Assert.That(EpisodeEngine.CompetitionPlayers(before).Count(),Is.EqualTo(largest));
+                Assert.That(instruments,Has.Length.EqualTo(largest),category+": every eligible entrant must have a native, occupied instrument station.");
+                var floor=SceneComponents<BoxCollider>().Single(collider=>collider.name=="Competition yard floor");var scratch=new Collider[256];
+                var reservations=director.CompetitionFootprints.ToArray();
+                Physics.SyncTransforms();
+                foreach(var instrument in instruments)
+                {
+                    Assert.That(instrument.gameObject.activeInHierarchy,Is.True);
+                    var footprint=director.CompetitionFootprints[instrument.ActorId];
+                    Assert.That(footprint.FitsOn(floor.bounds),Is.True);
+                    Assert.That(footprint.HasStaticClearance(director.gameObject.scene.GetPhysicsScene(),floor,scratch),Is.True,category+": furniture/tower volume must clear the whole reserved apparatus.");
+                    Assert.That(instrument.Fits(footprint),Is.True,category+": actual fitted meshes stay inside their reserved envelope.");
+                    foreach(var other in reservations.Where(other=>other.Key!=instrument.ActorId))Assert.That(footprint.Overlaps(other.Value),Is.False,category+": adjacent station/actor "+other.Key);
+                }
+                if(Application.isBatchMode)yield return CaptureFraming("competition-apparatus-full-field-"+category.ToLowerInvariant(),false);
+                yield return CancelInstrumentAttempt(before);
+                var props=SceneComponents<Transform>().Single(transform=>transform.name=="Representative yard solid fixtures");Object.Destroy(props.gameObject);yield return null;
+            }
         }
 
         private IEnumerator ClickInstrumentControl(Button button)
@@ -208,8 +266,12 @@ namespace Gamesim.Tests.PlayMode
             }
         }
 
-        private IEnumerator FreezeReadyWords()
-        {yield return SetWordAttemptPaused(true);Assert.That(ChallengeRun().Elapsed,Is.Zero);AssertWordInstrumentHidden(true);}
+        private IEnumerator ShowReadyWords()
+        {
+            yield return SetWordAttemptPaused(false);
+            Assert.That(SceneComponents<CompetitionGameScreen>().Single().IsPlaying,Is.False,"This capture is the real ready countdown, before GO.");
+            Assert.That(ChallengeRun().Elapsed,Is.Zero);AssertWordInstrumentHidden(true);
+        }
 
         private IEnumerator StartAndTypeAnActualWordLetter()
         {
@@ -226,6 +288,9 @@ namespace Gamesim.Tests.PlayMode
 
         private IEnumerator PauseActualWords()
         {
+            // A GPU read may have triggered the game's frame-delay pause. Resume it first so
+            // this fixture proves a new, actual pointer pause rather than inheriting that state.
+            yield return SetWordAttemptPaused(false);
             yield return SetWordAttemptPaused(true);double elapsed=ChallengeRun().Elapsed;
             yield return new WaitForSecondsRealtime(.2f);
             Assert.That(ChallengeRun().Elapsed,Is.EqualTo(elapsed),"Paused time cannot buy puzzle-solving time.");
@@ -237,8 +302,8 @@ namespace Gamesim.Tests.PlayMode
         {
             yield return EnterInstrumentAttempt("Social",stopAtReady:true);var before=director.Snapshot;
             Assert.That(PlayerInstrument().Instrument,Is.EqualTo(CompetitionApparatus.Family.WordConsole));
-            if(Application.isBatchMode)yield return CaptureActualInstrument("words-ready",FreezeReadyWords,false,false);
-            else yield return FreezeReadyWords();
+            if(Application.isBatchMode)yield return CaptureActualInstrument("words-ready",ShowReadyWords,false,false);
+            else yield return ShowReadyWords();
             if(Application.isBatchMode)yield return CaptureActualInstrument("words-running",StartAndTypeAnActualWordLetter,false,false);
             else yield return StartAndTypeAnActualWordLetter();
             string puzzle=ChallengeRun().Scrambled,picked=ChallengeRun().Spelled;

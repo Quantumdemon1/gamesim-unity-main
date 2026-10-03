@@ -82,7 +82,10 @@ namespace Gamesim.Uma.Tests
                     Assert.That(item.CompatibleBodies, Is.EquivalentTo(catalog.Bodies.Select(body => body.Id)), item.Id + " fits both bodies.");
                     continue;
                 }
-                Assert.That(item.Id, Does.StartWith("uma-"), "Authored save IDs must not depend on asset names.");
+                Assert.That(string.IsNullOrWhiteSpace(item.Id), Is.False, "Authored content needs a stable save ID.");
+                Assert.That(item.Id.StartsWith("uma-", System.StringComparison.Ordinal)
+                    || item.Id.StartsWith("gamesim.", System.StringComparison.Ordinal), Is.True,
+                    "Authored IDs use the installed UMA or project-owned Gamesim namespace: " + item.Id);
                 string recipe = catalog.ResolveRecipeName(item.Id);
                 Assert.That(UMAAssetIndexer.Instance.GetAsset<UMAWardrobeRecipe>(recipe), Is.Not.Null, item.Id);
                 Assert.That(AppearanceEditing.Find(catalog, recipe), Is.SameAs(item), "Schema 13 raw recipe names remain aliases.");

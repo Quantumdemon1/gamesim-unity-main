@@ -480,6 +480,20 @@ namespace Gamesim.Tests.EditMode
             }
             Assert.That(KnownBallots.SaidWords(KnownBallots.Basis.Reported, false, after.Find(told).name), Is.Empty, "A claim kept adds nothing.");
             Assert.That(KnownBallots.SaidWords(KnownBallots.Basis.Told, false, after.Find(said).name), Is.Empty);
+
+            // The recap overview's row under a face is one line, too narrow for the whole of it (it was
+            // cut off at "told the pact they'd evict"): there an ally's changed vote is said short, as
+            // the notes' one-line brief says it, whatever the name; a lie keeps the words it always had.
+            string FirstOf(string id) => FinalistRead.FirstName(after.Find(id).name);
+            string row = KnownBallots.SaidWords(ally.basis, ally.Lied, FirstOf(told), true);
+            string brief = HouseguestNotes.For(after, first).Single(n => n.kind == HouseguestNotes.Kinds.Vote).brief;
+            Assert.That(row, Is.EqualTo(" · voted the other way"), "The recap's row: an ally's changed vote, short.");
+            Assert.That(row, Is.EqualTo(" · " + brief.ToLowerInvariant()), "as the notes' brief says it,");
+            Assert.That(row, Does.Not.Contain(FirstOf(told)).And.Not.Contain("a lie"), "with no name to run long, and never a lie.");
+            Assert.That(KnownBallots.SaidWords(liar.basis, liar.Lied, FirstOf(said), true), Is.EqualTo(" · said " + FirstOf(said) + ", a lie"),
+                "The recap's row: a lie told to the player's face is still a lie.");
+            Assert.That(KnownBallots.SaidWords(KnownBallots.Basis.Overheard, true, FirstOf(said), true), Is.EqualTo(" · said " + FirstOf(said) + ", a lie"));
+            Assert.That(KnownBallots.SaidWords(KnownBallots.Basis.Reported, false, FirstOf(told), true), Is.Empty, "The recap's row: a claim kept adds nothing.");
         }
 
         // ------------------------------------------------------------ the meeting: once a week

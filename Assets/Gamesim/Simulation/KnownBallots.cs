@@ -115,13 +115,17 @@ namespace Gamesim.Simulation
         /// them nothing, so a ballot that went against it is a vote that changed, as the notes and the
         /// season's tapes say it: " · told the pact they'd evict Maya Hassan; voted the other way" -
         /// never "a lie". An overheard lean keeps its words until the copy pass the plan leaves it for.
-        /// Empty where the claim was kept, or there was none.
+        /// <paramref name="brief"/> is for a tag held to one line under a face - the recap overview's
+        /// vote card, where the whole of an ally's words was cut off at "told the pact they'd evict" -
+        /// and there an ally's account says only " · voted the other way", as the notes' one-line
+        /// brief says it; a lie keeps the short words it always had there. Empty where the claim was
+        /// kept, or there was none.
         /// </summary>
-        public static string SaidWords(string basis, bool lied, string saidName)
+        public static string SaidWords(string basis, bool lied, string saidName, bool brief = false)
         {
             if (!lied || string.IsNullOrEmpty(saidName)) return "";
-            return basis == Basis.Reported ? " · told the pact they'd evict " + saidName + "; voted the other way"
-                : " · said " + saidName + ", a lie";
+            if (basis != Basis.Reported) return " · said " + saidName + ", a lie";
+            return brief ? " · voted the other way" : " · told the pact they'd evict " + saidName + "; voted the other way";
         }
 
         /// <summary>A week's vote as the player knows it.</summary>

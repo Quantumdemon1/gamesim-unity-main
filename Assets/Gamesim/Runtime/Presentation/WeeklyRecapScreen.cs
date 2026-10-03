@@ -646,7 +646,9 @@ namespace Gamesim.Presentation
                 var name = EndScreenKit.Text("Name", row, HudPrimitives.WithYou(voter?.name ?? ballot.voterId, ballot.voterId == shown.playerId), 14f,
                     ballot.voterId == shown.playerId ? UiTheme.Accent : UiTheme.Paper, 44f, 2f, width - 52f, 19f);
                 name.enableAutoSizing = true; name.fontSizeMax = 14f; name.fontSizeMin = 10f;
-                var basis = EndScreenKit.Text("Basis", row, BasisWords(ballot), 11f, UiTheme.Muted, 44f, 21f, width - 52f, 15f);
+                // One line under the name, some 184 wide in a 1920 room, where the whole of an ally's
+                // changed vote was cut off: said short here, and whole in the vote breakdown's list.
+                var basis = EndScreenKit.Text("Basis", row, BasisWords(ballot, true), 11f, UiTheme.Muted, 44f, 21f, width - 52f, 15f);
                 basis.enableAutoSizing = true; basis.fontSizeMax = 11f; basis.fontSizeMin = 8f;
                 y += 44f;
             }
@@ -663,11 +665,11 @@ namespace Gamesim.Presentation
             return y;
         }
 
-        /// <summary>How the player knows a ballot, for the tag under its name: the basis word, and what the voter said where they cast the other way, by first name - a lie told to the player's face, an ally's word to the pact a vote that changed (<see cref="KnownBallots.SaidWords"/>).</summary>
-        private string BasisWords(WeeklyRecap.Ballot ballot)
+        /// <summary>How the player knows a ballot, for the tag under its name: the basis word, and what the voter said where they cast the other way, by first name - a lie told to the player's face, an ally's word to the pact a vote that changed (<see cref="KnownBallots.SaidWords"/>), said short where <paramref name="brief"/> holds it to one line.</summary>
+        private string BasisWords(WeeklyRecap.Ballot ballot, bool brief = false)
         {
             string said = ballot.saidId != null ? FinalistRead.FirstName(shown.Find(ballot.saidId)?.name ?? "") : null;
-            return KnownBallots.Basis.Word(ballot.basis) + KnownBallots.SaidWords(ballot.basis, ballot.lied, said);
+            return KnownBallots.Basis.Word(ballot.basis) + KnownBallots.SaidWords(ballot.basis, ballot.lied, said, brief);
         }
 
         /// <summary>KEY MOMENTS: the week's ceremonies on a line, each with the face it belongs to and its mark.</summary>

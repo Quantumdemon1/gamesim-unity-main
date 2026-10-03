@@ -2090,12 +2090,26 @@ namespace Gamesim.Simulation
         /// chance of hearing, and hearing costs the betrayer between five and fifteen points of
         /// their standing with that person. Where nobody in particular acted — a voting block both
         /// sides walked away from — there is no betrayer to gossip about, so nothing spreads.</para>
+        ///
+        /// <para>Your word in the house (ACTIONS-DEALS-ALLIANCES-PLAN C8): under the commitment rules,
+        /// where the house keeps knowledge (<see cref="YourWord.On"/>), the player's own breach is not
+        /// heard of all at once and in silence. One broken by an act the house watches becomes a fact
+        /// the two of them know (<see cref="Knowledge.BrokenWord"/>), which the house's gossip carries
+        /// one houseguest at a time, each told to the player (<see cref="HeardOfYourWord"/>); one a
+        /// ballot decided becomes nothing, since the house votes in secret. And the player is no
+        /// witness to anybody else's: their own view of a breaker never moves without a line.</para>
         /// </summary>
         private static void SpreadBetrayal(EpisodeState s, DealState deal, string betrayerId)
         {
             if (betrayerId == null) return;
             string wronged = DealResolution.Partner(deal, betrayerId);
-            foreach (var witness in s.Active.Where(c => c.id != betrayerId && c.id != wronged).ToList())
+            bool word = YourWord.On(s);
+            if (word && betrayerId == s.playerId)
+            {
+                if (!KnownBallots.SettledByABallot(deal)) Knowledge.BrokenWord(s, deal, betrayerId, wronged);
+                return;
+            }
+            foreach (var witness in s.Active.Where(c => c.id != betrayerId && c.id != wronged && !(word && c.isPlayer)).ToList())
             {
                 if (Roll(s) >= DealResolution.BetrayalChance) continue;
                 double penalty = Math.Floor(DealResolution.BetrayalFloor + Roll(s) * DealResolution.BetrayalSpread);

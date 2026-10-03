@@ -913,6 +913,65 @@ namespace Gamesim.Tests.EditMode
             Assert.That(refused.state.revision, Is.EqualTo(s.revision), "and nothing is spent.");
         }
 
+        /// <summary>
+        /// A voting bloc that fell apart is broken by both ballots at once, and the player knows only their
+        /// own (decision 4): the player voted with the house and their partner did not, and a 3-2 count
+        /// proves nobody's ballot. Until the player knows the partner's there are no fences to mend over it
+        /// - no row, and the engine refuses the move - and the odds every move with them is shown with carry
+        /// nothing of it, while the roll still reads the breach, as it reads their true view. Told how the
+        /// partner voted, and the reveal bearing it out, the player knows: the mend opens, and the odds shown
+        /// are the roll's.
+        /// </summary>
+        [Test]
+        public void ABlocTheOthersSecretBallotBrokeIsNoBreachToMendUntilThePlayerKnowsHowTheyVoted()
+        {
+            var s = Rules(Season(95));
+            var npcs = Npcs(s);
+            string hoh = npcs[0].id, evicted = npcs[1].id, other = npcs[2].id;
+            var partner = Plain(npcs[3]);
+            s.week = 2;
+            s.ledger.power.Add(new PowerRow
+            {
+                week = 1, hohId = hoh, evicteeId = evicted, nominees = new List<string> { evicted, other }, tally = new List<int> { 3, 2 },
+            });
+            s.ledger.ballots.Add(new BallotRow { week = 1, voterId = s.playerId, targetId = evicted });
+            var bloc = new DealState
+            {
+                id = "deal-player-bloc", type = DealKind.VoteTogether, proposerId = s.playerId, recipientId = partner.id, status = DealStatus.Broken,
+                week = 1, expiresWeek = 1, trustImpact = DealKind.DefaultTrust(DealKind.VoteTogether), settledWeek = 1,
+            };
+            s.deals.Add(bloc);
+            Set(s, partner.id, s.playerId, 20); Set(s, s.playerId, partner.id, 20);
+            Valid(s);
+            Assert.That(KnownBallots.Read(s, 1).voters, Has.Count.EqualTo(5).And.Contains(partner.id), "Five voted, the partner among them;");
+            Assert.That(KnownBallots.DealOutcomeKnown(s, bloc), Is.False, "the count proves nothing of the partner's ballot,");
+            Assert.That(Breaches.CountsAgainst(s, bloc, s.playerId), Is.True, "though both ballots broke the bloc, the player's among them.");
+
+            Assert.That(MendRefusalOf(s, partner.id), Is.EqualTo("You have broken no word with " + partner.name + " to make amends for."),
+                "No fences to mend: the row would tell the player the partner voted the other way.");
+            var refused = Apply(new EpisodeEngine(s), NegotiateKind, partner.id, null, MendMove);
+            Assert.That(refused.accepted, Is.False, "The engine refuses it too,");
+            Assert.That(refused.state.revision, Is.EqualTo(s.revision), "and nothing is spent.");
+            foreach (string move in new[] { Remind, Demand, Threaten, MendMove, VetoMove })
+            {
+                Assert.That(MoveChance(s, partner.id, move, true), Is.EqualTo(BaseOf(move) + 10).Within(1e-9),
+                    move + ": the odds shown carry nothing of a breach the player cannot know of,");
+                Assert.That(MoveChance(s, partner.id, move, false), Is.EqualTo(BaseOf(move) + 10 - 30).Within(1e-9),
+                    move + ": while the roll reads it, as it reads their true view.");
+            }
+
+            s.ledger.claims.Add(new ClaimRow { week = 1, voterId = partner.id, targetId = other, source = ClaimSource.Told, status = ClaimStatus.Kept });
+            Assert.That(KnownBallots.DealOutcomeKnown(s, bloc), Is.True, "Told, and the reveal bore it out: the player knows how the partner voted.");
+            Assert.That(MendRefusalOf(s, partner.id), Is.Null, "Now there are fences to mend,");
+            foreach (string move in new[] { Remind, Demand, Threaten, MendMove, VetoMove })
+                Assert.That(MoveChance(s, partner.id, move, true), Is.EqualTo(MoveChance(s, partner.id, move, false)).Within(1e-9),
+                    move + ": and the odds shown are the roll's.");
+            var mended = Apply(new EpisodeEngine(s), NegotiateKind, partner.id, null, MendMove);
+            Assert.That(mended.accepted, Is.True, mended.reason);
+            Assert.That(mended.state.events.Last(e => e.kind == "amends").text,
+                Does.Contain("the " + DealKind.Title(DealKind.VoteTogether).ToLowerInvariant() + " you broke"), "The mend names the bloc.");
+        }
+
         // ------------------------------------------------------------ a veto for a price
 
         /// <summary>

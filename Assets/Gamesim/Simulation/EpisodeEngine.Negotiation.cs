@@ -197,9 +197,10 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// Mending fences with a houseguest the player broke their word to: once for each breach of the
-        /// player's against them (<see cref="Negotiation.MendRefusal"/>), at the web's odds (55, less 30
-        /// for the broken deal between them, and the rest of <see cref="Negotiation.Chance"/>). One roll on
-        /// the season's stream. Where it lands their view of the player rises by the web's +10 and any
+        /// player's against them that they can know of (<see cref="Negotiation.MendRefusal"/>; a voting bloc
+        /// only once they know how the other voted), at the web's odds (55, less 30 for the broken deal
+        /// between them, and the rest of <see cref="Negotiation.Chance"/>). One roll on the season's
+        /// stream. Where it lands their view of the player rises by the web's +10 and any
         /// grudge they hold eases as much; where it does not, they think 5 less of the player. One way,
         /// as the breach is held one way (C0), and permanent on their record, as the breach is. The breach
         /// itself is untouched - the deal still broken, by the player, its entry permanent - so it still

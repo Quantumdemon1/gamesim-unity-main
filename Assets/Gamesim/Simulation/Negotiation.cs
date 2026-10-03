@@ -431,11 +431,12 @@ namespace Gamesim.Simulation
         /// between them, +15 where the player has the move's trait, -30 with a deal between them the player
         /// broke - rounded as the web rounds, and held to 5-95. Where the web reads the player's own score
         /// of them, the roll reads theirs of the player, since the answer is theirs. The roll reads that
-        /// view and whether their pact with the player holds; the chance shown (<paramref name="asKnown"/>)
-        /// reads the player's presumed view of them and the pact as the player knows it
-        /// (<see cref="KnownOdds.PresumedView"/>, <see cref="KnownOdds.KnownPact"/>,
-        /// <see cref="Allegiance.HoldsAsKnown"/>). Every other term is the player's own to see, so where
-        /// the player knows both, the two are equal.
+        /// view, whether their pact with the player holds and every deal the player broke; the chance shown
+        /// (<paramref name="asKnown"/>) reads the player's presumed view of them, the pact as the player
+        /// knows it (<see cref="KnownOdds.PresumedView"/>, <see cref="KnownOdds.KnownPact"/>,
+        /// <see cref="Allegiance.HoldsAsKnown"/>) and only the broken deals the player can know of - not a
+        /// voting bloc the other's secret ballot broke (<see cref="KnownBreach"/>, decision 4). Every other
+        /// term is the player's own to see, so where the player knows all three, the two are equal.
         /// </summary>
         public static double Chance(EpisodeState s, string npcId, string move, bool asKnown)
         {
@@ -451,7 +452,8 @@ namespace Gamesim.Simulation
             if (NpcDeals.Between(s, npcId, s.playerId).Count > 0) chance += 10;
             string trait = TraitBonus(move);
             if (trait != null && me.traits != null && me.traits.Any(t => string.Equals(t, trait, StringComparison.OrdinalIgnoreCase))) chance += 15;
-            if (s.deals.Any(d => Pair(d, npcId, s.playerId) && Breaches.CountsAgainst(s, d, s.playerId))) chance -= 30;
+            if (s.deals.Any(d => asKnown ? KnownBreach(s, d, npcId) : Pair(d, npcId, s.playerId) && Breaches.CountsAgainst(s, d, s.playerId)))
+                chance -= 30;
             return Math.Max(PlayerDeals.MinimumChance, Math.Min(PlayerDeals.MaximumChance, Math.Floor(chance + 0.5)));
         }
 
@@ -576,17 +578,29 @@ namespace Gamesim.Simulation
         public const string AmendsType = "amends-made", RebuffType = "amends-refused";
 
         /// <summary>
-        /// The breaches the player committed against this houseguest, under the commitment rules: deals
-        /// between them the player broke (<see cref="Breaches.CountsAgainst(EpisodeState, DealState, string)"/>)
-        /// and promises the player made them and broke. The player always knows their own.
+        /// The breaches the player committed against this houseguest, under the commitment rules, as far as
+        /// the player can know them: deals between them the player broke (<see cref="KnownBreach"/>) and
+        /// promises the player made them and broke, which were the player's own act. A voting bloc that fell
+        /// apart is not one until the player knows how the other voted (decision 4): mending fences over it
+        /// would tell them.
         /// </summary>
         public static int BreachesAgainst(EpisodeState s, string npcId)
         {
             if (!EpisodeEngine.CommitmentRulesOn(s) || string.IsNullOrEmpty(npcId)) return 0;
             string me = s.playerId;
-            return s.deals.Count(d => Pair(d, npcId, me) && Breaches.CountsAgainst(s, d, me))
+            return s.deals.Count(d => KnownBreach(s, d, npcId))
                    + s.promises.Count(p => p.fromId == me && p.toId == npcId && Breaches.CountsAgainst(s, p, me));
         }
+
+        /// <summary>
+        /// Whether this deal between the player and this houseguest is a breach of the player's
+        /// (<see cref="Breaches.CountsAgainst(EpisodeState, DealState, string)"/>) that the player can know
+        /// of: every one they broke by their own act, and a voting bloc - which both ballots break at once -
+        /// only once they know the other's (<see cref="KnownBallots.DealOutcomeKnown"/>), as every other
+        /// reader of a bloc waits for it.
+        /// </summary>
+        private static bool KnownBreach(EpisodeState s, DealState d, string npcId) =>
+            Pair(d, npcId, s.playerId) && Breaches.CountsAgainst(s, d, s.playerId) && KnownBallots.DealOutcomeKnown(s, d);
 
         /// <summary>How often the player has tried to mend fences with this houseguest, whether it worked or not.</summary>
         public static int MendsTried(EpisodeState s, string npcId)
@@ -605,11 +619,11 @@ namespace Gamesim.Simulation
             return null;
         }
 
-        /// <summary>The breach a mend is about, for its line: the latest the player committed against them.</summary>
+        /// <summary>The breach a mend is about, for its line: the latest the player committed against them that they can know of.</summary>
         public static string BreachWords(EpisodeState s, string npcId)
         {
             string me = s.playerId;
-            var deal = s.deals.Where(d => Pair(d, npcId, me) && Breaches.CountsAgainst(s, d, me))
+            var deal = s.deals.Where(d => KnownBreach(s, d, npcId))
                 .OrderByDescending(d => d.settledWeek).ThenByDescending(d => d.week).FirstOrDefault();
             var promise = s.promises.Where(p => p.fromId == me && p.toId == npcId && Breaches.CountsAgainst(s, p, me))
                 .OrderByDescending(p => p.settledWeek).ThenByDescending(p => p.week).FirstOrDefault();

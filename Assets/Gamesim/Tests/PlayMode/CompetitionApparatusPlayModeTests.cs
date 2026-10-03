@@ -95,8 +95,9 @@ namespace Gamesim.Tests.PlayMode
             obstacle.layer=HouseLayers.Furniture;obstacle.transform.position=new Vector3(0,1.5f,.90f);
             obstacle.GetComponent<BoxCollider>().size=new Vector3(.5f,3,.5f);
             var footprint=CompetitionStageFootprint.Station(CompetitionApparatus.Family.WordConsole,Vector3.zero,0,.35f,1.9f);
+            Physics.SyncTransforms();
             Assert.That(Vector3.Distance(obstacle.GetComponent<Collider>().ClosestPoint(Vector3.up),Vector3.up),Is.GreaterThan(.35f),"The solid is beyond the actor capsule, not inside its torso.");
-            Physics.SyncTransforms();var hits=new Collider[64];
+            var hits=new Collider[64];
             Assert.That(footprint.HasStaticClearance(footprintScene.GetPhysicsScene(),floor,hits),Is.False,"Sight ignores Furniture; whole-apparatus placement must still reject it.");
             obstacle.transform.position=new Vector3(9,1.5f,8);Physics.SyncTransforms();
             Assert.That(footprint.HasStaticClearance(footprintScene.GetPhysicsScene(),floor,hits),Is.True);

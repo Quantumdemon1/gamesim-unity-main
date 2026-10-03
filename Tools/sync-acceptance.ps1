@@ -22,6 +22,7 @@ if (-not $WithoutUma -and (Test-Path -LiteralPath (Join-Path $destinationRoot 'A
     -not (Test-Path -LiteralPath (Join-Path $sourceRoot 'Assets\UMA'))) {
     throw 'The source has no Assets\UMA and the acceptance copy does; mirroring would remove UMA from it. Run from the main checkout, or use -WithoutUma into the UMA-free copy.'
 }
+$projectUmaOverrides = @(Get-ReviewProjectUmaOverrides -ProjectRoot $sourceRoot -WithoutUma:$WithoutUma)
 foreach ($folder in @('Assets','ProjectSettings','ArtSource','Packages')) {
     $sourcePath = [IO.Path]::GetFullPath((Join-Path $sourceRoot $folder))
     $destinationPath = [IO.Path]::GetFullPath((Join-Path $destinationRoot $folder))
@@ -45,6 +46,18 @@ foreach ($folder in @('Assets','ProjectSettings','ArtSource','Packages')) {
     }
     & robocopy.exe $sourcePath $destinationPath @copyOptions | Out-Null
     if ($LASTEXITCODE -ge 8) { throw "Failed to mirror $folder (robocopy $LASTEXITCODE). No Unity process was started." }
+}
+# The optional project's preferred index is portable source, while other retained data is not.
+# Copy an explicit file allowlist; never mirror this subtree or erase its local cache.
+foreach ($relativeOverride in $projectUmaOverrides) {
+    $sourceOverride = [IO.Path]::GetFullPath((Join-Path $sourceRoot $relativeOverride))
+    $destinationOverride = [IO.Path]::GetFullPath((Join-Path $destinationRoot $relativeOverride))
+    if (-not $sourceOverride.StartsWith($sourceRoot + '\', [StringComparison]::OrdinalIgnoreCase) -or
+        -not $destinationOverride.StartsWith($destinationRoot + '\', [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Invalid project UMA index copy boundary.'
+    }
+    [void][IO.Directory]::CreateDirectory((Split-Path -Parent $destinationOverride))
+    Copy-Item -LiteralPath $sourceOverride -Destination $destinationOverride -Force
 }
 $settings = Join-Path $destinationRoot 'ProjectSettings\ProjectSettings.asset'
 $content = ConvertTo-ReviewAcceptanceSettings ([IO.File]::ReadAllText($settings)) ([bool]$WithoutUma)

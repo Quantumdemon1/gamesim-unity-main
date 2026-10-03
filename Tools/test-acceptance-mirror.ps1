@@ -18,6 +18,13 @@ try {
     Put $source 'Assets/Resources/retained.asset' 'source resource must not replace destination'
     Put $source 'Assets/Resources.meta' 'source resource GUID must not replace destination'
     Put $source 'Assets/UMAProjectData/source-only.asset' 'excluded source UMA project data'
+    $projectIndex = @{
+        'Assets/UMAProjectData.meta' = 'project UMA folder GUID'
+        'Assets/UMAProjectData/Resources.meta' = 'project UMA resources GUID'
+        'Assets/UMAProjectData/Resources/AssetIndexerProject.asset' = 'source-owned garment index'
+        'Assets/UMAProjectData/Resources/AssetIndexerProject.asset.meta' = 'project garment index GUID'
+    }
+    foreach ($path in $projectIndex.Keys) { Put $source $path $projectIndex[$path] }
     Put $destination 'Assets/Resources/retained.asset' 'destination resource'
     Put $destination 'Assets/Resources.meta' 'destination resource GUID'
     Put $destination 'Assets/UMAProjectData/destination-only.asset' 'destination-only UMA data'
@@ -52,7 +59,40 @@ try {
     $actual = New-ReviewInputManifest -ProjectRoot $destination -WorkflowRoot $source -WithoutUma
     $differences = @(Compare-ReviewInputs -Before $actual -After $preview -AllowShippingGpu)
     if (@($differences | Where-Object {-not $_.allowed}).Count -ne 0) { throw 'Predicted sync inputs differ from the actual fixture mirror.' }
-    Write-Output 'Ten actual mirror/prediction checks passed; only temporary fixture trees were changed.'
+    if (Test-Path -LiteralPath (Join-Path $destination 'Assets/UMAProjectData/Resources/AssetIndexerProject.asset')) {
+        throw 'The NoUMA copy received the optional source-owned index.'
+    }
+    Put $source 'Assets/UMA/installed.asset' 'installed dependency'
+    Put $destination 'Assets/UMA/installed.asset' 'installed dependency'
+    Put $destination 'Assets/UMAProjectData/Resources/AssetIndexerProject.asset' 'old retained index'
+    Put $destination 'Assets/UMAProjectData/Resources/AssetIndexerProject.asset.meta' 'old retained index GUID'
+    & (Join-Path $source 'Tools/sync-acceptance.ps1') -DisableGpuResidentDrawer
+    foreach ($path in $projectIndex.Keys) {
+        if ((Read $destination $path) -cne $projectIndex[$path]) { throw "The project-owned index was not copied: $path" }
+    }
+    if ((Read $destination 'Assets/UMAProjectData/destination-only.asset') -cne 'destination-only UMA data' -or
+        (Read $destination 'Assets/Resources/retained.asset') -cne 'destination resource') {
+        throw 'Copying the project-owned index changed local retained data.'
+    }
+    $umaPreview = New-ReviewInputManifest -ProjectRoot $source -WorkflowRoot $source -PreviewSync -RetainedRoot $destination
+    $umaActual = New-ReviewInputManifest -ProjectRoot $destination -WorkflowRoot $source
+    $umaDifferences = @(Compare-ReviewInputs -Before $umaActual -After $umaPreview -AllowShippingGpu)
+    if (@($umaDifferences | Where-Object {-not $_.allowed}).Count -ne 0) {
+        throw 'Predicted UMA index override inputs differ from the actual fixture mirror.'
+    }
+    # Validate the four-file group before any ordinary mirror can change the copy.
+    $missingMeta = Join-Path $source 'Assets/UMAProjectData/Resources/AssetIndexerProject.asset.meta'
+    Remove-Item -LiteralPath $missingMeta
+    Put $source 'Assets/Ordinary/keep.txt' 'must not enter incomplete index candidate'
+    $rejected = $false
+    try { & (Join-Path $source 'Tools/sync-acceptance.ps1') } catch {
+        if ($_.Exception.Message -notlike '*source-owned UMA index is incomplete*') { throw }
+        $rejected = $true
+    }
+    if (-not $rejected -or (Read $destination 'Assets/Ordinary/keep.txt') -cne 'new ordinary data') {
+        throw 'An incomplete index did not fail before mirror mutation.'
+    }
+    Write-Output 'Eighteen actual mirror/prediction checks passed; only temporary fixture trees were changed.'
 } finally {
     $env:GAMESIM_ACCEPTANCE = $previousAcceptance
     $resolved = [IO.Path]::GetFullPath($fixture)

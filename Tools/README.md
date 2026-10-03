@@ -42,6 +42,10 @@ symbol that the installed inference package removes on batch startup. The live e
 preference is untouched. `-WithoutUma` also removes the exact Standalone `GAMESIM_UMA` token.
 The source preview applies those same declared copy settings. Explicitly retained `Assets/Resources`
 and `Assets/UMAProjectData` directories retain their `.meta` companions as well as their contents.
+The source-owned `Assets/UMAProjectData/Resources/AssetIndexerProject.asset` is the narrow exception:
+UMA copies receive that file, its `.meta`, and the two parent-folder `.meta` files from source.
+Other local UMA data remains retained. NoUMA skips the override. An incomplete four-file override
+fails before any mirror starts, and manifest prediction uses the same allowlist as the real copy.
 Dynamic font assets start with cleared generated caches, matching TextMesh Pro's documented-in-source
 editor-exit behavior; font files are still fully hashed and any further byte changes fail the audit.
 

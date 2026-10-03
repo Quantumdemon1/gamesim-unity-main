@@ -7,6 +7,21 @@ function Get-ReviewTextHash([string]$Text) {
     try { ([BitConverter]::ToString($algorithm.ComputeHash([Text.Encoding]::UTF8.GetBytes($Text)))).Replace('-','').ToLowerInvariant() }
     finally { $algorithm.Dispose() }
 }
+function Get-ReviewProjectUmaOverrides {
+    param([string]$ProjectRoot, [switch]$WithoutUma)
+    if ($WithoutUma) { return }
+    # This preferred index is project source; every other UMAProjectData file remains local.
+    $paths = @('Assets/UMAProjectData.meta', 'Assets/UMAProjectData/Resources.meta',
+        'Assets/UMAProjectData/Resources/AssetIndexerProject.asset',
+        'Assets/UMAProjectData/Resources/AssetIndexerProject.asset.meta')
+    if (-not (Test-Path -LiteralPath (Join-Path $ProjectRoot $paths[2]) -PathType Leaf)) { return }
+    foreach ($path in $paths) {
+        if (-not (Test-Path -LiteralPath (Join-Path $ProjectRoot $path) -PathType Leaf)) {
+            throw "The source-owned UMA index is incomplete: $path"
+        }
+    }
+    return $paths
+}
 function Write-ReviewJson($Value, [string]$Path) {
     ConvertTo-Json -InputObject $Value -Depth 12 | Set-Content -LiteralPath $Path -Encoding utf8
 }
@@ -73,6 +88,17 @@ function New-ReviewInputManifest {
                 $retainedPath = Join-Path $RetainedRoot $retained
                 if (Test-Path -LiteralPath $retainedPath) { $files += @(Get-ChildItem -LiteralPath $retainedPath -File -Recurse -Force) }
                 if (Test-Path -LiteralPath ($retainedPath + '.meta')) { $files += Get-Item -LiteralPath ($retainedPath + '.meta') }
+            }
+            $overrides = @(Get-ReviewProjectUmaOverrides -ProjectRoot $ProjectRoot -WithoutUma:$WithoutUma)
+            if ($overrides.Count -gt 0) {
+                $files = @($files | Where-Object {
+                    if ($_.FullName.StartsWith($RetainedRoot.TrimEnd('\','/') + '\', [StringComparison]::OrdinalIgnoreCase)) {
+                        $relativeFile = $_.FullName.Substring($RetainedRoot.TrimEnd('\','/').Length + 1).Replace('\','/')
+                        return $overrides -notcontains $relativeFile
+                    }
+                    return $true
+                })
+                foreach ($relativeOverride in $overrides) { $files += Get-Item -LiteralPath (Join-Path $ProjectRoot $relativeOverride) }
             }
         }
         foreach ($file in $files) {

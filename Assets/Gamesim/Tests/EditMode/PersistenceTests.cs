@@ -7,6 +7,8 @@ using Gamesim.Simulation;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace Gamesim.Tests.EditMode
 {
@@ -190,8 +192,10 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// A hold that does not lift ends in the IOException a save always threw, which the
         /// director's recovery path catches as an expected failure, and nothing on disk moves.
+        /// The hold refuses the swap under Windows' sharing rules only (<see cref="HeldFile"/>).
         /// </summary>
         [Test]
+        [UnityPlatform(RuntimePlatform.WindowsEditor)]
         public void Save_ALockThatDoesNotLiftThrowsTheIOExceptionAndChangesNothing()
         {
             var first = ContentCatalog.Create(17);
@@ -349,6 +353,11 @@ namespace Gamesim.Tests.EditMode
         /// that replaces the file meets the lock. <see cref="FileShare.None"/> holds it the way a
         /// backup or sync client copying it can, sharing nothing, and then those reads meet the
         /// lock first.
+        ///
+        /// <para>Those are Windows' sharing rules. Mono on Linux and macOS enforces a share mode
+        /// itself, and only when the file is opened: a FileShare.None hold refuses reads there too,
+        /// but a FileShare.Delete hold lets them through, and File.Replace is a rename that no hold
+        /// stops. A test that needs either runs in the Windows editor only.</para>
         /// </summary>
         internal sealed class HeldFile : IDisposable
         {

@@ -34,7 +34,7 @@ namespace Gamesim.Episode
                 processor = SystemInfo.processorType, gpu = SystemInfo.graphicsDeviceName,
                 systemMemoryMB = SystemInfo.systemMemorySize, graphicsMemoryMB = SystemInfo.graphicsMemorySize,
                 visualStatus = "Pending inspection of captured frames",
-                workload = "Fresh Quick entry, native InputSystem pointer preset selection and keyboard/controller mode navigation, unchanged draft across modes, six Quick resolution/text captures including 4:3; then the Detailed Customise route, both bodies at supported slider bounds in front/profile views, restored appearance, pointer-handler slider input, six Detailed resolution/text combinations, isolated library save/load, repeated custom cast and NPC-only edit, new season, save/reload, isolated portrait. Detailed route buttons use direct UI callbacks. Automated checks do not establish visual quality or human usability.",
+                workload = "Fresh Quick entry, native InputSystem pointer preset selection, independent body choice with Undo/Redo and keyboard/controller mode navigation, unchanged draft across modes, six Quick resolution/text captures including 4:3; then the Detailed Customise route, both bodies at supported slider bounds in front/profile views, restored appearance, pointer-handler slider input, six Detailed resolution/text combinations, isolated library save/load, repeated custom cast and NPC-only edit, new season, save/reload, isolated portrait. Detailed route buttons use direct UI callbacks. Automated checks do not establish visual quality or human usability.",
             };
             creatorReport.workloadLimitSeconds = CreatorWorkloadSeconds;
             creatorDeadline = Time.realtimeSinceStartupAsDouble + CreatorWorkloadSeconds;
@@ -68,6 +68,7 @@ namespace Gamesim.Episode
                 && creatorReport.resolutionCaptures == 6 && creatorReport.quickResolutionCaptures == 6
                 && creatorReport.quickDraftPreserved && creatorReport.keyboardModeSwitch && creatorReport.controllerModeSwitch
                 && creatorReport.controllerNavigation && creatorReport.quickPointerPresetChanged
+                && creatorReport.quickBodyChangedIndependently
                 ? "Automated checks passed; visual review required" : "Failed";
             File.WriteAllText(Path.Combine(outputDirectory, "creator-verification.json"), JsonUtility.ToJson(creatorReport, true));
             Debug.Log("Gamesim creator verification: " + creatorReport.status);
@@ -385,6 +386,22 @@ namespace Gamesim.Episode
             creatorReport.quickPointerPresetChanged = creator.Draft.Appearance.ContentKey() != originalLook;
             CreatorRequire(creatorReport.quickPointerPresetChanged, "Native pointer input did not apply a Quick starting look.");
             yield return WaitCreatorPreview(creator, "Quick starting look");
+            var catalog = (CharacterBodySource.Provider as IModularCharacterBodyProvider)?.Catalog;
+            CreatorRequire(catalog != null && catalog.Bodies.Count >= 2, "Quick acceptance needs the installed body choices.");
+            var beforeBody = creator.Draft.Copy();
+            var otherBody = catalog.Bodies.First(body => body.Id != beforeBody.Appearance.bodyId);
+            yield return CreatorNativeSubmit(otherBody.Label);
+            yield return WaitCreatorPreview(creator, "Quick body choice");
+            creatorReport.quickBodyChangedIndependently = creator.Draft.Appearance.bodyId == otherBody.Id
+                && creator.Draft.Pronouns == beforeBody.Pronouns && creator.Draft.Name == beforeBody.Name
+                && WebTraits.StatNames.All(stat => WebTraits.Get(creator.Draft.Stats, stat) == WebTraits.Get(beforeBody.Stats, stat));
+            CreatorRequire(creatorReport.quickBodyChangedIndependently, "Quick body choice changed the person or did not change the body.");
+            string changedBody = creator.Draft.Appearance.ContentKey();
+            yield return CreatorNativeSubmit("Undo");
+            CreatorRequire(creator.Draft.Appearance.ContentKey() == beforeBody.Appearance.ContentKey(), "Quick Undo did not restore every outfit before the body change.");
+            yield return CreatorNativeSubmit("Redo");
+            CreatorRequire(creator.Draft.Appearance.ContentKey() == changedBody, "Quick Redo did not restore the changed body and outfits.");
+            yield return WaitCreatorPreview(creator, "Quick redone body choice");
             string draftBefore = JsonUtility.ToJson(creator.Draft);
             yield return CreatorNativeSubmit(CharacterCreator.DetailedCaption);
             creatorReport.keyboardModeSwitch = creator.Mode == CharacterCreator.EntryMode.Detailed;
@@ -544,7 +561,7 @@ namespace Gamesim.Episode
             public int systemMemoryMB, graphicsMemoryMB, bodyCount, wardrobeCount, controlCount, resolutionCaptures, quickResolutionCaptures, bodyBoundsCaptures, workloadLimitSeconds;
             public uint seed;
             public bool pointerSliderChanged, cosmeticsPreservedGameplayAndRng, previewHouseAppearanceEqual, saveReloadAppearanceEqual;
-            public bool quickDraftPreserved, keyboardModeSwitch, controllerModeSwitch, controllerNavigation, quickPointerPresetChanged;
+            public bool quickDraftPreserved, keyboardModeSwitch, controllerModeSwitch, controllerNavigation, quickPointerPresetChanged, quickBodyChangedIndependently;
             public bool isolatedLibrary, librarySaveLoadEqual, customCastRepeatedAndEdited, playerPreservedDuringNpcEdit,
                 libraryUnaffectedByCastEdit, customCastSaveReloadEqual, bodyBoundsAppearanceRestored;
             public double portraitBuildMilliseconds;

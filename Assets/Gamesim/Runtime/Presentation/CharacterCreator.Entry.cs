@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Gamesim.Simulation;
 using UnityEngine;
 
@@ -63,7 +64,7 @@ namespace Gamesim.Presentation
             BuildPreviewStage(scrim, new Rect(area.x + form + Gap, area.y, area.width - form - Gap, area.height), false);
             float width = form - 48f;
             float top = SectionHeading(box, 24f, 20f, width, PackArt.KitIconPerson, "QUICK SETUP");
-            Words(box, "Choose a starting look and introduce yourself. Detailed lets you edit features, outfits and personality.", 15f,
+            Words(box, "Choose a starting look and body, then introduce yourself. Detailed lets you edit features, outfits and personality.", 15f,
                 UiTheme.Muted, new Rect(24f, top, width, 48f)).textWrappingMode = TMPro.TextWrappingModes.Normal;
             top += 54f;
             undoAppearanceButton = Pill(box, "Undo", new Rect(24f, top, 120f, 40f), Tone.Secondary, UndoAppearance, size: 15f);
@@ -81,6 +82,14 @@ namespace Gamesim.Presentation
             studioWidth = form - 24f;
             studioCursor = 296f;
             StartingLooks();
+            if (Catalog != null)
+            {
+                BodyChoices();
+                StudioText("Body choice is independent of pronouns. Undo restores the body and clothing together.", 48f);
+                if (!string.IsNullOrEmpty(appearanceNotice))
+                    StudioText(appearanceNotice, 30f + appearanceNotice.Count(value => value == '\n') * 22f);
+            }
+            else StudioText("This installation offers complete preset bodies. Choose a starting look to change your body; pronouns remain yours.", 60f);
             quickControls.sizeDelta = new Vector2(0f, studioCursor + 16f);
             quickControls.anchoredPosition = new Vector2(0f,
                 Mathf.Clamp(quickScrollY, 0f, Mathf.Max(0f, quickControls.rect.height - (area.height - top - 12f))));

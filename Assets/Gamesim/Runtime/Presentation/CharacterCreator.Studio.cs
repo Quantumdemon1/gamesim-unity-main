@@ -833,6 +833,7 @@ namespace Gamesim.Presentation
             appearanceRedo.Clear();
             lastSlider = null;
             comparingOriginal = false;
+            appearanceNotice = null;
             if (Catalog != null) draft.Appearance = Catalog.Materialize(draft.Appearance);
             change();
             studioPreview?.Show(draft.Appearance);
@@ -924,6 +925,7 @@ namespace Gamesim.Presentation
         private void UndoAppearance()
         {
             if (appearanceUndo.Count == 0) return;
+            appearanceNotice = null;
             appearanceRedo.Push(draft.Appearance.Clone()); draft.Appearance = appearanceUndo.Pop();
             studioPreview?.Show(draft.Appearance); Rebuild();
         }
@@ -931,6 +933,7 @@ namespace Gamesim.Presentation
         private void RedoAppearance()
         {
             if (appearanceRedo.Count == 0) return;
+            appearanceNotice = null;
             appearanceUndo.Push(draft.Appearance.Clone()); draft.Appearance = appearanceRedo.Pop();
             studioPreview?.Show(draft.Appearance); Rebuild();
         }

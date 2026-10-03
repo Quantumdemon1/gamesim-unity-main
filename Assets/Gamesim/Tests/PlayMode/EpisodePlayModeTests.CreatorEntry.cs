@@ -39,6 +39,40 @@ namespace Gamesim.Tests.PlayMode
         private void CreatorEntryName(string name) => Creator().GetComponentsInChildren<TMP_InputField>()
             .Single(field => field.name == "Name field").text = name;
 
+#if GAMESIM_UMA
+        [UnityTest]
+        public IEnumerator CreatorEntry_QuickBodyChoicePreservesThePersonAndUndoesAcrossModes()
+        {
+            yield return OpenCreator(detailed: false);
+            var creator = Creator();
+            var catalog = (CharacterBodySource.Provider as IModularCharacterBodyProvider)?.Catalog;
+            Assert.That(catalog, Is.Not.Null);
+            Assert.That(catalog.Bodies.Count, Is.GreaterThanOrEqualTo(2));
+            CreatorEntryName("Body Robin");
+            yield return CreatorEntrySubmit("they/them");
+            creator.Draft.AddTrait("Loyal");
+            var original = creator.Draft.Copy();
+            var other = catalog.Bodies.First(body => body.Id != original.Appearance.bodyId);
+            yield return CreatorEntrySubmit(other.Label);
+            Assert.That(creator.Mode, Is.EqualTo(CharacterCreator.EntryMode.Quick));
+            Assert.That(creator.Draft.Appearance.bodyId, Is.EqualTo(other.Id));
+            Assert.That(creator.Draft.Pronouns, Is.EqualTo(original.Pronouns));
+            Assert.That(creator.Draft.Traits, Is.EqualTo(original.Traits));
+            foreach (string stat in WebTraits.StatNames)
+                Assert.That(WebTraits.Get(creator.Draft.Stats, stat), Is.EqualTo(WebTraits.Get(original.Stats, stat)), stat);
+            Assert.That(creator.GetComponentsInChildren<TMP_Text>().Any(label => label.text.StartsWith("Changed body.")
+                || label.text.StartsWith("Changed clothing:")), Is.True, "The change explains fitted or substituted clothing.");
+            string changed = creator.Draft.Appearance.ContentKey();
+            yield return CreatorEntrySubmit(CharacterCreator.DetailedCaption);
+            yield return CreatorEntrySubmit("Undo");
+            AssertCreatorEntryDraft(original, creator.Draft);
+            yield return CreatorEntrySubmit(CharacterCreator.QuickCaption);
+            yield return CreatorEntrySubmit("Redo");
+            Assert.That(creator.Draft.Appearance.ContentKey(), Is.EqualTo(changed));
+            Assert.That(creator.Draft.Pronouns, Is.EqualTo("they/them"));
+        }
+#endif
+
         [UnityTest]
         public IEnumerator CreatorEntry_FreshQuickBackResumeAndCosmeticDetailedUseTheirOwnRoutes()
         {

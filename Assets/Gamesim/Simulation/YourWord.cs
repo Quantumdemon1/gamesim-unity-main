@@ -7,8 +7,8 @@ namespace Gamesim.Simulation
     /// <summary>
     /// Your word in the house (ACTIONS-DEALS-ALLIANCES-PLAN C8, decision 14): what the house has heard
     /// of the player going back on their word, and what that costs them at the deal table. A public
-    /// reading - the player sees it, on the Your word page and beside the odds of every deal they put
-    /// to the house - built only from breaches the house saw.
+    /// reading - the player sees it, on the Your word page and in the note over a conversation's odds -
+    /// built only from breaches the house saw.
     ///
     /// <para><b>Its inputs.</b> A deal the player breaks by an act the house watches - a nomination or
     /// a replacement, the veto meeting, the final choice - is written as a <see cref="FactKinds.BrokenWord"/>
@@ -35,7 +35,12 @@ namespace Gamesim.Simulation
     /// (<see cref="PlayerDeals.BrokenDealPenalty"/>), <see cref="PerHearing"/> a hearing. All of it
     /// together is at most <see cref="Most"/>, three breaches' worth (<see cref="Cost"/>). It is a term of
     /// the acceptance roll (<see cref="PlayerDeals.WordPenalty"/>) and, since the player sees the
-    /// reading, of the odds they are shown (<see cref="KnownOdds.Deal"/>) - the same term in both.</para>
+    /// reading, of the odds they are shown (<see cref="KnownOdds.Deal"/>) - the same term in both. That
+    /// roll is the deal table's, and the alliance invitation's that 'Propose an alliance' and a bring-in
+    /// draw. A plea's deal, a veto for a price and a story's choice strike deals on odds of their own or
+    /// on none, which never take it, yet the Your word page can list the deal any of them strikes as one
+    /// the player proposed - so the player is told what it weighs on and, by name, what it does not
+    /// (<see cref="WeighsOn"/>).</para>
     ///
     /// <para><b>Under what rules.</b> Only under the commitment rules, and only where the house keeps
     /// knowledge - the story's facts and the gossip that carries them (<see cref="StoryRules.Bonds"/>):
@@ -146,22 +151,40 @@ namespace Gamesim.Simulation
         /// <summary>What the reading says while the house has heard of no breach of the player's.</summary>
         public const string NothingHeard = "The house has heard of no deal you broke in front of it.";
 
+        /// <summary>
+        /// What the reading weighs on, as the player is told it, and what it does not: "every deal and
+        /// alliance you propose, but not on a plea, a price for the veto or a story's choice". It weighs on
+        /// the deal table's rows (and so on the counter a refused one may bring, which comes only where its
+        /// chance was near yes) and on the alliance invitation's roll, which 'Propose an alliance' and "Bring
+        /// Maya into The Riley Pact" draw. The plea's 'Make a deal' and a veto for a price strike deals too,
+        /// on odds the reading never touches, and so does a story's choice - 'Make the pitch', 'Our secret' -
+        /// in a conversation or out of one, on the story's own odds (<see cref="StoryOdds"/>) or on none. The
+        /// Your word page can list the deal any of them strikes as one "you proposed"
+        /// (<see cref="CommitmentsRead"/>): so each is named, never left to a caption's verb. The note over
+        /// a conversation's odds names the first two alone (<paramref name="page"/> false): a story's choice
+        /// is never drawn under it, since a beat a conversation raised is the conversation until it is
+        /// answered.
+        /// </summary>
+        private static string WeighsOn(bool page) =>
+            "every deal and alliance you propose, but not on a plea" + (page ? ", a price for the veto or a story's choice" : " or a price for the veto");
+
         /// <summary>The reading as the Your word page heads it: "Your word is doubted".</summary>
         public static string Title(EpisodeState s) => "Your word is " + Word(s);
 
         /// <summary>
         /// The reading in a sentence: that the house has heard of no breach in front of it, or who has heard
-        /// and what it does. "3 houseguests have heard of you going back on your word: Alex, Maya and Jo. It
-        /// weighs on every deal you put to the house, the more the further it spreads." The first never
-        /// claims nobody knows of a breach at all: one a ballot decided is the player's and the one it was
-        /// broken against, and the page's SETTLED list says it was broken.
+        /// and what it does (<see cref="WeighsOn"/>). "3 houseguests have heard of you going back on your word:
+        /// Alex, Maya and Jo. The further it spreads, the more it weighs on every deal and alliance you
+        /// propose, but not on a plea, a price for the veto or a story's choice." The first never claims
+        /// nobody knows of a breach at all: one a ballot decided is the player's and the one it was broken
+        /// against, and the page's SETTLED list says it was broken.
         /// </summary>
         public static string Summary(EpisodeState s)
         {
             var heard = Hearers(s);
             if (heard.Count == 0) return NothingHeard;
             return Many(heard.Count) + " heard of you going back on your word: " + Join(heard.Select(id => First(s, id)).ToList())
-                + ". It weighs on every deal you put to the house, the more the further it spreads.";
+                + ". The further it spreads, the more it weighs on " + WeighsOn(true) + ".";
         }
 
         /// <summary>
@@ -174,13 +197,15 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// What follows the note over a table of chances once anybody has heard (null before): the reading,
-        /// who has heard, and that it is in every deal's chance. "Your word is doubted: 4 houseguests have
-        /// heard of you going back on it, and it weighs on every deal you put to the house."
+        /// who has heard, and what it weighs on and does not (<see cref="WeighsOn"/>; no story's choice is
+        /// ever drawn under the note, so it names the plea and the veto's price alone). "Your word is
+        /// doubted: 4 houseguests have heard of you going back on it, and it weighs on every deal and
+        /// alliance you propose, but not on a plea or a price for the veto."
         /// </summary>
         public static string OddsLine(EpisodeState s)
         {
             if (Cost(s) <= 0) return null;
-            return Title(s) + ": " + Many(Hearers(s).Count) + " heard of you going back on it, and it weighs on every deal you put to the house.";
+            return Title(s) + ": " + Many(Hearers(s).Count) + " heard of you going back on it, and it weighs on " + WeighsOn(false) + ".";
         }
 
         // ---------------------------------------------------------------- the parts

@@ -604,8 +604,14 @@ namespace Gamesim.Episode
         ///
         /// <para>Where the house keeps the player's word as knowledge and somebody has heard of them
         /// going back on it (ACTIONS-DEALS-ALLIANCES-PLAN C8), the note says so last: the reading, who has
-        /// heard, and that every deal's chance carries it (<see cref="YourWord.OddsLine"/>) - a term the
-        /// roll and the shown odds take alike. Nothing is added while nobody has heard, or without the rules.</para>
+        /// heard, what it weighs on and what it does not (<see cref="YourWord.OddsLine"/>). It weighs on the
+        /// chances of a deal or an alliance the player proposes, a term the roll and the shown odds take
+        /// alike; it never weighs on a plea's or a veto for a price's, and the note names those two: it
+        /// stands over the first table drawn, which can be either, and the Your word page can list the
+        /// deal either strikes as one the player proposed. A story's choice strikes deals without it too,
+        /// but is never drawn under the note - a beat the conversation raised is the conversation until it
+        /// is answered (<see cref="ConversationBeat"/>) - so the Your word page names it and the note does
+        /// not. Nothing is added while nobody has heard, or without the rules.</para>
         /// </summary>
         private void OddsAreYourRead(EpisodeState state, ContestantState npc)
         {

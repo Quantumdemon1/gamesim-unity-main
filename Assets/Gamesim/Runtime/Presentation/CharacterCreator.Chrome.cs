@@ -38,7 +38,7 @@ namespace Gamesim.Presentation
     /// </summary>
     public sealed partial class CharacterCreator
     {
-        private const float Margin = 36f, HeaderBottom = 176f, FooterHeight = 104f, Gap = 20f;
+        private const float Margin = 36f, HeaderBottom = 232f, FooterHeight = 104f, Gap = 20f;
         private Vector2 frame = new Vector2(1920f, 1080f);
         private bool frameChanged;
 
@@ -125,6 +125,7 @@ namespace Gamesim.Presentation
             }
             if (frame.x >= 1560f) BuildTagline(scrim);
             BuildSteps(scrim);
+            BuildEntryModes(scrim);
         }
 
         private void BuildBrand(RectTransform scrim)
@@ -174,11 +175,12 @@ namespace Gamesim.Presentation
         {
             var navigation = new GameObject("Setup steps", typeof(RectTransform)).GetComponent<RectTransform>();
             navigation.SetParent(scrim, false);
-            float width = Mathf.Min(1420f, frame.x - 2f * Margin), gap = 12f, tab = (width - gap * (Pages.Length - 1)) / Pages.Length;
+            var pages = ActivePages;
+            float width = Mathf.Min(1420f, frame.x - 2f * Margin), gap = 12f, tab = (width - gap * (pages.Length - 1)) / pages.Length;
             PlaceTop(navigation, 0f, 112f, width, 52f);
-            for (int i = 0; i < Pages.Length; i++)
+            for (int i = 0; i < pages.Length; i++)
             {
-                string page = Pages[i];
+                string page = pages[i];
                 bool on = studioPage == page;
                 var button = Pill(navigation, page, new Rect(i * (tab + gap), 0f, tab, 52f), on ? Tone.TabActive : Tone.Tab,
                     () => GoTo(page), icon: StepIcon(page));
@@ -198,7 +200,7 @@ namespace Gamesim.Presentation
             }
         }
 
-        private int PageIndex => Math.Max(0, Array.IndexOf(Pages, studioPage));
+        private int PageIndex => Math.Max(0, Array.IndexOf(ActivePages, studioPage));
 
         /// <summary>
         /// To another step. What belonged to the page being left goes with it: the comparison with the
@@ -206,7 +208,7 @@ namespace Gamesim.Presentation
         /// </summary>
         private void GoTo(string page)
         {
-            studioPage = page;
+            SelectPage(page);
             comparingOriginal = false;
             pendingDeleteProfile = null;
             confirmingNew = false;
@@ -232,19 +234,20 @@ namespace Gamesim.Presentation
             float y = 18f;
             Pill(footer, editingCastSlot ? CancelSlotCaption : BackCaption, new Rect(Margin, y, 280f, 64f), Tone.Secondary, Dismiss,
                 icon: PackArt.KitIconArrowBack);
-            bool last = PageIndex == Pages.Length - 1;
+            var pages = ActivePages;
+            bool last = PageIndex == pages.Length - 1;
             string start = editingCastSlot ? ApplySlotCaption : StartCaption;
             float right = frame.x - Margin;
             if (!last)
             {
-                var next = Pages[PageIndex + 1];
+                var next = pages[PageIndex + 1];
                 Pill(footer, "Continue", new Rect(right - 300f, y - 4f, 300f, 72f), Tone.Primary, () => GoTo(next),
-                    subtitle: "Next: " + next + "  ·  Step " + (PageIndex + 1) + " of " + Pages.Length, icon: PackArt.KitIconChevronRight, iconRight: true);
+                    subtitle: "Next: " + next + "  ·  Step " + (PageIndex + 1) + " of " + pages.Length, icon: PackArt.KitIconChevronRight, iconRight: true);
                 right -= 300f + 16f;
             }
             var go = Pill(footer, start, new Rect(right - (last ? 360f : 300f), last ? y - 4f : y, last ? 360f : 300f, last ? 72f : 64f),
                 last ? (ready ? Tone.Primary : Tone.Secondary) : (ready ? Tone.Ready : Tone.Secondary), StartSeason,
-                subtitle: last ? (editingCastSlot ? "Back to the cast with this edit" : "Step " + Pages.Length + " of " + Pages.Length) : null);
+                subtitle: last ? (editingCastSlot ? "Back to the cast with this edit" : "Step " + pages.Length + " of " + pages.Length) : null);
             go.name = start;
             float statusLeft = Margin + 280f + 24f, statusRight = right - (last ? 360f : 300f) - 24f;
             var status = HudPrimitives.Label("Footer status", footer, 16f,

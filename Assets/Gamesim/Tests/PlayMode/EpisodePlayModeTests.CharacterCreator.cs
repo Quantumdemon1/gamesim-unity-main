@@ -33,7 +33,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
         }
 
-        private IEnumerator OpenCreator()
+        private IEnumerator OpenCreator(bool detailed = true)
         {
             yield return OpenCastScreen();
             var open = CastButtons(CharacterCreator.CreateCaption);
@@ -41,6 +41,13 @@ namespace Gamesim.Tests.PlayMode
             open[0].onClick.Invoke();
             yield return null;
             yield return null;
+            Assert.That(Creator().Mode, Is.EqualTo(CharacterCreator.EntryMode.Quick), "Fresh Create enters Quick before any detailed work.");
+            if (detailed)
+            {
+                CastButtons(CharacterCreator.DetailedCaption)[0].onClick.Invoke();
+                yield return null; yield return null;
+                Assert.That(Creator().Mode, Is.EqualTo(CharacterCreator.EntryMode.Detailed));
+            }
         }
 
         [UnityTest]

@@ -226,11 +226,18 @@ namespace Gamesim.Episode
             // player lands where they pressed it: see StartSeason(choice, failed).
             castSelect.Show(choice => StartSeason(choice, castSelect.Resume), back,
                 characterCreator == null ? (Action<SeasonBuilder.Choice, CharacterDraft>)null
-                : (choice, draft) => characterCreator.Show(choice, draft, built => StartSeason(built, characterCreator.Resume), () =>
+                : (choice, draft) =>
                 {
-                    castSelect.SetDraft(characterCreator.Draft);
-                    castSelect.Resume();
-                }));
+                    Action<SeasonBuilder.Choice> commit = built => StartSeason(built, characterCreator.Resume);
+                    Action returnToCast = () =>
+                    {
+                        castSelect.SetDraft(characterCreator.Draft, characterCreator.Mode);
+                        castSelect.Resume();
+                    };
+                    if (castSelect.PreferredCreatorMode == CharacterCreator.EntryMode.Quick)
+                        characterCreator.ShowQuick(choice, draft, commit, returnToCast);
+                    else characterCreator.Show(choice, draft, commit, returnToCast);
+                });
             // Setup is one of the screens the music rule silences, and putting one up is not a
             // render: from the finale's panel, the report or settings the season's track played
             // on under the cast screen until something else happened to repaint.

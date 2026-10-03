@@ -162,7 +162,16 @@ namespace Gamesim.Presentation
             if (IsShowing) Rebuild();
         }
 
-        public void SetDraft(CharacterDraft draft) => retainedDraft = draft?.Copy();
+        public void SetDraft(CharacterDraft draft) => SetDraft(draft, CharacterCreator.EntryMode.Detailed);
+
+        public void SetDraft(CharacterDraft draft, CharacterCreator.EntryMode mode)
+        {
+            retainedDraft = draft?.Copy();
+            retainedCreatorMode = mode;
+        }
+
+        private CharacterCreator.EntryMode retainedCreatorMode = CharacterCreator.EntryMode.Detailed;
+        public CharacterCreator.EntryMode PreferredCreatorMode { get; private set; } = CharacterCreator.EntryMode.Detailed;
         private readonly List<KeyValuePair<RawImage, ContestantState>> portraits = new List<KeyValuePair<RawImage, ContestantState>>();
 
         private void Update()
@@ -477,10 +486,10 @@ namespace Gamesim.Presentation
             if (onCustomise == null) return;
             var row = Row(44f);
             Chip(row, "Choose a houseguest", -448f, 216f, !libraryMode && !castSlotsMode, () => { libraryMode = false; castSlotsMode = false; scrollToTop = true; Rebuild(); });
-            Chip(row, CharacterCreator.CreateCaption, -224f, 216f, false, () => OpenCreator(CharacterDraft.Blank()));
+            Chip(row, CharacterCreator.CreateCaption, -224f, 216f, false, () => OpenCreator(CharacterDraft.Blank(), CharacterCreator.EntryMode.Quick));
             Chip(row, retainedDraft == null ? CharacterCreator.CustomiseCaption : "Resume setup", 0f, 216f, false, () =>
             {
-                if (retainedDraft != null) { OpenCreator(retainedDraft.Copy()); return; }
+                if (retainedDraft != null) { OpenCreator(retainedDraft.Copy(), retainedCreatorMode); return; }
                 var chosen = CastTemplates.Find(selectedId);
                 OpenCreator(chosen == null ? CharacterDraft.Blank() : CharacterDraft.FromAppearance(chosen));
             });
@@ -1350,8 +1359,9 @@ namespace Gamesim.Presentation
         /// back, and re-showing it would reset the roster, the filter and the pick the player has
         /// just spent time on.</para>
         /// </summary>
-        private void OpenCreator(CharacterDraft start)
+        private void OpenCreator(CharacterDraft start, CharacterCreator.EntryMode mode = CharacterCreator.EntryMode.Detailed)
         {
+            PreferredCreatorMode = mode;
             var catalog = (CharacterBodySource.Provider as IModularCharacterBodyProvider)?.Catalog;
             if (catalog != null) start.Appearance = catalog.Materialize(start.Appearance);
             var choice = new SeasonBuilder.Choice

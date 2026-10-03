@@ -116,13 +116,25 @@ namespace Gamesim.Presentation
         /// </summary>
         public void Show(SeasonBuilder.Choice choice, CharacterDraft start,
             Action<SeasonBuilder.Choice> commit, Action back)
+            => ShowCore(choice, start, commit, back, EntryMode.Detailed);
+
+        /// <summary>Starts with a name, age, pronouns and a complete starting look.</summary>
+        public void ShowQuick(SeasonBuilder.Choice choice, CharacterDraft start,
+            Action<SeasonBuilder.Choice> commit, Action back)
+            => ShowCore(choice, start, commit, back, EntryMode.Quick);
+
+        private void ShowCore(SeasonBuilder.Choice choice, CharacterDraft start,
+            Action<SeasonBuilder.Choice> commit, Action back, EntryMode mode)
         {
             pending = choice?.Copy() ?? new SeasonBuilder.Choice();
             editingCastSlot = false;
             draft = (start ?? CharacterDraft.Blank()).Copy();
             appearanceUndo.Clear(); appearanceRedo.Clear();
             initialAppearance = draft.Appearance?.Clone();
-            studioPage = "Appearance";
+            entryMode = mode;
+            lastDetailedPage = "Appearance";
+            studioPage = DefaultAppearancePage;
+            quickScrollY = 0f;
             profileId = focusedProfile = null;
             confirmingNew = false;
             comparingOriginal = false;
@@ -182,6 +194,7 @@ namespace Gamesim.Presentation
             string keep = selected != null && selected.transform.IsChildOf(transform) ? selected.name : null;
             try
             {
+                if (quickControls != null) quickScrollY = quickControls.anchoredPosition.y;
                 if (studioControls != null)
                     studioScrollY = lastStudioCategory == appearanceCategory ? studioControls.anchoredPosition.y : 0f;
                 RebuildForm();
@@ -207,6 +220,7 @@ namespace Gamesim.Presentation
             }
             frame = Frame();
             studioControls = null;
+            quickControls = null;
             previewOnPage = false;
             previewStatus = null; retryPreviewButton = null; cardSummary = bioCount = cardAge = null;
             rebuildSoon = false;
@@ -224,6 +238,7 @@ namespace Gamesim.Presentation
             BuildHeader(scrim);
             switch (studioPage)
             {
+                case QuickPageCaption: BuildQuickPage(scrim); break;
                 case "Appearance": BuildAppearancePage(scrim); break;
                 case "Identity": BuildIdentityPage(scrim); break;
                 case "Personality": BuildPersonalityPage(scrim); break;

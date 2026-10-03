@@ -8,6 +8,8 @@ using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
 
@@ -20,6 +22,9 @@ namespace Gamesim.Episode
         private CreatorVerificationReport creatorReport;
         private double creatorDeadline;
         private const int CreatorWorkloadSeconds = 480;
+        private Keyboard creatorKeyboard;
+        private Gamepad creatorGamepad;
+        private Mouse creatorMouse;
 
         private IEnumerator RunCreatorVerification(EpisodeDirector director)
         {
@@ -29,7 +34,7 @@ namespace Gamesim.Episode
                 processor = SystemInfo.processorType, gpu = SystemInfo.graphicsDeviceName,
                 systemMemoryMB = SystemInfo.systemMemorySize, graphicsMemoryMB = SystemInfo.graphicsMemorySize,
                 visualStatus = "Pending inspection of captured frames",
-                workload = "Actual preset selection, both bodies at supported slider bounds in front/profile views, restored appearance, pointer slider input, six resolution/text combinations, isolated library save/load, repeated custom cast and NPC-only edit, new season, save/reload, isolated portrait. Automated checks do not establish visual quality or human usability.",
+                workload = "Fresh Quick entry, native InputSystem pointer preset selection and keyboard/controller mode navigation, unchanged draft across modes, six Quick resolution/text captures including 4:3; then the Detailed Customise route, both bodies at supported slider bounds in front/profile views, restored appearance, pointer-handler slider input, six Detailed resolution/text combinations, isolated library save/load, repeated custom cast and NPC-only edit, new season, save/reload, isolated portrait. Detailed route buttons use direct UI callbacks. Automated checks do not establish visual quality or human usability.",
             };
             creatorReport.workloadLimitSeconds = CreatorWorkloadSeconds;
             creatorDeadline = Time.realtimeSinceStartupAsDouble + CreatorWorkloadSeconds;
@@ -50,6 +55,9 @@ namespace Gamesim.Episode
                 yield return current.Current;
             }
             foreach (var unfinished in stack) (unfinished as IDisposable)?.Dispose();
+            if (creatorKeyboard != null && creatorKeyboard.added) InputSystem.RemoveDevice(creatorKeyboard);
+            if (creatorGamepad != null && creatorGamepad.added) InputSystem.RemoveDevice(creatorGamepad);
+            if (creatorMouse != null && creatorMouse.added) InputSystem.RemoveDevice(creatorMouse);
             creatorReport.errors.AddRange(errors);
             creatorReport.finishedUtc = DateTime.UtcNow.ToString("O");
             creatorReport.status = creatorReport.errors.Count == 0 && creatorReport.saveReloadAppearanceEqual
@@ -57,7 +65,10 @@ namespace Gamesim.Episode
                 && creatorReport.isolatedLibrary && creatorReport.librarySaveLoadEqual && creatorReport.customCastRepeatedAndEdited
                 && creatorReport.playerPreservedDuringNpcEdit && creatorReport.libraryUnaffectedByCastEdit && creatorReport.customCastSaveReloadEqual
                 && creatorReport.bodyBoundsCaptures == 8 && creatorReport.bodyBoundsAppearanceRestored
-                && creatorReport.resolutionCaptures == 6 ? "Automated checks passed; visual review required" : "Failed";
+                && creatorReport.resolutionCaptures == 6 && creatorReport.quickResolutionCaptures == 6
+                && creatorReport.quickDraftPreserved && creatorReport.keyboardModeSwitch && creatorReport.controllerModeSwitch
+                && creatorReport.controllerNavigation && creatorReport.quickPointerPresetChanged
+                ? "Automated checks passed; visual review required" : "Failed";
             File.WriteAllText(Path.Combine(outputDirectory, "creator-verification.json"), JsonUtility.ToJson(creatorReport, true));
             Debug.Log("Gamesim creator verification: " + creatorReport.status);
             Application.Quit(creatorReport.status == "Failed" ? 4 : 0);
@@ -75,11 +86,12 @@ namespace Gamesim.Episode
             director.OpenMainMenu();
             yield return null;
             yield return CreatorClick(MainMenu.NewSeasonCaption);
+            yield return CreatorQuickRoute(director);
             yield return CreatorClick("Emma Brown");
             yield return CreatorClick(CharacterCreator.CustomiseCaption);
             var creator = director.GetComponentInChildren<CharacterCreator>(true);
             var castSelect = director.GetComponentInChildren<CastSelect>(true);
-            CreatorRequire(creator != null && creator.IsShowing && creator.Draft.SourceTemplateId == "emma-brown",
+            CreatorRequire(creator != null && creator.IsShowing && creator.Mode == CharacterCreator.EntryMode.Detailed && creator.Draft.SourceTemplateId == "emma-brown",
                 "The actual selected Emma card must reach the appearance-only creator.");
             var profiles = creator.ProfileStore;
             creatorReport.libraryDirectory = profiles.DirectoryPath;
@@ -145,10 +157,10 @@ namespace Gamesim.Episode
                     creator.FontScale = large ? 1.2f : 1f;
                     for (int frame = 0; frame < 20; frame++) yield return null;
                     var capture = new CreatorCapture { requestedWidth = size.x, requestedHeight = size.y,
-                        actualWidth = Screen.width, actualHeight = Screen.height, largerText = large };
+                        actualWidth = Screen.width, actualHeight = Screen.height, largerText = large, mode = "Detailed" };
                     CreatorRequire(Screen.width == size.x && Screen.height == size.y,
                         "The requested " + size.x + "x" + size.y + " capture actually rendered " + Screen.width + "x" + Screen.height + ".");
-                    foreach (string caption in new[] { "Appearance", "Identity", "Personality", "My Houseguests", "Review", CharacterCreator.StartCaption, CharacterCreator.BackCaption })
+                    foreach (string caption in new[] { "Appearance", "Identity", "Personality", "My Houseguests", "Review", CharacterCreator.QuickCaption, CharacterCreator.DetailedCaption, CharacterCreator.StartCaption, CharacterCreator.BackCaption })
                     {
                         var control = CreatorButton(caption);
                         CreatorRequire(control != null && CreatorRectVisible(control.GetComponent<RectTransform>()),
@@ -361,6 +373,104 @@ namespace Gamesim.Episode
             .FirstOrDefault(button => button.IsActive() && button.IsInteractable() && (button.name == caption
                 || button.GetComponentsInChildren<TMP_Text>().Any(label => label.text == caption)));
 
+        private IEnumerator CreatorQuickRoute(EpisodeDirector director)
+        {
+            yield return CreatorNativeSubmit(CharacterCreator.CreateCaption);
+            var creator = director.GetComponentInChildren<CharacterCreator>(true);
+            CreatorRequire(creator != null && creator.IsShowing && creator.Mode == CharacterCreator.EntryMode.Quick,
+                "Fresh Create must enter Quick through the cast UI.");
+            creator.GetComponentsInChildren<TMP_InputField>().Single(field => field.name == "Name field").text = "Quick creator QA";
+            string originalLook = creator.Draft.Appearance.ContentKey();
+            yield return CreatorNativePointer("Next starting look");
+            creatorReport.quickPointerPresetChanged = creator.Draft.Appearance.ContentKey() != originalLook;
+            CreatorRequire(creatorReport.quickPointerPresetChanged, "Native pointer input did not apply a Quick starting look.");
+            yield return WaitCreatorPreview(creator, "Quick starting look");
+            string draftBefore = JsonUtility.ToJson(creator.Draft);
+            yield return CreatorNativeSubmit(CharacterCreator.DetailedCaption);
+            creatorReport.keyboardModeSwitch = creator.Mode == CharacterCreator.EntryMode.Detailed;
+            CreatorRequire(creatorReport.keyboardModeSwitch, "Keyboard Submit did not enter Detailed.");
+            yield return CreatorNativeSubmit(CharacterCreator.QuickCaption, controller: true);
+            creatorReport.controllerModeSwitch = creator.Mode == CharacterCreator.EntryMode.Quick;
+            CreatorRequire(creatorReport.controllerModeSwitch, "Controller Submit did not return to Quick.");
+            var beforeMove = EventSystem.current.currentSelectedGameObject;
+            yield return CreatorPadPress(GamepadButton.DpadDown);
+            var afterMove = EventSystem.current.currentSelectedGameObject;
+            creatorReport.controllerNavigation = afterMove != null && afterMove != beforeMove && afterMove.transform.IsChildOf(creator.transform);
+            CreatorRequire(creatorReport.controllerNavigation, "Controller navigation did not stay on and move through the creator.");
+            creatorReport.quickDraftPreserved = JsonUtility.ToJson(creator.Draft) == draftBefore;
+            CreatorRequire(creatorReport.quickDraftPreserved, "Changing creator mode changed the authored draft.");
+            foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1920, 1080), new Vector2Int(1200, 900) })
+                foreach (bool large in new[] { false, true })
+                {
+                    Screen.SetResolution(size.x, size.y, FullScreenMode.Windowed);
+                    creator.FontScale = large ? 1.2f : 1f;
+                    for (int frame = 0; frame < 20; frame++) yield return null;
+                    var capture = new CreatorCapture { requestedWidth = size.x, requestedHeight = size.y,
+                        actualWidth = Screen.width, actualHeight = Screen.height, largerText = large, mode = "Quick" };
+                    CreatorRequire(Screen.width == size.x && Screen.height == size.y, "Quick capture rendered at the wrong resolution.");
+                    foreach (string caption in new[] { CharacterCreator.QuickPageCaption, "My Houseguests", "Review", CharacterCreator.QuickCaption,
+                        CharacterCreator.DetailedCaption, CharacterCreator.StartCaption, CharacterCreator.BackCaption, "Undo" })
+                    {
+                        var control = CreatorButton(caption);
+                        CreatorRequire(control != null && CreatorRectVisible(control.GetComponent<RectTransform>()),
+                            "Quick " + caption + " is outside the viewport at " + size + (large ? " larger text" : " standard text"));
+                    }
+                    capture.fixedControlsInsideViewport = true;
+                    creatorReport.captures.Add(capture);
+                    yield return CaptureCreator("creator-quick-" + size.x + "x" + size.y + (large ? "-large" : "-normal"), capture);
+                    creatorReport.quickResolutionCaptures++;
+                }
+            creator.FontScale = 1f;
+            Screen.SetResolution(1600, 900, FullScreenMode.Windowed);
+            yield return CreatorNativeSubmit(CharacterCreator.BackCaption);
+            CreatorRequire(!creator.IsShowing, "Quick Back did not return to the cast screen.");
+        }
+
+        private IEnumerator CreatorNativeSubmit(string caption, bool controller = false)
+        {
+            var button = CreatorButton(caption);
+            CreatorRequire(button != null, "No native-input creator action: " + caption);
+            button.Select(); yield return null;
+            button = CreatorButton(caption);
+            CreatorRequire(button != null, "The native-input action disappeared: " + caption);
+            button.Select();
+            if (controller) yield return CreatorPadPress(GamepadButton.South);
+            else
+            {
+                if (creatorKeyboard == null) creatorKeyboard = InputSystem.AddDevice<Keyboard>();
+                InputSystem.QueueStateEvent(creatorKeyboard, new KeyboardState(Key.Enter)); yield return null;
+                InputSystem.QueueStateEvent(creatorKeyboard, new KeyboardState()); yield return null;
+            }
+            yield return null; yield return null;
+        }
+
+        private IEnumerator CreatorPadPress(GamepadButton button)
+        {
+            if (creatorGamepad == null) creatorGamepad = InputSystem.AddDevice<Gamepad>();
+            InputSystem.QueueStateEvent(creatorGamepad, new GamepadState().WithButton(button)); yield return null;
+            InputSystem.QueueStateEvent(creatorGamepad, new GamepadState()); yield return null;
+        }
+
+        private IEnumerator CreatorNativePointer(string caption)
+        {
+            var button = CreatorButton(caption);
+            CreatorRequire(button != null, "No native pointer action: " + caption);
+            button.Select(); yield return null; yield return null;
+            button = CreatorButton(caption);
+            CreatorRequire(button != null, "The pointer action disappeared: " + caption);
+            var rect = button.GetComponent<RectTransform>();
+            Vector2 position = RectTransformUtility.WorldToScreenPoint(null, rect.TransformPoint(rect.rect.center));
+            var pointer = new PointerEventData(EventSystem.current) { position = position };
+            var hits = new List<RaycastResult>(); EventSystem.current.RaycastAll(pointer, hits);
+            CreatorRequire(hits.Any(hit => hit.gameObject == button.gameObject || hit.gameObject.transform.IsChildOf(button.transform)),
+                "Native pointer action is not raycast reachable: " + caption);
+            if (creatorMouse == null) creatorMouse = InputSystem.AddDevice<Mouse>();
+            InputSystem.QueueStateEvent(creatorMouse, new MouseState { position = position }); yield return null;
+            InputSystem.QueueStateEvent(creatorMouse, new MouseState { position = position, buttons = 1 }); yield return null;
+            InputSystem.QueueStateEvent(creatorMouse, new MouseState { position = position }); yield return null;
+            yield return null; yield return null;
+        }
+
         private IEnumerator CreatorClick(string caption)
         {
             var button = CreatorButton(caption);
@@ -424,16 +534,17 @@ namespace Gamesim.Episode
         }
         [Serializable] private sealed class CreatorCapture
         {
-            public string path; public int requestedWidth, requestedHeight, actualWidth, actualHeight;
+            public string path, mode; public int requestedWidth, requestedHeight, actualWidth, actualHeight;
             public bool largerText, fixedControlsInsideViewport;
         }
         [Serializable] private sealed class CreatorVerificationReport
         {
             public string status, visualStatus, startedUtc, finishedUtc, workload, processor, gpu, unityVersion, sessionId;
             public string libraryDirectory, libraryProfileId;
-            public int systemMemoryMB, graphicsMemoryMB, bodyCount, wardrobeCount, controlCount, resolutionCaptures, bodyBoundsCaptures, workloadLimitSeconds;
+            public int systemMemoryMB, graphicsMemoryMB, bodyCount, wardrobeCount, controlCount, resolutionCaptures, quickResolutionCaptures, bodyBoundsCaptures, workloadLimitSeconds;
             public uint seed;
             public bool pointerSliderChanged, cosmeticsPreservedGameplayAndRng, previewHouseAppearanceEqual, saveReloadAppearanceEqual;
+            public bool quickDraftPreserved, keyboardModeSwitch, controllerModeSwitch, controllerNavigation, quickPointerPresetChanged;
             public bool isolatedLibrary, librarySaveLoadEqual, customCastRepeatedAndEdited, playerPreservedDuringNpcEdit,
                 libraryUnaffectedByCastEdit, customCastSaveReloadEqual, bodyBoundsAppearanceRestored;
             public double portraitBuildMilliseconds;

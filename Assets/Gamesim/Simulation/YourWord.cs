@@ -37,8 +37,9 @@ namespace Gamesim.Simulation
     /// the acceptance roll (<see cref="PlayerDeals.WordPenalty"/>) and, since the player sees the
     /// reading, of the odds they are shown (<see cref="KnownOdds.Deal"/>) - the same term in both. That
     /// roll is the deal table's, and the alliance invitation's that 'Propose an alliance' and a bring-in
-    /// draw; a plea's deal and a veto for a price roll odds of their own, which never take it, so the
-    /// player is told what it weighs on, never "every deal" (<see cref="WeighsOn"/>).</para>
+    /// draw. A plea's deal and a veto for a price roll odds of their own, which never take it, yet the
+    /// Your word page can list the deal either strikes as one the player proposed - so the player is told
+    /// what it weighs on and, by name, the two it does not (<see cref="WeighsOn"/>).</para>
     ///
     /// <para><b>Under what rules.</b> Only under the commitment rules, and only where the house keeps
     /// knowledge - the story's facts and the gossip that carries them (<see cref="StoryRules.Bonds"/>):
@@ -150,30 +151,37 @@ namespace Gamesim.Simulation
         public const string NothingHeard = "The house has heard of no deal you broke in front of it.";
 
         /// <summary>
-        /// What the reading weighs on, as the player is told it: the deal table's rows, each "Propose a ..."
-        /// (and so the counter a refused one may bring, which comes only where its chance was near yes),
-        /// and the alliance invitation's roll, which 'Propose an alliance' and "Bring Maya into The Riley
-        /// Pact" draw. Never "every deal": the note can stand over the plea's 'Make a deal' and a veto for a
-        /// price, which strike deals on odds the reading never touches.
+        /// What the reading weighs on, as the player is told it, and the two it does not: "every deal and
+        /// alliance you propose, but not on a plea or a price for the veto". It weighs on the deal table's
+        /// rows (and so on the counter a refused one may bring, which comes only where its chance was near
+        /// yes) and on the alliance invitation's roll, which 'Propose an alliance' and "Bring Maya into The
+        /// Riley Pact" draw. The plea's 'Make a deal' and a veto for a price strike deals too, on odds the
+        /// reading never touches, and the Your word page can list the deal either strikes as one "you
+        /// proposed" (<see cref="CommitmentsRead"/>): so the two are named, never left to a caption's
+        /// verb. The page, with no table of chances under it, says "in a conversation" as well
+        /// (<paramref name="page"/>): a story's choice can strike a deal the page lists the same way, on
+        /// no roll at all.
         /// </summary>
-        public const string WeighsOn = "every deal you propose and every alliance you ask someone into";
+        private static string WeighsOn(bool page) =>
+            "every deal and alliance you propose" + (page ? " in a conversation" : "") + ", but not on a plea or a price for the veto";
 
         /// <summary>The reading as the Your word page heads it: "Your word is doubted".</summary>
         public static string Title(EpisodeState s) => "Your word is " + Word(s);
 
         /// <summary>
         /// The reading in a sentence: that the house has heard of no breach in front of it, or who has heard
-        /// and what it does. "3 houseguests have heard of you going back on your word: Alex, Maya and Jo. The
-        /// further it spreads, the more it weighs on every deal you propose and every alliance you ask
-        /// someone into." The first never claims nobody knows of a breach at all: one a ballot decided is
-        /// the player's and the one it was broken against, and the page's SETTLED list says it was broken.
+        /// and what it does (<see cref="WeighsOn"/>). "3 houseguests have heard of you going back on your word:
+        /// Alex, Maya and Jo. The further it spreads, the more it weighs on every deal and alliance you
+        /// propose in a conversation, but not on a plea or a price for the veto." The first never claims
+        /// nobody knows of a breach at all: one a ballot decided is the player's and the one it was broken
+        /// against, and the page's SETTLED list says it was broken.
         /// </summary>
         public static string Summary(EpisodeState s)
         {
             var heard = Hearers(s);
             if (heard.Count == 0) return NothingHeard;
             return Many(heard.Count) + " heard of you going back on your word: " + Join(heard.Select(id => First(s, id)).ToList())
-                + ". The further it spreads, the more it weighs on " + WeighsOn + ".";
+                + ". The further it spreads, the more it weighs on " + WeighsOn(true) + ".";
         }
 
         /// <summary>
@@ -186,14 +194,15 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// What follows the note over a table of chances once anybody has heard (null before): the reading,
-        /// who has heard, and what it weighs on (<see cref="WeighsOn"/>). "Your word is doubted: 4
-        /// houseguests have heard of you going back on it, and it weighs on every deal you propose and every
-        /// alliance you ask someone into."
+        /// who has heard, and what it weighs on and does not (<see cref="WeighsOn"/>; the note stands in a
+        /// conversation, so it needs no "in a conversation"). "Your word is doubted: 4 houseguests have heard
+        /// of you going back on it, and it weighs on every deal and alliance you propose, but not on a plea or
+        /// a price for the veto."
         /// </summary>
         public static string OddsLine(EpisodeState s)
         {
             if (Cost(s) <= 0) return null;
-            return Title(s) + ": " + Many(Hearers(s).Count) + " heard of you going back on it, and it weighs on " + WeighsOn + ".";
+            return Title(s) + ": " + Many(Hearers(s).Count) + " heard of you going back on it, and it weighs on " + WeighsOn(false) + ".";
         }
 
         // ---------------------------------------------------------------- the parts

@@ -10,10 +10,11 @@ namespace Gamesim.Tests.EditMode
     /// the house becomes a fact the two of them know, which the house's own gossip carries; every
     /// houseguest it reaches thinks less of the player and is named to them in a line; the public
     /// reading built from those facts alone is a term of the acceptance roll and of the odds the
-    /// player sees, and the words the player is told name the moves that take it and no others; a
-    /// breach a ballot decided is never house knowledge; and a full list of facts never drops an
-    /// alliance's (X14) or the player's broken word. Each half against the season without the rules,
-    /// which plays as it always did. Unity-free, so the dotnet subset runs it (Tools/SimulationTests).
+    /// player sees, and the words the player is told name the moves that take it and the two that strike
+    /// deals without it; a breach a ballot decided is never house knowledge; and a full list of facts
+    /// never drops an alliance's (X14) or the player's broken word. Each half against the season without
+    /// the rules, which plays as it always did. Unity-free, so the dotnet subset runs it
+    /// (Tools/SimulationTests).
     /// </summary>
     public sealed class YourWordInTheHouseTests
     {
@@ -266,7 +267,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(KnownOdds.Deal(s, asked.id, DealKind.Partnership, null).chance,
                 Is.EqualTo(shown[DealKind.Partnership] - 2 * PlayerDeals.BrokenDealPenalty).Within(1e-9));
             Assert.That(YourWord.OddsLine(s), Is.EqualTo("Your word is broken: 7 houseguests have heard of you going back on it, "
-                + "and it weighs on every deal you propose and every alliance you ask someone into."));
+                + "and it weighs on every deal and alliance you propose, but not on a plea or a price for the veto."));
         }
 
         [Test]
@@ -287,7 +288,8 @@ namespace Gamesim.Tests.EditMode
             double dealShown = KnownOdds.Deal(s, asked.id, DealKind.SafetyAgreement, null).chance;
             double alliance = EpisodeEngine.AllianceChance(s, asked.id);
             double allianceShown = KnownOdds.Alliance(s, asked.id).chance;
-            // What it does not, though each strikes a deal: the plea's 'Make a deal' and a veto for a price.
+            // What it does not, though each strikes a deal the Your word page can list as one the player
+            // proposed: the plea's 'Make a deal' and a veto for a price.
             double plea = StrategyRules.Chance(s, asked.id, LobbyAsk.Save, s.playerId, LobbyApproach.Deal);
             double pleaShown = KnownOdds.Plea(s, asked.id, LobbyAsk.Save, s.playerId, LobbyApproach.Deal).chance;
             double price = Negotiation.Chance(s, asked.id, Negotiation.VetoForAPrice, false);
@@ -311,12 +313,15 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Negotiation.Chance(s, asked.id, Negotiation.VetoForAPrice, false), Is.EqualTo(price), "nor a veto for a price,");
             Assert.That(Negotiation.Chance(s, asked.id, Negotiation.VetoForAPrice, true), Is.EqualTo(priceShown), "as shown.");
 
-            // So the words name what it weighs on - over the odds and on the Your word page - and never say every deal.
+            // So the words name what it weighs on, and those two by name as what it does not - over the odds,
+            // and on the Your word page, which says "in a conversation" too: a story's choice can strike a
+            // deal the page lists as the player's, on no roll at all.
             Assert.That(YourWord.OddsLine(s), Is.EqualTo("Your word is questioned: 3 houseguests have heard of you going back on it, "
-                + "and it weighs on every deal you propose and every alliance you ask someone into."));
+                + "and it weighs on every deal and alliance you propose, but not on a plea or a price for the veto."));
             string heard = FinalistRead.FirstName(npcs[0].name) + ", " + FinalistRead.FirstName(npcs[1].name) + " and " + FinalistRead.FirstName(npcs[2].name);
             Assert.That(YourWord.Summary(s), Is.EqualTo("3 houseguests have heard of you going back on your word: " + heard
-                + ". The further it spreads, the more it weighs on every deal you propose and every alliance you ask someone into."));
+                + ". The further it spreads, the more it weighs on every deal and alliance you propose in a conversation, "
+                + "but not on a plea or a price for the veto."));
         }
 
         [Test]

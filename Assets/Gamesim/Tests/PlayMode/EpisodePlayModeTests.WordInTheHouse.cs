@@ -16,11 +16,11 @@ namespace Gamesim.Tests.PlayMode
     /// plays the commitment rules and keeps knowledge. The house's reading of the player's word opens
     /// the Your word page - an eyebrow carrying the page's mark, then a card headed by the reading in
     /// words and in its colour, who has heard, and each breach the house knows of with who knows it -
-    /// and ends the note over a conversation's chances, naming the ones that take it. With nothing broken
-    /// the card reads "Your word is good" over the page's empty state. Nothing is a control, and without
-    /// the rules there is no reading anywhere. Photographed in a batch run as 'your-word-in-the-house',
-    /// 'your-word-good' and 'conversation-word-heard', with '-large' forms and the conversation's
-    /// '-4x3'. The engine's half is YourWordInTheHouseTests.
+    /// and ends the note over a conversation's chances, naming the ones that take it and the two that do
+    /// not. With nothing broken the card reads "Your word is good" over the page's empty state. Nothing
+    /// is a control, and without the rules there is no reading anywhere. Photographed in a batch run as
+    /// 'your-word-in-the-house', 'your-word-good' and 'conversation-word-heard', with '-large' forms and
+    /// the conversation's '-4x3'. The engine's half is YourWordInTheHouseTests.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {

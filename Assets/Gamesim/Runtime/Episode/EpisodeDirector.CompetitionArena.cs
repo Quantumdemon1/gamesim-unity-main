@@ -279,6 +279,13 @@ namespace Gamesim.Episode
         {
             var instrument=CompetitionApparatus.Create(anchor.transform,definition,category,id,accent);
             competitionInstruments[id]=instrument;
+            // Owning/fitting scenery does not require humanoid action capability. Primitive
+            // bodies also need a late clearance gate; stance and hand borrowing remain separate.
+            if(competitionBodies.TryGetValue(id,out var body) && body.root!=null)
+            {
+                if(body.contact==null)body.contact=body.root.AddComponent<CompetitionInstrumentPose>();
+                body.contact.SetFitGate(competitionFitGate);
+            }
             competitionArenaMarks.AddRange(instrument.OverlayRenderers);
             instrument.gameObject.SetActive(false); // Dress an occupied station, never a route somebody is still crossing.
         }
@@ -470,7 +477,7 @@ namespace Gamesim.Episode
                 var npc=body.root;
                 var visual=body.visual;
                 if(visual==null)continue;
-                bool arrived=npcMeetings.CompetitionActorArrived(pair.Key);
+                bool arrived=CompetitionBodyOccupiesStation(pair.Key,body,false);
                 visual.SetTalking(false);visual.SetArguing(false);visual.SetFacing(arrived?pair.Value.Facing:float.NaN);
                 if(competitionInstruments.TryGetValue(pair.Key,out var instrument))CompetitionStance(visual,arrived,instrument);
                 if(arrived && pair.Value.Seated)
@@ -509,6 +516,7 @@ namespace Gamesim.Episode
             {
                 if(competitionBodies.TryGetValue(pair.Key,out var body))
                 {
+                    if(body.contact!=null)body.contact.Release();
                     ReleaseCompetitionStance(body.visual);body.visual?.SetFacing(float.NaN);
                     if(body.root!=null)competitionRouteOwners.Remove(body.root.transform);
                 }
@@ -525,6 +533,8 @@ namespace Gamesim.Episode
         private void EndCompetitionArena()
         {
             competitionArenaStaging=false;EndCompetitionCast();
+            if(challengeOrigin!=null && competitionBodies.TryGetValue(challengeOrigin.playerId,out var playerBody) && playerBody.contact!=null)
+                playerBody.contact.Release();
             foreach(var visual in competitionPoses.Keys.ToArray())ReleaseCompetitionStance(visual);
             if(player!=null && player.ReleaseActivityMove(competitionPlayerOwner))
                 player.GetComponent<CharacterPresentation>()?.SetFacing(float.NaN);

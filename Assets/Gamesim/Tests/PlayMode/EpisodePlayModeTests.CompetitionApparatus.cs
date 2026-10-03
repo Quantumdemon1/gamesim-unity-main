@@ -179,6 +179,45 @@ namespace Gamesim.Tests.PlayMode
             Physics.SyncTransforms();return bystander;
         }
 
+        private IEnumerator PauseActualVetoAudience()
+        {
+            yield return SetWordAttemptPaused(false);yield return SetWordAttemptPaused(true);
+            double elapsed=ChallengeRun().Elapsed;yield return new WaitForSecondsRealtime(.2f);
+            Assert.That(ChallengeRun().Elapsed,Is.EqualTo(elapsed));
+            Assert.That(NpcRead<HouseMeetingCoordinator>("npcMeetings").CompetitionArrivals,Is.Zero,"Paused native motion withholds fresh arrival proof; the fit gate must not forge it.");
+            foreach(var instrument in SceneComponents<CompetitionApparatus>())Assert.That(instrument.gameObject.activeInHierarchy,Is.True,"A stationary, proven audience keeps the already occupied field visible while paused.");
+        }
+
+        [UnityTest]
+        public IEnumerator Apparatus_InHouseVetoAudienceRetainsOnlyProvenStationaryFieldOnActualPause()
+        {
+            uint seed=1;while(seed<500 && CompetitionRules.Category(EpisodePhase.Veto,1,seed)!="Mental")seed++;
+            Assert.That(seed,Is.LessThan(500));var initial=FullHouse(seed,12);
+            initial.phase=EpisodePhase.Veto;initial.hohId=initial.playerId;
+            initial.nominees=initial.Active.Where(actor=>!actor.isPlayer).Take(2).Select(actor=>actor.id).ToList();
+            initial.vetoPlayers=initial.Active.Take(EpisodeEngine.VetoPlayerCount(initial.Active.Count())).Select(actor=>actor.id).ToList();
+            Assert.That(EpisodeValidation.TryValidate(initial,out var reason),Is.True,reason);
+            new EpisodeSaveStore(director.SavePath).Save(initial);yield return ReloadEpisode();director.StagesInBatchRuns=true;
+            yield return WaitForNpcRuntimeBinding();yield return SettleCast();
+            typeof(Gamesim.Episode.EpisodeDirector).GetField("reducedMotion",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(director,false);cameraRig.SetReducedMotion(false);
+            WarpPlayer(director.StationPosition);Assert.That(director.TryOpenPhasePanel(),Is.True);
+            var before=director.Snapshot;ButtonWithCaption("Practice this competition").onClick.Invoke();yield return null;
+            var screen=SceneComponents<CompetitionGameScreen>().Single();if(screen.IsAssembling)yield return PressKey(Key.Enter);
+            float deadline=Time.realtimeSinceStartup+40f;
+            while(screen.IsShowing && !screen.IsPlaying && Time.realtimeSinceStartup<deadline)
+            {if(screen.Paused)yield return PressKey(Key.P);else yield return null;}
+            Assert.That(screen.IsPlaying,Is.True);
+            Assert.That(SceneComponents<CompetitionApparatus>().Count(),Is.EqualTo(6));
+            var anchors=NpcRead<Dictionary<string,HouseInteractionAnchor>>("competitionArenaActors");
+            Assert.That(anchors,Has.Count.EqualTo(11),"The six-member veto field has six actual audience members in the twelve-person house.");
+            var contestants=new HashSet<string>(EpisodeEngine.CompetitionPlayers(before).Select(actor=>actor.id));
+            Assert.That(anchors.Keys.Count(id=>!contestants.Contains(id)),Is.EqualTo(6));
+            if(Application.isBatchMode)yield return CaptureActualInstrument("veto-audience-paused",PauseActualVetoAudience,false,false);
+            else yield return PauseActualVetoAudience();
+            yield return CancelInstrumentAttempt(before);
+            Assert.That(NpcRead<HashSet<Transform>>("competitionRouteOwners"),Is.Empty);
+        }
+
         private IEnumerator CaptureCompetitionFullField(string category,int houseSize)
         {
             var eye=cameraRig.ViewCamera;var lens=new CaptureLens(eye,1600,900);Texture2D frame=null;

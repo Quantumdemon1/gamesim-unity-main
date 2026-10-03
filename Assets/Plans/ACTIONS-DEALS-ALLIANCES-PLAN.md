@@ -919,3 +919,48 @@ Without the rules both are refused before anything is spent, drawn or logged (`C
 - `YourWord` is the house's reading of the player's word, for a story to read; and the emergency meeting can now be about a broken deal, and fires more often after a public breach (m10).
 
 **Floors:** the Unity-free subset 1483 to 1495 (`YourWordInTheHouseTests`, 12 after the review); EditMode adds the same 12; PlayMode adds 1.
+
+**The review before landing (C5 to C8), 2026-10-03.** C5, C6, C7 and C8 had been compiled but never run in Unity's PlayMode when the session that built them stopped at its usage limit, with C9 not yet landed. A cloud session with no Unity took the branch on and reviewed what Unity had not exercised:
+- **Finders:** two for each slice, one on its never-run PlayMode tests and one on its runtime and engine code as a player meets it. One more looked at how the four slices met at their merges.
+- **Verifiers:** three for each claim, each trying to refute it.
+- **Result:** no PlayMode test it could show would fail. Six defects here were confirmed, one of them major, and two more in the save stores' PR #22 (merged above).
+- **How each was fixed:** in its own worktree, then reviewed from three sides (completeness, regressions, Unity-side risk) and repaired until no reviewer objected, then landed with a merge commit.
+
+Every fix applies under the commitment rules only; seasons without them digest byte for byte.
+
+- **C5.** A story pact the player was invited into could be grown by a bring-in, which puts the newcomer after the player. Once its earlier members turned and were taken out, the player stood first, and the member order said they founded it.
+  - Rename was offered and accepted.
+  - The alliances page said "It came together in a story, with Maya.", dated from the week the NPCs formed it.
+  - The fix: `AllianceState.playerJoined` (schema 22, no new number) marks the join under the rules and is never cleared. `FinalistRead.FoundedByPlayer`, `EpisodeEngine.PlayerFounded` and `AllianceRead.Formed` read it first, so the page says "Riley brought you in.", dated from the invitation.
+- **C6.** The notebook's Votes card and the weekly recap called an ally's word to the pact "a lie" when the ally's ballot later changed, though the member told the truth when they said it.
+  - Both now word it through one reader, `KnownBallots.SaidWords`: "told the pact they'd evict Maya Hassan; voted the other way" on the card, and "vote changed" on the recap's one-line row.
+  - A lie told to the player's face still reads "a lie". So does an overheard one, until the copy pass the plan defers.
+- **C7, major.** A voting bloc broken by the partner's secret ballot counted as a breach to mend. 'Mend fences' appeared, the mend line named "the voting bloc you broke", and every move with that houseguest showed odds 30 points lower. Each of these told the player a ballot they cannot know (decision 4).
+  - `Negotiation.BreachesAgainst` and `BreachWords` now count a deal only where the player can know of the breach (`Negotiation.KnownBreach`, as FinalistRead's bloc line does).
+  - The chance shown takes the −30 only for those breaches. The roll keeps it for every breach, so no outcome moved.
+- **C7.** A price voided by the nomination that broke what it bought was then overwritten by its own verdict, which had been built before the act began. The log said "You no longer owe Maya a safety pact..." and then "Maya broke a safety pact with you.", and wrote a permanent breach.
+  - A verdict whose deal an earlier verdict of the same act already ended is now skipped.
+  - `VoidThePrice` keeps to the price's own week, as `Negotiation.Voided` reads it.
+- **C8.** The note over a conversation's chances, and the Your word page, said the house's reading weighs on "every deal you put to the house". But the plea's 'Make it a deal' and C7's veto for a price never take it, as this plan's own "What it moves" says.
+  - This is a copy fix; no odds were touched.
+  - The note now ends "...and it weighs on every deal and alliance you propose, but not on a plea or a price for the veto."
+  - The page also names a story's choice as something the reading does not weigh on.
+
+**For the owner:**
+- **A counter's price struck in free time:** when the next week's nominations break what it bought, the price is past its own week, so it is judged by its own rule (broken by whoever broke the deal it paid for) rather than voided. Inside its week (the nominations window, or a same-week replacement) it is voided. The log, the state and the page agree either way. Voiding it at the next ceremony instead would mean changing `Negotiation.Voided`'s week rule and the engine's together.
+- **Untested wiring:** the Votes card's use of the new words has no test of its own. The helper is tested, and so is the recap row (by its PlayMode check).
+
+**Saves:** a schema 22 save written by the integration branch before `playerJoined` existed no longer loads, as with C7's `linkedDealId`, because the save checks its fields exactly.
+
+**Tell the story session:** `AllianceState.playerJoined` (schema 22). A pact the player was invited into is never theirs to rename, whoever is left in it.
+
+**Evidence:**
+- **Unity-free subset:** 1495 to 1501.
+- **Digest harness:** both halves pass, and all 54 seasons under the rules count exactly as before.
+- **Compile check:** a Roslyn compile of every assembly without Unity adds no errors except the Unity types it cannot see, each of which was checked by hand.
+- **Not run:** the Unity suites. The PlayMode tests these fixes change (the recap's vote row, the Your word page) have only been compiled that way.
+
+**Floors:**
+- **EditMode, 2242 to 2420:** the full run on the UMA-free copy at ce5b3d9 counted 2410, plus #22's ten.
+- **Unity-free subset, 1328 to 1501.**
+- **PlayMode:** stays at 863 until C5 to C8's tests have run in Unity.

@@ -51,6 +51,50 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// Establishes a reachable, out-of-range start after the shot has settled. The houseguest
+        /// keeps moving during FrameOn, so being the furthest when selected says nothing about
+        /// their distance six seconds later. Only the player is placed; the chase still follows
+        /// the houseguest's own movement through the real click and the director's normal ticks.
+        /// </summary>
+        private void PlacePlayerOutsideTalkingRange(HouseNpc npc)
+        {
+            var agent = player.Agent;
+            var filter = new NavMeshQueryFilter { agentTypeID = agent.agentTypeID, areaMask = agent.areaMask };
+            var route = new NavMeshPath();
+            var away = player.transform.position - npc.transform.position;
+            away.y = 0f;
+            if (away.sqrMagnitude < .01f) away = Vector3.forward;
+            away.Normalize();
+
+            // Leave enough room for the pointer's move, press and release frames before a test
+            // reads the pending walk. A point barely past 2.8 m can arrive during those frames.
+            for (int step = 0; step < 32; step++)
+            {
+                var candidate = npc.transform.position + Quaternion.Euler(0f, step * 11.25f, 0f) * away * 8f;
+                if (!NavMesh.SamplePosition(candidate, out var hit, .75f, filter)) continue;
+                if (Vector3.Distance(hit.position, npc.transform.position) < 7f) continue;
+                if (!NavMesh.CalculatePath(hit.position, npc.transform.position, filter, route)
+                    || route.status != NavMeshPathStatus.PathComplete) continue;
+                WarpPlayer(hit.position);
+                Assert.That(Vector3.Distance(player.transform.position, npc.transform.position), Is.GreaterThan(7f),
+                    "The out-of-reach fixture must still be outside talking range after placement. " + NpcClickState(npc));
+                return;
+            }
+
+            Assert.Fail("No compatible, reachable out-of-range start found for " + npc.DisplayName + ". " + NpcClickState(npc));
+        }
+
+        private string NpcClickState(HouseNpc npc) =>
+            "Gap " + Vector3.Distance(player.transform.position, npc.transform.position).ToString("0.00")
+            + " m, walking to " + (director.WalkingToId ?? "nobody")
+            + ", talking to " + (director.TalkingToId ?? "nobody")
+            + ", path " + player.Agent.pathStatus
+            + ", has path " + player.Agent.hasPath
+            + ", input " + player.InputEnabled
+            + ", panel " + director.IsPanelOpen
+            + ", status: " + director.StatusMessage;
+
+        /// <summary>
         /// The click lands on the body and nothing else: the HUD is not over it and the ray reaches
         /// that houseguest's own collider. Asserted rather than assumed, because a click that
         /// silently hit a wall would make every assertion below vacuous.
@@ -145,15 +189,16 @@ namespace Gamesim.Tests.PlayMode
             var mouse = InputSystem.AddDevice<Mouse>();
             try
             {
+                PlacePlayerOutsideTalkingRange(wanted);
                 var screen = AimAt(wanted);
                 float before = Vector3.Distance(player.transform.position, wanted.transform.position);
-                Assert.That(before, Is.GreaterThan(2.8f), "This case only exists beyond talking range.");
+                Assert.That(before, Is.GreaterThan(2.8f), "This case only exists beyond talking range. " + NpcClickState(wanted));
 
                 yield return ClickAt(mouse, screen);
                 Assert.That(director.TalkingToId, Is.Null,
                     "Out of reach, the click must not teleport a conversation into existence.");
                 Assert.That(player.Agent.hasPath, Is.True,
-                    "It should have set off towards " + wanted.DisplayName + " instead.");
+                    "It should have set off towards " + wanted.DisplayName + " instead. " + NpcClickState(wanted));
 
                 // The gait, pinned deterministically, because the chase itself is not: whether the
                 // target happens to be walking is luck, and this is the property that decides
@@ -216,9 +261,10 @@ namespace Gamesim.Tests.PlayMode
             var mouse = InputSystem.AddDevice<Mouse>();
             try
             {
+                PlacePlayerOutsideTalkingRange(wanted);
                 yield return ClickAt(mouse, AimAt(wanted));
                 Assert.That(director.WalkingToId, Is.EqualTo(wanted.Id),
-                    "The click should have started a walk to " + wanted.DisplayName + ".");
+                    "The click should have started a walk to " + wanted.DisplayName + ". " + NpcClickState(wanted));
             }
             finally { InputSystem.RemoveDevice(mouse); }
 
@@ -258,9 +304,10 @@ namespace Gamesim.Tests.PlayMode
             var mouse = InputSystem.AddDevice<Mouse>();
             try
             {
+                PlacePlayerOutsideTalkingRange(wanted);
                 yield return ClickAt(mouse, AimAt(wanted));
                 Assert.That(director.WalkingToId, Is.EqualTo(wanted.Id),
-                    "The click should have started a walk to " + wanted.DisplayName + ".");
+                    "The click should have started a walk to " + wanted.DisplayName + ". " + NpcClickState(wanted));
             }
             finally { InputSystem.RemoveDevice(mouse); }
 
@@ -391,9 +438,10 @@ namespace Gamesim.Tests.PlayMode
             var mouse = InputSystem.AddDevice<Mouse>();
             try
             {
+                PlacePlayerOutsideTalkingRange(wanted);
                 yield return ClickAt(mouse, AimAt(wanted));
                 Assert.That(director.WalkingToId, Is.EqualTo(wanted.Id),
-                    "The click should have started a walk to " + wanted.DisplayName + ".");
+                    "The click should have started a walk to " + wanted.DisplayName + ". " + NpcClickState(wanted));
 
                 // Hold the shot still before measuring anything. Starting a walk hands the rig a new
                 // subject - the player - and it eases off the houseguest it was framing onto them,

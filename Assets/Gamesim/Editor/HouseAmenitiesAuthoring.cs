@@ -25,6 +25,9 @@ namespace Gamesim.Editor
         {
             public string scene;
             public int roomPairsBefore, roomPairsAfter, approachesBefore, approachesAfter;
+            public string navigationGuid;
+            public string[] protectedSceneBefore, protectedSceneAfter;
+            public bool reopenedAndVerified;
             public List<string> placed = new List<string>();
         }
 
@@ -44,7 +47,12 @@ namespace Gamesim.Editor
             var surface = scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<NavMeshSurface>(true)).Single();
             var original = surface.navMeshData;
             if (original == null) throw new InvalidOperationException("The house has no accepted navigation data.");
-            var report = new Report { scene = ScenePath, roomPairsBefore = HouseNavigationAudit.ReachablePairs(surface, original) };
+            var report = new Report {
+                scene = ScenePath,
+                roomPairsBefore = HouseNavigationAudit.ReachablePairs(surface, original),
+                navigationGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(original)),
+                protectedSceneBefore = ProtectedSceneState(scene)
+            };
             var previouslyReachable = ReachableApproaches(scene);
             report.approachesBefore = previouslyReachable.Count;
             var world = scene.GetRootGameObjects().Single(g => g.name == "House Architecture").transform;
@@ -73,6 +81,20 @@ namespace Gamesim.Editor
             EditorSceneManager.MarkSceneDirty(scene);
             if (!EditorSceneManager.SaveScene(scene)) throw new IOException("Could not save the furnished acceptance scene.");
             AssetDatabase.SaveAssetIfDirty(original);
+            scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+            surface = scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<NavMeshSurface>(true)).Single();
+            if (AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(surface.navMeshData)) != report.navigationGuid)
+                throw new InvalidOperationException("The saved furnishing scene changed its navigation asset GUID.");
+            report.protectedSceneAfter = ProtectedSceneState(scene);
+            if (!report.protectedSceneBefore.SequenceEqual(report.protectedSceneAfter))
+                throw new InvalidOperationException("The saved furnishing scene changed existing interaction anchors or baked lighting.");
+            int reopenedPairs = HouseNavigationAudit.ReachablePairs(surface, surface.navMeshData);
+            var reopenedApproaches = ReachableApproaches(scene);
+            if (reopenedPairs < report.roomPairsBefore || previouslyReachable.Except(reopenedApproaches).Any())
+                throw new InvalidOperationException("The reopened furnishing scene lost accepted navigation.");
+            report.roomPairsAfter = reopenedPairs;
+            report.approachesAfter = reopenedApproaches.Count;
+            report.reopenedAndVerified = true;
             string directory = Path.Combine(project, "Logs");
             Directory.CreateDirectory(directory);
             File.WriteAllText(Path.Combine(directory, "house-amenities-authoring.json"), JsonUtility.ToJson(report, true));
@@ -123,8 +145,46 @@ namespace Gamesim.Editor
             if (verdict != HouseFurnitureCollision.Verdict.Fit)
                 throw new InvalidOperationException(id + " cannot safely receive furniture collision: " + verdict);
             HouseFurnitureCollision.Attach(prop.transform, local);
-            evidence?.Add(id + " @ " + prop.transform.position.ToString("F3") + ", yaw " + yaw);
+            var imported = renderers[0].bounds;
+            foreach (var renderer in renderers.Skip(1)) imported.Encapsulate(renderer.bounds);
+            evidence?.Add(id + " @ " + prop.transform.position.ToString("F3") + ", yaw " + yaw
+                + ", bounds center " + imported.center.ToString("F3") + ", size " + imported.size.ToString("F3"));
         }
+
+        private static string[] ProtectedSceneState(Scene scene)
+        {
+            var state = new List<string>();
+            foreach (var anchor in HouseInteractionAnchors.InScene(scene))
+                state.Add(FormattableString.Invariant($"anchor:{HierarchyPath(anchor.transform)}:{anchor.VenueId}:{anchor.RoomId}:{anchor.Slot}:{anchor.Pose}:{anchor.Position:F5}:{anchor.Facing:F5}:{anchor.Approach:F5}:{anchor.SeatContact:F5}:{anchor.CameraPosition:F5}"));
+            foreach (var renderer in scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<Renderer>(true)))
+            {
+                if (InAmenities(renderer.transform)) continue;
+                state.Add(FormattableString.Invariant($"lighting:{HierarchyPath(renderer.transform)}:{renderer.lightmapIndex}:{renderer.lightmapScaleOffset:F5}:{renderer.lightProbeUsage}:{renderer.reflectionProbeUsage}:{GameObjectUtility.GetStaticEditorFlags(renderer.gameObject)}"));
+            }
+            state.Add("lighting-data:" + AssetIdentity(Lightmapping.lightingDataAsset));
+            state.Add("light-probes:" + AssetIdentity(LightmapSettings.lightProbes));
+            for (int i = 0; i < LightmapSettings.lightmaps.Length; i++)
+            {
+                var map = LightmapSettings.lightmaps[i];
+                state.Add("lightmap:" + i + ":" + AssetIdentity(map.lightmapColor) + ":"
+                    + AssetIdentity(map.lightmapDir) + ":" + AssetIdentity(map.shadowMask));
+            }
+            return state.OrderBy(value => value, StringComparer.Ordinal).ToArray();
+        }
+
+        private static bool InAmenities(Transform item)
+        {
+            for (var parent = item; parent != null; parent = parent.parent)
+                if (parent.name == GroupName && parent.parent != null && parent.parent.name == HouseSetPieces.RootName) return true;
+            return false;
+        }
+
+        private static string HierarchyPath(Transform item) => item.parent == null
+            ? item.name + "[" + item.GetSiblingIndex() + "]"
+            : HierarchyPath(item.parent) + "/" + item.name + "[" + item.GetSiblingIndex() + "]";
+
+        private static string AssetIdentity(UnityEngine.Object asset) => asset == null ? "none"
+            : AssetDatabase.TryGetGUIDAndLocalFileIdentifier(asset, out string guid, out long id) ? guid + ":" + id : "unsaved:" + asset.name;
 
         private static HashSet<string> ReachableApproaches(Scene scene)
         {

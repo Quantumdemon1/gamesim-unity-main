@@ -1,6 +1,6 @@
 """Original house furnishings, in metres, using the established Gamesim FBX conventions.
 
-blender --background --python ArtSource/setpieces/bb_set_house_amenities.py -- <output-directory>
+blender --background --python ArtSource/tools/bb_house_amenities.py -- <output-directory>
 Each export is a separate floor-rooted mesh. Collision and navigation belong to Unity placement.
 """
 import math
@@ -11,7 +11,7 @@ import bpy
 from mathutils import Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "..", "tools"))
+sys.path.insert(0, HERE)
 import bb_build as B
 import bb_export as X
 
@@ -138,21 +138,35 @@ def studiocam(m):
     return parts
 
 
+def export_named(name, path):
+    builders = dict(pooltable=pooltable, hohbench=hohbench,
+                    lighttower=lighttower, studiocam=studiocam)
+    X.fresh_scene()
+    identifier = 'bb_set_' + name
+    coll = X.collection(identifier)
+    obj = B.join(builders[name](palette()), identifier)
+    X.apply_transforms([obj])
+    # A tripod's asymmetric legs otherwise put its bounds centre behind its origin.
+    # Placement and the existing authored-prop contract use the bounds centre in plan.
+    lower = Vector(tuple(min(vertex.co[axis] for vertex in obj.data.vertices) for axis in range(3)))
+    upper = Vector(tuple(max(vertex.co[axis] for vertex in obj.data.vertices) for axis in range(3)))
+    centre = (lower + upper) * .5
+    for vertex in obj.data.vertices:
+        vertex.co.x -= centre.x
+        vertex.co.y -= centre.y
+    obj.data.update()
+    X.link_only(obj, coll)
+    X.export_collection(coll, path)
+    X.report(coll, path)
+
+
 def main():
     args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
     if len(args) != 1:
         raise X.ExportError('Provide one output directory after --.')
     directory = os.path.abspath(args[0])
-    for name, builder in [('pooltable', pooltable), ('hohbench', hohbench),
-                          ('lighttower', lighttower), ('studiocam', studiocam)]:
-        X.fresh_scene()
-        identifier = 'bb_set_' + name
-        coll = X.collection(identifier)
-        obj = B.join(builder(palette()), identifier)
-        X.link_only(obj, coll)
-        path = os.path.join(directory, identifier + '.fbx')
-        X.export_collection(coll, path)
-        X.report(coll, path)
+    for name in ('pooltable', 'hohbench', 'lighttower', 'studiocam'):
+        export_named(name, os.path.join(directory, 'bb_set_' + name + '.fbx'))
 
 
 if __name__ == '__main__':

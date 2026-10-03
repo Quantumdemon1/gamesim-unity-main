@@ -50,6 +50,36 @@ namespace Gamesim.Tests.PlayMode
             yield return AssertRestPlaceArrivalAndFloorExit(anchor);
         }
 
+        [UnityTest]
+        public IEnumerator RestPlaces_BothHoHBenchSeatsUseRealSouthRoutesAndFloorClicksRestoreTheOriginalOutfit()
+        {
+            yield return InstallTalkingHouse(8,true,state=>state.hohId=state.playerId);
+            var anchors=PlacesFor(HouseFurnitureActivity.Rest).Where(a=>a.VenueId==HouseFurniture.HoHBenchAnchor).OrderBy(a=>a.Slot).ToArray();
+            Assert.That(anchors,Has.Length.EqualTo(2),"The authored HoH bench and its imported cream cushion must be present for this acceptance case.");
+            foreach(var anchor in anchors)
+            {
+                Assert.That(anchor.RoomId,Is.EqualTo("HoH"));
+                Assert.That(Vector3.Dot(anchor.transform.forward,-anchor.transform.parent.forward),Is.GreaterThan(.999f));
+                Assert.That(Vector3.Dot(anchor.Approach-anchor.Position,-anchor.transform.parent.forward),Is.GreaterThan(.85f));
+                Assert.That(HouseConversationSpots.OnFurniture(anchor),Is.True,"The actual imported seat contact must sit on its authored renderer.");
+                yield return AssertRestPlaceArrivalAndFloorExit(anchor);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator RestPlaces_HoHBenchPreservesTheSuitesExistingPrivateAccessRule()
+        {
+            yield return InstallTalkingHouse(8,true);
+            Assert.That(director.Snapshot.hohId,Is.Not.EqualTo(director.Snapshot.playerId));
+            var anchor=PlacesFor(HouseFurnitureActivity.Rest).FirstOrDefault(a=>a.VenueId==HouseFurniture.HoHBenchAnchor);
+            Assert.That(anchor,Is.Not.Null,"The actual bench is required; missing imported furniture cannot silently skip this acceptance case.");
+            director.StartActivityInHouse(anchor,HouseFurnitureActivity.Rest);
+            Assert.That(director.PlayerActivity,Is.Null);
+            Assert.That(director.StatusMessage,Does.Contain("Head of Household").And.Contain("furniture"));
+            var coordinator=(HouseMeetingCoordinator)typeof(EpisodeDirector).GetField("npcMeetings",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(director);
+            Assert.That(coordinator.TryGetActivity("player",out _),Is.False,"Denied access cannot reserve either bench cushion.");
+        }
+
         private IEnumerator AssertRestPlaceArrivalAndFloorExit(HouseInteractionAnchor anchor)
         {
             director.ClosePanels();yield return null;
@@ -86,12 +116,17 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(coordinator.TryGetActivity("player",out var held),Is.True);
             Assert.That(held.Anchor,Is.SameAs(anchor));
             Assert.That(coordinator.ActivityAnchorAvailable(anchor),Is.False,"Its exact cushion remains privately leased.");
-            if(anchor.VenueId==HouseFurniture.LoungeAnchor)
+            if(anchor.VenueId==HouseFurniture.LoungeAnchor || anchor.VenueId==HouseFurniture.HoHBenchAnchor)
                 Assert.That(HouseFurniture.InScene(player.gameObject.scene).Any(a=>a.VenueId==anchor.VenueId && a!=anchor && coordinator.ActivityAnchorAvailable(a)),Is.True,
-                    "Another physical couch cushion can be owned independently.");
+                    "Another physical cushion remains available independently.");
             if(Application.isBatchMode)
-                yield return CaptureFraming(anchor.VenueId==HouseFurniture.LoungerAnchor?"house-rest-third-lounger":"house-rest-couch",
-                    settle:false,width:1280,height:720);
+            {
+                string name=anchor.VenueId==HouseFurniture.LoungerAnchor?"house-rest-third-lounger"
+                    :anchor.VenueId==HouseFurniture.HoHBenchAnchor?"house-rest-hoh-bench-"+anchor.Slot:"house-rest-couch";
+                yield return CaptureFraming(name,settle:false,width:1280,height:720);
+                if(anchor.VenueId==HouseFurniture.HoHBenchAnchor)
+                    yield return CaptureFraming(name+"-1080p",settle:false,width:1920,height:1080);
+            }
             cameraRig.ClearSubject();yield return null;
             var rect=cameraRig.ViewCamera.pixelRect;Vector2 screen=default;Vector3 target=default;bool found=false;
             for(int x=2;x<14 && !found;x++)for(int y=3;y<13 && !found;y++)

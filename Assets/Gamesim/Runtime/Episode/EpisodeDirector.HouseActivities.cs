@@ -165,12 +165,12 @@ namespace Gamesim.Episode
                     && npcMeetings.ActivityAnchorAvailable(anchor) && MayUse(anchor,out _))
                 .OrderBy(anchor=>(anchor.Approach-player.transform.position).sqrMagnitude).FirstOrDefault();
 
-        /// <summary>The house's own rules about who uses what: the HoH suite's bed is the Head of Household's.</summary>
+        /// <summary>The house's own rules about who uses what: the HoH suite's furniture is the Head of Household's.</summary>
         private bool MayUse(HouseInteractionAnchor anchor,out string reason)
         {
             reason=null;
             if(anchor!=null && anchor.RoomId=="HoH" && projected!=null && projected.hohId!=projected.playerId)
-            {reason="Only the Head of Household sleeps in the HoH suite.";return false;}
+            {reason="Only the Head of Household uses the HoH suite's furniture.";return false;}
             return true;
         }
 

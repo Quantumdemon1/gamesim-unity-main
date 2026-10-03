@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -13,6 +14,7 @@ namespace Gamesim.House
             var existing=HouseInteractionAnchors.InScene(scene);
             var markers=all.Select(t=>t.GetComponent<HouseRoomMarker>()).Where(m=>m!=null).ToArray();
             bool Has(string id,int slot)=>existing.Any(a=>a.VenueId==id && a.Slot==slot);
+            DressHoHBench(all,markers,Has);
             var yard=markers.FirstOrDefault(m=>m.RoomName=="Yard");
             if(yard!=null)
             {
@@ -48,6 +50,59 @@ namespace Gamesim.House
                     HouseInteractionAnchor.Create(couch,HouseFurniture.LoungeAnchor,CeremonySets.LivingRoom,slot,at,couch.eulerAngles.y+180f,
                         true,Vector3.forward*CeremonySets.GalleryApproach).SetSeatHeight(CeremonySets.GallerySeatHeight);
                 }
+        }
+
+        private static void DressHoHBench(Transform[] all,HouseRoomMarker[] markers,Func<string,int,bool> has)
+        {
+            var room=markers.FirstOrDefault(m=>m.RoomName=="HoH");
+            var bench=all.FirstOrDefault(t=>t.name=="bb_set_hohbench" && t.gameObject.activeInHierarchy);
+            if(room==null || bench==null || !TryCushionBounds(bench,out var cushion))return;
+            var floor=all.FirstOrDefault(t=>t.name=="HoH floor");
+            var floorBox=floor!=null?floor.GetComponent<BoxCollider>():null;
+            float floorY=floorBox!=null?floorBox.bounds.max.y:room.transform.position.y;
+            var centre=bench.TransformPoint(cushion.center);
+            var right=bench.right.normalized;var south=-bench.forward.normalized;
+            float width=bench.TransformVector(Vector3.right*cushion.size.x).magnitude;
+            float depth=bench.TransformVector(Vector3.forward*cushion.size.z).magnitude;
+            if(width<HouseConversationSpots.RootsApart+.2f || depth<.2f)return; // Both parked roots must fit independently.
+            float spread=Mathf.Min(width*.5f-.1f,HouseConversationSpots.RootsApart*.5f+.05f);
+            for(int slot=0;slot<2;slot++)
+            {
+                if(has(HouseFurniture.HoHBenchAnchor,slot))continue;
+                float side=slot==0?-1f:1f;
+                var contact=bench.TransformPoint(new Vector3(cushion.center.x+side*cushion.size.x*.25f,cushion.max.y,cushion.center.z));
+                var at=new Vector3(contact.x,floorY,contact.z);
+                var approach=centre+right*(side*spread)+south*(depth*.5f+.7f);approach.y=floorY;
+                var anchor=HouseInteractionAnchor.Create(bench,HouseFurniture.HoHBenchAnchor,"HoH",slot,at,
+                    Quaternion.LookRotation(south).eulerAngles.y,true);
+                anchor.Configure(anchor.VenueId,anchor.RoomId,slot,true,anchor.transform.InverseTransformPoint(approach));
+                anchor.SetSeatHeight(contact.y-floorY);
+            }
+        }
+
+        /// <summary>The imported cushion material's actual submesh, excluding wood and brass. Welt geometry lies below its top.</summary>
+        private static bool TryCushionBounds(Transform bench,out Bounds bounds)
+        {
+            bounds=default;bool found=false;
+            foreach(var renderer in bench.GetComponentsInChildren<MeshRenderer>())
+            {
+                if(!renderer.enabled)continue;
+                var filter=renderer.GetComponent<MeshFilter>();var mesh=filter!=null?filter.sharedMesh:null;
+                if(mesh==null)continue;
+                var materials=renderer.sharedMaterials;
+                for(int index=0;index<materials.Length && index<mesh.subMeshCount;index++)
+                {
+                    if(materials[index]==null || !materials[index].name.StartsWith("bb_mat_amenity_cream",StringComparison.Ordinal))continue;
+                    var box=mesh.GetSubMesh(index).bounds;
+                    for(int corner=0;corner<8;corner++)
+                    {
+                        var local=box.center+Vector3.Scale(box.extents,new Vector3((corner&1)==0?-1:1,(corner&2)==0?-1:1,(corner&4)==0?-1:1));
+                        var point=bench.InverseTransformPoint(renderer.transform.TransformPoint(local));
+                        if(!found){bounds=new Bounds(point,Vector3.zero);found=true;}else bounds.Encapsulate(point);
+                    }
+                }
+            }
+            return found;
         }
     }
 }

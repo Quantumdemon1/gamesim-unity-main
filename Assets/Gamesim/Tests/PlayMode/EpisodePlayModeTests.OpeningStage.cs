@@ -202,6 +202,27 @@ namespace Gamesim.Tests.PlayMode
             while (set != null) { ObserveOpeningDoorCapture(trace, opening, set, "intervening frame"); yield return null; }
         }
 
+        private void ReadTheObservedClosedDoorFrame(CaptureLens lens, OpeningDoorCaptureDiagnostic trace, OpeningSequence opening, OpeningDoorSet set)
+        {
+            Texture2D frame = null;
+            try
+            {
+                // All yielding lens/layout/guard preparation happened before observing the phase.
+                // Read and inspect inside that observation's callback: no additional real frame can
+                // turn the open command on between the closed predicate and its photograph.
+                ObserveOpeningDoorCapture(trace, opening, set, "capture immediately before pixel read");
+                frame = lens.Read();
+                ObserveOpeningDoorCapture(trace, opening, set, "capture immediately after pixel read");
+                System.IO.File.WriteAllBytes(trace.image, frame.EncodeToPNG());
+                Debug.Log("[Gamesim] framing capture -> " + trace.image);
+                AssertNotBlank(frame, "opening-reveal-closed");
+                ObserveOpeningDoorCapture(trace, opening, set, "actual rendered frame inspection");
+                bool shutWhenTaken = !set.IsOpen && set.Openness < 0.01f;
+                Assert.That(shutWhenTaken, Is.True, "The door was still shut, its leaves unmoved, when the frame was taken.");
+            }
+            finally { if (frame != null) Object.Destroy(frame); }
+        }
+
         /// <summary>
         /// Whether the line from an eye at the door shot to a point behind the facade is stopped by
         /// the set: by the facade itself, or - through the doorway - by the vestibule, whose far
@@ -334,29 +355,41 @@ namespace Gamesim.Tests.PlayMode
                 image = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "..", "opening-reveal-closed.png")),
             };
             var captureWatch = director.StartCoroutine(WatchOpeningDoorCapture(doorTrace, opening, set));
+            CaptureLens closedLens = null;
             try
             {
-                ObserveOpeningDoorCapture(doorTrace, opening, set, "before closed phase observation");
-                yield return WaitForTheClosedDoorFrame(opening, set, playerId,
-                    () => ObserveOpeningDoorCapture(doorTrace, opening, set, "closed phase accepted inside observation"));
-                ObserveOpeningDoorCapture(doorTrace, opening, set, "closed phase observation returned");
                 if (Application.isBatchMode)
                 {
-                    // Inspect at the actual read, retaining the original shut predicate. Lens/layout
-                    // preparation spans frames even with settle:false; the phase trace distinguishes
-                    // an observation/capture race from an opening or physical-clearance regression.
-                    bool shutWhenTaken = false;
-                    yield return CaptureFraming("opening-reveal-closed", settle: false, inspect: frame =>
-                    {
-                        ObserveOpeningDoorCapture(doorTrace, opening, set, "actual rendered frame inspection");
-                        shutWhenTaken = !set.IsOpen && set.Openness < 0.01f;
-                    }, observe: phase => ObserveOpeningDoorCapture(doorTrace, opening, set, phase));
-                    Assert.That(shutWhenTaken, Is.True, "The door was still shut, its leaves unmoved, when the frame was taken.");
+                    // The measured UMA slow-frame failure crossed the half-second closed interval
+                    // in CaptureFraming's two preparation frames. Do that work while this reveal's
+                    // camera/lower third are still arriving, without holding any runtime cue.
+                    ObserveOpeningDoorCapture(doorTrace, opening, set, "capture preparation entered before observation");
+                    closedLens = new CaptureLens(cameraRig.ViewCamera, 1600, 900);
+                    ObserveOpeningDoorCapture(doorTrace, opening, set, "capture lens constructed before observation");
+                    Canvas.ForceUpdateCanvases();
+                    RenderHudForTheCurrentCanvas();
+                    ObserveOpeningDoorCapture(doorTrace, opening, set, "capture before layout frame");
+                    yield return null;
+                    ObserveOpeningDoorCapture(doorTrace, opening, set, "capture after layout frame");
+                    ObserveOpeningDoorCapture(doorTrace, opening, set, "capture before guard preparation");
+                    yield return closedLens.MakeSureTheCanvasesAreDrawn();
+                    ObserveOpeningDoorCapture(doorTrace, opening, set, "capture after guard preparation");
                 }
-                else Assert.That(set.IsOpen, Is.False, "The door is still shut on the closed-door frame.");
+                ObserveOpeningDoorCapture(doorTrace, opening, set, "before closed phase observation");
+                yield return WaitForTheClosedDoorFrame(opening, set, playerId,
+                    () =>
+                {
+                    ObserveOpeningDoorCapture(doorTrace, opening, set, "closed phase accepted inside observation");
+                    if (Application.isBatchMode) ReadTheObservedClosedDoorFrame(closedLens, doorTrace, opening, set);
+                    else Assert.That(set.IsOpen, Is.False, "The door is still shut on the closed-door frame.");
+                });
+                ObserveOpeningDoorCapture(doorTrace, opening, set, "closed phase observation returned");
             }
             finally
             {
+                closedLens?.Dispose();
+                Canvas.ForceUpdateCanvases();
+                RenderHudForTheCurrentCanvas();
                 director.StopCoroutine(captureWatch);
                 ObserveOpeningDoorCapture(doorTrace, opening, set, "closed capture scope ended");
                 if (Application.isBatchMode)

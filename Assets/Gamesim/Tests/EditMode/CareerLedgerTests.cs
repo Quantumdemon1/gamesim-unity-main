@@ -234,11 +234,10 @@ namespace Gamesim.Tests.EditMode
         /// encrypted under another account - and the IOException subclasses do not clear by
         /// waiting: their notice promises no later load and names the reset in Settings.
         ///
-        /// <para>No editor can deny its own user a read portably (the .NET Standard 2.1 profile has
-        /// no ACL or file-mode call, and root reads anything), so these are the exceptions
-        /// File.ReadAllText throws, given to the wording <see cref="CareerLedger.Load"/> uses. The
-        /// test above ties that wording to a real hold, and the one below to a real denied read
-        /// where an editor can take its user's read away.</para>
+        /// <para>Of these only a denied read can be made on a real file, and only through a tool
+        /// outside the .NET Standard 2.1 profile, so these are the exceptions File.ReadAllText
+        /// throws, given to the wording <see cref="CareerLedger.Load"/> uses. The test above ties
+        /// that wording to a real hold, and the one below to a real denied read.</para>
         /// </summary>
         [Test]
         public void UnopenedNotice_PromisesALaterLoadOnlyForAHold()
@@ -266,28 +265,28 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The same wording from a real load. A record its own user may not read - a file with mode
-        /// 000 here, what an ACL carried over by a restore does in Windows - is refused at once
-        /// rather than waited out, and Load gives it the notice that names the way out, not the
-        /// hold's "just now". The load blocks the record and never sets it aside itself. The reset
-        /// still moves it whole, because the folder allows the rename that the file refuses the
-        /// read.
+        /// The same wording from a real load. A record its own user may not read - what an ACL
+        /// carried over by a restore does - is refused at once rather than waited out, and Load
+        /// gives it the notice that names the way out, not the hold's "just now". The load blocks
+        /// the record and never sets it aside itself. The reset still moves it whole, because only
+        /// the read is denied: the rename needs other rights.
         ///
-        /// <para>Only a Linux or macOS editor can take its user's read away without an ACL call,
-        /// and root reads a mode-000 file anyway. The test is skipped in the Windows editor and
-        /// wherever the read still goes through.</para>
+        /// <para>It runs in every editor, the Windows one included: acceptance runs there and
+        /// counts a skipped test as a failed run, and it is where a player's record would meet a
+        /// foreign ACL. <see cref="SetReadable"/> takes the read away with icacls in Windows and
+        /// chmod elsewhere. Only a user the denial does not stop - root, which reads a mode-000
+        /// file anyway - skips it.</para>
         /// </summary>
         [Test]
-        [UnityPlatform(exclude = new[] { RuntimePlatform.WindowsEditor })]
         public void Load_ARecordItsUserMayNotReadNamesTheResetInSettings()
         {
             Assert.That(ledger.Record(Finished(1, ContestantStatus.Winner)), Is.True);
             var before = File.ReadAllBytes(ledger.FilePath);
-            SetFileMode(ledger.FilePath, "000");
+            SetReadable(ledger.FilePath, false);
             try
             {
                 File.ReadAllBytes(ledger.FilePath);
-                Assert.Ignore("This user reads a file with mode 000, as root does, so nothing here refuses the read.");
+                Assert.Ignore("This user reads the file anyway, as root reads a mode-000 one, so nothing here refuses the read.");
             }
             catch (UnauthorizedAccessException) { }
 
@@ -301,19 +300,38 @@ namespace Gamesim.Tests.EditMode
             var archived = ledger.Reset();
             Assert.That(archived, Is.Not.Null, "The folder still allows the rename: the reset is the way out.");
             Assert.That(ledger.Blocked, Is.False);
-            SetFileMode(archived, "600");
+            SetReadable(archived, true);
             Assert.That(File.ReadAllBytes(archived), Is.EqualTo(before), "Set aside whole, not deleted.");
             Assert.That(ledger.Record(Finished(2, ContestantStatus.RunnerUp)), Is.True, ledger.Notice);
         }
 
-        /// <summary>chmod, for the test above: the .NET Standard 2.1 profile has no call that sets a file's mode.</summary>
-        private static void SetFileMode(string path, string mode)
+        /// <summary>
+        /// Takes this user's read of a file away, or gives it back, for the test above: the .NET
+        /// Standard 2.1 profile has no call that sets a file's ACL or mode.
+        ///
+        /// <para>In Windows, icacls denies Everyone (S-1-1-0, so no account name to look up) the
+        /// read-data right alone. That refuses the owner and an elevated editor too, since a read
+        /// without backup semantics never bypasses a deny, while File.Exists, the rename and the
+        /// TearDown delete use other rights and still go through. Removing the deny gives the read
+        /// back. Elsewhere chmod sets mode 000, and 600 to give it back.</para>
+        /// </summary>
+        private static void SetReadable(string path, bool readable)
         {
-            var start = new System.Diagnostics.ProcessStartInfo("chmod", mode + " \"" + path + "\"") { UseShellExecute = false };
-            using (var chmod = System.Diagnostics.Process.Start(start))
+            var start = Application.platform == RuntimePlatform.WindowsEditor
+                ? new System.Diagnostics.ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "icacls.exe"),
+                    "\"" + path + "\" " + (readable ? "/remove:d *S-1-1-0" : "/deny *S-1-1-0:(RD)"))
+                : new System.Diagnostics.ProcessStartInfo("chmod", (readable ? "600" : "000") + " \"" + path + "\"");
+            start.UseShellExecute = false;
+            start.CreateNoWindow = true;
+            start.RedirectStandardOutput = true;
+            start.RedirectStandardError = true;
+            using (var process = System.Diagnostics.Process.Start(start))
             {
-                chmod.WaitForExit();
-                Assert.That(chmod.ExitCode, Is.EqualTo(0), "chmod " + mode + " " + Path.GetFileName(path));
+                // A line or two each, well inside a pipe's buffer, so reading one after the other cannot stall.
+                var said = process.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd();
+                process.WaitForExit();
+                Assert.That(process.ExitCode, Is.EqualTo(0),
+                    Path.GetFileName(start.FileName) + (readable ? " giving back " : " denying ") + Path.GetFileName(path) + ": " + said.Trim());
             }
         }
 

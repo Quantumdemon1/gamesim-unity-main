@@ -947,7 +947,11 @@ Every fix applies under the commitment rules only; seasons without them digest b
   - The page also names a story's choice as something the reading does not weigh on.
 
 **For the owner:**
-- **A counter's price struck in free time:** when the next week's nominations break what it bought, the price is past its own week, so it is judged by its own rule (broken by whoever broke the deal it paid for) rather than voided. Inside its week (the nominations window, or a same-week replacement) it is voided. The log, the state and the page agree either way. Voiding it at the next ceremony instead would mean changing `Negotiation.Voided`'s week rule and the engine's together.
+- **A counter's price struck in free time, decided (2026-10-03, the owner left it to judgment): it stays as built.** When the next week's nominations break what it bought, the price is past its own week, so it is judged by its own rule (broken by whoever broke the deal it paid for) rather than voided. Inside its week (the nominations window, or a same-week replacement) it is voided. Kept because:
+  - it is C7's own review rule, that a price is void only for a breach while it bound;
+  - for the usual price, a safety pact, the Head of Household's nomination of the player breaks that pact too, so "Maya broke a safety pact with you" is the true line;
+  - the log, the state and the page agree, the tests pin it, and no digest moves.
+- **Found on the way, for wave C:** a deal struck in free time carries the week that is ending, and binds the next week's Head of Household, nominations and veto meeting only because deals lapse lazily, when that week's campaign opens (`NpcDeals.Expire`). Every free-time deal works that way, not only prices, and a weekly price struck after the vote can bind nothing of its own week. That is worth a rule of its own: a free-time deal is stamped for the week it is meant to bind.
 - **Untested wiring:** the Votes card's use of the new words has no test of its own. The helper is tested, and so is the recap row (by its PlayMode check).
 
 **Saves:** a schema 22 save written by the integration branch before `playerJoined` existed no longer loads, as with C7's `linkedDealId`, because the save checks its fields exactly.

@@ -601,6 +601,67 @@ namespace Gamesim.Tests.EditMode
             Assert.That(refused.state.revision, Is.EqualTo(now.revision), "spending nothing.");
         }
 
+        /// <summary>
+        /// A story's pact the player was invited into is still not theirs once they grow it and the
+        /// members ahead of them are cut away: the bring-in puts Maya after the player, so when Riley and
+        /// Jo turn and are taken out at the week's turn the player is first - and the order is not the
+        /// record. The rename is refused before it is pressed and by the engine, and the alliances page
+        /// says who brought the player in, dated by that invitation: never "It came together in a story",
+        /// from the week Riley and Jo made it.
+        /// </summary>
+        [Test]
+        public void UnderTheRulesAPactThePlayerWasInvitedIntoIsNeverTheirsOnceItsEarlierMembersAreCutAway()
+        {
+            var s = Rules(Season(105));
+            var npcs = Npcs(s);
+            var riley = Plain(npcs[1]);
+            var jo = Plain(npcs[2]);
+            var maya = Plain(npcs[3]);
+            var bloc = NpcAlliances.FormFromStory(s, new List<string> { riley.id, jo.id });
+            foreach (string member in bloc.members) { Set(s, member, s.playerId, 30); Set(s, s.playerId, member, 30); }
+            // A command first, so the pact has the ledger row every pact in a season has: a story's, this week.
+            var engine = new EpisodeEngine(s);
+            Assert.That(Apply(engine, EpisodeCommandKind.SmallTalk, npcs[4].id).accepted, Is.True);
+            int storyWeek = s.week;
+
+            // A week later Riley brings the player in, and the player brings Maya in after them.
+            var later = engine.Snapshot;
+            later.week++;
+            Invite(later, riley.id);
+            Assert.That(later.alliances.Single(a => a.id == bloc.id).members, Is.EqualTo(new[] { riley.id, jo.id, later.playerId }), "The player joins at its end.");
+            foreach (var member in new[] { riley, jo }) Set(later, member.id, maya.id, 100);
+            Warm(later, maya.id, later.playerId);
+            later.randomState = Draw(later, true, PlayerDeals.AcceptanceChance(later, maya.id, DealKind.AllianceInvite, null));
+            engine = new EpisodeEngine(later);
+            var grown = Apply(engine, BringIn, maya.id, bloc.id);
+            Assert.That(grown.accepted, Is.True, grown.reason);
+            Assert.That(grown.state.alliances.Single(a => a.id == bloc.id).members, Is.EqualTo(new[] { riley.id, jo.id, later.playerId, maya.id }),
+                "Maya joins after the player.");
+
+            // Riley and Jo turn on the player, and the week's turn takes each out: the pact goes on with the player first.
+            var cut = engine.Snapshot;
+            foreach (var member in new[] { riley, jo }) Set(cut, member.id, cut.playerId, NpcAlliances.SourLine - 1);
+            NpcAlliances.Dissolve(cut);
+            var pact = cut.alliances.Single(a => a.id == bloc.id);
+            Assert.That(pact.active, Is.True, "Two of four turned: the pact goes on");
+            Assert.That(pact.members, Is.EqualTo(new[] { cut.playerId, maya.id }), "without them,");
+            Assert.That(Founder(pact), Is.EqualTo(cut.playerId), "and the player is its first member now.");
+            Assert.That(cut.ledger.alliances.Single(r => r.id == bloc.id).why, Does.StartWith("story"), "Its row is still a story's.");
+
+            Assert.That(EpisodeEngine.PlayerFounded(cut, pact), Is.False, "But the player was invited in, and did not found it:");
+            string onlyTheFounder = "Only whoever founded " + pact.name + " names it.";
+            Assert.That(PactRenameRefusal(cut, pact), Is.EqualTo(onlyTheFounder), "the row says so before it is pressed,");
+            var refused = Apply(new EpisodeEngine(cut), Rename, maya.id, bloc.id, Offered(cut, pact).First());
+            Assert.That(refused.accepted, Is.False, "and the engine refuses it.");
+            Assert.That(refused.reason, Is.EqualTo(onlyTheFounder));
+
+            var card = AllianceRead.Yours(cut).Single(p => p.id == bloc.id);
+            Assert.That(card.formed, Is.EqualTo(riley.name.Split(' ')[0] + " brought you in."), "The alliances page says Riley brought the player in,");
+            Assert.That(card.formedWeek, Is.EqualTo(later.week), "in the week of the invitation,");
+            Assert.That(card.formedWeek, Is.Not.EqualTo(storyWeek), "not the week Riley and Jo made it,");
+            Assert.That(Joined(card), Is.EqualTo(new[] { (later.week, "You brought " + maya.name.Split(' ')[0] + " in.") }), "and that the player brought Maya in.");
+        }
+
         // ------------------------------------------------------------ leave {pact}
 
         /// <summary>

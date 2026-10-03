@@ -187,6 +187,16 @@ namespace Gamesim.Simulation
         public string id, name;
         public List<string> members = new List<string>();
         public bool active = true;
+        /// <summary>
+        /// Schema 22 (ACTIONS-DEALS-ALLIANCES-PLAN C5): the player came into this pact by an invitation
+        /// into one somebody else had made, so it is never theirs to name nor said to be one they formed
+        /// (<see cref="FinalistRead.FoundedByPlayer"/>). The order alone cannot say so under the rules: a
+        /// bring-in puts somebody after the player, and once the members ahead of them are cut away the
+        /// player is first. Written under the commitment rules (<see cref="EpisodeEngine.CommitmentRulesOn"/>)
+        /// and never cleared; false on every pact of a season without them, where nobody joins after the
+        /// player and the order still tells.
+        /// </summary>
+        public bool playerJoined;
         public AllianceState Clone()
         {
             var copy = (AllianceState)MemberwiseClone(); copy.members = new List<string>(members); return copy;

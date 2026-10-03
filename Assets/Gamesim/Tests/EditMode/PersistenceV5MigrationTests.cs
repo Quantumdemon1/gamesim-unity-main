@@ -297,6 +297,7 @@ namespace Gamesim.Tests.EditMode
                 case "state.contestants[]": return new[] { "occupation", "archetype", "age", "hometown", "bio", "sourceTemplateId", "appearance" }.Contains(field);
                 case "state.juryExchanges[]": return new[] { "category", "receiptKind", "receiptId" }.Contains(field);
                 case "state.promises[]": return new[] { "brokenById", "settledWeek" }.Contains(field);
+                case "state.alliances[]": return new[] { "playerJoined" }.Contains(field);
                 default: return false;
             }
         }

@@ -13,9 +13,10 @@ namespace Gamesim.Persistence
     /// references, and three fields that are null or bounded text. Their meanings are checked by
     /// the live finale validator after migration, which is safe because the step to 22 does not touch
     /// them: it adds the commitment rules' boundary, two fields on every promise and three on every deal
-    /// (who broke it, when it was settled, and the deal it is linked to), so the rest is handed to the
-    /// schema 20 contract unchanged, and a v21 save carrying any of the schema 22 fields is refused down
-    /// the chain, where the deal's and the promise's shapes are checked.
+    /// (who broke it, when it was settled, and the deal it is linked to), and one on every alliance
+    /// (whether the player was invited into it), so the rest is handed to the schema 20 contract
+    /// unchanged, and a v21 save carrying any of the schema 22 fields is refused down the chain, where
+    /// the deal's, the promise's and the alliance's shapes are checked.
     /// </summary>
     internal static class FrozenEpisodeV21
     {

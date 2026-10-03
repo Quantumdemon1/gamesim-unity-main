@@ -54,8 +54,8 @@ namespace Gamesim.Tests.EditMode
         /// </summary>
         /// <summary>
         /// Removes schema 22's commitment rules: the boundary, the two fields every deal and every
-        /// promise gained, and the link every deal gained (C7), so a current capture reads as a schema 21
-        /// payload. Every older helper composes it.
+        /// promise gained, the link every deal gained (C7) and the mark every alliance gained (C5), so a
+        /// current capture reads as a schema 21 payload. Every older helper composes it.
         /// </summary>
         public static JObject StripSchema22(JObject payload)
         {
@@ -65,6 +65,8 @@ namespace Gamesim.Tests.EditMode
                 if (payload[name] is JArray rows)
                     foreach (var row in rows.OfType<JObject>())
                         foreach (var field in new[] { "brokenById", "settledWeek", "linkedDealId" }) row.Remove(field);
+            if (payload["alliances"] is JArray alliances)
+                foreach (var alliance in alliances.OfType<JObject>()) alliance.Remove("playerJoined");
             return payload;
         }
 

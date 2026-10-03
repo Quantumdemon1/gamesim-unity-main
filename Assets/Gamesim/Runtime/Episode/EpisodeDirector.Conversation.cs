@@ -604,8 +604,11 @@ namespace Gamesim.Episode
         ///
         /// <para>Where the house keeps the player's word as knowledge and somebody has heard of them
         /// going back on it (ACTIONS-DEALS-ALLIANCES-PLAN C8), the note says so last: the reading, who has
-        /// heard, and that every deal's chance carries it (<see cref="YourWord.OddsLine"/>) - a term the
-        /// roll and the shown odds take alike. Nothing is added while nobody has heard, or without the rules.</para>
+        /// heard, and what it weighs on (<see cref="YourWord.OddsLine"/>) - the chances of a deal the player
+        /// proposes and of an alliance they ask somebody into, a term the roll and the shown odds take alike.
+        /// It names them, never every deal: the note stands over the first table drawn, which can be a
+        /// plea's or a veto for a price, and their chances never take it. Nothing is added while nobody
+        /// has heard, or without the rules.</para>
         /// </summary>
         private void OddsAreYourRead(EpisodeState state, ContestantState npc)
         {

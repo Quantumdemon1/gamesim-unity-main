@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -30,8 +31,24 @@ namespace Gamesim.Tests.PlayMode
             else
             {
                 var initial=SeasonBuilder.Create(new SeasonBuilder.Choice{HouseSize=houseSize},SeedOpeningWith(category));
+                Assert.That(houseSize,Is.LessThanOrEqualTo(EpisodeValidation.MaximumCast));
+                // The regular production registry seats twelve. Valid stored seasons can seat
+                // sixteen; extend only this fixture with distinct legal contestants, as the
+                // existing CastSizeTests does, then validate/save/reload the resulting season.
+                while(initial.contestants.Count<houseSize)
+                {
+                    int index=initial.contestants.Count;
+                    initial.contestants.Add(new ContestantState
+                    {
+                        id="competition-extra-"+index,name="Competition Guest "+(index+1),pronouns="they/them",homeRoom="Living",
+                        motive="Stored large-cast competition fixture.",status=ContestantStatus.Active,
+                        traits=new List<string>{"Social"},stats=new ContestantStats(),
+                        appearance=initial.contestants[1+(index%4)].appearance?.Clone(),
+                    });
+                }
                 Assert.That(EpisodeValidation.TryValidate(initial,out var reason),Is.True,reason);
                 new EpisodeSaveStore(director.SavePath).Save(initial);yield return ReloadEpisode();yield return WaitForNpcRuntimeBinding();
+                Assert.That(director.Snapshot.contestants,Has.Count.EqualTo(houseSize),"The valid stored fixture survived the actual save/reload.");
                 WarpPlayer(director.StationPosition);Assert.That(director.TryOpenPhasePanel(),Is.True);
                 ButtonWithCaption("Begin the next competition").onClick.Invoke();yield return null;
                 WarpPlayer(director.StationPosition);Assert.That(director.TryOpenPhasePanel(),Is.True);yield return null;
@@ -92,16 +109,28 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator Apparatus_InHouseLargestFieldReservesWholeFamiliesAroundYardSolidsAndNeighbours()
+        public IEnumerator Apparatus_InHouseLargestRegularFieldReservesWholeFamiliesAroundYardSolidsAndNeighbours()
         {
             int largest=SeasonBuilder.LargestHouse(CastTemplates.Roster.Regular);Assert.That(largest,Is.EqualTo(12));
+            yield return AssertFullCompetitionField(largest);
+        }
+
+        [UnityTest]
+        public IEnumerator Apparatus_InHouseStoredMaximumFieldReservesWholeFamiliesAroundYardSolidsAndNeighbours()
+        {
+            Assert.That(EpisodeValidation.MaximumCast,Is.EqualTo(16));
+            yield return AssertFullCompetitionField(EpisodeValidation.MaximumCast);
+        }
+
+        private IEnumerator AssertFullCompetitionField(int houseSize)
+        {
             foreach(string category in new[]{"Mental","Endurance","Luck"})
             {
-                yield return EnterInstrumentAttempt(category,houseSize:largest);var before=director.Snapshot;
+                yield return EnterInstrumentAttempt(category,houseSize:houseSize);var before=director.Snapshot;
                 if(category=="Endurance")yield return HoldTheActualGrip();
                 var instruments=SceneComponents<CompetitionApparatus>().ToArray();
-                Assert.That(EpisodeEngine.CompetitionPlayers(before).Count(),Is.EqualTo(largest));
-                Assert.That(instruments,Has.Length.EqualTo(largest),category+": every eligible entrant must have a native, occupied instrument station.");
+                Assert.That(EpisodeEngine.CompetitionPlayers(before).Count(),Is.EqualTo(houseSize));
+                Assert.That(instruments,Has.Length.EqualTo(houseSize),category+": every eligible entrant must have a native, occupied instrument station in the "+houseSize+"-person field.");
                 var floor=SceneComponents<BoxCollider>().Single(collider=>collider.name=="Competition yard floor");var scratch=new Collider[256];
                 var reservations=director.CompetitionFootprints.ToArray();
                 Physics.SyncTransforms();
@@ -110,17 +139,47 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(instrument.gameObject.activeInHierarchy,Is.True);
                     var footprint=director.CompetitionFootprints[instrument.ActorId];
                     Assert.That(footprint.FitsOn(floor.bounds),Is.True);
-                    Assert.That(footprint.HasStaticClearance(director.gameObject.scene.GetPhysicsScene(),floor,scratch),Is.True,category+": furniture/tower volume must clear the whole reserved apparatus.");
+                    Assert.That(footprint.HasStaticClearance(director.gameObject.scene.GetPhysicsScene(),floor,scratch,NpcRead<HashSet<Transform>>("competitionRouteOwners")),Is.True,category+": furniture/tower volume must clear the whole reserved apparatus.");
                     Assert.That(instrument.Fits(footprint),Is.True,category+": actual fitted meshes stay inside their reserved envelope.");
                     foreach(var other in reservations.Where(other=>other.Key!=instrument.ActorId))Assert.That(footprint.Overlaps(other.Value),Is.False,category+": adjacent station/actor "+other.Key);
                 }
-                if(Application.isBatchMode)yield return CaptureCompetitionFullField(category);
+                if(Application.isBatchMode)yield return CaptureCompetitionFullField(category,houseSize);
                 yield return CancelInstrumentAttempt(before);
                 var props=SceneComponents<Transform>().Single(transform=>transform.name=="Representative yard solid fixtures");Object.Destroy(props.gameObject);yield return null;
             }
         }
 
-        private IEnumerator CaptureCompetitionFullField(string category)
+        [UnityTest]
+        public IEnumerator Apparatus_InHouseUnleasedForwardHouseguestCancelsFittedSceneryAndReleasesEveryNativeOwner()
+        {
+            yield return EnterInstrumentAttempt("Mental");var before=director.Snapshot;var instrument=PlayerInstrument();
+            Transform anchor=instrument.transform.parent;
+            var bystander=InstallUnleasedForwardHouseguest(anchor);var capsule=bystander.GetComponent<CapsuleCollider>();
+            Assert.That(bystander.GetComponent<HouseNpcMotion>(),Is.Null);
+            var playerCapsule=player.GetComponent<CapsuleCollider>();
+            Assert.That(Vector3.Distance(capsule.ClosestPoint(player.transform.position+Vector3.up*.95f),player.transform.position+Vector3.up*.95f),Is.GreaterThan(playerCapsule.radius),"This is a forward apparatus obstruction while the actor capsule remains clear.");
+            Assert.That(NpcRead<HashSet<Transform>>("competitionRouteOwners").Contains(bystander.transform),Is.False);
+            yield return null;yield return null;
+            Assert.That(SceneComponents<CompetitionApparatus>(),Is.Empty,"The actual late fit gate cancels obstructed scenery instead of overlapping the unleased body.");
+            Assert.That(player.HasActivityOwner,Is.False);Assert.That(NpcRead<HouseMeetingCoordinator>("npcMeetings").HasCompetitionStage,Is.False);
+            Assert.That(NpcRead<HashSet<Transform>>("competitionRouteOwners"),Is.Empty);
+            Assert.That(director.Snapshot.revision,Is.EqualTo(before.revision));Assert.That(director.Snapshot.randomState,Is.EqualTo(before.randomState));
+            var contact=player.GetComponent<CompetitionInstrumentPose>();Assert.That(contact==null || !contact.HasContact,Is.True);
+            Object.Destroy(bystander);director.ClosePanels();yield return null;
+            Assert.That(player.InputEnabled,Is.True);Assert.That(cameraRig.ControlsEnabled,Is.True);
+        }
+
+        private GameObject InstallUnleasedForwardHouseguest(Transform anchor)
+        {
+            var bystander=new GameObject("Actual unleased forward houseguest",typeof(HouseNpc),typeof(CapsuleCollider));
+            SceneManager.MoveGameObjectToScene(bystander,director.gameObject.scene);
+            bystander.GetComponent<HouseNpc>().Configure("unleased-forward","Unleased houseguest");
+            bystander.transform.position=anchor.position+anchor.forward*.95f;
+            var capsule=bystander.GetComponent<CapsuleCollider>();capsule.center=Vector3.up*.95f;capsule.radius=.20f;capsule.height=1.9f;
+            Physics.SyncTransforms();return bystander;
+        }
+
+        private IEnumerator CaptureCompetitionFullField(string category,int houseSize)
         {
             var eye=cameraRig.ViewCamera;var lens=new CaptureLens(eye,1600,900);Texture2D frame=null;
             var canvases=SceneComponents<Canvas>().Where(canvas=>canvas.name!=CaptureLens.GuardName)
@@ -148,8 +207,8 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(instrument.Fits(director.CompetitionFootprints[instrument.ActorId]),Is.True,"The actual captured fit must remain reserved.");
                 }
                 frame=lens.Read();AssertNotBlank(frame,"full-field "+category);
-                string path=Path.GetFullPath(Path.Combine(Application.dataPath,"..","competition-apparatus-full-field-"+category.ToLowerInvariant()+".png"));
-                File.WriteAllBytes(path,frame.EncodeToPNG());Debug.Log("[Gamesim W3] actual twelve-entrant "+category+" world capture -> "+path);
+                string path=Path.GetFullPath(Path.Combine(Application.dataPath,"..","competition-apparatus-full-field-"+houseSize+"-"+category.ToLowerInvariant()+".png"));
+                File.WriteAllBytes(path,frame.EncodeToPNG());Debug.Log("[Gamesim W3] actual "+houseSize+"-entrant "+category+" world capture -> "+path);
             }
             finally
             {
@@ -161,7 +220,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
         }
 
-        private IEnumerator ClickInstrumentControl(Button button)
+        private IEnumerator ClickInstrumentControl(Button button,Action onReleaseInput=null)
         {
             if(testMouse==null)testMouse=InputSystem.AddDevice<Mouse>();
             Canvas.ForceUpdateCanvases();
@@ -169,7 +228,7 @@ namespace Gamesim.Tests.PlayMode
             InputSystem.QueueStateEvent(testMouse,new MouseState{position=point});yield return null;
             Canvas.ForceUpdateCanvases();point=ScreenBox((RectTransform)button.transform).center;
             InputSystem.QueueStateEvent(testMouse,new MouseState{position=point}.WithButton(MouseButton.Left));yield return null;
-            InputSystem.QueueStateEvent(testMouse,new MouseState{position=point});yield return null;
+            InputSystem.QueueStateEvent(testMouse,new MouseState{position=point});onReleaseInput?.Invoke();yield return null;
         }
 
         private IEnumerator FlipAnActualPair()
@@ -279,12 +338,17 @@ namespace Gamesim.Tests.PlayMode
                 .Single(label=>label.name=="Die face "+die).text,Is.EqualTo(run.Face(die).ToString()));
             if(screen.Paused)yield return PressKey(Key.P);
             int total=run.RollTotal;
-            yield return ClickInstrumentControl(screen.GetComponentsInChildren<Button>().Single(button=>button.name=="Keep roll"));
+            GameObject bystander=null;
+            // Place the unleased body on the real Keep pointer-release frame. This exercises
+            // the completed result/finish window without relying on a 0.9-second CPU deadline.
+            yield return ClickInstrumentControl(screen.GetComponentsInChildren<Button>().Single(button=>button.name=="Keep roll"),
+                ()=>bystander=InstallUnleasedForwardHouseguest(instrument.transform.parent));
             Assert.That(run.Finished,Is.True,"The real Keep control commits this roll.");
             deadline=Time.realtimeSinceStartup+6f;
             while(director.Snapshot.revision==before.revision && Time.realtimeSinceStartup<deadline)yield return null;
             Assert.That(director.Snapshot.revision,Is.EqualTo(before.revision+1));
             Assert.That(SceneComponents<CompetitionApparatus>(),Is.Empty,"The finished result releases all apparatus.");
+            Object.Destroy(bystander);
             var card=SceneComponents<CompetitionResult>().Single();
             Assert.That(Labelled(card,"Player attempt"),Does.Contain("kept "+total+" on roll 1 of 3"));
             if(Application.isBatchMode)yield return CaptureFraming("competition-apparatus-dice-result",false);
@@ -296,6 +360,14 @@ namespace Gamesim.Tests.PlayMode
             if(screen.Paused!=paused)
                 yield return ClickInstrumentControl(screen.GetComponentsInChildren<Button>().Single(button=>button.name=="Pause competition"));
             Assert.That(screen.Paused,Is.EqualTo(paused),"The real pause/resume pointer control owns the word clock.");
+            if(!paused)
+            {
+                // Native motion reacquires its own arrival proof after a resume. Wait for the
+                // actual fit gate to expose the console, rather than forging that proof.
+                float deadline=Time.realtimeSinceStartup+2f;
+                while(!PlayerInstrument().gameObject.activeInHierarchy && Time.realtimeSinceStartup<deadline)yield return null;
+                Assert.That(PlayerInstrument().gameObject.activeInHierarchy,Is.True,"The resumed native arrivals expose the actual word console.");
+            }
         }
 
         private void AssertWordInstrumentHidden(bool hidden)
@@ -336,6 +408,7 @@ namespace Gamesim.Tests.PlayMode
             yield return SetWordAttemptPaused(true);double elapsed=ChallengeRun().Elapsed;
             yield return new WaitForSecondsRealtime(.2f);
             Assert.That(ChallengeRun().Elapsed,Is.EqualTo(elapsed),"Paused time cannot buy puzzle-solving time.");
+            Assert.That(PlayerInstrument().gameObject.activeInHierarchy,Is.True,"Already-proven, stationary owned arrivals keep the actual paused word console in the world.");
             AssertWordInstrumentHidden(true);
         }
 

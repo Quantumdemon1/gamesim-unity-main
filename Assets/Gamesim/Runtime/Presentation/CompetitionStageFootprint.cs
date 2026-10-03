@@ -1,4 +1,4 @@
-using Gamesim.House;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Gamesim.Presentation
@@ -65,7 +65,8 @@ namespace Gamesim.Presentation
             return Mathf.Abs(Vector3.Dot(other.Center-Center,axis))>=a+b;
         }
 
-        public bool HasStaticClearance(PhysicsScene physics,Collider floor,Collider[] scratch)
+        public bool HasStaticClearance(PhysicsScene physics,Collider floor,Collider[] scratch,
+            ISet<Transform> routeOwners=null,Transform prospectiveSelf=null)
         {
             // Furniture has its own layer and is deliberately absent from sight queries.
             // Placement instead sees every solid layer, including navigation-only proxies.
@@ -75,11 +76,17 @@ namespace Gamesim.Presentation
             {
                 var hit=scratch[i];
                 if(hit==null)return false;
-                if(hit==floor || hit.GetComponentInParent<HousePlayerController>()!=null
-                    || hit.GetComponentInParent<HouseNpc>()!=null)continue;
+                if(hit==floor || Owned(hit.transform,routeOwners,prospectiveSelf))continue;
                 return false;
             }
             return true;
+        }
+
+        private static bool Owned(Transform collider,ISet<Transform> routeOwners,Transform prospectiveSelf)
+        {
+            for(var at=collider;at!=null;at=at.parent)
+                if(at==prospectiveSelf || routeOwners!=null && routeOwners.Contains(at))return true;
+            return false;
         }
 
         /// <summary>Checks the actual authored mesh corners after contact fitting, without AABB inflation.</summary>

@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Gamesim.Presentation;
@@ -110,6 +111,35 @@ namespace Gamesim.Tests.PlayMode
             var clear=CompetitionStageFootprint.Station(CompetitionApparatus.Family.PairConsole,new Vector3(3,0,1.8f),37,.35f,1.9f);
             Assert.That(footprint.Overlaps(clear),Is.False);
             Assert.That(footprint.Overlaps(CompetitionStageFootprint.Actor(new Vector3(0,0,1.1f),.35f,1.9f)),Is.True,"An audience body reserves space too.");
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator Apparatus_UnleasedHouseguestBlocksForwardConsoleAndGripVolumesDespiteClearActorCapsules()
+        {
+            owner=new GameObject("Actor ownership footprint test");
+            footprintScene=SceneManager.CreateScene("Competition actor ownership "+Guid.NewGuid().ToString("N"),new CreateSceneParameters(LocalPhysicsMode.Physics3D));
+            SceneManager.MoveGameObjectToScene(owner,footprintScene);
+            var floor=owner.AddComponent<BoxCollider>();floor.center=new Vector3(0,-.15f,0);floor.size=new Vector3(20,.3f,20);
+            var participant=new GameObject("Explicit route-owned participant",typeof(HouseNpc),typeof(CapsuleCollider));participant.transform.SetParent(owner.transform,false);
+            var ownCapsule=participant.GetComponent<CapsuleCollider>();ownCapsule.radius=.35f;ownCapsule.height=1.9f;ownCapsule.center=Vector3.up*.95f;
+            var bystander=new GameObject("Unleased houseguest forward of instrument",typeof(HouseNpc),typeof(CapsuleCollider));bystander.transform.SetParent(owner.transform,false);
+            bystander.GetComponent<HouseNpc>().Configure("unleased-forward","Unleased houseguest");bystander.transform.localPosition=Vector3.forward*.95f;
+            var otherCapsule=bystander.GetComponent<CapsuleCollider>();otherCapsule.radius=.20f;otherCapsule.height=1.9f;otherCapsule.center=Vector3.up*.95f;
+            Assert.That(bystander.GetComponent<HouseNpcMotion>(),Is.Null,"The actual HouseNpc collider has no native route lease.");
+            Physics.SyncTransforms();
+            Assert.That(Vector3.Distance(otherCapsule.ClosestPoint(Vector3.up*.95f),Vector3.up*.95f),Is.GreaterThan(ownCapsule.radius),"Its body clears the actor capsule while occupying the forward apparatus.");
+            var routeOwners=new HashSet<Transform>{participant.transform};var hits=new Collider[64];
+            foreach(var family in new[]{CompetitionApparatus.Family.PairConsole,CompetitionApparatus.Family.GripRig})
+            {
+                var footprint=CompetitionStageFootprint.Station(family,Vector3.zero,0,.35f,1.9f);
+                Assert.That(footprint.HasStaticClearance(footprintScene.GetPhysicsScene(),floor,hits,routeOwners),Is.False,family+": an unleased NPC must count as a real obstruction.");
+            }
+            bystander.transform.localPosition=Vector3.right*5;Physics.SyncTransforms();
+            var clear=CompetitionStageFootprint.Station(CompetitionApparatus.Family.PairConsole,Vector3.zero,0,.35f,1.9f);
+            Assert.That(clear.HasStaticClearance(footprintScene.GetPhysicsScene(),floor,hits,routeOwners),Is.True,"The native participant's own body may occupy its reserved stance.");
+            routeOwners.Clear();
+            Assert.That(clear.HasStaticClearance(footprintScene.GetPhysicsScene(),floor,hits,routeOwners),Is.False,"Releasing route ownership immediately restores body occupancy.");
             yield return null;
         }
 

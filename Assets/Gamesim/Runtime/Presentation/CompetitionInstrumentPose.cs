@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -13,6 +14,8 @@ namespace Gamesim.Presentation
     {
         private CompetitionApparatus instrument;
         private bool holding, pressing;
+        private bool fitReady;
+        private Func<CompetitionApparatus,bool> fitGate;
         private struct BoneWrite { public Transform bone; public Quaternion before, after; }
         private readonly List<BoneWrite> writes=new List<BoneWrite>(4);
         public bool HasContact { get; private set; }
@@ -21,9 +24,12 @@ namespace Gamesim.Presentation
         private int lastHits,lastRoll;
         private double pressUntil;
 
-        public void Bind(CompetitionApparatus apparatus,MiniGameRun run,bool active,bool isPaused)
+        public void SetFitGate(Func<CompetitionApparatus,bool> gate)=>fitGate=gate;
+
+        public void Bind(CompetitionApparatus apparatus,MiniGameRun run,bool active,bool isPaused,bool readyForFit=false)
         {
             instrument=apparatus;
+            fitReady=readyForFit;
             holding=active && !isPaused && apparatus!=null && apparatus.Instrument==CompetitionApparatus.Family.GripRig && (run==null || run.Holding);
             if(run!=null && (run.Hits>lastHits || run.RollsUsed>lastRoll))pressUntil=run.Elapsed+.3;
             lastHits=run?.Hits??0;lastRoll=run?.RollsUsed??0;
@@ -33,13 +39,16 @@ namespace Gamesim.Presentation
         private void LateUpdate()
         {
             Restore();HasContact=false;
-            if(instrument==null || !instrument.isActiveAndEnabled || (!holding && !pressing))return;
+            if(instrument==null || !fitReady)return;
+            if(instrument.Instrument==CompetitionApparatus.Family.PairConsole || instrument.Instrument==CompetitionApparatus.Family.WordConsole)
+            {fitGate?.Invoke(instrument);return;}
             Animator animator=GetComponentInChildren<Animator>();
-            if(animator==null || !animator.isHuman || !animator.isActiveAndEnabled)return;
+            if(animator==null || !animator.isHuman || !animator.isActiveAndEnabled)
+            {fitGate?.Invoke(instrument);return;} // The primitive fallback was fitted from its actual capsule.
             Transform leftArm=animator.GetBoneTransform(HumanBodyBones.LeftUpperArm),leftFore=animator.GetBoneTransform(HumanBodyBones.LeftLowerArm),leftHand=animator.GetBoneTransform(HumanBodyBones.LeftHand);
             Transform rightArm=animator.GetBoneTransform(HumanBodyBones.RightUpperArm),rightFore=animator.GetBoneTransform(HumanBodyBones.RightLowerArm),rightHand=animator.GetBoneTransform(HumanBodyBones.RightHand);
             if(leftArm==null || leftFore==null || leftHand==null || rightArm==null || rightFore==null || rightHand==null)return;
-            if(holding)
+            if(instrument.Instrument==CompetitionApparatus.Family.GripRig)
             {
                 Transform anchor=instrument.transform.parent;
                 Vector3 shoulder=anchor.InverseTransformPoint((leftArm.position+rightArm.position)*.5f);
@@ -48,14 +57,26 @@ namespace Gamesim.Presentation
                 CapsuleCollider capsule=GetComponent<CapsuleCollider>();
                 float radius=capsule!=null?capsule.radius*Mathf.Max(transform.lossyScale.x,transform.lossyScale.z):.32f;
                 instrument.FitGrip(shoulder.y,shoulder.z,reach*.96f,radius,anchor.InverseTransformPoint(transform.position));
+            }
+            else
+            {
+                float reach=Vector3.Distance(rightArm.position,rightFore.position)+Vector3.Distance(rightFore.position,rightHand.position);
+                instrument.FitPress(instrument.transform.InverseTransformPoint(rightArm.position),reach);
+            }
+            // Even a hidden rig is prepared after the animator, then its owner checks the actual
+            // fitted solids and unowned bodies before activation. Cancellation can release this
+            // component from inside the gate, so re-check its binding before writing any bone.
+            if(fitGate!=null && !fitGate(instrument))return;
+            if(instrument==null || !instrument.isActiveAndEnabled || (!holding && !pressing))return;
+            if(holding)
+            {
+                Transform anchor=instrument.transform.parent;
                 LeftHandError=Reach(leftArm,leftFore,leftHand,instrument.HandContact(true),-anchor.right-anchor.up*.4f);
                 RightHandError=Reach(rightArm,rightFore,rightHand,instrument.HandContact(false),anchor.right-anchor.up*.4f);
                 HasContact=LeftHandError<.035f && RightHandError<.035f;
             }
             else
             {
-                float reach=Vector3.Distance(rightArm.position,rightFore.position)+Vector3.Distance(rightFore.position,rightHand.position);
-                instrument.FitPress(instrument.transform.InverseTransformPoint(rightArm.position),reach);
                 RightHandError=Reach(rightArm,rightFore,rightHand,instrument.HandContact(false),instrument.transform.right-instrument.transform.up*.3f);
                 HasContact=RightHandError<.035f;
             }
@@ -97,7 +118,7 @@ namespace Gamesim.Presentation
 
         public void Release()
         {
-            Restore();instrument=null;holding=pressing=false;HasContact=false;lastHits=lastRoll=0;pressUntil=0;
+            Restore();instrument=null;holding=pressing=fitReady=false;fitGate=null;HasContact=false;lastHits=lastRoll=0;pressUntil=0;
         }
         private void OnDisable()=>Release();
         private void OnDestroy()=>Release();

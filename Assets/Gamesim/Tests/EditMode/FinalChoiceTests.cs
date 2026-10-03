@@ -95,12 +95,12 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void TheEndgamesDealsAndAHeldPromiseWeighAsC1AndC7MadeThem()
         {
-            // A final two deal (C1): 25 at a view of fifty, here a fifth of it at ten; enough to keep the player.
+            // A final two deal has fixed strength while its formal status stands, separate from current liking.
             var s = Final(true, out string hoh, out string other);
             s.deals.Add(Deal("deal-final-two", DealKind.FinalTwo, hoh, s.playerId, expires: 0));
             Valid(s);
             var obligation = Factor(EpisodeEngine.FinalChoice(s), s.playerId, "obligation");
-            Assert.That(obligation, Is.EqualTo(EpisodeEngine.FinalTwoObligation / 5).Within(1e-9), "C1's term, as it was.");
+            Assert.That(obligation, Is.EqualTo(EpisodeEngine.FinalTwoObligation).Within(1e-9), "The active final two's fixed strength.");
             Assert.That(EpisodeEngine.FinalChoice(s).selectedNomineeId, Is.EqualTo(other));
 
             // A final two promise the player called in (C7): the same obligation, times the hold.
@@ -109,7 +109,7 @@ namespace Gamesim.Tests.EditMode
             RelationshipLedger.RecordOneWay(held, hoh, held.playerId, Negotiation.HeldType(PromiseKind.FinalTwo, Negotiation.Demand), 0, "Held to it.");
             Valid(held);
             Assert.That(Factor(EpisodeEngine.FinalChoice(held), held.playerId, "obligation"),
-                Is.EqualTo(EpisodeEngine.FinalTwoObligation / 5 * Negotiation.Hold(Negotiation.Demand)).Within(1e-9), "C7's term, as it was.");
+                Is.EqualTo(EpisodeEngine.FinalTwoObligation * Negotiation.Hold(Negotiation.Demand)).Within(1e-9), "The existing hold multiplier still applies.");
             Assert.That(EpisodeEngine.FinalChoice(held).selectedNomineeId, Is.EqualTo(other));
         }
 
@@ -380,13 +380,13 @@ namespace Gamesim.Tests.EditMode
             Valid(s);
             var term = EpisodeEngine.FinalChoiceTerms(s, hoh, Finalists(s)).Single(t => t.code == "obligation");
             Assert.That(term.nomineeId, Is.EqualTo(s.playerId));
-            Assert.That(term.value, Is.EqualTo(EpisodeEngine.FinalThreeObligation / 5).Within(1e-9), "Half a final two's, scaled by a view of ten.");
+            Assert.That(term.value, Is.EqualTo(EpisodeEngine.FinalThreeObligation).Within(1e-9), "A kept final three has fixed strength, half a final two's.");
             Assert.That(term.evidenceIds, Does.Contain("deal-final-three"));
             Assert.That(EpisodeEngine.FinalChoice(s).selectedNomineeId, Is.EqualTo(other), "It keeps the player here.");
 
             SetScore(s, hoh, s.playerId, 50);
             Assert.That(EpisodeEngine.FinalChoiceTerms(s, hoh, Finalists(s)).Single(t => t.code == "obligation").value,
-                Is.EqualTo(EpisodeEngine.FinalTwoObligation / 2).Within(1e-9), "Whole at fifty: half a final two.");
+                Is.EqualTo(EpisodeEngine.FinalTwoObligation / 2).Within(1e-9), "Changing liking does not change the formally kept commitment.");
             s.Find(hoh).traits = new List<string> { "Sneaky" };
             Assert.That(EpisodeEngine.FinalChoiceTerms(s, hoh, Finalists(s)).Any(t => t.code == "obligation"), Is.False, "A Sneaky word is worth nothing.");
 

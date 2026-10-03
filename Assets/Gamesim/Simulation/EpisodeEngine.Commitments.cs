@@ -165,53 +165,24 @@ namespace Gamesim.Simulation
         /// <summary>
         /// What a final two deal weighs in the final Head of Household's choice under the commitment
         /// rules, at its whole: the evaluator's own decisive margin (a lean of 25 is "decisive"), so a
-        /// final two the Head of Household still means outweighs any lean short of a decisive one.
+        /// formally active final two outweighs any lean short of a decisive one, before their word multiplier.
         /// </summary>
         public const double FinalTwoObligation = 25;
 
         /// <summary>
         /// A final two deal in the final Head of Household's choice (C1): an obligation term on the
         /// finalist it would take, as a vote deal is a term in a ballot (<see cref="Obligations"/>),
-        /// and scaled the same way - by the Head of Household's view of that finalist (nothing at zero
-        /// or below, whole at fifty) and by their word (Loyal ×1.5, Sneaky ×0). A final two deal used
+        /// at fixed strength while formally active, scaled by their word (Loyal ×1.5, Sneaky ×0),
+        /// and by the existing hold multiplier for a called-in promise. Current liking is a separate
+        /// evaluator factor. Overlapping commitments use the strongest and retain every supporting
+        /// record through <see cref="EndgameCommitments"/>. A final two deal used
         /// to be the web's deal term alone, about 4.5 points after its weight, which decided nothing.
         /// Only a deal with one of the two finalists: one with a juror is no longer a choice. Empty for
         /// a Head of Household who is the player, whose choice is their own. No roll.
         /// </summary>
         public static List<WebVoteObligation> FinalTwoTerms(EpisodeState s, string hohId, IReadOnlyList<string> finalists)
-        {
-            var terms = new List<WebVoteObligation>();
-            var hoh = s?.Find(hohId);
-            if (hoh == null || hoh.isPlayer || finalists == null) return terms;
-            double word = hoh.traits.Contains("Sneaky") ? 0 : hoh.traits.Contains("Loyal") ? LoyalObligation : 1;
-            foreach (var deal in s.deals.Where(d => d.status == DealStatus.Active && d.type == DealKind.FinalTwo))
-            {
-                string partner = DealResolution.Partner(deal, hohId);
-                if (partner == null || !finalists.Contains(partner) || s.Find(partner)?.status != ContestantStatus.Active) continue;
-                double scale = Math.Max(0, Math.Min(1, s.Score(hohId, partner) / ObligationFullView));
-                double value = FinalTwoObligation * scale * word;
-                if (value == 0) continue;
-                var term = terms.FirstOrDefault(t => t.nomineeId == partner);
-                if (term == null) terms.Add(term = new WebVoteObligation { nomineeId = partner, code = "obligation" });
-                term.value += value;
-                term.evidenceIds.Add(deal.id);
-            }
-            // A final two promise the player called in (C7) is the same obligation, times how hard they held
-            // its maker to it (Negotiation.HeldTo): a promise never called in weighs nothing here, as before.
-            foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.FinalTwo && p.fromId == hohId))
-            {
-                double hold = Negotiation.HeldTo(s, promise);
-                if (hold <= 0 || !finalists.Contains(promise.toId) || s.Find(promise.toId)?.status != ContestantStatus.Active) continue;
-                double scale = Math.Max(0, Math.Min(1, s.Score(hohId, promise.toId) / ObligationFullView));
-                double value = FinalTwoObligation * scale * word * hold;
-                if (value == 0) continue;
-                var term = terms.FirstOrDefault(t => t.nomineeId == promise.toId);
-                if (term == null) terms.Add(term = new WebVoteObligation { nomineeId = promise.toId, code = "obligation" });
-                term.value += value;
-                term.evidenceIds.Add("promise:" + promise.id);
-            }
-            return terms;
-        }
+            => EndgameCommitments.Read(s, hohId, finalists).Where(commitment => commitment.HasFinalTwo)
+                .Select(commitment => commitment.ToObligation()).ToList();
 
         /// <summary>
         /// An information deal does something (C1): each week, as campaigning closes and the house

@@ -88,7 +88,7 @@ namespace Gamesim.Simulation
         /// so it runs from −25 to +25, and a Head of Household sure to win beside one finalist and sure to
         /// lose beside the other leans fifty points to the first - more than any one feeling the evaluator
         /// weighs (a story bond is 25, a grudge at most 25, a pact with its alliance term about 29), less
-        /// than a pact and a final two deal kept together (about 59 at a plain word and a view of fifty).
+        /// than a pact and a final two deal kept together (about 59 at a plain word).
         /// Every Head of Household can count a jury: no trait moves it.
         /// </summary>
         public const double FinalJuryWeight = 50;
@@ -103,8 +103,9 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// What a final three deal the two of them kept to the final three weighs in the final choice
-        /// (C9): half a final two deal's obligation, scaled the same way - by the Head of Household's view
-        /// of the finalist and their word. It asked them to get there together, not to sit there together.
+        /// (C9): half a final two deal's fixed obligation, scaled by their word. It asked them to get
+        /// there together, not to sit there together. It does not stack with a stronger final two
+        /// commitment to the same finalist; all supporting record IDs are retained.
         /// </summary>
         public const double FinalThreeObligation = FinalTwoObligation / 2;
 
@@ -141,18 +142,11 @@ namespace Gamesim.Simulation
                     terms.Add(pact);
                 }
 
-                double scale = Math.Max(0, Math.Min(1, s.Score(hohId, finalist) / ObligationFullView));
-                foreach (var deal in s.deals.Where(d => d.type == DealKind.FinalThree && d.status == DealStatus.Fulfilled
-                             && DealResolution.Partner(d, hohId) == finalist))
-                {
-                    double value = FinalThreeObligation * scale * word;
-                    if (value == 0) continue;
-                    var kept = terms.FirstOrDefault(t => t.nomineeId == finalist && t.code == "obligation");
-                    if (kept == null) terms.Add(kept = Term(finalist, "obligation", 0));
-                    kept.value += value;
-                    kept.evidenceIds.Add(deal.id);
-                }
             }
+            // FinalTwoTerms emits a finalist's capped obligation when a valid final two exists.
+            // The remaining kept final threes are emitted here, so combining both readers never stacks them.
+            terms.AddRange(EndgameCommitments.Read(s, hohId, finalists).Where(commitment => !commitment.HasFinalTwo)
+                .Select(commitment => commitment.ToObligation()));
             return terms;
         }
 

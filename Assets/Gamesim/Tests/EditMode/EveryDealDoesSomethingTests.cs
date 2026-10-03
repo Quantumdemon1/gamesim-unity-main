@@ -629,7 +629,7 @@ namespace Gamesim.Tests.EditMode
         // ------------------------------------------------------------ a final two deal in the final choice
 
         [Test]
-        public void C1_UnderTheRulesAFinalTwoDealIsAnObligationTermWeighedByTheirViewAndTheirWord()
+        public void C1_UnderTheRulesAFinalTwoDealIsAnObligationTermByItsStatusAndTheirWord()
         {
             var s = FinalEviction(true, out string hoh, out string juror);
             string player = s.playerId, other = FinalistOtherThanThePlayer(s);
@@ -642,17 +642,17 @@ namespace Gamesim.Tests.EditMode
             Assert.That(terms, Has.Count.EqualTo(1), "Only a deal with one of the two it chooses between: a juror is no longer a choice.");
             Assert.That(terms[0].nomineeId, Is.EqualTo(player));
             Assert.That(terms[0].code, Is.EqualTo("obligation"));
-            Assert.That(terms[0].value, Is.EqualTo(EpisodeEngine.FinalTwoObligation), "Whole at a view of fifty.");
+            Assert.That(terms[0].value, Is.EqualTo(EpisodeEngine.FinalTwoObligation), "A formally active final two has its fixed strength.");
             Assert.That(terms[0].evidenceIds, Is.EqualTo(new[] { "deal-final" }));
             SetScore(s, hoh, player, 25);
-            Assert.That(EpisodeEngine.FinalTwoTerms(s, hoh, finalists).Single().value, Is.EqualTo(EpisodeEngine.FinalTwoObligation / 2), "Half at twenty-five.");
+            Assert.That(EpisodeEngine.FinalTwoTerms(s, hoh, finalists).Single().value, Is.EqualTo(EpisodeEngine.FinalTwoObligation), "Liking is counted separately, not again in the commitment.");
             s.Find(hoh).traits = new List<string> { "Loyal" };
-            Assert.That(EpisodeEngine.FinalTwoTerms(s, hoh, finalists).Single().value, Is.EqualTo(EpisodeEngine.FinalTwoObligation / 2 * EpisodeEngine.LoyalObligation), "A Loyal word is worth half as much again.");
+            Assert.That(EpisodeEngine.FinalTwoTerms(s, hoh, finalists).Single().value, Is.EqualTo(EpisodeEngine.FinalTwoObligation * EpisodeEngine.LoyalObligation), "A Loyal word is worth half as much again.");
             s.Find(hoh).traits = new List<string> { "Sneaky" };
             Assert.That(EpisodeEngine.FinalTwoTerms(s, hoh, finalists), Is.Empty, "A Sneaky one's nothing.");
             s.Find(hoh).traits = new List<string> { "Strategic" };
             SetScore(s, hoh, player, -5);
-            Assert.That(EpisodeEngine.FinalTwoTerms(s, hoh, finalists), Is.Empty, "Nothing from a Head of Household who has turned on them.");
+            Assert.That(EpisodeEngine.FinalTwoTerms(s, hoh, finalists).Single().value, Is.EqualTo(EpisodeEngine.FinalTwoObligation), "A cold view does not formally break a final two.");
             var mine = FinalEviction(true, out _, out _, playerChooses: true);
             mine.deals.Add(Deal("deal-final", DealKind.FinalTwo, mine.playerId, FinalistsBesidesTheHead(mine)[0], week: 3, expires: 0));
             Assert.That(EpisodeEngine.FinalTwoTerms(mine, mine.playerId, FinalistsBesidesTheHead(mine)), Is.Empty, "The player's own choice is theirs.");

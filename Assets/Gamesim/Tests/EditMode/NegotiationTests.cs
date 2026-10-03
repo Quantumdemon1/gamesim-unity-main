@@ -921,8 +921,7 @@ namespace Gamesim.Tests.EditMode
             var after = Apply(new EpisodeEngine(s), NegotiateKind, npc.id, promise.id, CallInMove(Threaten)).state;
             var term = EpisodeEngine.FinalTwoTerms(after, npc.id, finalists).Single();
             Assert.That(term.nomineeId, Is.EqualTo(after.playerId));
-            double scale = after.Score(npc.id, after.playerId) / EpisodeEngine.ObligationFullView;
-            Assert.That(term.value, Is.EqualTo(EpisodeEngine.FinalTwoObligation * scale * HoldOf(Threaten)).Within(1e-9),
+            Assert.That(term.value, Is.EqualTo(EpisodeEngine.FinalTwoObligation * HoldOf(Threaten)).Within(1e-9),
                 "A final two deal's term, twice over for a threat that landed.");
         }
 

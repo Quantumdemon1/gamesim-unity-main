@@ -28,9 +28,15 @@ namespace Gamesim.House
         private readonly List<ActivityEntry> activities=new List<ActivityEntry>();
 
         public bool ActivityAnchorAvailable(HouseInteractionAnchor anchor)
-            => !disposed && !HasCompetitionStage && anchor!=null && anchor.isActiveAndEnabled && anchor.gameObject.scene==rooms.Scene
+            => !disposed && !HasCompetitionStage && !HasCeremonyStage && anchor!=null && anchor.isActiveAndEnabled && anchor.gameObject.scene==rooms.Scene
                 && (HouseFurniture.SeatsCompany(anchor.VenueId) ? !MeetingHolds(anchor.VenueId) : !VenueInUse(anchor.VenueId))
-                && !SpotCrowds(anchor) && !activities.Any(entry=>entry.lease.Anchor==anchor);
+                && !SpotCrowds(anchor) && !activities.Any(entry=>entry.lease.Anchor==anchor
+                    || ((HouseFurniture.IndependentRest(anchor) || HouseFurniture.IndependentRest(entry.lease.Anchor))
+                        && PlacesCrowd(anchor,entry.lease.Anchor)));
+
+        private static bool PlacesCrowd(HouseInteractionAnchor first,HouseInteractionAnchor second)
+            => first!=null && second!=null && (HorizontalSquared(first.Position,second.Position)<HouseConversationSpots.SeatsApart*HouseConversationSpots.SeatsApart
+                || HorizontalSquared(first.Approach,second.Approach)<HouseConversationSpots.RootsApart*HouseConversationSpots.RootsApart);
 
         /// <summary>
         /// Whether a conversation holds the venue. A venue for company is shared between activities

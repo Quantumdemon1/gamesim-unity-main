@@ -101,6 +101,7 @@ namespace Gamesim.House
             bool Has(string id) => existing.Any(anchor => anchor != null && anchor.VenueId == id);
             DressTheGallery(all, Has);
             DressTheTable(scene, all, existing, Has);
+            DressTheLoungers(existing, Has);
         }
 
         /// <summary>Every complete spot in the scene, in id order: two active anchors, one room, both seats or both standing.</summary>
@@ -184,6 +185,20 @@ namespace Gamesim.House
             if (!OnFurniture(first.Prop, first.At, seatHeight) || !OnFurniture(second.Prop, second.At, seatHeight)) return;
             HouseInteractionAnchor.Create(first.Prop, id, room, 0, first.At, first.Yaw, true, approachOffset).SetSeatHeight(seatHeight);
             HouseInteractionAnchor.Create(second.Prop, id, room, 1, second.At, second.Yaw, true, approachOffset).SetSeatHeight(seatHeight);
+        }
+
+        private static void DressTheLoungers(HouseInteractionAnchor[] existing,Func<string,bool> has)
+        {
+            var seats=existing.Where(a=>a.isActiveAndEnabled && a.VenueId==HouseFurniture.LoungerAnchor && a.RoomId=="Yard" && a.Seated)
+                .OrderBy(a=>a.Slot).ToArray();
+            foreach(var spare in seats.Where(a=>a.Slot>=2))
+            {
+                var neighbour=seats.Where(a=>a!=spare).OrderBy(a=>Flat(a.Approach,spare.Approach)).FirstOrDefault();
+                if(neighbour==null)continue;
+                var first=new Seat(neighbour.transform.parent,neighbour.Position,neighbour.Facing,neighbour.Approach);
+                var second=new Seat(spare.transform.parent,spare.Position,spare.Facing,spare.Approach);
+                Pair(IdFor(HouseFurniture.LoungerAnchor,"spare-"+spare.Slot),"Yard",first,second,Vector3.left*.95f,.36f,has);
+            }
         }
 
         // ------------------------------------------------------------ the living room's couches

@@ -14,7 +14,8 @@ namespace Gamesim.Tests.PlayMode
     /// <summary>
     /// The career under the director: a finale is recorded once and survives a reload, the jury's
     /// reasons are on the finale panel before and after that reload, the main menu carries the
-    /// career line, and the settings reset takes two clicks and deletes nothing.
+    /// career line, and the settings reset takes two clicks, deletes nothing, and is there for a
+    /// record that could not be opened.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
@@ -145,6 +146,57 @@ namespace Gamesim.Tests.PlayMode
                 Has.Length.EqualTo(1), "The old record is set aside, not deleted.");
             Assert.That(ledger.Load().seasons, Is.Empty);
             Assert.That(director.StatusMessage, Does.Contain("set aside"));
+            director.ClosePanels();
+        }
+
+        /// <summary>
+        /// A record the game could not open loads as no seasons, and the panel used to take that for
+        /// an empty career: "No finished seasons yet" and no reset, so a file that never opened again
+        /// refused every finale with no way out in the game. Held here sharing nothing, as a backup
+        /// client can hold it, the record is offered the reset all the same, under a line that says
+        /// it could not be read rather than that it is empty.
+        ///
+        /// <para>Windows also refuses to move a file held that way, and the reset then says it could
+        /// not set the record aside, not that there was none. Mono on Linux and macOS renames through
+        /// any hold, so that step runs in the Windows editor only. Once the hold lifts, the reset sets
+        /// the record aside whole in every editor.</para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Career_ARecordThatCannotBeOpenedCanStillBeSetAsideFromSettings()
+        {
+            var finished = Finished();
+            finished.sessionId = "held-season";
+            var ledger = Ledger();
+            Assert.That(ledger.Record(finished), Is.True);
+            var before = File.ReadAllBytes(ledger.FilePath);
+            var folder = Path.GetDirectoryName(ledger.FilePath);
+
+            using (new FileStream(ledger.FilePath, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                director.OpenSettings();
+                yield return null;
+                Assert.That(VisibleText(), Does.Contain(EpisodeDirector.UnreadCareerLine), "The record is there and could not be read,");
+                Assert.That(VisibleText(), Does.Not.Contain("No finished seasons yet"), "which is not an empty career.");
+                ButtonWithCaption(EpisodeDirector.ResetCareerCaption).onClick.Invoke();
+                yield return null;
+                if (UnityEngine.Application.platform == UnityEngine.RuntimePlatform.WindowsEditor)
+                {
+                    ButtonWithCaption(EpisodeDirector.ConfirmResetCareerCaption).onClick.Invoke();
+                    yield return null;
+                    Assert.That(director.StatusMessage, Does.Contain("could not be set aside"), "The move was refused, and the player is told so.");
+                    Assert.That(File.Exists(ledger.FilePath), Is.True, "The record is left as it is.");
+                    Assert.That(Directory.GetFiles(folder, "career.json.reset-*"), Is.Empty);
+                    ButtonWithCaption(EpisodeDirector.ResetCareerCaption).onClick.Invoke();
+                    yield return null;
+                }
+            }
+            ButtonWithCaption(EpisodeDirector.ConfirmResetCareerCaption).onClick.Invoke();
+            yield return null;
+            Assert.That(File.Exists(ledger.FilePath), Is.False, "Once the hold lifts, the reset goes through.");
+            var archived = Directory.GetFiles(folder, "career.json.reset-*");
+            Assert.That(archived, Has.Length.EqualTo(1), "The record is set aside, not deleted,");
+            Assert.That(File.ReadAllBytes(archived[0]), Is.EqualTo(before), "and whole.");
+            Assert.That(director.StatusMessage, Does.Contain("set aside as"));
             director.ClosePanels();
         }
     }

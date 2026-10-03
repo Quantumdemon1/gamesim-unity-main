@@ -16,6 +16,14 @@ namespace Gamesim.Episode
         public const string ConfirmResetCareerCaption = "Yes, set the record aside and start fresh";
         public const string KeepCareerCaption = "Keep the career record";
 
+        /// <summary>
+        /// What the settings panel says instead of a season count when the record is there but could
+        /// not be read. The load had no seasons to give, but the file may hold many, and "No finished
+        /// seasons yet" right above the reset would invite the player to set a good career aside
+        /// while another program holds it for a moment.
+        /// </summary>
+        public const string UnreadCareerLine = "Your career record could not be read, so its seasons are not shown.";
+
         private CareerLedger career;
         private bool careerResetArmed;
 
@@ -58,11 +66,15 @@ namespace Gamesim.Episode
             if (career == null) return;
             hud.Heading("YOUR CAREER");
             var summary = CareerNow();
-            hud.Paragraph(summary.Seasons == 0
-                ? "No finished seasons yet. A season joins the record when its jury has voted."
+            // A record the load could not use reads as no seasons, but it is still on disk and
+            // refuses every finale until it is read or set aside: the panel does not call it empty,
+            // and the reset is its way out.
+            bool blocked = career.Blocked && File.Exists(career.FilePath);
+            hud.Paragraph(blocked ? UnreadCareerLine
+                : summary.Seasons == 0 ? "No finished seasons yet. A season joins the record when its jury has voted."
                 : summary.Line() + ".");
             if (career.Notice != null) hud.Paragraph(career.Notice);
-            if (summary.Seasons == 0) { careerResetArmed = false; return; }
+            if (summary.Seasons == 0 && !blocked) { careerResetArmed = false; return; }
             if (!careerResetArmed)
             {
                 hud.Action(ResetCareerCaption, () => { careerResetArmed = true; Render(); });
@@ -73,16 +85,23 @@ namespace Gamesim.Episode
             hud.Action(KeepCareerCaption, () => { careerResetArmed = false; Render(); });
         }
 
-        /// <summary>The second click. Moves the file aside rather than deleting it.</summary>
+        /// <summary>
+        /// The second click. Moves the file aside rather than deleting it. A file that is still
+        /// there afterwards could not be moved, and the player is told that, not that there was
+        /// nothing to reset: the reset is offered for a record that could not be opened, and
+        /// whatever refused the read can refuse the move as well.
+        /// </summary>
         public void ResetCareer()
         {
             careerResetArmed = false;
             if (career == null) return;
             var archived = career.Reset();
             ForgetSeasonNumber();
-            message = archived == null
-                ? "There was no career record to reset."
-                : "Career record set aside as " + Path.GetFileName(archived) + ". A fresh record starts with your next finished season.";
+            message = archived != null
+                ? "Career record set aside as " + Path.GetFileName(archived) + ". A fresh record starts with your next finished season."
+                : File.Exists(career.FilePath)
+                    ? "The career record could not be set aside; it is left as it is."
+                    : "There was no career record to reset.";
             Render();
         }
     }

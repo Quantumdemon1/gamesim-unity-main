@@ -129,6 +129,8 @@ namespace Gamesim.Episode
                 { Debug.Log("Opening stage: " + refusals.Last() + "."); return false; }
                 if (!Route(deck, door) || !Route(door, mark) || !Route(mark, exit))
                 { Debug.Log("Opening stage: there is no walk through the front door."); return false; }
+                if (!DoorRouteClears(door, radius, 1f))
+                { Debug.Log("Opening stage: even fully open, the leaves cannot clear the house's bodies on the reveal route."); return false; }
 
                 foreach (var spot in Grid(QueueX, QueueZ).OrderBy(spot => (spot - DeckMark).sqrMagnitude))
                     if ((spot - DeckMark).magnitude >= 1.0f && Accept(spot, accepted, out var sampled, "a place to wait") && Route(sampled, deck)) queue.Add(sampled);
@@ -320,17 +322,44 @@ namespace Gamesim.Episode
             public bool ThroughDoor(string id)
             {
                 if (!Placed || ended) return false;
+                // A sampled door mark fitting during Survey does not guarantee that this body's
+                // actual arrival fits. Refuse an impossible route instead of queuing forever.
+                if (!DoorClears(id, fullyOpen: true)) { throughWhenClear = null; return false; }
                 if (!DoorClears(id)) { throughWhenClear = id; return true; }
                 throughWhenClear = null;
                 return Send(id, mark);
             }
 
-            private bool DoorClears(string id)
+            private bool DoorClears(string id, bool fullyOpen = false)
             {
                 if (set == null) return true;
                 var visual = Visual(id);
                 // Use the actor's current start, including the approach's arrival tolerance.
-                return visual != null && set.CanWalkThrough(visual.transform.position, mark, radius);
+                if (visual == null) return false;
+                float bodyRadius = radius;
+                var capsule = visual.GetComponent<CapsuleCollider>();
+                if (capsule != null) bodyRadius = Mathf.Max(bodyRadius,
+                    capsule.radius * Mathf.Max(Mathf.Abs(capsule.transform.lossyScale.x), Mathf.Abs(capsule.transform.lossyScale.z)));
+                var agent = visual.GetComponent<NavMeshAgent>();
+                if (agent != null) bodyRadius = Mathf.Max(bodyRadius, agent.radius);
+                return DoorRouteClears(visual.transform.position, bodyRadius, fullyOpen ? 1f : set.Openness);
+            }
+
+            private bool DoorRouteClears(Vector3 from, float bodyRadius, float openness)
+            {
+                var path = new NavMeshPath();
+                if (!NavMesh.CalculatePath(from, mark, filter, path) || path.status != NavMeshPathStatus.PathComplete) return false;
+                // A navmesh may bend the path even though this yard normally gives a straight one.
+                // Check every segment, including the actual start's step onto the sampled path.
+                var corners = path.corners;
+                if (corners.Length == 0) return false;
+                var previous = from;
+                foreach (var corner in corners)
+                {
+                    if (!OpeningDoorSet.CanWalkThrough(DoorLayout.Yard, openness, previous, corner, bodyRadius)) return false;
+                    previous = corner;
+                }
+                return OpeningDoorSet.CanWalkThrough(DoorLayout.Yard, openness, previous, mark, bodyRadius);
             }
             public bool OnMark(string id) => Arrived(id, mark);
 
@@ -388,6 +417,14 @@ namespace Gamesim.Episode
             /// <summary>Off to the left, out of shot, and on to a place behind the camera where the house gathers.</summary>
             public void SendOff(string id)
             {
+                // The reveal's wait can expire with this person still behind the leaves. Only a
+                // completed walk to the mark may continue past them; fallback cleanup must not
+                // create a fresh route through the door whose clearance that walk was waiting on.
+                if (!OnMark(id))
+                {
+                    if (throughWhenClear == id) throughWhenClear = null;
+                    return;
+                }
                 var visual = Visual(id);
                 if (visual != null) visual.SetFacing(float.NaN);
                 StopDancing(visual);

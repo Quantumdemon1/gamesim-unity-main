@@ -186,6 +186,67 @@ namespace Gamesim.Tests.PlayMode
             return target.x < OpeningDoorSet.VestibuleFarX;
         }
 
+        [UnityTest]
+        public IEnumerator OpeningStage_AnOversizedBodyUsesPortraitCardsWithoutPlacement()
+        {
+            float oldRadius = player.Agent.radius;
+            var home = player.transform.position;
+            OpeningSequence.Settings plan;
+            try
+            {
+                player.Agent.radius = 0.8f;
+                LogAssert.Expect(LogType.Log, "Opening stage: even fully open, the leaves cannot clear the house's bodies on the reveal route.");
+                plan = director.OpeningPlan(stage: true, holdUntilAdvanced: true, verification: true);
+            }
+            finally { player.Agent.radius = oldRadius; }
+            Assert.That(plan.Stage, Is.Null, "A route that cannot fit the body even with open leaves falls back before placing anyone.");
+            Assert.That(player.transform.position, Is.EqualTo(home), "Survey did not reposition the player.");
+            plan.ArmSeconds = 0f;
+            plan.HoldHeadless = true;
+            var opening = director.Opening;
+            opening.Play(director.Snapshot.openingBeatsSeen, plan);
+            yield return WaitFor(() => SequenceNode(opening, "Title card") != null, 8f, "The title plays over the unstaged house.");
+            opening.Advance();
+            yield return WaitFor(() => opening.CurrentGuestId == director.Snapshot.playerId, 12f, "The portrait reveal still introduces the player.");
+            Assert.That(SequenceNode(opening, "Pulse"), Is.Not.Null, "The portrait card is used instead of the doorway.");
+            Assert.That(GameObject.Find(OpeningDoorSet.RootName), Is.Null, "No door is built for an impossible walk.");
+            Assert.That(director.IsOpeningStaged, Is.False);
+            opening.Cancel();
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator OpeningStage_AnImpossibleArrivalCannotBeSentThroughByFallback()
+        {
+            var stage = director.OpeningPlan(stage: true, verification: true).Stage;
+            Assert.That(stage, Is.Not.Null, "The normal-sized cast fits the stage.");
+            yield return WaitFor(() => stage.BodyReadiness >= 1f, 40f, "The bodies are built before placement.");
+            Assert.That(stage.TryPlace(), Is.True);
+            float oldRadius = player.Agent.radius;
+            try
+            {
+                yield return WaitFor(() => stage.Ready, 10f, "The house binds the staged bodies.");
+                string id = director.Snapshot.playerId;
+                Assert.That(stage.ToDoor(id), Is.True);
+                yield return WaitFor(() => stage.AtDoor(id), 8f, "The player reaches the door with their original radius.");
+                var arrival = player.transform.position;
+                player.Agent.radius = 0.8f;
+                stage.OpenDoor();
+                Assert.That(stage.ThroughDoor(id), Is.False, "The actual arrival and body are rechecked before a deferred walk is accepted.");
+                stage.SendOff(id);
+                yield return RealSeconds(1f);
+                Assert.That(Flat(player.transform.position, arrival), Is.LessThan(0.1f),
+                    "Fallback cleanup keeps an actor who never reached the reveal mark behind the leaves.");
+                Assert.That(stage.OnMark(id), Is.False);
+            }
+            finally
+            {
+                player.Agent.radius = oldRadius;
+                stage.RestoreHome();
+                stage.StrikeSet();
+            }
+        }
+
         /// <summary>
         /// The premiere through the front door: the house is placed behind the facade out of
         /// sight, the player comes through first, the door opens and they walk to the mark in front

@@ -663,13 +663,11 @@ namespace Gamesim.Presentation
             return y;
         }
 
-        /// <summary>How the player knows a ballot, for the tag under its name: the basis word, and a lie caught where the voter said otherwise.</summary>
+        /// <summary>How the player knows a ballot, for the tag under its name: the basis word, and what the voter said where they cast the other way, by first name - a lie told to the player's face, an ally's word to the pact a vote that changed (<see cref="KnownBallots.SaidWords"/>).</summary>
         private string BasisWords(WeeklyRecap.Ballot ballot)
         {
-            string words = KnownBallots.Basis.Word(ballot.basis);
-            if (ballot.lied && ballot.saidId != null)
-                words += " · said " + FinalistRead.FirstName(shown.Find(ballot.saidId)?.name ?? "") + ", a lie";
-            return words;
+            string said = ballot.saidId != null ? FinalistRead.FirstName(shown.Find(ballot.saidId)?.name ?? "") : null;
+            return KnownBallots.Basis.Word(ballot.basis) + KnownBallots.SaidWords(ballot.basis, ballot.lied, said);
         }
 
         /// <summary>KEY MOMENTS: the week's ceremonies on a line, each with the face it belongs to and its mark.</summary>

@@ -172,17 +172,18 @@ namespace Gamesim.Tests.EditMode
         ///
         /// <para>FileShare.Delete is the hold that shows why: it refuses reads but lets the file be
         /// renamed, so a ledger that archived on any read failure would set a good career aside and
-        /// start again from nothing. FileShare.None refuses the rename as well. Only Windows refuses
-        /// a read through a FileShare.Delete hold (<see cref="PersistenceTests.HeldFile"/>), so that
-        /// case is inconclusive in other editors; the FileShare.None case runs in every one.</para>
+        /// start again from nothing. In Windows FileShare.None refuses the rename as well; Mono on
+        /// Linux and macOS renames through any hold, so there the FileShare.None case is the one that
+        /// shows it. Only Windows refuses a read through a FileShare.Delete hold
+        /// (<see cref="PersistenceTests.HeldFile"/>), so other editors skip that case. Skipped, not
+        /// inconclusive: a command-line run counts an inconclusive test as a failure.</para>
         /// </summary>
         [TestCase(FileShare.None)]
         [TestCase(FileShare.Delete)]
         public void Record_AHoldThatDoesNotLiftIsNotTakenForDamage(FileShare share)
         {
-            if (share == FileShare.Delete)
-                Assume.That(Application.platform, Is.EqualTo(RuntimePlatform.WindowsEditor),
-                    "Mono on Linux and macOS lets a read through a FileShare.Delete hold.");
+            if (share == FileShare.Delete && Application.platform != RuntimePlatform.WindowsEditor)
+                Assert.Ignore("Mono on Linux and macOS lets a read through a FileShare.Delete hold.");
             Assert.That(ledger.Record(Finished(1, ContestantStatus.Winner)), Is.True);
             var before = File.ReadAllBytes(ledger.FilePath);
             using (new PersistenceTests.HeldFile(ledger.FilePath, share))

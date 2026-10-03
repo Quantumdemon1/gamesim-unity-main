@@ -41,6 +41,9 @@ namespace Gamesim.Presentation
         public bool IsShowing { get; private set; }
         public bool Paused { get; private set; }
         public bool IsPlaying => IsShowing && playing && !Paused;
+        /// <summary>The authored memory preview is visible, with no attempt time consumed.</summary>
+        public bool IsPreviewing => IsShowing && previewStarted && !playing && !held && !Paused
+            && run!=null && !run.Finished && countdownLeft>0;
         public float FontScale { get; set; } = 1;
         /// <summary>The player's reduced-motion setting: flips, pops and pulses stand still under it.</summary>
         public bool ReducedMotion { get; set; }

@@ -21,6 +21,8 @@ namespace Gamesim.Presentation
     public sealed partial class CompetitionGameScreen
     {
         private static readonly string[] Faces = { "HOUSE", "KEY", "TROPHY", "TARGET", "EYE", "SHIELD", "STAR", "CROWN" };
+        /// <summary>The public name of a revealed face, shared with the arena's tile console.</summary>
+        public static string MemoryFaceName(int face) => Faces[face % Faces.Length];
         private static readonly Color FaceUpFill = UiTheme.Hex("173F76");
         private const float FlipSeconds = .16f;
 
@@ -206,7 +208,7 @@ namespace Gamesim.Presentation
                 bool flipped = !hidden && (i == run.FirstFlip || i == run.SecondFlip);
                 bool faceUp = preview || matched || flipped;
                 bool mismatch = !matched && flipped && comparing;
-                string word = Faces[run.Faces[i] % Faces.Length];
+                string word = MemoryFaceName(run.Faces[i]);
                 cardLabels[i].text = "Card " + (i + 1) + (faceUp ? ": " + word + (matched ? "  ·  MATCHED" : "") : "");
                 cardLabels[i].color = faceUp ? UiTheme.Paper : UiTheme.Muted;
                 cardTiles[i].color = matched ? new Color(UiTheme.Surface.r, UiTheme.Surface.g, UiTheme.Surface.b, .88f)

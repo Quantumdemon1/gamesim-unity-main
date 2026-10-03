@@ -446,7 +446,7 @@ namespace Gamesim.Tests.PlayMode
         }
 
         private static bool IsStationDisc(MeshRenderer renderer) =>
-            renderer.TryGetComponent<MeshFilter>(out var filter) && filter.sharedMesh != null && filter.sharedMesh.name == "Competition station disc";
+            CompetitionApparatus.IsOverlayRenderer(renderer);
 
         private void AssertArenaOverlays(TextMeshPro sign, List<MeshRenderer> discs, List<HouseNpc> npcs, bool drawn, string when)
         {

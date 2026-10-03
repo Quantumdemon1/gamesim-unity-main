@@ -48,8 +48,11 @@ namespace Gamesim.Tests.EditMode
             public int playerWins, otherWins, hohWins, jurors, playerNominatedHoh;
             /// <summary>The jury's expected votes for the Head of Household beside the player, and beside the other finalist.</summary>
             public double juryBesidePlayer, juryBesideOther;
-            /// <summary>The Head of Household's chance to win the jury's vote beside the player, and beside the other finalist.</summary>
+            /// <summary>The Head of Household's chance to win the jury's vote beside the player, and beside the other finalist (<see cref="EpisodeEngine.FinalJuryChance"/>).</summary>
             public double winBesidePlayer, winBesideOther;
+            /// <summary>Whether the Head of Household and the player kept a final three deal to the final three (C9), and how many final three deals the season struck.</summary>
+            public bool finalThreeKeptWithPlayer;
+            public int finalThreeDeals;
         }
 
         /// <summary>What a season came to: the player out before the final three, the player the final Head of Household, or a case.</summary>
@@ -85,6 +88,23 @@ namespace Gamesim.Tests.EditMode
             Assert.That(outcomes.Where(o => o.error != null).Select(o => o.error), Is.Empty, "Every season reached its final eviction.");
             Assert.That(outcomes.Where(o => o.finalChoice != null).All(o => o.finalChoice.engineAgreed), Is.True,
                 "The engine evicted whom the choice read here selected.");
+            // C9: a real choice, which turns on how the player played - not the 94% the investigation found.
+            var cases = outcomes.Where(o => o.finalChoice != null).Select(o => o.finalChoice).ToList();
+            Assert.That(cases.Count(c => c.playerEvicted) * 100, Is.LessThan(cases.Count * 90), "The player is no longer evicted by construction.");
+            Assert.That(cases.All(c => !c.player.ContainsKey("threat") && !c.player.ContainsKey("strategicValue")), Is.True,
+                "No term for a game still to play.");
+            Assert.That(EvictedShare(cases, c => c.pactHoldsWithPlayer), Is.LessThan(EvictedShare(cases, c => !c.pactHoldsWithPlayer)),
+                "A pact that holds from the Head of Household's side keeps the player more often.");
+            Assert.That(EvictedShare(cases, c => c.winBesidePlayer > c.winBesideOther), Is.LessThan(EvictedShare(cases, c => c.winBesidePlayer < c.winBesideOther)),
+                "A player the Head of Household can beat in front of the jury is kept more often than one who would beat them.");
+            Assert.That(cases.Count(c => Flips(c, EpisodeEngine.JuryFactor)), Is.GreaterThan(0), "The jury decides choices.");
+        }
+
+        private static double EvictedShare(List<Case> cases, Func<Case, bool> test)
+        {
+            var some = cases.Where(test).ToList();
+            Assert.That(some, Is.Not.Empty, "The sample holds such final threes.");
+            return (double)some.Count(c => c.playerEvicted) / some.Count;
         }
 
         // ---------------------------------------------------------------- the sample
@@ -199,8 +219,11 @@ namespace Gamesim.Tests.EditMode
             c.playerNominatedHoh = s.ledger.power.Count(p => p.hohId == s.playerId && (p.nominees.Contains(hoh.id) || p.replacementId == hoh.id));
             c.juryBesidePlayer = ExpectedVotes(s, hoh.id, s.playerId, jurors.Append(other.id));
             c.juryBesideOther = ExpectedVotes(s, hoh.id, other.id, jurors.Append(s.playerId));
-            c.winBesidePlayer = WinChance(s, hoh.id, s.playerId, jurors.Append(other.id).ToList());
-            c.winBesideOther = WinChance(s, hoh.id, other.id, jurors.Append(s.playerId).ToList());
+            c.winBesidePlayer = EpisodeEngine.FinalJuryChance(s, hoh.id, s.playerId);
+            c.winBesideOther = EpisodeEngine.FinalJuryChance(s, hoh.id, other.id);
+            c.finalThreeKeptWithPlayer = s.deals.Any(d => d.type == DealKind.FinalThree && d.status == DealStatus.Fulfilled
+                && ((d.proposerId == hoh.id && d.recipientId == s.playerId) || (d.proposerId == s.playerId && d.recipientId == hoh.id)));
+            c.finalThreeDeals = s.deals.Count(d => d.type == DealKind.FinalThree);
             return c;
         }
 
@@ -215,23 +238,6 @@ namespace Gamesim.Tests.EditMode
         /// </summary>
         private static double ExpectedVotes(EpisodeState s, string hohId, string finalistId, IEnumerable<string> jurors) =>
             jurors.Sum(j => BeatChance(WebJuryVoting.Score(s, j, hohId) - WebJuryVoting.Score(s, j, finalistId)));
-
-        /// <summary>The chance those votes make a majority for the Head of Household, a tie going to the second finalist in cast order as the reveal awards it.</summary>
-        private static double WinChance(EpisodeState s, string hohId, string finalistId, List<string> jurors)
-        {
-            var p = jurors.Select(j => BeatChance(WebJuryVoting.Score(s, j, hohId) - WebJuryVoting.Score(s, j, finalistId))).ToList();
-            var dist = new double[p.Count + 1]; dist[0] = 1;
-            foreach (double q in p)
-                for (int k = dist.Length - 1; k >= 0; k--) dist[k] = dist[k] * (1 - q) + (k > 0 ? dist[k - 1] * q : 0);
-            bool hohSecond = s.contestants.FindIndex(c => c.id == hohId) > s.contestants.FindIndex(c => c.id == finalistId);
-            double win = 0;
-            for (int k = 0; k < dist.Length; k++)
-            {
-                int against = p.Count - k;
-                if (k > against || (k == against && hohSecond)) win += dist[k];
-            }
-            return win;
-        }
 
         private static double BeatChance(double d)
         {
@@ -259,6 +265,7 @@ namespace Gamesim.Tests.EditMode
             Split(o, cases, "a final two deal with the player", c => c.finalTwoWithPlayer);
             Split(o, cases, "a final two deal with the other finalist", c => c.finalTwoWithOther);
             Split(o, cases, "a final two promise to the player", c => c.promiseToPlayer);
+            Split(o, cases, "a final three deal with the player, kept to the final three", c => c.finalThreeKeptWithPlayer);
             Split(o, cases, "a warmer view of the player than of the other", c => c.viewOfPlayer > c.viewOfOther);
             Split(o, cases, "more competition wins for the player than the other", c => c.playerWins > c.otherWins);
             Split(o, cases, "the jury would vote for the Head of Household beside the player more than beside the other", c => c.juryBesidePlayer > c.juryBesideOther);
@@ -298,7 +305,8 @@ namespace Gamesim.Tests.EditMode
             }
             o.AppendLine("A story bond between the Head of Household and the other: " + cases.Count(c => c.bondWithOther) + ", and the player: " + cases.Count(c => c.bondWithPlayer)
                 + "; their grudge on the player: " + cases.Count(c => c.grudgeOnPlayer) + ", on the other: " + cases.Count(c => c.grudgeOnOther)
-                + "; the player had nominated the Head of Household: " + cases.Count(c => c.playerNominatedHoh > 0) + ".");
+                + "; the player had nominated the Head of Household: " + cases.Count(c => c.playerNominatedHoh > 0)
+                + "; final three deals struck in these seasons: " + cases.Sum(c => c.finalThreeDeals) + ".");
             var margins = cases.Select(c => c.otherScore - c.playerScore).OrderBy(m => m).ToList();
             o.AppendLine("The other's lead over the player, quartiles: " + string.Join(" / ", new[] { 0.1, 0.25, 0.5, 0.75, 0.9 }.Select(q => F(margins[(int)Math.Min(margins.Count - 1, q * margins.Count)]))));
             o.AppendLine("The first twelve cases:");

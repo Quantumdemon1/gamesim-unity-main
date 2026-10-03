@@ -67,6 +67,7 @@
     <Compile Include="$(EditMode)AlliesShareIntelTests.cs" />
     <Compile Include="$(EditMode)GrowAndManageAlliancesTests.cs" />
     <Compile Include="$(EditMode)NegotiationTests.cs" />
+    <Compile Include="$(EditMode)FinalChoiceTests.cs" />
     <!-- Explicit, and compiled out of Unity: the commitment rules' recorded-season evidence, run on demand. -->
     <Compile Include="$(EditMode)CommitmentRulesSeasonDigests.cs" />
     <!-- Explicit, and compiled out of Unity: the final Head of Household's choice over sampled seasons (C9), run on demand. -->

@@ -34,6 +34,10 @@ namespace Gamesim.Simulation
     /// its work in the engine (<c>EpisodeEngine.PassTheReadings</c>), and a final two deal is weighed
     /// in the final Head of Household's choice before it is judged here. A season without the rules
     /// is judged as it always was.</para>
+    ///
+    /// <para><b>The final three deal</b> (C9), the rules' own kind, is broken as a safety pact is, by a
+    /// nomination of the partner (<see cref="Nomination"/>), and kept by both when the two of them reach
+    /// the final three (<see cref="FinalThreeReached"/>); a ballot never judges it.</para>
     /// </summary>
     public static class DealResolution
     {
@@ -131,9 +135,22 @@ namespace Gamesim.Simulation
                 if (nomineeIds.Contains(partner)) return DealStatus.Broken;
                 return null;
             }
-            if (deal.type == DealKind.SafetyAgreement && nomineeIds.Contains(partner))
+            // A final three deal (C9) binds what a safety pact binds, until the final three.
+            if ((deal.type == DealKind.SafetyAgreement || deal.type == DealKind.FinalThree) && nomineeIds.Contains(partner))
                 return DealStatus.Broken;
             return null;
+        }
+
+        /// <summary>
+        /// The house down to its final three, against a final three deal (ACTIONS-DEALS-ALLIANCES-PLAN
+        /// C9): kept, by both of them at once, when both are among the three. The caller says the house
+        /// is at its final three; one of the two gone ended it as they left (X4), and one already
+        /// settled is not this one's to judge.
+        /// </summary>
+        public static string FinalThreeReached(DealState deal, IReadOnlyCollection<string> finalThree)
+        {
+            if (deal == null || deal.type != DealKind.FinalThree || finalThree == null || finalThree.Count != NpcDeals.FinalThreeSize) return null;
+            return finalThree.Contains(deal.proposerId) && finalThree.Contains(deal.recipientId) ? DealStatus.Fulfilled : null;
         }
 
         /// <summary>
@@ -331,6 +348,12 @@ namespace Gamesim.Simulation
                         if (!rules || !InTheHouse(state, spared) || state.Find(spared).nominationWeeks.Contains(state.week)) break;
                         outcome = Spared(deal, actorId, nominees);
                         break;
+                    case ReachesTheFinalThree:
+                        // Only under the rules (C9), where final three deals are made: kept by both at once.
+                        if (!rules) break;
+                        outcome = FinalThreeReached(deal, state.Active.Select(c => c.id).ToList());
+                        decidedBy = null;
+                        break;
                 }
                 if (outcome == null) continue;
                 verdicts.Add(new Verdict { deal = deal, status = outcome, actorId = decidedBy, stands = stands });
@@ -342,10 +365,13 @@ namespace Gamesim.Simulation
             !string.IsNullOrEmpty(id) && state.Find(id)?.status == ContestantStatus.Active;
 
         /// <summary>
-        /// The actions a verdict answers to. <see cref="Spares"/> is the commitment rules' own: the
-        /// Head of Household's nominating over for the week, the veto meeting's replacement named.
+        /// The actions a verdict answers to. <see cref="Spares"/> and <see cref="ReachesTheFinalThree"/>
+        /// are the commitment rules' own: the Head of Household's nominating over for the week, the veto
+        /// meeting's replacement named; and the house down to its final three (C9), which keeps every
+        /// final three deal between two of them.
         /// </summary>
-        public const string Nominates = "nominate", Vetoes = "veto", Votes = "vote", Selects = "final-selection", Spares = "spare";
+        public const string Nominates = "nominate", Vetoes = "veto", Votes = "vote", Selects = "final-selection", Spares = "spare",
+            ReachesTheFinalThree = "final-three";
 
         /// <summary>One deal, how it ended, and whose doing that was.</summary>
         public sealed class Verdict

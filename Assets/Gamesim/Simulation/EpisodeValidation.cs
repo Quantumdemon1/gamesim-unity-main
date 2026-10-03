@@ -177,8 +177,10 @@ namespace Gamesim.Simulation
                     || price == Negotiation.IsPrice(link))
                     return Fail(out error, "Invalid deal link.");
             }
-            // The commitment rules write those records, so a season that never played them holds none.
-            if (s.commitmentRulesStartWeek == 0 && (s.deals.Any(d => d.brokenById != null || d.settledWeek != 0 || d.linkedDealId != null)
+            // The commitment rules write those records, so a season that never played them holds none -
+            // nor a final three deal, their own kind (C9).
+            if (s.commitmentRulesStartWeek == 0 && (s.deals.Any(d => d.brokenById != null || d.settledWeek != 0 || d.linkedDealId != null
+                        || DealKind.CommitmentRulesOnly(d.type))
                     || s.promises.Any(p => p.brokenById != null || p.settledWeek != 0)))
                 return Fail(out error, "A season without the commitment rules has none of their records.");
             if (s.dealRulesStartWeek < 1 || s.dealRulesStartWeek > Math.Min(101, s.week + 1))

@@ -41,6 +41,15 @@ namespace Gamesim.Simulation
         public const double UpgradeWarmth = 40;
         public const double FinalTwoWarmth = 55;
 
+        /// <summary>
+        /// The final three deal's rung (ACTIONS-DEALS-ALLIANCES-PLAN C9), this port's own: under the final
+        /// two's, since it asks less of the two - to reach the end together, not to sit there together.
+        /// </summary>
+        public const double FinalThreeWarmth = 45;
+
+        /// <summary>The final three: the house size at which a final three deal is kept, and past which none is put.</summary>
+        public const int FinalThreeSize = 3;
+
         /// <summary>Trust a houseguest wants before trading information. The source's number.</summary>
         public const double InformationTrust = 40;
 
@@ -169,6 +178,14 @@ namespace Gamesim.Simulation
             if (warmth > FinalTwoWarmth && state.Active.Count() <= EndgameSize
                 && !Has(state, npcId, targetId, DealKind.FinalTwo))
                 return DealKind.FinalTwo;
+
+            // Under the commitment rules (C9) the endgame has a rung below the final two: from the final
+            // six to the final four, two warm enough take each other to the final three, unless a final
+            // two or a final three already binds them. Without the rules the ladder is the reference's.
+            if (EpisodeEngine.CommitmentRulesOn(state) && warmth > FinalThreeWarmth
+                && state.Active.Count() <= EndgameSize && state.Active.Count() > FinalThreeSize
+                && !Has(state, npcId, targetId, DealKind.FinalTwo) && !Has(state, npcId, targetId, DealKind.FinalThree))
+                return DealKind.FinalThree;
 
             // The last rung is the only one personality decides.
             bool schemer = npc.traits.Any(t => string.Equals(t, "Sneaky", StringComparison.OrdinalIgnoreCase)
@@ -396,9 +413,11 @@ namespace Gamesim.Simulation
                 // there is no proposal for anybody to answer.
                 status = DealStatus.Active,
                 week = state.week,
-                // A final two and a partnership are open-ended; the rest are about this week.
+                // A final two and a partnership are open-ended, and so is a final three deal (C9), which
+                // runs until the house is down to three; the rest are about this week.
                 expiresWeek = kind == DealKind.FinalTwo || kind == DealKind.Partnership
                               || kind == DealKind.AllianceInvite || kind == DealKind.InformationSharing
+                              || kind == DealKind.FinalThree
                     ? 0 : state.week,
                 trustImpact = DealKind.DefaultTrust(kind),
             });

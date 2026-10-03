@@ -238,6 +238,10 @@ namespace Gamesim.Simulation
                     // The finale has no Have-Nots: the last week's end with its three, and so do any
                     // passes and punishments the final four's veto left behind.
                     if (s.Active.Count() == 3) { s.haveNots.Clear(); s.haveNotPasses.Clear(); s.punishedHaveNots.Clear(); }
+                    // Under the commitment rules (C9) the two of a final three deal who reach the final
+                    // three together have kept it: as its Head of Household begins, however the house got
+                    // down to three. No roll.
+                    if (CommitmentRulesOn(s) && s.Active.Count() == 3) KeepTheFinalThree(s);
                     Phase(s, s.Active.Count() == 3 ? EpisodePhase.FinalHoHPart1 : EpisodePhase.HoH); break;
                 case EpisodePhase.HoH:
                 case EpisodePhase.Veto:

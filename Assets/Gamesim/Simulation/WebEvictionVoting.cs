@@ -94,6 +94,14 @@ namespace Gamesim.Simulation
         /// </summary>
         public List<WebVoteStoryTerm> storyTerms = new List<WebVoteStoryTerm>();
         public List<WebVoteObligation> obligations = new List<WebVoteObligation>();
+
+        /// <summary>
+        /// Native, not the web's (ACTIONS-DEALS-ALLIANCES-PLAN C9): the evaluator's own factors this caller
+        /// leaves out, by code. Empty on every ballot and every imported round, so the web's ten factors
+        /// are the web's ten; the final Head of Household's choice under the commitment rules leaves out
+        /// the two that weigh a game still to be played (<see cref="EpisodeEngine.FinalChoiceLeavesOut"/>).
+        /// </summary>
+        public List<string> omittedFactors = new List<string>();
     }
 
     /// <summary>A voter's grudge against a nominee and the bond between them, as vote factors.</summary>
@@ -281,6 +289,9 @@ namespace Gamesim.Simulation
                 case "bond": return "I'm not turning on " + saved.name + ".";
                 case "obligation": return "I gave my word on this vote, and I keep my word.";
                 case "plea": return "You asked me to keep you, and I heard you.";
+                // The final choice's own, under the commitment rules (C9).
+                case "pact": return saved.name + " and I made a pact, and it still holds.";
+                case "jury": return "I can beat " + saved.name + " in front of the jury.";
                 default: return "Keeping " + saved.name + " is better for my game right now.";
             }
         }
@@ -403,6 +414,9 @@ namespace Gamesim.Simulation
                 case "veto_use": return 40;
                 case "information_sharing": return 10;
                 case "alliance_invite": return 25;
+                // Native, the port's own kind (C9): a final three deal is weighed in a ballot on the
+                // partner as a safety pact is, since it binds what a safety pact binds.
+                case DealKind.FinalThree: return 35;
                 default: return 10;
             }
         }
@@ -496,6 +510,9 @@ namespace Gamesim.Simulation
                 Factor("persona", persona, "private", persona == 0 ? Array.Empty<string>() : new[] { "persona:" + o.playerPersonaLabel }),
                 Factor("blocPressure", follows ? -40 : 0, "private", follows ? new[] { o.blocDirective.allianceId } : Array.Empty<string>())
             };
+            // Native (C9): a caller may leave some of the ten out. None does but the final choice under
+            // the commitment rules, so every ballot weighs the ten as it always did.
+            if (o.omittedFactors != null && o.omittedFactors.Count > 0) factors.RemoveAll(f => o.omittedFactors.Contains(f.code));
             // The story system's two terms, native: present only when they say something, so the
             // web's ten factors are exactly the web's ten wherever there is no story to tell.
             var story = o.storyTerms?.FirstOrDefault(t => t.nomineeId == nominee.id);

@@ -470,6 +470,7 @@ namespace Gamesim.Simulation
                 case DealKind.InformationSharing: return "information deal";
                 case DealKind.FinalTwo: return "final two deal";
                 case DealKind.AllianceInvite: return "alliance invitation";
+                case DealKind.FinalThree: return "final three deal";
                 default: return "partnership";
             }
         }

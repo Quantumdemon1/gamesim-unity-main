@@ -16,10 +16,11 @@ namespace Gamesim.Tests.PlayMode
     /// plays the commitment rules and keeps knowledge. The house's reading of the player's word opens
     /// the Your word page - an eyebrow carrying the page's mark, then a card headed by the reading in
     /// words and in its colour, who has heard, and each breach the house knows of with who knows it -
-    /// and ends the note over a conversation's chances, which take the same term. Nothing is a control,
-    /// and without the rules there is no reading anywhere. Photographed in a batch run as
-    /// 'your-word-in-the-house' and 'conversation-word-heard', with '-large' and '-4x3' forms of the
-    /// conversation. The engine's half is YourWordInTheHouseTests.
+    /// and ends the note over a conversation's chances, which take the same term. With nothing broken
+    /// the card reads "Your word is good" over the page's empty state. Nothing is a control, and without
+    /// the rules there is no reading anywhere. Photographed in a batch run as 'your-word-in-the-house',
+    /// 'your-word-good' and 'conversation-word-heard', with '-large' forms and the conversation's
+    /// '-4x3'. The engine's half is YourWordInTheHouseTests.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
@@ -47,6 +48,13 @@ namespace Gamesim.Tests.PlayMode
             Knowledge.AddKnower(state, fact, npcs[1]);
             Knowledge.AddKnower(state, fact, npcs[2]);
         };
+
+        /// <summary>The story's knowledge and the commitment rules, and nothing of the player's broken: the reading's default state.</summary>
+        private static void WordUnheard(EpisodeState state)
+        {
+            EpisodeEngine.EnableStory(state);
+            EpisodeEngine.EnableCommitments(state);
+        }
 
         [UnityTest, Timeout(600000)]
         public IEnumerator WordInTheHouse_TheReadingHeadsYourWordAndEndsTheOddsNote()
@@ -106,15 +114,47 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(ScreenRect(card).yMin, Is.GreaterThanOrEqualTo(ScreenRect(settled).yMax - 1f), where + ": the reading comes first.");
                 Assert.That(card.GetComponentsInChildren<Button>(), Is.Empty, where + ": the reading is not a control.");
                 AssertEveryLabelDraws(card, where);
-                foreach (var label in card.GetComponentsInChildren<TMP_Text>())
-                {
-                    label.ForceMeshUpdate();
-                    Assert.That(label.isTextOverflowing, Is.False, where + ": '" + label.text + "' fits its card.");
-                    Assert.That(label.rectTransform.rect.height, Is.GreaterThanOrEqualTo(label.fontSize * 1.3f - 0.5f),
-                        where + ": '" + label.text + "' stands in a box at least 1.3 times its words.");
-                }
+                // Every label at least 1.3 times its words, by the size an auto-sized one is set at, and drawn whole.
+                foreach (var label in card.GetComponentsInChildren<TMP_Text>()) AssertLineHasRoom(label, where);
                 AssertEveryLabelDraws(ActiveRect("Episode panel"), where);
                 if (Application.isBatchMode) yield return CaptureFraming("your-word-in-the-house" + (larger ? "-large" : ""));
+                director.ClosePanels();
+                yield return null;
+            }
+
+            // Under the rules with nothing broken: the page's default state, "Your word is good" over the
+            // empty state, the eyebrow carrying the mark.
+            foreach (bool larger in new[] { false, true })
+            {
+                string size = larger ? " at the larger text" : "";
+                yield return InstallTalkingHouse(8, false, WordUnheard);
+                yield return SettleCast();
+                yield return ApplyTextSize(larger);
+                var clean = director.Snapshot;
+                Assert.That(YourWord.On(clean), Is.True, "Precondition: the house keeps the player's word.");
+                Assert.That((YourWord.Word(clean), YourWord.Summary(clean)), Is.EqualTo((YourWord.Good, YourWord.NothingHeard)));
+                yield return OpenNotebook();
+                ButtonWithCaption(EpisodeDirector.YourWordCaption).onClick.Invoke();
+                yield return null; yield return null;
+                string where = "Your word with nothing broken" + size;
+                Assert.That(director.ActiveSection, Is.EqualTo(EpisodeDirector.NotebookSection.Word), where + ": the page opens.");
+                Canvas.ForceUpdateCanvases();
+                var card = ActiveRect(EpisodeHud.WordReadingCardName);
+                Assert.That(card, Is.Not.Null, where + ": the reading has its card.");
+                var title = card.GetComponentsInChildren<TMP_Text>().Single(label => label.name == EpisodeHud.WordReadingTitleName);
+                Assert.That(title.text, Is.EqualTo("Your word is good"), where + ": headed 'Your word is good',");
+                Assert.That(title.color, Is.EqualTo(EpisodeDirector.WordReadingInk(YourWord.Good)), where + ": in the allied green;");
+                Assert.That(Words(card), Does.Contain(YourWord.NothingHeard), where + ": the house has heard of nothing.");
+                var empty = ActiveRect("No commitments");
+                Assert.That(empty, Is.Not.Null, where + ": over the page's empty state.");
+                Assert.That(ScreenRect(card).yMin, Is.GreaterThanOrEqualTo(ScreenRect(empty).yMax - 1f), where + ": the reading comes first.");
+                var mark = ActiveRect(EpisodeDirector.NotebookSection.Word);
+                Assert.That(mark, Is.Not.Null, where + " carries its mark,");
+                Assert.That(mark.GetSiblingIndex(), Is.EqualTo(card.GetSiblingIndex() - 1), where + ": on the eyebrow directly over the reading.");
+                Assert.That(card.GetComponentsInChildren<Button>(), Is.Empty, where + ": the reading is not a control.");
+                foreach (var label in card.GetComponentsInChildren<TMP_Text>()) AssertLineHasRoom(label, where);
+                AssertEveryLabelDraws(ActiveRect("Episode panel"), where);
+                if (Application.isBatchMode) yield return CaptureFraming("your-word-good" + (larger ? "-large" : ""));
                 director.ClosePanels();
                 yield return null;
             }

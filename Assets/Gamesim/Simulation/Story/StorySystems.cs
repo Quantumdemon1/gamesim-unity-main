@@ -185,9 +185,10 @@ namespace Gamesim.Simulation
         /// <para>Under the rules the oldest fact that nothing keeps goes: never an alliance's, and never
         /// the player's broken word, which their reading reads (<see cref="YourWord"/>) and which must not
         /// change without a word. Where every fact is one of those, the oldest fact of a pact that no
-        /// longer stands goes - no voter weighs an ended pact - and failing even that, the oldest. Neither
-        /// is reached in a season: every pact leaves one fact and every deal the player breaks in front
-        /// of the house one, and a season makes nowhere near a hundred and twenty-eight of them.</para>
+        /// longer stands goes - no voter weighs an ended pact - then the oldest alliance fact of any, and
+        /// the player's broken word only when nothing else is left. None of that is reached in a season:
+        /// every pact leaves one fact and every deal the player breaks in front of the house one, and a
+        /// season makes nowhere near a hundred and twenty-eight of them.</para>
         /// </summary>
         public static void MakeRoom(EpisodeState state)
         {
@@ -198,6 +199,7 @@ namespace Gamesim.Simulation
             {
                 at = facts.FindIndex(f => !KeptWhenFull(state, f));
                 if (at < 0) at = facts.FindIndex(f => f.kind == FactKinds.Alliance && !state.alliances.Any(a => a.id == f.refId && a.active));
+                if (at < 0) at = facts.FindIndex(f => f.kind == FactKinds.Alliance);
                 if (at < 0) at = 0;
             }
             facts.RemoveAt(at);

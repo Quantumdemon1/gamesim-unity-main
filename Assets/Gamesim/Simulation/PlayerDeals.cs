@@ -323,10 +323,16 @@ namespace Gamesim.Simulation
                 if (allied) return "We're already working together, so this makes sense.";
                 return "This could be beneficial for both of us.";
             }
-            // "I've heard": where the house keeps the player's word as knowledge (C8), said only of what it heard.
-            if (WordPenalty(state) > 20) return "I've heard you've broken deals before. I can't trust that.";
+            // "I've heard": where the house keeps the player's word as knowledge (C8), said only of what it
+            // heard, and only by somebody who has heard of a breach of theirs themselves.
+            bool word = YourWord.On(state);
+            if (WordPenalty(state) > 20 && (!word || YourWord.Breaches(state).Any(f => YourWord.HeardBy(state, f).Contains(npcId))))
+                return "I've heard you've broken deals before. I can't trust that.";
             if (relationship < 20) return "I don't think I can trust you with that.";
-            if (rules ? broken > 0 || state.promises.Any(p => Breaches.CountsAgainst(state, p, state.playerId))
+            // A track record: under the commitment rules the player's own broken promises, and their broken
+            // deals - where the house keeps their word, only the ones the house has heard of (C8).
+            bool brokenDeals = word ? YourWord.Cost(state) > 0 : broken > 0;
+            if (rules ? brokenDeals || state.promises.Any(p => Breaches.CountsAgainst(state, p, state.playerId))
                     : ThreatAssessment.TrustScore(state, state.playerId, npcId) < 40)
                 return "Your track record concerns me.";
             return "I'm not sure this is the right move for me.";

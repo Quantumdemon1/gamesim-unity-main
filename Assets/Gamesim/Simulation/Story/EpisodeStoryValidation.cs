@@ -36,7 +36,7 @@ namespace Gamesim.Simulation
                 || w.grudges.GroupBy(g => g.holderId + "|" + g.targetId).Any(x => x.Count() > 1))
                 return Fail(out error, "Invalid grudge data.");
 
-            if (w.facts == null || w.facts.Count > 128 || w.facts.Any(f => f == null || !Text(f.id, 160) || !FactKinds.IsKnown(f.kind)
+            if (w.facts == null || w.facts.Count > Knowledge.Ceiling || w.facts.Any(f => f == null || !Text(f.id, 160) || !FactKinds.IsKnown(f.kind)
                     || !OptionalId(f.actorId) || !OptionalId(f.subjectId) || !ShortOrAbsent(f.refId, 160) || !FactVisibility.IsKnown(f.visibility)
                     || f.week < 1 || f.week > s.week || f.knowers == null || f.knowers.Count > cast || f.knowers.Any(id => !Id(id))
                     || f.knowers.Distinct(StringComparer.Ordinal).Count() != f.knowers.Count)

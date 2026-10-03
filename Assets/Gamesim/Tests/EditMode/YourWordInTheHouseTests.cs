@@ -157,7 +157,7 @@ namespace Gamesim.Tests.EditMode
             var npcs = Npcs(s);
             Assert.That(YourWord.On(s), Is.True);
             Assert.That((YourWord.Hearings(s), YourWord.Cost(s), YourWord.Word(s)), Is.EqualTo((0, 0.0, YourWord.Good)));
-            Assert.That(YourWord.Summary(s), Is.EqualTo("Nobody in the house has heard of you going back on your word."));
+            Assert.That(YourWord.Summary(s), Is.EqualTo("The house has heard of no deal you broke in front of it."));
             Assert.That(YourWord.OddsLine(s), Is.Null, "Nothing to say beside the odds while nobody has heard.");
 
             // A breach by the player's ballot is on the record and nowhere in the reading.
@@ -253,17 +253,77 @@ namespace Gamesim.Tests.EditMode
             Assert.That(PlayerDeals.Reasoning(s, asked.id, DealKind.Partnership, false), Is.Not.EqualTo(heardOf), "and only the house's own hearing is 'heard'.");
             Assert.That(KnownOdds.Deal(s, asked.id, DealKind.Partnership, null).chance, Is.EqualTo(shown[DealKind.Partnership] - cost).Within(1e-9));
 
-            // Heard of by the house, twice over: past twenty points the houseguest says so.
+            // Heard of by the house twice over - by everybody but the one asked: past twenty points, and still
+            // only somebody who has heard of a breach of the player's says they heard.
             var again = BreakInFrontOfTheHouse(s, "deal-again", npcs[3].id);
-            foreach (var other in npcs) { Knowledge.AddKnower(s, fact, other.id); Knowledge.AddKnower(s, again, other.id); }
+            foreach (var other in npcs.Where(n => n.id != asked.id)) { Knowledge.AddKnower(s, fact, other.id); Knowledge.AddKnower(s, again, other.id); }
             Assert.That(YourWord.Cost(s), Is.EqualTo(2 * PlayerDeals.BrokenDealPenalty));
-            Assert.That(PlayerDeals.Reasoning(s, asked.id, DealKind.Partnership, false), Is.EqualTo(heardOf));
+            Assert.That(PlayerDeals.Reasoning(s, asked.id, DealKind.Partnership, false), Is.Not.EqualTo(heardOf),
+                "A houseguest who knows of no breach of the player's does not say they heard of one.");
+            Knowledge.AddKnower(s, again, asked.id);
+            Assert.That(YourWord.Cost(s), Is.EqualTo(2 * PlayerDeals.BrokenDealPenalty), "No more for a seventh,");
+            Assert.That(PlayerDeals.Reasoning(s, asked.id, DealKind.Partnership, false), Is.EqualTo(heardOf), "and now they have heard.");
             Assert.That(KnownOdds.Deal(s, asked.id, DealKind.Partnership, null).chance,
                 Is.EqualTo(shown[DealKind.Partnership] - 2 * PlayerDeals.BrokenDealPenalty).Within(1e-9));
             Assert.That(YourWord.OddsLine(s), Is.EqualTo("Your word is broken: 7 houseguests have heard of you going back on it, and it weighs on every deal you put to the house."));
         }
 
+        [Test]
+        public void UnderTheRulesATrackRecordIsTheBreachesTheHouseHeardOf()
+        {
+            const string trackRecord = "Your track record concerns me.", unsure = "I'm not sure this is the right move for me.";
+            foreach (bool story in new[] { false, true })
+            {
+                var s = Season(53, 8);
+                if (story) EpisodeEngine.EnableStory(s);
+                EpisodeEngine.EnableCommitments(s);
+                var npcs = Npcs(s);
+                string asked = npcs[6].id;
+                // Warm enough by the player's own reading that the line goes past "I don't think I can trust you".
+                SetScore(s, s.playerId, asked, 30);
+                SetScore(s, asked, s.playerId, 30);
+                Assert.That(PlayerDeals.Reasoning(s, asked, DealKind.Partnership, false), Is.EqualTo(unsure), "Nothing broken, nothing to say of it.");
+                s.deals.Add(BrokenByThePlayer(s, "deal-by-ballot", DealKind.Partnership, npcs[0].id));
+                if (story)
+                {
+                    Assert.That(PlayerDeals.Reasoning(s, asked, DealKind.Partnership, false), Is.EqualTo(unsure),
+                        "A breach the house never heard of is no track record in its words.");
+                    BreakInFrontOfTheHouse(s, "deal-seen", npcs[1].id);
+                    Assert.That(PlayerDeals.Reasoning(s, asked, DealKind.Partnership, false), Is.EqualTo(trackRecord), "One it heard of is.");
+                }
+                else
+                    Assert.That(PlayerDeals.Reasoning(s, asked, DealKind.Partnership, false), Is.EqualTo(trackRecord),
+                        "Without the house's knowledge the record's own breaches are the track record, as C4 has it.");
+            }
+        }
+
         // ------------------------------------------------------------ X14
+
+        [Test]
+        public void X14_ThePlayersBrokenWordGoesOnlyWhenNothingElseIsLeft()
+        {
+            var s = Season(59, 8);
+            EpisodeEngine.EnableStory(s);
+            EpisodeEngine.EnableCommitments(s);
+            var npcs = Npcs(s);
+            var word = BreakInFrontOfTheHouse(s, "deal-oldest", npcs[0].id);
+            // Every other fact an alliance's, and every one of those pacts still standing.
+            for (int i = 1; i < Knowledge.Ceiling; i++)
+            {
+                s.alliances.Add(new AllianceState { id = "pact-" + i, name = "The Pact " + i, members = new List<string> { npcs[1].id, npcs[2].id }, active = true });
+                s.story.facts.Add(new HouseFactState
+                {
+                    id = "fact-pact-" + i, kind = FactKinds.Alliance, refId = "pact-" + i, visibility = FactVisibility.Private, week = s.week,
+                    knowers = new List<string> { npcs[1].id, npcs[2].id },
+                });
+            }
+            Assert.That(s.story.facts[0], Is.SameAs(word), "Precondition: the player's broken word is the oldest fact.");
+            var added = Knowledge.Create(s, FactKinds.Plan, npcs[4].id, npcs[5].id, FactVisibility.Private, null);
+            Assert.That(s.story.facts, Has.Count.EqualTo(Knowledge.Ceiling));
+            Assert.That(s.story.facts.Contains(added), Is.True);
+            Assert.That(s.story.facts.Contains(word), Is.True, "The player's broken word, the oldest, is kept,");
+            Assert.That(s.story.facts.Any(f => f.id == "fact-pact-1"), Is.False, "and the oldest alliance fact goes, though its pact stands.");
+        }
 
         [Test]
         public void X14_UnderTheRulesAFullListNeverDropsAnAllianceFactSoAPrivatePactStaysPrivate()

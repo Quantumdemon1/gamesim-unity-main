@@ -143,18 +143,23 @@ namespace Gamesim.Simulation
 
         // ---------------------------------------------------------------- what the player is shown
 
+        /// <summary>What the reading says while the house has heard of no breach of the player's.</summary>
+        public const string NothingHeard = "The house has heard of no deal you broke in front of it.";
+
         /// <summary>The reading as the Your word page heads it: "Your word is doubted".</summary>
         public static string Title(EpisodeState s) => "Your word is " + Word(s);
 
         /// <summary>
-        /// The reading in a sentence: nobody has heard, or who has and what it does. "3 houseguests have
-        /// heard of you going back on your word: Alex, Maya and Jo. It weighs on every deal you put to
-        /// the house, the more the further it spreads."
+        /// The reading in a sentence: that the house has heard of no breach in front of it, or who has heard
+        /// and what it does. "3 houseguests have heard of you going back on your word: Alex, Maya and Jo. It
+        /// weighs on every deal you put to the house, the more the further it spreads." The first never
+        /// claims nobody knows of a breach at all: one a ballot decided is the player's and the one it was
+        /// broken against, and the page's SETTLED list says it was broken.
         /// </summary>
         public static string Summary(EpisodeState s)
         {
             var heard = Hearers(s);
-            if (heard.Count == 0) return "Nobody in the house has heard of you going back on your word.";
+            if (heard.Count == 0) return NothingHeard;
             return Many(heard.Count) + " heard of you going back on your word: " + Join(heard.Select(id => First(s, id)).ToList())
                 + ". It weighs on every deal you put to the house, the more the further it spreads.";
         }

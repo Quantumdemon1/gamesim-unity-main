@@ -36,7 +36,8 @@ namespace Gamesim.Tests.EditMode
     /// the same seasons reach what it changes (C1: partnerships judged, safety pacts kept, information
     /// readings, offers accepted and broken; C5: somebody asked into a pact, a member's no, a pact
     /// renamed; C7: counters taken, the veto bought, prices voided, promises called in, fences mended -
-    /// their busy moves only ever made under the rules, so the first half never sees them).</para>
+    /// their busy moves only ever made under the rules, so the first half never sees them; C8: deals the
+    /// player broke in front of the house heard of, every hearing named to them in a line).</para>
     /// </summary>
     public sealed class CommitmentRulesSeasonDigests
     {
@@ -151,6 +152,13 @@ namespace Gamesim.Tests.EditMode
             Assert.That(vetoPrices + countered, Is.GreaterThan(voided), "and some stood.");
             Assert.That(reached.TryGetValue("called-in", out int calledIn) && calledIn > 0, Is.True, "Promises were called in.");
             Assert.That(reached.TryGetValue("amends", out int amends) && amends > 0, Is.True, "Fences were mended.");
+            // C8 (your word in the house): deals the player broke in front of the house became facts the two
+            // of them knew, the house's gossip carried them, and every houseguest it reached was named to the
+            // player in a line as it did - never a hearing without one.
+            Assert.That(reached.TryGetValue("broken-word", out int brokenWords) && brokenWords > 0, Is.True, "The player broke deals in front of the house.");
+            Assert.That(reached.TryGetValue("word-heard", out int hearings) && hearings > 0, Is.True, "The gossip carried them.");
+            reached.TryGetValue("word-heard-line", out int hearingLines);
+            Assert.That(hearingLines, Is.EqualTo(hearings), "Every houseguest the gossip reached was named to the player.");
         }
 
         /// <summary>A played line's key: its rule set, size, seed and digest, without the run's counts.</summary>
@@ -208,11 +216,12 @@ namespace Gamesim.Tests.EditMode
             var engine = new EpisodeEngine(Season(config, size, seed, rulesOn));
             var trace = new StringBuilder();
             var lastPhase = (EpisodePhase)(-1);
-            int i = 0, heard = 0, voided = 0;
+            int i = 0, heard = 0, voided = 0, wordSeen = 0, wordLines = 0;
             for (; i < 3000 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
             {
                 var s = engine.Snapshot;
                 voided += VoidLines(s, ref heard);
+                wordLines += WordLines(s, ref wordSeen);
                 if (s.phase != lastPhase) { Checkpoint(s, trace); lastPhase = s.phase; }
                 bool done = false;
                 for (int attempt = 0; attempt < 6 && !done; attempt++)
@@ -244,6 +253,7 @@ namespace Gamesim.Tests.EditMode
             }
             var final = engine.Snapshot;
             voided += VoidLines(final, ref heard);
+            wordLines += WordLines(final, ref wordSeen);
             Checkpoint(final, trace);
             if (error == null && final.phase != EpisodePhase.Finished) error = "unfinished after " + i;
             int broken = final.deals.Count(d => d.status == DealStatus.Broken), kept = final.deals.Count(d => d.status == DealStatus.Fulfilled);
@@ -288,6 +298,13 @@ namespace Gamesim.Tests.EditMode
             Count(counts, "called-in", record.Count(e => e.type != null && (e.type.StartsWith("promise-held:", StringComparison.Ordinal)
                 || e.type.StartsWith("promise-pressed:", StringComparison.Ordinal))));
             Count(counts, "amends", record.Count(e => e.type == "amends-made" || e.type == "amends-refused"));
+            // C8, by the fact kind and the line's words, so the file still compiles against the build before
+            // it: the player's broken word as house knowledge, each houseguest past the two it was struck
+            // between who heard of it, and the lines that named them to the player, counted as they were said.
+            var brokenWord = final.story?.facts?.Where(f => f.kind == "broken-word" && f.actorId == final.playerId).ToList() ?? new List<HouseFactState>();
+            Count(counts, "broken-word", brokenWord.Count);
+            Count(counts, "word-heard", brokenWord.Sum(f => Math.Max(0, f.knowers.Count - 2)));
+            Count(counts, "word-heard-line", wordLines);
             stats = "cmds=" + i + " week=" + final.week + " deals=" + final.deals.Count + " broken=" + broken + " promisesBroken=" + brokenPromises
                 + " winner=" + final.winnerId;
             digest = Hash(trace.ToString());
@@ -460,6 +477,25 @@ namespace Gamesim.Tests.EditMode
                 var said = s.events[i];
                 newest = Math.Max(newest, said.sequence);
                 if (said.kind == "deal-outcome" && said.text != null && said.text.Contains(" no longer owe")) found++;
+            }
+            seen = newest;
+            return found;
+        }
+
+        /// <summary>
+        /// The lines naming somebody the gossip told of the player's broken word since the last look (C8),
+        /// by their words - "Word in the house: ... heard you went back on your ..." - counted as they are
+        /// said, since the season keeps only its last 256 lines.
+        /// </summary>
+        private static int WordLines(EpisodeState s, ref int seen)
+        {
+            int found = 0, newest = seen;
+            for (int i = s.events.Count - 1; i >= 0 && s.events[i].sequence > seen; i--)
+            {
+                var said = s.events[i];
+                newest = Math.Max(newest, said.sequence);
+                if (said.text != null && said.text.StartsWith("Word in the house: ", StringComparison.Ordinal)
+                    && said.text.Contains(" heard you went back on your ")) found++;
             }
             seen = newest;
             return found;

@@ -115,7 +115,7 @@ namespace Gamesim.Simulation
                 AddKnower(state, existing, extraKnower);
                 return existing;
             }
-            if (state.story.facts.Count >= 128) state.story.facts.RemoveAt(0);
+            MakeRoom(state);
             var fact = new HouseFactState
             {
                 id = "fact-" + state.nextSequence++, kind = kind, actorId = actorId, subjectId = subjectId, refId = refId,
@@ -133,7 +133,7 @@ namespace Gamesim.Simulation
         {
             if (state?.story == null || alliance == null) return;
             if (state.story.facts.Any(f => f.kind == FactKinds.Alliance && f.refId == alliance.id)) return;
-            if (state.story.facts.Count >= 128) state.story.facts.RemoveAt(0);
+            MakeRoom(state);
             var fact = new HouseFactState
             {
                 id = "fact-" + state.nextSequence++, kind = FactKinds.Alliance, actorId = alliance.members.FirstOrDefault(),
@@ -143,6 +143,71 @@ namespace Gamesim.Simulation
             foreach (var member in alliance.members) AddKnower(state, fact, member);
             state.story.facts.Add(fact);
         }
+
+        /// <summary>
+        /// A deal broken as house knowledge (ACTIONS-DEALS-ALLIANCES-PLAN C8): the one who broke it its
+        /// actor, the one it was broken against its subject, the deal its reference - one fact a deal -
+        /// out as a whisper, so the house's own gossip carries it (<see cref="Spread"/>), and known at
+        /// first to the two of them and nobody else: the deal was struck between them, and an act the
+        /// house watches (a nomination, the veto meeting, the final choice) shows the house the act, not
+        /// the deal it broke. The engine writes one for a deal the player breaks by such an act, under
+        /// the commitment rules where the house keeps knowledge (<see cref="YourWord.On"/>), and never for
+        /// a breach a ballot decided. <see cref="YourWord"/> reads them.
+        /// </summary>
+        public static HouseFactState BrokenWord(EpisodeState state, DealState deal, string breakerId, string wrongedId)
+        {
+            if (state?.story == null || deal?.id == null || string.IsNullOrEmpty(breakerId) || string.IsNullOrEmpty(wrongedId)
+                || breakerId == wrongedId) return null;
+            var existing = Of(state, FactKinds.BrokenWord, deal.id);
+            if (existing != null) return existing;
+            MakeRoom(state);
+            var fact = new HouseFactState
+            {
+                id = "fact-" + state.nextSequence++, kind = FactKinds.BrokenWord, actorId = breakerId, subjectId = wrongedId,
+                refId = deal.id, visibility = FactVisibility.Whispered, week = state.week,
+            };
+            AddKnower(state, fact, breakerId);
+            AddKnower(state, fact, wrongedId);
+            state.story.facts.Add(fact);
+            return fact;
+        }
+
+        /// <summary>How many facts the house keeps: validation's bound.</summary>
+        public const int Ceiling = 128;
+
+        /// <summary>
+        /// Makes room for one more fact when the house's list is full (X14). Before the commitment rules
+        /// the oldest went, whatever it was - and a private alliance's fact dropped that way left its pact
+        /// with no record, which <see cref="AllianceVisibleTo"/> reads as known to everyone (the legacy
+        /// rule), so every voter counted a pact nobody had told them of. A season without the rules still
+        /// drops the oldest, so it plays as it did.
+        ///
+        /// <para>Under the rules the oldest fact that nothing keeps goes: never an alliance's, and never
+        /// the player's broken word, which their reading reads (<see cref="YourWord"/>) and which must not
+        /// change without a word. Where every fact is one of those, the oldest fact of a pact that no
+        /// longer stands goes - no voter weighs an ended pact - then the oldest alliance fact of any, and
+        /// the player's broken word only when nothing else is left. None of that is reached in a season:
+        /// every pact leaves one fact and every deal the player breaks in front of the house one, and a
+        /// season makes nowhere near a hundred and twenty-eight of them.</para>
+        /// </summary>
+        public static void MakeRoom(EpisodeState state)
+        {
+            var facts = state?.story?.facts;
+            if (facts == null || facts.Count < Ceiling) return;
+            int at = 0;
+            if (EpisodeEngine.CommitmentRulesOn(state))
+            {
+                at = facts.FindIndex(f => !KeptWhenFull(state, f));
+                if (at < 0) at = facts.FindIndex(f => f.kind == FactKinds.Alliance && !state.alliances.Any(a => a.id == f.refId && a.active));
+                if (at < 0) at = facts.FindIndex(f => f.kind == FactKinds.Alliance);
+                if (at < 0) at = 0;
+            }
+            facts.RemoveAt(at);
+        }
+
+        /// <summary>A fact a full list keeps under the commitment rules: an alliance's (X14), or the player's broken word (C8).</summary>
+        private static bool KeptWhenFull(EpisodeState state, HouseFactState fact) =>
+            fact.kind == FactKinds.Alliance || (fact.kind == FactKinds.BrokenWord && fact.actorId == state.playerId);
 
         /// <summary>
         /// Whether an evaluator can see an alliance. <b>The legacy rule:</b> an alliance with no fact

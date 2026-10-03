@@ -18,7 +18,9 @@ namespace Gamesim.Simulation
     /// <para><b>The roll's formula, with each hidden term swapped for what the player has.</b> A
     /// term the player can see is kept as the engine has it: the kind of deal, the houseguest's
     /// traits (the conversation's header names them), the week's roles, the house's size, the
-    /// player's own deals and pacts. The hidden ones become:</para>
+    /// player's own deals and pacts, and - where the house keeps the player's word as knowledge
+    /// (ACTIONS-DEALS-ALLIANCES-PLAN C8) - the house's reading of their word, which the player is
+    /// shown (<see cref="YourWord"/>). The hidden ones become:</para>
     /// <list type="bullet">
     /// <item>their view of the player: the player's own reading of them, held inside the band a
     /// current read put them in (<see cref="PresumedView"/>);</item>
@@ -138,8 +140,10 @@ namespace Gamesim.Simulation
 
             // The ledger's trust is the houseguest's own record of the player: left out, as neutral.
             // Deals the player has broken are the player's own record, and count as the roll counts them
-            // - under the commitment rules only the ones they broke, which are their own acts (C0, X3).
-            chance -= PlayerDeals.BrokenDealPenalty * NpcDeals.BrokenDeals(s, s.playerId);
+            // - under the commitment rules only the ones they broke, which are their own acts (C0, X3) -
+            // and where the house keeps the player's word as knowledge, the public reading the player
+            // sees (C8, YourWord): the roll's own term either way (PlayerDeals.WordPenalty).
+            chance -= PlayerDeals.WordPenalty(s);
 
             // The roll asks whether the ally's own commitment holds (Allegiance.Holds); the player's odds
             // ask it as the player knows it, never of a betrayal or a view they cannot see (C2, C3).

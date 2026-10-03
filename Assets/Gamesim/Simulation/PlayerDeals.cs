@@ -168,8 +168,9 @@ namespace Gamesim.Simulation
             else if (type == DealKind.FinalTwo || type == DealKind.VetoUse || type == DealKind.AllianceInvite) chance -= 10;
 
             chance += (ThreatAssessment.TrustScore(state, state.playerId, npcId) - ThreatAssessment.NeutralTrust) * 0.2;
-            // The deals held against the player: under the commitment rules the ones they broke (C0, X3).
-            chance -= BrokenDealPenalty * NpcDeals.BrokenDeals(state, state.playerId);
+            // The player's word: under the commitment rules the deals they broke (C0, X3), and where the
+            // house keeps knowledge, only what it has heard of them (C8, YourWord).
+            chance -= WordPenalty(state);
 
             // Under the commitment rules only an ally whose own commitment holds (Allegiance.Holds; C2, C3).
             bool allied = Allegiance.Holds(state, npcId, state.playerId);
@@ -224,6 +225,22 @@ namespace Gamesim.Simulation
 
             return Math.Max(MinimumChance, Math.Min(MaximumChance, chance));
         }
+
+        /// <summary>
+        /// What the player's word costs them at the table, in points of a deal's chance - the one term
+        /// the roll (<see cref="AcceptanceChance"/>) and the odds the player is shown
+        /// (<see cref="KnownOdds.Deal"/>) both take, so the two never disagree on it.
+        ///
+        /// <para>Where the house keeps the player's word as knowledge (ACTIONS-DEALS-ALLIANCES-PLAN C8,
+        /// <see cref="YourWord.On"/>), the public reading: what the house has heard of the player going
+        /// back on their word, and nothing it has not (<see cref="YourWord.Cost"/>) - a deal broken by
+        /// the player's own ballot, which the house never sees, costs nothing here, though the one it
+        /// was broken against still holds it in their own view and record. Otherwise
+        /// <see cref="BrokenDealPenalty"/> for every deal held against the player: under the commitment
+        /// rules the ones they broke (C0, X3), before them every one they were a party to.</para>
+        /// </summary>
+        public static double WordPenalty(EpisodeState state) =>
+            YourWord.On(state) ? YourWord.Cost(state) : BrokenDealPenalty * NpcDeals.BrokenDeals(state, state.playerId);
 
         /// <summary>
         /// Where the reference's five relationship tiers put a houseguest's willingness, in percent,
@@ -306,9 +323,16 @@ namespace Gamesim.Simulation
                 if (allied) return "We're already working together, so this makes sense.";
                 return "This could be beneficial for both of us.";
             }
-            if (BrokenDealPenalty * broken > 20) return "I've heard you've broken deals before. I can't trust that.";
+            // "I've heard": where the house keeps the player's word as knowledge (C8), said only of what it
+            // heard, and only by somebody who has heard of a breach of theirs themselves.
+            bool word = YourWord.On(state);
+            if (WordPenalty(state) > 20 && (!word || YourWord.Breaches(state).Any(f => YourWord.HeardBy(state, f).Contains(npcId))))
+                return "I've heard you've broken deals before. I can't trust that.";
             if (relationship < 20) return "I don't think I can trust you with that.";
-            if (rules ? broken > 0 || state.promises.Any(p => Breaches.CountsAgainst(state, p, state.playerId))
+            // A track record: under the commitment rules the player's own broken promises, and their broken
+            // deals - where the house keeps their word, only the ones the house has heard of (C8).
+            bool brokenDeals = word ? YourWord.Cost(state) > 0 : broken > 0;
+            if (rules ? brokenDeals || state.promises.Any(p => Breaches.CountsAgainst(state, p, state.playerId))
                     : ThreatAssessment.TrustScore(state, state.playerId, npcId) < 40)
                 return "Your track record concerns me.";
             return "I'm not sure this is the right move for me.";

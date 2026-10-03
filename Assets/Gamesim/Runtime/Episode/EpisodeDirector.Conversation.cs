@@ -601,11 +601,18 @@ namespace Gamesim.Episode
         /// them, a chip and a line that say how little the read has to go on. Once a render: a
         /// conversation that draws the plea's chances and the deal table's explains them above the
         /// first, and the second says nothing more (<see cref="EpisodeHud.ExplainOdds"/>).
+        ///
+        /// <para>Where the house keeps the player's word as knowledge and somebody has heard of them
+        /// going back on it (ACTIONS-DEALS-ALLIANCES-PLAN C8), the note says so last: the reading, who has
+        /// heard, and that every deal's chance carries it (<see cref="YourWord.OddsLine"/>) - a term the
+        /// roll and the shown odds take alike. Nothing is added while nobody has heard, or without the rules.</para>
         /// </summary>
         private void OddsAreYourRead(EpisodeState state, ContestantState npc)
         {
             bool little = KnownOdds.Unknowns(state, npc.id) == KnownOdds.Many;
-            hud.ExplainOdds(OddsReadLine(FinalistRead.FirstName(npc.name)) + (little ? " " + LittleToGoOnLine : ""), little);
+            string word = YourWord.OddsLine(state);
+            hud.ExplainOdds(OddsReadLine(FinalistRead.FirstName(npc.name)) + (little ? " " + LittleToGoOnLine : "")
+                + (word == null ? "" : " " + word), little);
         }
 
         /// <summary>

@@ -182,22 +182,56 @@ namespace Gamesim.Episode
         {
             hud.PageDoor(BackToYourNotesCaption, () => ShowNotebookSection(NotebookSection.Notes));
             // The mark exists in every state: it is what the notebook scrolls to. The door stands in
-            // the page's head, not the column, so the mark goes on the column's first element.
+            // the page's head, not the column, so the mark goes on the column's first element - the
+            // house's reading of the player's word where it keeps one (C8), the page's own otherwise.
+            bool reading = YourWord.On(state);
+            if (reading) WordInTheHouse(state);
             var all = CommitmentsRead.Of(state);
             if (all.Count == 0)
             {
                 hud.EmptyState("No commitments", PackArt.KitEmptyPrivate, "Nobody has your word yet, and you have nobody's.",
                     "Promises, deals, loyalty oaths and the calls you make in an alliance land here as you make them.");
-                hud.Mark(NotebookSection.Word);
+                if (!reading) hud.Mark(NotebookSection.Word);
             }
             else
             {
                 var open = all.Where(c => c.IsOpen).ToList();
-                WordSection(state, "STILL OPEN", EpisodeHud.WordOpenCardPrefix, open, mark: true);
-                WordSection(state, "SETTLED", EpisodeHud.WordSettledCardPrefix, all.Where(c => !c.IsOpen).ToList(), mark: open.Count == 0);
+                WordSection(state, "STILL OPEN", EpisodeHud.WordOpenCardPrefix, open, mark: !reading);
+                WordSection(state, "SETTLED", EpisodeHud.WordSettledCardPrefix, all.Where(c => !c.IsOpen).ToList(), mark: !reading && open.Count == 0);
             }
             hud.NotebookFooter("Only what you are a party to, from the season's own record. Who broke a deal is said only where the record shows it.",
                 "House activities", OpenHouseActivities);
+        }
+
+        /// <summary>The eyebrow over the house's reading of the player's word (C8).</summary>
+        public const string WordInTheHouseHeading = "IN THE HOUSE";
+
+        /// <summary>
+        /// The house's reading of the player's word, first on the page where the house keeps one
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN C8, decision 14; <see cref="YourWord"/>): its eyebrow, which
+        /// carries the page's mark, and a card - the reading in words, in its colour, who has heard of the
+        /// player going back on their word, and each breach the house knows of with who knows it. Built
+        /// only from breaches the house saw, every one of them told to the player as it spread, so nothing
+        /// here is news to them but the sum.
+        /// </summary>
+        private void WordInTheHouse(EpisodeState state)
+        {
+            hud.Eyebrow(WordInTheHouseHeading, UiTheme.Muted);
+            hud.Mark(NotebookSection.Word);
+            var lines = new List<string> { YourWord.Summary(state) };
+            lines.AddRange(YourWord.Lines(state));
+            hud.WordReadingCard(YourWord.Title(state), WordReadingInk(YourWord.Word(state)), lines);
+        }
+
+        /// <summary>The reading in a colour as well as its words: good in the allied green, questioned and doubted in the warning's, broken in the conflict red.</summary>
+        public static Color WordReadingInk(string word)
+        {
+            switch (word)
+            {
+                case YourWord.Good: return UiTheme.Allied;
+                case YourWord.Broken: return UiTheme.Conflict;
+                default: return UiTheme.Warning;
+            }
         }
 
         /// <summary>

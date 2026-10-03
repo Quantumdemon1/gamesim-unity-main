@@ -29,6 +29,12 @@ namespace Gamesim.Episode
         /// <summary>A Your word card's name: its section's prefix and the houseguest's full name.</summary>
         public const string WordOpenCardPrefix = "Your word · open · ", WordSettledCardPrefix = "Your word · settled · ";
 
+        /// <summary>
+        /// The card the Your word page opens on where the house keeps the player's word as knowledge
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN C8): the house's reading of it, and the name of its heading's label.
+        /// </summary>
+        public const string WordReadingCardName = "Your word · the house", WordReadingTitleName = "Your word reading";
+
         // ------------------------------------------------------------ the footer strip, in place
 
         /// <summary>
@@ -244,6 +250,37 @@ namespace Gamesim.Episode
                 y = PlacedCopy(card, "and " + more + " more with them in the season's record", 13,
                     UiTheme.Weight.Regular, UiTheme.Muted, left, y, inner) + 2f * s;
             y = Mathf.Max(y, 16f * s + face + 8f * s);
+            var size = card.gameObject.AddComponent<LayoutElement>();
+            size.minHeight = size.preferredHeight = y + 12f * s;
+            return card;
+        }
+
+        /// <summary>
+        /// The house's reading of the player's word on the Your word page (ACTIONS-DEALS-ALLIANCES-PLAN
+        /// C8): its words as the card's heading, in the reading's colour, then a line for each thing it
+        /// says - who has heard, and each breach the house knows of with who knows it. A card a
+        /// houseguest's card is drawn like, without a face, named <see cref="WordReadingCardName"/>. Not
+        /// a control.
+        /// </summary>
+        public RectTransform WordReadingCard(string title, Color ink, IList<string> lines)
+        {
+            if (content == null || string.IsNullOrEmpty(title)) return null;
+            float s = FontScale, width = ContentWidth(), pad = 20f * s, inner = width - 2f * pad;
+            var card = HudPrimitives.KitCard(WordReadingCardName, content, false, 14f);
+            float y = 16f * s;
+            // The box is 1.3 times the size the heading is set at, rounded as the HUD rounds it, so it
+            // holds at the larger text too (Inter draws nothing in a box under 1.21 times its words).
+            float tall = Mathf.Ceil(Mathf.RoundToInt(18 * s) * 1.3f);
+            var heading = FixedText(card, title, 18, ink, new Vector2(pad, -y), new Vector2(inner, tall));
+            heading.name = WordReadingTitleName;
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (semibold != null) heading.font = semibold;
+            heading.textWrappingMode = TextWrappingModes.NoWrap;
+            AutoSize(heading, 12);
+            y += Mathf.Max(30f * s, tall + 6f * s);
+            if (lines != null)
+                foreach (var line in lines)
+                    y = PlacedCopy(card, line, 15, UiTheme.Weight.Regular, Paper, pad, y, inner) + 4f * s;
             var size = card.gameObject.AddComponent<LayoutElement>();
             size.minHeight = size.preferredHeight = y + 12f * s;
             return card;

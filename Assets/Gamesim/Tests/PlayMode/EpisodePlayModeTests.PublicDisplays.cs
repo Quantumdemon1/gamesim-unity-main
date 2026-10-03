@@ -49,6 +49,20 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(photos.All(p=>PublicPhotoTexture(p)==expected),Is.True,"Every HoH frame follows the exact same current person, not a prior winner.");
             }
             else Assert.That(photos.All(p=>PublicPhotoTexture(p)==null),Is.True,"NoUMA draws no incorrect face.");
+            if(Application.isBatchMode)
+            {
+                var yard=SceneComponents<Renderer>().Single(r=>r.name==HousePublicDisplays.YardName);
+                var centre=photos.Aggregate(Vector3.zero,(sum,p)=>sum+p.transform.position)/photos.Length+Vector3.up*.12f;
+                foreach(var dimensions in new[]{new Vector2Int(1280,720),new Vector2Int(1920,1080)})
+                {
+                    cameraRig.MoveTo(new HouseCameraRig.Shot{Focus=centre,Distance=1.7f,Pitch=0,Yaw=photos[0].transform.eulerAngles.y,FieldOfView=40,Seconds=.01f});
+                    yield return Frames(2);
+                    yield return CaptureFraming("house-public-hoh-"+dimensions.x+"x"+dimensions.y,settle:false,width:dimensions.x,height:dimensions.y);
+                    cameraRig.MoveTo(new HouseCameraRig.Shot{Focus=yard.transform.position,Distance=3f,Pitch=0,Yaw=yard.transform.eulerAngles.y,FieldOfView=40,Seconds=.01f});
+                    yield return Frames(2);
+                    yield return CaptureFraming("house-public-yard-"+dimensions.x+"x"+dimensions.y,settle:false,width:dimensions.x,height:dimensions.y);
+                }
+            }
             var publicReset=state.Clone();publicReset.hohId=null;
             HousePublicDisplays.Project(player.gameObject.scene,publicReset);yield return null;
             Assert.That(displays.HeadOfHouseholdName,Is.Null);

@@ -713,6 +713,11 @@ namespace Gamesim.Tests.PlayMode
             var cut = director.CeremonyScreenShot ?? screen.Shot();
             Debug.Log("[Gamesim] " + name + ": the screen's cut stands at pitch " + cut.Pitch.ToString("0.#") + ", yaw "
                 + (cut.Yaw - screen.LookYaw).ToString("0.#") + " off the face's axis, " + cut.Distance.ToString("0.00") + " m out.");
+            // A staged ceremony cuts to the faces between the screen's shots on its own clock, which no
+            // card's hold stops. One that fell between the move and the frame put the lens on the faces
+            // and the card behind it (PR #22's audited run: the full house's key screen). Called off,
+            // the rig stays on the screen's cut for the frame; the next beat schedules its own.
+            if (director.IsCeremonyStaged) CallOffTheStagesCuts();
             cameraRig.MoveTo(cut);
             yield return Frames(2);
             yield return CaptureFraming(name, settle: false, inspect: inspect);

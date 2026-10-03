@@ -10,7 +10,7 @@ namespace Gamesim.Tests.EditMode
     /// the house becomes a fact the two of them know, which the house's own gossip carries; every
     /// houseguest it reaches thinks less of the player and is named to them in a line; the public
     /// reading built from those facts alone is a term of the acceptance roll and of the odds the
-    /// player sees, and the words the player is told name the moves that take it and the two that strike
+    /// player sees, and the words the player is told name the moves that take it and those that strike
     /// deals without it; a breach a ballot decided is never house knowledge; and a full list of facts
     /// never drops an alliance's (X14) or the player's broken word. Each half against the season without
     /// the rules, which plays as it always did. Unity-free, so the dotnet subset runs it
@@ -294,6 +294,13 @@ namespace Gamesim.Tests.EditMode
             double pleaShown = KnownOdds.Plea(s, asked.id, LobbyAsk.Save, s.playerId, LobbyApproach.Deal).chance;
             double price = Negotiation.Chance(s, asked.id, Negotiation.VetoForAPrice, false);
             double priceShown = Negotiation.Chance(s, asked.id, Negotiation.VetoForAPrice, true);
+            // Nor a story's choice, though a beat a conversation raised is answered in it and the deal it
+            // strikes is the player's too: The Count's 'Make the pitch', on the story's own odds.
+            var count = new HouseEventState { id = "house-event-the-count", kind = HouseEventKind.Story, surface = StorySurfaces.Conversation,
+                title = "The Count", involvedIds = new List<string> { asked.id } };
+            var pitch = new HouseEventChoice { optionId = "pitch", label = "Make the pitch", checkBase = 50, subjectId = asked.id,
+                approach = Personality.Approach.Calculated };
+            int story = StoryOdds.Chance(s, count, pitch);
 
             // Broken in front of the house and heard of by two more, none of them the one asked.
             var fact = BreakInFrontOfTheHouse(s, "deal-named", npcs[0].id);
@@ -303,6 +310,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(YourWord.Cost(s), Is.EqualTo(cost), "Precondition: three hearings.");
             foreach (double before in new[] { deal, dealShown, alliance, allianceShown })
                 Assert.That(before - cost > PlayerDeals.MinimumChance && before < PlayerDeals.MaximumChance, Is.True, "Precondition: clear of the clamps.");
+            Assert.That(story - cost > StoryOdds.Floor && story < StoryOdds.Ceiling, Is.True, "Precondition: the story's odds are clear of their clamps too.");
             Assert.That(PlayerDeals.AcceptanceChance(s, asked.id, DealKind.SafetyAgreement, null), Is.EqualTo(deal - cost).Within(1e-9),
                 "A deal proposed at the table takes the reading,");
             Assert.That(KnownOdds.Deal(s, asked.id, DealKind.SafetyAgreement, null).chance, Is.EqualTo(dealShown - cost).Within(1e-9), "as shown,");
@@ -311,17 +319,18 @@ namespace Gamesim.Tests.EditMode
             Assert.That(StrategyRules.Chance(s, asked.id, LobbyAsk.Save, s.playerId, LobbyApproach.Deal), Is.EqualTo(plea), "the plea's deal does not,");
             Assert.That(KnownOdds.Plea(s, asked.id, LobbyAsk.Save, s.playerId, LobbyApproach.Deal).chance, Is.EqualTo(pleaShown), "as shown,");
             Assert.That(Negotiation.Chance(s, asked.id, Negotiation.VetoForAPrice, false), Is.EqualTo(price), "nor a veto for a price,");
-            Assert.That(Negotiation.Chance(s, asked.id, Negotiation.VetoForAPrice, true), Is.EqualTo(priceShown), "as shown.");
+            Assert.That(Negotiation.Chance(s, asked.id, Negotiation.VetoForAPrice, true), Is.EqualTo(priceShown), "as shown,");
+            Assert.That(StoryOdds.Chance(s, count, pitch), Is.EqualTo(story), "nor a story's choice, its odds shown and rolled alike.");
 
-            // So the words name what it weighs on, and those two by name as what it does not - over the odds,
-            // and on the Your word page, which says "in a conversation" too: a story's choice can strike a
-            // deal the page lists as the player's, on no roll at all.
+            // So the words name what it weighs on, and what it does not by name. Over the odds, the plea and
+            // the veto's price, which can be the first table under the note; on the Your word page, which
+            // lists the deals all three strike as the player's, a story's choice as well.
             Assert.That(YourWord.OddsLine(s), Is.EqualTo("Your word is questioned: 3 houseguests have heard of you going back on it, "
                 + "and it weighs on every deal and alliance you propose, but not on a plea or a price for the veto."));
             string heard = FinalistRead.FirstName(npcs[0].name) + ", " + FinalistRead.FirstName(npcs[1].name) + " and " + FinalistRead.FirstName(npcs[2].name);
             Assert.That(YourWord.Summary(s), Is.EqualTo("3 houseguests have heard of you going back on your word: " + heard
-                + ". The further it spreads, the more it weighs on every deal and alliance you propose in a conversation, "
-                + "but not on a plea or a price for the veto."));
+                + ". The further it spreads, the more it weighs on every deal and alliance you propose, "
+                + "but not on a plea, a price for the veto or a story's choice."));
         }
 
         [Test]

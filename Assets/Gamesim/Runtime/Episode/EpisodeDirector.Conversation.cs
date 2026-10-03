@@ -608,8 +608,10 @@ namespace Gamesim.Episode
         /// chances of a deal or an alliance the player proposes, a term the roll and the shown odds take
         /// alike; it never weighs on a plea's or a veto for a price's, and the note names those two: it
         /// stands over the first table drawn, which can be either, and the Your word page can list the
-        /// deal either strikes as one the player proposed. Nothing is added while nobody has heard, or
-        /// without the rules.</para>
+        /// deal either strikes as one the player proposed. A story's choice strikes deals without it too,
+        /// but is never drawn under the note - a beat the conversation raised is the conversation until it
+        /// is answered (<see cref="ConversationBeat"/>) - so the Your word page names it and the note does
+        /// not. Nothing is added while nobody has heard, or without the rules.</para>
         /// </summary>
         private void OddsAreYourRead(EpisodeState state, ContestantState npc)
         {

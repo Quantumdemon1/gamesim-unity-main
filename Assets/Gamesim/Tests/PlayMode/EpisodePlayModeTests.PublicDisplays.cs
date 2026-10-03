@@ -21,6 +21,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(displays.HeadOfHouseholdId,Is.EqualTo(director.Snapshot.hohId));
             Assert.That(displays.YardText,Does.Contain("Week "+director.Snapshot.week));
             Assert.That(photos.All(p=>PublicPhotoTexture(p)==null),Is.True,"No current HoH means no placeholder family is presented as their portrait.");
+            AssertPublicPhotoEmission(photos,null);
             for(int guard=0;guard<100 && director.Snapshot.hohId==null;guard++)
             {
                 var result=director.Submit(NextCommand(director.Snapshot));
@@ -47,6 +48,7 @@ namespace Gamesim.Tests.PlayMode
                 deadline=Time.realtimeSinceStartup+2;
                 while(photos.Any(p=>PublicPhotoTexture(p)!=expected) && Time.realtimeSinceStartup<deadline)yield return null;
                 Assert.That(photos.All(p=>PublicPhotoTexture(p)==expected),Is.True,"Every HoH frame follows the exact same current person, not a prior winner.");
+                AssertPublicPhotoEmission(photos,expected);
             }
             else Assert.That(photos.All(p=>PublicPhotoTexture(p)==null),Is.True,"NoUMA draws no incorrect face.");
             if(Application.isBatchMode)
@@ -67,6 +69,7 @@ namespace Gamesim.Tests.PlayMode
             HousePublicDisplays.Project(player.gameObject.scene,publicReset);yield return null;
             Assert.That(displays.HeadOfHouseholdName,Is.Null);
             Assert.That(photos.All(p=>PublicPhotoTexture(p)==null),Is.True,"A week with no HoH must clear the previous portrait immediately.");
+            AssertPublicPhotoEmission(photos,null);
             int labels=SceneComponents<TMP_Text>().Count(t=>t.name=="Public text");
             HousePublicDisplays.Project(player.gameObject.scene,publicReset);yield return null;
             Assert.That(SceneComponents<TMP_Text>().Count(t=>t.name=="Public text"),Is.EqualTo(labels),"Repeated projection reuses the actual surfaces.");
@@ -78,6 +81,13 @@ namespace Gamesim.Tests.PlayMode
             var material=renderer.material;
             return material.HasProperty("_BaseMap")?material.GetTexture("_BaseMap")
                 :material.HasProperty("_MainTex")?material.GetTexture("_MainTex"):null;
+        }
+
+        private static void AssertPublicPhotoEmission(Renderer[] photos,Texture expected)
+        {
+            foreach(var photo in photos)
+                if(photo.material.HasProperty("_EmissionMap"))
+                    Assert.That(photo.material.GetTexture("_EmissionMap"),Is.SameAs(expected),"The emissive finish must show the current portrait or none, never its static placeholder.");
         }
     }
 }

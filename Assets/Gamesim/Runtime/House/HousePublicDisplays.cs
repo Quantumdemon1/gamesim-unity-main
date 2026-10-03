@@ -96,6 +96,7 @@ namespace Gamesim.House
                         var material=renderer.material;
                         if(material.HasProperty("_BaseMap"))material.SetTexture("_BaseMap",null);
                         if(material.HasProperty("_MainTex"))material.SetTexture("_MainTex",null);
+                        if(material.HasProperty("_EmissionMap"))material.SetTexture("_EmissionMap",null);
                     }
                     binding.Set(hoh);
                     continue;

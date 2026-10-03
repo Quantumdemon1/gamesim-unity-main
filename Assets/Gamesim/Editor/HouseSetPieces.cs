@@ -72,7 +72,7 @@ namespace Gamesim.Editor
         }
 
         /// <summary>Every model id the plan names, for the catalogue audit.</summary>
-        public static IEnumerable<string> PlanModels => Plan.Select(prop => prop.Model).Concat(SteppedModels);
+        public static IEnumerable<string> PlanModels => Plan.Select(prop => prop.Model).Concat(SteppedModels).Concat(HouseAmenitiesAuthoring.ModelIds);
         /// <summary>Models placed by a step rather than a plan row: the competition set.</summary>
         private static readonly string[] SteppedModels =
         {
@@ -375,6 +375,8 @@ namespace Gamesim.Editor
             int shell = Shell(world.transform, root);
             // Before the collision and the bake, so both see the living room as it will be played.
             string gallery = HouseLivingGallery.Dress(world.transform, root);
+
+            HouseAmenitiesAuthoring.Place(world.transform, root);
 
             // The anchors that hang on set pieces - the dining chairs' and loungers' meeting seats,
             // the counter's and the tub's activities, the diary chair, the episode station - went

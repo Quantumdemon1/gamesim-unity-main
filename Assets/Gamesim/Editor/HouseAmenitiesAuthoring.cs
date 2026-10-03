@@ -27,6 +27,7 @@ namespace Gamesim.Editor
             public int roomPairsBefore, roomPairsAfter, approachesBefore, approachesAfter;
             public string navigationGuid;
             public string[] protectedSceneBefore, protectedSceneAfter;
+            public string[] reachableApproachesBefore;
             public bool reopenedAndVerified;
             public List<string> placed = new List<string>();
         }
@@ -34,14 +35,7 @@ namespace Gamesim.Editor
         /// <summary>Explicit batch entry for a named acceptance copy; never an import callback.</summary>
         public static void AuthorAcceptance()
         {
-            string project = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
-            string[] args = Environment.GetCommandLineArgs();
-            int key = Array.IndexOf(args, "-gamesimHouseAuthoringRoot");
-            if (!Application.isBatchMode || EditorApplication.isPlayingOrWillChangePlaymode
-                || key < 0 || key + 1 >= args.Length
-                || !string.Equals(project.TrimEnd('\\', '/'), Path.GetFullPath(args[key + 1]).TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase)
-                || Path.GetFileName(project).IndexOf("Acceptance", StringComparison.OrdinalIgnoreCase) < 0)
-                throw new InvalidOperationException("House authoring requires the explicitly named isolated acceptance copy.");
+            string project = RequireAcceptanceProject();
 
             var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
             var surface = scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<NavMeshSurface>(true)).Single();
@@ -55,6 +49,7 @@ namespace Gamesim.Editor
             };
             var previouslyReachable = ReachableApproaches(scene);
             report.approachesBefore = previouslyReachable.Count;
+            report.reachableApproachesBefore = previouslyReachable.OrderBy(value => value, StringComparer.Ordinal).ToArray();
             var world = scene.GetRootGameObjects().Single(g => g.name == "House Architecture").transform;
             var pieces = world.Find(HouseSetPieces.RootName);
             if (pieces == null) throw new InvalidOperationException("The furnished house is missing its set-piece root.");
@@ -102,6 +97,45 @@ namespace Gamesim.Editor
                 + report.roomPairsAfter + " room pairs; " + report.approachesAfter + " reachable approaches.");
         }
 
+        /// <summary>Rechecks the written scene and navigation asset in a separate Unity process.</summary>
+        public static void VerifySavedAcceptance()
+        {
+            string project = RequireAcceptanceProject();
+            string directory = Path.Combine(project, "Logs");
+            var report = JsonUtility.FromJson<Report>(File.ReadAllText(Path.Combine(directory, "house-amenities-authoring.json")));
+            if (report == null || !report.reopenedAndVerified || report.reachableApproachesBefore == null)
+                throw new InvalidOperationException("A completed house authoring report is required.");
+            var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+            var surface = scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<NavMeshSurface>(true)).Single();
+            var pieces = scene.GetRootGameObjects().Single(g => g.name == "House Architecture").transform.Find(HouseSetPieces.RootName);
+            var group = pieces == null ? null : pieces.Find(GroupName);
+            if (group == null || group.childCount != 5 || surface.navMeshData == null
+                || AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(surface.navMeshData)) != report.navigationGuid)
+                throw new InvalidOperationException("The fresh process did not load the authored house and its original navigation asset.");
+            report.protectedSceneAfter = ProtectedSceneState(scene);
+            report.roomPairsAfter = HouseNavigationAudit.ReachablePairs(surface, surface.navMeshData);
+            var approaches = ReachableApproaches(scene);
+            report.approachesAfter = approaches.Count;
+            if (!report.protectedSceneBefore.SequenceEqual(report.protectedSceneAfter)
+                || report.roomPairsAfter < report.roomPairsBefore || report.reachableApproachesBefore.Except(approaches).Any())
+                throw new InvalidOperationException("Fresh-process house verification changed existing anchors, lighting or navigation.");
+            File.WriteAllText(Path.Combine(directory, "house-amenities-verification.json"), JsonUtility.ToJson(report, true));
+            Debug.Log("[Gamesim] Fresh-process house verification passed.");
+        }
+
+        private static string RequireAcceptanceProject()
+        {
+            string project = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+            string[] arguments = Environment.GetCommandLineArgs();
+            int key = Array.IndexOf(arguments, "-gamesimHouseAuthoringRoot");
+            if (!Application.isBatchMode || EditorApplication.isPlayingOrWillChangePlaymode
+                || key < 0 || key + 1 >= arguments.Length
+                || !string.Equals(project.TrimEnd('\\', '/'), Path.GetFullPath(arguments[key + 1]).TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase)
+                || Path.GetFileName(project).IndexOf("Acceptance", StringComparison.OrdinalIgnoreCase) < 0)
+                throw new InvalidOperationException("House authoring requires the explicitly named isolated acceptance copy.");
+            return project;
+        }
+
         /// <summary>Shared with the full set rebuild so an explicit rebuild retains these props.</summary>
         public static void Place(Transform world, Transform pieces, List<string> evidence = null)
         {
@@ -109,9 +143,11 @@ namespace Gamesim.Editor
                 if (HouseCatalogue.Resolve(id, out var tier) == null || tier != HouseCatalogue.Tier.Authored)
                     throw new InvalidOperationException("Missing authored house furnishing: " + id);
             var existing = pieces.Find(GroupName);
+            int siblingIndex = existing == null ? pieces.childCount : existing.GetSiblingIndex();
             if (existing != null) UnityEngine.Object.DestroyImmediate(existing.gameObject);
             var group = new GameObject(GroupName).transform;
             group.SetParent(pieces, false);
+            group.SetSiblingIndex(siblingIndex);
             Put(world, group, "Games floor", "bb_set_pooltable", -.17f, .22f, 0, evidence);
             Put(world, group, "HoH floor", "bb_set_hohbench", -.12f, .06f, 0, evidence);
             Put(world, group, "Competition yard floor", "bb_set_lighttower", -.28f, .43f, 155, evidence);

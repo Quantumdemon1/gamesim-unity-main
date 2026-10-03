@@ -42,8 +42,10 @@ namespace Gamesim.Uma.Tests
             public string file, item, recipe, body, shape, state, clip, view, appearanceKey;
             public bool headDetail;
             public float normalizedTime, cameraSize;
-            public Vector3 cameraPosition, cameraUp, head, hips, leftHand, rightHand;
+            public Vector3 cameraPosition, cameraUp, head, hips, leftHand, rightHand, leftShoulder, rightShoulder;
             public List<AppearanceValue> requestedDna, builtDna;
+            public List<AppearanceWardrobe> wardrobe;
+            public List<AppearanceColor> outfitColors;
         }
 
         [UnityTest]
@@ -94,12 +96,13 @@ namespace Gamesim.Uma.Tests
                 var afro = AppearanceEditing.Find(catalog, ProceduralHair.Prefix + "afro");
                 var cap = AppearanceEditing.Find(catalog, ProceduralAccessories.Prefix + "cap");
                 var sidePart = catalog.Items.FirstOrDefault(item => item.Slot == "Hair" && item.Fits(body)
-                    && (item.Label.IndexOf("side part", StringComparison.OrdinalIgnoreCase) >= 0 || item.Label.IndexOf("side-part", StringComparison.OrdinalIgnoreCase) >= 0));
+                    && (item.Aliases.Contains("Hair_LeftPart_Recipe") || item.Label.IndexOf("side part", StringComparison.OrdinalIgnoreCase) >= 0
+                        || item.Label.IndexOf("side-part", StringComparison.OrdinalIgnoreCase) >= 0));
                 var looks = new List<(string name, AppearanceItem hair, AppearanceItem hat)>();
-                if (afro != null) looks.Add(("afro", afro, null));
-                if (afro != null && cap != null) looks.Add(("afro-cap", afro, cap));
+                if (afro != null && afro.Fits(body)) looks.Add(("afro", afro, null));
+                if (afro != null && afro.Fits(body) && cap != null && cap.Fits(body)) looks.Add(("afro-cap", afro, cap));
                 if (sidePart != null) looks.Add(("side-part", sidePart, null));
-                else manifest.optionalNotes.Add(body + ": no installed Hair entry labelled side part; no substitute was photographed as that style.");
+                else manifest.optionalNotes.Add(body + ": no compatible installed side-part Hair entry; no substitute was photographed as that style.");
                 foreach (var look in looks)
                 {
                     var appearance = Appearance(body, garment, "neutral");
@@ -107,7 +110,10 @@ namespace Gamesim.Uma.Tests
                     if (look.hat != null) AppearanceEditing.Wear(appearance, look.hat, catalog);
                     yield return Build(appearance);
                     var avatar = subject.GetComponent<DynamicCharacterAvatar>(); var animator = subject.GetComponentInChildren<Animator>();
-                    AssertBody(avatar, animator, appearance, garment); Sample(animator, "Idle");
+                    AssertBody(avatar, animator, appearance, garment);
+                    AssertHeadItem(avatar, look.hair);
+                    if (look.hat != null) AssertHeadItem(avatar, look.hat);
+                    Sample(animator, "Idle");
                     Capture(avatar, animator, appearance, garment, look.name, "Idle", "front", true);
                     Capture(avatar, animator, appearance, garment, look.name, "Idle", "back", true);
                     Object.Destroy(subject); subject = null; yield return null;
@@ -163,6 +169,15 @@ namespace Gamesim.Uma.Tests
             Assert.That(subject.GetComponentsInChildren<SkinnedMeshRenderer>().Any(renderer => renderer.enabled && renderer.sharedMesh != null && renderer.sharedMesh.vertexCount > 0), Is.True);
             foreach (string dna in Dna)
                 Assert.That(avatar.GetDNA()[dna].Value, Is.EqualTo(appearance.dna.Single(value => value.id == dna).value).Within(.001f), "Capture the requested " + dna + ", not the preset's default.");
+        }
+        private void AssertHeadItem(DynamicCharacterAvatar avatar, AppearanceItem item)
+        {
+            if (ProceduralHair.IsProcedural(item.Id) || ProceduralAccessories.IsProcedural(item.Id))
+                Assert.That(subject.GetComponentsInChildren<GrownPiece>().Any(piece => piece.ItemId == item.Id
+                    && piece.Mesh != null && piece.Mesh.vertexCount > 0 && piece.GetComponent<Renderer>().enabled), Is.True,
+                    "The photographed head detail must contain its actual grown item: " + item.Id);
+            else Assert.That(avatar.GetWardrobeItem(item.Slot)?.name, Is.EqualTo(catalog.ResolveRecipeName(item.Id)),
+                "The photographed head detail must wear its exact installed recipe.");
         }
         private static void Sample(Animator animator, string state)
         {
@@ -244,6 +259,9 @@ namespace Gamesim.Uma.Tests
                     normalizedTime = animator.GetCurrentAnimatorStateInfo(0).normalizedTime, cameraSize = camera.orthographicSize, cameraPosition = camera.transform.position,
                     cameraUp = camera.transform.up, head = head, hips = hips, leftHand = animator.GetBoneTransform(HumanBodyBones.LeftHand).position,
                     rightHand = animator.GetBoneTransform(HumanBodyBones.RightHand).position, requestedDna = appearance.dna.Select(value => value.Clone()).ToList(),
+                    leftShoulder = animator.GetBoneTransform(HumanBodyBones.LeftUpperArm).position, rightShoulder = animator.GetBoneTransform(HumanBodyBones.RightUpperArm).position,
+                    wardrobe = appearance.outfits.Single(outfit => outfit.id == appearance.activeOutfit).wardrobe.Select(value => value.Clone()).ToList(),
+                    outfitColors = appearance.outfits.Single(outfit => outfit.id == appearance.activeOutfit).colors.Select(value => value.Clone()).ToList(),
                     builtDna = Dna.Select(dna => new AppearanceValue { id = dna, value = avatar.GetDNA()[dna].Value }).ToList() });
             }
             finally { RenderTexture.active = previous; camera.targetTexture = null; render.Release(); Object.Destroy(render); Object.Destroy(pixels); }

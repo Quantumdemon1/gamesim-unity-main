@@ -82,7 +82,7 @@ namespace Gamesim.Presentation
         {
             RefitToFrame();
             RebuildIfAsked();
-            if (previewStatus != null && studioPreview != null) previewStatus.text = studioPreview.Status;
+            if (previewStatus != null && studioPreview != null) previewStatus.text = studioPreview.DisplayStatus;
             if (retryPreviewButton != null && studioPreview != null) retryPreviewButton.interactable = studioPreview.CanRetry;
         }
 
@@ -226,8 +226,9 @@ namespace Gamesim.Presentation
                 .transform.Find("Glyph").localRotation = Quaternion.Euler(0f, 0f, 180f);
             GlyphButton(turntable, "Rotate right", new Rect(252f, 4f, 44f, 44f), null, UiTheme.PlayMark(), () => studioPreview.Rotate(30f));
             Words(turntable, "Rotate", 17f, UiTheme.Paper, new Rect(50f, 0f, 200f, 52f), TextAlignmentOptions.Center);
-            previewStatus = Words(stage, studioPreview.Status, 13f, UiTheme.Muted, new Rect(8f, 8f, r.width * .6f, 20f),
+            previewStatus = Words(stage, studioPreview.DisplayStatus, 13f, UiTheme.Muted, new Rect(8f, 8f, r.width - 156f, 44f),
                 TextAlignmentOptions.TopLeft, "Preview status");
+            previewStatus.textWrappingMode = TextWrappingModes.Normal;
             retryPreviewButton = Pill(stage, "Retry preview", new Rect(r.width - 132f, 2f, 132f, 30f), Tone.Quiet,
                 () => studioPreview.Retry(), size: 13f);
             retryPreviewButton.interactable = studioPreview.CanRetry;

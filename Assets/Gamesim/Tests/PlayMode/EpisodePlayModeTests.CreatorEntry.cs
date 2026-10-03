@@ -238,6 +238,36 @@ namespace Gamesim.Tests.PlayMode
             Creator().FontScale = 1f;
         }
 
+        [UnityTest]
+        public IEnumerator CreatorEntry_FallbackStatusAndRetryRemainCompleteAtSupportedNarrowLayouts()
+        {
+            yield return OpenCreator(detailed:false);
+            var creator=Creator();
+            foreach(var size in new[]{new Vector2Int(1280,720),new Vector2Int(1920,1080),new Vector2Int(1200,900)})
+                using(var lens=new CaptureLens(cameraRig.ViewCamera,size.x,size.y))
+                    foreach(float scale in new[]{1f,1.2f})
+                        foreach(string mode in new[]{CharacterCreator.QuickCaption,CharacterCreator.DetailedCaption})
+                        {
+                            creator.FontScale=scale;yield return null;yield return null;
+                            yield return CreatorEntrySubmit(mode);
+                            var status=creator.GetComponentsInChildren<TMP_Text>().Single(t=>t.name=="Preview status" && t.gameObject.activeInHierarchy);
+                            var retry=creator.GetComponentsInChildren<UnityEngine.UI.Button>().Single(button=>button.IsActive()
+                                && button.GetComponentInChildren<TMP_Text>()?.text=="Retry preview");
+                            var dimensions=status.rectTransform.rect;
+                            var wanted=status.GetPreferredValues(CharacterStudioPreview.FallbackDisplayStatus,Mathf.Infinity,Mathf.Infinity);
+                            Assert.That(wanted.x,Is.LessThanOrEqualTo(dimensions.width),mode+" "+size+" "+scale+": both complete sentences fit without squeezing type.");
+                            Assert.That(wanted.y,Is.LessThanOrEqualTo(dimensions.height),mode+" "+size+" "+scale+": both lines have room.");
+                            Assert.That(status.fontSize,Is.EqualTo(13f).Within(.01f),"The existing scaler magnifies normal type; font size is not reduced.");
+                            Assert.That(((RectTransform)retry.transform).rect.width,Is.EqualTo(132f),"Retry keeps its existing control size.");
+                            if(creator.StudioPreview.CanRetry)
+                            {
+                                Assert.That(status.text,Is.EqualTo(creator.StudioPreview.DisplayStatus));
+                                Assert.That(retry.IsInteractable(),Is.True);
+                            }
+                            AssertCreatorFits(creator,"fallback status "+mode+" "+size+" "+scale);
+                        }
+        }
+
         private static void AssertCreatorEntryDraft(CharacterDraft expected, CharacterDraft actual)
         {
             Assert.That(actual.Name, Is.EqualTo(expected.Name)); Assert.That(actual.Age, Is.EqualTo(expected.Age));

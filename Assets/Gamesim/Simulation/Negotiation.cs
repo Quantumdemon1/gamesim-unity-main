@@ -97,7 +97,8 @@ namespace Gamesim.Simulation
         /// <list type="number">
         /// <item>on the block, from a player who votes this week: the player's vote to keep them, this week
         /// (a vote save naming them, where the levers judge vote deals);</item>
-        /// <item>at the endgame - six or fewer in the house (<see cref="NpcDeals.EndgameSize"/>): a final two;</item>
+        /// <item>at the endgame - six or fewer in the house (<see cref="NpcDeals.EndgameSize"/>): a final two,
+        /// except for a final three deal (C9), which a final two would outbind;</item>
         /// <item>a safety pact - the first of the web's counter-proposals (<c>veto-lobbying-system.ts</c>);</item>
         /// <item>a voting bloc this week, where both of them vote - the second.</item>
         /// </list>
@@ -111,7 +112,8 @@ namespace Gamesim.Simulation
             if (kind != DealKind.VoteSave && aboutId != npcId && EpisodeEngine.LeverRulesOn(s) && iVote && s.nominees.Contains(npcId)
                 && !Binding(s, me, npcId, DealKind.VoteSave, npcId))
                 return new Price { kind = DealKind.VoteSave, payerId = me, payeeId = npcId, aboutId = npcId, expiresWeek = s.week };
-            if (kind != DealKind.FinalTwo && s.Active.Count() <= NpcDeals.EndgameSize && !Binding(s, me, npcId, DealKind.FinalTwo, null))
+            // Never a final two for a final three deal (C9): the price would bind more than the deal it bought.
+            if (kind != DealKind.FinalTwo && kind != DealKind.FinalThree && s.Active.Count() <= NpcDeals.EndgameSize && !Binding(s, me, npcId, DealKind.FinalTwo, null))
                 return new Price { kind = DealKind.FinalTwo, payerId = me, payeeId = npcId, expiresWeek = 0 };
             if (kind != DealKind.SafetyAgreement && !Binding(s, me, npcId, DealKind.SafetyAgreement, null))
                 return new Price { kind = DealKind.SafetyAgreement, payerId = me, payeeId = npcId, expiresWeek = s.week };

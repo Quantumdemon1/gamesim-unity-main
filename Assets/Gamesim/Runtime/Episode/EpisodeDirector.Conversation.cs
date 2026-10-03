@@ -632,6 +632,10 @@ namespace Gamesim.Episode
         public static bool PastTheDealCeiling(EpisodeState state) =>
             state != null && state.week >= state.dealRulesStartWeek && state.deals.Count >= PlayerDeals.PlayerDealCeiling;
 
+        /// <summary>A houseguest's offer of a final three deal, in words (C9): "Maya Hassan wants the two of you to take each other to the final three: neither of you puts the other up until then."</summary>
+        public static string FinalThreeOfferSentence(string who) =>
+            who + " wants the two of you to take each other to the final three: neither of you puts the other up until then.";
+
         /// <summary>What the houseguest is actually asking for, in words.</summary>
         private static string DealSentence(EpisodeState state, DealState offer)
         {
@@ -659,6 +663,9 @@ namespace Gamesim.Episode
                     return who + " wants to sit beside you at the end.";
                 case DealKind.AllianceInvite:
                     return who + " thinks it is time the two of you made it official.";
+                // The commitment rules' own (C9): what it binds, in the page's words (CommitmentsRead.FinalThreeBinds).
+                case DealKind.FinalThree:
+                    return FinalThreeOfferSentence(who);
                 default:
                     return who + " wants to partner up properly.";
             }

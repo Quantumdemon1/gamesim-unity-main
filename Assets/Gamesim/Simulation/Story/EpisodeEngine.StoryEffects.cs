@@ -343,6 +343,8 @@ namespace Gamesim.Simulation
         private static void StoryDeal(EpisodeState s, ContestantState a, ContestantState b, ContestantState target, string type)
         {
             if (a == null || b == null || a.id == b.id || !Alive(a) || !Alive(b) || !DealKind.IsKnown(type)) return;
+            // A final three deal is the commitment rules' own (C9): a story strikes one only under them.
+            if (DealKind.CommitmentRulesOnly(type) && !CommitmentRulesOn(s)) return;
             if (DealKind.NamesATarget(type) && (target == null || !Alive(target))) return;
             if (s.deals.Any(d => DealStatus.Binds(d.status) && d.type == type
                                  && ((d.proposerId == a.id && d.recipientId == b.id) || (d.proposerId == b.id && d.recipientId == a.id))

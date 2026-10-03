@@ -136,7 +136,7 @@ namespace Gamesim.Simulation
             double chance = PlayerDeals.RelationshipChance(relationship);
 
             if (type == DealKind.InformationSharing || type == DealKind.Partnership) chance += 10;
-            else if (type == DealKind.FinalTwo || type == DealKind.VetoUse || type == DealKind.AllianceInvite) chance -= 10;
+            else if (type == DealKind.FinalTwo || type == DealKind.VetoUse || type == DealKind.AllianceInvite || type == DealKind.FinalThree) chance -= 10;
 
             // The ledger's trust is the houseguest's own record of the player: left out, as neutral.
             // Deals the player has broken are the player's own record, and count as the roll counts them
@@ -151,7 +151,7 @@ namespace Gamesim.Simulation
             if (allied)
             {
                 chance += 20;
-                if (type == DealKind.SafetyAgreement || type == DealKind.VoteTogether || type == DealKind.FinalTwo)
+                if (type == DealKind.SafetyAgreement || type == DealKind.VoteTogether || type == DealKind.FinalTwo || type == DealKind.FinalThree)
                     chance += 10;
             }
 
@@ -194,6 +194,8 @@ namespace Gamesim.Simulation
                 if (relationship < 50) chance -= 25;
                 if (s.Active.Count() > NpcDeals.EndgameSize && relationship < 80) chance -= 15;
             }
+
+            if (type == DealKind.FinalThree && relationship < PlayerDeals.FinalThreeWarmLine) chance -= PlayerDeals.FinalThreeColdPenalty;
 
             if (type == DealKind.Partnership && allied) chance += 15;
 

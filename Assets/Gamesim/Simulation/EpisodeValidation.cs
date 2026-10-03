@@ -181,6 +181,9 @@ namespace Gamesim.Simulation
             if (s.commitmentRulesStartWeek == 0 && (s.deals.Any(d => d.brokenById != null || d.settledWeek != 0 || d.linkedDealId != null)
                     || s.promises.Any(p => p.brokenById != null || p.settledWeek != 0) || s.alliances.Any(a => a.playerJoined)))
                 return Fail(out error, "A season without the commitment rules has none of their records.");
+            // Nor a final three deal, their own kind (C9), struck before they began.
+            if (s.deals.Any(d => DealKind.CommitmentRulesOnly(d.type) && (s.commitmentRulesStartWeek == 0 || d.week < s.commitmentRulesStartWeek)))
+                return Fail(out error, "A season without the commitment rules has none of their records.");
             if (s.dealRulesStartWeek < 1 || s.dealRulesStartWeek > Math.Min(101, s.week + 1))
                 return Fail(out error, "A deal rules boundary cannot be further off than next week.");
             // Bought actions are bounded like everything else a player can accumulate: nothing

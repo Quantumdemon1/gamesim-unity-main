@@ -37,7 +37,9 @@ namespace Gamesim.Tests.EditMode
     /// readings, offers accepted and broken; C5: somebody asked into a pact, a member's no, a pact
     /// renamed; C7: counters taken, the veto bought, prices voided, promises called in, fences mended -
     /// their busy moves only ever made under the rules, so the first half never sees them; C8: deals the
-    /// player broke in front of the house heard of, every hearing named to them in a line).</para>
+    /// player broke in front of the house heard of, every hearing named to them in a line; C9: final
+    /// three deals struck and kept, and a houseguest's final choice). C9's final three deal is a kind
+    /// the recorded build never had, so its odds stay out of the digest.</para>
     /// </summary>
     public sealed class CommitmentRulesSeasonDigests
     {
@@ -159,6 +161,11 @@ namespace Gamesim.Tests.EditMode
             Assert.That(reached.TryGetValue("word-heard", out int hearings) && hearings > 0, Is.True, "The gossip carried them.");
             reached.TryGetValue("word-heard-line", out int hearingLines);
             Assert.That(hearingLines, Is.EqualTo(hearings), "Every houseguest the gossip reached was named to the player.");
+            // C9 (the endgame): final three deals were struck and kept, and a houseguest made the final choice with
+            // the player among the two they chose between. FinalChoiceSeasonHarness measures that choice over 1,500 seasons.
+            Assert.That(reached.TryGetValue("final-three", out int finalThrees) && finalThrees > 0, Is.True, "Final three deals were struck.");
+            Assert.That(reached.TryGetValue("final-three-kept", out int finalThreesKept) && finalThreesKept > 0, Is.True, "A final three deal was kept.");
+            Assert.That(reached.TryGetValue("final-choice", out int finalChoices) && finalChoices > 0, Is.True, "A houseguest's final choice weighed the player.");
         }
 
         /// <summary>A played line's key: its rule set, size, seed and digest, without the run's counts.</summary>
@@ -250,6 +257,12 @@ namespace Gamesim.Tests.EditMode
                 var next = NextCommand(s);
                 var applied = engine.Apply(next);
                 if (!applied.accepted) { error = "week " + s.week + " " + s.phase + "/" + s.evictionStage + " " + next.kind + ": " + applied.reason; break; }
+                // C9: a houseguest's final choice with the player among the two they chose between, and whom it took.
+                if (s.phase == EpisodePhase.FinalEviction && s.hohId != s.playerId && s.Find(s.playerId)?.status == ContestantStatus.Active)
+                {
+                    Count(counts, "final-choice");
+                    if (applied.state.Find(applied.state.playerId)?.status == ContestantStatus.Active) Count(counts, "final-choice-took-player");
+                }
             }
             var final = engine.Snapshot;
             voided += VoidLines(final, ref heard);
@@ -305,6 +318,12 @@ namespace Gamesim.Tests.EditMode
             Count(counts, "broken-word", brokenWord.Count);
             Count(counts, "word-heard", brokenWord.Sum(f => Math.Max(0, f.knowers.Count - 2)));
             Count(counts, "word-heard-line", wordLines);
+            // C9, by the kind's spelling, so the file still compiles against the build before it: final three
+            // deals struck - the player's, an offer the player took, and between houseguests - and those kept.
+            Count(counts, "final-three", final.deals.Count(d => d.type == "final_three"));
+            Count(counts, "final-three-player", final.deals.Count(d => d.type == "final_three" && (d.proposerId == final.playerId || d.recipientId == final.playerId)));
+            Count(counts, "final-three-kept", final.deals.Count(d => d.type == "final_three" && d.status == DealStatus.Fulfilled));
+            Count(counts, "final-three-broken", final.deals.Count(d => d.type == "final_three" && d.status == DealStatus.Broken));
             stats = "cmds=" + i + " week=" + final.week + " deals=" + final.deals.Count + " broken=" + broken + " promisesBroken=" + brokenPromises
                 + " winner=" + final.winnerId;
             digest = Hash(trace.ToString());
@@ -375,7 +394,10 @@ namespace Gamesim.Tests.EditMode
             foreach (var npc in s.Active.Where(c => !c.isPlayer))
             {
                 string about = s.Active.Where(c => !c.isPlayer && c.id != npc.id).Select(c => c.id).FirstOrDefault();
-                foreach (var kind in DealKind.All)
+                // The ten kinds the recorded build knew, in its order: C9's final three deal, the commitment
+                // rules' own kind (by its spelling, so the file still compiles against that build), is no
+                // reader a season without the rules has, and its odds are not digested.
+                foreach (var kind in DealKind.All.Where(k => k != "final_three"))
                 {
                     string aboutId = kind == DealKind.VoteSave || kind == DealKind.VoteEvict ? s.nominees.FirstOrDefault(id => id != npc.id) ?? about : about;
                     var known = KnownOdds.Deal(s, npc.id, kind, aboutId);

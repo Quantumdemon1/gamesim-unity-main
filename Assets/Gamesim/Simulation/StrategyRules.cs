@@ -82,6 +82,8 @@ namespace Gamesim.Simulation
                 case DealKind.Partnership: return 20;
                 case DealKind.AllianceInvite: return 25;
                 case DealKind.InformationSharing: return 10;
+                // The port's own kind (C9): a safety pact's weight, since it binds the same act until the final three.
+                case DealKind.FinalThree: return 35;
                 default: return 0;
             }
         }

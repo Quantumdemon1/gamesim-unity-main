@@ -73,7 +73,10 @@ namespace Gamesim.Simulation
         public DealState Clone() => (DealState)MemberwiseClone();
     }
 
-    /// <summary>The ten deal types, spelled as the reference and the eviction vote spell them.</summary>
+    /// <summary>
+    /// The deal types: the reference's ten, spelled as the reference and the eviction vote spell them,
+    /// and one of this port's own, the final three deal (<see cref="FinalThree"/>).
+    /// </summary>
     public static class DealKind
     {
         public const string TargetAgreement = "target_agreement";
@@ -87,13 +90,31 @@ namespace Gamesim.Simulation
         public const string Partnership = "partnership";
         public const string AllianceInvite = "alliance_invite";
 
+        /// <summary>
+        /// Native, not the reference's (ACTIONS-DEALS-ALLIANCES-PLAN C9): two houseguests take each other
+        /// to the final three. It binds what a safety pact binds - neither puts the other up, at the
+        /// nominations or as the veto's replacement, which breaks it - from the week it is struck until
+        /// the house is down to three, and it is weighed where a safety pact is: in a Head of
+        /// Household's reluctance to nominate the partner and in a ballot on them. It is kept when the
+        /// two of them reach the final three together, and ends, blaming nobody, with whichever of them
+        /// leaves the house first (X4). A kept one is an obligation in the final Head of Household's
+        /// choice at half a final two's (<see cref="EpisodeEngine.FinalChoiceTerms"/>). Put only from
+        /// the final six to the final four, and only under the commitment rules: a season without them
+        /// never holds one, and validation refuses one there.
+        /// </summary>
+        public const string FinalThree = "final_three";
+
         public static readonly string[] All =
         {
             TargetAgreement, SafetyAgreement, VoteTogether, VoteSave, VoteEvict,
             VetoUse, InformationSharing, FinalTwo, Partnership, AllianceInvite,
+            FinalThree,
         };
 
         public static bool IsKnown(string type) => type != null && Array.IndexOf(All, type) >= 0;
+
+        /// <summary>Whether this kind exists only under the commitment rules (<see cref="EpisodeEngine.CommitmentRulesOn"/>): the final three deal.</summary>
+        public static bool CommitmentRulesOnly(string type) => type == FinalThree;
 
         /// <summary>Whether this kind of deal is about a third houseguest rather than the pair.</summary>
         public static bool NamesATarget(string type) =>
@@ -110,7 +131,9 @@ namespace Gamesim.Simulation
                 case FinalTwo: return DealTrust.Critical;
                 case TargetAgreement:
                 case SafetyAgreement:
-                case AllianceInvite: return DealTrust.High;
+                case AllianceInvite:
+                // The safety pact's weight: it is broken by the same act, a nomination.
+                case FinalThree: return DealTrust.High;
                 case InformationSharing: return DealTrust.Low;
                 default: return DealTrust.Medium;
             }
@@ -135,6 +158,7 @@ namespace Gamesim.Simulation
                 case InformationSharing: return "Information Sharing";
                 case FinalTwo: return "Final Two Deal";
                 case AllianceInvite: return "Alliance Invitation";
+                case FinalThree: return "Final Three Deal";
                 default: return "Partnership";
             }
         }

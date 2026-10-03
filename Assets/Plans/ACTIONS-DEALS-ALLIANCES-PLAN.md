@@ -920,6 +920,124 @@ Without the rules both are refused before anything is spent, drawn or logged (`C
 
 **Floors:** the Unity-free subset 1483 to 1495 (`YourWordInTheHouseTests`, 12 after the review); EditMode adds the same 12; PlayMode adds 1.
 
+**C9, the endgame, built 2026-10-02** in its own worktree from `claude/nearby-render-gap` at 6fc74b8.
+
+**First, the investigation, with nothing changed.** `FinalChoiceSeasonHarness` (Tools/SimulationTests only, `[Explicit]`, compiled out of Unity: `dotnet test Tools/SimulationTests --filter "FullyQualifiedName~FinalChoiceSeasonHarness"`) plays 1,500 seeded seasons under the director's rule set to the final eviction: houses of 5, 6, 8, 10 and 12, a hundred seeds each, and three scripted players. One only does what each phase asks (nominating in cast order, voting by a coin); one is busy; one builds pacts and endgame deals with the three houseguests warmest to them. The last two nominate and vote by their own reads. The harness reads a houseguest's final choice exactly as the engine makes it (`EpisodeEngine.FinalChoice`: the final eviction step's own code moved into a function, nothing else changed), with every term for each finalist, and how the jury would vote between the Head of Household and either of them.
+- **Confirmed.** Without the commitment rules, a houseguest who holds the final Head of Household evicts the player in 214 of 228 final threes (94%). Under the rules as wave B had them at 6fc74b8 (C1's final two obligation, C7's held promises), it is 246 of 262 (94%). The handoff's 164 of 167 is the same finding.
+- **No one term names the player; nearly every term leans the same way.** The choice is the weekly eviction vote's evaluator, with the two finalists as its nominees. At the final three almost all of its terms favour the other finalist, by 47 points on average (the median 47, the tenth percentile 7). Each term, the other finalist's mean less the player's, under the rules (without them in brackets):
+  - **threat +8.7 (+9.3):** the evaluator's endgame weighting (×1.5 at five or fewer) on the player's competition record, though no competition is left to play. A player who reaches the final three in these seasons has won 3.4 competitions, the other finalist 0.9.
+  - **bond +8.6 (+7.9):** a story bond (showmance or ride-or-die, +25) between the Head of Household and the other finalist in 82 of 262 finals, and with the player in 1.
+  - **grudge +8.2 (+7.3):** 216 of 262 Heads of Household hold a story grudge against the player (−15 on average), mostly from the player's own nominations: the player had nominated the Head of Household in 122.
+  - **personality +6.3 (+6.1):** shared traits, which the default player, the newcomer, has none of and can never score.
+  - **history +5.6 (+5.3):** the player's arc with the Head of Household, a term only the player carries, mostly a rivalry.
+  - **relationship +5.3 (+4.6):** the Head of Household's view of the player averages −16, of the other finalist +39.
+  - **deal +3.9 (+3.5), alliance +1.3 (+0.9), strategic value −2.0 (−1.7).**
+  - **C1's final two obligation −0.2:** it is scaled by the Head of Household's view of the finalist, to nothing at zero or below, and that view of the player is under zero in most of these finals. So a final two deal with the player rarely counted: 14 of the 16 players who held one were evicted.
+- **Pacts and deals barely move it.** With a pact that holds from the Head of Household's side, 6 of 10 players were evicted (11 of 18 without the rules).
+- **The choice works against the Head of Household's own endgame.** The jury's own reader (`WebJuryVoting.Score`, with its final impression of up to ten either way) gives the Head of Household a better chance of winning beside the player in 219 of 262 finals (0.9 against 0.7 on average), and the player is evicted in 205 of them.
+
+So C9 takes out the two terms about a game the final three no longer has to play (threat and strategic value), weighs the jury the final two will actually face, and gives a pact and the endgame's deals a weight that can decide.
+
+**Then the build.** A rule slice: everything is behind `commitmentRulesStartWeek` (`EpisodeEngine.CommitmentRulesOn`), with no saved field and no command kind. The engine's half is `EpisodeEngine.FinalChoice.cs`.
+- **The final three's own choice** (`EpisodeEngine.FinalChoice`, `FinalChoiceTerms`). Still the evaluator, with the two other finalists as its nominees, but under the rules:
+  - **Left out: threat, strategic value and personality** (`FinalChoiceLeavesOut`, through a native `WebVoteOptions.omittedFactors` that every ballot leaves empty). No competition or nomination is left at the final three; what the competition record is worth now is the jury's respect for it. Personality was added at the review, by the lead's ruling: the shared traits the default newcomer can never score decided 15 final choices alone, every one evicting the player. Every weekly ballot still weighs all ten.
+  - **The jury** (`FinalJuryWeight`, 50): the term on each finalist is 50 × (the Head of Household's chance of winning beside them − ½), so −25 to +25. The chance (`FinalJuryChance`) reads the jury as it will sit and as the cut will leave it. On a copy of the season the engine's own final eviction (`FinalEvict`) is run with the other finalist cut, so a final two deal or promise the Head of Household breaks with them, the grudge for it, the pacts and deals that end as they leave, and their seat on the jury are all as the jury will count them; nothing is copied by hand. Each juror is weighed by the jury's own reader (`WebJuryVoting.Score`), with its final impression of up to ten either way on each finalist, as the engine's jury draws them. It is the chance of a majority, a tie going as the reveal awards it (to the second of the two in cast order). A player on the jury is read by their own views. Pure: the copy draws and mints on itself, and the season read never moves.
+  - **A pact that holds from the Head of Household's side** (`FinalPactTerm`, 20, read through `Allegiance.Holds`, and the Head of Household's view of either finalist at `QuietLine` or above): Loyal ×1.5, Sneaky nothing, counted once however many pacts the two share. It sits on top of the evaluator's own alliance term (about 9 for a pair). A pact they turned on (C2), went cold on (under `QuietLine`, C3) or that ended holds nothing.
+  - **Private:** the pact and jury terms are the Head of Household's own reasons, never a reason the player is told (`EvaluateNominee` gives them private visibility; no ballot carries them).
+  - **The endgame's deals:** C1's final two obligation and C7's held promise are kept as they were. A final three deal the two kept to the final three is half a final two's obligation (`FinalThreeObligation`, 12.5), scaled the same way, by the Head of Household's view of the finalist and their word.
+  - **The weights against each other:** a Head of Household sure to win beside one finalist and sure to lose beside the other leans 50 points to the first. That is more than any single feeling the evaluator weighs (a story bond is 25, a grudge at most 25, a pact with its alliance term about 29), and less than a pact and a final two deal kept together (about 59 at a plain word and a view of fifty). The first build had the jury at 60, and a test caught it outweighing those two commitments together.
+- **The final three deal** (`DealKind.FinalThree`, "final_three", Title "Final Three Deal", no new field). The web build has none (its deal model stops at the final two), so this is the port's own.
+  - **What it binds:** what a safety pact binds, until the final three. Neither puts the other up, at the nominations or as the veto's replacement. A ballot never judges it, since a ballot is private, but a ballot on the partner weighs it as a safety pact (`WebEvictionVoting.PairDealValue`, 35), and so does a Head of Household's reluctance to nominate them (`StrategyRules.DealWeight`, 35).
+  - **When it can be put:** from the final six to the final four, and only under the rules.
+    - Past six: "It is too early in the season to be talking about the final three."
+    - At three: "The final three is already here." An offer of one still unanswered lapses as the house reaches three (no roll, no line), and is no yes to give there.
+    - At four, once the final four's veto meeting is over and its eviction is still to come (`NpcDeals.FinalFourBlockSet`): "The final four's block is set: it is too late for a final three deal." A deal struck then could never be broken and would always be kept, so none is put or taken, and an offer standing then lapses as the veto is decided. The final four's own free time, after the final five's eviction, is still open.
+    - To somebody a final two deal already binds the player to: "You already have a final two deal with them." The houseguests' own ladder has the same rule, and a counter-offer never prices a final three deal with a final two.
+    - Without the rules it is refused in the words an unknown kind always was. Validation refuses a final three deal in a season without them, or dated before their first week, with the rules' other records' message. A story strikes one only under them.
+  - **Asking for one:** it is asked as the other endgame commitment is. Ten off the chance, the ally's +10, the loyal and the emotional wanting it as they want a final two, and −15 below a view of 35 (the table's "favourable" line; a final two's bar is 50). `KnownOdds` reads it the same way.
+  - **Houseguests put one** at the endgame, under the final two's rung (`NpcDeals.FinalThreeWarmth`, 45), unless a final two or a final three already binds the two of them or the final four's block is set. That covers both the player's offers and deals between houseguests.
+  - **How it resolves**, in C1's verdict style:
+    - Broken by a nomination of the partner, on the record: whoever nominated broke it (`DealResolution.Nomination`, as a safety pact's).
+    - Kept by both at once when the two reach the final three, settled as the final three's Head of Household begins (`DealResolution.ReachesTheFinalThree`, `KeepTheFinalThree`), so a final three made by production's removal keeps its deals too. The line is "{a} and {b} held to their final three deal.", told to both. Both views move +16 (High trust), with the record both ways.
+    - Ended by an evictee, blaming nobody (X4's `EndWithTheEvictee`, already generic).
+  - **Its weight:** `DealTrust.High`, the safety pact's, since the act that breaks it is the same. Open-ended.
+  - **Its readers:** the Your word page ("final three deal", "to take each other to the final three: neither nominates the other", "until the final three") and its nomination and veto warnings; Your week; the finalist read's breaker (by the record); and the offer's sentence on screen ("… wants the two of you to take each other to the final three: neither of you puts the other up until then."). The jury house, the notes, the alliances page and the relationship web read deals by title, so they need nothing. The deal table's caption is "Propose a final three deal": new and unique, and no caption changed.
+- **Nothing hidden is shown.** The player's own Final 2 page (Q0, `FinalistRead`, `FinalChoiceWords`) is untouched. The houseguest's terms are computed only where the engine decides.
+
+**The distribution, before and after** (`FinalChoiceSeasonHarness`, the same 1,500 seasons, with the review's fixes in):
+- **Without the rules:** 214 of 228 (94%), unchanged. The half pins it.
+- **Under the rules:** 246 of 262 (94%) before C9, 200 of 266 (75%) after (218 of 269, 81%, in the first build, before the review's fixes). The passive player is evicted 82% of the time, the busy one 76%, the allied one 67%. The half asserts that the rate is under 90%, that no left-out term appears, and that the choice turns on a pact, on the jury and, in the counterfactuals below, on a pact and on a final two deal.
+- **The paired counterfactuals are the evidence that carries the weight** (the review's M9). The splits below compare different seasons, and several are small. Each counterfactual is the same final eviction re-run on its own copy, over the 200 finals that evicted the player:
+  - **a pact between the two added:** kept 37 of 200 (19%). It would hold from the Head of Household's side in only 78 (their view of the player is under −10 in the rest), and of those it keeps the player in 37 (47%);
+  - **a final two deal between the two added:** kept 46 of 200 (23%);
+  - **the Head of Household's view of the player set to their view of the other finalist:** kept only 12 of 200 (6%). What still tilts these finals is less the view itself than the story's grudges and bonds and the player's arc.
+  - **Without the rules, the same three keep the player in none of 214.** The evaluator's relationship weight at the final three is small for the many Strategic and Analytical Heads of Household (a view 38 points warmer moves their lead by about 2), and a pact's alliance term is partly cancelled by the threat term's pact size.
+- **The splits, for what they can carry:**
+  - **The jury:** its term decided 42 final threes on its own, 40 of them keeping the player. The player is evicted in 158 of 221 finals (71%) where the Head of Household's chance is better beside them, 42 of 45 (93%) where it is better beside the other, and 27 of 31 where the player would beat the Head of Household.
+  - **A pact that holds:** 1 of 7 evicted, against 199 of 259 without one. The sample is small; the pact counterfactual above is the stronger evidence.
+  - **A final two deal with the Head of Household:** 6 of 16 evicted, against 194 of 250. The first build had 12 of 17, while its jury estimate still read a final two partner as a friendly juror (M1).
+  - **Grudges:** 178 of 220 evicted with one, 22 of 46 without.
+- **What still tilts against the player in these seasons is personal:**
+  - story grudges (220 of 266 Heads of Household, mostly from the player's own nominations; decided 36 alone, 25 of them evicting the player);
+  - story bonds with the other finalist (88 against 1);
+  - the player's own arc (decided 13, all evicting the player);
+  - the Head of Household's view of them (−16 against +40 for the other finalist), though by the counterfactual it decides few on its own.
+- **C1's final two obligation, kept as it was,** still scales by the Head of Household's view now (to nothing at zero or below). Added to the evicted finals, a final two deal keeps the player in under a quarter.
+
+**Evidence.**
+- `FinalChoiceTests` (16, Unity-free):
+  - a pact that holds keeps the finalist (and the engine's own step agrees);
+  - the pact's Loyal and Sneaky words;
+  - a pact turned on, gone cold or ended holds nothing, and the other finalist's pact holds as a pact does;
+  - C1's final two and C7's held promise as they were;
+  - the jury preferring the finalist the Head of Household can beat, both ways round;
+  - a pact and a final two deal outweighing the surest jury;
+  - the jury's chance: every juror sure, a two-two tie each way of cast order with the cut finalist among them, every juror on the fence (11/16 and 5/16), nobody beside themselves or a juror;
+  - the two terms left out, and present without the rules;
+  - without the rules the choice is the evaluator's, term for term, with a pact, a jury or a final two deal in play;
+  - the final three deal's availability and refusals, its draft, its validation, its ask and shown odds, a nomination of the partner breaking it (and the player warned before doing so), reaching the final three keeping it, an evictee ending it, its obligation in the final choice, houseguests putting it at the endgame only, and a ballot weighing it as a safety pact.
+
+  Compiled against the simulation at 27d31c5f (6fc74b8's, with the final choice only moved into a function), with C9's new names swapped for stand-ins that answer as that build would, 14 of the first build's 16 fail. The two that hold on both pin what must not change: C1's and C7's terms, and the choice without the rules. Three mutations of C9's own code each fail their test: the pact read without `Allegiance.Holds`, the jury's tie given the other way, and the final three never kept.
+- The review's 10 (26 in all), each listed under "After the review" below. Four mutations of the fixes each fail their own test: the jury read on the season as it stands, the cold line dropped for a houseguest finalist, the C9 terms made visible to the player, and offers of a final three deal never lapsing (that one fails both of the lapse tests).
+- `CommitmentRulesSeasonDigests`: without the rules the 54 seasons digest byte for byte as recorded. Its checkpoint digests the ten deal kinds the recorded build knew, since the final three deal is a reader no season without the rules has. Under the rules all 54 move and stay legal: 4 final three deals struck (1 the player's), 2 kept, and 2 final choices with the player in it. The second half asserts each.
+- The Unity-free subset: 1,483 to 1,509.
+
+**The audited walk** needs nothing. Its finale path walks the player as a finalist and as a juror alike (PortVerification.Season), and its season's seed is the clock's. Its optional deal runs in week one of an eight-house, where no final three deal is offered.
+
+**After the review (fix-then-land, 2026-10-02):** all under the rules, so the 54 seasons without them still digest byte for byte and the harness's half without them is still 214 of 228.
+- **M1, the jury read as the cut leaves it.** The jury's chance had read the cut finalist on the season as it stood, so the final two deal or promise the Head of Household was about to break with them still read as that finalist's vote: the estimate rewarded cutting the partner the Head of Household was committed to. It now runs the engine's own `FinalEvict` on a copy, with the other finalist cut, and scores the jury there. The review asked for a helper extracted from `FinalEvict`; running `FinalEvict` itself on the copy carries every statement that acts on the cut finalist before the jury counts, in its order, with nothing extracted, moved or copied, so `FinalEvict` and every season without the rules are untouched.
+  - Test: a final two partner who likes the Head of Household (40) reads as Maya's vote about 95 times in 100 on the season as it stands. Once cut, their view falls to −5, the breach weighs on the jury's obligations, and the tie the cast order would give Maya needs them at 121 in 800. The season's JSON, stream and sequence are untouched.
+- **M2:** a final three deal is not put to somebody a final two deal already binds the player to ("You already have a final two deal with them."), and a counter never prices a final three deal with a final two.
+- **M3:** an offer of a final three deal is no yes to give at the final three ("The final three is already here."), and lapses as the house reaches three, both after the final four's eviction and as the final three's Head of Household begins (production's removal). No roll, no line.
+- **M4:** the window closes once the final four's block is set: no proposal, no rung, no yes, and an offer standing lapses as the final four's veto is decided. The final four's own free time is still open.
+- **M5:** the pact term holds both finalists to the same cold line (`QuietLine`); `Allegiance.Holds` already asked it of the player.
+- **M6 (the lead's ruling):** personality is left out of the final choice too.
+- **M7:** the pact and jury terms are private, never a public reason.
+- **M8:** validation refuses a final three deal dated before the rules' first week, not only in a season that never played them.
+- **M9:** the harness's paired counterfactuals (above), with the claims the splits cannot carry softened.
+- **The tests the review asked for:**
+  - nothing written or drawn by `FinalChoice`, `FinalJuryChance` and `FinalChoiceTerms`, with a pact, a kept final three deal and a final two deal in play;
+  - the replacement naming the partner breaking a final three deal, with the finalist read's breaker and the Your word page;
+  - Your week reading the kept line;
+  - each fix above.
+
+**Not changed, a follow-up for the owner and the next slice:** C1's final two obligation and the final three obligation both scale by the Head of Household's view of the finalist now. The view is counted twice, since it is also the evaluator's relationship term. A final two deal struck while warm is inert in the typical final, where the view of the player is −16. One endgame lapse line should be decided: the view when the deal was struck unless it has lapsed, or the pact's `QuietLine` ramp. It goes together with a cap on stacked obligations, and with the social simulation's drift that leaves houseguests at −16 on the player.
+
+**Where the build departs from the plan:**
+- **Threat, strategic value and personality are left out of the final choice under the rules.** The plan named terms to add. The investigation found the existing ones tilted the choice by construction: the threat term's endgame weighting falls on a competition record that no longer has a competition to threaten, and personality is a trait match the default newcomer can never score (the lead's ruling at the review).
+- **The final three deal is never judged by a ballot.** A ballot on the partner weighs it, and one against them leaves it to end with the evictee: judging it would tell the player a ballot (decision 4).
+- **A kept final three deal enters the final choice** as half a final two's obligation, since at three it is already kept. At four it enters the decisions that decide who reaches three: the nominations, the replacement and the ballot.
+
+**Found on the way, for later slices:**
+- The personality term (shared traits) can never score for the default newcomer, who has no traits. The final choice now leaves it out, but every weekly ballot still weighs it, so every NPC nominee beside the newcomer carries a few points either way that the newcomer never can.
+- C1's final two obligation reads the Head of Household's view as it stands now (the follow-up above).
+- NPCs' views of the player at the final three average −16, against +40 toward each other, even for a player who courts them. Worth a look at how the social simulation moves views of the player.
+- Two PlayMode conversation fixtures sit on the six-house shipped scenario under the rules (the veto price's conversation with a nominee; `AssertConversationFits`). They now draw one more deal row, "Propose a final three deal", and the capture 'conversation-veto-price' changes with it.
+
+**Tell the story session:** the deal kind `final_three` ("Final Three Deal", `DealKind.FinalThree`) exists only under the commitment rules. A story deal of that kind is skipped without them, and validation refuses one in a season without them. Its kept line is "{a} and {b} held to their final three deal.", settled as the final three's Head of Household begins. An offer of one lapses at the final three, and once the final four's block is set. The final Head of Household's choice under the rules now weighs the jury, a pact that holds and a final three kept, and no longer the threat, strategic value or personality terms. Under the rules houseguests also put the kind to the player and to each other from the final six to the final four, and never to somebody a final two already binds them to.
+
+**Floors:** the Unity-free subset 1483 to 1509 (`FinalChoiceTests`, 26); EditMode adds the same 26; PlayMode unchanged.
+
 **The review before landing (C5 to C8), 2026-10-03.** C5, C6, C7 and C8 had been compiled but never run in Unity's PlayMode when the session that built them stopped at its usage limit, with C9 not yet landed. A cloud session with no Unity took the branch on and reviewed what Unity had not exercised:
 - **Finders:** two for each slice, one on its never-run PlayMode tests and one on its runtime and engine code as a player meets it. One more looked at how the four slices met at their merges.
 - **Verifiers:** three for each claim, each trying to refute it.

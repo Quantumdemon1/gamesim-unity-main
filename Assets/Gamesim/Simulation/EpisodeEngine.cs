@@ -238,6 +238,10 @@ namespace Gamesim.Simulation
                     // The finale has no Have-Nots: the last week's end with its three, and so do any
                     // passes and punishments the final four's veto left behind.
                     if (s.Active.Count() == 3) { s.haveNots.Clear(); s.haveNotPasses.Clear(); s.punishedHaveNots.Clear(); }
+                    // Under the commitment rules (C9) the two of a final three deal who reach the final
+                    // three together have kept it: as its Head of Household begins, however the house got
+                    // down to three. No roll.
+                    if (CommitmentRulesOn(s) && s.Active.Count() == 3) KeepTheFinalThree(s);
                     Phase(s, s.Active.Count() == 3 ? EpisodePhase.FinalHoHPart1 : EpisodePhase.HoH); break;
                 case EpisodePhase.HoH:
                 case EpisodePhase.Veto:
@@ -338,6 +342,8 @@ namespace Gamesim.Simulation
                         // player took as taken, and after the walk out read it for their goodbye, and
                         // before the house's own turns and settle (NpcSocialActions, NpcDeals) see it.
                         if (CommitmentRulesOn(s)) EndWithTheEvictee(s, s.ledger.power.LastOrDefault(p => p.week == s.week)?.evicteeId);
+                        // And (C9) at the final three an offer of a final three deal has nothing left to bind.
+                        if (CommitmentRulesOn(s) && s.Active.Count() <= NpcDeals.FinalThreeSize) ExpireFinalThreeOffers(s);
                         if (StoryOn(s)) StoryLapse(s, StoryAnchors.EvictionNight);
                         s.evictionStage = EvictionStage.Interaction;
                         Phase(s, EpisodePhase.Social);
@@ -459,15 +465,8 @@ namespace Gamesim.Simulation
                     break;
                 case EpisodePhase.FinalEviction:
                     Require(s.hohId != s.playerId, "Choose the final eviction first.");
-                    var finalContext = s.Clone();
-                    finalContext.nominees = s.Active.Where(c => c.id != s.hohId).Select(c => c.id).ToList();
-                    var finalOptions = WebEvictionVoting.FromNative(finalContext, s.hohId);
-                    // Match the source fast-forward final-selection caller, which supplies no memory/persona context.
-                    finalOptions.memories.Clear(); finalOptions.playerPersonaLabel = null;
-                    // Under the commitment rules (C1) a final two deal is a real obligation in the
-                    // choice, not the web's deal term alone (about 4.5 points after its weight).
-                    if (CommitmentRulesOn(s)) finalOptions.obligations.AddRange(FinalTwoTerms(s, s.hohId, finalContext.nominees));
-                    FinalEvict(s, WebEvictionVoting.Evaluate(finalOptions).selectedNomineeId); break;
+                    // The houseguest's own choice (EpisodeEngine.FinalChoice.cs).
+                    FinalEvict(s, FinalChoice(s).selectedNomineeId); break;
                 case EpisodePhase.JuryQuestioning:
                     Require(s.juryExchanges[s.juryQuestionIndex].completed, "Answer the current question or skip questioning.");
                     s.juryQuestionIndex++;
@@ -932,6 +931,9 @@ namespace Gamesim.Simulation
             // thinks the better of them for it, at the pact's weight. Before them it could only break.
             if (CommitmentRulesOn(s)) SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Spares, s.hohId, s.nominees.ToList()));
             s.vetoResolved = true;
+            // Under the commitment rules (C9) the final four's block is set: a final three deal struck now
+            // could never be broken and would always be kept, so an offer of one lapses. No roll, no line.
+            if (CommitmentRulesOn(s) && s.Active.Count() == NpcDeals.FinalThreeSize + 1) ExpireFinalThreeOffers(s);
             RecordVeto(s, use, saved, replacement);
             // A question about a decision already taken is no longer on the table.
             if (StrategyRules.Apply(s))
@@ -1971,6 +1973,10 @@ namespace Gamesim.Simulation
                 // The player's three (ACTIONS-DEALS-ALLIANCES-PLAN C4, decision 10): under the
                 // commitment rules a yes that would bring them into a fourth pact is not theirs to give.
                 Require(!(deal.type == DealKind.AllianceInvite && InvitationPastPactCap(s, deal.proposerId)), PactCapRefusal);
+                // A final three deal (C9) is no yes to give once the final three is here, nor once the
+                // final four's block is set, in the words the player's own proposal is refused in.
+                Require(!(deal.type == DealKind.FinalThree && s.Active.Count() <= NpcDeals.FinalThreeSize), PlayerDeals.FinalThreeHereRefusal);
+                Require(!(deal.type == DealKind.FinalThree && NpcDeals.FinalFourBlockSet(s)), PlayerDeals.FinalFourBlockSetRefusal);
                 deal.status = DealStatus.Active;
                 // The offer lapsed at the end of this week; the arrangement it becomes runs for as
                 // long as its own kind runs for, which for a final two or a partnership is no limit.

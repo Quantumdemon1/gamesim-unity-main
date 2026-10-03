@@ -195,6 +195,8 @@ namespace Gamesim.Simulation
                 // A price voided because what it paid for was broken (C7) says so, rather than "lapsed".
                 if (!withheld && Negotiation.Voided(s, d)) c.status = VoidedWord;
                 c.term = Term(s, c);
+                // A final three deal runs until the house is down to three (C9), not forever.
+                if (d.type == DealKind.FinalThree && d.expiresWeek == 0) c.term = UntilTheFinalThree;
                 // Under the commitment rules an open-ended deal ends when one of the two leaves the house
                 // (C1, X4): its term says so, as an oath's does, rather than "never expires".
                 if (EpisodeEngine.CommitmentRulesOn(s) && d.status == DealStatus.Expired && d.expiresWeek == 0)
@@ -406,6 +408,7 @@ namespace Gamesim.Simulation
                 case DealKind.InformationSharing: return "information deal";
                 case DealKind.FinalTwo: return "final two deal";
                 case DealKind.AllianceInvite: return "alliance invitation";
+                case DealKind.FinalThree: return "final three deal";
                 default: return "partnership";
             }
         }
@@ -434,9 +437,17 @@ namespace Gamesim.Simulation
                 case DealKind.InformationSharing: return "to share what you each hear";
                 case DealKind.FinalTwo: return "to take each other to the final two";
                 case DealKind.AllianceInvite: return "to join forces in an alliance";
+                // The commitment rules' own (C9): what breaks it is a nomination, as a safety pact's.
+                case DealKind.FinalThree: return FinalThreeBinds;
                 default: return "to work together";
             }
         }
+
+        /// <summary>What a final three deal binds, in words (C9): a safety pact's act, until the final three.</summary>
+        public const string FinalThreeBinds = "to take each other to the final three: neither nominates the other";
+
+        /// <summary>A final three deal's term (C9): it runs until the house is down to three.</summary>
+        public const string UntilTheFinalThree = "until the final three";
 
         private static string DealStatusWord(DealState d, bool yours, string brokenBy, string player)
         {
@@ -519,11 +530,12 @@ namespace Gamesim.Simulation
             if (s == null || string.IsNullOrEmpty(s.playerId)) return false;
             switch (decisionKind)
             {
+                // A final three deal (C9) is settled by a nomination, as a safety deal is.
                 case DecisionKinds.Nominate:
-                    return DealStanding(s, DealKind.SafetyAgreement, DealKind.TargetAgreement)
+                    return DealStanding(s, DealKind.SafetyAgreement, DealKind.TargetAgreement, DealKind.FinalThree)
                         || PromiseStanding(s, PromiseKind.Safety, PromiseKind.AllianceLoyalty) || OathStanding(s);
                 case DecisionKinds.Veto:
-                    return DealStanding(s, DealKind.VetoUse, DealKind.SafetyAgreement, DealKind.TargetAgreement)
+                    return DealStanding(s, DealKind.VetoUse, DealKind.SafetyAgreement, DealKind.TargetAgreement, DealKind.FinalThree)
                         || PromiseStanding(s, PromiseKind.Safety, PromiseKind.AllianceLoyalty) || OathStanding(s);
                 case DecisionKinds.Vote:
                     return DealStanding(s, DealKind.VoteSave, DealKind.VoteEvict) || PromiseStanding(s, PromiseKind.Vote) || OathStanding(s)
@@ -644,7 +656,7 @@ namespace Gamesim.Simulation
         /// </summary>
         private static bool SettledByThePlayer(EpisodeState s, Decision d, string type)
         {
-            bool nomination = type == DealKind.SafetyAgreement || type == DealKind.TargetAgreement;
+            bool nomination = type == DealKind.SafetyAgreement || type == DealKind.TargetAgreement || type == DealKind.FinalThree;
             switch (d.kind)
             {
                 case DecisionKinds.Nominate: return nomination;

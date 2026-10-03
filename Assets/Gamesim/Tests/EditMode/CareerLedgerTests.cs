@@ -187,6 +187,70 @@ namespace Gamesim.Tests.EditMode
             Assert.That(ledger.Notice, Is.Null);
         }
 
+        /// <summary>
+        /// A record that could not be opened loads as no seasons, and that count was all the
+        /// settings panel looked at: it drew no reset, so a file that never opened again refused
+        /// every finale with no way out in the game. The panel reads Blocked now, and the reset it
+        /// offers is the way out: the record is set aside whole, the block goes with it, and the
+        /// next finale starts a fresh record.
+        /// </summary>
+        [Test]
+        public void Load_ARecordThatCannotBeOpenedIsBlocked_AndResetIsTheWayOut()
+        {
+            Assert.That(ledger.Record(Finished(1, ContestantStatus.Winner)), Is.True);
+            Assert.That(ledger.Blocked, Is.False, "A record that reads is not blocked.");
+            var before = File.ReadAllBytes(ledger.FilePath);
+            using (new PersistenceTests.HeldFile(ledger.FilePath, FileShare.None))
+            {
+                Assert.That(ledger.Load().seasons, Is.Empty, "What the panel is given: no seasons,");
+                Assert.That(ledger.Blocked, Is.True, "and a record in the way, so it offers the reset.");
+                Assert.That(ledger.Notice, Is.EqualTo(CareerLedger.UnopenedNotice(new IOException())),
+                    "A hold that outlasted the wait is the one notice that says \"just now\".");
+            }
+            var archived = ledger.Reset();
+            Assert.That(archived, Is.Not.Null);
+            Assert.That(File.ReadAllBytes(archived), Is.EqualTo(before), "Set aside whole, not deleted.");
+            Assert.That(ledger.Blocked, Is.False, "With the file moved, nothing is in the way.");
+            Assert.That(ledger.Record(Finished(2, ContestantStatus.RunnerUp)), Is.True, ledger.Notice);
+            Assert.That(ledger.Load().seasons.Select(s => s.sessionId), Is.EqualTo(new[] { "season-2" }));
+        }
+
+        /// <summary>
+        /// Only another process's hold lifts by itself, so only a plain IOException that outlasted
+        /// the wait says "just now". A denied path - an ACL carried over by a restore, a file
+        /// encrypted under another account - and the IOException subclasses do not clear by
+        /// waiting: their notice promises no later load and names the reset in Settings.
+        ///
+        /// <para>No editor can deny its own user a read portably (the .NET Standard 2.1 profile has
+        /// no ACL or file-mode call, and root reads anything), so these are the exceptions
+        /// File.ReadAllText throws, given to the wording <see cref="CareerLedger.Load"/> uses; the
+        /// test above ties that wording to a real hold.</para>
+        /// </summary>
+        [Test]
+        public void UnopenedNotice_PromisesALaterLoadOnlyForAHold()
+        {
+            var hold = CareerLedger.UnopenedNotice(new IOException("Sharing violation on path " + ledger.FilePath));
+            Assert.That(hold, Does.StartWith("The career record could not be opened just now; it is left as it is."));
+            Assert.That(hold, Does.Not.Contain("Settings"), "A hold lifts; there is nothing to do.");
+            Assert.That(hold, Does.EndWith("(IOException)"));
+
+            var lasting = new Exception[]
+            {
+                new UnauthorizedAccessException("Access to the path '" + ledger.FilePath + "' is denied."),
+                new PathTooLongException(),
+            };
+            foreach (var error in lasting)
+            {
+                var notice = CareerLedger.UnopenedNotice(error);
+                var kind = error.GetType().Name;
+                Assert.That(notice, Does.StartWith("The career record could not be opened; it is left as it is."), kind);
+                Assert.That(notice, Does.Not.Contain("just now"), kind + " does not lift by waiting.");
+                Assert.That(notice, Does.Contain("Resetting it in Settings sets it aside"), kind + ": the way out is named.");
+                Assert.That(notice, Does.EndWith("(" + kind + ")"));
+                Assert.That(notice, Does.Not.Contain(directory), "The path, with the player's user name in it, is never shown.");
+            }
+        }
+
         [Test]
         public void Entry_ReadsThePlacementFromTheOrderTheJuryFilled()
         {

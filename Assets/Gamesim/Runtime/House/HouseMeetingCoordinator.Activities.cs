@@ -29,7 +29,7 @@ namespace Gamesim.House
 
         public bool ActivityAnchorAvailable(HouseInteractionAnchor anchor)
             => !disposed && !HasCompetitionStage && !HasCeremonyStage && anchor!=null && anchor.isActiveAndEnabled && anchor.gameObject.scene==rooms.Scene
-                && (HouseFurniture.SeatsCompany(anchor.VenueId) ? !MeetingHolds(anchor.VenueId) : !VenueInUse(anchor.VenueId))
+                && (HouseFurniture.IndependentRest(anchor) || (HouseFurniture.SeatsCompany(anchor.VenueId) ? !MeetingHolds(anchor.VenueId) : !VenueInUse(anchor.VenueId)))
                 && !SpotCrowds(anchor) && !activities.Any(entry=>entry.lease.Anchor==anchor
                     || ((HouseFurniture.IndependentRest(anchor) || HouseFurniture.IndependentRest(entry.lease.Anchor))
                         && PlacesCrowd(anchor,entry.lease.Anchor)));

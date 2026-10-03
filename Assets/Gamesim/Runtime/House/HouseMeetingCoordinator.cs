@@ -575,7 +575,7 @@ namespace Gamesim.House
             {
                 var anchor=entry.lease.Anchor;
                 if(anchor==null)continue;
-                if(anchor.VenueId==venue.id)return true;
+                if(anchor.VenueId==venue.id && !HouseFurniture.IndependentRest(anchor))return true;
                 if((!venue.Home || HouseFurniture.IndependentRest(anchor)) && Crowds(venue,anchor.Position,anchor.Approach))return true;
             }
             if(talk!=null)

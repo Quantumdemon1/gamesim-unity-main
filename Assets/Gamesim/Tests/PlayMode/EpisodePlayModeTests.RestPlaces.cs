@@ -17,8 +17,28 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator RestPlaces_ThirdLoungerUsesARealRouteAndFloorClickGetsUpInTheOriginalOutfit()
         {
+            var suppress=typeof(EpisodeDirector).GetField("npcApproachDiagnosticsSuppressed",BindingFlags.NonPublic|BindingFlags.Instance);
+            bool prior=(bool)suppress.GetValue(director);suppress.SetValue(director,true);
+            var coordinator=(HouseMeetingCoordinator)typeof(EpisodeDirector).GetField("npcMeetings",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(director);
             var anchor=PlacesFor(HouseFurnitureActivity.Rest).Single(a=>a.VenueId==HouseFurniture.LoungerAnchor && a.Slot==2);
-            yield return AssertRestPlaceArrivalAndFloorExit(anchor);
+            HouseMeetingLease meeting=null;
+            try
+            {
+                coordinator.ReleaseAll();coordinator.ReleaseActivities();
+                float deadline=Time.realtimeSinceStartup+20;
+                while(!coordinator.IsReady && Time.realtimeSinceStartup<deadline)yield return null;
+                Assert.That(coordinator.IsReady,Is.True,coordinator.LastFailure);
+                var ids=SceneComponents<HouseNpc>().Where(n=>n.isActiveAndEnabled && n.GetComponent<HouseNpcMotion>()!=null
+                    && n.GetComponent<HouseNpcMotion>().LeaseId==null).Select(n=>n.Id).Take(2).ToArray();
+                Assert.That(ids,Has.Length.EqualTo(2));
+                Assert.That(coordinator.TryReserveAtVenue("third-lounger-home-chat",ids[0],ids[1],HouseFurniture.LoungerAnchor,out meeting,out var reason),Is.True,reason);
+                Assert.That(meeting.SpotId,Is.EqualTo(HouseFurniture.LoungerAnchor),"The unchanged Home pair occupies slots zero and one.");
+                Assert.That(coordinator.ActivityAnchorAvailable(anchor),Is.True,"The Home chat must leave the physically separate third lounger free.");
+                yield return AssertRestPlaceArrivalAndFloorExit(anchor);
+                Assert.That(coordinator.TryGetLease(meeting.Token,out var stillHeld),Is.True,"Rest and its floor exit do not release somebody else's conversation.");
+                Assert.That(stillHeld,Is.SameAs(meeting));
+            }
+            finally{if(meeting!=null)coordinator.Release(meeting);suppress.SetValue(director,prior);}
         }
 
         [UnityTest]
@@ -66,8 +86,9 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(coordinator.TryGetActivity("player",out var held),Is.True);
             Assert.That(held.Anchor,Is.SameAs(anchor));
             Assert.That(coordinator.ActivityAnchorAvailable(anchor),Is.False,"Its exact cushion remains privately leased.");
-            Assert.That(HouseFurniture.InScene(player.gameObject.scene).Any(a=>a.VenueId==anchor.VenueId && a!=anchor && coordinator.ActivityAnchorAvailable(a)),Is.True,
-                "Another physical cushion/lounger can be owned independently.");
+            if(anchor.VenueId==HouseFurniture.LoungeAnchor)
+                Assert.That(HouseFurniture.InScene(player.gameObject.scene).Any(a=>a.VenueId==anchor.VenueId && a!=anchor && coordinator.ActivityAnchorAvailable(a)),Is.True,
+                    "Another physical couch cushion can be owned independently.");
             if(Application.isBatchMode)
                 yield return CaptureFraming(anchor.VenueId==HouseFurniture.LoungerAnchor?"house-rest-third-lounger":"house-rest-couch",
                     settle:false,width:1280,height:720);

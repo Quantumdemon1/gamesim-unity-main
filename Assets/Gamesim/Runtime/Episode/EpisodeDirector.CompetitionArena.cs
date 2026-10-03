@@ -18,7 +18,13 @@ namespace Gamesim.Episode
         private bool competitionOverlaysShown=true;
         private readonly Dictionary<string,HouseInteractionAnchor> competitionArenaActors=new Dictionary<string,HouseInteractionAnchor>();
         private readonly Dictionary<string,CompetitionApparatus> competitionInstruments=new Dictionary<string,CompetitionApparatus>();
-        private sealed class CompetitionPose { public CharacterPresentation.Pose previous, written; }
+        private sealed class CompetitionBody
+        {
+            public GameObject root; public CapsuleCollider capsule; public CharacterPresentation visual;
+            public CompetitionInstrumentPose contact;
+        }
+        private readonly Dictionary<string,CompetitionBody> competitionBodies=new Dictionary<string,CompetitionBody>();
+        private sealed class CompetitionPose { public CharacterPresentation.Pose previous, written; public CompetitionInstrumentPose contact; }
         private readonly Dictionary<CharacterPresentation,CompetitionPose> competitionPoses=new Dictionary<CharacterPresentation,CompetitionPose>();
         private readonly List<HouseSeatPresentation> competitionAudienceSeats=new List<HouseSeatPresentation>();
         private readonly object competitionPlayerOwner=new object();
@@ -65,6 +71,7 @@ namespace Gamesim.Episode
             if(competitionPlayerStation==null)
             { EndCompetitionArena(); competitionArenaStatus="Your competition station has no clear route. Try again after the path is clear."; return false; }
             competitionArenaStaging=true; competitionAssemblyDeadline=Time.unscaledTime+30;
+            CacheCompetitionBody(state.playerId,player.gameObject);
             var contestants=new HashSet<string>(EpisodeEngine.CompetitionPlayers(state).Select(c=>c.id));
             var ids=new List<string>(); var anchors=new List<HouseInteractionAnchor>();
             var used=new List<Vector3>{competitionPlayerStationPosition};
@@ -85,6 +92,7 @@ namespace Gamesim.Episode
                     var npc=housemates.FirstOrDefault(n=>n!=null && n.Id==actor.id);
                     var capsule=npc!=null ? npc.GetComponent<CapsuleCollider>() : null;
                     if(capsule==null || (npc.GetComponent<HouseSeatPresentation>()?.Active ?? false))continue;
+                    CacheCompetitionBody(actor.id,npc.gameObject);
                     HouseInteractionAnchor anchor=null;
                     var existingSeat=npc.GetComponent<HouseSeatPresentation>();
                     if(!contestants.Contains(actor.id) && (existingSeat==null || existingSeat.isActiveAndEnabled))
@@ -247,21 +255,38 @@ namespace Gamesim.Episode
         {
             foreach(var pair in competitionInstruments)
             {
-                if(pair.Value==null)continue;
-                bool mine=challengeOrigin!=null && pair.Key==challengeOrigin.playerId;
-                bool arrived=mine?player!=null && player.ActivityHasArrived(competitionPlayerOwner)
-                    :npcMeetings!=null && npcMeetings.CompetitionActorArrived(pair.Key);
-                // Every approach route finishes before any solid scenery appears on the floor.
-                pair.Value.gameObject.SetActive(arrived && CompetitionArenaReady);
-                var body=mine?player?.gameObject:housemates.FirstOrDefault(npc=>npc!=null && npc.Id==pair.Key)?.gameObject;
-                var capsule=body!=null?body.GetComponent<CapsuleCollider>():null;
-                if(capsule!=null)pair.Value.FitActorClearance(capsule.radius*Mathf.Max(body.transform.lossyScale.x,body.transform.lossyScale.z),
-                    pair.Value.transform.parent.InverseTransformPoint(body.transform.position));
-                pair.Value.Sync(mine?challengeRun:null,competitionScreen!=null && competitionScreen.IsPlaying,
-                    competitionScreen!=null && competitionScreen.IsPreviewing,competitionScreen!=null && competitionScreen.Paused,reducedMotion);
-                body?.GetComponent<CompetitionInstrumentPose>()?.Bind(pair.Value,mine?challengeRun:null,
-                    competitionScreen!=null && competitionScreen.IsPlaying,competitionScreen!=null && competitionScreen.Paused);
+                SyncCompetitionInstrument(pair.Key,pair.Value);
             }
+        }
+
+        private void CacheCompetitionBody(string id,GameObject body)
+        {
+            competitionBodies[id]=new CompetitionBody{root=body,capsule=body.GetComponent<CapsuleCollider>(),
+                visual=body.GetComponent<CharacterPresentation>(),contact=body.GetComponent<CompetitionInstrumentPose>()};
+        }
+
+        // Only the player's attempt changes in TickMiniGame. NPC stations already synchronized
+        // with their leases in TickCompetitionArena; a second full field pass serves no new state.
+        private void SyncCompetitionPlayerInstrument()
+        {
+            if(challengeOrigin!=null && competitionInstruments.TryGetValue(challengeOrigin.playerId,out var instrument))
+                SyncCompetitionInstrument(challengeOrigin.playerId,instrument);
+        }
+
+        private void SyncCompetitionInstrument(string id,CompetitionApparatus instrument)
+        {
+                if(instrument==null || !competitionBodies.TryGetValue(id,out var body) || body.root==null)return;
+                bool mine=challengeOrigin!=null && id==challengeOrigin.playerId;
+                bool arrived=mine?player!=null && player.ActivityHasArrived(competitionPlayerOwner)
+                    :npcMeetings!=null && npcMeetings.CompetitionActorArrived(id);
+                // Every approach route finishes before any solid scenery appears on the floor.
+                instrument.gameObject.SetActive(arrived && CompetitionArenaReady);
+                if(body.capsule!=null)instrument.FitActorClearance(body.capsule.radius*Mathf.Max(body.root.transform.lossyScale.x,body.root.transform.lossyScale.z),
+                    instrument.transform.parent.InverseTransformPoint(body.root.transform.position));
+                instrument.Sync(mine?challengeRun:null,competitionScreen!=null && competitionScreen.IsPlaying,
+                    competitionScreen!=null && competitionScreen.IsPreviewing,competitionScreen!=null && competitionScreen.Paused,reducedMotion);
+                body.contact?.Bind(instrument,mine?challengeRun:null,
+                    competitionScreen!=null && competitionScreen.IsPlaying,competitionScreen!=null && competitionScreen.Paused);
         }
 
         private void CompetitionStance(CharacterPresentation visual,bool arrived,CompetitionApparatus instrument)
@@ -277,16 +302,23 @@ namespace Gamesim.Episode
             if(visual.gameObject==player.gameObject)effort&=challengeRun!=null && challengeRun.Holding;
             own.written=effort?CharacterPresentation.Pose.PowerStance:CharacterPresentation.Pose.AtEase;
             visual.SetPose(own.written);visual.SetActivity(CharacterPresentation.BodyActivity.Posing);
-            var contact=visual.GetComponent<CompetitionInstrumentPose>();
-            if(contact==null)contact=visual.gameObject.AddComponent<CompetitionInstrumentPose>();
+            var contact=own.contact;
+            if(contact==null)
+            {
+                contact=visual.GetComponent<CompetitionInstrumentPose>();
+                if(contact==null)contact=visual.gameObject.AddComponent<CompetitionInstrumentPose>();
+                own.contact=contact;
+            }
             bool mine=visual.gameObject==player.gameObject;
+            string id=mine?challengeOrigin?.playerId:instrument.ActorId;
+            if(id!=null && competitionBodies.TryGetValue(id,out var body))body.contact=contact;
             contact.Bind(instrument,mine?challengeRun:null,competitionScreen!=null && competitionScreen.IsPlaying,competitionScreen!=null && competitionScreen.Paused);
         }
 
         private void ReleaseCompetitionStance(CharacterPresentation visual)
         {
             if(visual==null || !competitionPoses.TryGetValue(visual,out var own))return;
-            visual.GetComponent<CompetitionInstrumentPose>()?.Release();
+            if(own.contact!=null)own.contact.Release();
             if(visual.Activity==CharacterPresentation.BodyActivity.Posing && visual.HeldPose==own.written)
             {visual.SetActivity(CharacterPresentation.BodyActivity.None);visual.SetPose(own.previous);}
             competitionPoses.Remove(visual);
@@ -329,8 +361,9 @@ namespace Gamesim.Episode
             }
             foreach(var pair in competitionArenaActors)
             {
-                var npc=housemates.FirstOrDefault(n=>n!=null && n.Id==pair.Key);
-                var visual=npc!=null ? npc.GetComponent<CharacterPresentation>() : null;
+                if(!competitionBodies.TryGetValue(pair.Key,out var body) || body.root==null)continue;
+                var npc=body.root;
+                var visual=body.visual;
                 if(visual==null)continue;
                 bool arrived=npcMeetings.CompetitionActorArrived(pair.Key);
                 visual.SetTalking(false);visual.SetArguing(false);visual.SetFacing(arrived?pair.Value.Facing:float.NaN);
@@ -339,7 +372,7 @@ namespace Gamesim.Episode
                 {
                     // Explicitly: a missing component is Unity's fake null in the editor, which ?? keeps.
                     var seat=npc.GetComponent<HouseSeatPresentation>();
-                    if(seat==null)seat=npc.gameObject.AddComponent<HouseSeatPresentation>();
+                    if(seat==null)seat=npc.AddComponent<HouseSeatPresentation>();
                     if(seat.isActiveAndEnabled && !seat.Active)
                     {
                         string id=pair.Key;
@@ -369,9 +402,10 @@ namespace Gamesim.Episode
             competitionAudienceSeats.Clear(); npcMeetings?.EndCompetitionStage();
             foreach(var pair in competitionArenaActors)
             {
-                var npc=housemates?.FirstOrDefault(n=>n!=null && n.Id==pair.Key);
-                if(npc!=null){var visual=npc.GetComponent<CharacterPresentation>();ReleaseCompetitionStance(visual);visual?.SetFacing(float.NaN);}
+                if(competitionBodies.TryGetValue(pair.Key,out var body))
+                {ReleaseCompetitionStance(body.visual);body.visual?.SetFacing(float.NaN);}
                 competitionInstruments.Remove(pair.Key);
+                competitionBodies.Remove(pair.Key);
                 // Authored furniture belongs to the scene. Only transient stage anchors are ours.
                 if(pair.Value!=null && competitionArenaRoot!=null && pair.Value.transform.IsChildOf(competitionArenaRoot.transform))
                     Destroy(pair.Value.gameObject);
@@ -389,6 +423,7 @@ namespace Gamesim.Episode
             competitionEffortFramed=false;
             competitionSign=null;competitionArenaMarks.Clear();competitionOverlaysShown=true;
             competitionInstruments.Clear();
+            competitionBodies.Clear();
             if(competitionArenaRoot!=null){Destroy(competitionArenaRoot);competitionArenaRoot=null;}
         }
     }

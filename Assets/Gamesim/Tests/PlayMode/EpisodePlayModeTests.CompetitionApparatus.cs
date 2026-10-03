@@ -22,7 +22,7 @@ namespace Gamesim.Tests.PlayMode
         private CompetitionApparatus PlayerInstrument()=>SceneComponents<CompetitionApparatus>()
             .Single(instrument=>instrument.ActorId==director.Snapshot.playerId);
 
-        private IEnumerator EnterInstrumentAttempt(string category,bool ranked=false)
+        private IEnumerator EnterInstrumentAttempt(string category,bool ranked=false,bool stopAtReady=false)
         {
             yield return InstallRules4AtFirstHoH(SeedOpeningWith(category));
             yield return SettleCast();
@@ -38,11 +38,12 @@ namespace Gamesim.Tests.PlayMode
             var screen=SceneComponents<CompetitionGameScreen>().Single();
             if(screen.IsAssembling)yield return PressKey(Key.Enter);
             float ready=Time.realtimeSinceStartup+40f;
-            while(screen.IsShowing && !screen.IsPlaying && Time.realtimeSinceStartup<ready)
+            while(screen.IsShowing && (stopAtReady?!instrument.gameObject.activeInHierarchy:!screen.IsPlaying) && Time.realtimeSinceStartup<ready)
             {
                 if(screen.Paused)yield return PressKey(Key.P);else yield return null;
             }
-            Assert.That(screen.IsPlaying,Is.True,"The actual native arrivals and ready count permit play.");
+            if(stopAtReady)Assert.That(ChallengeRun().Elapsed,Is.Zero,"Native arrivals precede attempt time.");
+            else Assert.That(screen.IsPlaying,Is.True,"The actual native arrivals and ready count permit play.");
             if(category=="Endurance")
             {
                 yield return null;yield return null;
@@ -189,12 +190,73 @@ namespace Gamesim.Tests.PlayMode
             if(Application.isBatchMode)yield return CaptureFraming("competition-apparatus-dice-result",false);
         }
 
+        private IEnumerator SetWordAttemptPaused(bool paused)
+        {
+            var screen=SceneComponents<CompetitionGameScreen>().Single();
+            if(screen.Paused!=paused)
+                yield return ClickInstrumentControl(screen.GetComponentsInChildren<Button>().Single(button=>button.name=="Pause competition"));
+            Assert.That(screen.Paused,Is.EqualTo(paused),"The real pause/resume pointer control owns the word clock.");
+        }
+
+        private void AssertWordInstrumentHidden(bool hidden)
+        {
+            var run=ChallengeRun();
+            foreach(var label in PlayerInstrument().GetComponentsInChildren<TMP_Text>().Where(label=>label.name.StartsWith("Letter ",StringComparison.Ordinal)))
+            {
+                string suffix=label.name.Substring("Letter ".Length).Split(' ')[0];int index=int.Parse(suffix);
+                Assert.That(label.text,Is.EqualTo(index>=run.Scrambled.Length?"":hidden?"?":run.Scrambled[index].ToString()),label.name);
+            }
+        }
+
+        private IEnumerator FreezeReadyWords()
+        {yield return SetWordAttemptPaused(true);Assert.That(ChallengeRun().Elapsed,Is.Zero);AssertWordInstrumentHidden(true);}
+
+        private IEnumerator StartAndTypeAnActualWordLetter()
+        {
+            yield return SetWordAttemptPaused(false);
+            var screen=SceneComponents<CompetitionGameScreen>().Single();float deadline=Time.realtimeSinceStartup+8f;
+            while(!screen.IsPlaying && Time.realtimeSinceStartup<deadline)
+            {if(screen.Paused)yield return SetWordAttemptPaused(false);else yield return null;}
+            Assert.That(screen.IsPlaying,Is.True);
+            var run=ChallengeRun();int before=run.Spelled.Length;
+            yield return PressKey((Key)((int)Key.A+char.ToUpperInvariant(run.Word[before])-'A'));
+            Assert.That(run.Spelled.Length,Is.EqualTo(before+1),"Actual keyboard input picks a word tile.");
+            AssertWordInstrumentHidden(false);
+        }
+
+        private IEnumerator PauseActualWords()
+        {
+            yield return SetWordAttemptPaused(true);double elapsed=ChallengeRun().Elapsed;
+            yield return new WaitForSecondsRealtime(.2f);
+            Assert.That(ChallengeRun().Elapsed,Is.EqualTo(elapsed),"Paused time cannot buy puzzle-solving time.");
+            AssertWordInstrumentHidden(true);
+        }
+
+        [UnityTest]
+        public IEnumerator Apparatus_InHouseWordsHideOnReadyAndPauseAndResumeThroughActualControls()
+        {
+            yield return EnterInstrumentAttempt("Social",stopAtReady:true);var before=director.Snapshot;
+            Assert.That(PlayerInstrument().Instrument,Is.EqualTo(CompetitionApparatus.Family.WordConsole));
+            if(Application.isBatchMode)yield return CaptureActualInstrument("words-ready",FreezeReadyWords,false,false);
+            else yield return FreezeReadyWords();
+            if(Application.isBatchMode)yield return CaptureActualInstrument("words-running",StartAndTypeAnActualWordLetter,false,false);
+            else yield return StartAndTypeAnActualWordLetter();
+            string puzzle=ChallengeRun().Scrambled,picked=ChallengeRun().Spelled;
+            if(Application.isBatchMode)yield return CaptureActualInstrument("words-paused",PauseActualWords,false,false);
+            else yield return PauseActualWords();
+            Assert.That(ChallengeRun().Scrambled,Is.EqualTo(puzzle));Assert.That(ChallengeRun().Spelled,Is.EqualTo(picked));
+            if(Application.isBatchMode)yield return CaptureActualInstrument("words-resumed",StartAndTypeAnActualWordLetter,false,false);
+            else yield return StartAndTypeAnActualWordLetter();
+            Assert.That(ChallengeRun().Scrambled,Is.EqualTo(puzzle));Assert.That(ChallengeRun().Spelled,Does.StartWith(picked));
+            yield return CancelInstrumentAttempt(before);
+        }
+
         /// <summary>
         /// The renderer photographs the actual input-created attempt and humanoid pose. Setting
         /// the lens never changes an actor, lease, attempt or simulation value; it only supplies a
         /// close side view for body/apparatus review in addition to the normal UI captures.
         /// </summary>
-        private IEnumerator CaptureActualInstrument(string name,Func<IEnumerator> play,bool handContact)
+        private IEnumerator CaptureActualInstrument(string name,Func<IEnumerator> play,bool handContact,bool resumeBeforeInput=true)
         {
             var instrument=PlayerInstrument();var screen=SceneComponents<CompetitionGameScreen>().Single();
             var lens=new CaptureLens(cameraRig.ViewCamera,1600,900);
@@ -207,7 +269,7 @@ namespace Gamesim.Tests.PlayMode
             try
             {
                 yield return null;Canvas.ForceUpdateCanvases();yield return lens.MakeSureTheCanvasesAreDrawn();
-                if(screen.Paused)yield return PressKey(Key.P);
+                if(screen.Paused && resumeBeforeInput)yield return PressKey(Key.P);
                 yield return play();yield return null;
                 var humanoid=player.GetComponentsInChildren<Animator>().FirstOrDefault(animator=>animator.isHuman && animator.isActiveAndEnabled);
                 var pose=player.GetComponent<CompetitionInstrumentPose>();

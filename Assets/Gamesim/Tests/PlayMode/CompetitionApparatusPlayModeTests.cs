@@ -81,6 +81,35 @@ namespace Gamesim.Tests.PlayMode
             :category=="Social"?CompetitionApparatus.Family.WordConsole:CompetitionApparatus.Family.Signals;
 
         [UnityTest]
+        public IEnumerator Apparatus_WordsHideThePuzzleOnReadyAndPauseAndRestoreTheSamePickedTiles()
+        {
+            var definition=CompetitionDefinitions.All.First(item=>item.Category=="Social");
+            var instrument=Make(definition);var run=new MiniGameRun(CompetitionMiniGames.Kind.Words,123,4,definition);
+            var front=instrument.GetComponentsInChildren<TMP_Text>().Where(label=>label.name.StartsWith("Letter ") && !label.name.Contains("audience")).ToArray();
+            Action<bool> assertLetters=hidden=>
+            {
+                foreach(var label in front)
+                {
+                    int index=int.Parse(label.name.Substring("Letter ".Length));
+                    string expected=index>=run.Scrambled.Length?"":hidden?"?":run.Scrambled[index].ToString();
+                    Assert.That(label.text,Is.EqualTo(expected));
+                    Assert.That(instrument.GetComponentsInChildren<TMP_Text>().Single(copy=>copy.name==label.name+" audience readout").text,Is.EqualTo(expected));
+                }
+            };
+            instrument.Sync(run,false,false,false,false);assertLetters(true);
+            instrument.Sync(run,true,false,false,false);assertLetters(false);
+            run.TypeLetter(run.Word[0]);Assert.That(run.Spelled.Length,Is.EqualTo(1));
+            string before=Fingerprint(run);
+            instrument.Sync(run,false,false,true,false);assertLetters(true);
+            instrument.SetOverlaysVisible(true);assertLetters(true);
+            Assert.That(instrument.ProgressText,Is.EqualTo("Paused"));
+            Assert.That(Fingerprint(run),Is.EqualTo(before),"Hiding/restoring readouts neither advances nor changes the puzzle.");
+            instrument.Sync(run,true,false,false,false);assertLetters(false);
+            Assert.That(Fingerprint(run),Is.EqualTo(before));
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator Apparatus_MemoryShowsOnlyThePreviewAndCardsThePlayerActuallyRevealed()
         {
             var instrument=Make(CompetitionDefinitions.FirstImpressions);

@@ -421,7 +421,7 @@ namespace Gamesim.Episode
             challengeRun.Tick(Time.unscaledDeltaTime);
             if (challengeRun.ExpiredTargets > expired) audioBed.PlayCue(HouseAudio.Cue.SocialDown);
             competitionScreen.Refresh();
-            SyncCompetitionInstruments();
+            SyncCompetitionPlayerInstrument();
             if (!challengeRun.Finished) return;
             challengeResultShown = true;
             if (challengePractice)

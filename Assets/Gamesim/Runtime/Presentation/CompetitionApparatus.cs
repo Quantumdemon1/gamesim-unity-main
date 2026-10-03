@@ -39,6 +39,8 @@ namespace Gamesim.Presentation
         private Transform weight, gripBar, gripTrack, weightGuide;
         private readonly List<Transform> gripTicks = new List<Transform>();
         private Transform leftUpright, rightUpright, topBrace, handle, responsePad;
+        private Transform trayPedestal, trayBed, trayBack, trayLeft, trayRight;
+        private Renderer gripRenderer;
         private float gripHeight = 1.16f;
         private bool overlaysVisible = true;
         private const float Front = .56f;
@@ -142,6 +144,7 @@ namespace Gamesim.Presentation
             handle=Part("Grip handle", new Vector3(0, 1.16f, Front - .055f), new Vector3(.78f, .045f, .055f), accent).transform;
             gripTrack=Part("Grip scale track", new Vector3(.30f, 1.09f, Front - .075f), new Vector3(.055f, .69f, .04f), dark).transform;
             gripBar = Part("Grip remaining", new Vector3(.30f, 1.09f, Front - .085f), new Vector3(.035f, .69f, .025f), paper).transform;
+            gripRenderer=gripBar.GetComponent<Renderer>();
             weightGuide=Part("Counterweight guide", new Vector3(0, 1.10f, Front + .15f), new Vector3(.03f, .76f, .03f), frame).transform;
             weight = Part("Pressure counterweight", new Vector3(0, .85f, Front + .15f), new Vector3(.25f, .16f, .17f), frame).transform;
             for (int i = 0; i < 5; i++)
@@ -150,11 +153,11 @@ namespace Gamesim.Presentation
 
         private void BuildDice()
         {
-            Part("Tray pedestal", new Vector3(0, .55f, Front), new Vector3(.20f, 1.10f, .25f), frame);
-            Part("Dice tray bed", new Vector3(0, 1.14f, Front), new Vector3(.91f, .08f, .42f), dark);
-            Part("Tray back rail", new Vector3(0, 1.21f, Front + .20f), new Vector3(.96f, .13f, .05f), accent);
-            Part("Tray left rail", new Vector3(-.455f, 1.21f, Front), new Vector3(.05f, .13f, .44f), accent);
-            Part("Tray right rail", new Vector3(.455f, 1.21f, Front), new Vector3(.05f, .13f, .44f), accent);
+            trayPedestal=Part("Tray pedestal", new Vector3(0, .55f, Front), new Vector3(.20f, 1.10f, .25f), frame).transform;
+            trayBed=Part("Dice tray bed", new Vector3(0, 1.14f, Front), new Vector3(.91f, .08f, .42f), dark).transform;
+            trayBack=Part("Tray back rail", new Vector3(0, 1.21f, Front + .20f), new Vector3(.96f, .13f, .05f), accent).transform;
+            trayLeft=Part("Tray left rail", new Vector3(-.455f, 1.21f, Front), new Vector3(.05f, .13f, .44f), accent).transform;
+            trayRight=Part("Tray right rail", new Vector3(.455f, 1.21f, Front), new Vector3(.05f, .13f, .44f), accent).transform;
             for (int i = 0; i < 3; i++)
             {
                 Vector3 at = new Vector3((i - 1) * .25f, 1.28f, Front - .115f);
@@ -202,7 +205,7 @@ namespace Gamesim.Presentation
                     GripFraction = Mathf.Clamp01((float)(run.Meter / CompetitionMiniGames.MeterFull));
                     gripBar.localScale = new Vector3(.035f, .69f * GripFraction, .025f);
                     gripBar.localPosition = new Vector3(.30f, gripHeight-.415f + .345f * GripFraction, Front - .085f);
-                    Colorize(gripBar.GetComponent<Renderer>(), GripFraction < .25f ? UiTheme.Danger : UiTheme.Positive);
+                    Colorize(gripRenderer, GripFraction < .25f ? UiTheme.Danger : UiTheme.Positive);
                     weight.localPosition = new Vector3(0, run.GripPressure > 1 ? gripHeight + .18f : gripHeight - .31f, Front + .15f);
                     // The guide's two positions indicate the actual pressure band, with no extra motion.
                     break;
@@ -219,8 +222,9 @@ namespace Gamesim.Presentation
                     for (int i = 0; i < glyphs.Count; i++)
                     {
                         bool present = i < run.Scrambled.Length;
-                        SetWord(glyphs[i],present ? run.Scrambled[i].ToString() : "");
-                        Colorize(indicators[i], present && run.TilePicked(i) ? UiTheme.Positive : UiTheme.Hex("31425B"));
+                        bool hidden=!started || paused;
+                        SetWord(glyphs[i],present ? hidden ? "?" : run.Scrambled[i].ToString() : "");
+                        Colorize(indicators[i], present && !hidden && run.TilePicked(i) ? UiTheme.Positive : UiTheme.Hex("31425B"));
                     }
                     break;
             }
@@ -262,13 +266,18 @@ namespace Gamesim.Presentation
             weightGuide.localPosition=new Vector3(0,gripHeight-.06f,Front+.15f);
             for(int i=0;i<gripTicks.Count;i++)gripTicks[i].localPosition=new Vector3(.35f,gripHeight-.39f+i*.16f,Front-.085f);
             float top=gripHeight+.26f;
-            foreach(Transform upright in new[]{leftUpright,rightUpright})
-            {
-                var p=upright.localPosition;p.y=top*.5f;upright.localPosition=p;
-                var scale=upright.localScale;scale.y=top;upright.localScale=scale;
-            }
+            FitUpright(leftUpright,top);FitUpright(rightUpright,top);
             topBrace.localPosition=new Vector3(0,top,Front);
         }
+
+        private static void FitUpright(Transform upright,float top)
+        {
+            var p=upright.localPosition;p.y=top*.5f;upright.localPosition=p;
+            var scale=upright.localScale;scale.y=top;upright.localScale=scale;
+        }
+
+        private static void FitTrayPart(Transform part,float height)
+        {var at=part.localPosition;at.y=height;part.localPosition=at;}
 
         public Vector3 HandContact(bool left)
         {
@@ -288,14 +297,10 @@ namespace Gamesim.Presentation
             }
             if(Instrument!=Family.DiceTray)return;
             float shift=Mathf.Clamp(shoulder.y-.06f-1.28f,-.4f,.4f);
-            Transform pedestal=transform.Find("Tray pedestal");
-            pedestal.localPosition=new Vector3(0,.55f+shift*.5f,Front);
-            pedestal.localScale=new Vector3(.20f,1.10f+shift,.25f);
-            string[] names={"Dice tray bed","Tray back rail","Tray left rail","Tray right rail"};
-            foreach(string name in names)
-            {
-                Transform part=transform.Find(name);Vector3 at=part.localPosition;at.y=(name=="Dice tray bed"?1.14f:1.21f)+shift;part.localPosition=at;
-            }
+            trayPedestal.localPosition=new Vector3(0,.55f+shift*.5f,Front);
+            trayPedestal.localScale=new Vector3(.20f,1.10f+shift,.25f);
+            FitTrayPart(trayBed,1.14f+shift);FitTrayPart(trayBack,1.21f+shift);
+            FitTrayPart(trayLeft,1.21f+shift);FitTrayPart(trayRight,1.21f+shift);
             for(int i=0;i<indicators.Count;i++)
             {
                 Vector3 at=indicators[i].transform.localPosition;at.y=1.28f+shift;indicators[i].transform.localPosition=at;

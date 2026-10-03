@@ -13,8 +13,8 @@ namespace Gamesim.Presentation
     {
         private CompetitionApparatus instrument;
         private bool holding, pressing;
-        private sealed class BoneWrite { public Transform bone; public Quaternion before, after; }
-        private readonly List<BoneWrite> writes=new List<BoneWrite>();
+        private struct BoneWrite { public Transform bone; public Quaternion before, after; }
+        private readonly List<BoneWrite> writes=new List<BoneWrite>(4);
         public bool HasContact { get; private set; }
         public float LeftHandError { get; private set; }
         public float RightHandError { get; private set; }

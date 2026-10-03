@@ -15,7 +15,8 @@ namespace Gamesim.Tests.EditMode
     /// Schema 22: the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN R0, C0, C7). A v21 save gains them
     /// switched off - a rules week of 0, so a season saved before them plays without them to its end -
     /// on every deal and every promise the two fields only a settlement under the rules fills, empty, and
-    /// on every deal the link only a negotiation under the rules writes (C7), empty. The migration never
+    /// on every deal the link only a negotiation under the rules writes (C7), empty, and on every
+    /// alliance the mark only an invitation under the rules writes (C5), false. The migration never
     /// guesses who broke something: a reader under the rules reads a deal settled before the record by
     /// FinalistRead.DealBreaker's rule, and a promise by its maker. Nothing else in the save moves.
     /// </summary>
@@ -73,7 +74,14 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void MigrationAddsTheRulesSwitchedOffAndEmptyRecordsAndMovesNothingElse()
         {
-            var old = V21WithABreach(out _); string original = old.ToString();
+            var old = V21WithABreach(out _);
+            // A pact of the player's, so the mark every alliance gains (C5) has one to be written on.
+            string partner = (string)((JArray)old["contestants"]).First(c => !(bool)c["isPlayer"])["id"];
+            ((JArray)old["alliances"]).Add(new JObject
+            {
+                ["id"] = "alliance-v21", ["name"] = "The V21 Pact", ["members"] = new JArray((string)old["playerId"], partner), ["active"] = true,
+            });
+            string original = old.ToString();
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
             Assert.That((int)migrated["schemaVersion"], Is.EqualTo(22));
@@ -88,6 +96,13 @@ namespace Gamesim.Tests.EditMode
                     else Assert.That(row.Property("linkedDealId"), Is.Null, name + " " + row["id"]);
                 }
             Assert.That(((JArray)migrated["deals"]).Count, Is.GreaterThan(0), "The fixture has deals for the link to be written on.");
+            // C5: every alliance gains its mark, false - before the rules nobody joined a pact after the player.
+            foreach (JObject row in (JArray)migrated["alliances"])
+            {
+                Assert.That(row["playerJoined"].Type, Is.EqualTo(JTokenType.Boolean), "alliances " + row["id"]);
+                Assert.That((bool)row["playerJoined"], Is.False, "alliances " + row["id"]);
+            }
+            Assert.That(((JArray)migrated["alliances"]).Any(row => (string)row["id"] == "alliance-v21"), Is.True, "The fixture has a pact for the mark to be written on.");
 
             var projection = PersistenceMigrationTests.StripSchema22((JObject)migrated.DeepClone());
             projection["schemaVersion"] = 21;
@@ -165,6 +180,18 @@ namespace Gamesim.Tests.EditMode
                 old = V21WithABreach(out _);
                 ((JObject)((JArray)old["deals"]).First(d => (string)d["id"] == "deal-pact"))["linkedDealId"] = link;
                 Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(old, out _), "linkedDealId " + link);
+            }
+            // Nor is C5's mark on an alliance, either way.
+            foreach (bool joined in new[] { false, true })
+            {
+                old = V21WithABreach(out _);
+                string partner = (string)((JArray)old["contestants"]).First(c => !(bool)c["isPlayer"])["id"];
+                ((JArray)old["alliances"]).Add(new JObject
+                {
+                    ["id"] = "alliance-v21", ["name"] = "The V21 Pact", ["members"] = new JArray((string)old["playerId"], partner),
+                    ["active"] = true, ["playerJoined"] = joined,
+                });
+                Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(old, out _), "playerJoined " + joined);
             }
         }
 

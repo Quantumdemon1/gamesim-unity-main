@@ -357,6 +357,8 @@ namespace Gamesim.Tests.EditMode
             // Schema 22's deal fields - C7's link with C0's record - which a season without the rules leaves null and 0.
             foreach (var row in ((JArray)o["deals"]).OfType<JObject>()) { row.Remove("brokenById"); row.Remove("settledWeek"); row.Remove("linkedDealId"); }
             foreach (var row in ((JArray)o["promises"]).OfType<JObject>()) { row.Remove("brokenById"); row.Remove("settledWeek"); }
+            // And its alliance mark - C5's invitation into somebody else's pact - which a season without the rules leaves false.
+            foreach (var row in ((JArray)o["alliances"]).OfType<JObject>()) row.Remove("playerJoined");
             trace.Append(o.ToString(Formatting.None)).Append('\n');
             var people = s.contestants.ToList();
             foreach (var a in people)

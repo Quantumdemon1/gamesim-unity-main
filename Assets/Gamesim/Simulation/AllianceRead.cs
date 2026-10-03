@@ -225,9 +225,10 @@ namespace Gamesim.Simulation
             if (founding.Count == 0) founding = pact.members;
             var firsts = founding.Select(m => FinalistRead.FirstName(m.name)).ToList();
             pact.formedWeek = FinalistRead.PlayerAlliedSince(s, alliance);
-            // With no ledger row (an old save) the order is all there is: the player's pacts open with them.
+            // With no ledger row (an old save) the order is all there is: the player's pacts open with them -
+            // unless the pact itself says they were invited in (C5), which no cut since can undo.
             bool founder = row != null ? FinalistRead.FoundedByPlayer(s, alliance, row)
-                : alliance.members.Count > 0 && alliance.members[0] == s.playerId;
+                : !alliance.playerJoined && alliance.members.Count > 0 && alliance.members[0] == s.playerId;
             if (!founder)
             {
                 var invitation = FinalistRead.BroughtInLine(s, alliance, row);

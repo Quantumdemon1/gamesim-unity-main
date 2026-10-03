@@ -509,10 +509,13 @@ namespace Gamesim.Simulation
         /// by proposing it or by an invitation that made a new pair (the ledger's "player"), or a
         /// story's pact that formed around them. A story opens such a pact with the player; an
         /// invitation into somebody else's pact adds the player at its end, so a story's pact that
-        /// does not begin with the player is one they were let into later.
+        /// does not begin with the player is one they were let into later. Under the commitment rules
+        /// the invitation is on the pact itself (<see cref="AllianceState.playerJoined"/>), and a pact
+        /// the player came into that way never reads as theirs - not even once somebody they brought in
+        /// stands after them and the members ahead of them are cut away, leaving them first.
         /// </summary>
         internal static bool FoundedByPlayer(EpisodeState s, AllianceState alliance, AllianceRow row) =>
-            row?.why != null && (row.why.StartsWith("player", System.StringComparison.Ordinal)
+            !alliance.playerJoined && row?.why != null && (row.why.StartsWith("player", System.StringComparison.Ordinal)
                 || (row.why.StartsWith("story", System.StringComparison.Ordinal) && alliance.members.Count > 0 && alliance.members[0] == s.playerId));
 
         /// <summary>

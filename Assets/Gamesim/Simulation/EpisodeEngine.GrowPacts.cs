@@ -45,9 +45,10 @@ namespace Gamesim.Simulation
     ///
     /// <para><b>The founder.</b> <c>members[0]</c>: the player's own pacts open with them (a proposal, an
     /// invitation's pair, a story's pact around them), a pact the player joins keeps its founder first
-    /// (<c>AllyThroughInvitation</c> appends), and so does one they grow. Under the rules the founder
-    /// calls the bloc's vote (<see cref="WebVotingBlocs.FromNative"/>'s <c>founderId</c>) whenever they
-    /// are in it, voting and still following it.</para>
+    /// (<c>AllyThroughInvitation</c> appends, and marks it <see cref="AllianceState.playerJoined"/>, so
+    /// cutting its earlier members away never makes it the player's), and so does one they grow. Under
+    /// the rules the founder calls the bloc's vote (<see cref="WebVotingBlocs.FromNative"/>'s
+    /// <c>founderId</c>) whenever they are in it, voting and still following it.</para>
     /// </summary>
     public sealed partial class EpisodeEngine
     {
@@ -76,11 +77,12 @@ namespace Gamesim.Simulation
         /// <summary>
         /// Whether the player founded this pact: they are its first member, and the record agrees - a
         /// pact the player made, or a story's that formed around them (<see cref="FinalistRead.FoundedByPlayer"/>).
-        /// A pact of houseguests the player joined never is, even if its earlier members are cut away.
+        /// A pact of houseguests the player joined never is, even if its earlier members are cut away:
+        /// their joining is on the pact (<see cref="AllianceState.playerJoined"/>), not read from the order.
         /// </summary>
         public static bool PlayerFounded(EpisodeState s, AllianceState pact)
         {
-            if (s == null || Founder(pact) != s.playerId) return false;
+            if (s == null || Founder(pact) != s.playerId || pact.playerJoined) return false;
             var row = s.ledger?.alliances?.FirstOrDefault(r => r != null && r.id == pact.id);
             return row == null || FinalistRead.FoundedByPlayer(s, pact, row);
         }

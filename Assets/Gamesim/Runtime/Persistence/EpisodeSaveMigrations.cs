@@ -37,7 +37,9 @@ namespace Gamesim.Persistence
         /// <see cref="FinalistRead.DealBreaker"/>'s rule (<see cref="Breaches.DealBreaker"/>), and a
         /// promise by its maker. And on every deal the link only a negotiation under the rules writes
         /// (C7, <see cref="DealState.linkedDealId"/>), empty: no deal of a season saved before them was
-        /// a price or bought with one. Hand-written literals, never the live type.
+        /// a price or bought with one. And on every alliance the mark only an invitation under the rules
+        /// writes (C5, <see cref="AllianceState.playerJoined"/>), false: without them nobody joins a pact
+        /// after the player, so its order still says who founded it. Hand-written literals, never the live type.
         /// </summary>
         public static JObject UpgradeV21ToV22(JObject original)
         {
@@ -51,6 +53,8 @@ namespace Gamesim.Persistence
                     row.Add("settledWeek", 0);
                     if (name == "deals") row.Add("linkedDealId", JValue.CreateNull());
                 }
+            if (result["alliances"] is JArray alliances)
+                foreach (var alliance in alliances.OfType<JObject>()) alliance.Add("playerJoined", false);
             result["schemaVersion"] = 22;
             return result;
         }

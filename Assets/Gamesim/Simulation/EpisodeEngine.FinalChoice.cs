@@ -22,10 +22,11 @@ namespace Gamesim.Simulation
     /// <list type="bullet">
     /// <item>the evaluator's terms about the game still to be played - the threat a houseguest poses in
     /// the weeks to come and their strategic value for them - are left out (<see cref="FinalChoiceLeavesOut"/>):
-    /// no competition and no nomination is left, only the jury's vote, which the jury term reads;</item>
+    /// no competition and no nomination is left, only the jury's vote, which the jury term reads; and so is
+    /// the traits they share, which the default newcomer can never score;</item>
     /// <item>the jury (<see cref="FinalJuryWeight"/>): the Head of Household's chance of winning beside each
-    /// finalist, the other one cut and on the jury, read from the jury's own reader
-    /// (<see cref="FinalJuryChance"/>) - they would rather sit beside somebody they can beat;</item>
+    /// finalist, the other one cut and on the jury as the engine's own final eviction leaves them, read from
+    /// the jury's own reader (<see cref="FinalJuryChance"/>) - they would rather sit beside somebody they can beat;</item>
     /// <item>a pact that holds from the Head of Household's side (<see cref="FinalPactTerm"/>, read through
     /// <see cref="Allegiance.Holds"/>): one they have turned on, or gone cold on, holds nothing here;</item>
     /// <item>the endgame's deals: a final two deal and a final two promise called in, as C1 and C7 made
@@ -74,9 +75,12 @@ namespace Gamesim.Simulation
         /// finalist poses in the weeks to come - their competition record, at the evaluator's endgame
         /// weight of one and a half - and their strategic value for them. At the final three no week is
         /// left to come; the jury term reads what is left, the competition record included (the jury's
-        /// respect for it, <see cref="WebJuryVoting.GameplayRespect"/>).
+        /// respect for it, <see cref="WebJuryVoting.GameplayRespect"/>). And the traits two houseguests
+        /// share (the lead's ruling on the review): a newcomer with none can never score it, and in the
+        /// sampled finals it decided fifteen choices on its own, every one evicting the player. Only the
+        /// final choice leaves these out; every ballot weighs all ten.
         /// </summary>
-        public static readonly string[] FinalChoiceLeavesOut = { "threat", "strategicValue" };
+        public static readonly string[] FinalChoiceLeavesOut = { "threat", "strategicValue", "personality" };
 
         /// <summary>
         /// What the jury weighs in the final choice (C9): the term on each finalist is this times the
@@ -128,7 +132,9 @@ namespace Gamesim.Simulation
                 double jury = FinalJuryWeight * (chance - 0.5);
                 if (jury != 0) terms.Add(Term(finalist, JuryFactor, jury, "jury:" + hohId + ":" + finalist));
 
-                if (Allegiance.Holds(s, hohId, finalist) && word > 0)
+                // Both finalists held to the same cold line: Allegiance.Holds already asks it of the
+                // Head of Household's view of the player, and here of their view of a houseguest too.
+                if (Allegiance.Holds(s, hohId, finalist) && s.Score(hohId, finalist) >= Allegiance.QuietLine && word > 0)
                 {
                     var pact = Term(finalist, PactFactor, FinalPactTerm * word);
                     pact.evidenceIds.AddRange(s.alliances.Where(a => a.active && a.members.Contains(hohId) && a.members.Contains(finalist)).Select(a => a.id));
@@ -163,24 +169,34 @@ namespace Gamesim.Simulation
         /// the two as the jury does (<see cref="WebJuryVoting.Score"/>), with a final impression of up to
         /// <see cref="WebJuryVoting.FinalImpression"/> either way on each, as the engine's jury draws them;
         /// the chance of a majority of those votes, and a tie as the reveal awards it, to the second of the
-        /// two in cast order. A player on the jury is read by their own views. Pure: no roll, no write.
-        /// 0 for anybody not in the house, or the Head of Household themselves.
+        /// two in cast order. A player on the jury is read by their own views.
+        ///
+        /// <para>The jury is read as the cut would leave it (the review's M1): on a copy of the season, the
+        /// engine's own final eviction (<see cref="FinalEvict"/>) is run with the other finalist cut, so the
+        /// final two deal and promises the Head of Household breaks with them, the story's grudge for it,
+        /// the pacts and deals that end as they leave and their seat on the jury are all as the jury will
+        /// count them - nothing copied, the same statements in the same order. A Head of Household's own
+        /// commitment to a finalist never reads as that finalist's vote once they are cut. Whatever the copy
+        /// draws or mints is its own: the season handed in is never written, and its stream never moves.
+        /// 0 for anybody not in the house, or the Head of Household themselves.</para>
         /// </summary>
         public static double FinalJuryChance(EpisodeState s, string hohId, string finalistId)
         {
             if (s == null || hohId == finalistId || s.Find(hohId)?.status != ContestantStatus.Active
                 || s.Find(finalistId)?.status != ContestantStatus.Active) return 0;
-            var jurors = s.contestants.Where(c => c.status == ContestantStatus.Jury || c.status == ContestantStatus.Evicted).Select(c => c.id).ToList();
-            jurors.AddRange(s.Active.Where(c => c.id != hohId && c.id != finalistId).Select(c => c.id));
+            var jury = AsTheCutLeavesIt(s, hohId, finalistId);
+            var jurors = jury.contestants.Where(c => c.status == ContestantStatus.Jury || c.status == ContestantStatus.Evicted).Select(c => c.id).ToList();
+            // A house the final eviction cannot be run on (not three, or not a legal cut) counts the cut as a juror as it stands.
+            if (ReferenceEquals(jury, s)) jurors.AddRange(s.Active.Where(c => c.id != hohId && c.id != finalistId).Select(c => c.id));
             // How many of them vote for the Head of Household: the chance of each count, juror by juror.
             var votes = new double[jurors.Count + 1];
             votes[0] = 1;
             foreach (string juror in jurors)
             {
-                double p = BeatChance(WebJuryVoting.Score(s, juror, hohId) - WebJuryVoting.Score(s, juror, finalistId));
+                double p = BeatChance(WebJuryVoting.Score(jury, juror, hohId) - WebJuryVoting.Score(jury, juror, finalistId));
                 for (int k = jurors.Count; k >= 0; k--) votes[k] = votes[k] * (1 - p) + (k > 0 ? votes[k - 1] * p : 0);
             }
-            bool tieIsTheirs = s.contestants.FindIndex(c => c.id == hohId) > s.contestants.FindIndex(c => c.id == finalistId);
+            bool tieIsTheirs = jury.contestants.FindIndex(c => c.id == hohId) > jury.contestants.FindIndex(c => c.id == finalistId);
             double win = 0;
             for (int k = 0; k <= jurors.Count; k++)
             {
@@ -188,6 +204,28 @@ namespace Gamesim.Simulation
                 if (k > against || (k == against && tieIsTheirs)) win += votes[k];
             }
             return Math.Max(0, Math.Min(1, win));
+        }
+
+        /// <summary>
+        /// A copy of the season with the Head of Household taking <paramref name="finalistId"/> and the third
+        /// finalist cut by the engine's own final eviction, or the season itself where there is no such cut
+        /// to make (a house that is not its final three). The copy draws and mints on itself alone.
+        /// </summary>
+        private static EpisodeState AsTheCutLeavesIt(EpisodeState s, string hohId, string finalistId)
+        {
+            var cut = s.Active.Where(c => c.id != hohId && c.id != finalistId).ToList();
+            if (s.Active.Count() != NpcDeals.FinalThreeSize || cut.Count != 1) return s;
+            var copy = s.Clone();
+            copy.hohId = hohId;
+            try
+            {
+                FinalEvict(copy, cut[0].id);
+            }
+            catch (RuleException)
+            {
+                return s;
+            }
+            return copy;
         }
 
         /// <summary>
@@ -213,7 +251,22 @@ namespace Gamesim.Simulation
         private static void KeepTheFinalThree(EpisodeState s)
         {
             if (!CommitmentRulesOn(s) || s.Active.Count() != NpcDeals.FinalThreeSize) return;
+            // An offer of one still unanswered has nothing left to bind (the review's M3).
+            ExpireFinalThreeOffers(s);
             SettleDeals(s, DealResolution.Verdicts(s, DealResolution.ReachesTheFinalThree, null));
+        }
+
+        /// <summary>
+        /// Every final three deal still only offered lapses, under the commitment rules (C9, the review's M3
+        /// and M4): once the final four's block is set, a deal struck then could never be broken and would
+        /// always be kept, and once the house is down to three there is nothing left for one to bind. No
+        /// roll, no line, no record: an offer that lapses is no breach.
+        /// </summary>
+        private static void ExpireFinalThreeOffers(EpisodeState s)
+        {
+            if (!CommitmentRulesOn(s)) return;
+            foreach (var offer in s.deals.Where(d => d.status == DealStatus.Proposed && d.type == DealKind.FinalThree))
+                offer.status = DealStatus.Expired;
         }
     }
 }

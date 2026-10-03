@@ -442,7 +442,283 @@ namespace Gamesim.Tests.EditMode
             Assert.That(three, Is.EqualTo(Factor(WebEvictionVoting.EvaluateNative(safe, voter), nominee, "deal")).Within(1e-9));
         }
 
+        // ------------------------------------------------------------ the review's fixes
+
+        [Test]
+        public void TheJuryIsReadAsTheCutLeavesItAndAFinalTwoPartnerCutIsNoFriendlyJuror()
+        {
+            // Taylor holds a final two deal with Maya and likes her; Maya taking the player breaks it as Taylor is cut.
+            var s = Final(true, out string hoh, out string other, viewOfPlayer: 20, viewOfOther: 20);
+            s.deals.Add(Deal("deal-final-two", DealKind.FinalTwo, hoh, other, expires: 0));
+            var jurors = s.contestants.Where(c => c.status == ContestantStatus.Jury).Select(c => c.id).ToList();
+            SetScore(s, jurors[0], hoh, 100); SetScore(s, jurors[0], s.playerId, -100);
+            foreach (var juror in jurors.Skip(1)) { SetScore(s, juror, hoh, -100); SetScore(s, juror, s.playerId, 100); }
+            SetScore(s, other, hoh, 40); SetScore(s, other, s.playerId, 0);
+            Valid(s);
+            string before = Json(s);
+            uint stream = s.randomState;
+            int sequence = s.nextSequence;
+            // Cut, Taylor's view of Maya falls by the broken deal's weight (-45, to -5) and the breach weighs against her
+            // on the jury's own obligations (to nothing): a tie the cast order gives Maya now needs Taylor at 121 in 800.
+            Assert.That(EpisodeEngine.FinalJuryChance(s, hoh, s.playerId), Is.EqualTo(121.0 / 800).Within(1e-9),
+                "Read on the season as it stands, Taylor's warmth and her standing deal would make her Maya's vote: about 95 in 100.");
+            Assert.That(Json(s), Is.EqualTo(before), "The season read is never written.");
+            Assert.That((s.randomState, s.nextSequence), Is.EqualTo((stream, sequence)), "Its stream and its sequence never move: the copy draws on itself.");
+        }
+
+        [Test]
+        public void ReadingTheFinalChoiceWritesNothingAndDrawsNothing()
+        {
+            var s = Final(true, out string hoh, out string other, viewOfPlayer: 30, viewOfOther: 20);
+            Pact(s, "pact-final", "The Final Pact", hoh, s.playerId);
+            s.deals.Add(Kept(Deal("deal-final-three", DealKind.FinalThree, hoh, s.playerId, expires: 0), s.week));
+            s.deals.Add(Deal("deal-final-two", DealKind.FinalTwo, hoh, other, expires: 0));
+            Valid(s);
+            string before = Json(s);
+            uint stream = s.randomState;
+            int sequence = s.nextSequence;
+            EpisodeEngine.FinalChoice(s);
+            EpisodeEngine.FinalChoiceTerms(s, hoh, Finalists(s));
+            EpisodeEngine.FinalJuryChance(s, hoh, s.playerId);
+            EpisodeEngine.FinalJuryChance(s, hoh, other);
+            Assert.That(Json(s), Is.EqualTo(before));
+            Assert.That(s.randomState, Is.EqualTo(stream));
+            Assert.That(s.nextSequence, Is.EqualTo(sequence));
+        }
+
+        [Test]
+        public void AColdHeadOfHouseholdsPactWithTheOtherFinalistHoldsNothingEither()
+        {
+            var s = Final(true, out string hoh, out string other, viewOfPlayer: 20, viewOfOther: Allegiance.QuietLine - 5);
+            Pact(s, "pact-theirs", "The Other Pact", hoh, other);
+            Valid(s);
+            Assert.That(EpisodeEngine.FinalChoiceTerms(s, hoh, Finalists(s)).Any(t => t.code == EpisodeEngine.PactFactor), Is.False,
+                "Both finalists are held to the same cold line.");
+            SetScore(s, hoh, other, Allegiance.QuietLine);
+            Assert.That(EpisodeEngine.FinalChoiceTerms(s, hoh, Finalists(s)).Single(t => t.code == EpisodeEngine.PactFactor).nomineeId, Is.EqualTo(other), "At the line it holds.");
+        }
+
+        [Test]
+        public void TheFinalChoicesOwnTermsArePrivateAndNeverAReasonThePlayerHears()
+        {
+            var s = Final(true, out string hoh, out string other, viewOfPlayer: 20, viewOfOther: 10);
+            Pact(s, "pact-theirs", "The Other Pact", hoh, other);
+            Valid(s);
+            var evaluation = EpisodeEngine.FinalChoice(s);
+            var mine = evaluation.nomineeEvaluations.SelectMany(n => n.factors).Where(f => f.code == EpisodeEngine.PactFactor || f.code == EpisodeEngine.JuryFactor).ToList();
+            Assert.That(mine.Select(f => f.code).Distinct().Count(), Is.EqualTo(2), "Both terms are in the choice.");
+            Assert.That(mine.All(f => f.visibility == "private"), Is.True, "Theirs alone.");
+            Assert.That(evaluation.publicReasonCodes, Does.Not.Contain(EpisodeEngine.PactFactor));
+            Assert.That(evaluation.publicReasonCodes, Does.Not.Contain(EpisodeEngine.JuryFactor));
+            Assert.That(EpisodeEngine.FinalChoiceLeavesOut, Is.EqualTo(new[] { "threat", "strategicValue", "personality" }),
+                "The lead's ruling: the traits two share are left out of the final choice too.");
+        }
+
+        [Test]
+        public void AFinalThreeDealDoesNotStackOnAFinalTwoNorIsAFinalTwoItsPrice()
+        {
+            var s = House(true, 5);
+            string npc = Npcs(s)[0];
+            s.deals.Add(Deal("deal-final-two", DealKind.FinalTwo, s.playerId, npc, expires: 0));
+            Valid(s);
+            Assert.That(PlayerDeals.CanPropose(s, npc, DealKind.FinalThree, null, out string reason), Is.False);
+            Assert.That(reason, Is.EqualTo(PlayerDeals.FinalTwoBindsRefusal));
+            Assert.That(PlayerDeals.Available(s, npc), Does.Not.Contain(DealKind.FinalThree));
+            Assert.That(PlayerDeals.Available(s, Npcs(s)[1]), Does.Contain(DealKind.FinalThree), "With anybody else it is still on the table.");
+
+            var counter = Negotiation.CounterPrice(House(true, 5), npc, DealKind.FinalThree, null);
+            Assert.That(counter, Is.Not.Null);
+            Assert.That(counter.kind, Is.Not.EqualTo(DealKind.FinalTwo), "The price never binds more than the deal it buys.");
+            Assert.That(Negotiation.CounterPrice(House(true, 5), npc, DealKind.SafetyAgreement, null).kind, Is.EqualTo(DealKind.FinalTwo),
+                "Control: a safety pact's counter at the endgame is a final two.");
+        }
+
+        [Test]
+        public void AFinalThreeOfferLapsesAtTheFinalThreeAndCannotBeTakenThere()
+        {
+            // Taken at the final three: refused, in the player's own proposal's words.
+            var three = House(true, 3);
+            three.deals.Add(Offer(three, Npcs(three)[0]));
+            Valid(three);
+            var refused = new EpisodeEngine(three).Apply(Respond(three, "deal-ask-3"));
+            Assert.That(refused.accepted, Is.False);
+            Assert.That(refused.reason, Is.EqualTo(PlayerDeals.FinalThreeHereRefusal));
+
+            // Still unanswered as the final three's Head of Household begins: it lapses, and is not kept.
+            var after = Step(three);
+            Assert.That(after.phase, Is.EqualTo(EpisodePhase.FinalHoHPart1));
+            Assert.That(after.deals.Single(d => d.id == "deal-ask-3").status, Is.EqualTo(DealStatus.Expired));
+            Assert.That(after.events.Any(e => e.text != null && e.text.Contains("final three deal")), Is.False, "No line for it.");
+
+            // And as the final four's eviction turns the house to three.
+            var four = FourLeft(EpisodePhase.Campaign, out string hoh, out string leaving, out string staying);
+            four.deals.Add(Offer(four, staying));
+            Valid(four);
+            var engine = new EpisodeEngine(four);
+            for (int i = 0; i < 40 && engine.Snapshot.phase != EpisodePhase.Social; i++)
+                Assert.That(engine.Apply(EpisodeEngineTests.NextCommand(engine.Snapshot)).accepted, Is.True);
+            var turned = engine.Snapshot;
+            Assert.That(turned.Active.Count(), Is.EqualTo(3), "The final four's eviction.");
+            Assert.That(turned.deals.Single(d => d.id == "deal-ask-3").status, Is.EqualTo(DealStatus.Expired), "Nothing left for it to bind.");
+            Assert.That(turned.randomState, Is.EqualTo(Without(four, "deal-ask-3", engine.Snapshot.revision - four.revision).randomState),
+                "No draw for it.");
+        }
+
+        [Test]
+        public void TheFinalThreeDealsWindowClosesOnceTheFinalFoursBlockIsSet()
+        {
+            // The final four's free time, after the final five's eviction: still open.
+            var open = FourLeft(EpisodePhase.Social, out string hoh, out _, out string staying);
+            open.evictionResolved = true; open.vetoResolved = true;
+            Valid(open);
+            Assert.That(NpcDeals.FinalFourBlockSet(open), Is.False);
+            Assert.That(PlayerDeals.CanPropose(open, staying, DealKind.FinalThree, null, out string reason), Is.True, reason);
+
+            // The final four's veto meeting over, the eviction still to come: closed, to the player and to the house.
+            var shut = FourLeft(EpisodePhase.Campaign, out hoh, out _, out staying);
+            Valid(shut);
+            Assert.That(NpcDeals.FinalFourBlockSet(shut), Is.True);
+            Assert.That(PlayerDeals.CanPropose(shut, staying, DealKind.FinalThree, null, out reason), Is.False);
+            Assert.That(reason, Is.EqualTo(PlayerDeals.FinalFourBlockSetRefusal));
+            // The Head of Household, the one houseguest off the block, partners with the player at fifty.
+            foreach (var a in shut.contestants) foreach (var b in shut.contestants) if (a.id != b.id) SetScore(shut, a.id, b.id, 0);
+            SetScore(shut, hoh, shut.playerId, 50);
+            shut.deals.Add(Deal("deal-partners", DealKind.Partnership, hoh, shut.playerId, week: shut.week, expires: 0));
+            Assert.That(NpcDeals.Offer(shut, hoh, shut.playerId), Is.Not.EqualTo(DealKind.FinalThree), "Nobody puts one.");
+            shut.vetoResolved = false;
+            Assert.That(NpcDeals.Offer(shut, hoh, shut.playerId), Is.EqualTo(DealKind.FinalThree), "Control: before the veto meeting, a final three.");
+            shut.vetoResolved = true;
+            shut.deals.Add(Offer(shut, staying));
+            Valid(shut);
+            var taken = new EpisodeEngine(shut).Apply(Respond(shut, "deal-ask-3"));
+            Assert.That(taken.accepted, Is.False, "An offer still standing is no yes to give.");
+            Assert.That(taken.reason, Is.EqualTo(PlayerDeals.FinalFourBlockSetRefusal));
+
+            // An offer standing as the final four's veto is decided lapses with the decision.
+            var meeting = FourLeft(EpisodePhase.VetoMeeting, out hoh, out _, out staying);
+            meeting.deals.Add(Offer(meeting, staying));
+            Valid(meeting);
+            var decided = new EpisodeEngine(meeting).Apply(new EpisodeCommand
+            {
+                id = "c9-veto", actorId = meeting.playerId, kind = EpisodeCommandKind.ResolveVeto, useVeto = false,
+                expectedRevision = meeting.revision, expectedPhase = meeting.phase,
+            });
+            Assert.That(decided.accepted, Is.True, decided.reason);
+            Assert.That(decided.state.deals.Single(d => d.id == "deal-ask-3").status, Is.EqualTo(DealStatus.Expired));
+        }
+
+        [Test]
+        public void NamingTheirPartnerAsTheReplacementBreaksAFinalThreeDeal()
+        {
+            var s = ContentCatalog.Create(7);
+            s.week = 4;
+            s.strategyRulesStartWeek = 1;
+            var npcs = Npcs(s);
+            s.phase = EpisodePhase.VetoMeeting;
+            s.hohId = s.playerId;
+            s.nominees = new List<string> { npcs[0], npcs[1] };
+            foreach (var nominee in s.nominees) { s.Find(nominee).nominationWeeks.Add(s.week); s.Find(nominee).timesNominated = 1; }
+            s.vetoHolderId = npcs[2];
+            s.vetoPlayers = s.Active.Select(c => c.id).Take(EpisodeEngine.VetoPlayerCount(s.Active.Count())).ToList();
+            if (!s.vetoPlayers.Contains(s.vetoHolderId)) s.vetoPlayers[s.vetoPlayers.Count - 1] = s.vetoHolderId;
+            SetScore(s, npcs[2], npcs[0], 100); SetScore(s, npcs[2], npcs[1], -100);
+            string partner = npcs[3];
+            s.deals.Add(Deal("deal-final-three", DealKind.FinalThree, s.playerId, partner, week: s.week, expires: 0));
+            EpisodeEngine.EnableCommitments(s);
+            Valid(s);
+            Assert.That(EpisodeEngine.NpcVetoSave(s), Is.EqualTo(npcs[0]), "The holder saves the one they like.");
+            var result = new EpisodeEngine(s).Apply(new EpisodeCommand
+            {
+                id = "c9-replace", actorId = s.playerId, kind = EpisodeCommandKind.ResolveVeto, useVeto = true,
+                targetId = npcs[0], secondTargetId = partner, expectedRevision = s.revision, expectedPhase = s.phase,
+            });
+            Assert.That(result.accepted, Is.True, result.reason);
+            var deal = result.state.deals.Single(d => d.id == "deal-final-three");
+            Assert.That(deal.status, Is.EqualTo(DealStatus.Broken), "Naming them is a nomination.");
+            Assert.That(deal.brokenById, Is.EqualTo(s.playerId));
+            Assert.That(FinalistRead.DealBreaker(result.state, deal), Is.EqualTo(s.playerId), "The finalist read names who broke it, by the record.");
+            Assert.That(CommitmentsRead.Of(result.state).Single(c => c.id == "deal-final-three").status, Is.EqualTo("broken by you"));
+        }
+
+        [Test]
+        public void YourWeekReadsAFinalThreeDealsLines()
+        {
+            Assert.That(YourWeek.DealWords(DealKind.FinalThree), Is.EqualTo("final three deal"));
+            var s = House(true, 3);
+            string partner = Npcs(s)[0];
+            s.deals.Add(Deal("deal-final-three", DealKind.FinalThree, s.playerId, partner, expires: 0));
+            Valid(s);
+            var after = Step(s);
+            var line = after.events.Last(e => e.kind == "deal-outcome" && e.text.Contains("final three deal")).text;
+            Assert.That(YourWeek.ReadDeal(after, line, partner, out string actor, out string type, out bool kept), Is.True, line);
+            Assert.That((actor, type, kept), Is.EqualTo(((string)null, DealKind.FinalThree, true)), "Both kept it.");
+        }
+
+        [Test]
+        public void ValidationRefusesAFinalThreeDealStruckBeforeTheRulesBegan()
+        {
+            var s = House(false, 5);
+            EpisodeEngine.EnableCommitments(s, 3);
+            Assert.That(s.commitmentRulesStartWeek, Is.EqualTo(3));
+            s.deals.Add(Deal("deal-final-three", DealKind.FinalThree, s.playerId, Npcs(s)[0], week: 2, expires: 0));
+            Assert.That(EpisodeValidation.TryValidate(s, out var error), Is.False);
+            Assert.That(error, Is.EqualTo("A season without the commitment rules has none of their records."));
+            s.deals.Single().week = 3;
+            Valid(s);
+        }
+
         // ------------------------------------------------------------ fixtures
+
+        /// <summary>
+        /// The final four, week 4: the player, Maya (Head of Household), Taylor and Jamie on the block, the player
+        /// holding the veto, Casey and Riley on the jury, under the commitment rules. At the veto meeting, or with the
+        /// veto decided (unused) for the campaign, Taylor the one the player's vote will evict.
+        /// </summary>
+        private static EpisodeState FourLeft(EpisodePhase phase, out string hoh, out string leaving, out string staying)
+        {
+            var s = ContentCatalog.Create(7);
+            s.week = 4;
+            s.strategyRulesStartWeek = 1;
+            foreach (var actor in s.contestants.Skip(4)) actor.status = ContestantStatus.Jury;
+            var npcs = Npcs(s);
+            hoh = npcs[0]; leaving = npcs[1]; staying = npcs[2];
+            s.phase = phase;
+            if (phase != EpisodePhase.Social)
+            {
+                s.hohId = hoh;
+                s.nominees = new List<string> { leaving, staying };
+                foreach (var nominee in s.nominees) { s.Find(nominee).nominationWeeks.Add(s.week); s.Find(nominee).timesNominated = 1; }
+                s.vetoHolderId = s.playerId;
+                s.vetoPlayers = s.Active.Select(c => c.id).ToList();
+                s.vetoResolved = phase == EpisodePhase.Campaign;
+            }
+            EpisodeEngine.EnableCommitments(s);
+            Valid(s);
+            return s;
+        }
+
+        /// <summary>An offer of a final three deal from <paramref name="npcId"/>, still unanswered, filed this week.</summary>
+        private static DealState Offer(EpisodeState s, string npcId)
+        {
+            var offer = Deal("deal-ask-3", DealKind.FinalThree, npcId, s.playerId, status: DealStatus.Proposed, week: s.week, expires: s.week);
+            return offer;
+        }
+
+        private static EpisodeCommand Respond(EpisodeState s, string dealId) => new EpisodeCommand
+        {
+            id = "c9-respond-" + dealId, actorId = s.playerId, kind = EpisodeCommandKind.RespondToDeal, targetId = dealId,
+            text = EpisodeEngine.AcceptDeal, expectedRevision = s.revision, expectedPhase = s.phase,
+        };
+
+        /// <summary>The same plain steps from a copy without the deal: where the season's stream ends up without it.</summary>
+        private static EpisodeState Without(EpisodeState s, string dealId, int steps)
+        {
+            var copy = s.Clone();
+            copy.deals.RemoveAll(d => d.id == dealId);
+            var engine = new EpisodeEngine(copy);
+            for (int i = 0; i < steps; i++) Assert.That(engine.Apply(EpisodeEngineTests.NextCommand(engine.Snapshot)).accepted, Is.True);
+            return engine.Snapshot;
+        }
 
         /// <summary>
         /// The final eviction: the player, Maya (the final Head of Household) and Taylor in the house,

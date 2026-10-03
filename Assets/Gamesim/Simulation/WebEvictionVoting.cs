@@ -521,8 +521,11 @@ namespace Gamesim.Simulation
             // The levers' terms: what this voter owes the player on this nominee, and how they
             // answered a plea, known to the player because they are the player's own doing.
             // Present only where there is one.
+            // The final choice's own terms under the commitment rules (C9) - a pact the Head of Household holds
+            // to, the jury they read - are theirs, never the player's to know: private. No ballot carries them.
             foreach (var term in (o.obligations ?? new List<WebVoteObligation>()).Where(t => t.nomineeId == nominee.id && t.value != 0))
-                factors.Add(Factor(term.code ?? "obligation", term.value, "playerKnown", term.evidenceIds.ToArray()));
+                factors.Add(Factor(term.code ?? "obligation", term.value,
+                    term.code == EpisodeEngine.PactFactor || term.code == EpisodeEngine.JuryFactor ? "private" : "playerKnown", term.evidenceIds.ToArray()));
             return new WebNomineeEvaluation { nomineeId = nominee.id, factors = factors, score = factors.Sum(f => f.value) };
         }
 

@@ -50,6 +50,16 @@ namespace Gamesim.Simulation
         /// <summary>The final three: the house size at which a final three deal is kept, and past which none is put.</summary>
         public const int FinalThreeSize = 3;
 
+        /// <summary>
+        /// Whether the final four's block is set (C9, the review's M4): four in the house, and this week's
+        /// veto meeting over while its eviction is still to come. From then a final three deal could never
+        /// be broken - nobody is left to nominate anybody - and would always be kept, so none is put, none
+        /// is taken and an offer of one lapses. The final four's own free time, after the final five's
+        /// eviction, is still open.
+        /// </summary>
+        public static bool FinalFourBlockSet(EpisodeState state) =>
+            state != null && state.Active.Count() == FinalThreeSize + 1 && state.vetoResolved && !state.evictionResolved;
+
         /// <summary>Trust a houseguest wants before trading information. The source's number.</summary>
         public const double InformationTrust = 40;
 
@@ -183,7 +193,7 @@ namespace Gamesim.Simulation
             // six to the final four, two warm enough take each other to the final three, unless a final
             // two or a final three already binds them. Without the rules the ladder is the reference's.
             if (EpisodeEngine.CommitmentRulesOn(state) && warmth > FinalThreeWarmth
-                && state.Active.Count() <= EndgameSize && state.Active.Count() > FinalThreeSize
+                && state.Active.Count() <= EndgameSize && state.Active.Count() > FinalThreeSize && !FinalFourBlockSet(state)
                 && !Has(state, npcId, targetId, DealKind.FinalTwo) && !Has(state, npcId, targetId, DealKind.FinalThree))
                 return DealKind.FinalThree;
 

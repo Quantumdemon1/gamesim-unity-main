@@ -342,6 +342,8 @@ namespace Gamesim.Simulation
                         // player took as taken, and after the walk out read it for their goodbye, and
                         // before the house's own turns and settle (NpcSocialActions, NpcDeals) see it.
                         if (CommitmentRulesOn(s)) EndWithTheEvictee(s, s.ledger.power.LastOrDefault(p => p.week == s.week)?.evicteeId);
+                        // And (C9) at the final three an offer of a final three deal has nothing left to bind.
+                        if (CommitmentRulesOn(s) && s.Active.Count() <= NpcDeals.FinalThreeSize) ExpireFinalThreeOffers(s);
                         if (StoryOn(s)) StoryLapse(s, StoryAnchors.EvictionNight);
                         s.evictionStage = EvictionStage.Interaction;
                         Phase(s, EpisodePhase.Social);
@@ -929,6 +931,9 @@ namespace Gamesim.Simulation
             // thinks the better of them for it, at the pact's weight. Before them it could only break.
             if (CommitmentRulesOn(s)) SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Spares, s.hohId, s.nominees.ToList()));
             s.vetoResolved = true;
+            // Under the commitment rules (C9) the final four's block is set: a final three deal struck now
+            // could never be broken and would always be kept, so an offer of one lapses. No roll, no line.
+            if (CommitmentRulesOn(s) && s.Active.Count() == NpcDeals.FinalThreeSize + 1) ExpireFinalThreeOffers(s);
             RecordVeto(s, use, saved, replacement);
             // A question about a decision already taken is no longer on the table.
             if (StrategyRules.Apply(s))
@@ -1968,6 +1973,10 @@ namespace Gamesim.Simulation
                 // The player's three (ACTIONS-DEALS-ALLIANCES-PLAN C4, decision 10): under the
                 // commitment rules a yes that would bring them into a fourth pact is not theirs to give.
                 Require(!(deal.type == DealKind.AllianceInvite && InvitationPastPactCap(s, deal.proposerId)), PactCapRefusal);
+                // A final three deal (C9) is no yes to give once the final three is here, nor once the
+                // final four's block is set, in the words the player's own proposal is refused in.
+                Require(!(deal.type == DealKind.FinalThree && s.Active.Count() <= NpcDeals.FinalThreeSize), PlayerDeals.FinalThreeHereRefusal);
+                Require(!(deal.type == DealKind.FinalThree && NpcDeals.FinalFourBlockSet(s)), PlayerDeals.FinalFourBlockSetRefusal);
                 deal.status = DealStatus.Active;
                 // The offer lapsed at the end of this week; the arrangement it becomes runs for as
                 // long as its own kind runs for, which for a final two or a partnership is no limit.

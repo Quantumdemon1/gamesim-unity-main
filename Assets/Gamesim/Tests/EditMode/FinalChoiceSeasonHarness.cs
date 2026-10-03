@@ -53,6 +53,13 @@ namespace Gamesim.Tests.EditMode
             /// <summary>Whether the Head of Household and the player kept a final three deal to the final three (C9), and how many final three deals the season struck.</summary>
             public bool finalThreeKeptWithPlayer;
             public int finalThreeDeals;
+            /// <summary>
+            /// The paired counterfactuals (the review's M9), each on its own copy of the same final eviction: whether the
+            /// choice keeps the player with a pact between the two added (and whether that pact would hold from the Head
+            /// of Household's side), with a final two deal between them added, and with the Head of Household's view of
+            /// the player set to their view of the other finalist.
+            /// </summary>
+            public bool keptWithPact, pactWouldHold, keptWithFinalTwo, keptWithEqualView;
         }
 
         /// <summary>What a season came to: the player out before the final three, the player the final Head of Household, or a case.</summary>
@@ -91,8 +98,11 @@ namespace Gamesim.Tests.EditMode
             // C9: a real choice, which turns on how the player played - not the 94% the investigation found.
             var cases = outcomes.Where(o => o.finalChoice != null).Select(o => o.finalChoice).ToList();
             Assert.That(cases.Count(c => c.playerEvicted) * 100, Is.LessThan(cases.Count * 90), "The player is no longer evicted by construction.");
-            Assert.That(cases.All(c => !c.player.ContainsKey("threat") && !c.player.ContainsKey("strategicValue")), Is.True,
-                "No term for a game still to play.");
+            Assert.That(cases.All(c => EpisodeEngine.FinalChoiceLeavesOut.All(code => !c.player.ContainsKey(code) && !c.other.ContainsKey(code))), Is.True,
+                "No term the final choice leaves out.");
+            var evicted = cases.Where(c => c.playerEvicted).ToList();
+            Assert.That(evicted.Count(c => c.keptWithPact), Is.GreaterThan(0), "On the same finals, a pact that holds keeps the player in some.");
+            Assert.That(evicted.Count(c => c.keptWithFinalTwo), Is.GreaterThan(0), "So does a final two deal.");
             Assert.That(EvictedShare(cases, c => c.pactHoldsWithPlayer), Is.LessThan(EvictedShare(cases, c => !c.pactHoldsWithPlayer)),
                 "A pact that holds from the Head of Household's side keeps the player more often.");
             Assert.That(EvictedShare(cases, c => c.winBesidePlayer > c.winBesideOther), Is.LessThan(EvictedShare(cases, c => c.winBesidePlayer < c.winBesideOther)),
@@ -224,7 +234,35 @@ namespace Gamesim.Tests.EditMode
             c.finalThreeKeptWithPlayer = s.deals.Any(d => d.type == DealKind.FinalThree && d.status == DealStatus.Fulfilled
                 && ((d.proposerId == hoh.id && d.recipientId == s.playerId) || (d.proposerId == s.playerId && d.recipientId == hoh.id)));
             c.finalThreeDeals = s.deals.Count(d => d.type == DealKind.FinalThree);
+            Counterfactuals(s, c);
             return c;
+        }
+
+        /// <summary>The same final eviction three ways, each on its own copy: a pact added, a final two deal added, and an even view.</summary>
+        private static void Counterfactuals(EpisodeState s, Case c)
+        {
+            string hoh = s.hohId, other = s.Active.Single(x => x.id != hoh && x.id != s.playerId).id;
+            var pact = s.Clone();
+            if (!pact.Allied(hoh, pact.playerId))
+            {
+                pact.alliances.Add(new AllianceState { id = "alliance-counterfactual", name = "The Counterfactual", members = new List<string> { hoh, pact.playerId }, active = true });
+                pact.ledger.alliances.Add(new AllianceRow { id = "alliance-counterfactual", startedWeek = pact.week, why = "player" });
+            }
+            c.pactWouldHold = Allegiance.Holds(pact, hoh, pact.playerId);
+            c.keptWithPact = EpisodeEngine.FinalChoice(pact).selectedNomineeId != pact.playerId;
+
+            var deal = s.Clone();
+            if (!FinalTwoDeal(deal, hoh, deal.playerId))
+                deal.deals.Add(new DealState
+                {
+                    id = "deal-counterfactual", type = DealKind.FinalTwo, proposerId = deal.playerId, recipientId = hoh, status = DealStatus.Active,
+                    week = deal.week, expiresWeek = 0, trustImpact = DealKind.DefaultTrust(DealKind.FinalTwo),
+                });
+            c.keptWithFinalTwo = EpisodeEngine.FinalChoice(deal).selectedNomineeId != deal.playerId;
+
+            var even = s.Clone();
+            even.relationships.Single(r => r.fromId == hoh && r.toId == even.playerId).score = even.Score(hoh, other);
+            c.keptWithEqualView = EpisodeEngine.FinalChoice(even).selectedNomineeId != even.playerId;
         }
 
         private static bool FinalTwoDeal(EpisodeState s, string a, string b) =>
@@ -307,6 +345,13 @@ namespace Gamesim.Tests.EditMode
                 + "; their grudge on the player: " + cases.Count(c => c.grudgeOnPlayer) + ", on the other: " + cases.Count(c => c.grudgeOnOther)
                 + "; the player had nominated the Head of Household: " + cases.Count(c => c.playerNominatedHoh > 0)
                 + "; final three deals struck in these seasons: " + cases.Sum(c => c.finalThreeDeals) + ".");
+            var evictedCases = cases.Where(c => c.playerEvicted).ToList();
+            var holdable = evictedCases.Where(c => c.pactWouldHold).ToList();
+            o.AppendLine("Paired counterfactuals, on copies of the same final evictions the player was evicted in (" + evictedCases.Count + "):");
+            o.AppendLine("  a pact between the two added: kept " + Rate(evictedCases, c => c.keptWithPact) + "; it would hold from the Head of Household's side in "
+                + holdable.Count + ", and keeps the player in " + Rate(holdable, c => c.keptWithPact));
+            o.AppendLine("  a final two deal between the two added: kept " + Rate(evictedCases, c => c.keptWithFinalTwo));
+            o.AppendLine("  the Head of Household's view of the player set to their view of the other: kept " + Rate(evictedCases, c => c.keptWithEqualView));
             var margins = cases.Select(c => c.otherScore - c.playerScore).OrderBy(m => m).ToList();
             o.AppendLine("The other's lead over the player, quartiles: " + string.Join(" / ", new[] { 0.1, 0.25, 0.5, 0.75, 0.9 }.Select(q => F(margins[(int)Math.Min(margins.Count - 1, q * margins.Count)]))));
             o.AppendLine("The first twelve cases:");

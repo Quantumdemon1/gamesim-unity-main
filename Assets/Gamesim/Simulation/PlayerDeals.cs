@@ -123,6 +123,11 @@ namespace Gamesim.Simulation
                         return Refuse(out reason, "It is too early in the season to be talking about the final three.");
                     if (state.Active.Count() <= NpcDeals.FinalThreeSize)
                         return Refuse(out reason, FinalThreeHereRefusal);
+                    if (NpcDeals.FinalFourBlockSet(state))
+                        return Refuse(out reason, FinalFourBlockSetRefusal);
+                    // A final two already binds them further (the review's M2), as the houseguests' own ladder has it.
+                    if (NpcDeals.Between(state, state.playerId, toId).Any(d => d.type == DealKind.FinalTwo))
+                        return Refuse(out reason, FinalTwoBindsRefusal);
                     break;
             }
             return true;
@@ -130,8 +135,14 @@ namespace Gamesim.Simulation
 
         private static bool Refuse(out string reason, string text) { reason = text; return false; }
 
-        /// <summary>Why a final three deal cannot be put once the house is down to three (C9).</summary>
+        /// <summary>Why a final three deal cannot be put, or an offer of one taken, once the house is down to three (C9).</summary>
         public const string FinalThreeHereRefusal = "The final three is already here.";
+
+        /// <summary>Why a final three deal cannot be put, or taken, once the final four's block is set (C9, <see cref="NpcDeals.FinalFourBlockSet"/>).</summary>
+        public const string FinalFourBlockSetRefusal = "The final four's block is set: it is too late for a final three deal.";
+
+        /// <summary>Why a final three deal is not put to somebody a final two deal already binds the player to (C9).</summary>
+        public const string FinalTwoBindsRefusal = "You already have a final two deal with them.";
 
         /// <summary>
         /// Below this view of the player a final three deal is asked as a stretch (C9): the deal table's

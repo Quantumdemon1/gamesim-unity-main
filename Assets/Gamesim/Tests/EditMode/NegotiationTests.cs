@@ -587,6 +587,106 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// The counter's own pair, through the engine's nominations: a target agreement the player bought from
+        /// a houseguest with a safety pact the player owes them, the same week. She wins the house and puts the
+        /// player up - at the ceremony, or as the replacement for the nominee the veto saved - which breaks the
+        /// target agreement, and the pact with it, both in the one act. The pact is void, and only void: it
+        /// lapses, broken by nobody and settled never, said once in the void's own line and never as a breach,
+        /// held against nobody, and the Your word page says it is void.
+        /// </summary>
+        [Test]
+        public void APriceVoidedAtTheNominationsIsNotBrokenAgainByItsOwnVerdict()
+        {
+            foreach (bool replacement in new[] { false, true })
+            {
+                string where = replacement ? "Named the replacement" : "Nominated";
+                var s = CounterForATarget(out var npc, out string about);
+                var bought = s.deals.Single(d => d.id.StartsWith(CounterDealPrefix, System.StringComparison.Ordinal));
+                var price = s.deals.Single(IsPrice);
+                Assert.That((bought.type, price.type, price.proposerId, price.recipientId, price.expiresWeek),
+                    Is.EqualTo((DealKind.TargetAgreement, DealKind.SafetyAgreement, s.playerId, npc.id, s.week)), where + ": the pair, this week.");
+                var others = Npcs(s).Where(c => c.id != npc.id && c.id != about).Select(c => c.id).ToList();
+                // She thinks well of everybody, the target of their agreement too, and nothing of the player
+                // - and, at the ceremony, of one other.
+                foreach (var c in s.Active.Where(c => c.id != npc.id)) Set(s, npc.id, c.id, 100);
+                Set(s, npc.id, s.playerId, -100);
+                s.hohId = npc.id;
+                if (replacement)
+                {
+                    // She put up two others, which judged neither deal; the veto holder saves the first of them.
+                    s.phase = EpisodePhase.VetoMeeting;
+                    s.nominees = new List<string> { others[0], others[1] };
+                    s.vetoHolderId = others[2];
+                    Lineup(s);
+                    Set(s, others[2], others[0], 100); Set(s, others[2], others[1], -100);
+                }
+                else
+                {
+                    s.phase = EpisodePhase.Nomination;
+                    Set(s, npc.id, others[0], -100);
+                }
+                Valid(s);
+                int seen = s.events.Max(e => e.sequence);
+
+                var result = Apply(new EpisodeEngine(s), EpisodeCommandKind.Advance);
+                Assert.That(result.accepted, Is.True, where + ": " + result.reason);
+                var after = result.state;
+                Assert.That(after.nominees, Does.Contain(after.playerId).And.Not.Contain(about), where + ": the player is up, and not the target;");
+                var broke = after.deals.Single(d => d.id == bought.id);
+                Assert.That((broke.status, broke.brokenById), Is.EqualTo((DealStatus.Broken, npc.id)), where + ": the target agreement is broken, by her,");
+                var lapsed = after.deals.Single(d => d.id == price.id);
+                Assert.That((lapsed.status, lapsed.brokenById, lapsed.settledWeek), Is.EqualTo((DealStatus.Expired, (string)null, 0)),
+                    where + ": and the pact the player paid for it is void - lapsed, broken by nobody, settled never -");
+                Assert.That(Voided(after, lapsed), Is.True, where);
+                string pact = DealKind.Title(DealKind.SafetyAgreement).ToLowerInvariant();
+                Assert.That(after.events.Where(e => e.sequence > seen && e.text != null && e.text.Contains(pact)).Select(e => e.text),
+                    Is.EqualTo(new[] { "You no longer owe " + npc.name + " a " + pact + ": " + npc.name + " did not keep the "
+                        + DealKind.Title(DealKind.TargetAgreement).ToLowerInvariant() + " it paid for." }),
+                    where + ": said once, as void, and never as a breach,");
+                Assert.That(after.relationships.Single(r => r.fromId == after.playerId && r.toId == npc.id).events.Count(e => e.type == "deal_broken"),
+                    Is.EqualTo(1), where + ": held against nobody - the player holds the target agreement against her, and nothing more -");
+                Assert.That(CommitmentsRead.Of(after).Single(c => c.id == price.id).status, Is.EqualTo(VoidedStatus), where + ": and the Your word page says it is void.");
+                Assert.That(EpisodeValidation.TryValidate(after, out var error), Is.True, where + ": " + error);
+            }
+        }
+
+        /// <summary>
+        /// A price struck in free time runs out with its week, though the house writes its lapse only when it
+        /// next expires its deals: the same pair, judged at the next week's nominations, where she puts the
+        /// player up. What it bought is broken; the pact had run out by then, so it is not void - no line says
+        /// it is, and nor does the record - and its own verdict judges it: broken, by her. The Your word page
+        /// reads it broken, not void.
+        /// </summary>
+        [Test]
+        public void APriceWhoseWeekHadRunOutIsJudgedByItsOwnRuleNotVoided()
+        {
+            var s = CounterForATarget(out var npc, out string about);
+            var price = s.deals.Single(IsPrice);
+            int struck = s.week;
+            foreach (var c in s.Active.Where(c => c.id != npc.id)) Set(s, npc.id, c.id, 100);
+            Set(s, npc.id, s.playerId, -100);
+            Set(s, npc.id, Npcs(s).First(c => c.id != npc.id && c.id != about).id, -100);
+            s.week = struck + 1;
+            s.phase = EpisodePhase.Nomination;
+            s.hohId = npc.id;
+            Valid(s);
+            Assert.That(price.status, Is.EqualTo(DealStatus.Active), "Its lapse is not written yet.");
+
+            var result = Apply(new EpisodeEngine(s), EpisodeCommandKind.Advance);
+            Assert.That(result.accepted, Is.True, result.reason);
+            var after = result.state;
+            Assert.That(after.nominees, Does.Contain(after.playerId).And.Not.Contain(about), "The player is up, and not the target.");
+            var judged = after.deals.Single(d => d.id == price.id);
+            Assert.That((judged.status, judged.brokenById, judged.settledWeek), Is.EqualTo((DealStatus.Broken, npc.id, struck + 1)),
+                "The pact had run out, so its own verdict judges it: broken, by her.");
+            Assert.That(after.events.Any(e => e.text != null && e.text.Contains(" no longer owe")), Is.False, "No line calls it void,");
+            Assert.That(Voided(after, judged), Is.False, "nor does the record,");
+            var read = CommitmentsRead.Of(after).Single(c => c.id == price.id);
+            Assert.That((read.outcome, read.status == VoidedStatus), Is.EqualTo((CommitmentsRead.Outcomes.Broken, false)), "and the Your word page reads it broken.");
+            Assert.That(EpisodeValidation.TryValidate(after, out var error), Is.True, error);
+        }
+
+        /// <summary>
         /// A price binds only what it names: the vote to keep the player a houseguest owes for the veto -
         /// open until a vote tests it - blocks no vote deal with them about anybody else, so the player can
         /// still put a vote to keep a nominee to them. A vote deal of the player's own with them still
@@ -911,6 +1011,65 @@ namespace Gamesim.Tests.EditMode
             var refused = Apply(new EpisodeEngine(s), NegotiateKind, npc.id, null, MendMove);
             Assert.That(refused.accepted, Is.False);
             Assert.That(refused.state.revision, Is.EqualTo(s.revision), "and nothing is spent.");
+        }
+
+        /// <summary>
+        /// A voting bloc that fell apart is broken by both ballots at once, and the player knows only their
+        /// own (decision 4): the player voted with the house and their partner did not, and a 3-2 count
+        /// proves nobody's ballot. Until the player knows the partner's there are no fences to mend over it
+        /// - no row, and the engine refuses the move - and the odds every move with them is shown with carry
+        /// nothing of it, while the roll still reads the breach, as it reads their true view. Told how the
+        /// partner voted, and the reveal bearing it out, the player knows: the mend opens, and the odds shown
+        /// are the roll's.
+        /// </summary>
+        [Test]
+        public void ABlocTheOthersSecretBallotBrokeIsNoBreachToMendUntilThePlayerKnowsHowTheyVoted()
+        {
+            var s = Rules(Season(95));
+            var npcs = Npcs(s);
+            string hoh = npcs[0].id, evicted = npcs[1].id, other = npcs[2].id;
+            var partner = Plain(npcs[3]);
+            s.week = 2;
+            s.ledger.power.Add(new PowerRow
+            {
+                week = 1, hohId = hoh, evicteeId = evicted, nominees = new List<string> { evicted, other }, tally = new List<int> { 3, 2 },
+            });
+            s.ledger.ballots.Add(new BallotRow { week = 1, voterId = s.playerId, targetId = evicted });
+            var bloc = new DealState
+            {
+                id = "deal-player-bloc", type = DealKind.VoteTogether, proposerId = s.playerId, recipientId = partner.id, status = DealStatus.Broken,
+                week = 1, expiresWeek = 1, trustImpact = DealKind.DefaultTrust(DealKind.VoteTogether), settledWeek = 1,
+            };
+            s.deals.Add(bloc);
+            Set(s, partner.id, s.playerId, 20); Set(s, s.playerId, partner.id, 20);
+            Valid(s);
+            Assert.That(KnownBallots.Read(s, 1).voters, Has.Count.EqualTo(5).And.Contains(partner.id), "Five voted, the partner among them;");
+            Assert.That(KnownBallots.DealOutcomeKnown(s, bloc), Is.False, "the count proves nothing of the partner's ballot,");
+            Assert.That(Breaches.CountsAgainst(s, bloc, s.playerId), Is.True, "though both ballots broke the bloc, the player's among them.");
+
+            Assert.That(MendRefusalOf(s, partner.id), Is.EqualTo("You have broken no word with " + partner.name + " to make amends for."),
+                "No fences to mend: the row would tell the player the partner voted the other way.");
+            var refused = Apply(new EpisodeEngine(s), NegotiateKind, partner.id, null, MendMove);
+            Assert.That(refused.accepted, Is.False, "The engine refuses it too,");
+            Assert.That(refused.state.revision, Is.EqualTo(s.revision), "and nothing is spent.");
+            foreach (string move in new[] { Remind, Demand, Threaten, MendMove, VetoMove })
+            {
+                Assert.That(MoveChance(s, partner.id, move, true), Is.EqualTo(BaseOf(move) + 10).Within(1e-9),
+                    move + ": the odds shown carry nothing of a breach the player cannot know of,");
+                Assert.That(MoveChance(s, partner.id, move, false), Is.EqualTo(BaseOf(move) + 10 - 30).Within(1e-9),
+                    move + ": while the roll reads it, as it reads their true view.");
+            }
+
+            s.ledger.claims.Add(new ClaimRow { week = 1, voterId = partner.id, targetId = other, source = ClaimSource.Told, status = ClaimStatus.Kept });
+            Assert.That(KnownBallots.DealOutcomeKnown(s, bloc), Is.True, "Told, and the reveal bore it out: the player knows how the partner voted.");
+            Assert.That(MendRefusalOf(s, partner.id), Is.Null, "Now there are fences to mend,");
+            foreach (string move in new[] { Remind, Demand, Threaten, MendMove, VetoMove })
+                Assert.That(MoveChance(s, partner.id, move, true), Is.EqualTo(MoveChance(s, partner.id, move, false)).Within(1e-9),
+                    move + ": and the odds shown are the roll's.");
+            var mended = Apply(new EpisodeEngine(s), NegotiateKind, partner.id, null, MendMove);
+            Assert.That(mended.accepted, Is.True, mended.reason);
+            Assert.That(mended.state.events.Last(e => e.kind == "amends").text,
+                Does.Contain("the " + DealKind.Title(DealKind.VoteTogether).ToLowerInvariant() + " you broke"), "The mend names the bloc.");
         }
 
         // ------------------------------------------------------------ a veto for a price
@@ -1324,6 +1483,20 @@ namespace Gamesim.Tests.EditMode
             Assert.That(result.accepted, Is.True, result.reason);
             Assert.That(result.state.deals.Count, Is.EqualTo(countered.deals.Count + 2), "Taken, a counter strikes both its deals at once.");
             return result.state;
+        }
+
+        /// <summary>
+        /// The counter's standard pair, taken in free time: a target agreement the player asked a houseguest
+        /// for, refused, and bought back with a safety pact the player owes them.
+        /// </summary>
+        private static EpisodeState CounterForATarget(out ContestantState npc, out string about)
+        {
+            var s = Rules(Season(107));
+            var asked = Npcs(s)[0];
+            about = Npcs(s).First(c => c.id != asked.id && !s.Allied(asked.id, c.id)).id;
+            Set(s, asked.id, about, 0);
+            var countered = Refuse(NearMiss(s, DealKind.TargetAgreement, about, coinLands: true, out npc), npc.id, DealKind.TargetAgreement, about);
+            return Take(countered, npc.id);
         }
 
         /// <summary>A line said in the house to <paramref name="audience"/> - with nobody named, to the whole house - as the engine logs one.</summary>

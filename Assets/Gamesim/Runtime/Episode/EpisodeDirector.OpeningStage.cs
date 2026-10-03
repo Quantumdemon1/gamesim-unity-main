@@ -129,7 +129,7 @@ namespace Gamesim.Episode
                 { Debug.Log("Opening stage: " + refusals.Last() + "."); return false; }
                 if (!Route(deck, door) || !Route(door, mark) || !Route(mark, exit))
                 { Debug.Log("Opening stage: there is no walk through the front door."); return false; }
-                if (!DoorRouteClears(door, radius, 1f))
+                if (!DoorRouteClears(door, radius, fullyOpen: true))
                 { Debug.Log("Opening stage: even fully open, the leaves cannot clear the house's bodies on the reveal route."); return false; }
 
                 foreach (var spot in Grid(QueueX, QueueZ).OrderBy(spot => (spot - DeckMark).sqrMagnitude))
@@ -342,10 +342,10 @@ namespace Gamesim.Episode
                     capsule.radius * Mathf.Max(Mathf.Abs(capsule.transform.lossyScale.x), Mathf.Abs(capsule.transform.lossyScale.z)));
                 var agent = visual.GetComponent<NavMeshAgent>();
                 if (agent != null) bodyRadius = Mathf.Max(bodyRadius, agent.radius);
-                return DoorRouteClears(visual.transform.position, bodyRadius, fullyOpen ? 1f : set.Openness);
+                return DoorRouteClears(visual.transform.position, bodyRadius, fullyOpen);
             }
 
-            private bool DoorRouteClears(Vector3 from, float bodyRadius, float openness)
+            private bool DoorRouteClears(Vector3 from, float bodyRadius, bool fullyOpen)
             {
                 var path = new NavMeshPath();
                 if (!NavMesh.CalculatePath(from, mark, filter, path) || path.status != NavMeshPathStatus.PathComplete) return false;
@@ -353,13 +353,18 @@ namespace Gamesim.Episode
                 // Check every segment, including the actual start's step onto the sampled path.
                 var corners = path.corners;
                 if (corners.Length == 0) return false;
+                // Survey projects a fully open set. A live walk uses the instance, whose rattle
+                // guard also covers the leaves' transient pose rather than their cached openness.
+                bool ClearSegment(Vector3 a, Vector3 b) => fullyOpen
+                    ? OpeningDoorSet.CanWalkThrough(DoorLayout.Yard, 1f, a, b, bodyRadius)
+                    : set != null && set.CanWalkThrough(a, b, bodyRadius);
                 var previous = from;
                 foreach (var corner in corners)
                 {
-                    if (!OpeningDoorSet.CanWalkThrough(DoorLayout.Yard, openness, previous, corner, bodyRadius)) return false;
+                    if (!ClearSegment(previous, corner)) return false;
                     previous = corner;
                 }
-                return OpeningDoorSet.CanWalkThrough(DoorLayout.Yard, openness, previous, mark, bodyRadius);
+                return ClearSegment(previous, mark);
             }
             public bool OnMark(string id) => Arrived(id, mark);
 

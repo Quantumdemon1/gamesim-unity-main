@@ -416,7 +416,20 @@ namespace Gamesim.Tests.PlayMode
         {
             var screen = director.GetComponentInChildren<WeeklyRecapScreen>(true);
             var state = FirstWeekClosed();
+            // An ally's word to the pact that the ballot then went against, as a meeting under the
+            // commitment rules leaves it, from a voter the player knows no surer way: the overview's
+            // face carries it on its one line, which every tab's fit below holds at both text sizes -
+            // at the larger text the batch run's 4:3 canvas gives that line 140 across.
+            var sheet = KnownBallots.Read(state, state.week);
+            var changed = state.votes.First(vote => vote.voterId != state.playerId && vote.voterId != state.hohId
+                && (sheet.Of(vote.voterId) == null || sheet.Of(vote.voterId).basis == KnownBallots.Basis.Proven));
+            string toldThePact = state.nominees.First(id => id != changed.targetId);
+            state.ledger.claims.Add(new ClaimRow { week = state.week, voterId = changed.voterId, targetId = toldThePact, source = ClaimSource.Ally, status = ClaimStatus.Lied });
+            string changedTag = KnownBallots.Basis.Word(KnownBallots.Basis.Reported)
+                + KnownBallots.SaidWords(KnownBallots.Basis.Reported, true, FinalistRead.FirstName(state.Find(toldThePact).name), true);
             var recap = WeeklyRecap.Build(state, state.week);
+            Assert.That(recap.votes.Any(v => v.voterId == changed.voterId && v.basis == KnownBallots.Basis.Reported && v.lied), Is.True,
+                "The recap places the ally's ballot by their account, judged against it.");
             var gone = state.Find(recap.evictedId);
             Assert.That(gone, Is.Not.Null, "The week closed with an eviction.");
             string before = JsonUtility.ToJson(state);
@@ -447,6 +460,9 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(screen.OpenTab, Is.EqualTo(tab));
                     Assert.That(ButtonWithCaption(WeeklyRecapScreen.ContinueCaption), Is.Not.Null, "One Continue, whichever tab is open.");
                     Assert.That(LastActive(WeeklyRecapScreen.TabBodyName), Is.Not.Null);
+                    if (tab == 0)
+                        Assert.That(LabelsUnder(LastActive(WeeklyRecapScreen.TabBodyName)), Does.Contain(changedTag),
+                            (larger ? "Larger text" : "Resting text") + ": the ally's face on THE VOTE card says the vote changed, never a lie.");
                     AssertDecisionCopyFits(LastActive(WeeklyRecapScreen.TabBodyName));
                     if (tab == 0 && Application.isBatchMode) yield return CaptureFraming(larger ? "weekly-recap-overview-large" : "weekly-recap-overview");
                 }

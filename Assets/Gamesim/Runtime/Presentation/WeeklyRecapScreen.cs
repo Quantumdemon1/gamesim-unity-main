@@ -646,8 +646,9 @@ namespace Gamesim.Presentation
                 var name = EndScreenKit.Text("Name", row, HudPrimitives.WithYou(voter?.name ?? ballot.voterId, ballot.voterId == shown.playerId), 14f,
                     ballot.voterId == shown.playerId ? UiTheme.Accent : UiTheme.Paper, 44f, 2f, width - 52f, 19f);
                 name.enableAutoSizing = true; name.fontSizeMax = 14f; name.fontSizeMin = 10f;
-                // One line under the name, some 184 wide in a 1920 room, where the whole of an ally's
-                // changed vote was cut off: said short here, and whole in the vote breakdown's list.
+                // One line under the name, some 184 wide in a 1920 room but 140 on a 4:3 screen and
+                // 132 on a 5:4 at the larger text, where an ally's changed vote was cut off, whole and
+                // as "voted the other way": said short here, and whole in the vote breakdown's list.
                 var basis = EndScreenKit.Text("Basis", row, BasisWords(ballot, true), 11f, UiTheme.Muted, 44f, 21f, width - 52f, 15f);
                 basis.enableAutoSizing = true; basis.fontSizeMax = 11f; basis.fontSizeMin = 8f;
                 y += 44f;

@@ -2020,6 +2020,10 @@ namespace Gamesim.Simulation
             {
                 // A partnership kept at a vote stands (C1): nothing to settle, a small record of the keep.
                 if (verdict.stands) { KeptAndStanding(s, verdict); continue; }
+                // Under the commitment rules (C7) a verdict is passed over once an earlier one in the same
+                // act ended its deal: a price voided by the breach of what it bought, judged by the same
+                // nomination, lapsed - its void line said - and is not broken again on top of it.
+                if (rules && !DealStatus.Binds(verdict.deal.status)) continue;
                 var deal = verdict.deal;
                 deal.status = verdict.status;
                 // Under the commitment rules (C1) an offer the player accepted weighs one step

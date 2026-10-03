@@ -131,15 +131,20 @@ namespace Gamesim.Simulation
         /// A deal broken, under the commitment rules: the price paid for it is void when the one it was
         /// owed to broke it (C7) - the veto the player did not use on the nominee who paid for it, the
         /// pact a houseguest broke after naming their price. The price lapses - nobody broke it, so it
-        /// writes nothing to anybody's record and draws nothing - and the two of them are told. Broken by
-        /// the one who pays the price, it stands: they still owe it. A ballot's breach voids nothing: the
-        /// price's line would tell the ballot (decision 4).
+        /// writes nothing to anybody's record and draws nothing - and the two of them are told. A verdict
+        /// on the price in the same act is passed over (<see cref="SettleDeals"/>), so it is not broken
+        /// as well. Broken by the one who pays the price, it stands: they still owe it. A ballot's breach
+        /// voids nothing: the price's line would tell the ballot (decision 4). Nor does a breach after the
+        /// price's own week: it had run out by then, though its lapse is not written until the house next
+        /// expires its deals, so it is judged by its own rule - as <see cref="Negotiation.Voided"/> reads
+        /// the weeks, and the Your word page with it.
         /// </summary>
         private static void VoidThePrice(EpisodeState s, DealState bought, string breakerId)
         {
             var price = Negotiation.PriceOf(s, bought);
             if (price == null || breakerId == null || !DealStatus.Binds(price.status) || price.recipientId != breakerId) return;
             if (KnownBallots.SettledByABallot(bought)) return;
+            if (price.expiresWeek != 0 && s.week > price.expiresWeek) return;
             price.status = DealStatus.Expired;
             Log(s, "deal-outcome", Negotiation.VoidedLine(s, price, bought), price.proposerId, price.recipientId);
         }

@@ -98,6 +98,7 @@ namespace Gamesim.Tests.PlayMode
             foreach(string category in new[]{"Mental","Endurance","Luck"})
             {
                 yield return EnterInstrumentAttempt(category,houseSize:largest);var before=director.Snapshot;
+                if(category=="Endurance")yield return HoldTheActualGrip();
                 var instruments=SceneComponents<CompetitionApparatus>().ToArray();
                 Assert.That(EpisodeEngine.CompetitionPlayers(before).Count(),Is.EqualTo(largest));
                 Assert.That(instruments,Has.Length.EqualTo(largest),category+": every eligible entrant must have a native, occupied instrument station.");
@@ -113,10 +114,51 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(instrument.Fits(footprint),Is.True,category+": actual fitted meshes stay inside their reserved envelope.");
                     foreach(var other in reservations.Where(other=>other.Key!=instrument.ActorId))Assert.That(footprint.Overlaps(other.Value),Is.False,category+": adjacent station/actor "+other.Key);
                 }
-                if(Application.isBatchMode)yield return CaptureFraming("competition-apparatus-full-field-"+category.ToLowerInvariant(),false);
+                if(Application.isBatchMode)yield return CaptureCompetitionFullField(category);
                 yield return CancelInstrumentAttempt(before);
                 var props=SceneComponents<Transform>().Single(transform=>transform.name=="Representative yard solid fixtures");Object.Destroy(props.gameObject);yield return null;
             }
+        }
+
+        private IEnumerator CaptureCompetitionFullField(string category)
+        {
+            var eye=cameraRig.ViewCamera;var lens=new CaptureLens(eye,1600,900);Texture2D frame=null;
+            var canvases=SceneComponents<Canvas>().Where(canvas=>canvas.name!=CaptureLens.GuardName)
+                .Select(canvas=>(Canvas:canvas,Enabled:canvas.enabled)).ToArray();
+            var overlays=SceneComponents<CompetitionApparatus>().SelectMany(instrument=>instrument.OverlayRenderers)
+                .Select(renderer=>(Renderer:renderer,Enabled:renderer.enabled)).ToArray();
+            Vector3 position=eye.transform.position;Quaternion rotation=eye.transform.rotation;float fov=eye.fieldOfView;bool orthographic=eye.orthographic;
+            try
+            {
+                yield return null;yield return lens.MakeSureTheCanvasesAreDrawn();
+                var screen=SceneComponents<CompetitionGameScreen>().Single();if(screen.Paused)yield return PressKey(Key.P);
+                if(category=="Endurance")yield return HoldTheActualGrip();
+                else if(category=="Luck")yield return RollTheActualDice();
+                yield return null;
+                foreach(var pair in canvases)if(pair.Canvas!=null)pair.Canvas.enabled=false;
+                foreach(var pair in overlays)if(pair.Renderer!=null)pair.Renderer.enabled=true;
+                var floor=SceneComponents<BoxCollider>().Single(collider=>collider.name=="Competition yard floor");
+                Vector3 focus=floor.bounds.center+Vector3.up*1.1f;
+                eye.transform.position=focus+Vector3.back*Mathf.Max(20f,floor.bounds.size.x*.8f)+Vector3.up*9f;
+                eye.transform.LookAt(focus);eye.fieldOfView=50;eye.orthographic=false;
+                foreach(var instrument in SceneComponents<CompetitionApparatus>())
+                {
+                    var view=eye.WorldToViewportPoint(instrument.transform.parent.position+Vector3.up);
+                    Assert.That(view.z,Is.GreaterThan(0));Assert.That(view.x,Is.InRange(.03f,.97f));Assert.That(view.y,Is.InRange(.03f,.97f));
+                    Assert.That(instrument.Fits(director.CompetitionFootprints[instrument.ActorId]),Is.True,"The actual captured fit must remain reserved.");
+                }
+                frame=lens.Read();AssertNotBlank(frame,"full-field "+category);
+                string path=Path.GetFullPath(Path.Combine(Application.dataPath,"..","competition-apparatus-full-field-"+category.ToLowerInvariant()+".png"));
+                File.WriteAllBytes(path,frame.EncodeToPNG());Debug.Log("[Gamesim W3] actual twelve-entrant "+category+" world capture -> "+path);
+            }
+            finally
+            {
+                eye.transform.SetPositionAndRotation(position,rotation);eye.fieldOfView=fov;eye.orthographic=orthographic;
+                foreach(var pair in canvases)if(pair.Canvas!=null)pair.Canvas.enabled=pair.Enabled;
+                foreach(var pair in overlays)if(pair.Renderer!=null)pair.Renderer.enabled=pair.Enabled;
+                lens.Dispose();if(frame!=null)Object.Destroy(frame);
+            }
+            yield return null;
         }
 
         private IEnumerator ClickInstrumentControl(Button button)

@@ -459,15 +459,8 @@ namespace Gamesim.Simulation
                     break;
                 case EpisodePhase.FinalEviction:
                     Require(s.hohId != s.playerId, "Choose the final eviction first.");
-                    var finalContext = s.Clone();
-                    finalContext.nominees = s.Active.Where(c => c.id != s.hohId).Select(c => c.id).ToList();
-                    var finalOptions = WebEvictionVoting.FromNative(finalContext, s.hohId);
-                    // Match the source fast-forward final-selection caller, which supplies no memory/persona context.
-                    finalOptions.memories.Clear(); finalOptions.playerPersonaLabel = null;
-                    // Under the commitment rules (C1) a final two deal is a real obligation in the
-                    // choice, not the web's deal term alone (about 4.5 points after its weight).
-                    if (CommitmentRulesOn(s)) finalOptions.obligations.AddRange(FinalTwoTerms(s, s.hohId, finalContext.nominees));
-                    FinalEvict(s, WebEvictionVoting.Evaluate(finalOptions).selectedNomineeId); break;
+                    // The houseguest's own choice (EpisodeEngine.FinalChoice.cs).
+                    FinalEvict(s, FinalChoice(s).selectedNomineeId); break;
                 case EpisodePhase.JuryQuestioning:
                     Require(s.juryExchanges[s.juryQuestionIndex].completed, "Answer the current question or skip questioning.");
                     s.juryQuestionIndex++;

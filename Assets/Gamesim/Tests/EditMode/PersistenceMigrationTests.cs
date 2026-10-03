@@ -53,12 +53,31 @@ namespace Gamesim.Tests.EditMode
         /// runtime state into a schema 16 payload. Every older helper composes it.
         /// </summary>
         /// <summary>
+        /// Removes schema 22's commitment rules: the boundary, the two fields every deal and every
+        /// promise gained, the link every deal gained (C7) and the mark every alliance gained (C5), so a
+        /// current capture reads as a schema 21 payload. Every older helper composes it.
+        /// </summary>
+        public static JObject StripSchema22(JObject payload)
+        {
+            if (payload == null) return null;
+            payload.Remove("commitmentRulesStartWeek");
+            foreach (var name in new[] { "deals", "promises" })
+                if (payload[name] is JArray rows)
+                    foreach (var row in rows.OfType<JObject>())
+                        foreach (var field in new[] { "brokenById", "settledWeek", "linkedDealId" }) row.Remove(field);
+            if (payload["alliances"] is JArray alliances)
+                foreach (var alliance in alliances.OfType<JObject>()) alliance.Remove("playerJoined");
+            return payload;
+        }
+
+        /// <summary>
         /// Removes schema 21's finale rules: the boundary, the final argument, and the three fields
         /// every jury exchange gained, so a current capture reads as a schema 20 payload.
         /// </summary>
         public static JObject StripSchema21(JObject payload)
         {
             if (payload == null) return null;
+            StripSchema22(payload);
             payload.Remove("finaleRulesStartWeek");
             payload.Remove("finalArgument");
             if (payload["juryExchanges"] is JArray exchanges)
@@ -343,13 +362,13 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, original, new UTF8Encoding(false));
             var before = File.ReadAllBytes(fixture.Store.SavePath);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(21));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(22));
             Assert.That(loaded.randomState, Is.Zero);
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(before));
             Assert.That(File.Exists(fixture.Store.BackupPath), Is.False);
             fixture.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(before));
-            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(21));
+            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(22));
         }
 
         [Test]
@@ -375,7 +394,7 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, "damaged primary");
             var before = File.ReadAllBytes(fixture.Store.BackupPath);
             Assert.That(fixture.Store.TryRecoverBackup(out var recovered, out var message), Is.True, message);
-            Assert.That(recovered.schemaVersion, Is.EqualTo(21));
+            Assert.That(recovered.schemaVersion, Is.EqualTo(22));
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(before));
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(before));
             Assert.That(File.ReadAllText(Directory.GetFiles(fixture.DirectoryPath, "*.before-recovery-*.json").Single()),
@@ -438,9 +457,10 @@ namespace Gamesim.Tests.EditMode
             var original = Envelope(payload);
             File.WriteAllText(fixture.Store.SavePath, original);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(21));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(22));
             Assert.That(loaded.finaleRulesStartWeek, Is.Zero, "A legacy finale plays the catalogue's rules.");
             Assert.That(loaded.finalArgument, Is.Null, "and has no final argument.");
+            Assert.That(loaded.commitmentRulesStartWeek, Is.Zero, "A legacy season plays without the commitment rules.");
             Assert.That((int)loaded.phase, Is.EqualTo(phase));
             Assert.That(loaded.juryExchanges, Is.Empty);
             Assert.That(loaded.finalSpeeches, Is.Empty);

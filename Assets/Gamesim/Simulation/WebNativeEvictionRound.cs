@@ -13,8 +13,10 @@ namespace Gamesim.Simulation
 
     /// <summary>
     /// Canonical native adapter for the original local eviction-vote-round caller.
-    /// Does not invent deals, grudges, founder or stability; does not commit/reveal
-    /// ballots or decide rules-version migration. The caller supplies missing voters.
+    /// Does not invent deals, grudges or stability, and gives a founder only as
+    /// <see cref="WebVotingBlocs.FromNative"/> does - a pact's first member, under the
+    /// commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C5); does not commit/reveal ballots
+    /// or decide rules-version migration. The caller supplies missing voters.
     /// </summary>
     public static class WebNativeEvictionRound
     {

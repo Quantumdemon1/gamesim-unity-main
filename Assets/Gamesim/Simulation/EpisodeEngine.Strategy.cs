@@ -144,9 +144,15 @@ namespace Gamesim.Simulation
             if (theirs != null)
             {
                 theirs.members.Add(s.playerId);
+                // Under the commitment rules (C5) the player's coming in is on the pact itself: a
+                // bring-in and a cut can leave them first, and they still did not found it.
+                if (CommitmentRulesOn(s)) theirs.playerJoined = true;
                 // Joining is learning: the alliance's fact, if it has one, gains the player as a knower.
                 if (ReadRulesOn(s)) Knowledge.AddKnower(s, Knowledge.Of(s, FactKinds.Alliance, theirs.id), s.playerId);
                 Log(s, "alliance", npc.name + " brought you into " + theirs.name + ".", s.playerId, npcId);
+                // Under the commitment rules the player's place in it is on the record with every
+                // member, as a pact's founding is (ACTIONS-DEALS-ALLIANCES-PLAN C4).
+                RecordPactFormed(s, theirs, theirs.name + " was joined");
                 return;
             }
             var pact = new AllianceState
@@ -154,9 +160,12 @@ namespace Gamesim.Simulation
                 id = "alliance-" + s.nextSequence, name = "The " + npc.name.Split(' ')[0] + " Pact",
                 members = new List<string> { s.playerId, npcId },
             };
+            // Under the commitment rules (C5) no two of the player's standing pacts share a name.
+            if (CommitmentRulesOn(s)) pact.name = PactNames.Unique(s, pact.name);
             s.alliances.Add(pact);
             AllianceFormedUnderRead(s, pact);
             Log(s, "alliance", "You and " + npc.name + " formed a private alliance.", s.playerId, npcId);
+            RecordPactFormed(s, pact, pact.name + " was formed");
         }
     }
 }

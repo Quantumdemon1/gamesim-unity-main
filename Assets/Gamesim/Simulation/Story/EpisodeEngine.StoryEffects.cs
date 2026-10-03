@@ -29,15 +29,34 @@ namespace Gamesim.Simulation
         /// <summary>
         /// The player's alliance, formed with the roll injected: the command path passes the
         /// season's own stream and a story passes a keyed one. The body is the old
-        /// <c>FormAlliance</c> case, unchanged.
+        /// <c>FormAlliance</c> case, unchanged. Under the commitment rules the command asks instead
+        /// (<c>ProposeAlliance</c>, ACTIONS-DEALS-ALLIANCES-PLAN C4), and only a story still comes
+        /// through this gate.
         /// </summary>
         private static void FormAllianceWith(EpisodeState s, ContestantState target, Func<double> nextRoll)
         {
-            Require(!s.Allied(s.playerId, target.id), "You already share an active alliance.");
+            Require(!s.Allied(s.playerId, target.id), AlreadyAlliedRefusal);
             Require(s.Score(target.id, s.playerId) >= 8, "Build some trust before proposing an alliance.");
-            s.alliances.Add(new AllianceState { id = "alliance-" + s.nextSequence, name = "The " + target.name.Split(' ')[0] + " Pact", members = new List<string> { s.playerId, target.id } });
+            FormPact(s, target, nextRoll);
+        }
+
+        /// <summary>
+        /// The player's pact with one houseguest, however it was agreed: the two of them, the warmth
+        /// it brings with its reciprocal draw from <paramref name="nextRoll"/>, and the line - and,
+        /// under the commitment rules, its place on the ledger (ACTIONS-DEALS-ALLIANCES-PLAN C4). The
+        /// gate a story keeps is <see cref="FormAllianceWith"/>'s; the proposal's roll is
+        /// <c>ProposeAlliance</c>'s.
+        /// </summary>
+        private static void FormPact(EpisodeState s, ContestantState target, Func<double> nextRoll)
+        {
+            var pact = new AllianceState { id = "alliance-" + s.nextSequence, name = "The " + target.name.Split(' ')[0] + " Pact", members = new List<string> { s.playerId, target.id } };
+            // Under the commitment rules (C5) no two of the player's standing pacts share a name: the
+            // captions that name them must stay apart.
+            if (CommitmentRulesOn(s)) pact.name = PactNames.Unique(s, pact.name);
+            s.alliances.Add(pact);
             ChangeWithRoll(s, s.playerId, target.id, 8, nextRoll);
             Log(s, "alliance", "You and " + target.name + " formed a private alliance.", s.playerId, target.id);
+            RecordPactFormed(s, pact, pact.name + " was formed");
         }
 
         /// <summary>Applies one resolved story effect.</summary>
@@ -282,6 +301,9 @@ namespace Gamesim.Simulation
             if (a == null || b == null || !Alive(a) || !Alive(b)) return;
             var members = new List<ContestantState> { a, b };
             if (c != null && Alive(c) && c.id != a.id && c.id != b.id) members.Add(c);
+            // The player's three (ACTIONS-DEALS-ALLIANCES-PLAN C4, decision 10): under the commitment
+            // rules a story brings the player into no fourth pact, as nothing else does.
+            if (members.Any(m => m.isPlayer) && AtPactCap(s)) return;
             if (members.Any(m => m.isPlayer) && members.Count == 2)
             {
                 var other = members.First(m => !m.isPlayer);
@@ -321,6 +343,8 @@ namespace Gamesim.Simulation
         private static void StoryDeal(EpisodeState s, ContestantState a, ContestantState b, ContestantState target, string type)
         {
             if (a == null || b == null || a.id == b.id || !Alive(a) || !Alive(b) || !DealKind.IsKnown(type)) return;
+            // A final three deal is the commitment rules' own (C9): a story strikes one only under them.
+            if (DealKind.CommitmentRulesOnly(type) && !CommitmentRulesOn(s)) return;
             if (DealKind.NamesATarget(type) && (target == null || !Alive(target))) return;
             if (s.deals.Any(d => DealStatus.Binds(d.status) && d.type == type
                                  && ((d.proposerId == a.id && d.recipientId == b.id) || (d.proposerId == b.id && d.recipientId == a.id))

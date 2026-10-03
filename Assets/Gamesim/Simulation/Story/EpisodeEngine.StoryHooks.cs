@@ -51,7 +51,7 @@ namespace Gamesim.Simulation
         private static void StoryAllianceLeft(EpisodeState s, string leftBehindId, string betrayerId)
         {
             if (!StoryAt(s, StoryRules.Grudges) || leftBehindId == s.playerId) return;
-            Grudges.Add(s, leftBehindId, betrayerId, 80, GrudgeCauses.AllianceBetrayed);
+            Grudges.Add(s, leftBehindId, betrayerId, AllianceLeftGrudge, GrudgeCauses.AllianceBetrayed);
         }
 
         /// <summary>
@@ -348,7 +348,12 @@ namespace Gamesim.Simulation
             if (anchor == StoryAnchors.EvictionNight && StoryAt(s, StoryRules.Bonds)) NpcShowmancePass(s);
             if (StoryAt(s, StoryRules.Bonds) && anchor != StoryAnchors.Conversation)
                 foreach (var (fact, listener) in Knowledge.Spread(s, anchor))
+                {
                     if (listener == s.playerId) Log(s, StoryLog.Whisper, Whisper(s, fact), s.playerId);
+                    // Your word in the house (ACTIONS-DEALS-ALLIANCES-PLAN C8): a houseguest the gossip
+                    // tells of the player's broken word thinks less of them, and the player hears who.
+                    else if (YourWord.On(s) && YourWord.IsYours(s, fact)) HeardOfYourWord(s, fact, listener);
+                }
         }
 
         /// <summary>What the player hears when a fact reaches them through the house.</summary>
@@ -404,7 +409,9 @@ namespace Gamesim.Simulation
             };
             fact.knowers.Add(best.a.id);
             fact.knowers.Add(best.b.id);
-            if (s.story.facts.Count >= 128) s.story.facts.RemoveAt(0);
+            // A full list makes room as every writer's does: under the commitment rules never by dropping
+            // an alliance's fact or the player's broken word (X14).
+            Knowledge.MakeRoom(s);
             s.story.facts.Add(fact);
         }
 

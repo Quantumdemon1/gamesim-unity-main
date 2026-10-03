@@ -555,8 +555,9 @@ namespace Gamesim.Episode
         private static List<string> ReadLines(EpisodeState state, VoteRead.VoterRead read)
         {
             var lines = new List<string>();
+            // An ally's claim is their own word to the pact at a meeting (ACTIONS-DEALS-ALLIANCES-PLAN C6).
             foreach (var claim in read.claims)
-                lines.Add((claim.source == ClaimSource.Told ? "Told you: evict " : claim.source == ClaimSource.Overheard ? "Overheard: evict " : "An ally heard: evict ")
+                lines.Add((claim.source == ClaimSource.Told ? "Told you: evict " : claim.source == ClaimSource.Overheard ? "Overheard: evict " : "Told the pact: evict ")
                     + state.Find(claim.targetId).name + " (week " + claim.week + ")");
             if (read.knownTerms.Count > 0) lines.Add("You know: " + string.Join(", ", read.knownTerms.Select(TermWords)) + ".");
             if (read.unknownTerms > 0)
@@ -676,13 +677,12 @@ namespace Gamesim.Episode
             return ballot.VoterName + " voted to evict " + (ballot.AgainstPlayer ? "you" : ballot.TargetName);
         }
 
-        /// <summary>How the player knows a ballot: its basis word, and a lie caught where the voter said otherwise; nothing on a ballot they do not know.</summary>
+        /// <summary>How the player knows a ballot: its basis word, and what the voter said where they cast the other way - a lie told to the player's face, an ally's word to the pact a vote that changed (<see cref="KnownBallots.SaidWords"/>); nothing on a ballot they do not know.</summary>
         private static string BallotTag(VoteRecords.Ballot ballot)
         {
             if (!ballot.Known) return null;
             string tag = ballot.TieBreak ? "Head of Household's tie-break" : KnownBallots.Basis.Word(ballot.Basis);
-            if (ballot.Lied && ballot.SaidName != null) tag += " \u00b7 said " + ballot.SaidName + ", a lie";
-            return tag;
+            return tag + KnownBallots.SaidWords(ballot.Basis, ballot.Lied, ballot.SaidName);
         }
 
         /// <summary>Opens the notebook on a section as every panel opens: everything else closed, the house paused.</summary>

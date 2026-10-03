@@ -48,10 +48,35 @@ namespace Gamesim.Simulation
         /// </summary>
         public string trustImpact = DealTrust.Medium;
 
+        /// <summary>
+        /// Schema 22 (ACTIONS-DEALS-ALLIANCES-PLAN C0): who broke a broken deal, as the verdict that
+        /// settled it named them - null for a voting bloc, which both parties settle at once - and the
+        /// week a verdict kept or broke it. Written under the commitment rules
+        /// (<see cref="EpisodeEngine.CommitmentRulesOn"/>); null and 0 on a deal settled before them,
+        /// which <see cref="Breaches.DealBreaker"/> reads by <see cref="FinalistRead.DealBreaker"/>'s rule.
+        /// </summary>
+        public string brokenById;
+        public int settledWeek;
+
+        /// <summary>
+        /// Schema 22 (ACTIONS-DEALS-ALLIANCES-PLAN C7): the deal this one is struck together with, by id -
+        /// a deal and the price paid for it name each other (<see cref="Negotiation"/>). A nominee's veto
+        /// ask and the vote save or final two they give for it; the veto the player holds and the price
+        /// they named for it; a deal the player asked for and the price a houseguest's counter-offer put
+        /// on it. Exactly one of the two is the price (<see cref="Negotiation.PricePrefix"/>), owed while
+        /// what it bought stands and void once the one it was owed to breaks what it bought. Written only
+        /// under the commitment rules (<see cref="EpisodeEngine.CommitmentRulesOn"/>); null on every other
+        /// deal, and on every deal of a season saved before it.
+        /// </summary>
+        public string linkedDealId;
+
         public DealState Clone() => (DealState)MemberwiseClone();
     }
 
-    /// <summary>The ten deal types, spelled as the reference and the eviction vote spell them.</summary>
+    /// <summary>
+    /// The deal types: the reference's ten, spelled as the reference and the eviction vote spell them,
+    /// and one of this port's own, the final three deal (<see cref="FinalThree"/>).
+    /// </summary>
     public static class DealKind
     {
         public const string TargetAgreement = "target_agreement";
@@ -65,13 +90,31 @@ namespace Gamesim.Simulation
         public const string Partnership = "partnership";
         public const string AllianceInvite = "alliance_invite";
 
+        /// <summary>
+        /// Native, not the reference's (ACTIONS-DEALS-ALLIANCES-PLAN C9): two houseguests take each other
+        /// to the final three. It binds what a safety pact binds - neither puts the other up, at the
+        /// nominations or as the veto's replacement, which breaks it - from the week it is struck until
+        /// the house is down to three, and it is weighed where a safety pact is: in a Head of
+        /// Household's reluctance to nominate the partner and in a ballot on them. It is kept when the
+        /// two of them reach the final three together, and ends, blaming nobody, with whichever of them
+        /// leaves the house first (X4). A kept one is an obligation in the final Head of Household's
+        /// choice at half a final two's (<see cref="EpisodeEngine.FinalChoiceTerms"/>). Put only from
+        /// the final six to the final four, and only under the commitment rules: a season without them
+        /// never holds one, and validation refuses one there.
+        /// </summary>
+        public const string FinalThree = "final_three";
+
         public static readonly string[] All =
         {
             TargetAgreement, SafetyAgreement, VoteTogether, VoteSave, VoteEvict,
             VetoUse, InformationSharing, FinalTwo, Partnership, AllianceInvite,
+            FinalThree,
         };
 
         public static bool IsKnown(string type) => type != null && Array.IndexOf(All, type) >= 0;
+
+        /// <summary>Whether this kind exists only under the commitment rules (<see cref="EpisodeEngine.CommitmentRulesOn"/>): the final three deal.</summary>
+        public static bool CommitmentRulesOnly(string type) => type == FinalThree;
 
         /// <summary>Whether this kind of deal is about a third houseguest rather than the pair.</summary>
         public static bool NamesATarget(string type) =>
@@ -88,7 +131,9 @@ namespace Gamesim.Simulation
                 case FinalTwo: return DealTrust.Critical;
                 case TargetAgreement:
                 case SafetyAgreement:
-                case AllianceInvite: return DealTrust.High;
+                case AllianceInvite:
+                // The safety pact's weight: it is broken by the same act, a nomination.
+                case FinalThree: return DealTrust.High;
                 case InformationSharing: return DealTrust.Low;
                 default: return DealTrust.Medium;
             }
@@ -113,6 +158,7 @@ namespace Gamesim.Simulation
                 case InformationSharing: return "Information Sharing";
                 case FinalTwo: return "Final Two Deal";
                 case AllianceInvite: return "Alliance Invitation";
+                case FinalThree: return "Final Three Deal";
                 default: return "Partnership";
             }
         }
@@ -180,6 +226,24 @@ namespace Gamesim.Simulation
                 case High: return 2;
                 case Medium: return 1.5;
                 default: return 1;
+            }
+        }
+
+        /// <summary>
+        /// One step heavier than <paramref name="trust"/>: low to medium, medium to high, high to
+        /// critical. Critical is the heaviest there is and stays critical; anything unknown reads as
+        /// low, as <see cref="Weight"/> reads it, and goes to medium. What an offer the player
+        /// accepted stakes when it breaks, under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN
+        /// C1, decision 15; <see cref="DealResolution.BreachWeight"/>).
+        /// </summary>
+        public static string Heavier(string trust)
+        {
+            switch (trust)
+            {
+                case Critical:
+                case High: return Critical;
+                case Medium: return High;
+                default: return Medium;
             }
         }
     }

@@ -54,6 +54,7 @@ namespace Gamesim.Editor
             var pieces = world.Find(HouseSetPieces.RootName);
             if (pieces == null) throw new InvalidOperationException("The furnished house is missing its set-piece root.");
             Place(world, pieces, report.placed);
+            VerifyCollisionClearance(scene, pieces.Find(GroupName));
 
             surface.BuildNavMesh();
             var candidate = surface.navMeshData;
@@ -112,6 +113,7 @@ namespace Gamesim.Editor
             if (group == null || group.childCount != 5 || surface.navMeshData == null
                 || AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(surface.navMeshData)) != report.navigationGuid)
                 throw new InvalidOperationException("The fresh process did not load the authored house and its original navigation asset.");
+            VerifyCollisionClearance(scene, group);
             report.protectedSceneAfter = ProtectedSceneState(scene);
             report.roomPairsAfter = HouseNavigationAudit.ReachablePairs(surface, surface.navMeshData);
             var approaches = ReachableApproaches(scene);
@@ -221,6 +223,23 @@ namespace Gamesim.Editor
 
         private static string AssetIdentity(UnityEngine.Object asset) => asset == null ? "none"
             : AssetDatabase.TryGetGUIDAndLocalFileIdentifier(asset, out string guid, out long id) ? guid + ":" + id : "unsaved:" + asset.name;
+
+        private static void VerifyCollisionClearance(Scene scene, Transform group)
+        {
+            var furnishings = scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<Collider>(true))
+                .Where(c => c.enabled && c.gameObject.activeInHierarchy && c.gameObject.layer == HouseLayers.Furniture).ToArray();
+            var added = group.GetComponentsInChildren<Collider>(true).Where(c => c.enabled && c.gameObject.activeInHierarchy).ToArray();
+            if (added.Length != 5) throw new InvalidOperationException("Each new furnishing must have exactly one solid proxy.");
+            foreach (var current in added)
+                foreach (var other in furnishings)
+                {
+                    if (current == other) continue;
+                    if (Physics.ComputePenetration(current, current.transform.position, current.transform.rotation,
+                        other, other.transform.position, other.transform.rotation, out _, out float depth) && depth > .001f)
+                        throw new InvalidOperationException("New furnishing overlaps existing furniture: "
+                            + HierarchyPath(current.transform) + " / " + HierarchyPath(other.transform) + ", depth " + depth);
+                }
+        }
 
         private static HashSet<string> ReachableApproaches(Scene scene)
         {

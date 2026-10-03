@@ -283,10 +283,7 @@ namespace Gamesim.Uma.Editor
                     Register(recipe);
                     yield return null;
                     Progress(style.stem + " " + fit + " thumbnail and masks");
-                    avatar.preloadWardrobeRecipes.recipes.Clear();
-                    avatar.preloadWardrobeRecipes.recipes.Add(new DynamicCharacterAvatar.WardrobeRecipeListItem(recipe));
-                    avatar.GenerateNow();
-                    AssertBody(avatar);
+                    Wear(avatar, recipe);
                     ValidateMasks(avatar, masks);
                     Sprite thumbnail = Thumbnail(avatar, style.stem + "_" + fit + "_Thumbnail");
                     recipe.wardrobeRecipeThumbs = new List<WardrobeRecipeThumb> { new WardrobeRecipeThumb(races[body], thumbnail) };
@@ -298,6 +295,7 @@ namespace Gamesim.Uma.Editor
                     UnityEngine.Object.DestroyImmediate(clothing.gameObject);
                     // Restore the whole, unmasked reference surface before the next garment.
                     avatar.preloadWardrobeRecipes.recipes.Clear();
+                    avatar.ClearSlots();
                     avatar.GenerateNow();
                     surface = BodySurface(avatar);
                     yield return null;
@@ -353,9 +351,7 @@ namespace Gamesim.Uma.Editor
                 Require(AssetDatabase.GetAssetPath(overlay.asset).StartsWith(ContentRoot + "/", StringComparison.Ordinal),
                     "Garment overlay must be project-owned.");
                 DynamicCharacterAvatar avatar = Reference(race);
-                avatar.preloadWardrobeRecipes.recipes.Add(new DynamicCharacterAvatar.WardrobeRecipeListItem(recipe));
-                avatar.GenerateNow();
-                AssertBody(avatar);
+                Wear(avatar, recipe);
                 Require(avatar.umaRecipe.slotDataList.Any(slot => slot != null && slot.slotName == garment.slotName),
                     "Fresh body did not wear the indexed recipe.");
                 ValidateMasks(avatar, recipe.MeshHideAssets);
@@ -384,10 +380,23 @@ namespace Gamesim.Uma.Editor
             avatar.activeRace.name = race;
             avatar.preloadWardrobeRecipes.loadDefaultRecipes = false;
             avatar.preloadWardrobeRecipes.recipes.Clear();
+            avatar.ClearSlots();
             avatar.BuildCharacterEnabled = true;
             avatar.GenerateNow();
             AssertBody(avatar);
             return avatar;
+        }
+
+        private static void Wear(DynamicCharacterAvatar avatar, UMAWardrobeRecipe recipe)
+        {
+            // GenerateNow builds the current wardrobe dictionary; it does not reload preload
+            // settings after the avatar's first build when editorTimeGeneration is disabled.
+            avatar.ClearSlots();
+            Require(avatar.SetSlot(recipe), "The reference body refused its garment recipe: " + recipe.name);
+            avatar.GenerateNow();
+            AssertBody(avatar);
+            Require(avatar.umaRecipe.slotDataList.Any(slot => slot != null && slot.slotName == recipe.name.Replace("_Recipe", "_Slot")),
+                "GenerateNow did not dress the reference in its requested garment: " + recipe.name);
         }
         private static void AssertBody(DynamicCharacterAvatar avatar)
         {

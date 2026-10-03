@@ -61,7 +61,7 @@ namespace Gamesim.Tests.PlayMode
             finally
             {
                 (original as IDisposable)?.Dispose();
-                if (delay != null) { delay.enabled = false; UnityEngine.Object.Destroy(delay.gameObject); }
+                if (delay != null) { delay.LogObserved(); delay.enabled = false; UnityEngine.Object.Destroy(delay.gameObject); }
             }
         }
 
@@ -78,6 +78,7 @@ namespace Gamesim.Tests.PlayMode
             private readonly List<double> intervals = new List<double>();
             private double deadline, previous;
             private bool expired;
+            private bool reported;
 
             public void Begin() { deadline = Seconds() + MaximumSeconds; }
             private static double Seconds() => (double)Timer.GetTimestamp() / Timer.Frequency;
@@ -96,11 +97,19 @@ namespace Gamesim.Tests.PlayMode
                 enabled = false;
                 Assert.That(expired, Is.False, "The bounded load must remain active through the whole observed stage lifecycle.");
                 Assert.That(intervals.Count, Is.GreaterThanOrEqualTo(10), "At least ten real slow frames must exercise the stage.");
-                Debug.Log("[Gamesim] Stage slow-frame spacing: count=" + intervals.Count
-                    + ", min=" + intervals.Min().ToString("F3") + "s, mean=" + intervals.Average().ToString("F3")
-                    + "s, max=" + intervals.Max().ToString("F3") + "s; intended delay=" + DelayMilliseconds + "ms.");
+                LogObserved();
                 Assert.That(intervals.Min(), Is.GreaterThanOrEqualTo(.09),
                     "Measured frame spacing must confirm the imposed approximately ten-FPS load.");
+            }
+
+            public void LogObserved()
+            {
+                if (reported) return;
+                reported = true;
+                Debug.Log("[Gamesim] Stage slow-frame spacing: count=" + intervals.Count
+                    + (intervals.Count == 0 ? "; no interval observed" :
+                    ", min=" + intervals.Min().ToString("F3") + "s, mean=" + intervals.Average().ToString("F3")
+                    + "s, max=" + intervals.Max().ToString("F3") + "s") + "; intended delay=" + DelayMilliseconds + "ms.");
             }
         }
     }

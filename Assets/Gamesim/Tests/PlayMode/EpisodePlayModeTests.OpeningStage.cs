@@ -53,7 +53,7 @@ namespace Gamesim.Tests.PlayMode
         /// house of eight or fewer, so the frame lasts half a second, which this waits into rather
         /// than guessing at. A door that opens first fails here instead of being photographed.</para>
         /// </summary>
-        private IEnumerator WaitForTheClosedDoorFrame(OpeningSequence opening, OpeningDoorSet set, string guestId)
+        private IEnumerator WaitForTheClosedDoorFrame(OpeningSequence opening, OpeningDoorSet set, string guestId, Action observed = null)
         {
             float until = Time.realtimeSinceStartup + 8f;
             while (!set.IsOpen && !ClosedDoorFrameIsUp(opening, guestId) && Time.realtimeSinceStartup < until) yield return null;
@@ -80,6 +80,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(portrait, Is.Not.Null, "The lower third carries a portrait.");
             Assert.That(portrait.GetComponent<CanvasGroup>().alpha, Is.GreaterThanOrEqualTo(0.99f), "Its face has faded in.");
             Assert.That(portrait.localScale.x, Is.GreaterThanOrEqualTo(0.99f), "and grown to its size.");
+            observed?.Invoke();
         }
 
         /// <summary>
@@ -163,6 +164,42 @@ namespace Gamesim.Tests.PlayMode
             var portrait = third != null ? third.Find("Portrait") : null;
             var face = portrait != null ? portrait.GetComponent<CanvasGroup>() : null;
             return group != null && group.alpha >= 0.99f && face != null && face.alpha >= 0.99f && portrait.localScale.x >= 0.99f;
+        }
+
+        [Serializable]
+        private sealed class OpeningDoorCaptureDiagnostic
+        {
+            public string unityVersion, image;
+            public bool providedBodies;
+            public int droppedSamples;
+            public List<OpeningDoorCaptureSample> samples = new List<OpeningDoorCaptureSample>();
+        }
+
+        [Serializable]
+        private sealed class OpeningDoorCaptureSample
+        {
+            public string phase, guest;
+            public int frame;
+            public double realtime;
+            public float unscaledTime, unscaledDelta, openness;
+            public bool isOpen, lowerThirdArrived, cameraArrived, stageBodiesReady;
+        }
+
+        private void ObserveOpeningDoorCapture(OpeningDoorCaptureDiagnostic trace, OpeningSequence opening, OpeningDoorSet set, string phase)
+        {
+            if (trace.samples.Count == 128) { trace.samples.RemoveAt(0); trace.droppedSamples++; }
+            trace.samples.Add(new OpeningDoorCaptureSample
+            {
+                phase = phase, guest = opening.CurrentGuestId, frame = Time.frameCount, realtime = Time.realtimeSinceStartupAsDouble,
+                unscaledTime = Time.unscaledTime, unscaledDelta = Time.unscaledDeltaTime, isOpen = set.IsOpen, openness = set.Openness,
+                lowerThirdArrived = LowerThirdHasArrived(opening), cameraArrived = cameraRig.HasArrived(0.1f) && !cameraRig.IsTravelling,
+                stageBodiesReady = AllStageBodiesReady(),
+            });
+        }
+
+        private IEnumerator WatchOpeningDoorCapture(OpeningDoorCaptureDiagnostic trace, OpeningSequence opening, OpeningDoorSet set)
+        {
+            while (set != null) { ObserveOpeningDoorCapture(trace, opening, set, "intervening frame"); yield return null; }
         }
 
         /// <summary>
@@ -291,20 +328,44 @@ namespace Gamesim.Tests.PlayMode
             var set = Object.FindFirstObjectByType<OpeningDoorSet>();
             Assert.That(set, Is.Not.Null);
             // Not on the frame the player is named: the camera is still leaving the overview then.
-            yield return WaitForTheClosedDoorFrame(opening, set, playerId);
-            if (Application.isBatchMode)
+            var doorTrace = new OpeningDoorCaptureDiagnostic
             {
-                // The door is read while the photographed frame is current, from the capture's own
-                // inspection, not after it returns: the door gives on its own clock half a second
-                // after this frame arrives, nothing here holds it, and the capture's work - a render, a
-                // readback, a PNG written and every pixel checked - is taken by that clock as one
-                // frame, so a slow one could open the door after a shut door was photographed.
-                bool shutWhenTaken = false;
-                yield return CaptureFraming("opening-reveal-closed", settle: false, inspect: frame =>
-                    shutWhenTaken = !set.IsOpen && set.Openness < 0.01f);
-                Assert.That(shutWhenTaken, Is.True, "The door was still shut, its leaves unmoved, when the frame was taken.");
+                unityVersion = Application.unityVersion, providedBodies = CharacterBodySource.Provider != null,
+                image = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "..", "opening-reveal-closed.png")),
+            };
+            var captureWatch = director.StartCoroutine(WatchOpeningDoorCapture(doorTrace, opening, set));
+            try
+            {
+                ObserveOpeningDoorCapture(doorTrace, opening, set, "before closed phase observation");
+                yield return WaitForTheClosedDoorFrame(opening, set, playerId,
+                    () => ObserveOpeningDoorCapture(doorTrace, opening, set, "closed phase accepted inside observation"));
+                ObserveOpeningDoorCapture(doorTrace, opening, set, "closed phase observation returned");
+                if (Application.isBatchMode)
+                {
+                    // Inspect at the actual read, retaining the original shut predicate. Lens/layout
+                    // preparation spans frames even with settle:false; the phase trace distinguishes
+                    // an observation/capture race from an opening or physical-clearance regression.
+                    bool shutWhenTaken = false;
+                    yield return CaptureFraming("opening-reveal-closed", settle: false, inspect: frame =>
+                    {
+                        ObserveOpeningDoorCapture(doorTrace, opening, set, "actual rendered frame inspection");
+                        shutWhenTaken = !set.IsOpen && set.Openness < 0.01f;
+                    }, observe: phase => ObserveOpeningDoorCapture(doorTrace, opening, set, phase));
+                    Assert.That(shutWhenTaken, Is.True, "The door was still shut, its leaves unmoved, when the frame was taken.");
+                }
+                else Assert.That(set.IsOpen, Is.False, "The door is still shut on the closed-door frame.");
             }
-            else Assert.That(set.IsOpen, Is.False, "The door is still shut on the closed-door frame.");
+            finally
+            {
+                director.StopCoroutine(captureWatch);
+                ObserveOpeningDoorCapture(doorTrace, opening, set, "closed capture scope ended");
+                if (Application.isBatchMode)
+                {
+                    var path = System.IO.Path.ChangeExtension(doorTrace.image, ".diagnostics.json");
+                    System.IO.File.WriteAllText(path, JsonUtility.ToJson(doorTrace, true));
+                    Debug.Log("[Gamesim] opening closed-capture diagnostics -> " + path);
+                }
+            }
             yield return WaitFor(() => set.IsOpen, 12f, "The door opens for the player.");
             yield return WaitFor(() => set.Openness > 0.6f, 3f, "and swings wide.");
             // The hints over the door frames stand on grounds (UI-UX-PASS-PLAN S0): the Continue

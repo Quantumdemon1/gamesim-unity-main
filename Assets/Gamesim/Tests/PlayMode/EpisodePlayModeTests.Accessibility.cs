@@ -324,13 +324,15 @@ namespace Gamesim.Tests.PlayMode
         /// say otherwise: 1200 by 900 photographs a 4:3 layout as the batch canvas laid it out.</para>
         /// </summary>
         private IEnumerator CaptureFraming(string name, bool settle = true, Action<Texture2D> inspect = null, int width = 1600, int height = 900,
-            (Func<RectTransform> Find, string What)? panel = null, Action arrange = null)
+            (Func<RectTransform> Find, string What)? panel = null, Action arrange = null, Action<string> observe = null)
         {
+            observe?.Invoke("capture entered");
             var lens = new CaptureLens(cameraRig.ViewCamera, width, height);
             Texture2D readback = null, probe = null;
             var painted = new List<(Image Ground, Color Was)>();
             try
             {
+                observe?.Invoke("capture lens constructed");
                 // Let queued portraits land first: a frame with empty discs where the faces go
                 // cannot say what the screen looks like. The studio builds one look at a time, so
                 // in a short filtered run the queue can still be working seconds after the panel
@@ -350,15 +352,21 @@ namespace Gamesim.Tests.PlayMode
                 // kept its 4:3 numbers and photographed distorted, which made the review frames
                 // unusable for judging a screen against its mockup.
                 RenderHudForTheCurrentCanvas();
+                observe?.Invoke("capture before layout frame");
                 yield return null;
+                observe?.Invoke("capture after layout frame");
                 if (arrange != null)
                 {
                     arrange();
                     Canvas.ForceUpdateCanvases();
                     yield return null;
                 }
+                observe?.Invoke("capture before guard preparation");
                 yield return lens.MakeSureTheCanvasesAreDrawn();
+                observe?.Invoke("capture after guard preparation");
+                observe?.Invoke("capture immediately before pixel read");
                 readback = lens.Read();
+                observe?.Invoke("capture immediately after pixel read");
                 var path = System.IO.Path.GetFullPath(System.IO.Path.Combine(
                     Application.dataPath, "..", name + ".png"));
                 System.IO.File.WriteAllBytes(path, readback.EncodeToPNG());

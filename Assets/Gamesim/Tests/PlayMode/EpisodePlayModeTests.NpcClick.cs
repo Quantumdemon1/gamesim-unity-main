@@ -51,6 +51,47 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// Clicks a moving houseguest after the UI module has seen the pointer, checking the aim
+        /// again just before the press. A free-time commit can rebuild the HUD during the move
+        /// frame, and the target keeps moving; the point measured before that frame can be stale.
+        /// The input events below still go through the real controller. Its public events only
+        /// record where they arrived, distinguishing a lost click from a lost conversation intent.
+        /// </summary>
+        private IEnumerator ClickHouseguest(Mouse mouse, HouseNpc npc)
+        {
+            string picked = null;
+            bool floorChosen = false;
+            void RecordHouseguest(HouseNpc selected) => picked = selected.Id;
+            void RecordFloor() => floorChosen = true;
+            player.HouseguestSelected += RecordHouseguest;
+            player.DestinationChosen += RecordFloor;
+            try
+            {
+                var screen = AimAt(npc);
+                InputSystem.QueueStateEvent(mouse, new MouseState { position = screen });
+                yield return null;
+                yield return null;
+                Assert.That(player.InputEnabled, Is.True, "The controller must still read the press. " + NpcClickState(npc));
+                if (EventSystem.current != null)
+                    Assert.That(EventSystem.current.IsPointerOverGameObject(), Is.False,
+                        "The UI module still claims the pointer after its move. " + NpcClickState(npc));
+                screen = AimAt(npc);
+                InputSystem.QueueStateEvent(mouse, new MouseState { position = screen }.WithButton(MouseButton.Left));
+                yield return null;
+                InputSystem.QueueStateEvent(mouse, new MouseState { position = screen });
+                yield return null;
+                Assert.That(picked, Is.EqualTo(npc.Id),
+                    "The real mouse press must select " + npc.DisplayName + ", before its walk is read. Floor chosen "
+                    + floorChosen + ". " + NpcClickState(npc));
+            }
+            finally
+            {
+                player.HouseguestSelected -= RecordHouseguest;
+                player.DestinationChosen -= RecordFloor;
+            }
+        }
+
+        /// <summary>
         /// Establishes a reachable, out-of-range start after the shot has settled. The houseguest
         /// keeps moving during FrameOn, so being the furthest when selected says nothing about
         /// their distance six seconds later. Only the player is placed; the chase still follows
@@ -190,11 +231,10 @@ namespace Gamesim.Tests.PlayMode
             try
             {
                 PlacePlayerOutsideTalkingRange(wanted);
-                var screen = AimAt(wanted);
                 float before = Vector3.Distance(player.transform.position, wanted.transform.position);
                 Assert.That(before, Is.GreaterThan(2.8f), "This case only exists beyond talking range. " + NpcClickState(wanted));
 
-                yield return ClickAt(mouse, screen);
+                yield return ClickHouseguest(mouse, wanted);
                 Assert.That(director.TalkingToId, Is.Null,
                     "Out of reach, the click must not teleport a conversation into existence.");
                 Assert.That(player.Agent.hasPath, Is.True,
@@ -262,7 +302,7 @@ namespace Gamesim.Tests.PlayMode
             try
             {
                 PlacePlayerOutsideTalkingRange(wanted);
-                yield return ClickAt(mouse, AimAt(wanted));
+                yield return ClickHouseguest(mouse, wanted);
                 Assert.That(director.WalkingToId, Is.EqualTo(wanted.Id),
                     "The click should have started a walk to " + wanted.DisplayName + ". " + NpcClickState(wanted));
             }
@@ -305,7 +345,7 @@ namespace Gamesim.Tests.PlayMode
             try
             {
                 PlacePlayerOutsideTalkingRange(wanted);
-                yield return ClickAt(mouse, AimAt(wanted));
+                yield return ClickHouseguest(mouse, wanted);
                 Assert.That(director.WalkingToId, Is.EqualTo(wanted.Id),
                     "The click should have started a walk to " + wanted.DisplayName + ". " + NpcClickState(wanted));
             }
@@ -439,7 +479,7 @@ namespace Gamesim.Tests.PlayMode
             try
             {
                 PlacePlayerOutsideTalkingRange(wanted);
-                yield return ClickAt(mouse, AimAt(wanted));
+                yield return ClickHouseguest(mouse, wanted);
                 Assert.That(director.WalkingToId, Is.EqualTo(wanted.Id),
                     "The click should have started a walk to " + wanted.DisplayName + ". " + NpcClickState(wanted));
 

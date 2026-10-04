@@ -112,10 +112,17 @@ namespace Gamesim.Episode
                 {
                     var npc=housemates.FirstOrDefault(n=>n!=null && n.Id==actor.id);
                     var capsule=npc!=null ? npc.GetComponent<CapsuleCollider>() : null;
-                    if(capsule==null || (npc.GetComponent<HouseSeatPresentation>()?.Active ?? false))continue;
+                    if(capsule==null || (npc.GetComponent<HouseSeatPresentation>()?.Active ?? false))
+                    {
+                        Debug.Log("[Gamesim competition stage] unavailable "+actor.id+": capsule="+(capsule!=null)
+                            +", seated="+(npc!=null && (npc.GetComponent<HouseSeatPresentation>()?.Active ?? false)),this);
+                        continue;
+                    }
                     CacheCompetitionBody(actor.id,npc.gameObject);
                     HouseInteractionAnchor anchor=null;
                     CompetitionStageFootprint footprint=default;
+                    int floorMisses=0,occupiedMisses=0,envelopeMisses=0;
+                    Vector3 lastCandidate=default;CompetitionStageFootprint lastEnvelope=default;
                     var existingSeat=npc.GetComponent<HouseSeatPresentation>();
                     if(!contestants.Contains(actor.id) && (existingSeat==null || existingSeat.isActiveAndEnabled))
                         foreach(var seat in seats.Where(a=>!usedSeats.Contains(a)))
@@ -135,32 +142,49 @@ namespace Gamesim.Episode
                     if(anchor==null)
                         foreach(var wanted in candidates.OrderBy(p=>(p-actorPreferred).sqrMagnitude))
                         {
-                            if(!rooms.TrySampleFloor(wanted,capsule.radius,filter,.25f,out var position,out var room)
-                                || room!="Yard" || used.Any(p=>(p-position).sqrMagnitude<1.6f)
-                                || !rooms.HasCapsuleClearance(position,capsule.radius,capsule.height,npc.transform))continue;
+                            if(!rooms.TrySampleFloor(wanted,capsule.radius,filter,.25f,out var position,out var room) || room!="Yard")
+                            {floorMisses++;continue;}
+                            if(used.Any(p=>(p-position).sqrMagnitude<1.6f)
+                                || !rooms.HasCapsuleClearance(position,capsule.radius,capsule.height,npc.transform))
+                            {occupiedMisses++;continue;}
                             float facing=contestants.Contains(actor.id)?CompetitionRouteFacing(npc.transform.position,position,filter)
                                 :Mathf.Atan2(bounds.center.x-position.x,bounds.center.z-position.z)*Mathf.Rad2Deg;
                             footprint=contestants.Contains(actor.id)
                                 ?CompetitionStageFootprint.Station(instrumentFamily,position,facing,capsule.radius,capsule.height)
                                 :CompetitionStageFootprint.Actor(position,capsule.radius,capsule.height);
-                            if(!FitsCompetitionFootprint(footprint,floor,npc.transform))continue;
+                            if(!FitsCompetitionFootprint(footprint,floor,npc.transform))
+                            {envelopeMisses++;lastCandidate=position;lastEnvelope=footprint;continue;}
                             anchor=HouseInteractionAnchor.Create(competitionArenaRoot.transform,
                                 contestants.Contains(actor.id)?"competition-contestant":"competition-audience","Yard",ids.Count,
                                 position,facing,false);
                             break;
                         }
-                    if(anchor==null)continue;
+                    if(anchor==null)
+                    {
+                        Debug.Log("[Gamesim competition stage] no station for "+actor.id+" family="+instrumentFamily
+                            +" from="+npc.transform.position.ToString("F3")+" candidates="+candidates.Count
+                            +" floor="+floorMisses+" occupied="+occupiedMisses+" envelope="+envelopeMisses
+                            +" last="+lastCandidate.ToString("F3")+" deck="+lastEnvelope.FitsOn(floor.bounds)
+                            +" neighbour="+ClearsCompetitionNeighbours(lastEnvelope)
+                            +" blockers="+CompetitionStaticBlockers(lastEnvelope,npc.transform),this);
+                        continue;
+                    }
                     ids.Add(actor.id); anchors.Add(anchor); used.Add(anchor.Approach); competitionArenaActors[actor.id]=anchor;
                     competitionFootprints[actor.id]=footprint;
                     if(anchor.Seated)competitionFootprints[actor.id+":approach"]=CompetitionStageFootprint.Actor(anchor.Approach,capsule.radius,capsule.height);
                 }
-                if(ids.Count>0 && npcMeetings.BeginCompetitionStage(ids,anchors,out var reason))
+                string stageReason=null;
+                if(ids.Count>0 && npcMeetings.BeginCompetitionStage(ids,anchors,out stageReason))
                 {
                     foreach(var id in ids)if(competitionBodies.TryGetValue(id,out var body) && body.root!=null)
                         competitionRouteOwners.Add(body.root.transform);
                     competitionAudienceStatus=ids.Count<state.Active.Count(c=>!c.isPlayer) ? "Some houseguests are unavailable; the eligible field remains listed." : "";
                 }
-                else { EndCompetitionCast(); competitionAudienceStatus="Other houseguests could not reach their stage places; the eligible field is listed."; }
+                else
+                {
+                    Debug.Log("[Gamesim competition stage] native lease request failed: "+stageReason+". "+CompetitionStageDiagnostic(),this);
+                    EndCompetitionCast(); competitionAudienceStatus="Other houseguests could not reach their stage places; the eligible field is listed.";
+                }
             }
             Color accent=state.phase==EpisodePhase.Veto?UiTheme.Award:UiTheme.Gold;
             AddCompetitionInstrument(state.playerId,competitionPlayerStation,definition,EpisodeEngine.CompetitionCategory(state),accent);
@@ -322,10 +346,18 @@ namespace Gamesim.Episode
             if(!arrived || !CompetitionPresentationReady || body.visual!=null && (body.visual.IsBodyAssembling || body.visual.IsChangingOutfit))
             {instrument.gameObject.SetActive(false);return false;}
             Physics.SyncTransforms();
-            if(!competitionRouteOwners.Contains(body.root.transform)
-                || !competitionFootprints.TryGetValue(instrument.ActorId,out var footprint) || !instrument.Fits(footprint)
-                || !footprint.HasStaticClearance(gameObject.scene.GetPhysicsScene(),competitionStageFloor,competitionPlacementHits,competitionRouteOwners))
+            bool owned=competitionRouteOwners.Contains(body.root.transform);
+            bool reserved=competitionFootprints.TryGetValue(instrument.ActorId,out var footprint);
+            bool fitted=reserved && instrument.Fits(footprint);
+            bool clear=reserved && footprint.HasStaticClearance(gameObject.scene.GetPhysicsScene(),competitionStageFloor,competitionPlacementHits,competitionRouteOwners);
+            if(!owned || !reserved || !fitted || !clear)
             {
+                var outside=reserved?instrument.GetComponentsInChildren<MeshFilter>(true).FirstOrDefault(mesh=>!footprint.Contains(mesh)):null;
+                Debug.Log("[Gamesim competition stage] fitted station refused actor="+instrument.ActorId+" family="+instrument.Instrument
+                    +" owned="+owned+" reserved="+reserved+" fitted="+fitted+" clear="+clear
+                    +" mesh="+(outside!=null?outside.name:"none")+" actor="+body.root.transform.position.ToString("F3")
+                    +" instrumentOffset="+instrument.transform.localPosition.ToString("F3")
+                    +" blockers="+(reserved?CompetitionStaticBlockers(footprint):"no reservation")+". "+CompetitionStageDiagnostic(),this);
                 message="An instrument's reserved place is obstructed. Return to the briefing and try again.";
                 CancelChallenge();return false;
             }
@@ -339,6 +371,38 @@ namespace Gamesim.Episode
             body.arrived=npcMeetings!=null && npcMeetings.CompetitionActorArrived(id);
             if(body.arrived && body.root!=null)body.arrivedPosition=body.root.transform.position;
             return body.arrived;
+        }
+
+        // Failure-only native evidence is recorded before cancellation releases the routes.
+        // The public message remains short; these reads never change actor roots or season state.
+        private string CompetitionStageDiagnostic()
+        {
+            return "playerArrived="+(player!=null && player.ActivityHasArrived(competitionPlayerOwner))
+                +" native="+(npcMeetings!=null?npcMeetings.CompetitionArrivals+"/"+npcMeetings.CompetitionStageCount:"missing")
+                +" actors="+string.Join("; ",competitionArenaActors.Select(pair=>
+                {
+                    if(!competitionBodies.TryGetValue(pair.Key,out var body) || body.root==null)return pair.Key+":missing";
+                    var motion=body.root.GetComponent<HouseNpcMotion>();
+                    return pair.Key+" "+(motion!=null?motion.State.ToString():"no motion")+" at="+body.root.transform.position.ToString("F3")
+                        +" destination="+(motion!=null?motion.ReservedDestination.ToString("F3"):"none")
+                        +" arrival="+(motion!=null?motion.ArrivalFailure??"proved":"no motion");
+                }));
+        }
+
+        private string CompetitionStaticBlockers(CompetitionStageFootprint footprint,Transform prospectiveSelf=null)
+        {
+            int count=gameObject.scene.GetPhysicsScene().OverlapBox(footprint.Center,footprint.HalfSize,competitionPlacementHits,
+                footprint.Rotation,~0,QueryTriggerInteraction.Ignore);
+            var blocked=new List<string>();
+            for(int i=0;i<count;i++)
+            {
+                var collider=competitionPlacementHits[i];if(collider==null || collider==competitionStageFloor)continue;
+                bool owned=false;
+                for(var at=collider.transform;at!=null;at=at.parent)
+                    if(at==prospectiveSelf || competitionRouteOwners.Contains(at)){owned=true;break;}
+                if(!owned)blocked.Add(collider.name+"@"+collider.transform.position.ToString("F3"));
+            }
+            return (count==competitionPlacementHits.Length?"query overflow; ":"")+string.Join(",",blocked);
         }
 
         private bool PausedCompetitionArrival(CompetitionBody body)
@@ -499,6 +563,7 @@ namespace Gamesim.Episode
             competitionArenaStatus=arrivals+" / "+total+" houseguests in position. "+competitionAudienceStatus;
             if(Time.unscaledTime>competitionAssemblyDeadline && !CompetitionArenaReady)
             {
+                Debug.Log("[Gamesim competition stage] native assembly deadline. "+CompetitionStageDiagnostic(),this);
                 if(!player.ActivityHasArrived(competitionPlayerOwner))
                 {message="Your competition route could not finish. Your attempt has not started.";CancelChallenge();}
                 else {EndCompetitionCast();competitionAudienceStatus="Some audience routes did not finish. The eligible field remains listed.";}

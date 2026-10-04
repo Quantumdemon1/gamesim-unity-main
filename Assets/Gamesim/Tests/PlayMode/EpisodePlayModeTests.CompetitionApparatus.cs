@@ -72,7 +72,7 @@ namespace Gamesim.Tests.PlayMode
                 if(screen.Paused)yield return PressKey(Key.P);else yield return null;
             }
             if(stopAtReady)Assert.That(ChallengeRun().Elapsed,Is.Zero,"Native arrivals precede attempt time.");
-            else Assert.That(screen.IsPlaying,Is.True,"The actual native arrivals and ready count permit play.");
+            else Assert.That(screen.IsPlaying,Is.True,"The actual native arrivals and ready count permit play. "+CompetitionFieldDiagnostic());
             if(category=="Endurance")
             {
                 yield return null;yield return null;
@@ -206,7 +206,7 @@ namespace Gamesim.Tests.PlayMode
             float deadline=Time.realtimeSinceStartup+40f;
             while(screen.IsShowing && !screen.IsPlaying && Time.realtimeSinceStartup<deadline)
             {if(screen.Paused)yield return PressKey(Key.P);else yield return null;}
-            Assert.That(screen.IsPlaying,Is.True);
+            Assert.That(screen.IsPlaying,Is.True,CompetitionFieldDiagnostic());
             Assert.That(SceneComponents<CompetitionApparatus>().Count(),Is.EqualTo(6),CompetitionFieldDiagnostic());
             var anchors=NpcRead<Dictionary<string,HouseInteractionAnchor>>("competitionArenaActors");
             Assert.That(anchors,Has.Count.EqualTo(11),"The six-member veto field has six actual audience members in the twelve-person house.");
@@ -224,7 +224,9 @@ namespace Gamesim.Tests.PlayMode
             return "Arena: "+NpcRead<string>("competitionArenaStatus")+" Audience: "+NpcRead<string>("competitionAudienceStatus")
                 +" Native stage: "+(meetings!=null?meetings.CompetitionArrivals+"/"+meetings.CompetitionStageCount+" ready="+meetings.IsReady:"missing")
                 +" Motions: "+string.Join("; ",SceneComponents<HouseNpcMotion>().Select(motion=>motion.BoundNpcId+" "+motion.State
-                    +" lease="+(motion.LeaseId??"none")+" failure="+(motion.FailureReason??motion.LastRouteFailure??"none")));
+                +" lease="+(motion.LeaseId??"none")+" failure="+(motion.FailureReason??motion.LastRouteFailure??"none")
+                +" arrival="+(motion.ArrivalFailure??"proved")+" at="+motion.transform.position.ToString("F3")
+                +" destination="+motion.ReservedDestination.ToString("F3")))+" Message: "+NpcRead<string>("message");
         }
 
         private IEnumerator CaptureCompetitionFullField(string category,int houseSize)

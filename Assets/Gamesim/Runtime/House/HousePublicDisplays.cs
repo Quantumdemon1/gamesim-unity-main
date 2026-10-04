@@ -16,15 +16,22 @@ namespace Gamesim.House
         public const string PhotoName="HoH photo", PlaqueName="Reward plaque", YardName="Yard display";
         private readonly Dictionary<Renderer,TMP_Text> labels=new Dictionary<Renderer,TMP_Text>();
         private readonly List<Renderer> photos=new List<Renderer>();
+        private static readonly string[] CompetitionLetterNames={"bb_set_sign_hoh","bb_set_sign_pillars","bb_set_sign_samehouse"};
+        private readonly Dictionary<Canvas,bool> hiddenYardCanvases=new Dictionary<Canvas,bool>();
+        private readonly Dictionary<Renderer,bool> hiddenYardLetters=new Dictionary<Renderer,bool>();
+        private bool competitionBoardDrawn;
         public string HeadOfHouseholdId { get; private set; }
         public string HeadOfHouseholdName { get; private set; }
         public string YardText { get; private set; }
         public int PortraitCount=>photos.Count;
 
+        public static HousePublicDisplays Find(Scene scene)=>!scene.IsValid() || !scene.isLoaded?null
+            :scene.GetRootGameObjects().SelectMany(root=>root.GetComponentsInChildren<HousePublicDisplays>(true)).FirstOrDefault();
+
         public static void Project(Scene scene,EpisodeState state)
         {
             if(!scene.IsValid() || !scene.isLoaded || state==null)return;
-            var display=scene.GetRootGameObjects().SelectMany(root=>root.GetComponentsInChildren<HousePublicDisplays>(true)).FirstOrDefault();
+            var display=Find(scene);
             if(display==null)
             {
                 var holder=new GameObject("House public displays");SceneManager.MoveGameObjectToScene(holder,scene);
@@ -32,6 +39,45 @@ namespace Gamesim.House
             }
             display.Refresh(state);
         }
+
+        /// <summary>Only the public yard words yield to a drawn competition board; physical scenery stays.</summary>
+        public void SetCompetitionBoardDrawn(bool drawn)
+        {
+            if(competitionBoardDrawn==drawn)return;
+            competitionBoardDrawn=drawn;
+            if(!drawn){RestoreYardWords();return;}
+            foreach(var pair in labels)
+                if(pair.Key!=null && pair.Key.name==YardName && pair.Value!=null)HideYardCanvas(pair.Value);
+            var world=gameObject.scene.GetRootGameObjects().FirstOrDefault(root=>root.name=="House Architecture");
+            var course=world!=null?world.transform.Find("Set Pieces/Competition course"):null;
+            if(course==null)return;
+            foreach(string name in CompetitionLetterNames)
+            {
+                var model=course.Find(name);
+                if(model==null)continue;
+                foreach(var renderer in model.GetComponentsInChildren<Renderer>(true))
+                {
+                    hiddenYardLetters.Add(renderer,renderer.enabled);
+                    renderer.enabled=false;
+                }
+            }
+        }
+
+        private void HideYardCanvas(TMP_Text label)
+        {
+            var canvas=label.GetComponentInParent<Canvas>();
+            if(canvas==null || canvas.renderMode!=RenderMode.WorldSpace)return;
+            if(!hiddenYardCanvases.ContainsKey(canvas))hiddenYardCanvases.Add(canvas,canvas.enabled);
+            canvas.enabled=false;
+        }
+        private void RestoreYardWords()
+        {
+            foreach(var pair in hiddenYardCanvases)if(pair.Key!=null)pair.Key.enabled=pair.Value;
+            foreach(var pair in hiddenYardLetters)if(pair.Key!=null)pair.Key.enabled=pair.Value;
+            hiddenYardCanvases.Clear();hiddenYardLetters.Clear();
+        }
+        private void OnDisable(){competitionBoardDrawn=false;RestoreYardWords();}
+        private void OnDestroy(){competitionBoardDrawn=false;RestoreYardWords();}
 
         /// <summary>Reads public identities and announced competition winners; never events, scores, relationships or strategic terms.</summary>
         public static string PublicYardText(EpisodeState state)
@@ -108,6 +154,9 @@ namespace Gamesim.House
                     labels[renderer]=label;
                 }
                 label.text=renderer.name==YardName?YardText:"HEAD OF HOUSEHOLD\n"+(hoh?.name??"Not yet decided");
+                // Projection continues while the canvas is hidden; returning to the yard reads
+                // the latest committed public state rather than the state before the board.
+                if(competitionBoardDrawn && renderer.name==YardName)HideYardCanvas(label);
             }
             foreach(var target in labels.Keys.Where(r=>r==null).ToArray())labels.Remove(target);
         }

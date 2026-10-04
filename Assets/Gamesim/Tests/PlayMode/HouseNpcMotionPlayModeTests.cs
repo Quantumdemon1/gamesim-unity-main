@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Bootstrap;
 using Gamesim.House;
+using Gamesim.Presentation;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.AI;
@@ -215,6 +216,62 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(motion.LeaseId, Is.EqualTo("seat-helper-route"));
             Assert.That(motion.IsBound, Is.True, motion.FailureReason);
+        }
+
+        [UnityTest]
+        public IEnumerator NpcMotion_CompetitionContactKeepsTheNativeLeaseAndOnlyItsReviewedTypeIsAllowed()
+        {
+            var npc = MotionMaya();
+            var capsule = npc.GetComponent<CapsuleCollider>();
+            var obstacle = npc.GetComponent<NavMeshObstacle>();
+            Vector3 originalCenter = capsule.center;
+            float originalRadius = capsule.radius, originalHeight = capsule.height;
+            Assert.That(HouseNpcMotion.TryCreate(npc, CreateNpcRoomQuery(), NpcMotionFilter(), 0,
+                out var motion, out var reason), Is.True, reason);
+            yield return WaitForNpcBinding(motion, obstacle);
+            var agent = motion.Agent;
+            const string token = "competition-contact-native-route";
+            Assert.That(motion.TryReserveAndPath(token, new Vector3(3,0,-3)), Is.True, motion.LastRouteFailure);
+
+            // Arena installs the contact helper AFTER acquiring a native route. Its next
+            // Update used to fail the movement owner's root-behaviour audit and drop the cast.
+            Vector3 beforeAttach = npc.transform.position;
+            var contact = npc.gameObject.AddComponent<CompetitionInstrumentPose>();
+            Assert.That(npc.transform.position, Is.EqualTo(beforeAttach), "A hand-fitting helper cannot warp its navigation root.");
+            for (int frame = 0; frame < 4; frame++)
+            {
+                yield return null;
+                Assert.That(motion.IsBound, Is.True, motion.FailureReason);
+                Assert.That(motion.LeaseId, Is.EqualTo(token));
+                Assert.That(motion.Agent, Is.SameAs(agent));
+                Assert.That(obstacle.enabled, Is.False);
+            }
+            float deadline = Time.realtimeSinceStartup + 14;
+            while (!motion.HasArrivedAt(token) && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(motion.HasArrivedAt(token), Is.True, motion.FailureReason ?? motion.ArrivalFailure);
+            Assert.That(Vector3.Distance(beforeAttach, npc.transform.position), Is.GreaterThan(.3f), "The original agent actually walked its route.");
+            Assert.That(capsule.center, Is.EqualTo(originalCenter));
+            Assert.That(capsule.radius, Is.EqualTo(originalRadius)); Assert.That(capsule.height, Is.EqualTo(originalHeight));
+            Assert.That(capsule.enabled && !capsule.isTrigger, Is.True);
+
+            contact.Release();
+            Assert.That(motion.LeaseId, Is.EqualTo(token), "Contact cleanup cannot release somebody else's movement lease.");
+            Assert.That(motion.Release(token), Is.True);
+            Vector3 stopped = npc.transform.position;
+            for (int frame = 0; frame < 4; frame++) yield return null;
+            Assert.That(motion.IsBound, Is.True, motion.FailureReason);
+            Assert.That(motion.LeaseId, Is.Null); Assert.That(agent.isStopped && !agent.hasPath, Is.True);
+            Assert.That(Vector3.Distance(stopped, npc.transform.position), Is.LessThan(.03f));
+            Assert.That(obstacle.enabled, Is.False);
+
+            // Another inert presentation behaviour is still unreviewed on an NPC root.
+            // This deliberately tests the specific sealed type allowance, not its namespace.
+            npc.gameObject.AddComponent<CompetitionApparatus>();
+            yield return null;
+            Assert.That(motion.State, Is.EqualTo(HouseNpcMotionState.Failed));
+            Assert.That(motion.FailureReason, Does.Contain("unrecognized root behaviour"));
+            Assert.That(agent.enabled, Is.False); Assert.That(obstacle.enabled, Is.True);
+            Assert.That(Vector3.Distance(stopped, npc.transform.position), Is.LessThan(.03f));
         }
 
         [UnityTest]

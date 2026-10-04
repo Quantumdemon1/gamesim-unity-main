@@ -130,7 +130,7 @@ namespace Gamesim.Tests.PlayMode
                 if(category=="Endurance")yield return HoldTheActualGrip();
                 var instruments=SceneComponents<CompetitionApparatus>().ToArray();
                 Assert.That(EpisodeEngine.CompetitionPlayers(before).Count(),Is.EqualTo(houseSize));
-                Assert.That(instruments,Has.Length.EqualTo(houseSize),category+": every eligible entrant must have a native, occupied instrument station in the "+houseSize+"-person field.");
+                Assert.That(instruments,Has.Length.EqualTo(houseSize),category+": every eligible entrant must have a native, occupied instrument station in the "+houseSize+"-person field. "+CompetitionFieldDiagnostic());
                 var floor=SceneComponents<BoxCollider>().Single(collider=>collider.name=="Competition yard floor");var scratch=new Collider[256];
                 var reservations=director.CompetitionFootprints.ToArray();
                 Physics.SyncTransforms();
@@ -207,7 +207,7 @@ namespace Gamesim.Tests.PlayMode
             while(screen.IsShowing && !screen.IsPlaying && Time.realtimeSinceStartup<deadline)
             {if(screen.Paused)yield return PressKey(Key.P);else yield return null;}
             Assert.That(screen.IsPlaying,Is.True);
-            Assert.That(SceneComponents<CompetitionApparatus>().Count(),Is.EqualTo(6));
+            Assert.That(SceneComponents<CompetitionApparatus>().Count(),Is.EqualTo(6),CompetitionFieldDiagnostic());
             var anchors=NpcRead<Dictionary<string,HouseInteractionAnchor>>("competitionArenaActors");
             Assert.That(anchors,Has.Count.EqualTo(11),"The six-member veto field has six actual audience members in the twelve-person house.");
             var contestants=new HashSet<string>(EpisodeEngine.CompetitionPlayers(before).Select(actor=>actor.id));
@@ -216,6 +216,15 @@ namespace Gamesim.Tests.PlayMode
             else yield return PauseActualVetoAudience();
             yield return CancelInstrumentAttempt(before);
             Assert.That(NpcRead<HashSet<Transform>>("competitionRouteOwners"),Is.Empty);
+        }
+
+        private string CompetitionFieldDiagnostic()
+        {
+            var meetings=NpcRead<HouseMeetingCoordinator>("npcMeetings");
+            return "Arena: "+NpcRead<string>("competitionArenaStatus")+" Audience: "+NpcRead<string>("competitionAudienceStatus")
+                +" Native stage: "+(meetings!=null?meetings.CompetitionArrivals+"/"+meetings.CompetitionStageCount+" ready="+meetings.IsReady:"missing")
+                +" Motions: "+string.Join("; ",SceneComponents<HouseNpcMotion>().Select(motion=>motion.BoundNpcId+" "+motion.State
+                    +" lease="+(motion.LeaseId??"none")+" failure="+(motion.FailureReason??motion.LastRouteFailure??"none")));
         }
 
         private IEnumerator CaptureCompetitionFullField(string category,int houseSize)

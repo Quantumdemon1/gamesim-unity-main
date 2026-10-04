@@ -94,6 +94,70 @@ namespace Gamesim.Tests.PlayMode
             :category=="Social"?CompetitionApparatus.Family.WordConsole:CompetitionApparatus.Family.Signals;
 
         [UnityTest]
+        public IEnumerator Apparatus_DiceClearanceIncludesRailsAndRollingCornersWithoutMovingTheReservedAnchor()
+        {
+            var definition=CompetitionDefinitions.All.First(item=>item.Category=="Luck");
+            var instrument=Make(definition,inactive:true);
+            Vector3 anchorPosition=owner.transform.position;Quaternion anchorRotation=owner.transform.rotation;
+            var raised=instrument.GetComponentsInChildren<MeshFilter>(true)
+                .Where(part=>part.sharedMesh!=null && part.sharedMesh.name=="Competition instrument block"
+                    && !part.name.Contains("stance rail")).ToArray();
+            var die=raised.First(part=>part.name=="Die 0");
+            foreach(float radius in new[]{.40f,.32f,.55f})
+            foreach(var bodyOffset in new[]{new Vector3(.13f,0,-.23f),new Vector3(-.16f,0,.19f)})
+            {
+                var run=new MiniGameRun(CompetitionMiniGames.Kind.Dice,123,4,definition);
+                instrument.Sync(run,true,false,false,false);
+                instrument.FitActorClearance(radius,bodyOffset);
+                Vector3 fitted=instrument.transform.localPosition;
+                Assert.That(fitted.x,Is.EqualTo(bodyOffset.x));
+                AssertRaisedClearance(raised,bodyOffset,radius);
+                Assert.That(run.Roll(),Is.True);
+                for(int step=0;step<5;step++)
+                {
+                    if(step>0)run.Tick(.1125);
+                    Assert.That(run.DieLanded(0),Is.False);
+                    string before=Fingerprint(run);
+                    // Match the native order: fit first, then read the attempt's new rotation.
+                    instrument.FitActorClearance(radius,bodyOffset);
+                    instrument.Sync(run,true,false,false,false);
+                    Assert.That(instrument.transform.localPosition,Is.EqualTo(fitted),"Rolling must not push the instrument back and forth.");
+                    AssertRaisedClearance(raised,bodyOffset,radius);
+                    if(step==2)
+                    {
+                        Assert.That(Quaternion.Angle(Quaternion.identity,die.transform.localRotation),Is.EqualTo(45f).Within(.01f));
+                        Assert.That(NearestRaisedVertex(raised,bodyOffset),Is.EqualTo(radius+.10f).Within(.001f),
+                            "The rolling corner is the nearest actual solid, without excessive displacement.");
+                    }
+                    instrument.FitPress(new Vector3(.18f,1.53f,.08f),.62f);
+                    AssertRaisedClearance(raised,bodyOffset,radius);
+                    Assert.That(Fingerprint(run),Is.EqualTo(before),"Geometry fitting and progress reads leave the attempt unchanged.");
+                }
+                foreach(bool paused in new[]{true,false})
+                {
+                    instrument.Sync(run,true,false,paused,!paused);
+                    Assert.That(die.transform.localRotation,Is.EqualTo(Quaternion.identity));
+                    AssertRaisedClearance(raised,bodyOffset,radius);
+                    Assert.That(instrument.transform.localPosition,Is.EqualTo(fitted));
+                }
+                Assert.That(instrument.Fits(CompetitionStageFootprint.Station(instrument.Instrument,anchorPosition,
+                    anchorRotation.eulerAngles.y,radius,1.9f)),Is.True,"The corrected solids still fit the existing station reservation.");
+                Assert.That(owner.transform.position,Is.EqualTo(anchorPosition));
+                Assert.That(owner.transform.rotation,Is.EqualTo(anchorRotation));
+            }
+            owner.SetActive(true);
+            yield return null;
+        }
+
+        private float NearestRaisedVertex(IEnumerable<MeshFilter> raised,Vector3 bodyOffset)
+            =>raised.SelectMany(part=>part.sharedMesh.vertices.Select(vertex=>
+                owner.transform.InverseTransformPoint(part.transform.TransformPoint(vertex)).z-bodyOffset.z)).Min();
+
+        private void AssertRaisedClearance(IEnumerable<MeshFilter> raised,Vector3 bodyOffset,float radius)
+            =>Assert.That(NearestRaisedVertex(raised,bodyOffset),Is.GreaterThanOrEqualTo(radius+.099f),
+                "Every actual raised mesh vertex clears the capsule plus the existing ten-centimetre gap.");
+
+        [UnityTest]
         public IEnumerator Apparatus_WholeFootprintRejectsFurnitureBeyondTheActorAndDifferentlyFacingNeighbours()
         {
             owner=new GameObject("Footprint test ownership");

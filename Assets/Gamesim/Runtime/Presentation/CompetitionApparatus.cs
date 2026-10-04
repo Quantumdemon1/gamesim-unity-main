@@ -29,6 +29,8 @@ namespace Gamesim.Presentation
         private readonly List<Mesh> meshes = new List<Mesh>();
         private readonly List<Material> materials = new List<Material>();
         private readonly List<MeshFilter> solidMeshes=new List<MeshFilter>();
+        private readonly List<MeshFilter> raisedMeshes=new List<MeshFilter>();
+        private readonly HashSet<MeshFilter> yawingMeshes=new HashSet<MeshFilter>();
         private readonly List<Renderer> indicators = new List<Renderer>();
         private readonly List<TMP_Text> glyphs = new List<TMP_Text>();
         private readonly Dictionary<Renderer,Renderer> repeaters = new Dictionary<Renderer,Renderer>();
@@ -44,6 +46,7 @@ namespace Gamesim.Presentation
         private Renderer gripRenderer;
         private float gripHeight = 1.16f;
         private bool overlaysVisible = true;
+        private float nearestRaisedZ;
         private const float Front = .56f;
 
         public static Family For(CompetitionDefinition definition, string category = null)
@@ -83,8 +86,8 @@ namespace Gamesim.Presentation
             box = BoxMesh();
             meshes.Add(box);
             // An open-footed stance mark belongs to the instrument, rather than a generic disc.
-            Part("Left stance rail", new Vector3(-.30f, .016f, .02f), new Vector3(.035f, .025f, .55f), accent);
-            Part("Right stance rail", new Vector3(.30f, .016f, .02f), new Vector3(.035f, .025f, .55f), accent);
+            Part("Left stance rail", new Vector3(-.30f, .016f, .02f), new Vector3(.035f, .025f, .55f), accent, clearsActor:false);
+            Part("Right stance rail", new Vector3(.30f, .016f, .02f), new Vector3(.035f, .025f, .55f), accent, clearsActor:false);
             switch (Instrument)
             {
                 case Family.PairConsole: BuildPairs(); break;
@@ -104,6 +107,7 @@ namespace Gamesim.Presentation
                     Vector3 at=indicator.transform.localPosition;at.x=-at.x;at.z=Front+.13f;
                     repeaters[indicator]=Part(indicator.name+" audience face",at,indicator.transform.localScale,paper);
                 }
+            nearestRaisedZ=NearestRaisedSolid();
         }
 
         private void Console(float height, float width)
@@ -165,7 +169,7 @@ namespace Gamesim.Presentation
             for (int i = 0; i < 3; i++)
             {
                 Vector3 at = new Vector3((i - 1) * .25f, 1.28f, Front - .115f);
-                indicators.Add(Part("Die " + i, at, Vector3.one * .17f, paper));
+                indicators.Add(Part("Die " + i, at, Vector3.one * .17f, paper, sweepsYaw:true));
                 glyphs.Add(Words("Die face " + i, at + Vector3.back * .09f, .14f, .14f, "—"));
             }
         }
@@ -252,8 +256,35 @@ namespace Gamesim.Presentation
         public void FitActorClearance(float bodyRadius,Vector3 bodyOffset=default)
         {
             if(Instrument==Family.GripRig)return; // The hand-fit owns that rig's depth.
-            float nearest=Instrument==Family.Signals?.315f:Instrument==Family.DiceTray?.35f:.47f;
-            transform.localPosition=new Vector3(bodyOffset.x,0,bodyOffset.z+Mathf.Max(0,bodyRadius+.10f-nearest));
+            transform.localPosition=new Vector3(bodyOffset.x,0,bodyOffset.z+Mathf.Max(0,bodyRadius+.10f-nearestRaisedZ));
+        }
+
+        private float NearestRaisedSolid()
+        {
+            // Measure the authored solids once, before contact fitting. All later contact
+            // adjustments change height only; the dice also turn about their local Y axis.
+            // Reserve that entire sweep so progress reads cannot move a corner into the body.
+            float nearest=float.PositiveInfinity;
+            var inverse=transform.worldToLocalMatrix;
+            foreach(var mesh in raisedMeshes)
+            {
+                var bounds=mesh.sharedMesh.bounds;
+                var toLocal=inverse*mesh.transform.localToWorldMatrix;
+                Vector3 pivot=toLocal.MultiplyPoint3x4(Vector3.zero);
+                bool sweepsYaw=yawingMeshes.Contains(mesh);
+                for(int x=-1;x<=1;x+=2)for(int y=-1;y<=1;y+=2)for(int z=-1;z<=1;z+=2)
+                {
+                    Vector3 point=toLocal.MultiplyPoint3x4(bounds.center+Vector3.Scale(bounds.extents,new Vector3(x,y,z)));
+                    float depth=point.z;
+                    if(sweepsYaw)
+                    {
+                        float dx=point.x-pivot.x,dz=point.z-pivot.z;
+                        depth=pivot.z-Mathf.Sqrt(dx*dx+dz*dz);
+                    }
+                    nearest=Mathf.Min(nearest,depth);
+                }
+            }
+            return nearest;
         }
 
         /// <summary>Fit only the grip contact geometry; the reserved root and navigation are untouched.</summary>
@@ -331,13 +362,15 @@ namespace Gamesim.Presentation
             return true;
         }
 
-        private Renderer Part(string name, Vector3 position, Vector3 scale, Material material)
+        private Renderer Part(string name, Vector3 position, Vector3 scale, Material material,bool clearsActor=true,bool sweepsYaw=false)
         {
             var part = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
             part.transform.SetParent(transform, false);
             part.transform.localPosition = position;
             part.transform.localScale = scale;
             var mesh=part.GetComponent<MeshFilter>();mesh.sharedMesh = box;solidMeshes.Add(mesh);
+            if(clearsActor)raisedMeshes.Add(mesh);
+            if(sweepsYaw)yawingMeshes.Add(mesh);
             var renderer = part.GetComponent<MeshRenderer>();
             renderer.sharedMaterial = material;
             renderer.shadowCastingMode = ShadowCastingMode.Off;

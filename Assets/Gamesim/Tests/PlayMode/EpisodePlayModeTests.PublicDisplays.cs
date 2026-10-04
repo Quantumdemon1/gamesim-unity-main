@@ -32,6 +32,10 @@ namespace Gamesim.Tests.PlayMode
                 .Select(renderer=>(Renderer:renderer,Enabled:renderer.enabled)).ToArray();
             var photos=SceneComponents<Renderer>().Where(r=>r.name==HousePublicDisplays.PhotoName).ToArray();
             Assert.That(photos,Has.Length.EqualTo(4));
+            AssertPublicHoHMount(photos);
+            var mount=photos[0].transform.parent.GetComponentsInChildren<Renderer>(true)
+                .Where(r=>r.name==HousePublicDisplays.PhotoName || r.name=="HoH photo frame" || r.name==HousePublicDisplays.PlaqueName)
+                .Select(r=>(Renderer:r,Position:r.transform.position)).ToArray();
             Assert.That(displays.HeadOfHouseholdId,Is.EqualTo(director.Snapshot.hohId));
             Assert.That(displays.YardText,Does.Contain("Week "+director.Snapshot.week));
             Assert.That(photos.All(p=>PublicPhotoTexture(p)==null),Is.True,"No current HoH means no placeholder family is presented as their portrait.");
@@ -106,6 +110,9 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.Snapshot.hohId,Is.EqualTo(state.hohId));
             Assert.That(director.Snapshot.revision,Is.EqualTo(state.revision));
             Assert.That(director.Snapshot.randomState,Is.EqualTo(state.randomState));
+            AssertPublicHoHMount(photos);
+            foreach(var member in mount)Assert.That(member.Renderer.transform.position,Is.EqualTo(member.Position),
+                "Committed projection updates identity without drifting the physical mount.");
             var publicReset=state.Clone();publicReset.hohId=null;
             HousePublicDisplays.Project(player.gameObject.scene,publicReset);yield return null;
             Assert.That(displays.HeadOfHouseholdName,Is.Null);
@@ -134,13 +141,31 @@ namespace Gamesim.Tests.PlayMode
             var canvasStates=new (Canvas Canvas,bool Enabled)[0];
             try
             {
-                cameraRig.MoveTo(new HouseCameraRig.Shot{Focus=bounds.center,Distance=distance,Pitch=0,
-                    Yaw=face.eulerAngles.y,FieldOfView=fov,Seconds=.01f});
-                float deadline=Time.realtimeSinceStartup+4f;
-                while(Time.realtimeSinceStartup<deadline && (cameraRig.IsTravelling || !cameraRig.HasArrived(.05f)
-                    || Mathf.Abs(cameraRig.ViewCamera.fieldOfView-fov)>.5f))yield return null;
-                Assert.That(cameraRig.IsTravelling || !cameraRig.HasArrived(.05f),Is.False,"The real display shot must arrive.");
-                Assert.That(Mathf.Abs(cameraRig.ViewCamera.fieldOfView-fov),Is.LessThanOrEqualTo(.5f));
+                bool found=false;string rejected=null;int candidate=0;
+                // Keep a useful front view first. These twelve modest physical alternatives
+                // may avoid a live houseguest, but never accept sight through a solid face.
+                foreach(float factor in new[]{1f,1.5f})
+                {
+                    foreach(float pitch in new[]{0f,20f})
+                    {
+                        foreach(float yawOffset in new[]{0f,-20f,20f})
+                        {
+                            candidate++;
+                            cameraRig.MoveTo(new HouseCameraRig.Shot{Focus=bounds.center,Distance=distance*factor,Pitch=pitch,
+                                Yaw=face.eulerAngles.y+yawOffset,FieldOfView=fov,Seconds=.01f});
+                            float deadline=Time.realtimeSinceStartup+4f;
+                            while(Time.realtimeSinceStartup<deadline && (cameraRig.IsTravelling || !cameraRig.HasArrived(.05f)
+                                || Mathf.Abs(cameraRig.ViewCamera.fieldOfView-fov)>.5f))yield return null;
+                            Assert.That(cameraRig.IsTravelling || !cameraRig.HasArrived(.05f),Is.False,"The real display shot must arrive.");
+                            Assert.That(Mathf.Abs(cameraRig.ViewCamera.fieldOfView-fov),Is.LessThanOrEqualTo(.5f));
+                            if(PublicSurfacesVisible(surfaces,cameraRig.ViewCamera,out rejected)){found=true;break;}
+                            Debug.Log("[Gamesim] public display candidate "+candidate+" rejected: "+rejected);
+                        }
+                        if(found)break;
+                    }
+                    if(found)break;
+                }
+                Assert.That(found,Is.True,"No clear physical public display view in twelve bounded candidates: "+rejected);
                 lens=new CaptureLens(cameraRig.ViewCamera,dimensions.x,dimensions.y);
                 Canvas.ForceUpdateCanvases();yield return null;
                 var preparation=lens.MakeSureTheCanvasesAreDrawn();
@@ -160,7 +185,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(label.text,Does.Contain(director.Snapshot.Find(hohId).name));
                 Assert.That(director.Snapshot.hohId,Is.EqualTo(hohId));
                 var eye=cameraRig.ViewCamera;
-                foreach(var surface in surfaces)AssertPublicSurfaceSight(surface,eye);
+                Assert.That(PublicSurfacesVisible(surfaces,eye,out var obstruction),Is.True,
+                    "The actual surfaces remain visible at synchronous read: "+obstruction);
                 frame=lens.Read();
                 string path=Path.GetFullPath(Path.Combine(Application.dataPath,"..",name+".png"));
                 File.WriteAllBytes(path,frame.EncodeToPNG());
@@ -169,7 +195,7 @@ namespace Gamesim.Tests.PlayMode
                 AssertRegionHasContent(frame,labelBox,name+": the actual public information face");
                 Debug.Log("[Gamesim] public world capture -> "+path+"; actual HoH "+hohId+"; faces "+
                     string.Join(", ",surfaces.Select(surface=>surface.name+" @ "+surface.bounds.center))+
-                    "; eye "+eye.transform.position+"; information pixels "+labelBox);
+                    "; eye "+eye.transform.position+"; bounded candidate "+candidate+"; collider/opaque faces clear; information pixels "+labelBox);
             }
             finally
             {
@@ -188,20 +214,66 @@ namespace Gamesim.Tests.PlayMode
                 .Select(surface.transform.TransformPoint).ToArray();
         }
 
-        private static void AssertPublicSurfaceSight(Renderer surface,Camera eye)
+        private bool PublicSurfacesVisible(Renderer[] surfaces,Camera eye,out string failure)
         {
+            var corridor=new Bounds(eye.transform.position,Vector3.zero);
+            foreach(var point in surfaces.SelectMany(PublicSurfaceCorners))corridor.Encapsulate(point);
+            corridor.Expand(.02f);
+            var geometry=new CompetitionInspectionGeometry(SceneComponents<Renderer>().Where(renderer=>renderer.enabled
+                && renderer.gameObject.activeInHierarchy && (renderer is MeshRenderer || renderer is SkinnedMeshRenderer)
+                && renderer.GetComponent<TMP_Text>()==null && !surfaces.Contains(renderer)
+                && renderer.sharedMaterials.Any(CompetitionInspectionOpaque) && corridor.Intersects(renderer.bounds)).ToArray());
+            var colliders=SceneComponents<Collider>().Where(collider=>collider.enabled && !collider.isTrigger
+                && collider.gameObject.activeInHierarchy).ToArray();
+            Assert.That(colliders.Length,Is.LessThanOrEqualTo(512),"Physical public sight collider inventory stays bounded.");
+            foreach(var surface in surfaces)
             foreach(var point in PublicSurfaceCorners(surface).Append(surface.bounds.center))
             {
                 var view=eye.WorldToViewportPoint(point);
-                Assert.That(view.z,Is.GreaterThan(eye.nearClipPlane));
-                Assert.That(view.x,Is.InRange(.02f,.98f),surface.name+" must fit inside the physical frame.");
-                Assert.That(view.y,Is.InRange(.02f,.98f),surface.name+" must fit inside the physical frame.");
+                if(view.z<=eye.nearClipPlane || view.x<.02f || view.x>.98f || view.y<.02f || view.y>.98f)
+                {failure=surface.name+" leaves the actual physical frame: "+view;return false;}
                 var line=point-eye.transform.position;
-                foreach(var collider in surface.gameObject.scene.GetRootGameObjects().SelectMany(root=>root.GetComponentsInChildren<Collider>()))
-                    if(collider.enabled && !collider.isTrigger && !collider.transform.IsChildOf(surface.transform)
-                        && collider.Raycast(new Ray(eye.transform.position,line.normalized),out var hit,line.magnitude-.01f))
-                        Assert.Fail(surface.name+" is physically blocked by "+collider.name+" at "+hit.point+".");
+                var ray=new Ray(eye.transform.position,line.normalized);
+                foreach(var collider in colliders)
+                {
+                    if(collider.transform.IsChildOf(surface.transform))continue;
+                    if(collider.bounds.Contains(eye.transform.position)
+                        && (collider.ClosestPoint(eye.transform.position)-eye.transform.position).sqrMagnitude<1e-10f)
+                    {failure="Actual eye is inside "+PublicHierarchy(collider.transform);return false;}
+                    if(collider.Raycast(ray,out var hit,line.magnitude-.01f))
+                    {failure=surface.name+" is physically blocked by "+PublicHierarchy(collider.transform)+" at "+hit.point;return false;}
+                }
+                if(geometry.Blocked(ray,line.magnitude-.01f,out failure))return false;
             }
+            failure=null;return true;
+        }
+
+        private static string PublicHierarchy(Transform transform)=>transform.parent==null?transform.name
+            :PublicHierarchy(transform.parent)+"/"+transform.name;
+
+        private void AssertPublicHoHMount(Renderer[] photos)
+        {
+            var members=photos[0].transform.parent.GetComponentsInChildren<Renderer>(true).Where(r=>
+                r.name==HousePublicDisplays.PhotoName || r.name=="HoH photo frame" || r.name==HousePublicDisplays.PlaqueName).ToArray();
+            Assert.That(members,Has.Length.EqualTo(9));
+            var bounds=members[0].bounds;foreach(var member in members.Skip(1))bounds.Encapsulate(member.bounds);
+            var cabinet=SceneComponents<Transform>().Where(t=>t.name=="cabinetTelevision")
+                .OrderBy(t=>(t.GetComponentsInChildren<Renderer>()[0].bounds.center-bounds.center).sqrMagnitude).First();
+            var physical=cabinet.GetComponentsInChildren<Renderer>()[0].bounds;
+            foreach(var renderer in cabinet.GetComponentsInChildren<Renderer>().Skip(1))physical.Encapsulate(renderer.bounds);
+            foreach(var collider in cabinet.GetComponentsInChildren<Collider>())if(collider.enabled && !collider.isTrigger)physical.Encapsulate(collider.bounds);
+            Assert.That(bounds.min.y>=physical.max.y+.029f || bounds.max.x<=physical.min.x-.029f || bounds.min.x>=physical.max.x+.029f,Is.True,
+                "The complete actual portrait/frame/plaque group must clear the saved television and its physical proxy.");
+            var wall=SceneComponents<Transform>().Single(t=>t.name=="South wing south wall");
+            var floor=SceneComponents<Transform>().Single(t=>t.name=="HoH floor");
+            Bounds WorldBounds(Transform t){var local=t.GetComponent<MeshFilter>().sharedMesh.bounds;
+                var world=new Bounds(t.TransformPoint(local.center),Vector3.zero);for(int i=0;i<8;i++)world.Encapsulate(t.TransformPoint(new Vector3(
+                    (i&1)==0?local.min.x:local.max.x,(i&2)==0?local.min.y:local.max.y,(i&4)==0?local.min.z:local.max.z)));return world;}
+            var supporting=WorldBounds(wall);var room=WorldBounds(floor);
+            Assert.That(bounds.min.y,Is.GreaterThanOrEqualTo(supporting.min.y));
+            Assert.That(bounds.max.y,Is.LessThanOrEqualTo(supporting.max.y));
+            Assert.That(bounds.min.x,Is.GreaterThanOrEqualTo(Mathf.Max(supporting.min.x,room.min.x)));
+            Assert.That(bounds.max.x,Is.LessThanOrEqualTo(Mathf.Min(supporting.max.x,room.max.x)));
         }
 
         private static Rect PublicSurfaceBox(Renderer surface,Camera eye,Vector2Int dimensions)

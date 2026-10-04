@@ -129,6 +129,7 @@ namespace Gamesim.House
             HeadOfHouseholdId=hoh?.id;HeadOfHouseholdName=hoh?.name;YardText=PublicYardText(state);
             var renderers=gameObject.scene.GetRootGameObjects().SelectMany(root=>root.GetComponentsInChildren<Renderer>(true))
                 .Where(r=>r.enabled && r.gameObject.activeInHierarchy && (r.name==PhotoName || r.name==PlaqueName || r.name==YardName)).ToArray();
+            MountHoHAssembly(renderers);
             photos.Clear();
             foreach(var renderer in renderers)
             {
@@ -159,6 +160,64 @@ namespace Gamesim.House
                 if(competitionBoardDrawn && renderer.name==YardName)HideYardCanvas(label);
             }
             foreach(var target in labels.Keys.Where(r=>r==null).ToArray())labels.Remove(target);
+        }
+
+        private void MountHoHAssembly(Renderer[] publicFaces)
+        {
+            var portraits=publicFaces.Where(r=>r.name==PhotoName).ToArray();
+            if(portraits.Length!=4 || portraits.Any(r=>r.transform.parent!=portraits[0].transform.parent))return;
+            var parent=portraits[0].transform.parent;
+            var members=parent.GetComponentsInChildren<Renderer>(true).Where(r=>r.transform.parent==parent
+                && (r.name==PhotoName || r.name=="HoH photo frame" || r.name==PlaqueName)).ToArray();
+            if(members.Count(r=>r.name==PhotoName)!=4 || members.Count(r=>r.name=="HoH photo frame")!=4
+                || members.Count(r=>r.name==PlaqueName)!=1)return;
+            var all=gameObject.scene.GetRootGameObjects().SelectMany(root=>root.GetComponentsInChildren<Transform>(true)).ToArray();
+            var wall=all.FirstOrDefault(t=>t.name=="South wing south wall");
+            var floor=all.FirstOrDefault(t=>t.name=="HoH floor");
+            if(!PhysicalBounds(wall,out var wallBounds) || !PhysicalBounds(floor,out var floorBounds))return;
+            var assembly=members[0].bounds;
+            foreach(var member in members.Skip(1))assembly.Encapsulate(member.bounds);
+            var cabinet=all.Where(t=>t.name=="cabinetTelevision")
+                .Select(t=>new{Transform=t,Renderers=t.GetComponentsInChildren<Renderer>(true)})
+                .Where(value=>value.Renderers.Length>0).OrderBy(value=>
+                    (value.Renderers[0].bounds.center-assembly.center).sqrMagnitude).FirstOrDefault();
+            if(cabinet==null)return;
+            var obstruction=cabinet.Renderers[0].bounds;
+            foreach(var renderer in cabinet.Renderers.Skip(1))obstruction.Encapsulate(renderer.bounds);
+            foreach(var collider in cabinet.Transform.GetComponentsInChildren<Collider>())
+                if(collider.enabled && !collider.isTrigger)obstruction.Encapsulate(collider.bounds);
+            // The authored television and its conservative physical proxy are taller than
+            // the old console-top assumption. Move only the nine owned display objects.
+            // A cutaway wall may have no vertical space; a side mount keeps its real height.
+            const float gap=.03f;
+            bool xOverlap=assembly.min.x<obstruction.max.x+gap-.0001f && assembly.max.x>obstruction.min.x-gap+.0001f;
+            bool yOverlap=assembly.min.y<obstruction.max.y+gap && assembly.max.y>obstruction.min.y-gap;
+            if(!xOverlap || !yOverlap || Mathf.Abs(assembly.center.z-obstruction.center.z)>1.5f)return;
+            float upward=obstruction.max.y+gap-assembly.min.y;
+            Vector3 offset=Vector3.up*upward;
+            if(assembly.max.y+upward>wallBounds.max.y)
+            {
+                float left=obstruction.min.x-gap-assembly.max.x;
+                float right=obstruction.max.x+gap-assembly.min.x;
+                float min=Mathf.Max(wallBounds.min.x,floorBounds.min.x)+gap;
+                float max=Mathf.Min(wallBounds.max.x,floorBounds.max.x)-gap;
+                if(assembly.min.x+left>=min)offset=Vector3.right*left;
+                else if(assembly.max.x+right<=max)offset=Vector3.right*right;
+                else return; // No supported wall space is preferable to an invented surface.
+            }
+            foreach(var member in members)member.transform.position+=offset;
+        }
+
+        private static bool PhysicalBounds(Transform target,out Bounds bounds)
+        {
+            bounds=default;
+            var filter=target!=null?target.GetComponent<MeshFilter>():null;
+            if(filter==null || filter.sharedMesh==null)return false;
+            var local=filter.sharedMesh.bounds;
+            bounds=new Bounds(target.TransformPoint(local.center),Vector3.zero);
+            for(int i=0;i<8;i++)bounds.Encapsulate(target.TransformPoint(new Vector3(
+                (i&1)==0?local.min.x:local.max.x,(i&2)==0?local.min.y:local.max.y,(i&4)==0?local.min.z:local.max.z)));
+            return true;
         }
 
         private static TMP_Text MountLabel(Renderer target)

@@ -81,7 +81,13 @@ namespace Gamesim.Episode
                 "Creator visual QA needs a graphical standalone window, without -batchmode/-nographics.");
             seasonDirector = director;
             yield return SkipOpening();
+            // Match Profile's allocation step for the hidden-launched graphical window. A single
+            // request for its existing 1600x900 size left the first eight baseline captures black.
+            Screen.SetResolution(1280, 720, FullScreenMode.Windowed);
+            for (int frame = 0; frame < 15; frame++) yield return null;
             Screen.SetResolution(1600, 900, FullScreenMode.Windowed);
+            for (int frame = 0; frame < 15; frame++) yield return null;
+            CreatorRequire(Screen.width == 1600 && Screen.height == 900, "Creator startup did not allocate its requested graphical viewport.");
             double splashDeadline = Time.realtimeSinceStartupAsDouble + 15;
             while (!SplashScreen.isFinished && Time.realtimeSinceStartupAsDouble < splashDeadline) yield return null;
             director.OpenMainMenu();
@@ -169,7 +175,7 @@ namespace Gamesim.Episode
                     }
                     capture.fixedControlsInsideViewport = true;
                     creatorReport.captures.Add(capture);
-                    yield return CaptureCreator("creator-" + size.x + "x" + size.y + (large ? "-large" : "-normal"), capture);
+                    yield return CaptureCreator("creator-" + size.x + "x" + size.y + (large ? "-large" : "-normal"), capture, creator);
                     creatorReport.resolutionCaptures++;
                 }
             creator.FontScale = 1f;
@@ -225,7 +231,8 @@ namespace Gamesim.Episode
                 && creator.Draft.Appearance.ContentKey() == authored.ContentKey();
             CreatorRequire(creatorReport.playerPreservedDuringNpcEdit, "The player must retain their own identity and look after editing a repeated NPC.");
             yield return CreatorClick("Review");
-            yield return CaptureCreator("creator-season-review", null);
+            yield return WaitCreatorPreview(creator, "reopened player for Review");
+            yield return CaptureCreator("creator-season-review", null, creator);
             string previousSession = director.Snapshot.sessionId;
             yield return CreatorClick(CharacterCreator.StartCaption);
             CreatorRequire(director.Snapshot.sessionId != previousSession && !creator.IsShowing, "Starting must install a new safely saved season.");
@@ -332,11 +339,11 @@ namespace Gamesim.Episode
                     sample.previewStatus = creator.StudioPreview.Status;
                     string prefix = "creator-body-" + (bodyIndex + 1) + "-" + sample.boundary;
                     yield return CreatorClick("Front");
-                    yield return CaptureCreator(prefix + "-front", null);
+                    yield return CaptureCreator(prefix + "-front", null, creator);
                     sample.frontPath = Path.Combine(outputDirectory, prefix + "-front.png");
                     creatorReport.bodyBoundsCaptures++;
                     yield return CreatorClick("Side");
-                    yield return CaptureCreator(prefix + "-profile", null);
+                    yield return CaptureCreator(prefix + "-profile", null, creator);
                     sample.profilePath = Path.Combine(outputDirectory, prefix + "-profile.png");
                     creatorReport.bodyBoundsCaptures++;
                     creatorReport.bodyBounds.Add(sample);
@@ -353,15 +360,26 @@ namespace Gamesim.Episode
         private IEnumerator WaitCreatorPreview(CharacterCreator creator, string label)
         {
             double started = Time.realtimeSinceStartupAsDouble;
+            bool alreadyReady = CreatorPreviewMatchesDraft(creator);
+            yield return WaitCreatorPreviewReady(creator, label);
+            var preview = creator.StudioPreview;
+            // This is the wait in this operation's context. A ready cached appearance can reuse
+            // LastBuildMilliseconds from an earlier edit; neither field claims a cold build.
+            creatorReport.builds.Add(new CreatorBuildTiming { operation = label,
+                observedWaitMilliseconds = (Time.realtimeSinceStartupAsDouble - started) * 1000,
+                editToCompletedBuildMilliseconds = preview.LastBuildMilliseconds, status = preview.Status,
+                reusedCompletedAppearance = alreadyReady });
+        }
+
+        private IEnumerator WaitCreatorPreviewReady(CharacterCreator creator, string label)
+        {
+            double started = Time.realtimeSinceStartupAsDouble;
             string key = creator.Draft.Appearance.ContentKey();
             while (Time.realtimeSinceStartupAsDouble - started < 50)
             {
                 var preview = creator.StudioPreview;
                 if (preview != null && !preview.IsBuilding && preview.CompletedKey == key)
                 {
-                    creatorReport.builds.Add(new CreatorBuildTiming { operation = label,
-                        observedWaitMilliseconds = (Time.realtimeSinceStartupAsDouble - started) * 1000,
-                        editToCompletedBuildMilliseconds = preview.LastBuildMilliseconds, status = preview.Status });
                     CreatorRequire(!preview.CanRetry, "UMA preview unexpectedly used a fallback for " + label + ": " + preview.Status);
                     yield break;
                 }
@@ -434,7 +452,7 @@ namespace Gamesim.Episode
                     }
                     capture.fixedControlsInsideViewport = true;
                     creatorReport.captures.Add(capture);
-                    yield return CaptureCreator("creator-quick-" + size.x + "x" + size.y + (large ? "-large" : "-normal"), capture);
+                    yield return CaptureCreator("creator-quick-" + size.x + "x" + size.y + (large ? "-large" : "-normal"), capture, creator);
                     creatorReport.quickResolutionCaptures++;
                 }
             creator.FontScale = 1f;
@@ -499,17 +517,96 @@ namespace Gamesim.Episode
             yield return null; yield return null;
         }
 
-        private IEnumerator CaptureCreator(string name, CreatorCapture capture)
+        private IEnumerator CaptureCreator(string name, CreatorCapture capture, CharacterCreator expectedPreview = null)
         {
             Canvas.ForceUpdateCanvases();
             for (int i = 0; i < 5; i++) yield return null;
+            if (expectedPreview != null)
+            {
+                yield return WaitCreatorPreviewReady(expectedPreview, "capture " + name);
+                // Complete updates its status during Update; give the normal UI its own next frame.
+                yield return null;
+            }
+            var evidence = new CreatorFrameEvidence { name = name };
+            creatorReport.frames.Add(evidence);
+            if (expectedPreview != null)
+                evidence.previewOpaqueSamples = RequireCreatorPreviewPixels(expectedPreview, name);
             string path = Path.Combine(outputDirectory, name + ".png");
+            evidence.path = path;
+            CreatorRequire(!File.Exists(path), "Creator capture requires a fresh output path: " + name);
+            // Keep the ordinary native screen capture, including a rejected image for diagnosis.
+            // File existence alone accepted eight identical black baseline frames.
             ScreenCapture.CaptureScreenshot(path);
             double deadline = Time.realtimeSinceStartupAsDouble + 5;
-            while ((!File.Exists(path) || new FileInfo(path).Length == 0) && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
-            CreatorRequire(File.Exists(path) && new FileInfo(path).Length > 0, "Capture was not written: " + name);
+            var pixels = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            try
+            {
+                bool decoded = false;
+                while (Time.realtimeSinceStartupAsDouble < deadline)
+                {
+                    if (File.Exists(path) && new FileInfo(path).Length > 0)
+                    {
+                        try { decoded = pixels.LoadImage(File.ReadAllBytes(path)); }
+                        catch (IOException) { /* The screenshot writer may still own the file. */ }
+                        if (decoded) break;
+                    }
+                    yield return null;
+                }
+                CreatorRequire(decoded, "Capture was not written as a complete PNG: " + name);
+                creatorReport.images.Add(path);
+                evidence.width = pixels.width; evidence.height = pixels.height;
+                CreatorRequire(pixels.width == Screen.width && pixels.height == Screen.height,
+                    "Capture dimensions do not match the actual viewport: " + name);
+                var colors = pixels.GetPixels32();
+                var first = colors[0];
+                for (int pixel = 0; pixel < colors.Length; pixel += 16)
+                {
+                    var color = colors[pixel];
+                    evidence.sampledPixels++;
+                    if (Math.Max(color.r, Math.Max(color.g, color.b)) >= 32) evidence.nonDarkSamples++;
+                    if (Math.Abs(color.r - first.r) >= 8 || Math.Abs(color.g - first.g) >= 8 || Math.Abs(color.b - first.b) >= 8)
+                        evidence.varyingSamples++;
+                }
+                CreatorRequire(evidence.nonDarkSamples >= 128 && evidence.varyingSamples >= 128,
+                    "The native captured frame is blank or uniformly colored: " + name);
+                if (expectedPreview != null)
+                    CreatorRequire(CreatorPreviewMatchesDraft(expectedPreview), "The draft or preview changed while capturing " + name + ".");
+                evidence.rendered = true;
+            }
+            finally { Destroy(pixels); }
             if (capture != null) capture.path = path;
-            creatorReport.images.Add(path);
+        }
+
+        private static bool CreatorPreviewMatchesDraft(CharacterCreator creator) => creator.IsShowing
+            && creator.StudioPreview != null && !creator.StudioPreview.IsBuilding && !creator.StudioPreview.CanRetry
+            && creator.StudioPreview.CompletedKey == creator.Draft.Appearance.ContentKey();
+
+        private static int RequireCreatorPreviewPixels(CharacterCreator creator, string name)
+        {
+            CreatorRequire(CreatorPreviewMatchesDraft(creator), "The current creator draft is not ready for " + name + ".");
+            var image = creator.GetComponentsInChildren<RawImage>().SingleOrDefault(item => item.name == "Live character preview");
+            var texture = creator.StudioPreview.Texture as RenderTexture;
+            CreatorRequire(image != null && image.isActiveAndEnabled && image.texture == texture
+                && texture != null && texture.IsCreated(), "No displayed studio texture for " + name + ".");
+            var previous = RenderTexture.active;
+            var resolved = RenderTexture.GetTemporary(texture.width, texture.height, 0, RenderTextureFormat.ARGB32);
+            var pixels = new Texture2D(texture.width, texture.height, TextureFormat.RGBA32, false);
+            try
+            {
+                // As for the isolated portrait export, resolve the studio's multisampled texture
+                // through an ordinary temporary before CPU readback; do not rerender the subject.
+                Graphics.Blit(texture, resolved); RenderTexture.active = resolved;
+                pixels.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0); pixels.Apply();
+                var colors = pixels.GetPixels32();
+                int opaque = 0;
+                for (int pixel = 0; pixel < colors.Length; pixel += 16)
+                    if (colors[pixel].a >= 128) opaque++;
+                // The creator studio has a transparent background. Subject alpha proves something
+                // was drawn in it; matching the draft and refusing fallback establishes which build.
+                CreatorRequire(opaque >= 128, "The ready studio texture contains no visible subject: " + name);
+                return opaque;
+            }
+            finally { RenderTexture.active = previous; RenderTexture.ReleaseTemporary(resolved); Destroy(pixels); }
         }
 
         private static bool CreatorRectVisible(RectTransform rect)
@@ -540,7 +637,11 @@ namespace Gamesim.Episode
         { if (!condition) throw new InvalidOperationException(message); }
 
         [Serializable] private sealed class CreatorBuildTiming
-        { public string operation, status; public double observedWaitMilliseconds, editToCompletedBuildMilliseconds; }
+        {
+            public string operation, status;
+            public double observedWaitMilliseconds, editToCompletedBuildMilliseconds;
+            public bool reusedCompletedAppearance;
+        }
         [Serializable] private sealed class CreatorControlBound
         { public string id; public float minimum, maximum, testedValue; }
         [Serializable] private sealed class CreatorBodyBoundsCapture
@@ -553,6 +654,12 @@ namespace Gamesim.Episode
         {
             public string path, mode; public int requestedWidth, requestedHeight, actualWidth, actualHeight;
             public bool largerText, fixedControlsInsideViewport;
+        }
+        [Serializable] private sealed class CreatorFrameEvidence
+        {
+            public string name, path;
+            public int width, height, sampledPixels, nonDarkSamples, varyingSamples, previewOpaqueSamples;
+            public bool rendered;
         }
         [Serializable] private sealed class CreatorVerificationReport
         {
@@ -568,6 +675,7 @@ namespace Gamesim.Episode
             public List<CreatorBuildTiming> builds = new List<CreatorBuildTiming>();
             public List<CreatorBodyBoundsCapture> bodyBounds = new List<CreatorBodyBoundsCapture>();
             public List<CreatorCapture> captures = new List<CreatorCapture>();
+            public List<CreatorFrameEvidence> frames = new List<CreatorFrameEvidence>();
             public List<string> images = new List<string>(), errors = new List<string>();
         }
     }

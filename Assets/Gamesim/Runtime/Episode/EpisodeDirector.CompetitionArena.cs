@@ -44,6 +44,11 @@ namespace Gamesim.Episode
         private bool competitionArenaStaging;
         private bool competitionEffortFramed;
         private bool competitionArenaWasReady;
+        // The house approaches the deck from -Z. Matching rows face +Z, with the
+        // instrument ahead and the native approach behind its actor. Path corner
+        // directions remain the agent's concern, rather than rotating each whole
+        // reservation into an irregular packing problem.
+        private const float CompetitionContestantFacing=0f;
 
         private bool BeginCompetitionArena(EpisodeState state)
         {
@@ -70,14 +75,18 @@ namespace Gamesim.Episode
             for(float z=bounds.min.z+1.5f;z<bounds.max.z-1.5f;z+=1.6f)
                 for(float x=bounds.min.x+2f;x<bounds.max.x-2f;x+=1.8f)
                     candidates.Add(new Vector3(x,bounds.max.y,z));
-            var preferred=new Vector3(bounds.center.x,bounds.max.y,bounds.min.z+2f);
+            // Fill the far rows first so stopped arrivals do not occupy the entrance
+            // while the rest of the field is still walking through it. Every candidate
+            // retains its real floor/path and complete apparatus-clearance checks.
+            var contestantCandidates=candidates.OrderByDescending(p=>p.z)
+                .ThenBy(p=>Mathf.Abs(p.x-bounds.center.x)).ThenBy(p=>p.x).ToArray();
             // The player uses a real complete path under an owner token. Ordinary input remains
             // locked; neither the navigation root nor its collider is teleported or reconfigured.
-            foreach(var wanted in candidates.OrderBy(p=>(p-preferred).sqrMagnitude))
+            foreach(var wanted in contestantCandidates)
             {
                 if(!rooms.TrySampleFloor(wanted,player.Agent.radius,filter,.25f,out var position,out var room)
                     || room!="Yard" || !rooms.HasCapsuleClearance(position,player.Agent.radius,player.Agent.height,player.transform))continue;
-                float facing=CompetitionRouteFacing(player.transform.position,position,filter);
+                float facing=CompetitionContestantFacing;
                 var capsule=player.GetComponent<CapsuleCollider>();
                 float radius=Mathf.Max(player.Agent.radius,capsule!=null?capsule.radius:0);
                 var footprint=CompetitionStageFootprint.Station(instrumentFamily,position,facing,radius,player.Agent.height,
@@ -138,16 +147,18 @@ namespace Gamesim.Episode
                                 if(!ClearsCompetitionNeighbours(approachFootprint) || !ClearsCompetitionNeighbours(seatedFootprint))continue;
                                 anchor=seat;footprint=seatedFootprint;usedSeats.Add(seat);break;
                             }
-                    var actorPreferred=contestants.Contains(actor.id) ? preferred : new Vector3(bounds.min.x+2f,bounds.max.y,bounds.center.z);
+                    var audiencePreferred=new Vector3(bounds.min.x+2f,bounds.max.y,bounds.center.z);
+                    IEnumerable<Vector3> actorCandidates=contestants.Contains(actor.id) ? contestantCandidates
+                        :candidates.OrderBy(p=>(p-audiencePreferred).sqrMagnitude);
                     if(anchor==null)
-                        foreach(var wanted in candidates.OrderBy(p=>(p-actorPreferred).sqrMagnitude))
+                        foreach(var wanted in actorCandidates)
                         {
                             if(!rooms.TrySampleFloor(wanted,capsule.radius,filter,.25f,out var position,out var room) || room!="Yard")
                             {floorMisses++;continue;}
                             if(used.Any(p=>(p-position).sqrMagnitude<1.6f)
                                 || !rooms.HasCapsuleClearance(position,capsule.radius,capsule.height,npc.transform))
                             {occupiedMisses++;continue;}
-                            float facing=contestants.Contains(actor.id)?CompetitionRouteFacing(npc.transform.position,position,filter)
+                            float facing=contestants.Contains(actor.id)?CompetitionContestantFacing
                                 :Mathf.Atan2(bounds.center.x-position.x,bounds.center.z-position.z)*Mathf.Rad2Deg;
                             footprint=contestants.Contains(actor.id)
                                 ?CompetitionStageFootprint.Station(instrumentFamily,position,facing,capsule.radius,capsule.height)
@@ -314,14 +325,6 @@ namespace Gamesim.Episode
             instrument.gameObject.SetActive(false); // Dress an occupied station, never a route somebody is still crossing.
         }
 
-        private static float CompetitionRouteFacing(Vector3 from,Vector3 to,NavMeshQueryFilter filter)
-        {
-            var path=new NavMeshPath();Vector3 approach=to-from;
-            if(NavMesh.CalculatePath(from,to,filter,path) && path.status==NavMeshPathStatus.PathComplete && path.corners.Length>1)
-                approach=path.corners[path.corners.Length-1]-path.corners[path.corners.Length-2];
-            return approach.sqrMagnitude>.001f?Mathf.Atan2(approach.x,approach.z)*Mathf.Rad2Deg:0;
-        }
-
         private bool ClearsCompetitionNeighbours(CompetitionStageFootprint footprint)
         {
             foreach(var reserved in competitionFootprints.Values)if(footprint.Overlaps(reserved))return false;
@@ -357,6 +360,7 @@ namespace Gamesim.Episode
                     +" owned="+routeOwned+" reserved="+reserved+" fitted="+fitted+" clear="+clear
                     +" mesh="+(outside!=null?outside.name:"none")+" actor="+body.root.transform.position.ToString("F3")
                     +" instrumentOffset="+instrument.transform.localPosition.ToString("F3")
+                    +" corner="+(outside!=null?CompetitionOutsideCorner(footprint,outside):"none")
                     +" blockers="+(reserved?CompetitionStaticBlockers(footprint):"no reservation")+". "+CompetitionStageDiagnostic(),this);
                 message="An instrument's reserved place is obstructed. Return to the briefing and try again.";
                 CancelChallenge();return false;
@@ -385,8 +389,58 @@ namespace Gamesim.Episode
                     var motion=body.root.GetComponent<HouseNpcMotion>();
                     return pair.Key+" "+(motion!=null?motion.State.ToString():"no motion")+" at="+body.root.transform.position.ToString("F3")
                         +" destination="+(motion!=null?motion.ReservedDestination.ToString("F3"):"none")
-                        +" arrival="+(motion!=null?motion.ArrivalFailure??"proved":"no motion");
+                        +" arrival="+(motion!=null?motion.ArrivalFailure??"proved":"no motion")
+                        +(motion!=null && motion.State==HouseNpcMotionState.Walking?CompetitionWalkerDiagnostic(body.root):"");
                 }));
+        }
+
+        private static string CompetitionOutsideCorner(CompetitionStageFootprint footprint,MeshFilter mesh)
+        {
+            if(mesh.sharedMesh==null)return "no mesh";
+            var bounds=mesh.sharedMesh.bounds;var inverse=Quaternion.Inverse(footprint.Rotation);
+            var limit=footprint.HalfSize+Vector3.one*.001f;
+            for(int x=-1;x<=1;x+=2)for(int y=-1;y<=1;y+=2)for(int z=-1;z<=1;z+=2)
+            {
+                var world=mesh.transform.TransformPoint(bounds.center+Vector3.Scale(bounds.extents,new Vector3(x,y,z)));
+                var local=inverse*(world-footprint.Center);
+                var excess=new Vector3(Mathf.Abs(local.x)-limit.x,Mathf.Abs(local.y)-limit.y,Mathf.Abs(local.z)-limit.z);
+                if(excess.x>0 || excess.y>0 || excess.z>0)
+                    return "world="+world.ToString("F9")+" local="+local.ToString("F9")+" limit="+limit.ToString("F9")
+                        +" excess="+excess.ToString("F9")+" reservedCenter="+footprint.Center.ToString("F9")
+                        +" meshScale="+mesh.transform.lossyScale.ToString("F9")
+                        +" anchorScale="+mesh.transform.parent.parent.lossyScale.ToString("F9");
+            }
+            return "all corners inside";
+        }
+
+        private string CompetitionWalkerDiagnostic(GameObject body)
+        {
+            var agent=body.GetComponent<NavMeshAgent>();
+            string route=" agent="+(agent!=null && agent.enabled && agent.isOnNavMesh);
+            if(agent!=null && agent.enabled && agent.isOnNavMesh)
+                route+=" stopped="+agent.isStopped+" speed="+agent.speed.ToString("F3")
+                    +" desired="+agent.desiredVelocity.ToString("F3")+" velocity="+agent.velocity.ToString("F3")
+                    +" pending="+agent.pathPending+" status="+agent.pathStatus+" remaining="+agent.remainingDistance.ToString("F3")
+                    +" corners="+string.Join(",",agent.path.corners.Take(4).Select(p=>p.ToString("F3")));
+            var nearby=housemates.Where(npc=>npc!=null && npc.gameObject!=body && (npc.transform.position-body.transform.position).sqrMagnitude<2.25f)
+                .Select(npc=>
+                {
+                    var motion=npc.GetComponent<HouseNpcMotion>();var otherAgent=npc.GetComponent<NavMeshAgent>();
+                    return npc.Id+"@"+npc.transform.position.ToString("F3")+" "+(motion!=null?motion.State.ToString():"no motion")
+                        +" lease="+(motion!=null?motion.LeaseId??"none":"none")
+                        +" stopped="+(otherAgent!=null && otherAgent.enabled && otherAgent.isOnNavMesh?otherAgent.isStopped.ToString():"no agent");
+                });
+            int count=gameObject.scene.GetPhysicsScene().OverlapSphere(body.transform.position+Vector3.up*.9f,1.5f,
+                competitionPlacementHits,~0,QueryTriggerInteraction.Ignore);
+            var solids=new List<string>();
+            for(int i=0;i<count;i++)
+            {
+                var collider=competitionPlacementHits[i];
+                if(collider==null || collider==competitionStageFloor || collider.transform.IsChildOf(body.transform))continue;
+                solids.Add(collider.name+"@"+collider.transform.position.ToString("F3"));
+            }
+            return route+" nearbyActors=["+string.Join(";",nearby)+"] nearbySolids=["
+                +(count==competitionPlacementHits.Length?"query overflow;":"")+string.Join(";",solids)+"]";
         }
 
         private string CompetitionStaticBlockers(CompetitionStageFootprint footprint,Transform prospectiveSelf=null)

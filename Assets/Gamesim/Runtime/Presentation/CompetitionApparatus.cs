@@ -98,7 +98,10 @@ namespace Gamesim.Presentation
             }
             // The dice pedestal extends 125 mm toward the actor. Its former common
             // readout plane was 45 mm inside that support, hiding the middle letters.
-            float progressFront = Instrument == Family.DiceTray ? Front - .145f : Front - .08f;
+            // The grip scale's ticks reach Front-.10: its text must sit ahead of
+            // those real faces, as dice progress sits ahead of its pedestal.
+            float progressFront = Instrument == Family.DiceTray ? Front - .145f
+                : Instrument == Family.GripRig ? Front - .12f : Front - .08f;
             progress = Words("Instrument progress", new Vector3(0, .74f, progressFront), .90f, .13f, "Ready");
             // Each opposing plane has its own dark face. Saved yard lights and pillars
             // can remain behind the words without washing out their public progress.

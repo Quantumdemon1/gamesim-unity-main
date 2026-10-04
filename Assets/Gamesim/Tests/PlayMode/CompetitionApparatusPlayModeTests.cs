@@ -112,7 +112,28 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(instrument.GetComponentsInChildren<Collider>(true),Is.Empty,"Scenery must not alter the reserved route.");
                 // A native route stops near its anchor rather than teleporting exactly onto it.
                 Vector3 bodyOffset=new Vector3(.13f,0,-.23f);
-                if(instrument.Instrument==CompetitionApparatus.Family.GripRig)instrument.FitGrip(1.4f,bodyOffset.z+.04f,.60f,.32f,bodyOffset);
+                if(instrument.Instrument==CompetitionApparatus.Family.GripRig)
+                {
+                    instrument.FitGrip(1.4f,bodyOffset.z+.04f,.60f,.32f,bodyOffset);
+                    instrument.Sync(attempt,true,false,false,false);
+                    // Measure the actual fitted scale, bar and ticks, rather than
+                    // copying the readout's placement formula into an expectation.
+                    var scaleParts=instrument.GetComponentsInChildren<MeshFilter>().Where(part=>part.name=="Grip scale track"
+                        || part.name=="Grip remaining" || part.name.StartsWith("Grip scale tick ")).ToArray();
+                    Assert.That(scaleParts,Has.Length.EqualTo(7));
+                    float nearest=float.PositiveInfinity;
+                    foreach(var part in scaleParts)foreach(var vertex in part.sharedMesh.vertices)
+                        nearest=Mathf.Min(nearest,instrument.transform.InverseTransformPoint(part.transform.TransformPoint(vertex)).z);
+                    float textDepth=instrument.transform.InverseTransformPoint(primary.transform.position).z;
+                    Assert.That(textDepth,Is.LessThan(nearest-.01f),
+                        "Native fitted Grip progress must remain in front of every scale face, not buried in its track.");
+                    var backing=backings.Single(part=>part.name=="Progress front backing");
+                    float backingFront=float.PositiveInfinity;
+                    foreach(var vertex in backing.sharedMesh.vertices)
+                        backingFront=Mathf.Min(backingFront,instrument.transform.InverseTransformPoint(backing.transform.TransformPoint(vertex)).z);
+                    Assert.That(backingFront,Is.GreaterThan(textDepth+.001f),"The fitted contrast backing stays behind the glyphs.");
+                    Assert.That(instrument.ProgressText,Is.EqualTo(CompetitionApparatus.Readout(attempt)));
+                }
                 else instrument.FitActorClearance(.40f,bodyOffset);
                 var blocks=instrument.GetComponentsInChildren<MeshFilter>(true)
                     .Where(part=>part.sharedMesh!=null && part.sharedMesh.name=="Competition instrument block").ToArray();

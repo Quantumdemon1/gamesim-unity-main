@@ -50,6 +50,8 @@ namespace Gamesim.Tests.PlayMode
                 instrument.Sync(attempt,true,false,false,false);
                 Assert.That(instrument.ProgressText,Is.EqualTo(CompetitionApparatus.Readout(attempt)),
                     "A reserved instrument can receive progress before its anchor becomes active.");
+                Assert.That(instrument.GetComponentsInChildren<TMP_Text>(true).All(label=>label.font==UiTheme.Font(UiTheme.Weight.Regular)),
+                    Is.True,"Every instrument readout uses the installed house font before its first activation.");
                 var at=owner.transform.position;var facing=owner.transform.rotation;
                 Assert.That(instrument.DefinitionId,Is.EqualTo(definition.Id));
                 Assert.That(instrument.Instrument,Is.EqualTo(Expected(definition.Category)),definition.Id);

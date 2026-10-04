@@ -379,10 +379,14 @@ namespace Gamesim.Presentation
 
         private TMP_Text Words(string name, Vector3 position, float width, float height, string value)
         {
-            var root = new GameObject(name, typeof(TextMeshPro));
+            // Set the house font before TMP awakens. Its implicit default is an unused
+            // legacy font asset whose first load otherwise migrates persistent content.
+            var root = new GameObject(name);
+            root.SetActive(false);
             root.transform.SetParent(transform, false);
             root.transform.localPosition = position;
-            var label = root.GetComponent<TextMeshPro>();
+            var label = root.AddComponent<TextMeshPro>();
+            label.font = UiTheme.Font(UiTheme.Weight.Regular);
             label.text = value;
             label.fontSize = 1.2f;
             label.alignment = TextAlignmentOptions.Center;
@@ -392,6 +396,7 @@ namespace Gamesim.Presentation
             label.fontSizeMax = 1.2f;
             label.textWrappingMode = TextWrappingModes.NoWrap;
             label.rectTransform.sizeDelta = new Vector2(width, height);
+            root.SetActive(true);
             var renderer = root.GetComponent<Renderer>();
             renderer.shadowCastingMode = ShadowCastingMode.Off;
             renderer.enabled = overlaysVisible;

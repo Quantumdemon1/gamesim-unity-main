@@ -46,12 +46,14 @@ namespace Gamesim.Tests.PlayMode
                 var attempt=new MiniGameRun(CompetitionMiniGames.For(definition.Category),123,4,definition);
                 Assert.That(owner.activeInHierarchy,Is.False);
                 instrument.Sync(attempt,true,false,false,false);
+                var houseFont=UiTheme.Font(UiTheme.Weight.Regular);
+                Assert.That(houseFont,Is.Not.Null,"The installed house font is required for native instrument readouts.");
+                Assert.That(instrument.GetComponentsInChildren<TMP_Text>(true).All(label=>label.font==houseFont),
+                    Is.True,"Every instrument readout has the installed house font before its first activation.");
                 owner.SetActive(true);
                 instrument.Sync(attempt,true,false,false,false);
                 Assert.That(instrument.ProgressText,Is.EqualTo(CompetitionApparatus.Readout(attempt)),
                     "A reserved instrument can receive progress before its anchor becomes active.");
-                Assert.That(instrument.GetComponentsInChildren<TMP_Text>(true).All(label=>label.font==UiTheme.Font(UiTheme.Weight.Regular)),
-                    Is.True,"Every instrument readout uses the installed house font before its first activation.");
                 var at=owner.transform.position;var facing=owner.transform.rotation;
                 Assert.That(instrument.DefinitionId,Is.EqualTo(definition.Id));
                 Assert.That(instrument.Instrument,Is.EqualTo(Expected(definition.Category)),definition.Id);

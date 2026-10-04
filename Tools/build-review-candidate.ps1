@@ -34,6 +34,8 @@ $testedAfter = Get-Content -LiteralPath $summary.finalSourceManifest -Raw | Conv
 if ($testedBefore.schema -ne 3 -or $testedAfter.schema -ne 3) {
     throw 'The tested input manifests are not schema3; re-run verify-review-candidate.ps1 with a fresh name.'
 }
+$baselinePath = Join-Path $PSScriptRoot 'baseline.txt'
+$baselineSha256 = Assert-ReviewSuiteFloorEvidence $summary $baselinePath $expectedSuites $testedBefore $testedAfter
 $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')
 $prefix = Join-Path $acceptanceRoot "Logs/review13-build-$stamp"
 $preview = New-ReviewInputManifest -ProjectRoot $projectRoot -WorkflowRoot $projectRoot -WithoutUma:$WithoutUma -PreviewSync -RetainedRoot $acceptanceRoot
@@ -41,6 +43,7 @@ Write-ReviewJson $preview "$prefix-live-inputs.json"
 $previewDrift = @(Compare-ReviewInputs -Before $testedBefore -After $preview -AllowShippingGpu)
 Write-ReviewJson $previewDrift "$prefix-live-drift.json"
 if (@($previewDrift | Where-Object { -not $_.allowed }).Count -ne 0) { throw "Live product inputs differ from the passing snapshot: $prefix-live-drift.json. Nothing synced or built." }
+if ((Get-ReviewHash $baselinePath) -ne $baselineSha256) { throw 'Suite baseline changed before sync; run fresh full suites.' }
 & (Join-Path $PSScriptRoot 'sync-acceptance.ps1') -WithoutUma:$WithoutUma
 Assert-ReviewConfiguration $acceptanceRoot ([bool]$WithoutUma) 1
 $before = New-ReviewInputManifest -ProjectRoot $acceptanceRoot -WorkflowRoot $projectRoot -WithoutUma:$WithoutUma -MetaArchive "$prefix-meta-before"
@@ -77,6 +80,7 @@ $report = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
 if ($report.result -ne 'Succeeded' -or $report.errors -ne 0 -or @($postDrift | Where-Object { -not $_.allowed }).Count -ne 0) {
     throw "Build or post-build input audit failed: $reportPath; $prefix-after-drift.json"
 }
+if ((Get-ReviewHash $baselinePath) -ne $baselineSha256) { throw 'Suite baseline changed during build; no candidate acceptance.' }
 $buildRoot = Join-Path $acceptanceRoot 'Builds/Port-Windows-Review13'
 $exe = Join-Path $buildRoot 'Gamesim.exe'
 if (-not (Test-Path -LiteralPath $exe)) { throw 'Successful report has no player executable.' }
@@ -85,6 +89,7 @@ $buildFiles = @(Get-ChildItem -LiteralPath $buildRoot -File -Recurse -Force | Fo
 } | Sort-Object path)
 Write-ReviewJson ([ordered]@{capturedUtc=[DateTime]::UtcNow.ToString('o');root=$buildRoot;files=$buildFiles}) "$prefix-build-tree.json"
 $evidence = [ordered]@{status='Succeeded';executable=$exe;umaEnabled=(-not $WithoutUma);
+    baselinePath=$baselinePath;baselineSha256=$baselineSha256;suiteFloors=$summary.suiteFloors;
     testSummary=$summaryPath;testSummarySha256=(Get-ReviewHash $summaryPath);report=$reportPath;reportSha256=(Get-ReviewHash $reportPath);
     inputsBefore="$prefix-inputs-before.json";inputsBeforeSha256=(Get-ReviewHash "$prefix-inputs-before.json");
     inputsAfter="$prefix-inputs-after.json";inputsAfterSha256=(Get-ReviewHash "$prefix-inputs-after.json");

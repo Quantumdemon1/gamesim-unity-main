@@ -2,25 +2,6 @@
 param([Parameter(Mandatory=$true)][string]$Name, [switch]$WithoutUma, [string]$ApprovedMetaDrift)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'review-evidence.ps1')
-function Get-ReviewSuiteFloor([string]$Path, [string]$Assembly) {
-    $floors = @{}
-    foreach ($line in [IO.File]::ReadAllLines($Path)) {
-        $trimmed = $line.Trim()
-        if (-not $trimmed -or $trimmed.StartsWith('#')) { continue }
-        $fields = @($trimmed -split '\s+')
-        $minimum = 0
-        if ($fields.Count -ne 2 -or $fields[0] -notmatch '^[a-zA-Z0-9_.]+$' -or
-            -not [int]::TryParse($fields[1], [ref]$minimum) -or $minimum -lt 1 -or $floors.ContainsKey($fields[0])) {
-            throw "Malformed or duplicate suite floor in ${Path}: $line"
-        }
-        $floors[$fields[0]] = $minimum
-    }
-    if (-not $floors.ContainsKey($Assembly)) { throw "No suite floor for $Assembly in $Path" }
-    return $floors[$Assembly]
-}
-function Assert-ReviewSuiteMinimum([string]$Assembly, [int]$Total, [int]$Minimum) {
-    if ($Total -lt $Minimum) { throw "SHORTFALL: $Assembly ran $Total, floor is $Minimum (Tools/baseline.txt). This is not a pass." }
-}
 if ($Name -notmatch '^[a-zA-Z0-9_-]+$') { throw 'Use a simple, fresh artifact name.' }
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $suites = @(@{id='edit';platform='EditMode';assembly='Gamesim.EditModeTests'},

@@ -2,6 +2,47 @@
 function Get-ReviewHash([string]$Path) {
     (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
+function Get-ReviewSuiteFloor([string]$Path, [string]$Assembly) {
+    $floors = @{}
+    foreach ($line in [IO.File]::ReadAllLines($Path)) {
+        $trimmed = $line.Trim()
+        if (-not $trimmed -or $trimmed.StartsWith('#')) { continue }
+        $fields = @($trimmed -split '\s+')
+        $minimum = 0
+        if ($fields.Count -ne 2 -or $fields[0] -notmatch '^[a-zA-Z0-9_.]+$' -or
+            -not [int]::TryParse($fields[1], [ref]$minimum) -or $minimum -lt 1 -or $floors.ContainsKey($fields[0])) {
+            throw "Malformed or duplicate suite floor in ${Path}: $line"
+        }
+        $floors[$fields[0]] = $minimum
+    }
+    if (-not $floors.ContainsKey($Assembly)) { throw "No suite floor for $Assembly in $Path" }
+    return $floors[$Assembly]
+}
+function Assert-ReviewSuiteMinimum([string]$Assembly, [int]$Total, [int]$Minimum) {
+    if ($Total -lt $Minimum) { throw "SHORTFALL: $Assembly ran $Total, floor is $Minimum (Tools/baseline.txt). This is not a pass." }
+}
+function Assert-ReviewSuiteFloorEvidence($Summary, [string]$BaselinePath, [string[]]$ExpectedSuites, $TestedBefore, $TestedAfter) {
+    $hash = Get-ReviewHash $BaselinePath
+    if ($Summary.baselineSha256 -ne $hash) {
+        throw 'The passing summary does not bind the current Tools/baseline.txt bytes; run fresh full suites.'
+    }
+    foreach ($manifest in @($TestedBefore,$TestedAfter)) {
+        $entries = @($manifest.files | Where-Object path -eq 'Tools/baseline.txt')
+        if ($entries.Count -ne 1 -or $entries[0].sha256 -ne $hash) {
+            throw 'Both tested manifests must bind the same current Tools/baseline.txt bytes.'
+        }
+    }
+    foreach ($assembly in $ExpectedSuites) {
+        $minimum = Get-ReviewSuiteFloor $BaselinePath $assembly
+        $entries = @($Summary.suites | Where-Object suite -eq $assembly)
+        if ($entries.Count -ne 1 -or $Summary.suiteFloors.$assembly -ne $minimum -or $entries[0].minimumCount -ne $minimum) {
+            throw "The summary's recorded floor does not match the current floor for $assembly."
+        }
+        Assert-ReviewSuiteMinimum $assembly $entries[0].total $minimum
+    }
+    if ((Get-ReviewHash $BaselinePath) -ne $hash) { throw 'Suite baseline changed during validation.' }
+    return $hash
+}
 function Get-ReviewTextHash([string]$Text) {
     $algorithm = [Security.Cryptography.SHA256]::Create()
     try { ([BitConverter]::ToString($algorithm.ComputeHash([Text.Encoding]::UTF8.GetBytes($Text)))).Replace('-','').ToLowerInvariant() }

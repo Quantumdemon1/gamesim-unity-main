@@ -36,7 +36,7 @@ namespace Gamesim.Presentation
         private readonly Dictionary<Renderer,Renderer> repeaters = new Dictionary<Renderer,Renderer>();
         private readonly Dictionary<TMP_Text,TMP_Text> repeatWords = new Dictionary<TMP_Text,TMP_Text>();
         private MaterialPropertyBlock tint;
-        private Material frame, accent, dark, paper;
+        private Material frame, accent, dark, paper, readoutFontMaterial;
         private Mesh box;
         private TMP_Text progress;
         private Transform weight, gripBar, gripTrack, weightGuide;
@@ -379,6 +379,17 @@ namespace Gamesim.Presentation
 
         private TMP_Text Words(string name, Vector3 position, float width, float height, string value)
         {
+            var font = UiTheme.Font(UiTheme.Weight.Regular);
+            if (font == null || font.material == null || !font.material.HasProperty("_CullMode"))
+                throw new InvalidOperationException("The competition readout needs a house font with front-face culling.");
+            if (readoutFontMaterial == null)
+            {
+                // Opposing public readouts must not show each other's mirrored back faces.
+                // Own the clone: the house font is also used by unrelated HUDs and actors.
+                readoutFontMaterial = new Material(font.material) { name = "Competition front-face text" };
+                readoutFontMaterial.SetFloat("_CullMode", (float)CullMode.Back);
+                materials.Add(readoutFontMaterial);
+            }
             // Set the house font before TMP awakens. Its implicit default is an unused
             // legacy font asset whose first load otherwise migrates persistent content.
             var root = new GameObject(name);
@@ -386,7 +397,8 @@ namespace Gamesim.Presentation
             root.transform.SetParent(transform, false);
             root.transform.localPosition = position;
             var label = root.AddComponent<TextMeshPro>();
-            label.font = UiTheme.Font(UiTheme.Weight.Regular);
+            label.font = font;
+            label.fontSharedMaterial = readoutFontMaterial;
             label.text = value;
             label.fontSize = 1.2f;
             label.alignment = TextAlignmentOptions.Center;

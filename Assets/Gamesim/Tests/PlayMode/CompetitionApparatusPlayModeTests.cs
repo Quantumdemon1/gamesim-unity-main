@@ -42,15 +42,30 @@ namespace Gamesim.Tests.PlayMode
         {
             foreach(var definition in CompetitionDefinitions.All)
             {
+                var houseFont=UiTheme.Font(UiTheme.Weight.Regular);
+                Assert.That(houseFont,Is.Not.Null,"The installed house font is required for native instrument readouts.");
+                var originalFontMaterial=houseFont.material;
+                float originalCulling=originalFontMaterial.GetFloat("_CullMode");
                 var instrument=Make(definition,inactive:true);
                 var attempt=new MiniGameRun(CompetitionMiniGames.For(definition.Category),123,4,definition);
                 Assert.That(owner.activeInHierarchy,Is.False);
                 instrument.Sync(attempt,true,false,false,false);
-                var houseFont=UiTheme.Font(UiTheme.Weight.Regular);
-                Assert.That(houseFont,Is.Not.Null,"The installed house font is required for native instrument readouts.");
-                Assert.That(instrument.GetComponentsInChildren<TMP_Text>(true).All(label=>label.font==houseFont),
+                var labels=instrument.GetComponentsInChildren<TMP_Text>(true);
+                Assert.That(labels.All(label=>label.font==houseFont),
                     Is.True,"Every instrument readout has the installed house font before its first activation.");
+                var readoutMaterial=labels[0].fontSharedMaterial;
+                Assert.That(readoutMaterial,Is.Not.SameAs(originalFontMaterial),"Front-face culling belongs to the stage, not the shared font.");
+                Assert.That(labels.All(label=>label.fontSharedMaterial==readoutMaterial),Is.True,
+                    "Both opposing readout planes share the single owned font material.");
+                Assert.That(readoutMaterial.GetFloat("_CullMode"),Is.EqualTo((float)UnityEngine.Rendering.CullMode.Back));
+                Assert.That(readoutMaterial.shader,Is.SameAs(originalFontMaterial.shader));
+                Assert.That(readoutMaterial.GetTexture("_MainTex"),Is.SameAs(originalFontMaterial.GetTexture("_MainTex")));
                 owner.SetActive(true);
+                foreach(var label in labels)label.ForceMeshUpdate();
+                Assert.That(labels.All(label=>label.GetComponent<Renderer>().sharedMaterial==readoutMaterial),Is.True,
+                    "Native TMP activation and glyph generation retain the front-only material.");
+                Assert.That(houseFont.material,Is.SameAs(originalFontMaterial));
+                Assert.That(originalFontMaterial.GetFloat("_CullMode"),Is.EqualTo(originalCulling),"The shared house font stays unchanged.");
                 instrument.Sync(attempt,true,false,false,false);
                 Assert.That(instrument.ProgressText,Is.EqualTo(CompetitionApparatus.Readout(attempt)),
                     "A reserved instrument can receive progress before its anchor becomes active.");
@@ -89,6 +104,9 @@ namespace Gamesim.Tests.PlayMode
                 Object.Destroy(owner);owner=null;yield return null;yield return null;
                 Assert.That(mesh==null,Is.True,"A released stage releases its owned mesh.");
                 Assert.That(materials.All(material=>material==null),Is.True,"A released stage releases its owned materials.");
+                Assert.That(readoutMaterial==null,Is.True,"A released stage releases its owned text material too.");
+                Assert.That(originalFontMaterial!=null,Is.True,"The stage never owns the persistent house font material.");
+                Assert.That(originalFontMaterial.GetFloat("_CullMode"),Is.EqualTo(originalCulling));
             }
         }
 

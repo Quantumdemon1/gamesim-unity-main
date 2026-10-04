@@ -31,7 +31,7 @@ namespace Gamesim.Uma.Editor
                 {
                     float u = i / (float)columns, across = u * 2f - 1f;
                     float neck = Mathf.Clamp01(1f - Mathf.Abs(across) * 3f);
-                    // UVs and naked-body correspondences survive any measured lower-layer displacement.
+                    // UVs and naked-body correspondences survive measured wardrobe-layer displacement.
                     float x = center + across * width;
                     float yFront = Mathf.Lerp(pattern.hem, pattern.shoulder + neck * .012f, v);
                     float yBack = Mathf.Lerp(pattern.hem, pattern.shoulder + neck * .028f, v);
@@ -101,10 +101,13 @@ namespace Gamesim.Uma.Editor
                     else if (k == shoulderDivisions) yoke[i, k] = back[rows, i];
                     else
                     {
-                        Vector3 desired = Vector3.Lerp(pattern.points[front[rows, i]], pattern.points[back[rows, i]], k / (float)shoulderDivisions);
+                        Hit frontHit = pattern.bodyHits[front[rows, i]], backHit = pattern.bodyHits[back[rows, i]];
+                        Vector3 desired = Vector3.Lerp(frontHit.position + frontHit.normal * style.clearance,
+                            backHit.position + backHit.normal * style.clearance, k / (float)shoulderDivisions);
                         Hit hit = surface.Closest(desired);
                         Require(hit.distance < .08f * .08f, "Unsupported local shoulder crown.");
-                        yoke[i, k] = pattern.Add(hit.position + hit.normal * style.clearance,
+                        Vector3 point = LowerPoint(surface, hit.position + hit.normal * style.clearance, style.clearance, (pattern.shoulder - pattern.hem) / rows);
+                        yoke[i, k] = pattern.Add(point,
                             new Vector2(.95f + k / (float)shoulderDivisions * .04f, .68f + i / (float)columns * .27f), hit);
                     }
                     if (i > 0 && (i <= neckLeft || i > neckRight) && k > 0)
@@ -137,10 +140,15 @@ namespace Gamesim.Uma.Editor
             return pattern;
         }
 
-        private static Vector3 LowerPoint(Surface surface, Vector3 point, float clearance, float rowHeight) =>
-            surface.lowerLayer == null ? point : surface.lowerLayer.Enclose(point, clearance, rowHeight);
+        private static Vector3 LowerPoint(Surface surface, Vector3 point, float clearance, float rowHeight)
+        {
+            if (surface.lowerLayer != null) point = surface.lowerLayer.Enclose(point, clearance, rowHeight);
+            // Only existing torso/flank/yoke cloth is fitted. No arm-ring expansion,
+            // suppression, mask widening or faces across a collar/vest opening.
+            return surface.upperLayer == null ? point : surface.upperLayer.Enclose(point, clearance, rowHeight);
+        }
 
-        /// <summary>Authoring-only union of actual compatible Legs meshes. Never hides or changes worn Legs.</summary>
+        /// <summary>Authoring-only bounded shell of actual compatible layer meshes; never changes the worn layer.</summary>
         private sealed class LowerLayerEnvelope
         {
             private const float SectionHeight = .025f;
@@ -152,31 +160,35 @@ namespace Gamesim.Uma.Editor
             private readonly Vector3[] crossings = new Vector3[6];
             private readonly Vector3 center;
             private readonly float floor, ceiling;
+            private readonly string layer;
             private int memberships;
             public readonly List<string> recipes = new List<string>();
             public readonly HashSet<string> slotNames = new HashSet<string>(StringComparer.Ordinal), inputs = new HashSet<string>(StringComparer.Ordinal);
             public int queries, triangleTests, expandedVertices;
             public float maximumExpansion;
             public int TriangleCount => facets.Count;
+            public float FloorY => floor;
+            public float CeilingY => ceiling;
             public float TopY { get; private set; }
-            public LowerLayerEnvelope(Vector3 center, float floor, float ceiling)
+            public LowerLayerEnvelope(Vector3 center, float floor, float ceiling) : this(center, floor, ceiling, "lower") { }
+            public LowerLayerEnvelope(Vector3 center, float floor, float ceiling, string layer)
             {
                 Require(Finite(center) && float.IsFinite(floor) && float.IsFinite(ceiling) && ceiling > floor,
-                    "Invalid lower-layer sampling band.");
-                this.center = center; this.floor = floor; this.ceiling = ceiling; TopY = floor;
+                    "Invalid " + layer + "-layer sampling band.");
+                this.center = center; this.floor = floor; this.ceiling = ceiling; this.layer = layer; TopY = floor;
             }
             public void ResetMeasurements() { queries = triangleTests = expandedVertices = 0; maximumExpansion = 0f; }
             public void Add(Vector3 a, Vector3 b, Vector3 c)
             {
-                Require(Finite(a) && Finite(b) && Finite(c), "The compatible lower layer has non-finite geometry.");
+                Require(Finite(a) && Finite(b) && Finite(c), "The compatible " + layer + " layer has non-finite geometry.");
                 float lo = Mathf.Min(a.y, Mathf.Min(b.y, c.y)), hi = Mathf.Max(a.y, Mathf.Max(b.y, c.y));
                 if (hi < floor || lo > ceiling || Vector3.Cross(b - a, c - a).sqrMagnitude <= .000000000001f) return;
-                Require(facets.Count < MaximumTriangles, "Compatible lower-layer geometry exceeds its triangle budget.");
+                Require(facets.Count < MaximumTriangles, "Compatible " + layer + "-layer geometry exceeds its triangle budget.");
                 int index = facets.Count; facets.Add(new Facet { a = a, b = b, c = c, lo = lo, hi = hi });
                 TopY = Mathf.Max(TopY, Mathf.Min(hi, ceiling));
                 for (int section = Key(Mathf.Max(lo, floor)); section <= Key(Mathf.Min(hi, ceiling)); section++)
                 {
-                    Require(++memberships <= MaximumMemberships, "The compatible lower-layer section index exceeds its budget.");
+                    Require(++memberships <= MaximumMemberships, "The compatible " + layer + "-layer section index exceeds its budget.");
                     if (!sections.TryGetValue(section, out List<int> values)) sections.Add(section, values = new List<int>());
                     values.Add(index);
                 }
@@ -185,13 +197,13 @@ namespace Gamesim.Uma.Editor
             public Vector3 Enclose(Vector3 point, float clearance, float rowHeight)
             {
                 Require(Finite(point) && float.IsFinite(clearance) && clearance > 0f && float.IsFinite(rowHeight) && rowHeight > 0f,
-                    "Invalid lower garment sample.");
+                    "Invalid " + layer + " garment sample.");
                 // Both ends of a cloth row must enclose any intervening waistband peak.
                 float dilation = rowHeight, transition = rowHeight * 2f;
                 if (facets.Count == 0 || TopY <= floor || point.y < floor || point.y > TopY + dilation + transition) return point;
                 Vector3 radial = new Vector3(point.x - center.x, 0f, point.z - center.z);
                 float radius = radial.magnitude;
-                Require(radius > .0001f, "The lower garment point has no supported radial direction.");
+                Require(radius > .0001f, "The " + layer + " garment point has no supported radial direction.");
                 radial /= radius;
                 float outer = 0f;
                 float lo = Mathf.Clamp(point.y - dilation, floor, TopY), hi = Mathf.Clamp(point.y + dilation, floor, TopY);
@@ -200,12 +212,12 @@ namespace Gamesim.Uma.Editor
                 {
                     if (sections.TryGetValue(section, out List<int> values)) candidates.UnionWith(values);
                 }
-                Require(++queries <= 20000, "Lower-layer queries exceed their bound.");
+                Require(++queries <= 20000, "The " + layer + "-layer queries exceed their bound.");
                 foreach (int index in candidates)
                 {
                     Facet facet = facets[index];
                     if (hi < facet.lo || lo > facet.hi) continue;
-                    Require(++triangleTests <= MaximumTriangleTests, "Lower-layer section tests exceed their bound.");
+                    Require(++triangleTests <= MaximumTriangleTests, "The " + layer + "-layer section tests exceed their bound.");
                     outer = Mathf.Max(outer, RadialMaximum(facet, radial, lo, hi));
                 }
                 if (outer <= 0f) return point;

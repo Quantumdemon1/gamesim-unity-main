@@ -107,6 +107,8 @@ namespace Gamesim.Uma.Tests
             AssertApertureSeams(vest, false);
             AssertLowerLayerClearance(false);
             AssertLowerLayerClearance(true);
+            AssertUpperLayerClearance(false);
+            AssertUpperLayerClearance(true);
         }
 
         [Test]
@@ -291,6 +293,78 @@ namespace Gamesim.Uma.Tests
             Assert.That(Get<float>(envelope, "maximumExpansion"), Is.InRange(.001f, .12f));
             AssertFaces(layered);
             AssertApertureSeams(layered, sleeves);
+        }
+
+        private static void AssertUpperLayerClearance(bool sleeves)
+        {
+            object surface = Body(true), bare = Pattern(surface, sleeves);
+            object envelope = Activator.CreateInstance(Nested("LowerLayerEnvelope"), Fields, null,
+                new object[] { new Vector3(0f, 1f, 0f), .98f, 1.66f, "upper" }, null);
+            // Independently placed breast cups and a narrow raised center clasp. Their
+            // peaks lie between cloth rows, above the original pants-only sampling band.
+            float[] heights = { 1.32f, 1.381f, 1.387f, 1.393f, 1.43f };
+            float[] xs = { -.14f, -.10f, -.05f, -.012f, 0f, .012f, .05f, .10f, .14f };
+            var layer = new Vector3[heights.Length, xs.Length];
+            for (int j = 0; j < heights.Length; j++) for (int i = 0; i < xs.Length; i++)
+            {
+                float cup = Mathf.Abs(xs[i]) >= .05f ? .155f : .14f;
+                float depth = j == 2 && Mathf.Abs(xs[i]) <= .012f ? .18f : cup;
+                layer[j, i] = new Vector3(xs[i], heights[j], depth);
+                if (j == 0 || i == 0) continue;
+                Call(envelope, "Add", layer[j - 1, i - 1], layer[j - 1, i], layer[j, i]);
+                Call(envelope, "Add", layer[j - 1, i - 1], layer[j, i], layer[j, i - 1]);
+            }
+            // Upper straps exercise the yoke's naked-body correspondence separately
+            // from the lower shell; their source heights are below the neck aperture.
+            foreach (float side in new[] { -1f, 1f })
+            {
+                Vector3 a = new Vector3(side * .13f, 1.53f, -.09f), b = new Vector3(side * .17f, 1.53f, -.09f);
+                Vector3 c = new Vector3(side * .17f, 1.57f, .09f), d = new Vector3(side * .13f, 1.57f, .09f);
+                Call(envelope, "Add", a, b, c); Call(envelope, "Add", a, c, d);
+            }
+            Set(surface, "upperLayer", envelope);
+            object layered = Pattern(surface, sleeves);
+            var original = Get<List<Vector3>>(bare, "points"); var points = Get<List<Vector3>>(layered, "points");
+            var originalHits = (IDictionary)Get<object>(bare, "bodyHits"); var hits = (IDictionary)Get<object>(layered, "bodyHits");
+            Assert.That(points.Count, Is.EqualTo(original.Count));
+            Assert.That(Get<List<Vector2>>(layered, "uvs"), Is.EqualTo(Get<List<Vector2>>(bare, "uvs")));
+            Assert.That(Get<List<int>>(layered, "neckBoundary"), Is.EqualTo(Get<List<int>>(bare, "neckBoundary")));
+            Assert.That(Get<List<List<int>>>(layered, "armBoundaries"), Is.EqualTo(Get<List<List<int>>>(bare, "armBoundaries")),
+                "Upper fit retains the same ordered openings and shared seam indices.");
+            foreach (DictionaryEntry entry in originalHits)
+            {
+                object hit = hits[entry.Key];
+                Assert.That(Get<Vector3>(hit, "position"), Is.EqualTo(Get<Vector3>(entry.Value, "position")),
+                    "Measured underlayers move cloth, never its naked-body support or arm-ring skin correspondence.");
+                Assert.That(Get<Vector3>(hit, "barycentric"), Is.EqualTo(Get<Vector3>(entry.Value, "barycentric")));
+                Assert.That(Vector3.Distance(points[(int)entry.Key], Get<Vector3>(hit, "position")), Is.LessThan(.12f),
+                    "The production 120mm point-to-naked-support guard remains applicable.");
+                if (original[(int)entry.Key].y < 1.25f) Assert.That(points[(int)entry.Key], Is.EqualTo(original[(int)entry.Key]),
+                    "An upper shell cannot change the lower band.");
+            }
+            Assert.That(Enumerable.Range(0, original.Count).Any(i => original[i].y > 1.5f && points[i] != original[i]), Is.True,
+                "The strap shell must exercise the yoke displacement, not only a scalar radius calculation.");
+            var originalCoverage = Activator.CreateInstance(Nested("CoverageIndex"), Fields, null, new[] { bare }, null);
+            var coverage = Activator.CreateInstance(Nested("CoverageIndex"), Fields, null, new[] { layered }, null);
+            int originallyExposed = 0;
+            for (int j = 1; j < heights.Length; j++) for (int i = 0; i < xs.Length - 1; i++)
+                foreach (var point in new[] { layer[j, i], (layer[j, i] + layer[j, i + 1]) * .5f })
+                {
+                    Vector3 radial = new Vector3(point.x, 0f, point.z).normalized;
+                    if (!(bool)Call(originalCoverage, "Covers", point, radial, .08f)) originallyExposed++;
+                    Assert.That((bool)Call(coverage, "Covers", point, radial, .08f), Is.True,
+                        "Actual cup/clasp vertices and face-interior points must have supported fabric outside them.");
+                }
+            Assert.That(originallyExposed, Is.GreaterThan(0));
+            Assert.That((bool)Call(coverage, "Covers", new Vector3(0f, 1.64f, .066f), Vector3.forward, .04f), Is.False);
+            if (!sleeves) Assert.That((bool)Call(coverage, "Covers", new Vector3(.2f, 1.565f, 0f), Vector3.up, .035f), Is.False,
+                "Fitting an upper layer must preserve the vest's exposed shoulder cap.");
+            Assert.That(Get<int>(envelope, "expandedVertices"), Is.GreaterThan(0));
+            AssertFaces(layered); AssertApertureSeams(layered, sleeves);
+            // No available TopUnderlayer is a supported, exactly unchanged fit.
+            Set(surface, "upperLayer", Activator.CreateInstance(Nested("LowerLayerEnvelope"), Fields, null,
+                new object[] { new Vector3(0f, 1f, 0f), .98f, 1.66f, "upper" }, null));
+            Assert.That(Get<List<Vector3>>(Pattern(surface, sleeves), "points"), Is.EqualTo(original));
         }
 
         private static object FlatClothWithOpening()

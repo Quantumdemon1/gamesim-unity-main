@@ -59,9 +59,19 @@ namespace Gamesim.Uma.Editor
             public List<string> lowerLayerRecipes = new List<string>(), lowerLayerSlots = new List<string>(), lowerLayerInputs = new List<string>();
             public int lowerLayerTriangles, lowerLayerQueries, lowerLayerTriangleTests, lowerBandExpandedVertices;
             public float lowerLayerTopY, maximumLowerBandExpansion;
+            public List<string> upperLayerRecipes = new List<string>(), upperLayerSlots = new List<string>(), upperLayerInputs = new List<string>();
+            public List<string> upperLayerCompatibilityNotes = new List<string>();
+            public List<MeasuredUpperSlot> upperLayerMeasuredSlots = new List<MeasuredUpperSlot>();
+            public int upperLayerTriangles, upperLayerQueries, upperLayerTriangleTests, upperBandExpandedVertices;
+            public float upperLayerBandFloorY, upperLayerBandCeilingY, upperLayerTopY, maximumUpperBandExpansion;
             public List<string> adjustmentBones = new List<string>();
             public List<string> maskTargets = new List<string>();
             public List<int> hiddenTriangles = new List<int>();
+        }
+        [Serializable] private sealed class MeasuredUpperSlot
+        {
+            public string recipe, slot, sourcePath, sourceSha256;
+            public int rendererIndex, vertexOffset, sourceSubmesh, destinationSubmesh, sourceVertexCount, sourceTriangles, drawnTriangles, retainedBandTriangles;
         }
         private sealed class Style
         {
@@ -93,6 +103,7 @@ namespace Gamesim.Uma.Editor
             public List<SlotData> slots;
             public Animator animator;
             public LowerLayerEnvelope lowerLayer;
+            public LowerLayerEnvelope upperLayer;
             // Also permits independent, editor-only geometry fixtures without creating UMA assets.
             public readonly Dictionary<HumanBodyBones, Vector3> landmarks = new Dictionary<HumanBodyBones, Vector3>();
             public Vector3 Bone(HumanBodyBones bone)
@@ -308,8 +319,17 @@ namespace Gamesim.Uma.Editor
                     ValidateSpecularTexture(style.overlay, evidence);
                     // Keep a failed fit's measured geometry, rather than only the previously completed fits.
                     report.fits.Add(evidence);
+                    surface.upperLayer = MeasureTopUnderlayerEnvelope(races[body], surface, evidence);
                     Progress(style.stem + " " + fit + " panels");
                     surface.lowerLayer?.ResetMeasurements();
+                    surface.upperLayer.ResetMeasurements();
+                    evidence.upperLayerRecipes = new List<string>(surface.upperLayer.recipes);
+                    evidence.upperLayerSlots = surface.upperLayer.slotNames.OrderBy(value => value, StringComparer.Ordinal).ToList();
+                    evidence.upperLayerInputs = surface.upperLayer.inputs.OrderBy(value => value, StringComparer.Ordinal).ToList();
+                    evidence.upperLayerTriangles = surface.upperLayer.TriangleCount;
+                    evidence.upperLayerBandFloorY = surface.upperLayer.FloorY;
+                    evidence.upperLayerBandCeilingY = surface.upperLayer.CeilingY;
+                    evidence.upperLayerTopY = surface.upperLayer.TopY;
                     if (surface.lowerLayer != null)
                     {
                         evidence.lowerLayerRecipes = new List<string>(surface.lowerLayer.recipes);
@@ -329,6 +349,10 @@ namespace Gamesim.Uma.Editor
                             evidence.lowerBandExpandedVertices = surface.lowerLayer.expandedVertices;
                             evidence.maximumLowerBandExpansion = surface.lowerLayer.maximumExpansion;
                         }
+                        evidence.upperLayerQueries = surface.upperLayer.queries;
+                        evidence.upperLayerTriangleTests = surface.upperLayer.triangleTests;
+                        evidence.upperBandExpandedVertices = surface.upperLayer.expandedVertices;
+                        evidence.maximumUpperBandExpansion = surface.upperLayer.maximumExpansion;
                     }
                     Bounds referenceBounds = new Bounds(pattern.points[0], Vector3.zero);
                     foreach (Vector3 point in pattern.points) referenceBounds.Encapsulate(point);
@@ -625,22 +649,151 @@ namespace Gamesim.Uma.Editor
             finally { UnityEngine.Object.DestroyImmediate(dressed.gameObject); }
             return envelope;
         }
+        private static LowerLayerEnvelope MeasureTopUnderlayerEnvelope(string race, Surface body, FitReport evidence)
+        {
+            string chestRecipe = evidence.recipe;
+            Vector3 hips = body.Bone(HumanBodyBones.Hips);
+            var envelope = new LowerLayerEnvelope(hips, hips.y - .02f, body.Bone(HumanBodyBones.Neck).y + .01f, "upper");
+            var catalog = new UmaAppearanceCatalog();
+            // Build clears the project catalog before repopulating it. Reciprocal rules
+            // must therefore come from the actual indexed Chest recipe, not that catalog.
+            var chest = index.GetAsset<UMAWardrobeRecipe>(chestRecipe, recursionGuard: true);
+            Require(chest != null || !File.Exists(ContentRoot + "/" + chestRecipe + ".asset"),
+                "An existing authored Chest recipe is unavailable for reciprocal compatibility: " + chestRecipe);
+            // Authoring below always clears Chest slot suppression, including on repeat
+            // builds. Measure against those emitted rules; retained incompatibilities
+            // still come from the indexed recipe (a first-build recipe has none).
+            if (chest != null && chest.suppressWardrobeSlots.Contains("TopUnderlayer"))
+                evidence.upperLayerCompatibilityNotes.Add(chestRecipe + ": authoring clears its previously stored TopUnderlayer suppression");
+            var compatible = new List<string>();
+            foreach (var item in catalog.Items.Where(item => item.Slot == "TopUnderlayer" && item.Fits(race)))
+            {
+                string name = catalog.ResolveRecipeName(item.Id);
+                bool suppressed = item.SuppressedSlots.Contains("Chest");
+                bool conflict = item.Conflicts.Contains(chestRecipe) || (chest != null && chest.IncompatibleRecipes.Any(other => other != null && item.Matches(other.name)));
+                if (suppressed || conflict) evidence.upperLayerCompatibilityNotes.Add(name + ": incompatible with " + chestRecipe + (suppressed ? " (slot suppression)" : " (recipe conflict)"));
+                else compatible.Add(name);
+            }
+            string[] names = compatible.Distinct(StringComparer.Ordinal).OrderBy(value => value, StringComparer.Ordinal).ToArray();
+            Require(names.Length <= 64, "Compatible TopUnderlayer recipes exceed their bound.");
+            // A body with no available upper underlayer is intentional. Its empty shell
+            // makes no queries or displacement and preserves its existing garment fit.
+            if (names.Length == 0) return envelope;
+            DynamicCharacterAvatar dressed = Reference(race);
+            int sourceTriangles = 0;
+            try
+            {
+                foreach (string name in names)
+                {
+                    Progress("measured upper layer " + race + " " + name);
+                    UMAWardrobeRecipe recipe = index.GetAsset<UMAWardrobeRecipe>(name, recursionGuard: true);
+                    Require(recipe != null, "A compatible TopUnderlayer recipe is unavailable: " + name);
+                    dressed.ClearSlots();
+                    Require(dressed.SetSlot(recipe), "The upper reference refused its requested recipe: " + name);
+                    dressed.GenerateNow(); AssertBody(dressed);
+                    Require(dressed.GetWardrobeItem("TopUnderlayer") == recipe, "The upper reference is not wearing its requested recipe: " + name);
+                    var declared = new HashSet<string>(recipe.GetCachedRecipe().slotDataList.Where(slot => slot?.asset != null)
+                        .Select(slot => slot.slotName), StringComparer.Ordinal);
+                    // Generated fragment instances carry the actual assigned renderer,
+                    // vertex offset and selected destination submesh after suppression.
+                    var actual = new List<SlotData>();
+                    foreach (var fragment in dressed.umaData.generatedMaterials.materials.SelectMany(material => material.materialFragments))
+                        if (fragment.slotData?.asset?.meshData != null && declared.Contains(fragment.slotData.slotName)
+                            && !actual.Any(slot => ReferenceEquals(slot, fragment.slotData))) actual.Add(fragment.slotData);
+                    Require(actual.Count > 0 && actual.Count <= 128, "The requested upper recipe has no bounded native generated slots: " + name);
+                    var renderers = dressed.GetRenderers();
+                    foreach (var group in actual.GroupBy(slot => slot.skinnedMeshRenderer))
+                    {
+                        Require(group.Key >= 0 && group.Key < renderers.Length, "The upper slot renderer assignment is invalid: " + name);
+                        SkinnedMeshRenderer renderer = renderers[group.Key];
+                        Require(renderer != null && renderer.sharedMesh != null, "The measured upper reference has no native mesh: " + name);
+                        var baked = new Mesh();
+                        try
+                        {
+                            renderer.BakeMesh(baked);
+                            Vector3[] vertices = baked.vertices;
+                            Matrix4x4 toBody = body.renderer.transform.worldToLocalMatrix * renderer.transform.localToWorldMatrix;
+                            foreach (SlotData slot in group)
+                            {
+                                var data = slot.asset.meshData;
+                                Require(slot.meshModifiers == null || slot.meshModifiers.All(modifier => modifier == null),
+                                    "Upper measurement cannot guess source topology changed by a mesh modifier: " + slot.slotName);
+                                Require(slot.asset.subMeshIndex >= 0 && slot.asset.subMeshIndex < data.submeshes.Length
+                                    && slot.submeshIndex >= 0 && slot.submeshIndex < baked.subMeshCount
+                                    && data.vertexCount == data.vertices.Length && slot.vertexOffset >= 0 && slot.vertexOffset + data.vertexCount <= vertices.Length,
+                                    "Generated upper slot ranges are invalid: " + slot.slotName);
+                                if (dressed.umaData.VertexOverrides.TryGetValue(slot.slotName, out var overrides))
+                                    Require(overrides.Length == data.vertexCount, "Upper vertex overrides changed the source range: " + slot.slotName);
+                                int[] triangles = data.submeshes[slot.asset.subMeshIndex].GetTriangles(0).ToArray();
+                                Require(triangles.Length > 0 && triangles.Length % 3 == 0, "The actual upper slot has no triangle geometry: " + slot.slotName);
+                                var drawn = new HashSet<(int, int, int)>();
+                                int[] native = baked.GetTriangles(slot.submeshIndex);
+                                Require(native.Length % 3 == 0 && native.Length / 3 <= 200000, "Upper native submesh triangles exceed their bound: " + slot.slotName);
+                                for (int t = 0; t < native.Length; t += 3) drawn.Add(LayerTriangleKey(native[t], native[t + 1], native[t + 2]));
+                                int retainedBefore = envelope.TriangleCount, drawnTriangles = 0;
+                                for (int t = 0; t < triangles.Length; t += 3)
+                                {
+                                    Require(++sourceTriangles <= 100000, "Upper-layer source triangle scans exceed their bound.");
+                                    int a = triangles[t], b = triangles[t + 1], c = triangles[t + 2];
+                                    Require(a >= 0 && b >= 0 && c >= 0 && a < data.vertexCount && b < data.vertexCount && c < data.vertexCount,
+                                        "Upper source triangle indices are invalid: " + slot.slotName);
+                                    a += slot.vertexOffset; b += slot.vertexOffset; c += slot.vertexOffset;
+                                    // A source face masked out of this actual native slot cannot
+                                    // push cloth out to fit geometry that was never drawn.
+                                    if (!drawn.Contains(LayerTriangleKey(a, b, c))) continue;
+                                    drawnTriangles++;
+                                    envelope.Add(toBody.MultiplyPoint3x4(vertices[a]), toBody.MultiplyPoint3x4(vertices[b]), toBody.MultiplyPoint3x4(vertices[c]));
+                                }
+                                envelope.slotNames.Add(name + ":" + slot.slotName);
+                                string slotPath = AssetDatabase.GetAssetPath(slot.asset);
+                                Require(File.Exists(slotPath), "The measured upper slot has no source asset: " + slot.slotName);
+                                string slotHash = Hash(slotPath);
+                                envelope.inputs.Add(slotPath + ":" + slotHash);
+                                Require(evidence.upperLayerMeasuredSlots.Count < 128, "Upper measured slot receipts exceed their bound.");
+                                evidence.upperLayerMeasuredSlots.Add(new MeasuredUpperSlot { recipe = name, slot = slot.slotName, sourcePath = slotPath, sourceSha256 = slotHash,
+                                    rendererIndex = group.Key, vertexOffset = slot.vertexOffset, sourceSubmesh = slot.asset.subMeshIndex, destinationSubmesh = slot.submeshIndex,
+                                    sourceVertexCount = data.vertexCount, sourceTriangles = triangles.Length / 3, drawnTriangles = drawnTriangles,
+                                    retainedBandTriangles = envelope.TriangleCount - retainedBefore });
+                            }
+                        }
+                        finally { UnityEngine.Object.DestroyImmediate(baked); }
+                    }
+                    envelope.recipes.Add(name);
+                    string recipePath = AssetDatabase.GetAssetPath(recipe);
+                    envelope.inputs.Add(recipePath + ":" + Hash(recipePath));
+                }
+            }
+            finally { UnityEngine.Object.DestroyImmediate(dressed.gameObject); }
+            return envelope;
+        }
+        private static (int, int, int) LayerTriangleKey(int a, int b, int c)
+        {
+            int lo = Mathf.Min(a, Mathf.Min(b, c)), hi = Mathf.Max(a, Mathf.Max(b, c));
+            return (lo, a + b + c - lo - hi, hi);
+        }
         private static void Sleeve(Pattern pattern, Surface surface, List<int> opening, bool left, float clearance)
         {
             const int lengthSteps = 14;
             Vector3 elbow = surface.Bone(left ? HumanBodyBones.LeftLowerArm : HumanBodyBones.RightLowerArm);
             Vector3 hand = surface.Bone(left ? HumanBodyBones.LeftHand : HumanBodyBones.RightHand);
-            Vector3 start = opening.Select(i => pattern.points[i]).Aggregate(Vector3.zero, (sum, point) => sum + point) / opening.Count;
+            // Torso cloth may move outside a retained upper layer. Its measured displacement
+            // must not move the arm sampling basis or reassign downstream skin weights.
+            Vector3[] nakedOpening = opening.Select(i => pattern.bodyHits[i].position + pattern.bodyHits[i].normal * clearance).ToArray();
+            Vector3 start = nakedOpening.Aggregate(Vector3.zero, (sum, point) => sum + point) / opening.Count;
             Vector3 axis = (elbow - start).normalized;
             Require(Mathf.Abs(axis.x) > .55f, "Reference arms must be in the neutral authoring pose.");
             Vector3 up = Vector3.ProjectOnPlane(Vector3.up, axis).normalized;
             Vector3 forward = Vector3.Cross(axis, up).normalized;
-            float firstAngle = Mathf.Atan2(Vector3.Dot(pattern.points[opening[0]] - start, forward), Vector3.Dot(pattern.points[opening[0]] - start, up));
-            Vector3 loopNormal = Vector3.zero;
+            float firstAngle = Mathf.Atan2(Vector3.Dot(nakedOpening[0] - start, forward), Vector3.Dot(nakedOpening[0] - start, up));
+            Vector3 loopNormal = Vector3.zero, actualLoopNormal = Vector3.zero;
             for (int i = 0; i < opening.Count; i++)
-                loopNormal += Vector3.Cross(pattern.points[opening[i]] - start, pattern.points[opening[(i + 1) % opening.Count]] - start);
+            {
+                loopNormal += Vector3.Cross(nakedOpening[i] - start, nakedOpening[(i + 1) % opening.Count] - start);
+                actualLoopNormal += Vector3.Cross(pattern.points[opening[i]] - start, pattern.points[opening[(i + 1) % opening.Count]] - start);
+            }
             float winding = Mathf.Sign(Vector3.Dot(loopNormal, axis));
-            Require(Mathf.Abs(Vector3.Dot(loopNormal, axis)) > .00001f, "The sleeve's actual armhole has no supported circumference.");
+            Require(Mathf.Abs(Vector3.Dot(loopNormal, axis)) > .00001f && Mathf.Abs(Vector3.Dot(actualLoopNormal, axis)) > .00001f
+                && winding == Mathf.Sign(Vector3.Dot(actualLoopNormal, axis)), "The sleeve's actual armhole has no supported circumference.");
             int[] previous = opening.ToArray();
             for (int step = 1; step <= lengthSteps; step++)
             {

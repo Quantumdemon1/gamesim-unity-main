@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Gamesim.Editor;
 using NUnit.Framework;
@@ -531,9 +533,13 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void RunningThePassAgainRebuildsTheSameRoot()
         {
-            var scene = EditorSceneManager.OpenPreviewScene(EpisodeScene);
+            // Apply(scene) edits persistent shared materials as well as this preview's geometry.
+            // Closing the preview does not undo those assets: a dirty material is saved on exit.
+            var materials = OwnedMaterialState.Capture();
+            var scene = default(UnityEngine.SceneManagement.Scene);
             try
             {
+                scene = EditorSceneManager.OpenPreviewScene(EpisodeScene);
                 var before = Root(scene).GetComponentsInChildren<Renderer>(true)
                     .Select(r => r.name + "@" + r.bounds.center.ToString("F2") + "|" + r.bounds.size.ToString("F2") + "|" + r.sharedMaterial.name)
                     .OrderBy(s => s, StringComparer.Ordinal).ToArray();
@@ -542,8 +548,155 @@ namespace Gamesim.Tests.EditMode
                     .Select(r => r.name + "@" + r.bounds.center.ToString("F2") + "|" + r.bounds.size.ToString("F2") + "|" + r.sharedMaterial.name)
                     .OrderBy(s => s, StringComparer.Ordinal).ToArray();
                 Assert.That(after, Is.EqualTo(before), "A second run places what the first did, where it did, in the same materials.");
+                Assert.That(materials.AnySerializedStateChanged(), Is.True,
+                    "Precondition: the real authoring pass changed an existing material, so this case exercises asset restoration.");
             }
-            finally { EditorSceneManager.ClosePreviewScene(scene); }
+            finally
+            {
+                try { materials.RestoreAndAssertUnchanged(); }
+                finally { if (scene.IsValid()) EditorSceneManager.ClosePreviewScene(scene); }
+            }
+        }
+
+        private sealed class OwnedMaterialState
+        {
+            private readonly List<MaterialState> originals = new List<MaterialState>();
+            private readonly HashSet<string> paths = new HashSet<string>(StringComparer.Ordinal);
+
+            public static OwnedMaterialState Capture()
+            {
+                Assert.That(AssetDatabase.IsValidFolder(HouseRoomFinish.MaterialFolder), Is.True,
+                    "This saved-scene test needs the existing owned material folder.");
+                var state = new OwnedMaterialState();
+                try
+                {
+                    foreach (string path in MaterialPaths())
+                    {
+                        state.originals.Add(new MaterialState(path));
+                        state.paths.Add(path);
+                    }
+                    Assert.That(state.originals, Is.Not.Empty);
+                    return state;
+                }
+                catch
+                {
+                    state.DestroyCopies();
+                    throw;
+                }
+            }
+
+            public bool AnySerializedStateChanged() => originals.Any(s => EditorJsonUtility.ToJson(s.Material) != s.Serialized);
+
+            public void RestoreAndAssertUnchanged()
+            {
+                var failures = new List<string>();
+                try
+                {
+                    // A future pass may add a material. Remove only .mat assets in this exact
+                    // owned folder that did not exist before this synchronous test began.
+                    try
+                    {
+                        foreach (string path in MaterialPaths().Where(p => !paths.Contains(p)))
+                        {
+                            try
+                            {
+                                if (!AssetDatabase.DeleteAsset(path)) failures.Add("Could not remove test-created material " + path);
+                                else failures.Add("The saved-scene re-run unexpectedly created " + path);
+                            }
+                            catch (Exception error) { failures.Add(path + ": " + error); }
+                        }
+                    }
+                    catch (Exception error) { failures.Add("Could not enumerate test-created materials: " + error); }
+                    foreach (var state in originals)
+                    {
+                        try { state.Restore(failures); }
+                        catch (Exception error) { failures.Add(state.Path + ": " + error); }
+                    }
+                }
+                finally { DestroyCopies(); }
+                Assert.That(failures, Is.Empty, "The re-run must leave the original material assets and their dirty state unchanged.");
+            }
+
+            private void DestroyCopies()
+            {
+                foreach (var state in originals)
+                    if (state.Copy != null) UnityEngine.Object.DestroyImmediate(state.Copy);
+            }
+
+            private static string[] MaterialPaths() => AssetDatabase.FindAssets("t:Material", new[] { HouseRoomFinish.MaterialFolder })
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => p.StartsWith(HouseRoomFinish.MaterialFolder + "/", StringComparison.Ordinal)
+                    && p.EndsWith(".mat", StringComparison.Ordinal))
+                .Distinct(StringComparer.Ordinal).OrderBy(p => p, StringComparer.Ordinal).ToArray();
+
+            private sealed class MaterialState
+            {
+                public readonly string Path, Serialized;
+                public readonly Material Material, Copy;
+                private readonly HideFlags hideFlags;
+                private readonly bool wasDirty;
+                private readonly string[] keywords;
+                private readonly Color baseColor, emissionColor;
+                private readonly float smoothness;
+                private readonly byte[] bytes, metaBytes;
+                private readonly string absolutePath, guid;
+
+                public MaterialState(string path)
+                {
+                    Path = path;
+                    absolutePath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(Application.dataPath), path);
+                    Material = AssetDatabase.LoadAssetAtPath<Material>(path);
+                    Assert.That(Material, Is.Not.Null, path);
+                    guid = AssetDatabase.AssetPathToGUID(path);
+                    bytes = File.ReadAllBytes(absolutePath);
+                    metaBytes = File.ReadAllBytes(absolutePath + ".meta");
+                    Serialized = EditorJsonUtility.ToJson(Material);
+                    hideFlags = Material.hideFlags;
+                    wasDirty = EditorUtility.IsDirty(Material);
+                    keywords = Material.shaderKeywords.ToArray();
+                    baseColor = Material.HasProperty("_BaseColor") ? Material.GetColor("_BaseColor") : default;
+                    emissionColor = Material.HasProperty("_EmissionColor") ? Material.GetColor("_EmissionColor") : default;
+                    smoothness = Material.HasProperty("_Smoothness") ? Material.GetFloat("_Smoothness") : 0f;
+                    Copy = new Material(Material);
+                    try
+                    {
+                        EditorUtility.CopySerialized(Material, Copy);
+                        Copy.hideFlags = HideFlags.HideAndDontSave;
+                    }
+                    catch
+                    {
+                        UnityEngine.Object.DestroyImmediate(Copy);
+                        throw;
+                    }
+                }
+
+                public void Restore(List<string> failures)
+                {
+                    // Preserve the object referenced by the AssetDatabase and scene renderers.
+                    // Restoring file bytes alone would leave the edited, dirty object to flush.
+                    EditorUtility.CopySerialized(Copy, Material);
+                    Material.hideFlags = hideFlags;
+                    if (wasDirty) EditorUtility.SetDirty(Material);
+                    else EditorUtility.ClearDirty(Material);
+                    RestoreBytes(absolutePath, bytes, failures);
+                    RestoreBytes(absolutePath + ".meta", metaBytes, failures);
+                    if (EditorJsonUtility.ToJson(Material) != Serialized) failures.Add(Path + ": serialized material state changed");
+                    if (!Material.shaderKeywords.SequenceEqual(keywords)) failures.Add(Path + ": shader keywords changed");
+                    if (Material.HasProperty("_BaseColor") && Material.GetColor("_BaseColor") != baseColor) failures.Add(Path + ": base colour changed");
+                    if (Material.HasProperty("_EmissionColor") && Material.GetColor("_EmissionColor") != emissionColor) failures.Add(Path + ": emission colour changed");
+                    if (Material.HasProperty("_Smoothness") && Material.GetFloat("_Smoothness") != smoothness) failures.Add(Path + ": smoothness changed");
+                    if (EditorUtility.IsDirty(Material) != wasDirty) failures.Add(Path + ": original dirty flag changed");
+                    if (AssetDatabase.AssetPathToGUID(Path) != guid) failures.Add(Path + ": asset GUID changed");
+                }
+
+                private static void RestoreBytes(string path, byte[] original, List<string> failures)
+                {
+                    if (File.Exists(path) && File.ReadAllBytes(path).SequenceEqual(original)) return;
+                    failures.Add(path + ": authoring changed original file bytes");
+                    File.WriteAllBytes(path, original);
+                    if (!File.ReadAllBytes(path).SequenceEqual(original)) failures.Add(path + ": original file bytes were not restored");
+                }
+            }
         }
 
         private static Transform Root(UnityEngine.SceneManagement.Scene scene)

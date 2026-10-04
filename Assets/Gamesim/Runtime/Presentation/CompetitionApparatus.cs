@@ -33,7 +33,7 @@ namespace Gamesim.Presentation
         private readonly List<TMP_Text> glyphs = new List<TMP_Text>();
         private readonly Dictionary<Renderer,Renderer> repeaters = new Dictionary<Renderer,Renderer>();
         private readonly Dictionary<TMP_Text,TMP_Text> repeatWords = new Dictionary<TMP_Text,TMP_Text>();
-        private readonly MaterialPropertyBlock tint = new MaterialPropertyBlock();
+        private MaterialPropertyBlock tint;
         private Material frame, accent, dark, paper;
         private Mesh box;
         private TMP_Text progress;
@@ -73,6 +73,9 @@ namespace Gamesim.Presentation
 
         private void Build(Color award)
         {
+            // Unity native objects must be created after component construction. Build also
+            // runs for an inactive reserved anchor, whose Awake has not run yet.
+            tint = new MaterialPropertyBlock();
             frame = Material("Arena graphite", UiTheme.Hex("24334A"), true);
             accent = Material("Award trim", award, false);
             dark = Material("Instrument face", UiTheme.Hex("102138"), false);

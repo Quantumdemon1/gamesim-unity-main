@@ -29,10 +29,11 @@ namespace Gamesim.Tests.PlayMode
             if(footprintScene.IsValid() && footprintScene.isLoaded)yield return SceneManager.UnloadSceneAsync(footprintScene);
         }
 
-        private CompetitionApparatus Make(CompetitionDefinition definition)
+        private CompetitionApparatus Make(CompetitionDefinition definition, bool inactive = false)
         {
             owner=new GameObject("Apparatus clearance anchor");
             owner.transform.SetPositionAndRotation(new Vector3(4,2,6),Quaternion.Euler(0,37,0));
+            owner.SetActive(!inactive);
             return CompetitionApparatus.Create(owner.transform,definition,definition.Category,"entrant",UiTheme.Gold);
         }
 
@@ -41,7 +42,14 @@ namespace Gamesim.Tests.PlayMode
         {
             foreach(var definition in CompetitionDefinitions.All)
             {
-                var instrument=Make(definition);
+                var instrument=Make(definition,inactive:true);
+                var attempt=new MiniGameRun(CompetitionMiniGames.For(definition.Category),123,4,definition);
+                Assert.That(owner.activeInHierarchy,Is.False);
+                instrument.Sync(attempt,true,false,false,false);
+                owner.SetActive(true);
+                instrument.Sync(attempt,true,false,false,false);
+                Assert.That(instrument.ProgressText,Is.EqualTo(CompetitionApparatus.Readout(attempt)),
+                    "A reserved instrument can receive progress before its anchor becomes active.");
                 var at=owner.transform.position;var facing=owner.transform.rotation;
                 Assert.That(instrument.DefinitionId,Is.EqualTo(definition.Id));
                 Assert.That(instrument.Instrument,Is.EqualTo(Expected(definition.Category)),definition.Id);

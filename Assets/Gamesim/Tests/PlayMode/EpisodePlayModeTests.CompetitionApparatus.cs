@@ -434,6 +434,7 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator Apparatus_InHouseMemoryUsesActualCardsAndReleasesItsStageOnCancel()
         {
             AssertCompetitionInspectionUsesFacesRatherThanJoinedBounds();
+            AssertCompetitionInspectionUsesReadableUnobscuredGlyphs();
             yield return EnterInstrumentAttempt("Mental");
             var before=director.Snapshot;var instrument=PlayerInstrument();
             Assert.That(instrument.Instrument,Is.EqualTo(CompetitionApparatus.Family.PairConsole));
@@ -635,7 +636,8 @@ namespace Gamesim.Tests.PlayMode
                 Debug.Log("[Gamesim W3] actual "+name+" instrument capture -> "+path+"; "+CompetitionApparatus.Readout(ChallengeRun())
                     +"; humanoid="+(humanoid!=null)+"; handContact="+(pose!=null && pose.HasContact)
                     +"; inspectionCandidate="+view.Candidate+"; eye="+view.Eye.ToString("F4")+"; focus="+view.Focus.ToString("F4")
-                    +"; bodyBounds="+view.Body+"; instrumentBounds="+view.Instrument+"; clearTargets="+view.Targets.Length);
+                    +"; bodyBounds="+view.Body+"; instrumentBounds="+view.Instrument+"; clearTargets="+view.Targets.Length
+                    +"; actualFrontReadouts="+view.Readouts.Length+"; progressGlyphsPlayerClear=true; semanticReadoutsPlayerClearFraction>=0.8");
             }
             finally
             {
@@ -654,9 +656,21 @@ namespace Gamesim.Tests.PlayMode
             public Bounds Body,Instrument;
             public Vector3[] Targets;
             public CompetitionInspectionGeometry Geometry;
+            public CompetitionInspectionGeometry BodyGeometry;
+            public CompetitionInspectionReadout[] Readouts;
             public Vector3 PlayerPosition,InstrumentPosition;
             public Quaternion PlayerRotation,InstrumentRotation;
             public int Candidate;
+        }
+
+        private sealed class CompetitionInspectionReadout
+        {
+            public TMP_Text Label;
+            public string Text;
+            public Matrix4x4 Matrix;
+            public Bounds GlyphBounds;
+            public Vector3 Front,Left,Right,Bottom,Top;
+            public Vector3[] GlyphCenters;
         }
 
         private static bool CompetitionInspectionOpaque(Material material)=>material!=null && material.renderQueue<3000;
@@ -841,6 +855,10 @@ namespace Gamesim.Tests.PlayMode
                 PlayerPosition=player.transform.position,PlayerRotation=player.transform.rotation,
                 InstrumentPosition=instrument.transform.position,InstrumentRotation=instrument.transform.rotation,
                 Targets=CompetitionInspectionTargets(body).Concat(CompetitionInspectionTargets(apparatus)).ToArray(),
+                Readouts=CompetitionInspectionReadouts(instrument),
+                BodyGeometry=new CompetitionInspectionGeometry(visual.GetComponentsInChildren<Renderer>().Where(renderer=>renderer.enabled
+                    && renderer.gameObject.activeInHierarchy && (renderer is MeshRenderer || renderer is SkinnedMeshRenderer)
+                    && renderer.GetComponent<TMP_Text>()==null && renderer.sharedMaterials.Any(CompetitionInspectionOpaque)).ToArray()),
                 Geometry=new CompetitionInspectionGeometry(SceneComponents<Renderer>().Where(renderer=>renderer.enabled && renderer.gameObject.activeInHierarchy
                     && (renderer is MeshRenderer || renderer is SkinnedMeshRenderer) && renderer.GetComponent<TMP_Text>()==null
                     && !renderer.transform.IsChildOf(player.transform) && !renderer.transform.IsChildOf(instrument.transform)
@@ -850,7 +868,7 @@ namespace Gamesim.Tests.PlayMode
             eye.fieldOfView=42;eye.orthographic=false;
             foreach(float distance in new[]{4.2f,4.8f,5.6f})
             foreach(float lift in new[]{1.0f,1.55f})
-            foreach(float side in new[]{.7f,-.7f,1.1f,-1.1f,0f})
+            foreach(float side in new[]{1.4f,-1.4f,1.9f,-1.9f,0f})
             {
                 view.Candidate=++candidate;
                 view.Eye=view.Focus+(-anchor.forward+anchor.right*side).normalized*distance+Vector3.up*lift;
@@ -865,6 +883,44 @@ namespace Gamesim.Tests.PlayMode
             Assert.Fail("No clear approach-side inspection eye in the bounded30 candidates. Body="+body+"; apparatus="+apparatus
                 +"; "+string.Join("; ",failures));
             return null;
+        }
+
+        private static void AssertCompetitionInspectionUsesReadableUnobscuredGlyphs()
+        {
+            var root=new GameObject("Owned readout visibility fixture");Material opaque=null;
+            try
+            {
+                root.hideFlags=HideFlags.HideAndDontSave;
+                root.transform.position=new Vector3(73,19,-47);
+                var anchor=new GameObject("Native readout anchor");anchor.transform.SetParent(root.transform,false);
+                var definition=CompetitionDefinitions.All.First(value=>value.Category=="Luck");
+                var instrument=CompetitionApparatus.Create(anchor.transform,definition,definition.Category,"inspection-fixture",UiTheme.Gold);
+                var cameraObject=new GameObject("Owned readout eye");cameraObject.transform.SetParent(root.transform,false);
+                var eye=cameraObject.AddComponent<Camera>();eye.enabled=false;eye.fieldOfView=42;eye.aspect=1600f/900f;
+                var readouts=CompetitionInspectionReadouts(instrument);
+                var progress=readouts.Single(readout=>readout.Label.name=="Instrument progress");
+                var focus=(progress.Left+progress.Right)*.5f;
+                var view=new CompetitionInspectionView {Readouts=readouts,BodyGeometry=new CompetitionInspectionGeometry(Array.Empty<Renderer>())};
+                Action<Vector3> point=local=>{view.Eye=root.transform.TransformPoint(local);eye.transform.SetPositionAndRotation(view.Eye,Quaternion.LookRotation(focus-view.Eye,Vector3.up));};
+                point(new Vector3(0,1.3f,-2));
+                Assert.That(CompetitionInspectionReadoutsVisible(eye,view,out var clear),Is.True,"Actual front glyphs are readable: "+clear);
+                point(new Vector3(0,1.3f,3));
+                Assert.That(CompetitionInspectionReadoutsVisible(eye,view,out var back),Is.False,"The same glyph mesh is mirrored from behind.");
+                Assert.That(back,Does.Contain("progress front/legibility"));
+                var body=GameObject.CreatePrimitive(PrimitiveType.Cube);body.name="Owned player-sized occluder";body.transform.SetParent(root.transform,false);
+                body.transform.localPosition=new Vector3(0,1.01f,0);body.transform.localScale=new Vector3(.64f,1.92f,.40f);
+                opaque=new Material(Shader.Find("Universal Render Pipeline/Lit")) {hideFlags=HideFlags.HideAndDontSave,renderQueue=2000};
+                var renderer=body.GetComponent<Renderer>();renderer.sharedMaterial=opaque;
+                view.BodyGeometry=new CompetitionInspectionGeometry(new[]{renderer});
+                point(new Vector3(0,1.3f,-2));
+                Assert.That(CompetitionInspectionReadoutsVisible(eye,view,out var hidden),Is.False,
+                    "Clear external scenery alone cannot accept a player covering the actual progress glyphs.");
+                Assert.That(hidden,Does.Contain("player occlusion"));
+                point(new Vector3(2.4f,1.3f,-1.8f));
+                Assert.That(CompetitionInspectionReadoutsVisible(eye,view,out var side),Is.True,
+                    "A physically clear oblique eye can show the same native glyphs without moving the body: "+side);
+            }
+            finally {Object.DestroyImmediate(root);if(opaque!=null)Object.DestroyImmediate(opaque);}
         }
 
         private static Bounds CompetitionInspectionBounds(Transform root)
@@ -887,8 +943,71 @@ namespace Gamesim.Tests.PlayMode
             new Vector3(bounds.center.x,bounds.min.y+bounds.size.y*.22f,bounds.center.z),
             bounds.center+Vector3.right*bounds.extents.x*.6f,bounds.center-Vector3.right*bounds.extents.x*.6f};
 
+        private static CompetitionInspectionReadout[] CompetitionInspectionReadouts(CompetitionApparatus instrument)
+        {
+            var readouts=new List<CompetitionInspectionReadout>();
+            foreach(var label in instrument.GetComponentsInChildren<TMP_Text>().Where(label=>label.enabled
+                && label.gameObject.activeInHierarchy && !label.name.EndsWith(" audience readout",StringComparison.Ordinal)))
+            {
+                // Refresh only the existing native text mesh, after the UI read. No pose,
+                // progress value, material, actor or gameplay camera is changed here.
+                label.ForceMeshUpdate();
+                var glyphs=label.textInfo.characterInfo.Take(label.textInfo.characterCount).Where(character=>character.isVisible).ToArray();
+                if(glyphs.Length==0 || !label.text.Any(character=>char.IsLetterOrDigit(character) || character=='?'))continue;
+                var bounds=label.textBounds;var center=bounds.center;
+                var first=glyphs[0];
+                Vector3 front=Vector3.Cross(first.topLeft-first.bottomLeft,first.bottomRight-first.bottomLeft).normalized;
+                readouts.Add(new CompetitionInspectionReadout {Label=label,Text=label.text,Matrix=label.transform.localToWorldMatrix,GlyphBounds=bounds,
+                    Front=label.transform.TransformDirection(front).normalized,
+                    Left=label.transform.TransformPoint(new Vector3(bounds.min.x,center.y,center.z)),
+                    Right=label.transform.TransformPoint(new Vector3(bounds.max.x,center.y,center.z)),
+                    Bottom=label.transform.TransformPoint(new Vector3(center.x,bounds.min.y,center.z)),
+                    Top=label.transform.TransformPoint(new Vector3(center.x,bounds.max.y,center.z)),
+                    GlyphCenters=glyphs.Select(character=>label.transform.TransformPoint((character.bottomLeft+character.topRight)*.5f)).ToArray()});
+            }
+            Assert.That(readouts.Any(readout=>readout.Label.name=="Instrument progress"),Is.True,"Actual progress glyph geometry must be present.");
+            return readouts.ToArray();
+        }
+
+        private static bool CompetitionInspectionReadoutsVisible(Camera eye,CompetitionInspectionView view,out string failure)
+        {
+            int visible=0;
+            foreach(var readout in view.Readouts)
+            {
+                if(readout.Label==null || readout.Label.text!=readout.Text || readout.Label.transform.localToWorldMatrix!=readout.Matrix)
+                {failure="an actual readout changed during synchronous inspection";return false;}
+                var currentGlyphs=readout.Label.textInfo.characterInfo.Take(readout.Label.textInfo.characterCount).Where(character=>character.isVisible).ToArray();
+                if(readout.Label.textBounds!=readout.GlyphBounds || currentGlyphs.Length!=readout.GlyphCenters.Length
+                    || currentGlyphs.Where((character,index)=>Vector3.Distance(readout.Label.transform.TransformPoint((character.bottomLeft+character.topRight)*.5f),
+                        readout.GlyphCenters[index])>.00001f).Any())
+                {failure="actual glyph geometry changed during synchronous inspection: "+readout.Label.name;return false;}
+                var center=(readout.Left+readout.Right)*.5f;
+                float front=Vector3.Dot(readout.Front,(view.Eye-center).normalized);
+                var left=eye.WorldToViewportPoint(readout.Left);var right=eye.WorldToViewportPoint(readout.Right);
+                var bottom=eye.WorldToViewportPoint(readout.Bottom);var top=eye.WorldToViewportPoint(readout.Top);
+                float pixels=(top.y-bottom.y)*900f;
+                bool readable=front>=.4f && left.z>eye.nearClipPlane && right.x>left.x && pixels>=8f;
+                int clear=0;string playerBlocker=null;
+                if(readable)foreach(var target in readout.GlyphCenters)
+                {
+                    var to=target-view.Eye;
+                    if(!view.BodyGeometry.Blocked(new Ray(view.Eye,to.normalized),to.magnitude-.005f,out var obstruction))clear++;
+                    else if(playerBlocker==null)playerBlocker=obstruction;
+                }
+                bool enough=readable && clear>=Mathf.CeilToInt(readout.GlyphCenters.Length*.8f);
+                if(readout.Label.name=="Instrument progress" && (!readable || clear!=readout.GlyphCenters.Length))
+                {failure="progress front/legibility/player occlusion: front="+front.ToString("F3")+", heightPixels="+pixels.ToString("F2")
+                    +", clearGlyphs="+clear+"/"+readout.GlyphCenters.Length+", firstPlayerBlocker="+playerBlocker;return false;}
+                if(enough)visible++;
+            }
+            if(visible<Mathf.CeilToInt(view.Readouts.Length*.8f))
+            {failure="player obscures actual front readouts: visible="+visible+"/"+view.Readouts.Length+" (80% required)";return false;}
+            failure=null;return true;
+        }
+
         private bool CompetitionInspectionVisible(Camera eye,CompetitionApparatus instrument,CompetitionInspectionView view,out string failure)
         {
+            if(!CompetitionInspectionReadoutsVisible(eye,view,out failure))return false;
             foreach(var bounds in new[]{view.Body,view.Instrument})
             for(int corner=0;corner<8;corner++)
             {
@@ -935,6 +1054,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Vector3.Distance(apparatus.min,view.Instrument.min)+Vector3.Distance(apparatus.max,view.Instrument.max),Is.LessThan(.001f),
                 moment+": the current rendered apparatus bounds match the fitted geometry.");
             var current=new CompetitionInspectionView {Eye=view.Eye,Body=body,Instrument=apparatus,Geometry=view.Geometry,
+                Readouts=view.Readouts,BodyGeometry=view.BodyGeometry,
                 Targets=CompetitionInspectionTargets(body).Concat(CompetitionInspectionTargets(apparatus)).ToArray()};
             Assert.That(CompetitionInspectionVisible(eye,instrument,current,out string failure),Is.True,moment+": "+failure);
         }

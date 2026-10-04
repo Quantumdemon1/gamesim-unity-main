@@ -64,6 +64,8 @@ namespace Gamesim.Tests.PlayMode
                 foreach(var label in labels)label.ForceMeshUpdate();
                 Assert.That(labels.All(label=>label.GetComponent<Renderer>().sharedMaterial==readoutMaterial),Is.True,
                     "Native TMP activation and glyph generation retain the front-only material.");
+                Assert.That(readoutMaterial.GetFloat("_CullMode"),Is.EqualTo((float)UnityEngine.Rendering.CullMode.Back),
+                    "TMP activation must retain actual back-face culling, not just material identity.");
                 Assert.That(houseFont.material,Is.SameAs(originalFontMaterial));
                 Assert.That(originalFontMaterial.GetFloat("_CullMode"),Is.EqualTo(originalCulling),"The shared house font stays unchanged.");
                 instrument.Sync(attempt,true,false,false,false);

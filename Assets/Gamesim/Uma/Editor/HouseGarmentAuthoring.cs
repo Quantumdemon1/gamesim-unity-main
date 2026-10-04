@@ -49,6 +49,8 @@ namespace Gamesim.Uma.Editor
             public bool upperBoundaryAdapted;
             public int vertices, triangles, maximumInfluences;
             public int windingComponents, windingSharedEdges, windingReversedTriangles;
+            public int refinedBodyVertices, refinementBodyTriangleTests;
+            public float maximumRefinementProjection;
             public List<WindingComponent> windingEvidence = new List<WindingComponent>();
             public int coverageQueries, coverageTriangleTests, coverageMaximumCandidates, coverageLargeTrianglesRetained;
             public Vector3 hipsLandmark, neckLandmark, leftUpperArmLandmark, rightUpperArmLandmark;
@@ -206,6 +208,8 @@ namespace Gamesim.Uma.Editor
             public readonly List<List<int>> armBoundaries = new List<List<int>>();
             public float hem, shoulder, armpit;
             public int windingComponents, windingSharedEdges, windingReversedTriangles;
+            public int refinedBodyVertices, refinementBodyTriangleTests;
+            public float maximumRefinementProjection;
             public readonly List<WindingComponent> windingEvidence = new List<WindingComponent>();
             public int Add(Vector3 point, Vector2 uv, Hit? bodyHit = null)
             {
@@ -948,6 +952,9 @@ namespace Gamesim.Uma.Editor
             evidence.windingComponents = pattern.windingComponents;
             evidence.windingSharedEdges = pattern.windingSharedEdges;
             evidence.windingReversedTriangles = pattern.windingReversedTriangles;
+            evidence.refinedBodyVertices = pattern.refinedBodyVertices;
+            evidence.refinementBodyTriangleTests = pattern.refinementBodyTriangleTests;
+            evidence.maximumRefinementProjection = pattern.maximumRefinementProjection;
             evidence.windingEvidence = new List<WindingComponent>(pattern.windingEvidence);
             var vertices = new Vector3[pattern.points.Count];
             var counts = new byte[vertices.Length];

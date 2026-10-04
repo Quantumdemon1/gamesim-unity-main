@@ -115,6 +115,7 @@ namespace Gamesim.Uma.Tests
         [Test]
         public void GarmentPattern_VestKeepsTheCapsExposedWithCurvedArmholesAndNarrowerStraps()
         {
+            AssertCurvedBodyPanelRefinement();
             object surface = Body(true), knit = Pattern(surface, true), vest = Pattern(surface, false);
             List<Vector3> k = Get<List<Vector3>>(knit, "points"), v = Get<List<Vector3>>(vest, "points");
             int topOuter = (20 * 25 + 24) * 2, lowerOuter = (15 * 25 + 24) * 2;
@@ -359,6 +360,134 @@ namespace Gamesim.Uma.Tests
             Assert.That(Get<float>(envelope, "maximumExpansion"), Is.InRange(.001f, .12f));
             AssertFaces(layered);
             AssertApertureSeams(layered, sleeves);
+        }
+
+        private static void AssertCurvedBodyPanelRefinement()
+        {
+            // Independent cylinder: every offset corner lies outside the skin, but
+            // the long internal chord cuts through its convex interior. Interpolating
+            // more cloth points or their corner weights leaves the old defect intact.
+            object surface = New("Surface"), pattern = New("Pattern");
+            var vertices = new List<Vector3>(); var normals = new List<Vector3>();
+            var triangles = (IList)Get<object>(surface, "triangles"); int collapsed = 0;
+            const float radius = .06f, clearance = .008f;
+            for (int j = 0; j <= 4; j++) for (int i = 0; i <= 40; i++)
+            {
+                float angle = -1f + i * .05f;
+                Vector3 normal = new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle));
+                vertices.Add(normal * radius + Vector3.up * (j * .01f)); normals.Add(normal);
+                if (i == 0 || j == 0) continue;
+                int a = (j - 1) * 41 + i - 1, b = a + 1, d = j * 41 + i - 1, c = d + 1;
+                AddTriangle(triangles, vertices, a, b, c, false, ref collapsed);
+                AddTriangle(triangles, vertices, a, c, d, false, ref collapsed);
+            }
+            Set(surface, "vertices", vertices.ToArray()); Set(surface, "normals", normals.ToArray());
+            var points = Get<List<Vector3>>(pattern, "points"); var uvs = Get<List<Vector2>>(pattern, "uvs");
+            var hits = (IDictionary)Get<object>(pattern, "bodyHits");
+            float[] angles = { -.6f, .6f, .6f, -.6f, .9f, .9f };
+            float[] heights = { 0f, 0f, .04f, .04f, 0f, .04f };
+            Vector2[] chart = { Vector2.zero, Vector2.right, Vector2.one, Vector2.up,
+                new Vector2(1.25f, 0f), new Vector2(1.25f, 1f) };
+            for (int i = 0; i < angles.Length; i++)
+            {
+                Vector3 nude = new Vector3(Mathf.Sin(angles[i]) * radius, heights[i], Mathf.Cos(angles[i]) * radius);
+                object hit = Call(surface, "Closest", nude, false);
+                Vector3 point = Get<Vector3>(hit, "position") + Get<Vector3>(hit, "normal") * clearance;
+                points.Add(point); uvs.Add(chart[i]); hits.Add(i, hit);
+                Assert.That(Vector3.Distance(point, Get<Vector3>(hit, "position")), Is.InRange(.00799f, .00801f));
+            }
+            Call(pattern, "Quad", 0, 1, 2, 3, Vector3.forward);
+            Call(pattern, "Quad", 1, 4, 5, 2, Vector3.forward); // Unselected adjacent panel shares the rim edge.
+            Vector3[] original = points.ToArray(); Vector2[] originalUvs = uvs.ToArray();
+            object[] originalHits = Enumerable.Range(0, 6).Select(i => hits[i]).ToArray();
+            object coarse = Activator.CreateInstance(Nested("CoverageIndex"), Fields, null, new[] { pattern }, null);
+            Assert.That((points[0].z + points[2].z) * .5f, Is.LessThan(radius - .003f));
+            Assert.That((bool)Call(coarse, "Covers", new Vector3(0f, .02f, radius), Vector3.forward, .03f), Is.False,
+                "This control must expose an interior skin intersection despite positive corner offsets.");
+            object refinement;
+            try
+            {
+                refinement = Author.GetMethod("RefineBodyPanels", BindingFlags.NonPublic | BindingFlags.Static)
+                    .Invoke(null, new object[] { surface, pattern, new HashSet<int> { 0, 1 }, clearance, .02f });
+            }
+            catch (TargetInvocationException e) { throw e.InnerException ?? e; }
+            Call(pattern, "OrientFacesConsistently");
+            AssertConsistentWinding(pattern);
+            Assert.That(Get<int>(pattern, "refinedBodyVertices"), Is.InRange(5, 16));
+            Assert.That(Get<int>(pattern, "refinementBodyTriangleTests"), Is.InRange(1, 2000000));
+            Assert.That(points.Take(6), Is.EqualTo(original));
+            Assert.That(uvs.Take(6), Is.EqualTo(originalUvs));
+            foreach (int i in Enumerable.Range(0, 6)) Assert.That(hits[i], Is.EqualTo(originalHits[i]));
+            var midpoints = Get<Dictionary<(int, int), int>>(refinement, "midpoints");
+            foreach (var edge in midpoints)
+            {
+                int midpoint = edge.Value; object hit = hits[midpoint];
+                Assert.That(uvs[midpoint], Is.EqualTo((uvs[edge.Key.Item1] + uvs[edge.Key.Item2]) * .5f));
+                Vector3 bodyPoint = Get<Vector3>(hit, "position"), normal = Get<Vector3>(hit, "normal");
+                Assert.That(points[midpoint], Is.EqualTo(bodyPoint + normal * clearance));
+                Vector3 bary = Get<Vector3>(hit, "barycentric");
+                Assert.That(bary.x + bary.y + bary.z, Is.InRange(.99999f, 1.00001f));
+                Assert.That(Mathf.Min(bary.x, Mathf.Min(bary.y, bary.z)), Is.GreaterThanOrEqualTo(-.00001f));
+                object support = Get<object>(hit, "triangle");
+                Vector3 reconstructed = vertices[Get<int>(support, "a")] * bary.x + vertices[Get<int>(support, "b")] * bary.y
+                    + vertices[Get<int>(support, "c")] * bary.z;
+                Assert.That(Vector3.Distance(reconstructed, bodyPoint), Is.LessThan(.00001f),
+                    "The new point must retain its actual sampled source triangle and barycentric weights, not blended corner Hits.");
+                Assert.That(Vector3.Distance(points[midpoint], bodyPoint), Is.LessThan(.12f));
+            }
+            int diagonal = midpoints[(0, 2)];
+            Assert.That(points[diagonal].z, Is.GreaterThan(radius + .007f),
+                "The longitudinal midpoint must resample convex nude support, rather than preserve the old chord.");
+            object refined = Activator.CreateInstance(Nested("CoverageIndex"), Fields, null, new[] { pattern }, null);
+            foreach (float angle in new[] { -.45f, 0f, .45f }) foreach (float y in new[] { .01f, .02f, .03f })
+            {
+                Vector3 radial = new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle));
+                Assert.That((bool)Call(refined, "Covers", radial * radius + Vector3.up * y, radial, .03f), Is.True,
+                    "Refined face interiors must enclose the independently curved body, using the original 8mm offset.");
+            }
+            AssertRefinedPanelPerimeter(pattern, refinement);
+            Assert.That(Get<List<int>>(pattern, "indices").Count, Is.GreaterThan(12));
+            // Selecting separated faces makes the intervening unselected triangle
+            // inherit two split edges. The same open perimeter/manifold proof covers
+            // this distinct transition, while the first selection also retains an
+            // untouched triangle and a neighbour with just one split edge.
+            object twoEdge = New("Pattern");
+            Get<List<Vector3>>(twoEdge, "points").AddRange(original);
+            Get<List<Vector2>>(twoEdge, "uvs").AddRange(originalUvs);
+            var otherHits = (IDictionary)Get<object>(twoEdge, "bodyHits");
+            for (int i = 0; i < originalHits.Length; i++) otherHits.Add(i, originalHits[i]);
+            Call(twoEdge, "Quad", 0, 1, 2, 3, Vector3.forward); Call(twoEdge, "Quad", 1, 4, 5, 2, Vector3.forward);
+            object second;
+            try
+            {
+                second = Author.GetMethod("RefineBodyPanels", BindingFlags.NonPublic | BindingFlags.Static)
+                    .Invoke(null, new object[] { surface, twoEdge, new HashSet<int> { 0, 2 }, clearance, .02f });
+            }
+            catch (TargetInvocationException e) { throw e.InnerException ?? e; }
+            Call(twoEdge, "OrientFacesConsistently"); AssertConsistentWinding(twoEdge);
+            var secondEdges = Get<Dictionary<(int, int), int>>(second, "midpoints");
+            Assert.That(secondEdges.ContainsKey((1, 2)) && secondEdges.ContainsKey((1, 5)), Is.True);
+            AssertRefinedPanelPerimeter(twoEdge, second);
+            Assert.That(Get<List<Vector3>>(twoEdge, "points").Take(6), Is.EqualTo(original));
+            Assert.That(Get<List<Vector2>>(twoEdge, "uvs").Take(6), Is.EqualTo(originalUvs));
+        }
+
+        private static void AssertRefinedPanelPerimeter(object pattern, object refinement)
+        {
+            var boundary = (List<int>)Call(refinement, "ExpandLoop", new List<int> { 0, 1, 4, 5, 2, 3 });
+            var boundaryEdges = new HashSet<(int, int)>();
+            for (int i = 0; i < boundary.Count; i++) boundaryEdges.Add((Mathf.Min(boundary[i], boundary[(i + 1) % boundary.Count]),
+                Mathf.Max(boundary[i], boundary[(i + 1) % boundary.Count])));
+            var uses = new Dictionary<(int, int), int>(); var indices = Get<List<int>>(pattern, "indices");
+            for (int t = 0; t < indices.Count; t += 3) for (int e = 0; e < 3; e++)
+            {
+                int a = indices[t + e], b = indices[t + (e + 1) % 3]; var edge = (Mathf.Min(a, b), Mathf.Max(a, b));
+                uses[edge] = uses.TryGetValue(edge, out int count) ? count + 1 : 1;
+            }
+            Assert.That(uses.Where(edge => edge.Value == 1).Select(edge => edge.Key), Is.EquivalentTo(boundaryEdges),
+                "Every open edge must be the propagated original perimeter, with no T-junction or newly opened seam.");
+            Assert.That(boundary.Count, Is.GreaterThan(6));
+            Assert.That(uses.ContainsKey((1, 2)), Is.False, "The adjacent unselected panel must share the subdivided edge.");
         }
 
         private static void AssertUpperLayerClearance(bool sleeves)

@@ -19,6 +19,7 @@ namespace Gamesim.Uma.Editor
             pattern.armpit = pattern.shoulder - (pattern.shoulder - pattern.hem) * .23f;
             Require(half > .08f && pattern.shoulder - pattern.hem > .15f, "Unexpected humanoid torso landmarks.");
             UpperEdge edge = UpperEdge.From(surface, style, half, pattern.shoulder - pattern.hem);
+            var backArmholeFaces = new HashSet<int>();
             int[,] front = new int[rows + 1, columns + 1], back = new int[rows + 1, columns + 1];
             for (int j = 0; j <= rows; j++)
             {
@@ -60,7 +61,12 @@ namespace Gamesim.Uma.Editor
                     if (j > 0 && i > 0)
                     {
                         pattern.Quad(front[j - 1, i - 1], front[j - 1, i], front[j, i], front[j, i - 1], Vector3.forward);
+                        int firstBackFace = pattern.indices.Count / 3;
                         pattern.Quad(back[j - 1, i - 1], back[j - 1, i], back[j, i], back[j, i - 1], Vector3.back);
+                        // The upper-back armhole cells span a curved, differently weighted
+                        // torso fold. Their offset corners alone do not enclose that skin.
+                        if (!style.sleeves && j >= 17 && j <= 18 && (i == 1 || i == columns))
+                            for (int face = firstBackFace; face < pattern.indices.Count / 3; face++) backArmholeFaces.Add(face);
                     }
                 }
             }
@@ -114,6 +120,8 @@ namespace Gamesim.Uma.Editor
                         pattern.Quad(yoke[i - 1, k - 1], yoke[i, k - 1], yoke[i, k], yoke[i - 1, k], Vector3.up);
                 }
             }
+            PanelRefinement refinement = RefineBodyPanels(surface, pattern, backArmholeFaces,
+                style.clearance, (pattern.shoulder - pattern.hem) / rows);
             FitUpperLayerFaces(surface, pattern, style.clearance);
             // Include the round, subdivided side arcs in both collar and armhole boundaries.
             var neckLoop = new List<int>();
@@ -121,7 +129,7 @@ namespace Gamesim.Uma.Editor
             for (int k = 1; k <= shoulderDivisions; k++) neckLoop.Add(yoke[neckRight, k]);
             for (int i = neckRight - 1; i >= neckLeft; i--) neckLoop.Add(back[rows, i]);
             for (int k = shoulderDivisions - 1; k > 0; k--) neckLoop.Add(yoke[neckLeft, k]);
-            neckLoop = DistinctLoop(pattern, neckLoop);
+            neckLoop = DistinctLoop(pattern, refinement.ExpandLoop(neckLoop));
             pattern.neckBoundary = neckLoop;
             Binding(pattern, neckLoop, CollarBindingWidth, new Rect(.54f, .7f, .4f, .06f));
             for (int side = 0; side < 2; side++)
@@ -132,7 +140,7 @@ namespace Gamesim.Uma.Editor
                 for (int k = 1; k <= shoulderDivisions; k++) loop.Add(yoke[column, k]);
                 for (int j = rows - 1; j >= armStart; j--) loop.Add(back[j, column]);
                 for (int k = 5; k > 0; k--) loop.Add(flankEnd[side, k]);
-                loop = DistinctLoop(pattern, loop);
+                loop = DistinctLoop(pattern, refinement.ExpandLoop(loop));
                 pattern.armBoundaries.Add(loop);
                 bool anatomicalLeft = Mathf.Abs(edge.OuterX(side) - left.x) < Mathf.Abs(edge.OuterX(side) - right.x);
                 if (style.sleeves) Sleeve(pattern, surface, loop, anatomicalLeft, style.clearance);
@@ -145,6 +153,137 @@ namespace Gamesim.Uma.Editor
         private static Vector3 LowerPoint(Surface surface, Vector3 point, float clearance, float rowHeight)
         {
             return surface.lowerLayer == null ? point : surface.lowerLayer.Enclose(point, clearance, rowHeight);
+        }
+
+        private sealed class PanelRefinement
+        {
+            public readonly Dictionary<(int, int), int> midpoints = new Dictionary<(int, int), int>();
+            public int triangleTests;
+            public float maximumProjection;
+            public List<int> ExpandLoop(List<int> loop)
+            {
+                var result = new List<int>();
+                for (int i = 0; i < loop.Count; i++)
+                {
+                    result.Add(loop[i]);
+                    Interior(loop[i], loop[(i + 1) % loop.Count], result, 0);
+                }
+                return result;
+            }
+            private void Interior(int a, int b, List<int> result, int depth)
+            {
+                if (!midpoints.TryGetValue(Edge(a, b), out int middle)) return;
+                Require(depth < 1, "The refined aperture exceeds its one-level subdivision.");
+                Interior(a, middle, result, depth + 1); result.Add(middle); Interior(middle, b, result, depth + 1);
+            }
+        }
+        private static (int, int) Edge(int a, int b) => (Mathf.Min(a, b), Mathf.Max(a, b));
+
+        private static PanelRefinement RefineBodyPanels(Surface surface, Pattern pattern, HashSet<int> selected,
+            float clearance, float rowHeight)
+        {
+            var refinement = new PanelRefinement();
+            // Red subdivision of the selected cells, with conforming green splits
+            // in every incident neighbour. Shared midpoint IDs and expanded rim loops
+            // prevent cracks at the unaffected panel and subsequent armhole binding.
+            // New points sample the nude body, not interpolated cloth or wardrobe layers;
+            // their own triangle/barycentric Hit supplies all original skin influences.
+            for (int pass = 0; pass < 1 && selected.Count > 0; pass++)
+            {
+                var edges = new HashSet<(int, int)>();
+                foreach (int face in selected)
+                {
+                    Require(face >= 0 && face * 3 + 2 < pattern.indices.Count, "Invalid local panel refinement face.");
+                    for (int e = 0; e < 3; e++) edges.Add(Edge(pattern.indices[face * 3 + e], pattern.indices[face * 3 + (e + 1) % 3]));
+                }
+                int Midpoint(int a, int b)
+                {
+                    var key = Edge(a, b);
+                    if (refinement.midpoints.TryGetValue(key, out int existing)) return existing;
+                    Require(refinement.midpoints.Count < 128 && surface.triangles.Count > 0 && surface.triangles.Count <= 50000,
+                        "Local panel refinement exceeds its bounded body queries.");
+                    refinement.triangleTests += surface.triangles.Count;
+                    Require(refinement.triangleTests <= 2000000, "Local panel refinement exceeds two million body triangle tests.");
+                    Require(pattern.bodyHits.TryGetValue(a, out Hit ha), "Local panel refinement lost its first nude-body correspondence.");
+                    Require(pattern.bodyHits.TryGetValue(b, out Hit hb), "Local panel refinement lost its second nude-body correspondence.");
+                    Vector3 desired = (ha.position + hb.position) * .5f;
+                    bool? arm = ha.triangle.arm == hb.triangle.arm ? (bool?)ha.triangle.arm : null;
+                    Hit hit = RefinedBodyHit(surface, surface.Closest(desired, arm));
+                    Vector3 expected = ha.normal + hb.normal;
+                    Require(Finite(hit.position) && Finite(hit.normal) && Finite(hit.barycentric)
+                        && hit.distance < .08f * .08f && expected.sqrMagnitude > .0001f
+                        && Vector3.Dot(hit.normal, expected.normalized) > .15f,
+                        "Unsupported local naked-body panel midpoint on edge " + key + ".");
+                    Vector3 point = LowerPoint(surface, hit.position + hit.normal * clearance, clearance, rowHeight);
+                    Require((point - hit.position).sqrMagnitude < .12f * .12f,
+                        "Refined panel exceeds its original naked-body support.");
+                    int midpoint = pattern.Add(point, (pattern.uvs[a] + pattern.uvs[b]) * .5f, hit);
+                    refinement.midpoints.Add(key, midpoint);
+                    refinement.maximumProjection = Mathf.Max(refinement.maximumProjection, Mathf.Sqrt(hit.distance));
+                    return midpoint;
+                }
+                int[] original = pattern.indices.ToArray(); Vector3[] outward = pattern.outwardReferences.ToArray();
+                pattern.indices.Clear(); pattern.outwardReferences.Clear();
+                var next = new HashSet<int>();
+                for (int face = 0; face < original.Length / 3; face++)
+                {
+                    int a = original[face * 3], b = original[face * 3 + 1], c = original[face * 3 + 2];
+                    int[] v = { a, b, c }, m = { -1, -1, -1 }; int split = 0;
+                    for (int e = 0; e < 3; e++) if (edges.Contains(Edge(v[e], v[(e + 1) % 3]))) { m[e] = Midpoint(v[e], v[(e + 1) % 3]); split++; }
+                    void Face(int x, int y, int z)
+                    {
+                        Require(Vector3.Cross(pattern.points[y] - pattern.points[x], pattern.points[z] - pattern.points[x]).sqrMagnitude > .000000000001f,
+                            "Local panel refinement produced a collapsed face.");
+                        if (selected.Contains(face)) next.Add(pattern.indices.Count / 3);
+                        pattern.indices.Add(x); pattern.indices.Add(y); pattern.indices.Add(z); pattern.outwardReferences.Add(outward[face]);
+                    }
+                    if (split == 0) Face(a, b, c);
+                    else if (split == 3) { Face(a, m[0], m[2]); Face(m[0], b, m[1]); Face(m[2], m[1], c); Face(m[0], m[1], m[2]); }
+                    else if (split == 1)
+                    {
+                        int e = m[0] >= 0 ? 0 : m[1] >= 0 ? 1 : 2;
+                        Face(v[e], m[e], v[(e + 2) % 3]); Face(m[e], v[(e + 1) % 3], v[(e + 2) % 3]);
+                    }
+                    else
+                    {
+                        int e = m[0] < 0 ? 0 : m[1] < 0 ? 1 : 2;
+                        Face(v[e], v[(e + 1) % 3], m[(e + 1) % 3]);
+                        Face(v[e], m[(e + 1) % 3], m[(e + 2) % 3]);
+                        Face(m[(e + 2) % 3], m[(e + 1) % 3], v[(e + 2) % 3]);
+                    }
+                }
+                selected = next;
+            }
+            pattern.refinedBodyVertices = refinement.midpoints.Count;
+            pattern.refinementBodyTriangleTests = refinement.triangleTests;
+            pattern.maximumRefinementProjection = refinement.maximumProjection;
+            return refinement;
+        }
+
+        private static Hit RefinedBodyHit(Surface surface, Hit hit)
+        {
+            // The installed conformer's absolute 1e-8 Gram cutoff substitutes a
+            // triangle's first vertex on legitimate small body facets. New refinement
+            // nodes require the barycentrics of their actual sampled point so their
+            // skin weights and normals follow that point. Existing Hits are untouched.
+            Vector3 a = surface.vertices[hit.triangle.a], ab = surface.vertices[hit.triangle.b] - a;
+            Vector3 ac = surface.vertices[hit.triangle.c] - a, ap = hit.position - a;
+            double Dot(Vector3 u, Vector3 v) => (double)u.x * v.x + (double)u.y * v.y + (double)u.z * v.z;
+            double aa = Dot(ab, ab), bb = Dot(ac, ac), cross = Dot(ab, ac), pa = Dot(ap, ab), pb = Dot(ap, ac);
+            double denominator = aa * bb - cross * cross;
+            Require(denominator > aa * bb * 1e-12d && aa > 0d && bb > 0d, "Refined body support is degenerate or ill-conditioned.");
+            double v = (bb * pa - cross * pb) / denominator, w = (aa * pb - cross * pa) / denominator;
+            Vector3 bary = new Vector3((float)(1d - v - w), (float)v, (float)w);
+            Require(Finite(bary) && Mathf.Min(bary.x, Mathf.Min(bary.y, bary.z)) >= -.00001f
+                && Mathf.Max(bary.x, Mathf.Max(bary.y, bary.z)) <= 1.00001f && Mathf.Abs(bary.x + bary.y + bary.z - 1f) < .00001f,
+                "Refined body sample lies outside its supporting triangle.");
+            bary = new Vector3(Mathf.Max(0f, bary.x), Mathf.Max(0f, bary.y), Mathf.Max(0f, bary.z));
+            bary /= bary.x + bary.y + bary.z;
+            Require((a * bary.x + surface.vertices[hit.triangle.b] * bary.y + surface.vertices[hit.triangle.c] * bary.z - hit.position).sqrMagnitude < .00001f * .00001f,
+                "Refined body sample lost its triangle/barycentric correspondence.");
+            hit.barycentric = bary;
+            hit.normal = (surface.normals[hit.triangle.a] * bary.x + surface.normals[hit.triangle.b] * bary.y + surface.normals[hit.triangle.c] * bary.z).normalized;
+            return hit;
         }
 
         private static void FitUpperLayerFaces(Surface surface, Pattern pattern, float clearance)

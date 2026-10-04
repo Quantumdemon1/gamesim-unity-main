@@ -2,8 +2,34 @@
 param([Parameter(Mandatory=$true)][string]$Name, [switch]$WithoutUma, [string]$ApprovedMetaDrift)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'review-evidence.ps1')
+function Get-ReviewSuiteFloor([string]$Path, [string]$Assembly) {
+    $floors = @{}
+    foreach ($line in [IO.File]::ReadAllLines($Path)) {
+        $trimmed = $line.Trim()
+        if (-not $trimmed -or $trimmed.StartsWith('#')) { continue }
+        $fields = @($trimmed -split '\s+')
+        $minimum = 0
+        if ($fields.Count -ne 2 -or $fields[0] -notmatch '^[a-zA-Z0-9_.]+$' -or
+            -not [int]::TryParse($fields[1], [ref]$minimum) -or $minimum -lt 1 -or $floors.ContainsKey($fields[0])) {
+            throw "Malformed or duplicate suite floor in ${Path}: $line"
+        }
+        $floors[$fields[0]] = $minimum
+    }
+    if (-not $floors.ContainsKey($Assembly)) { throw "No suite floor for $Assembly in $Path" }
+    return $floors[$Assembly]
+}
+function Assert-ReviewSuiteMinimum([string]$Assembly, [int]$Total, [int]$Minimum) {
+    if ($Total -lt $Minimum) { throw "SHORTFALL: $Assembly ran $Total, floor is $Minimum (Tools/baseline.txt). This is not a pass." }
+}
 if ($Name -notmatch '^[a-zA-Z0-9_-]+$') { throw 'Use a simple, fresh artifact name.' }
 $projectRoot = Split-Path -Parent $PSScriptRoot
+$suites = @(@{id='edit';platform='EditMode';assembly='Gamesim.EditModeTests'},
+    @{id='play';platform='PlayMode';assembly='Gamesim.PlayModeTests'})
+if (-not $WithoutUma) { $suites += @{id='uma';platform='PlayMode';assembly='Gamesim.Uma.PlayModeTests'} }
+$baselinePath = Join-Path $PSScriptRoot 'baseline.txt'
+$baselineSha256 = Get-ReviewHash $baselinePath
+$suiteFloors = @{}
+foreach ($suite in $suites) { $suiteFloors[$suite.assembly] = Get-ReviewSuiteFloor $baselinePath $suite.assembly }
 $acceptanceRoot = (Resolve-Path -LiteralPath $(if ($env:GAMESIM_ACCEPTANCE) { $env:GAMESIM_ACCEPTANCE } else { 'D:\GamesimAcceptance' })).Path
 $approvals = @(Read-ReviewApproval $ApprovedMetaDrift)
 $logRoot = Join-Path $acceptanceRoot 'Logs'
@@ -23,9 +49,6 @@ $version = (Get-Content -LiteralPath (Join-Path $acceptanceRoot 'ProjectSettings
     Select-String '^m_EditorVersion:\s*(.+)$').Matches[0].Groups[1].Value.Trim()
 $unity = "C:\Program Files\Unity\Hub\Editor\$version\Editor\Unity.exe"
 $summaries = @(); $failure = $null
-$suites = @(@{id='edit';platform='EditMode';assembly='Gamesim.EditModeTests'},
-    @{id='play';platform='PlayMode';assembly='Gamesim.PlayModeTests'})
-if (-not $WithoutUma) { $suites += @{id='uma';platform='PlayMode';assembly='Gamesim.Uma.PlayModeTests'} }
 try {
     if (-not (Test-Path -LiteralPath $unity)) { throw "Unity is not installed: $unity" }
     foreach ($suite in $suites) {
@@ -42,12 +65,13 @@ try {
         if ($assemblies.Count -ne 1 -or $assemblies[0].name -ne ($suite.assembly + '.dll')) { throw "Wrong test assembly: $xmlPath" }
         $cases = @($result.SelectNodes('//test-case'))
         if ([int]$run.total -eq 0 -or $cases.Count -ne [int]$run.total) { throw "Empty or inconsistent test report: $xmlPath" }
-        $entry = [pscustomobject]@{suite=$suite.assembly;total=[int]$run.total;passed=[int]$run.passed;failed=[int]$run.failed;
+        $entry = [pscustomobject]@{suite=$suite.assembly;minimumCount=$suiteFloors[$suite.assembly];total=[int]$run.total;passed=[int]$run.passed;failed=[int]$run.failed;
             skipped=[int]$run.skipped;exit=$process.ExitCode;report=$xmlPath;reportSha256=(Get-ReviewHash $xmlPath);
             log=$logPath;logSha256=(Get-ReviewHash $logPath);testNames=@($cases.fullname | Sort-Object)}
         $summaries += $entry
         Write-Output "$($entry.suite): $($entry.passed)/$($entry.total) passed; $($entry.failed) failed, $($entry.skipped) skipped; exit $($entry.exit)"
         foreach ($case in $result.SelectNodes('//test-case[@result="Failed"]')) { Write-Output "FAILED: $($case.fullname)" }
+        Assert-ReviewSuiteMinimum $entry.suite $entry.total $entry.minimumCount
     }
 } catch { $failure = $_.Exception.Message }
 finally {
@@ -59,6 +83,7 @@ finally {
         @($summaries | Where-Object { $_.failed -ne 0 -or $_.skipped -ne 0 -or $_.passed -ne $_.total -or $_.exit -ne 0 }).Count -eq 0 -and
         @($changes | Where-Object { -not $_.allowed }).Count -eq 0
     Write-ReviewJson ([ordered]@{schema=3;name=$Name;status=$(if ($passed) {'Passed'} else {'Failed'});umaEnabled=(-not $WithoutUma);
+        suiteFloors=$suiteFloors;baselinePath=$baselinePath;baselineSha256=$baselineSha256;
         sourceManifest=$manifestPath;sourceManifestSha256=(Get-ReviewHash $manifestPath);
         finalSourceManifest=$afterPath;finalSourceManifestSha256=(Get-ReviewHash $afterPath);
         driftReport=$driftPath;driftReportSha256=(Get-ReviewHash $driftPath);failure=$failure;suites=$summaries}) $summaryPath

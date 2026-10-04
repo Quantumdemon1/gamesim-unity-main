@@ -256,7 +256,10 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(view.z,Is.GreaterThan(0));Assert.That(view.x,Is.InRange(.03f,.97f));Assert.That(view.y,Is.InRange(.03f,.97f));
                     Assert.That(instrument.Fits(director.CompetitionFootprints[instrument.ActorId]),Is.True,"The actual captured fit must remain reserved.");
                 }
-                frame=lens.Read();AssertNotBlank(frame,"full-field "+category);
+                AssertCapturedCompetitionField(houseSize,category);
+                frame=lens.Read();
+                AssertCapturedCompetitionField(houseSize,category);
+                AssertNotBlank(frame,"full-field "+category);
                 string path=Path.GetFullPath(Path.Combine(Application.dataPath,"..","competition-apparatus-full-field-"+houseSize+"-"+category.ToLowerInvariant()+".png"));
                 File.WriteAllBytes(path,frame.EncodeToPNG());Debug.Log("[Gamesim W3] actual "+houseSize+"-entrant "+category+" world capture -> "+path);
             }
@@ -268,6 +271,45 @@ namespace Gamesim.Tests.PlayMode
                 lens.Dispose();if(frame!=null)Object.Destroy(frame);
             }
             yield return null;
+        }
+
+        private void AssertCapturedCompetitionField(int houseSize,string category)
+        {
+            var eligible=EpisodeEngine.CompetitionPlayers(director.Snapshot).Select(actor=>actor.id).ToArray();
+            var instruments=SceneComponents<CompetitionApparatus>().ToArray();
+            var owned=NpcRead<Dictionary<string,CompetitionApparatus>>("competitionInstruments");
+            var owners=NpcRead<HashSet<Transform>>("competitionRouteOwners");
+            var meetings=NpcRead<HouseMeetingCoordinator>("npcMeetings");
+            var screen=SceneComponents<CompetitionGameScreen>().Single();
+            string diagnostic=category+": captured current full field. "+CompetitionFieldDiagnostic();
+            Assert.That(eligible,Has.Length.EqualTo(houseSize),diagnostic);
+            Assert.That(instruments,Has.Length.EqualTo(houseSize),diagnostic);
+            Assert.That(instruments.Select(instrument=>instrument.ActorId),Is.EquivalentTo(eligible),diagnostic);
+            Assert.That(owned.Keys,Is.EquivalentTo(eligible),"Only current owned instruments count, including during the synchronous read. "+diagnostic);
+            Assert.That(meetings.HasCompetitionStage,Is.True,diagnostic);
+            Assert.That(meetings.CompetitionStageCount,Is.EqualTo(houseSize-1),diagnostic);
+            // A rendering stall may pause the real game. Its existing native-arrival
+            // cache permits only owned roots proven arrived before pause and still
+            // within .05m; do not substitute a fresh stationary capsule for a lease.
+            var ready=typeof(Gamesim.Episode.EpisodeDirector).GetProperty("CompetitionPresentationReady",BindingFlags.Instance|BindingFlags.NonPublic);
+            Assert.That(ready,Is.Not.Null);
+            Assert.That((bool)ready.GetValue(director),Is.True,diagnostic);
+            if(!screen.Paused)Assert.That(meetings.CompetitionArrivals,Is.EqualTo(houseSize-1),diagnostic);
+            foreach(var instrument in instruments)
+            {
+                Assert.That(owned[instrument.ActorId],Is.SameAs(instrument),diagnostic);
+                Assert.That(instrument.gameObject.activeInHierarchy,Is.True,diagnostic);
+                var root=instrument.ActorId==director.Snapshot.playerId?player.transform
+                    :SceneComponents<HouseNpc>().Single(npc=>npc.Id==instrument.ActorId).transform;
+                Assert.That(owners.Contains(root),Is.True,diagnostic);
+                if(root!=player.transform)
+                {
+                    var motion=root.GetComponent<HouseNpcMotion>();
+                    Assert.That(motion,Is.Not.Null,diagnostic);
+                    Assert.That(motion.IsBound,Is.True,diagnostic);
+                    Assert.That(motion.LeaseId,Is.Not.Null.And.StartsWith("competition:"),diagnostic);
+                }
+            }
         }
 
         private IEnumerator ClickInstrumentControl(Button button,Action onReleaseInput=null)

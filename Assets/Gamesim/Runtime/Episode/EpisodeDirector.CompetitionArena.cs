@@ -84,12 +84,18 @@ namespace Gamesim.Episode
             // the same aligned rows. The old 1.6 m stride was shorter than both a
             // console's 1.95 m and a grip's 2.15 m reservation; neighbouring rows
             // excluded each other and left unusable strips between the set pieces.
-            float rowStride=CompetitionStageFootprint.Station(CompetitionApparatus.Family.GripRig,
-                Vector3.zero,CompetitionContestantFacing,layoutRadius,player.Agent.height,layoutArrival).HalfSize.z*2f+.15f;
-            // Keep the proved back row, and let the complete envelope/floor checks
-            // decide each front place rather than discarding a whole usable row.
-            float backRow=bounds.max.z-2.1f;
-            float frontLimit=bounds.min.z+layoutRadius+layoutArrival+.14f;
+            var deepest=CompetitionStageFootprint.Station(CompetitionApparatus.Family.GripRig,
+                Vector3.zero,CompetitionContestantFacing,layoutRadius,player.Agent.height,layoutArrival);
+            float rowStride=deepest.HalfSize.z*2f+.06f;
+            // Reserve the actual forward reach, then .15 m for the back wall and
+            // separation. The wall extends .09 m into this deck. All real solids
+            // still pass the complete-envelope query; this is only a grid boundary.
+            float backRow=bounds.max.z-(deepest.Center.z+deepest.HalfSize.z)-.15f;
+            // A row at10.91 m filled the doorway's exit: stopped Quinn/Riley held
+            // Sam/Taylor against their native routes. Leave the entrance band open.
+            // At default dimensions these complete, separated rows end at11.59 m,
+            // while retaining capacity for the validated16-person stored field.
+            float frontLimit=Mathf.Max(bounds.min.z+1.5f,bounds.min.z+layoutRadius+layoutArrival+.14f);
             var candidates=new List<Vector3>();
             for(float z=backRow;z>frontLimit;z-=rowStride)
                 for(float x=bounds.min.x+2f;x<bounds.max.x-2f;x+=1.8f)
@@ -656,7 +662,10 @@ namespace Gamesim.Episode
             int arrivals=(player.ActivityHasArrived(competitionPlayerOwner)?1:0)+(castStaged?npcMeetings.CompetitionArrivals:0);
             int total=1+(castStaged?npcMeetings.CompetitionStageCount:0);
             competitionArenaStatus=arrivals+" / "+total+" houseguests in position. "+competitionAudienceStatus;
-            if(Time.unscaledTime>competitionAssemblyDeadline && !CompetitionArenaReady)
+            // The deadline bounds the initial assembly, not an attempt whose whole
+            // native field already arrived. Pausing a running attempt re-establishes
+            // its native stopped proof on resume; that cannot expire its old assembly.
+            if(!competitionArenaWasReady && Time.unscaledTime>competitionAssemblyDeadline && !CompetitionArenaReady)
             {
                 Debug.Log("[Gamesim competition stage] native assembly deadline. "+CompetitionStageDiagnostic(),this);
                 if(!player.ActivityHasArrived(competitionPlayerOwner))

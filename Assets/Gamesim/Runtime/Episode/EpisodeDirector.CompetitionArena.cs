@@ -346,15 +346,15 @@ namespace Gamesim.Episode
             if(!arrived || !CompetitionPresentationReady || body.visual!=null && (body.visual.IsBodyAssembling || body.visual.IsChangingOutfit))
             {instrument.gameObject.SetActive(false);return false;}
             Physics.SyncTransforms();
-            bool owned=competitionRouteOwners.Contains(body.root.transform);
+            bool routeOwned=competitionRouteOwners.Contains(body.root.transform);
             bool reserved=competitionFootprints.TryGetValue(instrument.ActorId,out var footprint);
             bool fitted=reserved && instrument.Fits(footprint);
             bool clear=reserved && footprint.HasStaticClearance(gameObject.scene.GetPhysicsScene(),competitionStageFloor,competitionPlacementHits,competitionRouteOwners);
-            if(!owned || !reserved || !fitted || !clear)
+            if(!routeOwned || !reserved || !fitted || !clear)
             {
                 var outside=reserved?instrument.GetComponentsInChildren<MeshFilter>(true).FirstOrDefault(mesh=>!footprint.Contains(mesh)):null;
                 Debug.Log("[Gamesim competition stage] fitted station refused actor="+instrument.ActorId+" family="+instrument.Instrument
-                    +" owned="+owned+" reserved="+reserved+" fitted="+fitted+" clear="+clear
+                    +" owned="+routeOwned+" reserved="+reserved+" fitted="+fitted+" clear="+clear
                     +" mesh="+(outside!=null?outside.name:"none")+" actor="+body.root.transform.position.ToString("F3")
                     +" instrumentOffset="+instrument.transform.localPosition.ToString("F3")
                     +" blockers="+(reserved?CompetitionStaticBlockers(footprint):"no reservation")+". "+CompetitionStageDiagnostic(),this);

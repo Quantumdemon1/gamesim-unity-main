@@ -370,7 +370,19 @@ namespace Gamesim.Tests.PlayMode
                 // Every existing caller keeps its previous timing when no preparation is supplied.
                 if (prepare != null)
                 {
-                    yield return prepare();
+                    var preparation = prepare();
+                    try
+                    {
+                        // MoveNext belongs to this scope: the installed test runner can stop its
+                        // parent without disposal when a separately yielded enumerator throws.
+                        while (preparation.MoveNext())
+                        {
+                            if (preparation.Current is IEnumerator)
+                                throw new InvalidOperationException("Capture preparation must yield frames directly, rather than nested enumerators.");
+                            yield return preparation.Current;
+                        }
+                    }
+                    finally { (preparation as IDisposable)?.Dispose(); }
                     Canvas.ForceUpdateCanvases();
                 }
                 observe?.Invoke("capture immediately before pixel read");

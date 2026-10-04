@@ -229,8 +229,27 @@ namespace Gamesim.Uma.Editor
                     for (int e = 0; e < 3; e++) if (edges.Contains(Edge(v[e], v[(e + 1) % 3]))) { m[e] = Midpoint(v[e], v[(e + 1) % 3]); split++; }
                     void Face(int x, int y, int z)
                     {
-                        Require(Vector3.Cross(pattern.points[y] - pattern.points[x], pattern.points[z] - pattern.points[x]).sqrMagnitude > .000000000001f,
-                            "Local panel refinement produced a collapsed face.");
+                        float area = Vector3.Cross(pattern.points[y] - pattern.points[x], pattern.points[z] - pattern.points[x]).sqrMagnitude;
+                        if (!(area > .000000000001f))
+                        {
+                            string Node(int vertex)
+                            {
+                                string details = vertex + " point=" + pattern.points[vertex].ToString("F9");
+                                if (pattern.bodyHits.TryGetValue(vertex, out Hit hit))
+                                    details += " nude=" + hit.position.ToString("F9") + " normal=" + hit.normal.ToString("F9")
+                                        + " bary=" + hit.barycentric.ToString("F9") + " source=" + hit.triangle.a + "," + hit.triangle.b + "," + hit.triangle.c;
+                                foreach (var edge in refinement.midpoints.Where(pair => pair.Value == vertex))
+                                    details += " edge=" + edge.Key + " desired=" + ((pattern.bodyHits[edge.Key.Item1].position
+                                        + pattern.bodyHits[edge.Key.Item2].position) * .5f).ToString("F9");
+                                return details;
+                            }
+                            Require(false, "Local panel refinement produced a collapsed face. parent=" + face + " vertices=" + a + "," + b + "," + c
+                                + " split=" + split + " crossSq=" + area.ToString("R", System.Globalization.CultureInfo.InvariantCulture)
+                                + " lengths=" + Vector3.Distance(pattern.points[x], pattern.points[y]).ToString("R", System.Globalization.CultureInfo.InvariantCulture)
+                                + "," + Vector3.Distance(pattern.points[y], pattern.points[z]).ToString("R", System.Globalization.CultureInfo.InvariantCulture)
+                                + "," + Vector3.Distance(pattern.points[z], pattern.points[x]).ToString("R", System.Globalization.CultureInfo.InvariantCulture)
+                                + " [" + Node(x) + "] [" + Node(y) + "] [" + Node(z) + "]");
+                        }
                         pattern.indices.Add(x); pattern.indices.Add(y); pattern.indices.Add(z); pattern.outwardReferences.Add(outward[face]);
                     }
                     if (split == 0) Face(a, b, c);

@@ -546,7 +546,19 @@ namespace Gamesim.Episode
                 {
                     if (File.Exists(path) && new FileInfo(path).Length > 0)
                     {
-                        try { decoded = pixels.LoadImage(File.ReadAllBytes(path)); }
+                        try
+                        {
+                            var bytes = File.ReadAllBytes(path);
+                            // Do not send a writer's partial file through Unity's decoder, which
+                            // reports an image error before the asynchronous PNG reaches its end.
+                            bool complete = bytes.Length >= 20 && bytes[0] == 137 && bytes[1] == 80
+                                && bytes[2] == 78 && bytes[3] == 71 && bytes[bytes.Length - 8] == 73
+                                && bytes[bytes.Length - 7] == 69 && bytes[bytes.Length - 6] == 78
+                                && bytes[bytes.Length - 5] == 68 && bytes[bytes.Length - 4] == 174
+                                && bytes[bytes.Length - 3] == 66 && bytes[bytes.Length - 2] == 96
+                                && bytes[bytes.Length - 1] == 130;
+                            decoded = complete && pixels.LoadImage(bytes);
+                        }
                         catch (IOException) { /* The screenshot writer may still own the file. */ }
                         if (decoded) break;
                     }

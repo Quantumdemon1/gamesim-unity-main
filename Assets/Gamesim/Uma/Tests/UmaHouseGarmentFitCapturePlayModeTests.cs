@@ -32,6 +32,7 @@ namespace Gamesim.Uma.Tests
         private UmaBodyProvider provider;
         private string directory;
         private Manifest manifest;
+        private readonly Dictionary<int, AtlasObservation> observedAtlases = new Dictionary<int, AtlasObservation>();
 
         [Serializable] private sealed class Manifest
         {
@@ -71,9 +72,26 @@ namespace Gamesim.Uma.Tests
         }
         [Serializable] private sealed class GarmentMaterial
         {
-            public string name, shader, renderer, baseMap;
+            public string name, shader, renderer, baseMap, colorProperty, rendererOverrideMap, indexedOverrideMap;
             public int materialIndex;
             public Color baseColor;
+            public bool rendererBlockEmpty, indexedBlockEmpty, rendererColorOverride, indexedColorOverride;
+            public Color rendererOverrideColor, indexedOverrideColor;
+            public Vector2 baseMapScale, baseMapOffset;
+            public List<FragmentColor> fragments;
+            public AtlasObservation atlas;
+        }
+        [Serializable] private sealed class FragmentColor
+        {
+            public string slot;
+            public Color baseColor, multiplier, additive;
+            public Rect atlasRegion;
+        }
+        [Serializable] private sealed class AtlasObservation
+        {
+            public string representativeFile, sourceTexture, encoding = "Linear Blit/readback";
+            public int sourceWidth, sourceHeight, sampledPixels, visiblePixels, greenPixels;
+            public Color meanVisibleColor;
         }
 
         [UnityTest]
@@ -85,6 +103,7 @@ namespace Gamesim.Uma.Tests
             manifest = new Manifest { generatedUtc = DateTime.UtcNow.ToString("O"),
                 sourceRevision = Environment.GetEnvironmentVariable("GAMESIM_SOURCE_SHA") ?? "not supplied by runner",
                 providerAssemblyMvid = typeof(UmaBodyProvider).Assembly.ManifestModule.ModuleVersionId.ToString() };
+            observedAtlases.Clear();
             Debug.Log("[Gamesim] Garment fit captures -> " + directory);
             cast = new GameObject("Garment fit provider", typeof(GamesimUmaCast));
             stage = new GameObject("Garment fit capture studio"); stage.transform.position = new Vector3(0f, -7200f, 0f);
@@ -368,10 +387,69 @@ namespace Gamesim.Uma.Tests
         {
             var slots = GarmentOverlays(avatar, id).Select(value => value.slot).ToArray();
             return avatar.umaData.generatedMaterials.materials.Where(value => value.material != null && value.materialFragments.Any(fragment => fragment.slotData != null && slots.Contains(fragment.slotData.slotName)))
-                .Select(value => new GarmentMaterial { name = value.material.name, shader = value.material.shader == null ? "missing" : value.material.shader.name,
-                    renderer = value.skinnedMeshRenderer == null ? "missing" : value.skinnedMeshRenderer.name, materialIndex = value.materialIndex,
-                    baseMap = value.material.HasProperty("_BaseMap") && value.material.GetTexture("_BaseMap") != null ? value.material.GetTexture("_BaseMap").name : "missing",
-                    baseColor = value.material.HasProperty("_BaseColor") ? value.material.GetColor("_BaseColor") : Color.clear }).ToList();
+                .Select(value => ObserveMaterial(value, slots)).ToList();
+        }
+        private GarmentMaterial ObserveMaterial(UMAData.GeneratedMaterial value, string[] slots)
+        {
+            string colorProperty = value.material.HasProperty("_BaseColor") ? "_BaseColor" : value.material.HasProperty("_Color") ? "_Color" : "missing";
+            var rendererBlock = new MaterialPropertyBlock(); var indexedBlock = new MaterialPropertyBlock();
+            if (value.skinnedMeshRenderer != null)
+            {
+                value.skinnedMeshRenderer.GetPropertyBlock(rendererBlock);
+                value.skinnedMeshRenderer.GetPropertyBlock(indexedBlock, value.materialIndex);
+            }
+            var texture = value.material.HasProperty("_BaseMap") ? value.material.GetTexture("_BaseMap") : null;
+            return new GarmentMaterial { name = value.material.name, shader = value.material.shader == null ? "missing" : value.material.shader.name,
+                renderer = value.skinnedMeshRenderer == null ? "missing" : value.skinnedMeshRenderer.name, materialIndex = value.materialIndex,
+                baseMap = texture == null ? "missing" : texture.name, colorProperty = colorProperty,
+                baseColor = colorProperty == "missing" ? Color.clear : value.material.GetColor(colorProperty),
+                rendererBlockEmpty = rendererBlock.isEmpty, indexedBlockEmpty = indexedBlock.isEmpty,
+                rendererColorOverride = colorProperty != "missing" && rendererBlock.HasColor(colorProperty),
+                indexedColorOverride = colorProperty != "missing" && indexedBlock.HasColor(colorProperty),
+                rendererOverrideColor = colorProperty == "missing" ? Color.clear : rendererBlock.GetColor(colorProperty),
+                indexedOverrideColor = colorProperty == "missing" ? Color.clear : indexedBlock.GetColor(colorProperty),
+                rendererOverrideMap = rendererBlock.GetTexture("_BaseMap") == null ? "none" : rendererBlock.GetTexture("_BaseMap").name,
+                indexedOverrideMap = indexedBlock.GetTexture("_BaseMap") == null ? "none" : indexedBlock.GetTexture("_BaseMap").name,
+                baseMapScale = value.material.HasProperty("_BaseMap") ? value.material.GetTextureScale("_BaseMap") : Vector2.zero,
+                baseMapOffset = value.material.HasProperty("_BaseMap") ? value.material.GetTextureOffset("_BaseMap") : Vector2.zero,
+                fragments = value.materialFragments.Where(fragment => fragment.slotData != null && slots.Contains(fragment.slotData.slotName))
+                    .Select(fragment => new FragmentColor { slot = fragment.slotData.slotName, baseColor = fragment.baseColor,
+                        multiplier = fragment.GetMultiplier(0, 0), additive = fragment.GetAdditive(0, 0), atlasRegion = fragment.atlasRegion }).ToList(),
+                atlas = ObserveAtlas(texture) };
+        }
+        private AtlasObservation ObserveAtlas(Texture texture)
+        {
+            if (texture == null) return null;
+            if (observedAtlases.TryGetValue(texture.GetInstanceID(), out var observation)) return observation;
+            var previous = RenderTexture.active; bool previousWrite = GL.sRGBWrite;
+            RenderTexture temporary = null; Texture2D readable = null;
+            try
+            {
+                // Read the actual generated atlas without changing its material, sampling state,
+                // texture or lifetime. A small copy is enough to separate a gray atlas from a green one.
+                temporary = RenderTexture.GetTemporary(128, 128, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+                readable = new Texture2D(128, 128, TextureFormat.RGBA32, false, true);
+                GL.sRGBWrite = false; Graphics.Blit(texture, temporary); RenderTexture.active = temporary;
+                readable.ReadPixels(new Rect(0, 0, 128, 128), 0, 0); readable.Apply();
+                var pixels = readable.GetPixels(); var visible = pixels.Where(pixel => pixel.a > .1f && pixel.r + pixel.g + pixel.b > .03f).ToArray();
+                observation = new AtlasObservation { sourceTexture = texture.name, sourceWidth = texture.width, sourceHeight = texture.height,
+                    sampledPixels = pixels.Length, visiblePixels = visible.Length,
+                    greenPixels = visible.Count(pixel => pixel.g > .03f && pixel.g > pixel.r * 1.15f && pixel.g > pixel.b * 1.10f),
+                    meanVisibleColor = visible.Length == 0 ? Color.clear : new Color(visible.Average(pixel => pixel.r), visible.Average(pixel => pixel.g), visible.Average(pixel => pixel.b)) };
+                if (observedAtlases.Count == 0)
+                {
+                    observation.representativeFile = "garment-atlas-first-linear.png";
+                    File.WriteAllBytes(Path.Combine(directory, observation.representativeFile), readable.EncodeToPNG());
+                }
+                observedAtlases.Add(texture.GetInstanceID(), observation);
+                return observation;
+            }
+            finally
+            {
+                GL.sRGBWrite = previousWrite; RenderTexture.active = previous;
+                if (temporary != null) RenderTexture.ReleaseTemporary(temporary);
+                if (readable != null) Object.Destroy(readable);
+            }
         }
         private Vector3[] PosedPoints()
         {

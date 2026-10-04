@@ -118,6 +118,17 @@ namespace Gamesim.Uma.Tests
             AssertCurvedBodyPanelRefinement();
             object surface = Body(true), knit = Pattern(surface, true), vest = Pattern(surface, false);
             List<Vector3> k = Get<List<Vector3>>(knit, "points"), v = Get<List<Vector3>>(vest, "points");
+            // The demonstrated native back fold is the row 17-to-18, column 1-to-2
+            // diagonal. Its coarse edge must be split in the actual generated vest,
+            // together with the mirrored cell, not only in the synthetic helper.
+            List<int> vestIndices = Get<List<int>>(vest, "indices");
+            foreach (var chord in new[] { (853, 905), (895, 947) })
+                Assert.That(Enumerable.Range(0, vestIndices.Count / 3).Any(face =>
+                    Enumerable.Range(0, 3).Any(edge =>
+                    {
+                        int a = vestIndices[face * 3 + edge], b = vestIndices[face * 3 + (edge + 1) % 3];
+                        return (a == chord.Item1 && b == chord.Item2) || (b == chord.Item1 && a == chord.Item2);
+                    })), Is.False, "The demonstrated inward coarse chord and its counterpart must use fresh support nodes.");
             int topOuter = (20 * 25 + 24) * 2, lowerOuter = (15 * 25 + 24) * 2;
             Assert.That(v[topOuter].x, Is.LessThan(k[topOuter].x - .02f));
             Assert.That(v[topOuter].x, Is.LessThan(v[lowerOuter].x - .012f));
@@ -371,20 +382,20 @@ namespace Gamesim.Uma.Tests
             var vertices = new List<Vector3>(); var normals = new List<Vector3>();
             var triangles = (IList)Get<object>(surface, "triangles"); int collapsed = 0;
             const float radius = .06f, clearance = .008f;
-            for (int j = 0; j <= 4; j++) for (int i = 0; i <= 40; i++)
+            for (int j = 0; j <= 4; j++) for (int i = 0; i <= 64; i++)
             {
                 float angle = -1f + i * .05f;
                 Vector3 normal = new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle));
                 vertices.Add(normal * radius + Vector3.up * (j * .01f)); normals.Add(normal);
                 if (i == 0 || j == 0) continue;
-                int a = (j - 1) * 41 + i - 1, b = a + 1, d = j * 41 + i - 1, c = d + 1;
+                int a = (j - 1) * 65 + i - 1, b = a + 1, d = j * 65 + i - 1, c = d + 1;
                 AddTriangle(triangles, vertices, a, b, c, false, ref collapsed);
                 AddTriangle(triangles, vertices, a, c, d, false, ref collapsed);
             }
             Set(surface, "vertices", vertices.ToArray()); Set(surface, "normals", normals.ToArray());
             var points = Get<List<Vector3>>(pattern, "points"); var uvs = Get<List<Vector2>>(pattern, "uvs");
             var hits = (IDictionary)Get<object>(pattern, "bodyHits");
-            float[] angles = { -.6f, .6f, .6f, -.6f, .9f, .9f };
+            float[] angles = { -.6f, .6f, .6f, -.6f, 1.6f, 1.6f };
             float[] heights = { 0f, 0f, .04f, .04f, 0f, .04f };
             Vector2[] chart = { Vector2.zero, Vector2.right, Vector2.one, Vector2.up,
                 new Vector2(1.25f, 0f), new Vector2(1.25f, 1f) };
@@ -404,6 +415,10 @@ namespace Gamesim.Uma.Tests
             Assert.That((points[0].z + points[2].z) * .5f, Is.LessThan(radius - .003f));
             Assert.That((bool)Call(coarse, "Covers", new Vector3(0f, .02f, radius), Vector3.forward, .03f), Is.False,
                 "This control must expose an interior skin intersection despite positive corner offsets.");
+            Vector3 adjacentRadial = new Vector3(Mathf.Sin(1.1f), 0f, Mathf.Cos(1.1f));
+            Vector3 adjacentSkin = adjacentRadial * radius + Vector3.up * .02f;
+            Assert.That((bool)Call(coarse, "Covers", adjacentSkin, adjacentRadial, .03f), Is.False,
+                "The next inward cell has its own curved interior defect, despite the same positive corner offsets.");
             object refinement;
             try
             {
@@ -447,6 +462,8 @@ namespace Gamesim.Uma.Tests
             }
             AssertRefinedPanelPerimeter(pattern, refinement);
             Assert.That(Get<List<int>>(pattern, "indices").Count, Is.GreaterThan(12));
+            Assert.That((bool)Call(refined, "Covers", adjacentSkin, adjacentRadial, .03f), Is.False,
+                "Refining only the outer cell must not falsely certify its still-coarse inward neighbour.");
             // Selecting separated faces makes the intervening unselected triangle
             // inherit two split edges. The same open perimeter/manifold proof covers
             // this distinct transition, while the first selection also retains an
@@ -470,6 +487,41 @@ namespace Gamesim.Uma.Tests
             AssertRefinedPanelPerimeter(twoEdge, second);
             Assert.That(Get<List<Vector3>>(twoEdge, "points").Take(6), Is.EqualTo(original));
             Assert.That(Get<List<Vector2>>(twoEdge, "uvs").Take(6), Is.EqualTo(originalUvs));
+
+            // Select the demonstrated inward neighbour in the same one-level pass.
+            // Resampling its longitudinal midpoint must repair the second chord,
+            // while the original perimeter, points, UVs and support Hits stay intact.
+            object adjacent = New("Pattern");
+            Get<List<Vector3>>(adjacent, "points").AddRange(original);
+            Get<List<Vector2>>(adjacent, "uvs").AddRange(originalUvs);
+            var adjacentHits = (IDictionary)Get<object>(adjacent, "bodyHits");
+            for (int i = 0; i < originalHits.Length; i++) adjacentHits.Add(i, originalHits[i]);
+            Call(adjacent, "Quad", 0, 1, 2, 3, Vector3.forward);
+            Call(adjacent, "Quad", 1, 4, 5, 2, Vector3.forward);
+            object adjacentRefinement;
+            try
+            {
+                adjacentRefinement = Author.GetMethod("RefineBodyPanels", BindingFlags.NonPublic | BindingFlags.Static)
+                    .Invoke(null, new object[] { surface, adjacent, new HashSet<int> { 0, 1, 2, 3 }, clearance, .02f });
+            }
+            catch (TargetInvocationException e) { throw e.InnerException ?? e; }
+            Call(adjacent, "OrientFacesConsistently"); AssertConsistentWinding(adjacent);
+            var adjacentEdges = Get<Dictionary<(int, int), int>>(adjacentRefinement, "midpoints");
+            Assert.That(adjacentEdges.ContainsKey((1, 5)), Is.True);
+            Assert.That(Vector3.Dot(Get<List<Vector3>>(adjacent, "points")[adjacentEdges[(1, 5)]], adjacentRadial),
+                Is.GreaterThan(Vector3.Dot((original[1] + original[5]) * .5f, adjacentRadial) + .001f),
+                "The inward cell must resample naked support, not interpolate its old penetrating chord.");
+            object adjacentCoverage = Activator.CreateInstance(Nested("CoverageIndex"), Fields, null, new[] { adjacent }, null);
+            foreach (float angle in new[] { .75f, 1.1f, 1.45f }) foreach (float y in new[] { .01f, .02f, .03f })
+            {
+                Vector3 radial = new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle));
+                Assert.That((bool)Call(adjacentCoverage, "Covers", radial * radius + Vector3.up * y, radial, .03f), Is.True,
+                    "The additionally selected cell must enclose its own curved face interior at the original 8mm offset.");
+            }
+            AssertRefinedPanelPerimeter(adjacent, adjacentRefinement);
+            Assert.That(Get<List<Vector3>>(adjacent, "points").Take(6), Is.EqualTo(original));
+            Assert.That(Get<List<Vector2>>(adjacent, "uvs").Take(6), Is.EqualTo(originalUvs));
+            for (int i = 0; i < originalHits.Length; i++) Assert.That(adjacentHits[i], Is.EqualTo(originalHits[i]));
         }
 
         private static void AssertRefinedPanelPerimeter(object pattern, object refinement)

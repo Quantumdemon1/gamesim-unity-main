@@ -65,7 +65,11 @@ namespace Gamesim.Uma.Editor
                         pattern.Quad(back[j - 1, i - 1], back[j - 1, i], back[j, i], back[j, i - 1], Vector3.back);
                         // The upper-back armhole cells span a curved, differently weighted
                         // torso fold. Their offset corners alone do not enclose that skin.
-                        if (!style.sleeves && j >= 17 && j <= 18 && (i == 1 || i == columns))
+                        // The row 17-to-18 fold also enters the next inward cell; refine
+                        // that demonstrated cell and its mirrored counterpart in this pass.
+                        bool armholeEdgeCell = j >= 17 && j <= 18 && (i == 1 || i == columns);
+                        bool adjacentInwardCell = j == 18 && (i == 2 || i == columns - 1);
+                        if (!style.sleeves && (armholeEdgeCell || adjacentInwardCell))
                             for (int face = firstBackFace; face < pattern.indices.Count / 3; face++) backArmholeFaces.Add(face);
                     }
                 }

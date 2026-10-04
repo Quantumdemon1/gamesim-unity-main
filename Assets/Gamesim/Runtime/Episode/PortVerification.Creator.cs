@@ -530,7 +530,7 @@ namespace Gamesim.Episode
             var evidence = new CreatorFrameEvidence { name = name };
             creatorReport.frames.Add(evidence);
             if (expectedPreview != null)
-                evidence.previewOpaqueSamples = RequireCreatorPreviewPixels(expectedPreview, name);
+                RequireCreatorPreviewPixels(expectedPreview, name, evidence);
             string path = Path.Combine(outputDirectory, name + ".png");
             evidence.path = path;
             CreatorRequire(!File.Exists(path), "Creator capture requires a fresh output path: " + name);
@@ -581,12 +581,12 @@ namespace Gamesim.Episode
             && creator.StudioPreview != null && !creator.StudioPreview.IsBuilding && !creator.StudioPreview.CanRetry
             && creator.StudioPreview.CompletedKey == creator.Draft.Appearance.ContentKey();
 
-        private static int RequireCreatorPreviewPixels(CharacterCreator creator, string name)
+        private static void RequireCreatorPreviewPixels(CharacterCreator creator, string name, CreatorFrameEvidence evidence)
         {
             CreatorRequire(CreatorPreviewMatchesDraft(creator), "The current creator draft is not ready for " + name + ".");
             var image = creator.GetComponentsInChildren<RawImage>().SingleOrDefault(item => item.name == "Live character preview");
             var texture = creator.StudioPreview.Texture as RenderTexture;
-            CreatorRequire(image != null && image.isActiveAndEnabled && image.texture == texture
+            CreatorRequire(image != null && image.isActiveAndEnabled && !image.canvasRenderer.cull && image.color.a >= .5f && image.texture == texture
                 && texture != null && texture.IsCreated(), "No displayed studio texture for " + name + ".");
             var previous = RenderTexture.active;
             var resolved = RenderTexture.GetTemporary(texture.width, texture.height, 0, RenderTextureFormat.ARGB32);
@@ -598,13 +598,26 @@ namespace Gamesim.Episode
                 Graphics.Blit(texture, resolved); RenderTexture.active = resolved;
                 pixels.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0); pixels.Apply();
                 var colors = pixels.GetPixels32();
-                int opaque = 0;
+                var background = colors[0];
+                int minX = texture.width, minY = texture.height, maxX = -1, maxY = -1;
                 for (int pixel = 0; pixel < colors.Length; pixel += 16)
-                    if (colors[pixel].a >= 128) opaque++;
-                // The creator studio has a transparent background. Subject alpha proves something
-                // was drawn in it; matching the draft and refusing fallback establishes which build.
-                CreatorRequire(opaque >= 128, "The ready studio texture contains no visible subject: " + name);
-                return opaque;
+                {
+                    var color = colors[pixel];
+                    if (color.a < 128) continue;
+                    evidence.previewOpaqueSamples++;
+                    if (Math.Abs(color.r - background.r) < 8 && Math.Abs(color.g - background.g) < 8 && Math.Abs(color.b - background.b) < 8) continue;
+                    evidence.previewForegroundSamples++;
+                    int x = pixel % texture.width, y = pixel / texture.width;
+                    minX = Math.Min(minX, x); maxX = Math.Max(maxX, x);
+                    minY = Math.Min(minY, y); maxY = Math.Max(maxY, y);
+                }
+                evidence.previewForegroundWidth = maxX < minX ? 0 : maxX - minX + 1;
+                evidence.previewForegroundHeight = maxY < minY ? 0 : maxY - minY + 1;
+                // Creator requests a transparent backdrop, but alpha alone could accept an opaque
+                // clear from the pipeline. Demand a substantial foreground distinct from the actual
+                // corner backdrop in both axes, without rerendering or replacing captured pixels.
+                CreatorRequire(evidence.previewForegroundSamples >= 128 && evidence.previewForegroundWidth >= 8
+                    && evidence.previewForegroundHeight >= 16, "The ready studio texture contains no visible subject: " + name);
             }
             finally { RenderTexture.active = previous; RenderTexture.ReleaseTemporary(resolved); Destroy(pixels); }
         }
@@ -659,6 +672,7 @@ namespace Gamesim.Episode
         {
             public string name, path;
             public int width, height, sampledPixels, nonDarkSamples, varyingSamples, previewOpaqueSamples;
+            public int previewForegroundSamples, previewForegroundWidth, previewForegroundHeight;
             public bool rendered;
         }
         [Serializable] private sealed class CreatorVerificationReport

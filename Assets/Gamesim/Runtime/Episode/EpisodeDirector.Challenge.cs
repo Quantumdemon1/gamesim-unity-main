@@ -411,7 +411,14 @@ namespace Gamesim.Episode
             // The arena gates the start, not a game under way: a houseguest stepping off their mark
             // mid-attempt used to freeze the clock while taps still scored.
             if (!CompetitionArenaReady && !competitionScreen.IsPlaying) { competitionScreen.HoldReady("Houseguests are taking their places"); return; }
-            if (!competitionScreen.AdvanceReady(Time.unscaledDeltaTime)) return;
+            if (!competitionScreen.AdvanceReady(Time.unscaledDeltaTime))
+            {
+                // The preview can end on this frame even though gameplay deliberately starts
+                // on the next. Publish that new phase to the console before it is rendered:
+                // the preceding arena pass still read the preview's exposed card faces.
+                SyncCompetitionPlayerInstrument();
+                return;
+            }
             var keyboard = Keyboard.current;
             if (challengeRun.Kind == CompetitionMiniGames.Kind.Endurance) competitionScreen.SyncHoldKey();
             else if (challengeRun.Kind == CompetitionMiniGames.Kind.Reaction

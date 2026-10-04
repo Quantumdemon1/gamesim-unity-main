@@ -101,8 +101,13 @@ namespace Gamesim.House
                 progress=EpisodeDirector.CompetitionTitleFor(state)+"\n"+(winner==null?"Competition in progress":"Winner: "+winner);
             if(state.phase==EpisodePhase.Finished)
                 return "Week "+state.week+"\nSeason complete\nWinner: "+(Name(state.winnerId)??"To be announced");
-            return "Week "+state.week+"\n"+progress+"\nHead of Household: "+(hoh??"Not yet decided")
-                +"\nPower of Veto: "+(veto??"Not yet decided");
+            // An announced HoH/veto winner already names that role above. Other rounds
+            // still show both office holders; keep long role/name pairs on separate lines.
+            bool announcedHoh=winner!=null && (state.phase==EpisodePhase.HoH || state.phase==EpisodePhase.FinalHoHPart3);
+            bool announcedVeto=winner!=null && state.phase==EpisodePhase.Veto;
+            return "Week "+state.week+"\n"+progress
+                +(announcedHoh?"":"\nHead of Household\n"+(hoh??"Not yet decided"))
+                +(announcedVeto?"":"\nPower of Veto\n"+(veto??"Not yet decided"));
         }
 
         private static string PhaseCaption(EpisodePhase phase)
@@ -262,12 +267,41 @@ namespace Gamesim.House
             var textObject=new GameObject("Public text",typeof(RectTransform),typeof(TextMeshProUGUI));
             textObject.transform.SetParent(backing.transform,false);
             var textRect=(RectTransform)textObject.transform;textRect.anchorMin=Vector2.zero;textRect.anchorMax=Vector2.one;
-            textRect.offsetMin=new Vector2(32,20);textRect.offsetMax=new Vector2(-32,-20);
+            float leftInset=32,rightInset=32;
+            if(target.name==YardName)YardTextInsets(target,width,reference,ref leftInset,ref rightInset);
+            textRect.offsetMin=new Vector2(leftInset,20);textRect.offsetMax=new Vector2(-rightInset,-20);
             var text=textObject.GetComponent<TextMeshProUGUI>();text.font=UiTheme.Font(UiTheme.Weight.SemiBold);
             text.color=Color.white;text.richText=false;text.raycastTarget=false;text.alignment=TextAlignmentOptions.Center;
             text.textWrappingMode=TextWrappingModes.Normal;text.overflowMode=TextOverflowModes.Ellipsis;
             text.enableAutoSizing=true;text.fontSize=56;text.fontSizeMax=56;text.fontSizeMin=28;
             return text;
+        }
+
+        private static void YardTextInsets(Renderer target,float width,float reference,ref float leftInset,ref float rightInset)
+        {
+            var gate=target.gameObject.scene.GetRootGameObjects().SelectMany(root=>root.GetComponentsInChildren<MeshRenderer>(true))
+                .Where(renderer=>renderer.name=="bb_set_comp_gate" && renderer.GetComponent<MeshFilter>()?.sharedMesh!=null)
+                .OrderBy(renderer=>(renderer.bounds.center-target.bounds.center).sqrMagnitude).FirstOrDefault();
+            if(gate==null)return;
+            var mesh=gate.GetComponent<MeshFilter>().sharedMesh;
+            // Owned bb_set_comp_gate.py has a 1.70 m upright opening within a 2.024 m
+            // foot envelope. The retained FBX confirms upright inner X=+/-.85 and
+            // outer foot X=+/-1.012. Bounds are only the scaling datum, not a measured
+            // hole in an arbitrary mesh; native glyph/opaque-face checks prove visibility.
+            const float authoredOpeningRatio=1.70f/2.024f;
+            var bounds=mesh.bounds;
+            var half=Vector3.right*(bounds.size.x*authoredOpeningRatio*.5f);
+            var a=gate.transform.TransformPoint(bounds.center-half);
+            var b=gate.transform.TransformPoint(bounds.center+half);
+            float xA=Vector3.Dot(a-target.transform.position,target.transform.right);
+            float xB=Vector3.Dot(b-target.transform.position,target.transform.right);
+            float left=Mathf.Max(-width*.5f,Mathf.Min(xA,xB));
+            float right=Mathf.Min(width*.5f,Mathf.Max(xA,xB));
+            if(right-left<.01f)return;
+            // Retain the existing text padding inside the supported opening. Only the
+            // text rectangle changes: the public backing and actual gate stay intact.
+            leftInset=32+reference*(left+width*.5f)/width;
+            rightInset=32+reference*(width*.5f-right)/width;
         }
     }
 }

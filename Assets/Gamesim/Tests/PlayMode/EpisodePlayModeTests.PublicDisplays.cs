@@ -1,6 +1,8 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Gamesim.Episode;
 using Gamesim.House;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
@@ -190,6 +192,8 @@ namespace Gamesim.Tests.PlayMode
                 var eye=cameraRig.ViewCamera;
                 Assert.That(PublicSurfacesVisible(surfaces,eye,out var obstruction),Is.True,
                     "The actual surfaces remain visible at synchronous read: "+obstruction);
+                if(labelled.name==HousePublicDisplays.YardName)AssertOldWideYardTextIsBlocked(label,eye,surfaces);
+                AssertPublicGlyphPixels(label,eye,dimensions);
                 frame=lens.Read();
                 string path=Path.GetFullPath(Path.Combine(Application.dataPath,"..",name+".png"));
                 File.WriteAllBytes(path,frame.EncodeToPNG());
@@ -219,8 +223,9 @@ namespace Gamesim.Tests.PlayMode
 
         private bool PublicSurfacesVisible(Renderer[] surfaces,Camera eye,out string failure)
         {
+            var witnesses=surfaces.SelectMany(PublicSurfaceWitnesses).ToArray();
             var corridor=new Bounds(eye.transform.position,Vector3.zero);
-            foreach(var point in surfaces.SelectMany(PublicSurfaceCorners))corridor.Encapsulate(point);
+            foreach(var witness in witnesses)corridor.Encapsulate(witness.Point);
             corridor.Expand(.02f);
             var geometry=new CompetitionInspectionGeometry(SceneComponents<Renderer>().Where(renderer=>renderer.enabled
                 && renderer.gameObject.activeInHierarchy && (renderer is MeshRenderer || renderer is SkinnedMeshRenderer)
@@ -229,9 +234,9 @@ namespace Gamesim.Tests.PlayMode
             var colliders=SceneComponents<Collider>().Where(collider=>collider.enabled && !collider.isTrigger
                 && collider.gameObject.activeInHierarchy).ToArray();
             Assert.That(colliders.Length,Is.LessThanOrEqualTo(512),"Physical public sight collider inventory stays bounded.");
-            foreach(var surface in surfaces)
-            foreach(var point in PublicSurfaceCorners(surface).Append(surface.bounds.center))
+            foreach(var witness in witnesses)
             {
+                var surface=witness.Surface;var point=witness.Point;
                 var view=eye.WorldToViewportPoint(point);
                 if(view.z<=eye.nearClipPlane || view.x<.02f || view.x>.98f || view.y<.02f || view.y>.98f)
                 {failure=surface.name+" leaves the actual physical frame: "+view;return false;}
@@ -249,6 +254,71 @@ namespace Gamesim.Tests.PlayMode
                 if(geometry.Blocked(ray,line.magnitude-.01f,out failure))return false;
             }
             failure=null;return true;
+        }
+
+        private static IEnumerable<(Renderer Surface,Vector3 Point)> PublicSurfaceWitnesses(Renderer surface)
+        {
+            foreach(var point in PublicSurfaceCorners(surface).Append(surface.bounds.center))yield return (surface,point);
+            var label=surface.GetComponentInChildren<TMP_Text>();
+            if(label==null)yield break;
+            label.ForceMeshUpdate();
+            Assert.That(label.isTextTruncated,Is.False,"Public information must not lose any committed words to ellipsis.");
+            int count=label.textInfo.characterCount;
+            Assert.That(count,Is.LessThanOrEqualTo(512),"The actual public glyph witness inventory is bounded.");
+            Assert.That(label.textInfo.characterInfo.Take(count).Any(character=>character.isVisible),Is.True);
+            for(int i=0;i<count;i++)
+            {
+                var character=label.textInfo.characterInfo[i];if(!character.isVisible)continue;
+                foreach(var point in new[]{character.bottomLeft,character.topLeft,character.topRight,character.bottomRight,
+                    (character.bottomLeft+character.topRight)*.5f})
+                    yield return (surface,label.transform.TransformPoint(point));
+            }
+        }
+
+        private static void AssertPublicGlyphPixels(TMP_Text label,Camera eye,Vector2Int dimensions)
+        {
+            label.ForceMeshUpdate();
+            Assert.That(label.isTextTruncated,Is.False);
+            Assert.That(label.textBounds.size.x,Is.LessThanOrEqualTo(label.rectTransform.rect.width+.01f));
+            Assert.That(label.textBounds.size.y,Is.LessThanOrEqualTo(label.rectTransform.rect.height+.01f));
+            foreach(var character in label.textInfo.characterInfo.Take(label.textInfo.characterCount))
+            {
+                if(!character.isVisible || !char.IsLetterOrDigit(character.character))continue;
+                var a=eye.WorldToViewportPoint(label.transform.TransformPoint(character.bottomLeft));
+                var b=eye.WorldToViewportPoint(label.transform.TransformPoint(character.topLeft));
+                Assert.That(Mathf.Abs(b.y-a.y)*dimensions.y,Is.GreaterThanOrEqualTo(8f),
+                    "Every actual public letter/digit must retain eight native vertical pixels: "+character.character);
+            }
+        }
+
+        private void AssertOldWideYardTextIsBlocked(TMP_Text label,Camera eye,Renderer[] surfaces)
+        {
+            string current=label.text;var rect=label.rectTransform;
+            var min=rect.offsetMin;var max=rect.offsetMax;
+            var state=director.Snapshot;
+            Assert.That(state.phase,Is.EqualTo(EpisodePhase.HoH));Assert.That(state.competitionResolved,Is.True);
+            string hoh=state.Find(state.hohId).name;
+            try
+            {
+                // Reproduce both parts of the retained native defect on the same actual
+                // hardware/eye and real committed identities, without taking a fake image.
+                rect.offsetMin=new Vector2(32,min.y);rect.offsetMax=new Vector2(-32,max.y);
+                label.text="Week "+state.week+"\n"+EpisodeDirector.CompetitionTitleFor(state)+"\nWinner: "+hoh
+                    +"\nHead of Household: "+hoh+"\nPower of Veto: "+(state.Find(state.vetoHolderId)?.name??"Not yet decided");
+                Canvas.ForceUpdateCanvases();label.ForceMeshUpdate();
+                Assert.That(PublicSurfacesVisible(surfaces,eye,out var blocker),Is.False,
+                    "The original wide rectangle plus long role/name lines must reproduce an actual glyph obstruction.");
+                Assert.That(blocker,Does.Contain("opaque mesh face: bb_set_comp_gate"),
+                    "The control must fail on the real retained gate, not on a looser viewport or missing-text predicate.");
+            }
+            finally
+            {
+                rect.offsetMin=min;rect.offsetMax=max;label.text=current;
+                Canvas.ForceUpdateCanvases();label.ForceMeshUpdate();
+            }
+            Assert.That(PublicSurfacesVisible(surfaces,eye,out var restored),Is.True,
+                "The real current public glyphs must again clear the actual opaque geometry after control cleanup: "+restored);
+            Assert.That(label.text,Is.EqualTo(HousePublicDisplays.PublicYardText(state)));
         }
 
         private static string PublicHierarchy(Transform transform)=>transform.parent==null?transform.name

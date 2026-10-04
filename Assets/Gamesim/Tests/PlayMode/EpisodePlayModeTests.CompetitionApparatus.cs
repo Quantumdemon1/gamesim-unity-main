@@ -782,7 +782,27 @@ namespace Gamesim.Tests.PlayMode
                             if(!CompetitionInspectionTriangleHit(ray,solid.Points[faces[i]],solid.Points[faces[i+1]],solid.Points[faces[i+2]],out float distance)
                                 || distance>=length)continue;
                             failure="subject sight blocked by opaque mesh face: "+solid.Renderer.name+"; submesh="+sub
-                                +"; triangle="+(i/3)+"; distance="+distance.ToString("F5");return true;
+                                +"; triangle="+(i/3)+"; distance="+distance.ToString("F5")
+                                +"; actualWorldA="+solid.Points[faces[i]].ToString("R")
+                                +"; actualWorldB="+solid.Points[faces[i+1]].ToString("R")
+                                +"; actualWorldC="+solid.Points[faces[i+2]].ToString("R")
+                                +"; actualWorldHit="+ray.GetPoint(distance).ToString("R");
+                            // Diagnostics read the same retained face that rejected the view.
+                            // Include every actual draw material on the final physical submesh,
+                            // where Unity may render additional material passes.
+                            var materials=solid.Renderer.sharedMaterials;
+                            int materialEnd=sub==solid.Faces.Length-1?materials.Length:sub+1;
+                            for(int materialIndex=sub;materialIndex<materialEnd;materialIndex++)
+                            {
+                                var material=materials[materialIndex];
+                                failure+="; drawMaterial["+materialIndex+"]="+(material!=null?material.name:"null");
+                                if(material==null)continue;
+                                failure+=", shader="+(material.shader!=null?material.shader.name:"null")
+                                    +", queue="+material.renderQueue+", renderType="+material.GetTag("RenderType",false,"");
+                                foreach(string property in new[]{"_Cull","_CullMode","_RenderFace","_AlphaClip"})
+                                    failure+=", "+property+"="+(material.HasProperty(property)?material.GetFloat(property).ToString("R"):"missing");
+                            }
+                            return true;
                         }
                     }
                 }

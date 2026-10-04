@@ -213,6 +213,10 @@ namespace Gamesim.Uma.Tests
         {
             object surface = New("Surface");
             var vertices = new List<Vector3>(); var normals = new List<Vector3>();
+            // The torso narrows with its shoulder landmarks; its caps must narrow with it.
+            // Fixed full-size caps overlapped the narrow fixture's neck and each other,
+            // folding its otherwise valid collar strip into tiny opposing faces.
+            Vector3 capRadii = new Vector3(.085f, .065f, .085f) * (shoulderHalf / .2f);
             int collapsedPoleFaces = 0;
             var triangles = (IList)surface.GetType().GetField("triangles", Fields).GetValue(surface);
             Action<Vector3, Vector3, bool> ellipsoid = (center, radii, arm) =>
@@ -258,7 +262,7 @@ namespace Gamesim.Uma.Tests
                 landmarks.Add(left ? HumanBodyBones.LeftUpperArm : HumanBodyBones.RightUpperArm, shoulder);
                 landmarks.Add(left ? HumanBodyBones.LeftLowerArm : HumanBodyBones.RightLowerArm, elbow);
                 landmarks.Add(left ? HumanBodyBones.LeftHand : HumanBodyBones.RightHand, hand);
-                ellipsoid(shoulder, new Vector3(.085f, .065f, .085f), true);
+                ellipsoid(shoulder, capRadii, true);
                 Vector3 axis = (hand - shoulder).normalized, up = Vector3.ProjectOnPlane(Vector3.up, axis).normalized, forward = Vector3.Cross(axis, up);
                 int first = vertices.Count;
                 for (int j = 0; j <= 20; j++) for (int i = 0; i <= 24; i++)
@@ -289,7 +293,7 @@ namespace Gamesim.Uma.Tests
             // A degenerate pole previously erased the nearer shoulder with a NaN comparison.
             foreach (float side in new[] { -1f, 1f })
             {
-                object hit = Call(surface, "Closest", new Vector3(side * shoulderHalf, 1.572f, 0f), null);
+                object hit = Call(surface, "Closest", new Vector3(side * shoulderHalf, 1.5f + capRadii.y + .007f, 0f), null);
                 Vector3 point = Get<Vector3>(hit, "position"), normal = Get<Vector3>(hit, "normal");
                 Assert.That(float.IsFinite(point.x) && float.IsFinite(point.y) && float.IsFinite(point.z), Is.True);
                 Assert.That(float.IsFinite(normal.x) && float.IsFinite(normal.y) && float.IsFinite(normal.z), Is.True);

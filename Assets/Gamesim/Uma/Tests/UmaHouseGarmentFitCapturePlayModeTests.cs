@@ -28,6 +28,7 @@ namespace Gamesim.Uma.Tests
             HumanBodyBones.LeftUpperArm, HumanBodyBones.RightUpperArm, HumanBodyBones.LeftHand, HumanBodyBones.RightHand };
         private GameObject cast, stage, subject;
         private Camera camera;
+        private Light keyLight, fillLight;
         private UmaAppearanceCatalog catalog;
         private UmaBodyProvider provider;
         private string directory;
@@ -47,10 +48,10 @@ namespace Gamesim.Uma.Tests
         {
             public string file, item, recipe, body, shape, state, clip, view, appearanceKey;
             public bool headDetail;
-            public float normalizedTime, cameraSize;
+            public float normalizedTime, cameraSize, keyLightIntensity, fillLightIntensity;
             public int sampleFrame, observedFrame, readFrame, torsoPixelCount, greenTorsoPixelCount;
             public float sampledPhase, observedPhase, maximumBoneDrift;
-            public Vector3 cameraPosition, cameraUp, torsoUp, torsoForward, head, hips, leftHand, rightHand, leftShoulder, rightShoulder;
+            public Vector3 cameraPosition, cameraUp, torsoUp, torsoForward, keyLightForward, fillLightForward, head, hips, leftHand, rightHand, leftShoulder, rightShoulder;
             public RectInt torsoPixelRegion;
             public Color meanTorsoColor;
             public List<GarmentOverlay> actualOverlays;
@@ -299,6 +300,7 @@ namespace Gamesim.Uma.Tests
             {
                 var lamp = new GameObject(entry.Item1, typeof(Light)); lamp.transform.SetParent(stage.transform, false); lamp.transform.localEulerAngles = entry.Item2;
                 var light = lamp.GetComponent<Light>(); light.type = LightType.Directional; light.intensity = entry.Item3; light.color = new Color(1f, .97f, .93f); light.cullingMask = 1 << Layer;
+                if (entry.Item1 == "Fit key") keyLight = light; else fillLight = light;
             }
         }
         private void Capture(DynamicCharacterAvatar avatar, Animator animator, CharacterAppearance appearance, string id, string shape, string state, string view, bool headDetail, PoseObservation pose)
@@ -311,6 +313,13 @@ namespace Gamesim.Uma.Tests
             var across = animator.GetBoneTransform(HumanBodyBones.RightUpperArm).position - animator.GetBoneTransform(HumanBodyBones.LeftUpperArm).position;
             Vector3 forward = Vector3.Cross(across, up).normalized;
             Assert.That(forward.sqrMagnitude, Is.GreaterThan(.9f));
+            // These are studio fit images. Illuminate the photographed torso side at the same
+            // angles even when the actual Humanoid turns horizontal, so a dark underside cannot
+            // be mistaken for a hole. Both owned lights retain their original color/intensity.
+            Vector3 viewedForward = forward * (view == "front" ? 1f : -1f);
+            Vector3 viewedRight = Vector3.Cross(up, viewedForward).normalized;
+            keyLight.transform.rotation = Quaternion.LookRotation(-viewedForward + viewedRight * .55f - up * .6f, up);
+            fillLight.transform.rotation = Quaternion.LookRotation(-viewedForward - viewedRight * .45f + up * .25f, up);
             var points = PosedPoints();
             var bounds = new Bounds(points[0], Vector3.zero); foreach (var point in points) bounds.Encapsulate(point);
             Vector3 target = headDetail ? head + up * .05f : bounds.center;
@@ -357,6 +366,8 @@ namespace Gamesim.Uma.Tests
                     sampleFrame = pose.sampleFrame, observedFrame = pose.observedFrame, readFrame = Time.frameCount,
                     sampledPhase = pose.sampledPhase, observedPhase = pose.observedPhase, maximumBoneDrift = pose.maximumBoneDrift,
                     torsoUp = up, torsoForward = forward, torsoPixelRegion = torsoRegion, torsoPixelCount = torsoColors.Length, greenTorsoPixelCount = greenPixels,
+                    keyLightForward = keyLight.transform.forward, fillLightForward = fillLight.transform.forward,
+                    keyLightIntensity = keyLight.intensity, fillLightIntensity = fillLight.intensity,
                     meanTorsoColor = torsoColors.Length == 0 ? Color.clear : new Color((float)torsoColors.Average(value => (int)value.r) / 255f,
                         (float)torsoColors.Average(value => (int)value.g) / 255f, (float)torsoColors.Average(value => (int)value.b) / 255f),
                     actualOverlays = overlays, actualMaterials = GarmentMaterials(avatar, id),

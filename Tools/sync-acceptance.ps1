@@ -10,7 +10,8 @@ if ($destinationRoot -eq $sourceRoot -or $destinationRoot.StartsWith($sourceRoot
     throw 'The destination must be a separate existing Unity acceptance project.'
 }
 $busy = Get-CimInstance Win32_Process -Filter "Name='Unity.exe'" | Where-Object {
-    $_.CommandLine -match [regex]::Escape($destinationRoot) -or $_.CommandLine -match [regex]::Escape($destinationRoot.Replace('\','/'))
+    $_.CommandLine -match ([regex]::Escape($destinationRoot) + '(?=[\\/"\s]|$)') -or
+        $_.CommandLine -match ([regex]::Escape($destinationRoot.Replace('\','/')) + '(?=[\\/"\s]|$)')
 }
 if ($busy) { throw 'The acceptance editor is still running; nothing was copied.' }
 if ($WithoutUma -and (Test-Path -LiteralPath (Join-Path $destinationRoot 'Assets\UMA'))) {

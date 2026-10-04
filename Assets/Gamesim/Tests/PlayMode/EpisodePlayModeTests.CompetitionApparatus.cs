@@ -276,7 +276,32 @@ namespace Gamesim.Tests.PlayMode
             InputSystem.QueueStateEvent(testMouse,new MouseState{position=point});yield return null;
             Canvas.ForceUpdateCanvases();point=ScreenBox((RectTransform)button.transform).center;
             InputSystem.QueueStateEvent(testMouse,new MouseState{position=point}.WithButton(MouseButton.Left));yield return null;
-            InputSystem.QueueStateEvent(testMouse,new MouseState{position=point});onReleaseInput?.Invoke();yield return null;
+            int queuedReleaseFrame=Time.frameCount,releaseInputFrame=-1;
+            Exception releaseError=null;
+            Action observeRelease=()=>
+            {
+                if(releaseInputFrame>=0 || InputState.currentUpdateType!=InputUpdateType.Dynamic
+                    || !testMouse.leftButton.wasReleasedThisFrame)return;
+                releaseInputFrame=Time.frameCount;
+                try { onReleaseInput?.Invoke(); }
+                catch(Exception error) { releaseError=error; }
+            };
+            try
+            {
+                // QueueStateEvent is processed by the next native input update. Installing an
+                // obstruction now would let this frame's LateUpdate cancel before Keep receives
+                // its release. Observe the processed release before that frame's UI/late fit.
+                if(onReleaseInput!=null)InputSystem.onAfterUpdate+=observeRelease;
+                InputSystem.QueueStateEvent(testMouse,new MouseState{position=point});yield return null;
+                if(onReleaseInput!=null)
+                {
+                    Assert.That(releaseInputFrame,Is.GreaterThan(queuedReleaseFrame),
+                        "The obstruction is installed on the processed native pointer-release frame, after queue frame "+queuedReleaseFrame+"; observed "+releaseInputFrame+".");
+                    if(releaseError!=null)throw new InvalidOperationException("The native pointer-release observation failed.",releaseError);
+                    Debug.Log("[Gamesim W3] "+button.name+" pointer release: queued frame "+queuedReleaseFrame+", processed frame "+releaseInputFrame);
+                }
+            }
+            finally { if(onReleaseInput!=null)InputSystem.onAfterUpdate-=observeRelease; }
         }
 
         private IEnumerator FlipAnActualPair()

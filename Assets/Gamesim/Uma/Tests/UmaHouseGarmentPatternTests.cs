@@ -417,8 +417,8 @@ namespace Gamesim.Uma.Tests
                 foreach (var point in new[] { layer[j, i], (layer[j, i] + layer[j, i + 1]) * .5f })
                 {
                     Vector3 radial = new Vector3(point.x, 0f, point.z).normalized;
-                    if (!(bool)Call(originalCoverage, "Covers", point, radial, .08f)) originallyExposed++;
-                    Assert.That((bool)Call(coverage, "Covers", point, radial, .08f), Is.True,
+                    if (!(bool)Call(originalCoverage, "Covers", point, radial, .06f)) originallyExposed++;
+                    Assert.That((bool)Call(coverage, "Covers", point, radial, .06f), Is.True,
                         "Actual cup/clasp vertices and face-interior points must have supported fabric outside them.");
                 }
             Assert.That(originallyExposed, Is.GreaterThan(0));

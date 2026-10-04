@@ -103,7 +103,7 @@ namespace Gamesim.Uma.Tests
         // that the shader drew that face (alpha, culling and lighting remain recorded limits).
         [Serializable] private sealed class LayerProbeReport
         {
-            public string sourceRevision, providerAssemblyMvid, photo, photoSha256, state, appearanceKey, generatedUtc;
+            public string sourceRevision, providerAssemblyMvid, photo, photoSha256, state, appearanceKey, generatedUtc, expectedGarmentSlot;
             public string coordinateOrigin = "PNG top-left; pixel centers; ray geometry in capture-camera local coordinates";
             public string limits = "Two-sided triangle intersections (determinant epsilon 1e-10, max distance 20m), not shader visibility; no texture alpha/cull simulation or additional render; nearest 16 candidates retained; source LOD0 ownership matches assigned physical submesh and vertex tuple, extra material slots can reuse that geometry, unmatched physical submeshes remain unattributed";
             public bool complete;
@@ -266,7 +266,14 @@ namespace Gamesim.Uma.Tests
                     manifest.dyeFailures.Add(pair.Key + ": neither torso view contains at least 10% pixels with the requested green hue.");
             manifest.complete = true; SaveManifest();
             Assert.That(manifest.dyeFailures, Is.Empty, "The requested green Chest dye must exist in the built overlays and actual torso pixels; all images are retained for diagnosis.");
-            Assert.That(manifest.layerProbeFiles.Count, Is.EqualTo(3), "Crew A neutral Idle, Cheer and Swim front retain their unchanged pixels plus bounded layer evidence.");
+            Assert.That(manifest.layerProbeFiles, Is.EquivalentTo(new[] {
+                "diagnostics/gamesim.knit.crew.a__neutral__Idle__front-layers.json",
+                "diagnostics/gamesim.knit.crew.a__neutral__Cheer__front-layers.json",
+                "diagnostics/gamesim.knit.crew.a__neutral__SwimForward__front-layers.json",
+                "diagnostics/gamesim.vest.competition.a__neutral__Cheer__back-layers.json",
+                "diagnostics/gamesim.vest.competition.a__limits-low__Cheer__back-layers.json",
+                "diagnostics/gamesim.vest.competition.a__limits-high__Cheer__back-layers.json" }),
+                "All three existing Crew A front reports and all three Vest A Cheer back reports retain their unchanged pixels plus bounded layer evidence.");
             Assert.That(manifest.layerProbeFailures, Is.Empty, "A failed layer probe is retained as an error, never accepted as pixel attribution.");
         }
 
@@ -465,7 +472,9 @@ namespace Gamesim.Uma.Tests
                     builtDna = Dna.Select(dna => new AppearanceValue { id = dna, value = avatar.GetDNA()[dna].Value }).ToList() });
                 if (!headDetail && id == Ids[0] && shape == "neutral" && view == "front"
                     && (state == "Idle" || state == "Cheer" || state == "SwimForward"))
-                    ProbeLayers(avatar, animator, appearance, file, state, colors);
+                    ProbeLayers(avatar, animator, appearance, file, state, colors, "Gamesim_KnitCrew_A_Slot");
+                if (!headDetail && id == Ids[2] && view == "back" && state == "Cheer")
+                    ProbeLayers(avatar, animator, appearance, file, state, colors, "Gamesim_CompetitionVest_A_Slot");
             }
             finally { RenderTexture.active = previous; camera.targetTexture = null; render.Release(); Object.Destroy(render); Object.Destroy(pixels); }
         }
@@ -478,10 +487,10 @@ namespace Gamesim.Uma.Tests
             int y = Mathf.Clamp(Mathf.RoundToInt(center.y * Height) - radius, 0, Height - 1);
             return new RectInt(x, y, Mathf.Min(radius * 2 + 1, Width - x), Mathf.Min(radius * 2 + 1, Height - y));
         }
-        private void ProbeLayers(DynamicCharacterAvatar avatar, Animator animator, CharacterAppearance appearance, string file, string state, Color32[] colors)
+        private void ProbeLayers(DynamicCharacterAvatar avatar, Animator animator, CharacterAppearance appearance, string file, string state, Color32[] colors, string expectedGarmentSlot)
         {
             var report = new LayerProbeReport { sourceRevision = manifest.sourceRevision, providerAssemblyMvid = manifest.providerAssemblyMvid,
-                photo = file, photoSha256 = ProbeHash(Path.Combine(directory, file)), state = state, appearanceKey = appearance.ContentKey(),
+                photo = file, photoSha256 = ProbeHash(Path.Combine(directory, file)), state = state, appearanceKey = appearance.ContentKey(), expectedGarmentSlot = expectedGarmentSlot,
                 generatedUtc = DateTime.UtcNow.ToString("O"), frameBefore = Time.frameCount,
                 cameraPosition = camera.transform.position, cameraRotation = camera.transform.rotation,
                 subjectPosition = subject.transform.position, subjectRotation = subject.transform.rotation,
@@ -490,6 +499,12 @@ namespace Gamesim.Uma.Tests
             var owned = new List<Mesh>();
             try
             {
+                bool vestBack = expectedGarmentSlot == "Gamesim_CompetitionVest_A_Slot";
+                Assert.That(vestBack || expectedGarmentSlot == "Gamesim_KnitCrew_A_Slot", Is.True,
+                    "Layer diagnosis binds one exact requested project-owned garment slot.");
+                Assert.That(!vestBack || (state == "Cheer" && file.StartsWith(Ids[2] + "__", StringComparison.Ordinal)
+                    && file.EndsWith("__Cheer__back.png", StringComparison.Ordinal)), Is.True,
+                    "The additional observation uses only the unchanged Vest A Cheer back capture.");
                 var renderers = avatar.umaData.GetRenderers();
                 var ownership = new Dictionary<ProbeTriangleKey, List<ProbeOwner>>();
                 var activeSlots = new List<SlotData>();
@@ -586,7 +601,7 @@ namespace Gamesim.Uma.Tests
                     foreach (var slot in activeSlots.Where(value => value.skinnedMeshRenderer == rendererIndex))
                     {
                         bool torso = slot.slotName.Contains("UMA30_Body_UDIM1002"), arm = slot.slotName.Contains("UMA30_Body_UDIM1005");
-                        bool garment = slot.slotName == "Gamesim_KnitCrew_A_Slot";
+                        bool garment = slot.slotName == expectedGarmentSlot;
                         if (!torso && !arm && !garment) continue;
                         int slotIndex = report.slots.FindIndex(value => value.rendererIndex == rendererIndex && value.slot == slot.slotName
                             && value.vertexOffset == slot.vertexOffset && value.destinationSubmesh == slot.submeshIndex);
@@ -631,11 +646,16 @@ namespace Gamesim.Uma.Tests
                 Assert.That(surfaces, Is.Not.Empty);
                 Assert.That(report.posedSourceGeometry.Any(value => value.kind == "original torso skin")
                     && report.posedSourceGeometry.Any(value => value.kind == "original arm skin")
-                    && report.posedSourceGeometry.Count(value => value.kind == "authored cloth") == 1, Is.True,
+                    && report.posedSourceGeometry.Count(value => value.kind == "authored cloth" && report.slots[value.slot].slot == expectedGarmentSlot) == 1, Is.True,
                     "Do not infer replacement anatomy if the exact native body or garment source slots are absent.");
                 // These fixed, labelled regions come from retained 6c7e native PNGs. They are
                 // observations, not pass/fail silhouettes; a changed composition stays explicit.
-                var regions = state == "Idle" ? new[] { ("outer-breast", new RectInt(311, 284, 17, 20)), ("sternum", new RectInt(378, 294, 16, 14)) }
+                // Additional fixed regions bind the retained 4533 native Vest A Cheer back originals.
+                // The first 7x7 grid includes top-left pixel (284,275) exactly in all three shapes;
+                // the second records the surrounding armhole. These observations never classify fit.
+                var regions = vestBack ? new[] { ("left-armhole-tan-seam", new RectInt(272, 269, 25, 13)),
+                    ("left-armhole-context", new RectInt(268, 259, 41, 41)) }
+                    : state == "Idle" ? new[] { ("outer-breast", new RectInt(311, 284, 17, 20)), ("sternum", new RectInt(378, 294, 16, 14)) }
                     : state == "Cheer" ? new[] { ("left-inner-arm", new RectInt(305, 275, 34, 40)), ("right-inner-arm", new RectInt(465, 274, 33, 33)), ("sternum", new RectInt(396, 320, 18, 13)) }
                     : new[] { ("left-inner-arm", new RectInt(306, 311, 30, 60)), ("right-inner-arm", new RectInt(439, 311, 30, 60)), ("sternum", new RectInt(377, 371, 18, 14)) };
                 foreach (var region in regions)

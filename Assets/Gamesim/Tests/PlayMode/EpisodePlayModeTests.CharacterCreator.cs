@@ -65,12 +65,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.SavePath, Is.EqualTo(slot));
             Assert.That(director.Snapshot.sessionId, Is.EqualTo(before.sessionId));
             if (bytes != null) Assert.That(File.ReadAllBytes(slot), Is.EqualTo(bytes));
-            // The studio builds its body asynchronously; photograph it once it has, not the
-            // "Updating preview" placeholder of the first frames.
-            float built = UnityEngine.Time.realtimeSinceStartup + 25f;
-            while (Creator().StudioPreview != null && Creator().StudioPreview.IsBuilding && UnityEngine.Time.realtimeSinceStartup < built)
-                yield return null;
-            if (UnityEngine.Application.isBatchMode) yield return CaptureFraming("creator");
+            if (UnityEngine.Application.isBatchMode) yield return CaptureCreatorFraming("creator");
         }
 
         [UnityTest]

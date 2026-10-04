@@ -324,7 +324,8 @@ namespace Gamesim.Tests.PlayMode
         /// say otherwise: 1200 by 900 photographs a 4:3 layout as the batch canvas laid it out.</para>
         /// </summary>
         private IEnumerator CaptureFraming(string name, bool settle = true, Action<Texture2D> inspect = null, int width = 1600, int height = 900,
-            (Func<RectTransform> Find, string What)? panel = null, Action arrange = null, Action<string> observe = null)
+            (Func<RectTransform> Find, string What)? panel = null, Action arrange = null, Action<string> observe = null,
+            Func<IEnumerator> prepare = null)
         {
             observe?.Invoke("capture entered");
             var lens = new CaptureLens(cameraRig.ViewCamera, width, height);
@@ -364,6 +365,14 @@ namespace Gamesim.Tests.PlayMode
                 observe?.Invoke("capture before guard preparation");
                 yield return lens.MakeSureTheCanvasesAreDrawn();
                 observe?.Invoke("capture after guard preparation");
+                // Creator previews may rebuild after the lens changes their layout. Their optional
+                // preparation runs against this final canvas, before reading its actual frame.
+                // Every existing caller keeps its previous timing when no preparation is supplied.
+                if (prepare != null)
+                {
+                    yield return prepare();
+                    Canvas.ForceUpdateCanvases();
+                }
                 observe?.Invoke("capture immediately before pixel read");
                 readback = lens.Read();
                 observe?.Invoke("capture immediately after pixel read");

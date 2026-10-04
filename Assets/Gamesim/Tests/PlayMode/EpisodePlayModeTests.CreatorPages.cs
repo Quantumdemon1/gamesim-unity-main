@@ -28,10 +28,6 @@ namespace Gamesim.Tests.PlayMode
             var saved = creator.Draft.Copy();
             saved.Name = "Review Guest";
             Assert.That(creator.ProfileStore.Save(CharacterProfile.FromDraft(System.Guid.NewGuid().ToString("N"), saved), out var error), Is.True, error);
-            float built = Time.realtimeSinceStartup + 25f;
-            while (creator.StudioPreview != null && creator.StudioPreview.IsBuilding && Time.realtimeSinceStartup < built)
-                yield return null;
-
             foreach (float scale in new[] { 1f, 1.2f })
             {
                 creator.FontScale = scale;
@@ -46,17 +42,82 @@ namespace Gamesim.Tests.PlayMode
                             CastButtons(category)[0].onClick.Invoke();
                             yield return null;
                             AssertCreatorFits(creator, page + " / " + category + " at " + scale);
-                            if (scale == 1f && Application.isBatchMode) yield return CaptureFraming("creator-appearance-" + category.ToLowerInvariant());
+                            if (scale == 1f && Application.isBatchMode) yield return CaptureCreatorFraming("creator-appearance-" + category.ToLowerInvariant());
                         }
                     else
                     {
                         AssertCreatorFits(creator, page + " at " + scale);
                         if (scale == 1f && Application.isBatchMode)
-                            yield return CaptureFraming("creator-" + page.ToLowerInvariant().Replace(' ', '-'));
+                            yield return CaptureCreatorFraming("creator-" + page.ToLowerInvariant().Replace(' ', '-'),
+                                expectPreview: page == "Identity" || page == "Review");
                     }
                 }
             }
             creator.FontScale = 1f;
+        }
+
+        private IEnumerator CaptureCreatorFraming(string name, bool expectPreview = true, int width = 1600, int height = 900,
+            System.Action arrange = null)
+        {
+            yield return CaptureFraming(name, width: width, height: height, arrange: arrange,
+                prepare: expectPreview ? () => PrepareCreatorFrame(name) : (System.Func<IEnumerator>)null,
+                inspect: expectPreview ? frame => AssertCreatorFrameReady(name) : (System.Action<Texture2D>)null);
+        }
+
+        private IEnumerator PrepareCreatorFrame(string name)
+        {
+            float deadline = Time.realtimeSinceStartup + 25f;
+            while (Time.realtimeSinceStartup < deadline)
+            {
+                var creator = Creator();
+                var preview = creator.StudioPreview;
+                if (creator.IsShowing && preview != null && preview.gameObject.activeInHierarchy && !preview.IsBuilding
+                    && preview.CompletedKey == creator.Draft.Appearance.ContentKey()) break;
+                yield return null;
+            }
+            // The preview's completion and the status text update occur in separate Update calls.
+            yield return null;
+            AssertCreatorFrameReady(name);
+        }
+
+        private void AssertCreatorFrameReady(string name)
+        {
+            var creator = Creator();
+            var preview = creator.StudioPreview;
+            Assert.That(creator.IsShowing && preview != null && preview.gameObject.activeInHierarchy && !preview.IsBuilding,
+                Is.True, name + ": the displayed preview must complete before the frame is read.");
+            Assert.That(preview.CompletedKey, Is.EqualTo(creator.Draft.Appearance.ContentKey()), name + ": capture the current draft.");
+            if (CharacterBodySource.Provider != null)
+                Assert.That(preview.CanRetry, Is.False, name + ": installed content must render its own avatar, rather than a fallback.");
+            var image = creator.GetComponentsInChildren<RawImage>().Single(item => item.name == "Live character preview");
+            var texture = preview.Texture as RenderTexture;
+            Assert.That(image.isActiveAndEnabled && !image.canvasRenderer.cull && image.color.a >= .5f && image.texture == texture
+                && texture != null && texture.IsCreated(), Is.True, name + ": the actual visible image must bind the ready studio.");
+            var previous = RenderTexture.active;
+            var resolved = RenderTexture.GetTemporary(texture.width, texture.height, 0, RenderTextureFormat.ARGB32);
+            var pixels = new Texture2D(texture.width, texture.height, TextureFormat.RGBA32, false);
+            try
+            {
+                Graphics.Blit(texture, resolved); RenderTexture.active = resolved;
+                pixels.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0); pixels.Apply();
+                var colors = pixels.GetPixels32();
+                var backdrop = colors[0];
+                int foreground = 0, minX = texture.width, minY = texture.height, maxX = -1, maxY = -1;
+                for (int pixel = 0; pixel < colors.Length; pixel += 16)
+                {
+                    var color = colors[pixel];
+                    if (color.a < 128 || (System.Math.Abs(color.r - backdrop.r) < 8 && System.Math.Abs(color.g - backdrop.g) < 8
+                        && System.Math.Abs(color.b - backdrop.b) < 8)) continue;
+                    foreground++;
+                    int x = pixel % texture.width, y = pixel / texture.width;
+                    minX = System.Math.Min(minX, x); maxX = System.Math.Max(maxX, x);
+                    minY = System.Math.Min(minY, y); maxY = System.Math.Max(maxY, y);
+                }
+                Assert.That(foreground, Is.GreaterThanOrEqualTo(128), name + ": a uniform clear is not an avatar.");
+                Assert.That(maxX - minX + 1, Is.GreaterThanOrEqualTo(8), name + ": foreground has visible width.");
+                Assert.That(maxY - minY + 1, Is.GreaterThanOrEqualTo(16), name + ": foreground has visible height.");
+            }
+            finally { RenderTexture.active = previous; RenderTexture.ReleaseTemporary(resolved); Object.Destroy(pixels); }
         }
 
         /// <summary>

@@ -232,7 +232,7 @@ namespace Gamesim.Tests.PlayMode
                 {
                     Creator().FontScale = scale;
                     yield return null; yield return null;
-                    yield return CaptureFraming("creator-quick-" + size.x + "x" + size.y + (scale > 1f ? "-large" : "-normal"),
+                    yield return CaptureCreatorFraming("creator-quick-" + size.x + "x" + size.y + (scale > 1f ? "-large" : "-normal"),
                         width: size.x, height: size.y, arrange: () => AssertCreatorFits(Creator(), "Quick " + size + " at " + scale));
                 }
             Creator().FontScale = 1f;

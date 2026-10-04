@@ -91,16 +91,30 @@ namespace Gamesim.Presentation
 
         /// <summary>Checks the actual authored mesh corners after contact fitting, without AABB inflation.</summary>
         public bool Contains(MeshFilter mesh)
+            =>mesh!=null && mesh.sharedMesh!=null && !TryOutsideCorner(mesh,out _,out _,out _);
+
+        // Store the unchanged one-millimetre tolerance in the same float32 vector
+        // used by the geometry and its diagnostic. A scalar expression retained at
+        // greater precision can reject a float32 boundary the stored vector accepts;
+        // f42's native run rejected grounded supports its diagnostic called inside.
+        internal Vector3 ContainmentLimit=>HalfSize+Vector3.one*.001f;
+
+        internal bool TryOutsideCorner(MeshFilter mesh,out Vector3 world,out Vector3 local,out Vector3 excess)
         {
-            if(mesh==null || mesh.sharedMesh==null)return false;
-            var bounds=mesh.sharedMesh.bounds;var inverse=Quaternion.Inverse(Rotation);
+            world=local=excess=Vector3.zero;
+            if(mesh==null || mesh.sharedMesh==null)return true;
+            var bounds=mesh.sharedMesh.bounds;var inverse=Quaternion.Inverse(Rotation);var limit=ContainmentLimit;
             for(int x=-1;x<=1;x+=2)for(int y=-1;y<=1;y+=2)for(int z=-1;z<=1;z+=2)
             {
-                var point=mesh.transform.TransformPoint(bounds.center+Vector3.Scale(bounds.extents,new Vector3(x,y,z)));
-                var local=inverse*(point-Center);
-                if(Mathf.Abs(local.x)>HalfSize.x+.001f || Mathf.Abs(local.y)>HalfSize.y+.001f || Mathf.Abs(local.z)>HalfSize.z+.001f)return false;
+                world=mesh.transform.TransformPoint(bounds.center+Vector3.Scale(bounds.extents,new Vector3(x,y,z)));
+                local=inverse*(world-Center);
+                if(Mathf.Abs(local.x)>limit.x || Mathf.Abs(local.y)>limit.y || Mathf.Abs(local.z)>limit.z)
+                {
+                    excess=new Vector3(Mathf.Abs(local.x)-limit.x,Mathf.Abs(local.y)-limit.y,Mathf.Abs(local.z)-limit.z);
+                    return true;
+                }
             }
-            return true;
+            return false;
         }
     }
 }

@@ -71,7 +71,12 @@ namespace Gamesim.Tests.PlayMode
             {
                 if(screen.Paused)yield return PressKey(Key.P);else yield return null;
             }
-            if(stopAtReady)Assert.That(ChallengeRun().Elapsed,Is.Zero,"Native arrivals precede attempt time.");
+            if(stopAtReady)
+            {
+                var attempt=ChallengeRun();
+                Assert.That(attempt,Is.Not.Null,"Native assembly must retain the actual attempt. "+CompetitionFieldDiagnostic());
+                Assert.That(attempt.Elapsed,Is.Zero,"Native arrivals precede attempt time.");
+            }
             else Assert.That(screen.IsPlaying,Is.True,"The actual native arrivals and ready count permit play. "+CompetitionFieldDiagnostic());
             if(category=="Endurance")
             {

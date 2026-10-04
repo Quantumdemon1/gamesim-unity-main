@@ -187,7 +187,51 @@ namespace Gamesim.Tests.PlayMode
             var clear=CompetitionStageFootprint.Station(CompetitionApparatus.Family.PairConsole,new Vector3(3,0,1.8f),37,.35f,1.9f);
             Assert.That(footprint.Overlaps(clear),Is.False);
             Assert.That(footprint.Overlaps(CompetitionStageFootprint.Actor(new Vector3(0,0,1.1f),.35f,1.9f)),Is.True,"An audience body reserves space too.");
+            AssertGroundedContainmentBoundary();
             yield return null;
+        }
+
+        // The saved yard's translated/scaled hierarchy and the native failing target
+        // exercise a ground-contact support, rather than relaxing furniture clearance.
+        // The existing one-millimetre boundary accepts its representable endpoint;
+        // moving the actual solid another two millimetres below it remains forbidden.
+        private void AssertGroundedContainmentBoundary()
+        {
+            var deck=new GameObject("Saved-yard containment hierarchy");deck.transform.SetParent(owner.transform,false);
+            deck.transform.localPosition=new Vector3(0,-.15f,15);deck.transform.localScale=new Vector3(28,.3f,10);
+            var stage=new GameObject("Scale-compensated containment stage");stage.transform.SetParent(deck.transform,false);
+            stage.transform.localScale=new Vector3(1/28f,1/.3f,1/10f);
+            var anchor=new GameObject("Grounded support anchor");anchor.transform.SetParent(stage.transform,false);
+            var support=new GameObject("Ground-contact support",typeof(MeshFilter));support.transform.SetParent(anchor.transform,false);
+            var mesh=new Mesh{name="Owned containment support box"};support.GetComponent<MeshFilter>().sharedMesh=mesh;
+            try
+            {
+                var vertices=new List<Vector3>();
+                for(int x=-1;x<=1;x+=2)for(int y=-1;y<=1;y+=2)for(int z=-1;z<=1;z+=2)
+                    vertices.Add(new Vector3(x*.5f,y*.5f,z*.5f));
+                mesh.vertices=vertices.ToArray();mesh.RecalculateBounds();
+                support.transform.localScale=new Vector3(.2f,.25f,.2f);
+                foreach(float facing in new[]{0f,37f,180f})foreach(float feetY in new[]{0f,.041f,.077f})
+                {
+                    var reserved=CompetitionStageFootprint.Station(CompetitionApparatus.Family.PairConsole,
+                        new Vector3(4.2f,feetY,13.83f),facing,.4f,1.9f);
+                    anchor.transform.SetPositionAndRotation(reserved.Center,reserved.Rotation);
+                    // .125 is the box's exact half-height, so its lower corner lies
+                    // on the stored, documented boundary without an arbitrary epsilon.
+                    var lowerPosition=new Vector3(0,-(reserved.HalfSize+Vector3.one*.001f).y+.125f,0);
+                    support.transform.localPosition=lowerPosition;
+                    Assert.That(reserved.Contains(support.GetComponent<MeshFilter>()),Is.True,
+                        "A grounded support at the representable boundary stays inside, facing="+facing+" feetY="+feetY);
+                    support.transform.localPosition=lowerPosition+Vector3.down*.002f;
+                    Assert.That(reserved.Contains(support.GetComponent<MeshFilter>()),Is.False,"A genuine vertical overrun is still rejected.");
+                    support.transform.localPosition=lowerPosition+Vector3.right*(reserved.HalfSize.x+.01f);
+                    Assert.That(reserved.Contains(support.GetComponent<MeshFilter>()),Is.False,"The precision fix does not relax horizontal containment.");
+                }
+            }
+            finally
+            {
+                support.GetComponent<MeshFilter>().sharedMesh=null;Object.DestroyImmediate(mesh);Object.DestroyImmediate(deck);
+            }
         }
 
         [UnityTest]

@@ -444,19 +444,11 @@ namespace Gamesim.Episode
         private static string CompetitionOutsideCorner(CompetitionStageFootprint footprint,MeshFilter mesh)
         {
             if(mesh.sharedMesh==null)return "no mesh";
-            var bounds=mesh.sharedMesh.bounds;var inverse=Quaternion.Inverse(footprint.Rotation);
-            var limit=footprint.HalfSize+Vector3.one*.001f;
-            for(int x=-1;x<=1;x+=2)for(int y=-1;y<=1;y+=2)for(int z=-1;z<=1;z+=2)
-            {
-                var world=mesh.transform.TransformPoint(bounds.center+Vector3.Scale(bounds.extents,new Vector3(x,y,z)));
-                var local=inverse*(world-footprint.Center);
-                var excess=new Vector3(Mathf.Abs(local.x)-limit.x,Mathf.Abs(local.y)-limit.y,Mathf.Abs(local.z)-limit.z);
-                if(excess.x>0 || excess.y>0 || excess.z>0)
-                    return "world="+world.ToString("F9")+" local="+local.ToString("F9")+" limit="+limit.ToString("F9")
-                        +" excess="+excess.ToString("F9")+" reservedCenter="+footprint.Center.ToString("F9")
-                        +" meshScale="+mesh.transform.lossyScale.ToString("F9")
-                        +" anchorScale="+mesh.transform.parent.parent.lossyScale.ToString("F9");
-            }
+            if(footprint.TryOutsideCorner(mesh,out var world,out var local,out var excess))
+                return "world="+world.ToString("F9")+" local="+local.ToString("F9")+" limit="+footprint.ContainmentLimit.ToString("F9")
+                    +" excess="+excess.ToString("F9")+" reservedCenter="+footprint.Center.ToString("F9")
+                    +" meshScale="+mesh.transform.lossyScale.ToString("F9")
+                    +" anchorScale="+mesh.transform.parent.parent.lossyScale.ToString("F9");
             return "all corners inside";
         }
 

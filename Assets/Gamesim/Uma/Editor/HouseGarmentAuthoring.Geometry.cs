@@ -166,15 +166,9 @@ namespace Gamesim.Uma.Editor
                 for (int i = 0; i < loop.Count; i++)
                 {
                     result.Add(loop[i]);
-                    Interior(loop[i], loop[(i + 1) % loop.Count], result, 0);
+                    if (midpoints.TryGetValue(Edge(loop[i], loop[(i + 1) % loop.Count]), out int middle)) result.Add(middle);
                 }
                 return result;
-            }
-            private void Interior(int a, int b, List<int> result, int depth)
-            {
-                if (!midpoints.TryGetValue(Edge(a, b), out int middle)) return;
-                Require(depth < 1, "The refined aperture exceeds its one-level subdivision.");
-                Interior(a, middle, result, depth + 1); result.Add(middle); Interior(middle, b, result, depth + 1);
             }
         }
         private static (int, int) Edge(int a, int b) => (Mathf.Min(a, b), Mathf.Max(a, b));
@@ -188,7 +182,7 @@ namespace Gamesim.Uma.Editor
             // prevent cracks at the unaffected panel and subsequent armhole binding.
             // New points sample the nude body, not interpolated cloth or wardrobe layers;
             // their own triangle/barycentric Hit supplies all original skin influences.
-            for (int pass = 0; pass < 1 && selected.Count > 0; pass++)
+            if (selected.Count > 0)
             {
                 var edges = new HashSet<(int, int)>();
                 foreach (int face in selected)
@@ -224,7 +218,6 @@ namespace Gamesim.Uma.Editor
                 }
                 int[] original = pattern.indices.ToArray(); Vector3[] outward = pattern.outwardReferences.ToArray();
                 pattern.indices.Clear(); pattern.outwardReferences.Clear();
-                var next = new HashSet<int>();
                 for (int face = 0; face < original.Length / 3; face++)
                 {
                     int a = original[face * 3], b = original[face * 3 + 1], c = original[face * 3 + 2];
@@ -234,7 +227,6 @@ namespace Gamesim.Uma.Editor
                     {
                         Require(Vector3.Cross(pattern.points[y] - pattern.points[x], pattern.points[z] - pattern.points[x]).sqrMagnitude > .000000000001f,
                             "Local panel refinement produced a collapsed face.");
-                        if (selected.Contains(face)) next.Add(pattern.indices.Count / 3);
                         pattern.indices.Add(x); pattern.indices.Add(y); pattern.indices.Add(z); pattern.outwardReferences.Add(outward[face]);
                     }
                     if (split == 0) Face(a, b, c);
@@ -252,7 +244,6 @@ namespace Gamesim.Uma.Editor
                         Face(m[(e + 2) % 3], m[(e + 1) % 3], v[(e + 2) % 3]);
                     }
                 }
-                selected = next;
             }
             pattern.refinedBodyVertices = refinement.midpoints.Count;
             pattern.refinementBodyTriangleTests = refinement.triangleTests;

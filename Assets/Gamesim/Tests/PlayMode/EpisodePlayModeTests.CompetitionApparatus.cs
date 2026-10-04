@@ -10,6 +10,7 @@ using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -432,6 +433,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator Apparatus_InHouseMemoryUsesActualCardsAndReleasesItsStageOnCancel()
         {
+            AssertCompetitionInspectionUsesFacesRatherThanJoinedBounds();
             yield return EnterInstrumentAttempt("Mental");
             var before=director.Snapshot;var instrument=PlayerInstrument();
             Assert.That(instrument.Instrument,Is.EqualTo(CompetitionApparatus.Family.PairConsole));
@@ -651,10 +653,178 @@ namespace Gamesim.Tests.PlayMode
             public Quaternion Rotation;
             public Bounds Body,Instrument;
             public Vector3[] Targets;
-            public Renderer[] Solids;
+            public CompetitionInspectionGeometry Geometry;
             public Vector3 PlayerPosition,InstrumentPosition;
             public Quaternion PlayerRotation,InstrumentRotation;
             public int Candidate;
+        }
+
+        private static bool CompetitionInspectionOpaque(Material material)=>material!=null && material.renderQueue<3000;
+
+        private sealed class CompetitionInspectionGeometry
+        {
+            private sealed class Solid
+            {
+                public Renderer Renderer;
+                public Matrix4x4 Matrix;
+                public Bounds Bounds;
+                public Vector3[] Points;
+                public int[][] Faces;
+            }
+            private readonly List<Solid> solids=new List<Solid>();
+            private int triangleTests;
+
+            public CompetitionInspectionGeometry(Renderer[] renderers)
+            {
+                Assert.That(renderers.Length,Is.LessThanOrEqualTo(2048),"The inspection mesh inventory is bounded.");
+                int vertices=0,triangles=0;
+                foreach(var renderer in renderers)
+                {
+                    Mesh baked=null;
+                    try
+                    {
+                        Mesh mesh;
+                        if(renderer is SkinnedMeshRenderer skin)
+                        {
+                            // Bake only into this newly owned CPU snapshot. Other participants
+                            // remain sight blockers; their renderer, pose and shared mesh stay native.
+                            baked=new Mesh {hideFlags=HideFlags.HideAndDontSave};
+                            skin.BakeMesh(baked,false);mesh=baked;
+                        }
+                        else
+                        {
+                            var filter=renderer.GetComponent<MeshFilter>();
+                            Assert.That(filter!=null && filter.sharedMesh!=null,Is.True,
+                                "An opaque inspection renderer needs its actual mesh: "+renderer.name);
+                            mesh=filter.sharedMesh;
+                        }
+                        var solid=new Solid {Renderer=renderer,Matrix=renderer.localToWorldMatrix,Bounds=renderer.bounds};
+                        var materials=renderer.sharedMaterials;
+#if UNITY_EDITOR
+                        // Imported shell/props have isReadable=false. This editor API reads their
+                        // existing data without changing importer settings or reimporting an asset.
+                        using(var data=UnityEditor.MeshUtility.AcquireReadOnlyMeshData(mesh))
+#else
+                        using(var data=Mesh.AcquireReadOnlyMeshData(mesh))
+#endif
+                        {
+                            Assert.That(data.Length,Is.EqualTo(1));
+                            vertices+=data[0].vertexCount;
+                            Assert.That(vertices,Is.LessThanOrEqualTo(1000000),"Inspection vertex snapshot exceeds its bound.");
+                            using(var points=new NativeArray<Vector3>(data[0].vertexCount,Allocator.Temp))
+                            {
+                                data[0].GetVertices(points);solid.Points=points.ToArray();
+                            }
+                            for(int i=0;i<solid.Points.Length;i++)
+                            {
+                                solid.Points[i]=solid.Matrix.MultiplyPoint3x4(solid.Points[i]);
+                                if(!CompetitionInspectionFinite(solid.Points[i]))Assert.Fail("Inspection mesh vertex must be finite.");
+                            }
+                            solid.Faces=new int[data[0].subMeshCount][];
+                            for(int sub=0;sub<solid.Faces.Length;sub++)
+                            {
+                                Assert.That(sub,Is.LessThan(materials.Length),"Each actual submesh needs its rendered material.");
+                                bool opaque=CompetitionInspectionOpaque(materials[sub]);
+                                // Unity draws extra material slots on the last submesh again.
+                                if(sub==solid.Faces.Length-1)
+                                    for(int extra=solid.Faces.Length;extra<materials.Length;extra++)opaque|=CompetitionInspectionOpaque(materials[extra]);
+                                if(!opaque)continue;
+                                var descriptor=data[0].GetSubMesh(sub);
+                                Assert.That(descriptor.topology,Is.EqualTo(UnityEngine.MeshTopology.Triangles));
+                                Assert.That(descriptor.indexCount%3,Is.Zero);
+                                triangles+=descriptor.indexCount/3;
+                                Assert.That(triangles,Is.LessThanOrEqualTo(1000000),"Inspection triangle snapshot exceeds its bound.");
+                                using(var indices=new NativeArray<int>(descriptor.indexCount,Allocator.Temp))
+                                {
+                                    data[0].GetIndices(indices,sub,true);solid.Faces[sub]=indices.ToArray();
+                                }
+                                Assert.That(solid.Faces[sub].All(index=>index>=0 && index<solid.Points.Length),Is.True,
+                                    "Inspection triangle indices refer to actual retained vertices.");
+                            }
+                        }
+                        solids.Add(solid);
+                    }
+                    finally {if(baked!=null)Object.DestroyImmediate(baked);}
+                }
+                Debug.Log("[Gamesim W3] inspection opaque geometry snapshot: "+solids.Count+" renderers, "+vertices+" vertices, "+triangles+" triangles.");
+            }
+
+            public bool Blocked(Ray ray,float length,out string failure)
+            {
+                foreach(var solid in solids)
+                {
+                    Assert.That(solid.Renderer!=null && solid.Renderer.enabled && solid.Renderer.gameObject.activeInHierarchy,Is.True,
+                        "The synchronous inspection retains its opaque renderer.");
+                    Assert.That(solid.Renderer.localToWorldMatrix,Is.EqualTo(solid.Matrix),
+                        "An inspection blocker moved after the native geometry snapshot: "+solid.Renderer.name);
+                    if(!solid.Bounds.IntersectRay(ray,out float entry) || entry>length)continue;
+                    for(int sub=0;sub<solid.Faces.Length;sub++)
+                    {
+                        var faces=solid.Faces[sub];if(faces==null)continue;
+                        for(int i=0;i<faces.Length;i+=3)
+                        {
+                            if(++triangleTests>20000000)Assert.Fail("Inspection segment/triangle work exceeds its per-capture bound.");
+                            if(!CompetitionInspectionTriangleHit(ray,solid.Points[faces[i]],solid.Points[faces[i+1]],solid.Points[faces[i+2]],out float distance)
+                                || distance>=length)continue;
+                            failure="subject sight blocked by opaque mesh face: "+solid.Renderer.name+"; submesh="+sub
+                                +"; triangle="+(i/3)+"; distance="+distance.ToString("F5");return true;
+                        }
+                    }
+                }
+                failure=null;return false;
+            }
+        }
+
+        private static bool CompetitionInspectionTriangleHit(Ray ray,Vector3 a,Vector3 b,Vector3 c,out float distance)
+        {
+            distance=0;Vector3 edge1=b-a,edge2=c-a,p=Vector3.Cross(ray.direction,edge2);
+            float determinant=Vector3.Dot(edge1,p);if(Mathf.Abs(determinant)<1e-8f)return false;
+            float inverse=1/determinant;Vector3 from=ray.origin-a;float u=Vector3.Dot(from,p)*inverse;
+            if(u<0 || u>1)return false;
+            Vector3 q=Vector3.Cross(from,edge1);float v=Vector3.Dot(ray.direction,q)*inverse;
+            if(v<0 || u+v>1)return false;
+            distance=Vector3.Dot(edge2,q)*inverse;return distance>=0;
+        }
+
+        private static void AssertCompetitionInspectionUsesFacesRatherThanJoinedBounds()
+        {
+            var root=new GameObject("Owned inspection joined-wall fixture");Mesh mesh=null;Material opaque=null,transparent=null;
+            try
+            {
+                root.hideFlags=HideFlags.HideAndDontSave;
+                root.transform.SetPositionAndRotation(new Vector3(73,19,-47),Quaternion.Euler(0,37,0));
+                root.transform.localScale=new Vector3(1.4f,.8f,1.2f);
+                mesh=new Mesh {hideFlags=HideFlags.HideAndDontSave};
+                mesh.vertices=new[]{new Vector3(-2,-1,1),new Vector3(-1,-1,1),new Vector3(-1,1,1),new Vector3(-2,1,1),
+                    new Vector3(1,-1,1),new Vector3(2,-1,1),new Vector3(2,1,1),new Vector3(1,1,1),
+                    new Vector3(-.5f,-1,1),new Vector3(.5f,-1,1),new Vector3(.5f,1,1),new Vector3(-.5f,1,1)};
+                mesh.subMeshCount=2;mesh.SetTriangles(new[]{0,1,2,0,2,3,4,5,6,4,6,7},0);
+                mesh.SetTriangles(new[]{8,9,10,8,10,11},1);mesh.RecalculateBounds();
+                root.AddComponent<MeshFilter>().sharedMesh=mesh;var renderer=root.AddComponent<MeshRenderer>();
+                var shader=Shader.Find("Universal Render Pipeline/Lit");Assert.That(shader,Is.Not.Null);
+                opaque=new Material(shader) {hideFlags=HideFlags.HideAndDontSave,renderQueue=2000};
+                transparent=new Material(shader) {hideFlags=HideFlags.HideAndDontSave,renderQueue=3000};
+                renderer.sharedMaterials=new[]{opaque,transparent};
+#if UNITY_EDITOR
+                mesh.UploadMeshData(true);Assert.That(mesh.isReadable,Is.False,"The imported shell also disables CPU read/write.");
+#endif
+                var geometry=new CompetitionInspectionGeometry(new Renderer[]{renderer});
+                var direction=root.transform.TransformDirection(Vector3.forward);
+                var clearRay=new Ray(root.transform.TransformPoint(Vector3.zero),direction);
+                Assert.That(renderer.bounds.IntersectRay(clearRay),Is.True,"The joined bounds intersects a physically open sight line.");
+                Assert.That(geometry.Blocked(clearRay,3,out _),Is.False,"Actual opaque faces leave the opening clear; the transparent submesh cannot close it.");
+                var blockedRay=new Ray(root.transform.TransformPoint(new Vector3(1.5f,0,0)),direction);
+                Assert.That(geometry.Blocked(blockedRay,3,out string obstruction),Is.True,"A genuine wall face remains a blocker.");
+                Assert.That(obstruction,Does.Contain("submesh=0"));Assert.That(obstruction,Does.Contain("triangle="));
+                Assert.That(geometry.Blocked(blockedRay,.5f,out _),Is.False,"A face beyond the target segment cannot block it.");
+                var backRay=new Ray(root.transform.TransformPoint(new Vector3(1.5f,0,2)),-direction);
+                Assert.That(geometry.Blocked(backRay,3,out _),Is.True,"The same opaque wall is detected from its opposite side.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);if(mesh!=null)Object.DestroyImmediate(mesh);
+                if(opaque!=null)Object.DestroyImmediate(opaque);if(transparent!=null)Object.DestroyImmediate(transparent);
+            }
         }
 
         private CompetitionInspectionView SelectCompetitionInspectionView(Camera eye,CompetitionApparatus instrument)
@@ -671,10 +841,10 @@ namespace Gamesim.Tests.PlayMode
                 PlayerPosition=player.transform.position,PlayerRotation=player.transform.rotation,
                 InstrumentPosition=instrument.transform.position,InstrumentRotation=instrument.transform.rotation,
                 Targets=CompetitionInspectionTargets(body).Concat(CompetitionInspectionTargets(apparatus)).ToArray(),
-                Solids=SceneComponents<Renderer>().Where(renderer=>renderer.enabled && renderer.gameObject.activeInHierarchy
+                Geometry=new CompetitionInspectionGeometry(SceneComponents<Renderer>().Where(renderer=>renderer.enabled && renderer.gameObject.activeInHierarchy
                     && (renderer is MeshRenderer || renderer is SkinnedMeshRenderer) && renderer.GetComponent<TMP_Text>()==null
                     && !renderer.transform.IsChildOf(player.transform) && !renderer.transform.IsChildOf(instrument.transform)
-                    && renderer.sharedMaterials.Any(material=>material!=null && material.renderQueue<3000)).ToArray()};
+                    && renderer.sharedMaterials.Any(CompetitionInspectionOpaque)).ToArray())};
             var anchor=instrument.transform.parent;
             var failures=new List<string>();int candidate=0;
             eye.fieldOfView=42;eye.orthographic=false;
@@ -737,11 +907,9 @@ namespace Gamesim.Tests.PlayMode
                 foreach(var hit in Physics.RaycastAll(ray,to.magnitude-.03f,HouseLayers.Pick,QueryTriggerInteraction.Ignore))
                     if(CompetitionInspectionObstacle(hit.transform,instrument))
                     {failure="subject sight blocked by collider: "+hit.collider.name;return false;}
-                // The backdrop and authored props can have no collider. Conservative opaque
-                // renderer bounds also reject an eye behind their visible solid envelope.
-                foreach(var solid in view.Solids)
-                    if(solid!=null && solid.bounds.IntersectRay(ray,out float hitDistance) && hitDistance<to.magnitude-.03f)
-                    {failure="subject sight blocked by opaque mesh bounds: "+solid.name;return false;}
+                // bb_shell_house joins distant walls into one house-wide bounds. Its AABB is
+                // only a broad phase; retain genuine opaque faces without closing its openings.
+                if(view.Geometry.Blocked(ray,to.magnitude-.03f,out failure))return false;
             }
             failure=null;return true;
         }
@@ -766,7 +934,7 @@ namespace Gamesim.Tests.PlayMode
                 moment+": the current rendered body bounds match the selected native pose.");
             Assert.That(Vector3.Distance(apparatus.min,view.Instrument.min)+Vector3.Distance(apparatus.max,view.Instrument.max),Is.LessThan(.001f),
                 moment+": the current rendered apparatus bounds match the fitted geometry.");
-            var current=new CompetitionInspectionView {Eye=view.Eye,Body=body,Instrument=apparatus,Solids=view.Solids,
+            var current=new CompetitionInspectionView {Eye=view.Eye,Body=body,Instrument=apparatus,Geometry=view.Geometry,
                 Targets=CompetitionInspectionTargets(body).Concat(CompetitionInspectionTargets(apparatus)).ToArray()};
             Assert.That(CompetitionInspectionVisible(eye,instrument,current,out string failure),Is.True,moment+": "+failure);
         }

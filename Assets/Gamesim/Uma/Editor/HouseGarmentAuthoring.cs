@@ -105,7 +105,7 @@ namespace Gamesim.Uma.Editor
                 return position;
             }
             public bool Ray(Vector3 origin, Vector3 direction, out Hit hit, bool? arm = null,
-                float maximumY = float.PositiveInfinity)
+                float maximumY = float.PositiveInfinity, float minimumOutwardDot = float.NegativeInfinity)
             {
                 hit = new Hit();
                 float nearest = float.PositiveInfinity;
@@ -116,9 +116,13 @@ namespace Gamesim.Uma.Editor
                         out float distance, out Vector3 bary) || distance >= nearest) continue;
                     Vector3 position = origin + direction * distance;
                     if (position.y > maximumY) continue;
+                    Vector3 normal = (normals[triangle.a] * bary.x + normals[triangle.b] * bary.y + normals[triangle.c] * bary.z).normalized;
+                    // A sleeve asks for an outward exit, rather than an entering/internal cap
+                    // facet where overlapping shoulder/arm surfaces share the cross-section.
+                    if (!float.IsNegativeInfinity(minimumOutwardDot) && !(Vector3.Dot(normal, direction) > minimumOutwardDot)) continue;
                     nearest = distance;
                     hit = new Hit { triangle = triangle, position = position, barycentric = bary,
-                        normal = (normals[triangle.a] * bary.x + normals[triangle.b] * bary.y + normals[triangle.c] * bary.z).normalized };
+                        normal = normal };
                 }
                 return !float.IsInfinity(nearest);
             }
@@ -652,9 +656,15 @@ namespace Gamesim.Uma.Editor
                     Vector3 radial = localUp * Mathf.Cos(angle) + localForward * Mathf.Sin(angle);
                     // An outward intersection stays on this cross-section. Nearest-point projection
                     // collapsed neighbouring angular samples onto long arm edges and skipped fabric.
-                    Require(surface.Ray(center, radial, out Hit hit, step <= 2 ? (bool?)null : true),
-                        "The sleeve cross-section is unsupported at ring " + step + ", sample " + i + ".");
-                    Require(Vector3.Dot(hit.normal, radial) > .15f, "The sleeve must reach an outward arm surface.");
+                    Require(surface.Ray(center, radial, out Hit hit, step <= 2 ? (bool?)null : true, minimumOutwardDot: .15f),
+                        "The sleeve has no supported outward cross-section at ring " + step + ", sample " + i
+                        + "; center=" + center.ToString("R") + ", axis=" + localAxis.ToString("R") + ", radial=" + radial.ToString("R") + ".");
+                    Require(Vector3.Dot(hit.normal, radial) > .15f,
+                        "The sleeve must reach an outward arm surface at ring " + step + ", sample " + i
+                        + "; center=" + center.ToString("R") + ", radial=" + radial.ToString("R")
+                        + ", hit=" + hit.position.ToString("R") + ", normal=" + hit.normal.ToString("R")
+                        + ", dot=" + Vector3.Dot(hit.normal, radial).ToString("R")
+                        + ", triangle=" + hit.triangle.a + "/" + hit.triangle.b + "/" + hit.triangle.c + ".");
                     float rib = step >= lengthSteps - 1 ? .005f : 0f;
                     ring[i] = pattern.Add(hit.position + radial * (clearance + rib),
                         new Vector2((left ? .02f : .28f) + .22f * i / (ring.Length - 1f), .7f + .26f * t), hit);

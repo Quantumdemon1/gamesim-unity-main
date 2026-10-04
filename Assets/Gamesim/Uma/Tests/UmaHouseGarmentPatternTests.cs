@@ -37,6 +37,7 @@ namespace Gamesim.Uma.Tests
         [Test]
         public void GarmentPattern_CrewCoversRoundedShoulderCapsAndLeavesTheNeckOpen()
         {
+            AssertOutwardSleeveExit();
             foreach (bool loweredArms in new[] { false, true })
             {
                 object surface = Body(loweredArms), pattern = Pattern(surface, true);
@@ -207,6 +208,39 @@ namespace Gamesim.Uma.Tests
                 Vector3.forward, Vector3.forward, Vector3.forward, .035f), Is.False);
             Assert.That(Get<int>(coverage, "largeTrianglesRetained"), Is.EqualTo(1));
             Assert.Throws<InvalidOperationException>(() => Call(coverage, "Covers", Vector3.zero, Vector3.forward, .2f));
+        }
+
+        private static void AssertOutwardSleeveExit()
+        {
+            object surface = Body(true);
+            // Independent numeric replay of ring 2/sample 9 in the lowered proxy: the ray
+            // starts in its arm cylinder but enters a separate overlapping shoulder cap.
+            Vector3 center = new Vector3(-.26271933f, 1.45251513f, .000029386f);
+            Vector3 radial = new Vector3(-.57126915f, .8207292f, -.007433012f);
+            object[] nearest = { center, radial, null, null, float.PositiveInfinity, float.NegativeInfinity };
+            Assert.That((bool)Call(surface, "Ray", nearest), Is.True);
+            Assert.That(Vector3.Dot(Get<Vector3>(nearest[2], "normal"), radial), Is.LessThan(0f),
+                "The ordinary ray deliberately retains its nearest entering cap hit.");
+            object[] outward = { center, radial, null, null, float.PositiveInfinity, .15f };
+            Assert.That((bool)Call(surface, "Ray", outward), Is.True);
+            object hit = outward[2];
+            Assert.That(Vector3.Dot(Get<Vector3>(hit, "normal"), radial), Is.GreaterThan(.99f));
+            Assert.That(Vector3.Distance(center, Get<Vector3>(hit, "position")), Is.InRange(.0557f, .0560f));
+            Assert.That(Get<bool>(Get<object>(hit, "triangle"), "arm"), Is.True);
+            Vector3 bary = Get<Vector3>(hit, "barycentric");
+            Assert.That(bary.x + bary.y + bary.z, Is.EqualTo(1f).Within(.00001f));
+            Assert.That(Mathf.Min(bary.x, Mathf.Min(bary.y, bary.z)), Is.GreaterThanOrEqualTo(0f));
+
+            // An inward-only sheet has no supported exit. Do not invent a nearest-point fallback.
+            object inwardOnly = New("Surface"), triangle = New("Triangle");
+            Set(inwardOnly, "vertices", new[] { Vector3.zero, Vector3.right, Vector3.up });
+            Set(inwardOnly, "normals", new[] { Vector3.back, Vector3.back, Vector3.back });
+            Set(triangle, "a", 0); Set(triangle, "b", 1); Set(triangle, "c", 2);
+            ((IList)Get<object>(inwardOnly, "triangles")).Add(triangle);
+            object[] rejected = { new Vector3(.2f, .2f, -.02f), Vector3.forward, null, null, float.PositiveInfinity, .15f };
+            Assert.That((bool)Call(inwardOnly, "Ray", rejected), Is.False);
+            rejected[5] = float.NegativeInfinity;
+            Assert.That((bool)Call(inwardOnly, "Ray", rejected), Is.True, "Other surface callers keep their original unrestricted ray semantics.");
         }
 
         private static void AssertLowerLayerClearance(bool sleeves)

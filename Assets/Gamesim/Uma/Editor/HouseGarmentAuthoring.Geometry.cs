@@ -206,8 +206,18 @@ namespace Gamesim.Uma.Editor
                     Require(pattern.bodyHits.TryGetValue(b, out Hit hb), "Local panel refinement lost its second nude-body correspondence.");
                     Vector3 desired = (ha.position + hb.position) * .5f;
                     bool? arm = ha.triangle.arm == hb.triangle.arm ? (bool?)ha.triangle.arm : null;
-                    Hit hit = RefinedBodyHit(surface, surface.Closest(desired, arm));
                     Vector3 expected = ha.normal + hb.normal;
+                    Require(Finite(desired) && Finite(expected) && expected.sqrMagnitude > .0001f,
+                        "Local panel refinement lost its outward nude-body guide on edge " + key + ".");
+                    // A nearest point can lie on an internal overlapping shoulder lobe,
+                    // snapping distinct panel midpoints onto the same hidden cap edge.
+                    // Enter from the bounded outward side and retain the first actual
+                    // body hit, rather than preferring that closer internal surface.
+                    Vector3 guide = expected.normalized;
+                    Require(surface.Ray(desired + guide * .08f, -guide, out Hit sampled, arm),
+                        "No external naked-body panel support on edge " + key + ".");
+                    sampled.distance = (sampled.position - desired).sqrMagnitude;
+                    Hit hit = RefinedBodyHit(surface, sampled);
                     Require(Finite(hit.position) && Finite(hit.normal) && Finite(hit.barycentric)
                         && hit.distance < .08f * .08f && expected.sqrMagnitude > .0001f
                         && Vector3.Dot(hit.normal, expected.normalized) > .15f,

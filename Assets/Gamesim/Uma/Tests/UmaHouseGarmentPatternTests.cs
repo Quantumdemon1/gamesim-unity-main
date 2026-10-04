@@ -392,6 +392,16 @@ namespace Gamesim.Uma.Tests
                 AddTriangle(triangles, vertices, a, b, c, false, ref collapsed);
                 AddTriangle(triangles, vertices, a, c, d, false, ref collapsed);
             }
+            // A separately authored internal skin sheet is nearest to the naked
+            // diagonal midpoint but lies behind the actual cylinder exterior.
+            // Closest-only midpoint projection must not use this hidden lobe.
+            int inner = vertices.Count;
+            float innerZ = radius * Mathf.Cos(.6f);
+            vertices.AddRange(new[] { new Vector3(-.003f, .008f, innerZ), new Vector3(.003f, .008f, innerZ),
+                new Vector3(.003f, .032f, innerZ), new Vector3(-.003f, .032f, innerZ) });
+            for (int i = 0; i < 4; i++) normals.Add(Vector3.forward);
+            AddTriangle(triangles, vertices, inner, inner + 1, inner + 2, false, ref collapsed);
+            AddTriangle(triangles, vertices, inner, inner + 2, inner + 3, false, ref collapsed);
             Set(surface, "vertices", vertices.ToArray()); Set(surface, "normals", normals.ToArray());
             var points = Get<List<Vector3>>(pattern, "points"); var uvs = Get<List<Vector2>>(pattern, "uvs");
             var hits = (IDictionary)Get<object>(pattern, "bodyHits");
@@ -419,6 +429,10 @@ namespace Gamesim.Uma.Tests
             Vector3 adjacentSkin = adjacentRadial * radius + Vector3.up * .02f;
             Assert.That((bool)Call(coarse, "Covers", adjacentSkin, adjacentRadial, .03f), Is.False,
                 "The next inward cell has its own curved interior defect, despite the same positive corner offsets.");
+            Vector3 nudeDiagonal = (Get<Vector3>(hits[0], "position") + Get<Vector3>(hits[2], "position")) * .5f;
+            object nearestInner = Call(surface, "Closest", nudeDiagonal, false);
+            Assert.That(Get<Vector3>(nearestInner, "position").z, Is.LessThan(radius - .005f),
+                "This control must expose the closer internal support that an external-entry sample avoids.");
             object refinement;
             try
             {

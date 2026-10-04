@@ -620,16 +620,20 @@ namespace Gamesim.Tests.PlayMode
                 File.WriteAllBytes(Path.GetFullPath(Path.Combine(Application.dataPath,"..","competition-apparatus-"+name+"-ui.png")),uiFrame.EncodeToPNG());
                 foreach(var pair in canvases)if(pair.Canvas!=null)pair.Canvas.enabled=false;
                 instrument.SetOverlaysVisible(true);
-                Transform anchor=instrument.transform.parent;
-                Vector3 focus=player.transform.position+Vector3.up*1.10f+anchor.forward*.25f;
-                eye.transform.position=focus+anchor.right*3.2f+anchor.forward*1.4f+Vector3.up*.80f;
-                eye.transform.LookAt(focus);eye.fieldOfView=42;eye.orthographic=false;
+                // The old rear-side offset put a far-row station's eye inside the saved
+                // backdrop. Inspect from the approach side, without moving an actor or
+                // hiding any world geometry. Both native reads remain in this same frame.
+                var view=SelectCompetitionInspectionView(eye,instrument);
                 Canvas.ForceUpdateCanvases();
+                AssertCompetitionInspectionView(eye,instrument,view,name+" before world read");
                 frame=lens.Read();AssertNotBlank(frame,name+" actual instrument");
+                AssertCompetitionInspectionView(eye,instrument,view,name+" after world read");
                 string path=Path.GetFullPath(Path.Combine(Application.dataPath,"..","competition-apparatus-"+name+"-world.png"));
                 File.WriteAllBytes(path,frame.EncodeToPNG());
                 Debug.Log("[Gamesim W3] actual "+name+" instrument capture -> "+path+"; "+CompetitionApparatus.Readout(ChallengeRun())
-                    +"; humanoid="+(humanoid!=null)+"; handContact="+(pose!=null && pose.HasContact));
+                    +"; humanoid="+(humanoid!=null)+"; handContact="+(pose!=null && pose.HasContact)
+                    +"; inspectionCandidate="+view.Candidate+"; eye="+view.Eye.ToString("F4")+"; focus="+view.Focus.ToString("F4")
+                    +"; bodyBounds="+view.Body+"; instrumentBounds="+view.Instrument+"; clearTargets="+view.Targets.Length);
             }
             finally
             {
@@ -639,6 +643,132 @@ namespace Gamesim.Tests.PlayMode
                 lens.Dispose();if(frame!=null)Object.Destroy(frame);if(uiFrame!=null)Object.Destroy(uiFrame);
             }
             yield return null;
+        }
+
+        private sealed class CompetitionInspectionView
+        {
+            public Vector3 Eye,Focus;
+            public Quaternion Rotation;
+            public Bounds Body,Instrument;
+            public Vector3[] Targets;
+            public Renderer[] Solids;
+            public Vector3 PlayerPosition,InstrumentPosition;
+            public Quaternion PlayerRotation,InstrumentRotation;
+            public int Candidate;
+        }
+
+        private CompetitionInspectionView SelectCompetitionInspectionView(Camera eye,CompetitionApparatus instrument)
+        {
+            var presentation=player.GetComponent<CharacterPresentation>();
+            Assert.That(presentation,Is.Not.Null,"The native inspection player has a body presentation.");
+            var visual=presentation.VisualRoot;
+            Assert.That(visual,Is.Not.Null,"The inspection uses the actual arrived player body.");
+            var body=CompetitionInspectionBounds(visual);
+            var apparatus=CompetitionInspectionBounds(instrument.transform);
+            var combined=body;combined.Encapsulate(apparatus);
+            var floor=SceneComponents<BoxCollider>().Single(collider=>collider.name=="Competition yard floor").bounds;
+            var view=new CompetitionInspectionView {Body=body,Instrument=apparatus,Focus=combined.center,
+                PlayerPosition=player.transform.position,PlayerRotation=player.transform.rotation,
+                InstrumentPosition=instrument.transform.position,InstrumentRotation=instrument.transform.rotation,
+                Targets=CompetitionInspectionTargets(body).Concat(CompetitionInspectionTargets(apparatus)).ToArray(),
+                Solids=SceneComponents<Renderer>().Where(renderer=>renderer.enabled && renderer.gameObject.activeInHierarchy
+                    && (renderer is MeshRenderer || renderer is SkinnedMeshRenderer) && renderer.GetComponent<TMP_Text>()==null
+                    && !renderer.transform.IsChildOf(player.transform) && !renderer.transform.IsChildOf(instrument.transform)
+                    && renderer.sharedMaterials.Any(material=>material!=null && material.renderQueue<3000)).ToArray()};
+            var anchor=instrument.transform.parent;
+            var failures=new List<string>();int candidate=0;
+            eye.fieldOfView=42;eye.orthographic=false;
+            foreach(float distance in new[]{4.2f,4.8f,5.6f})
+            foreach(float lift in new[]{1.0f,1.55f})
+            foreach(float side in new[]{.7f,-.7f,1.1f,-1.1f,0f})
+            {
+                view.Candidate=++candidate;
+                view.Eye=view.Focus+(-anchor.forward+anchor.right*side).normalized*distance+Vector3.up*lift;
+                if(view.Eye.x<floor.min.x+.25f || view.Eye.x>floor.max.x-.25f
+                    || view.Eye.z<floor.min.z+.25f || view.Eye.z>floor.max.z-.25f)
+                {failures.Add(candidate+": outside saved yard");continue;}
+                view.Rotation=Quaternion.LookRotation(view.Focus-view.Eye,Vector3.up);
+                eye.transform.SetPositionAndRotation(view.Eye,view.Rotation);
+                if(CompetitionInspectionVisible(eye,instrument,view,out string failure))return view;
+                failures.Add(candidate+": "+failure);
+            }
+            Assert.Fail("No clear approach-side inspection eye in the bounded30 candidates. Body="+body+"; apparatus="+apparatus
+                +"; "+string.Join("; ",failures));
+            return null;
+        }
+
+        private static Bounds CompetitionInspectionBounds(Transform root)
+        {
+            var renderers=root.GetComponentsInChildren<Renderer>().Where(renderer=>renderer.enabled && renderer.gameObject.activeInHierarchy
+                && (renderer is MeshRenderer || renderer is SkinnedMeshRenderer) && renderer.GetComponent<TMP_Text>()==null).ToArray();
+            Assert.That(renderers,Is.Not.Empty,"The native inspection subject must have actual visible meshes: "+root.name);
+            var bounds=renderers[0].bounds;
+            foreach(var renderer in renderers.Skip(1))bounds.Encapsulate(renderer.bounds);
+            Assert.That(CompetitionInspectionFinite(bounds.min) && CompetitionInspectionFinite(bounds.max) && bounds.size.sqrMagnitude>.01f,Is.True,
+                "The native inspection subject needs finite nonempty rendered bounds: "+root.name+" "+bounds);
+            return bounds;
+        }
+
+        private static bool CompetitionInspectionFinite(Vector3 point)=>!float.IsNaN(point.x) && !float.IsInfinity(point.x)
+            && !float.IsNaN(point.y) && !float.IsInfinity(point.y) && !float.IsNaN(point.z) && !float.IsInfinity(point.z);
+
+        private static Vector3[] CompetitionInspectionTargets(Bounds bounds)=>new[]{bounds.center,
+            new Vector3(bounds.center.x,bounds.max.y-.12f,bounds.center.z),
+            new Vector3(bounds.center.x,bounds.min.y+bounds.size.y*.22f,bounds.center.z),
+            bounds.center+Vector3.right*bounds.extents.x*.6f,bounds.center-Vector3.right*bounds.extents.x*.6f};
+
+        private bool CompetitionInspectionVisible(Camera eye,CompetitionApparatus instrument,CompetitionInspectionView view,out string failure)
+        {
+            foreach(var bounds in new[]{view.Body,view.Instrument})
+            for(int corner=0;corner<8;corner++)
+            {
+                var point=new Vector3((corner&1)==0?bounds.min.x:bounds.max.x,(corner&2)==0?bounds.min.y:bounds.max.y,
+                    (corner&4)==0?bounds.min.z:bounds.max.z);
+                var projected=eye.WorldToViewportPoint(point);
+                if(projected.z<=eye.nearClipPlane || projected.x<.055f || projected.x>.945f || projected.y<.055f || projected.y>.945f)
+                {failure="subject corner outside inspection frame: "+projected.ToString("F4");return false;}
+            }
+            foreach(var collider in Physics.OverlapSphere(view.Eye,.12f,HouseLayers.Pick,QueryTriggerInteraction.Ignore))
+                if(CompetitionInspectionObstacle(collider.transform,instrument))
+                {failure="eye inside saved/world solid: "+collider.name;return false;}
+            foreach(var target in view.Targets)
+            {
+                Vector3 to=target-view.Eye;var ray=new Ray(view.Eye,to.normalized);
+                foreach(var hit in Physics.RaycastAll(ray,to.magnitude-.03f,HouseLayers.Pick,QueryTriggerInteraction.Ignore))
+                    if(CompetitionInspectionObstacle(hit.transform,instrument))
+                    {failure="subject sight blocked by collider: "+hit.collider.name;return false;}
+                // The backdrop and authored props can have no collider. Conservative opaque
+                // renderer bounds also reject an eye behind their visible solid envelope.
+                foreach(var solid in view.Solids)
+                    if(solid!=null && solid.bounds.IntersectRay(ray,out float hitDistance) && hitDistance<to.magnitude-.03f)
+                    {failure="subject sight blocked by opaque mesh bounds: "+solid.name;return false;}
+            }
+            failure=null;return true;
+        }
+
+        private bool CompetitionInspectionObstacle(Transform root,CompetitionApparatus instrument)=>root.gameObject.scene==player.gameObject.scene
+            && !root.IsChildOf(player.transform) && !root.IsChildOf(instrument.transform);
+
+        private void AssertCompetitionInspectionView(Camera eye,CompetitionApparatus instrument,CompetitionInspectionView view,string moment)
+        {
+            Assert.That(instrument!=null && instrument.gameObject.activeInHierarchy && instrument.ActorId==director.Snapshot.playerId,Is.True,
+                moment+": the actual owned player apparatus must still be active.");
+            Assert.That(Vector3.Distance(eye.transform.position,view.Eye),Is.LessThan(.00001f),moment+": the capture retained its selected eye.");
+            Assert.That(Quaternion.Angle(eye.transform.rotation,view.Rotation),Is.LessThan(.001f),moment+": the capture retained its selected facing.");
+            Assert.That(eye.orthographic,Is.False);Assert.That(eye.fieldOfView,Is.EqualTo(42f).Within(.0001f));
+            Assert.That(Vector3.Distance(player.transform.position,view.PlayerPosition),Is.LessThan(.00001f),moment+": the actual player root stayed native and stationary.");
+            Assert.That(Quaternion.Angle(player.transform.rotation,view.PlayerRotation),Is.LessThan(.001f),moment+": the actual player root kept its native facing.");
+            Assert.That(Vector3.Distance(instrument.transform.position,view.InstrumentPosition),Is.LessThan(.00001f),moment+": the owned apparatus stayed at its fitted place.");
+            Assert.That(Quaternion.Angle(instrument.transform.rotation,view.InstrumentRotation),Is.LessThan(.001f),moment+": the owned apparatus kept its fitted facing.");
+            var body=CompetitionInspectionBounds(player.GetComponent<CharacterPresentation>().VisualRoot);
+            var apparatus=CompetitionInspectionBounds(instrument.transform);
+            Assert.That(Vector3.Distance(body.min,view.Body.min)+Vector3.Distance(body.max,view.Body.max),Is.LessThan(.001f),
+                moment+": the current rendered body bounds match the selected native pose.");
+            Assert.That(Vector3.Distance(apparatus.min,view.Instrument.min)+Vector3.Distance(apparatus.max,view.Instrument.max),Is.LessThan(.001f),
+                moment+": the current rendered apparatus bounds match the fitted geometry.");
+            var current=new CompetitionInspectionView {Eye=view.Eye,Body=body,Instrument=apparatus,Solids=view.Solids,
+                Targets=CompetitionInspectionTargets(body).Concat(CompetitionInspectionTargets(apparatus)).ToArray()};
+            Assert.That(CompetitionInspectionVisible(eye,instrument,current,out string failure),Is.True,moment+": "+failure);
         }
 
         private IEnumerator CancelInstrumentAttempt(EpisodeState before)

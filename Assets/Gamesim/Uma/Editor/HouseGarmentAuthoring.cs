@@ -49,6 +49,7 @@ namespace Gamesim.Uma.Editor
             public bool upperBoundaryAdapted;
             public int vertices, triangles, maximumInfluences;
             public int windingComponents, windingSharedEdges, windingReversedTriangles;
+            public List<WindingComponent> windingEvidence = new List<WindingComponent>();
             public int coverageQueries, coverageTriangleTests, coverageMaximumCandidates, coverageLargeTrianglesRetained;
             public Vector3 hipsLandmark, neckLandmark, leftUpperArmLandmark, rightUpperArmLandmark;
             public Vector3 referencePatternBoundsCenter, referencePatternBoundsSize, meshBoundsCenter, meshBoundsSize;
@@ -68,6 +69,11 @@ namespace Gamesim.Uma.Editor
             public List<string> adjustmentBones = new List<string>();
             public List<string> maskTargets = new List<string>();
             public List<int> hiddenTriangles = new List<int>();
+        }
+        [Serializable] private sealed class WindingComponent
+        {
+            public int seed, faces, reversed;
+            public double doubledArea, signedOutwardArea, confidence;
         }
         [Serializable] private sealed class MeasuredUpperSlot
         {
@@ -190,6 +196,9 @@ namespace Gamesim.Uma.Editor
             public readonly List<Vector3> points = new List<Vector3>();
             public readonly List<Vector2> uvs = new List<Vector2>();
             public readonly List<int> indices = new List<int>();
+            // Preserve each retained face's anatomical construction direction, including
+            // bindings without a naked-body Hit. This stays aligned when degenerate faces skip.
+            public readonly List<Vector3> outwardReferences = new List<Vector3>();
             // Keep the sampled body triangle: an offset sleeve near the armpit must not acquire
             // torso weights merely because that torso is now its nearest neighbouring surface.
             public readonly Dictionary<int, Hit> bodyHits = new Dictionary<int, Hit>();
@@ -197,6 +206,7 @@ namespace Gamesim.Uma.Editor
             public readonly List<List<int>> armBoundaries = new List<List<int>>();
             public float hem, shoulder, armpit;
             public int windingComponents, windingSharedEdges, windingReversedTriangles;
+            public readonly List<WindingComponent> windingEvidence = new List<WindingComponent>();
             public int Add(Vector3 point, Vector2 uv, Hit? bodyHit = null)
             {
                 int vertex = points.Count;
@@ -213,19 +223,26 @@ namespace Gamesim.Uma.Editor
             {
                 Vector3 normal = Vector3.Cross(points[b] - points[a], points[c] - points[a]);
                 if (normal.sqrMagnitude <= .000000000001f) return;
+                Require(Finite(outward) && outward.sqrMagnitude > .000000000001f,
+                    "A garment face has no finite authored outward reference.");
                 if (Vector3.Dot(normal, outward) < 0) { int swap = b; b = c; c = swap; }
                 indices.Add(a); indices.Add(b); indices.Add(c);
+                outwardReferences.Add(outward / outward.magnitude);
             }
             public void OrientFacesConsistently()
             {
                 // A warped quad can put its two facet normals on opposite sides of the
                 // supplied outward vector. Orienting each facet independently then turns
                 // a continuous sleeve into locally reversed, back-face-culled cloth.
-                // Preserve geometry and each component's original outward anchor; only
-                // reconcile index winding along its actual shared edges.
+                // Shared-edge parity determines a coherent component up to one global sign.
+                // Its authored domain directions, weighted by actual facet area, determine
+                // that sign. A tiny folded first facet or a triangle-count majority cannot.
+                // Only index winding changes; geometry and correspondence remain intact.
                 Require(indices.Count > 0 && indices.Count % 3 == 0 && indices.Count / 3 <= 12000,
                     "Garment winding exceeds its bounded triangle contract.");
                 int faces = indices.Count / 3;
+                Require(outwardReferences.Count == faces, "Garment winding lost its authored face references.");
+                var evidence = new List<WindingComponent>();
                 var firstUse = new Dictionary<(int, int), int>();
                 var neighbours = new int[indices.Count];
                 var sameDirection = new bool[indices.Count];
@@ -267,8 +284,33 @@ namespace Gamesim.Uma.Editor
                             else Require(flips[other] == expected, "Garment winding contains a nonorientable component.");
                         }
                     }
-                    Require(componentReversed * 2 <= count,
-                        "Garment winding cannot retain its outward anchor and majority of authored faces.");
+                    double doubledArea = 0d, signedOutwardArea = 0d;
+                    for (int i = 0; i < count; i++)
+                    {
+                        int face = queue[i], offset = face * 3;
+                        Vector3 normal = Vector3.Cross(points[indices[offset + 1]] - points[indices[offset]],
+                            points[indices[offset + 2]] - points[indices[offset]]);
+                        Vector3 outward = outwardReferences[face];
+                        Require(Finite(normal) && normal.sqrMagnitude > .000000000001f
+                            && Finite(outward) && Mathf.Abs(outward.sqrMagnitude - 1f) < .001f,
+                            "Garment winding contains invalid facet/reference evidence at face " + face + ".");
+                        doubledArea += normal.magnitude;
+                        signedOutwardArea += Vector3.Dot(normal, outward) * (flips[face] == 0 ? 1d : -1d);
+                    }
+                    double confidence = Math.Abs(signedOutwardArea) / doubledArea;
+                    // Relative to total area, near-zero evidence is numerically ambiguous.
+                    // Refuse it before any mutation rather than choose an arbitrary seed.
+                    Require(!double.IsNaN(confidence) && !double.IsInfinity(confidence) && confidence > .00001d,
+                        "Garment winding has ambiguous authored outward evidence: seed=" + seed + ", faces=" + count
+                        + ", seedParityReversed=" + componentReversed + ", doubledArea=" + doubledArea.ToString("R")
+                        + ", signedOutwardArea=" + signedOutwardArea.ToString("R") + ", confidence=" + confidence.ToString("R") + ".");
+                    if (signedOutwardArea < 0d)
+                    {
+                        for (int i = 0; i < count; i++) flips[queue[i]] ^= 1;
+                        componentReversed = count - componentReversed;
+                    }
+                    evidence.Add(new WindingComponent { seed = seed, faces = count, reversed = componentReversed,
+                        doubledArea = doubledArea, signedOutwardArea = Math.Abs(signedOutwardArea), confidence = confidence });
                     reversed += componentReversed;
                 }
                 // No partial mutation if any component failed its topology/anchor checks.
@@ -279,6 +321,7 @@ namespace Gamesim.Uma.Editor
                         indices[offset + 1] = indices[offset + 2]; indices[offset + 2] = swap;
                     }
                 windingComponents = components; windingSharedEdges = sharedEdges; windingReversedTriangles = reversed;
+                windingEvidence.Clear(); windingEvidence.AddRange(evidence);
             }
         }
 
@@ -905,6 +948,7 @@ namespace Gamesim.Uma.Editor
             evidence.windingComponents = pattern.windingComponents;
             evidence.windingSharedEdges = pattern.windingSharedEdges;
             evidence.windingReversedTriangles = pattern.windingReversedTriangles;
+            evidence.windingEvidence = new List<WindingComponent>(pattern.windingEvidence);
             var vertices = new Vector3[pattern.points.Count];
             var counts = new byte[vertices.Length];
             var weights = new List<BoneWeight1>();

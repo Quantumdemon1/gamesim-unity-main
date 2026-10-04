@@ -37,6 +37,7 @@ namespace Gamesim.Uma.Tests
         [Test]
         public void GarmentPattern_CrewCoversRoundedShoulderCapsAndLeavesTheNeckOpen()
         {
+            AssertOutwardComponentEvidence();
             AssertOutwardSleeveExit();
             foreach (bool loweredArms in new[] { false, true })
             {
@@ -84,13 +85,25 @@ namespace Gamesim.Uma.Tests
                 int[] originalIndices = indices.ToArray();
                 Vector3[] originalPoints = points.ToArray();
                 Vector2[] originalUvs = Get<List<Vector2>>(pattern, "uvs").ToArray();
-                int b = indices[indices.Count - 2], c = indices[indices.Count - 1];
                 try
                 {
-                    indices[indices.Count - 2] = c; indices[indices.Count - 1] = b;
-                    Assert.Throws<AssertionException>(() => AssertConsistentWinding(pattern));
+                    foreach (int facet in new[] { 0, indices.Count / 3 - 1 })
+                    {
+                        int offset = facet * 3, swap = indices[offset + 1];
+                        indices[offset + 1] = indices[offset + 2]; indices[offset + 2] = swap;
+                        Assert.Throws<AssertionException>(() => AssertConsistentWinding(pattern));
+                        Call(pattern, "OrientFacesConsistently");
+                        Assert.That(indices, Is.EqualTo(originalIndices), "Neither the first nor last facet can choose a component's outward orientation.");
+                    }
+                    // A coherent reversal has no shared-edge conflict; only independently
+                    // retained anatomical evidence can distinguish its inward global sign.
+                    for (int offset = 0; offset < indices.Count; offset += 3)
+                    {
+                        int swap = indices[offset + 1]; indices[offset + 1] = indices[offset + 2]; indices[offset + 2] = swap;
+                    }
+                    AssertConsistentWinding(pattern);
                     Call(pattern, "OrientFacesConsistently");
-                    Assert.That(indices, Is.EqualTo(originalIndices), "Repair changes winding only, preserving each triangle and its outward anchor.");
+                    Assert.That(indices, Is.EqualTo(originalIndices));
                     Assert.That(points, Is.EqualTo(originalPoints));
                     Assert.That(Get<List<Vector2>>(pattern, "uvs"), Is.EqualTo(originalUvs));
                 }
@@ -228,6 +241,41 @@ namespace Gamesim.Uma.Tests
                 Vector3.forward, Vector3.forward, Vector3.forward, .035f), Is.False);
             Assert.That(Get<int>(coverage, "largeTrianglesRetained"), Is.EqualTo(1));
             Assert.Throws<InvalidOperationException>(() => Call(coverage, "Covers", Vector3.zero, Vector3.forward, .2f));
+        }
+
+        private static void AssertOutwardComponentEvidence()
+        {
+            object pattern = New("Pattern");
+            var points = Get<List<Vector3>>(pattern, "points");
+            var uvs = Get<List<Vector2>>(pattern, "uvs");
+            // One tiny folded domain facet must not anchor a thousand-times-larger
+            // supported panel. Both candidates remain connected along a real edge.
+            points.AddRange(new[] { Vector3.zero, new Vector3(.002f, 0f, 0f),
+                new Vector3(.002f, .002f, 0f), new Vector3(-2f, .002f, 0f) });
+            uvs.AddRange(Enumerable.Repeat(Vector2.zero, 4));
+            Call(pattern, "Face", 0, 1, 2, Vector3.back);
+            Call(pattern, "Face", 0, 2, 3, Vector3.forward);
+            var indices = Get<List<int>>(pattern, "indices");
+            Call(pattern, "OrientFacesConsistently");
+            Assert.That(Vector3.Cross(points[indices[4]] - points[indices[3]], points[indices[5]] - points[indices[3]]).z,
+                Is.GreaterThan(.001f), "The large supported panel must retain its authored outward side.");
+            AssertConsistentWinding(pattern);
+            IList evidence = Get<IList>(pattern, "windingEvidence");
+            Assert.That(evidence, Has.Count.EqualTo(1));
+            Assert.That(Get<double>(evidence[0], "confidence"), Is.GreaterThan(.99d));
+            // Equal opposed evidence is not permission to guess. It must reject
+            // before mutating a single face, even though topology is orientable.
+            object ambiguous = New("Pattern");
+            Get<List<Vector3>>(ambiguous, "points").AddRange(new[] { Vector3.zero, Vector3.right, Vector3.one - Vector3.forward, Vector3.up });
+            Get<List<Vector2>>(ambiguous, "uvs").AddRange(Enumerable.Repeat(Vector2.zero, 4));
+            Call(ambiguous, "Face", 0, 1, 2, Vector3.forward);
+            Call(ambiguous, "Face", 0, 2, 3, Vector3.back);
+            List<int> ambiguousIndices = Get<List<int>>(ambiguous, "indices");
+            int[] before = ambiguousIndices.ToArray();
+            var failure = Assert.Throws<InvalidOperationException>(() => Call(ambiguous, "OrientFacesConsistently"));
+            Assert.That(failure.Message, Does.Contain("ambiguous authored outward evidence"));
+            Assert.That(failure.Message, Does.Contain("seed=").And.Contain("signedOutwardArea=").And.Contain("confidence="));
+            Assert.That(ambiguousIndices, Is.EqualTo(before));
         }
 
         private static void AssertOutwardSleeveExit()

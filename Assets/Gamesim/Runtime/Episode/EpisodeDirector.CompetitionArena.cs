@@ -71,8 +71,27 @@ namespace Gamesim.Episode
             var scale=floor.transform.lossyScale;
             competitionArenaRoot.transform.localScale=new Vector3(1/scale.x,1/scale.y,1/scale.z);
             var filter=new NavMeshQueryFilter{agentTypeID=player.Agent.agentTypeID,areaMask=player.Agent.areaMask};
+            var playerCapsule=player.GetComponent<CapsuleCollider>();
+            float layoutRadius=Mathf.Max(player.Agent.radius,playerCapsule!=null?playerCapsule.radius:0);
+            foreach(var npc in housemates)
+                if(npc!=null && state.Active.Any(actor=>actor.id==npc.Id))
+                {
+                    var npcCapsule=npc.GetComponent<CapsuleCollider>();
+                    if(npcCapsule!=null)layoutRadius=Mathf.Max(layoutRadius,npcCapsule.radius);
+                }
+            float layoutArrival=Mathf.Max(.25f,player.Agent.stoppingDistance+.1f);
+            // Use the deepest family for every game so a later instrument can reuse
+            // the same aligned rows. The old 1.6 m stride was shorter than both a
+            // console's 1.95 m and a grip's 2.15 m reservation; neighbouring rows
+            // excluded each other and left unusable strips between the set pieces.
+            float rowStride=CompetitionStageFootprint.Station(CompetitionApparatus.Family.GripRig,
+                Vector3.zero,CompetitionContestantFacing,layoutRadius,player.Agent.height,layoutArrival).HalfSize.z*2f+.15f;
+            // Keep the proved back row, and let the complete envelope/floor checks
+            // decide each front place rather than discarding a whole usable row.
+            float backRow=bounds.max.z-2.1f;
+            float frontLimit=bounds.min.z+layoutRadius+layoutArrival+.14f;
             var candidates=new List<Vector3>();
-            for(float z=bounds.min.z+1.5f;z<bounds.max.z-1.5f;z+=1.6f)
+            for(float z=backRow;z>frontLimit;z-=rowStride)
                 for(float x=bounds.min.x+2f;x<bounds.max.x-2f;x+=1.8f)
                     candidates.Add(new Vector3(x,bounds.max.y,z));
             // Fill the far rows first so stopped arrivals do not occupy the entrance
@@ -87,8 +106,7 @@ namespace Gamesim.Episode
                 if(!rooms.TrySampleFloor(wanted,player.Agent.radius,filter,.25f,out var position,out var room)
                     || room!="Yard" || !rooms.HasCapsuleClearance(position,player.Agent.radius,player.Agent.height,player.transform))continue;
                 float facing=CompetitionContestantFacing;
-                var capsule=player.GetComponent<CapsuleCollider>();
-                float radius=Mathf.Max(player.Agent.radius,capsule!=null?capsule.radius:0);
+                float radius=Mathf.Max(player.Agent.radius,playerCapsule!=null?playerCapsule.radius:0);
                 var footprint=CompetitionStageFootprint.Station(instrumentFamily,position,facing,radius,player.Agent.height,
                     Mathf.Max(.25f,player.Agent.stoppingDistance+.1f));
                 if(!FitsCompetitionFootprint(footprint,floor,player.transform) || !player.TryBeginActivityMove(competitionPlayerOwner,position,out _))continue;
@@ -174,10 +192,12 @@ namespace Gamesim.Episode
                     {
                         Debug.Log("[Gamesim competition stage] no station for "+actor.id+" family="+instrumentFamily
                             +" from="+npc.transform.position.ToString("F3")+" candidates="+candidates.Count
+                            +" rowStride="+rowStride.ToString("F3")+" layoutRadius="+layoutRadius.ToString("F3")
                             +" floor="+floorMisses+" occupied="+occupiedMisses+" envelope="+envelopeMisses
                             +" last="+lastCandidate.ToString("F3")+" deck="+lastEnvelope.FitsOn(floor.bounds)
                             +" neighbour="+ClearsCompetitionNeighbours(lastEnvelope)
-                            +" blockers="+CompetitionStaticBlockers(lastEnvelope,npc.transform),this);
+                            +" blockers="+CompetitionStaticBlockers(lastEnvelope,npc.transform)
+                            +" rejected="+CompetitionRejectedCandidates(candidates,used,npc,capsule,floor,rooms,filter,instrumentFamily,contestants.Contains(actor.id)),this);
                         continue;
                     }
                     ids.Add(actor.id); anchors.Add(anchor); used.Add(anchor.Approach); competitionArenaActors[actor.id]=anchor;
@@ -334,6 +354,27 @@ namespace Gamesim.Episode
         private bool FitsCompetitionFootprint(CompetitionStageFootprint footprint,Collider floor,Transform prospectiveSelf=null)
             =>footprint.FitsOn(floor.bounds) && ClearsCompetitionNeighbours(footprint)
                 && footprint.HasStaticClearance(gameObject.scene.GetPhysicsScene(),floor,competitionPlacementHits,competitionRouteOwners,prospectiveSelf);
+
+        private string CompetitionRejectedCandidates(IReadOnlyList<Vector3> candidates,IReadOnlyList<Vector3> used,HouseNpc npc,
+            CapsuleCollider capsule,Collider floor,HouseRoomQuery rooms,NavMeshQueryFilter filter,CompetitionApparatus.Family family,bool contestant)
+        {
+            var refused=new List<string>();
+            foreach(var wanted in candidates.Take(128))
+            {
+                if(!rooms.TrySampleFloor(wanted,capsule.radius,filter,.25f,out var position,out var room) || room!="Yard")
+                {refused.Add(wanted.ToString("F3")+":floor:"+rooms.LastFailure);continue;}
+                bool spacing=used.All(p=>(p-position).sqrMagnitude>=1.6f);
+                bool bodyClear=rooms.HasCapsuleClearance(position,capsule.radius,capsule.height,npc.transform);
+                string bodyReason=bodyClear?"clear":rooms.LastFailure;
+                var footprint=contestant?CompetitionStageFootprint.Station(family,position,CompetitionContestantFacing,capsule.radius,capsule.height)
+                    :CompetitionStageFootprint.Actor(position,capsule.radius,capsule.height);
+                bool staticClear=footprint.HasStaticClearance(gameObject.scene.GetPhysicsScene(),floor,competitionPlacementHits,competitionRouteOwners,npc.transform);
+                refused.Add(wanted.ToString("F3")+"->"+position.ToString("F3")+":spacing="+spacing+",body="+bodyReason
+                    +",deck="+footprint.FitsOn(floor.bounds)+",neighbours="+ClearsCompetitionNeighbours(footprint)
+                    +",static="+staticClear+",blockers="+(staticClear?"none":CompetitionStaticBlockers(footprint,npc.transform)));
+            }
+            return (candidates.Count>128?"first128 only; ":"")+string.Join("; ",refused);
+        }
 
         private bool ValidateCompetitionInstrumentFit(CompetitionApparatus instrument)
         {

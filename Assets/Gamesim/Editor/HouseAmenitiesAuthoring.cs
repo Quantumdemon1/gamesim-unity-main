@@ -152,8 +152,8 @@ namespace Gamesim.Editor
             group.SetSiblingIndex(siblingIndex);
             Put(world, group, "Games floor", "bb_set_pooltable", -.17f, .22f, 0, evidence);
             Put(world, group, "HoH floor", "bb_set_hohbench", -.12f, .06f, 0, evidence);
-            Put(world, group, "Competition yard floor", "bb_set_lighttower", -.28f, .43f, 155, evidence);
-            Put(world, group, "Competition yard floor", "bb_set_lighttower", .28f, .43f, 205, evidence);
+            Put(world, group, "Competition yard floor", "bb_set_lighttower", -.27f, .33f, 155, evidence);
+            Put(world, group, "Competition yard floor", "bb_set_lighttower", .27f, .33f, 205, evidence);
             Put(world, group, "Competition yard floor", "bb_set_studiocam", -.43f, -.25f, 250, evidence);
         }
 

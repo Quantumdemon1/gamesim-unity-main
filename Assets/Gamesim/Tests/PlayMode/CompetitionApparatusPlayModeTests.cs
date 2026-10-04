@@ -71,6 +71,41 @@ namespace Gamesim.Tests.PlayMode
                 instrument.Sync(attempt,true,false,false,false);
                 Assert.That(instrument.ProgressText,Is.EqualTo(CompetitionApparatus.Readout(attempt)),
                     "A reserved instrument can receive progress before its anchor becomes active.");
+                var primary=labels.Single(label=>label.name=="Instrument progress");
+                var audience=labels.Single(label=>label.name=="Instrument progress audience readout");
+                var backings=instrument.GetComponentsInChildren<MeshFilter>().Where(part=>part.name.StartsWith("Progress ")).ToArray();
+                Assert.That(backings,Has.Length.EqualTo(2),"Each opposing progress face owns a physical contrast backing.");
+                foreach(var backing in backings)
+                {
+                    var material=backing.GetComponent<Renderer>().sharedMaterial;
+                    Color color=material.GetColor("_BaseColor");
+                    Assert.That(Mathf.Max(color.r,Mathf.Max(color.g,color.b)),Is.LessThan(.3f),
+                        "Progress remains legible against an actual dark material, regardless of saved scenery behind it.");
+                    var label=backing.name=="Progress front backing"?primary:audience;
+                    var normal=label.transform.TransformDirection(Vector3.back);
+                    var bounds=backing.sharedMesh.bounds;
+                    for(int corner=0;corner<8;corner++)
+                    {
+                        var point=new Vector3((corner&1)==0?bounds.min.x:bounds.max.x,(corner&2)==0?bounds.min.y:bounds.max.y,
+                            (corner&4)==0?bounds.min.z:bounds.max.z);
+                        point=backing.transform.TransformPoint(point);
+                        Assert.That(Vector3.Dot(label.transform.position-point,normal),Is.GreaterThan(.001f),
+                            "The complete opaque backing is behind its own front-facing text plane.");
+                    }
+                }
+                if(instrument.Instrument==CompetitionApparatus.Family.DiceTray)
+                {
+                    var pedestal=instrument.GetComponentsInChildren<MeshFilter>().Single(part=>part.name=="Tray pedestal");
+                    float near=float.PositiveInfinity,far=float.NegativeInfinity;
+                    foreach(var vertex in pedestal.sharedMesh.vertices)
+                    {
+                        float z=instrument.transform.InverseTransformPoint(pedestal.transform.TransformPoint(vertex)).z;
+                        near=Mathf.Min(near,z);far=Mathf.Max(far,z);
+                    }
+                    Assert.That(instrument.transform.InverseTransformPoint(primary.transform.position).z,Is.LessThan(near-.01f),
+                        "Actual front progress cannot sit inside the pedestal's native mesh.");
+                    Assert.That(instrument.transform.InverseTransformPoint(audience.transform.position).z,Is.GreaterThan(far+.01f));
+                }
                 var at=owner.transform.position;var facing=owner.transform.rotation;
                 Assert.That(instrument.DefinitionId,Is.EqualTo(definition.Id));
                 Assert.That(instrument.Instrument,Is.EqualTo(Expected(definition.Category)),definition.Id);

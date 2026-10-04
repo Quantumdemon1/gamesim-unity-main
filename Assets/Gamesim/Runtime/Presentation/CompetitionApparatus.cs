@@ -96,7 +96,14 @@ namespace Gamesim.Presentation
                 case Family.DiceTray: BuildDice(); break;
                 case Family.WordConsole: BuildWords(); break;
             }
-            progress = Words("Instrument progress", new Vector3(0, .74f, Front - .08f), .90f, .13f, "Ready");
+            // The dice pedestal extends 125 mm toward the actor. Its former common
+            // readout plane was 45 mm inside that support, hiding the middle letters.
+            float progressFront = Instrument == Family.DiceTray ? Front - .145f : Front - .08f;
+            progress = Words("Instrument progress", new Vector3(0, .74f, progressFront), .90f, .13f, "Ready");
+            // Each opposing plane has its own dark face. Saved yard lights and pillars
+            // can remain behind the words without washing out their public progress.
+            Part("Progress front backing", new Vector3(0, .74f, progressFront + .006f), new Vector3(.96f, .16f, .008f), dark);
+            Part("Progress audience backing", new Vector3(0, .74f, Front + .154f), new Vector3(.96f, .16f, .008f), dark);
             // The show's wide camera sees the audience-facing readout on the back of a console.
             // Repeat only the same public information, rather than turning the actor away from it.
             foreach (TMP_Text glyph in glyphs) RepeatWord(glyph);

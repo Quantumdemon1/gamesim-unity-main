@@ -121,6 +121,9 @@ namespace Gamesim.Tests.PlayMode
             int labels=SceneComponents<TMP_Text>().Count(t=>t.name=="Public text");
             HousePublicDisplays.Project(player.gameObject.scene,publicReset);yield return null;
             Assert.That(SceneComponents<TMP_Text>().Count(t=>t.name=="Public text"),Is.EqualTo(labels),"Repeated projection reuses the actual surfaces.");
+            AssertPublicHoHMount(photos);
+            foreach(var member in mount)Assert.That(member.Renderer.transform.position,Is.EqualTo(member.Position),
+                "Clearing and repeating the real public projection cannot creep any of the nine mounted objects.");
             HousePublicDisplays.Project(player.gameObject.scene,state);
         }
 
@@ -274,6 +277,21 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(bounds.max.y,Is.LessThanOrEqualTo(supporting.max.y));
             Assert.That(bounds.min.x,Is.GreaterThanOrEqualTo(Mathf.Max(supporting.min.x,room.min.x)));
             Assert.That(bounds.max.x,Is.LessThanOrEqualTo(Mathf.Min(supporting.max.x,room.max.x)));
+            float roomSide=room.center.z>=supporting.center.z?1f:-1f;
+            float wallPlane=roomSide>0?supporting.max.z:supporting.min.z;
+            float nearDepth=roomSide>0?bounds.min.z:-bounds.max.z;
+            Assert.That(nearDepth-roomSide*wallPlane,Is.GreaterThanOrEqualTo(.0409f),
+                "All nine owned faces must retain the 35 mm authored trim plus the 6 mm finish lift, within 0.1 mm bounds precision.");
+            // Independently test the actual imported opaque shell, not just its proxy or
+            // a duplicated mount formula. Each physical face must be on the room side;
+            // the original plaque's upper corners intersected the real cap triangle10.
+            var shell=SceneComponents<MeshRenderer>().Single(renderer=>renderer.name=="bb_shell_house");
+            var geometry=new CompetitionInspectionGeometry(new Renderer[]{shell});
+            var normal=Vector3.forward*roomSide;
+            foreach(var member in members)
+            foreach(var point in PublicSurfaceCorners(member).Append(member.bounds.center))
+                Assert.That(geometry.Blocked(new Ray(point+normal*.1f,-normal),.099f,out var blocker),Is.False,
+                    member.name+" must be in front of the actual opaque supporting shell: "+blocker);
         }
 
         private static Rect PublicSurfaceBox(Renderer surface,Camera eye,Vector2Int dimensions)

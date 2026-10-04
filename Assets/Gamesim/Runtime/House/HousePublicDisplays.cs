@@ -192,19 +192,34 @@ namespace Gamesim.House
             const float gap=.03f;
             bool xOverlap=assembly.min.x<obstruction.max.x+gap-.0001f && assembly.max.x>obstruction.min.x-gap+.0001f;
             bool yOverlap=assembly.min.y<obstruction.max.y+gap && assembly.max.y>obstruction.min.y-gap;
-            if(!xOverlap || !yOverlap || Mathf.Abs(assembly.center.z-obstruction.center.z)>1.5f)return;
-            float upward=obstruction.max.y+gap-assembly.min.y;
-            Vector3 offset=Vector3.up*upward;
-            if(assembly.max.y+upward>wallBounds.max.y)
+            Vector3 offset=Vector3.zero;
+            if(xOverlap && yOverlap && Mathf.Abs(assembly.center.z-obstruction.center.z)<=1.5f)
             {
-                float left=obstruction.min.x-gap-assembly.max.x;
-                float right=obstruction.max.x+gap-assembly.min.x;
-                float min=Mathf.Max(wallBounds.min.x,floorBounds.min.x)+gap;
-                float max=Mathf.Min(wallBounds.max.x,floorBounds.max.x)-gap;
-                if(assembly.min.x+left>=min)offset=Vector3.right*left;
-                else if(assembly.max.x+right<=max)offset=Vector3.right*right;
-                else return; // No supported wall space is preferable to an invented surface.
+                float upward=obstruction.max.y+gap-assembly.min.y;
+                offset=Vector3.up*upward;
+                if(assembly.max.y+upward>wallBounds.max.y)
+                {
+                    float left=obstruction.min.x-gap-assembly.max.x;
+                    float right=obstruction.max.x+gap-assembly.min.x;
+                    float min=Mathf.Max(wallBounds.min.x,floorBounds.min.x)+gap;
+                    float max=Mathf.Min(wallBounds.max.x,floorBounds.max.x)-gap;
+                    if(assembly.min.x+left>=min)offset=Vector3.right*left;
+                    else if(assembly.max.x+right<=max)offset=Vector3.right*right;
+                    else return; // No supported wall space is preferable to an invented surface.
+                }
             }
+            // bb_shell.py's cap is 35 mm proud of this supporting wall proxy. Native
+            // saved-house triangle10 proved its room face at z=-19.84, while the old
+            // plaque lay at -19.859. Keep the complete mount beyond that local trim
+            // with the finish pass's existing 6 mm lift; the joined shell's bounds
+            // cannot supply a local wall face, and player meshes need not be readable.
+            const float capProud=.035f, finishLift=.006f;
+            float roomSide=floorBounds.center.z>=wallBounds.center.z?1f:-1f;
+            float wallPlane=roomSide>0?wallBounds.max.z:wallBounds.min.z;
+            float nearDepth=roomSide>0?assembly.min.z:-assembly.max.z;
+            float inward=roomSide*wallPlane+capProud+finishLift-nearDepth;
+            if(inward>.0001f)offset.z=roomSide*inward;
+            if(offset==Vector3.zero)return;
             foreach(var member in members)member.transform.position+=offset;
         }
 

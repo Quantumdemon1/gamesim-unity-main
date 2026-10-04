@@ -74,6 +74,15 @@ exercise the editor configuration; run the reported player explicitly for shippi
 performance checks, always providing a fresh isolated `--gamesim-save-root`. Neither a successful build
 nor passing automated tests establishes visual quality or a frame-time improvement.
 
+The UMA-free mirror also omits `Assets/Gamesim/Uma/Content` and `Assets/Gamesim/Uma/Resources`,
+including their folder `.meta` files. These native recipes, slots, overlays and catalog assets require
+the absent optional provider/vendor types; loading them can rewrite binary assets as missing-type YAML.
+After the existing idle/package guards, the mirror preflights all four exact destination paths and their
+ancestors/children for reparse points, then removes stale copies before mirroring. Provider code/asmdefs
+and the retained top-level `Assets/Resources` / `Assets/UMAProjectData` policy remain unchanged. Preview
+input accounting applies the same omission; NoUMA configuration checks reject any remaining optional
+content. UMA mirrors continue to copy it normally. No asset conversion or drift approval is involved.
+
 ## The acceptance copy
 
 The interactive editor holds the live project, so the suites run against a mirror:

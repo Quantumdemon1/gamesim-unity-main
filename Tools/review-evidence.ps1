@@ -7,6 +7,19 @@ function Get-ReviewTextHash([string]$Text) {
     try { ([BitConverter]::ToString($algorithm.ComputeHash([Text.Encoding]::UTF8.GetBytes($Text)))).Replace('-','').ToLowerInvariant() }
     finally { $algorithm.Dispose() }
 }
+function Get-ReviewOptionalUmaContentPaths {
+    # These source-owned native assets require the optional provider/vendor types.
+    # Code/asmdefs and the existing top-level retained cache policy are independent.
+    @('Assets/Gamesim/Uma/Content', 'Assets/Gamesim/Uma/Content.meta',
+      'Assets/Gamesim/Uma/Resources', 'Assets/Gamesim/Uma/Resources.meta')
+}
+function Assert-ReviewNoUmaContentAbsent([string]$Root) {
+    foreach ($relative in @(Get-ReviewOptionalUmaContentPaths)) {
+        if (Get-Item -LiteralPath (Join-Path $Root $relative) -Force -ErrorAction SilentlyContinue) {
+            throw "A NoUMA acceptance copy must omit optional native content: $relative"
+        }
+    }
+}
 function Get-ReviewProjectUmaOverrides {
     param([string]$ProjectRoot, [switch]$WithoutUma)
     if ($WithoutUma) { return }
@@ -82,7 +95,8 @@ function New-ReviewInputManifest {
             $files = @($files | Where-Object {
                 $local = $_.FullName.Substring($ProjectRoot.Length + 1).Replace('\','/')
                 $local -notmatch '^Assets/(Resources|UMAProjectData)(/|\.meta$)' -and
-                    (-not $WithoutUma -or $local -notmatch '^Assets/UMA(/|\.meta$)')
+                    (-not $WithoutUma -or ($local -notmatch '^Assets/UMA(/|\.meta$)' -and
+                        $local -notmatch '^Assets/Gamesim/Uma/(Content|Resources)(/|\.meta$)'))
             })
             foreach ($retained in @('Assets/Resources','Assets/UMAProjectData')) {
                 $retainedPath = Join-Path $RetainedRoot $retained
@@ -196,6 +210,7 @@ function Compare-ReviewInputs {
 function Assert-ReviewConfiguration([string]$Root, [bool]$WithoutUma, [int]$GpuMode) {
     $installed = Test-Path -LiteralPath (Join-Path $Root 'Assets/UMA') -PathType Container
     if ($installed -eq $WithoutUma) { throw 'The acceptance UMA installation does not match the requested configuration.' }
+    if ($WithoutUma) { Assert-ReviewNoUmaContentAbsent $Root }
     $settings = [IO.File]::ReadAllText((Join-Path $Root 'ProjectSettings/ProjectSettings.asset'))
     $defines = [regex]::Match($settings, '(?ms)^  scriptingDefineSymbols:\r?\n(?<entries>(?:    [^\r\n]*\r?\n)*)').Groups['entries'].Value
     $standalone = [regex]::Match($defines, '(?m)^    Standalone: ([^\r\n]*)').Groups[1].Value

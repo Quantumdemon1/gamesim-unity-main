@@ -33,6 +33,7 @@ namespace Gamesim.Uma.Tests
         private string directory;
         private Manifest manifest;
         private readonly Dictionary<int, AtlasObservation> observedAtlases = new Dictionary<int, AtlasObservation>();
+        private bool firstAtlasSaved;
 
         [Serializable] private sealed class Manifest
         {
@@ -104,6 +105,7 @@ namespace Gamesim.Uma.Tests
                 sourceRevision = Environment.GetEnvironmentVariable("GAMESIM_SOURCE_SHA") ?? "not supplied by runner",
                 providerAssemblyMvid = typeof(UmaBodyProvider).Assembly.ManifestModule.ModuleVersionId.ToString() };
             observedAtlases.Clear();
+            firstAtlasSaved = false;
             Debug.Log("[Gamesim] Garment fit captures -> " + directory);
             cast = new GameObject("Garment fit provider", typeof(GamesimUmaCast));
             stage = new GameObject("Garment fit capture studio"); stage.transform.position = new Vector3(0f, -7200f, 0f);
@@ -206,6 +208,9 @@ namespace Gamesim.Uma.Tests
         }
         private IEnumerator Build(CharacterAppearance appearance)
         {
+            // UMA can recycle generated render textures after the previous body is destroyed.
+            // Cached pixel observations belong only to this one body's completed build.
+            observedAtlases.Clear();
             Assert.That(provider.TryCreate(new CharacterBodyRequest("garment-fit", "player", appearance, CharacterBuildPurpose.Studio, manifest.photos.Count + 1),
                 stage.transform, Color.white, out var body), Is.True);
             subject = body.Root;
@@ -436,10 +441,12 @@ namespace Gamesim.Uma.Tests
                     sampledPixels = pixels.Length, visiblePixels = visible.Length,
                     greenPixels = visible.Count(pixel => pixel.g > .03f && pixel.g > pixel.r * 1.15f && pixel.g > pixel.b * 1.10f),
                     meanVisibleColor = visible.Length == 0 ? Color.clear : new Color(visible.Average(pixel => pixel.r), visible.Average(pixel => pixel.g), visible.Average(pixel => pixel.b)) };
-                if (observedAtlases.Count == 0)
+                if (!firstAtlasSaved)
                 {
-                    observation.representativeFile = "garment-atlas-first-linear.png";
+                    Directory.CreateDirectory(Path.Combine(directory, "diagnostics"));
+                    observation.representativeFile = "diagnostics/garment-atlas-first-linear.png";
                     File.WriteAllBytes(Path.Combine(directory, observation.representativeFile), readable.EncodeToPNG());
+                    firstAtlasSaved = true;
                 }
                 observedAtlases.Add(texture.GetInstanceID(), observation);
                 return observation;

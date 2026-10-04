@@ -534,7 +534,10 @@ namespace Gamesim.Episode
         {
             RestoreCompetitionAssemblyHud();
             EndCompetitionArena();
-            competitionScreen?.Hide(); challengeRun = null; challengeOrigin = null;
+            // A sibling scene root can be destroyed before the director is disabled.
+            // Unity's null check recognizes that native object; ?. only checks its CLR wrapper.
+            if (competitionScreen != null) competitionScreen.Hide();
+            challengeRun = null; challengeOrigin = null;
             challengeActive = false; challengeResultShown = false; challengeCommitting = false; challengeFinishHold = 0f;
         }
 

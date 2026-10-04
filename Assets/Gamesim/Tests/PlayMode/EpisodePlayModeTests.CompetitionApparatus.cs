@@ -11,6 +11,7 @@ using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.SceneManagement;
@@ -125,6 +126,37 @@ namespace Gamesim.Tests.PlayMode
         {
             Assert.That(EpisodeValidation.MaximumCast,Is.EqualTo(16));
             yield return AssertFullCompetitionField(EpisodeValidation.MaximumCast);
+            AssertDestroyedCompetitionScreenDoesNotInterruptDirectorCleanup();
+        }
+
+        private void AssertDestroyedCompetitionScreenDoesNotInterruptDirectorCleanup()
+        {
+            var screen=SceneComponents<CompetitionGameScreen>().Single();
+            var focus=new GameObject("Surviving director-cleanup focus",typeof(RectTransform));
+            SceneManager.MoveGameObjectToScene(focus,director.gameObject.scene);
+            var events=EventSystem.current;var previous=events!=null?events.currentSelectedGameObject:null;
+            bool wasEnabled=director.enabled;
+            try
+            {
+                Assert.That(events,Is.Not.Null);
+                events.SetSelectedGameObject(focus);
+                Object.DestroyImmediate(screen.gameObject);
+                Assert.That(screen==null,Is.True,"The native screen is gone before its owner's OnDisable.");
+                Assert.That(ReferenceEquals(screen,null),Is.False,"Its CLR wrapper still exists, so ?. would call Hide.");
+                Assert.That(events.currentSelectedGameObject,Is.EqualTo(focus),"A live focus exercises Hide's transform access.");
+                director.enabled=false;
+                Assert.That(NpcRead<MiniGameRun>("challengeRun"),Is.Null);
+                Assert.That(NpcRead<bool>("challengeActive"),Is.False);
+                Assert.That(NpcRead<HashSet<Transform>>("competitionRouteOwners"),Is.Empty);
+                Assert.That(NpcRead<HouseMeetingCoordinator>("npcMeetings"),Is.Null,
+                    "The director's native world disposal still completes after its screen was destroyed.");
+            }
+            finally
+            {
+                if(events!=null)events.SetSelectedGameObject(previous!=null?previous:null);
+                Object.DestroyImmediate(focus);
+                if(director!=null)director.enabled=wasEnabled;
+            }
         }
 
         private IEnumerator AssertFullCompetitionField(int houseSize)

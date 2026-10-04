@@ -193,8 +193,9 @@ namespace Gamesim.Tests.PlayMode
 
         // The saved yard's translated/scaled hierarchy and the native failing target
         // exercise a ground-contact support, rather than relaxing furniture clearance.
-        // The existing one-millimetre boundary accepts its representable endpoint;
-        // moving the actual solid another two millimetres below it remains forbidden.
+        // Identity space tests the exact stored endpoint. The saved hierarchy tests a
+        // grounded input inside the same one-millimetre margin: an exact endpoint has
+        // no space for its world/local Transform roundtrip's float quantization.
         private void AssertGroundedContainmentBoundary()
         {
             var deck=new GameObject("Saved-yard containment hierarchy");deck.transform.SetParent(owner.transform,false);
@@ -211,17 +212,38 @@ namespace Gamesim.Tests.PlayMode
                     vertices.Add(new Vector3(x*.5f,y*.5f,z*.5f));
                 mesh.vertices=vertices.ToArray();mesh.RecalculateBounds();
                 support.transform.localScale=new Vector3(.2f,.25f,.2f);
+                // Keep the footprint's centre at exact zero Y, so the endpoint test
+                // introduces neither a parent scale nor a world-translation roundtrip.
+                var exact=CompetitionStageFootprint.Station(CompetitionApparatus.Family.PairConsole,
+                    Vector3.down*((3f+.001f)*.5f),0,.4f,1.9f);
+                anchor.transform.SetParent(owner.transform,false);
+                anchor.transform.SetPositionAndRotation(exact.Center,exact.Rotation);
+                Assert.That(anchor.transform.position.y,Is.Zero);
+                var exactPosition=new Vector3(0,-(exact.HalfSize+Vector3.one*.001f).y+.125f,0);
+                support.transform.localPosition=exactPosition;
+                Assert.That(exact.Contains(support.GetComponent<MeshFilter>()),Is.True,
+                    "The stored one-millimetre endpoint is accepted in identity space.");
+                support.transform.localPosition=exactPosition+Vector3.down*.002f;
+                Assert.That(exact.Contains(support.GetComponent<MeshFilter>()),Is.False,
+                    "A real two-millimetre overrun beyond the exact endpoint remains outside.");
+                anchor.transform.SetParent(stage.transform,false);
                 foreach(float facing in new[]{0f,37f,180f})foreach(float feetY in new[]{0f,.041f,.077f})
                 {
                     var reserved=CompetitionStageFootprint.Station(CompetitionApparatus.Family.PairConsole,
                         new Vector3(4.2f,feetY,13.83f),facing,.4f,1.9f);
                     anchor.transform.SetPositionAndRotation(reserved.Center,reserved.Rotation);
-                    // .125 is the box's exact half-height, so its lower corner lies
-                    // on the stored, documented boundary without an arbitrary epsilon.
-                    var lowerPosition=new Vector3(0,-(reserved.HalfSize+Vector3.one*.001f).y+.125f,0);
+                    // Half the documented margin is a fixture input, not a new
+                    // containment tolerance. The production margin remains exactly 1 mm.
+                    const float groundInset=.0005f;
+                    var limit=reserved.HalfSize+Vector3.one*.001f;
+                    var lowerPosition=new Vector3(0,-limit.y+.125f+groundInset,0);
                     support.transform.localPosition=lowerPosition;
+                    float minimumY=mesh.vertices.Min(vertex=>(Quaternion.Inverse(reserved.Rotation)*
+                        (support.transform.TransformPoint(vertex)-reserved.Center)).y);
+                    Assert.That(minimumY+limit.y,Is.InRange(groundInset-.00001f,groundInset+.00001f),
+                        "The actual transformed support retains the explicit half-millimetre interior input.");
                     Assert.That(reserved.Contains(support.GetComponent<MeshFilter>()),Is.True,
-                        "A grounded support at the representable boundary stays inside, facing="+facing+" feetY="+feetY);
+                        "A grounded support stays inside, facing="+facing+" feetY="+feetY+" lowerY="+minimumY.ToString("F9")+" limit="+limit.y.ToString("F9"));
                     support.transform.localPosition=lowerPosition+Vector3.down*.002f;
                     Assert.That(reserved.Contains(support.GetComponent<MeshFilter>()),Is.False,"A genuine vertical overrun is still rejected.");
                     support.transform.localPosition=lowerPosition+Vector3.right*(reserved.HalfSize.x+.01f);

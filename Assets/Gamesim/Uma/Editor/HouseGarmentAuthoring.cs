@@ -56,6 +56,9 @@ namespace Gamesim.Uma.Editor
             public string specularTexturePath, specularTextureGuid;
             public Color specularSample;
             public bool specularTextureLinear;
+            public List<string> lowerLayerRecipes = new List<string>(), lowerLayerSlots = new List<string>(), lowerLayerInputs = new List<string>();
+            public int lowerLayerTriangles, lowerLayerQueries, lowerLayerTriangleTests, lowerBandExpandedVertices;
+            public float lowerLayerTopY, maximumLowerBandExpansion;
             public List<string> adjustmentBones = new List<string>();
             public List<string> maskTargets = new List<string>();
             public List<int> hiddenTriangles = new List<int>();
@@ -89,6 +92,7 @@ namespace Gamesim.Uma.Editor
             public List<Triangle> triangles = new List<Triangle>();
             public List<SlotData> slots;
             public Animator animator;
+            public LowerLayerEnvelope lowerLayer;
             // Also permits independent, editor-only geometry fixtures without creating UMA assets.
             public readonly Dictionary<HumanBodyBones, Vector3> landmarks = new Dictionary<HumanBodyBones, Vector3>();
             public Vector3 Bone(HumanBodyBones bone)
@@ -170,10 +174,19 @@ namespace Gamesim.Uma.Editor
             public readonly List<Vector3> points = new List<Vector3>();
             public readonly List<Vector2> uvs = new List<Vector2>();
             public readonly List<int> indices = new List<int>();
+            // Keep the sampled body triangle: an offset sleeve near the armpit must not acquire
+            // torso weights merely because that torso is now its nearest neighbouring surface.
+            public readonly Dictionary<int, Hit> bodyHits = new Dictionary<int, Hit>();
             public List<int> neckBoundary;
             public readonly List<List<int>> armBoundaries = new List<List<int>>();
             public float hem, shoulder, armpit;
-            public int Add(Vector3 point, Vector2 uv) { points.Add(point); uvs.Add(uv); return points.Count - 1; }
+            public int Add(Vector3 point, Vector2 uv, Hit? bodyHit = null)
+            {
+                int vertex = points.Count;
+                points.Add(point); uvs.Add(uv);
+                if (bodyHit.HasValue) bodyHits.Add(vertex, bodyHit.Value);
+                return vertex;
+            }
             public void Quad(int a, int b, int c, int d, Vector3 outward)
             {
                 Face(a, b, c, outward);
@@ -280,6 +293,8 @@ namespace Gamesim.Uma.Editor
                 Progress("reference body " + fit);
                 DynamicCharacterAvatar avatar = Reference(races[body]);
                 Surface surface = BodySurface(avatar);
+                LowerLayerEnvelope lowerLayer = MeasureLegsEnvelope(races[body], surface);
+                surface.lowerLayer = lowerLayer;
                 foreach (Style style in styles)
                 {
                     FitReport evidence = new FitReport { id = style.id + "." + fit.ToLowerInvariant(), race = races[body],
@@ -290,7 +305,27 @@ namespace Gamesim.Uma.Editor
                     // Keep a failed fit's measured geometry, rather than only the previously completed fits.
                     report.fits.Add(evidence);
                     Progress(style.stem + " " + fit + " panels");
-                    Pattern pattern = Panels(surface, style);
+                    surface.lowerLayer?.ResetMeasurements();
+                    if (surface.lowerLayer != null)
+                    {
+                        evidence.lowerLayerRecipes = new List<string>(surface.lowerLayer.recipes);
+                        evidence.lowerLayerSlots = surface.lowerLayer.slotNames.OrderBy(value => value, StringComparer.Ordinal).ToList();
+                        evidence.lowerLayerInputs = surface.lowerLayer.inputs.OrderBy(value => value, StringComparer.Ordinal).ToList();
+                        evidence.lowerLayerTriangles = surface.lowerLayer.TriangleCount;
+                        evidence.lowerLayerTopY = surface.lowerLayer.TopY;
+                    }
+                    Pattern pattern;
+                    try { pattern = Panels(surface, style); }
+                    finally
+                    {
+                        if (surface.lowerLayer != null)
+                        {
+                            evidence.lowerLayerQueries = surface.lowerLayer.queries;
+                            evidence.lowerLayerTriangleTests = surface.lowerLayer.triangleTests;
+                            evidence.lowerBandExpandedVertices = surface.lowerLayer.expandedVertices;
+                            evidence.maximumLowerBandExpansion = surface.lowerLayer.maximumExpansion;
+                        }
+                    }
                     Bounds referenceBounds = new Bounds(pattern.points[0], Vector3.zero);
                     foreach (Vector3 point in pattern.points) referenceBounds.Encapsulate(point);
                     evidence.referencePatternBoundsCenter = referenceBounds.center;
@@ -357,6 +392,8 @@ namespace Gamesim.Uma.Editor
                     avatar.ClearSlots();
                     avatar.GenerateNow();
                     surface = BodySurface(avatar);
+                    // Rebuilding the nude reference changes mesh ownership, not the measured Legs shell.
+                    surface.lowerLayer = lowerLayer;
                     yield return null;
                 }
                 UnityEngine.Object.DestroyImmediate(avatar.gameObject);
@@ -516,6 +553,74 @@ namespace Gamesim.Uma.Editor
             }
             return width > .05f ? Mathf.Min(width * .92f, fallback * 1.12f) : fallback * .92f;
         }
+        private static LowerLayerEnvelope MeasureLegsEnvelope(string race, Surface body)
+        {
+            Vector3 hips = body.Bone(HumanBodyBones.Hips);
+            float shoulder = (body.Bone(HumanBodyBones.LeftUpperArm).y + body.Bone(HumanBodyBones.RightUpperArm).y) * .5f;
+            var envelope = new LowerLayerEnvelope(hips, hips.y - .02f, hips.y + (shoulder - hips.y) * .7f);
+            var catalog = new UmaAppearanceCatalog();
+            string[] names = catalog.Items.Where(item => item.Slot == "Legs" && item.Fits(race)
+                    && !item.SuppressedSlots.Contains("Chest"))
+                .Select(item => catalog.ResolveRecipeName(item.Id)).Distinct(StringComparer.Ordinal).OrderBy(value => value, StringComparer.Ordinal).ToArray();
+            Require(names.Length > 0 && names.Length <= 64, "The supported lower-layer catalog needs a bounded set of compatible Legs recipes.");
+            DynamicCharacterAvatar dressed = Reference(race);
+            try
+            {
+                foreach (string name in names)
+                {
+                    Progress("measured lower layer " + race + " " + name);
+                    UMAWardrobeRecipe recipe = index.GetAsset<UMAWardrobeRecipe>(name, recursionGuard: true);
+                    Require(recipe != null, "A compatible Legs recipe is unavailable: " + name);
+                    dressed.ClearSlots();
+                    Require(dressed.SetSlot(recipe), "The lower reference refused a compatible Legs recipe: " + name);
+                    dressed.GenerateNow();
+                    AssertBody(dressed);
+                    Require(dressed.GetWardrobeItem("Legs") == recipe, "The lower reference is not wearing its requested recipe: " + name);
+                    SlotData[] originals = recipe.GetCachedRecipe().slotDataList.Where(slot => slot?.asset != null).ToArray();
+                    var declared = new HashSet<string>(originals.Select(slot => slot.slotName), StringComparer.Ordinal);
+                    foreach (SlotData original in originals)
+                    {
+                        string originalPath = AssetDatabase.GetAssetPath(original.asset);
+                        if (File.Exists(originalPath)) envelope.inputs.Add(originalPath + ":" + Hash(originalPath));
+                    }
+                    SlotData[] actual = dressed.umaRecipe.slotDataList.Where(slot => slot?.asset != null && declared.Contains(slot.slotName)).ToArray();
+                    Require(actual.Length > 0, "The generated Legs recipe has no measured native slots: " + name);
+                    foreach (var group in actual.GroupBy(slot => slot.skinnedMeshRenderer))
+                    {
+                        SkinnedMeshRenderer renderer = dressed.GetRenderers()[group.Key];
+                        var baked = new Mesh();
+                        try
+                        {
+                            renderer.BakeMesh(baked);
+                            Vector3[] vertices = baked.vertices;
+                            Matrix4x4 toBody = body.renderer.transform.worldToLocalMatrix * renderer.transform.localToWorldMatrix;
+                            foreach (SlotData slot in group)
+                            {
+                                int[] triangles = slot.asset.meshData.submeshes[slot.asset.subMeshIndex].GetTriangles(0).ToArray();
+                                Require(triangles.Length > 0 && triangles.Length % 3 == 0, "The actual lower slot has no triangle geometry: " + slot.slotName);
+                                for (int t = 0; t < triangles.Length; t += 3)
+                                {
+                                    int a = triangles[t] + slot.vertexOffset, b = triangles[t + 1] + slot.vertexOffset, c = triangles[t + 2] + slot.vertexOffset;
+                                    Require(a >= 0 && b >= 0 && c >= 0 && a < vertices.Length && b < vertices.Length && c < vertices.Length,
+                                        "Generated lower slot offsets are invalid: " + slot.slotName);
+                                    envelope.Add(toBody.MultiplyPoint3x4(vertices[a]), toBody.MultiplyPoint3x4(vertices[b]), toBody.MultiplyPoint3x4(vertices[c]));
+                                }
+                                envelope.slotNames.Add(name + ":" + slot.slotName);
+                                string slotPath = AssetDatabase.GetAssetPath(slot.asset);
+                                if (File.Exists(slotPath)) envelope.inputs.Add(slotPath + ":" + Hash(slotPath));
+                            }
+                        }
+                        finally { UnityEngine.Object.DestroyImmediate(baked); }
+                    }
+                    // A low-rise item entirely below this band is measured but requires no displacement.
+                    envelope.recipes.Add(name);
+                    string recipePath = AssetDatabase.GetAssetPath(recipe);
+                    envelope.inputs.Add(recipePath + ":" + Hash(recipePath));
+                }
+            }
+            finally { UnityEngine.Object.DestroyImmediate(dressed.gameObject); }
+            return envelope;
+        }
         private static void Sleeve(Pattern pattern, Surface surface, List<int> opening, bool left, float clearance)
         {
             const int lengthSteps = 14;
@@ -526,26 +631,42 @@ namespace Gamesim.Uma.Editor
             Require(Mathf.Abs(axis.x) > .55f, "Reference arms must be in the neutral authoring pose.");
             Vector3 up = Vector3.ProjectOnPlane(Vector3.up, axis).normalized;
             Vector3 forward = Vector3.Cross(axis, up).normalized;
-            float[] angles = opening.Select(i => Mathf.Atan2(Vector3.Dot(pattern.points[i] - start, forward), Vector3.Dot(pattern.points[i] - start, up))).ToArray();
+            float firstAngle = Mathf.Atan2(Vector3.Dot(pattern.points[opening[0]] - start, forward), Vector3.Dot(pattern.points[opening[0]] - start, up));
+            Vector3 loopNormal = Vector3.zero;
+            for (int i = 0; i < opening.Count; i++)
+                loopNormal += Vector3.Cross(pattern.points[opening[i]] - start, pattern.points[opening[(i + 1) % opening.Count]] - start);
+            float winding = Mathf.Sign(Vector3.Dot(loopNormal, axis));
+            Require(Mathf.Abs(Vector3.Dot(loopNormal, axis)) > .00001f, "The sleeve's actual armhole has no supported circumference.");
             int[] previous = opening.ToArray();
             for (int step = 1; step <= lengthSteps; step++)
             {
                 float t = step / (float)lengthSteps;
                 Vector3 center = t < .5f ? Vector3.Lerp(start, elbow, t * 2f) : Vector3.Lerp(elbow, hand, (t - .5f) * 1.9f);
+                Vector3 localAxis = t <= .5f ? axis : (hand - elbow).normalized;
+                Quaternion transport = Quaternion.FromToRotation(axis, localAxis);
+                Vector3 localUp = transport * up, localForward = transport * forward;
                 int[] ring = new int[opening.Count];
                 for (int i = 0; i < ring.Length; i++)
                 {
-                    Vector3 radial = up * Mathf.Cos(angles[i]) + forward * Mathf.Sin(angles[i]);
-                    // Cap rows can belong to either the torso or the proximal-arm slot.
-                    Hit hit = surface.Closest(center + radial * .13f, step <= 2 ? (bool?)null : true);
+                    float angle = firstAngle + winding * Mathf.PI * 2f * i / ring.Length;
+                    Vector3 radial = localUp * Mathf.Cos(angle) + localForward * Mathf.Sin(angle);
+                    // An outward intersection stays on this cross-section. Nearest-point projection
+                    // collapsed neighbouring angular samples onto long arm edges and skipped fabric.
+                    Require(surface.Ray(center, radial, out Hit hit, step <= 2 ? (bool?)null : true),
+                        "The sleeve cross-section is unsupported at ring " + step + ", sample " + i + ".");
+                    Require(Vector3.Dot(hit.normal, radial) > .15f, "The sleeve must reach an outward arm surface.");
                     float rib = step >= lengthSteps - 1 ? .005f : 0f;
-                    ring[i] = pattern.Add(hit.position + hit.normal * (clearance + rib), new Vector2((left ? .02f : .28f) + .22f * i / (ring.Length - 1f), .7f + .26f * t));
+                    ring[i] = pattern.Add(hit.position + radial * (clearance + rib),
+                        new Vector2((left ? .02f : .28f) + .22f * i / (ring.Length - 1f), .7f + .26f * t), hit);
                 }
                 for (int i = 0; i < ring.Length; i++)
                 {
                     int n = (i + 1) % ring.Length;
                     Vector3 outward = (pattern.points[ring[i]] + pattern.points[ring[n]]) * .5f - center;
+                    int before = pattern.indices.Count;
                     pattern.Quad(previous[i], previous[n], ring[n], ring[i], outward);
+                    Require(pattern.indices.Count == before + 6,
+                        "A sleeve strip collapsed at ring " + step + ", sample " + i + ".");
                 }
                 previous = ring;
             }
@@ -558,8 +679,9 @@ namespace Gamesim.Uma.Editor
             var used = new HashSet<int>();
             for (int vertex = 0; vertex < vertices.Length; vertex++)
             {
-                Hit hit = surface.Closest(pattern.points[vertex]);
-                Require(hit.distance < .12f * .12f, "Pattern vertex is too far from its reference body: " + vertex);
+                Hit hit = pattern.bodyHits.TryGetValue(vertex, out Hit sampled) ? sampled : surface.Closest(pattern.points[vertex]);
+                Require((pattern.points[vertex] - hit.position).sqrMagnitude < .12f * .12f,
+                    "Pattern vertex is too far from its reference body: " + vertex);
                 var influences = new Dictionary<int, float>();
                 int[] source = { hit.triangle.a, hit.triangle.b, hit.triangle.c };
                 float[] factors = { hit.barycentric.x, hit.barycentric.y, hit.barycentric.z };

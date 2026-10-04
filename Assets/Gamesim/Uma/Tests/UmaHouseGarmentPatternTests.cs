@@ -57,6 +57,24 @@ namespace Gamesim.Uma.Tests
                 }
                 Assert.That((bool)Call(coverage, "Covers", new Vector3(0f, 1.64f, .066f), Vector3.forward, .04f), Is.False,
                     "The exposed neck must not find cloth through the opening.");
+                // Known independent cylindrical arm surfaces, including inner/back quadrants.
+                // A sleeve that merely covers its front or attaches at the shoulder is insufficient.
+                foreach (float side in new[] { -1f, 1f })
+                {
+                    Vector3 shoulder = new Vector3(side * .2f, 1.5f, 0f);
+                    Vector3 hand = new Vector3(side * .64f, loweredArms ? 1.16f : 1.5f, 0f);
+                    Vector3 axis = (hand - shoulder).normalized, up = Vector3.ProjectOnPlane(Vector3.up, axis).normalized;
+                    Vector3 forward = Vector3.Cross(axis, up);
+                    foreach (float along in new[] { .35f, .6f, .82f })
+                        for (int angle = 0; angle < 16; angle++)
+                        {
+                            float radians = angle * Mathf.PI / 8f;
+                            Vector3 outward = up * Mathf.Cos(radians) + forward * Mathf.Sin(radians);
+                            Vector3 skin = Vector3.Lerp(shoulder, hand, along) + outward * Mathf.Lerp(.06f, .035f, along);
+                            Assert.That((bool)Call(coverage, "Covers", skin, outward, .04f), Is.True,
+                                "Supported inner/outer arm skin must have fabric outside it, with only the real cuff open.");
+                        }
+                }
                 AssertFaces(pattern);
                 AssertApertureSeams(pattern, true);
             }
@@ -86,6 +104,8 @@ namespace Gamesim.Uma.Tests
             Assert.That((bool)Call(coverage, "Covers", new Vector3(.2f, 1.565f, 0f), Vector3.up, .035f), Is.False);
             AssertFaces(vest);
             AssertApertureSeams(vest, false);
+            AssertLowerLayerClearance(false);
+            AssertLowerLayerClearance(true);
         }
 
         [Test]
@@ -187,6 +207,56 @@ namespace Gamesim.Uma.Tests
                 Vector3.forward, Vector3.forward, Vector3.forward, .035f), Is.False);
             Assert.That(Get<int>(coverage, "largeTrianglesRetained"), Is.EqualTo(1));
             Assert.Throws<InvalidOperationException>(() => Call(coverage, "Covers", Vector3.zero, Vector3.forward, .2f));
+        }
+
+        private static void AssertLowerLayerClearance(bool sleeves)
+        {
+            object surface = Body(true), bare = Pattern(surface, sleeves);
+            object envelope = Activator.CreateInstance(Nested("LowerLayerEnvelope"), Fields, null,
+                new object[] { new Vector3(0f, 1f, 0f), .98f, 1.3f }, null);
+            // Independent elliptical waistband with a narrow raised seam between cloth rows.
+            // Sampling only at row heights or tapering inside the layer misses this peak.
+            float[] heights = { 1.005f, 1.053f, 1.057f, 1.061f, 1.12f };
+            float[] widths = { .18f, .18f, .205f, .18f, .18f };
+            float[] depths = { .11f, .11f, .125f, .11f, .11f };
+            Vector3[,] pants = new Vector3[heights.Length, 33];
+            for (int j = 0; j < heights.Length; j++) for (int i = 0; i <= 32; i++)
+            {
+                float angle = i * Mathf.PI / 16f;
+                pants[j, i] = new Vector3(Mathf.Cos(angle) * widths[j], heights[j], Mathf.Sin(angle) * depths[j]);
+                if (j == 0 || i == 0) continue;
+                Call(envelope, "Add", pants[j - 1, i - 1], pants[j - 1, i], pants[j, i]);
+                Call(envelope, "Add", pants[j - 1, i - 1], pants[j, i], pants[j, i - 1]);
+            }
+            Set(surface, "lowerLayer", envelope);
+            object layered = Pattern(surface, sleeves);
+            List<Vector3> original = Get<List<Vector3>>(bare, "points"), expanded = Get<List<Vector3>>(layered, "points");
+            IDictionary bodyHits = (IDictionary)Get<object>(layered, "bodyHits"), originalHits = (IDictionary)Get<object>(bare, "bodyHits");
+            Assert.That(expanded.Count, Is.EqualTo(original.Count));
+            for (int i = 0; i < expanded.Count; i++)
+            {
+                if (original[i].y > 1.22f) Assert.That(expanded[i], Is.EqualTo(original[i]), "The lower layer cannot alter the upper torso or sleeves.");
+                if (!bodyHits.Contains(i)) continue;
+                Assert.That(Get<Vector3>(bodyHits[i], "position"), Is.EqualTo(Get<Vector3>(originalHits[i], "position")),
+                    "Moving fabric outside trousers must retain its naked-body weight correspondence.");
+            }
+            object bareCoverage = Activator.CreateInstance(Nested("CoverageIndex"), Fields, null, new[] { bare }, null);
+            object coverage = Activator.CreateInstance(Nested("CoverageIndex"), Fields, null, new[] { layered }, null);
+            int originallyExposed = 0;
+            // Peak and edge-midpoint samples exercise face interiors and both shared flank seams.
+            for (int ring = 1; ring < heights.Length; ring++) for (int i = 0; i < 32; i++)
+                foreach (Vector3 point in new[] { pants[ring, i], (pants[ring, i] + pants[ring, i + 1]) * .5f })
+                {
+                    Vector3 radial = new Vector3(point.x, 0f, point.z).normalized;
+                    if (!(bool)Call(bareCoverage, "Covers", point, radial, .06f)) originallyExposed++;
+                    Assert.That((bool)Call(coverage, "Covers", point, radial, .06f), Is.True,
+                        "Fabric faces, including seams and the between-row peak, must enclose the actual lower layer.");
+                }
+            Assert.That(originallyExposed, Is.GreaterThan(0), "This independent wardrobe shell must expose the nude-only fitting defect.");
+            Assert.That(Get<int>(envelope, "expandedVertices"), Is.GreaterThan(0));
+            Assert.That(Get<float>(envelope, "maximumExpansion"), Is.InRange(.001f, .12f));
+            AssertFaces(layered);
+            AssertApertureSeams(layered, sleeves);
         }
 
         private static object FlatClothWithOpening()

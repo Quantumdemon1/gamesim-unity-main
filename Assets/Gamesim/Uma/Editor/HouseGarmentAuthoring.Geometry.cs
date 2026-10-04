@@ -31,7 +31,7 @@ namespace Gamesim.Uma.Editor
                 {
                     float u = i / (float)columns, across = u * 2f - 1f;
                     float neck = Mathf.Clamp01(1f - Mathf.Abs(across) * 3f);
-                    // The existing hem and lower fourteen rows retain their original positions and UVs.
+                    // UVs and naked-body correspondences survive any measured lower-layer displacement.
                     float x = center + across * width;
                     float yFront = Mathf.Lerp(pattern.hem, pattern.shoulder + neck * .012f, v);
                     float yBack = Mathf.Lerp(pattern.hem, pattern.shoulder + neck * .028f, v);
@@ -53,8 +53,10 @@ namespace Gamesim.Uma.Editor
                         Require(surface.Ray(new Vector3(x, yBack, -3f), Vector3.forward, out b),
                             "Unsupported upper back panel at row " + j + ", column " + i + ".");
                     }
-                    front[j, i] = pattern.Add(f.position + f.normal * style.clearance, new Vector2(.02f + u * .44f, .04f + v * .62f));
-                    back[j, i] = pattern.Add(b.position + b.normal * style.clearance, new Vector2(.50f + u * .44f, .04f + v * .62f));
+                    Vector3 frontPoint = LowerPoint(surface, f.position + f.normal * style.clearance, style.clearance, (pattern.shoulder - pattern.hem) / rows);
+                    Vector3 backPoint = LowerPoint(surface, b.position + b.normal * style.clearance, style.clearance, (pattern.shoulder - pattern.hem) / rows);
+                    front[j, i] = pattern.Add(frontPoint, new Vector2(.02f + u * .44f, .04f + v * .62f), f);
+                    back[j, i] = pattern.Add(backPoint, new Vector2(.50f + u * .44f, .04f + v * .62f), b);
                     if (j > 0 && i > 0)
                     {
                         pattern.Quad(front[j - 1, i - 1], front[j - 1, i], front[j, i], front[j, i - 1], Vector3.forward);
@@ -71,15 +73,17 @@ namespace Gamesim.Uma.Editor
                 for (int j = 0; j <= armStart; j++) for (int k = 0; k <= divisions; k++)
                 {
                     float across = k / (float)divisions;
-                    Vector3 desired = Vector3.Lerp(pattern.points[front[j, column]], pattern.points[back[j, column]], across);
+                    Hit frontHit = pattern.bodyHits[front[j, column]], backHit = pattern.bodyHits[back[j, column]];
+                    Vector3 desired = Vector3.Lerp(frontHit.position + frontHit.normal * style.clearance,
+                        backHit.position + backHit.normal * style.clearance, across);
                     // Exact shared seam endpoints prevent duplicate projection from opening a crack.
                     if (k == 0) strip[j, k] = front[j, column];
                     else if (k == divisions) strip[j, k] = back[j, column];
                     else
                     {
                         Hit hit = surface.Closest(desired, false);
-                        strip[j, k] = pattern.Add(hit.position + hit.normal * style.clearance,
-                            new Vector2(.95f + across * .04f, .04f + j / (float)rows * .62f));
+                        Vector3 point = LowerPoint(surface, hit.position + hit.normal * style.clearance, style.clearance, (pattern.shoulder - pattern.hem) / rows);
+                        strip[j, k] = pattern.Add(point, new Vector2(.95f + across * .04f, .04f + j / (float)rows * .62f), hit);
                     }
                     if (j == armStart) flankEnd[side, k] = strip[j, k];
                     if (j > 0 && k > 0) pattern.Quad(strip[j - 1, k - 1], strip[j - 1, k], strip[j, k], strip[j, k - 1], side == 0 ? Vector3.left : Vector3.right);
@@ -101,7 +105,7 @@ namespace Gamesim.Uma.Editor
                         Hit hit = surface.Closest(desired);
                         Require(hit.distance < .08f * .08f, "Unsupported local shoulder crown.");
                         yoke[i, k] = pattern.Add(hit.position + hit.normal * style.clearance,
-                            new Vector2(.95f + k / (float)shoulderDivisions * .04f, .68f + i / (float)columns * .27f));
+                            new Vector2(.95f + k / (float)shoulderDivisions * .04f, .68f + i / (float)columns * .27f), hit);
                     }
                     if (i > 0 && (i <= neckLeft || i > neckRight) && k > 0)
                         pattern.Quad(yoke[i - 1, k - 1], yoke[i, k - 1], yoke[i, k], yoke[i - 1, k], Vector3.up);
@@ -131,6 +135,123 @@ namespace Gamesim.Uma.Editor
                 else Binding(pattern, loop, ArmholeBindingWidth, new Rect(.54f, .8f + side * .07f, .4f, .05f));
             }
             return pattern;
+        }
+
+        private static Vector3 LowerPoint(Surface surface, Vector3 point, float clearance, float rowHeight) =>
+            surface.lowerLayer == null ? point : surface.lowerLayer.Enclose(point, clearance, rowHeight);
+
+        /// <summary>Authoring-only union of actual compatible Legs meshes. Never hides or changes worn Legs.</summary>
+        private sealed class LowerLayerEnvelope
+        {
+            private const float SectionHeight = .025f;
+            private const int MaximumTriangles = 50000, MaximumMemberships = 250000, MaximumTriangleTests = 12000000;
+            private struct Facet { public Vector3 a, b, c; public float lo, hi; }
+            private readonly List<Facet> facets = new List<Facet>();
+            private readonly Dictionary<int, List<int>> sections = new Dictionary<int, List<int>>();
+            private readonly HashSet<int> candidates = new HashSet<int>();
+            private readonly Vector3[] crossings = new Vector3[6];
+            private readonly Vector3 center;
+            private readonly float floor, ceiling;
+            private int memberships;
+            public readonly List<string> recipes = new List<string>();
+            public readonly HashSet<string> slotNames = new HashSet<string>(StringComparer.Ordinal), inputs = new HashSet<string>(StringComparer.Ordinal);
+            public int queries, triangleTests, expandedVertices;
+            public float maximumExpansion;
+            public int TriangleCount => facets.Count;
+            public float TopY { get; private set; }
+            public LowerLayerEnvelope(Vector3 center, float floor, float ceiling)
+            {
+                Require(Finite(center) && float.IsFinite(floor) && float.IsFinite(ceiling) && ceiling > floor,
+                    "Invalid lower-layer sampling band.");
+                this.center = center; this.floor = floor; this.ceiling = ceiling; TopY = floor;
+            }
+            public void ResetMeasurements() { queries = triangleTests = expandedVertices = 0; maximumExpansion = 0f; }
+            public void Add(Vector3 a, Vector3 b, Vector3 c)
+            {
+                Require(Finite(a) && Finite(b) && Finite(c), "The compatible lower layer has non-finite geometry.");
+                float lo = Mathf.Min(a.y, Mathf.Min(b.y, c.y)), hi = Mathf.Max(a.y, Mathf.Max(b.y, c.y));
+                if (hi < floor || lo > ceiling || Vector3.Cross(b - a, c - a).sqrMagnitude <= .000000000001f) return;
+                Require(facets.Count < MaximumTriangles, "Compatible lower-layer geometry exceeds its triangle budget.");
+                int index = facets.Count; facets.Add(new Facet { a = a, b = b, c = c, lo = lo, hi = hi });
+                TopY = Mathf.Max(TopY, Mathf.Min(hi, ceiling));
+                for (int section = Key(Mathf.Max(lo, floor)); section <= Key(Mathf.Min(hi, ceiling)); section++)
+                {
+                    Require(++memberships <= MaximumMemberships, "The compatible lower-layer section index exceeds its budget.");
+                    if (!sections.TryGetValue(section, out List<int> values)) sections.Add(section, values = new List<int>());
+                    values.Add(index);
+                }
+            }
+            private static int Key(float y) => Mathf.FloorToInt(y / SectionHeight);
+            public Vector3 Enclose(Vector3 point, float clearance, float rowHeight)
+            {
+                Require(Finite(point) && float.IsFinite(clearance) && clearance > 0f && float.IsFinite(rowHeight) && rowHeight > 0f,
+                    "Invalid lower garment sample.");
+                // Both ends of a cloth row must enclose any intervening waistband peak.
+                float dilation = rowHeight, transition = rowHeight * 2f;
+                if (facets.Count == 0 || TopY <= floor || point.y < floor || point.y > TopY + dilation + transition) return point;
+                Vector3 radial = new Vector3(point.x - center.x, 0f, point.z - center.z);
+                float radius = radial.magnitude;
+                Require(radius > .0001f, "The lower garment point has no supported radial direction.");
+                radial /= radius;
+                float outer = 0f;
+                float lo = Mathf.Clamp(point.y - dilation, floor, TopY), hi = Mathf.Clamp(point.y + dilation, floor, TopY);
+                candidates.Clear();
+                for (int section = Key(lo); section <= Key(hi); section++)
+                {
+                    if (sections.TryGetValue(section, out List<int> values)) candidates.UnionWith(values);
+                }
+                Require(++queries <= 20000, "Lower-layer queries exceed their bound.");
+                foreach (int index in candidates)
+                {
+                    Facet facet = facets[index];
+                    if (hi < facet.lo || lo > facet.hi) continue;
+                    Require(++triangleTests <= MaximumTriangleTests, "Lower-layer section tests exceed their bound.");
+                    outer = Mathf.Max(outer, RadialMaximum(facet, radial, lo, hi));
+                }
+                if (outer <= 0f) return point;
+                float expansion = Mathf.Max(0f, outer + clearance - radius);
+                // Keep full clearance throughout the measured shell plus a mesh row, then
+                // transition above it. Fading inside measured pants would reproduce the intersection.
+                expansion *= 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(TopY + dilation, TopY + dilation + transition, point.y));
+                if (expansion > 0f) { expandedVertices++; maximumExpansion = Mathf.Max(maximumExpansion, expansion); }
+                return point + radial * expansion;
+            }
+
+            // Intersect each actual triangle with the vertical radial plane, then clip its
+            // segment to the row slab. Its endpoints give the exact maximum radial extent,
+            // including a narrow waistband spike between the mesh rows or sample heights.
+            private float RadialMaximum(Facet facet, Vector3 radial, float lo, float hi)
+            {
+                Vector3 tangent = new Vector3(-radial.z, 0f, radial.x);
+                int count = 0;
+                Crossings(facet.a, facet.b, tangent, ref count);
+                Crossings(facet.b, facet.c, tangent, ref count);
+                Crossings(facet.c, facet.a, tangent, ref count);
+                float maximum = 0f;
+                for (int i = 0; i < count; i++)
+                {
+                    Vector3 point = crossings[i];
+                    if (point.y >= lo && point.y <= hi) maximum = Mathf.Max(maximum, Vector3.Dot(point - center, radial));
+                    for (int j = i + 1; j < count; j++)
+                    {
+                        Vector3 other = crossings[j];
+                        if (Mathf.Abs(other.y - point.y) <= .0000001f) continue;
+                        float lowT = (lo - point.y) / (other.y - point.y), highT = (hi - point.y) / (other.y - point.y);
+                        if (lowT >= 0f && lowT <= 1f)
+                            maximum = Mathf.Max(maximum, Vector3.Dot(Vector3.Lerp(point, other, lowT) - center, radial));
+                        if (highT >= 0f && highT <= 1f)
+                            maximum = Mathf.Max(maximum, Vector3.Dot(Vector3.Lerp(point, other, highT) - center, radial));
+                    }
+                }
+                return maximum;
+            }
+            private void Crossings(Vector3 a, Vector3 b, Vector3 tangent, ref int count)
+            {
+                float da = Vector3.Dot(a - center, tangent), db = Vector3.Dot(b - center, tangent);
+                if (Mathf.Abs(da) <= .0000001f) crossings[count++] = a;
+                if ((da < 0f && db > 0f) || (da > 0f && db < 0f))
+                    crossings[count++] = Vector3.Lerp(a, b, da / (da - db));
+            }
         }
 
         private static List<int> DistinctLoop(Pattern pattern, List<int> loop)

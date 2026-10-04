@@ -33,7 +33,7 @@ namespace Gamesim.Uma.Tests
         private UmaBodyProvider provider;
         private string directory;
         private Manifest manifest;
-        private readonly Dictionary<int, AtlasObservation> observedAtlases = new Dictionary<int, AtlasObservation>();
+        private readonly Dictionary<Texture, AtlasObservation> observedAtlases = new Dictionary<Texture, AtlasObservation>();
         private bool firstAtlasSaved;
 
         [Serializable] private sealed class Manifest
@@ -436,7 +436,7 @@ namespace Gamesim.Uma.Tests
         private AtlasObservation ObserveAtlas(Texture texture)
         {
             if (texture == null) return null;
-            if (observedAtlases.TryGetValue(texture.GetInstanceID(), out var observation)) return observation;
+            if (observedAtlases.TryGetValue(texture, out var observation)) return observation;
             var previous = RenderTexture.active; bool previousWrite = GL.sRGBWrite;
             RenderTexture temporary = null; Texture2D readable = null;
             try
@@ -459,7 +459,7 @@ namespace Gamesim.Uma.Tests
                     File.WriteAllBytes(Path.Combine(directory, observation.representativeFile), readable.EncodeToPNG());
                     firstAtlasSaved = true;
                 }
-                observedAtlases.Add(texture.GetInstanceID(), observation);
+                observedAtlases.Add(texture, observation);
                 return observation;
             }
             finally

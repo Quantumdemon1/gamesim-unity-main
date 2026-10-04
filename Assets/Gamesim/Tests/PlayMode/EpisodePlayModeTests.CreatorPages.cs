@@ -64,6 +64,59 @@ namespace Gamesim.Tests.PlayMode
                 inspect: expectPreview ? frame => AssertCreatorFrameReady(name) : (System.Action<Texture2D>)null);
         }
 
+        [UnityTest]
+        public IEnumerator Creator_CapturePreparationFailureRestoresLensAndCanvases()
+        {
+            yield return OpenCreator();
+            var target = cameraRig.ViewCamera.targetTexture;
+            var canvases = Object.FindObjectsByType<Canvas>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
+                .Where(canvas => canvas.renderMode == RenderMode.ScreenSpaceOverlay)
+                .Select(canvas => (Canvas: canvas, Mode: canvas.renderMode, Camera: canvas.worldCamera, Distance: canvas.planeDistance)).ToArray();
+            Assert.That(canvases, Is.Not.Empty, "An actual creator overlay must be handed to the lens.");
+            const string failure = "Intentional creator preparation failure";
+            var capture = CaptureFraming("creator-preparation-failure", settle: false, prepare: () => FailCreatorPreparation(failure));
+            bool caught = false;
+            try
+            {
+                while (true)
+                {
+                    bool moved;
+                    try { moved = capture.MoveNext(); }
+                    catch (System.InvalidOperationException error)
+                    {
+                        Assert.That(error.Message, Is.EqualTo(failure));
+                        caught = true;
+                        break;
+                    }
+                    if (!moved) break;
+                    yield return capture.Current;
+                }
+                // Check before the caller disposes anything. The preparation's own failure must
+                // already have unwound the capture scope, even if the runner stops its parent.
+                Assert.That(caught, Is.True, "MoveNext must surface the preparation's actual failure.");
+                Assert.That(cameraRig.ViewCamera.targetTexture, Is.SameAs(target), "The ordinary camera target must already be restored.");
+                foreach (var canvas in canvases)
+                {
+                    Assert.That(canvas.Canvas.renderMode, Is.EqualTo(canvas.Mode));
+                    Assert.That(canvas.Canvas.worldCamera, Is.SameAs(canvas.Camera));
+                    Assert.That(canvas.Canvas.planeDistance, Is.EqualTo(canvas.Distance));
+                }
+                yield return null; // Unity removes the disposed lens's owned objects at frame end.
+                Assert.That(Object.FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                    .Any(camera => camera.name == CaptureLens.OverlayCameraName), Is.False);
+                Assert.That(Object.FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                    .Any(canvas => canvas.name == CaptureLens.GuardName), Is.False);
+                AssertCreatorFits(Creator(), "ordinary creator after failed capture preparation");
+            }
+            finally { (capture as System.IDisposable)?.Dispose(); }
+        }
+
+        private static IEnumerator FailCreatorPreparation(string failure)
+        {
+            yield return null;
+            throw new System.InvalidOperationException(failure);
+        }
+
         private IEnumerator PrepareCreatorFrame(string name)
         {
             float deadline = Time.realtimeSinceStartup + 25f;

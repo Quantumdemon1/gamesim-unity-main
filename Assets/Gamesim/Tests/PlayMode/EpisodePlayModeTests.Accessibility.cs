@@ -427,10 +427,20 @@ namespace Gamesim.Tests.PlayMode
                 lens.Dispose();
                 if (readback != null) Object.Destroy(readback);
                 if (probe != null) Object.Destroy(probe);
+                if (prepare != null)
+                {
+                    // Preparation assertions must restore the ordinary HUD layout as well as its
+                    // cameras. A stopped iterator never reaches the normal tail below.
+                    Canvas.ForceUpdateCanvases();
+                    RenderHudForTheCurrentCanvas();
+                }
             }
             // And back to the layout the rest of the test is measuring.
-            Canvas.ForceUpdateCanvases();
-            RenderHudForTheCurrentCanvas();
+            if (prepare == null)
+            {
+                Canvas.ForceUpdateCanvases();
+                RenderHudForTheCurrentCanvas();
+            }
             yield return null;
         }
 

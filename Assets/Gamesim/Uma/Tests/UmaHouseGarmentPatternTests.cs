@@ -13,6 +13,8 @@ namespace Gamesim.Uma.Tests
     public sealed class UmaHouseGarmentPatternTests
     {
         private const BindingFlags Fields = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+        // Scratch float32 measurements: pole cross squares <=8e-21 m^4, regular faces >5e-10 m^4.
+        private const float SyntheticCrossSquaredThreshold = 1e-18f;
         private static Type Author => AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType("Gamesim.Uma.Editor.HouseGarmentAuthoring"))
             .FirstOrDefault(t => t != null) ?? throw new InvalidOperationException("Editor authoring assembly is missing.");
         private static Type Nested(string name) => Author.GetNestedType(name, BindingFlags.NonPublic);
@@ -211,6 +213,7 @@ namespace Gamesim.Uma.Tests
         {
             object surface = New("Surface");
             var vertices = new List<Vector3>(); var normals = new List<Vector3>();
+            int collapsedPoleFaces = 0;
             var triangles = (IList)surface.GetType().GetField("triangles", Fields).GetValue(surface);
             Action<Vector3, Vector3, bool> ellipsoid = (center, radii, arm) =>
             {
@@ -225,7 +228,8 @@ namespace Gamesim.Uma.Tests
                     if (i > 0 && j > 0)
                     {
                         int a = first + (j - 1) * (longitude + 1) + i - 1, b = a + 1, d = first + j * (longitude + 1) + i - 1, c = d + 1;
-                        AddTriangle(triangles, a, b, c, arm); AddTriangle(triangles, a, c, d, arm);
+                        AddTriangle(triangles, vertices, a, b, c, arm, ref collapsedPoleFaces);
+                        AddTriangle(triangles, vertices, a, c, d, arm, ref collapsedPoleFaces);
                     }
                 }
             };
@@ -241,7 +245,8 @@ namespace Gamesim.Uma.Tests
                 if (j == 1 && i > 0)
                 {
                     int a = neckStart + i - 1, b = a + 1, d = neckStart + segments + 1 + i - 1, c = d + 1;
-                    AddTriangle(triangles, a, b, c, false); AddTriangle(triangles, a, c, d, false);
+                    AddTriangle(triangles, vertices, a, b, c, false, ref collapsedPoleFaces);
+                    AddTriangle(triangles, vertices, a, c, d, false, ref collapsedPoleFaces);
                 }
             }
             var landmarks = Get<Dictionary<HumanBodyBones, Vector3>>(surface, "landmarks");
@@ -264,16 +269,40 @@ namespace Gamesim.Uma.Tests
                     if (i > 0 && j > 0)
                     {
                         int a = first + (j - 1) * 25 + i - 1, b = a + 1, d = first + j * 25 + i - 1, c = d + 1;
-                        AddTriangle(triangles, a, b, c, true); AddTriangle(triangles, a, c, d, true);
+                        AddTriangle(triangles, vertices, a, b, c, true, ref collapsedPoleFaces);
+                        AddTriangle(triangles, vertices, a, c, d, true, ref collapsedPoleFaces);
                     }
                 }
             }
             Set(surface, "vertices", vertices.ToArray()); Set(surface, "normals", normals.ToArray());
+            Assert.That(collapsedPoleFaces, Is.EqualTo(192), "Only the three ellipsoids' two collapsed pole faces per longitude are omitted.");
+            float minimumCrossSquared = float.PositiveInfinity;
+            foreach (object triangle in triangles)
+            {
+                Vector3 a = vertices[Get<int>(triangle, "a")], b = vertices[Get<int>(triangle, "b")], c = vertices[Get<int>(triangle, "c")];
+                float area = Vector3.Cross(b - a, c - a).sqrMagnitude;
+                Assert.That(float.IsFinite(area), Is.True);
+                minimumCrossSquared = Mathf.Min(minimumCrossSquared, area);
+            }
+            Assert.That(minimumCrossSquared, Is.GreaterThan(SyntheticCrossSquaredThreshold));
+            // Exercise the installed UMA closest-point helper before testing the garment.
+            // A degenerate pole previously erased the nearer shoulder with a NaN comparison.
+            foreach (float side in new[] { -1f, 1f })
+            {
+                object hit = Call(surface, "Closest", new Vector3(side * shoulderHalf, 1.572f, 0f), null);
+                Vector3 point = Get<Vector3>(hit, "position"), normal = Get<Vector3>(hit, "normal");
+                Assert.That(float.IsFinite(point.x) && float.IsFinite(point.y) && float.IsFinite(point.z), Is.True);
+                Assert.That(float.IsFinite(normal.x) && float.IsFinite(normal.y) && float.IsFinite(normal.z), Is.True);
+                Assert.That(Get<float>(hit, "distance"), Is.InRange(0f, .02f * .02f), "The known local cap must remain the nearest supported surface.");
+            }
             return surface;
         }
 
-        private static void AddTriangle(IList triangles, int a, int b, int c, bool arm)
+        private static void AddTriangle(IList triangles, List<Vector3> vertices, int a, int b, int c, bool arm, ref int collapsedPoleFaces)
         {
+            float area = Vector3.Cross(vertices[b] - vertices[a], vertices[c] - vertices[a]).sqrMagnitude;
+            if (!float.IsFinite(area)) throw new InvalidOperationException("Synthetic body contains a nonfinite triangle.");
+            if (area <= SyntheticCrossSquaredThreshold) { collapsedPoleFaces++; return; }
             object t = New("Triangle"); Set(t, "a", a); Set(t, "b", b); Set(t, "c", c); Set(t, "arm", arm); triangles.Add(t);
         }
         private static void AssertFaces(object pattern)

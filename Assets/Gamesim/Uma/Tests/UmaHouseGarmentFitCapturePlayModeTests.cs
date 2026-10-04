@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
@@ -43,6 +44,8 @@ namespace Gamesim.Uma.Tests
             public List<Photo> photos = new List<Photo>();
             public List<string> optionalNotes = new List<string>();
             public List<string> dyeFailures = new List<string>();
+            public List<string> layerProbeFiles = new List<string>();
+            public List<string> layerProbeFailures = new List<string>();
         }
         [Serializable] private sealed class Photo
         {
@@ -94,6 +97,74 @@ namespace Gamesim.Uma.Tests
             public string representativeFile, sourceTexture, encoding = "Linear Blit/readback";
             public int sourceWidth, sourceHeight, sampledPixels, visiblePixels, greenPixels;
             public Color meanVisibleColor;
+        }
+
+        // Geometric candidates explain existing pixels; a two-sided CPU ray is not a claim
+        // that the shader drew that face (alpha, culling and lighting remain recorded limits).
+        [Serializable] private sealed class LayerProbeReport
+        {
+            public string sourceRevision, providerAssemblyMvid, photo, photoSha256, state, appearanceKey, generatedUtc;
+            public string coordinateOrigin = "PNG top-left; pixel centers; ray geometry in capture-camera local coordinates";
+            public string limits = "Two-sided triangle intersections (determinant epsilon 1e-10, max distance 20m), not shader visibility; no texture alpha/cull simulation or additional render; nearest 16 candidates retained; source LOD0 ownership matches assigned physical submesh and vertex tuple, extra material slots can reuse that geometry, unmatched physical submeshes remain unattributed";
+            public bool complete;
+            public int width = Width, height = Height;
+            public int frameBefore, frameAfter, rendererCount, vertexCount, triangleCount, sourceTriangleCount, triangleTests, unattributedTriangles;
+            public long sourceBytes;
+            public Vector3 cameraPosition, subjectPosition;
+            public Quaternion cameraRotation, subjectRotation;
+            public float animationPhaseBefore, animationPhaseAfter, maximumBoneDrift;
+            public List<ProbeAsset> sources = new List<ProbeAsset>();
+            public List<ProbeSlot> slots = new List<ProbeSlot>();
+            public List<ProbePixel> pixels = new List<ProbePixel>();
+            public string error;
+        }
+        [Serializable] private sealed class ProbeAsset { public string path, guid, sha256; }
+        [Serializable] private sealed class ProbeSlot
+        {
+            public string slot, sourceAsset;
+            public int rendererIndex, destinationSubmesh, vertexOffset, vertexCount;
+            public List<string> overlayAssets = new List<string>();
+        }
+        [Serializable] private sealed class ProbeOwner { public int slot, sourceSubmesh, sourceTriangle; }
+        [Serializable] private sealed class ProbePixel
+        {
+            public string region;
+            public int x, y, geometricHitCount;
+            public Color32 capturedRgb;
+            public Vector3 rayOrigin, rayDirection;
+            public List<ProbeHit> nearestHits = new List<ProbeHit>();
+        }
+        [Serializable] private sealed class ProbeHit
+        {
+            public string renderer, material, shader, baseMap, renderType, cullProperty;
+            public int rendererIndex, submesh, materialIndex, triangle, renderQueue;
+            public float distance, normalDotRay, cull, alphaClip;
+            public Vector3 cameraLocalPoint, worldPoint, barycentric, a, b, c;
+            public Vector2 atlasUv, baseMapScale, baseMapOffset;
+            public List<ProbeOwner> owners;
+        }
+        private readonly struct ProbeTriangleKey : IEquatable<ProbeTriangleKey>
+        {
+            private readonly int renderer, submesh, a, b, c;
+            public ProbeTriangleKey(int renderer, int submesh, int a, int b, int c)
+            {
+                this.renderer = renderer; this.submesh = submesh;
+                this.a = Mathf.Min(a, Mathf.Min(b, c)); this.c = Mathf.Max(a, Mathf.Max(b, c));
+                this.b = a + b + c - this.a - this.c;
+            }
+            public bool Equals(ProbeTriangleKey other) => renderer == other.renderer && submesh == other.submesh && a == other.a && b == other.b && c == other.c;
+            public override bool Equals(object obj) => obj is ProbeTriangleKey other && Equals(other);
+            public override int GetHashCode() { unchecked { return ((((renderer * 397) ^ submesh) * 397 ^ a) * 397 ^ b) * 397 ^ c; } }
+        }
+        private sealed class ProbeTriangle
+        {
+            public SkinnedMeshRenderer renderer;
+            public Material material;
+            public int rendererIndex, submesh, materialIndex, triangle;
+            public Vector3 a, b, c;
+            public Vector2 uvA, uvB, uvC;
+            public Bounds bounds;
+            public List<ProbeOwner> owners;
         }
 
         [UnityTest]
@@ -183,6 +254,8 @@ namespace Gamesim.Uma.Tests
                     manifest.dyeFailures.Add(pair.Key + ": neither torso view contains at least 10% pixels with the requested green hue.");
             manifest.complete = true; SaveManifest();
             Assert.That(manifest.dyeFailures, Is.Empty, "The requested green Chest dye must exist in the built overlays and actual torso pixels; all images are retained for diagnosis.");
+            Assert.That(manifest.layerProbeFiles.Count, Is.EqualTo(3), "Crew A neutral Idle, Cheer and Swim front retain their unchanged pixels plus bounded layer evidence.");
+            Assert.That(manifest.layerProbeFailures, Is.Empty, "A failed layer probe is retained as an error, never accepted as pixel attribution.");
         }
 
         [UnityTearDown]
@@ -378,6 +451,9 @@ namespace Gamesim.Uma.Tests
                     wardrobe = appearance.outfits.Single(outfit => outfit.id == appearance.activeOutfit).wardrobe.Select(value => value.Clone()).ToList(),
                     outfitColors = appearance.outfits.Single(outfit => outfit.id == appearance.activeOutfit).colors.Select(value => value.Clone()).ToList(),
                     builtDna = Dna.Select(dna => new AppearanceValue { id = dna, value = avatar.GetDNA()[dna].Value }).ToList() });
+                if (!headDetail && id == Ids[0] && shape == "neutral" && view == "front"
+                    && (state == "Idle" || state == "Cheer" || state == "SwimForward"))
+                    ProbeLayers(avatar, animator, appearance, file, state, colors);
             }
             finally { RenderTexture.active = previous; camera.targetTexture = null; render.Release(); Object.Destroy(render); Object.Destroy(pixels); }
         }
@@ -389,6 +465,215 @@ namespace Gamesim.Uma.Tests
             int x = Mathf.Clamp(Mathf.RoundToInt(center.x * Width) - radius, 0, Width - 1);
             int y = Mathf.Clamp(Mathf.RoundToInt(center.y * Height) - radius, 0, Height - 1);
             return new RectInt(x, y, Mathf.Min(radius * 2 + 1, Width - x), Mathf.Min(radius * 2 + 1, Height - y));
+        }
+        private void ProbeLayers(DynamicCharacterAvatar avatar, Animator animator, CharacterAppearance appearance, string file, string state, Color32[] colors)
+        {
+            var report = new LayerProbeReport { sourceRevision = manifest.sourceRevision, providerAssemblyMvid = manifest.providerAssemblyMvid,
+                photo = file, photoSha256 = ProbeHash(Path.Combine(directory, file)), state = state, appearanceKey = appearance.ContentKey(),
+                generatedUtc = DateTime.UtcNow.ToString("O"), frameBefore = Time.frameCount,
+                cameraPosition = camera.transform.position, cameraRotation = camera.transform.rotation,
+                subjectPosition = subject.transform.position, subjectRotation = subject.transform.rotation,
+                animationPhaseBefore = animator.GetCurrentAnimatorStateInfo(0).normalizedTime };
+            var bones = ObservedBones.Select(bone => animator.GetBoneTransform(bone).position).ToArray();
+            var owned = new List<Mesh>();
+            try
+            {
+                var renderers = avatar.umaData.GetRenderers();
+                var ownership = new Dictionary<ProbeTriangleKey, List<ProbeOwner>>();
+                var activeSlots = new List<SlotData>();
+                foreach (var fragment in avatar.umaData.generatedMaterials.materials.SelectMany(material => material.materialFragments))
+                    if (fragment.slotData?.asset?.meshData != null && !activeSlots.Any(slot => ReferenceEquals(slot, fragment.slotData)))
+                    {
+                        Assert.That(activeSlots.Count, Is.LessThan(128));
+                        activeSlots.Add(fragment.slotData);
+                    }
+                foreach (var slot in activeSlots)
+                {
+                    if (slot.skinnedMeshRenderer < 0 || slot.skinnedMeshRenderer >= renderers.Length
+                        || renderers[slot.skinnedMeshRenderer] == null || !renderers[slot.skinnedMeshRenderer].enabled) continue;
+                    // Only actual generated fragment slots were combined, avoiding stale
+                    // recipe offsets after suppression or a different material selection.
+                    Assert.That(report.slots.Count, Is.LessThan(128), "Layer diagnosis has a finite live slot budget.");
+                    int slotIndex = report.slots.Count;
+                    report.slots.Add(new ProbeSlot { slot = slot.slotName, sourceAsset = ProbeSource(report, slot.asset),
+                        rendererIndex = slot.skinnedMeshRenderer, destinationSubmesh = slot.submeshIndex, vertexOffset = slot.vertexOffset, vertexCount = slot.asset.meshData.vertexCount,
+                        overlayAssets = slot.GetOverlayList().Where(overlay => overlay?.asset != null).Select(overlay => ProbeSource(report, overlay.asset)).ToList() });
+                    // The installed combiner maps only asset.subMeshIndex; unused source
+                    // submeshes must not claim another material's drawn triangle.
+                    int submesh = slot.asset.subMeshIndex;
+                    Assert.That(submesh >= 0 && submesh < slot.asset.meshData.submeshes.Length && slot.submeshIndex >= 0, Is.True);
+                    {
+                        // This NativeArray belongs to UMA; it is only read, never disposed or modified.
+                        var triangles = slot.asset.meshData.submeshes[submesh].GetTriangles(0);
+                        Assert.That(triangles.Length % 3, Is.Zero);
+                        report.sourceTriangleCount += triangles.Length / 3;
+                        Assert.That(report.sourceTriangleCount, Is.LessThanOrEqualTo(200000), "No unbounded source triangle attribution scan.");
+                        for (int t = 0; t < triangles.Length; t += 3)
+                        {
+                            var key = new ProbeTriangleKey(slot.skinnedMeshRenderer, slot.submeshIndex, triangles[t] + slot.vertexOffset,
+                                triangles[t + 1] + slot.vertexOffset, triangles[t + 2] + slot.vertexOffset);
+                            if (!ownership.TryGetValue(key, out var owners)) ownership.Add(key, owners = new List<ProbeOwner>());
+                            owners.Add(new ProbeOwner { slot = slotIndex, sourceSubmesh = submesh, sourceTriangle = t / 3 });
+                        }
+                    }
+                }
+                foreach (var entry in appearance.outfits.Single(outfit => outfit.id == appearance.activeOutfit).wardrobe)
+                    ProbeSource(report, avatar.GetWardrobeItem(entry.slot));
+
+                var surfaces = new List<ProbeTriangle>();
+                for (int rendererIndex = 0; rendererIndex < renderers.Length; rendererIndex++)
+                {
+                    var renderer = renderers[rendererIndex];
+                    if (renderer == null || !renderer.enabled || renderer.sharedMesh == null || !renderer.gameObject.activeInHierarchy) continue;
+                    Assert.That(++report.rendererCount, Is.LessThanOrEqualTo(16));
+                    var baked = new Mesh { name = "Owned fit layer snapshot" }; owned.Add(baked);
+                    renderer.BakeMesh(baked);
+                    var vertices = baked.vertices; var uv = baked.uv;
+                    report.vertexCount += vertices.Length;
+                    Assert.That(report.vertexCount, Is.LessThanOrEqualTo(200000));
+                    Assert.That(uv.Length, Is.EqualTo(vertices.Length), "Actual combined atlas UV must accompany the posed vertices.");
+                    // Use one ordinary transform frame (positive view depth) for both rays
+                    // and points; worldToCameraMatrix would reverse the mesh's Z instead.
+                    var toCamera = camera.transform.worldToLocalMatrix * renderer.transform.localToWorldMatrix;
+                    for (int v = 0; v < vertices.Length; v++)
+                    {
+                        vertices[v] = toCamera.MultiplyPoint3x4(vertices[v]);
+                        if (float.IsNaN(vertices[v].x) || float.IsInfinity(vertices[v].x) || float.IsNaN(vertices[v].y)
+                            || float.IsInfinity(vertices[v].y) || float.IsNaN(vertices[v].z) || float.IsInfinity(vertices[v].z))
+                            throw new InvalidOperationException("A posed diagnostic vertex is not finite.");
+                    }
+                    var materials = renderer.sharedMaterials;
+                    int passes = Mathf.Max(baked.subMeshCount, materials.Length);
+                    for (int materialIndex = 0; materialIndex < passes; materialIndex++)
+                    {
+                        int submesh = Mathf.Min(materialIndex, baked.subMeshCount - 1);
+                        Assert.That(submesh, Is.GreaterThanOrEqualTo(0));
+                        var indices = baked.GetTriangles(submesh);
+                        Assert.That(indices.Length % 3, Is.Zero);
+                        report.triangleCount += indices.Length / 3;
+                        Assert.That(report.triangleCount, Is.LessThanOrEqualTo(200000), "No unbounded posed triangle scan.");
+                        for (int t = 0; t < indices.Length; t += 3)
+                        {
+                            int ia = indices[t], ib = indices[t + 1], ic = indices[t + 2];
+                            if (ia < 0 || ib < 0 || ic < 0 || ia >= vertices.Length || ib >= vertices.Length || ic >= vertices.Length)
+                                throw new InvalidOperationException("A drawn diagnostic triangle references a missing posed vertex.");
+                            ownership.TryGetValue(new ProbeTriangleKey(rendererIndex, submesh, ia, ib, ic), out var owners);
+                            if (owners == null) report.unattributedTriangles++;
+                            var bounds = new Bounds(vertices[ia], Vector3.zero); bounds.Encapsulate(vertices[ib]); bounds.Encapsulate(vertices[ic]);
+                            surfaces.Add(new ProbeTriangle { renderer = renderer, rendererIndex = rendererIndex, submesh = submesh,
+                                materialIndex = materialIndex, material = materialIndex < materials.Length ? materials[materialIndex] : null,
+                                triangle = t / 3, a = vertices[ia], b = vertices[ib], c = vertices[ic], uvA = uv[ia], uvB = uv[ib], uvC = uv[ic], bounds = bounds, owners = owners });
+                        }
+                    }
+                }
+                Assert.That(surfaces, Is.Not.Empty);
+                // These fixed, labelled regions come from retained 6c7e native PNGs. They are
+                // observations, not pass/fail silhouettes; a changed composition stays explicit.
+                var regions = state == "Idle" ? new[] { ("outer-breast", new RectInt(311, 284, 17, 20)), ("sternum", new RectInt(378, 294, 16, 14)) }
+                    : state == "Cheer" ? new[] { ("left-inner-arm", new RectInt(305, 275, 34, 40)), ("right-inner-arm", new RectInt(465, 274, 33, 33)), ("sternum", new RectInt(396, 320, 18, 13)) }
+                    : new[] { ("left-inner-arm", new RectInt(306, 311, 30, 60)), ("right-inner-arm", new RectInt(439, 311, 30, 60)), ("sternum", new RectInt(377, 371, 18, 14)) };
+                foreach (var region in regions)
+                    for (int row = 0; row < 7; row++)
+                        for (int column = 0; column < 7; column++)
+                        {
+                            int x = region.Item2.x + Mathf.RoundToInt((region.Item2.width - 1) * column / 6f);
+                            int y = region.Item2.y + Mathf.RoundToInt((region.Item2.height - 1) * row / 6f);
+                            var worldRay = camera.ViewportPointToRay(new Vector3((x + .5f) / Width, (Height - y - .5f) / Height, 0));
+                            var ray = new Ray(camera.transform.InverseTransformPoint(worldRay.origin), camera.transform.InverseTransformDirection(worldRay.direction));
+                            var pixel = new ProbePixel { region = region.Item1, x = x, y = y, capturedRgb = colors[(Height - y - 1) * Width + x],
+                                rayOrigin = ray.origin, rayDirection = ray.direction };
+                            var hits = new List<ProbeHit>();
+                            foreach (var triangle in surfaces)
+                            {
+                                if (++report.triangleTests > 20000000)
+                                    throw new InvalidOperationException("Layer diagnosis exceeded its 20 million bounded triangle/bounds tests.");
+                                if (!triangle.bounds.IntersectRay(ray, out float boundDistance) || boundDistance > camera.farClipPlane
+                                    || !ProbeIntersection(ray, triangle, out float distance, out var barycentric)) continue;
+                                pixel.geometricHitCount++;
+                                var material = triangle.material;
+                                var point = ray.GetPoint(distance);
+                                string cullProperty = material != null && material.HasProperty("_Cull") ? "_Cull" : material != null && material.HasProperty("_CullMode") ? "_CullMode" : "missing";
+                                hits.Add(new ProbeHit { renderer = triangle.renderer.name, rendererIndex = triangle.rendererIndex, submesh = triangle.submesh,
+                                    materialIndex = triangle.materialIndex, triangle = triangle.triangle, owners = triangle.owners,
+                                    distance = distance, barycentric = barycentric, cameraLocalPoint = point, worldPoint = camera.transform.TransformPoint(point),
+                                    a = triangle.a, b = triangle.b, c = triangle.c,
+                                    normalDotRay = Vector3.Dot(Vector3.Cross(triangle.b - triangle.a, triangle.c - triangle.a).normalized, ray.direction),
+                                    atlasUv = triangle.uvA * barycentric.x + triangle.uvB * barycentric.y + triangle.uvC * barycentric.z,
+                                    baseMapScale = material != null && material.HasProperty("_BaseMap") ? material.GetTextureScale("_BaseMap") : Vector2.one,
+                                    baseMapOffset = material != null && material.HasProperty("_BaseMap") ? material.GetTextureOffset("_BaseMap") : Vector2.zero,
+                                    material = material == null ? "missing" : material.name, shader = material?.shader == null ? "missing" : material.shader.name,
+                                    baseMap = material != null && material.HasProperty("_BaseMap") && material.GetTexture("_BaseMap") != null ? material.GetTexture("_BaseMap").name : "missing",
+                                    renderType = material == null ? "missing" : material.GetTag("RenderType", false, "missing"), renderQueue = material == null ? -1 : material.renderQueue,
+                                    cullProperty = cullProperty, cull = cullProperty == "missing" ? -1f : material.GetFloat(cullProperty),
+                                    alphaClip = material != null && material.HasProperty("_AlphaClip") ? material.GetFloat("_AlphaClip") : -1f });
+                            }
+                            pixel.nearestHits = hits.OrderBy(hit => hit.distance).Take(16).ToList();
+                            report.pixels.Add(pixel);
+                        }
+                report.frameAfter = Time.frameCount;
+                report.animationPhaseAfter = animator.GetCurrentAnimatorStateInfo(0).normalizedTime;
+                report.maximumBoneDrift = ObservedBones.Select((bone, index) => Vector3.Distance(animator.GetBoneTransform(bone).position, bones[index])).Max();
+                Assert.That(report.frameAfter, Is.EqualTo(report.frameBefore));
+                Assert.That(report.animationPhaseAfter, Is.EqualTo(report.animationPhaseBefore));
+                Assert.That(report.maximumBoneDrift, Is.Zero);
+                Assert.That(subject.transform.position == report.subjectPosition && subject.transform.rotation == report.subjectRotation
+                    && camera.transform.position == report.cameraPosition && camera.transform.rotation == report.cameraRotation, Is.True, "Diagnosis cannot move actors or the capture lens.");
+                Assert.That(ProbeHash(Path.Combine(directory, file)), Is.EqualTo(report.photoSha256), "The ordinary native PNG is retained byte-identically.");
+                report.complete = true;
+            }
+            catch (Exception exception)
+            {
+                report.error = exception.GetType().Name + ": " + exception.Message;
+                manifest.layerProbeFailures.Add(file + ": " + report.error);
+            }
+            finally
+            {
+                foreach (var mesh in owned) if (mesh != null) Object.Destroy(mesh);
+                string path = "diagnostics/" + Path.GetFileNameWithoutExtension(file) + "-layers.json";
+                Directory.CreateDirectory(Path.Combine(directory, "diagnostics"));
+                File.WriteAllText(Path.Combine(directory, path), JsonUtility.ToJson(report, true));
+                manifest.layerProbeFiles.Add(path);
+            }
+        }
+        private static bool ProbeIntersection(Ray ray, ProbeTriangle triangle, out float distance, out Vector3 barycentric)
+        {
+            distance = 0; barycentric = Vector3.zero;
+            var edge1 = triangle.b - triangle.a; var edge2 = triangle.c - triangle.a;
+            var cross = Vector3.Cross(ray.direction, edge2);
+            float determinant = Vector3.Dot(edge1, cross);
+            if (Mathf.Abs(determinant) < 1e-10f) return false;
+            float inverse = 1f / determinant; var from = ray.origin - triangle.a;
+            float u = Vector3.Dot(from, cross) * inverse;
+            if (u < 0 || u > 1) return false;
+            var q = Vector3.Cross(from, edge1); float v = Vector3.Dot(ray.direction, q) * inverse;
+            if (v < 0 || u + v > 1) return false;
+            distance = Vector3.Dot(edge2, q) * inverse;
+            if (distance < 0 || distance > 20f) return false;
+            barycentric = new Vector3(1f - u - v, u, v); return true;
+        }
+        private static string ProbeSource(LayerProbeReport report, Object asset)
+        {
+            if (asset == null) return "missing";
+#if UNITY_EDITOR
+            string path = UnityEditor.AssetDatabase.GetAssetPath(asset);
+            if (string.IsNullOrEmpty(path)) return "runtime:" + asset.name;
+            if (!report.sources.Any(source => source.path == path))
+            {
+                Assert.That(report.sources.Count, Is.LessThan(128));
+                string absolute = Path.GetFullPath(Path.Combine(Application.dataPath, "..", path));
+                report.sourceBytes += new FileInfo(absolute).Length;
+                Assert.That(report.sourceBytes, Is.LessThanOrEqualTo(32L * 1024 * 1024), "All source identity reads together remain bounded.");
+                report.sources.Add(new ProbeAsset { path = path, guid = UnityEditor.AssetDatabase.AssetPathToGUID(path), sha256 = ProbeHash(absolute) });
+            }
+            return path;
+#else
+            return "runtime:" + asset.name + " (Editor source hashing unavailable)";
+#endif
+        }
+        private static string ProbeHash(string path)
+        {
+            using (var sha = SHA256.Create()) using (var stream = File.OpenRead(path))
+                return BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
         }
         private List<GarmentOverlay> GarmentOverlays(DynamicCharacterAvatar avatar, string id)
         {

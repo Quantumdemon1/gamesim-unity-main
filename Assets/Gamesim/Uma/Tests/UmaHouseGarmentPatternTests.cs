@@ -397,6 +397,8 @@ namespace Gamesim.Uma.Tests
             Assert.That(Get<List<int>>(layered, "neckBoundary"), Is.EqualTo(Get<List<int>>(bare, "neckBoundary")));
             Assert.That(Get<List<List<int>>>(layered, "armBoundaries"), Is.EqualTo(Get<List<List<int>>>(bare, "armBoundaries")),
                 "Upper fit retains the same ordered openings and shared seam indices.");
+            Assert.That(NakedSupportedFaces(layered), Is.EqualTo(NakedSupportedFaces(bare)),
+                "Fitting upper layers preserves every body-supported fabric face; trim is generated on its fitted incident cloth.");
             foreach (DictionaryEntry entry in originalHits)
             {
                 object hit = hits[entry.Key];
@@ -413,13 +415,15 @@ namespace Gamesim.Uma.Tests
             var originalCoverage = Activator.CreateInstance(Nested("CoverageIndex"), Fields, null, new[] { bare }, null);
             var coverage = Activator.CreateInstance(Nested("CoverageIndex"), Fields, null, new[] { layered }, null);
             int originallyExposed = 0;
-            for (int j = 1; j < heights.Length; j++) for (int i = 0; i < xs.Length - 1; i++)
-                foreach (var point in new[] { layer[j, i], (layer[j, i] + layer[j, i + 1]) * .5f })
+            for (int j = 1; j < heights.Length; j++) for (int i = 0; i < xs.Length; i++)
+                foreach (var point in i + 1 < xs.Length ? new[] { layer[j, i], (layer[j, i] + layer[j, i + 1]) * .5f }
+                    : new[] { layer[j, i] })
                 {
                     Vector3 radial = new Vector3(point.x, 0f, point.z).normalized;
                     if (!(bool)Call(originalCoverage, "Covers", point, radial, .06f)) originallyExposed++;
                     Assert.That((bool)Call(coverage, "Covers", point, radial, .06f), Is.True,
-                        "Actual cup/clasp vertices and face-interior points must have supported fabric outside them.");
+                        "Actual cup/clasp vertices and face-interior points must have supported fabric outside them; "
+                        + "sleeves=" + sleeves + ", row=" + j + ", column=" + i + ", point=" + point.ToString("R") + ".");
                 }
             Assert.That(originallyExposed, Is.GreaterThan(0));
             Assert.That((bool)Call(coverage, "Covers", new Vector3(0f, 1.64f, .066f), Vector3.forward, .04f), Is.False);
@@ -431,6 +435,20 @@ namespace Gamesim.Uma.Tests
             Set(surface, "upperLayer", Activator.CreateInstance(Nested("LowerLayerEnvelope"), Fields, null,
                 new object[] { new Vector3(0f, 1f, 0f), .98f, 1.66f, "upper" }, null));
             Assert.That(Get<List<Vector3>>(Pattern(surface, sleeves), "points"), Is.EqualTo(original));
+        }
+
+        private static string[] NakedSupportedFaces(object pattern)
+        {
+            var hits = (IDictionary)Get<object>(pattern, "bodyHits");
+            var indices = Get<List<int>>(pattern, "indices");
+            var faces = new List<string>();
+            for (int t = 0; t < indices.Count; t += 3)
+            {
+                int[] face = { indices[t], indices[t + 1], indices[t + 2] };
+                if (!face.All(vertex => hits.Contains(vertex))) continue;
+                Array.Sort(face); faces.Add(string.Join(",", face));
+            }
+            return faces.OrderBy(face => face, StringComparer.Ordinal).ToArray();
         }
 
         private static object FlatClothWithOpening()

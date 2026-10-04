@@ -114,6 +114,7 @@ namespace Gamesim.Uma.Editor
                         pattern.Quad(yoke[i - 1, k - 1], yoke[i, k - 1], yoke[i, k], yoke[i - 1, k], Vector3.up);
                 }
             }
+            FitUpperLayerFaces(surface, pattern, style.clearance);
             // Include the round, subdivided side arcs in both collar and armhole boundaries.
             var neckLoop = new List<int>();
             for (int i = neckLeft; i <= neckRight; i++) neckLoop.Add(front[rows, i]);
@@ -143,10 +144,79 @@ namespace Gamesim.Uma.Editor
 
         private static Vector3 LowerPoint(Surface surface, Vector3 point, float clearance, float rowHeight)
         {
-            if (surface.lowerLayer != null) point = surface.lowerLayer.Enclose(point, clearance, rowHeight);
-            // Only existing torso/flank/yoke cloth is fitted. No arm-ring expansion,
-            // suppression, mask widening or faces across a collar/vest opening.
-            return surface.upperLayer == null ? point : surface.upperLayer.Enclose(point, clearance, rowHeight);
+            return surface.lowerLayer == null ? point : surface.lowerLayer.Enclose(point, clearance, rowHeight);
+        }
+
+        private static void FitUpperLayerFaces(Surface surface, Pattern pattern, float clearance)
+        {
+            if (surface.upperLayer == null || surface.upperLayer.TriangleCount == 0) return;
+            Vector3 center = surface.Bone(HumanBodyBones.Hips);
+            var radial = new Vector3[pattern.points.Count];
+            var radius = new float[pattern.points.Count];
+            for (int i = 0; i < radial.Length; i++)
+            {
+                Require(Finite(pattern.points[i]), "The upper cloth has a non-finite original point.");
+                Vector3 direction = pattern.points[i] - center; direction.y = 0f;
+                radius[i] = direction.magnitude;
+                Require(radius[i] > .0001f, "The upper cloth has no supported radial direction.");
+                radial[i] = direction / radius[i];
+            }
+            var fittedRadius = (float[])radius.Clone();
+            var fitFace = new int[radial.Length];
+            var fitAdvance = new float[radial.Length];
+            for (int t = 0; t < pattern.indices.Count; t += 3)
+            {
+                int a = pattern.indices[t], b = pattern.indices[t + 1], c = pattern.indices[t + 2];
+                Vector3 tangent = new Vector3(-radial[a].z, 0f, radial[a].x);
+                float bAngle = Mathf.Atan2(Vector3.Dot(radial[b], tangent), Vector3.Dot(radial[b], radial[a]));
+                float cAngle = Mathf.Atan2(Vector3.Dot(radial[c], tangent), Vector3.Dot(radial[c], radial[a]));
+                float lo = Mathf.Min(0f, Mathf.Min(bAngle, cAngle)), hi = Mathf.Max(0f, Mathf.Max(bAngle, cAngle));
+                float minY = Mathf.Min(pattern.points[a].y, Mathf.Min(pattern.points[b].y, pattern.points[c].y));
+                float maxY = Mathf.Max(pattern.points[a].y, Mathf.Max(pattern.points[b].y, pattern.points[c].y));
+                if (maxY < surface.upperLayer.FloorY || minY > surface.upperLayer.TopY) continue;
+                float span = hi - lo, cosine = Mathf.Cos(span);
+                Require(span < Mathf.PI * .5f && cosine > .0001f,
+                    "The upper cloth face has an unsupported angular span: " + t / 3 + ".");
+                Vector3 start = radial[a] * Mathf.Cos(lo) + tangent * Mathf.Sin(lo);
+                Vector3 end = radial[a] * Mathf.Cos(hi) + tangent * Mathf.Sin(hi);
+                Vector3 normal = (start + end).normalized;
+                float penetration = surface.upperLayer.FacePenetration(start, end, minY, maxY, normal, pattern.points[a], pattern.points[b], pattern.points[c]);
+                if (float.IsNegativeInfinity(penetration)) continue;
+                // A fixed horizontal angular bisector gives every endpoint positive
+                // radial effectiveness. The shell is clipped to the original face's
+                // projection parallel to this direction, within its real angular/Y span.
+                // Each endpoint clears the same measured support plane; collecting all
+                // incident maxima before moving points preserves those half-spaces.
+                // This support bound still requires actual ray and posed render checks.
+                foreach (int vertex in new[] { a, b, c })
+                {
+                    float dot = Vector3.Dot(normal, radial[vertex]);
+                    Require(dot > .0001f, "The upper cloth facet has no supported outward radial advance: " + t / 3
+                        + "; vertex=" + vertex + ", dot=" + dot.ToString("R") + ", penetration=" + penetration.ToString("R")
+                        + ", normal=" + normal.ToString("R") + ", authored=" + pattern.outwardReferences[t / 3].ToString("R")
+                        + ", measured=" + surface.upperLayer.lastSupport.ToString("R") + ", a=" + pattern.points[a].ToString("R")
+                        + ", b=" + pattern.points[b].ToString("R") + ", c=" + pattern.points[c].ToString("R") + ".");
+                    float advance = (penetration + clearance + Vector3.Dot(pattern.points[a] - pattern.points[vertex], normal)) / dot;
+                    float needed = radius[vertex] + advance;
+                    if (needed > fittedRadius[vertex])
+                    { fittedRadius[vertex] = needed; fitFace[vertex] = t / 3; fitAdvance[vertex] = advance; }
+                }
+            }
+            for (int i = 0; i < radial.Length; i++)
+            {
+                float expansion = fittedRadius[i] - radius[i];
+                if (expansion <= 0f) continue;
+                Vector3 point = pattern.points[i] + radial[i] * expansion;
+                Require(Finite(point), "The upper cloth fit has a non-finite point.");
+                Require(pattern.bodyHits.TryGetValue(i, out Hit support) && (point - support.position).sqrMagnitude < .12f * .12f,
+                    "Upper-layer facet fit exceeds its original naked-body support at vertex " + i
+                    + "; original=" + pattern.points[i].ToString("R") + ", fitted=" + point.ToString("R")
+                    + ", support=" + support.position.ToString("R") + ", face=" + fitFace[i]
+                    + ", measuredRadialAdvance=" + fitAdvance[i].ToString("R") + ".");
+                pattern.points[i] = point;
+                surface.upperLayer.expandedVertices++;
+                surface.upperLayer.maximumExpansion = Mathf.Max(surface.upperLayer.maximumExpansion, expansion);
+            }
         }
 
         /// <summary>Authoring-only bounded shell of actual compatible layer meshes; never changes the worn layer.</summary>
@@ -159,6 +229,8 @@ namespace Gamesim.Uma.Editor
             private readonly Dictionary<int, List<int>> sections = new Dictionary<int, List<int>>();
             private readonly HashSet<int> candidates = new HashSet<int>();
             private readonly Vector3[] crossings = new Vector3[6];
+            // A triangle clipped by seven half-planes has at most ten vertices.
+            private readonly Vector3[] clippedA = new Vector3[12], clippedB = new Vector3[12];
             private readonly Vector3 center;
             private readonly float floor, ceiling;
             private readonly string layer;
@@ -167,6 +239,7 @@ namespace Gamesim.Uma.Editor
             public readonly HashSet<string> slotNames = new HashSet<string>(StringComparer.Ordinal), inputs = new HashSet<string>(StringComparer.Ordinal);
             public int queries, triangleTests, expandedVertices;
             public float maximumExpansion;
+            public Vector3 lastSupport;
             public int TriangleCount => facets.Count;
             public float FloorY => floor;
             public float CeilingY => ceiling;
@@ -195,6 +268,60 @@ namespace Gamesim.Uma.Editor
                 }
             }
             private static int Key(float y) => Mathf.FloorToInt(y / SectionHeight);
+            public float FacePenetration(Vector3 start, Vector3 end, float lo, float hi, Vector3 normal, Vector3 planePoint, Vector3 faceB, Vector3 faceC)
+            {
+                lo = Mathf.Max(lo, floor); hi = Mathf.Min(hi, TopY);
+                if (lo > hi) return float.NegativeInfinity;
+                candidates.Clear();
+                for (int section = Key(lo); section <= Key(hi); section++)
+                    if (sections.TryGetValue(section, out List<int> values)) candidates.UnionWith(values);
+                Require(++queries <= 20000, "The upper-layer face queries exceed their bound.");
+                Vector3 lower = new Vector3(-start.z, 0f, start.x), upper = new Vector3(end.z, 0f, -end.x);
+                Vector3 faceNormal = normal;
+                Vector3 edgeA = Vector3.Cross(faceNormal, faceB - planePoint).normalized;
+                Vector3 edgeB = Vector3.Cross(faceNormal, faceC - faceB).normalized;
+                Vector3 edgeC = Vector3.Cross(faceNormal, planePoint - faceC).normalized;
+                if (Vector3.Dot(edgeA, faceC - planePoint) < 0f) edgeA = -edgeA;
+                if (Vector3.Dot(edgeB, planePoint - faceB) < 0f) edgeB = -edgeB;
+                if (Vector3.Dot(edgeC, faceB - faceC) < 0f) edgeC = -edgeC;
+                float maximum = float.NegativeInfinity;
+                foreach (int index in candidates)
+                {
+                    Facet facet = facets[index];
+                    if (hi < facet.lo || lo > facet.hi) continue;
+                    Require(++triangleTests <= MaximumTriangleTests, "The upper-layer face tests exceed their bound.");
+                    clippedA[0] = facet.a; clippedA[1] = facet.b; clippedA[2] = facet.c;
+                    int count = Clip(clippedA, 3, clippedB, Vector3.up, lo);
+                    count = Clip(clippedB, count, clippedA, Vector3.down, -hi);
+                    count = Clip(clippedA, count, clippedB, lower, Vector3.Dot(center, lower));
+                    count = Clip(clippedB, count, clippedA, upper, Vector3.Dot(center, upper));
+                    count = Clip(clippedA, count, clippedB, edgeA, Vector3.Dot(planePoint, edgeA));
+                    count = Clip(clippedB, count, clippedA, edgeB, Vector3.Dot(faceB, edgeB));
+                    count = Clip(clippedA, count, clippedB, edgeC, Vector3.Dot(faceC, edgeC));
+                    for (int i = 0; i < count; i++)
+                    {
+                        float support = Vector3.Dot(clippedB[i] - planePoint, normal);
+                        if (support > maximum) { maximum = support; lastSupport = clippedB[i]; }
+                    }
+                }
+                return maximum;
+            }
+            private static int Clip(Vector3[] input, int count, Vector3[] output, Vector3 normal, float boundary)
+            {
+                int written = 0;
+                for (int i = 0; i < count; i++)
+                {
+                    Vector3 a = input[i], b = input[(i + 1) % count];
+                    float da = Vector3.Dot(a, normal) - boundary, db = Vector3.Dot(b, normal) - boundary;
+                    if (da >= 0f) { Require(written < output.Length, "The upper-layer clipped polygon exceeds its bound."); output[written++] = a; }
+                    if ((da < 0f && db > 0f) || (da > 0f && db < 0f))
+                    {
+                        Require(written < output.Length, "The upper-layer clipped polygon exceeds its bound.");
+                        output[written++] = Vector3.Lerp(a, b, da / (da - db));
+                    }
+                }
+                return written;
+            }
             public Vector3 Enclose(Vector3 point, float clearance, float rowHeight)
             {
                 Require(Finite(point) && float.IsFinite(clearance) && clearance > 0f && float.IsFinite(rowHeight) && rowHeight > 0f,

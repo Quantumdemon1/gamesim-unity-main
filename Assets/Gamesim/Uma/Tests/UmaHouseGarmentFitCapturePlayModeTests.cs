@@ -9,6 +9,7 @@ using NUnit.Framework;
 using UMA;
 using UMA.CharacterSystem;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
@@ -23,6 +24,8 @@ namespace Gamesim.Uma.Tests
         private static readonly string[] States = { "Idle", "SitIdle", "Walk", "Run", "Cheer", "SwimForward" };
         private static readonly string[] Shapes = { "neutral", "limits-low", "limits-high" };
         private static readonly string[] Activities = { "Sleeping", "Swimming", "Cooking", "Dancing", "Posing" };
+        private static readonly HumanBodyBones[] ObservedBones = { HumanBodyBones.Hips, HumanBodyBones.Chest, HumanBodyBones.Head,
+            HumanBodyBones.LeftUpperArm, HumanBodyBones.RightUpperArm, HumanBodyBones.LeftHand, HumanBodyBones.RightHand };
         private GameObject cast, stage, subject;
         private Camera camera;
         private UmaAppearanceCatalog catalog;
@@ -36,16 +39,41 @@ namespace Gamesim.Uma.Tests
             public bool complete;
             public List<Photo> photos = new List<Photo>();
             public List<string> optionalNotes = new List<string>();
+            public List<string> dyeFailures = new List<string>();
         }
         [Serializable] private sealed class Photo
         {
             public string file, item, recipe, body, shape, state, clip, view, appearanceKey;
             public bool headDetail;
             public float normalizedTime, cameraSize;
-            public Vector3 cameraPosition, cameraUp, head, hips, leftHand, rightHand, leftShoulder, rightShoulder;
+            public int sampleFrame, observedFrame, readFrame, torsoPixelCount, greenTorsoPixelCount;
+            public float sampledPhase, observedPhase, maximumBoneDrift;
+            public Vector3 cameraPosition, cameraUp, torsoUp, torsoForward, head, hips, leftHand, rightHand, leftShoulder, rightShoulder;
+            public RectInt torsoPixelRegion;
+            public Color meanTorsoColor;
+            public List<GarmentOverlay> actualOverlays;
+            public List<GarmentMaterial> actualMaterials;
             public List<AppearanceValue> requestedDna, builtDna;
             public List<AppearanceWardrobe> wardrobe;
             public List<AppearanceColor> outfitColors;
+        }
+        private sealed class PoseObservation
+        {
+            public int sampleFrame, observedFrame;
+            public float sampledPhase, observedPhase, maximumBoneDrift;
+            public Vector3[] sampledBones;
+        }
+        [Serializable] private sealed class GarmentOverlay
+        {
+            public string slot, overlay;
+            public bool shared;
+            public Color channelZero;
+        }
+        [Serializable] private sealed class GarmentMaterial
+        {
+            public string name, shader, renderer, baseMap;
+            public int materialIndex;
+            public Color baseColor;
         }
 
         [UnityTest]
@@ -78,9 +106,13 @@ namespace Gamesim.Uma.Tests
                     AssertBody(avatar, animator, appearance, id);
                     foreach (string state in States)
                     {
-                        Sample(animator, state);
-                        Capture(avatar, animator, appearance, id, shape, state, "front", false);
-                        Capture(avatar, animator, appearance, id, shape, state, "back", false);
+                        var pose = Sample(animator, state);
+                        // Animator.Update samples bones synchronously; the native skinning/render work
+                        // and bone-parented accessories must also see that frozen pose in a real frame.
+                        yield return null;
+                        ObservePose(animator, state, pose);
+                        Capture(avatar, animator, appearance, id, shape, state, "front", false, pose);
+                        Capture(avatar, animator, appearance, id, shape, state, "back", false, pose);
                     }
                     SaveManifest();
                     Object.Destroy(subject); subject = null;
@@ -113,14 +145,22 @@ namespace Gamesim.Uma.Tests
                     AssertBody(avatar, animator, appearance, garment);
                     AssertHeadItem(avatar, look.hair);
                     if (look.hat != null) AssertHeadItem(avatar, look.hat);
-                    Sample(animator, "Idle");
-                    Capture(avatar, animator, appearance, garment, look.name, "Idle", "front", true);
-                    Capture(avatar, animator, appearance, garment, look.name, "Idle", "back", true);
+                    var pose = Sample(animator, "Idle");
+                    yield return null;
+                    ObservePose(animator, "Idle", pose);
+                    Capture(avatar, animator, appearance, garment, look.name, "Idle", "front", true, pose);
+                    Capture(avatar, animator, appearance, garment, look.name, "Idle", "back", true, pose);
                     Object.Destroy(subject); subject = null; yield return null;
                     SaveManifest();
                 }
             }
+            // A horizontal swimming torso can have one side in shade. Require actual green
+            // cloth in at least one of each pose's two views, while retaining both measurements.
+            foreach (var pair in manifest.photos.Where(photo => !photo.headDetail).GroupBy(photo => photo.item + "/" + photo.shape + "/" + photo.state))
+                if (!pair.Any(photo => photo.torsoPixelCount > 0 && photo.greenTorsoPixelCount >= Mathf.Max(1, photo.torsoPixelCount / 10)))
+                    manifest.dyeFailures.Add(pair.Key + ": neither torso view contains at least 10% pixels with the requested green hue.");
             manifest.complete = true; SaveManifest();
+            Assert.That(manifest.dyeFailures, Is.Empty, "The requested green Chest dye must exist in the built overlays and actual torso pixels; all images are retained for diagnosis.");
         }
 
         [UnityTearDown]
@@ -162,6 +202,9 @@ namespace Gamesim.Uma.Tests
         {
             Assert.That(animator != null && animator.isHuman && animator.runtimeAnimatorController != null, Is.True, "The shipped Humanoid animation rig is required.");
             animator.cullingMode = AnimatorCullingMode.AlwaysAnimate; animator.applyRootMotion = false; animator.speed = 0f;
+            // This owned studio body is outside every game camera. Animator.AlwaysAnimate alone
+            // does not opt its skinned renderers into offscreen native deformation.
+            foreach (var renderer in subject.GetComponentsInChildren<SkinnedMeshRenderer>()) renderer.updateWhenOffscreen = true;
             Assert.That(avatar.GetWardrobeItem("Chest")?.name, Is.EqualTo(catalog.ResolveRecipeName(id)));
             var recipe = UMAAssetIndexer.Instance.GetAsset<UMAWardrobeRecipe>(catalog.ResolveRecipeName(id));
             var parts = recipe.PackedLoad().slotsV3.Where(part => part != null).Select(part => part.id).ToArray();
@@ -179,7 +222,7 @@ namespace Gamesim.Uma.Tests
             else Assert.That(avatar.GetWardrobeItem(item.Slot)?.name, Is.EqualTo(catalog.ResolveRecipeName(item.Id)),
                 "The photographed head detail must wear its exact installed recipe.");
         }
-        private static void Sample(Animator animator, string state)
+        private static PoseObservation Sample(Animator animator, string state)
         {
             animator.SetFloat("Speed", state == "Walk" || state == "Run" || state == "SwimForward" ? 1f : 0f);
             animator.SetBool("Running", state == "Run"); animator.SetBool("Seated", state == "SitIdle");
@@ -209,6 +252,19 @@ namespace Gamesim.Uma.Tests
             }
             animator.Play(Animator.StringToHash(state), 0, phase); animator.Update(0f);
             Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName(state), Is.True, "The requested pose must actually be playing.");
+            return new PoseObservation { sampleFrame = Time.frameCount, sampledPhase = animator.GetCurrentAnimatorStateInfo(0).normalizedTime,
+                sampledBones = ObservedBones.Select(bone => animator.GetBoneTransform(bone).position).ToArray() };
+        }
+        private static void ObservePose(Animator animator, string state, PoseObservation pose)
+        {
+            pose.observedFrame = Time.frameCount;
+            pose.observedPhase = animator.GetCurrentAnimatorStateInfo(0).normalizedTime;
+            Assert.That(pose.observedFrame, Is.GreaterThan(pose.sampleFrame), "Capture follows a native frame, not just a synchronous Animator.Update.");
+            Assert.That(animator.speed, Is.Zero);
+            Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName(state), Is.True, "The native frame must retain the actual requested controller pose.");
+            Assert.That(pose.observedPhase, Is.EqualTo(pose.sampledPhase).Within(.001f), "The sampled animation phase stays frozen while skinning catches up.");
+            pose.maximumBoneDrift = ObservedBones.Select((bone, index) => Vector3.Distance(animator.GetBoneTransform(bone).position, pose.sampledBones[index])).Max();
+            Assert.That(pose.maximumBoneDrift, Is.LessThanOrEqualTo(.001f), "The native frame must preserve the sampled Humanoid bones.");
         }
         private void MakeCameraAndLights()
         {
@@ -221,10 +277,13 @@ namespace Gamesim.Uma.Tests
                 var light = lamp.GetComponent<Light>(); light.type = LightType.Directional; light.intensity = entry.Item3; light.color = new Color(1f, .97f, .93f); light.cullingMask = 1 << Layer;
             }
         }
-        private void Capture(DynamicCharacterAvatar avatar, Animator animator, CharacterAppearance appearance, string id, string shape, string state, string view, bool headDetail)
+        private void Capture(DynamicCharacterAvatar avatar, Animator animator, CharacterAppearance appearance, string id, string shape, string state, string view, bool headDetail, PoseObservation pose)
         {
             var head = animator.GetBoneTransform(HumanBodyBones.Head).position; var hips = animator.GetBoneTransform(HumanBodyBones.Hips).position;
-            Vector3 up = (head - hips).normalized;
+            // Use the torso, rather than a flexed head/neck, as the longitudinal axis. In Swim
+            // this gives belly/back views of the horizontal garment instead of looking end-on.
+            var chest = animator.GetBoneTransform(HumanBodyBones.Chest).position;
+            Vector3 up = (chest - hips).normalized;
             var across = animator.GetBoneTransform(HumanBodyBones.RightUpperArm).position - animator.GetBoneTransform(HumanBodyBones.LeftUpperArm).position;
             Vector3 forward = Vector3.Cross(across, up).normalized;
             Assert.That(forward.sqrMagnitude, Is.GreaterThan(.9f));
@@ -246,7 +305,11 @@ namespace Gamesim.Uma.Tests
             var previous = RenderTexture.active;
             try
             {
-                camera.targetTexture = render; camera.Render(); RenderTexture.active = render;
+                camera.targetTexture = render;
+                var request = new RenderPipeline.StandardRequest { destination = render };
+                Assert.That(RenderPipeline.SupportsRenderRequest(camera, request), Is.True, "The active render pipeline must support the actual fit camera request.");
+                RenderPipeline.SubmitRenderRequest(camera, request);
+                RenderTexture.active = render;
                 pixels.ReadPixels(new Rect(0, 0, Width, Height), 0, 0); pixels.Apply();
                 var colors = pixels.GetPixels32(); var background = colors[0];
                 Assert.That(colors.Count(color => Math.Abs(color.r - background.r) + Math.Abs(color.g - background.g) + Math.Abs(color.b - background.b) > 12),
@@ -254,8 +317,25 @@ namespace Gamesim.Uma.Tests
                 File.WriteAllBytes(Path.Combine(directory, file), pixels.EncodeToPNG());
                 var clip = animator.GetCurrentAnimatorClipInfo(0);
                 Assert.That(clip, Is.Not.Empty, "The Humanoid pose must sample an actual clip.");
+                var torsoRegion = TorsoRegion(chest, hips, across.magnitude);
+                var torsoColors = colors.Where((color, index) => torsoRegion.Contains(new Vector2Int(index % Width, index / Width))).ToArray();
+                int greenPixels = torsoColors.Count(color => color.g > 40 && color.g > color.r * 1.15f && color.g > color.b * 1.10f);
+                var overlays = GarmentOverlays(avatar, id);
+                if (!headDetail)
+                {
+                    Color expected = new Color(.12f, .58f, .36f);
+                    if (overlays.Count == 0 || overlays.Any(value => value.shared || Mathf.Abs(value.channelZero.r - expected.r) > .001f
+                        || Mathf.Abs(value.channelZero.g - expected.g) > .001f || Mathf.Abs(value.channelZero.b - expected.b) > .001f))
+                        manifest.dyeFailures.Add(file + ": built garment overlays do not retain their requested private green channel zero.");
+                }
                 manifest.photos.Add(new Photo { file = file, item = id, recipe = catalog.ResolveRecipeName(id), body = appearance.bodyId, shape = shape,
                     state = state, clip = clip[0].clip.name, view = view, headDetail = headDetail, appearanceKey = appearance.ContentKey(),
+                    sampleFrame = pose.sampleFrame, observedFrame = pose.observedFrame, readFrame = Time.frameCount,
+                    sampledPhase = pose.sampledPhase, observedPhase = pose.observedPhase, maximumBoneDrift = pose.maximumBoneDrift,
+                    torsoUp = up, torsoForward = forward, torsoPixelRegion = torsoRegion, torsoPixelCount = torsoColors.Length, greenTorsoPixelCount = greenPixels,
+                    meanTorsoColor = torsoColors.Length == 0 ? Color.clear : new Color((float)torsoColors.Average(value => (int)value.r) / 255f,
+                        (float)torsoColors.Average(value => (int)value.g) / 255f, (float)torsoColors.Average(value => (int)value.b) / 255f),
+                    actualOverlays = overlays, actualMaterials = GarmentMaterials(avatar, id),
                     normalizedTime = animator.GetCurrentAnimatorStateInfo(0).normalizedTime, cameraSize = camera.orthographicSize, cameraPosition = camera.transform.position,
                     cameraUp = camera.transform.up, head = head, hips = hips, leftHand = animator.GetBoneTransform(HumanBodyBones.LeftHand).position,
                     rightHand = animator.GetBoneTransform(HumanBodyBones.RightHand).position, requestedDna = appearance.dna.Select(value => value.Clone()).ToList(),
@@ -265,6 +345,33 @@ namespace Gamesim.Uma.Tests
                     builtDna = Dna.Select(dna => new AppearanceValue { id = dna, value = avatar.GetDNA()[dna].Value }).ToList() });
             }
             finally { RenderTexture.active = previous; camera.targetTexture = null; render.Release(); Object.Destroy(render); Object.Destroy(pixels); }
+        }
+        private RectInt TorsoRegion(Vector3 chest, Vector3 hips, float shoulderWidth)
+        {
+            var center = camera.WorldToViewportPoint(Vector3.Lerp(hips, chest, .65f));
+            var side = camera.WorldToViewportPoint(Vector3.Lerp(hips, chest, .65f) + camera.transform.right * shoulderWidth * .12f);
+            int radius = Mathf.Max(2, Mathf.RoundToInt(Mathf.Abs(side.x - center.x) * Width));
+            int x = Mathf.Clamp(Mathf.RoundToInt(center.x * Width) - radius, 0, Width - 1);
+            int y = Mathf.Clamp(Mathf.RoundToInt(center.y * Height) - radius, 0, Height - 1);
+            return new RectInt(x, y, Mathf.Min(radius * 2 + 1, Width - x), Mathf.Min(radius * 2 + 1, Height - y));
+        }
+        private List<GarmentOverlay> GarmentOverlays(DynamicCharacterAvatar avatar, string id)
+        {
+            var parts = UMAAssetIndexer.Instance.GetAsset<UMAWardrobeRecipe>(catalog.ResolveRecipeName(id)).PackedLoad().slotsV3
+                .Where(part => part != null).Select(part => part.id).ToArray();
+            return avatar.umaData.umaRecipe.slotDataList.Where(slot => slot != null && parts.Contains(slot.slotName))
+                .SelectMany(slot => slot.GetOverlayList().Where(overlay => overlay?.colorData != null).Select(overlay => new GarmentOverlay {
+                    slot = slot.slotName, overlay = overlay.asset == null ? "missing" : overlay.asset.name, shared = overlay.colorData.IsASharedColor,
+                    channelZero = overlay.colorData.channelMask != null && overlay.colorData.channelMask.Length > 0 ? overlay.colorData.channelMask[0] : Color.clear })).ToList();
+        }
+        private List<GarmentMaterial> GarmentMaterials(DynamicCharacterAvatar avatar, string id)
+        {
+            var slots = GarmentOverlays(avatar, id).Select(value => value.slot).ToArray();
+            return avatar.umaData.generatedMaterials.materials.Where(value => value.material != null && value.materialFragments.Any(fragment => fragment.slotData != null && slots.Contains(fragment.slotData.slotName)))
+                .Select(value => new GarmentMaterial { name = value.material.name, shader = value.material.shader == null ? "missing" : value.material.shader.name,
+                    renderer = value.skinnedMeshRenderer == null ? "missing" : value.skinnedMeshRenderer.name, materialIndex = value.materialIndex,
+                    baseMap = value.material.HasProperty("_BaseMap") && value.material.GetTexture("_BaseMap") != null ? value.material.GetTexture("_BaseMap").name : "missing",
+                    baseColor = value.material.HasProperty("_BaseColor") ? value.material.GetColor("_BaseColor") : Color.clear }).ToList();
         }
         private Vector3[] PosedPoints()
         {

@@ -78,6 +78,24 @@ namespace Gamesim.Uma.Tests
                 }
                 AssertFaces(pattern);
                 AssertApertureSeams(pattern, true);
+                // Prove the orientation check rejects an actual reversed sleeve facet,
+                // without changing shape, triangle membership, UVs or skin correspondence.
+                List<int> indices = Get<List<int>>(pattern, "indices");
+                int[] originalIndices = indices.ToArray();
+                Vector3[] originalPoints = points.ToArray();
+                Vector2[] originalUvs = Get<List<Vector2>>(pattern, "uvs").ToArray();
+                int b = indices[indices.Count - 2], c = indices[indices.Count - 1];
+                try
+                {
+                    indices[indices.Count - 2] = c; indices[indices.Count - 1] = b;
+                    Assert.Throws<AssertionException>(() => AssertConsistentWinding(pattern));
+                    Call(pattern, "OrientFacesConsistently");
+                    Assert.That(indices, Is.EqualTo(originalIndices), "Repair changes winding only, preserving each triangle and its outward anchor.");
+                    Assert.That(points, Is.EqualTo(originalPoints));
+                    Assert.That(Get<List<Vector2>>(pattern, "uvs"), Is.EqualTo(originalUvs));
+                }
+                finally { indices.Clear(); indices.AddRange(originalIndices); }
+                AssertConsistentWinding(pattern);
             }
         }
 
@@ -495,6 +513,27 @@ namespace Gamesim.Uma.Tests
             for (int t = 0; t < indices.Count; t += 3)
                 Assert.That(Vector3.Cross(points[indices[t + 1]] - points[indices[t]], points[indices[t + 2]] - points[indices[t]]).sqrMagnitude,
                     Is.GreaterThan(.000000000001f), "No collapsed collar/cap faces.");
+            AssertConsistentWinding(pattern);
+        }
+        private static void AssertConsistentWinding(object pattern)
+        {
+            var edges = new Dictionary<(int, int), List<(int from, int to)>>();
+            List<int> indices = Get<List<int>>(pattern, "indices");
+            for (int t = 0; t < indices.Count; t += 3)
+                for (int e = 0; e < 3; e++)
+                {
+                    int a = indices[t + e], b = indices[t + (e + 1) % 3];
+                    var key = (Mathf.Min(a, b), Mathf.Max(a, b));
+                    if (!edges.TryGetValue(key, out var uses)) edges.Add(key, uses = new List<(int, int)>());
+                    uses.Add((a, b));
+                }
+            foreach (var edge in edges)
+            {
+                Assert.That(edge.Value.Count, Is.InRange(1, 2), "Every fabric edge is a boundary or shared by two faces.");
+                if (edge.Value.Count == 2)
+                    Assert.That(edge.Value[0].from == edge.Value[1].to && edge.Value[0].to == edge.Value[1].from, Is.True,
+                        "Connected fabric faces must traverse their shared edge in opposite directions: " + edge.Key);
+            }
         }
         private static void AssertApertureSeams(object pattern, bool sleeves)
         {

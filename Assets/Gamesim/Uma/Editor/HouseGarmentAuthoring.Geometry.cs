@@ -137,6 +137,7 @@ namespace Gamesim.Uma.Editor
                 if (style.sleeves) Sleeve(pattern, surface, loop, anatomicalLeft, style.clearance);
                 else Binding(pattern, loop, ArmholeBindingWidth, new Rect(.54f, .8f + side * .07f, .4f, .05f));
             }
+            pattern.OrientFacesConsistently();
             return pattern;
         }
 

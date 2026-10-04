@@ -48,6 +48,7 @@ namespace Gamesim.Uma.Editor
             public string geometryStatus;
             public bool upperBoundaryAdapted;
             public int vertices, triangles, maximumInfluences;
+            public int windingComponents, windingSharedEdges, windingReversedTriangles;
             public int coverageQueries, coverageTriangleTests, coverageMaximumCandidates, coverageLargeTrianglesRetained;
             public Vector3 hipsLandmark, neckLandmark, leftUpperArmLandmark, rightUpperArmLandmark;
             public Vector3 referencePatternBoundsCenter, referencePatternBoundsSize, meshBoundsCenter, meshBoundsSize;
@@ -195,6 +196,7 @@ namespace Gamesim.Uma.Editor
             public List<int> neckBoundary;
             public readonly List<List<int>> armBoundaries = new List<List<int>>();
             public float hem, shoulder, armpit;
+            public int windingComponents, windingSharedEdges, windingReversedTriangles;
             public int Add(Vector3 point, Vector2 uv, Hit? bodyHit = null)
             {
                 int vertex = points.Count;
@@ -213,6 +215,70 @@ namespace Gamesim.Uma.Editor
                 if (normal.sqrMagnitude <= .000000000001f) return;
                 if (Vector3.Dot(normal, outward) < 0) { int swap = b; b = c; c = swap; }
                 indices.Add(a); indices.Add(b); indices.Add(c);
+            }
+            public void OrientFacesConsistently()
+            {
+                // A warped quad can put its two facet normals on opposite sides of the
+                // supplied outward vector. Orienting each facet independently then turns
+                // a continuous sleeve into locally reversed, back-face-culled cloth.
+                // Preserve geometry and each component's original outward anchor; only
+                // reconcile index winding along its actual shared edges.
+                Require(indices.Count > 0 && indices.Count % 3 == 0 && indices.Count / 3 <= 12000,
+                    "Garment winding exceeds its bounded triangle contract.");
+                int faces = indices.Count / 3;
+                var firstUse = new Dictionary<(int, int), int>();
+                var neighbours = new int[indices.Count];
+                var sameDirection = new bool[indices.Count];
+                var flips = new int[faces];
+                var queue = new int[faces];
+                for (int i = 0; i < neighbours.Length; i++) neighbours[i] = -1;
+                for (int i = 0; i < flips.Length; i++) flips[i] = -1;
+                int sharedEdges = 0, components = 0, reversed = 0;
+                for (int face = 0; face < faces; face++)
+                    for (int edge = 0; edge < 3; edge++)
+                    {
+                        int offset = face * 3 + edge;
+                        int a = indices[offset], b = indices[face * 3 + (edge + 1) % 3];
+                        Require(a >= 0 && b >= 0 && a < points.Count && b < points.Count && a != b,
+                            "Garment winding contains an invalid edge.");
+                        var key = (Mathf.Min(a, b), Mathf.Max(a, b));
+                        if (!firstUse.TryGetValue(key, out int previous)) { firstUse.Add(key, offset); continue; }
+                        Require(neighbours[previous] == -1, "Garment winding contains a nonmanifold edge.");
+                        neighbours[previous] = offset; neighbours[offset] = previous;
+                        sameDirection[previous] = sameDirection[offset] = indices[previous] == a;
+                        sharedEdges++;
+                    }
+                for (int seed = 0; seed < faces; seed++)
+                {
+                    if (flips[seed] != -1) continue;
+                    components++;
+                    int count = 1, componentReversed = 0;
+                    queue[0] = seed; flips[seed] = 0;
+                    for (int head = 0; head < count; head++)
+                    {
+                        int face = queue[head];
+                        componentReversed += flips[face];
+                        for (int edge = 0; edge < 3; edge++)
+                        {
+                            int offset = face * 3 + edge, neighbour = neighbours[offset];
+                            if (neighbour == -1) continue;
+                            int other = neighbour / 3, expected = flips[face] ^ (sameDirection[offset] ? 1 : 0);
+                            if (flips[other] == -1) { flips[other] = expected; queue[count++] = other; }
+                            else Require(flips[other] == expected, "Garment winding contains a nonorientable component.");
+                        }
+                    }
+                    Require(componentReversed * 2 <= count,
+                        "Garment winding cannot retain its outward anchor and majority of authored faces.");
+                    reversed += componentReversed;
+                }
+                // No partial mutation if any component failed its topology/anchor checks.
+                for (int face = 0; face < faces; face++)
+                    if (flips[face] == 1)
+                    {
+                        int offset = face * 3, swap = indices[offset + 1];
+                        indices[offset + 1] = indices[offset + 2]; indices[offset + 2] = swap;
+                    }
+                windingComponents = components; windingSharedEdges = sharedEdges; windingReversedTriangles = reversed;
             }
         }
 
@@ -836,6 +902,9 @@ namespace Gamesim.Uma.Editor
         }
         private static Mesh Skin(Pattern pattern, Surface surface, FitReport evidence)
         {
+            evidence.windingComponents = pattern.windingComponents;
+            evidence.windingSharedEdges = pattern.windingSharedEdges;
+            evidence.windingReversedTriangles = pattern.windingReversedTriangles;
             var vertices = new Vector3[pattern.points.Count];
             var counts = new byte[vertices.Length];
             var weights = new List<BoneWeight1>();

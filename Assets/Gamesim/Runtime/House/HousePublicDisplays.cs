@@ -40,7 +40,7 @@ namespace Gamesim.House
             display.Refresh(state);
         }
 
-        /// <summary>Only the public yard words yield to a drawn competition board; physical scenery stays.</summary>
+        /// <summary>Only the public yard words yield to the arena's board/result/panel gate; physical scenery stays.</summary>
         public void SetCompetitionBoardDrawn(bool drawn)
         {
             if(competitionBoardDrawn==drawn)return;

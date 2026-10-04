@@ -53,7 +53,9 @@ namespace Gamesim.Episode
             bool arenaUnder = challengeActive ? boardDrawn || CeremonyOverlays.OnScreen : under;
             SetCompetitionOverlaysVisible(!arenaUnder);
             if (publicDisplays == null) publicDisplays = HousePublicDisplays.Find(gameObject.scene);
-            if (publicDisplays != null && publicDisplays.isActiveAndEnabled) publicDisplays.SetCompetitionBoardDrawn(boardDrawn);
+            // Public yard lettering follows the same owner as the arena's sign: the board,
+            // committed result and other panels. An attempt's canvas-off world view still draws it.
+            if (publicDisplays != null && publicDisplays.isActiveAndEnabled) publicDisplays.SetCompetitionBoardDrawn(arenaUnder);
             if (roomLabels != null) roomLabels.Hidden = under;
             // Explicitly: a missing component is Unity's fake null in the editor, which ?? keeps.
             if (overlayPass == null)

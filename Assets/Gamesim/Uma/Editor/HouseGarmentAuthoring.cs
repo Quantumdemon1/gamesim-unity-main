@@ -18,7 +18,7 @@ namespace Gamesim.Uma.Editor
     /// isolated batch project may run this entry point; opening the live game cannot author assets.
     /// Geometry is generated from garment panels, never copied from an installed clothing slot.
     /// </summary>
-    public static class HouseGarmentAuthoring
+    public static partial class HouseGarmentAuthoring
     {
         public const string ContentRoot = "Assets/Gamesim/Uma/Content/HouseGarments";
         public const string CatalogPath = "Assets/Gamesim/Uma/Resources/Gamesim/CharacterCatalog/HouseGarments.asset";
@@ -44,6 +44,7 @@ namespace Gamesim.Uma.Editor
         {
             public string id, race, recipe, slot, rootBone;
             public int vertices, triangles, maximumInfluences;
+            public int coverageQueries, coverageTriangleTests, coverageMaximumCandidates, coverageLargeTrianglesRetained;
             public List<string> adjustmentBones = new List<string>();
             public List<string> maskTargets = new List<string>();
             public List<int> hiddenTriangles = new List<int>();
@@ -76,11 +77,34 @@ namespace Gamesim.Uma.Editor
             public List<Triangle> triangles = new List<Triangle>();
             public List<SlotData> slots;
             public Animator animator;
+            // Also permits independent, editor-only geometry fixtures without creating UMA assets.
+            public readonly Dictionary<HumanBodyBones, Vector3> landmarks = new Dictionary<HumanBodyBones, Vector3>();
             public Vector3 Bone(HumanBodyBones bone)
             {
+                if (landmarks.TryGetValue(bone, out Vector3 position)) return position;
                 Transform transform = animator.GetBoneTransform(bone);
                 Require(transform != null, "Missing humanoid landmark: " + bone);
-                return renderer.transform.InverseTransformPoint(transform.position);
+                position = renderer.transform.InverseTransformPoint(transform.position);
+                landmarks.Add(bone, position);
+                return position;
+            }
+            public bool Ray(Vector3 origin, Vector3 direction, out Hit hit, bool? arm = null,
+                float maximumY = float.PositiveInfinity)
+            {
+                hit = new Hit();
+                float nearest = float.PositiveInfinity;
+                foreach (Triangle triangle in triangles)
+                {
+                    if (arm.HasValue && triangle.arm != arm.Value) continue;
+                    if (!Intersect(origin, direction, vertices[triangle.a], vertices[triangle.b], vertices[triangle.c],
+                        out float distance, out Vector3 bary) || distance >= nearest) continue;
+                    Vector3 position = origin + direction * distance;
+                    if (position.y > maximumY) continue;
+                    nearest = distance;
+                    hit = new Hit { triangle = triangle, position = position, barycentric = bary,
+                        normal = (normals[triangle.a] * bary.x + normals[triangle.b] * bary.y + normals[triangle.c] * bary.z).normalized };
+                }
+                return !float.IsInfinity(nearest);
             }
             public Hit Closest(Vector3 point, bool? arm = null)
             {
@@ -134,13 +158,21 @@ namespace Gamesim.Uma.Editor
             public readonly List<Vector3> points = new List<Vector3>();
             public readonly List<Vector2> uvs = new List<Vector2>();
             public readonly List<int> indices = new List<int>();
+            public List<int> neckBoundary;
+            public readonly List<List<int>> armBoundaries = new List<List<int>>();
             public float hem, shoulder, armpit;
             public int Add(Vector3 point, Vector2 uv) { points.Add(point); uvs.Add(uv); return points.Count - 1; }
             public void Quad(int a, int b, int c, int d, Vector3 outward)
             {
-                bool reverse = Vector3.Dot(Vector3.Cross(points[b] - points[a], points[c] - points[a]), outward) < 0;
-                if (reverse) { indices.Add(a); indices.Add(c); indices.Add(b); indices.Add(a); indices.Add(d); indices.Add(c); }
-                else { indices.Add(a); indices.Add(b); indices.Add(c); indices.Add(a); indices.Add(c); indices.Add(d); }
+                Face(a, b, c, outward);
+                Face(a, c, d, outward);
+            }
+            private void Face(int a, int b, int c, Vector3 outward)
+            {
+                Vector3 normal = Vector3.Cross(points[b] - points[a], points[c] - points[a]);
+                if (normal.sqrMagnitude <= .000000000001f) return;
+                if (Vector3.Dot(normal, outward) < 0) { int swap = b; b = c; c = swap; }
+                indices.Add(a); indices.Add(b); indices.Add(c);
             }
         }
 
@@ -445,76 +477,6 @@ namespace Gamesim.Uma.Editor
             return surface;
         }
 
-        private static Pattern Panels(Surface surface, Style style)
-        {
-            const int columns = 24, rows = 20;
-            var pattern = new Pattern();
-            Vector3 hips = surface.Bone(HumanBodyBones.Hips);
-            Vector3 leftShoulder = surface.Bone(HumanBodyBones.LeftUpperArm), rightShoulder = surface.Bone(HumanBodyBones.RightUpperArm);
-            float center = hips.x, half = Mathf.Abs(leftShoulder.x - rightShoulder.x) * .5f;
-            pattern.shoulder = (leftShoulder.y + rightShoulder.y) * .5f;
-            pattern.hem = hips.y + (pattern.shoulder - hips.y) * .03f;
-            pattern.armpit = pattern.shoulder - (pattern.shoulder - pattern.hem) * .23f;
-            Require(half > .08f && pattern.shoulder - pattern.hem > .15f, "Unexpected humanoid torso landmarks.");
-            int[,] front = new int[rows + 1, columns + 1], back = new int[rows + 1, columns + 1];
-            int armStart = rows - 5, neckLeft = 8, neckRight = 16;
-            for (int j = 0; j <= rows; j++)
-            {
-                float v = j / (float)rows;
-                float yAtCenter = Mathf.Lerp(pattern.hem, pattern.shoulder, v);
-                float width = TorsoHalfWidth(surface, yAtCenter, center, half);
-                width = Mathf.Lerp(width, half, Mathf.InverseLerp(.7f, 1f, v));
-                for (int i = 0; i <= columns; i++)
-                {
-                    float u = i / (float)columns, across = u * 2f - 1f;
-                    float neck = Mathf.Clamp01(1f - Mathf.Abs(across) * 3f);
-                    float yFront = Mathf.Lerp(pattern.hem, pattern.shoulder + neck * .012f, v);
-                    float yBack = Mathf.Lerp(pattern.hem, pattern.shoulder + neck * .028f, v);
-                    Hit f = surface.FrontBack(center + across * width, yFront, true);
-                    Hit b = surface.FrontBack(center + across * width, yBack, false);
-                    front[j, i] = pattern.Add(f.position + f.normal * style.clearance, new Vector2(.02f + u * .44f, .04f + v * .62f));
-                    back[j, i] = pattern.Add(b.position + b.normal * style.clearance, new Vector2(.50f + u * .44f, .04f + v * .62f));
-                    if (j > 0 && i > 0)
-                    {
-                        pattern.Quad(front[j - 1, i - 1], front[j - 1, i], front[j, i], front[j, i - 1], Vector3.forward);
-                        pattern.Quad(back[j - 1, i - 1], back[j - 1, i], back[j, i], back[j, i - 1], Vector3.back);
-                    }
-                }
-            }
-            // Curved side panels follow the flank; a straight front-to-back chord cuts into the torso.
-            for (int side = 0; side < 2; side++)
-            {
-                const int divisions = 6;
-                int column = side == 0 ? 0 : columns;
-                int[,] strip = new int[armStart + 1, divisions + 1];
-                for (int j = 0; j <= armStart; j++) for (int k = 0; k <= divisions; k++)
-                {
-                    float across = k / (float)divisions;
-                    Vector3 desired = Vector3.Lerp(pattern.points[front[j, column]], pattern.points[back[j, column]], across);
-                    Hit hit = surface.Closest(desired, false);
-                    strip[j, k] = pattern.Add(hit.position + hit.normal * style.clearance,
-                        new Vector2(.95f + across * .04f, .04f + j / (float)rows * .62f));
-                    if (j > 0 && k > 0) pattern.Quad(strip[j - 1, k - 1], strip[j - 1, k], strip[j, k], strip[j, k - 1], side == 0 ? Vector3.left : Vector3.right);
-                }
-            }
-            for (int i = 0; i < columns; i++)
-                if (i < neckLeft || i >= neckRight)
-                    pattern.Quad(front[rows, i], front[rows, i + 1], back[rows, i + 1], back[rows, i], Vector3.up);
-            var neckLoop = new List<int>();
-            for (int i = neckLeft; i <= neckRight; i++) neckLoop.Add(front[rows, i]);
-            for (int i = neckRight; i >= neckLeft; i--) neckLoop.Add(back[rows, i]);
-            Band(pattern, neckLoop, .018f, Vector3.up, new Rect(.54f, .7f, .4f, .06f));
-            for (int side = 0; side < 2; side++)
-            {
-                int column = side == 0 ? 0 : columns;
-                var loop = new List<int>();
-                for (int j = armStart; j <= rows; j++) loop.Add(front[j, column]);
-                for (int j = rows; j >= armStart; j--) loop.Add(back[j, column]);
-                if (style.sleeves) Sleeve(pattern, surface, loop, side == 0, style.clearance);
-                else Band(pattern, loop, .012f, side == 0 ? Vector3.left : Vector3.right, new Rect(.54f, .8f + side * .07f, .4f, .05f));
-            }
-            return pattern;
-        }
         private static float TorsoHalfWidth(Surface surface, float y, float center, float fallback)
         {
             float width = 0;
@@ -546,7 +508,8 @@ namespace Gamesim.Uma.Editor
                 for (int i = 0; i < ring.Length; i++)
                 {
                     Vector3 radial = up * Mathf.Cos(angles[i]) + forward * Mathf.Sin(angles[i]);
-                    Hit hit = surface.Closest(center + radial * .13f, true);
+                    // Cap rows can belong to either the torso or the proximal-arm slot.
+                    Hit hit = surface.Closest(center + radial * .13f, step <= 2 ? (bool?)null : true);
                     float rib = step >= lengthSteps - 1 ? .005f : 0f;
                     ring[i] = pattern.Add(hit.position + hit.normal * (clearance + rib), new Vector2((left ? .02f : .28f) + .22f * i / (ring.Length - 1f), .7f + .26f * t));
                 }
@@ -559,25 +522,6 @@ namespace Gamesim.Uma.Editor
                 previous = ring;
             }
         }
-        private static void Band(Pattern pattern, List<int> loop, float height, Vector3 direction, Rect uv)
-        {
-            // Duplicate the closed seam and the panel edge so a trim strip has its own UV island.
-            int[] inner = new int[loop.Count + 1], outer = new int[loop.Count + 1];
-            Vector3 center = loop.Select(k => pattern.points[k]).Aggregate(Vector3.zero, (sum, point) => sum + point) / loop.Count;
-            for (int i = 0; i <= loop.Count; i++)
-            {
-                Vector3 point = pattern.points[loop[i % loop.Count]];
-                float u = uv.x + uv.width * i / loop.Count;
-                inner[i] = pattern.Add(point, new Vector2(u, uv.yMin));
-                outer[i] = pattern.Add(point + direction * height, new Vector2(u, uv.yMax));
-            }
-            for (int i = 0; i < loop.Count; i++)
-            {
-                Vector3 outward = direction == Vector3.up ? pattern.points[loop[i]] - center : direction;
-                pattern.Quad(inner[i], inner[i + 1], outer[i + 1], outer[i], outward);
-            }
-        }
-
         private static Mesh Skin(Pattern pattern, Surface surface, FitReport evidence)
         {
             var vertices = new Vector3[pattern.points.Count];
@@ -640,6 +584,7 @@ namespace Gamesim.Uma.Editor
         private static List<MeshHideAsset> Masks(Surface surface, Pattern pattern, Style style, FitReport evidence, string fit)
         {
             var masks = new List<MeshHideAsset>();
+            var coverage = new CoverageIndex(pattern);
             foreach (SlotData slot in surface.slots)
             {
                 bool arms = slot.slotName.Contains("1005");
@@ -652,12 +597,9 @@ namespace Gamesim.Uma.Editor
                 int hidden = 0;
                 for (int t = 0; t < indices.Length; t += 3)
                 {
-                    bool covered = true;
-                    for (int c = 0; c < 3; c++)
-                    {
-                        Vector3 p = surface.vertices[indices[t + c] + slot.vertexOffset];
-                        covered &= Covered(p, arms, surface, pattern, style);
-                    }
+                    int a = indices[t] + slot.vertexOffset, b = indices[t + 1] + slot.vertexOffset, c = indices[t + 2] + slot.vertexOffset;
+                    bool covered = coverage.CoversTriangle(surface.vertices[a], surface.vertices[b], surface.vertices[c],
+                        surface.normals[a], surface.normals[b], surface.normals[c], style.clearance + .025f);
                     mask.triangleFlags[slot.asset.subMeshIndex][t / 3] = covered;
                     if (covered) hidden++;
                 }
@@ -669,24 +611,11 @@ namespace Gamesim.Uma.Editor
                 evidence.maskTargets.Add(mask.AssetSlotName);
                 evidence.hiddenTriangles.Add(hidden);
             }
+            evidence.coverageQueries = coverage.queries;
+            evidence.coverageTriangleTests = coverage.triangleTests;
+            evidence.coverageMaximumCandidates = coverage.maximumCandidates;
+            evidence.coverageLargeTrianglesRetained = coverage.largeTrianglesRetained;
             return masks;
-        }
-        private static bool Covered(Vector3 point, bool arms, Surface surface, Pattern pattern, Style style)
-        {
-            if (!arms)
-            {
-                if (point.y <= pattern.hem + .025f || point.y >= pattern.shoulder - .035f) return false;
-                float center = surface.Bone(HumanBodyBones.Hips).x;
-                float half = Mathf.Abs(surface.Bone(HumanBodyBones.LeftUpperArm).x - surface.Bone(HumanBodyBones.RightUpperArm).x) * .5f;
-                if (!style.sleeves && point.y > pattern.armpit - .015f && Mathf.Abs(point.x - center) > half * .65f) return false;
-                return true;
-            }
-            bool left = point.x < surface.Bone(HumanBodyBones.Hips).x;
-            Vector3 shoulder = surface.Bone(left ? HumanBodyBones.LeftUpperArm : HumanBodyBones.RightUpperArm);
-            Vector3 hand = surface.Bone(left ? HumanBodyBones.LeftHand : HumanBodyBones.RightHand);
-            Vector3 axis = hand - shoulder;
-            float along = Vector3.Dot(point - shoulder, axis) / axis.sqrMagnitude;
-            return along > .1f && along < .90f;
         }
         private static void ValidateMasks(DynamicCharacterAvatar avatar, List<MeshHideAsset> masks)
         {

@@ -43,8 +43,14 @@ namespace Gamesim.Uma.Editor
         [Serializable] private sealed class FitReport
         {
             public string id, race, recipe, slot, rootBone;
+            public string geometryStatus;
+            public bool upperBoundaryAdapted;
             public int vertices, triangles, maximumInfluences;
             public int coverageQueries, coverageTriangleTests, coverageMaximumCandidates, coverageLargeTrianglesRetained;
+            public Vector3 hipsLandmark, neckLandmark, leftUpperArmLandmark, rightUpperArmLandmark;
+            public Vector3 referencePatternBoundsCenter, referencePatternBoundsSize, meshBoundsCenter, meshBoundsSize;
+            public float measuredNeckRadius, desiredNeckRadius, paddedNeckRadius, neckSectionCenterX, shoulderHalfWidth, torsoHeight;
+            public float desiredLeftOuterX, desiredRightOuterX, leftOuterX, rightOuterX, leftStrapWidth, rightStrapWidth, leftAvailableSpan, rightAvailableSpan, minimumUsableStrapWidth;
             public List<string> adjustmentBones = new List<string>();
             public List<string> maskTargets = new List<string>();
             public List<int> hiddenTriangles = new List<int>();
@@ -55,6 +61,7 @@ namespace Gamesim.Uma.Editor
             public bool sleeves;
             public float clearance;
             public OverlayDataAsset overlay;
+            public FitReport evidence;
         }
         private struct Triangle
         {
@@ -270,13 +277,26 @@ namespace Gamesim.Uma.Editor
                 Surface surface = BodySurface(avatar);
                 foreach (Style style in styles)
                 {
+                    FitReport evidence = new FitReport { id = style.id + "." + fit.ToLowerInvariant(), race = races[body],
+                        slot = style.stem + "_" + fit + "_Slot", recipe = style.stem + "_" + fit + "_Recipe",
+                        rootBone = surface.renderer.rootBone.name, geometryStatus = "sampling" };
+                    style.evidence = evidence;
+                    // Keep a failed fit's measured geometry, rather than only the previously completed fits.
+                    report.fits.Add(evidence);
                     Progress(style.stem + " " + fit + " panels");
                     Pattern pattern = Panels(surface, style);
+                    Bounds referenceBounds = new Bounds(pattern.points[0], Vector3.zero);
+                    foreach (Vector3 point in pattern.points) referenceBounds.Encapsulate(point);
+                    evidence.referencePatternBoundsCenter = referenceBounds.center;
+                    evidence.referencePatternBoundsSize = referenceBounds.size;
+                    evidence.geometryStatus = "pattern ready";
                     yield return null;
                     Progress(style.stem + " " + fit + " skinning");
-                    FitReport evidence = new FitReport { id = style.id + "." + fit.ToLowerInvariant(), race = races[body],
-                        slot = style.stem + "_" + fit + "_Slot", recipe = style.stem + "_" + fit + "_Recipe", rootBone = surface.renderer.rootBone.name };
                     Mesh mesh = Skin(pattern, surface, evidence);
+                    // Mesh.bounds is in the stored bind-pose mesh coordinates, not world/reference-pose coordinates.
+                    evidence.meshBoundsCenter = mesh.bounds.center;
+                    evidence.meshBoundsSize = mesh.bounds.size;
+                    evidence.geometryStatus = "skinned";
                     string meshPath = ContentRoot + "/" + style.stem + "_" + fit + "_Mesh.asset";
                     Mesh savedMesh = SaveMesh(mesh, meshPath);
                     SkinnedMeshRenderer clothing = Renderer(savedMesh, surface.renderer);
@@ -323,7 +343,8 @@ namespace Gamesim.Uma.Editor
                     catalog.entries.Add(new UmaWardrobeEntry { id = evidence.id, recipeName = evidence.recipe,
                         aliases = new List<string> { evidence.recipe }, label = style.label, styleGroup = style.group,
                         tags = new List<string> { "chest", style.sleeves ? "knit" : "competition", style.sleeves ? "casual" : "athletic" }, fallbackPriority = 20 });
-                    report.fits.Add(evidence);
+                    evidence.geometryStatus = "complete";
+                    style.evidence = null;
                     UnityEngine.Object.DestroyImmediate(clothing.gameObject);
                     // Restore the whole, unmasked reference surface before the next garment.
                     avatar.preloadWardrobeRecipes.recipes.Clear();
@@ -339,7 +360,7 @@ namespace Gamesim.Uma.Editor
             RemoveTransientSlots();
             index.generator = null; // A portable asset cannot carry the temporary scene generator.
             Save(index);
-            Require(report.fits.Count == 4, "Four garment fits were not completed.");
+            Require(report.fits.Count == 4 && report.fits.All(fit => fit.geometryStatus == "complete"), "Four garment fits were not completed.");
             // A second batch process must verify the saved index, recipe and masks without this cache.
             Progress("assets saved; fresh-process verification required");
         }

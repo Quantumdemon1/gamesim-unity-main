@@ -18,7 +18,7 @@ namespace Gamesim.Uma.Editor
             pattern.hem = hips.y + (pattern.shoulder - hips.y) * .03f;
             pattern.armpit = pattern.shoulder - (pattern.shoulder - pattern.hem) * .23f;
             Require(half > .08f && pattern.shoulder - pattern.hem > .15f, "Unexpected humanoid torso landmarks.");
-            UpperEdge edge = UpperEdge.From(surface, style, center, half, pattern.shoulder - pattern.hem);
+            UpperEdge edge = UpperEdge.From(surface, style, half, pattern.shoulder - pattern.hem);
             int[,] front = new int[rows + 1, columns + 1], back = new int[rows + 1, columns + 1];
             for (int j = 0; j <= rows; j++)
             {
@@ -115,7 +115,7 @@ namespace Gamesim.Uma.Editor
             for (int k = shoulderDivisions - 1; k > 0; k--) neckLoop.Add(yoke[neckLeft, k]);
             neckLoop = DistinctLoop(pattern, neckLoop);
             pattern.neckBoundary = neckLoop;
-            Binding(pattern, neckLoop, .009f, new Rect(.54f, .7f, .4f, .06f));
+            Binding(pattern, neckLoop, CollarBindingWidth, new Rect(.54f, .7f, .4f, .06f));
             for (int side = 0; side < 2; side++)
             {
                 int column = side == 0 ? 0 : columns;
@@ -128,7 +128,7 @@ namespace Gamesim.Uma.Editor
                 pattern.armBoundaries.Add(loop);
                 bool anatomicalLeft = Mathf.Abs(edge.OuterX(side) - left.x) < Mathf.Abs(edge.OuterX(side) - right.x);
                 if (style.sleeves) Sleeve(pattern, surface, loop, anatomicalLeft, style.clearance);
-                else Binding(pattern, loop, .008f, new Rect(.54f, .8f + side * .07f, .4f, .05f));
+                else Binding(pattern, loop, ArmholeBindingWidth, new Rect(.54f, .8f + side * .07f, .4f, .05f));
             }
             return pattern;
         }
@@ -145,33 +145,81 @@ namespace Gamesim.Uma.Editor
             return result;
         }
 
+        private const float CollarBindingWidth = .009f, ArmholeBindingWidth = .008f;
+        // Both bindings plus a 3mm fabric interval must fit between the two exposed apertures.
+        private const float MinimumStrapSpan = CollarBindingWidth + ArmholeBindingWidth + .003f;
+
         private sealed class UpperEdge
         {
             public Surface surface;
-            public float center, neckRadius, outerHalf, neckZ, ceiling, leftY, rightY, frontDepth, backDepth;
-            public static UpperEdge From(Surface surface, Style style, float center, float half, float height)
+            public float center, neckRadius, leftOuter, rightOuter, neckZ, ceiling, leftY, rightY, frontDepth, backDepth;
+            public static UpperEdge From(Surface surface, Style style, float half, float height)
             {
                 Vector3 neck = surface.Bone(HumanBodyBones.Neck);
+                Vector3 leftArm = surface.Bone(HumanBodyBones.LeftUpperArm), rightArm = surface.Bone(HumanBodyBones.RightUpperArm);
+                float shoulderCenter = (leftArm.x + rightArm.x) * .5f;
+                FitReport evidence = style.evidence;
+                if (evidence != null)
+                {
+                    evidence.hipsLandmark = surface.Bone(HumanBodyBones.Hips);
+                    evidence.neckLandmark = neck;
+                    evidence.leftUpperArmLandmark = leftArm;
+                    evidence.rightUpperArmLandmark = rightArm;
+                    evidence.shoulderHalfWidth = half;
+                    evidence.torsoHeight = height;
+                    evidence.minimumUsableStrapWidth = MinimumStrapSpan;
+                }
                 bool hasLeft = surface.Ray(new Vector3(-3f, neck.y, neck.z), Vector3.right, out Hit left, false);
                 bool hasRight = surface.Ray(new Vector3(3f, neck.y, neck.z), Vector3.left, out Hit right, false);
                 Require(hasLeft && hasRight, "The torso has no supported neck surface section.");
                 float radius = (right.position.x - left.position.x) * .5f;
-                Require(radius > .025f && radius < half * .6f, "Unsupported neck-to-shoulder proportions.");
-                var edge = new UpperEdge { surface = surface, center = center, neckZ = neck.z, ceiling = neck.y + .01f,
-                    neckRadius = radius + (style.sleeves ? .007f : .018f), outerHalf = half * (style.sleeves ? 1f : .85f),
+                float neckCenter = (left.position.x + right.position.x) * .5f;
+                float desiredRadius = radius + (style.sleeves ? .007f : .018f);
+                float desiredHalf = half * (style.sleeves ? 1f : .85f), maximumHalf = half * (style.sleeves ? 1f : .95f);
+                float leftLimit = shoulderCenter - maximumHalf, rightLimit = shoulderCenter + maximumHalf;
+                float desiredLeft = shoulderCenter - desiredHalf, desiredRight = shoulderCenter + desiredHalf;
+                float availableRadius = Mathf.Min(neckCenter - leftLimit, rightLimit - neckCenter) - MinimumStrapSpan;
+                float paddedRadius = Mathf.Min(desiredRadius, availableRadius);
+                var edge = new UpperEdge { surface = surface, center = neckCenter, neckZ = neck.z, ceiling = neck.y + .01f,
+                    neckRadius = paddedRadius,
+                    leftOuter = Mathf.Max(leftLimit, Mathf.Min(desiredLeft, neckCenter - paddedRadius - MinimumStrapSpan)),
+                    rightOuter = Mathf.Min(rightLimit, Mathf.Max(desiredRight, neckCenter + paddedRadius + MinimumStrapSpan)),
                     frontDepth = Mathf.Clamp(height * (style.sleeves ? .10f : .18f), .025f, style.sleeves ? .05f : .085f),
                     backDepth = Mathf.Clamp(height * (style.sleeves ? .03f : .05f), .008f, .022f) };
-                Require(edge.neckRadius < edge.outerHalf * .65f, "Neck opening consumes the shoulder strap.");
-                edge.leftY = edge.Crown(center - edge.neckRadius);
-                edge.rightY = edge.Crown(center + edge.neckRadius);
+                float leftSpan = neckCenter - paddedRadius - edge.leftOuter, rightSpan = edge.rightOuter - neckCenter - paddedRadius;
+                if (evidence != null)
+                {
+                    evidence.measuredNeckRadius = radius; evidence.desiredNeckRadius = desiredRadius;
+                    evidence.paddedNeckRadius = paddedRadius; evidence.neckSectionCenterX = neckCenter;
+                    evidence.leftOuterX = edge.leftOuter; evidence.rightOuterX = edge.rightOuter;
+                    evidence.desiredLeftOuterX = desiredLeft; evidence.desiredRightOuterX = desiredRight;
+                    evidence.upperBoundaryAdapted = Mathf.Abs(desiredRadius - paddedRadius) > .000001f
+                        || Mathf.Abs(desiredLeft - edge.leftOuter) > .000001f || Mathf.Abs(desiredRight - edge.rightOuter) > .000001f;
+                    evidence.leftAvailableSpan = leftSpan; evidence.rightAvailableSpan = rightSpan;
+                }
+                string measurements = string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                    " Measured neck radius={0:R}, desired={1:R}, padded={2:R}, shoulder half={3:R}, torso height={4:R}, neck center={5:R}, outer X=({6:R},{7:R}), spans=({8:R},{9:R}), minimum={10:R}.",
+                    radius, desiredRadius, paddedRadius, half, height, neckCenter, edge.leftOuter, edge.rightOuter, leftSpan, rightSpan, MinimumStrapSpan);
+                Require(radius > .025f && radius < half * .6f, "Unsupported neck-to-shoulder surface section." + measurements);
+                // Keep real clearance around the neck; narrower straps must adapt their outer boundary, not clip skin.
+                Require(paddedRadius >= radius + .006f && leftSpan >= MinimumStrapSpan - .00001f && rightSpan >= MinimumStrapSpan - .00001f,
+                    "The supported shoulder cannot fit both bindings and neck clearance." + measurements);
+                Vector3 leftNeck = edge.CrownPoint(neckCenter - paddedRadius), rightNeck = edge.CrownPoint(neckCenter + paddedRadius);
+                Vector3 leftOuter = edge.CrownPoint(edge.leftOuter), rightOuter = edge.CrownPoint(edge.rightOuter);
+                float leftWidth = (leftNeck - leftOuter).magnitude, rightWidth = (rightNeck - rightOuter).magnitude;
+                if (evidence != null) { evidence.leftStrapWidth = leftWidth; evidence.rightStrapWidth = rightWidth; }
+                Require(leftWidth >= MinimumStrapSpan && rightWidth >= MinimumStrapSpan,
+                    "The sampled shoulder crown has no usable fabric strip." + measurements);
+                edge.leftY = leftNeck.y - .004f;
+                edge.rightY = rightNeck.y - .004f;
                 return edge;
             }
-            public float OuterX(int side) => center + (side == 0 ? -outerHalf : outerHalf);
-            private float Crown(float x)
+            public float OuterX(int side) => side == 0 ? leftOuter : rightOuter;
+            private Vector3 CrownPoint(float x)
             {
                 Require(surface.Ray(new Vector3(x, ceiling + .5f, neckZ), Vector3.down, out Hit hit, null, ceiling),
                     "Unsupported shoulder crown at x=" + x + ".");
-                return hit.position.y - .004f;
+                return hit.position;
             }
             public void At(float across, out float x, out float frontY, out float backY)
             {
@@ -187,8 +235,9 @@ namespace Gamesim.Uma.Editor
                 }
                 else
                 {
-                    x = center + sign * Mathf.Lerp(neckRadius, outerHalf, (a - 1f / 3f) * 1.5f);
-                    frontY = backY = Crown(x);
+                    float outer = across < 0f ? leftOuter : rightOuter;
+                    x = Mathf.Lerp(center + sign * neckRadius, outer, (a - 1f / 3f) * 1.5f);
+                    frontY = backY = CrownPoint(x).y - .004f;
                 }
             }
         }

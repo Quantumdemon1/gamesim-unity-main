@@ -24,9 +24,10 @@ namespace Gamesim.Uma.Tests
             try { return owner.GetType().GetMethod(name, Fields).Invoke(owner, args); }
             catch (TargetInvocationException e) { throw e.InnerException ?? e; }
         }
-        private static object Pattern(object surface, bool sleeves)
+        private static object Pattern(object surface, bool sleeves, object evidence = null)
         {
             object style = New("Style"); Set(style, "sleeves", sleeves); Set(style, "clearance", sleeves ? .012f : .008f);
+            Set(style, "evidence", evidence);
             try { return Author.GetMethod("Panels", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, new[] { surface, style }); }
             catch (TargetInvocationException e) { throw e.InnerException ?? e; }
         }
@@ -83,6 +84,40 @@ namespace Gamesim.Uma.Tests
             Assert.That((bool)Call(coverage, "Covers", new Vector3(.2f, 1.565f, 0f), Vector3.up, .035f), Is.False);
             AssertFaces(vest);
             AssertApertureSeams(vest, false);
+        }
+
+        [Test]
+        public void GarmentPattern_BroadNeckRetainsSupportedStrapsAndRejectsAnUnsupportedShift()
+        {
+            object evidence = New("FitReport");
+            object regular = Pattern(Body(true), false), broad = Pattern(Body(true, .10f), false, evidence);
+            List<Vector3> r = Get<List<Vector3>>(regular, "points"), b = Get<List<Vector3>>(broad, "points");
+            int topLeft = (20 * 25) * 2, topRight = (20 * 25 + 24) * 2;
+            Assert.That((r[topLeft] - b[topLeft]).magnitude, Is.LessThan(.00001f));
+            Assert.That((r[topRight] - b[topRight]).magnitude, Is.LessThan(.00001f),
+                "Supported broad-neck anatomy must preserve the default vest cap exposure.");
+            Assert.That(Get<float>(evidence, "paddedNeckRadius"), Is.GreaterThan(.65f * .17f),
+                "This fixture exercises anatomy the old style ratio refused.");
+            Assert.That(Get<float>(evidence, "leftStrapWidth"), Is.GreaterThan(.04f));
+            Assert.That(Get<float>(evidence, "rightStrapWidth"), Is.GreaterThan(.04f));
+            Assert.That(Get<bool>(evidence, "upperBoundaryAdapted"), Is.False);
+            AssertFaces(broad); AssertApertureSeams(broad, false);
+            object coverage = Activator.CreateInstance(Nested("CoverageIndex"), Fields, null, new[] { broad }, null);
+            Assert.That((bool)Call(coverage, "Covers", new Vector3(0f, 1.65f, .10f), Vector3.forward, .035f), Is.False,
+                "The broad-neck aperture must still leave the actual neck exposed.");
+            object narrowEvidence = New("FitReport");
+            object narrow = Pattern(Body(true, .05f, 0f, .085f), false, narrowEvidence);
+            Assert.That(Get<bool>(narrowEvidence, "upperBoundaryAdapted"), Is.True,
+                "This supported narrow-shoulder fixture requires measured widening/padding adaptation.");
+            Assert.That(Get<float>(narrowEvidence, "paddedNeckRadius"), Is.GreaterThanOrEqualTo(.056f));
+            Assert.That(Get<float>(narrowEvidence, "leftOuterX"), Is.GreaterThanOrEqualTo(-.08076f));
+            Assert.That(Get<float>(narrowEvidence, "rightOuterX"), Is.LessThanOrEqualTo(.08076f));
+            Assert.That(Get<float>(narrowEvidence, "leftAvailableSpan"), Is.GreaterThanOrEqualTo(.01999f));
+            Assert.That(Get<float>(narrowEvidence, "rightAvailableSpan"), Is.GreaterThanOrEqualTo(.01999f));
+            AssertFaces(narrow); AssertApertureSeams(narrow, false);
+            var error = Assert.Throws<InvalidOperationException>(() => Pattern(Body(true, .10f, .095f), false));
+            Assert.That(error.Message, Does.Contain("cannot fit both bindings and neck clearance"));
+            Assert.That(error.Message, Does.Contain("Measured neck radius="));
         }
 
         [Test]
@@ -172,7 +207,7 @@ namespace Gamesim.Uma.Tests
             return pattern;
         }
 
-        private static object Body(bool loweredArms)
+        private static object Body(bool loweredArms, float neckRadius = .065f, float neckX = 0f, float shoulderHalf = .2f)
         {
             object surface = New("Surface");
             var vertices = new List<Vector3>(); var normals = new List<Vector3>();
@@ -194,14 +229,14 @@ namespace Gamesim.Uma.Tests
                     }
                 }
             };
-            ellipsoid(new Vector3(0f, 1.3f, 0f), new Vector3(.22f, .34f, .13f), false);
+            ellipsoid(new Vector3(0f, 1.3f, 0f), new Vector3(shoulderHalf * 1.1f, .34f, .13f), false);
             // A true local neck section above the torso, without depending on an optional UpperChest mapping.
             const int segments = 32;
             int neckStart = vertices.Count;
             for (int j = 0; j < 2; j++) for (int i = 0; i <= segments; i++)
             {
                 float angle = i * Mathf.PI * 2f / segments;
-                vertices.Add(new Vector3(Mathf.Cos(angle) * .065f, j == 0 ? 1.55f : 1.78f, Mathf.Sin(angle) * .065f));
+                vertices.Add(new Vector3(neckX + Mathf.Cos(angle) * neckRadius, j == 0 ? 1.55f : 1.78f, Mathf.Sin(angle) * neckRadius));
                 normals.Add(new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)));
                 if (j == 1 && i > 0)
                 {
@@ -210,11 +245,11 @@ namespace Gamesim.Uma.Tests
                 }
             }
             var landmarks = Get<Dictionary<HumanBodyBones, Vector3>>(surface, "landmarks");
-            landmarks.Add(HumanBodyBones.Hips, new Vector3(0f, 1f, 0f)); landmarks.Add(HumanBodyBones.Neck, new Vector3(0f, 1.65f, 0f));
+            landmarks.Add(HumanBodyBones.Hips, new Vector3(0f, 1f, 0f)); landmarks.Add(HumanBodyBones.Neck, new Vector3(neckX, 1.65f, 0f));
             foreach (bool left in new[] { false, true })
             {
                 float sign = left ? 1f : -1f;
-                Vector3 shoulder = new Vector3(sign * .2f, 1.5f, 0f), elbow = new Vector3(sign * .41f, loweredArms ? 1.35f : 1.5f, 0f), hand = new Vector3(sign * .64f, loweredArms ? 1.16f : 1.5f, 0f);
+                Vector3 shoulder = new Vector3(sign * shoulderHalf, 1.5f, 0f), elbow = new Vector3(sign * (shoulderHalf + .21f), loweredArms ? 1.35f : 1.5f, 0f), hand = new Vector3(sign * (shoulderHalf + .44f), loweredArms ? 1.16f : 1.5f, 0f);
                 landmarks.Add(left ? HumanBodyBones.LeftUpperArm : HumanBodyBones.RightUpperArm, shoulder);
                 landmarks.Add(left ? HumanBodyBones.LeftLowerArm : HumanBodyBones.RightLowerArm, elbow);
                 landmarks.Add(left ? HumanBodyBones.LeftHand : HumanBodyBones.RightHand, hand);

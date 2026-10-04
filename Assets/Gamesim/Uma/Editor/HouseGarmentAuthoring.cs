@@ -24,6 +24,8 @@ namespace Gamesim.Uma.Editor
         public const string CatalogPath = "Assets/Gamesim/Uma/Resources/Gamesim/CharacterCatalog/HouseGarments.asset";
         public const string IndexPath = "Assets/UMAProjectData/Resources/AssetIndexerProject.asset";
         private const double TimeoutSeconds = 1200;
+        // URP's nonmetal dielectric reflectance. These channels are linear material data, not dye.
+        private const float FabricSpecularReflectance = .04f;
         private static IEnumerator routine;
         private static double started;
         private static Report report;
@@ -51,6 +53,9 @@ namespace Gamesim.Uma.Editor
             public Vector3 referencePatternBoundsCenter, referencePatternBoundsSize, meshBoundsCenter, meshBoundsSize;
             public float measuredNeckRadius, desiredNeckRadius, paddedNeckRadius, neckSectionCenterX, shoulderHalfWidth, torsoHeight;
             public float desiredLeftOuterX, desiredRightOuterX, leftOuterX, rightOuterX, leftStrapWidth, rightStrapWidth, leftAvailableSpan, rightAvailableSpan, minimumUsableStrapWidth;
+            public string specularTexturePath, specularTextureGuid;
+            public Color specularSample;
+            public bool specularTextureLinear;
             public List<string> adjustmentBones = new List<string>();
             public List<string> maskTargets = new List<string>();
             public List<int> hiddenTriangles = new List<int>();
@@ -281,6 +286,7 @@ namespace Gamesim.Uma.Editor
                         slot = style.stem + "_" + fit + "_Slot", recipe = style.stem + "_" + fit + "_Recipe",
                         rootBone = surface.renderer.rootBone.name, geometryStatus = "sampling" };
                     style.evidence = evidence;
+                    ValidateSpecularTexture(style.overlay, evidence);
                     // Keep a failed fit's measured geometry, rather than only the previously completed fits.
                     report.fits.Add(evidence);
                     Progress(style.stem + " " + fit + " panels");
@@ -414,6 +420,7 @@ namespace Gamesim.Uma.Editor
                     maximumInfluences = garment.asset.meshData.ManagedBonesPerVertex.Max(value => (int)value),
                     maskTargets = recipe.MeshHideAssets.Select(mask => mask.AssetSlotName).ToList(),
                     hiddenTriangles = recipe.MeshHideAssets.Select(mask => mask.triangleFlags.Sum(flags => flags.Cast<bool>().Count(hidden => hidden))).ToList() };
+                ValidateSpecularTexture(overlay.asset, fit);
                 report.fits.Add(fit);
                 UnityEngine.Object.DestroyImmediate(avatar.gameObject);
                 yield return null;
@@ -674,6 +681,7 @@ namespace Gamesim.Uma.Editor
             Texture2D albedo = Texture(style.stem + "_Albedo", style.sleeves, false, false);
             Texture2D normal = Texture(style.stem + "_Normal", style.sleeves, true, false);
             Texture2D mask = Texture(style.stem + "_Mask", style.sleeves, false, true);
+            Texture2D specular = Texture(style.stem + "_Specular", style.sleeves, false, false, specular: true);
             OverlayDataAsset overlay = Asset<OverlayDataAsset>(ContentRoot + "/" + style.stem + "_Overlay.asset");
             overlay._oldOverlayName = string.Empty;
             overlay.material = material;
@@ -685,7 +693,9 @@ namespace Gamesim.Uma.Editor
                 bool normalChannel = material.channels[i].channelType == UMAMaterial.ChannelType.NormalMap
                     || material.channels[i].channelType == UMAMaterial.ChannelType.DetailNormalMap
                     || property.Contains("normal") || property.Contains("bump");
-                overlay.textureList[i] = normalChannel ? normal : property.Contains("metal") || property.Contains("occlusion")
+                // UMA3's specular workflow consumes RGB as F0. Albedo white removes diffuse dye,
+                // and the packed metal/occlusion mask is not a specular reflectance texture.
+                overlay.textureList[i] = normalChannel ? normal : property.Contains("specular") ? specular : property.Contains("metal") || property.Contains("occlusion")
                     || property.Contains("mask") || property.Contains("gloss") ? mask : albedo;
                 overlay.textureNames[i] = overlay.textureList[i].name;
             }
@@ -694,15 +704,18 @@ namespace Gamesim.Uma.Editor
             Register(overlay);
             return overlay;
         }
-        private static Texture2D Texture(string name, bool knit, bool normal, bool mask)
+        private static Texture2D Texture(string name, bool knit, bool normal, bool mask, bool specular = false)
         {
             const int size = 1024;
-            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false, normal || mask);
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false, normal || mask || specular);
             var colors = new Color32[size * size];
             for (int y = 0; y < size; y++) for (int x = 0; x < size; x++)
             {
                 float weave = Mathf.Sin(x * (knit ? .65f : 1.1f)) * Mathf.Sin(y * (knit ? .37f : 1.1f));
-                if (mask) colors[x + y * size] = new Color(0f, 1f, 0f, knit ? .12f : .28f);
+                // The installed graph multiplies SpecularMap alpha by _Smoothness. Preserve the
+                // previous alpha of one so this correction does not also change fabric roughness.
+                if (specular) colors[x + y * size] = new Color(FabricSpecularReflectance, FabricSpecularReflectance, FabricSpecularReflectance, 1f);
+                else if (mask) colors[x + y * size] = new Color(0f, 1f, 0f, knit ? .12f : .28f);
                 else if (normal) colors[x + y * size] = new Color(.5f + weave * .045f, .5f + Mathf.Cos(y * .37f) * .035f, 1f, 1f);
                 else
                 {
@@ -719,13 +732,44 @@ namespace Gamesim.Uma.Editor
             AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
             var importer = (TextureImporter)AssetImporter.GetAtPath(path);
             importer.textureType = normal ? TextureImporterType.NormalMap : TextureImporterType.Default;
-            importer.sRGBTexture = !normal && !mask;
+            importer.sRGBTexture = !normal && !mask && !specular;
             importer.alphaSource = TextureImporterAlphaSource.FromInput;
             importer.maxTextureSize = size;
             importer.textureCompression = TextureImporterCompression.Uncompressed;
             importer.SaveAndReimport();
             Written(path);
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        }
+        private static void ValidateSpecularTexture(OverlayDataAsset overlay, FitReport evidence)
+        {
+            int channel = Array.FindIndex(overlay.material.channels, value => value.materialPropertyName == "_SpecularMap");
+            Require(channel >= 0 && channel < overlay.textureList.Length,
+                "The installed fabric material must expose its specular texture channel.");
+            Texture texture = overlay.textureList[channel];
+            string path = AssetDatabase.GetAssetPath(texture);
+            string expected = ContentRoot + "/" + overlay.name.Replace("_Overlay", "_Specular") + ".png";
+            Require(texture != null && path == expected, "Specular reflectance must use its dedicated project texture: " + path);
+            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            Require(importer != null && importer.textureType == TextureImporterType.Default && !importer.sRGBTexture
+                && importer.alphaSource == TextureImporterAlphaSource.FromInput
+                && importer.textureCompression == TextureImporterCompression.Uncompressed,
+                "Specular reflectance must import as linear material data: " + path);
+            var pixels = new Texture2D(2, 2, TextureFormat.RGBA32, false, true);
+            try
+            {
+                Require(pixels.LoadImage(File.ReadAllBytes(path)), "Cannot read saved specular texture: " + path);
+                Color32 expectedPixel = new Color(FabricSpecularReflectance, FabricSpecularReflectance, FabricSpecularReflectance, 1f);
+                Color32[] savedPixels = pixels.GetPixels32();
+                Require(savedPixels.Length > 0 && savedPixels.All(pixel => pixel.r == expectedPixel.r && pixel.g == expectedPixel.g
+                    && pixel.b == expectedPixel.b && pixel.a == expectedPixel.a),
+                    "Specular RGB must be neutral dielectric reflectance and alpha must preserve smoothness: " + path);
+                evidence.specularTexturePath = path;
+                evidence.specularTextureGuid = AssetDatabase.AssetPathToGUID(path);
+                evidence.specularSample = savedPixels[0];
+                evidence.specularTextureLinear = !importer.sRGBTexture;
+                Require(!string.IsNullOrEmpty(evidence.specularTextureGuid), "Saved specular texture has no stable GUID: " + path);
+            }
+            finally { UnityEngine.Object.DestroyImmediate(pixels); }
         }
         private static Sprite Thumbnail(DynamicCharacterAvatar avatar, string name)
         {

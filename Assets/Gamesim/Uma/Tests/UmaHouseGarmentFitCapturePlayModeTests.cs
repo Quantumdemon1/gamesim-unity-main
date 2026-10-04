@@ -109,12 +109,14 @@ namespace Gamesim.Uma.Tests
             public bool complete;
             public int width = Width, height = Height;
             public int frameBefore, frameAfter, rendererCount, vertexCount, triangleCount, sourceTriangleCount, triangleTests, unattributedTriangles;
+            public int unmaskedBodyTriangleCount, unmaskedBodyTriangleTests;
             public long sourceBytes;
             public Vector3 cameraPosition, subjectPosition;
             public Quaternion cameraRotation, subjectRotation;
             public float animationPhaseBefore, animationPhaseAfter, maximumBoneDrift;
             public List<ProbeAsset> sources = new List<ProbeAsset>();
             public List<ProbeSlot> slots = new List<ProbeSlot>();
+            public List<ProbeGeometry> posedSourceGeometry = new List<ProbeGeometry>();
             public List<ProbePixel> pixels = new List<ProbePixel>();
             public string error;
         }
@@ -126,6 +128,14 @@ namespace Gamesim.Uma.Tests
             public List<string> overlayAssets = new List<string>();
         }
         [Serializable] private sealed class ProbeOwner { public int slot, sourceSubmesh, sourceTriangle; }
+        [Serializable] private sealed class ProbeGeometry
+        {
+            public string kind, limits = "Same baked combined vertices, selected source LOD0 indices; masked body triangles are reconstructed candidates, not additional drawn or rendered faces";
+            public int slot, sourceSubmesh;
+            public Vector3[] cameraLocalVertices;
+            public int[] sourceIndices;
+            public bool[] presentInDrawnSubmesh;
+        }
         [Serializable] private sealed class ProbePixel
         {
             public string region;
@@ -133,6 +143,8 @@ namespace Gamesim.Uma.Tests
             public Color32 capturedRgb;
             public Vector3 rayOrigin, rayDirection;
             public List<ProbeHit> nearestHits = new List<ProbeHit>();
+            public int unmaskedBodyGeometricHitCount;
+            public List<ProbeHit> nearestUnmaskedBodyHits = new List<ProbeHit>();
         }
         [Serializable] private sealed class ProbeHit
         {
@@ -521,6 +533,7 @@ namespace Gamesim.Uma.Tests
                     ProbeSource(report, avatar.GetWardrobeItem(entry.slot));
 
                 var surfaces = new List<ProbeTriangle>();
+                var unmaskedBody = new List<ProbeTriangle>();
                 for (int rendererIndex = 0; rendererIndex < renderers.Length; rendererIndex++)
                 {
                     var renderer = renderers[rendererIndex];
@@ -543,6 +556,7 @@ namespace Gamesim.Uma.Tests
                             throw new InvalidOperationException("A posed diagnostic vertex is not finite.");
                     }
                     var materials = renderer.sharedMaterials;
+                    var drawnKeys = new HashSet<ProbeTriangleKey>();
                     int passes = Mathf.Max(baked.subMeshCount, materials.Length);
                     for (int materialIndex = 0; materialIndex < passes; materialIndex++)
                     {
@@ -558,6 +572,7 @@ namespace Gamesim.Uma.Tests
                             if (ia < 0 || ib < 0 || ic < 0 || ia >= vertices.Length || ib >= vertices.Length || ic >= vertices.Length)
                                 throw new InvalidOperationException("A drawn diagnostic triangle references a missing posed vertex.");
                             ownership.TryGetValue(new ProbeTriangleKey(rendererIndex, submesh, ia, ib, ic), out var owners);
+                            drawnKeys.Add(new ProbeTriangleKey(rendererIndex, submesh, ia, ib, ic));
                             if (owners == null) report.unattributedTriangles++;
                             var bounds = new Bounds(vertices[ia], Vector3.zero); bounds.Encapsulate(vertices[ib]); bounds.Encapsulate(vertices[ic]);
                             surfaces.Add(new ProbeTriangle { renderer = renderer, rendererIndex = rendererIndex, submesh = submesh,
@@ -565,8 +580,59 @@ namespace Gamesim.Uma.Tests
                                 triangle = t / 3, a = vertices[ia], b = vertices[ib], c = vertices[ic], uvA = uv[ia], uvB = uv[ib], uvC = uv[ic], bounds = bounds, owners = owners });
                         }
                     }
+                    // The installed combiner reserves each full source vertex range; masks
+                    // remove triangle copies only. Reuse this same baked pose to distinguish
+                    // exterior air from masked skin, without a second avatar or a render.
+                    foreach (var slot in activeSlots.Where(value => value.skinnedMeshRenderer == rendererIndex))
+                    {
+                        bool torso = slot.slotName.Contains("UMA30_Body_UDIM1002"), arm = slot.slotName.Contains("UMA30_Body_UDIM1005");
+                        bool garment = slot.slotName == "Gamesim_KnitCrew_A_Slot";
+                        if (!torso && !arm && !garment) continue;
+                        int slotIndex = report.slots.FindIndex(value => value.rendererIndex == rendererIndex && value.slot == slot.slotName
+                            && value.vertexOffset == slot.vertexOffset && value.destinationSubmesh == slot.submeshIndex);
+                        Assert.That(slotIndex, Is.GreaterThanOrEqualTo(0));
+                        if (torso || arm) Assert.That(report.slots[slotIndex].sourceAsset,
+                            Is.EqualTo("Assets/UMA/UMA3/Races/Slots/UMA30_Body/" + slot.slotName + ".asset"),
+                            "The anatomy name must remain bound to its installed, hashed source slot.");
+                        // A modifier can replace topology before combine. Do not silently
+                        // claim raw asset ownership for a changed source in this diagnostic.
+                        Assert.That(slot.meshModifiers == null || slot.meshModifiers.All(modifier => modifier == null), Is.True,
+                            "Raw body reconstruction cannot guess topology changed by a mesh modifier: " + slot.slotName);
+                        var meshData = slot.asset.meshData;
+                        Assert.That(meshData.vertices.Length, Is.EqualTo(meshData.vertexCount));
+                        if (avatar.umaData.VertexOverrides.TryGetValue(slot.slotName, out var overrides))
+                            Assert.That(overrides.Length, Is.EqualTo(meshData.vertexCount), "A vertex override cannot change this raw source range.");
+                        Assert.That(slot.vertexOffset >= 0 && slot.vertexOffset + meshData.vertexCount <= vertices.Length, Is.True);
+                        int sourceSubmesh = slot.asset.subMeshIndex;
+                        int[] sourceIndices = meshData.submeshes[sourceSubmesh].GetTriangles(0).ToArray();
+                        Assert.That(sourceIndices.Length % 3, Is.Zero);
+                        Assert.That(report.posedSourceGeometry.Count, Is.LessThan(8));
+                        var geometry = new ProbeGeometry { kind = torso ? "original torso skin" : arm ? "original arm skin" : "authored cloth",
+                            slot = slotIndex, sourceSubmesh = sourceSubmesh, sourceIndices = sourceIndices,
+                            cameraLocalVertices = vertices.Skip(slot.vertexOffset).Take(meshData.vertexCount).ToArray(),
+                            presentInDrawnSubmesh = new bool[sourceIndices.Length / 3] };
+                        report.posedSourceGeometry.Add(geometry);
+                        for (int t = 0; t < sourceIndices.Length; t += 3)
+                        {
+                            int ia = sourceIndices[t], ib = sourceIndices[t + 1], ic = sourceIndices[t + 2];
+                            Assert.That(ia >= 0 && ib >= 0 && ic >= 0 && ia < meshData.vertexCount && ib < meshData.vertexCount && ic < meshData.vertexCount, Is.True);
+                            geometry.presentInDrawnSubmesh[t / 3] = drawnKeys.Contains(new ProbeTriangleKey(rendererIndex, slot.submeshIndex,
+                                ia + slot.vertexOffset, ib + slot.vertexOffset, ic + slot.vertexOffset));
+                            if (garment) continue;
+                            Assert.That(++report.unmaskedBodyTriangleCount, Is.LessThanOrEqualTo(50000));
+                            Vector3 a = geometry.cameraLocalVertices[ia], b = geometry.cameraLocalVertices[ib], c = geometry.cameraLocalVertices[ic];
+                            var bounds = new Bounds(a, Vector3.zero); bounds.Encapsulate(b); bounds.Encapsulate(c);
+                            unmaskedBody.Add(new ProbeTriangle { renderer = renderer, rendererIndex = rendererIndex, submesh = slot.submeshIndex,
+                                triangle = t / 3, a = a, b = b, c = c, bounds = bounds,
+                                owners = new List<ProbeOwner> { new ProbeOwner { slot = slotIndex, sourceSubmesh = sourceSubmesh, sourceTriangle = t / 3 } } });
+                        }
+                    }
                 }
                 Assert.That(surfaces, Is.Not.Empty);
+                Assert.That(report.posedSourceGeometry.Any(value => value.kind == "original torso skin")
+                    && report.posedSourceGeometry.Any(value => value.kind == "original arm skin")
+                    && report.posedSourceGeometry.Count(value => value.kind == "authored cloth") == 1, Is.True,
+                    "Do not infer replacement anatomy if the exact native body or garment source slots are absent.");
                 // These fixed, labelled regions come from retained 6c7e native PNGs. They are
                 // observations, not pass/fail silhouettes; a changed composition stays explicit.
                 var regions = state == "Idle" ? new[] { ("outer-breast", new RectInt(311, 284, 17, 20)), ("sternum", new RectInt(378, 294, 16, 14)) }
@@ -608,6 +674,22 @@ namespace Gamesim.Uma.Tests
                                     alphaClip = material != null && material.HasProperty("_AlphaClip") ? material.GetFloat("_AlphaClip") : -1f });
                             }
                             pixel.nearestHits = hits.OrderBy(hit => hit.distance).Take(16).ToList();
+                            var bodyHits = new List<ProbeHit>();
+                            foreach (var triangle in unmaskedBody)
+                            {
+                                if (++report.unmaskedBodyTriangleTests > 8000000)
+                                    throw new InvalidOperationException("Unmasked body diagnosis exceeded its 8 million bounded triangle/bounds tests.");
+                                if (!triangle.bounds.IntersectRay(ray, out float boundDistance) || boundDistance > camera.farClipPlane
+                                    || !ProbeIntersection(ray, triangle, out float distance, out var barycentric)) continue;
+                                pixel.unmaskedBodyGeometricHitCount++;
+                                var point = ray.GetPoint(distance);
+                                bodyHits.Add(new ProbeHit { renderer = triangle.renderer.name, rendererIndex = triangle.rendererIndex, submesh = triangle.submesh,
+                                    triangle = triangle.triangle, owners = triangle.owners, distance = distance, barycentric = barycentric,
+                                    cameraLocalPoint = point, worldPoint = camera.transform.TransformPoint(point), a = triangle.a, b = triangle.b, c = triangle.c,
+                                    normalDotRay = Vector3.Dot(Vector3.Cross(triangle.b - triangle.a, triangle.c - triangle.a).normalized, ray.direction),
+                                    material = "unmasked source geometry only; not rendered" });
+                            }
+                            pixel.nearestUnmaskedBodyHits = bodyHits.OrderBy(hit => hit.distance).Take(16).ToList();
                             report.pixels.Add(pixel);
                         }
                 report.frameAfter = Time.frameCount;

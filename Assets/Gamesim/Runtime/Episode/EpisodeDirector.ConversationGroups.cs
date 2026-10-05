@@ -21,8 +21,9 @@ namespace Gamesim.Episode
     /// <para>What has to be answered stays above the dial, where it always was: what the player came
     /// for, a loyalty declaration on offer, and the plea to whoever is deciding.</para>
     ///
-    /// <para>Presentation only. No command, roll, cost or saved field changes here; the rows commit
-    /// exactly what they committed before.</para>
+    /// <para>The V5 grouping itself is presentation only. Later fresh-season E3 adapters add
+    /// deliberate targets to the asking and sharing rows; their guarded choice screens and rule
+    /// boundaries live in the corresponding director partials and simulation readers.</para>
     /// </summary>
     public sealed partial class EpisodeDirector
     {
@@ -139,8 +140,7 @@ namespace Gamesim.Episode
             // LEARN: the questions, unless they were asked first, and what you share.
             hud.ConversationGroup(LearnGroupTitle, "eye", window ? LearnWindowLine : LearnLine);
             if (!cameToAsk) AskRows(state, npc, window);
-            hud.Tag(hud.Action("Share something I know", () => Commit(state, EpisodeCommandKind.ShareInformation, npc.id)),
-                Category(EpisodeCommandKind.ShareInformation));
+            InformationShareRow(state, npc);
 
             // SCHEME: each verb about a third houseguest is one row that opens its people. Venting and
             // lying are said to the person in front of you; a rumour is told to the house, so it waits

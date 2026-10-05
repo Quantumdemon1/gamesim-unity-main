@@ -99,6 +99,7 @@ a separately verified matching desktop build and graphical UI/accessibility revi
 No scene, art, vendor package, ordinary save, baseline build, live source or remote
 was changed by this increment. No MCP call was made into the running test copy.
 
-E3's explicit sharing picker still remains; E2, E4, E5 and all four owner-required
+E3's subsequent sharing picker is recorded in `WAVE_C_SHARING_IMPLEMENTATION.md`,
+implemented but not native accepted. E2, E4, E5 and all four owner-required
 Wave D additions remain. Asset completion,1920x1080 at60 FPS on the GTX1060, and
 human E1-E5 acceptance remain separate gates, not implications of these tests.

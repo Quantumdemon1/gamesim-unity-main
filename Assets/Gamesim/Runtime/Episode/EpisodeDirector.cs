@@ -674,6 +674,7 @@ namespace Gamesim.Episode
             ForgetNominationView();
             ForgetFreeTimeView();
             ForgetActionPurchase();
+            ForgetInformationShare();
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             nomineeIntelView = null;
             if (conversationPick == NomineeIntelPickerCaption) ClosePicker();
@@ -801,6 +802,7 @@ namespace Gamesim.Episode
             {
                 diaryDraft = null; // A draft never survives a different committed revision.
                 ForgetActionPurchase();
+                ForgetInformationShare();
                 nomineeIntelView = null;
                 if (focusedNpc != null)
                 {
@@ -1233,6 +1235,7 @@ namespace Gamesim.Episode
             // Any replacement retires the old question controls, including screens that return
             // before drawing a conversation. A rendered question creates a new view authority.
             nomineeIntelView = null;
+            informationShareControls = null; informationShareOpener = null;
             // Which screen is up decides what the music does, and a render is exactly the moment
             // that changed. SetMusic ignores a state it is already in, so this costs nothing.
             ApplyMusic();
@@ -1362,6 +1365,7 @@ namespace Gamesim.Episode
                 // The two-shot keeps its usual place unless the conversation's own screen says where
                 // it has left room for the pair (below, once the stage is laid out).
                 if (cameraRig != null) cameraRig.ConversationWindowOffset = 0f;
+                if (RenderInformationShare(state)) return;
                 // Outside free time the house cannot talk, so there is nothing to choose: a card
                 // sized to the one thing it says (Refinement Kit 6), not the drawer cut short. Mood
                 // and your trust are two pills - the drawer's "Neutral -9" was a band and a number

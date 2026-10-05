@@ -1132,9 +1132,18 @@ namespace Gamesim.Simulation
                     Require(!CommitmentRulesOn(s) || c.secondTargetId != target.id, "You cannot promise somebody that you will vote them out.");
                     MakePromise(s, target.id, PromiseKind.Vote, c.secondTargetId); break;
                 case EpisodeCommandKind.ShareInformation:
-                    var known = s.memories.LastOrDefault(m => m.ownerId == s.playerId && m.subjectId != target.id);
+                    MemoryState known;
+                    bool sharingRules = EconomyRulesOn(s);
+                    bool picked = sharingRules && !string.IsNullOrEmpty(c.secondTargetId);
+                    if (picked)
+                        Require(InformationShareChoice.TryResolve(s, target.id, c.secondTargetId, out known),
+                            "Choose a memory you can still share with this housemate.");
+                    // The generic compatibility entry point must not bypass the new reader's
+                    // knowledge boundary. Old seasons keep their original latest-memory policy.
+                    else known = (sharingRules ? KnownBallots.PlayerMemories(s) : s.memories.Where(m => m.ownerId == s.playerId))
+                        .LastOrDefault(m => m.subjectId != target.id);
                     Require(known != null, "You have no personal information to share yet.");
-                    Remember(s, target.id, known.subjectId, "Heard from you: " + known.text, true);
+                    Remember(s, target.id, known.subjectId, sharingRules ? InformationShareChoice.Receipt(known) : "Heard from you: " + known.text, true);
                     Change(s, s.playerId, target.id, 3); Log(s, "information", "You shared something you personally knew with " + target.name + ".", s.playerId, target.id); break;
                 case EpisodeCommandKind.AskForIntel: AskForIntel(s, target, c.secondTargetId); break;
                 case EpisodeCommandKind.Eavesdrop: Eavesdrop(s, c); break;

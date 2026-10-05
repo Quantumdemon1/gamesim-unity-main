@@ -1,5 +1,24 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC — isolated E3 targeting implemented, not native accepted
+
+The isolated Wave C branch now implements all three E3 selectors: the goodwill target of an
+extra action (`b2481608`), a nominee opinion (`060859af`), and deliberate memory sharing with
+review/confirmation. See `WAVE_C_TARGETING_IMPLEMENTATION.md`,
+`WAVE_C_NOMINEE_INTEL_IMPLEMENTATION.md` and `WAVE_C_SHARING_IMPLEMENTATION.md` for changes,
+compatibility decisions, retained failures and exact evidence. No live promotion or merge.
+
+Final sharing subset1721/1721 and offline compilation8/8 pass. Ten new sharing Play tests are
+authored/compiled, not executed; E1 and all new E3 runtime/migration gates remain open. Current
+branch floors2713/932/77 become2724 Edit when combined with eda's11 QA cases. The separate
+integration run `g22n3` at eda remains frozen: Edit2540/2540 closed, Play in progress. It does
+not certify these gameplay changes. Source-fixture parity, native suites, shipping build,
+standalone profiles/visual review and human playtests remain distinct completion gates.
+
+The owner requires all four Wave D systems and GTX1060 desktop acceptance at1920x1080/60 FPS.
+E2/E4/E5, those four larger additions, remaining actual art assets, integration, desktop and
+human acceptance are still in scope. No optional account/cloud/AI integration is authorized.
+
 ## 2026-10-05 UTC — isolated Wave C E1 development, not promotion
 
 `D:/GamesimWaveC`, branch `codex/wave-c-economy`, starts from `a9f11ad0` while that exact

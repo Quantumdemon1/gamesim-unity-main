@@ -16,7 +16,8 @@ RNG policy, command types, durable transaction pipeline, schema23 or saved field
 
 This is the burn-bridge portion of E3, not completion of E3 or Wave C. The subsequent targeted
 nominee question increment is recorded in `WAVE_C_NOMINEE_INTEL_IMPLEMENTATION.md` (not native
-accepted). A picker for shared information remains, as do E2, E4, E5 and all required Wave D.
+accepted). The sharing picker follows in `WAVE_C_SHARING_IMPLEMENTATION.md`, also not native
+accepted. E2, E4, E5 and all required Wave D remain.
 
 ## Material changes
 

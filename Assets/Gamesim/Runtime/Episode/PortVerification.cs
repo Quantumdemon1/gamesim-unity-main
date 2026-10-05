@@ -27,6 +27,8 @@ namespace Gamesim.Episode
         private readonly List<float> frames = new List<float>(180000);
         private readonly List<long> allocations = new List<long>(180000);
         private readonly List<VerificationFrameEvidence> capturedFrames = new List<VerificationFrameEvidence>();
+        private readonly HashSet<string> profileVisitedRooms = new HashSet<string>(StringComparer.Ordinal);
+        private int profileRoomCount, profileRoomRequests, profileJournalRequests, profileSettingsRequests, profileStationRequests, profileSaveRequests;
         private ProfilerRecorder gc;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -78,6 +80,7 @@ namespace Gamesim.Episode
             if (lookSheet) { yield return RunLookSheet(); FinishLookSheet(); yield break; }
             var player = FindAnyObjectByType<HousePlayerController>();
             var rooms = FindObjectsByType<HouseRoomMarker>().OrderBy(room => room.RoomName, StringComparer.Ordinal).ToArray();
+            profileRoomCount = rooms.Length;
             if (player == null || rooms.Length < 5) errors.Add("Expected a navigable player and five room markers.");
             if (houseSize > 0 && director.Snapshot.contestants.Count != houseSize)
             {
@@ -158,19 +161,30 @@ namespace Gamesim.Episode
                 if (now >= nextAction)
                 {
                     director.ClosePanels();
-                    int step = action++ % 8;
-                    if (step < rooms.Length && player != null)
+                    var step = VerificationProfilePlan.Step(action++, rooms.Length);
+                    switch (step.Action)
                     {
-                        if (!player.TryMoveTo(rooms[step].transform.position)) errors.Add("Room route was not reachable: " + rooms[step].RoomName);
+                        case VerificationProfileAction.Room:
+                            profileRoomRequests++;
+                            var room = rooms[step.RoomIndex];
+                            profileVisitedRooms.Add(room.RoomName);
+                            if (player == null || !player.TryMoveTo(room.transform.position))
+                                errors.Add("Room route was not reachable: " + room.RoomName);
+                            break;
+                        case VerificationProfileAction.Journal:
+                            profileJournalRequests++; director.OpenJournal(); break;
+                        case VerificationProfileAction.Settings:
+                            profileSettingsRequests++; director.OpenSettings(); break;
+                        case VerificationProfileAction.Station:
+                            profileStationRequests++; director.GoToStation(); break;
                     }
-                    else if (step == 5) director.OpenJournal();
-                    else if (step == 6) director.OpenSettings();
-                    else director.GoToStation();
                     nextAction = now + 10;
                 }
-                if (now >= nextSave) { director.SaveNow(); nextSave = now + 60; }
+                if (now >= nextSave) { profileSaveRequests++; director.SaveNow(); nextSave = now + 60; }
                 yield return null;
             }
+            if (seconds >= (profileRoomCount + 3) * 10d && !ProfileWorkloadCycleCompleted)
+                errors.Add("The timed profile did not request every room, notebook, settings and station action in its scheduled cycle.");
             gc.Dispose();
             director.ClosePanels();
             for (int i = 0; i < 5; i++) yield return null;
@@ -213,7 +227,12 @@ namespace Gamesim.Episode
                 blocsStatus = verifyBlocs ? this.blocReport == null ? "Not run" : this.blocReport.status : "Not requested",
                 autonomyRequested = verifyAutonomy,
                 autonomyStatus = verifyAutonomy ? this.autonomyReport == null ? "Not run" : this.autonomyReport.status : "Not requested",
-                workload = "Standalone five-room navigation, notebook/settings rebuilds, and isolated local saves. Not a human playtest or full-season timing sample.",
+                workload = "Timed standalone room-navigation, notebook/settings and station requests, plus isolated local saves. Actual requests are counted; short smoke runs may not complete a cycle. Not a human playtest or full-season timing sample.",
+                profileRoomCount = profileRoomCount, profileRoomsRequested = profileVisitedRooms.OrderBy(name => name, StringComparer.Ordinal).ToArray(),
+                profileRoomRequests = profileRoomRequests, profileJournalRequests = profileJournalRequests,
+                profileSettingsRequests = profileSettingsRequests, profileStationRequests = profileStationRequests, profileSaveRequests = profileSaveRequests,
+                profileWorkloadCycleRequired = seconds >= (profileRoomCount + 3) * 10d,
+                profileWorkloadCycleCompleted = ProfileWorkloadCycleCompleted,
                 requestedSeconds = seconds, measuredSeconds = measured, frameCount = frames.Count,
                 frameMedianMs = Percentile(frames, .5), frameP95Ms = Percentile(frames, .95), frameP99Ms = Percentile(frames, .99),
                 gcCounterAvailable = allocations.Count > 0, gcMedianBytes = Percentile(allocations, .5), gcP95Bytes = Percentile(allocations, .95),
@@ -231,6 +250,8 @@ namespace Gamesim.Episode
         }
 
         private static double Percentile(List<float> values, double p) => values.Count == 0 ? 0 : values[Math.Min(values.Count - 1, (int)Math.Ceiling(values.Count * p) - 1)];
+        private bool ProfileWorkloadCycleCompleted => profileVisitedRooms.Count == profileRoomCount
+            && profileJournalRequests > 0 && profileSettingsRequests > 0 && profileStationRequests > 0;
         private static double Percentile(List<long> values, double p) => values.Count == 0 ? 0 : values[Math.Min(values.Count - 1, (int)Math.Ceiling(values.Count * p) - 1)];
         private void OnDestroy() { Application.logMessageReceived -= CollectError; gc.Dispose(); }
 
@@ -242,6 +263,9 @@ namespace Gamesim.Episode
             public double requestedSeconds, measuredSeconds, frameMedianMs, frameP95Ms, frameP99Ms, gcMedianBytes, gcP95Bytes;
             public int frameCount, systemMemoryMB, graphicsMemoryMB, houseSize, houseSizeRequested;
             public string houseSizeNote;
+            public int profileRoomCount, profileRoomRequests, profileJournalRequests, profileSettingsRequests, profileStationRequests, profileSaveRequests;
+            public string[] profileRoomsRequested;
+            public bool profileWorkloadCycleRequired, profileWorkloadCycleCompleted;
             public bool graphical, batchMode, developmentBuild, gcCounterAvailable;
             public List<VerificationFrameEvidence> capturedFrames;
             public string[] errors;

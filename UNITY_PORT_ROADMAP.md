@@ -6,6 +6,12 @@ all-green. Read the dated resumption section in `UNITY_PORT_IMPLEMENTATION.md` a
 XML/manifests. Remaining work includes integration regression fixes, a matching shipping build,
 runtime/performance verification, Wave C/D gameplay, asset completion and human acceptance.
 
+Latest closed full candidate: `g22n1` failed with Edit 2515/2515 and Play 900/902
+(two competition-capture failures). Its capture-fixture/standalone-QA follow-up passed 14 focused
+Edit cases and three focused Play cases in each configuration, with no input drift. Current floors
+are Edit 2529 / Play 903 / UMA 77; complete same-pin suites and a matching desktop build remain open.
+See the implementation record's October 5 UTC section. The live project is not yet promoted.
+
 Source: the agreed Unity plan in the GameSim Dev conversation, following the choice to build the first slice around a 3D house. The existing Unity 6000.6.0f1 project and its pinned packages are retained.
 
 | Package | Deliverable | Acceptance gate | Status |

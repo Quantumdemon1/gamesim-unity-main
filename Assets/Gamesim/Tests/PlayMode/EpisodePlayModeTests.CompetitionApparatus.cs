@@ -130,6 +130,39 @@ namespace Gamesim.Tests.PlayMode
             AssertDestroyedCompetitionScreenDoesNotInterruptDirectorCleanup();
         }
 
+        [UnityTest]
+        public IEnumerator Apparatus_InHouseFullFieldResumeWaitsForNativeArrivalAndLateFitBeforeCapture()
+        {
+            const int houseSize=12;
+            yield return EnterInstrumentAttempt("Mental",houseSize:houseSize);
+            var before=director.Snapshot;
+            yield return WaitForFittedCompetitionField(houseSize,"Mental before pause",requireFreshArrivals:true);
+            var screen=SceneComponents<CompetitionGameScreen>().Single();
+            yield return SetWordAttemptPaused(true);
+            var meetings=NpcRead<HouseMeetingCoordinator>("npcMeetings");
+            float deadline=Time.realtimeSinceStartup+5f;
+            while(meetings.CompetitionArrivals!=0 && Time.realtimeSinceStartup<deadline)yield return null;
+            Assert.That(screen.Paused,Is.True);
+            Assert.That(meetings.CompetitionArrivals,Is.Zero,"The real pause must revoke fresh native arrival proof. "+CompetitionFieldDiagnostic());
+            foreach(var instrument in SceneComponents<CompetitionApparatus>())
+                Assert.That(instrument.gameObject.activeInHierarchy,Is.True,"An already proven stationary field remains visible while paused: "+instrument.ActorId);
+            double elapsed=ChallengeRun().Elapsed;
+            yield return null;
+            Assert.That(ChallengeRun().Elapsed,Is.EqualTo(elapsed),"A paused attempt does not advance while its leased field remains visible.");
+            // Deliberately resume through the real pointer control, rather than relying on an
+            // incidental slow render to create the arrival/late-fit handoff exercised below.
+            yield return ClickInstrumentControl(screen.GetComponentsInChildren<Button>().Single(button=>button.name=="Pause competition"));
+            Assert.That(screen.Paused,Is.False,"The actual resume control restarts native motion proof.");
+            yield return WaitForFittedCompetitionField(houseSize,"Mental after explicit resume",requireFreshArrivals:true);
+            Assert.That(screen.Paused,Is.False);
+            Assert.That(meetings.CompetitionArrivals,Is.EqualTo(houseSize-1),"Every owned NPC independently reacquires native arrival proof after the real resume.");
+            AssertCapturedCompetitionField(houseSize,"Mental after explicit resume");
+            yield return CaptureCompetitionFullField("Mental",houseSize);
+            Assert.That(director.Snapshot.revision,Is.EqualTo(before.revision));
+            Assert.That(director.Snapshot.randomState,Is.EqualTo(before.randomState));
+            yield return CancelInstrumentAttempt(before);
+        }
+
         private void AssertDestroyedCompetitionScreenDoesNotInterruptDirectorCleanup()
         {
             var screen=SceneComponents<CompetitionGameScreen>().Single();
@@ -259,8 +292,13 @@ namespace Gamesim.Tests.PlayMode
         private string CompetitionFieldDiagnostic()
         {
             var meetings=NpcRead<HouseMeetingCoordinator>("npcMeetings");
-            return "Arena: "+NpcRead<string>("competitionArenaStatus")+" Audience: "+NpcRead<string>("competitionAudienceStatus")
+            var screen=SceneComponents<CompetitionGameScreen>().FirstOrDefault();
+            return "Frame: "+Time.frameCount+" paused="+(screen!=null && screen.Paused)
+                +" playerArrived="+(player!=null && player.ActivityHasArrived(NpcRead<object>("competitionPlayerOwner")))
+                +" Arena: "+NpcRead<string>("competitionArenaStatus")+" Audience: "+NpcRead<string>("competitionAudienceStatus")
                 +" Native stage: "+(meetings!=null?meetings.CompetitionArrivals+"/"+meetings.CompetitionStageCount+" ready="+meetings.IsReady:"missing")
+                +" Apparatus: "+string.Join("; ",SceneComponents<CompetitionApparatus>().Select(instrument=>instrument.ActorId
+                    +" activeSelf="+instrument.gameObject.activeSelf+" activeInHierarchy="+instrument.gameObject.activeInHierarchy))
                 +" Motions: "+string.Join("; ",SceneComponents<HouseNpcMotion>().Select(motion=>motion.BoundNpcId+" "+motion.State
                 +" lease="+(motion.LeaseId??"none")+" failure="+(motion.FailureReason??motion.LastRouteFailure??"none")
                 +" arrival="+(motion.ArrivalFailure??"proved")+" at="+motion.transform.position.ToString("F3")
@@ -281,7 +319,7 @@ namespace Gamesim.Tests.PlayMode
                 var screen=SceneComponents<CompetitionGameScreen>().Single();if(screen.Paused)yield return PressKey(Key.P);
                 if(category=="Endurance")yield return HoldTheActualGrip();
                 else if(category=="Luck")yield return RollTheActualDice();
-                yield return null;
+                yield return WaitForFittedCompetitionField(houseSize,category);
                 foreach(var pair in canvases)if(pair.Canvas!=null)pair.Canvas.enabled=false;
                 foreach(var pair in overlays)if(pair.Renderer!=null)pair.Renderer.enabled=true;
                 var floor=SceneComponents<BoxCollider>().Single(collider=>collider.name=="Competition yard floor");
@@ -311,6 +349,31 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
         }
 
+        private IEnumerator WaitForFittedCompetitionField(int houseSize,string category,bool requireFreshArrivals=false)
+        {
+            var screen=SceneComponents<CompetitionGameScreen>().Single();
+            var ready=typeof(Gamesim.Episode.EpisodeDirector).GetProperty("CompetitionPresentationReady",BindingFlags.Instance|BindingFlags.NonPublic);
+            Assert.That(ready,Is.Not.Null);
+            float deadline=Time.realtimeSinceStartup+5f;
+            while(screen.IsShowing && Time.realtimeSinceStartup<deadline)
+            {
+                bool arrived=(bool)ready.GetValue(director);
+                var owned=NpcRead<Dictionary<string,CompetitionApparatus>>("competitionInstruments");
+                // A resume resets native arrival proof. Motion.Update can prove the last
+                // arrival after this frame's director Bind cached fitReady=false. Only the
+                // subsequent native late fit gate may activate the owned apparatus: readiness
+                // or one yield alone is not proof that its clearance/geometry gate has run.
+                if(arrived && (!requireFreshArrivals || !screen.Paused) && owned.Count==houseSize
+                    && owned.Values.All(instrument=>instrument!=null && instrument.gameObject.activeInHierarchy))
+                    yield break;
+                // A slow read can pause again before arrivals recover. Use normal input;
+                // never manufacture arrival proof, invoke a fit gate, or force visibility.
+                if(screen.Paused && (!arrived || requireFreshArrivals))yield return PressKey(Key.P);
+                else yield return null;
+            }
+            Assert.Fail(category+": the current full field did not pass its native late fit gates within 5 seconds. "+CompetitionFieldDiagnostic());
+        }
+
         private void AssertCapturedCompetitionField(int houseSize,string category)
         {
             var eligible=EpisodeEngine.CompetitionPlayers(director.Snapshot).Select(actor=>actor.id).ToArray();
@@ -336,7 +399,7 @@ namespace Gamesim.Tests.PlayMode
             foreach(var instrument in instruments)
             {
                 Assert.That(owned[instrument.ActorId],Is.SameAs(instrument),diagnostic);
-                Assert.That(instrument.gameObject.activeInHierarchy,Is.True,diagnostic);
+                Assert.That(instrument.gameObject.activeInHierarchy,Is.True,"Inactive actor apparatus: "+instrument.ActorId+". "+diagnostic);
                 var root=instrument.ActorId==director.Snapshot.playerId?player.transform
                     :SceneComponents<HouseNpc>().Single(npc=>npc.Id==instrument.ActorId).transform;
                 Assert.That(owners.Contains(root),Is.True,diagnostic);

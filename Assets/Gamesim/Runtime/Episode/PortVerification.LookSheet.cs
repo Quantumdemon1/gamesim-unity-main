@@ -114,14 +114,23 @@ namespace Gamesim.Episode
         private void FinishLookSheet()
         {
             if (lookReport == null) return;
-            int written = lookReport.shots.Count(s => s.path != null && File.Exists(s.path) && new FileInfo(s.path).Length > 0);
-            lookReport.status = written == 12 && lookReport.shots.All(s => s.reached)
-                && lookReport.layouts.Count == 31 && lookReport.errors.Count == 0 ? "Passed" : "Failed";
-            lookReport.finishedUtc = DateTime.UtcNow.ToString("O");
+            int written = CompleteLookSheetReport();
             File.WriteAllText(Path.Combine(outputDirectory, "look-sheet.json"), JsonUtility.ToJson(lookReport, true));
             Debug.Log("Gamesim look sheet " + lookReport.status + ": " + written + " of 12 captures, "
                       + lookReport.shots.Count(s => s.reached) + " reached; " + Path.Combine(outputDirectory, "look-sheet.json"));
             Application.Quit(lookReport.status == "Passed" ? 0 : 3);
+        }
+
+        // Shared logging also captures failures before RunLookSheet creates its report. Keep
+        // completion separate from file I/O / Quit so the real aggregation contract is testable.
+        private int CompleteLookSheetReport()
+        {
+            lookReport.errors.AddRange(errors);
+            int written = lookReport.shots.Count(s => s.path != null && File.Exists(s.path) && new FileInfo(s.path).Length > 0);
+            lookReport.status = written == 12 && lookReport.shots.All(s => s.reached)
+                && lookReport.layouts.Count == 31 && lookReport.errors.Count == 0 ? "Passed" : "Failed";
+            lookReport.finishedUtc = DateTime.UtcNow.ToString("O");
+            return written;
         }
 
         // ---------------------------------------------------------------- the frame

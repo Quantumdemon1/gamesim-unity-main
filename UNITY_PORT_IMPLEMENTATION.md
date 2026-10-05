@@ -103,6 +103,59 @@ Evidence (each snapshot has its own input manifests):
   Windows PowerShell 5.1: default PowerShell 7 exposed an existing timestamp-parser incompatibility.
   No native execution or graphical acceptance is inferred from these script checks.
 
+### 2026-10-05 UTC — full-run failure retained; focused capture/QA repairs passed
+
+- Full NoUMA run `g22n1`, source `b1cfccddfe4813fd54dc1fcaaa2c5d149214e34f`,
+  closed Failed: Edit 2515/2515 passed; Play 900/902 passed, two failed, zero skipped.
+  Both failures were Mental competition captures for 12/16 contestants. Native arrivals were
+  proved, but the tests asserted active apparatus before the subsequent fitted-geometry update.
+  Earlier focused passes do not relabel this failed full run.
+- Closed controller evidence:
+  `D:/CodexGamesimEvidence/orchestration/full-suite-runs/g22n1-20261005T015648685Z-36cb5998/controller-terminal.json`,
+  SHA256 `d41d4c3dfac345ffda0b3388e5c107abf19fc24669a3b593c1c8904fb37e44d6`.
+  All retained owners stopped naturally; no timeout, cleanup errors, unowned descendants,
+  native input drift or integration-source drift. This failed run does not authorize a shipping build.
+- The preceding long-name run retained 18 persistence failures with 260-268-character paths.
+  Repeating the same source with a short isolated TEMP path removed all 18 failures. Separately,
+  the external full-suite controller now recognizes an exact retained PID/creation-time pair
+  before re-proving an exiting CIM row's command line. Fresh-identity checks remain strict.
+  Windows PowerShell 5.1 pure checks passed 79/79 full-controller and 37/37 shipping-controller cases.
+- The capture fixture now waits, with a five-second bound, for real native readiness and active
+  fitted apparatus. A new real-input pause/resume regression checks reacquired arrivals, the paused
+  clock, retained ownership and unchanged simulation revision/RNG. Production competition gates,
+  static-clearance checks and synchronous before/after-capture assertions are unchanged; no actor
+  is moved or instrument force-enabled by the new barrier. This is lifecycle coverage, not a claim
+  of deterministically reproducing every possible callback interleaving.
+- Standalone QA now schedules every room followed by notebook, settings and station requests.
+  Reports count those requests and reject missing cycle coverage in sufficiently long profiles;
+  request counts do not prove physical arrival, UI visibility or successful saves. Look-sheet
+  completion includes shared runtime errors, including errors logged before its report exists.
+  Fourteen new Edit Mode cases test those contracts. Synthetic report sentinels are not screenshots
+  or visual acceptance. Current native floors are Edit 2529, Play 903 and UMA 77.
+- Offline compilation passed all eight assemblies with zero errors. Focused native NoUMA `g22e2`
+  passed 14/14 Edit Mode cases (0.98 seconds), and `g22p2` passed 3/3 Play Mode cases (218.16 seconds).
+  UMA-enabled `g22pu2` passed the same 3/3 Play Mode cases (230.56 seconds). Each closed with exit 0,
+  zero failures/skips and empty input drift. Their exact XML, logs and before/after manifests are
+  in the respective D: acceptance project's `Logs` directory. These results bind the reviewed
+  dirty-source increment above base commit `b1cfccdd`, not a complete new full-suite result.
+- Before these reruns, 752 fixed-name images/diagnostics and nine proof files were preserved in
+  `D:/CodexGamesimEvidence/integration-20261004/captures-after-g22n1`.
+  Receipt SHA256 `575cecb45531f1f243a2e77014891edd814faec4c9e3bf7d0d5249972023b53b`.
+  Timestamps are mixed: preservation does not prove freshness, visual approval or passing captures.
+- The focused follow-up's 12 exact competition-field PNGs and 18 proof files are separately retained
+  at `D:/CodexGamesimEvidence/integration-20261004/captures-after-g22focused2`.
+  Receipt SHA256 `30342a3af107b3c2ad4bdd573d5ca5563e5accb43be65a96ab89b95274928002`.
+  All copied/source hashes match; six reviewed source contracts match all six native before/after
+  manifests. Timestamps fall within possible writer windows, but without before-run image witnesses
+  this archive does not independently establish image freshness or visual acceptance.
+- No simulation rule, save schema, ordinary save, scene, imported model, material or package changed
+  in this follow-up. The machine-local UMA define remains uncommitted. The separate live project
+  remains unpromoted; matching full suites, shipping build and desktop checks are still required.
+
+Pure/script checks, focused native results, complete native suites, separately built desktop
+verification/profiling and human playtests remain distinct gates. No new desktop or human acceptance
+is established by this follow-up.
+
 Still separate/open: complete native UMA/non-UMA suites, source fixture parity, clean shipping build,
 standalone season/save/reload/creator checks, shipping-renderer stability, full-house profiling,
 remaining Wave C/D gameplay and actual human acceptance. No optional accounts/cloud/AI or paid assets enabled.

@@ -20,7 +20,12 @@ namespace Gamesim.Simulation
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 23) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 24) return Fail(out error, "Unsupported episode schema.");
+            // Schema 24 reserves a canonical commitments store. No real season may activate it
+            // until every writer, settlement path and reader has moved to the same authority.
+            // A save must not opt in to a partially integrated ruleset, nor silently discard rows.
+            if (s.unifiedCommitmentRulesVersion != 0 || s.unifiedCommitments == null || s.unifiedCommitments.Count != 0)
+                return Fail(out error, "Unified commitments are not enabled in this build.");
             if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > CompetitionRules.Current)
                 return Fail(out error, "Unsupported competition rules version.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||

@@ -25,7 +25,7 @@ namespace Gamesim.Tests.EditMode
             var old = V12(); string original = old.ToString();
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(23));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(24));
             Assert.That((int)migrated["competitionRulesVersion"], Is.EqualTo(1));
             foreach (var person in (JArray)migrated["contestants"])
             {
@@ -68,13 +68,48 @@ namespace Gamesim.Tests.EditMode
         public void V12PreservesItsOwnPurchasedActionBounds(string field, int count, bool valid)
         {
             var old = V12(); old[field] = count; old["boughtActionPoints"] = 6;
-            if (!valid) { Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.UpgradeV12ToV13(old)); return; }
+            string original = old.ToString();
+            if (!valid)
+            {
+                Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.UpgradeV12ToV13(old));
+                Assert.That(old.ToString(), Is.EqualTo(original), "Even a rejected historical payload is not rewritten.");
+                return;
+            }
             var current = EpisodeSaveMigrations.UpgradeV12ToV13(old);
+            Assert.That((int)current["schemaVersion"], Is.EqualTo(13), "The frozen step still stops at thirteen.");
             Assert.That((int)current[field], Is.EqualTo(count));
             Assert.That((int)old[field], Is.EqualTo(count));
-            // Validated as the save it becomes: the live contract is schema 22's.
-            var loaded = EpisodeSaveMigrations.UpgradeV21ToV22(EpisodeSaveMigrations.UpgradeV20ToV21(EpisodeSaveMigrations.UpgradeV19ToV20(EpisodeSaveMigrations.UpgradeV18ToV19(EpisodeSaveMigrations.UpgradeV17ToV18(EpisodeSaveMigrations.UpgradeV16ToV17(
-                EpisodeSaveMigrations.UpgradeV15ToV16(EpisodeSaveMigrations.UpgradeV14ToV15(EpisodeSaveMigrations.UpgradeV13ToV14(current))))))))).ToObject<EpisodeState>(Serializer());
+            // Keep every historical step explicit, then finish the actual schema-23 migration.
+            var version22 = EpisodeSaveMigrations.UpgradeV21ToV22(EpisodeSaveMigrations.UpgradeV20ToV21(EpisodeSaveMigrations.UpgradeV19ToV20(EpisodeSaveMigrations.UpgradeV18ToV19(EpisodeSaveMigrations.UpgradeV17ToV18(EpisodeSaveMigrations.UpgradeV16ToV17(
+                EpisodeSaveMigrations.UpgradeV15ToV16(EpisodeSaveMigrations.UpgradeV14ToV15(EpisodeSaveMigrations.UpgradeV13ToV14(current)))))))));
+            Assert.That((int)version22["schemaVersion"], Is.EqualTo(22));
+            string previous = version22.ToString();
+            var completed = EpisodeSaveMigrations.UpgradeV22ToV23(version22);
+            Assert.That((int)completed["schemaVersion"], Is.EqualTo(23));
+            Assert.That((int)completed["economyRulesVersion"], Is.Zero);
+            Assert.That((int)completed["moveInExtrasSpent"], Is.Zero);
+            Assert.That((int)completed[field], Is.EqualTo(count), "The current economy never clips a valid historical counter.");
+            Assert.That((int)completed["boughtActionPoints"], Is.EqualTo(6));
+            var projection = PersistenceMigrationTests.StripSchema23((JObject)completed.DeepClone());
+            projection["schemaVersion"] = 22;
+            Assert.That(JToken.DeepEquals(projection, version22), Is.True, "Only the declared schema-23 defaults are added.");
+            var originalProjection = PersistenceMigrationTests.StripSchema13((JObject)completed.DeepClone());
+            originalProjection["schemaVersion"] = 12;
+            Assert.That(JToken.DeepEquals(originalProjection, old), Is.True);
+            Assert.That(version22.ToString(), Is.EqualTo(previous));
+            Assert.That(old.ToString(), Is.EqualTo(original));
+            string frozen23 = completed.ToString();
+            var current24 = EpisodeSaveMigrations.UpgradeV23ToV24(completed);
+            Assert.That((int)current24["schemaVersion"], Is.EqualTo(24));
+            Assert.That((int)current24["unifiedCommitmentRulesVersion"], Is.Zero);
+            Assert.That((JArray)current24["unifiedCommitments"], Is.Empty);
+            var projection23 = PersistenceMigrationTests.StripSchema24((JObject)current24.DeepClone());
+            projection23["schemaVersion"] = 23;
+            Assert.That(JToken.DeepEquals(projection23, completed), Is.True);
+            Assert.That(completed.ToString(), Is.EqualTo(frozen23));
+            var loaded = current24.ToObject<EpisodeState>(Serializer());
+            Assert.That(field == "socialActions" ? loaded.socialActions : loaded.outOfPhaseSocialActions, Is.EqualTo(count));
+            Assert.That(EpisodeEngine.EconomyRulesOn(loaded), Is.False, "Historical seasons keep the old action economy.");
             Assert.That(EpisodeValidation.TryValidate(loaded, out var error), Is.True, error);
         }
     }

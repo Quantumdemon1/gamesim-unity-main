@@ -212,8 +212,8 @@ namespace Gamesim.Episode
             if (card.kind == ReplyCards.Pitch)
             {
                 hud.Paragraph(HoHPitches.Assessment(state, card) ?? "Ask why they are recommending this. Asking makes no new promise.");
-                hud.Action(EpisodeHud.FeelOutPitchCaption, HoHPitches.Assessed(state, card) ? null
-                    : ReplyChoice(state, cardId, HoHPitches.FeelOutKey, replyView));
+                if (HoHPitches.Assessed(state, card)) hud.LockedAction(EpisodeHud.FeelOutPitchCaption);
+                else hud.Action(EpisodeHud.FeelOutPitchCaption, ReplyChoice(state, cardId, HoHPitches.FeelOutKey, replyView));
             }
             return true;
         }

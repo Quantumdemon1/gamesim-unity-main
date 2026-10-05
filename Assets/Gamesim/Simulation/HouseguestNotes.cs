@@ -47,7 +47,7 @@ namespace Gamesim.Simulation
             string first = FirstName(who.name);
             string Name(string other) => other == s.playerId ? "you" : s.Find(other)?.name ?? "somebody";
 
-            foreach (var promise in s.promises.Where(p => (p.fromId == id && p.toId == s.playerId) || (p.fromId == s.playerId && p.toId == id)))
+            foreach (var promise in CommitmentReferences.Promises(s).Where(p => (p.fromId == id && p.toId == s.playerId) || (p.fromId == s.playerId && p.toId == id)))
             {
                 bool theirs = promise.fromId == id;
                 // Their vote promise ended by their ballot is told once you know the ballot (decision 4).
@@ -59,7 +59,7 @@ namespace Gamesim.Simulation
                     brief = (theirs ? "Their word: " : "Your word: ") + standing,
                 });
             }
-            foreach (var deal in s.deals.Where(d => (d.proposerId == id && d.recipientId == s.playerId) || (d.proposerId == s.playerId && d.recipientId == id)))
+            foreach (var deal in CommitmentReferences.Deals(s).Where(d => (d.proposerId == id && d.recipientId == s.playerId) || (d.proposerId == s.playerId && d.recipientId == id)))
             {
                 bool theirs = deal.proposerId == id;
                 string title = DealKind.Title(deal.type).ToLowerInvariant();
@@ -247,7 +247,12 @@ namespace Gamesim.Simulation
             if (deal == null) return "";
             if (s != null && !KnownBallots.DealOutcomeKnown(s, deal)) return KnownBallots.Unresolved;
             if (deal.status != DealStatus.Broken || s == null) return DealStanding(deal.status, theirs);
-            string breaker = FinalistRead.DealBreaker(s, deal);
+            // Canonical safety names the actual settlement actor. The old finalist reader
+            // infers it from the legacy public ledger and cannot resolve this new authority.
+            // Keep that legacy interpretation unchanged for every old-model record.
+            bool playerParty = deal.proposerId == s.playerId || deal.recipientId == s.playerId;
+            string breaker = playerParty && CommitmentReferences.FindCanonical(s, deal.id) != null
+                ? Breaches.DealBreaker(s, deal) : FinalistRead.DealBreaker(s, deal);
             if (breaker == s.playerId) return "broken by you";
             if (breaker != null) return "broken by " + FirstName(s.Find(breaker)?.name);
             return deal.type == DealKind.VoteTogether ? "fell apart" : "broken";

@@ -3,6 +3,7 @@ using System.Collections;
 using System.IO;
 using System.Linq;
 using Gamesim.Episode;
+using Gamesim.Persistence;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
@@ -16,6 +17,28 @@ namespace Gamesim.Tests.PlayMode
     {
         private const string HearHoHPitchesCaption = "Hear houseguest pitches";
         private static readonly string[] HoHPitchAnswers = { "promise-safety", "hear", "turn-down" };
+
+        // A retryable failure happens before replacement while the old primary remains readable.
+        // Locking that primary instead exercises the separate ambiguous-save recovery contract.
+        private void FailUiWriteBeforeReplacement(Action press)
+        {
+            var hook = typeof(EpisodeDirector).GetField("saveCandidateForDiagnostics",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Assert.That(hook, Is.Not.Null);
+            var previous = hook.GetValue(director);
+            Assert.That(previous, Is.Null, "This fixture must not replace another diagnostic writer.");
+            int writes = 0;
+            Action<EpisodeState> fail = candidate =>
+            {
+                writes++;
+                Assert.That(new EpisodeSaveStore(director.SavePath).TryLoad(out _, out string error), Is.True, error);
+                throw new IOException("Injected UI decision failure before save replacement.");
+            };
+            try { hook.SetValue(director, fail); press(); }
+            finally { hook.SetValue(director, previous); }
+            Assert.That(writes, Is.EqualTo(1), "The real button must reach exactly one durable save attempt.");
+            Assert.That(director.StatusMessage, Does.Contain("not committed"));
+        }
 
         private IEnumerator InstallHoHPitches(int size = 8, int cards = 2, bool fresh = true, bool playerHoh = true)
         {
@@ -115,11 +138,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(after.ledger.standings.Last().source, Is.EqualTo(ClaimSource.Told));
             Assert.That(after.ledger.standings.Last().fromId, Is.EqualTo(before.replyCards[0].fromId));
             Assert.That(HoHPitches.Assessed(after, after.replyCards[0]), Is.True);
-            Assert.That(ButtonWithCaption(EpisodeHud.FeelOutPitchCaption).IsInteractable(), Is.False);
+            Assert.That(FindButton(EpisodeHud.FeelOutPitchCaption).IsInteractable(), Is.False);
             click.Invoke(); AssertIntentDurable(after);
             director.LoadNow(); HoldTheHouseForTheFixture(); yield return OpenStation();
-            Assert.That(ButtonWithCaption(EpisodeHud.FeelOutPitchCaption).IsInteractable(), Is.False);
-            ButtonWithCaption(EpisodeHud.FeelOutPitchCaption).onClick.Invoke();
+            Assert.That(FindButton(EpisodeHud.FeelOutPitchCaption).IsInteractable(), Is.False);
+            FindButton(EpisodeHud.FeelOutPitchCaption).onClick.Invoke();
             click.Invoke(); AssertIntentDurable(after);
         }
 
@@ -238,7 +261,7 @@ namespace Gamesim.Tests.PlayMode
             yield return InstallHoHPitches(); yield return OpenStation();
             var before = director.Snapshot; byte[] bytes = File.ReadAllBytes(director.SavePath);
             var old = ButtonWithCaption(EpisodeHud.FeelOutPitchCaption).onClick;
-            using (new FileStream(director.SavePath, FileMode.Open, FileAccess.Read, FileShare.None)) old.Invoke();
+            FailUiWriteBeforeReplacement(old.Invoke);
             AssertIntentDurable(before); Assert.That(File.ReadAllBytes(director.SavePath), Is.EqualTo(bytes));
             old.Invoke(); AssertIntentDurable(before);
             Assert.That(ButtonWithCaption(EpisodeHud.FeelOutPitchCaption).IsInteractable(), Is.True);
@@ -251,7 +274,7 @@ namespace Gamesim.Tests.PlayMode
             yield return InstallHoHPitches(); yield return OpenStation();
             var before = director.Snapshot; byte[] bytes = File.ReadAllBytes(director.SavePath);
             var old = ButtonWithCaption(HoHPitchCaption("promise-safety")).onClick;
-            using (new FileStream(director.SavePath, FileMode.Open, FileAccess.Read, FileShare.None)) old.Invoke();
+            FailUiWriteBeforeReplacement(old.Invoke);
             AssertIntentDurable(before); Assert.That(File.ReadAllBytes(director.SavePath), Is.EqualTo(bytes));
             old.Invoke(); AssertIntentDurable(before);
             ButtonWithCaption(HoHPitchCaption("promise-safety")).onClick.Invoke(); AssertHoHPitchCommit(before, "promise-safety");
@@ -267,12 +290,12 @@ namespace Gamesim.Tests.PlayMode
             var old = ButtonWithCaption(HoHPitchCaption("hear")).onClick;
             ButtonWithCaption(EpisodeHud.FeelOutPitchCaption).onClick.Invoke(); AssertHoHPitchCommit(before, HoHPitches.FeelOutKey);
             var assessed = director.Snapshot;
-            Assert.That(ButtonWithCaption(EpisodeHud.FeelOutPitchCaption).IsInteractable(), Is.False);
+            Assert.That(FindButton(EpisodeHud.FeelOutPitchCaption).IsInteractable(), Is.False);
             old.Invoke(); AssertIntentDurable(assessed);
             var closed = ButtonWithCaption(HoHPitchCaption("hear")).onClick;
             director.ClosePanels(); closed.Invoke(); AssertIntentDurable(assessed);
             yield return OpenDiaryFixturePanel();
-            Assert.That(ButtonWithCaption(EpisodeHud.FeelOutPitchCaption).IsInteractable(), Is.False);
+            Assert.That(FindButton(EpisodeHud.FeelOutPitchCaption).IsInteractable(), Is.False);
             closed.Invoke(); AssertIntentDurable(assessed);
             ButtonWithCaption(HoHPitchCaption("hear")).onClick.Invoke(); AssertHoHPitchCommit(assessed, "hear");
             Assert.That(director.IsDiaryOpen, Is.True);
@@ -303,7 +326,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ActiveDiaryText(), Does.Contain("1 unanswered pitch expires when you confirm these nominations."));
             AssertIntentDurable(answered);
             ButtonWithCaption(EpisodeHud.DiaryConfirmCaption).onClick.Invoke();
-            AssertIntentCommand(answered, EpisodeCommandKind.Nominate, picks[0].Id, picks[1].Id);
+            AssertIntentCommand(answered, EpisodeCommandKind.Nominate, picks[0].Id, secondTargetId: picks[1].Id);
             Assert.That(director.Snapshot.nominees, Is.EqualTo(picks.Select(person => person.Id)));
             Assert.That(director.Snapshot.replyCards.Any(card => card.kind == ReplyCards.Pitch), Is.False);
             Assert.That(director.HasDiaryDecisionDraft, Is.False);

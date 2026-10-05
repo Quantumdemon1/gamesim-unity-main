@@ -21,6 +21,34 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 24) return (JObject)original.DeepClone();
+            if (version < 1 || version > 23) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV23ToV24(version == 23 ? original : PrepareV23Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds an inactive, empty unified authority only. Old promises, deals, oaths, RNG and
+        /// receipts are not converted, replayed or inferred; existing rules retain their meaning.
+        /// </summary>
+        public static JObject UpgradeV23ToV24(JObject original)
+        {
+            FrozenEpisodeV23.Validate(original);
+            var result = (JObject)original.DeepClone();
+            result.Add("unifiedCommitmentRulesVersion", 0);
+            result.Add("unifiedCommitments", new JArray());
+            result["schemaVersion"] = 24;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v22-to-v23 dispatch. The v22 step still adds only its original two economy fields.</summary>
+        public static JObject PrepareV23Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 23) return (JObject)original.DeepClone();
             if (version < 1 || version > 22) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV22ToV23(version == 22 ? original : PrepareV22Payload(original, out _));

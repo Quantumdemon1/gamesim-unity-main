@@ -108,7 +108,7 @@ namespace Gamesim.Tests.PlayMode
             yield return InstallReplyPayoff(ReplyCards.Confrontation);
             var before = director.Snapshot; byte[] bytes = File.ReadAllBytes(director.SavePath);
             var old = ButtonWithCaption(PayoffCaption(before, "escalate")).onClick;
-            using (new FileStream(director.SavePath, FileMode.Open, FileAccess.Read, FileShare.None)) old.Invoke();
+            FailUiWriteBeforeReplacement(old.Invoke);
             AssertIntentDurable(before); Assert.That(File.ReadAllBytes(director.SavePath), Is.EqualTo(bytes));
             old.Invoke(); AssertIntentDurable(before);
             ButtonWithCaption(PayoffCaption(before, "escalate")).onClick.Invoke(); AssertReplyCommit(before, "escalate");

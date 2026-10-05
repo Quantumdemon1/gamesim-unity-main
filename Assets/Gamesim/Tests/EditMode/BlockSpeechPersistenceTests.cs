@@ -66,7 +66,7 @@ namespace Gamesim.Tests.EditMode
             var freshReader = new EpisodeSaveStore(store.SavePath);
             Assert.That(freshReader.TryLoad(out var loaded, out string message), Is.True, message);
             Equal(expected, loaded);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(23));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(24));
             Assert.That(File.ReadAllBytes(store.SavePath), Is.EqualTo(original), "Loading never rewrites current save bytes.");
             return loaded;
         }
@@ -274,7 +274,12 @@ namespace Gamesim.Tests.EditMode
                 e.text = speaker == old.playerId ? "You addressed the house from the block." : old.Find(speaker).name + ": " + e.text;
                 e.audienceIds.Clear();
             }
-            files.Store.Save(old); var loaded = LoadUnchanged(files.Store, old); var before = loaded.Clone();
+            var historical23 = PersistenceMigrationTests.StripSchema24(Payload(old));
+            historical23["schemaVersion"] = 23;
+            File.WriteAllText(files.Store.SavePath, PersistenceMigrationTests.Envelope(historical23));
+            var loaded = LoadUnchanged(files.Store, old); var before = loaded.Clone();
+            Assert.That(loaded.unifiedCommitmentRulesVersion, Is.Zero);
+            Assert.That(loaded.unifiedCommitments, Is.Empty);
             foreach (var voter in EpisodeEngine.Voters(loaded))
             {
                 var options = WebEvictionVoting.FromNative(loaded, voter.id);
@@ -341,10 +346,13 @@ namespace Gamesim.Tests.EditMode
             Assert.That(control.economyRulesVersion, Is.Zero);
             line["kind"] = BlockSpeeches.EventPrefix + LobbyApproach.Emotional;
             // Historical event kinds were open text. The frozen contract must remain unchanged;
-            // the CURRENT validator rejects reserved authority when migration pins economy off.
-            var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out bool changed);
+            // The frozen v22-to-v23 chain still accepts its open prose shape. Frozen23 now
+            // refuses that reserved authority before the inactive schema24 defaults are added.
+            var migrated = EpisodeSaveMigrations.PrepareV23Payload(old, out bool changed);
             Assert.That(changed, Is.True); Assert.That((int)migrated["economyRulesVersion"], Is.Zero);
-            Assert.Throws<InvalidDataException>(() => EpisodeSaveValidation.Validate(migrated.ToObject<EpisodeState>(Serializer())));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(23));
+            Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.UpgradeV23ToV24(migrated));
+            Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(old, out _));
             File.WriteAllText(files.Store.SavePath, PersistenceMigrationTests.Envelope(old));
             byte[] forged = File.ReadAllBytes(files.Store.SavePath);
             Assert.That(files.Store.TryLoad(out var rejected, out message), Is.False);

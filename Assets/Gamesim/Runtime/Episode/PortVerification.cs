@@ -16,6 +16,8 @@ namespace Gamesim.Episode
     /// <summary>Opt-in standalone QA workload. Inert unless both explicit verification and isolated-save arguments exist.</summary>
     public sealed partial class PortVerification : MonoBehaviour
     {
+        public const int ProfileWidth = 1920, ProfileHeight = 1080;
+        public const int ProfileFrameCap = -1, ProfileVSyncCount = 0;
         private string outputDirectory;
         private string profileFinishedUtc;
         private double seconds = 300;
@@ -29,6 +31,10 @@ namespace Gamesim.Episode
         private readonly List<VerificationFrameEvidence> capturedFrames = new List<VerificationFrameEvidence>();
         private readonly HashSet<string> profileVisitedRooms = new HashSet<string>(StringComparer.Ordinal);
         private int profileRoomCount, profileRoomRequests, profileJournalRequests, profileSettingsRequests, profileStationRequests, profileSaveRequests;
+        private int profileDisplaySampleCount, profileResolutionMismatchCount, profileFrameCapMismatchCount;
+        private int profileDisplayModeMismatchCount;
+        private int profileSampledFrameCap, profileSampledVSyncCount;
+        private string profileSampledResolution, profileSampledDisplayMode;
         private ProfilerRecorder gc;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -105,7 +111,7 @@ namespace Gamesim.Episode
             // every windowed profile read as 16.7 ms and say nothing about the frame's cost. Set
             // as the director's own preference, because the workload toggles other preferences
             // and every toggle re-applies the lot.
-            director.SetFrameCap(-1);
+            director.SetFrameCap(ProfileFrameCap);
             // Verification plays the reveals at the quick pace: the look sheet waits a fixed time
             // for the key ceremony's block and a framing's end, and a suspenseful card outlasts both.
             director.SetCeremonyPace(Presentation.CeremonyPace.Quick);
@@ -117,7 +123,7 @@ namespace Gamesim.Episode
                 // Force the hidden-launched desktop window to allocate its presentable backbuffer.
                 Screen.SetResolution(1280, 720, FullScreenMode.Windowed);
                 for (int i = 0; i < 15; i++) yield return null;
-                Screen.SetResolution(1600, 900, FullScreenMode.Windowed);
+                Screen.SetResolution(ProfileWidth, ProfileHeight, FullScreenMode.Windowed);
             }
             // A ready simulation can precede the first presentable frame / Unity splash completion.
             double captureDeadline = Time.realtimeSinceStartupAsDouble + 15;
@@ -145,7 +151,7 @@ namespace Gamesim.Episode
                 }
                 var standard = director.GetComponentsInChildren<Button>().FirstOrDefault(button => button.name == "Use standard text");
                 if (standard != null) standard.onClick.Invoke();
-                Screen.SetResolution(1600, 900, FullScreenMode.Windowed);
+                Screen.SetResolution(ProfileWidth, ProfileHeight, FullScreenMode.Windowed);
                 for (int i = 0; i < 15; i++) yield return null;
             }
             director.ClosePanels();
@@ -155,6 +161,7 @@ namespace Gamesim.Episode
             int action = 0;
             while (Time.realtimeSinceStartupAsDouble - started < seconds)
             {
+                RecordProfileDisplaySample(Screen.width, Screen.height, Application.targetFrameRate, QualitySettings.vSyncCount, Screen.fullScreenMode);
                 frames.Add(Time.unscaledDeltaTime * 1000);
                 if (gc.Valid) allocations.Add(gc.LastValue);
                 double now = Time.realtimeSinceStartupAsDouble;
@@ -183,6 +190,9 @@ namespace Gamesim.Episode
                 if (now >= nextSave) { profileSaveRequests++; director.SaveNow(); nextSave = now + 60; }
                 yield return null;
             }
+            // End the measured interval before post-workload captures or the optional season.
+            double profileElapsed = Time.realtimeSinceStartupAsDouble - started;
+            profileFinishedUtc = DateTime.UtcNow.ToString("O");
             if (seconds >= (profileRoomCount + 3) * 10d && !ProfileWorkloadCycleCompleted)
                 errors.Add("The timed profile did not request every room, notebook, settings and station action in its scheduled cycle.");
             gc.Dispose();
@@ -190,8 +200,6 @@ namespace Gamesim.Episode
             for (int i = 0; i < 5; i++) yield return null;
             if (graphical) yield return CaptureVerifiedFrame(Path.Combine(outputDirectory, "house-after-workload.png"), capturedFrames.Add, errors.Add);
             for (int i = 0; i < 10; i++) yield return null;
-            double profileElapsed = Time.realtimeSinceStartupAsDouble - started;
-            profileFinishedUtc = DateTime.UtcNow.ToString("O");
             // The optional season is a separate functional workload, never part of the frame sample.
             if (verifySeason) yield return RunSeasonVerification(graphical);
             Finish(profileElapsed, graphical);
@@ -211,10 +219,45 @@ namespace Gamesim.Episode
 
         private void Finish(double measured, bool graphical)
         {
+            var report = CompleteProfileReport(measured, graphical, Application.isBatchMode);
+            File.WriteAllText(Path.Combine(outputDirectory, "verification.json"), JsonUtility.ToJson(report, true));
+            Debug.Log("Gamesim standalone profile " + report.status + "; functional season " + report.seasonStatus
+                + "; overall " + report.overallStatus + ": " + Path.Combine(outputDirectory, "verification.json"));
+            Application.Quit(report.overallStatus == "Passed" ? 0 : 1);
+        }
+
+        // Record every measured frame, not only the requested size or the window after a season run.
+        private void RecordProfileDisplaySample(int width, int height, int frameCap, int vSyncCount, FullScreenMode displayMode)
+        {
+            if (profileDisplaySampleCount == 0)
+            {
+                profileSampledResolution = width + "x" + height;
+                profileSampledFrameCap = frameCap;
+                profileSampledVSyncCount = vSyncCount;
+                profileSampledDisplayMode = displayMode.ToString();
+            }
+            profileDisplaySampleCount++;
+            if (width != ProfileWidth || height != ProfileHeight) profileResolutionMismatchCount++;
+            if (frameCap != ProfileFrameCap || vSyncCount != ProfileVSyncCount) profileFrameCapMismatchCount++;
+            if (displayMode != FullScreenMode.Windowed) profileDisplayModeMismatchCount++;
+        }
+
+        // Kept separate from file output and Quit so native Edit tests can check the report contract.
+        private VerificationReport CompleteProfileReport(double measured, bool graphical, bool batchMode)
+        {
             frames.Sort(); allocations.Sort();
-            bool passed = errors.Count == 0 && measured >= seconds && frames.Count > 100
-                && !Application.isBatchMode && graphical && capturedFrames.Count == 6 && capturedFrames.All(frame => frame.rendered);
-            var report = new VerificationReport
+            var reportErrors = new List<string>(errors);
+            if (profileDisplaySampleCount == 0 || profileDisplaySampleCount != frames.Count)
+                reportErrors.Add("Every measured frame requires actual resolution and frame-cap evidence.");
+            if (profileResolutionMismatchCount > 0)
+                reportErrors.Add("The actual sampled window did not remain at the requested 1920x1080 resolution.");
+            if (profileFrameCapMismatchCount > 0)
+                reportErrors.Add("The sampled profile did not remain uncapped with VSync disabled.");
+            if (profileDisplayModeMismatchCount > 0)
+                reportErrors.Add("The actual sampled display mode did not remain Windowed.");
+            bool passed = reportErrors.Count == 0 && measured >= seconds && frames.Count > 100
+                && !batchMode && graphical && capturedFrames.Count == 6 && capturedFrames.All(frame => frame.rendered);
+            return new VerificationReport
             {
                 status = passed ? "Passed" : "Failed", finishedUtc = profileFinishedUtc ?? DateTime.UtcNow.ToString("O"),
                 overallFinishedUtc = DateTime.UtcNow.ToString("O"),
@@ -227,7 +270,7 @@ namespace Gamesim.Episode
                 blocsStatus = verifyBlocs ? this.blocReport == null ? "Not run" : this.blocReport.status : "Not requested",
                 autonomyRequested = verifyAutonomy,
                 autonomyStatus = verifyAutonomy ? this.autonomyReport == null ? "Not run" : this.autonomyReport.status : "Not requested",
-                workload = "Timed standalone room-navigation, notebook/settings and station requests, plus isolated local saves. Actual requests are counted; short smoke runs may not complete a cycle. Not a human playtest or full-season timing sample.",
+                workload = "Timed standalone room-navigation, notebook/settings and station requests, plus isolated local saves. Actual requests are counted; short smoke runs may not complete a cycle. Not a human playtest or full-season timing sample. A Passed status validates workload/evidence, not the 60 FPS performance target.",
                 profileRoomCount = profileRoomCount, profileRoomsRequested = profileVisitedRooms.OrderBy(name => name, StringComparer.Ordinal).ToArray(),
                 profileRoomRequests = profileRoomRequests, profileJournalRequests = profileJournalRequests,
                 profileSettingsRequests = profileSettingsRequests, profileStationRequests = profileStationRequests, profileSaveRequests = profileSaveRequests,
@@ -236,17 +279,22 @@ namespace Gamesim.Episode
                 requestedSeconds = seconds, measuredSeconds = measured, frameCount = frames.Count,
                 frameMedianMs = Percentile(frames, .5), frameP95Ms = Percentile(frames, .95), frameP99Ms = Percentile(frames, .99),
                 gcCounterAvailable = allocations.Count > 0, gcMedianBytes = Percentile(allocations, .5), gcP95Bytes = Percentile(allocations, .95),
-                graphical = graphical, batchMode = Application.isBatchMode, capturedFrames = capturedFrames,
+                graphical = graphical, batchMode = batchMode, capturedFrames = capturedFrames,
                 resolution = Screen.width + "x" + Screen.height, houseSize = measuredHouseSize,
+                requestedResolution = ProfileWidth + "x" + ProfileHeight, sampledResolution = profileSampledResolution,
+                sampledDisplayFrames = profileDisplaySampleCount, sampledResolutionMismatchCount = profileResolutionMismatchCount,
+                requestedFrameCap = ProfileFrameCap, requestedVSyncCount = ProfileVSyncCount,
+                sampledFrameCap = profileSampledFrameCap, sampledVSyncCount = profileSampledVSyncCount,
+                sampledFrameCapMismatchCount = profileFrameCapMismatchCount,
+                requestedDisplayMode = FullScreenMode.Windowed.ToString(), sampledDisplayMode = profileSampledDisplayMode,
+                sampledDisplayModeMismatchCount = profileDisplayModeMismatchCount,
+                uncapped = profileDisplaySampleCount > 0 && profileFrameCapMismatchCount == 0,
+                performanceAcceptance = "Not assessed; uncapped diagnostic sample only.",
                 houseSizeRequested = houseSize, houseSizeNote = houseSizeNote,
                 unityVersion = Application.unityVersion, processor = SystemInfo.processorType, gpu = SystemInfo.graphicsDeviceName,
                 systemMemoryMB = SystemInfo.systemMemorySize, graphicsMemoryMB = SystemInfo.graphicsMemorySize,
-                developmentBuild = Debug.isDebugBuild, errors = errors.ToArray(), saveDirectory = outputDirectory
+                developmentBuild = Debug.isDebugBuild, errors = reportErrors.ToArray(), saveDirectory = outputDirectory
             };
-            File.WriteAllText(Path.Combine(outputDirectory, "verification.json"), JsonUtility.ToJson(report, true));
-            Debug.Log("Gamesim standalone profile " + report.status + "; functional season " + report.seasonStatus
-                + "; overall " + report.overallStatus + ": " + Path.Combine(outputDirectory, "verification.json"));
-            Application.Quit(passed && (!verifySeason || seasonPassed) ? 0 : 1);
         }
 
         private static double Percentile(List<float> values, double p) => values.Count == 0 ? 0 : values[Math.Min(values.Count - 1, (int)Math.Ceiling(values.Count * p) - 1)];
@@ -258,6 +306,12 @@ namespace Gamesim.Episode
         [Serializable] private sealed class VerificationReport
         {
             public string status, finishedUtc, workload, resolution, unityVersion, processor, gpu, saveDirectory;
+            public string requestedResolution, sampledResolution, performanceAcceptance;
+            public string requestedDisplayMode, sampledDisplayMode;
+            public int sampledDisplayModeMismatchCount;
+            public int sampledDisplayFrames, sampledResolutionMismatchCount, requestedFrameCap, requestedVSyncCount;
+            public int sampledFrameCap, sampledVSyncCount, sampledFrameCapMismatchCount;
+            public bool uncapped;
             public string overallStatus, overallFinishedUtc, seasonStatus, seasonReport, studyStatus, blocsStatus, autonomyStatus;
             public bool studyRequested, blocsRequested, autonomyRequested;
             public double requestedSeconds, measuredSeconds, frameMedianMs, frameP95Ms, frameP99Ms, gcMedianBytes, gcP95Bytes;

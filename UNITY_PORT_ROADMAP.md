@@ -1,5 +1,17 @@
 # Gamesim Unity port
 
+**Latest combined increment, 2026-10-05 UTC:** merged integration retains QA11Edit/
+4Play plus the historical-test repair, literal frozen23/disabled24 persistence,
+1080p diagnostic path, inactive authority adapters and reviewed native UI fixes.
+Only suite floor and these two historical progress documents conflicted; all
+product/test/art/fixture blobs merge without conflict. Combined floors are
+3643Edit/992Play/77UMA/2398pure. Staged2398pure/385managed/8offline and55cross-build
+scripted comparisons support the increment; fresh exact-pin completeNoUMA/UMA,
+matching desktop build and actual1080p60GTX1060 are STILL required. No live or
+remote promotion. All four requiredWaveD, widerE2, consistent actual assets,
+visual/accessibility and0of3human acceptance gates remain open. Older notes
+below preserve both histories, not current process/acceptance state.
+
 **Current combined candidate, 2026-10-05 UTC:** isolated integration now combines
 c2725b53 QA/contact/readout with88986ee1 Wave C E1-E5/schema23. No live promotion.
 Only baseline and two root docs conflicted; retained QA11 Edit/4 Play additions
@@ -9,6 +21,54 @@ the merge. LocalGAMESIM_UMA stays uncommitted. ALL4 Wave D systems, wider
 E2 balance, consistent real assets, actualGTX1060 **1920x1080 at60FPS**, visual
 review and three first-time human playtests remain required. Dated notes below
 are retained evidence for older pins, not current completion claims.
+
+**Latest authority adapters/native repairs, 2026-10-05 UTC:** internal atomic
+Safety storage/response plus detached references are staged with105new cases;
+ONLYHoH-pitch and notebook readers are routed. Production activation still
+refused; all writer/settler/incident-reader gates remain. Final2398regular pure,
+385managed and8/8offline pass;55scripted cross-build disabled seasons match.
+Seven existingPlay test partials retain76cases; source-backed fixture repairs
+plus assessedDiary-button and full-copy reply-layout fixes require fresh native
+execution. g23n1 is now CLOSED FAILED (Edit3230/3240,Play950/992), clean ownership/
+source audit, all failed evidence+801captures preserved. Branch floors3632/988/
+77/2398; combined must3643/992/77/2398 retainingQA11/4. See
+`WAVE_D_AUTHORITY_ADAPTERS_IMPLEMENTATION.md` for EVERY change/failure/limit.
+All4WaveD, widerE2, real coherent assets, actual1080p60GTX1060, native/build/visual
+and0of3first-time human playtests remain required. Live project untouched.
+Older dated notes below retain historical state, not current execution status.
+
+**Latest disabled foundation, 2026-10-05 UTC:** schema24 reserves a canonical
+commitment list with rules0/empty; ALL actual factories and imported1-23 remain
+off. Strict frozen23 migration adds only those defaults. Pure prospective safety
+policy is staged, NOT activated D1a/B1. Final2293 regular pure cases,280 focused
+managed cases and8/8 offline assemblies pass;55 cross-build seasons/5956 attempted
+transitions match whole persisted state after ONLY disabled-field projection.
+See `WAVE_D_FOUNDATION_IMPLEMENTATION.md` for every change, retained failures and
+independent review. Branch3527/988/77/2293; futurecombined3538/992/77/2293.
+Next complete every safety writer/settler/reader and atomic bundle BEFOREfresh
+opt-in, then final-two/vote/oath/call families. All4WaveD, widerE2, actual assets,
+combinednative/build/1920x1080at60FPS GTX1060/visual and0of3humanplaytests remain.
+Live untouched; ed492/g23n1 still frozen/running. Older notes below are historical.
+
+**Latest dependency preparation, 2026-10-05 UTC:** the separate Wave C checkout
+adds an unused strict schema23 forward contract,110 authored Edit cases, and
+actual1920x1080 Windowed/uncapped profile evidence with18 authored Edit cases.
+Focused managed contract110/110 and offline8/8 pass; native execution, shipping
+build and actual GTX1060 performance are NOT performed. See
+`WAVE_D_PREPARATION_IMPLEMENTATION.md` for every change and limits, and
+`WAVE_D_COMMITMENT_AUTHORITY_DESIGN.md` for the reviewed authority contract.
+Branch floors3357/988/77/2182; future combined3368/992/77/2182. Existing dispatch
+stays23; no unified commitment authority or other Wave D system is implemented
+by this preparation. Integrationed492/g23n1 remains frozen until whole closure.
+
+**Latest native follow-up, 2026-10-05 UTC:** combined ed492's Edit suite reports
+3230/3240 pass,10 fail,0 skip. Historical-test wiring is repaired in the separate
+Wave C checkout; no production/frozen/fixture changes or lowered floors. All ten
+failures reproduced under managed Mono before;12/12 named tests pass after and
+offline8/8 compiles. See `WAVE_C_MIGRATION_WIRING_REPAIR.md`. Combined Play/controller
+g23n1 still runs unchanged. Fresh repaired native suites remain required; scoped
+SaveStore successes are not a passing whole suite or live/desktop acceptance.
+All4 owner-required Wave D systems and all release gates remain in scope.
 
 **Latest staged gameplay, 2026-10-05 UTC:** E4 HoH pitches and E5 bounded explicit
 block-speech influence are implemented on the separate Wave C branch. See

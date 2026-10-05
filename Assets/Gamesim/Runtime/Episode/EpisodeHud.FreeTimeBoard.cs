@@ -186,12 +186,19 @@ namespace Gamesim.Episode
             float budgetWidth = Mathf.Clamp(width * BoardBudgetShare, BoardBudgetLeast * s, BoardBudgetMost * s);
             float heroGap = BoardHeroGap * s, leftWidth = Mathf.Max(120f * s, width - budgetWidth - heroGap);
             var probe = NewText(board, "", 12, Paper);
-            float need = Mathf.Max(BoardHeroNeed(probe, spec, leftWidth), BoardBudgetNeed(probe, spec, budgetWidth));
+            float replyTiles = spec.Hero == FreeTimeHero.Reply
+                ? CampaignReplyHeight(probe, leftWidth - 2f * BoardPad * s, spec.Replies, BoardReplyTiles * s) : 0f;
+            float need = Mathf.Max(BoardHeroNeed(probe, spec, leftWidth, replyTiles), BoardBudgetNeed(probe, spec, budgetWidth));
             probe.gameObject.SetActive(false);
             Destroy(probe.gameObject);
             float shared = Mathf.Max(0f, room - fixedPart);
-            float heroMost = Mathf.Max(BoardHeroLeast * s, Mathf.Min(shared * BoardHeroShare, shared - cardsLeast));
+            float heroMost = Mathf.Max(BoardHeroLeast * s, spec.Hero == FreeTimeHero.Reply
+                ? shared - cardsLeast : Mathf.Min(shared * BoardHeroShare, shared - cardsLeast));
             float hero = Mathf.Clamp(need, BoardHeroLeast * s, heroMost);
+            // Keep every reply's consequence visible. On a frame too short for that and the
+            // house cards, the existing outer scroll is preferable to truncating the choice.
+            if (spec.Hero == FreeTimeHero.Reply)
+                hero = Mathf.Max(hero, (2f * BoardPad + 17f + 22f + 6f) * s + BoardLine(13) + replyTiles);
             float cardsHeight = Mathf.Clamp(shared - hero, cardsLeast, cardsMost);
 
             // Laid top to bottom, and built in the order the keyboard should walk it: what came to the
@@ -203,7 +210,7 @@ namespace Gamesim.Episode
             var heroRow = EndScreenKit.Box(FreeTimeHeroName, board, 0f, y, leftWidth, hero);
             switch (spec.Hero)
             {
-                case FreeTimeHero.Reply: BoardReply(heroRow, leftWidth, hero, spec); break;
+                case FreeTimeHero.Reply: BoardReply(heroRow, leftWidth, hero, replyTiles, spec); break;
                 case FreeTimeHero.Beat: BoardBanner(heroRow, leftWidth, hero, words, spec); break;
                 default: BoardPlay(heroRow, leftWidth, hero, spec); break;
             }
@@ -304,14 +311,14 @@ namespace Gamesim.Episode
         private float BoardBuyCaptionBox(bool twoLines) => (twoLines ? 2f : 1f) * BoardSized(12) * 1.3f;
 
         /// <summary>The height the hero's left-hand card needs for its words at <paramref name="width"/>.</summary>
-        private float BoardHeroNeed(TMP_Text probe, FreeTimeBoardSpec spec, float width)
+        private float BoardHeroNeed(TMP_Text probe, FreeTimeBoardSpec spec, float width, float replyTiles)
         {
             float s = FontScale, pad = BoardPad * s, inner = width - 2f * pad;
             switch (spec.Hero)
             {
                 case FreeTimeHero.Reply:
                     return pad + 17f * s + 22f * s + Mathf.Clamp(BoardMeasure(probe, spec.ReplyMessage, 13, inner, null, FontStyles.Italic), BoardLine(13), 3f * BoardLine(13))
-                        + 6f * s + BoardReplyTiles * s + pad;
+                        + 6f * s + replyTiles + pad;
                 case FreeTimeHero.Beat:
                     return pad + 18f * s + 30f * s + Mathf.Clamp(BoardMeasure(probe, spec.BeatNarrative, 14, inner, null, FontStyles.Italic), BoardLine(14), 4f * BoardLine(14))
                         + 8f * s + BoardBannerFoot * s + pad;
@@ -347,7 +354,7 @@ namespace Gamesim.Episode
         /// one: the eyebrow, how many are waiting and who is next, the heading and what they said,
         /// and the answers as tiles under the grid name they have always had.
         /// </summary>
-        private void BoardReply(RectTransform row, float width, float height, FreeTimeBoardSpec spec)
+        private void BoardReply(RectTransform row, float width, float height, float tiles, FreeTimeBoardSpec spec)
         {
             float s = FontScale, pad = BoardPad * s, inner = width - 2f * pad, y = pad;
             var card = EndScreenKit.Box(FreeTimeReplyName, row, 0f, 0f, width, height);
@@ -374,8 +381,7 @@ namespace Gamesim.Episode
             if (semibold != null) title.font = semibold;
             AutoSize(title, 12);
             y += 22f * s;
-            // The answers along the foot, as tall as the card can give them; what was said between.
-            float tiles = Mathf.Clamp(height - y - pad - 6f * s - BoardLine(13), 48f * s, BoardReplyTiles * s);
+            // The answers keep the measured space for all consequences; what was said sits between.
             var message = NewText(card, spec.ReplyMessage ?? "", 13, UiTheme.Muted);
             message.name = "Plea message";
             message.fontStyle = FontStyles.Italic;

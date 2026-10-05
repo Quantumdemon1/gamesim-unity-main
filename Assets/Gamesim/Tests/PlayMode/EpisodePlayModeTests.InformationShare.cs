@@ -41,10 +41,12 @@ namespace Gamesim.Tests.PlayMode
 
         private IEnumerator OpenInformationShare()
         {
+            if (director.GetComponentInChildren<EpisodeHud>().PointerHeld) yield return WaitOutThePointerHold();
             ButtonWithCaption(EpisodeDirector.ShareInformationCaption).onClick.Invoke();
             Assert.That(director.GetComponentInChildren<EpisodeHud>().PointerHeld, Is.True);
-            yield return null; yield return null;
+            yield return WaitOutThePointerHold();
             Assert.That(director.IsChoosingSharedInformation, Is.True);
+            Assert.That(director.GetComponentInChildren<EpisodeHud>().PointerHeld, Is.False);
             Assert.That(ButtonWithCaption(EpisodeDirector.ShareInformationCancelCaption).IsInteractable(), Is.True);
         }
 
@@ -84,6 +86,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.ShareInformationConfirmCaption), Is.Null);
             ButtonWithCaption(SharingReviewCaption(3)).onClick.Invoke();
             AssertSharingUnchanged(before);
+            yield return WaitOutThePointerHold();
             Assert.That(director.GetComponentsInChildren<TMP_Text>().Single(t => t.name == EpisodeDirector.ShareMemoryTextName).text,
                 Is.EqualTo(options[2].Text));
             var shown = director.GetComponentsInChildren<TMP_Text>().Single(t => t.name == EpisodeDirector.ShareReceiptTextName);
@@ -104,11 +107,14 @@ namespace Gamesim.Tests.PlayMode
             var oldOpen = ButtonWithCaption(EpisodeDirector.ShareInformationCaption).onClick;
             yield return OpenInformationShare();
             ButtonWithCaption(SharingReviewCaption(1)).onClick.Invoke();
+            yield return WaitOutThePointerHold();
             var oldConfirm = ButtonWithCaption(EpisodeDirector.ShareInformationConfirmCaption).onClick;
             ButtonWithCaption(EpisodeDirector.ShareInformationBackCaption).onClick.Invoke();
             oldConfirm.Invoke(); AssertSharingUnchanged(before);
+            yield return WaitOutThePointerHold();
             ButtonWithCaption(SharingReviewCaption(2)).onClick.Invoke();
             oldConfirm.Invoke(); AssertSharingUnchanged(before);
+            yield return WaitOutThePointerHold();
             var oldCancel = ButtonWithCaption(EpisodeDirector.ShareInformationCancelCaption).onClick;
             oldCancel.Invoke();
             Assert.That(director.IsChoosingSharedInformation, Is.False);
@@ -133,6 +139,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(EventSystem.current.currentSelectedGameObject?.name, Is.EqualTo(EpisodeDirector.ShareInformationCancelCaption));
                 for (int page = 0; page < 5; page++)
                 {
+                    yield return WaitOutThePointerHold();
                     for (int i = 1; i <= EpisodeDirector.ShareInformationPageSize; i++)
                         Assert.That(ButtonWithCaption(SharingReviewCaption(page * EpisodeDirector.ShareInformationPageSize + i)).IsInteractable(), Is.True);
                     yield return AssertKeyboardRing("Information memories page " + page + " / large " + larger, ModalRoot);
@@ -143,6 +150,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return KeyboardSubmit(SharingReviewCaption(30));
                 Assert.That(EventSystem.current.currentSelectedGameObject?.name, Is.EqualTo(EpisodeDirector.ShareInformationCancelCaption),
                     "Review defaults to Cancel, so a repeated Enter cannot share.");
+                yield return WaitOutThePointerHold();
                 yield return AssertKeyboardRing("Memory confirmation", ModalRoot);
                 yield return KeyboardSubmit(EpisodeDirector.ShareInformationCancelCaption);
                 AssertSharingUnchanged(before);
@@ -159,6 +167,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(option.Shortened, Is.True);
             yield return OpenInformationShare();
             ButtonWithCaption(SharingReviewCaption(1)).onClick.Invoke();
+            yield return WaitOutThePointerHold();
             var original = director.GetComponentsInChildren<TMP_Text>().Single(t => t.name == EpisodeDirector.ShareMemoryTextName);
             var receipt = director.GetComponentsInChildren<TMP_Text>().Single(t => t.name == EpisodeDirector.ShareReceiptTextName);
             Assert.That(original.text, Is.EqualTo(option.Text));
@@ -189,6 +198,7 @@ namespace Gamesim.Tests.PlayMode
             var before = director.Snapshot;
             yield return OpenInformationShare();
             ButtonWithCaption(SharingReviewCaption(1)).onClick.Invoke();
+            yield return WaitOutThePointerHold();
             var oldConfirm = ButtonWithCaption(EpisodeDirector.ShareInformationConfirmCaption).onClick;
             yield return PressKey(Key.Escape);
             Assert.That(director.IsChoosingSharedInformation, Is.False);
@@ -196,6 +206,7 @@ namespace Gamesim.Tests.PlayMode
             yield return TalkTo(Listener(before).id);
             yield return OpenInformationShare();
             ButtonWithCaption(SharingReviewCaption(1)).onClick.Invoke();
+            yield return WaitOutThePointerHold();
             oldConfirm = ButtonWithCaption(EpisodeDirector.ShareInformationConfirmCaption).onClick;
             var result = director.Submit(new EpisodeCommand { id = "intervening-share-question", actorId = before.playerId,
                 expectedRevision = before.revision, expectedPhase = before.phase, kind = EpisodeCommandKind.AskForIntel, targetId = Listener(before).id });
@@ -211,6 +222,7 @@ namespace Gamesim.Tests.PlayMode
             yield return InstallSharingHouse();
             yield return OpenInformationShare();
             ButtonWithCaption(SharingReviewCaption(1)).onClick.Invoke();
+            yield return WaitOutThePointerHold();
             var before = director.Snapshot;
             var oldConfirm = ButtonWithCaption(EpisodeDirector.ShareInformationConfirmCaption).onClick;
             director.LoadNow(); HoldTheHouseForTheFixture();
@@ -221,6 +233,7 @@ namespace Gamesim.Tests.PlayMode
             yield return TalkTo(Listener(reloaded).id);
             yield return OpenInformationShare();
             ButtonWithCaption(SharingReviewCaption(1)).onClick.Invoke();
+            yield return WaitOutThePointerHold();
             oldConfirm = ButtonWithCaption(EpisodeDirector.ShareInformationConfirmCaption).onClick;
             yield return ReloadEpisode(); HoldTheHouseForTheFixture();
             reloaded = director.Snapshot;
@@ -234,6 +247,7 @@ namespace Gamesim.Tests.PlayMode
             yield return InstallSharingHouse();
             yield return OpenInformationShare();
             ButtonWithCaption(SharingReviewCaption(1)).onClick.Invoke();
+            yield return WaitOutThePointerHold();
             var before = director.Snapshot;
             string path = director.SavePath;
             byte[] original = File.ReadAllBytes(path);
@@ -244,8 +258,16 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsChoosingSharedInformation, Is.False);
             confirm.Invoke(); AssertSharingUnchanged(before);
             // Recovery is a fresh deliberate action, not a stranded or automatically retried UI.
+            Assert.That(director.SeasonInProgress, Is.False, "An unreadable primary requires explicit validated recovery.");
+            director.LoadNow(); HoldTheHouseForTheFixture();
+            Assert.That(director.SeasonInProgress, Is.True);
+            AssertIntentDurable(before);
+            Assert.That(File.ReadAllBytes(path), Is.EqualTo(original));
+            confirm.Invoke(); AssertSharingUnchanged(before);
+            yield return TalkTo(Listener(before).id);
             yield return OpenInformationShare();
             ButtonWithCaption(SharingReviewCaption(1)).onClick.Invoke();
+            yield return WaitOutThePointerHold();
             var option = InformationShareChoice.Open(before, Listener(before).id).Options[0];
             ButtonWithCaption(EpisodeDirector.ShareInformationConfirmCaption).onClick.Invoke();
             AssertSharedMemory(before, Listener(before).id, option);
@@ -260,6 +282,7 @@ namespace Gamesim.Tests.PlayMode
             var option = InformationShareChoice.Open(before, recipient).Options.Last();
             yield return OpenInformationShare();
             ButtonWithCaption(SharingReviewCaption(3)).onClick.Invoke();
+            yield return WaitOutThePointerHold();
             ButtonWithCaption(EpisodeDirector.ShareInformationConfirmCaption).onClick.Invoke();
             AssertSharedMemory(before, recipient, option);
             Assert.That(director.Snapshot.phase, Is.EqualTo(EpisodePhase.Campaign));
@@ -279,6 +302,7 @@ namespace Gamesim.Tests.PlayMode
             var option = InformationShareChoice.Open(before, recipient).Options.Last();
             yield return OpenInformationShare();
             ButtonWithCaption(SharingReviewCaption(3)).onClick.Invoke();
+            yield return WaitOutThePointerHold();
             ButtonWithCaption(EpisodeDirector.ShareInformationConfirmCaption).onClick.Invoke();
             AssertSharedMemory(before, recipient, option);
             Assert.That(director.Snapshot.windowActions[Windows.AfterNominations], Is.EqualTo(1));

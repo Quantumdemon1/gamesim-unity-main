@@ -23,12 +23,15 @@ namespace Gamesim.Tests.PlayMode
 
         private IEnumerator OpenBridgePicker()
         {
+            // A preceding Cancel or houseguest-screen transition can still own the pointer.
+            if (director.GetComponentInChildren<EpisodeHud>().PointerHeld) yield return WaitOutThePointerHold();
             ButtonWithCaption(EpisodeHud.BuyBurnOneCaption).onClick.Invoke();
             // Observe the guard at the actual replacement, not after an arbitrarily slow UMA frame
             // has legitimately outlived its real-time duration.
             Assert.That(director.GetComponentInChildren<EpisodeHud>().PointerHeld, Is.True);
-            yield return null; yield return null;
+            yield return WaitOutThePointerHold();
             Assert.That(director.IsChoosingActionPurchase, Is.True);
+            Assert.That(director.GetComponentInChildren<EpisodeHud>().PointerHeld, Is.False);
             Assert.That(ButtonWithCaption(EpisodeDirector.BurnBridgeCancelCaption).IsInteractable(), Is.True);
         }
 
@@ -147,6 +150,7 @@ namespace Gamesim.Tests.PlayMode
             ButtonWithCaption(EpisodeDirector.BurnBridgeTargetCaption(chosen.name)).onClick.Invoke();
             AssertChosenPurchase(before, chosen.id);
             Assert.That(director.Snapshot.phase, Is.EqualTo(EpisodePhase.Campaign));
+            yield return WaitOutThePointerHold();
             Assert.That(ButtonWithCaption(EpisodeDirector.CampaignLessCaption).IsInteractable(), Is.True);
             yield return null;
         }
@@ -179,6 +183,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return null; yield return null;
                 Assert.That(EventSystem.current.currentSelectedGameObject?.name, Is.EqualTo(EpisodeDirector.BurnBridgeCancelCaption),
                     "A second Enter on the opener must cancel, never spend.");
+                yield return WaitOutThePointerHold();
                 foreach (var npc in before.Active.Where(c => !c.isPlayer))
                     Assert.That(ButtonWithCaption(EpisodeDirector.BurnBridgeTargetCaption(npc.name)).IsInteractable(), Is.True);
                 yield return AssertKeyboardRing("Extra action purchase at " + (larger ? "large" : "standard") + " text", ModalRoot);

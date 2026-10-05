@@ -1,5 +1,24 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC - reviewed adapters/repairs combined; native acceptance pending
+
+Combines preserved QA parent`ed492fce` with reviewed WaveC parent`65781636`,
+includingc98historical migration test-wiring repair, strict schema23 freeze/
+disabled24 foundation, actual1080 diagnostic configuration, atomic internal
+Safety storage/detached readers and native UI/fixture repairs. Only baseline
+and two root progress docs conflicted; both histories retained below. New
+floors3643Edit/992Play/77UMA/2398pure retainQA11Edit/4Play. No scene/art/fixture/
+package/settings mutation; localGAMESIM_UMA remains uncommitted. Stage-bound
+2398pure/385managed/8offline and55cross-build disabled-model seasons pass;
+complete nativeNoUMA+UMA and a separately pinned desktop remain pending.
+Oldg23n1 has fully closedFAILED (3230/3240Edit,950/992Play), no input/cleanup/
+ownership drift; proof files and801mixed captures retained unchanged.
+All fourWaveD, widerE2, consistent assets, actual1920x1080Windowed60FPSGTX1060,
+visual review and three first-time human playtests remain. No live/remote
+promotion, normal save or retained build/recovery deletion, optional accounts,
+services, credentials, access changes or deployment. New-model rules1 remain
+unplayable until every writer/reader/settler/full validator is integrated.
+
 ## 2026-10-05 UTC — QA and Wave C combined; new candidate acceptance pending
 
 The isolated integration worktree combines baseline QA/contact/readout commit
@@ -74,6 +93,74 @@ walks plus480 paired balance seasons, managed Mono persistence28 and offline8/8 
 suites/build/desktop/human acceptance and integration remain open; it is NOT in this schema22 candidate.
 Do not fold E1 or later gameplay into the frozen QA run. Full same-pin NoUMA then UMA, a matching
 shipping build, actual player/visual/performance checks and guarded live promotion remain ahead.
+
+## 2026-10-05 UTC - inactive authority adapters and combined-native repairs
+
+See `WAVE_D_AUTHORITY_ADAPTERS_IMPLEMENTATION.md` for every material change and
+retained failure. Internal sole-Safety storage, atomic mixed counter reservation,
+late NPC acceptance and detached stable-ID reference readers are implemented;
+only HoH-pitch/notebook consumer routes move. Legacy handles, all source fields,
+caps/history and notebook party/ballot boundaries preserved. All actual engine/
+save/factory rule1activation remains refused: no new-game unified authority yet.
+105newcases, final2398pure/385managed/8offline pass;55cross-build disabled-model
+seasons/5956attempts match. SevenPlay partials retain76cases and strict recovery/
+stale callbacks/real hit testing. AssessedDiarybutton and full-copy measured reply
+layout fixes are compiled/reviewed, NOT native accepted. Wholeg23n1 closedFAILED,
+Edit3230/3240 andPlay950/992 with clean ownership/drift; evidence and801mixed
+captures preserved. New floors3632/988/77/2398; combined3643/992/77/2398 preserving
+QA11/4. No live or remote promotion, art/scene/settings/package/fixture/frozen
+contract changes, normal saves or retained builds/recovery deletion. Every
+remaining WaveD/widerE2/art/native/build/1080p60/visual/human gate stays open.
+
+## 2026-10-05 UTC - schema24 disabled canonical foundation staged
+
+See `WAVE_D_FOUNDATION_IMPLEMENTATION.md` for EVERY material change and remaining
+tasks. Adds strict inactive0/empty24 storage, detached immutable23 migration and
+pure prospective safety policy,111 policy/59 persistence cases. ALL real games
+stay on the existing writers;1 is refused until complete integration. Final
+2293 regular pure/280 managed/8offline assemblies pass,55 old23/newinactive24
+seasons and5956attempted transitions compare equal including commands/results/
+RNG/history. Retained failed test setups repaired without loosening validation;
+all historical cases and Frozen1-23/fixture bytes preserved. Current/frozen
+endpoints are consciously distinct; native cases are not claimed executed.
+Floors3527/988/77/2293; combined must3538/992/77/2293 preserving QA11/4. Runtime
+writers/readers/effects/atomic links/activation and all otherD1 families remain;
+all4WaveD, widerE2, actual assets, complete nativeintegration, separate desktop,
+actual1080p60GTX1060/visual/human acceptance are still required. Combineded492
+nativeg23n1 still runs unchanged; live dirty edits/recoveries/saves/builds retained.
+
+## 2026-10-05 UTC - schema23 prerequisite and1080 verification prepared
+
+The isolated branch adds a literal strict forward contract for the actual23
+economy, pitch, widened lobby and speech receipt vocabulary without wiring it
+into dispatch or changing saves.110 authored Edit cases pass a focused managed
+Mono diagnostic; offline8/8 compiles. The standalone verifier now requests
+1920x1080 Windowed and records actual resolution/mode/cap/VSync per timing
+sample;18 new native Edit contract cases are authored/compiled, not executed.
+Operational Passed explicitly does not award60FPS. External launcher39/39 and
+telemetry8/8 synthetic checks pass without opening Unity or the game. See
+`WAVE_D_PREPARATION_IMPLEMENTATION.md` for all files, evidence and limitations.
+Floors3357/988/77/2182; future combined3368/992/77/2182, never lowered. Old freezers,
+dispatch/schema23, fixtures, simulation, scene/art/settings and live dirty edits
+are untouched. The reviewed D1 authority design is a plan, not another ledger
+or completed gameplay. Combineded492 native96249/g23n1 still runs unchanged;
+merge/nativeNoUMA+UMA/shipping/1080p60/visual/human and all4WaveD remain open.
+
+## 2026-10-05 UTC — historical-test wiring repaired; combined native still running
+
+Combined ed492's closed Edit report is3230/3240 passed,10 failed,0 skipped.
+Six tests stopped at22 before live23 validation; four exact-field comparisons
+omitted the two reviewed23 economy fields. The six-file isolated repair retains
+all rejection/history/type checks and strengthens zero-default/input-preservation
+assertions. No runtime/migration/fixture change or suite-floor decrease.
+See `WAVE_C_MIGRATION_WIRING_REPAIR.md` for every change and retained evidence.
+Direct managed Mono calls reproduce the same10 failures before, then12/12 named
+tests (including two negative controls) pass after; offline8/8 compiles. This is
+NOT native rerun/whole-suite acceptance. Scoped original native SaveStore classes
+pass24 schema23/23 pitch/32 speech cases, but the full Edit suite remains failed.
+Full Play/controller g23n1 is still active/frozen; repaired integration and fresh
+NoUMA/UMA, all4 Wave D, actual assets, build/1080p60/visual/humans remain required.
+
 ## 2026-10-05 UTC — E5 block-speech influence staged; baseline native QA closed
 
 E5 now records explicit public speech approaches and applies a bounded private

@@ -119,6 +119,7 @@ namespace Gamesim.Simulation
                 && s.nominees.Contains(from.id) && s.nominees.Contains(card.aboutId ?? "")
                 && !s.promises.Any(p => p.status == PromiseStatus.Active && p.fromId == s.playerId && p.toId == from.id && p.kind == PromiseKind.Vote))
                 MakePromise(s, from.id, PromiseKind.Vote, card.aboutId);
+            ReplyPayoff(s, card, reply);
         }
 
         /// <summary>

@@ -288,14 +288,15 @@ namespace Gamesim.Episode
                 spec.ReplyMessage = ReplyCards.Message(state, card);
                 spec.RepliesWaiting = state.replyCards.Count;
                 spec.ReplyNext = next != null ? state.Find(next.fromId)?.name : null;
+                object replyView = BeginReplyChoices();
                 spec.Replies = ReplyCards.Replies(card.kind).Select(reply =>
                 {
                     string key = reply.Key;
                     return new EpisodeHud.CampaignReply
                     {
-                        Caption = EpisodeHud.ReplyCaption(reply.Label), Key = key, Description = reply.Description,
+                        Caption = EpisodeHud.ReplyCaption(reply.Label), Key = key, Description = ReplyCardPayoffs.Description(state, card, reply),
                         Risk = EpisodeHud.RiskTag(reply.Risk),
-                        Choose = () => Commit(state, EpisodeCommandKind.ReplyToHouseguest, cardId, text: key),
+                        Choose = ReplyChoice(state, cardId, key, replyView),
                     };
                 }).ToList();
             }

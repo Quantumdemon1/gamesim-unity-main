@@ -676,6 +676,7 @@ namespace Gamesim.Episode
             ForgetActionPurchase();
             ForgetInformationShare();
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
+            replyCardView = null;
             nomineeIntelView = null;
             if (conversationPick == NomineeIntelPickerCaption) ClosePicker();
             // A chip's card goes with everything else Escape closes; the campaign opens folded.
@@ -803,6 +804,7 @@ namespace Gamesim.Episode
                 diaryDraft = null; // A draft never survives a different committed revision.
                 ForgetActionPurchase();
                 ForgetInformationShare();
+                replyCardView = null;
                 nomineeIntelView = null;
                 if (focusedNpc != null)
                 {
@@ -1236,6 +1238,7 @@ namespace Gamesim.Episode
             // before drawing a conversation. A rendered question creates a new view authority.
             nomineeIntelView = null;
             informationShareControls = null; informationShareOpener = null;
+            replyCardView = null;
             // Which screen is up decides what the music does, and a render is exactly the moment
             // that changed. SetMusic ignores a state it is already in, so this costs nothing.
             ApplyMusic();

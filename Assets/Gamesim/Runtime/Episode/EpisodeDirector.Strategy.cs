@@ -201,11 +201,12 @@ namespace Gamesim.Episode
             if (card == null) return false;
             string cardId = card.id;
             hud.HouseEventHeader(ReplyCards.Title(state, card), ReplyCards.Message(state, card), EpisodeHud.ReplyCardEyebrow);
+            object replyView = BeginReplyChoices();
             hud.EventChoices(ReplyCards.Replies(card.kind).Select(reply =>
             {
                 string key = reply.Key;
-                return (EpisodeHud.ReplyCaption(reply.Label), reply.Description, EpisodeHud.RiskTag(reply.Risk),
-                    (Action)(() => Commit(state, EpisodeCommandKind.ReplyToHouseguest, cardId, text: key)));
+                return (EpisodeHud.ReplyCaption(reply.Label), ReplyCardPayoffs.Description(state, card, reply), EpisodeHud.RiskTag(reply.Risk),
+                    ReplyChoice(state, cardId, key, replyView));
             }).ToList());
             return true;
         }

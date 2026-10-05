@@ -1107,3 +1107,22 @@ the GTX1060**; old900p measurements do not satisfy that gate. Full combined-sour
 native suites, saves/migrations, shipping build, real-asset/visual/accessibility
 review and human acceptance are still separate open gates. Nothing in the staged
 checkpoint authorizes publishing, connecting accounts or overwriting live edits.
+
+## E2 reply trade-offs staged checkpoint - 2026-10-05
+
+The reply-card portion is now implemented above48e1dd on the isolated gameplay
+branch. Information replies earn bounded private assessments; escalation offers
+a real, consent-dependent safety deal for this week; other answers retain their
+distinct trust, retaliation or promise consequences. All three UI surfaces show
+the terms and use render/load/revision-scoped callback authority. Old-season
+simulation and descriptions remain unchanged. No schema or command expansion.
+
+See `WAVE_C_REPLY_PAYOFFS_IMPLEMENTATION.md` for every material change, source
+boundary, hashes and limitations.89 new pure/Edit cases pass; full pure execution
+is1925/1925. Ten new Play tests compile but have NOT run in Unity. Final offline
+check is5/5 NoUMA assemblies, not native or full UMA acceptance. The720-outcome
+reply comparison is a first-opportunity trade-off witness, not whole-game balance.
+
+E2's complete all-verb comparison remains open. E4/E5 and all four REQUIRED Wave D
+systems follow. Exact-candidate integration, native saves/suites, separate desktop
+build, coherent real assets,1080p60 and human E1-E5 acceptance remain uncompleted.

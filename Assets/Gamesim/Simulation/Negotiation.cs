@@ -84,7 +84,7 @@ namespace Gamesim.Simulation
             if (!EpisodeEngine.CommitmentRulesOn(s) || !DealKind.IsKnown(kind)) return null;
             var npc = s.Find(npcId);
             if (npc == null || npc.isPlayer || npc.status != ContestantStatus.Active || s.Find(s.playerId)?.status != ContestantStatus.Active) return null;
-            if (s.deals.Count + 2 > PlayerDeals.PlayerDealCeiling) return null;
+            if ((UnifiedCommitments.RulesOn(s) ? CommitmentReferences.DealCount(s) : s.deals.Count) + 2 > PlayerDeals.PlayerDealCeiling) return null;
             string about = DealKind.NamesATarget(kind) ? aboutId : null;
             if (!PlayerDeals.CanPropose(s, npcId, kind, about, out _)) return null;
             var price = CounterPrice(s, npcId, kind, about);
@@ -202,7 +202,9 @@ namespace Gamesim.Simulation
 
         /// <summary>The deal linked to this one, or null.</summary>
         public static DealState Linked(EpisodeState s, DealState d) =>
-            s?.deals == null || d == null || string.IsNullOrEmpty(d.linkedDealId) ? null : s.deals.FirstOrDefault(x => x.id == d.linkedDealId);
+            s?.deals == null || d == null || string.IsNullOrEmpty(d.linkedDealId) ? null
+                : UnifiedCommitments.RulesOn(s) ? CommitmentReferences.FindDeal(s, d.linkedDealId)
+                : s.deals.FirstOrDefault(x => x.id == d.linkedDealId);
 
         /// <summary>The price paid for this deal, or null: the deal linked to it, when that is the price.</summary>
         public static DealState PriceOf(EpisodeState s, DealState bought)
@@ -256,7 +258,7 @@ namespace Gamesim.Simulation
         {
             if (!EpisodeEngine.CommitmentRulesOn(s) || ask == null || ask.type != DealKind.VetoUse || ask.recipientId != s.playerId
                 || ask.id == null || !ask.id.StartsWith(NpcDeals.VetoAskPrefix, StringComparison.Ordinal)) return null;
-            if (s.deals.Count >= NpcDeals.DealCeiling) return null;
+            if ((UnifiedCommitments.RulesOn(s) ? CommitmentReferences.DealCount(s) : s.deals.Count) >= NpcDeals.DealCeiling) return null;
             return VetoPrice(s, ask.proposerId, null);
         }
 
@@ -485,7 +487,8 @@ namespace Gamesim.Simulation
         {
             if (!EpisodeEngine.CommitmentRulesOn(s) || string.IsNullOrEmpty(npcId) || s.Find(s.playerId)?.status != ContestantStatus.Active
                 || s.Find(npcId)?.status != ContestantStatus.Active) return new List<PromiseState>();
-            return s.promises.Where(p => p.status == PromiseStatus.Active && p.fromId == npcId && p.toId == s.playerId
+            return (UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Promises(s) : s.promises)
+                .Where(p => p.status == PromiseStatus.Active && p.fromId == npcId && p.toId == s.playerId
                     && Callable(p.kind) && !CalledThisWeek(s, p))
                 .ToList();
         }
@@ -495,7 +498,8 @@ namespace Gamesim.Simulation
         {
             if (!EpisodeEngine.CommitmentRulesOn(s)) return NotThisSeason;
             if (Array.IndexOf(Approaches, approach) < 0) return "That is no way to call in a promise.";
-            var promise = s.promises.FirstOrDefault(p => p.id == promiseId);
+            var promise = UnifiedCommitments.RulesOn(s) ? CommitmentReferences.FindPromise(s, promiseId)
+                : s.promises.FirstOrDefault(p => p.id == promiseId);
             if (promise == null || promise.fromId != npcId || promise.toId != s.playerId)
                 return "Name a promise " + Name(s, npcId) + " made you.";
             if (promise.status != PromiseStatus.Active) return "That promise is not standing any more.";
@@ -540,6 +544,12 @@ namespace Gamesim.Simulation
         public static double SafetyHeld(EpisodeState s, string hohId, string id)
         {
             if (s == null || id != s.playerId || !EpisodeEngine.CommitmentRulesOn(s)) return 0;
+            // The canonical nomination reader compares this promise protection with deal protection;
+            // overlapping words never add multiple copies of the same restraint.
+            if (UnifiedCommitments.RulesOn(s))
+                return CommitmentReferences.Promises(s)
+                    .Where(p => p.fromId == hohId && p.toId == id && p.kind == PromiseKind.Safety && p.status == PromiseStatus.Active)
+                    .Select(p => HeldTo(s, p)).DefaultIfEmpty(0).Max() * StrategyRules.DealWeight(DealKind.SafetyAgreement);
             double hold = s.promises.Where(p => p.fromId == hohId && p.toId == id && p.kind == PromiseKind.Safety && p.status == PromiseStatus.Active)
                 .Sum(p => HeldTo(s, p));
             return hold * StrategyRules.DealWeight(DealKind.SafetyAgreement);
@@ -653,7 +663,7 @@ namespace Gamesim.Simulation
         public static string VetoPriceRefusal(EpisodeState s, string nomineeId, string kind)
         {
             if (!EpisodeEngine.CommitmentRulesOn(s)) return NotThisSeason;
-            if (s.deals.Count + 2 > PlayerDeals.PlayerDealCeiling) return TooManyArrangements;
+            if ((UnifiedCommitments.RulesOn(s) ? CommitmentReferences.DealCount(s) : s.deals.Count) + 2 > PlayerDeals.PlayerDealCeiling) return TooManyArrangements;
             if (s.phase != EpisodePhase.VetoMeeting || s.vetoResolved || s.vetoHolderId != s.playerId || !StrategyRules.VetoCanBeUsed(s))
                 return "Only the veto holder can name a price, before the veto meeting decides.";
             if (string.IsNullOrEmpty(nomineeId) || nomineeId == s.playerId || !s.nominees.Contains(nomineeId))
@@ -687,7 +697,8 @@ namespace Gamesim.Simulation
 
         /// <summary>Whether a deal of this kind - about this houseguest, where it names one - already binds the two of them, or waits on an answer.</summary>
         public static bool Binding(EpisodeState s, string a, string b, string kind, string aboutId) =>
-            s.deals.Any(d => DealStatus.Binds(d.status) && d.type == kind && Pair(d, a, b) && (aboutId == null || d.targetId == aboutId));
+            (UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Deals(s) : s.deals)
+                .Any(d => DealStatus.Binds(d.status) && d.type == kind && Pair(d, a, b) && (aboutId == null || d.targetId == aboutId));
 
         private static bool Pair(DealState d, string a, string b) =>
             d != null && ((d.proposerId == a && d.recipientId == b) || (d.proposerId == b && d.recipientId == a));

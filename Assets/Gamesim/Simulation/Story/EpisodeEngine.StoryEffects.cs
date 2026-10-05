@@ -322,13 +322,20 @@ namespace Gamesim.Simulation
         {
             if (from == null || to == null || from.id == to.id || !Alive(from) || !Alive(to)) return;
             if (!Enum.TryParse(kindName, out PromiseKind kind)) return;
-            if (s.promises.Any(p => p.status == PromiseStatus.Active && p.fromId == from.id && p.toId == to.id && p.kind == kind)) return;
-            if (s.promises.Count >= 200) return;
-            s.promises.Add(new PromiseState
+            if ((UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Promises(s) : s.promises)
+                .Any(p => p.status == PromiseStatus.Active && p.fromId == from.id && p.toId == to.id && p.kind == kind)) return;
+            if ((UnifiedCommitments.RulesOn(s) ? CommitmentReferences.PromiseCount(s) : s.promises.Count) >= 200) return;
+            var promise = new PromiseState
             {
-                id = "promise-" + s.nextSequence++, fromId = from.id, toId = to.id, kind = kind, status = PromiseStatus.Active,
+                id = "promise-" + s.nextSequence, fromId = from.id, toId = to.id, kind = kind, status = PromiseStatus.Active,
                 week = s.week, expiresWeek = kind == PromiseKind.FinalTwo ? 0 : kind == PromiseKind.Safety ? s.week + 1 : s.week,
-            });
+            };
+            if (UnifiedCommitments.RulesOn(s) && kind == PromiseKind.Safety)
+            {
+                if (!UnifiedCommitmentStore.TryAddPromise(s, promise, UnifiedCommitments.StoryPromise, out _)) return;
+            }
+            else s.promises.Add(promise);
+            s.nextSequence++;
             Remember(s, to.id, from.id, "Made me a " + kind + " promise.", true);
             if (from.isPlayer || to.isPlayer)
                 Log(s, "promise", (from.isPlayer ? "You promised " + kind + " to " + to.name : from.name + " promised you " + kind) + ".",
@@ -346,15 +353,20 @@ namespace Gamesim.Simulation
             // A final three deal is the commitment rules' own (C9): a story strikes one only under them.
             if (DealKind.CommitmentRulesOnly(type) && !CommitmentRulesOn(s)) return;
             if (DealKind.NamesATarget(type) && (target == null || !Alive(target))) return;
-            if (s.deals.Any(d => DealStatus.Binds(d.status) && d.type == type
+            if ((UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Deals(s) : s.deals).Any(d => DealStatus.Binds(d.status) && d.type == type
                                  && ((d.proposerId == a.id && d.recipientId == b.id) || (d.proposerId == b.id && d.recipientId == a.id))
                                  && d.targetId == target?.id)) return;
-            if (s.deals.Count >= 200) return;
-            var deal = PlayerDeals.Draft(s, b.id, type, target?.id, "deal-story-" + s.nextSequence++);
+            if ((UnifiedCommitments.RulesOn(s) ? CommitmentReferences.DealCount(s) : s.deals.Count) >= 200) return;
+            var deal = PlayerDeals.Draft(s, b.id, type, target?.id, "deal-story-" + s.nextSequence);
             deal.proposerId = a.id;
             deal.recipientId = b.id;
             deal.status = DealStatus.Active;
-            s.deals.Add(deal);
+            if (UnifiedCommitments.RulesOn(s) && type == DealKind.SafetyAgreement)
+            {
+                if (!UnifiedCommitmentStore.TryAddDeal(s, deal, UnifiedCommitments.StoryDeal, out _)) return;
+            }
+            else s.deals.Add(deal);
+            s.nextSequence++;
             if (a.isPlayer || b.isPlayer)
             {
                 var other = a.isPlayer ? b : a;

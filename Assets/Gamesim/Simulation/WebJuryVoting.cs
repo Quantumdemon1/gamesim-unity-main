@@ -124,6 +124,23 @@ namespace Gamesim.Simulation
                 else if (promise.status == PromiseStatus.Broken && Breaches.CountsAgainst(state, promise, finalistId)) score -= 20;
             }
 
+            if (UnifiedCommitments.RulesOn(state))
+            {
+                var records = UnifiedCommitmentHistory.Records(state);
+                var pair = records.Where(row => Between(row.makerId, row.beneficiaryId, jurorId, finalistId)).ToArray();
+                // One active Safety pact and one strongest kept reward per actual settlement week.
+                if (pair.Any(row => row.sourcePolicy == UnifiedCommitments.DealPolicy && row.status == DealStatus.Active)) score += 10;
+                score += pair.Where(row => row.status == DealStatus.Fulfilled).GroupBy(row => row.settledWeek)
+                    .Sum(group => group.Max(row => 20 * DealTrust.Weight(row.trustImpact)));
+                foreach (var incident in UnifiedCommitmentHistory.Breaches(state)
+                    .Where(incident => incident.ActorId == finalistId && incident.WrongedId == jurorId))
+                {
+                    var owner = records.Single(row => row.id == incident.EffectOwnerId);
+                    score -= owner.sourcePolicy == UnifiedCommitments.PromisePolicy ? 20
+                        : 25 * (incident.SourceConsequence / DealResolution.BrokenBase);
+                }
+            }
+
             return Math.Max(-50, Math.Min(50, score));
         }
 

@@ -32,7 +32,7 @@ namespace Gamesim.Simulation
             if (key == "promise-safety")
             {
                 Require(HoHPitches.CanPromiseSafety(s, from.id), "Your promise record is full.");
-                if (!HoHPitches.HasSafetyPromise(s, from.id)) MakePromise(s, from.id, PromiseKind.Safety, null);
+                if (!HoHPitches.HasSafetyPromise(s, from.id)) MakePromise(s, from.id, PromiseKind.Safety, null, UnifiedCommitments.HoHPitch);
                 else Log(s, "promise", "You reaffirmed your existing safety promise to " + from.name + ".", s.playerId, from.id);
             }
             s.replyCards.Remove(card);

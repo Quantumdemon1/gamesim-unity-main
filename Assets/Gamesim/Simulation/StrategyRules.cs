@@ -427,7 +427,13 @@ namespace Gamesim.Simulation
             if (Allegiance.Holds(s, hohId, id)) reluctance += AllyShield;
             foreach (var deal in s.deals.Where(d => (d.proposerId == hohId && d.recipientId == id) || (d.proposerId == id && d.recipientId == hohId)))
             {
-                if (deal.status == DealStatus.Active) reluctance += DealWeight(deal.type);
+                if (deal.status == DealStatus.Active)
+                {
+                    // New-rule safety has one canonical protection term below. Other families
+                    // keep their existing weights; legacy seasons retain their original sum.
+                    if (!UnifiedCommitments.RulesOn(s) || deal.type != DealKind.SafetyAgreement)
+                        reluctance += DealWeight(deal.type);
+                }
                 else if (deal.status == DealStatus.Broken && Breaches.CountsAgainst(s, deal, id)) reluctance += BrokenDealWeight;
             }
             reluctance -= TargetPull * s.deals.Count(d => d.status == DealStatus.Active && d.type == DealKind.TargetAgreement
@@ -439,7 +445,9 @@ namespace Gamesim.Simulation
             }
             // Under the commitment rules (C7) a promise of safety the player called in holds its maker to
             // it: a safety deal's weight, times how hard it was held. Nothing in any other season.
-            reluctance += Negotiation.SafetyHeld(s, hohId, id);
+            reluctance += UnifiedCommitments.RulesOn(s)
+                ? UnifiedCommitments.StrongestProtection(s, hohId, id).Strength
+                : Negotiation.SafetyHeld(s, hohId, id);
             return reluctance;
         }
 

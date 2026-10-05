@@ -245,6 +245,7 @@ namespace Gamesim.Simulation
                         if (LeverRulesOn(s)) s.boughtActionPoints = 0;
                         foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.expiresWeek > 0 && p.expiresWeek < s.week))
                             promise.status = PromiseStatus.Expired;
+                        ResolveUnifiedSafetyExpiry(s, UnifiedCommitmentExpiry.PromiseWeekTurn);
                         if (StoryAt(s, StoryRules.Bonds)) MoodsSettle(s);
                         StoryWeekTurn(s);
                     }
@@ -759,6 +760,10 @@ namespace Gamesim.Simulation
         /// </summary>
         public static double NominationWeight(EpisodeState s, string hohId, string id) =>
             StrategyRules.NominationReluctance(s, hohId, id) + StoryConsumers.NominationPreference(s, hohId, id) - s.Score(hohId, id)
+            // Native unified rules: story's word and strategy's hold describe the same protection.
+            // Subtract only their overlap; grudges, alliances, bonds, targets and pleas stay independent.
+            - (UnifiedCommitments.RulesOn(s) ? Math.Min(UnifiedCommitments.StrongestProtection(s, hohId, id).Strength,
+                StoryConsumers.SafetyPreference(s, hohId, id)) : 0)
             // Under agency, how dangerous they are, as the Head of Household and their pact read it (NPC-AGENCY-PLAN.md §5.1).
             - ThreatTerm(s, hohId, id);
 
@@ -803,6 +808,7 @@ namespace Gamesim.Simulation
             foreach (var nominee in s.nominees) NominationEffects(s, nominee);
             StoryNominated(s, s.nominees);
             SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Nominates, s.hohId, s.nominees.ToList()));
+            ResolveUnifiedSafetyNomination(s, "nomination", s.hohId, s.nominees.ToList());
             Log(s, "nomination", Name(s, s.hohId) + Verb(s, s.hohId, " nominates ", " nominate ")
                 + Target(s, first, s.hohId) + " and " + Target(s, second, s.hohId) + ".");
             // Under the commitment rules (C2) an ally who puts the player up has turned on their pact.
@@ -942,12 +948,14 @@ namespace Gamesim.Simulation
             // broken by it exactly as it would be at the ceremony itself.
             if (use) SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Nominates, s.hohId,
                 new List<string> { replacement }));
+            if (use) ResolveUnifiedSafetyNomination(s, "replacement", s.hohId, new List<string> { replacement });
             // So is putting an ally up in a saved nominee's place (C2).
             if (use && replacement == s.playerId && s.hohId != s.playerId) Betrayal(s, s.hohId, Allegiance.NamedReplacement, false);
             // Under the commitment rules (C1) the Head of Household's nominating is done for the
             // week, so a safety pact of theirs with somebody they spared is kept - and the one spared
             // thinks the better of them for it, at the pact's weight. Before them it could only break.
             if (CommitmentRulesOn(s)) SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Spares, s.hohId, s.nominees.ToList()));
+            ResolveUnifiedSafetySpared(s, s.hohId, s.nominees.ToList());
             s.vetoResolved = true;
             // Under the commitment rules (C9) the final four's block is set: a final three deal struck now
             // could never be broken and would always be kept, so an offer of one lapses. No roll, no line.
@@ -1498,11 +1506,20 @@ namespace Gamesim.Simulation
             return from[Math.Min(Math.Max(0, index), from.Count - 1)];
         }
 
-        private static void MakePromise(EpisodeState s, string to, PromiseKind kind, string target)
+        private static void MakePromise(EpisodeState s, string to, PromiseKind kind, string target, string safetyOrigin = null)
         {
-            Require(!s.promises.Any(p => p.status == PromiseStatus.Active && p.fromId == s.playerId && p.toId == to && p.kind == kind), "This promise is already active.");
-            s.promises.Add(new PromiseState { id = "promise-" + s.nextSequence, fromId = s.playerId, toId = to, targetId = target,
-                kind = kind, status = PromiseStatus.Active, week = s.week, expiresWeek = kind == PromiseKind.FinalTwo ? 0 : kind == PromiseKind.Safety ? s.week + 1 : s.week });
+            if (UnifiedCommitments.RulesOn(s) && kind == PromiseKind.Safety)
+            {
+                var draft = new PromiseState { id = "promise-" + s.nextSequence, fromId = s.playerId, toId = to, targetId = target,
+                    kind = kind, status = PromiseStatus.Active, week = s.week, expiresWeek = s.week + 1 };
+                Require(UnifiedCommitmentStore.TryAddPromise(s, draft, safetyOrigin ?? UnifiedCommitments.PlayerPromise, out string error), error);
+            }
+            else
+            {
+                Require(!s.promises.Any(p => p.status == PromiseStatus.Active && p.fromId == s.playerId && p.toId == to && p.kind == kind), "This promise is already active.");
+                s.promises.Add(new PromiseState { id = "promise-" + s.nextSequence, fromId = s.playerId, toId = to, targetId = target,
+                    kind = kind, status = PromiseStatus.Active, week = s.week, expiresWeek = kind == PromiseKind.FinalTwo ? 0 : kind == PromiseKind.Safety ? s.week + 1 : s.week });
+            }
             Remember(s, to, s.playerId, "Made me a " + kind + " promise.", true);
             Remember(s, s.playerId, to, "I promised " + kind + " to " + Name(s, to) + ".", true);
             Log(s, "promise", "You promised " + kind + " to " + Name(s, to) + ".", s.playerId, to);
@@ -1948,6 +1965,9 @@ namespace Gamesim.Simulation
             // keyed to it (C7), so every attempt has one of its own.
             int attempt = s.nextSequence;
             Require(PlayerDeals.CanPropose(s, target.id, type, about, out string refusal), refusal);
+            if (UnifiedCommitments.RulesOn(s) && type == DealKind.SafetyAgreement)
+                Require(UnifiedCommitmentStore.CanAddDeal(s, PlayerDeals.Draft(s, target.id, type, about, "deal-player-" + s.nextSequence),
+                    UnifiedCommitments.PlayerDeal, out string preflightError), preflightError);
 
             double chance = PlayerDeals.AcceptanceChance(s, target.id, type, about);
             // An alliance invitation is the one way to a pact (ACTIONS-DEALS-ALLIANCES-PLAN C4): under
@@ -1961,7 +1981,9 @@ namespace Gamesim.Simulation
             {
                 var read = LeverRead(s, target.id);
                 var struck = PlayerDeals.Draft(s, target.id, type, about, "deal-player-" + s.nextSequence);
-                s.deals.Add(struck);
+                if (UnifiedCommitments.RulesOn(s) && type == DealKind.SafetyAgreement)
+                    Require(UnifiedCommitmentStore.TryAddDeal(s, struck, UnifiedCommitments.PlayerDeal, out string storageError), storageError);
+                else s.deals.Add(struck);
                 // Under the rules a deal struck is on the record as a chance taken now (C1), as an
                 // accepted offer is: one that lapses before any reveal reconciles it was still made.
                 if (CommitmentRulesOn(s)) Opportunity(s, struck.id, OpportunityKinds.Deal, struck.week).response = OpportunityResponse.Taken;
@@ -1998,9 +2020,10 @@ namespace Gamesim.Simulation
         {
             Require(s.Find(s.playerId).status == ContestantStatus.Active,
                 "Evicted players can follow the season but cannot influence it.");
-            var deal = s.deals.FirstOrDefault(d => d.id == c.targetId
-                                                   && d.status == DealStatus.Proposed
-                                                   && d.recipientId == s.playerId);
+            var canonical = UnifiedCommitments.RulesOn(s) ? CommitmentReferences.FindCanonical(s, c.targetId) : null;
+            var deal = canonical != null ? CommitmentReferences.FindDeal(s, c.targetId)
+                : s.deals.FirstOrDefault(d => d.id == c.targetId && d.status == DealStatus.Proposed && d.recipientId == s.playerId);
+            if (canonical != null && (deal == null || deal.status != DealStatus.Proposed || deal.recipientId != s.playerId)) deal = null;
             Require(deal != null, "That offer is no longer on the table.");
             var from = s.Find(deal.proposerId);
             Require(from != null && from.status == ContestantStatus.Active,
@@ -2016,10 +2039,18 @@ namespace Gamesim.Simulation
                 // final four's block is set, in the words the player's own proposal is refused in.
                 Require(!(deal.type == DealKind.FinalThree && s.Active.Count() <= NpcDeals.FinalThreeSize), PlayerDeals.FinalThreeHereRefusal);
                 Require(!(deal.type == DealKind.FinalThree && NpcDeals.FinalFourBlockSet(s)), PlayerDeals.FinalFourBlockSetRefusal);
-                deal.status = DealStatus.Active;
                 // The offer lapsed at the end of this week; the arrangement it becomes runs for as
                 // long as its own kind runs for, which for a final two or a partnership is no limit.
-                deal.expiresWeek = PlayerDeals.Draft(s, deal.proposerId, deal.type, deal.targetId, deal.id).expiresWeek;
+                if (canonical != null)
+                {
+                    Require(UnifiedCommitmentStore.TryRespond(s, deal.id, true, out string responseError), responseError);
+                    deal = CommitmentReferences.FindDeal(s, deal.id);
+                }
+                else
+                {
+                    deal.status = DealStatus.Active;
+                    deal.expiresWeek = PlayerDeals.Draft(s, deal.proposerId, deal.type, deal.targetId, deal.id).expiresWeek;
+                }
                 // Under the commitment rules (C1, decision 15) a yes is a commitment, not free
                 // warmth: +4 rather than +12, and the offer weighs one step heavier if it breaks
                 // (DealResolution.BreachWeight). The same two draws either way.
@@ -2036,7 +2067,9 @@ namespace Gamesim.Simulation
                 return;
             }
 
-            deal.status = DealStatus.Declined;
+            if (canonical != null)
+                Require(UnifiedCommitmentStore.TryRespond(s, deal.id, false, out string declineError), declineError);
+            else deal.status = DealStatus.Declined;
             Change(s, s.playerId, deal.proposerId, PlayerDeals.DeclineImpact,
                 "Turned down my " + title + ".", "deal_declined");
             Log(s, "deal", "You declined a " + title + " from " + from.name + ".", s.playerId, deal.proposerId);
@@ -2056,6 +2089,10 @@ namespace Gamesim.Simulation
         /// on, and the same reason.</para>
         /// </summary>
         private static void SettleDeals(EpisodeState s, List<DealResolution.Verdict> verdicts)
+            => SettleDealsBeforeSafetyEffects(s, verdicts, null);
+
+        private static void SettleDealsBeforeSafetyEffects(EpisodeState s, List<DealResolution.Verdict> verdicts,
+            IReadOnlyList<string> excludedSafetyEffects)
         {
             // Under the commitment rules (C0) a deal says who broke it and when, and its breach is held
             // by the one wronged and never fades (X11). Before them the record is both ways and fades,
@@ -2122,7 +2159,8 @@ namespace Gamesim.Simulation
                     // under the commitment rules (C1): the story's "You Broke Your Word" would tell them a
                     // ballot they may not know (decision 4). The memory and the line wait for the ballot.
                     bool theirBallotAgainstYou = keepPlayersView && wronged == s.playerId;
-                    if (!kept && !theirBallotAgainstYou) StoryWordBroken(s, wronged, verdict.actorId, GrudgeCauses.DealBroken, 60);
+                    if (!kept && !theirBallotAgainstYou)
+                        StoryWordBrokenBeforeSafetyEffects(s, wronged, verdict.actorId, GrudgeCauses.DealBroken, 60, excludedSafetyEffects);
                 }
 
                 if (!kept) SpreadBetrayal(s, deal, verdict.actorId);
@@ -2172,6 +2210,10 @@ namespace Gamesim.Simulation
         }
 
         private static void SettlePromise(EpisodeState s, PromiseState promise, PromiseStatus status)
+            => SettlePromiseBeforeSafetyEffects(s, promise, status, null);
+
+        private static void SettlePromiseBeforeSafetyEffects(EpisodeState s, PromiseState promise, PromiseStatus status,
+            IReadOnlyList<string> excludedSafetyEffects)
         {
             promise.status = status;
             // Under the commitment rules (C0) a promise says who broke it - its maker, whose act settles
@@ -2199,7 +2241,8 @@ namespace Gamesim.Simulation
             // (KnownBallots.PromiseOutcomeKnown). Every other promise's line goes to the pair.
             if (promise.kind == PromiseKind.Vote) Log(s, "promise-outcome", text, promise.fromId);
             else Log(s, "promise-outcome", text, promise.fromId, promise.toId);
-            if (status == PromiseStatus.Broken) StoryWordBroken(s, promise.toId, promise.fromId, GrudgeCauses.PromiseBroken, 60);
+            if (status == PromiseStatus.Broken)
+                StoryWordBrokenBeforeSafetyEffects(s, promise.toId, promise.fromId, GrudgeCauses.PromiseBroken, 60, excludedSafetyEffects);
             if (status == PromiseStatus.Broken)
             {
                 foreach (var witness in s.Active.Where(c => c.id != promise.fromId && c.id != promise.toId))

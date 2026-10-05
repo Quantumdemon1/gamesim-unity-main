@@ -74,6 +74,11 @@
     <Compile Include="$(EditMode)UnifiedCommitmentsTests.cs" />
     <Compile Include="$(EditMode)CommitmentReferencesTests.cs" />
     <Compile Include="$(EditMode)UnifiedCommitmentStoreTests.cs" />
+    <Compile Include="$(EditMode)UnifiedSafetyCommandOwnerTests.cs" />
+    <Compile Include="$(EditMode)UnifiedSafetyWriterTests.cs" />
+    <Compile Include="$(EditMode)UnifiedSafetyResolutionTests.cs" />
+    <Compile Include="$(EditMode)UnifiedSafetyProtectionTests.cs" />
+    <Compile Include="$(EditMode)UnifiedSafetyReaderTests.cs" />
     <Compile Include="$(EditMode)AllianceProposalTests.cs" />
     <Compile Include="$(EditMode)EveryDealDoesSomethingTests.cs" />
     <Compile Include="$(EditMode)BetrayalAndAllegianceTests.cs" />

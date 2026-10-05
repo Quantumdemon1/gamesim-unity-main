@@ -89,8 +89,15 @@ namespace Gamesim.Simulation
             var bought = PlayerDeals.Draft(s, npc.id, counter.kind, counter.aboutId, boughtId);
             bought.linkedDealId = priceId;
             var price = Negotiation.DraftPrice(s, counter.price, boughtId, priceId);
-            s.deals.Add(bought);
-            s.deals.Add(price);
+            if (UnifiedCommitments.RulesOn(s)
+                && (bought.type == DealKind.SafetyAgreement || price.type == DealKind.SafetyAgreement))
+                Require(UnifiedCommitmentStore.TryAddLinkedDeals(s, bought, UnifiedCommitments.CounterDeal,
+                    price, UnifiedCommitments.CounterPrice, out string error), error);
+            else
+            {
+                s.deals.Add(bought);
+                s.deals.Add(price);
+            }
             Opportunity(s, bought.id, OpportunityKinds.Deal, bought.week).response = OpportunityResponse.Taken;
             Opportunity(s, price.id, OpportunityKinds.Deal, price.week).response = OpportunityResponse.Taken;
             string title = DealKind.Title(counter.kind).ToLowerInvariant();
@@ -145,7 +152,22 @@ namespace Gamesim.Simulation
             if (price == null || breakerId == null || !DealStatus.Binds(price.status) || price.recipientId != breakerId) return;
             if (KnownBallots.SettledByABallot(bought)) return;
             if (price.expiresWeek != 0 && s.week > price.expiresWeek) return;
-            price.status = DealStatus.Expired;
+            if (UnifiedCommitments.RulesOn(s))
+            {
+                if (CommitmentReferences.FindCanonical(s, price.id) != null)
+                {
+                    if (!UnifiedCommitmentStore.TryExpireLinkedPrice(s, bought.id, breakerId, out _)) return;
+                }
+                else
+                {
+                    // References are deliberately detached under the new authority. The non-safety
+                    // consideration still belongs to its original legacy store.
+                    var owned = s.deals.FirstOrDefault(d => d.id == price.id);
+                    if (owned == null || !DealStatus.Binds(owned.status)) return;
+                    owned.status = DealStatus.Expired;
+                }
+            }
+            else price.status = DealStatus.Expired;
             Log(s, "deal-outcome", Negotiation.VoidedLine(s, price, bought), price.proposerId, price.recipientId);
         }
 
@@ -183,7 +205,8 @@ namespace Gamesim.Simulation
         {
             string refusal = Negotiation.CallInRefusal(s, target.id, promiseId, approach);
             Require(refusal == null, refusal);
-            var promise = s.promises.First(p => p.id == promiseId);
+            var promise = UnifiedCommitments.RulesOn(s) ? CommitmentReferences.FindPromise(s, promiseId)
+                : s.promises.First(p => p.id == promiseId);
             bool landed = Roll(s) * 100 < Negotiation.Chance(s, target.id, approach, false);
             double cost = Negotiation.Cost(approach);
             string line = Negotiation.CallInLine(s, promise, approach, landed);

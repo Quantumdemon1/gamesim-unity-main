@@ -112,7 +112,7 @@ namespace Gamesim.Simulation
         /// </summary>
         public static bool TryGive(EpisodeState state, string npcId)
         {
-            if (state.promises.Count >= PromiseCeiling) return false;
+            if ((UnifiedCommitments.RulesOn(state) ? CommitmentReferences.PromiseCount(state) : state.promises.Count) >= PromiseCeiling) return false;
 
             var chosen = state.contestants
                 .Where(other => other.status == ContestantStatus.Active && !other.isPlayer && other.id != npcId)
@@ -123,20 +123,19 @@ namespace Gamesim.Simulation
                 .FirstOrDefault();
 
             if (chosen == null) return false;
-            Give(state, npcId, chosen.id, chosen.kind.Value);
-            return true;
+            return Give(state, npcId, chosen.id, chosen.kind.Value);
         }
 
         /// <summary>What validation allows a season to hold, so the pass stops short of it.</summary>
         public const int PromiseCeiling = 200;
 
         private static bool AlreadyPromised(EpisodeState state, string from, string to, PromiseKind kind) =>
-            state.promises.Any(p => p.fromId == from && p.toId == to && p.kind == kind
+            (UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Promises(state) : state.promises).Any(p => p.fromId == from && p.toId == to && p.kind == kind
                                     && p.status == PromiseStatus.Active);
 
-        private static void Give(EpisodeState state, string from, string to, PromiseKind kind)
+        private static bool Give(EpisodeState state, string from, string to, PromiseKind kind)
         {
-            state.promises.Add(new PromiseState
+            var promise = new PromiseState
             {
                 id = "promise-npc-" + state.nextSequence,
                 fromId = from, toId = to,
@@ -149,10 +148,16 @@ namespace Gamesim.Simulation
                 expiresWeek = kind == PromiseKind.FinalTwo ? 0
                     : kind == PromiseKind.Safety ? state.week + 1
                     : state.week,
-            });
+            };
+            if (UnifiedCommitments.RulesOn(state) && kind == PromiseKind.Safety)
+            {
+                if (!UnifiedCommitmentStore.TryAddPromise(state, promise, UnifiedCommitments.NpcPromise, out _)) return false;
+            }
+            else state.promises.Add(promise);
 
             RelationshipLedger.Record(state, from, to, "promise-made", 15,
                 state.Find(from).name + " gave " + state.Find(to).name + " their word");
+            return true;
         }
     }
 }

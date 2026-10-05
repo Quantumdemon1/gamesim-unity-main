@@ -32,11 +32,38 @@ namespace Gamesim.Simulation
 
         internal static bool TryAddDeal(EpisodeState state, DealState draft, string origin, out string error)
         {
-            if (!Ready(state, out error)) return false;
-            if (!SafetyDraft(state, draft, origin, false, out error)) return false;
+            if (!CanAddDeal(state, draft, origin, out error)) return false;
             var row = FromDeal(draft, origin);
-            if (!UnifiedCommitments.CanOffer(state, row, origin == UnifiedCommitments.PlayerDeal, out error)) return false;
             var staged = Stage(state); staged.unifiedCommitments.Add(row.Clone());
+            return Commit(state, staged, out error);
+        }
+
+        /// <summary>Source-shaped preflight before the command spends or rolls; never installs a draft.</summary>
+        internal static bool CanAddDeal(EpisodeState state, DealState draft, string origin, out string error)
+        {
+            if (!Ready(state, out error) || !SafetyDraft(state, draft, origin, false, out error)) return false;
+            return UnifiedCommitments.CanOffer(state, FromDeal(draft, origin), origin == UnifiedCommitments.PlayerDeal, out error);
+        }
+
+        /// <summary>
+        /// Voids only a canonical safety consideration, through its actual storage owner. The
+        /// command owns the public receipt; this writes no breach, effect, RNG or history of its own.
+        /// A ballot or a breach after the price's term cannot disclose or void it.
+        /// </summary>
+        internal static bool TryExpireLinkedPrice(EpisodeState state, string boughtId, string breakerId, out string error)
+        {
+            if (!Ready(state, out error)) return false;
+            var bought = CommitmentReferences.FindDeal(state, boughtId);
+            var price = bought?.linkedDealId == null ? null : state.unifiedCommitments.FirstOrDefault(row => row.id == bought.linkedDealId);
+            if (bought == null || Negotiation.IsPrice(bought) || bought.status != DealStatus.Broken
+                || Breaches.DealBreaker(state, bought) != breakerId || KnownBallots.SettledByABallot(bought)
+                || price == null || price.origin != UnifiedCommitments.CounterPrice || price.sourcePolicy != UnifiedCommitments.DealPolicy
+                || price.linkedCommitmentId != bought.id || !DealStatus.Binds(price.status) || price.beneficiaryId != breakerId
+                || bought.week != price.createdWeek || bought.linkedDealId != price.id
+                || (price.expiresWeek != 0 && state.week > price.expiresWeek))
+                return Refuse(out error, "Only an active safety price for a public breach by its payee may lapse.");
+            var staged = Stage(state);
+            staged.unifiedCommitments.First(row => row.id == price.id).status = DealStatus.Expired;
             return Commit(state, staged, out error);
         }
 

@@ -46,6 +46,10 @@ namespace Gamesim.Simulation
         }
 
         public static Breakdown Assess(EpisodeState state, string evaluatorId, string targetId)
+            => AssessBeforeSafetyEffects(state, evaluatorId, targetId, null);
+
+        private static Breakdown AssessBeforeSafetyEffects(EpisodeState state, string evaluatorId, string targetId,
+            IReadOnlyList<string> excludedSafetyEffects)
         {
             var target = state?.Find(targetId);
             if (target == null) return new Breakdown(0, 0, 0, 0, 0);
@@ -54,11 +58,18 @@ namespace Gamesim.Simulation
                 SocialThreat(state, target),
                 AllianceThreat(state, evaluatorId, targetId),
                 PotentialThreat(target),
-                ReputationThreat(state, evaluatorId, targetId));
+                ReputationThreat(state, evaluatorId, targetId, excludedSafetyEffects));
         }
 
         public static double Total(EpisodeState state, string evaluatorId, string targetId) =>
             Assess(state, evaluatorId, targetId).Total;
+
+        // Settlement-only snapshot semantics: the command has installed canonical verdicts before
+        // running effects, but the current decision must not amplify its own grudge via reputation.
+        // Prior incidents still count. This is not a public player-facing reputation override.
+        internal static double TotalBeforeSafetyEffects(EpisodeState state, string evaluatorId, string targetId,
+            IReadOnlyList<string> excludedSafetyEffects) =>
+            AssessBeforeSafetyEffects(state, evaluatorId, targetId, excludedSafetyEffects).Total;
 
         /// <summary>
         /// The house ranked by how dangerous the evaluator finds them, most first.
@@ -125,11 +136,17 @@ namespace Gamesim.Simulation
         /// hot rivalry makes a rival feel more threatening than their record alone suggests. This is
         /// the one component that differs by who is asking.</para>
         /// </summary>
-        private static double ReputationThreat(EpisodeState state, string evaluatorId, string targetId)
+        private static double ReputationThreat(EpisodeState state, string evaluatorId, string targetId,
+            IReadOnlyList<string> excludedSafetyEffects)
         {
             // The promises held against them: under the commitment rules the ones they broke (C0, X3);
             // before them every broken promise they were either side of.
-            double threat = Math.Min(8, state.promises.Count(p => Breaches.CountsAgainst(state, p, targetId)) * 3);
+            int broken = state.promises.Count(p => Breaches.CountsAgainst(state, p, targetId));
+            // Unified Safety promises/deals are evidence of the same act, not separate reputations.
+            if (UnifiedCommitments.RulesOn(state))
+                broken += UnifiedCommitmentHistory.Breaches(state).Count(incident => incident.ActorId == targetId
+                    && (excludedSafetyEffects == null || !excludedSafetyEffects.Contains(incident.EffectKey)));
+            double threat = Math.Min(8, broken * 3);
 
             double trust = TrustScore(state, targetId, evaluatorId);
             if (trust < 35) threat += 5;

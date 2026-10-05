@@ -31,7 +31,7 @@ namespace Gamesim.Simulation
                 value -= 0.3 * Grudges.Severity(s, hohId, candidateId);
                 // From the strategy windows a safety agreement is weighed with the other deals
                 // (StrategyRules.NominationReluctance); only a promise is the story's to count then.
-                if (StrategyRules.Apply(s) ? PromisedSafety(s, hohId, candidateId) : TheirWord(s, hohId, candidateId)) value += 30;
+                value += SafetyPreference(s, hohId, candidateId);
             }
             if (v >= StoryRules.Bonds)
             {
@@ -53,12 +53,24 @@ namespace Gamesim.Simulation
         /// </summary>
         /// <summary>Whether the Head of Household has promised this houseguest safety, and the promise stands.</summary>
         public static bool PromisedSafety(EpisodeState s, string hohId, string candidateId) =>
-            s.promises.Any(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.Safety && p.fromId == hohId && p.toId == candidateId);
+            UnifiedCommitments.RulesOn(s)
+                ? UnifiedCommitments.Binding(s, hohId, candidateId).Any(row => row.sourcePolicy == UnifiedCommitments.PromisePolicy)
+                : s.promises.Any(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.Safety && p.fromId == hohId && p.toId == candidateId);
 
         public static bool TheirWord(EpisodeState s, string hohId, string candidateId) =>
+            UnifiedCommitments.RulesOn(s) ? UnifiedCommitments.Binding(s, hohId, candidateId).Count > 0 :
             s.promises.Any(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.Safety && p.fromId == hohId && p.toId == candidateId)
             || s.deals.Any(d => d.status == DealStatus.Active && d.type == DealKind.SafetyAgreement
                                 && ((d.proposerId == hohId && d.recipientId == candidateId) || (d.proposerId == candidateId && d.recipientId == hohId)));
+
+        /// <summary>The story's own safety term; the composite engine takes a maximum with strategy, not a sum.</summary>
+        public static double SafetyPreference(EpisodeState s, string hohId, string candidateId)
+        {
+            if (!EpisodeEngine.StoryAt(s, StoryRules.Grudges)) return 0;
+            bool word = UnifiedCommitments.RulesOn(s) ? TheirWord(s, hohId, candidateId)
+                : StrategyRules.Apply(s) ? PromisedSafety(s, hohId, candidateId) : TheirWord(s, hohId, candidateId);
+            return word ? 30 : 0;
+        }
 
         /// <summary>
         /// The veto holder's save order: their score, less 0.3 of a grudge, +30 for an active veto

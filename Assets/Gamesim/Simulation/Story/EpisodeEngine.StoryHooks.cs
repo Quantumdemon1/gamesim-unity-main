@@ -60,10 +60,15 @@ namespace Gamesim.Simulation
         /// becomes a reckoning: the next conversation between them is about what happened.
         /// </summary>
         private static void StoryWordBroken(EpisodeState s, string wrongedId, string breakerId, string cause, double severity)
+            => StoryWordBrokenBeforeSafetyEffects(s, wrongedId, breakerId, cause, severity, null);
+
+        private static void StoryWordBrokenBeforeSafetyEffects(EpisodeState s, string wrongedId, string breakerId,
+            string cause, double severity, IReadOnlyList<string> excludedSafetyEffects)
         {
             if (!StoryOn(s) || wrongedId == null || breakerId == null || wrongedId == breakerId) return;
             if (StoryAt(s, StoryRules.Grudges) && wrongedId != s.playerId)
-                Grudges.Add(s, wrongedId, breakerId, Grudges.ThreatScaled(s, severity, wrongedId, breakerId), cause);
+                Grudges.Add(s, wrongedId, breakerId,
+                    Grudges.ThreatScaledBeforeSafetyEffects(s, severity, wrongedId, breakerId, excludedSafetyEffects), cause);
             if (breakerId == s.playerId) AddReckoning(s, wrongedId, cause, true);
             else if (wrongedId == s.playerId) AddReckoning(s, breakerId, cause, false);
         }
@@ -319,6 +324,7 @@ namespace Gamesim.Simulation
             NpcAlliances.EndBroken(s);
             s.oathOpportunities.Remove(id);
             s.loyaltyOaths.RemoveAll(o => o.playerId == id || o.targetId == id);
+            if (UnifiedCommitments.RulesOn(s)) ResolveUnifiedSafetyExpiry(s, UnifiedCommitmentExpiry.Expulsion, id);
             foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && (p.fromId == id || p.toId == id)))
                 promise.status = PromiseStatus.Expired;
             foreach (var deal in s.deals.Where(d => DealStatus.Binds(d.status) && (d.proposerId == id || d.recipientId == id || d.targetId == id)))

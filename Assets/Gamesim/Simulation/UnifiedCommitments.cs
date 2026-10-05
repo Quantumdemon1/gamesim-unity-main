@@ -61,7 +61,7 @@ namespace Gamesim.Simulation
         { Strength = strength; StrongestId = strongest; EvidenceIds = Array.AsReadOnly(ids.OrderBy(id => id, StringComparer.Ordinal).ToArray()); }
     }
 
-    public enum UnifiedCommitmentExpiry { PromiseWeekTurn, DealPass, Departure }
+    public enum UnifiedCommitmentExpiry { PromiseWeekTurn, DealPass, Departure, Expulsion }
 
     /// <summary>
     /// Pure, prospective safety policy, NOT an activated production writer/settler. Every returned
@@ -266,12 +266,18 @@ namespace Gamesim.Simulation
             if (!RulesOn(state)) return Empty();
             var rows = CheckedRows(state);
             if (!Enum.IsDefined(typeof(UnifiedCommitmentExpiry), boundary)) throw new ArgumentOutOfRangeException(nameof(boundary));
-            if (boundary == UnifiedCommitmentExpiry.Departure && (state.Find(departedId) == null || Active(state, departedId)))
+            if ((boundary == UnifiedCommitmentExpiry.Departure || boundary == UnifiedCommitmentExpiry.Expulsion)
+                && (state.Find(departedId) == null || Active(state, departedId)))
                 throw new ArgumentException("Name the contestant who actually left.", nameof(departedId));
+            if (boundary == UnifiedCommitmentExpiry.Expulsion && state.Find(departedId).status != ContestantStatus.Expelled)
+                throw new ArgumentException("Expulsion requires an actual production removal.", nameof(departedId));
             var changes = new List<UnifiedCommitmentChange>();
             foreach (var row in rows.OrderBy(row => row.id, StringComparer.Ordinal))
             {
-                bool expires = boundary == UnifiedCommitmentExpiry.PromiseWeekTurn
+                bool expires = boundary == UnifiedCommitmentExpiry.Expulsion
+                    ? (row.sourcePolicy == PromisePolicy ? row.status == DealStatus.Active : DealStatus.Binds(row.status))
+                        && (row.makerId == departedId || row.beneficiaryId == departedId)
+                    : boundary == UnifiedCommitmentExpiry.PromiseWeekTurn
                     ? row.sourcePolicy == PromisePolicy && row.status == DealStatus.Active && row.expiresWeek < state.week
                     : row.sourcePolicy == DealPolicy && DealStatus.Binds(row.status) && (boundary == UnifiedCommitmentExpiry.DealPass
                         ? row.expiresWeek < state.week : row.makerId == departedId || row.beneficiaryId == departedId);
@@ -283,7 +289,7 @@ namespace Gamesim.Simulation
         }
 
         // Source-only scalar calculation: no relationship changes, gossip rolls or facts are emitted.
-        private static double SourceConsequence(UnifiedCommitmentState row, bool fulfilled)
+        internal static double SourceConsequence(UnifiedCommitmentState row, bool fulfilled)
         {
             if (row.sourcePolicy == PromisePolicy) return WebRules.PromiseImpact(Safety, fulfilled ? DealStatus.Fulfilled : DealStatus.Broken);
             bool accepted = row.origin == NpcOffer || row.origin == CounterDeal || row.origin == CounterPrice;

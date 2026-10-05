@@ -122,15 +122,23 @@ namespace Gamesim.Simulation
             }
             foreach (var reply in s.ledger.replies.Where(r => r.fromId == id))
             {
+                if (reply.kind == ReplyCards.Pitch && reply.replyKey == HoHPitches.FeelOutKey)
+                {
+                    notes.Add(new Note { week = reply.week, kind = Kinds.Read,
+                        text = first + " explained their nomination pitch; asking made no new promise", brief = "Explained their pitch" });
+                    continue;
+                }
                 var answer = ReplyCards.Find(reply.kind, reply.replyKey);
                 string what = reply.kind == ReplyCards.Confrontation ? first + " confronted you"
                     : reply.kind == ReplyCards.Gossip ? first + " talked about you to " + Name(reply.listenerId)
+                    : reply.kind == ReplyCards.Pitch ? first + " pitched before your nominations"
                     : first + " asked for your vote";
                 notes.Add(new Note
                 {
                     week = reply.week, kind = Kinds.Came,
                     text = what + (answer != null ? " · you: " + answer.Label.ToLowerInvariant() : ""),
-                    brief = reply.kind == ReplyCards.Confrontation ? "Confronted you" : reply.kind == ReplyCards.Gossip ? "Talked about you" : "Asked for your vote",
+                    brief = reply.kind == ReplyCards.Confrontation ? "Confronted you" : reply.kind == ReplyCards.Gossip ? "Talked about you"
+                        : reply.kind == ReplyCards.Pitch ? "Made a nomination pitch" : "Asked for your vote",
                 });
             }
             foreach (var call in s.ledger.calls.Where(c => c.callerId == s.playerId && (c.followed.Contains(id) || c.defected.Contains(id))))

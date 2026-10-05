@@ -63,6 +63,7 @@
     <Compile Include="$(EditMode)ConversationIntentTests.cs" />
     <Compile Include="$(EditMode)ConversationInformationTests.cs" />
     <Compile Include="$(EditMode)ReplyCardPayoffTests.cs" />
+    <Compile Include="$(EditMode)HoHPitchTests.cs" />
     <Compile Include="$(EditMode)ActionBalanceHarnessTests.cs" />
     <Compile Include="$(EditMode)TraitAffinityTests.cs" />
     <Compile Include="$(EditMode)NpcAgencyHarnessTests.cs" />

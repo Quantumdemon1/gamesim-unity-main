@@ -117,7 +117,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator ReplyPayoffs_VisibleTradeoffsFitAndAreKeyboardReachableAtBothTextSizes()
         {
-            foreach (string kind in ReplyCards.All)
+            foreach (string kind in ReplyCards.LegacyKinds)
             {
                 yield return InstallReplyPayoff(kind, size: 16);
                 foreach (bool large in new[] { false, true })

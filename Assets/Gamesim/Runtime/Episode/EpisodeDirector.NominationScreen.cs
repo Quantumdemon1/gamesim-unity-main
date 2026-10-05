@@ -33,6 +33,9 @@ namespace Gamesim.Episode
         private string nominationFirst, nominationSecond;
         /// <summary>The week the view state belongs to: a new week starts on the picker with nothing picked.</summary>
         private int nominationViewWeek = -1;
+        // Only hides the pitch view. Pending offers and the player's draft picks stay intact.
+        private bool nominationPitchesDismissed;
+        private object pitchNavigationView;
 
         /// <summary>What closing the panel, or a new week, throws away.</summary>
         private void ForgetNominationView()
@@ -41,6 +44,8 @@ namespace Gamesim.Episode
             nominationBackdoorView = false;
             nominationFirst = nominationSecond = null;
             nominationViewWeek = -1;
+            nominationPitchesDismissed = false;
+            pitchNavigationView = null;
         }
 
         /// <summary>
@@ -69,7 +74,10 @@ namespace Gamesim.Episode
             NominationStatus(state, hoh);
             NominationTracker(steps);
             var beat = current.kind == NominationSteps.Kind.Story ? open.FirstOrDefault(item => item.id == current.eventId) : null;
+            bool pitching = current.kind == NominationSteps.Kind.Picker && !nominationBackdoorView
+                && !nominationPitchesDismissed && HoHPitches.Available(state) && ReplyCards.Pending(state)?.kind == ReplyCards.Pitch;
             if (beat != null) NominationStory(state, beat);
+            else if (pitching) NominationPitch(state);
             else if (current.kind == NominationSteps.Kind.Picker)
             {
                 if (nominationBackdoorView) NominationBackdoor(state);
@@ -77,11 +85,55 @@ namespace Gamesim.Episode
             }
             else if (state.nominees.Count == 0) NominationCeremony(state, hoh);
             else NominationOutcome(state, hoh);
-            NominationFooter(state, hoh, current, picking);
+            if (pitching)
+            {
+                hud.WearNominationPrimary(hud.PinnedAction(EpisodeHud.BackToNomineesCaption, PitchNavigation(state, false)));
+                hud.PinnedNote("Answering is free. Remaining pitches expire when you nominate.", null, false);
+            }
+            else NominationFooter(state, hoh, current, picking);
             // The picks a render restored, warned of in the footer it just built (EpisodeDirector.YourWord).
-            if (picking && current.kind == NominationSteps.Kind.Picker && !nominationBackdoorView)
+            if (picking && !pitching && current.kind == NominationSteps.Kind.Picker && !nominationBackdoorView)
                 WarnOfThePicks(state, nominationFirst, nominationSecond);
             return true;
+        }
+
+        private Action PitchNavigation(EpisodeState state, bool show)
+        {
+            long generation = loadGeneration;
+            object view = pitchNavigationView ?? (pitchNavigationView = new object());
+            return () =>
+            {
+                if (this == null || !isActiveAndEnabled || !IsPanelOpen || challengeActive
+                    || !ReferenceEquals(view, pitchNavigationView) || generation != loadGeneration || !IsCurrentDiaryRevision(state)
+                    || !HoHPitches.Available(projected)) return;
+                pitchNavigationView = null;
+                nominationPitchesDismissed = !show;
+                Render();
+            };
+        }
+
+        private void NominationPitch(EpisodeState state)
+        {
+            var card = ReplyCards.Pending(state);
+            object view = BeginReplyChoices();
+            var tiles = ReplyCards.Replies(ReplyCards.Pitch).Select(reply =>
+            {
+                bool locked = reply.Key == "promise-safety" && !HoHPitches.CanPromiseSafety(state, card.fromId);
+                string detail = reply.Key == "promise-safety" ? locked ? "Promise record full. Choose another answer."
+                    : HoHPitches.HasSafetyPromise(state, card.fromId) ? "Reaffirm existing safety. No duplicate promise."
+                    : "Gain trust. Safety through next week."
+                    : reply.Key == "hear" ? "No new promise. Your choice stays yours." : "Lose trust. Existing promises still bind.";
+                return (new EpisodeHud.StoryChoice { Caption = EpisodeHud.ReplyCaption(reply.Label), Description = detail,
+                    Risk = EpisodeHud.RiskTag(reply.Risk), Locked = locked,
+                    Choose = locked ? null : ReplyChoice(state, card.id, reply.Key, view) }, (string)null);
+            }).ToList();
+            bool assessed = HoHPitches.Assessed(state, card);
+            tiles.Add((new EpisodeHud.StoryChoice { Caption = EpisodeHud.FeelOutPitchCaption,
+                Description = assessed ? "Already assessed. Read their answer beside this card." : "Hear their opinion. No new promise.",
+                Risk = "Free", Locked = assessed, Choose = assessed ? null : ReplyChoice(state, card.id, HoHPitches.FeelOutKey, view) }, null));
+            string words = ReplyCards.Message(state, card) + " Safety promises last through next week; existing promises still bind."
+                + (assessed ? " " + HoHPitches.Assessment(state, card) : "");
+            hud.NominationStoryStep("Houseguest pitch", ReplyCards.Title(state, card), words, tiles);
         }
 
         // ------------------------------------------------------------ the header
@@ -248,7 +300,8 @@ namespace Gamesim.Episode
                     "Nominate " + state.Find(first)?.name + " and " + state.Find(second)?.name
                     + ". Confirmed nominations become part of the episode record.", first, second),
                 "Commit nominations", aim,
-                string.IsNullOrEmpty(state.backdoorTargetId) ? () => { nominationBackdoorView = true; Render(); } : (Action)null);
+                string.IsNullOrEmpty(state.backdoorTargetId) ? () => { nominationBackdoorView = true; Render(); } : (Action)null,
+                ReplyCards.Pending(state)?.kind == ReplyCards.Pitch ? PitchNavigation(state, true) : null);
         }
 
         /// <summary>
@@ -332,7 +385,11 @@ namespace Gamesim.Episode
                         Render();
                     });
                 var lapsing = NominationSteps.LapsingOnNominate(state);
-                if (lapsing.Count > 0) hud.PinnedNote("Committing lets " + StorylinesPassing(lapsing) + ".", AdvanceWarningName, true);
+                int pitches = state.replyCards.Count(c => c.kind == ReplyCards.Pitch);
+                string pitchWarning = pitches == 0 ? null : pitches + (pitches == 1 ? " pitch expires" : " pitches expire") + " when you nominate.";
+                if (lapsing.Count > 0) hud.PinnedNote("Committing lets " + StorylinesPassing(lapsing) + "."
+                    + (pitchWarning == null ? "" : " " + pitchWarning), AdvanceWarningName, true);
+                else if (pitchWarning != null) hud.PinnedNote(pitchWarning, AdvanceWarningName, true);
                 else hud.PinnedNote(NominationUpNext(state, hoh), null, false);
                 return;
             }

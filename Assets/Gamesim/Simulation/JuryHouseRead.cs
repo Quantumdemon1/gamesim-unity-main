@@ -514,10 +514,13 @@ namespace Gamesim.Simulation
             if (s.ledger?.replies != null)
                 foreach (var r in s.ledger.replies.Where(r => r.fromId == id))
                 {
+                    if (r.kind == ReplyCards.Pitch && r.replyKey == HoHPitches.FeelOutKey)
+                    { lines.Add((r.week, "you felt out their nomination pitch without committing")); continue; }
                     string answer = (ReplyCards.Find(r.kind, r.replyKey)?.Label ?? r.replyKey ?? "").ToLowerInvariant();
                     string what = r.kind == ReplyCards.Plea ? "they pleaded with you"
                         : r.kind == ReplyCards.Confrontation ? "they confronted you"
                         : r.kind == ReplyCards.Gossip ? "you caught them talking about you"
+                        : r.kind == ReplyCards.Pitch ? "they pitched before your nominations"
                         : "they came to you";
                     lines.Add((r.week, what + "; you answered " + answer));
                 }

@@ -693,7 +693,7 @@ namespace Gamesim.Episode
             EndDiaryVisit(!render);
             // The line said where the player was; once they have left, it says so. Anything the
             // visit put there since - a result, a discarded choice - stays.
-            if (diaryOpen && message == DiaryInsideMessage) message = "You left the private diary room.";
+            if (diaryOpen && (message == DiaryInsideMessage || message == DiaryPitchInsideMessage)) message = "You left the private diary room.";
             diaryOpen = false; diaryDraft = null;
             lastSocialAction = null;
             // The recap is a panel by IsPanelOpen's reckoning, so closing panels has to close it —
@@ -1233,6 +1233,7 @@ namespace Gamesim.Episode
 
         private void Render()
         {
+            pitchNavigationView = null;
             if (hud == null || engine == null) return;
             // Any replacement retires the old question controls, including screens that return
             // before drawing a conversation. A rendered question creates a new view authority.

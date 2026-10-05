@@ -214,7 +214,8 @@ namespace Gamesim.Episode
         private IEnumerator PerformSeasonDecision(EpisodeState state,bool graphical)
         {
             // Somebody who came to the player is answered first, as the panel draws them first.
-            if ((state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign) && ReplyCards.Pending(state) != null)
+            if ((state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign || HoHPitches.Available(state))
+                && ReplyCards.Pending(state) != null)
             { yield return AnswerSeasonReplyCard(state); yield break; }
             if (state.phase == EpisodePhase.Social && HouseEvents.Pending(state) != null)
             { yield return ResolveSeasonHouseEvent(state,graphical); yield break; }

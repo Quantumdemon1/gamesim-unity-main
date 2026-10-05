@@ -1360,12 +1360,16 @@ namespace Gamesim.Episode
         }
 
         public void ChoosePair(Option[] options,Action<string,string> commit,string commitCaption = "Commit nominations",
-            Action<string,string> selectionChanged = null)
+            Action<string,string> selectionChanged = null, string firstPicked = null, string secondPicked = null)
         {
-            string first = null, second = null;
+            string first = options.Any(o => o.Id == firstPicked) ? firstPicked : null;
+            string second = secondPicked != first && options.Any(o => o.Id == secondPicked) ? secondPicked : null;
             // Same framing the notebook uses, so a trust number is never mistaken for fact.
             Paragraph("Trust readings are your own perspective; another housemate may feel differently.");
-            var selection = FlowText("Choose two houseguests below.",21,Accent);
+            string Label(string id) => id == null ? "—" : Array.Find(options, o => o.Id == id).Label ?? "—";
+            var selection = FlowText(first == null && second == null ? "Choose two houseguests below."
+                : "Selected: " + Label(first) + " and " + Label(second),21,Accent);
+            selection.gameObject.name = SelectedNomineesName;
 
             // The candidates as cards (mockup-09): a photo, the name, where the player stands with
             // them and the trust reading, in a grid as wide as the panel allows. A card is pressed
@@ -1395,13 +1399,13 @@ namespace Gamesim.Episode
                     else if (second == captured.Id) second = null;
                     else if (first == null) first = captured.Id;
                     else second = captured.Id;
-                    string Label(string id) => Array.Find(options,o=>o.Id==id).Label ?? "—";
                     selection.text = "Selected: " + Label(first) + " and " + Label(second);
                     foreach (var pair in cards) MarkPicked(pair.Value, pair.Key == first || pair.Key == second);
                     selectionChanged?.Invoke(first,second);
                 });
                 cards[option.Id] = (RectTransform)card.transform;
             }
+            foreach (var pair in cards) MarkPicked(pair.Value, pair.Key == first || pair.Key == second);
             Action(commitCaption,() => commit(first,second));
         }
 

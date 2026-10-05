@@ -35,11 +35,12 @@ namespace Gamesim.Episode
         }
 
         /// <summary>Comparison is optional and sits after commit, so expanding it never displaces the decision controls.</summary>
-        public void ChooseNominationPair(EpisodeState state, Option[] options, Action<string, string> commit, string commitCaption)
+        public void ChooseNominationPair(EpisodeState state, Option[] options, Action<string, string> commit, string commitCaption,
+            string firstPicked = null, string secondPicked = null, Action<string, string> picked = null)
         {
-            string first = null, second = null;
+            string first = firstPicked, second = secondPicked;
             Action refresh = null;
-            ChoosePair(options, commit, commitCaption, (a, b) => { first = a; second = b; refresh?.Invoke(); });
+            ChoosePair(options, commit, commitCaption, (a, b) => { first = a; second = b; picked?.Invoke(a, b); refresh?.Invoke(); }, firstPicked, secondPicked);
             bool expanded = false;
             Button toggle = null;
             RectTransform comparison = null;

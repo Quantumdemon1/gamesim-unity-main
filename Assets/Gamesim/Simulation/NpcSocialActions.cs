@@ -319,6 +319,7 @@ namespace Gamesim.Simulation
                 npc.name + " courted " + Named(state, hoh) + " before the nominations", "talk");
             if (hoh.isPlayer)
                 EpisodeEngine.Log(state, "conversation", npc.name + " came to see you before the nominations.", state.playerId, npc.id);
+            if (hoh.isPlayer) HoHPitches.Offer(state, npc.id);
         }
 
         /// <summary>

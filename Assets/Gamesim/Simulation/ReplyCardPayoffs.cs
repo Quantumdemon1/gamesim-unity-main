@@ -15,6 +15,7 @@ namespace Gamesim.Simulation
         {
             if (reply == null) return null;
             if (!On(s) || card == null) return reply.Description;
+            if (card.kind == ReplyCards.Pitch && reply.Key == "promise-safety") return HoHPitches.SafetyDescription(s, card.fromId);
             if (card.kind == ReplyCards.Confrontation)
             {
                 if (reply.Key == "apologize") return "Repair trust. No new intel or commitment.";

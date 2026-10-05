@@ -100,7 +100,8 @@ namespace Gamesim.Episode
             diaryTab = DiaryTab.Record; diaryTabChosen = false; diaryRulesOpen = false;
             // The line under the frame said how to get in here - "walk to the private room, then
             // press E" - for the whole visit. It says where the player is now.
-            message = DiaryInsideMessage;
+            message = HoHPitches.Available(projected) && ReplyCards.Pending(projected)?.kind == ReplyCards.Pitch
+                ? DiaryPitchInsideMessage : DiaryInsideMessage;
             player.SetInputEnabled(false); cameraRig.ControlsEnabled = false;
             // Physical arrival authorizes the visit. Seating is temporary presentation, restored
             // before movement resumes; the shot frames this player's face against the diary set.
@@ -251,6 +252,12 @@ namespace Gamesim.Episode
             // candidate validity, duplicate IDs, phase, and revision again against the current state.
             if (kind != EpisodeCommandKind.Nominate && kind != EpisodeCommandKind.ResolveVeto
                 && !(kind == EpisodeCommandKind.CastVote && state.phase == EpisodePhase.Eviction)) return;
+            if (kind == EpisodeCommandKind.Nominate)
+            {
+                int pitches = state.replyCards.Count(card => card.kind == ReplyCards.Pitch);
+                if (pitches > 0) summary += "\n" + pitches + (pitches == 1 ? " unanswered pitch expires" : " unanswered pitches expire")
+                    + " when you confirm these nominations.";
+            }
             diaryDraft = new DiaryDecisionDraft
             { origin = state, kind = kind, target = target, second = second, useVeto = useVeto, summary = summary };
             Render();
@@ -347,6 +354,7 @@ namespace Gamesim.Episode
         public const string DiaryPendingTabCaption = "Pending decision";
         /// <summary>The line under the frame while the player is in the chair.</summary>
         public const string DiaryInsideMessage = "In the private diary room. Nothing here is committed until you confirm it.";
+        public const string DiaryPitchInsideMessage = "In the private diary room. Pitch answers and assessments save when pressed; nominations require confirmation.";
 
         private enum DiaryTab { Record, Memories, Pending }
         private DiaryTab diaryTab;
@@ -437,7 +445,10 @@ namespace Gamesim.Episode
         {
             bool ballotCast = state.phase == EpisodePhase.Eviction && state.votes.Any(vote => vote.voterId == state.playerId);
             if (choice)
-                hud.DiaryStatusCard("A private decision is waiting", "It is under " + DiaryPendingTabCaption + ". Nothing is committed until you confirm it.");
+                hud.DiaryStatusCard("A private decision is waiting", "It is under " + DiaryPendingTabCaption + ". "
+                    + (ReplyCards.Pending(state)?.kind == ReplyCards.Pitch
+                        ? "Pitch answers and assessments save immediately. Nominations require confirmation."
+                        : "Nothing is committed until you confirm it."));
             else
                 hud.DiaryStatusCard("No private decision pending", ballotCast
                     ? "Your ballot has already been recorded. Return to the episode screen for the eviction reveal."
@@ -487,7 +498,9 @@ namespace Gamesim.Episode
             {
                 hud.DiarySection("YOUR PENDING DECISION");
                 RenderPlayerDecision(state, true);
-                hud.Aside("Choose an option to review it before confirming. Episode ceremonies continue only at the episode screen.");
+                hud.Aside(!nominationPitchesDismissed && ReplyCards.Pending(state)?.kind == ReplyCards.Pitch
+                    ? "Pitch answers and assessments save immediately. You can return to your nominees without answering."
+                    : "Choose an option to review it before confirming. Episode ceremonies continue only at the episode screen.");
                 any = true;
             }
             any |= RenderStudyHouse(state);
@@ -745,10 +758,19 @@ namespace Gamesim.Episode
             if (state.Find(state.playerId)?.status != ContestantStatus.Active) return false;
             if (state.phase == EpisodePhase.Nomination && state.nominees.Count == 0 && state.hohId == state.playerId)
             {
+                if (nominationViewWeek != state.week) { ForgetNominationView(); nominationViewWeek = state.week; }
+                if (!nominationPitchesDismissed && ReplyCards.Pending(state)?.kind == ReplyCards.Pitch)
+                {
+                    PendingReplyCard(state, privateRoom);
+                    hud.Action(EpisodeHud.BackToNomineesCaption, PitchNavigation(state, false));
+                    return true;
+                }
                 // Out of the diary, the decision is a band across the house (mockup-09); in the
                 // diary it keeps the diary's own column.
                 if (!privateRoom) hud.SetActivityLayout(EpisodeHud.ActivityLayout.Nominations);
                 hud.Paragraph("You are HoH. Choose two different nominees. Commit only when both choices are correct.");
+                if (ReplyCards.Pending(state)?.kind == ReplyCards.Pitch)
+                    hud.Action(EpisodeHud.HearHoHPitchesCaption, PitchNavigation(state, true));
                 if (!string.IsNullOrEmpty(state.backdoorTargetId))
                     hud.Paragraph("This week is aimed at " + state.Find(state.backdoorTargetId).name
                         + ". Nominate two others and use the veto to put them up.");
@@ -760,7 +782,10 @@ namespace Gamesim.Episode
                     { message = "Choose two different eligible nominees before reviewing the decision."; Render(); return; }
                     OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.Nominate,
                         "Nominate " + state.Find(first)?.name + " and " + state.Find(second)?.name + ". Confirmed nominations become part of the episode record.", first, second);
-                }, privateRoom ? EpisodeHud.DiaryReviewNominationsCaption : "Commit nominations");
+                }, privateRoom ? EpisodeHud.DiaryReviewNominationsCaption : "Commit nominations",
+                    nominationFirst, nominationSecond, (first, second) => { nominationFirst = first; nominationSecond = second; });
+                if (state.replyCards.Any(card => card.kind == ReplyCards.Pitch))
+                    hud.Aside("Unanswered pitches expire when you confirm your nominations. Existing promises still bind.");
                 // The week's real target, after the decision it would shape rather than before the
                 // cards: it is the optional move, and the cards are the one that has to be made.
                 // Costs nothing and moves nobody: it is a plan, and the house cannot hear a plan.

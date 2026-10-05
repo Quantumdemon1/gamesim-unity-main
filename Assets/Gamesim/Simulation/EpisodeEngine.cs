@@ -788,6 +788,7 @@ namespace Gamesim.Simulation
             Require(s.nominees.Count == 0, "Nominations are already committed.");
             var eligible = new HashSet<string>(NominationCandidates(s).Select(c => c.id));
             Require(first != second && eligible.Contains(first ?? "") && eligible.Contains(second ?? ""), "Choose two distinct eligible houseguests.");
+            s.replyCards.RemoveAll(card => card.kind == ReplyCards.Pitch);
             s.nominees = new List<string> { first, second };
             foreach (var nominee in s.nominees) NominationEffects(s, nominee);
             StoryNominated(s, s.nominees);

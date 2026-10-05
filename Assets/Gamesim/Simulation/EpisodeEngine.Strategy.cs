@@ -86,6 +86,7 @@ namespace Gamesim.Simulation
             Require(card != null, "That moment has passed.");
             var from = s.Find(card.fromId);
             Require(from != null && from.status == ContestantStatus.Active, "They are no longer in the house.");
+            if (card.kind == ReplyCards.Pitch) { AnswerHoHPitch(s, card, (c.text ?? string.Empty).Trim()); return; }
             var reply = ReplyCards.Find(card.kind, (c.text ?? string.Empty).Trim());
             Require(reply != null, "Choose one of the answers you were offered.");
 

@@ -1,5 +1,25 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC — E4 HoH pitches staged; frozen UMA QA closes green
+
+The separate Wave C branch now implements the player HoH's incoming pitch cards,
+free once-per-card assessment and three explicit replies using existing safety
+promises. Nominee drafts, Diary Room routes, durable guards, knowledge boundaries
+and ignored-card expiry are covered in `WAVE_C_HOH_PITCHES_IMPLEMENTATION.md`,
+which reports every material source/test change and the source/native-adapter boundary.
+Final pure2091/2091 and offline8/8 pass; 23 actual-SaveStore Edit cases and15 Play
+cases are authored/compiled, NOT executed. Floors3106/973/77/2091; combining c272
+requires3117/977/77/2091. No merge, live promotion, native gameplay or desktop acceptance.
+
+Separately, c272's frozen UMA g22u2 closed2026-10-05T11:11:52Z with Edit2540/2540,
+general Play935/935 and UMA77/77, zero failures/skips/drift/timeout/cleanup errors.
+It contains NONE of Wave C. Same-pin NoUMA g22n4 is active; integration and its
+controllers remain frozen. Build, graphical/performance and human gates remain open.
+
+The older dated entries below are retained historical evidence, not current totals.
+E2's broader balance gate, E5, all four required Wave D systems, actual asset
+completion and combined acceptance at1920x1080/60FPS on GTX1060 still remain.
+
 ## 2026-10-05 UTC — personal-lore trade-off staged; NoUMA QA candidate passes
 
 E2's personal chat now trades lower warmth for up to two broader, reachable lore facts in fresh

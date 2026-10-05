@@ -265,9 +265,12 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Invalid lobbying data.");
             if (s.replyCards == null || s.replyCards.Count > 24 || s.replyCards.Any(r => r == null || !Text(r.id, 160)
                     || r.week != s.week || !ReplyCards.IsKnown(r.kind) || s.Find(r.fromId) == null || r.fromId == s.playerId
-                    || (r.aboutId != null && s.Find(r.aboutId) == null))
+                    || (r.aboutId != null && s.Find(r.aboutId) == null)
+                    || (r.kind == ReplyCards.Pitch ? !HoHPitches.ValidCard(s, r)
+                        : s.phase != EpisodePhase.Social && s.phase != EpisodePhase.Campaign))
                 || s.replyCards.Select(r => r.id).Distinct(StringComparer.Ordinal).Count() != s.replyCards.Count
-                || (s.replyCards.Count > 0 && s.phase != EpisodePhase.Social && s.phase != EpisodePhase.Campaign))
+                || s.replyCards.Where(r => r.kind == ReplyCards.Pitch).Select(r => r.fromId).Distinct(StringComparer.Ordinal).Count()
+                    != s.replyCards.Count(r => r.kind == ReplyCards.Pitch))
                 return Fail(out error, "Invalid reply card data.");
             if (s.strategyRulesStartWeek == 0 && (s.lobbies.Count > 0 || s.replyCards.Count > 0))
                 return Fail(out error, "A season without the strategy windows has none of their records.");

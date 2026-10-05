@@ -52,7 +52,15 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Invalid alliance record data.");
             if (l.replies == null || l.replies.Count > most || l.replies.Any(r => r == null || !Text(r.cardId, 160) || !ShortOrAbsent(r.kind, 64)
                     || !Id(r.fromId) || !OptionalId(r.listenerId) || !ShortOrAbsent(r.replyKey, 64) || !Week(r.week)
-                    || !Finite(r.toThem) || r.toThem < -100 || r.toThem > 100))
+                    || !Finite(r.toThem) || r.toThem < -100 || r.toThem > 100
+                    || (r.kind == ReplyCards.Pitch && (s.economyRulesVersion != 1 || r.week < s.weekRulesStartWeek
+                        || r.fromId == s.playerId || r.promised || r.listenerId == r.fromId || r.listenerId == s.playerId
+                        || (r.replyKey == HoHPitches.FeelOutKey ? r.toThem != 0
+                            : ReplyCards.Find(ReplyCards.Pitch, r.replyKey) == null
+                                || r.toThem != ReplyCards.Find(ReplyCards.Pitch, r.replyKey).ToThem))))
+                || l.replies.Where(r => r.kind == ReplyCards.Pitch).GroupBy(r => r.week).Any(g => g.Count() > 48)
+                || l.replies.Where(r => r.kind == ReplyCards.Pitch)
+                    .GroupBy(r => new { r.week, r.fromId, inspected = r.replyKey == HoHPitches.FeelOutKey }).Any(g => g.Count() > 1))
                 return Fail(out error, "Invalid reply record data.");
             if (l.calls == null || l.calls.Count > most || l.calls.Any(c => c == null || !Text(c.allianceId, 160) || !Id(c.callerId) || !Id(c.targetId)
                     || !Week(c.week) || c.followed == null || c.followed.Count > MaximumCast || c.followed.Any(id => !Id(id))

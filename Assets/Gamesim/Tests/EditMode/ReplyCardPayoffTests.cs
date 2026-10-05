@@ -10,7 +10,7 @@ namespace Gamesim.Tests.EditMode
     public sealed class ReplyCardPayoffTests
     {
         private static string Json(object value) => JsonConvert.SerializeObject(value);
-        private static IEnumerable<TestCaseData> Answers => ReplyCards.All.SelectMany(kind =>
+        private static IEnumerable<TestCaseData> Answers => ReplyCards.LegacyKinds.SelectMany(kind =>
             ReplyCards.Replies(kind).Select(reply => new TestCaseData(kind, reply.Key)));
         private static IEnumerable<TestCaseData> InformationCasts => Enumerable.Range(3, 14).SelectMany(size =>
             new[] { ReplyCards.Confrontation, ReplyCards.Gossip, ReplyCards.Plea }
@@ -281,7 +281,7 @@ namespace Gamesim.Tests.EditMode
             // A witnessed trade-off, not invented point weights or a claim about optimal play.
             // Each component is read from actual committed outcomes: warmth, new information,
             // a negotiated truce, opposition reach, and freedom from new obligations.
-            foreach (string kind in ReplyCards.All)
+            foreach (string kind in ReplyCards.LegacyKinds)
             {
                 var vectors = new Dictionary<string, double[]>();
                 foreach (var reply in ReplyCards.Replies(kind))

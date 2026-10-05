@@ -195,19 +195,26 @@ namespace Gamesim.Episode
         /// A houseguest who came to the player, waiting on an answer. Drawn before the week's
         /// situation, one card at a time; true when there was one.
         /// </summary>
-        private bool PendingReplyCard(EpisodeState state)
+        private bool PendingReplyCard(EpisodeState state, bool privateRoom = false)
         {
             var card = ReplyCards.Pending(state);
             if (card == null) return false;
             string cardId = card.id;
-            hud.HouseEventHeader(ReplyCards.Title(state, card), ReplyCards.Message(state, card), EpisodeHud.ReplyCardEyebrow);
+            if (privateRoom) { hud.Heading("Houseguest pitch"); hud.Paragraph(ReplyCards.Title(state, card)); hud.Paragraph(ReplyCards.Message(state, card)); }
+            else hud.HouseEventHeader(ReplyCards.Title(state, card), ReplyCards.Message(state, card), EpisodeHud.ReplyCardEyebrow);
             object replyView = BeginReplyChoices();
             hud.EventChoices(ReplyCards.Replies(card.kind).Select(reply =>
             {
                 string key = reply.Key;
                 return (EpisodeHud.ReplyCaption(reply.Label), ReplyCardPayoffs.Description(state, card, reply), EpisodeHud.RiskTag(reply.Risk),
-                    ReplyChoice(state, cardId, key, replyView));
+                    key == "promise-safety" && !HoHPitches.CanPromiseSafety(state, card.fromId) ? null : ReplyChoice(state, cardId, key, replyView));
             }).ToList());
+            if (card.kind == ReplyCards.Pitch)
+            {
+                hud.Paragraph(HoHPitches.Assessment(state, card) ?? "Ask why they are recommending this. Asking makes no new promise.");
+                hud.Action(EpisodeHud.FeelOutPitchCaption, HoHPitches.Assessed(state, card) ? null
+                    : ReplyChoice(state, cardId, HoHPitches.FeelOutKey, replyView));
+            }
             return true;
         }
     }

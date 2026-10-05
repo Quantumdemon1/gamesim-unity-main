@@ -1,5 +1,17 @@
 # Gamesim Unity port
 
+**Latest staged gameplay, 2026-10-05 UTC:** E4 HoH pitch cards and the free
+per-card assessment are implemented on the separate Wave C branch. See
+`WAVE_C_HOH_PITCHES_IMPLEMENTATION.md` for all changes, compatibility and evidence.
+Final pure2091/2091 and offline8/8 pass; actual SaveStore/UI native tests remain
+unexecuted. Branch floors3106/973/77/2091; combined c272 floors3117/977/77/2091.
+Frozen c272 UMA g22u2 passed Edit2540/Play935/UMA77 with a clean whole-run closure;
+same-pin NoUMA g22n4 remains active. Neither run contains Wave C. E2 balance, E5,
+all four owner-required Wave D systems, consistent real assets, deliberate merge,
+desktop build, actual GTX1060 **1920x1080 at60FPS** and human acceptance remain.
+No live promotion or fully ported/AAA completion is claimed. Older totals below
+are historical and superseded by the dated implementation records above them.
+
 **Separate Wave C branch, 2026-10-05 UTC:** `codex/wave-c-economy` stages E1, all three E3
 targeting features, E2's personal-lore/six-petal-dial portion, and schema 23
 above the frozen schema-22 integration candidate; it is not merged or live. See

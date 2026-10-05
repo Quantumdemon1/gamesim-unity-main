@@ -203,14 +203,22 @@ namespace Gamesim.Simulation
         {
             if (exchange?.receiptKind == null || exchange.receiptId == null) return null;
             string id = exchange.receiptId;
+            if (UnifiedCommitments.RulesOn(s)
+                && (exchange.receiptKind == FinaleQuestions.PromiseReceipt || exchange.receiptKind == FinaleQuestions.DealReceipt)
+                && CommitmentReferences.FindCanonical(s, id) != null)
+                return FinaleQuestions.ReceiptWeek(s, exchange);
             var ledger = s.ledger ?? new SeasonLedger();
             int Parse(string text) => int.TryParse(text, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int value) ? value : 0;
             switch (exchange.receiptKind)
             {
                 case FinaleQuestions.PowerReceipt:
                 case FinaleQuestions.BallotReceipt: return Parse(id);
-                case FinaleQuestions.PromiseReceipt: return s.promises.FirstOrDefault(p => p.id == id)?.week;
-                case FinaleQuestions.DealReceipt: return s.deals.FirstOrDefault(d => d.id == id)?.week;
+                case FinaleQuestions.PromiseReceipt:
+                    var promise = CommitmentReferences.FindPromise(s, id);
+                    return promise == null ? (int?)null : CommitmentReferences.ReceiptWeek(s, id, promise.week);
+                case FinaleQuestions.DealReceipt:
+                    var deal = CommitmentReferences.FindDeal(s, id);
+                    return deal == null ? (int?)null : CommitmentReferences.ReceiptWeek(s, id, deal.week);
                 case FinaleQuestions.ReplyReceipt: return ledger.replies.FirstOrDefault(r => r.cardId == id)?.week;
                 case FinaleQuestions.CallReceipt: int at = id.LastIndexOf(':'); return at < 0 ? (int?)null : Parse(id.Substring(at + 1));
                 default: return null;
@@ -312,7 +320,7 @@ namespace Gamesim.Simulation
                    || ((p.kind == PromiseKind.Safety || p.kind == PromiseKind.AllianceLoyalty) && p.expiresWeek > week)
                    || p.week > week);
             bool Between(DealState d) => (d.proposerId == player && d.recipientId == jurorId) || (d.proposerId == jurorId && d.recipientId == player);
-            if (s.promises.Any(p => p.fromId == player && p.toId == jurorId && p.status == PromiseStatus.Broken && Later(p)))
+            if (CommitmentReferences.Promises(s).Any(p => p.fromId == player && p.toId == jurorId && p.status == PromiseStatus.Broken && Later(p)))
                 return "you broke a promise to them since";
             if (s.ledger?.replies != null && s.ledger.replies.Any(r => r.kind == ReplyCards.Plea && r.fromId == jurorId && r.replyKey == "refuse" && r.week > week))
                 return "you refused their plea since";
@@ -322,7 +330,7 @@ namespace Gamesim.Simulation
             {
                 // Only one the player can know broke: a voting bloc is broken by both of them, and how
                 // a vote deal ended is a ballot the player may not know (KnownBallots).
-                if (s.deals.Any(d => Between(d) && Breaches.Broke(s, d, player) && Breaches.BrokeAfter(d, week)
+                if (CommitmentReferences.Deals(s).Any(d => Between(d) && Breaches.Broke(s, d, player) && Breaches.BrokeAfter(d, week)
                         && KnownBallots.DealOutcomeKnown(s, d)))
                     return "you broke a deal with them since";
             }
@@ -396,10 +404,10 @@ namespace Gamesim.Simulation
             bool rules = EpisodeEngine.CommitmentRulesOn(s);
             foreach (var alliance in s.alliances.Where(a => a.members.Contains(player) && a.members.Contains(id)))
                 juror.knows.Add("You shared " + alliance.name + (alliance.active ? "." : ", now ended."));
-            foreach (var deal in s.deals.Where(d => (d.proposerId == player && d.recipientId == id) || (d.proposerId == id && d.recipientId == player)))
+            foreach (var deal in CommitmentReferences.Deals(s).Where(d => (d.proposerId == player && d.recipientId == id) || (d.proposerId == id && d.recipientId == player)))
                 juror.knows.Add(DealKind.Title(deal.type) + ": " + (rules && !KnownBallots.DealOutcomeKnown(s, deal) ? KnownBallots.Unresolved
                     : HouseguestNotes.DealStanding(deal.status, deal.proposerId == id)) + ".");
-            foreach (var promise in s.promises.Where(p => (p.fromId == player && p.toId == id) || (p.fromId == id && p.toId == player)))
+            foreach (var promise in CommitmentReferences.Promises(s).Where(p => (p.fromId == player && p.toId == id) || (p.fromId == id && p.toId == player)))
                 juror.knows.Add((promise.fromId == player ? "You promised them " : "They promised you ") + HouseguestNotes.PromiseWord(promise.kind)
                     + ": " + (rules && !KnownBallots.PromiseOutcomeKnown(s, promise) ? KnownBallots.Unresolved : HouseguestNotes.PromiseStanding(promise.status)) + ".");
             // The player's ballot against them is theirs to know only where the count showed it
@@ -479,7 +487,7 @@ namespace Gamesim.Simulation
                 foreach (var c in s.ledger.competitions.Where(c => c.week > left && c.placement == 1))
                     juror.missing.Add("Week " + c.week + ": you won " + CompetitionWord(c.kind) + ".");
             // Deals the player actually struck: not offers declined, lapsed or still waiting.
-            int deals = s.deals.Count(d => d.week > left && (d.proposerId == player || d.recipientId == player) && d.proposerId != juror.id && d.recipientId != juror.id
+            int deals = CommitmentReferences.Deals(s).Count(d => d.week > left && (d.proposerId == player || d.recipientId == player) && d.proposerId != juror.id && d.recipientId != juror.id
                 && (d.status == DealStatus.Accepted || d.status == DealStatus.Active || d.status == DealStatus.Fulfilled || d.status == DealStatus.Broken));
             if (deals > 0) juror.missing.Add(deals + (deals == 1 ? " deal" : " deals") + " you struck in the weeks after they left.");
         }

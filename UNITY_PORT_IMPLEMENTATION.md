@@ -1,5 +1,20 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC - canonical Safety summaries and stable finale references
+
+`WAVE_D_SAFETY_SUMMARIES_IMPLEMENTATION.md` records every material change and
+independent source review. Durable grouped outcomes, actual canonical opportunity
+reconciliation, settlement-dated Game Sense/jury evidence, private receipt guards,
+audible reputation provenance and mechanical/templated finale alias deduplication
+are staged.91authored regression cases; floors3984Edit/991Play/77UMA/2750pure,
+future combined3995Edit/995Play/77UMA/2750pure retainsQA11/4. Final8fresh compile,
+2750regular pure,737focused Mono and55paired legacy replay digests/counts pass;
+955source+2tool image unchanged. First pure4fixture wording failures retained and
+repaired without weakening assertions. Production rule1 is still refused. This is not
+native, shipping-build, performance/visual/accessibility or0of3human acceptance.
+Other canonical consumers/knowledge effects/full enabled validation, activation,
+all other D1 families, D2/D3/D4 and the agreed balance/art/release gates remain.
+
 ## 2026-10-05 UTC - staged canonical Safety voting and Your Word readers
 
 `WAVE_D_SAFETY_VOTING_WORD_IMPLEMENTATION.md` enumerates every material change,

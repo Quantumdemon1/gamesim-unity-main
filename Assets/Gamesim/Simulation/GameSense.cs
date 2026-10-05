@@ -123,6 +123,7 @@ namespace Gamesim.Simulation
         private static void ScoreStrategy(EpisodeState s, List<Note> notes)
         {
             var you = s.Find(s.playerId);
+            var scoredSafety = ScoredSafetyOutcomes(s);
             foreach (var power in s.ledger.power.Where(p => p.evicteeId != null))
             {
                 string id = "power:" + power.week;
@@ -172,19 +173,25 @@ namespace Gamesim.Simulation
                         if (chance.response == OpportunityResponse.Ignored) Add(notes, Strategy, -2, when + "a vote to read, and you asked nobody.", "opportunity", chance.id, chance.week, known: true);
                         break;
                     case OpportunityKinds.Deal:
+                        var canonical = CommitmentReferences.FindCanonical(s, chance.id);
+                        if (canonical != null && (chance.outcome == OpportunityOutcome.Won || chance.outcome == OpportunityOutcome.Lost)
+                            && !scoredSafety.Contains(chance.id)) break;
                         // Under the commitment rules (C0, X3) a deal the other side broke is not the
                         // player's to answer for: on the record, and it costs them nothing.
                         var brokenAgainst = chance.outcome == OpportunityOutcome.Lost && EpisodeEngine.CommitmentRulesOn(s)
-                            ? s.deals.FirstOrDefault(d => d.id == chance.id && d.status == DealStatus.Broken && !Breaches.Broke(s, d, s.playerId)) : null;
+                            ? CommitmentReferences.FindDeal(s, chance.id) : null;
+                        if (brokenAgainst != null && (brokenAgainst.status != DealStatus.Broken || Breaches.Broke(s, brokenAgainst, s.playerId))) brokenAgainst = null;
                         // How a vote deal ended is a ballot the player may not know - a voting bloc broken
                         // by both of them included - so a note on its ending waits for the weekly recap
                         // until they do. The verdict counts it either way.
-                        var settled = s.deals.FirstOrDefault(d => d.id == chance.id);
+                        var settled = CommitmentReferences.FindDeal(s, chance.id);
                         bool endingKnown = settled == null || KnownBallots.DealOutcomeKnown(s, settled);
-                        if (chance.outcome == OpportunityOutcome.Won) Add(notes, Strategy, 4, when + "a deal kept (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: endingKnown);
-                        else if (brokenAgainst != null) Add(notes, Strategy, 0, when + "a deal broken against you (" + Source(chance) + ").", "opportunity", chance.id, chance.week,
+                        int outcomeWeek = canonical != null && canonical.settledWeek > 0 ? canonical.settledWeek : chance.week;
+                        string outcomeWhen = "Week " + outcomeWeek + ": ";
+                        if (chance.outcome == OpportunityOutcome.Won) Add(notes, Strategy, 4, outcomeWhen + "a deal kept (" + Source(chance) + ").", "opportunity", chance.id, outcomeWeek, known: endingKnown);
+                        else if (brokenAgainst != null) Add(notes, Strategy, 0, outcomeWhen + "a deal broken against you (" + Source(chance) + ").", "opportunity", chance.id, outcomeWeek,
                             known: KnownBallots.DealOutcomeKnown(s, brokenAgainst));
-                        else if (chance.outcome == OpportunityOutcome.Lost) Add(notes, Strategy, -5, when + "a deal broken (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: endingKnown);
+                        else if (chance.outcome == OpportunityOutcome.Lost) Add(notes, Strategy, -5, outcomeWhen + "a deal broken (" + Source(chance) + ").", "opportunity", chance.id, outcomeWeek, known: endingKnown);
                         else if (chance.response == OpportunityResponse.Expired) Add(notes, Strategy, -1, when + "an offer left on the table (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);
                         else if (chance.response == OpportunityResponse.Taken) Add(notes, Strategy, 1, when + "a deal made (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);
                         break;
@@ -210,6 +217,24 @@ namespace Gamesim.Simulation
                 Add(notes, Strategy, points, "Week " + call.week + ": you called the vote in your alliance; " + call.followed.Count + " followed, " + call.defected.Count + " did not"
                     + (power != null && power.evicteeId == call.targetId ? ", and " + Name(s, call.targetId) + " went." : "."), "call", call.allianceId + ":" + call.week, call.week, known: true);
             }
+        }
+
+        private static HashSet<string> ScoredSafetyOutcomes(EpisodeState s)
+        {
+            if (!UnifiedCommitments.RulesOn(s)) return new HashSet<string>(StringComparer.Ordinal);
+            var groups = new Dictionary<string, (string key, string owner)>(StringComparer.Ordinal);
+            foreach (var incident in UnifiedCommitmentHistory.Breaches(s))
+                foreach (string id in incident.EvidenceIds) groups[id] = ("broken:" + incident.EffectKey, incident.EffectOwnerId);
+            foreach (var receipt in UnifiedCommitmentHistory.Fulfillments(s))
+                foreach (string id in receipt.EvidenceIds) groups[id] = ("kept:" + receipt.EffectOwnerId, receipt.EffectOwnerId);
+            var rows = UnifiedCommitmentHistory.Records(s).ToDictionary(row => row.id, StringComparer.Ordinal);
+            return new HashSet<string>(s.ledger.opportunities.Where(chance => chance.kind == OpportunityKinds.Deal
+                && groups.ContainsKey(chance.id) && rows.TryGetValue(chance.id, out var row)
+                && ((row.status == DealStatus.Broken && chance.outcome == OpportunityOutcome.Lost)
+                    || (row.status == DealStatus.Fulfilled && chance.outcome == OpportunityOutcome.Won)))
+                .GroupBy(chance => groups[chance.id].key, StringComparer.Ordinal)
+                .Select(group => group.OrderBy(chance => chance.id == groups[chance.id].owner ? 0 : 1)
+                    .ThenBy(chance => chance.id, StringComparer.Ordinal).First().id), StringComparer.Ordinal);
         }
 
         // ---------------------------------------------------------------- social

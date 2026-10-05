@@ -71,8 +71,24 @@ namespace Gamesim.Simulation
             && fact.actorId == s.playerId && fact.visibility != FactVisibility.Private;
 
         /// <summary>The player's broken word the house knows of, in the order the season wrote it. Empty while the house keeps no knowledge of it (<see cref="On"/>).</summary>
-        public static List<HouseFactState> Breaches(EpisodeState s) =>
-            On(s) && s.story?.facts != null ? s.story.facts.Where(f => IsYours(s, f)).ToList() : new List<HouseFactState>();
+        public static List<HouseFactState> Breaches(EpisodeState s)
+        {
+            var facts = On(s) && s.story?.facts != null ? s.story.facts.Where(f => IsYours(s, f)).ToList() : new List<HouseFactState>();
+            if (!UnifiedCommitments.RulesOn(s)) return facts;
+            // Hearings count one actual betrayal, even if several agreement references retain
+            // knowledge of it. Only combine knowers actually recorded on its audible facts.
+            var incidents = UnifiedCommitmentHistory.Breaches(s);
+            string Key(HouseFactState fact) => incidents.FirstOrDefault(incident => incident.ActorId == fact.actorId
+                && incident.WrongedId == fact.subjectId && incident.EvidenceIds.Contains(fact.refId))?.EffectKey ?? "fact:" + fact.id;
+            return facts.GroupBy(Key, StringComparer.Ordinal).Select(group => {
+                var first = group.First();
+                var incident = incidents.FirstOrDefault(item => item.EffectKey == group.Key);
+                return new HouseFactState { id = first.id, kind = first.kind, actorId = first.actorId, subjectId = first.subjectId,
+                    refId = first.refId, visibility = group.Any(f => f.visibility == FactVisibility.Public) ? FactVisibility.Public : first.visibility,
+                    week = incident == null ? first.week : CommitmentReferences.FindCanonical(s, incident.EffectOwnerId).settledWeek,
+                    knowers = group.SelectMany(f => f.knowers).Distinct(StringComparer.Ordinal).ToList() };
+            }).ToList();
+        }
 
         /// <summary>
         /// Who has heard of one breach: every houseguest but the player who knows it - in the house or
@@ -213,8 +229,19 @@ namespace Gamesim.Simulation
         /// <summary>The broken deal and who it was with: "safety deal with Alex Reed", or with a first name for the page.</summary>
         private static string What(EpisodeState s, HouseFactState fact, bool first)
         {
-            var deal = s?.deals?.FirstOrDefault(d => d != null && d.id == fact.refId);
+            var deal = s == null ? null : CommitmentReferences.FindDeal(s, fact.refId);
             string with = first ? First(s, fact.subjectId) : Name(s, fact.subjectId);
+            if (first && UnifiedCommitments.RulesOn(s))
+            {
+                var incident = UnifiedCommitmentHistory.Breaches(s).FirstOrDefault(item => item.ActorId == fact.actorId
+                    && item.WrongedId == fact.subjectId && item.EvidenceIds.Contains(fact.refId));
+                if (incident != null && s.story.facts.Where(item => IsYours(s, item) && item.actorId == fact.actorId
+                    && item.subjectId == fact.subjectId && incident.EvidenceIds.Contains(item.refId))
+                    .Select(item => CommitmentReferences.FindCanonical(s, item.refId)?.sourcePolicy).Distinct().Count() > 1)
+                    return "word of safety to " + with;
+            }
+            if (deal == null && s != null && CommitmentReferences.FindCanonical(s, fact.refId)?.sourcePolicy == UnifiedCommitments.PromisePolicy)
+                return "promise of safety to " + with;
             return deal == null ? "word to " + with : CommitmentsRead.DealNoun(deal.type) + " with " + with;
         }
 

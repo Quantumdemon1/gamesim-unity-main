@@ -1,5 +1,15 @@
 # Gamesim Unity port
 
+**Canonical Safety summaries,2026-10-05 UTC:** the previously interrupted readers
+now include durable weekly outcomes, actual opportunity reconciliation/settlement
+dates, audible-knowledge grouping, guarded jury receipts and once-only finale
+Speech/Term aliases.91new cases execute; final2750regular pure,737focused Mono and
+8fresh assemblies pass.55paired legacy replay digests/counts remain unchanged;
+exact955source+2tool image has zero drift. See `WAVE_D_SAFETY_SUMMARIES_IMPLEMENTATION.md` for every
+material change, review and verification limits. Rule1 remains refused; no native,
+desktop,1080p60, visual or human acceptance is claimed. Other Safety consumers,
+full enabled validation/activation, all other D1 families and D2/D3/D4 remain.
+
 **Latest canonical Safety voting/Your Word increment,2026-10-05 UTC:** additional
 78pure cases pass (37voting/41page+warnings);2659regular pure,646focused Mono and
 8fresh assemblies pass.55scripted legacy replay digests/counts remain unchanged.

@@ -139,10 +139,18 @@ namespace Gamesim.Simulation
         /// <summary>A houseguest a commitment names, as the player reads it: "you" for the player, a first name for anybody else.</summary>
         private static string Named(EpisodeState s, string id) => s != null && id == s.playerId ? "you" : First(s, id);
 
+        // Detached provenance views, not a second writer or a summed mechanical obligation.
+        // Legacy seasons retain their original list order and null-handling branches.
+        private static IEnumerable<PromiseState> ReadPromises(EpisodeState s) =>
+            UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Promises(s) : s.promises;
+
+        private static IEnumerable<DealState> ReadDeals(EpisodeState s) =>
+            UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Deals(s) : s.deals;
+
         private static void AddPromises(EpisodeState s, List<Commitment> into)
         {
             string player = s.playerId;
-            foreach (var p in s.promises)
+            foreach (var p in ReadPromises(s))
             {
                 if (p == null || (p.fromId != player && p.toId != player)) continue;
                 bool yours = p.fromId == player;
@@ -160,6 +168,7 @@ namespace Gamesim.Simulation
                     // A promise is one-sided: only whoever gave it can break it, and the engine
                     // breaks it only on their act (a nomination, a ballot, the final choice).
                     brokenById = !withheld && p.status == PromiseStatus.Broken ? p.fromId : null,
+                    settledWeek = !withheld && UnifiedCommitments.RulesOn(s) && p.kind == PromiseKind.Safety ? p.settledWeek : 0,
                 };
                 c.binds = PromiseBinds(s, p, yours);
                 c.status = withheld ? KnownBallots.Unresolved
@@ -173,7 +182,7 @@ namespace Gamesim.Simulation
         private static void AddDeals(EpisodeState s, List<Commitment> into)
         {
             string player = s.playerId;
-            foreach (var d in s.deals)
+            foreach (var d in ReadDeals(s))
             {
                 if (d == null || (d.proposerId != player && d.recipientId != player)) continue;
                 bool yours = d.proposerId == player;
@@ -188,6 +197,7 @@ namespace Gamesim.Simulation
                     title = Capitalise(DealNoun(d.type)) + (yours ? " you proposed" : " they offered"),
                     week = d.week, untilWeek = Math.Max(0, d.expiresWeek),
                     outcome = withheld ? Outcomes.Unresolved : DealOutcome(d.status),
+                    settledWeek = !withheld && UnifiedCommitments.RulesOn(s) && d.type == DealKind.SafetyAgreement ? d.settledWeek : 0,
                 };
                 if (d.status == DealStatus.Broken && !withheld) c.brokenById = FinalistRead.DealBreaker(s, d);
                 c.binds = DealBinds(s, d);
@@ -515,6 +525,8 @@ namespace Gamesim.Simulation
             public string subtype;
             /// <summary><see cref="Acts"/>, and the houseguest that part of the decision is about: the nominee, the one saved, the replacement, the ballot's target, the finalist taken. Null for not using the veto.</summary>
             public string act, causeId;
+            /// <summary>Canonical incident identity; all affected agreements remain separate evidence rows. Null for legacy rows.</summary>
+            public string effectKey;
         }
 
         /// <summary>
@@ -549,11 +561,11 @@ namespace Gamesim.Simulation
         }
 
         private static bool DealStanding(EpisodeState s, params string[] types) =>
-            s.deals != null && s.deals.Any(d => d != null && d.status == DealStatus.Active
+            s.deals != null && ReadDeals(s).Any(d => d != null && d.status == DealStatus.Active
                 && (d.proposerId == s.playerId || d.recipientId == s.playerId) && Array.IndexOf(types, d.type) >= 0);
 
         private static bool PromiseStanding(EpisodeState s, params PromiseKind[] kinds) =>
-            s.promises != null && s.promises.Any(p => p != null && p.status == PromiseStatus.Active
+            s.promises != null && ReadPromises(s).Any(p => p != null && p.status == PromiseStatus.Active
                 && p.fromId == s.playerId && Array.IndexOf(kinds, p.kind) >= 0);
 
         private static bool OathStanding(EpisodeState s) =>
@@ -645,6 +657,25 @@ namespace Gamesim.Simulation
             foreach (var oath in before.loyaltyOaths.Where(o => o.playerId == player || o.targetId == player))
                 if (!after.loyaltyOaths.Any(o => o.playerId == oath.playerId && o.targetId == oath.targetId && o.week == oath.week && o.timestamp == oath.timestamp))
                     breaches.Add(OathBreach(before, oath, d));
+            if (UnifiedCommitments.RulesOn(before) && UnifiedCommitments.RulesOn(after))
+            {
+                // Once the engine is activated, use its actual canonical transitions, not every
+                // broken historical row. In particular another HoH's replacement is not ours.
+                var now = UnifiedCommitmentHistory.Records(after).ToDictionary(row => row.id, StringComparer.Ordinal);
+                var ownEffects = new HashSet<string>(UnifiedCommitmentHistory.Breaches(after)
+                    .Where(incident => incident.ActorId == player).Select(incident => incident.EffectKey), StringComparer.Ordinal);
+                if (before.hohId == player && (d.kind == DecisionKinds.Nominate || (d.kind == DecisionKinds.Veto && d.useVeto)))
+                {
+                    var named = d.kind == DecisionKinds.Nominate ? new[] { d.firstId, d.secondId } : new[] { d.secondId };
+                    var expected = UnifiedCommitments.EvaluateNomination(before,
+                        d.kind == DecisionKinds.Nominate ? "nomination" : "replacement", player, named);
+                    foreach (var change in expected.Changes)
+                        if (now.TryGetValue(change.Record.id, out var settled) && settled.status == DealStatus.Broken
+                            && settled.settlementEffectKey == change.Record.settlementEffectKey
+                            && ownEffects.Contains(settled.settlementEffectKey))
+                            breaches.Add(SafetyBreach(before, UnifiedCommitments.Find(before, settled.id), d, settled.settlementEffectKey));
+                }
+            }
             return breaches;
         }
 
@@ -759,6 +790,16 @@ namespace Gamesim.Simulation
         private static void NominationRules(EpisodeState s, List<string> named, Decision decision, List<Breach> breaches)
         {
             string player = s.playerId;
+            if (UnifiedCommitments.RulesOn(s))
+            {
+                // Exactly the action's named nominees: old nominees and a veto-saved guest
+                // must not be treated as replacement nominations. Evaluation is read-only.
+                var verdict = UnifiedCommitments.EvaluateNomination(s,
+                    decision.kind == DecisionKinds.Nominate ? "nomination" : "replacement", player, named);
+                foreach (var change in verdict.Changes)
+                    breaches.Add(SafetyBreach(s, UnifiedCommitments.Find(s, change.Record.id), decision,
+                        change.Record.settlementEffectKey));
+            }
             var promisesBroken = new HashSet<string>(StringComparer.Ordinal);
             foreach (var nominee in named)
             {
@@ -840,6 +881,15 @@ namespace Gamesim.Simulation
                 case DecisionKinds.Vote: breach.act = Acts.Vote; breach.causeId = d.firstId; break;
                 case DecisionKinds.FinalEviction: breach.act = Acts.Take; breach.causeId = Taken(s, d.firstId); break;
             }
+            return breach;
+        }
+
+        private static Breach SafetyBreach(EpisodeState s, UnifiedCommitmentState row, Decision decision, string effectKey)
+        {
+            var breach = row.sourcePolicy == UnifiedCommitments.PromisePolicy
+                ? PromiseBreach(s, CommitmentReferences.FindPromise(s, row.id), decision, row.beneficiaryId)
+                : DealBreach(s, CommitmentReferences.FindDeal(s, row.id), decision);
+            breach.effectKey = effectKey;
             return breach;
         }
 

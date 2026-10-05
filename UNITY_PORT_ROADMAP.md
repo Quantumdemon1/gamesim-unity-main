@@ -1,5 +1,15 @@
 # Gamesim Unity port
 
+**Latest canonical Safety voting/Your Word increment,2026-10-05 UTC:** additional
+78pure cases pass (37voting/41page+warnings);2659regular pure,646focused Mono and
+8fresh assemblies pass.55scripted legacy replay digests/counts remain unchanged.
+Canonical voting/history/story odds, page/preview and durable breaker attribution
+are staged; see `WAVE_D_SAFETY_VOTING_WORD_IMPLEMENTATION.md`. Rule1 still refused
+by production. Remaining references/full validation/native transactions/fresh-only
+activation, other D1 families and all required D2/D3/D4 remain. The separate bb
+native candidate remains frozen under g24n2; this isolated source is NOT native,
+desktop,1080p60, visual or0of3human acceptance. Older status blocks are historical.
+
 **Latest authority adapters/native repairs, 2026-10-05 UTC:** internal atomic
 Safety storage/response plus detached references are staged with105new cases;
 ONLYHoH-pitch and notebook readers are routed. Production activation still

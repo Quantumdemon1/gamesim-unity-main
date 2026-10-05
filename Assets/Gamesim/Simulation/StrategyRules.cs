@@ -448,6 +448,9 @@ namespace Gamesim.Simulation
             reluctance += UnifiedCommitments.RulesOn(s)
                 ? UnifiedCommitments.StrongestProtection(s, hohId, id).Strength
                 : Negotiation.SafetyHeld(s, hohId, id);
+            if (UnifiedCommitments.RulesOn(s))
+                reluctance += BrokenDealWeight * UnifiedCommitmentHistory.Breaches(s)
+                    .Count(incident => incident.ActorId == id && incident.WrongedId == hohId);
             return reluctance;
         }
 

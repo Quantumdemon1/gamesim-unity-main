@@ -79,6 +79,8 @@
     <Compile Include="$(EditMode)UnifiedSafetyResolutionTests.cs" />
     <Compile Include="$(EditMode)UnifiedSafetyProtectionTests.cs" />
     <Compile Include="$(EditMode)UnifiedSafetyReaderTests.cs" />
+    <Compile Include="$(EditMode)UnifiedSafetyVotingTests.cs" />
+    <Compile Include="$(EditMode)UnifiedSafetyWordTests.cs" />
     <Compile Include="$(EditMode)AllianceProposalTests.cs" />
     <Compile Include="$(EditMode)EveryDealDoesSomethingTests.cs" />
     <Compile Include="$(EditMode)BetrayalAndAllegianceTests.cs" />

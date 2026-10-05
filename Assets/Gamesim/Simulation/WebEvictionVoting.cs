@@ -106,6 +106,17 @@ namespace Gamesim.Simulation
         // Ephemeral derived input, NOT a persisted simulation DTO or mutable vote authority.
         public bool nativeSpeechRulesOn, speechHearer;
         public List<WebVoteSpeechAppeal> speechAppeals = new List<WebVoteSpeechAppeal>();
+        // Native unified rules only. Derived from the sole canonical authority, never saved or
+        // reconstructed from web fixtures, and never writable commitment mirrors.
+        public List<WebVoteSafetyTerm> safetyTerms = new List<WebVoteSafetyTerm>();
+    }
+
+    [Serializable] public sealed class WebVoteSafetyTerm
+    {
+        public string nomineeId;
+        public double obligation;
+        public int brokenIncidents;
+        public List<string> evidenceIds = new List<string>();
     }
 
     public sealed class WebVoteSpeechAppeal
@@ -239,8 +250,40 @@ namespace Gamesim.Simulation
                 }).Where(t => t.grudge != 0 || t.bond != 0).ToList(),
                 obligations = EpisodeEngine.LeverTerms(state, voterId),
             };
+            if (UnifiedCommitments.RulesOn(state)) options.safetyTerms = SafetyTerms(state, voterId);
             BlockSpeeches.Configure(state, options);
             return options;
+        }
+
+        private static List<WebVoteSafetyTerm> SafetyTerms(EpisodeState state, string voterId)
+        {
+            var records = UnifiedCommitmentHistory.Records(state);
+            var incidents = UnifiedCommitmentHistory.Breaches(state);
+            return state.nominees.Select(targetId =>
+            {
+                var pair = records.Where(row => (row.makerId == voterId && row.beneficiaryId == targetId)
+                    || (row.makerId == targetId && row.beneficiaryId == voterId)).ToArray();
+                var active = pair.Where(row => row.status == DealStatus.Active).ToArray();
+                var kept = pair.Where(row => row.status == DealStatus.Fulfilled).ToArray();
+                var wronged = incidents.Where(incident => incident.ActorId == targetId && incident.WrongedId == voterId).ToArray();
+                var term = new WebVoteSafetyTerm { nomineeId = targetId,
+                    // Source values, strongest active protection once; fulfilled evidence grouped by
+                    // the actual final-veto settlement week. Source promises never fulfill there.
+                    obligation = active.Length == 0 ? 0 : active.Max(row => row.sourcePolicy == UnifiedCommitments.DealPolicy
+                        ? 35 : row.makerId == voterId ? 30 : 10),
+                    brokenIncidents = incidents.Count(incident => incident.ActorId == targetId),
+                };
+                term.obligation += 5 * kept.Select(row => row.settledWeek).Distinct().Count();
+                foreach (var incident in wronged)
+                {
+                    var owner = records.Single(row => row.id == incident.EffectOwnerId);
+                    term.obligation -= owner.sourcePolicy == UnifiedCommitments.PromisePolicy ? 25 : 35;
+                }
+                term.evidenceIds = active.Select(row => row.id).Concat(kept.Select(row => row.id))
+                    .Concat(wronged.SelectMany(incident => incident.EvidenceIds)).Distinct(StringComparer.Ordinal)
+                    .OrderBy(id => id, StringComparer.Ordinal).ToList();
+                return term;
+            }).ToList();
         }
 
         public static WebVoteEvaluation EvaluateNative(EpisodeState state, string voterId) => Evaluate(FromNative(state, voterId));
@@ -333,7 +376,11 @@ namespace Gamesim.Simulation
             return w;
         }
 
-        private static double Threat(WebVoteContestant evaluator, WebVoteContestant target, WebVoteState state)
+        // Retain the unique three-argument source leaf used by the legacy contract tests.
+        private static double Threat(WebVoteContestant evaluator, WebVoteContestant target, WebVoteState state) =>
+            ThreatWithSafety(evaluator, target, state, 0);
+
+        private static double ThreatWithSafety(WebVoteContestant evaluator, WebVoteContestant target, WebVoteState state, int safetyBreaches)
         {
             double competition = Math.Min(40, target.hohWins * 8 + target.vetoWins * 6);
             var others = state.allActive.Where(c => c.id != target.id && c.id != evaluator.id).ToArray();
@@ -342,7 +389,7 @@ namespace Gamesim.Simulation
             double alliance = Math.Min(20, state.alliances.Where(a => Active(a) && a.members.Contains(target.id)).Sum(a => a.members.Count * 4));
             double potential = (target.stats.competition / 10) * 3 + (target.stats.strategic / 10) * 2;
             if (target.stats.social >= 7 && target.stats.strategic >= 7) potential += 2;
-            double broken = Math.Min(8, state.deals.Count(d => d.status == "broken" && HeldAgainst(d, target.id)) * 3);
+            double broken = Math.Min(8, (state.deals.Count(d => d.status == "broken" && HeldAgainst(d, target.id)) + safetyBreaches) * 3);
             var arc = target.isPlayer ? state.relationshipArcs.FirstOrDefault(a => a.npcId == evaluator.id) : null;
             double arcThreat = arc?.arcType == "rivalry" ? Math.Min(7, Math.Floor(arc.intensity / 15)) :
                 arc?.arcType == "friendship" ? -Math.Min(5, Math.Floor(arc.intensity / 20)) : 0;
@@ -377,7 +424,10 @@ namespace Gamesim.Simulation
             };
         }
 
-        private static EvidenceValue DealObligation(string evaluatorId, string targetId, WebVoteState state)
+        private static EvidenceValue DealObligation(string evaluatorId, string targetId, WebVoteState state) =>
+            DealObligationWithSafety(evaluatorId, targetId, state, null);
+
+        private static EvidenceValue DealObligationWithSafety(string evaluatorId, string targetId, WebVoteState state, WebVoteSafetyTerm safety)
         {
             var result = new EvidenceValue();
             foreach (var promise in state.promises)
@@ -412,6 +462,11 @@ namespace Gamesim.Simulation
                 // own breach is no grievance of theirs against the one they wronged.
                 else if (deal.status == "broken" && pair && HeldAgainst(deal, targetId)) { result.value -= 35; result.evidenceIds.Add(deal.id); }
                 else if (deal.status == "fulfilled" && pair) { result.value += 5; result.evidenceIds.Add(deal.id); }
+            }
+            if (safety != null)
+            {
+                result.value += safety.obligation;
+                result.evidenceIds.AddRange(safety.evidenceIds);
             }
             result.value = Clamp(result.value, -50, 50);
             return result;
@@ -505,7 +560,8 @@ namespace Gamesim.Simulation
         private static WebNomineeEvaluation EvaluateNominee(WebVoteOptions o, WebVoteContestant nominee, Weights weights)
         {
             var alliance = AllianceLoyalty(o.voter.id, nominee.id, o.state);
-            var deal = DealObligation(o.voter.id, nominee.id, o.state);
+            var safety = o.safetyTerms?.FirstOrDefault(term => term.nomineeId == nominee.id);
+            var deal = DealObligationWithSafety(o.voter.id, nominee.id, o.state, safety);
             var arc = nominee.isPlayer ? o.state.relationshipArcs.FirstOrDefault(a => a.npcId == o.voter.id) : null;
             double history = arc == null ? 0 : (arc.arcType == "rivalry" ? -1 : arc.arcType == "friendship" ? 1 : 0) * arc.intensity;
             double persona = nominee.isPlayer && !string.IsNullOrEmpty(o.playerPersonaLabel) ? Persona(o.playerPersonaLabel) : 0;
@@ -514,7 +570,7 @@ namespace Gamesim.Simulation
             var factors = new List<WebVoteFactor>
             {
                 Factor("relationship", Score(o.state, o.voter.id, nominee.id) * weights.relationship, "private", "relationship:" + o.voter.id + ":" + nominee.id),
-                Factor("threat", -Threat(o.voter, nominee, o.state) * weights.threat, "public", "resume:" + nominee.id),
+                Factor("threat", -ThreatWithSafety(o.voter, nominee, o.state, safety?.brokenIncidents ?? 0) * weights.threat, "public", "resume:" + nominee.id),
                 Factor("alliance", alliance.value * weights.alliance, "private", alliance.evidenceIds.ToArray()),
                 Factor("deal", deal.value * weights.deal, "private", deal.evidenceIds.ToArray()),
                 Factor("strategicValue", StrategicValue(o.voter, nominee, o.state) * weights.strategicValue * 0.5, "private"),

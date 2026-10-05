@@ -411,6 +411,14 @@ namespace Gamesim.Simulation
         {
             string player = s.playerId;
             if (deal == null || deal.status != DealStatus.Broken || (deal.proposerId != player && deal.recipientId != player)) return null;
+            if (UnifiedCommitments.RulesOn(s))
+            {
+                // Canonical safety's actual actor is durable authority. The capped power ledger
+                // may no longer contain its nomination, and must not overwrite that attribution.
+                var canonical = CommitmentReferences.FindCanonical(s, deal.id);
+                if (canonical != null && canonical.sourcePolicy == UnifiedCommitments.DealPolicy
+                    && canonical.status == DealStatus.Broken) return canonical.brokenById;
+            }
             string other = deal.proposerId == player ? deal.recipientId : deal.proposerId;
             var rows = s.ledger?.power ?? new List<PowerRow>();
             bool Final(PowerRow p) => p.tally.Count == 0 && p.evicteeId != null && p.vetoHolderId == null;

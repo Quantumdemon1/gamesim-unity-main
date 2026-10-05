@@ -1,5 +1,19 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC - staged canonical Safety voting and Your Word readers
+
+`WAVE_D_SAFETY_VOTING_WORD_IMPLEMENTATION.md` enumerates every material change,
+retained failed run, repairs, exact source image and closed diagnostics. Adds
+37voting/41page+warning pure cases; source values/max protection, grouped history,
+shared legacy threat cap, combined obligation clamp, private evidence, canonical
+actor/date and action-target-only previews. Legacy source leaf/test contracts,
+all29 protection cases and source-shaped mixed-family presentation retained.
+Final8fresh assemblies,2659regular pure,646focused Mono and55paired legacy season
+digests pass. These do not activate rule1 or establish native UI/desktop acceptance.
+The separate frozen bb0f21e7 g24n2 remains live; no live-project/remote promotion.
+Full validation/references/native transactional activation, other D1 families,
+D2/D3/D4, balance/art and actual1080p60/visual/accessibility/0of3human gates remain.
+
 ## 2026-10-05 UTC - inactive authority adapters and combined-native repairs
 
 See `WAVE_D_AUTHORITY_ADAPTERS_IMPLEMENTATION.md` for every material change and

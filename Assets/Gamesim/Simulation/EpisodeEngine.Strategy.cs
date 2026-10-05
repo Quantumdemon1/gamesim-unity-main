@@ -26,6 +26,11 @@ namespace Gamesim.Simulation
             Require(SocialActionsSpent(s) < SocialActionBudget(s), "You have no conversations left this week.");
 
             var decider = s.Find(c.targetId);
+            if (UnifiedCommitments.RulesOn(s) && approach == LobbyApproach.Deal
+                && (ask != LobbyAsk.Vote || NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.VoteSave))
+                && !NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.SafetyAgreement))
+                Require(UnifiedCommitmentStore.CanAddDeal(s, DraftLobbySafety(s, decider.id), UnifiedCommitments.Lobby,
+                    out string safetyRefusal), safetyRefusal);
             var read = ask == LobbyAsk.Vote ? LeverRead(s, decider.id) : null;
             double chance = StrategyRules.Chance(s, decider.id, ask, c.secondTargetId, approach);
             var answer = StrategyRules.Respond(chance, Roll(s), () => Roll(s));
@@ -47,7 +52,7 @@ namespace Gamesim.Simulation
             // For the vote it is the voter's word on the vote itself: a vote to keep the player,
             // their obligation in the ballot and judged at the reveal like any vote deal.
             if (ask == LobbyAsk.Vote && approach == LobbyApproach.Deal && StrategyRules.Landed(answer.response)
-                && s.deals.Count < NpcDeals.DealCeiling
+                && (UnifiedCommitments.RulesOn(s) ? CommitmentReferences.DealCount(s) : s.deals.Count) < NpcDeals.DealCeiling
                 && !NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.VoteSave))
             {
                 s.deals.Add(new DealState
@@ -59,20 +64,25 @@ namespace Gamesim.Simulation
                 Log(s, "deal", decider.name + " has given you their vote: a vote to keep you, judged at the reveal.", s.playerId, decider.id);
             }
             else if (approach == LobbyApproach.Deal && StrategyRules.Landed(answer.response)
-                && s.deals.Count < NpcDeals.DealCeiling
+                && (UnifiedCommitments.RulesOn(s) ? CommitmentReferences.DealCount(s) : s.deals.Count) < NpcDeals.DealCeiling
                 && !NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.SafetyAgreement))
             {
-                s.deals.Add(new DealState
-                {
-                    id = "deal-lobby-" + s.nextSequence, type = DealKind.SafetyAgreement,
-                    proposerId = s.playerId, recipientId = decider.id, status = DealStatus.Active,
-                    week = s.week, expiresWeek = s.week + 1, trustImpact = DealKind.DefaultTrust(DealKind.SafetyAgreement),
-                });
+                var deal = DraftLobbySafety(s, decider.id);
+                if (UnifiedCommitments.RulesOn(s))
+                    Require(UnifiedCommitmentStore.TryAddDeal(s, deal, UnifiedCommitments.Lobby, out string error), error);
+                else s.deals.Add(deal);
                 Log(s, "deal", "You and " + decider.name + " have a safety agreement through next week.", s.playerId, decider.id);
             }
             if (ask == LobbyAsk.Vote) LeverLine(s, decider.id, read, s.nominees.FirstOrDefault(id => id != s.playerId), "your plea");
             SpendSocialAction(s);
         }
+
+        private static DealState DraftLobbySafety(EpisodeState s, string deciderId) => new DealState
+        {
+            id = "deal-lobby-" + s.nextSequence, type = DealKind.SafetyAgreement,
+            proposerId = s.playerId, recipientId = deciderId, status = DealStatus.Active,
+            week = s.week, expiresWeek = s.week + 1, trustImpact = DealKind.DefaultTrust(DealKind.SafetyAgreement),
+        };
 
         /// <summary>
         /// Answering a houseguest who came to the player: a confrontation, gossip the player found

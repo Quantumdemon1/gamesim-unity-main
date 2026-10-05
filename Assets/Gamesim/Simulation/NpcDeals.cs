@@ -101,7 +101,7 @@ namespace Gamesim.Simulation
 
         /// <summary>Deals currently binding these two, in either direction.</summary>
         public static List<DealState> Between(EpisodeState state, string a, string b) =>
-            state.deals.Where(d => d.status == DealStatus.Active
+            (UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Deals(state) : state.deals).Where(d => d.status == DealStatus.Active
                                    && ((d.proposerId == a && d.recipientId == b)
                                        || (d.proposerId == b && d.recipientId == a)))
                 .ToList();
@@ -232,7 +232,7 @@ namespace Gamesim.Simulation
                          .Where(c => c.status == ContestantStatus.Active && !c.isPlayer)
                          .ToList())
             {
-                if (state.deals.Count >= DealCeiling) return;
+                if ((UnifiedCommitments.RulesOn(state) ? CommitmentReferences.DealCount(state) : state.deals.Count) >= DealCeiling) return;
 
                 var struck = state.contestants
                     .Where(other => other.status == ContestantStatus.Active && !other.isPlayer
@@ -278,7 +278,7 @@ namespace Gamesim.Simulation
             // One round of offers per week. The test is whether anything was PUT to the player this
             // week, not whether anything is still waiting — otherwise clearing the table would
             // refill it, and a player who answers promptly would be asked more than one who does not.
-            if (state.deals.Any(d => d.recipientId == state.playerId && d.week == state.week
+            if ((UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Deals(state) : state.deals).Any(d => d.recipientId == state.playerId && d.week == state.week
                                      && d.id.StartsWith(OfferPrefix, StringComparison.Ordinal))) return;
 
             var offers = state.contestants
@@ -290,14 +290,15 @@ namespace Gamesim.Simulation
                 .ToList();
 
             var types = new HashSet<string>(StringComparer.Ordinal);
-            int room = Math.Min(ProposalsPerWeek, Math.Max(0, DealCeiling - state.deals.Count));
+            int room = Math.Min(ProposalsPerWeek, Math.Max(0, DealCeiling
+                - (UnifiedCommitments.RulesOn(state) ? CommitmentReferences.DealCount(state) : state.deals.Count)));
             foreach (var offer in offers)
             {
                 if (types.Count >= room) break;
                 // Variety, the reference's rule: the first offer always stands, and after that a
                 // repeat of a type already on the table is skipped in favour of something new.
                 if (!types.Add(offer.kind)) continue;
-                state.deals.Add(new DealState
+                var proposed = new DealState
                 {
                     id = OfferPrefix + state.nextSequence,
                     type = offer.kind,
@@ -317,7 +318,16 @@ namespace Gamesim.Simulation
                     // accepting recomputes the term from the deal's own rule.
                     expiresWeek = state.week,
                     trustImpact = DealKind.DefaultTrust(offer.kind),
-                });
+                };
+                if (UnifiedCommitments.RulesOn(state) && offer.kind == DealKind.SafetyAgreement)
+                {
+                    if (!UnifiedCommitmentStore.TryAddDeal(state, proposed, UnifiedCommitments.NpcOffer, out _))
+                    {
+                        types.Remove(offer.kind);
+                        continue;
+                    }
+                }
+                else state.deals.Add(proposed);
                 RelationshipLedger.Record(state, offer.npc.id, state.playerId, "deal_proposed", 0,
                     offer.npc.name + " put a " + DealKind.Title(offer.kind).ToLowerInvariant() + " to you.");
             }
@@ -348,7 +358,7 @@ namespace Gamesim.Simulation
                 .ToList();
             foreach (var npc in asking)
             {
-                if (state.deals.Count >= DealCeiling) return;
+                if ((UnifiedCommitments.RulesOn(state) ? CommitmentReferences.DealCount(state) : state.deals.Count) >= DealCeiling) return;
                 state.deals.Add(new DealState
                 {
                     id = VetoAskPrefix + state.nextSequence,
@@ -387,8 +397,8 @@ namespace Gamesim.Simulation
 
         /// <summary>Offers still waiting on the player, newest first.</summary>
         public static List<DealState> Pending(EpisodeState state) =>
-            state?.deals
-                .Where(d => d.status == DealStatus.Proposed && d.recipientId == state.playerId)
+            (state == null ? null : UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Deals(state) : state.deals)
+                ?.Where(d => d.status == DealStatus.Proposed && d.recipientId == state.playerId)
                 .OrderByDescending(d => d.week)
                 .ThenByDescending(d => Urgency(d.type))
                 .ThenBy(d => d.id, StringComparer.Ordinal)
@@ -403,6 +413,8 @@ namespace Gamesim.Simulation
         /// </summary>
         private static void Expire(EpisodeState state)
         {
+            if (UnifiedCommitments.RulesOn(state))
+                EpisodeEngine.ResolveUnifiedSafetyExpiry(state, UnifiedCommitmentExpiry.DealPass);
             foreach (var deal in state.deals)
                 if (DealStatus.Binds(deal.status) && deal.expiresWeek > 0 && deal.expiresWeek < state.week)
                     deal.status = DealStatus.Expired;
@@ -412,7 +424,7 @@ namespace Gamesim.Simulation
         private static void Strike(EpisodeState state, string from, string to, string kind)
         {
             string target = DealKind.NamesATarget(kind) ? TargetFor(state, from, to, kind) : null;
-            state.deals.Add(new DealState
+            var deal = new DealState
             {
                 id = "deal-npc-" + state.nextSequence,
                 type = kind,
@@ -430,7 +442,12 @@ namespace Gamesim.Simulation
                               || kind == DealKind.FinalThree
                     ? 0 : state.week,
                 trustImpact = DealKind.DefaultTrust(kind),
-            });
+            };
+            if (UnifiedCommitments.RulesOn(state) && kind == DealKind.SafetyAgreement)
+            {
+                if (!UnifiedCommitmentStore.TryAddDeal(state, deal, UnifiedCommitments.NpcDeal, out _)) return;
+            }
+            else state.deals.Add(deal);
 
             RelationshipLedger.Record(state, from, to, "deal_accepted", 18,
                 state.Find(from).name + " and " + state.Find(to).name + " agreed a "

@@ -319,6 +319,7 @@ namespace Gamesim.Simulation
             NpcAlliances.EndBroken(s);
             s.oathOpportunities.Remove(id);
             s.loyaltyOaths.RemoveAll(o => o.playerId == id || o.targetId == id);
+            if (UnifiedCommitments.RulesOn(s)) ResolveUnifiedSafetyExpiry(s, UnifiedCommitmentExpiry.Expulsion, id);
             foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && (p.fromId == id || p.toId == id)))
                 promise.status = PromiseStatus.Expired;
             foreach (var deal in s.deals.Where(d => DealStatus.Binds(d.status) && (d.proposerId == id || d.recipientId == id || d.targetId == id)))

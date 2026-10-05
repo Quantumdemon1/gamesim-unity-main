@@ -48,6 +48,12 @@ namespace Gamesim.Presentation
             Transform leftArm=animator.GetBoneTransform(HumanBodyBones.LeftUpperArm),leftFore=animator.GetBoneTransform(HumanBodyBones.LeftLowerArm),leftHand=animator.GetBoneTransform(HumanBodyBones.LeftHand);
             Transform rightArm=animator.GetBoneTransform(HumanBodyBones.RightUpperArm),rightFore=animator.GetBoneTransform(HumanBodyBones.RightLowerArm),rightHand=animator.GetBoneTransform(HumanBodyBones.RightHand);
             if(leftArm==null || leftFore==null || leftHand==null || rightArm==null || rightFore==null || rightHand==null)return;
+            // HumanBodyBones.Hand is the wrist, not the hand's gripping/pressing surface.
+            // Use a real descendant bone: the middle knuckle grips; the distal finger presses.
+            // An incomplete rig falls back to its actual wrist, never an invented reach offset.
+            bool grip=instrument.Instrument==CompetitionApparatus.Family.GripRig;
+            Transform leftContact=animator.GetBoneTransform(grip?HumanBodyBones.LeftMiddleProximal:HumanBodyBones.LeftMiddleDistal)??leftHand;
+            Transform rightContact=animator.GetBoneTransform(grip?HumanBodyBones.RightMiddleProximal:HumanBodyBones.RightMiddleDistal)??rightHand;
             if(instrument.Instrument==CompetitionApparatus.Family.GripRig)
             {
                 Transform anchor=instrument.transform.parent;
@@ -71,21 +77,21 @@ namespace Gamesim.Presentation
             if(holding)
             {
                 Transform anchor=instrument.transform.parent;
-                LeftHandError=Reach(leftArm,leftFore,leftHand,instrument.HandContact(true),-anchor.right-anchor.up*.4f);
-                RightHandError=Reach(rightArm,rightFore,rightHand,instrument.HandContact(false),anchor.right-anchor.up*.4f);
+                LeftHandError=Reach(leftArm,leftFore,leftContact,instrument.HandContact(true),-anchor.right-anchor.up*.4f);
+                RightHandError=Reach(rightArm,rightFore,rightContact,instrument.HandContact(false),anchor.right-anchor.up*.4f);
                 HasContact=LeftHandError<.035f && RightHandError<.035f;
             }
             else
             {
-                RightHandError=Reach(rightArm,rightFore,rightHand,instrument.HandContact(false),instrument.transform.right-instrument.transform.up*.3f);
+                RightHandError=Reach(rightArm,rightFore,rightContact,instrument.HandContact(false),instrument.transform.right-instrument.transform.up*.3f);
                 HasContact=RightHandError<.035f;
             }
         }
 
-        private float Reach(Transform upper,Transform lower,Transform hand,Vector3 target,Vector3 pole)
+        private float Reach(Transform upper,Transform lower,Transform contact,Vector3 target,Vector3 pole)
         {
             Vector3 origin=upper.position,delta=target-origin;
-            float first=Vector3.Distance(origin,lower.position),second=Vector3.Distance(lower.position,hand.position);
+            float first=Vector3.Distance(origin,lower.position),second=Vector3.Distance(lower.position,contact.position);
             if(first<.03f || second<.03f || delta.sqrMagnitude<.00001f)return float.PositiveInfinity;
             float distance=Mathf.Clamp(delta.magnitude,Mathf.Abs(first-second)+.001f,first+second-.001f);
             Vector3 direction=delta.normalized;
@@ -94,8 +100,8 @@ namespace Gamesim.Presentation
             float along=(first*first-second*second+distance*distance)/(2*distance);
             Vector3 elbow=origin+direction*along+bend*Mathf.Sqrt(Mathf.Max(0,first*first-along*along));
             Write(upper,Quaternion.FromToRotation(lower.position-origin,elbow-origin)*upper.rotation);
-            Write(lower,Quaternion.FromToRotation(hand.position-lower.position,target-lower.position)*lower.rotation);
-            return Vector3.Distance(hand.position,target);
+            Write(lower,Quaternion.FromToRotation(contact.position-lower.position,target-lower.position)*lower.rotation);
+            return Vector3.Distance(contact.position,target);
         }
 
         private void Write(Transform bone,Quaternion worldRotation)

@@ -457,6 +457,55 @@ namespace Gamesim.Tests.PlayMode
             }
         }
 
+        [UnityTest]
+        public IEnumerator Apparatus_ContactSolveReachesWithRealHandBonesWithoutStretchingOrMovingTheBody()
+        {
+            owner=new GameObject("Physical contact solver fixture");
+            var pose=owner.AddComponent<CompetitionInstrumentPose>();
+            var solve=typeof(CompetitionInstrumentPose).GetMethod("Reach",BindingFlags.Instance|BindingFlags.NonPublic);
+            foreach(float scale in new[]{.76685f,1f})foreach(float yaw in new[]{0f,37f,171f})foreach(float handSpan in new[]{.11525f,.18371f})
+            {
+                owner.transform.SetPositionAndRotation(new Vector3(4,2,6),Quaternion.Euler(0,yaw,0));
+                owner.transform.localScale=Vector3.one*scale;
+                var upper=new GameObject("Upper arm").transform;upper.SetParent(owner.transform,false);upper.localPosition=new Vector3(.2f,1.3f,0);
+                var lower=new GameObject("Lower arm").transform;lower.SetParent(upper,false);lower.localPosition=Vector3.right*.28f;
+                var wrist=new GameObject("Wrist").transform;wrist.SetParent(lower,false);wrist.localPosition=Vector3.right*.2892f;
+                var contact=new GameObject("Actual finger contact").transform;contact.SetParent(wrist,false);contact.localPosition=Vector3.right*handSpan;
+                var bones=new[]{upper,lower,wrist,contact};var positions=bones.Select(b=>b.localPosition).ToArray();
+                var scales=bones.Select(b=>b.localScale).ToArray();var rotations=bones.Select(b=>b.localRotation).ToArray();
+                Vector3 feet=owner.transform.position;Quaternion facing=owner.transform.rotation;
+                Vector3 target=upper.position+owner.transform.forward*(handSpan<.15f?.68f:.695f)*scale;
+                float wristReach=Vector3.Distance(upper.position,lower.position)+Vector3.Distance(lower.position,wrist.position);
+                Assert.That(Vector3.Distance(upper.position,target),Is.GreaterThan(wristReach+.07f),"The wrist cannot honestly reach this target.");
+                float error=(float)solve.Invoke(pose,new object[]{upper,lower,contact,target,owner.transform.right});
+                Assert.That(error,Is.LessThan(.003f));Assert.That(Vector3.Distance(contact.position,target),Is.LessThan(.003f));
+                Assert.That(Vector3.Distance(wrist.position,target),Is.GreaterThan(handSpan*scale*.95f),"A contact does not place the wrist inside the prop.");
+                Assert.That(bones.Select(b=>b.localPosition),Is.EqualTo(positions));Assert.That(bones.Select(b=>b.localScale),Is.EqualTo(scales));
+                Assert.That(owner.transform.position,Is.EqualTo(feet));Assert.That(owner.transform.rotation,Is.EqualTo(facing));
+                pose.Release();
+                for(int i=0;i<bones.Length;i++)Assert.That(Quaternion.Angle(bones[i].localRotation,rotations[i]),Is.LessThan(.01f),"Release restores only its borrowed rotations.");
+                Object.DestroyImmediate(upper.gameObject);
+            }
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator Apparatus_ContactSolveCannotInventReachForAnUnreachableProp()
+        {
+            owner=new GameObject("Unreachable physical contact fixture");
+            var pose=owner.AddComponent<CompetitionInstrumentPose>();
+            var upper=new GameObject("Upper arm").transform;upper.SetParent(owner.transform,false);
+            var lower=new GameObject("Lower arm").transform;lower.SetParent(upper,false);lower.localPosition=Vector3.right*.22f;
+            var contact=new GameObject("Actual hand contact").transform;contact.SetParent(lower,false);contact.localPosition=Vector3.right*.30f;
+            var target=Vector3.forward*1.5f;
+            float error=(float)typeof(CompetitionInstrumentPose).GetMethod("Reach",BindingFlags.Instance|BindingFlags.NonPublic)
+                .Invoke(pose,new object[]{upper,lower,contact,target,Vector3.right});
+            Assert.That(error,Is.GreaterThan(.97f));Assert.That(error,Is.EqualTo(Vector3.Distance(contact.position,target)).Within(.0001f));
+            Assert.That(lower.localPosition,Is.EqualTo(Vector3.right*.22f));Assert.That(contact.localPosition,Is.EqualTo(Vector3.right*.30f));
+            Assert.That(owner.transform.position,Is.EqualTo(Vector3.zero));Assert.That(owner.transform.localScale,Is.EqualTo(Vector3.one));
+            pose.Release();yield return null;
+        }
+
         private static string Fingerprint(MiniGameRun run)
         {
             var rng=(SeededRandom)typeof(MiniGameRun).GetField("random",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(run);

@@ -678,6 +678,15 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(pose,Is.Not.Null,"An arrived humanoid borrows the instrument's scoped hand pose.");
                     Assert.That(pose.HasContact,Is.True,name+": hands must contact the actual apparatus; left error "+pose.LeftHandError+", right error "+pose.RightHandError
                         +"; "+(pose.HasContact?string.Empty:InstrumentContactGeometry(humanoid,instrument)));
+                    bool grip=instrument.Instrument==CompetitionApparatus.Family.GripRig;
+                    foreach(bool left in grip?new[]{true,false}:new[]{false})
+                    {
+                        var bone=left?HumanBodyBones.LeftMiddleProximal:grip?HumanBodyBones.RightMiddleProximal:HumanBodyBones.RightMiddleDistal;
+                        var contact=humanoid.GetBoneTransform(bone);
+                        Assert.That(contact,Is.Not.Null,"The native rig supplies its actual "+bone+" contact.");
+                        Assert.That(Vector3.Distance(contact.position,instrument.HandContact(left)),Is.LessThan(.035f),
+                            name+": independently measured "+bone+" must reach the real prop, not just report HasContact.");
+                    }
                 }
                 // Both reads are in the same frame, after real input. A GPU read can make the
                 // following frame slow; it must not turn these captures into a paused screen.
@@ -731,6 +740,14 @@ namespace Gamesim.Tests.PlayMode
                     +" distance="+Vector3.Distance(upper.position,target).ToString("F5")
                     +" measuredError="+Vector3.Distance(hand.position,target).ToString("F5")
                     +" upperScale="+upper.lossyScale.ToString("F5")+" lowerScale="+lower.lossyScale.ToString("F5"));
+                foreach(var bone in left?new[]{HumanBodyBones.LeftMiddleProximal,HumanBodyBones.LeftMiddleDistal}
+                    :new[]{HumanBodyBones.RightMiddleProximal,HumanBodyBones.RightMiddleDistal})
+                {
+                    var contact=animator.GetBoneTransform(bone);
+                    rows.Add(bone+"="+(contact==null?"missing":anchor.InverseTransformPoint(contact.position).ToString("F5")
+                        +" wristOffset="+Vector3.Distance(hand.position,contact.position).ToString("F5")
+                        +" effectiveReach="+(Vector3.Distance(upper.position,lower.position)+Vector3.Distance(lower.position,contact.position)).ToString("F5")));
+                }
             }
             return string.Join("; ",rows);
         }

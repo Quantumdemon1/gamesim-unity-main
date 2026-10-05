@@ -93,7 +93,9 @@ Close the frozen schema22 candidate's gates without folding this branch into an 
 Then validate this branch's schema23 migration and fresh/legacy flows natively, review it, build
 and exercise a matching player, and integrate through the existing preservation gates.
 
-E2-E5 still require differentiated social verbs/replies, target pickers, player-HoH pitch cards and
+The extra-action purchase target picker is now implemented separately above this E1 checkpoint;
+see `WAVE_C_TARGETING_IMPLEMENTATION.md` for its evidence and still-pending native gates.
+E2-E5 still require differentiated social verbs/replies, the remaining target pickers, player-HoH pitch cards and
 bounded speech influence. The owner requires all four Wave D additions: unified commitments,
 week-long NPC strategy, negotiated alliance plans, deeper secret leaks. Cohesive real-asset
 replacement, presentation/accessibility, GTX1060 **1920x1080 at60 FPS**, separate6/12-person workloads

@@ -673,6 +673,7 @@ namespace Gamesim.Episode
             // and so does free time's: its board opens again on its root and its first page.
             ForgetNominationView();
             ForgetFreeTimeView();
+            ForgetActionPurchase();
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             // A chip's card goes with everything else Escape closes; the campaign opens folded.
             castMenuFor = null; emoteMenuOpen = false; campaignMore = false;
@@ -797,6 +798,7 @@ namespace Gamesim.Episode
             if (result.accepted)
             {
                 diaryDraft = null; // A draft never survives a different committed revision.
+                ForgetActionPurchase();
                 if (focusedNpc != null)
                 {
                     lastSocialAction = command.kind;
@@ -1474,6 +1476,7 @@ namespace Gamesim.Episode
             }
             if (sceneCardOpen) { SceneCard(state); return; }
             if (!phaseOpen) return;
+            if (RenderActionPurchase(state)) return;
             // The episode screen is a decision screen: it takes the stage, the frame from the rail
             // to the right edge. A quiet beat - "Continue episode" under the house's status, or the
             // reflection prompt - stays a card sized to its few lines. A dedicated layout (the

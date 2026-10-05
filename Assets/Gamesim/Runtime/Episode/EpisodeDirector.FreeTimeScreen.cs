@@ -354,8 +354,8 @@ namespace Gamesim.Episode
             {
                 string purchases = left + (left == 1 ? " purchase" : " purchases") + " left.";
                 tiles.Add(Tile(EpisodeHud.BuyBurnOneCaption, "One more interaction for " + Mathf.Abs((int)WebSocialVocabulary.BurnOneCost)
-                        + " goodwill with one housemate. " + purchases,
-                    EpisodeCommandKind.BuyActionPoint, "exit", () => Commit(state, EpisodeCommandKind.BuyActionPoint, text: WebSocialVocabulary.BurnOne), "Risky", "Gains 1 action"));
+                        + " goodwill with a housemate you choose. " + purchases,
+                    EpisodeCommandKind.BuyActionPoint, "exit", () => OpenActionPurchase(state), "Risky", "Gains 1 action"));
                 tiles.Add(Tile(EpisodeHud.BuySpreadCaption, "One more interaction for " + Mathf.Abs((int)WebSocialVocabulary.SpreadAllCost)
                         + " goodwill with every housemate. " + purchases,
                     EpisodeCommandKind.BuyActionPoint, "chat", () => Commit(state, EpisodeCommandKind.BuyActionPoint, text: WebSocialVocabulary.SpreadAll), null, "Gains 1 action"));

@@ -57,6 +57,7 @@
     <Compile Include="$(EditMode)GameSenseHarnessTests.cs" />
     <Compile Include="$(EditMode)WeekRulesTests.cs" />
     <Compile Include="$(EditMode)EconomyRulesTests.cs" />
+    <Compile Include="$(EditMode)ExtraActionPurchaseChoiceTests.cs" />
     <Compile Include="$(EditMode)TraitAffinityTests.cs" />
     <Compile Include="$(EditMode)NpcAgencyHarnessTests.cs" />
     <Compile Include="$(EditMode)HouseguestNotesTests.cs" />

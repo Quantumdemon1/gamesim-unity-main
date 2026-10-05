@@ -349,8 +349,8 @@ namespace Gamesim.Episode
             {
                 spec.Buys.Add(new EpisodeHud.BuyButton
                 {
-                    Caption = EpisodeHud.BuyBurnOneCaption, Price = Mathf.Abs((int)WebSocialVocabulary.BurnOneCost) + " goodwill with one housemate",
-                    Choose = () => Commit(state, EpisodeCommandKind.BuyActionPoint, text: WebSocialVocabulary.BurnOne),
+                    Caption = EpisodeHud.BuyBurnOneCaption, Price = Mathf.Abs((int)WebSocialVocabulary.BurnOneCost) + " goodwill · choose a housemate",
+                    Choose = () => OpenActionPurchase(state),
                 });
                 spec.Buys.Add(new EpisodeHud.BuyButton
                 {

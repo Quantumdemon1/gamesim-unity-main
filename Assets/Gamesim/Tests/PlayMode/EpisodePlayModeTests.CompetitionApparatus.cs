@@ -676,7 +676,8 @@ namespace Gamesim.Tests.PlayMode
                 if(handContact && humanoid!=null)
                 {
                     Assert.That(pose,Is.Not.Null,"An arrived humanoid borrows the instrument's scoped hand pose.");
-                    Assert.That(pose.HasContact,Is.True,name+": hands must contact the actual apparatus; left error "+pose.LeftHandError+", right error "+pose.RightHandError);
+                    Assert.That(pose.HasContact,Is.True,name+": hands must contact the actual apparatus; left error "+pose.LeftHandError+", right error "+pose.RightHandError
+                        +"; "+(pose.HasContact?string.Empty:InstrumentContactGeometry(humanoid,instrument)));
                 }
                 // Both reads are in the same frame, after real input. A GPU read can make the
                 // following frame slow; it must not turn these captures into a paused screen.
@@ -710,6 +711,28 @@ namespace Gamesim.Tests.PlayMode
                 lens.Dispose();if(frame!=null)Object.Destroy(frame);if(uiFrame!=null)Object.Destroy(uiFrame);
             }
             yield return null;
+        }
+
+        // Failure-only reads: record real segment lengths and target distances after the pose,
+        // without moving an actor/instrument, changing input, or relaxing the contact threshold.
+        private static string InstrumentContactGeometry(Animator animator,CompetitionApparatus instrument)
+        {
+            var rows=new List<string>();
+            foreach(bool left in new[]{true,false})
+            {
+                var upper=animator.GetBoneTransform(left?HumanBodyBones.LeftUpperArm:HumanBodyBones.RightUpperArm);
+                var lower=animator.GetBoneTransform(left?HumanBodyBones.LeftLowerArm:HumanBodyBones.RightLowerArm);
+                var hand=animator.GetBoneTransform(left?HumanBodyBones.LeftHand:HumanBodyBones.RightHand);
+                if(upper==null || lower==null || hand==null){rows.Add((left?"left":"right")+" bones missing");continue;}
+                var target=instrument.HandContact(left);var anchor=instrument.transform.parent;
+                rows.Add((left?"left":"right")+" upper="+anchor.InverseTransformPoint(upper.position).ToString("F5")
+                    +" target="+anchor.InverseTransformPoint(target).ToString("F5")
+                    +" reach="+(Vector3.Distance(upper.position,lower.position)+Vector3.Distance(lower.position,hand.position)).ToString("F5")
+                    +" distance="+Vector3.Distance(upper.position,target).ToString("F5")
+                    +" measuredError="+Vector3.Distance(hand.position,target).ToString("F5")
+                    +" upperScale="+upper.lossyScale.ToString("F5")+" lowerScale="+lower.lossyScale.ToString("F5"));
+            }
+            return string.Join("; ",rows);
         }
 
         private sealed class CompetitionInspectionView

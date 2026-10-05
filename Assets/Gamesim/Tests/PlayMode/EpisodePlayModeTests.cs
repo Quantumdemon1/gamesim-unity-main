@@ -912,6 +912,87 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator FinalSpeech_WheelScrollUsesAMaskedViewportWithoutCommittingTheDraft()
+        {
+            yield return InstallFinaleFixture(true);
+            yield return OpenFinalePanel();
+            ButtonWithCaption(EpisodeHud.JurySkipCaption).onClick.Invoke();
+            yield return null; yield return null;
+            var before = director.Snapshot;
+            var input = SpeechInput();
+            string ScrollState(string stage)
+            {
+                var text = input.textComponent;
+                var viewport = input.textViewport.rect;
+                float y = text.rectTransform.anchoredPosition.y;
+                float ascender = text.textInfo.lineInfo[0].ascender;
+                float overflow = text.preferredHeight - viewport.height;
+                // TMP_InputField.GetScrollPositionRelativeToViewport, including its rounding.
+                float raw = overflow > 0f ? (ascender + text.margin.y + text.margin.w - viewport.yMax + y) / overflow : float.NaN;
+                float normalized = float.IsNaN(raw) ? float.NaN : (int)(raw * 1000 + .5f) / 1000f;
+                return stage + ": frame=" + Time.frameCount + ", focused=" + input.isFocused
+                    + ", selected=" + EventSystem.current.currentSelectedGameObject?.name
+                    + ", caret=" + input.caretPosition + ", string=" + input.stringPosition
+                    + ", y=" + y + ", preferred=" + text.preferredHeight + ", viewport=" + viewport
+                    + ", firstAscender=" + ascender + ", margin=" + text.margin + ", lines=" + text.textInfo.lineCount
+                    + ", normalized=" + normalized + ", wheelStep=" + input.scrollSensitivity / text.textInfo.lineCount;
+            }
+            Assert.That(input.textViewport, Is.Not.Null, "TMP requires a viewport even for an empty multiline field.");
+            Assert.That(input.textViewport.GetComponent<RectMask2D>(), Is.Not.Null, "Scrolled text stays inside the speech box.");
+            Assert.That(input.textComponent.transform.parent, Is.EqualTo(input.textViewport));
+            Assert.That(input.textComponent.overflowMode, Is.EqualTo(TMPro.TextOverflowModes.Overflow),
+                "The mask clips complete text geometry; truncating it would discard scrollable lines.");
+            Assert.That(input.textViewport.GetComponentsInChildren<TMPro.TMP_SelectionCaret>(true), Has.Length.EqualTo(1),
+                "The fully configured field must create its caret inside the same masked viewport.");
+            var wheel = new PointerEventData(EventSystem.current) { scrollDelta = new Vector2(0f, -1f) };
+            Assert.That(() => ExecuteEvents.Execute(input.gameObject, wheel, ExecuteEvents.scrollHandler), Throws.Nothing);
+            float emptyViewportHeight = input.textViewport.rect.height;
+            string draft = string.Join("\n", Enumerable.Range(1, 40).Select(i => "Line " + i + ": I kept my word."));
+            input.text = draft;
+            yield return null; yield return null;
+            Canvas.ForceUpdateCanvases(); input.textComponent.ForceMeshUpdate();
+            Assert.That(input.textViewport.rect.height, Is.EqualTo(emptyViewportHeight).Within(.1f),
+                "The speech box stays bounded as the draft grows. " + ScrollState("after draft layout"));
+            Assert.That(input.textComponent.preferredHeight, Is.GreaterThan(input.textViewport.rect.height), ScrollState("overflow precondition"));
+            Assert.That(input.textComponent.textInfo.lineCount, Is.GreaterThanOrEqualTo(40), "Every authored line remains scrollable.");
+            Assert.That(input.textComponent.isTextTruncated, Is.False);
+            // Assigning text only clamps TMP's existing caret. Focus the real field and explicitly
+            // move to the end, then let its caret/layout finish before checking wheel movement.
+            input.Select(); input.ActivateInputField();
+            yield return null; yield return null;
+            input.MoveTextEnd(false);
+            yield return null; yield return null;
+            Canvas.ForceUpdateCanvases(); input.textComponent.ForceMeshUpdate();
+            wheel.scrollDelta = Vector2.up;
+            float beforeScroll = input.textComponent.rectTransform.anchoredPosition.y;
+            string scrollTrace = ScrollState("before up");
+            Assert.That(() => ExecuteEvents.Execute(input.gameObject, wheel, ExecuteEvents.scrollHandler), Throws.Nothing);
+            scrollTrace += "\n" + ScrollState("immediate up");
+            yield return null;
+            scrollTrace += "\n" + ScrollState("up after frame");
+            Assert.That(input.textComponent.rectTransform.anchoredPosition.y, Is.LessThan(beforeScroll),
+                "The wheel must move overflowing text and keep that position through the next frame.\n" + scrollTrace);
+            float afterScroll = input.textComponent.rectTransform.anchoredPosition.y;
+            wheel.scrollDelta = Vector2.down;
+            ExecuteEvents.Execute(input.gameObject, wheel, ExecuteEvents.scrollHandler);
+            scrollTrace += "\n" + ScrollState("immediate down");
+            yield return null;
+            scrollTrace += "\n" + ScrollState("down after frame");
+            Assert.That(input.textComponent.rectTransform.anchoredPosition.y, Is.GreaterThan(afterScroll),
+                "Reversing the wheel must move the same full text geometry back down.\n" + scrollTrace);
+            Assert.That(input.text, Is.EqualTo(draft), "Scrolling must not edit or submit the draft.");
+            AssertEquivalent(before, director.Snapshot);
+            director.SaveNow();
+            yield return null; yield return null;
+            input = SpeechInput();
+            Assert.That(input.text, Is.EqualTo(draft));
+            wheel.scrollDelta = Vector2.up;
+            Assert.That(() => ExecuteEvents.Execute(input.gameObject, wheel, ExecuteEvents.scrollHandler), Throws.Nothing,
+                "A rebuilt speech field owns its new viewport too.");
+            AssertEquivalent(before, director.Snapshot);
+        }
+
+        [UnityTest]
         public IEnumerator FinalSpeech_ExplicitSkipCommitsBlankRecordAndContinuesToVoting()
         {
             yield return InstallFinaleFixture(true);

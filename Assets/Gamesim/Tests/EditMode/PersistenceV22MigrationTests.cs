@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
 using Gamesim.Persistence;
 using Gamesim.Simulation;
 using Newtonsoft.Json;
@@ -294,6 +295,59 @@ namespace Gamesim.Tests.EditMode
             Assert.That(message, Does.Not.Contain("migrated"));
             Assert.That(again.commitmentRulesStartWeek, Is.Zero);
         }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// The untouched bytes of an actual Unity standalone save, including its original checksum.
+        /// This is native Editor/Mono persistence coverage, not a new standalone or scene-install run.
+        /// </summary>
+        [Test]
+        public void UntouchedV21StandaloneSaveMigratesInUnityAndRetainsExactBytesUntilExplicitSave()
+        {
+            const string originalHash = "ec715f20e9e8be1b62d4edfc32cd876b683f13867e47461935abf5a16596f78c";
+            string fixture = Path.Combine(UnityEngine.Application.dataPath, "Gamesim", "Tests", "EditMode", "Fixtures", "V21StandaloneProfileSave.json");
+            var originalBytes = File.ReadAllBytes(fixture);
+            Assert.That(originalBytes.Length, Is.EqualTo(28122));
+            Assert.That(HashBytes(originalBytes), Is.EqualTo(originalHash),
+                "The fixture keeps the shipping player's original envelope and CRLF bytes; never reseal it.");
+            var originalPayload = (JObject)JObject.Parse(File.ReadAllText(fixture))["state"];
+            Assert.That((int)originalPayload["schemaVersion"], Is.EqualTo(21));
+
+            using var files = new Files();
+            File.Copy(fixture, files.Store.SavePath, overwrite: false);
+            Assert.That(HashBytes(File.ReadAllBytes(files.Store.SavePath)), Is.EqualTo(originalHash));
+            Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
+            Assert.That(message, Does.Contain("Schema 21").And.Contain("schema 22 in memory"));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(22));
+            Assert.That(loaded.commitmentRulesStartWeek, Is.Zero);
+            Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(originalBytes), "Loading never rewrites the original save.");
+            Assert.That(File.Exists(files.Store.BackupPath), Is.False, "Loading does not create or rotate a backup.");
+
+            var expected = JObject.FromObject(loaded, Serializer());
+            var projection = PersistenceMigrationTests.StripSchema22((JObject)expected.DeepClone());
+            projection["schemaVersion"] = 21;
+            Assert.That(JToken.DeepEquals(projection, originalPayload), Is.True, "Every field written by the old player survives unchanged.");
+            files.Store.Save(loaded);
+            Assert.That(File.ReadAllBytes(files.Store.BackupPath), Is.EqualTo(originalBytes), "The explicit save retains the entire original envelope as its backup.");
+            Assert.That(HashBytes(File.ReadAllBytes(files.Store.BackupPath)), Is.EqualTo(originalHash));
+            var savedBytes = File.ReadAllBytes(files.Store.SavePath);
+            var savedPayload = (JObject)JObject.Parse(File.ReadAllText(files.Store.SavePath))["state"];
+            Assert.That((int)savedPayload["schemaVersion"], Is.EqualTo(22));
+            Assert.That(JToken.DeepEquals(savedPayload, expected), Is.True);
+            Assert.That(files.Store.TryLoad(out var reloaded, out message), Is.True, message);
+            Assert.That(message, Does.Not.Contain("migrated"));
+            Assert.That(JToken.DeepEquals(JObject.FromObject(reloaded, Serializer()), expected), Is.True, "Reload installs the same validated migrated state.");
+            Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(savedBytes), "Reloading the new schema is read-only too.");
+            Assert.That(File.ReadAllBytes(files.Store.BackupPath), Is.EqualTo(originalBytes));
+            Assert.That(File.ReadAllBytes(fixture), Is.EqualTo(originalBytes), "Only the isolated copy is ever a save target.");
+        }
+
+        private static string HashBytes(byte[] bytes)
+        {
+            using var hash = SHA256.Create();
+            return BitConverter.ToString(hash.ComputeHash(bytes)).Replace("-", "").ToLowerInvariant();
+        }
+#endif
 
         private sealed class Files : IDisposable
         {

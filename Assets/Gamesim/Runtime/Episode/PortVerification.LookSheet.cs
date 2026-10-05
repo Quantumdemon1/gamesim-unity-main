@@ -44,9 +44,11 @@ namespace Gamesim.Episode
             public string status, startedUtc, finishedUtc, resolution;
             public string visualStatus = "Pending inspection of captured frames";
             public int houseSize;
+            public bool batchMode;
             public uint seed;
             public List<LookShot> shots = new List<LookShot>();
             public List<LayoutCapture> layouts = new List<LayoutCapture>();
+            public List<VerificationFrameEvidence> capturedFrames = new List<VerificationFrameEvidence>();
             public List<string> errors = new List<string>();
         }
 
@@ -64,7 +66,7 @@ namespace Gamesim.Episode
         private IEnumerator RunLookSheet()
         {
             lookStarted = Time.realtimeSinceStartupAsDouble;
-            lookReport = new LookSheetReport { status = "Running", startedUtc = DateTime.UtcNow.ToString("O") };
+            lookReport = new LookSheetReport { status = "Running", startedUtc = DateTime.UtcNow.ToString("O"), batchMode = Application.isBatchMode };
             if (Application.isBatchMode || SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null)
             {
                 lookReport.errors.Add("The look sheet needs a window; -batchmode captures are black.");
@@ -181,17 +183,11 @@ namespace Gamesim.Episode
             Canvas.ForceUpdateCanvases();
             for (int frame = 0; frame < 5; frame++) yield return null;
             string path = Path.Combine(outputDirectory, "after-" + shot.index.ToString("00") + ".png");
-            if (File.Exists(path)) File.Delete(path);
-            ScreenCapture.CaptureScreenshot(path);
-            double deadline = Time.realtimeSinceStartupAsDouble + 5;
-            while ((!File.Exists(path) || new FileInfo(path).Length == 0) && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
-            yield return null; yield return null;
-            if (!File.Exists(path) || new FileInfo(path).Length == 0)
+            yield return CaptureVerifiedFrame(path, lookReport.capturedFrames.Add, reason =>
             {
-                lookReport.errors.Add("Capture " + shot.index + " was not written.");
-                shot.reason = Append(shot.reason, "capture not written");
-            }
-            else shot.path = path;
+                lookReport.errors.Add(reason); shot.reason = Append(shot.reason, "capture rejected");
+            });
+            shot.path = path;
         }
 
         // Render the existing interaction at each supported viewport/text size. These are visual
@@ -239,12 +235,7 @@ namespace Gamesim.Episode
             string filename="layout-"+shot.index.ToString("00")+"-"+Screen.width+"x"+Screen.height
                 +(large ? "-large" : "-standard")+(compact ? "-compact" : "")+".png";
             string path=Path.Combine(outputDirectory,filename);
-            if(File.Exists(path))File.Delete(path);
-            ScreenCapture.CaptureScreenshot(path);
-            double deadline=Time.realtimeSinceStartupAsDouble+5;
-            while((!File.Exists(path)||new FileInfo(path).Length==0)&&Time.realtimeSinceStartupAsDouble<deadline)yield return null;
-            if(!File.Exists(path)||new FileInfo(path).Length==0)
-                lookReport.errors.Add("Layout capture was not written: "+filename);
+            yield return CaptureVerifiedFrame(path, lookReport.capturedFrames.Add, lookReport.errors.Add);
             if(Screen.width!=requestedWidth||Screen.height!=requestedHeight)
                 lookReport.errors.Add("Requested layout "+requestedWidth+"x"+requestedHeight+" rendered at "+Screen.width+"x"+Screen.height+".");
             lookReport.layouts.Add(new LayoutCapture { shot=shot.index,width=Screen.width,height=Screen.height,
@@ -296,7 +287,7 @@ namespace Gamesim.Episode
         private static string NearestRoom(Vector3 at)
         {
             HouseRoomMarker best = null; float bestDistance = float.MaxValue;
-            foreach (var marker in FindObjectsByType<HouseRoomMarker>(FindObjectsSortMode.None))
+            foreach (var marker in FindObjectsByType<HouseRoomMarker>())
             {
                 float d = Vector3.Distance(marker.transform.position, at);
                 if (d < bestDistance) { bestDistance = d; best = marker; }

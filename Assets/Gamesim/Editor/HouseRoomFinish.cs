@@ -218,9 +218,9 @@ namespace Gamesim.Editor
                 if (Carton(group, "Cereal", panels + "cereal_label.png", new Vector3(0.20f, 0.30f, 0.07f), new Vector3(left + 4.85f, counter, mid + 0.10f), 12f) != null) count++;
                 if (Carton(group, "Snack bag", panels + "snack_label_red.png", new Vector3(0.16f, 0.22f, 0.05f), new Vector3(left + 5.08f, counter, mid + 0.06f), -8f) != null) count++;
                 if (Carton(group, "Snack bag", panels + "snack_label_blue.png", new Vector3(0.16f, 0.22f, 0.05f), new Vector3(left + 5.50f, counter, mid + 0.02f), 20f) != null) count++;
-                // A folded towel on the end panel.
-                var towel = Finish("bb_mat_p6_kitchen_towel", panels + "dish_towel_neutral.png", Vector2.one, Color.white, 0.10f, 0f, true, DecalGlow);
-                if (towel != null) { Quad(group, "Dish towel", towel, new Vector3(left + 6.15f, counter + 0.004f, mid), new Vector2(0.30f, 0.36f), Vector3.up, Vector3.back); count++; }
+                // A folded authored towel on the end panel. The room-finish layer keeps the same
+                // support point, but the prop now has the thickness and folds of the set's model.
+                if (PieceAt(group, "Dish towel", "bb_set_towel", new Vector3(left + 6.15f, counter, mid), 0f) != null) count++;
             }
 
             // The long table's rug, centred under it.
@@ -429,7 +429,7 @@ namespace Gamesim.Editor
                 if (Carton(group, "Gift box", Pack6 + "HOHRewards/gift_wrap_gold.png", new Vector3(0.22f, 0.16f, 0.16f), new Vector3(cb.max.x - 0.22f, top, cb.center.z), 15f) != null) count++;
                 if (Carton(group, "Snack bag", Pack6 + "HOHRewards/snack_bag_gold.png", new Vector3(0.14f, 0.20f, 0.05f), new Vector3(cb.max.x - 0.48f, top, cb.center.z - 0.08f), -10f) != null) count++;
                 if (Carton(group, "Snack bag", Pack6 + "HOHRewards/snack_bag_blue.png", new Vector3(0.14f, 0.20f, 0.05f), new Vector3(cb.max.x - 0.64f, top, cb.center.z + 0.04f), 25f) != null) count++;
-                if (Tin(group, "HoH drink", Pack6 + "HOHRewards/drink_label_hoh.png", 0.035f, 0.22f, new Vector3(cb.max.x - 0.36f, top, cb.center.z + 0.12f)) != null) count++;
+                if (PieceAt(group, "HoH drink", "bb_set_bottle", new Vector3(cb.max.x - 0.36f, top, cb.center.z + 0.12f), 0f) != null) count++;
                 // The mini fridge, on the floor beside the console, toward the room's middle.
                 float fridgeX = cb.max.x + 0.40f < room.Bounds.max.x - 0.5f ? cb.max.x + 0.40f : cb.min.x - 0.40f;
                 if (Carton(group, "Mini fridge", Pack6 + "GameRoom/mini_fridge_graphic.png", new Vector3(0.50f, 0.70f, 0.50f), new Vector3(fridgeX, room.FloorTop, cb.center.z), 0f) != null) count++;
@@ -640,13 +640,13 @@ namespace Gamesim.Editor
                 float top = tb.max.y;
                 if (i == 0)
                 {
-                    if (Carton(group, "Book", Pack6 + "BedroomClutter/book_cover_blue.png", new Vector3(0.15f, 0.03f, 0.21f), new Vector3(tb.center.x + 0.16f, top, tb.center.z - 0.10f), 15f) != null) count++;
-                    if (Tin(group, "Water bottle", Pack6 + "BedroomClutter/water_bottle_label.png", 0.035f, 0.22f, new Vector3(tb.center.x - 0.14f, top, tb.center.z + 0.10f)) != null) count++;
+                    if (PieceAt(group, "Book", "bb_set_bookstack", new Vector3(tb.center.x + 0.11f, top, tb.center.z - 0.06f), 15f) != null) count++;
+                    if (PieceAt(group, "Water bottle", "bb_set_bottle", new Vector3(tb.center.x - 0.14f, top, tb.center.z + 0.10f), 0f) != null) count++;
                 }
                 else
                 {
-                    if (Carton(group, "Book", Pack6 + "BedroomClutter/book_cover_red.png", new Vector3(0.15f, 0.03f, 0.21f), new Vector3(tb.center.x - 0.14f, top, tb.center.z + 0.08f), -12f) != null) count++;
-                    if (Carton(group, "Headphone case", Pack6 + "BedroomClutter/headphone_case.png", new Vector3(0.18f, 0.06f, 0.18f), new Vector3(tb.center.x + 0.16f, top, tb.center.z - 0.08f), 30f) != null) count++;
+                    if (PieceAt(group, "Book", "bb_set_bookstack", new Vector3(tb.center.x - 0.11f, top, tb.center.z + 0.08f), -12f) != null) count++;
+                    if (Carton(group, "Headphone case", Pack6 + "BedroomClutter/headphone_case.png", new Vector3(0.16f, 0.06f, 0.16f), new Vector3(tb.center.x + 0.16f, top, tb.center.z - 0.08f), 30f) != null) count++;
                 }
             }
             var drawers = house.Pieces(room, "cabinetBedDrawer").OrderBy(t => t.position.x).ToList();
@@ -679,8 +679,7 @@ namespace Gamesim.Editor
             if (singles.Count > 1)
             {
                 var mb = Measure(singles[1].gameObject);
-                var magazine = Finish("bb_mat_p6_decal_magazine_cover", Pack6 + "BedroomClutter/magazine_cover.png", Vector2.one, Color.white, 0.2f, 0f, true, DecalGlow);
-                if (magazine != null) { Quad(group, "Magazine", magazine, new Vector3(mb.center.x + 0.2f, mb.max.y + 0.004f, mb.center.z - 0.2f), new Vector2(0.22f, 0.30f), Vector3.up, Quaternion.Euler(0f, 25f, 0f) * Vector3.forward); count++; }
+                if (PieceAt(group, "Magazine", "bb_set_magazines", new Vector3(mb.center.x + 0.2f, mb.max.y, mb.center.z - 0.2f), 25f) != null) count++;
             }
             return count;
         }
@@ -918,6 +917,24 @@ namespace Gamesim.Editor
             instance.transform.position += target - new Vector3(scaled.center.x, scaled.min.y, scaled.center.z);
             foreach (var collider in instance.GetComponentsInChildren<Collider>(true)) UnityEngine.Object.DestroyImmediate(collider);
             foreach (var node in instance.GetComponentsInChildren<Transform>(true)) GameObjectUtility.SetStaticEditorFlags(node.gameObject, 0);
+            return instance;
+        }
+
+        /// <summary>
+        /// Places one authored catalogue prop with its aggregate bottom-centre on an exact world
+        /// support point. Room-finish dressing is visual only, so even an authored collision proxy
+        /// is removed and every child remains non-static just like the graphics around it.
+        /// </summary>
+        private static GameObject PieceAt(Transform group, string name, string model, Vector3 bottomCentre, float yaw)
+        {
+            var instance = HouseSetPieces.Model(model, group, yaw, 0f);
+            if (instance == null) return null;
+            var bounds = Measure(instance);
+            instance.transform.position += bottomCentre - new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
+            instance.name = name;
+            foreach (var collider in instance.GetComponentsInChildren<Collider>(true)) UnityEngine.Object.DestroyImmediate(collider);
+            foreach (var node in instance.GetComponentsInChildren<Transform>(true)) GameObjectUtility.SetStaticEditorFlags(node.gameObject, 0);
+            foreach (var renderer in instance.GetComponentsInChildren<Renderer>(true)) renderer.shadowCastingMode = ShadowCastingMode.Off;
             return instance;
         }
 

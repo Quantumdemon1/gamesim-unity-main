@@ -34,6 +34,13 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(coordinator.TryReserveAtVenue("third-lounger-home-chat",ids[0],ids[1],HouseFurniture.LoungerAnchor,out meeting,out var reason),Is.True,reason);
                 Assert.That(meeting.SpotId,Is.EqualTo(HouseFurniture.LoungerAnchor),"The unchanged Home pair occupies slots zero and one.");
                 Assert.That(coordinator.ActivityAnchorAvailable(anchor),Is.True,"The Home chat must leave the physically separate third lounger free.");
+                var chatSeat=HouseConversationSpots.InScene(player.gameObject.scene)
+                    .Where(spot=>spot.Family==HouseFurniture.LoungerAnchor).SelectMany(spot=>new[]{spot.First,spot.Second})
+                    .Single(seat=>seat.transform.parent==anchor.transform.parent);
+                Assert.That(Vector3.Distance(chatSeat.Approach,anchor.Approach),Is.LessThan(.001f),
+                    "The spare chat keeps the same clear native approach that Rest is about to walk.");
+                Assert.That(player.TryMeasureRoute(chatSeat.Approach,out _),Is.True,
+                    "The spare chat approach must have a real route while the Home pair holds its own places.");
                 yield return AssertRestPlaceArrivalAndFloorExit(anchor);
                 Assert.That(coordinator.TryGetLease(meeting.Token,out var stillHeld),Is.True,"Rest and its floor exit do not release somebody else's conversation.");
                 Assert.That(stillHeld,Is.SameAs(meeting));
@@ -53,7 +60,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator RestPlaces_BothHoHBenchSeatsUseRealSouthRoutesAndFloorClicksRestoreTheOriginalOutfit()
         {
-            yield return InstallTalkingHouse(8,true,state=>state.hohId=state.playerId);
+            yield return InstallRestPlaceHouse(true);
             var anchors=PlacesFor(HouseFurnitureActivity.Rest).Where(a=>a.VenueId==HouseFurniture.HoHBenchAnchor).OrderBy(a=>a.Slot).ToArray();
             Assert.That(anchors,Has.Length.EqualTo(2),"The authored HoH bench and its imported cream cushion must be present for this acceptance case.");
             foreach(var anchor in anchors)
@@ -69,7 +76,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator RestPlaces_HoHBenchPreservesTheSuitesExistingPrivateAccessRule()
         {
-            yield return InstallTalkingHouse(8,true);
+            yield return InstallRestPlaceHouse(false);
             Assert.That(director.Snapshot.hohId,Is.Not.EqualTo(director.Snapshot.playerId));
             var anchor=PlacesFor(HouseFurnitureActivity.Rest).FirstOrDefault(a=>a.VenueId==HouseFurniture.HoHBenchAnchor);
             Assert.That(anchor,Is.Not.Null,"The actual bench is required; missing imported furniture cannot silently skip this acceptance case.");
@@ -78,6 +85,20 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.StatusMessage,Does.Contain("Head of Household").And.Contain("furniture"));
             var coordinator=(HouseMeetingCoordinator)typeof(EpisodeDirector).GetField("npcMeetings",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(director);
             Assert.That(coordinator.TryGetActivity("player",out _),Is.False,"Denied access cannot reserve either bench cushion.");
+        }
+
+        private IEnumerator InstallRestPlaceHouse(bool playerIsHoH)
+        {
+            yield return InstallTalkingHouse(8,true,state=>{if(playerIsHoH)state.hohId=state.playerId;});
+            // The conversation fixture deliberately disposes the entire movement coordinator.
+            // Rest exercises that coordinator, so restore the normal native world before asking
+            // either its access policy or its physical route. Suppress only new NPC chat starts.
+            typeof(EpisodeDirector).GetField("npcApproachDiagnosticsSuppressed",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(director,true);
+            typeof(EpisodeDirector).GetField("npcDiagnosticsSuspended",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(director,false);
+            director.BuildNpcWorldForDiagnostics();
+            float deadline=Time.realtimeSinceStartup+20f;
+            while(!director.NpcAutonomyReady && Time.realtimeSinceStartup<deadline)yield return null;
+            Assert.That(director.NpcAutonomyReady,Is.True,director.NpcAutonomyDiagnostic);
         }
 
         private IEnumerator AssertRestPlaceArrivalAndFloorExit(HouseInteractionAnchor anchor)
@@ -92,6 +113,18 @@ namespace Gamesim.Tests.PlayMode
             WarpPlayer(OnFootFrom(anchor.Approach,2f,8f));
             var start=player.transform.position;player.Agent.speed=20;player.Agent.acceleration=100;
             presentation.SetReducedMotion(false);
+            Assert.That(HouseRoomQuery.TryCreate(player.gameObject.scene,out var rooms,out var roomFailure),Is.True,roomFailure);
+            var filter=new UnityEngine.AI.NavMeshQueryFilter{agentTypeID=player.Agent.agentTypeID,areaMask=player.Agent.areaMask};
+            Assert.That(rooms.TrySampleFloor(anchor.Approach,player.Agent.radius,filter,.25f,out var feet,out var room),Is.True,
+                "Rest requires the exact activity floor tolerance, not only a path within the player's wider sample radius: "
+                + anchor.VenueId+"/"+anchor.Slot+" approach="+anchor.Approach.ToString("F3")+" radius="+player.Agent.radius+"; "+rooms.LastFailure);
+            Assert.That(room,Is.EqualTo(anchor.RoomId),"The activity approach must stay on its own room floor.");
+            var clearance=new Collider[64];
+            int overlapCount=player.gameObject.scene.GetPhysicsScene().OverlapCapsule(feet+Vector3.up*player.Agent.radius,
+                feet+Vector3.up*(player.Agent.height-player.Agent.radius),player.Agent.radius,clearance,HouseLayers.Sight,QueryTriggerInteraction.Ignore);
+            Assert.That(rooms.HasCapsuleClearance(feet,player.Agent.radius,player.Agent.height,player.transform),Is.True,
+                "Rest's sampled capsule must clear the real obstacles at "+feet.ToString("F3")+"; "+rooms.LastFailure
+                +"; overlaps="+string.Join(", ",clearance.Take(overlapCount).Select(hit=>hit==null ? "missing" : hit.name+" at "+hit.bounds.ToString("F3"))));
             director.StartActivityInHouse(anchor,HouseFurnitureActivity.Rest);
             Assert.That(director.PlayerActivity,Is.EqualTo(HouseFurnitureActivity.Rest),director.StatusMessage);
             Assert.That(Vector3.Distance(start,player.transform.position),Is.LessThan(.001f),"Starting Rest acquires a complete path without placing the actor on its cushion.");

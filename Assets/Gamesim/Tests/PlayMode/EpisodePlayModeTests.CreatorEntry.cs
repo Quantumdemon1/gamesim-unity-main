@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Gamesim.Episode;
+using Gamesim.Persistence;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
@@ -161,9 +162,23 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(person.pronouns, Is.EqualTo(expected.Pronouns));
             Assert.That(person.appearance.ContentKey(), Is.EqualTo(expected.Appearance.ContentKey()));
             Assert.That(File.Exists(director.SavePath), Is.True);
-            yield return ReloadEpisode();
+            string savedPath = director.SavePath, sessionId = director.Snapshot.sessionId;
+            Assert.That(new EpisodeSaveStore(savedPath).TryLoad(out var persisted, out var failure), Is.True, failure);
+            var savedPerson = persisted.Find(persisted.playerId);
+            Assert.That(savedPerson.name, Is.EqualTo(expected.Name));
+            Assert.That(savedPerson.pronouns, Is.EqualTo(expected.Pronouns));
+            Assert.That(savedPerson.appearance.ContentKey(), Is.EqualTo(expected.Appearance.ContentKey()));
+            // Starting creates a new slot, while the isolated scene bootstrap deliberately opens
+            // episode.json and never changes the user's active-slot preference. Reload this new
+            // slot through the actual Settings control, not the test bootstrap's different file.
+            director.OpenSettings();
+            yield return CreatorEntrySubmit("Reload current slot");
+            Assert.That(director.SavePath, Is.EqualTo(savedPath));
+            Assert.That(director.Snapshot.sessionId, Is.EqualTo(sessionId));
+            Assert.That(director.StatusMessage, Does.StartWith("Local episode loaded and validated."));
             person = director.Snapshot.Find(director.Snapshot.playerId);
             Assert.That(person.name, Is.EqualTo(expected.Name));
+            Assert.That(person.pronouns, Is.EqualTo(expected.Pronouns));
             Assert.That(person.appearance.ContentKey(), Is.EqualTo(expected.Appearance.ContentKey()));
         }
 
@@ -206,7 +221,15 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator CreatorEntry_ActualKeyboardAndControllerNavigateModesAndKeepFocusVisible()
         {
             yield return OpenCreator(detailed: false);
+            // Preview completion can enable Retry. Take the ring only once its controls have
+            // settled; navigating without editing must then keep those same controls alive.
+            float previewDeadline = Time.realtimeSinceStartup + 25f;
+            while (Creator().StudioPreview.IsBuilding && Time.realtimeSinceStartup < previewDeadline) yield return null;
+            Assert.That(Creator().StudioPreview.IsBuilding, Is.False, "The preview must finish or offer its bounded fallback.");
+            var untouchedName = Creator().GetComponentsInChildren<TMP_InputField>().Single(field => field.name == "Name field");
             yield return AssertKeyboardRing("Quick creator", "Gamesim Character Creator");
+            Assert.That(untouchedName != null && untouchedName.IsActive(), Is.True,
+                "Tabbing out of an unchanged field must not destroy and rebuild the form.");
             yield return CreatorEntrySubmit(CharacterCreator.DetailedCaption);
             Assert.That(Creator().Mode, Is.EqualTo(CharacterCreator.EntryMode.Detailed), "Enter reached the mode control through the input module.");
             yield return CreatorEntrySubmit(CharacterCreator.QuickCaption, controller: true);
@@ -220,6 +243,34 @@ namespace Gamesim.Tests.PlayMode
             if (focused != null)
                 Assert.That(focused.GetComponentsInChildren<Image>().Any(image => image.name == "Focus ring" && image.enabled), Is.True);
             yield return AssertKeyboardRing("Quick creator after controller input", "Gamesim Character Creator");
+        }
+
+        [UnityTest]
+        public IEnumerator CreatorEntry_KeyboardRingTracksEligibilityChangesWithoutRebuilding()
+        {
+            yield return OpenCreator(detailed: false);
+            float previewDeadline = Time.realtimeSinceStartup + 25f;
+            while (Creator().StudioPreview.IsBuilding && Time.realtimeSinceStartup < previewDeadline) yield return null;
+            Assert.That(Creator().StudioPreview.IsBuilding, Is.False, "The preview must finish or offer its bounded fallback.");
+            var left = CastButtons("Rotate left").Single();
+            var right = CastButtons("Rotate right").Single();
+            try
+            {
+                right.interactable = false;
+                yield return AssertKeyboardRing("Creator with one disabled control", "Gamesim Character Creator");
+                // The eligible count stays the same. Losing an old ring member must still rewire
+                // it so the newly usable control is reachable instead of leaving Tab stuck.
+                left.interactable = false;
+                right.interactable = true;
+                yield return AssertKeyboardRing("Creator after exchanging eligible controls", "Gamesim Character Creator");
+                left.interactable = true;
+                yield return AssertKeyboardRing("Creator after enabling another control", "Gamesim Character Creator");
+            }
+            finally
+            {
+                if (left != null) left.interactable = true;
+                if (right != null) right.interactable = true;
+            }
         }
 
         [UnityTest]
@@ -263,6 +314,10 @@ namespace Gamesim.Tests.PlayMode
                             {
                                 Assert.That(status.text,Is.EqualTo(creator.StudioPreview.DisplayStatus));
                                 Assert.That(retry.IsInteractable(),Is.True);
+                                retry.onClick.Invoke();
+                                Assert.That(creator.StudioPreview.CanRetry,Is.False);
+                                Assert.That(status.text,Is.EqualTo("Updating preview…"),"Retry publishes its new status in the same input callback.");
+                                Assert.That(retry.IsInteractable(),Is.False,"A retry in progress cannot still offer another retry.");
                             }
                             AssertCreatorFits(creator,"fallback status "+mode+" "+size+" "+scale);
                         }

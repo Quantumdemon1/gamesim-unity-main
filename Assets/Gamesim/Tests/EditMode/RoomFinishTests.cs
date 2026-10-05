@@ -162,14 +162,17 @@ namespace Gamesim.Tests.EditMode
 
                 var runBounds = run.GetComponentsInChildren<Renderer>(true).Select(r => r.bounds).Aggregate((a, b) => { a.Encapsulate(b); return a; });
                 var counterTop = floor.max.y + 0.92f;
-                var clusters = renderers.Where(r => r.name == "Coffee tin" || r.name == "Jar" || r.name == "Cereal" || r.name == "Snack bag" || r.name == "Dish towel").ToList();
-                Assert.That(clusters.Count, Is.EqualTo(6), "Coffee, the pantry and a towel: six small things on the counter.");
+                var clusters = NamedChildren(kitchen, "Coffee tin", "Jar", "Cereal", "Snack bag", "Dish towel");
+                Assert.That(clusters.Length, Is.EqualTo(6), "Coffee, the pantry and a towel: six small things on the counter.");
                 foreach (var thing in clusters)
                 {
-                    Assert.That(thing.bounds.min.y, Is.EqualTo(counterTop).Within(0.02f), thing.name + " stands on the counter.");
-                    Assert.That(thing.bounds.center.x, Is.InRange(runBounds.min.x, runBounds.max.x), thing.name + " is on the run.");
-                    Assert.That(thing.GetComponent<Collider>(), Is.Null, thing.name + " has no collider.");
+                    var bounds = BoundsOf(thing);
+                    Assert.That(bounds.min.y, Is.EqualTo(counterTop).Within(0.02f), thing.name + " stands on the counter.");
+                    Assert.That(bounds.center.x, Is.InRange(runBounds.min.x, runBounds.max.x), thing.name + " is on the run.");
+                    AssertWithinXZ(bounds, runBounds, 0.02f, thing.name + " stays inside the counter footprint.");
+                    Assert.That(thing.GetComponentsInChildren<Collider>(true), Is.Empty, thing.name + " has no collider.");
                 }
+                AssertAuthored(clusters.Single(t => t.name == "Dish towel"), "bb_set_towel");
                 foreach (var panel in new[] { "Fridge panel", "Dishwasher panel", "Oven panel" })
                 {
                     var decal = renderers.Single(r => r.name == panel);
@@ -333,13 +336,16 @@ namespace Gamesim.Tests.EditMode
                     Assert.That(onTheWall.bounds.center.z, Is.LessThan(floor.min.z + 0.3f), onTheWall.name + " is on the south wall.");
                     Assert.That(onTheWall.bounds.max.y, Is.LessThanOrEqualTo(floor.max.y + 1.1f + 0.01f), onTheWall.name + " is under the wall's top.");
                 }
-                var onTheConsole = renderers.Where(r => r.name == "HoH envelope" || r.name == "HoH letter" || r.name == "Gift box" || r.name == "Snack bag" || r.name == "HoH drink").ToList();
-                Assert.That(onTheConsole.Count, Is.EqualTo(6), "The letter, its envelope, the gift, two snacks and the drink.");
+                var onTheConsole = NamedChildren(suite, "HoH envelope", "HoH letter", "Gift box", "Snack bag", "HoH drink");
+                Assert.That(onTheConsole.Length, Is.EqualTo(6), "The letter, its envelope, the gift, two snacks and the drink.");
                 foreach (var thing in onTheConsole)
                 {
-                    Assert.That(thing.bounds.min.y, Is.EqualTo(floor.max.y + 0.45f).Within(0.02f), thing.name + " stands on the console.");
-                    Assert.That(thing.bounds.center.x, Is.InRange(cb.min.x, cb.max.x), thing.name + " is on the console.");
+                    var bounds = BoundsOf(thing);
+                    Assert.That(bounds.min.y, Is.EqualTo(floor.max.y + 0.45f).Within(0.02f), thing.name + " stands on the console.");
+                    Assert.That(bounds.center.x, Is.InRange(cb.min.x, cb.max.x), thing.name + " is on the console.");
+                    AssertWithinXZ(bounds, cb, 0.02f, thing.name + " stays inside the console footprint.");
                 }
+                AssertAuthored(onTheConsole.Single(t => t.name == "HoH drink"), "bb_set_bottle");
                 Assert.That(renderers.Count(r => r.name == "Mini fridge"), Is.EqualTo(1));
                 var neon = renderers.Single(r => r.name == "HoH neon");
                 Assert.That(neon.sharedMaterial.renderQueue, Is.GreaterThanOrEqualTo((int)RenderQueue.Transparent), "The HoH neon is lit.");
@@ -449,12 +455,31 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(rug.bounds.size.x, Is.EqualTo(5.2f).Within(0.05f), "One big rug joins the beds.");
                 Assert.That(renderers.Count(r => r.name == "Laundry basket"), Is.EqualTo(1));
                 Assert.That(renderers.Count(r => r.name == "Suitcase"), Is.EqualTo(1));
-                Assert.That(renderers.Count(r => r.name == "Book"), Is.EqualTo(2));
+                var sideTables = all.Where(t => t.name == "sideTableDrawers" && InRoom(t)).ToArray();
+                Assert.That(sideTables.Length, Is.EqualTo(2), "The two bedside tables support the authored clutter.");
+                var books = NamedChildren(bedroom, "Book");
+                Assert.That(books.Length, Is.EqualTo(2));
+                foreach (var book in books)
+                {
+                    AssertAuthored(book, "bb_set_bookstack");
+                    AssertSupportedByNearest(book, sideTables, 0.02f);
+                }
+                var water = NamedChildren(bedroom, "Water bottle").Single();
+                AssertAuthored(water, "bb_set_bottle");
+                var waterTable = AssertSupportedByNearest(water, sideTables, 0.02f);
+                var waterBook = books.Single(book => NearestSupport(book, sideTables) == waterTable);
+                AssertSeparatedXZ(water, waterBook, "The water bottle does not intersect its book stack.");
                 Assert.That(renderers.Count(r => r.name == "Toiletry"), Is.EqualTo(3), "toiletries on the three drawers");
                 Assert.That(renderers.Count(r => r.name == "Corkboard"), Is.EqualTo(1));
                 Assert.That(renderers.Count(r => r.name == "Polaroid"), Is.EqualTo(3));
                 Assert.That(renderers.Count(r => r.name == "Framed print"), Is.EqualTo(2));
-                Assert.That(renderers.Count(r => r.name == "Magazine"), Is.EqualTo(1));
+                var magazine = NamedChildren(bedroom, "Magazine").Single();
+                AssertAuthored(magazine, "bb_set_magazines");
+                AssertSupportedByNearest(magazine, singles, 0.02f);
+                var headphone = NamedChildren(bedroom, "Headphone case").Single();
+                var headphoneTable = AssertSupportedByNearest(headphone, sideTables, 0.02f);
+                var headphoneBook = books.Single(book => NearestSupport(book, sideTables) == headphoneTable);
+                AssertSeparatedXZ(headphone, headphoneBook, "The headphone case does not intersect its book stack.");
                 Assert.That(renderers.Select(r => r.name).Where(n => n.StartsWith("Band · ", StringComparison.Ordinal)),
                     Is.EquivalentTo(new[] { "Band · House / yard left", "Band · West wall" }), "Blue behind the singles, rose behind the bunks.");
             }
@@ -548,6 +573,12 @@ namespace Gamesim.Tests.EditMode
                     .Select(r => r.name + "@" + r.bounds.center.ToString("F2") + "|" + r.bounds.size.ToString("F2") + "|" + r.sharedMaterial.name)
                     .OrderBy(s => s, StringComparer.Ordinal).ToArray();
                 Assert.That(after, Is.EqualTo(before), "A second run places what the first did, where it did, in the same materials.");
+                var rebuilt = Root(scene);
+                AssertAuthored(NamedChildren(rebuilt.Find("Kitchen"), "Dish towel").Single(), "bb_set_towel");
+                AssertAuthored(NamedChildren(rebuilt.Find("HoH suite"), "HoH drink").Single(), "bb_set_bottle");
+                foreach (var book in NamedChildren(rebuilt.Find("Bedroom"), "Book")) AssertAuthored(book, "bb_set_bookstack");
+                AssertAuthored(NamedChildren(rebuilt.Find("Bedroom"), "Water bottle").Single(), "bb_set_bottle");
+                AssertAuthored(NamedChildren(rebuilt.Find("Bedroom"), "Magazine").Single(), "bb_set_magazines");
                 Assert.That(materials.AnySerializedStateChanged(), Is.True,
                     "Precondition: the real authoring pass changed an existing material, so this case exercises asset restoration.");
             }
@@ -703,6 +734,60 @@ namespace Gamesim.Tests.EditMode
         {
             var world = scene.GetRootGameObjects().FirstOrDefault(go => go.name == "House Architecture");
             return world == null ? null : world.transform.Find(HouseRoomFinish.RootName);
+        }
+
+        private static Transform[] NamedChildren(Transform parent, params string[] names) =>
+            parent.Cast<Transform>().Where(child => names.Contains(child.name)).ToArray();
+
+        private static Bounds BoundsOf(Transform root) =>
+            root.GetComponentsInChildren<Renderer>(true).Select(renderer => renderer.bounds)
+                .Aggregate((bounds, next) => { bounds.Encapsulate(next); return bounds; });
+
+        private static Transform NearestSupport(Transform item, System.Collections.Generic.IEnumerable<Transform> supports)
+        {
+            var itemBounds = BoundsOf(item);
+            return supports.OrderBy(support =>
+            {
+                var supportBounds = BoundsOf(support);
+                return Vector2.Distance(new Vector2(itemBounds.center.x, itemBounds.center.z),
+                    new Vector2(supportBounds.center.x, supportBounds.center.z));
+            }).First();
+        }
+
+        private static Transform AssertSupportedByNearest(Transform item, System.Collections.Generic.IEnumerable<Transform> supports, float tolerance)
+        {
+            var support = NearestSupport(item, supports);
+            var itemBounds = BoundsOf(item);
+            var supportBounds = BoundsOf(support);
+            Assert.That(itemBounds.min.y, Is.EqualTo(supportBounds.max.y).Within(tolerance), item.name + " stands on " + support.name + ".");
+            AssertWithinXZ(itemBounds, supportBounds, tolerance, item.name + " stays inside the " + support.name + " footprint.");
+            return support;
+        }
+
+        private static void AssertWithinXZ(Bounds item, Bounds support, float tolerance, string message)
+        {
+            Assert.That(item.min.x, Is.GreaterThanOrEqualTo(support.min.x - tolerance), message);
+            Assert.That(item.max.x, Is.LessThanOrEqualTo(support.max.x + tolerance), message);
+            Assert.That(item.min.z, Is.GreaterThanOrEqualTo(support.min.z - tolerance), message);
+            Assert.That(item.max.z, Is.LessThanOrEqualTo(support.max.z + tolerance), message);
+        }
+
+        private static void AssertSeparatedXZ(Transform first, Transform second, string message)
+        {
+            var a = BoundsOf(first);
+            var b = BoundsOf(second);
+            bool separated = a.max.x <= b.min.x || b.max.x <= a.min.x || a.max.z <= b.min.z || b.max.z <= a.min.z;
+            Assert.That(separated, Is.True, message);
+        }
+
+        private static void AssertAuthored(Transform instance, string model)
+        {
+            Assert.That(instance.GetComponentsInChildren<Renderer>(true).All(renderer => renderer.shadowCastingMode == ShadowCastingMode.Off),
+                Is.True, "These visual-only replacements preserve the room dressing's no-shadow contract.");
+            var source = PrefabUtility.GetCorrespondingObjectFromSource(instance.gameObject);
+            Assert.That(source, Is.Not.Null, instance.name + " keeps its source-model connection.");
+            Assert.That(AssetDatabase.GetAssetPath(source), Does.EndWith("/" + model + ".fbx"),
+                instance.name + " comes from the authored " + model + " asset.");
         }
     }
 }

@@ -1,5 +1,114 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-04 integration resumption — acceptance in progress
+
+The live project remains on `b25edcb4` (schema 21); the existing
+`codex/orchestration-integration` worktree starts at `b9f5c99c` (schema 22), 198 commits ahead.
+This increment combines and repairs that existing work; it does not reopen historical web PRs.
+The historical September records below do not certify this candidate. No promotion to the live
+project or new desktop acceptance is claimed until the combined candidate passes its gates.
+
+Material changes in this increment:
+
+- Preserve the live six authored FBX prop replacements, support/separation/provenance tests and
+  UMA catalog null-recipe fix. Combine the room tests with the newer shared-material restoration
+  fixture; use a temporary dictionary-only UMA fixture so original index/race/serialized rows survive.
+- Give multiline speech a padded, masked TMP viewport, complete non-truncated text geometry and
+  a fixed-height layout with priority over TMP's content sizing. Configure it before enabling its
+  caret/callback lifecycle; test real wheel movement, unchanged draft/simulation and HUD rebuilds.
+- Resolve creator preset fallback identity before preview/save, avoid rebuilding unchanged text
+  fields, synchronize preview status/Retry, and refresh keyboard navigation on eligibility changes.
+  Verify the created save itself and reload its actual slot rather than the fixture's separate default.
+- Restore real coordinator ownership in HoH rest fixtures; require spare-lounger approaches to
+  remain on the actual Yard floor with mesh and static-capsule clearance, and preserve each endpoint
+  when constructing seated conversation pairs. Move only the spare imported lounger west of the
+  unchanged saved Home pair: the original east location cannot fit a safe, conversation-reachable
+  approach between its neighbors, pool and fence. Isolated scene/NavMesh authoring preserves the
+  original navigation GUID, exact previously reachable room pairs/approaches, all other transforms,
+  serialized anchors and lighting configuration. The spare is lightmapped: authoring first refused
+  to move it without a bake; the explicitly opted-in repair rebakes the existing lighting rig's
+  outputs without re-running its global setup. Preserve the old maps and verify the new ones.
+  Keep real route/access/contact/outfit assertions.
+- Retain diagnostic causes for refused/aborted eviction departures. One focused successful run
+  does not resolve the previously intermittent week-three failure; do not weaken its assertion.
+- Replace seven reported obsolete runtime object-query calls with Unity 6000.6 equivalents,
+  preserving inactive inclusion and unsorted behavior. Remove the write-only season verifier field
+  and explicitly exclude a transient beacon handle from serialization. Build verification remains separate.
+- Add an untouched schema-21 standalone-save fixture and native migration regression: load without
+  modifying its original bytes, explicitly save schema 22 with the exact original-byte backup, then
+  reload equivalent state. This fixture is not re-sealed and Git must not normalize its CRLF bytes.
+- Share bounded native screenshot validation across Profile, Season, Creator, LookSheet and Autonomy:
+  require complete decoded PNGs, correct dimensions and non-dark/non-uniform pixels; preserve failed
+  captures and reject stale paths. Record batch-mode and pixel evidence; batch-mode cannot certify
+  graphical profiling. Five deterministic tests cover black/flat/truncated/wrong-size/valid images.
+  Nonblank frames do not establish visual quality or human acceptance.
+- Raise native suite floors to Edit 2515, Play 902 and UMA 77; never lower a floor to accept failures.
+
+Evidence (each snapshot has its own input manifests):
+
+- Prior live-derived asset snapshot: `D:/GamesimAcceptance-AssetReplace-20261004/Logs/assetreplace-20261004-final3-summary.json`,
+  2232 Edit / 864 Play / 65 UMA passed, zero drift; no matching desktop build.
+- Prior integration baseline: `D:/GamesimNoUma/Logs/orchfinalfull5nouma-summary.json`,
+  2507 Edit passed; 892/900 Play passed, eight failures.
+- First repair iteration: `D:/GamesimNoUma/Logs/implement-blockers-20261004-01-summary.json`,
+  filtered 20/24 passed, four failures retained. This is not a full-suite pass and predates subsequent repairs.
+- Second iteration: `implement-blockers-20261004-02` filtered 31/33 passed; `implement-assets-20261004-02`
+  filtered Edit 16/16 passed. Third iteration `implement-blockers-20261004-03` retained two diagnostic
+  failures in four selected cases, exposing the expanding speech viewport and off-floor rest approach.
+  These failures are not relabeled as passes by later repairs.
+- Pure simulation/fixture suite: 1566 executed cases passed, no failures; 12 explicit diagnostic/report
+  cases were not selected. TRX retained in this task's `work/implement-integration-20261004/simulation-01`.
+  This is not Unity runtime, standalone, profiling or human-playtest evidence.
+- Scene authoring, before/after inputs, original/generated scene copies and pre-run capture backups
+  are retained under this task's `work/implement-integration-20261004`. Only reviewed generated scene
+  content may be promoted; existing live scenes, materials, fonts, saves, recoveries and builds remain protected.
+- The retained October 3 desktop build (229 files, 1,447,640,145 bytes) is independently copied and
+  hash-verified at `D:/CodexGamesimEvidence/integration-20261004/retained-review13-20261003`.
+  C: lacked space for that copy; its incomplete new archive was moved to D: and retained separately.
+  The original build is untouched. New large build/test evidence uses D:.
+- The earlier schema-21 standalone run `D:/GamesimVerify/pr22e` provides native save provenance,
+  but its `house.png` is black. Its functional report and `graphical:true` flag do not establish
+  rendered-graphics acceptance or representative performance; fresh images must be inspected.
+- Spare-lounger authoring: `D:/CodexGamesimEvidence/integration-20261004/spare-lounger-layout-01`
+  safely refused to move a lightmapped prop. `spare-lounger-layout-02` completed the explicit existing-rig
+  bake and reopened its result: all 28 previously reachable room-pair identities and saved approaches
+  retained, original navigation GUID retained, only the spare transformed from x12.208 to x7.308.
+  Independent review verified all 28 archived/generated product hashes and all 3317 scene documents:
+  only the spare's X position changed semantically. Exactly 13 changed products were promoted to this
+  integration worktree, retaining source whitespace and all metadata/settings; the separate
+  `spare-lounger-layout-02/integration-promotion.json` records integrated hashes. The original
+  authoring summary remains unchanged and correctly records that its own run did not promote files.
+- Corrected focused native checks: NoUMA `implement-blockers-20261004-04` passed 35/35 Play Mode
+  cases (324.13 seconds), including both speech-wheel directions, creator/keyboard flow, physical rest,
+  weekly departures and native baked-light/reflection references. NoUMA `implement-assets-20261004-04`
+  passed 23/23 Edit Mode cases (6.82 seconds): authored-prop provenance/spacing, safe rest anchors,
+  exact-byte native schema-21 save migration/backup/reload and five capture-validation negatives/positive.
+  Each closed with zero input drift. UMA `implement-uma-20261004-04` passed all 77 selected provider
+  assembly cases, zero failures/skips. These focused results do not substitute for full candidate suites.
+- After the user freed C: space and authorized a safe editor close, read-only MCP confirmed the live
+  C: project, idle editor, one saved EpisodeHouse scene and no prefab stage. The Console still contained
+  historical TMP scroll errors and MCP executable-signature warnings; nothing was cleared or relabeled.
+  Normal File/Exit completed without a force stop. A subsequent guarded command refused to act after
+  MCP switched to the busy D: test copy; no test-copy close or scene mutation occurred.
+- Independent post-shutdown audit: `D:/CodexGamesimEvidence/integration-20261004/live-shutdown-audit`.
+  All original 97 archived files remain hash-verified. Shutdown restored 76 materials to candidate
+  bytes and cleared dynamic font glyph/atlas data, leaving four populated font-feature caches; the
+  other 17 files are unchanged. The four current fonts are separately preserved. Structural comparison
+  found no font family, face, style, fallback or configuration edits. Keep these generated caches and
+  the machine-local UMA define local, with recovery/Init scenes untouched. Do not claim byte-identical
+  live and tested trees across these explicit generated/configuration exceptions.
+- The separately reviewed external player runner now supports an explicit `-VisibleWindow` opt-in,
+  authorized by the user; default remains hidden. Windows PowerShell 5.1 checks passed 24/24 runner,
+  8/8 telemetry, 71/71 full-suite controller and 37/37 shipping-controller controls. Use explicit
+  Windows PowerShell 5.1: default PowerShell 7 exposed an existing timestamp-parser incompatibility.
+  No native execution or graphical acceptance is inferred from these script checks.
+
+Still separate/open: complete native UMA/non-UMA suites, source fixture parity, clean shipping build,
+standalone season/save/reload/creator checks, shipping-renderer stability, full-house profiling,
+remaining Wave C/D gameplay and actual human acceptance. No optional accounts/cloud/AI or paid assets enabled.
+
+## Historical implementation record
+
 Last verified: 2026-09-13 (original integration September10). Project: `C:\Users\kelli\Gamesim Big Brother`, Unity 6000.6.0f1. The local six-person house/season is playable; the original game's complete feature set and AAA production acceptance are **not** claimed complete.
 
 ## Material changes from the preserved U02 baseline

@@ -191,6 +191,9 @@ namespace Gamesim.Episode
         /// <summary>Who is walking out, or null.</summary>
         public string WalkingOutId => walkingOutId;
 
+        /// <summary>Why the last walk out was refused or ended early; transient diagnostic only.</summary>
+        public string LastWalkOutFailure { get; private set; }
+
         /// <summary>Whether the walk out is at the door or past it: the door is open for them.</summary>
         public bool WalkOutAtTheDoor => walkingOutId != null && (walkOutStaged ? stagedLeg >= StagedLeg.Opening : walkOutLeg >= 2);
 
@@ -204,13 +207,17 @@ namespace Gamesim.Episode
         /// </summary>
         private bool TryBeginWalkOut(string id)
         {
-            if (walkingOutId != null || reducedMotion || (Application.isBatchMode && !WalkOutsInBatchRuns)) return false;
-            if (npcMeetings == null || npcWorldFailed || npcDiagnosticsSuspended || competitionArenaStaging) return false;
-            if (openingStage != null && openingStage.Active) return false;
+            LastWalkOutFailure = null;
+            if (walkingOutId != null) return RefuseWalkOut("Another houseguest is still walking out.");
+            if (reducedMotion || (Application.isBatchMode && !WalkOutsInBatchRuns)) return RefuseWalkOut("Walk outs are disabled for this presentation.");
+            if (npcMeetings == null || npcWorldFailed || npcDiagnosticsSuspended || competitionArenaStaging)
+                return RefuseWalkOut("The house cannot route the departure: " + (npcWorldFailure ?? "world unavailable or held by diagnostics or competition."));
+            if (openingStage != null && openingStage.Active) return RefuseWalkOut("The opening still holds the house.");
             // The final Head of Household's choice opens finale night: the new juror joins the jury in
             // the living room rather than walking out of the door to come straight back in.
-            if (projected == null || FinaleNight(projected.phase)) return false;
-            if (housemates == null || !housemates.Any(npc => npc != null && npc.Id == id && npc.gameObject.activeInHierarchy)) return false;
+            if (projected == null || FinaleNight(projected.phase)) return RefuseWalkOut("There is no weekly departure on finale night.");
+            if (housemates == null || !housemates.Any(npc => npc != null && npc.Id == id && npc.gameObject.activeInHierarchy))
+                return RefuseWalkOut("The departing houseguest has no active body.");
             walkingOutId = id;
             walkOutLeg = 0;
             walkOutUntil = Time.unscaledTime + WalkOutSeconds;
@@ -237,11 +244,20 @@ namespace Gamesim.Episode
             return true;
         }
 
+        private bool RefuseWalkOut(string reason) { LastWalkOutFailure = reason; return false; }
+
+        private void AbortWalkOut(string reason)
+        {
+            LastWalkOutFailure = reason;
+            FinishWalkOut();
+        }
+
         /// <summary>Each frame: the walk out kept moving, leg by leg, and let go when it is done, skipped or stuck.</summary>
         private void TickWalkOut()
         {
             if (walkingOutId == null) return;
-            if (Time.unscaledTime > walkOutUntil || npcMeetings == null || npcWorldFailed) { FinishWalkOut(); return; }
+            if (Time.unscaledTime > walkOutUntil || npcMeetings == null || npcWorldFailed)
+            { AbortWalkOut(npcWorldFailure ?? "The walk out exceeded its budget or lost its coordinator."); return; }
             if (Time.unscaledTime >= walkOutPressGuard && CeremonyTakeover.SkipPressed()) { SkipWalkOut(); return; }
             if (walkOutStaged) { TickStagedWalkOut(); return; }
             switch (walkOutLeg)
@@ -249,9 +265,11 @@ namespace Gamesim.Episode
                 case 0:
                     // Waiting for the body to take its navigation back - or for the house to have let
                     // them go because it could not.
-                    if (npcMeetings.CandidateDropped(walkingOutId)) { FinishWalkOut(); return; }
+                    if (npcMeetings.CandidateDropped(walkingOutId))
+                    { AbortWalkOut(BodyFor(walkingOutId)?.GetComponent<HouseNpcMotion>()?.FailureReason ?? "The departing body could not bind."); return; }
                     if (!npcMeetings.CanWalk(walkingOutId)) return;
-                    if (!npcMeetings.BeginDeparture(walkingOutId, out _) || !TryWalkOutTo(WalkOutInside)) { FinishWalkOut(); return; }
+                    if (!npcMeetings.BeginDeparture(walkingOutId, out var departureReason)) { AbortWalkOut(departureReason); return; }
+                    if (!TryWalkOutTo(WalkOutInside)) { FinishWalkOut(); return; }
                     walkOutDoor = OpeningDoorSet.Build(gameObject.scene);
                     var body = BodyFor(walkingOutId);
                     if (body != null && cameraRig != null) cameraRig.FocusSubject(body, false);
@@ -282,10 +300,11 @@ namespace Gamesim.Episode
 
         private bool TryWalkOutTo(Vector3 mark, float speed = 0f)
         {
-            if (player == null || player.Agent == null) return false;
+            if (player == null || player.Agent == null) return RefuseWalkOut("The departure has no navigation query configuration.");
             var filter = new NavMeshQueryFilter { agentTypeID = player.Agent.agentTypeID, areaMask = player.Agent.areaMask };
-            if (!NavMesh.SamplePosition(mark, out var hit, 0.75f, filter)) return false;
-            return npcMeetings.RouteDeparture(hit.position, out _, speed);
+            if (!NavMesh.SamplePosition(mark, out var hit, 0.75f, filter)) return RefuseWalkOut("There is no navigation floor near " + mark.ToString("F2") + ".");
+            if (npcMeetings.RouteDeparture(hit.position, out var reason, speed)) return true;
+            return RefuseWalkOut(reason + " " + BodyFor(walkingOutId)?.GetComponent<HouseNpcMotion>()?.LastRouteFailure);
         }
 
         // ---------------------------------------------------------------- the staged exit
@@ -337,10 +356,12 @@ namespace Gamesim.Episode
                 case StagedLeg.Binding:
                     // Waiting for the body to take its navigation back - or for the house to have let
                     // them go because it could not.
-                    if (npcMeetings.CandidateDropped(walkingOutId)) { FinishWalkOut(); return; }
+                    if (npcMeetings.CandidateDropped(walkingOutId))
+                    { AbortWalkOut(body?.GetComponent<HouseNpcMotion>()?.FailureReason ?? "The departing body could not bind."); return; }
                     if (!npcMeetings.CanWalk(walkingOutId)) return;
-                    if (body == null || !npcMeetings.BeginDeparture(walkingOutId, out _) || !TryWalkOutTo(ExitLastLook, StagedWalkSpeed))
-                    { FinishWalkOut(); return; }
+                    if (body == null) { AbortWalkOut("The staged departure lost its body."); return; }
+                    if (!npcMeetings.BeginDeparture(walkingOutId, out var departureReason)) { AbortWalkOut(departureReason); return; }
+                    if (!TryWalkOutTo(ExitLastLook, StagedWalkSpeed)) { FinishWalkOut(); return; }
                     stagedLeg = StagedLeg.Walking;
                     stagedWalkFrom = now;
                     // The yard's walk leaves the room, and the house watches it go; the living
@@ -671,6 +692,7 @@ namespace Gamesim.Episode
         {
             if (npcMeetings != null && walkingOutId != null) { npcMeetings.EndDeparture(); npcMeetings.DepartureCandidate = null; }
             walkingOutId = null;
+            LastWalkOutFailure = null;
             walkOutStaged = false;
             goodbyeSaidBy = null;
             StrikeWalkOutDoor();

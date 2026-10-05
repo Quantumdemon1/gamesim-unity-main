@@ -21,13 +21,17 @@ namespace Gamesim.House
                 // Slots zero and one remain the saved home venue. Only the spare actual lounger
                 // receives another slot; missing furniture never becomes a room-marker seat.
                 var used=existing.Where(a=>a.VenueId==HouseFurniture.LoungerAnchor).Select(a=>a.transform.parent).ToArray();
+                var loungers=all.Where(t=>t.name=="bb_set_lounger" && t.gameObject.activeInHierarchy).ToArray();
+                var yardFloor=all.FirstOrDefault(t=>t.name=="Competition yard floor")?.GetComponent<BoxCollider>();
                 int slot=2;
-                foreach(var lounger in all.Where(t=>t.name=="bb_set_lounger" && t.gameObject.activeInHierarchy && !used.Contains(t))
+                foreach(var lounger in loungers.Where(t=>!used.Contains(t))
                     .OrderBy(t=>t.position.x).ThenBy(t=>t.position.z))
                 {
                     while(Has(HouseFurniture.LoungerAnchor,slot))slot++;
-                    var at=lounger.position;at.y=yard.transform.position.y;
-                    HouseInteractionAnchor.Create(lounger,HouseFurniture.LoungerAnchor,"Yard",slot++,at,lounger.eulerAngles.y,true,Vector3.left*.95f)
+                    if(!TrySpareLoungerApproach(lounger,loungers,existing,yardFloor,out var approach))continue;
+                    var at=lounger.position;at.y=yardFloor.bounds.max.y;
+                    HouseInteractionAnchor.Create(lounger,HouseFurniture.LoungerAnchor,"Yard",slot++,at,lounger.eulerAngles.y,true,
+                        approach)
                         .SetSeatHeight(.36f);
                 }
             }
@@ -50,6 +54,96 @@ namespace Gamesim.House
                     HouseInteractionAnchor.Create(couch,HouseFurniture.LoungeAnchor,CeremonySets.LivingRoom,slot,at,couch.eulerAngles.y+180f,
                         true,Vector3.forward*CeremonySets.GalleryApproach).SetSeatHeight(CeremonySets.GallerySeatHeight);
                 }
+        }
+
+        private static bool TrySpareLoungerApproach(Transform lounger,Transform[] loungers,HouseInteractionAnchor[] existing,BoxCollider floor,out Vector3 approach)
+        {
+            // Mesh clearance alone can choose a corner outside the Yard or inside the pool.
+            // Author only on this floor's safe interior and clear of the actual static capsule
+            // blockers. This works before a bake, too; native route validation remains required
+            // by the coordinator. Existing saved Home anchors and explicit edits stay intact.
+            approach=default;
+            const float Radius=.5f,Height=2f; // The house's authored NavMesh build body.
+            if(floor==null || !floor.enabled || floor.isTrigger || !floor.gameObject.activeInHierarchy
+                || Vector3.Dot(floor.transform.up,Vector3.up)<.999f
+                || floor.transform.lossyScale.x<=0 || floor.transform.lossyScale.z<=0)return false;
+            Physics.SyncTransforms();
+            var yaw=Quaternion.Euler(0,lounger.eulerAngles.y,0);
+            var neighbours=existing.Where(a=>a.VenueId==HouseFurniture.LoungerAnchor && a.transform.parent!=lounger).ToArray();
+            var candidates=new System.Collections.Generic.List<Vector3>{Vector3.left*.95f,Vector3.right*.95f};
+            Bounds local=default;bool hasBounds=false;
+            foreach(var renderer in lounger.GetComponentsInChildren<Renderer>())
+            {
+                if(!renderer.enabled)continue;
+                var bounds=renderer.bounds;
+                for(int corner=0;corner<8;corner++)
+                {
+                    var world=bounds.center+Vector3.Scale(bounds.extents,new Vector3((corner&1)==0?-1:1,(corner&2)==0?-1:1,(corner&4)==0?-1:1));
+                    var point=Quaternion.Inverse(yaw)*(world-lounger.position);
+                    if(!hasBounds){local=new Bounds(point,Vector3.zero);hasBounds=true;}else local.Encapsulate(point);
+                }
+            }
+            if(!hasBounds)return false;
+            foreach(float x in new[]{local.min.x-.65f,local.max.x+.65f})
+                foreach(float z in new[]{local.min.z-.65f,local.max.z+.65f})candidates.Add(new Vector3(x,0,z));
+            Vector3 Feet(Vector3 offset)
+            {
+                var at=lounger.position+yaw*offset;at.y=floor.bounds.max.y;return at;
+            }
+            bool OnFloor(Vector3 offset)
+            {
+                var point=floor.transform.InverseTransformPoint(Feet(offset))-floor.center;
+                var scale=floor.transform.lossyScale;
+                return Mathf.Abs(point.x)<floor.size.x*.5f-(Radius+.1f)/scale.x
+                    && Mathf.Abs(point.z)<floor.size.z*.5f-(Radius+.1f)/scale.z;
+            }
+            var hits=new Collider[128];
+            bool ClearOfStatics(Vector3 offset)
+            {
+                var feet=Feet(offset);
+                int count=lounger.gameObject.scene.GetPhysicsScene().OverlapCapsule(feet+Vector3.up*Radius,
+                    feet+Vector3.up*(Height-Radius),Radius,hits,Physics.DefaultRaycastLayers,QueryTriggerInteraction.Ignore);
+                if(count==hits.Length)return false;
+                for(int i=0;i<count;i++)
+                {
+                    var hit=hits[i];
+                    if(hit==null)return false;
+                    if(hit.gameObject.scene!=lounger.gameObject.scene || hit==floor)continue;
+                    // Transient cast positions must not change the authored rest layout. The
+                    // activity reservation separately checks live actor occupancy before moving.
+                    if(hit.GetComponentInParent<HouseNpc>()!=null || hit.GetComponentInParent<HousePlayerController>()!=null)continue;
+                    return false;
+                }
+                return true;
+            }
+            float Clearance(Vector3 offset)
+            {
+                var at=lounger.position+yaw*offset;
+                float nearest=float.PositiveInfinity;
+                foreach(var other in loungers)
+                    foreach(var renderer in other.GetComponentsInChildren<Renderer>())
+                    {
+                        if(!renderer.enabled)continue;
+                        var bounds=renderer.bounds;var point=new Vector3(at.x,bounds.center.y,at.z);
+                        nearest=Mathf.Min(nearest,(bounds.ClosestPoint(point)-point).sqrMagnitude);
+                    }
+                return nearest;
+            }
+            bool SharesConversation(Vector3 offset)
+            {
+                if(neighbours.Length==0)return true;
+                var at=lounger.position+yaw*offset;
+                return neighbours.Any(a=>
+                {
+                    float apart=new Vector2(at.x-a.Approach.x,at.z-a.Approach.z).magnitude;
+                    return apart>=HouseConversationSpots.RootsApart && apart<=HouseConversationSpots.PlayerReach;
+                });
+            }
+            var safe=candidates.Where(offset=>OnFloor(offset) && Clearance(offset)>.55f*.55f && ClearOfStatics(offset)).ToArray();
+            if(safe.Length==0)return false;
+            var shared=safe.Where(SharesConversation).ToArray();
+            approach=(shared.Length>0 ? shared : safe).OrderBy(offset=>offset.sqrMagnitude).First();
+            return true;
         }
 
         private static void DressHoHBench(Transform[] all,HouseRoomMarker[] markers,Func<string,int,bool> has)

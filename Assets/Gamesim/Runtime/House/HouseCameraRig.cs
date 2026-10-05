@@ -526,7 +526,7 @@ namespace Gamesim.House
         private bool TwoShotSideIsClear(float sideYaw, Transform player, Transform npc)
         {
             var eye = TwoShotPivot(sideYaw) + Quaternion.Euler(TwoShotPitch, sideYaw, 0f) * Vector3.back * TwoShotDistance;
-            foreach (var other in FindObjectsByType<HouseNpc>(FindObjectsSortMode.None))
+            foreach (var other in FindObjectsByType<HouseNpc>())
             {
                 if (other.transform == npc || other.transform == player || !other.gameObject.activeInHierarchy) continue;
                 var at = other.transform.position;
@@ -757,7 +757,7 @@ namespace Gamesim.House
         private void FindCloseUpVolume()
         {
             closeUpVolumeLookedUp = true;
-            foreach (var volume in FindObjectsByType<Volume>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var volume in FindObjectsByType<Volume>(FindObjectsInactive.Include))
             {
                 if (volume.name != CloseUpVolumeName || volume.gameObject.scene != gameObject.scene) continue;
                 closeUpVolume = volume;

@@ -1,6 +1,7 @@
 using System.Linq;
 using Gamesim.House;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -20,22 +21,131 @@ namespace Gamesim.Tests.EditMode
                 var hot=CeremonySeating.Anchors(scene,CeremonySeating.HotSeat);
                 Assert.That(gallery.Count+hot.Count,Is.EqualTo(16));
                 var before=gallery.Concat(hot).Select(a=>(a.Position,a.Approach,a.Facing,a.SeatContact)).ToArray();
+                var home=HouseInteractionAnchors.InScene(scene).Where(a=>a.VenueId==HouseFurniture.LoungerAnchor && a.Slot<2).OrderBy(a=>a.Slot).ToArray();
+                Assert.That(home,Has.Length.EqualTo(2));
+                var savedHome=home.Select(a=>(a.Position,a.Approach,a.Facing,a.SeatContact)).ToArray();
                 HouseInteractionAnchors.EnsureDefaults(scene);
                 HouseConversationSpots.Ensure(scene);
                 var rest=HouseFurniture.InScene(scene).Where(a=>HouseFurniture.IndependentRest(a)).ToArray();
                 Assert.That(rest.Count(a=>a.VenueId==HouseFurniture.LoungerAnchor),Is.EqualTo(3));
                 Assert.That(rest.Count(a=>a.VenueId==HouseFurniture.LoungeAnchor),Is.EqualTo(14));
                 Assert.That(rest.All(HouseConversationSpots.OnFurniture),Is.True,"Every cushion is inside an actual authored renderer.");
+                var spare=rest.Single(a=>a.VenueId==HouseFurniture.LoungerAnchor && a.Slot==2);
+                Assert.That(home.Select(a=>(a.Position,a.Approach,a.Facing,a.SeatContact)),Is.EqualTo(savedHome),
+                    "Adding the spare never rewrites either saved Home place.");
+                Assert.That(spare.Position.x,Is.LessThan(home[0].Position.x),"The spare is west of the saved pair, away from the east fence's dead end.");
+                var yard=scene.GetRootGameObjects().SelectMany(root=>root.GetComponentsInChildren<Transform>(true))
+                    .Single(t=>t.name=="Competition yard floor").GetComponent<BoxCollider>();
+                var floorPoint=yard.transform.InverseTransformPoint(spare.Approach)-yard.center;
+                Assert.That(Mathf.Abs(floorPoint.x),Is.LessThan(yard.size.x*.5f-.6f/yard.transform.lossyScale.x));
+                Assert.That(Mathf.Abs(floorPoint.z),Is.LessThan(yard.size.z*.5f-.6f/yard.transform.lossyScale.z),
+                    "A visually clear corner beyond the Yard is not a rest approach.");
+                foreach(var renderer in spare.transform.parent.GetComponentsInChildren<Renderer>())
+                    foreach(var saved in home)
+                    {
+                        var bounds=renderer.bounds;var point=new Vector3(saved.Approach.x,bounds.center.y,saved.Approach.z);
+                        Assert.That(Vector3.Distance(bounds.ClosestPoint(point),point),Is.GreaterThan(.5f),
+                            "The moved spare must not obstruct either unchanged Home approach.");
+                    }
+                foreach(var neighbour in rest.Where(a=>a.VenueId==HouseFurniture.LoungerAnchor && a!=spare))
+                    foreach(var renderer in neighbour.transform.parent.GetComponentsInChildren<Renderer>())
+                    {
+                        var bounds=renderer.bounds;var point=new Vector3(spare.Approach.x,bounds.center.y,spare.Approach.z);
+                        Assert.That(Vector3.Distance(bounds.ClosestPoint(point),point),Is.GreaterThan(.5f),
+                            "The spare lounger must approach from the open side, not inside the neighbouring chair's agent clearance.");
+                    }
                 Assert.That(HouseConversationSpots.InScene(scene).Any(s=>s.Family==HouseFurniture.LoungerAnchor
                     && (s.First.transform.parent==rest.Single(a=>a.VenueId==HouseFurniture.LoungerAnchor && a.Slot==2).transform.parent
                         || s.Second.transform.parent==rest.Single(a=>a.VenueId==HouseFurniture.LoungerAnchor && a.Slot==2).transform.parent)),Is.True,
                     "The third lounger participates in a real reachable-distance chat pair.");
+                foreach(var spot in HouseConversationSpots.InScene(scene).Where(s=>s.Family==HouseFurniture.LoungerAnchor))
+                    foreach(var seat in new[]{spot.First,spot.Second})
+                    {
+                        var original=rest.Single(a=>a.VenueId==HouseFurniture.LoungerAnchor && a.transform.parent==seat.transform.parent);
+                        Assert.That(Vector3.Distance(seat.Approach,original.Approach),Is.LessThan(.001f),
+                            "Chat must use the same clear approach as the actual lounger, rather than restoring a shared old offset.");
+                    }
                 Assert.That(gallery.Concat(hot).Select(a=>(a.Position,a.Approach,a.Facing,a.SeatContact)),Is.EqualTo(before));
                 int anchors=HouseInteractionAnchors.InScene(scene).Length;
                 HouseInteractionAnchors.EnsureDefaults(scene);HouseConversationSpots.Ensure(scene);
                 Assert.That(HouseInteractionAnchors.InScene(scene).Length,Is.EqualTo(anchors),"Repeated projection does not grow seats or chat pairs.");
             }
             finally{EditorSceneManager.ClosePreviewScene(scene);}
+        }
+
+        [Test]
+        public void SpareLoungerRequiresItsRealFloorAndRejectsStaticBlockedApproachesWithoutABake()
+        {
+            var scene=EditorSceneManager.NewPreviewScene();
+            try
+            {
+                var model=AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Gamesim/Art/Authored/SetPieces/bb_set_lounger.fbx");
+                Assert.That(model,Is.Not.Null);
+                var marker=new GameObject("Yard");SceneManager.MoveGameObjectToScene(marker,scene);
+                marker.AddComponent<HouseRoomMarker>().Configure("Yard");
+                foreach(float x in new[]{9.408f,10.808f,7.308f})
+                {
+                    var prop=(GameObject)PrefabUtility.InstantiatePrefab(model,scene);
+                    prop.transform.position=new Vector3(x,0,11);
+                }
+                HouseInteractionAnchors.EnsureDefaults(scene);
+                Assert.That(HouseInteractionAnchors.TryFind(scene,HouseFurniture.LoungerAnchor,2,out _),Is.False,
+                    "A marker and visible furniture do not substitute for a real floor.");
+                var home=HouseInteractionAnchors.InScene(scene).Where(a=>a.VenueId==HouseFurniture.LoungerAnchor).ToArray();
+                Assert.That(home,Has.Length.EqualTo(2));
+                var saved=home.Select(a=>(a.Position,a.Approach,a.Facing)).ToArray();
+                var floor=new GameObject("Competition yard floor");SceneManager.MoveGameObjectToScene(floor,scene);
+                floor.transform.position=new Vector3(0,-.15f,15);floor.AddComponent<BoxCollider>().size=new Vector3(28,.3f,10);
+                var blocker=new GameObject("Static approach blocker");SceneManager.MoveGameObjectToScene(blocker,scene);
+                blocker.transform.position=new Vector3(7.308f,1,11);blocker.AddComponent<BoxCollider>().size=new Vector3(8,2,5);
+                HouseInteractionAnchors.EnsureDefaults(scene);
+                Assert.That(HouseInteractionAnchors.TryFind(scene,HouseFurniture.LoungerAnchor,2,out _),Is.False,
+                    "Real capsule blockers must reject every approach even when the imported mesh's corners look clear.");
+                Object.DestroyImmediate(blocker);
+                HouseInteractionAnchors.EnsureDefaults(scene);
+                Assert.That(HouseInteractionAnchors.TryFind(scene,HouseFurniture.LoungerAnchor,2,out var spare),Is.True,
+                    "Static authoring works in an isolated preview with no baked navigation data.");
+                Assert.That(Vector3.Distance(spare.Approach,new Vector3(6.358f,0,11)),Is.LessThan(.001f));
+                Assert.That(home.Select(a=>(a.Position,a.Approach,a.Facing)),Is.EqualTo(saved));
+            }
+            finally{EditorSceneManager.ClosePreviewScene(scene);}
+        }
+
+        [Test]
+        public void LoungerChatKeepsEachAuthoredApproachOnRotatedAndScaledFurniture()
+        {
+            var model=AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Gamesim/Art/Authored/SetPieces/bb_set_lounger.fbx");
+            Assert.That(model,Is.Not.Null,"This regression uses the actual imported lounger.");
+            foreach(var variant in new[]{(yaw:0f,scale:1f),(yaw:37f,scale:1.25f)})
+            {
+                var scene=EditorSceneManager.NewPreviewScene();
+                try
+                {
+                    var originals=new HouseInteractionAnchor[2];
+                    var yaw=Quaternion.Euler(0,variant.yaw,0);
+                    for(int i=0;i<2;i++)
+                    {
+                        var prop=(GameObject)PrefabUtility.InstantiatePrefab(model,scene);
+                        prop.transform.SetPositionAndRotation(new Vector3(10,0,10)+yaw*(Vector3.right*i*1.4f),yaw);
+                        prop.transform.localScale=Vector3.one*variant.scale;
+                        originals[i]=HouseInteractionAnchor.Create(prop.transform,HouseFurniture.LoungerAnchor,"Yard",i==0?0:2,
+                            prop.transform.position,variant.yaw,true,Vector3.back*1.8f+Vector3.left*i*.4f);
+                        originals[i].SetSeatHeight(.36f);
+                    }
+                    HouseConversationSpots.Ensure(scene);
+                    var spot=HouseConversationSpots.InScene(scene).Single(s=>s.Family==HouseFurniture.LoungerAnchor);
+                    foreach(var seat in new[]{spot.First,spot.Second})
+                    {
+                        var original=originals.Single(a=>a.transform.parent==seat.transform.parent);
+                        Assert.That(Vector3.Distance(seat.Approach,original.Approach),Is.LessThan(.001f));
+                        Assert.That(Vector3.Distance(seat.Position,original.Position),Is.LessThan(.001f));
+                        Assert.That(Mathf.Abs(Mathf.DeltaAngle(seat.Facing,original.Facing)),Is.LessThan(.001f));
+                    }
+                    Assert.That(Vector3.Distance(spot.First.Approach,spot.Second.Approach),Is.EqualTo(1f).Within(.001f),
+                        "The roots kept by the pair must be the roots whose spacing was validated.");
+                }
+                finally{EditorSceneManager.ClosePreviewScene(scene);}
+            }
         }
 
         [Test]

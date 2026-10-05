@@ -392,8 +392,12 @@ namespace Gamesim.Tests.PlayMode
                 if(next==start)break;
                 ring.Add(next);
             }
-            Assert.That(ring.Select(item => item.name), Is.EquivalentTo(eligible.Select(item => item.name)),
-                label + ": actual Tab input must visit every control in the panel exactly once and return.");
+            string ControlNames(IEnumerable<Selectable> items) => string.Join(" | ", items.Select(item => item != null ? item.name : "<destroyed>"));
+            Assert.That(ring, Is.EquivalentTo(eligible),
+                label + ": actual Tab input must visit every control in the panel exactly once and return."
+                + " Expected: [" + ControlNames(eligible) + "]. Visited: [" + ControlNames(ring)
+                + "]. Missing: [" + ControlNames(eligible.Where(item => !ring.Contains(item)))
+                + "]. Unexpected: [" + ControlNames(ring.Where(item => !eligible.Contains(item))) + "].");
             Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(start.gameObject),label+": Tab wraps to its starting control.");
 
             foreach (var outside in director.GetComponentsInChildren<Selectable>(true)

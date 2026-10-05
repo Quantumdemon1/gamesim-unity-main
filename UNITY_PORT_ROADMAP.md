@@ -1,5 +1,11 @@
 # Gamesim Unity port
 
+**Current status, 2026-10-04:** integration and acceptance are in progress on the existing
+schema-22 candidate. The milestone table and V7 counts below are historical: U08 is not currently
+all-green. Read the dated resumption section in `UNITY_PORT_IMPLEMENTATION.md` and fresh native
+XML/manifests. Remaining work includes integration regression fixes, a matching shipping build,
+runtime/performance verification, Wave C/D gameplay, asset completion and human acceptance.
+
 Source: the agreed Unity plan in the GameSim Dev conversation, following the choice to build the first slice around a 3D house. The existing Unity 6000.6.0f1 project and its pinned packages are retained.
 
 | Package | Deliverable | Acceptance gate | Status |

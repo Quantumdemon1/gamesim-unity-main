@@ -368,7 +368,7 @@ namespace Gamesim.Episode
             var head = body.position + Vector3.up * 1.5f;
             // The props that can spoil a face: small things near them - lamps, poles, plants, stacks -
             // and not the floors, walls and furniture runs a room is made of, nor the houseguests.
-            var props = FindObjectsByType<Renderer>(FindObjectsSortMode.None)
+            var props = FindObjectsByType<Renderer>()
                 .Where(renderer => renderer.enabled && renderer.gameObject.activeInHierarchy
                     && (renderer.bounds.center - head).sqrMagnitude < 36f
                     && Mathf.Max(renderer.bounds.size.x, renderer.bounds.size.z) < 1.6f

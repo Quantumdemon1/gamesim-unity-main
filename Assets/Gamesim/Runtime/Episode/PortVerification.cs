@@ -26,6 +26,7 @@ namespace Gamesim.Episode
         private readonly List<string> errors = new List<string>();
         private readonly List<float> frames = new List<float>(180000);
         private readonly List<long> allocations = new List<long>(180000);
+        private readonly List<VerificationFrameEvidence> capturedFrames = new List<VerificationFrameEvidence>();
         private ProfilerRecorder gc;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -106,7 +107,8 @@ namespace Gamesim.Episode
             // for the key ceremony's block and a framing's end, and a suspenseful card outlasts both.
             director.SetCeremonyPace(Presentation.CeremonyPace.Quick);
             director.SaveNow();
-            bool graphical = SystemInfo.graphicsDeviceType != GraphicsDeviceType.Null;
+            bool graphical = !Application.isBatchMode && SystemInfo.graphicsDeviceType != GraphicsDeviceType.Null;
+            if (!graphical) errors.Add("Graphical performance evidence requires a windowed player without -batchmode/-nographics; a graphics device alone does not prove presentation.");
             if (graphical)
             {
                 // Force the hidden-launched desktop window to allocate its presentable backbuffer.
@@ -118,24 +120,24 @@ namespace Gamesim.Episode
             double captureDeadline = Time.realtimeSinceStartupAsDouble + 15;
             while (graphical && !SplashScreen.isFinished && Time.realtimeSinceStartupAsDouble < captureDeadline) yield return null;
             for (int i = 0; i < 60; i++) yield return null;
-            if (graphical) ScreenCapture.CaptureScreenshot(Path.Combine(outputDirectory, "house.png"));
+            if (graphical) yield return CaptureVerifiedFrame(Path.Combine(outputDirectory, "house.png"), capturedFrames.Add, errors.Add);
             for (int i = 0; i < 20; i++) yield return null;
             director.OpenSettings();
             for (int i = 0; i < 5; i++) yield return null;
-            if (graphical) ScreenCapture.CaptureScreenshot(Path.Combine(outputDirectory, "settings.png"));
+            if (graphical) yield return CaptureVerifiedFrame(Path.Combine(outputDirectory, "settings.png"), capturedFrames.Add, errors.Add);
             for (int i = 0; i < 5; i++) yield return null;
             if (graphical)
             {
                 var larger = director.GetComponentsInChildren<Button>().FirstOrDefault(button => button.name == "Use larger text");
                 if (larger != null) larger.onClick.Invoke();
                 for (int i = 0; i < 5; i++) yield return null;
-                ScreenCapture.CaptureScreenshot(Path.Combine(outputDirectory, "settings-large.png"));
+                yield return CaptureVerifiedFrame(Path.Combine(outputDirectory, "settings-large.png"), capturedFrames.Add, errors.Add);
                 for (int i = 0; i < 10; i++) yield return null;
                 foreach (int height in new[] { 720, 800 })
                 {
                     Screen.SetResolution(1280, height, FullScreenMode.Windowed);
                     for (int i = 0; i < 15; i++) yield return null;
-                    ScreenCapture.CaptureScreenshot(Path.Combine(outputDirectory, "settings-large-1280x" + height + ".png"));
+                    yield return CaptureVerifiedFrame(Path.Combine(outputDirectory, "settings-large-1280x" + height + ".png"), capturedFrames.Add, errors.Add);
                     for (int i = 0; i < 10; i++) yield return null;
                 }
                 var standard = director.GetComponentsInChildren<Button>().FirstOrDefault(button => button.name == "Use standard text");
@@ -172,7 +174,7 @@ namespace Gamesim.Episode
             gc.Dispose();
             director.ClosePanels();
             for (int i = 0; i < 5; i++) yield return null;
-            if (graphical) ScreenCapture.CaptureScreenshot(Path.Combine(outputDirectory, "house-after-workload.png"));
+            if (graphical) yield return CaptureVerifiedFrame(Path.Combine(outputDirectory, "house-after-workload.png"), capturedFrames.Add, errors.Add);
             for (int i = 0; i < 10; i++) yield return null;
             double profileElapsed = Time.realtimeSinceStartupAsDouble - started;
             profileFinishedUtc = DateTime.UtcNow.ToString("O");
@@ -196,7 +198,8 @@ namespace Gamesim.Episode
         private void Finish(double measured, bool graphical)
         {
             frames.Sort(); allocations.Sort();
-            bool passed = errors.Count == 0 && measured >= seconds && frames.Count > 100;
+            bool passed = errors.Count == 0 && measured >= seconds && frames.Count > 100
+                && !Application.isBatchMode && graphical && capturedFrames.Count == 6 && capturedFrames.All(frame => frame.rendered);
             var report = new VerificationReport
             {
                 status = passed ? "Passed" : "Failed", finishedUtc = profileFinishedUtc ?? DateTime.UtcNow.ToString("O"),
@@ -214,7 +217,8 @@ namespace Gamesim.Episode
                 requestedSeconds = seconds, measuredSeconds = measured, frameCount = frames.Count,
                 frameMedianMs = Percentile(frames, .5), frameP95Ms = Percentile(frames, .95), frameP99Ms = Percentile(frames, .99),
                 gcCounterAvailable = allocations.Count > 0, gcMedianBytes = Percentile(allocations, .5), gcP95Bytes = Percentile(allocations, .95),
-                graphical = graphical, resolution = Screen.width + "x" + Screen.height, houseSize = measuredHouseSize,
+                graphical = graphical, batchMode = Application.isBatchMode, capturedFrames = capturedFrames,
+                resolution = Screen.width + "x" + Screen.height, houseSize = measuredHouseSize,
                 houseSizeRequested = houseSize, houseSizeNote = houseSizeNote,
                 unityVersion = Application.unityVersion, processor = SystemInfo.processorType, gpu = SystemInfo.graphicsDeviceName,
                 systemMemoryMB = SystemInfo.systemMemorySize, graphicsMemoryMB = SystemInfo.graphicsMemorySize,
@@ -238,7 +242,8 @@ namespace Gamesim.Episode
             public double requestedSeconds, measuredSeconds, frameMedianMs, frameP95Ms, frameP99Ms, gcMedianBytes, gcP95Bytes;
             public int frameCount, systemMemoryMB, graphicsMemoryMB, houseSize, houseSizeRequested;
             public string houseSizeNote;
-            public bool graphical, developmentBuild, gcCounterAvailable;
+            public bool graphical, batchMode, developmentBuild, gcCounterAvailable;
+            public List<VerificationFrameEvidence> capturedFrames;
             public string[] errors;
         }
     }

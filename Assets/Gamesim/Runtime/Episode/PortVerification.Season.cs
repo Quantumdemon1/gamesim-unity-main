@@ -35,7 +35,7 @@ namespace Gamesim.Episode
             blocReport = verifyBlocs ? new BlocReport() : null;
             seasonReport = new SeasonReport
             {
-                status = "Running", startedUtc = DateTime.UtcNow.ToString("O"), graphical = graphical,
+                status = "Running", startedUtc = DateTime.UtcNow.ToString("O"), graphical = graphical, batchMode = Application.isBatchMode,
                 artifactId = Guid.NewGuid().ToString("N"), saveDirectory = outputDirectory,
                 workload = "One legally created six-person season using actual active uGUI buttons, real NavMesh routes, diary confirmations, eligible finale choices, and save/reload. Interaction activation uses the same director methods as E; floor movement is API-driven, not simulated mouse input. Assisted competitions are used. Not a performance sample, human playtest, pacing measure, or exhaustive role-branch test."
             };
@@ -567,11 +567,7 @@ namespace Gamesim.Episode
             Canvas.ForceUpdateCanvases();
             for (int frame = 0; frame < 5; frame++) yield return null;
             string path = Path.Combine(outputDirectory,"season-" + seasonReport.artifactId + "-" + label + ".png");
-            ScreenCapture.CaptureScreenshot(path);
-            double deadline = Time.realtimeSinceStartupAsDouble + 5;
-            while ((!File.Exists(path) || new FileInfo(path).Length == 0) && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
-            yield return null; yield return null;
-            RequireSeason(File.Exists(path) && new FileInfo(path).Length > 0,"A requested graphical season capture was not written: " + label);
+            yield return CaptureVerifiedFrame(path, seasonReport.capturedFrames.Add, reason => RequireSeason(false, reason));
             seasonReport.screenshots.Add(path);
         }
 
@@ -595,7 +591,8 @@ namespace Gamesim.Episode
         {
             public string status, startedUtc, finishedUtc, workload, artifactId, sessionId, seed, saveDirectory,
                 profileSavePath, seasonSavePath, winnerId, playerFinalStatus, oathOutcome, oathNote;
-            public bool graphical, finished, playerSpeechSubmitted, juryReloadVerified, profileSavePreserved, finalArgumentLocked;
+            public bool graphical, batchMode, finished, playerSpeechSubmitted, juryReloadVerified, profileSavePreserved, finalArgumentLocked;
+            public List<VerificationFrameEvidence> capturedFrames = new List<VerificationFrameEvidence>();
             public StudyReport study;
             public BlocReport blocs;
             public AutonomyReport autonomy;

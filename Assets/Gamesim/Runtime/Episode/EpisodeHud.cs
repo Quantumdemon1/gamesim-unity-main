@@ -1138,13 +1138,26 @@ namespace Gamesim.Episode
         private EpisodeSpeechInputField SpeechDraft(string panelName,string hintText,string counterName)
         {
             var rect = Panel(panelName,content,Surface);
-            rect.gameObject.AddComponent<LayoutElement>().minHeight = 210 * FontScale;
+            // TMP creates its selection caret and registers the text callbacks in OnEnable. Keep
+            // the field inactive until its text and viewport exist, as a serialized field would.
+            rect.gameObject.SetActive(false);
+            var fieldLayout = rect.gameObject.AddComponent<LayoutElement>();
+            fieldLayout.minHeight = fieldLayout.preferredHeight = 210 * FontScale;
+            fieldLayout.flexibleHeight = 0f;
             var input = rect.gameObject.AddComponent<EpisodeSpeechInputField>();
-            var text = NewText(rect,"",21,Paper); Stretch(text.rectTransform,14,12,14,12);
+            // TMP itself advertises the entire draft's preferred height at layout priority 1.
+            // This bounded editor must outrank it; equal priorities take the larger height.
+            fieldLayout.layoutPriority = input.layoutPriority + 1;
+            var viewport = new GameObject("Speech text viewport", typeof(RectTransform), typeof(RectMask2D)).GetComponent<RectTransform>();
+            viewport.SetParent(rect, false); Stretch(viewport,14,12,14,12);
+            var text = NewText(viewport,"",21,Paper); Stretch(text.rectTransform,0,0,0,0);
             text.alignment = TextAlignmentOptions.TopLeft;
-            var hint = NewText(rect,hintText,21,UiTheme.Muted);
-            Stretch(hint.rectTransform,14,12,14,12);
-            input.textComponent = text; input.placeholder = hint;
+            // The viewport clips the full text geometry. The HUD's usual Truncate mode drops
+            // lines that TMP_InputField needs to calculate wheel movement and the caret position.
+            text.overflowMode = TextOverflowModes.Overflow;
+            var hint = NewText(viewport,hintText,21,UiTheme.Muted);
+            Stretch(hint.rectTransform,0,0,0,0);
+            input.textViewport = viewport; input.textComponent = text; input.placeholder = hint;
             input.characterLimit = 2000; input.lineType = TMP_InputField.LineType.MultiLineNewline;
             input.onValidateInput = (value,index,character) => character == '\t' ? '\0' : character;
             input.customCaretColor = true; input.caretColor = Accent;
@@ -1153,6 +1166,7 @@ namespace Gamesim.Episode
             var count = FlowText(retainedSpeech.Length + " / 2000 characters",17,Paper);
             count.gameObject.name = counterName;
             input.onValueChanged.AddListener(value => { retainedSpeech = value; count.text = value.Length + " / 2000 characters"; });
+            rect.gameObject.SetActive(true);
             return input;
         }
 
@@ -1986,8 +2000,10 @@ namespace Gamesim.Episode
             var overlay = ActiveOverlay();
             if (overlay != lastOverlay) { lastOverlay = overlay; restoreSelection = true; }
             // A screen that rebuilds its form on every press (the character creator) hands the ring
-            // a new set of controls each time; rewire when the count moves.
-            int controls = overlay != null ? overlay.GetComponentsInChildren<Selectable>().Length : 0;
+            // a new set of controls each time. Count eligible controls: an asynchronous preview can
+            // enable Retry without adding an object, and that newly usable control needs a place.
+            int controls = overlay != null ? overlay.GetComponentsInChildren<Selectable>()
+                .Count(item => item.IsActive() && item.IsInteractable() && !(item is Scrollbar) && item != interactButton) : 0;
             if (controls != overlayControls) { overlayControls = controls; if (overlay != null) restoreSelection = true; }
             // A screen can also redraw itself with exactly as many controls as it had - the season
             // report sorting its table does - and then the count says nothing while the ring still
@@ -2125,11 +2141,11 @@ namespace Gamesim.Episode
             finally { restoringFocus = false; }
         }
 
-        /// <summary>Whether the keyboard ring holds a control that has been destroyed or hidden since it was wired.</summary>
+        /// <summary>Whether the keyboard ring holds a control that is no longer eligible since it was wired.</summary>
         private bool RingHoldsLeftovers()
         {
             foreach (var item in tabOrder)
-                if (item == null || !item.gameObject.activeInHierarchy) return true;
+                if (item == null || !item.IsActive() || !item.IsInteractable()) return true;
             return false;
         }
 

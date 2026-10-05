@@ -30,7 +30,7 @@ namespace Gamesim.Episode
         {
             creatorReport = new CreatorVerificationReport
             {
-                startedUtc = DateTime.UtcNow.ToString("O"), unityVersion = Application.unityVersion,
+                startedUtc = DateTime.UtcNow.ToString("O"), unityVersion = Application.unityVersion, batchMode = Application.isBatchMode,
                 processor = SystemInfo.processorType, gpu = SystemInfo.graphicsDeviceName,
                 systemMemoryMB = SystemInfo.systemMemorySize, graphicsMemoryMB = SystemInfo.graphicsMemorySize,
                 visualStatus = "Pending inspection of captured frames",
@@ -254,7 +254,7 @@ namespace Gamesim.Episode
             CharacterPresentation body = null;
             while (Time.realtimeSinceStartupAsDouble < bodyDeadline)
             {
-                body = FindObjectsByType<CharacterPresentation>(FindObjectsSortMode.None).FirstOrDefault(item => item.CharacterId == player.id);
+                body = FindObjectsByType<CharacterPresentation>().FirstOrDefault(item => item.CharacterId == player.id);
                 var progress = body == null ? null : body.GetComponentInChildren<CharacterBodyBuildState>();
                 if (body != null && progress != null && progress.Ready) break;
                 yield return null;
@@ -291,7 +291,7 @@ namespace Gamesim.Episode
             CharacterPresentation reloadedBody = null;
             while (Time.realtimeSinceStartupAsDouble < reloadDeadline)
             {
-                reloadedBody = FindObjectsByType<CharacterPresentation>(FindObjectsSortMode.None).FirstOrDefault(item => item.CharacterId == player.id);
+                reloadedBody = FindObjectsByType<CharacterPresentation>().FirstOrDefault(item => item.CharacterId == player.id);
                 if (reloadedBody != null && reloadedBody.GetComponentInChildren<CharacterBodyBuildState>()?.Ready == true) break;
                 yield return null;
             }
@@ -388,7 +388,7 @@ namespace Gamesim.Episode
             throw new TimeoutException("The preview did not finish " + label + " within 50 seconds.");
         }
 
-        private static Button CreatorButton(string caption) => FindObjectsByType<Button>(FindObjectsSortMode.None)
+        private static Button CreatorButton(string caption) => FindObjectsByType<Button>()
             .FirstOrDefault(button => button.IsActive() && button.IsInteractable() && (button.name == caption
                 || button.GetComponentsInChildren<TMP_Text>().Any(label => label.text == caption)));
 
@@ -533,59 +533,17 @@ namespace Gamesim.Episode
                 RequireCreatorPreviewPixels(expectedPreview, name, evidence);
             string path = Path.Combine(outputDirectory, name + ".png");
             evidence.path = path;
-            CreatorRequire(!File.Exists(path), "Creator capture requires a fresh output path: " + name);
-            // Keep the ordinary native screen capture, including a rejected image for diagnosis.
-            // File existence alone accepted eight identical black baseline frames.
-            ScreenCapture.CaptureScreenshot(path);
-            double deadline = Time.realtimeSinceStartupAsDouble + 5;
-            var pixels = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-            try
+            VerificationFrameEvidence captured = null;
+            yield return CaptureVerifiedFrame(path, frame => { captured = frame; creatorReport.capturedFrames.Add(frame); },
+                reason => CreatorRequire(false, reason));
+            evidence.width = captured.width; evidence.height = captured.height;
+            evidence.sampledPixels = captured.sampledPixels; evidence.nonDarkSamples = captured.nonDarkSamples;
+            evidence.varyingSamples = captured.varyingSamples; evidence.rendered = captured.rendered;
+            creatorReport.images.Add(path);
+            if (expectedPreview != null)
             {
-                bool decoded = false;
-                while (Time.realtimeSinceStartupAsDouble < deadline)
-                {
-                    if (File.Exists(path) && new FileInfo(path).Length > 0)
-                    {
-                        try
-                        {
-                            var bytes = File.ReadAllBytes(path);
-                            // Do not send a writer's partial file through Unity's decoder, which
-                            // reports an image error before the asynchronous PNG reaches its end.
-                            bool complete = bytes.Length >= 20 && bytes[0] == 137 && bytes[1] == 80
-                                && bytes[2] == 78 && bytes[3] == 71 && bytes[bytes.Length - 8] == 73
-                                && bytes[bytes.Length - 7] == 69 && bytes[bytes.Length - 6] == 78
-                                && bytes[bytes.Length - 5] == 68 && bytes[bytes.Length - 4] == 174
-                                && bytes[bytes.Length - 3] == 66 && bytes[bytes.Length - 2] == 96
-                                && bytes[bytes.Length - 1] == 130;
-                            decoded = complete && pixels.LoadImage(bytes);
-                        }
-                        catch (IOException) { /* The screenshot writer may still own the file. */ }
-                        if (decoded) break;
-                    }
-                    yield return null;
-                }
-                CreatorRequire(decoded, "Capture was not written as a complete PNG: " + name);
-                creatorReport.images.Add(path);
-                evidence.width = pixels.width; evidence.height = pixels.height;
-                CreatorRequire(pixels.width == Screen.width && pixels.height == Screen.height,
-                    "Capture dimensions do not match the actual viewport: " + name);
-                var colors = pixels.GetPixels32();
-                var first = colors[0];
-                for (int pixel = 0; pixel < colors.Length; pixel += 16)
-                {
-                    var color = colors[pixel];
-                    evidence.sampledPixels++;
-                    if (Math.Max(color.r, Math.Max(color.g, color.b)) >= 32) evidence.nonDarkSamples++;
-                    if (Math.Abs(color.r - first.r) >= 8 || Math.Abs(color.g - first.g) >= 8 || Math.Abs(color.b - first.b) >= 8)
-                        evidence.varyingSamples++;
-                }
-                CreatorRequire(evidence.nonDarkSamples >= 128 && evidence.varyingSamples >= 128,
-                    "The native captured frame is blank or uniformly colored: " + name);
-                if (expectedPreview != null)
-                    CreatorRequire(CreatorPreviewMatchesDraft(expectedPreview), "The draft or preview changed while capturing " + name + ".");
-                evidence.rendered = true;
+                CreatorRequire(CreatorPreviewMatchesDraft(expectedPreview), "The draft or preview changed while capturing " + name + ".");
             }
-            finally { Destroy(pixels); }
             if (capture != null) capture.path = path;
         }
 
@@ -693,7 +651,7 @@ namespace Gamesim.Episode
             public string libraryDirectory, libraryProfileId;
             public int systemMemoryMB, graphicsMemoryMB, bodyCount, wardrobeCount, controlCount, resolutionCaptures, quickResolutionCaptures, bodyBoundsCaptures, workloadLimitSeconds;
             public uint seed;
-            public bool pointerSliderChanged, cosmeticsPreservedGameplayAndRng, previewHouseAppearanceEqual, saveReloadAppearanceEqual;
+            public bool batchMode, pointerSliderChanged, cosmeticsPreservedGameplayAndRng, previewHouseAppearanceEqual, saveReloadAppearanceEqual;
             public bool quickDraftPreserved, keyboardModeSwitch, controllerModeSwitch, controllerNavigation, quickPointerPresetChanged, quickBodyChangedIndependently;
             public bool isolatedLibrary, librarySaveLoadEqual, customCastRepeatedAndEdited, playerPreservedDuringNpcEdit,
                 libraryUnaffectedByCastEdit, customCastSaveReloadEqual, bodyBoundsAppearanceRestored;
@@ -702,6 +660,7 @@ namespace Gamesim.Episode
             public List<CreatorBodyBoundsCapture> bodyBounds = new List<CreatorBodyBoundsCapture>();
             public List<CreatorCapture> captures = new List<CreatorCapture>();
             public List<CreatorFrameEvidence> frames = new List<CreatorFrameEvidence>();
+            public List<VerificationFrameEvidence> capturedFrames = new List<VerificationFrameEvidence>();
             public List<string> images = new List<string>(), errors = new List<string>();
         }
     }

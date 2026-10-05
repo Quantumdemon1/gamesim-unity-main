@@ -40,6 +40,8 @@ namespace Gamesim.Editor
     public static class HouseSetPieces
     {
         public const string RootName = "Set Pieces";
+        /// <summary>The spare lounger stays west of both unchanged saved Home seats and their approaches.</summary>
+        public const float SpareLoungerFloorX = .261f;
         private const string EpisodeScene = "Assets/Gamesim/Scenes/EpisodeHouse.unity";
         private const string WorldRoot = "House Architecture";
         private const string Kit = "Assets/Gamesim/Art/External/KenneyFurniture/";
@@ -316,7 +318,9 @@ namespace Gamesim.Editor
             new Prop("Competition yard floor", "bb_set_hottub",  -0.357f, 0.30f,   0f, 0f),
             new Prop("Competition yard floor", "bb_set_lounger",  0.336f, -0.40f,  0f, 0f),
             new Prop("Competition yard floor", "bb_set_lounger",  0.386f, -0.40f,  0f, 0f),
-            new Prop("Competition yard floor", "bb_set_lounger",  0.436f, -0.40f,  0f, 0f),
+            // Keep the spare west of the saved Home pair, with its own approach and enough room
+            // beyond its right edge for Home slot zero's unchanged left-side navigation root.
+            new Prop("Competition yard floor", "bb_set_lounger", SpareLoungerFloorX, -0.40f, 0f, 0f),
             new Prop("Competition yard floor", "pottedPlant",  -0.42f, -0.34f,   0f, 0.90f),
             new Prop("Competition yard floor", "pottedPlant",  -0.46f,  0.34f,   0f, 1.05f),
             new Prop("Competition yard floor", "pottedPlant",   0.24f,  0.44f,   0f, 1.05f),

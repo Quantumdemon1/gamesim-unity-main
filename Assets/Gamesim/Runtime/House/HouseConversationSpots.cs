@@ -177,14 +177,22 @@ namespace Gamesim.House
         }
 
         /// <summary>Two seats as one spot, when they stand apart enough and near enough, and both are on furniture.</summary>
-        private static void Pair(string id, string room, Seat first, Seat second, Vector3 approachOffset, float seatHeight, Func<string, bool> has)
+        private static void Pair(string id, string room, Seat first, Seat second, float seatHeight, Func<string, bool> has)
         {
             if (has(id)) return;
             float apart = Flat(first.Approach, second.Approach);
             if (apart < RootsApart || apart > PlayerReach) return;
             if (!OnFurniture(first.Prop, first.At, seatHeight) || !OnFurniture(second.Prop, second.At, seatHeight)) return;
-            HouseInteractionAnchor.Create(first.Prop, id, room, 0, first.At, first.Yaw, true, approachOffset).SetSeatHeight(seatHeight);
-            HouseInteractionAnchor.Create(second.Prop, id, room, 1, second.At, second.Yaw, true, approachOffset).SetSeatHeight(seatHeight);
+            void Place(Seat seat,int slot)
+            {
+                var anchor=HouseInteractionAnchor.Create(seat.Prop,id,room,slot,seat.At,seat.Yaw,true);
+                // Keep the very approach that passed the pair's reach/spacing checks. Loungers
+                // can approach from different sides; a shared offset would put the spare back
+                // into its neighbour's blocked gap. The anchor frame also handles scaled props.
+                anchor.Configure(id,room,slot,true,anchor.transform.InverseTransformPoint(seat.Approach));
+                anchor.SetSeatHeight(seatHeight);
+            }
+            Place(first,0);Place(second,1);
         }
 
         private static void DressTheLoungers(HouseInteractionAnchor[] existing,Func<string,bool> has)
@@ -197,7 +205,7 @@ namespace Gamesim.House
                 if(neighbour==null)continue;
                 var first=new Seat(neighbour.transform.parent,neighbour.Position,neighbour.Facing,neighbour.Approach);
                 var second=new Seat(spare.transform.parent,spare.Position,spare.Facing,spare.Approach);
-                Pair(IdFor(HouseFurniture.LoungerAnchor,"spare-"+spare.Slot),"Yard",first,second,Vector3.left*.95f,.36f,has);
+                Pair(IdFor(HouseFurniture.LoungerAnchor,"spare-"+spare.Slot),"Yard",first,second,.36f,has);
             }
         }
 
@@ -250,7 +258,7 @@ namespace Gamesim.House
             var west = onBase.Where(s => s.side < 0f).OrderByDescending(s => s.side).Select(s => (Seat?)s.seat).FirstOrDefault();
             var east = onBase.Where(s => s.side > 0f).OrderBy(s => s.side).Select(s => (Seat?)s.seat).FirstOrDefault();
             if (west.HasValue && east.HasValue && west.Value.Prop != east.Value.Prop)
-                Pair(IdFor(LivingFamily, "base-middle"), CeremonySets.LivingRoom, west.Value, east.Value, approach, CeremonySets.GallerySeatHeight, has);
+                Pair(IdFor(LivingFamily, "base-middle"), CeremonySets.LivingRoom, west.Value, east.Value, CeremonySets.GallerySeatHeight, has);
 
             // The corners: the base's outer seat on a side and that side's arm seat nearest the base.
             foreach (float sign in new[] { -1f, 1f })
@@ -259,7 +267,7 @@ namespace Gamesim.House
                 var arm = onArms.Where(s => Mathf.Sign(s.side) == sign).OrderBy(s => s.depth).Select(s => (Seat?)s.seat).FirstOrDefault();
                 if (!outer.HasValue || !arm.HasValue) continue;
                 Pair(IdFor(LivingFamily, sign < 0f ? "corner-west" : "corner-east"), CeremonySets.LivingRoom, outer.Value, arm.Value,
-                    approach, CeremonySets.GallerySeatHeight, has);
+                    CeremonySets.GallerySeatHeight, has);
             }
         }
 
@@ -305,7 +313,7 @@ namespace Gamesim.House
                         var along = Quaternion.Euler(0f, side.Key, 0f) * Vector3.right;
                         bool inOrder = Vector3.Dot(free[j].At - free[i].At, along) >= 0f;
                         Pair(IdFor(TableFamily, "side-" + side.Key), a.RoomId, inOrder ? free[i] : free[j], inOrder ? free[j] : free[i],
-                            back, seatHeight, has);
+                            seatHeight, has);
                         paired = true;
                     }
             }

@@ -174,6 +174,43 @@ namespace Gamesim.Uma.Tests
 
 #if UNITY_EDITOR
         [UnityTest]
+        public IEnumerator UnresolvedIndexerRecipesAreIgnoredWhileTheCatalogBuilds()
+        {
+            yield return null;
+            var index = UMAAssetIndexer.Instance;
+            var recipes = index.GetAssetDictionary(typeof(UMAWardrobeRecipe));
+            var originalRecipes = recipes.ToArray();
+            var originalSerialized = index.SerializedItems.ToArray();
+            string missingName = "GamesimUnresolved-" + System.Guid.NewGuid().ToString("N");
+            var unresolved = new AssetItem(typeof(UMAWardrobeRecipe), missingName, "", null);
+            try
+            {
+                // GetAllAssets enumerates this real index dictionary. Adding only our unresolved
+                // row exercises that reader without changing the shared serialized index, GUID
+                // table or race/slot recipe lists. RemoveAsset(null) would alter those other lists.
+                recipes.Add(missingName, unresolved);
+                Assert.That(index.GetAllAssets<UMAWardrobeRecipe>().Any(recipe => recipe == null), Is.True,
+                    "The fixture models an index entry whose imported recipe can no longer be resolved.");
+                Assert.That(() => new UmaAppearanceCatalog(), Throws.Nothing,
+                    "An unresolved optional wardrobe asset must not stop every character body from building.");
+            }
+            finally
+            {
+                if (recipes.TryGetValue(missingName, out var owned) && ReferenceEquals(owned, unresolved))
+                    recipes.Remove(missingName);
+                Assert.That(recipes.Count, Is.EqualTo(originalRecipes.Length), "The temporary index row is the only one removed.");
+                foreach (var entry in originalRecipes)
+                    Assert.That(recipes.TryGetValue(entry.Key, out var retained) && ReferenceEquals(retained, entry.Value), Is.True,
+                        "Original index entry changed: " + entry.Key);
+                Assert.That(index.SerializedItems.Count, Is.EqualTo(originalSerialized.Length), "Existing null rows are retained too.");
+                for (int i = 0; i < originalSerialized.Length; i++)
+                    Assert.That(ReferenceEquals(index.SerializedItems[i], originalSerialized[i]), Is.True,
+                        "Original serialized index row changed: " + i);
+            }
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator AdditionalHairAndOutfitAreDiscoverableAndBuildFromCatalogEntriesOnly()
         {
             // Runtime-only asset copies model newly authored content. No AssetDatabase writes or permanent index edits.

@@ -39,6 +39,7 @@ namespace Gamesim.Presentation
         private Material frame, accent, dark, paper, readoutFontMaterial;
         private Mesh box;
         private TMP_Text progress;
+        private Transform progressFrontBacking,progressAudienceBacking;
         private Transform weight, gripBar, gripTrack, weightGuide;
         private readonly List<Transform> gripTicks = new List<Transform>();
         private Transform leftUpright, rightUpright, topBrace, handle, responsePad;
@@ -102,11 +103,12 @@ namespace Gamesim.Presentation
             // those real faces, as dice progress sits ahead of its pedestal.
             float progressFront = Instrument == Family.DiceTray ? Front - .145f
                 : Instrument == Family.GripRig ? Front - .12f : Front - .08f;
-            progress = Words("Instrument progress", new Vector3(0, .74f, progressFront), .90f, .13f, "Ready");
+            float progressHeight=Instrument==Family.GripRig?1.73f:.74f;
+            progress = Words("Instrument progress", new Vector3(0, progressHeight, progressFront), .90f, .13f, "Ready");
             // Each opposing plane has its own dark face. Saved yard lights and pillars
             // can remain behind the words without washing out their public progress.
-            Part("Progress front backing", new Vector3(0, .74f, progressFront + .006f), new Vector3(.96f, .16f, .008f), dark);
-            Part("Progress audience backing", new Vector3(0, .74f, Front + .154f), new Vector3(.96f, .16f, .008f), dark);
+            progressFrontBacking=Part("Progress front backing", new Vector3(0, progressHeight, progressFront + .006f), new Vector3(.96f, .16f, .008f), dark).transform;
+            progressAudienceBacking=Part("Progress audience backing", new Vector3(0, progressHeight, Front + .154f), new Vector3(.96f, .16f, .008f), dark).transform;
             // The show's wide camera sees the audience-facing readout on the back of a console.
             // Repeat only the same public information, rather than turning the actor away from it.
             foreach (TMP_Text glyph in glyphs) RepeatWord(glyph);
@@ -313,6 +315,12 @@ namespace Gamesim.Presentation
             float top=gripHeight+.26f;
             FitUpright(leftUpright,top);FitUpright(rightUpright,top);
             topBrace.localPosition=new Vector3(0,top,Front);
+            // A waist-high plate is behind the contestant during an actual hold. Keep the
+            // existing two-sided progress display above its fitted brace, in the same station.
+            float readoutHeight=top+.14f;
+            FitPartHeight(progress.transform,readoutHeight);
+            if(repeatWords.TryGetValue(progress,out var audience))FitPartHeight(audience.transform,readoutHeight);
+            FitPartHeight(progressFrontBacking,readoutHeight);FitPartHeight(progressAudienceBacking,readoutHeight);
         }
 
         private static void FitUpright(Transform upright,float top)
@@ -321,7 +329,7 @@ namespace Gamesim.Presentation
             var scale=upright.localScale;scale.y=top;upright.localScale=scale;
         }
 
-        private static void FitTrayPart(Transform part,float height)
+        private static void FitPartHeight(Transform part,float height)
         {var at=part.localPosition;at.y=height;part.localPosition=at;}
 
         public Vector3 HandContact(bool left)
@@ -344,8 +352,8 @@ namespace Gamesim.Presentation
             float shift=Mathf.Clamp(shoulder.y-.06f-1.28f,-.4f,.4f);
             trayPedestal.localPosition=new Vector3(0,.55f+shift*.5f,Front);
             trayPedestal.localScale=new Vector3(.20f,1.10f+shift,.25f);
-            FitTrayPart(trayBed,1.14f+shift);FitTrayPart(trayBack,1.21f+shift);
-            FitTrayPart(trayLeft,1.21f+shift);FitTrayPart(trayRight,1.21f+shift);
+            FitPartHeight(trayBed,1.14f+shift);FitPartHeight(trayBack,1.21f+shift);
+            FitPartHeight(trayLeft,1.21f+shift);FitPartHeight(trayRight,1.21f+shift);
             for(int i=0;i<indicators.Count;i++)
             {
                 Vector3 at=indicators[i].transform.localPosition;at.y=1.28f+shift;indicators[i].transform.localPosition=at;

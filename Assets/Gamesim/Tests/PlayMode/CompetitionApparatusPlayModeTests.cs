@@ -458,6 +458,40 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator Apparatus_GripProgressStaysAboveItsBraceWithoutChangingTheAttemptOrReservation()
+        {
+            var definition=CompetitionDefinitions.All.First(item=>item.Category=="Endurance");
+            var instrument=Make(definition,inactive:true);
+            var labels=instrument.GetComponentsInChildren<TMP_Text>(true).Where(label=>label.name.StartsWith("Instrument progress")).ToArray();
+            var backings=instrument.GetComponentsInChildren<MeshFilter>(true).Where(part=>part.name.StartsWith("Progress ")).ToArray();
+            var brace=instrument.GetComponentsInChildren<MeshFilter>(true).Single(part=>part.name=="Rig top brace");
+            Assert.That(labels,Has.Length.EqualTo(2));Assert.That(backings,Has.Length.EqualTo(2));
+            Action check=()=>
+            {
+                float braceTop=brace.transform.localPosition.y+brace.transform.localScale.y*brace.sharedMesh.bounds.extents.y;
+                foreach(var backing in backings)
+                {
+                    float bottom=backing.transform.localPosition.y-backing.transform.localScale.y*backing.sharedMesh.bounds.extents.y;
+                    Assert.That(bottom,Is.GreaterThan(braceTop+.02f),"The actual opaque plate is above the brace and the gripping hands.");
+                }
+                foreach(var label in labels)Assert.That(label.transform.localPosition.y,Is.EqualTo(backings[0].transform.localPosition.y).Within(.0001f));
+            };
+            check();
+            var run=new MiniGameRun(CompetitionMiniGames.Kind.Endurance,123,4,definition);run.SetHolding(true);run.Tick(.2);
+            string before=Fingerprint(run);Vector3 position=owner.transform.position;Quaternion rotation=owner.transform.rotation;
+            foreach(float shoulder in new[]{1.25f,1.65f})foreach(float reach in new[]{.44f,.70f})foreach(float radius in new[]{.32f,.40f})
+            {
+                instrument.FitGrip(shoulder,.04f,reach,radius,new Vector3(.13f,0,-.12f));
+                instrument.Sync(run,true,false,false,false);check();
+                Assert.That(labels.All(label=>label.text==CompetitionApparatus.Readout(run)),Is.True);
+                Assert.That(Fingerprint(run),Is.EqualTo(before));
+                Assert.That(instrument.Fits(CompetitionStageFootprint.Station(instrument.Instrument,position,rotation.eulerAngles.y,radius,1.9f)),Is.True);
+                Assert.That(owner.transform.position,Is.EqualTo(position));Assert.That(owner.transform.rotation,Is.EqualTo(rotation));
+            }
+            owner.SetActive(true);yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator Apparatus_ContactSolveReachesWithRealHandBonesWithoutStretchingOrMovingTheBody()
         {
             owner=new GameObject("Physical contact solver fixture");

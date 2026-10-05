@@ -183,9 +183,8 @@ namespace Gamesim.Episode
         /// <summary>
         /// How many of the actions left beginning the next competition loses, as the engine counts
         /// it: all of them when the week turns. Move-in night does not turn it, and the window's
-        /// spending is cleared as it closes, so what the week's extras give - bought time, a
-        /// storyline's bonus - is there again, whole, in the week's first window; only the night's
-        /// own unspent actions go.
+        /// spending is cleared as it closes; only the night's own unspent actions go. Under the
+        /// new economy, extras already spent are debited; legacy seasons keep their old refund.
         /// </summary>
         private static int ActionsLostByMovingOn(EpisodeState state)
         {
@@ -218,11 +217,17 @@ namespace Gamesim.Episode
             {
                 int tonight = EpisodeEngine.WindowSeats(state, window);
                 int extra = EpisodeEngine.SocialActionBudget(state) - tonight;
+                if (extra > 0 && EpisodeEngine.EconomyRulesOn(state))
+                    return (tonight + extra) + " actions tonight; the " + tonight + " base actions do not carry into the week. Only unspent extras carry.";
                 if (extra > 0)
                     return (tonight + extra) + " actions tonight; " + tonight + (tonight == 1 ? " does" : " do") + " not carry into the week, the extra "
                         + extra + (extra == 1 ? " does." : " do.");
                 return tonight + (tonight == 1 ? " action tonight; it does not" : " actions tonight; they do not") + " carry into the week.";
             }
+            if (EpisodeEngine.EconomyRulesOn(state))
+                return Windows.Names[window] + (window == Windows.AfterEviction
+                    ? ". All unspent actions are lost when this week ends."
+                    : ". Unspent base actions do not carry to the next window; unspent extras remain available this week.");
             return Windows.Names[window] + ". What you do not spend here does not carry to the next window.";
         }
 

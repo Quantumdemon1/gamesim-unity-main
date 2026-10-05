@@ -39,7 +39,7 @@ namespace Gamesim.Tests.EditMode
             var old = V18(); string original = old.ToString();
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(22));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(23));
             int week = (int)old["week"];
             Assert.That((int)migrated["weekRulesStartWeek"], Is.EqualTo(week + 1), "The week the save was in keeps its pool.");
             Assert.That(((JArray)migrated["windowActions"]).Select(t => (int)t), Is.EqualTo(new[] { 0, 0, 0, 0 }));
@@ -70,7 +70,7 @@ namespace Gamesim.Tests.EditMode
             old["schemaVersion"] = 15;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(22));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(23));
             Assert.That(migrated["windowActions"], Is.Not.Null);
             Assert.That((int)migrated["weekRulesStartWeek"], Is.EqualTo((int)old["week"] + 1));
             CheckShape(migrated);

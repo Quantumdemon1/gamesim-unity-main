@@ -372,6 +372,13 @@ namespace Gamesim.Tests.EditMode
         private static void Checkpoint(EpisodeState s, StringBuilder trace)
         {
             var o = JObject.FromObject(s);
+            // Keep this harness compilable against the recorded pre-schema-23 assembly too.
+            foreach (var field in new[] { "economyRulesVersion", "moveInExtrasSpent" })
+            {
+                if (o.TryGetValue(field, out var value))
+                    Assert.That(value.Value<int>(), Is.Zero, "Legacy goldens must not run the new economy: " + field);
+                o.Remove(field);
+            }
             o.Remove("schemaVersion"); o.Remove("commitmentRulesStartWeek");
             // Schema 22's deal fields - C7's link with C0's record - which a season without the rules leaves null and 0.
             foreach (var row in ((JArray)o["deals"]).OfType<JObject>()) { row.Remove("brokenById"); row.Remove("settledWeek"); row.Remove("linkedDealId"); }

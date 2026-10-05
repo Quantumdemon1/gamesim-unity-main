@@ -67,6 +67,8 @@ namespace Gamesim.Episode
         {
             const string lost = "Unspent actions are lost when you begin the next competition";
             string costs = FreeTimeCostCopyFor(state);
+            if (EpisodeEngine.EconomyRulesOn(state) && EpisodeEngine.IsFirstNight(state))
+                return costs + " Unspent base actions are lost when you begin the next competition. Only unspent extras carry into the week.";
             if (state != null && !state.evictionResolved) return costs + " " + lost + ", but actions you buy carry into the week.";
             return costs + " " + lost + (EpisodeEngine.LeverRulesOn(state) ? "." : "; actions you buy come back every week.");
         }

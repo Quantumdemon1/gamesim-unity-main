@@ -213,6 +213,11 @@ namespace Gamesim.Simulation
             {
                 case EpisodePhase.Social:
                     Require(s.pendingDiary == null, "Visit the Diary Room or skip the pending reflection before beginning the next competition.");
+                    // Capture before story closure can expire a bonus or remove a contestant, but
+                    // do not let the story's opening reads see a debit while these actions are
+                    // still counted in its window. Publishing it belongs to the counter reset.
+                    int openingDebit = EconomyRulesOn(s) && IsFirstNight(s)
+                        ? Math.Max(0, WindowSpent(s) - WindowSeats(s, Windows.AfterEviction)) : s.moveInExtrasSpent;
                     // The social window closes: open beats lapse, and a removal production has decided
                     // on happens here - after the diary check, before the week turns, so no eviction
                     // can intervene and no juror row needs dropping.
@@ -220,6 +225,7 @@ namespace Gamesim.Simulation
                     if (s.evictionResolved)
                     {
                         s.previousHohId = s.hohId; s.week++; s.hohId = null; s.vetoHolderId = null;
+                        s.moveInExtrasSpent = 0;
                         s.nominees.Clear(); s.vetoPlayers.Clear(); s.votes.Clear(); s.evictionSpeeches.Clear();
                         s.backdoorTargetId = null;   // A plan for a week that has ended is not a plan.
                         s.evictionResolved = false; s.vetoResolved = false; s.competitionScores.Clear();
@@ -234,6 +240,7 @@ namespace Gamesim.Simulation
                     }
                     s.socialActions = 0; s.outOfPhaseSocialActions = 0; s.competitionResolved = false;
                     ResetWindows(s);
+                    s.moveInExtrasSpent = s.week == 1 ? openingDebit : 0;
                     s.replyCards.Clear();
                     // The finale has no Have-Nots: the last week's end with its three, and so do any
                     // passes and punishments the final four's veto left behind.

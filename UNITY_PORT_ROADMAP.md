@@ -1,5 +1,11 @@
 # Gamesim Unity port
 
+**Separate Wave C branch, 2026-10-05 UTC:** `codex/wave-c-economy` stages E1 and schema 23
+above the frozen schema-22 integration candidate; it is not merged or live. See
+`WAVE_C_ECONOMY_IMPLEMENTATION.md` for changes and distinct evidence gates. The owner now requires
+all four Wave D systems, plus final GTX1060 acceptance at **1920x1080, 60 FPS**. A 900p profile is
+not evidence for that target. Neither E1 nor a fully ported/AAA release is declared accepted here.
+
 **Current status, 2026-10-04:** integration and acceptance are in progress on the existing
 schema-22 candidate. The milestone table and V7 counts below are historical: U08 is not currently
 all-green. Read the dated resumption section in `UNITY_PORT_IMPLEMENTATION.md` and fresh native

@@ -278,6 +278,7 @@ namespace Gamesim.Episode
                 EpisodeEngine.EnableRead(fresh);
                 EpisodeEngine.EnableLevers(fresh);
                 EpisodeEngine.EnableWeek(fresh);
+                EpisodeEngine.EnableEconomy(fresh);
                 // NPC agency from week one, and with it the house's first impressions of each other
                 // and of the player's persona (NPC-AGENCY-PLAN.md §2).
                 EpisodeEngine.EnableAgency(fresh);

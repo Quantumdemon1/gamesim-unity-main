@@ -21,6 +21,31 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 23) return (JObject)original.DeepClone();
+            if (version < 1 || version > 22) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV22ToV23(version == 22 ? original : PrepareV22Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>Old seasons retain their economy forever, including pristine opening saves. No RNG, history or budgets are rewritten.</summary>
+        public static JObject UpgradeV22ToV23(JObject original)
+        {
+            FrozenEpisodeV22.Validate(original);
+            var result = (JObject)original.DeepClone();
+            result.Add("economyRulesVersion", 0);
+            result.Add("moveInExtrasSpent", 0);
+            result["schemaVersion"] = 23;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v21-to-v22 dispatch.</summary>
+        public static JObject PrepareV22Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 22) return (JObject)original.DeepClone();
             if (version < 1 || version > 21) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV21ToV22(version == 21 ? original : PrepareV21Payload(original, out _));

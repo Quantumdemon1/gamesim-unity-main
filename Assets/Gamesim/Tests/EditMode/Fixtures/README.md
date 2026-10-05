@@ -1,5 +1,18 @@
 # Web parity fixtures
 
+## Schema 23 migration input (not a web-parity fixture)
+
+`V22MonoOpeningSave.json` is an unchanged 52,534-byte copy of the retained
+`C:/Users/kelli/Documents/Codex/2026-09-20/re/outputs/frozen-profile-input/episode.json`.
+Its adjacent external `manifest.json` records source pins `67a4c387` and `5a188ab8`, a
+12-person Social/week1/revision0 state, and real `EpisodeSaveStore.Save/TryLoad` under
+Unity's Mono **without launching the Editor or a player**. It is historical managed persistence
+evidence, not a standalone capture. The SHA256 is pinned by `PersistenceV23MigrationTests`;
+`.gitattributes` prevents checkout normalization. No checksum resealing was performed.
+The test copies the envelope into an isolated temporary slot, checks migration without a disk
+write, and checks the exact historical backup after an explicit save. Native execution of that
+new regression is still pending. The older V21 standalone fixture below remains untouched.
+
 `WebParityFixtures.json` contains expected results captured by executing the preserved Gamesim TypeScript source, bundled in memory with esbuild. Its expected values are not recomputed by C# tests. `WebSourceManifest.json` identifies the original source hashes and the full reference fixture hash.
 
 The generator and complete reference capture live in the development task at `work/unity-port-reference/generate-fixtures.mjs`, `collect-fixtures.ts`, `golden-fixtures.json`, and `source-manifest.json`. Running the generator twice produced byte-identical JSON. The bundle uses default balance settings because the Node process has no browser localStorage overrides; development-only logging is disabled.

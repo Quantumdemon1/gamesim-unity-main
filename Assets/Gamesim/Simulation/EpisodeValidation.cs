@@ -20,7 +20,7 @@ namespace Gamesim.Simulation
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 22) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 23) return Fail(out error, "Unsupported episode schema.");
             if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > CompetitionRules.Current)
                 return Fail(out error, "Unsupported competition rules version.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
@@ -37,6 +37,11 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Week-rules activation week must be within the saved season boundary.");
             if (s.windowActions == null || s.windowActions.Count != Windows.Count || s.windowActions.Any(n => n < 0 || n > MostActionsAWeekCanHold))
                 return Fail(out error, "Invalid window action counts.");
+            if (s.economyRulesVersion < 0 || s.economyRulesVersion > 1
+                || s.moveInExtrasSpent < 0 || s.moveInExtrasSpent > MostActionsAWeekCanHold
+                || (s.moveInExtrasSpent != 0 && (s.economyRulesVersion == 0 || !EpisodeEngine.WeekRulesOn(s)
+                    || s.week != 1 || EpisodeEngine.IsFirstNight(s))))
+                return Fail(out error, "Invalid economy rules or move-in extras debit.");
             if (s.agencyRulesStartWeek < 0 || s.agencyRulesStartWeek > 101 || s.agencyRulesStartWeek > s.week + 1)
                 return Fail(out error, "Agency-rules activation week must be within the saved season boundary.");
             if (s.finaleRulesStartWeek < 0 || s.finaleRulesStartWeek > 101 || s.finaleRulesStartWeek > s.week + 1)

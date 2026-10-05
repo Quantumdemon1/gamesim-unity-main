@@ -1,5 +1,13 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC — isolated Wave C E1 development, not promotion
+
+`D:/GamesimWaveC`, branch `codex/wave-c-economy`, starts from `a9f11ad0` while that exact
+schema-22 candidate's full native tests continue. Only this separate branch receives the schema-23
+economy and its migration/tests. Live source, scenes, settings, saves, old builds and the running
+acceptance copy are not edited. See `WAVE_C_ECONOMY_IMPLEMENTATION.md`; its native and desktop
+gates remain open. The older resumption evidence below still describes its own pinned candidate.
+
 ## 2026-10-04 integration resumption — acceptance in progress
 
 The live project remains on `b25edcb4` (schema 21); the existing

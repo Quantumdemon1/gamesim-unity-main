@@ -1458,7 +1458,10 @@ namespace Gamesim.Episode
                 // The petals are the six openings a conversation actually has here. Everything else
                 // - the promises, the alliance, the rumours, the deals - is beneath the dial in the
                 // group it belongs to, and the seventh petal moves the keyboard to the first row.
-                hud.ConversationRadial(npc.id, 7);
+                // Fresh E2 seasons move plain Talk to BOND below the dial; old saves retain all
+                // seven petals. The six-seat ring still keeps every other caption and command.
+                bool intentRules = EpisodeEngine.EconomyRulesOn(state);
+                hud.ConversationRadial(npc.id, intentRules ? 6 : 7);
                 hud.Tag(hud.Petal(EpisodeHud.SmallTalkCaption, "chat", UiTheme.Accent,
                         () => Commit(state, EpisodeCommandKind.SmallTalk, npc.id)),
                     Category(EpisodeCommandKind.SmallTalk), EpisodeHud.TagSeat.CardFoot);
@@ -1467,7 +1470,7 @@ namespace Gamesim.Episode
                     Category(EpisodeCommandKind.StrategicDiscussion), EpisodeHud.TagSeat.CardFoot);
                 hud.Tag(hud.Petal(EpisodeHud.PersonalChatCaption, "heart", UiTheme.Flirt,
                         () => Commit(state, EpisodeCommandKind.PersonalChat, npc.id)),
-                    Category(EpisodeCommandKind.PersonalChat), EpisodeHud.TagSeat.CardFoot);
+                    VerbTag(state, EpisodeCommandKind.PersonalChat), EpisodeHud.TagSeat.CardFoot);
                 hud.Petal(EpisodeHud.MorePetalCaption, "journal", UiTheme.Muted, hud.RevealBeyondRadial);
                 hud.Tag(hud.Petal(EpisodeHud.RelationshipBuildingCaption, "handshake", UiTheme.Allied,
                         () => Commit(state, EpisodeCommandKind.RelationshipBuilding, npc.id)),
@@ -1475,7 +1478,7 @@ namespace Gamesim.Episode
                 hud.Tag(hud.Petal(EpisodeHud.ShareSecretCaption, "gossip", UiTheme.Strategic,
                         () => Commit(state, EpisodeCommandKind.ShareSecret, npc.id)),
                     Category(EpisodeCommandKind.ShareSecret), EpisodeHud.TagSeat.CardFoot);
-                hud.Tag(hud.Petal("Spend time together", "star", UiTheme.Joke,
+                if (!intentRules) hud.Tag(hud.Petal("Spend time together", "star", UiTheme.Joke,
                         () => Commit(state, EpisodeCommandKind.Talk, npc.id)),
                     Category(EpisodeCommandKind.Talk), EpisodeHud.TagSeat.CardFoot);
                 // Everything else, under the dial in four groups by what it is for - bond, learn,

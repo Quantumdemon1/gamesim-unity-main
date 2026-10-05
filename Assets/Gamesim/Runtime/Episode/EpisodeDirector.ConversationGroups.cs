@@ -61,6 +61,10 @@ namespace Gamesim.Episode
         /// <summary>The pill beside a command's control in a conversation (<see cref="Category"/>). A read for tests.</summary>
         public static string VerbTag(EpisodeCommandKind kind) => Category(kind);
 
+        /// <summary>Fresh personal chat's main payoff is lore; old or lore-less seasons keep their tag.</summary>
+        public static string VerbTag(EpisodeState state, EpisodeCommandKind kind) =>
+            kind == EpisodeCommandKind.PersonalChat && ConversationIntentRules.PersonalLoreOn(state) ? LearnTag : Category(kind);
+
         /// <summary>
         /// What a loyalty declaration on offer says it is (X12). The engine checks every nomination and
         /// every revealed vote between the two of them, in either direction, and a breach by either is
@@ -133,6 +137,11 @@ namespace Gamesim.Episode
             hud.ConversationGroup(BondGroupTitle, "heart", BondLine);
             hud.Tag(hud.Action(EpisodeHud.DiscussGameCaption, () => Commit(state, EpisodeCommandKind.DiscussGame, npc.id)),
                 Category(EpisodeCommandKind.DiscussGame));
+            // E2 removes the overlapping plain Talk from the fresh dial, not from the game.
+            // Its caption, command, cost and first-row keyboard destination remain unchanged.
+            if (EpisodeEngine.EconomyRulesOn(state))
+                hud.Tag(hud.Action("Spend time together", () => Commit(state, EpisodeCommandKind.Talk, npc.id)),
+                    Category(EpisodeCommandKind.Talk));
             // What this room offers that no other does (decision D-E): pillow talk in a bedroom,
             // an invitation in the suite, cooking in the kitchen.
             RoomActs(state, npc);

@@ -1,5 +1,21 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC — personal-lore trade-off staged; NoUMA QA candidate passes
+
+E2's personal chat now trades lower warmth for up to two broader, reachable lore facts in fresh
+seasons with active lore. Plain "Spend time together" moves off the fresh six-petal dial into BOND;
+its command/caption remain, and legacy saves retain their original behavior. This is only part of
+E2. Every material change and compatibility boundary is in `WAVE_C_PERSONAL_LORE_IMPLEMENTATION.md`.
+Pure1759/1759, offline8/8 and three explicit regression reports pass. Seven new Play cases are
+authored/compiled, NOT executed. Floors2751/939/77; combined with eda, Edit2762. No merge or live promotion.
+
+Separately, frozen eda's full NoUMA g22n3 closed with Edit2540/2540 and Play903/903, zero failed/skipped,
+all owned processes exited naturally0, no source drift/cleanup errors/unowned descendants/timeout.
+Controller completed2026-10-05T07:53:37Z; terminal SHA256
+`8a054524e8cb8ffdda813c087a6b066464562e1a5b83ce9e1b6f4801bc620e1e`.
+The same-pin full UMA g22u1 started07:59:50Z and remains in progress. Neither run contains these
+Wave C gameplay changes. Visual review, build/player/profile and human acceptance are still separate.
+
 ## 2026-10-05 UTC — isolated E3 targeting implemented, not native accepted
 
 The isolated Wave C branch now implements all three E3 selectors: the goodwill target of an

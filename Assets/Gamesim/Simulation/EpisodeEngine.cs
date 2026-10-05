@@ -1158,7 +1158,7 @@ namespace Gamesim.Simulation
                     Converse(s, target, WebSocialVocabulary.SmallTalk(Roll(s)),
                         "You passed the time with " + target.name + "."); break;
                 case EpisodeCommandKind.PersonalChat:
-                    Converse(s, target, WebSocialVocabulary.PersonalChat(Roll(s)),
+                    Converse(s, target, ConversationIntentRules.PersonalWarmth(s, Roll(s)),
                         "You told " + target.name + " something about yourself."); break;
                 case EpisodeCommandKind.RelationshipBuilding:
                     Converse(s, target, WebSocialVocabulary.RelationshipBuilding(Roll(s)),

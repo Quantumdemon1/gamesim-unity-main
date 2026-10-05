@@ -1,14 +1,15 @@
 # Gamesim Unity port
 
 **Separate Wave C branch, 2026-10-05 UTC:** `codex/wave-c-economy` stages E1, all three E3
-targeting features and schema 23
+targeting features, E2's personal-lore/six-petal-dial portion, and schema 23
 above the frozen schema-22 integration candidate; it is not merged or live. See
 `WAVE_C_ECONOMY_IMPLEMENTATION.md`, `WAVE_C_TARGETING_IMPLEMENTATION.md`,
-`WAVE_C_NOMINEE_INTEL_IMPLEMENTATION.md` and `WAVE_C_SHARING_IMPLEMENTATION.md` for changes
-and distinct evidence gates. Pure1721 and offline8/8 pass; the new runtime tests are not executed.
-Branch floors are2713/932/77; combining eda requires2724 Edit cases. E2/E4/E5 remain. The owner requires
+`WAVE_C_NOMINEE_INTEL_IMPLEMENTATION.md`, `WAVE_C_SHARING_IMPLEMENTATION.md` and
+`WAVE_C_PERSONAL_LORE_IMPLEMENTATION.md` for changes and distinct evidence gates.
+Pure1759 and offline8/8 pass; the new runtime tests are not executed.
+Branch floors are2751/939/77; combining eda requires2762 Edit cases. The rest of E2, E4 and E5 remain. The owner requires
 all four Wave D systems, plus final GTX1060 acceptance at **1920x1080, 60 FPS**. A 900p profile is
-not evidence for that target. Neither E1/E3 nor a fully ported/AAA release is declared accepted here.
+not evidence for that target. This staged gameplay and a fully ported/AAA release are not declared accepted here.
 
 **Current status, 2026-10-04:** integration and acceptance are in progress on the existing
 schema-22 candidate. The milestone table and V7 counts below are historical: U08 is not currently
@@ -16,11 +17,11 @@ all-green. Read the dated resumption section in `UNITY_PORT_IMPLEMENTATION.md` a
 XML/manifests. Remaining work includes integration regression fixes, a matching shipping build,
 runtime/performance verification, Wave C/D gameplay, asset completion and human acceptance.
 
-Latest closed full candidate: `g22n2` failed with Edit2529/2529 and Play902/903: optional AI relay
-startup raised an unhandled error. The eda QA follow-up passed11 focused Edit and24 focused Play
-cases using the package's supported batch-test isolation hook, with strict checks intact. Full
-NoUMA `g22n3` at eda has closed Edit2540/2540; Play remains running. That frozen candidate does not
-contain E1/E3. Complete same-pin NoUMA/UMA suites and a matching desktop build remain open.
+Latest closed full candidate: NoUMA `g22n3` at eda passed Edit2540/2540 and Play903/903,
+zero failed/skipped, clean natural exits and no source drift. The earlier g22n2 relay failure is
+retained; its supported batch-test isolation repair did not disable checks. Same-pin full UMA
+`g22u1` is running. That frozen candidate contains none of E1/E2/E3. UMA acceptance, a matching
+desktop build, actual graphical review and later combined gameplay validation remain open.
 See the implementation record's October 5 UTC section. The live project is not yet promoted.
 
 Source: the agreed Unity plan in the GameSim Dev conversation, following the choice to build the first slice around a 3D house. The existing Unity 6000.6.0f1 project and its pinned packages are retained.

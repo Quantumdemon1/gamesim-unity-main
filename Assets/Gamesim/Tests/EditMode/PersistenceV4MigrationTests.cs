@@ -90,6 +90,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(changed, Is.True);
             Assert.That((int)migrated["schemaVersion"], Is.EqualTo(23));
             Assert.That((int)migrated["playerStudyBonus"], Is.Zero);
+            Assert.That((int)migrated["economyRulesVersion"], Is.Zero);
+            Assert.That((int)migrated["moveInExtrasSpent"], Is.Zero);
             Assert.That((uint)migrated["randomState"], Is.Zero);
             // Compared without schema 7's card copy, which the last step adds to every contestant.
             // The claim is that nothing historical changed, not that nothing was added — what the
@@ -206,7 +208,8 @@ namespace Gamesim.Tests.EditMode
                     "weekRulesStartWeek", "windowActions",
                     "agencyRulesStartWeek",
                     "finaleRulesStartWeek", "finalArgument",
-                    "commitmentRulesStartWeek" }.Contains(field);
+                    "commitmentRulesStartWeek",
+                    "economyRulesVersion", "moveInExtrasSpent" }.Contains(field);
                 case "state.contestants[]": return new[] { "occupation", "archetype", "age", "hometown", "bio", "sourceTemplateId", "appearance" }.Contains(field);
                 case "state.juryExchanges[]": return new[] { "category", "receiptKind", "receiptId" }.Contains(field);
                 case "state.promises[]": return new[] { "brokenById", "settledWeek" }.Contains(field);

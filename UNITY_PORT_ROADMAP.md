@@ -1,5 +1,14 @@
 # Gamesim Unity port
 
+**Latest native follow-up, 2026-10-05 UTC:** combined ed492's Edit suite reports
+3230/3240 pass,10 fail,0 skip. Historical-test wiring is repaired in the separate
+Wave C checkout; no production/frozen/fixture changes or lowered floors. All ten
+failures reproduced under managed Mono before;12/12 named tests pass after and
+offline8/8 compiles. See `WAVE_C_MIGRATION_WIRING_REPAIR.md`. Combined Play/controller
+g23n1 still runs unchanged. Fresh repaired native suites remain required; scoped
+SaveStore successes are not a passing whole suite or live/desktop acceptance.
+All4 owner-required Wave D systems and all release gates remain in scope.
+
 **Latest staged gameplay, 2026-10-05 UTC:** E4 HoH pitches and E5 bounded explicit
 block-speech influence are implemented on the separate Wave C branch. See
 `WAVE_C_HOH_PITCHES_IMPLEMENTATION.md` and `WAVE_C_BLOCK_SPEECH_IMPLEMENTATION.md`

@@ -45,9 +45,27 @@ namespace Gamesim.Tests.EditMode
             projection["schemaVersion"] = 14;
             Assert.That(JToken.DeepEquals(projection, old), Is.True, "Every schema 14 field is carried unchanged, Have-Nots included.");
             Assert.That(old.ToString(), Is.EqualTo(original), "The original payload is not touched.");
-            // Validated as the save it becomes: the live contract is schema 22's.
-            var state = EpisodeSaveMigrations.UpgradeV21ToV22(EpisodeSaveMigrations.UpgradeV20ToV21(EpisodeSaveMigrations.UpgradeV19ToV20(EpisodeSaveMigrations.UpgradeV18ToV19(EpisodeSaveMigrations.UpgradeV17ToV18(EpisodeSaveMigrations.UpgradeV16ToV17(
-                EpisodeSaveMigrations.UpgradeV15ToV16(migrated))))))).ToObject<EpisodeState>(Serializer());
+            // Preserve the frozen chain, then add schema 23's explicit old-season defaults.
+            var version22 = EpisodeSaveMigrations.UpgradeV21ToV22(EpisodeSaveMigrations.UpgradeV20ToV21(EpisodeSaveMigrations.UpgradeV19ToV20(EpisodeSaveMigrations.UpgradeV18ToV19(EpisodeSaveMigrations.UpgradeV17ToV18(EpisodeSaveMigrations.UpgradeV16ToV17(
+                EpisodeSaveMigrations.UpgradeV15ToV16(migrated)))))));
+            Assert.That((int)version22["schemaVersion"], Is.EqualTo(22));
+            string previous = version22.ToString();
+            var completed = EpisodeSaveMigrations.UpgradeV22ToV23(version22);
+            Assert.That((int)completed["schemaVersion"], Is.EqualTo(23));
+            Assert.That((int)completed["economyRulesVersion"], Is.Zero);
+            Assert.That((int)completed["moveInExtrasSpent"], Is.Zero);
+            var previousProjection = PersistenceMigrationTests.StripSchema23((JObject)completed.DeepClone());
+            previousProjection["schemaVersion"] = 22;
+            Assert.That(JToken.DeepEquals(previousProjection, version22), Is.True, "Only the declared schema-23 defaults are added.");
+            var originalProjection = PersistenceMigrationTests.StripSchema15((JObject)completed.DeepClone());
+            originalProjection["schemaVersion"] = 14;
+            Assert.That(JToken.DeepEquals(originalProjection, old), Is.True, "Every original field survives the complete chain.");
+            Assert.That(version22.ToString(), Is.EqualTo(previous));
+            Assert.That(old.ToString(), Is.EqualTo(original));
+            var state = completed.ToObject<EpisodeState>(Serializer());
+            Assert.That(state.strategyRulesStartWeek, Is.Zero);
+            Assert.That(state.lobbies, Is.Empty); Assert.That(state.replyCards, Is.Empty);
+            Assert.That(EpisodeEngine.EconomyRulesOn(state), Is.False);
             Assert.That(EpisodeValidation.TryValidate(state, out var error), Is.True, error);
             var repeated = EpisodeSaveMigrations.PrepareV15Payload(migrated, out changed);
             Assert.That(changed, Is.False);

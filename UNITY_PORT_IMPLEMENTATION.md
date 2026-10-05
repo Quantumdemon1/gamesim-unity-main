@@ -1,5 +1,20 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC — historical-test wiring repaired; combined native still running
+
+Combined ed492's closed Edit report is3230/3240 passed,10 failed,0 skipped.
+Six tests stopped at22 before live23 validation; four exact-field comparisons
+omitted the two reviewed23 economy fields. The six-file isolated repair retains
+all rejection/history/type checks and strengthens zero-default/input-preservation
+assertions. No runtime/migration/fixture change or suite-floor decrease.
+See `WAVE_C_MIGRATION_WIRING_REPAIR.md` for every change and retained evidence.
+Direct managed Mono calls reproduce the same10 failures before, then12/12 named
+tests (including two negative controls) pass after; offline8/8 compiles. This is
+NOT native rerun/whole-suite acceptance. Scoped original native SaveStore classes
+pass24 schema23/23 pitch/32 speech cases, but the full Edit suite remains failed.
+Full Play/controller g23n1 is still active/frozen; repaired integration and fresh
+NoUMA/UMA, all4 Wave D, actual assets, build/1080p60/visual/humans remain required.
+
 ## 2026-10-05 UTC — E5 block-speech influence staged; baseline native QA closed
 
 E5 now records explicit public speech approaches and applies a bounded private

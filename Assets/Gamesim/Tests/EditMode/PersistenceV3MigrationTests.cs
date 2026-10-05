@@ -147,8 +147,12 @@ namespace Gamesim.Tests.EditMode
                 // Schema 21.
                 "finaleRulesStartWeek", "finalArgument",
                 // Schema 22.
-                "commitmentRulesStartWeek"
+                "commitmentRulesStartWeek",
+                // Schema 23.
+                "economyRulesVersion", "moveInExtrasSpent"
             }));
+            Assert.That((int)current["economyRulesVersion"], Is.Zero);
+            Assert.That((int)current["moveInExtrasSpent"], Is.Zero);
             Assert.That((string)current["playerPersona"]["current"], Is.EqualTo("Neutral"));
             Assert.That(current["playerPersona"]["scores"].Select(item => (string)item["persona"]),
                 Is.EqualTo(new[] { "Neutral", "Remorseful", "Ruthless", "Calculated", "Social Butterfly" }));

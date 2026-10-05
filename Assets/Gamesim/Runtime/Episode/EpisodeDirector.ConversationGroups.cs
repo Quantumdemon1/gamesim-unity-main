@@ -21,8 +21,9 @@ namespace Gamesim.Episode
     /// <para>What has to be answered stays above the dial, where it always was: what the player came
     /// for, a loyalty declaration on offer, and the plea to whoever is deciding.</para>
     ///
-    /// <para>Presentation only. No command, roll, cost or saved field changes here; the rows commit
-    /// exactly what they committed before.</para>
+    /// <para>The V5 grouping itself is presentation only. Later fresh-season E3 adapters add
+    /// deliberate targets to the asking and sharing rows; their guarded choice screens and rule
+    /// boundaries live in the corresponding director partials and simulation readers.</para>
     /// </summary>
     public sealed partial class EpisodeDirector
     {
@@ -59,6 +60,15 @@ namespace Gamesim.Episode
 
         /// <summary>The pill beside a command's control in a conversation (<see cref="Category"/>). A read for tests.</summary>
         public static string VerbTag(EpisodeCommandKind kind) => Category(kind);
+
+        /// <summary>Fresh topics advertise their information payoff as well as their risk.</summary>
+        public static string VerbTag(EpisodeState state, EpisodeCommandKind kind) =>
+            kind == EpisodeCommandKind.PersonalChat && ConversationIntentRules.PersonalLoreOn(state) ? LearnTag
+                : kind == EpisodeCommandKind.DiscussGame && EpisodeEngine.EconomyRulesOn(state) ? LearnTag + " · " + RiskTag
+                : Category(kind);
+
+        public static string AiringRiskLabel(EpisodeState state) =>
+            EpisodeEngine.EconomyRulesOn(state) ? "Read · high risk" : "High risk";
 
         /// <summary>
         /// What a loyalty declaration on offer says it is (X12). The engine checks every nomination and
@@ -131,7 +141,12 @@ namespace Gamesim.Episode
             // the first row after the dial, which is where the dial's More petal sends the keyboard.
             hud.ConversationGroup(BondGroupTitle, "heart", BondLine);
             hud.Tag(hud.Action(EpisodeHud.DiscussGameCaption, () => Commit(state, EpisodeCommandKind.DiscussGame, npc.id)),
-                Category(EpisodeCommandKind.DiscussGame));
+                VerbTag(state, EpisodeCommandKind.DiscussGame));
+            // E2 removes the overlapping plain Talk from the fresh dial, not from the game.
+            // Its caption, command, cost and first-row keyboard destination remain unchanged.
+            if (EpisodeEngine.EconomyRulesOn(state))
+                hud.Tag(hud.Action("Spend time together", () => Commit(state, EpisodeCommandKind.Talk, npc.id)),
+                    Category(EpisodeCommandKind.Talk));
             // What this room offers that no other does (decision D-E): pillow talk in a bedroom,
             // an invitation in the suite, cooking in the kitchen.
             RoomActs(state, npc);
@@ -139,8 +154,7 @@ namespace Gamesim.Episode
             // LEARN: the questions, unless they were asked first, and what you share.
             hud.ConversationGroup(LearnGroupTitle, "eye", window ? LearnWindowLine : LearnLine);
             if (!cameToAsk) AskRows(state, npc, window);
-            hud.Tag(hud.Action("Share something I know", () => Commit(state, EpisodeCommandKind.ShareInformation, npc.id)),
-                Category(EpisodeCommandKind.ShareInformation));
+            InformationShareRow(state, npc);
 
             // SCHEME: each verb about a third houseguest is one row that opens its people. Venting and
             // lying are said to the person in front of you; a rumour is told to the house, so it waits

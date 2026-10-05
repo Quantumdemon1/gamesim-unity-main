@@ -41,6 +41,8 @@ namespace Gamesim.Simulation
             FreeTimeEnds,
             /// <summary>Nothing left in the season takes it away: it waits for as long as its sender is in the house.</summary>
             Open,
+            /// <summary>A player-HoH pitch, cleared by the actual Nominate command.</summary>
+            NominationSet,
         }
 
         /// <summary>One thing waiting on the player: what it is, its own id, who it is from, and when it goes.</summary>
@@ -100,6 +102,8 @@ namespace Gamesim.Simulation
             {
                 if (card == null || !Present(s, card.fromId)) continue;
                 var lapses = CardLapse(s, out bool now);
+                if (card.kind == ReplyCards.Pitch) { lapses = Lapse.NominationSet; now = false; }
+                if (card.kind == ReplyCards.Pitch && !HoHPitches.ValidCard(s, card)) continue;
                 reading.items.Add(new Item
                 {
                     kind = Kind.Card, id = card.id, fromId = card.fromId, type = card.kind, week = card.week,
@@ -341,7 +345,7 @@ namespace Gamesim.Simulation
 
         /// <summary>What a card is called in a sentence, or null where the card's title says it better than a noun would.</summary>
         private static string CardNoun(string kind) =>
-            kind == ReplyCards.Plea ? "plea" : kind == ReplyCards.Confrontation ? "confrontation" : null;
+            kind == ReplyCards.Plea ? "plea" : kind == ReplyCards.Confrontation ? "confrontation" : kind == ReplyCards.Pitch ? "pitch" : null;
 
         private static string When(Lapse lapses)
         {
@@ -351,6 +355,7 @@ namespace Gamesim.Simulation
                 case Lapse.CampaignOpens: return "when the campaign opens";
                 case Lapse.CampaignCloses: return "when campaigning closes";
                 case Lapse.FreeTimeEnds: return "when free time ends";
+                case Lapse.NominationSet: return "when you nominate";
                 default: return "later";
             }
         }

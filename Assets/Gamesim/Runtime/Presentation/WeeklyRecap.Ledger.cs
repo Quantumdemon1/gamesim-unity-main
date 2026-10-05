@@ -120,9 +120,12 @@ namespace Gamesim.Presentation
                 string words = spoken?.text;
                 if (string.IsNullOrWhiteSpace(words))
                 {
-                    var line = events.FirstOrDefault(e => e.kind == "eviction-speech" && e.text != null
-                        && e.text.StartsWith(evictee.name + ": ", StringComparison.Ordinal));
-                    words = line?.text.Substring(evictee.name.Length + 2);
+                    var line = events.FirstOrDefault(e => e.text != null
+                        && ((e.kind == "eviction-speech" && e.text.StartsWith(evictee.name + ": ", StringComparison.Ordinal))
+                            || (BlockSpeeches.IsReceiptKind(e.kind) && BlockSpeeches.EventApproach(e) != BlockSpeeches.Quiet
+                                && e.audienceIds.Count > 0 && e.audienceIds[0] == evictee.id)));
+                    words = line == null ? null : BlockSpeeches.IsReceiptKind(line.kind) ? line.text
+                        : line.text.Substring(evictee.name.Length + 2);
                 }
                 recap.evicteeQuote = string.IsNullOrWhiteSpace(words) ? null : words.Trim();
             }

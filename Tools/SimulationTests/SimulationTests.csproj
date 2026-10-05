@@ -56,6 +56,16 @@
     <Compile Include="$(EditMode)GameSenseTests.cs" />
     <Compile Include="$(EditMode)GameSenseHarnessTests.cs" />
     <Compile Include="$(EditMode)WeekRulesTests.cs" />
+    <Compile Include="$(EditMode)EconomyRulesTests.cs" />
+    <Compile Include="$(EditMode)ExtraActionPurchaseChoiceTests.cs" />
+    <Compile Include="$(EditMode)NomineeIntelTests.cs" />
+    <Compile Include="$(EditMode)InformationShareChoiceTests.cs" />
+    <Compile Include="$(EditMode)ConversationIntentTests.cs" />
+    <Compile Include="$(EditMode)ConversationInformationTests.cs" />
+    <Compile Include="$(EditMode)ReplyCardPayoffTests.cs" />
+    <Compile Include="$(EditMode)HoHPitchTests.cs" />
+    <Compile Include="$(EditMode)BlockSpeechInfluenceTests.cs" />
+    <Compile Include="$(EditMode)ActionBalanceHarnessTests.cs" />
     <Compile Include="$(EditMode)TraitAffinityTests.cs" />
     <Compile Include="$(EditMode)NpcAgencyHarnessTests.cs" />
     <Compile Include="$(EditMode)HouseguestNotesTests.cs" />

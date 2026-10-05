@@ -179,6 +179,7 @@ namespace Gamesim.Simulation
         public static string Log(EpisodeState state, EpisodeEvent entry)
         {
             if (entry == null) return null;
+            if (state != null && BlockSpeeches.IsReceiptKind(entry.kind)) return BlockSpeeches.PublicLine(state, entry);
             if (entry.kind != StoryLog.Outcome || state == null) return entry.text;
             foreach (var cycle in state.storylines)
             {

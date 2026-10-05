@@ -1,5 +1,33 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC — QA and Wave C combined; new candidate acceptance pending
+
+The isolated integration worktree combines baseline QA/contact/readout commit
+`c2725b53a16e3a08e85d083d4c02d6c851ca7081` with Wave C E1-E5 commit
+`88986ee1f3def7eddbe04e53070b004eace33dba`. This is NOT live promotion. Only
+Tools/baseline.txt and these two root progress documents conflicted; both histories
+are retained below. All runtime, tests, source fixtures, schema23 save boundary,
+relay isolation and physical competition contact/readout changes merge unchanged.
+Combined floors3240 Edit /992 Play /77 UMA /2182 pure retain the separate11 QA
+Edit/4 Play tests. The machine-local GAMESIM_UMA settings change stays uncommitted.
+
+c272's full baseline NoUMA (2540 Edit/907 Play) and UMA (2540 Edit/935 generalPlay/
+77 UMA) passed with clean whole-run audits. The merged source also passed2182/2182
+executed pure tests (`combined-wave-c-pure-01/combined.trx`,13 explicit reports
+unexecuted) and8/8 fresh offline assemblies (`combined-wave-c-offline-01.log`)
+under the dedicated external integration evidence directory. Independent staged-
+index review verified both parents' unique files unchanged except exactly the
+three reconciliations; fixture hashes and local-only settings boundary retained.
+This is not native/SaveStore/UI acceptance or a shipping build. Fresh pinned
+combined native validation is required, then a separately pinned
+desktop build, actual windowed1920x1080/60FPS GTX1060 profile and visual review.
+
+All four owner-required Wave D additions, wider E2 context/room/bargain balance,
+consistent actual assets and three first-time human playtests remain open. Older
+dated statements below describe their original pins, not current merge/acceptance.
+No old web PR, remote publish, optional account/cloud/AI or retained save/build
+deletion is part of this increment. Live b25edcb4 edits/recoveries remain preserved.
+
 ## 2026-10-05 UTC — batch-test relay isolation; focused verification passed
 
 The latest closed full NoUMA candidate is `g22n2` at `a9f11ad05725b0d295ef6bd7e8a2ff796d740888`:
@@ -46,6 +74,88 @@ walks plus480 paired balance seasons, managed Mono persistence28 and offline8/8 
 suites/build/desktop/human acceptance and integration remain open; it is NOT in this schema22 candidate.
 Do not fold E1 or later gameplay into the frozen QA run. Full same-pin NoUMA then UMA, a matching
 shipping build, actual player/visual/performance checks and guarded live promotion remain ahead.
+## 2026-10-05 UTC — E5 block-speech influence staged; baseline native QA closed
+
+E5 now records explicit public speech approaches and applies a bounded private
+NPC vote term from a single complete post-bloc baseline, with invariant private
+read counts and actual player/saved NPC ballot authority preserved. Station and
+Diary Room drafts, durable callbacks and exact public readback are implemented.
+See `WAVE_C_BLOCK_SPEECH_IMPLEMENTATION.md` for EVERY material change, source/native
+boundary, compatibility, retained compilation failures and independent review.
+Final pure2182/2182 and offline8/8 pass; 32 new native SaveStore Edit and15 Play
+cases are compiled, NOT executed. Floors3229/988/77/2182; combined c272 must retain
+its11 QA Edit/4 Play cases, yielding3240/992/77/2182. No live promotion.
+
+Separately, same-pin c272 NoUMA g22n4 closed2026-10-05T12:51:01Z: Edit2540/2540,
+Play907/907, zero failures/skips; whole-run clean drift/process/timeout audit.
+Previous UMA g22u2 is also closed green. Neither baseline contains Wave C. Live
+MCP identity/scene reverified read-only: EpisodeHouse saved/idle; Console contains
+four historical MCP argument errors, preserved. Combined native/gameplay, build,
+visual/performance and human acceptance remain open, as do wider E2 balance,
+all four required Wave D systems and actual assets. Target remains1080p60 GTX1060.
+
+## 2026-10-05 UTC — E4 HoH pitches staged; frozen UMA QA closes green
+
+The separate Wave C branch now implements the player HoH's incoming pitch cards,
+free once-per-card assessment and three explicit replies using existing safety
+promises. Nominee drafts, Diary Room routes, durable guards, knowledge boundaries
+and ignored-card expiry are covered in `WAVE_C_HOH_PITCHES_IMPLEMENTATION.md`,
+which reports every material source/test change and the source/native-adapter boundary.
+Final pure2091/2091 and offline8/8 pass; 23 actual-SaveStore Edit cases and15 Play
+cases are authored/compiled, NOT executed. Floors3106/973/77/2091; combining c272
+requires3117/977/77/2091. No merge, live promotion, native gameplay or desktop acceptance.
+
+Separately, c272's frozen UMA g22u2 closed2026-10-05T11:11:52Z with Edit2540/2540,
+general Play935/935 and UMA77/77, zero failures/skips/drift/timeout/cleanup errors.
+It contains NONE of Wave C. Same-pin NoUMA g22n4 is active; integration and its
+controllers remain frozen. Build, graphical/performance and human gates remain open.
+
+The older dated entries below are retained historical evidence, not current totals.
+E2's broader balance gate, E5, all four required Wave D systems, actual asset
+completion and combined acceptance at1920x1080/60FPS on GTX1060 still remain.
+
+## 2026-10-05 UTC — personal-lore trade-off staged; NoUMA QA candidate passes
+
+E2's personal chat now trades lower warmth for up to two broader, reachable lore facts in fresh
+seasons with active lore. Plain "Spend time together" moves off the fresh six-petal dial into BOND;
+its command/caption remain, and legacy saves retain their original behavior. This is only part of
+E2. Every material change and compatibility boundary is in `WAVE_C_PERSONAL_LORE_IMPLEMENTATION.md`.
+Pure1759/1759, offline8/8 and three explicit regression reports pass. Seven new Play cases are
+authored/compiled, NOT executed. Floors2751/939/77; combined with eda, Edit2762. No merge or live promotion.
+
+Separately, frozen eda's full NoUMA g22n3 closed with Edit2540/2540 and Play903/903, zero failed/skipped,
+all owned processes exited naturally0, no source drift/cleanup errors/unowned descendants/timeout.
+Controller completed2026-10-05T07:53:37Z; terminal SHA256
+`8a054524e8cb8ffdda813c087a6b066464562e1a5b83ce9e1b6f4801bc620e1e`.
+The same-pin full UMA g22u1 started07:59:50Z and remains in progress. Neither run contains these
+Wave C gameplay changes. Visual review, build/player/profile and human acceptance are still separate.
+
+## 2026-10-05 UTC — isolated E3 targeting implemented, not native accepted
+
+The isolated Wave C branch now implements all three E3 selectors: the goodwill target of an
+extra action (`b2481608`), a nominee opinion (`060859af`), and deliberate memory sharing with
+review/confirmation. See `WAVE_C_TARGETING_IMPLEMENTATION.md`,
+`WAVE_C_NOMINEE_INTEL_IMPLEMENTATION.md` and `WAVE_C_SHARING_IMPLEMENTATION.md` for changes,
+compatibility decisions, retained failures and exact evidence. No live promotion or merge.
+
+Final sharing subset1721/1721 and offline compilation8/8 pass. Ten new sharing Play tests are
+authored/compiled, not executed; E1 and all new E3 runtime/migration gates remain open. Current
+branch floors2713/932/77 become2724 Edit when combined with eda's11 QA cases. The separate
+integration run `g22n3` at eda remains frozen: Edit2540/2540 closed, Play in progress. It does
+not certify these gameplay changes. Source-fixture parity, native suites, shipping build,
+standalone profiles/visual review and human playtests remain distinct completion gates.
+
+The owner requires all four Wave D systems and GTX1060 desktop acceptance at1920x1080/60 FPS.
+E2/E4/E5, those four larger additions, remaining actual art assets, integration, desktop and
+human acceptance are still in scope. No optional account/cloud/AI integration is authorized.
+
+## 2026-10-05 UTC — isolated Wave C E1 development, not promotion
+
+`D:/GamesimWaveC`, branch `codex/wave-c-economy`, starts from `a9f11ad0` while that exact
+schema-22 candidate's full native tests continue. Only this separate branch receives the schema-23
+economy and its migration/tests. Live source, scenes, settings, saves, old builds and the running
+acceptance copy are not edited. See `WAVE_C_ECONOMY_IMPLEMENTATION.md`; its native and desktop
+gates remain open. The older resumption evidence below still describes its own pinned candidate.
 
 ## 2026-10-04 integration resumption — acceptance in progress
 

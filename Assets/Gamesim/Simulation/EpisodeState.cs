@@ -244,7 +244,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 22;
+        public int schemaVersion = 23;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
@@ -275,6 +275,10 @@ namespace Gamesim.Simulation
         public int weekRulesStartWeek;
         /// <summary>Schema 19: the conversations spent in each of the week's four windows, reset as the week turns.</summary>
         public List<int> windowActions = new List<int> { 0, 0, 0, 0 };
+        /// <summary>Schema 23: 0 keeps the saved economy; 1 gives a fresh season two independent move-in seats and a two-seat after-eviction floor.</summary>
+        public int economyRulesVersion;
+        /// <summary>Schema 23: weekly extras spent on move-in night, retained through week one after its window counters reset.</summary>
+        public int moveInExtrasSpent;
         /// <summary>Schema 20: the week NPC agency begins (NPC-AGENCY-PLAN.md §2); 0 for a save that never reached it.</summary>
         public int agencyRulesStartWeek;
         /// <summary>Schema 21: the week the finale rules begin (ENDGAME-PLAN §3); 0 for a save that never reached them.</summary>

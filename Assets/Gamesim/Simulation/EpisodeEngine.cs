@@ -104,14 +104,24 @@ namespace Gamesim.Simulation
                         "The nominees are not speaking right now.");
                     Require(s.nominees.Contains(s.playerId), "Only a nominee speaks from the block.");
                     Require(!s.evictionSpeeches.Any(x => x.speakerId == s.playerId), "Your speech is already committed.");
+                    string speechApproach = c.secondTargetId ?? LobbyApproach.Emotional;
+                    if (BlockSpeeches.RulesOn(s))
+                        Require(BlockSpeeches.IsApproach(speechApproach) && (speechApproach != BlockSpeeches.Quiet || string.IsNullOrWhiteSpace(c.text)),
+                            "Choose one of the speech approaches offered by the house.");
                     s.evictionSpeeches.Add(new EvictionSpeechState
                     {
                         speakerId = s.playerId, week = s.week, isPlayerAuthored = true,
                         text = (c.text ?? string.Empty).Trim(),
                     });
-                    Log(s, "eviction-speech", string.IsNullOrWhiteSpace(c.text)
-                        ? "You let your game speak for itself."
-                        : "You addressed the house from the block.");
+                    if (BlockSpeeches.RulesOn(s))
+                    {
+                        var speech = s.evictionSpeeches.Last();
+                        if (string.IsNullOrWhiteSpace(speech.text)) speechApproach = BlockSpeeches.Quiet;
+                        Log(s, BlockSpeeches.EventPrefix + speechApproach, BlockSpeeches.ReceiptText(speech),
+                            BlockSpeeches.Audience(s, s.playerId));
+                    }
+                    else Log(s, "eviction-speech", string.IsNullOrWhiteSpace(c.text)
+                            ? "You let your game speak for itself." : "You addressed the house from the block.");
                     break;
                 case EpisodeCommandKind.SetBackdoorPlan: SetBackdoorPlan(s, s.Find(c.targetId)); break;
                 case EpisodeCommandKind.MarkOpeningBeat: MarkOpeningBeat(s, c.targetId); break;
@@ -213,6 +223,11 @@ namespace Gamesim.Simulation
             {
                 case EpisodePhase.Social:
                     Require(s.pendingDiary == null, "Visit the Diary Room or skip the pending reflection before beginning the next competition.");
+                    // Capture before story closure can expire a bonus or remove a contestant, but
+                    // do not let the story's opening reads see a debit while these actions are
+                    // still counted in its window. Publishing it belongs to the counter reset.
+                    int openingDebit = EconomyRulesOn(s) && IsFirstNight(s)
+                        ? Math.Max(0, WindowSpent(s) - WindowSeats(s, Windows.AfterEviction)) : s.moveInExtrasSpent;
                     // The social window closes: open beats lapse, and a removal production has decided
                     // on happens here - after the diary check, before the week turns, so no eviction
                     // can intervene and no juror row needs dropping.
@@ -220,6 +235,7 @@ namespace Gamesim.Simulation
                     if (s.evictionResolved)
                     {
                         s.previousHohId = s.hohId; s.week++; s.hohId = null; s.vetoHolderId = null;
+                        s.moveInExtrasSpent = 0;
                         s.nominees.Clear(); s.vetoPlayers.Clear(); s.votes.Clear(); s.evictionSpeeches.Clear();
                         s.backdoorTargetId = null;   // A plan for a week that has ended is not a plan.
                         s.evictionResolved = false; s.vetoResolved = false; s.competitionScores.Clear();
@@ -234,6 +250,7 @@ namespace Gamesim.Simulation
                     }
                     s.socialActions = 0; s.outOfPhaseSocialActions = 0; s.competitionResolved = false;
                     ResetWindows(s);
+                    s.moveInExtrasSpent = s.week == 1 ? openingDebit : 0;
                     s.replyCards.Clear();
                     // The finale has no Have-Nots: the last week's end with its three, and so do any
                     // passes and punishments the final four's veto left behind.
@@ -781,6 +798,7 @@ namespace Gamesim.Simulation
             Require(s.nominees.Count == 0, "Nominations are already committed.");
             var eligible = new HashSet<string>(NominationCandidates(s).Select(c => c.id));
             Require(first != second && eligible.Contains(first ?? "") && eligible.Contains(second ?? ""), "Choose two distinct eligible houseguests.");
+            s.replyCards.RemoveAll(card => card.kind == ReplyCards.Pitch);
             s.nominees = new List<string> { first, second };
             foreach (var nominee in s.nominees) NominationEffects(s, nominee);
             StoryNominated(s, s.nominees);
@@ -960,10 +978,14 @@ namespace Gamesim.Simulation
                 s.evictionSpeeches.Add(new EvictionSpeechState
                 {
                     speakerId = nomineeId, week = s.week, isPlayerAuthored = false,
-                    text = HouseDialogue.EvictionPlea(s, nomineeId),
+                    text = HouseDialogue.EvictionPlea(s, nomineeId) + (BlockSpeeches.RulesOn(s)
+                        ? BlockSpeeches.NpcClosing(BlockSpeeches.NpcApproach(nominee)) : ""),
                 });
-                Log(s, "eviction-speech", Name(s, nomineeId) + ": "
-                    + s.evictionSpeeches.Last(x => x.speakerId == nomineeId).text);
+                var spoken = s.evictionSpeeches.Last(x => x.speakerId == nomineeId);
+                if (BlockSpeeches.RulesOn(s))
+                    Log(s, BlockSpeeches.EventPrefix + BlockSpeeches.NpcApproach(nominee), spoken.text,
+                        BlockSpeeches.Audience(s, nomineeId));
+                else Log(s, "eviction-speech", Name(s, nomineeId) + ": " + spoken.text);
             }
         }
 
@@ -1125,11 +1147,20 @@ namespace Gamesim.Simulation
                     Require(!CommitmentRulesOn(s) || c.secondTargetId != target.id, "You cannot promise somebody that you will vote them out.");
                     MakePromise(s, target.id, PromiseKind.Vote, c.secondTargetId); break;
                 case EpisodeCommandKind.ShareInformation:
-                    var known = s.memories.LastOrDefault(m => m.ownerId == s.playerId && m.subjectId != target.id);
+                    MemoryState known;
+                    bool sharingRules = EconomyRulesOn(s);
+                    bool picked = sharingRules && !string.IsNullOrEmpty(c.secondTargetId);
+                    if (picked)
+                        Require(InformationShareChoice.TryResolve(s, target.id, c.secondTargetId, out known),
+                            "Choose a memory you can still share with this housemate.");
+                    // The generic compatibility entry point must not bypass the new reader's
+                    // knowledge boundary. Old seasons keep their original latest-memory policy.
+                    else known = (sharingRules ? KnownBallots.PlayerMemories(s) : s.memories.Where(m => m.ownerId == s.playerId))
+                        .LastOrDefault(m => m.subjectId != target.id);
                     Require(known != null, "You have no personal information to share yet.");
-                    Remember(s, target.id, known.subjectId, "Heard from you: " + known.text, true);
+                    Remember(s, target.id, known.subjectId, sharingRules ? InformationShareChoice.Receipt(known) : "Heard from you: " + known.text, true);
                     Change(s, s.playerId, target.id, 3); Log(s, "information", "You shared something you personally knew with " + target.name + ".", s.playerId, target.id); break;
-                case EpisodeCommandKind.AskForIntel: AskForIntel(s, target); break;
+                case EpisodeCommandKind.AskForIntel: AskForIntel(s, target, c.secondTargetId); break;
                 case EpisodeCommandKind.Eavesdrop: Eavesdrop(s, c); break;
                 case EpisodeCommandKind.SpreadLie: SpreadLie(s, target, c.secondTargetId); break;
                 case EpisodeCommandKind.VentAbout: VentAbout(s, target, c.secondTargetId); break;
@@ -1142,7 +1173,7 @@ namespace Gamesim.Simulation
                     Converse(s, target, WebSocialVocabulary.SmallTalk(Roll(s)),
                         "You passed the time with " + target.name + "."); break;
                 case EpisodeCommandKind.PersonalChat:
-                    Converse(s, target, WebSocialVocabulary.PersonalChat(Roll(s)),
+                    Converse(s, target, ConversationIntentRules.PersonalWarmth(s, Roll(s)),
                         "You told " + target.name + " something about yourself."); break;
                 case EpisodeCommandKind.RelationshipBuilding:
                     Converse(s, target, WebSocialVocabulary.RelationshipBuilding(Roll(s)),
@@ -1224,8 +1255,13 @@ namespace Gamesim.Simulation
         /// improvement: a second <see cref="Roll"/> would advance the stream and re-roll every
         /// season from this point, which is never a local change in a seeded simulation.</para>
         /// </summary>
-        private static void AskForIntel(EpisodeState s, ContestantState target)
+        private static void AskForIntel(EpisodeState s, ContestantState target, string aboutId)
         {
+            // E3: an explicit nominee uses the same earned answer and the SAME roll. A bad choice
+            // is rejected before any draw, never silently exchanged for a random houseguest.
+            // Old seasons retain the previously ignored secondTargetId, including old replays.
+            bool aimed = EconomyRulesOn(s) && !string.IsNullOrEmpty(aboutId);
+            if (aimed) Require(NomineeIntel.Targets(s, target.id).Contains(aboutId), "Choose another active nominee to ask about.");
             double roll = Roll(s);
             double improvement = 2 + Math.Floor(roll * 3);
             Change(s, s.playerId, target.id, improvement);
@@ -1243,7 +1279,7 @@ namespace Gamesim.Simulation
                 return;
             }
 
-            var subject = about[Math.Min(about.Count - 1, (int)(roll * about.Count))];
+            var subject = aimed ? s.Find(aboutId) : about[Math.Min(about.Count - 1, (int)(roll * about.Count))];
             double between = s.Score(target.id, subject.id);
             AddStanding(s, target.id, subject.id, ClaimSource.Told, between);
             string reading = between >= 25 ? "is solid with"
@@ -1251,7 +1287,8 @@ namespace Gamesim.Simulation
                 : "is still working out";
             Remember(s, s.playerId, target.id, target.name + " told me in week " + s.week + " that they "
                 + reading + " " + subject.name + ".", true);
-            Log(s, "information", "You asked " + target.name + " what they had been hearing. They "
+            string question = aimed ? " what they think of " + subject.name + ". They " : " what they had been hearing. They ";
+            Log(s, "information", "You asked " + target.name + question
                 + reading + " " + subject.name + ".", s.playerId, target.id);
         }
 
@@ -1707,6 +1744,7 @@ namespace Gamesim.Simulation
             Change(s, s.playerId, target.id, delta);
             Remember(s, target.id, s.playerId, line, true);
             Log(s, landed ? "conversation" : "conversation-backfire", line, s.playerId, target.id);
+            if (landed && EconomyRulesOn(s)) OpenGameOpinions(s, target);
         }
 
         /// <summary>
@@ -1827,6 +1865,7 @@ namespace Gamesim.Simulation
                     : i == sceptic ? WebSocialVocabulary.MeetingSceptic
                     : WebSocialVocabulary.MeetingRally(Roll(s));
                 Change(s, s.playerId, house[i].id, delta);
+                if (airing && worked && EconomyRulesOn(s)) AiringReaction(s, house[i], delta);
             }
 
             Log(s, "house-meeting", !worked
@@ -2379,7 +2418,13 @@ namespace Gamesim.Simulation
         internal static void Log(EpisodeState s, string kind, string text, params string[] audience)
         {
             s.events.Add(new EpisodeEvent { sequence = s.nextSequence++, week = s.week, phase = s.phase, kind = kind, text = text, audienceIds = audience.ToList() });
-            if (s.events.Count > 256) s.events.RemoveAt(0);
+            // A current speech's public receipt owns its bounded lifetime (at most two records).
+            // Preserve it while the night/week still holds the speech; all other events keep FIFO.
+            if (s.events.Count > 256)
+            {
+                int oldest = s.events.FindIndex(e => !BlockSpeeches.ProtectedReceipt(s, e));
+                s.events.RemoveAt(oldest);
+            }
         }
         private static void Require(bool condition, string message) { if (!condition) throw new RuleException(message); }
         private sealed class RuleException : Exception { public RuleException(string message) : base(message) { } }

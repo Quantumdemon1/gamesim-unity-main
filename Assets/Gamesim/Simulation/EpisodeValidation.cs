@@ -20,7 +20,7 @@ namespace Gamesim.Simulation
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 22) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 23) return Fail(out error, "Unsupported episode schema.");
             if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > CompetitionRules.Current)
                 return Fail(out error, "Unsupported competition rules version.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
@@ -37,6 +37,11 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Week-rules activation week must be within the saved season boundary.");
             if (s.windowActions == null || s.windowActions.Count != Windows.Count || s.windowActions.Any(n => n < 0 || n > MostActionsAWeekCanHold))
                 return Fail(out error, "Invalid window action counts.");
+            if (s.economyRulesVersion < 0 || s.economyRulesVersion > 1
+                || s.moveInExtrasSpent < 0 || s.moveInExtrasSpent > MostActionsAWeekCanHold
+                || (s.moveInExtrasSpent != 0 && (s.economyRulesVersion == 0 || !EpisodeEngine.WeekRulesOn(s)
+                    || s.week != 1 || EpisodeEngine.IsFirstNight(s))))
+                return Fail(out error, "Invalid economy rules or move-in extras debit.");
             if (s.agencyRulesStartWeek < 0 || s.agencyRulesStartWeek > 101 || s.agencyRulesStartWeek > s.week + 1)
                 return Fail(out error, "Agency-rules activation week must be within the saved season boundary.");
             if (s.finaleRulesStartWeek < 0 || s.finaleRulesStartWeek > 101 || s.finaleRulesStartWeek > s.week + 1)
@@ -126,6 +131,7 @@ namespace Gamesim.Simulation
                     x.week < 1 || x.week > s.week || x.isPlayerAuthored != (x.speakerId == s.playerId)) ||
                 s.evictionSpeeches.GroupBy(x => x.speakerId).Any(g => g.Count() > 1))
                 return Fail(out error, "Invalid eviction speeches.");
+            if (!BlockSpeeches.ValidateReceipts(s, out error)) return false;
             if (!Optional(s.backdoorTargetId) || (s.backdoorTargetId != null && s.backdoorTargetId == s.playerId))
                 return Fail(out error, "Invalid backdoor plan.");
             // Bounded at the old flat ceiling rather than at the new budget: a season saved while
@@ -260,9 +266,12 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Invalid lobbying data.");
             if (s.replyCards == null || s.replyCards.Count > 24 || s.replyCards.Any(r => r == null || !Text(r.id, 160)
                     || r.week != s.week || !ReplyCards.IsKnown(r.kind) || s.Find(r.fromId) == null || r.fromId == s.playerId
-                    || (r.aboutId != null && s.Find(r.aboutId) == null))
+                    || (r.aboutId != null && s.Find(r.aboutId) == null)
+                    || (r.kind == ReplyCards.Pitch ? !HoHPitches.ValidCard(s, r)
+                        : s.phase != EpisodePhase.Social && s.phase != EpisodePhase.Campaign))
                 || s.replyCards.Select(r => r.id).Distinct(StringComparer.Ordinal).Count() != s.replyCards.Count
-                || (s.replyCards.Count > 0 && s.phase != EpisodePhase.Social && s.phase != EpisodePhase.Campaign))
+                || s.replyCards.Where(r => r.kind == ReplyCards.Pitch).Select(r => r.fromId).Distinct(StringComparer.Ordinal).Count()
+                    != s.replyCards.Count(r => r.kind == ReplyCards.Pitch))
                 return Fail(out error, "Invalid reply card data.");
             if (s.strategyRulesStartWeek == 0 && (s.lobbies.Count > 0 || s.replyCards.Count > 0))
                 return Fail(out error, "A season without the strategy windows has none of their records.");

@@ -147,9 +147,16 @@ namespace Gamesim.Simulation
 
             if (StoryAt(s, StoryRules.Lore))
             {
-                var fact = Lore.NextReveal(s, npcId, kind, FinishedPersonalBeat(s, npcId));
-                if (fact != null && Lore.Learn(s, fact.id))
+                // A fresh-season personal chat learns up to two distinct, currently reachable
+                // facts. Re-read after each learn, preserving depth/secret/catalogue/cap rules.
+                // This is still one conversation and one story trigger, not two social actions.
+                int reveals = ConversationIntentRules.RevealLimit(s, kind);
+                for (int i = 0; i < reveals; i++)
+                {
+                    var fact = Lore.NextReveal(s, npcId, kind, FinishedPersonalBeat(s, npcId));
+                    if (fact == null || !Lore.Learn(s, fact.id)) break;
                     Log(s, "story-lore", "You learned something about " + npc.name + ": " + fact.text, s.playerId, npcId);
+                }
             }
 
             // Only one thing opens per conversation, in this order: the reckoning, a waiting beat, a new thread.

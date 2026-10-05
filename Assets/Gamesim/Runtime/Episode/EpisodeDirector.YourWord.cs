@@ -82,6 +82,8 @@ namespace Gamesim.Episode
             int lapsing = NominationSteps.LapsingOnNominate(state).Count;
             brief = "Committing these breaks " + CommitmentsRead.CountOf(breaches) + " of your commitments (see " + YourWordCaption + ")"
                 + (lapsing > 0 ? " and lets " + (lapsing == 1 ? "1 storyline" : lapsing + " storylines") + " pass" : "") + ".";
+            int pitches = state.replyCards.Count(card => card.kind == ReplyCards.Pitch);
+            if (pitches > 0) brief += " " + pitches + (pitches == 1 ? " pitch expires" : " pitches expire") + " when you nominate.";
             return words;
         }
 

@@ -109,17 +109,36 @@ namespace Gamesim.Simulation
                 else if (standing.source == ClaimSource.Deflected)
                     notes.Add(new Note { week = standing.week, kind = Kinds.Vote, text = first + " wouldn't say where their vote is", brief = "Wouldn't say their vote" });
             }
+            // E2: keep the exact observed side as a read entry, without turning a house-meeting
+            // reaction into ReadPerson's live agenda report. The learned attitude itself is an
+            // Overheard standing; this event also distinguishes backing this airing from loyalty.
+            foreach (var reaction in s.events.Where(e =>
+                         (e.kind == ConversationIntentRules.AiringBacked || e.kind == ConversationIntentRules.AiringOpposed)
+                         && e.audienceIds.Count == 2 && e.audienceIds.Contains(s.playerId) && e.audienceIds.Contains(id)))
+            {
+                bool backed = reaction.kind == ConversationIntentRules.AiringBacked;
+                notes.Add(new Note { week = reaction.week, kind = Kinds.Read, text = reaction.text,
+                    brief = backed ? "Backed your airing" : "Opposed your airing" });
+            }
             foreach (var reply in s.ledger.replies.Where(r => r.fromId == id))
             {
+                if (reply.kind == ReplyCards.Pitch && reply.replyKey == HoHPitches.FeelOutKey)
+                {
+                    notes.Add(new Note { week = reply.week, kind = Kinds.Read,
+                        text = first + " explained their nomination pitch; asking made no new promise", brief = "Explained their pitch" });
+                    continue;
+                }
                 var answer = ReplyCards.Find(reply.kind, reply.replyKey);
                 string what = reply.kind == ReplyCards.Confrontation ? first + " confronted you"
                     : reply.kind == ReplyCards.Gossip ? first + " talked about you to " + Name(reply.listenerId)
+                    : reply.kind == ReplyCards.Pitch ? first + " pitched before your nominations"
                     : first + " asked for your vote";
                 notes.Add(new Note
                 {
                     week = reply.week, kind = Kinds.Came,
                     text = what + (answer != null ? " · you: " + answer.Label.ToLowerInvariant() : ""),
-                    brief = reply.kind == ReplyCards.Confrontation ? "Confronted you" : reply.kind == ReplyCards.Gossip ? "Talked about you" : "Asked for your vote",
+                    brief = reply.kind == ReplyCards.Confrontation ? "Confronted you" : reply.kind == ReplyCards.Gossip ? "Talked about you"
+                        : reply.kind == ReplyCards.Pitch ? "Made a nomination pitch" : "Asked for your vote",
                 });
             }
             foreach (var call in s.ledger.calls.Where(c => c.callerId == s.playerId && (c.followed.Contains(id) || c.defected.Contains(id))))

@@ -19,11 +19,12 @@ namespace Gamesim.Tests.EditMode
     public sealed class MoveInNightTests
     {
         /// <summary>A season of <paramref name="houseguests"/> on its first night, under the week's rules and the story, as every season the director starts is.</summary>
-        private static EpisodeEngine MoveIn(int houseguests = 8)
+        private static EpisodeEngine MoveIn(int houseguests = 8, bool newEconomy = false)
         {
             var state = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = houseguests }, 5u);
             EpisodeEngine.EnableStory(state);
             EpisodeEngine.EnableWeek(state);
+            if (newEconomy) EpisodeEngine.EnableEconomy(state);
             return new EpisodeEngine(state);
         }
 
@@ -40,15 +41,16 @@ namespace Gamesim.Tests.EditMode
 
         private static void Accepted(CommandResult result, string what) => Assert.That(result.accepted, Is.True, what + ": " + result.reason);
 
-        [Test]
-        public void AnEightHousesMoveInNightHasOneActionAndTheOpeningSpendsNone()
+        [TestCase(false, 1)]
+        [TestCase(true, 2)]
+        public void TheOpeningSpendsNoneOfTheNightsActionsUnderEitherEconomy(bool newEconomy, int budget)
         {
-            var engine = MoveIn();
+            var engine = MoveIn(newEconomy: newEconomy);
             var night = engine.Snapshot;
             Assert.That(EpisodeEngine.IsFirstNight(night), Is.True, "The fixture is move-in night.");
             Assert.That(EpisodeEngine.WeekRulesOn(night), Is.True, "under the week's rules,");
             Assert.That(EpisodeEngine.Window(night), Is.EqualTo(Windows.AfterEviction), "whose free time is the window after the eviction.");
-            Assert.That(EpisodeEngine.SocialActionBudget(night), Is.EqualTo(1), "An eight-house's move-in night has one action.");
+            Assert.That(EpisodeEngine.SocialActionBudget(night), Is.EqualTo(budget));
             Assert.That(EpisodeEngine.SocialActionsSpent(night), Is.Zero);
 
             // The opening, as the sequence plays it: its beats in order, an introduction to everybody
@@ -62,7 +64,7 @@ namespace Gamesim.Tests.EditMode
             Accepted(Apply(engine, EpisodeCommandKind.MarkOpeningBeat, OpeningBeat.MeetAndGreet), OpeningBeat.MeetAndGreet);
             var opened = engine.Snapshot;
             Assert.That(EpisodeEngine.SocialActionsSpent(opened), Is.Zero, "The opening spends nothing.");
-            Assert.That(EpisodeEngine.SocialActionBudget(opened), Is.EqualTo(1), "and the night still has its one action.");
+            Assert.That(EpisodeEngine.SocialActionBudget(opened), Is.EqualTo(budget), "The opening spends none of the night's base actions.");
 
             // The meet-and-greet over, the first night's one real conversation is waiting, and it is free.
             var conversation = EpisodeEngine.OpenStoryBeats(opened).SingleOrDefault(item => StoryText.ArcOf(item)?.id == "first-night");
@@ -74,8 +76,8 @@ namespace Gamesim.Tests.EditMode
             var answered = engine.Snapshot;
             Assert.That(answered.houseEvents.Single(item => item.id == conversation.id).resolved, Is.True, "The conversation is had,");
             Assert.That(EpisodeEngine.SocialActionsSpent(answered), Is.Zero, "and it spent nothing:");
-            Assert.That(EpisodeEngine.SocialActionBudget(answered) - EpisodeEngine.SocialActionsSpent(answered), Is.EqualTo(1),
-                "the night's one action is still there to spend.");
+            Assert.That(EpisodeEngine.SocialActionBudget(answered) - EpisodeEngine.SocialActionsSpent(answered), Is.EqualTo(budget),
+                "the night's actions are still there to spend.");
         }
 
         /// <summary>

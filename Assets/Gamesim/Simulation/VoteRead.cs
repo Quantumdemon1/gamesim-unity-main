@@ -119,7 +119,7 @@ namespace Gamesim.Simulation
                     if (factor.code == "alliance" || factor.code == "blocPressure") alliancesKnown = false;
                     // A term an ally's hidden commitment decides is counted whatever it came to: a count
                     // that skipped it at nothing would say the ally had lapsed.
-                    if (factor.code == "relationship" || Math.Abs(factor.value) > 0.01
+                    if (factor.code == "relationship" || factor.code == BlockSpeeches.FactorCode || Math.Abs(factor.value) > 0.01
                         || ((factor.code == "alliance" || factor.code == "blocPressure") && CommitmentHidden(s, voterId)))
                         unknownCodes.Add(factor.code);
                 }
@@ -156,6 +156,8 @@ namespace Gamesim.Simulation
             if (factor == null) return false;
             switch (factor.code)
             {
+                // A public speech does not disclose how a private ballot took it, including zero.
+                case BlockSpeeches.FactorCode: return false;
                 case "relationship": return StandingKnown(s, voterId, nomineeId);
                 case "history": return true;
                 case "obligation": return true;

@@ -86,6 +86,7 @@ namespace Gamesim.Simulation
             Require(card != null, "That moment has passed.");
             var from = s.Find(card.fromId);
             Require(from != null && from.status == ContestantStatus.Active, "They are no longer in the house.");
+            if (card.kind == ReplyCards.Pitch) { AnswerHoHPitch(s, card, (c.text ?? string.Empty).Trim()); return; }
             var reply = ReplyCards.Find(card.kind, (c.text ?? string.Empty).Trim());
             Require(reply != null, "Choose one of the answers you were offered.");
 
@@ -119,6 +120,7 @@ namespace Gamesim.Simulation
                 && s.nominees.Contains(from.id) && s.nominees.Contains(card.aboutId ?? "")
                 && !s.promises.Any(p => p.status == PromiseStatus.Active && p.fromId == s.playerId && p.toId == from.id && p.kind == PromiseKind.Vote))
                 MakePromise(s, from.id, PromiseKind.Vote, card.aboutId);
+            ReplyPayoff(s, card, reply);
         }
 
         /// <summary>

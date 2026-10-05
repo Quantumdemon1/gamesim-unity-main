@@ -227,11 +227,17 @@ namespace Gamesim.Simulation
             var juror = s.Find(jurorId);
             if (juror == null || string.IsNullOrEmpty(juror.name)) return null;
             string prefix = juror.name + ": ";
-            var logged = s.events?.Where(e => e != null && e.kind == "eviction-speech" && e.text != null && e.text.StartsWith(prefix, System.StringComparison.Ordinal)
+            var logged = s.events?.Where(e => e != null && e.text != null
+                    && ((e.kind == "eviction-speech" && e.text.StartsWith(prefix, System.StringComparison.Ordinal))
+                        || (BlockSpeeches.IsReceiptKind(e.kind) && BlockSpeeches.EventApproach(e) != BlockSpeeches.Quiet
+                            && e.audienceIds.Count > 0 && e.audienceIds[0] == jurorId))
                     && (e.audienceIds == null || e.audienceIds.Count == 0 || e.audienceIds.Contains(s.playerId)))
                 .OrderBy(e => e.sequence).LastOrDefault();
-            if (logged != null && !string.IsNullOrWhiteSpace(logged.text.Substring(prefix.Length)))
-                return (logged.week, logged.text.Substring(prefix.Length).Trim());
+            if (logged != null)
+            {
+                string words = BlockSpeeches.IsReceiptKind(logged.kind) ? logged.text : logged.text.Substring(prefix.Length);
+                if (!string.IsNullOrWhiteSpace(words)) return (logged.week, words.Trim());
+            }
             var spoken = s.evictionSpeeches?.LastOrDefault(x => x != null && x.speakerId == jurorId && !x.isPlayerAuthored && !string.IsNullOrWhiteSpace(x.text));
             return spoken == null ? ((int, string)?)null : (spoken.week, spoken.text.Trim());
         }
@@ -514,10 +520,13 @@ namespace Gamesim.Simulation
             if (s.ledger?.replies != null)
                 foreach (var r in s.ledger.replies.Where(r => r.fromId == id))
                 {
+                    if (r.kind == ReplyCards.Pitch && r.replyKey == HoHPitches.FeelOutKey)
+                    { lines.Add((r.week, "you felt out their nomination pitch without committing")); continue; }
                     string answer = (ReplyCards.Find(r.kind, r.replyKey)?.Label ?? r.replyKey ?? "").ToLowerInvariant();
                     string what = r.kind == ReplyCards.Plea ? "they pleaded with you"
                         : r.kind == ReplyCards.Confrontation ? "they confronted you"
                         : r.kind == ReplyCards.Gossip ? "you caught them talking about you"
+                        : r.kind == ReplyCards.Pitch ? "they pitched before your nominations"
                         : "they came to you";
                     lines.Add((r.week, what + "; you answered " + answer));
                 }

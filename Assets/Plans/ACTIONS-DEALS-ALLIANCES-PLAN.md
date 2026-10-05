@@ -1086,3 +1086,43 @@ Every fix applies under the commitment rules only; seasons without them digest b
 - **EditMode, 2242 to 2420:** the full run on the UMA-free copy at ce5b3d9 counted 2410, plus #22's ten.
 - **Unity-free subset, 1328 to 1501.**
 - **PlayMode:** stays at 863 until C5 to C8's tests have run in Unity.
+
+## Wave C staged checkpoint — 2026-10-05
+
+These are isolated gameplay-branch implementations, not live integration or native
+acceptance. E1's versioned fresh-season economy, all three E3 deliberate target
+pickers, and E2's personal-lore/plain-Talk adjustments are committed. E2 open-game
+information and public-airing Read entries are now implemented and covered by
+77 new pure/Edit cases and nine authored, offline-compiled Play cases. See
+`WAVE_C_CONVERSATION_INFORMATION_IMPLEMENTATION.md` at the project root for the
+exact changes, evidence hashes, compatibility and remaining limits. Full pure
+execution is1836/1836; this is not a native Unity or desktop result.
+
+E2 reply-card trade-offs and the complete no-dominated-verb comparison remain.
+E4's player-HoH pitch cards and E5's bounded speech influence follow. The owner
+has selected **all four Wave D systems as required**, not optional, for completion:
+unified commitments, all-week strategic NPCs, negotiated alliance plans and
+deeper leaks/double-dealing. Final desktop performance is **1920x1080 at60FPS on
+the GTX1060**; old900p measurements do not satisfy that gate. Full combined-source
+native suites, saves/migrations, shipping build, real-asset/visual/accessibility
+review and human acceptance are still separate open gates. Nothing in the staged
+checkpoint authorizes publishing, connecting accounts or overwriting live edits.
+
+## E2 reply trade-offs staged checkpoint - 2026-10-05
+
+The reply-card portion is now implemented above48e1dd on the isolated gameplay
+branch. Information replies earn bounded private assessments; escalation offers
+a real, consent-dependent safety deal for this week; other answers retain their
+distinct trust, retaliation or promise consequences. All three UI surfaces show
+the terms and use render/load/revision-scoped callback authority. Old-season
+simulation and descriptions remain unchanged. No schema or command expansion.
+
+See `WAVE_C_REPLY_PAYOFFS_IMPLEMENTATION.md` for every material change, source
+boundary, hashes and limitations.89 new pure/Edit cases pass; full pure execution
+is1925/1925. Ten new Play tests compile but have NOT run in Unity. Final offline
+check is5/5 NoUMA assemblies, not native or full UMA acceptance. The720-outcome
+reply comparison is a first-opportunity trade-off witness, not whole-game balance.
+
+E2's complete all-verb comparison remains open. E4/E5 and all four REQUIRED Wave D
+systems follow. Exact-candidate integration, native saves/suites, separate desktop
+build, coherent real assets,1080p60 and human E1-E5 acceptance remain uncompleted.

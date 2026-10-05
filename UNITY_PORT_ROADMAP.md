@@ -1,12 +1,46 @@
 # Gamesim Unity port
 
+**Current combined candidate, 2026-10-05 UTC:** isolated integration now combines
+c2725b53 QA/contact/readout with88986ee1 Wave C E1-E5/schema23. No live promotion.
+Only baseline and two root docs conflicted; retained QA11 Edit/4 Play additions
+give combined floors3240/992/77/2182. Combined2182/2182 pure and8/8 offline assemblies
+pass; new native/build gates are pending. Baseline green UMA/NoUMA does not accept
+the merge. LocalGAMESIM_UMA stays uncommitted. ALL4 Wave D systems, wider
+E2 balance, consistent real assets, actualGTX1060 **1920x1080 at60FPS**, visual
+review and three first-time human playtests remain required. Dated notes below
+are retained evidence for older pins, not current completion claims.
+
+**Latest staged gameplay, 2026-10-05 UTC:** E4 HoH pitches and E5 bounded explicit
+block-speech influence are implemented on the separate Wave C branch. See
+`WAVE_C_HOH_PITCHES_IMPLEMENTATION.md` and `WAVE_C_BLOCK_SPEECH_IMPLEMENTATION.md`
+for all changes, compatibility and distinct evidence. Final pure2182/2182 and
+offline8/8 pass; actual SaveStore/UI native tests remain unexecuted. Branch floors
+3229/988/77/2182; combined c272 floors3240/992/77/2182. Frozen c272 UMA g22u2 passed
+Edit2540/Play935/UMA77; same-pin NoUMA g22n4 now passed Edit2540/Play907. Both whole
+controllers closed with clean audits. Neither contains Wave C. Wider E2 balance,
+all four owner-required Wave D systems, consistent real assets, deliberate merge,
+desktop build, actual GTX1060 **1920x1080 at60FPS** and human acceptance remain.
+No live promotion or fully ported/AAA completion is claimed. Older totals below
+are historical and superseded by the dated implementation records above them.
+
+**Separate Wave C branch, 2026-10-05 UTC:** `codex/wave-c-economy` stages E1, all three E3
+targeting features, E2's personal-lore/six-petal-dial portion, and schema 23
+above the frozen schema-22 integration candidate; it is not merged or live. See
+`WAVE_C_ECONOMY_IMPLEMENTATION.md`, `WAVE_C_TARGETING_IMPLEMENTATION.md`,
+`WAVE_C_NOMINEE_INTEL_IMPLEMENTATION.md`, `WAVE_C_SHARING_IMPLEMENTATION.md` and
+`WAVE_C_PERSONAL_LORE_IMPLEMENTATION.md` for changes and distinct evidence gates.
+Pure1759 and offline8/8 pass; the new runtime tests are not executed.
+Branch floors are2751/939/77; combining eda requires2762 Edit cases. The rest of E2, E4 and E5 remain. The owner requires
+all four Wave D systems, plus final GTX1060 acceptance at **1920x1080, 60 FPS**. A 900p profile is
+not evidence for that target. This staged gameplay and a fully ported/AAA release are not declared accepted here.
+
 **Current status, 2026-10-04:** integration and acceptance are in progress on the existing
 schema-22 candidate. The milestone table and V7 counts below are historical: U08 is not currently
 all-green. Read the dated resumption section in `UNITY_PORT_IMPLEMENTATION.md` and fresh native
 XML/manifests. Remaining work includes integration regression fixes, a matching shipping build,
 runtime/performance verification, Wave C/D gameplay, asset completion and human acceptance.
 
-Latest closed full candidate: `g22n2` at a9f11ad0 failed with Edit2529/2529 and Play902/903
+Historical QA candidate: `g22n2` at a9f11ad0 failed with Edit2529/2529 and Play902/903
 (one optional Unity AI relay startup error; the previous competition capture failures did not recur).
 Batch-only isolation now uses the package's documented hook without ignoring errors or changing
 interactive MCP. Final focused11 Edit/24 ceremony Play cases pass, with empty input drift, and
@@ -15,6 +49,12 @@ desktop build remain open; see the implementation record's latest October5 UTC s
 The live project is not promoted. E1/schema23 is implemented only on a separate branch, not accepted
 or merged. E2-E5 and all four owner-required Wave D systems, consistent high-quality asset completion,
 1920x1080 at60 FPS on GTX1060, and actual human playtests remain completion requirements.
+Historical QA candidate: NoUMA `g22n3` at eda passed Edit2540/2540 and Play903/903,
+zero failed/skipped, clean natural exits and no source drift. The earlier g22n2 relay failure is
+retained; its supported batch-test isolation repair did not disable checks. Same-pin full UMA
+`g22u1` is running. That frozen candidate contains none of E1/E2/E3. UMA acceptance, a matching
+desktop build, actual graphical review and later combined gameplay validation remain open.
+See the implementation record's October 5 UTC section. The live project is not yet promoted.
 
 Source: the agreed Unity plan in the GameSim Dev conversation, following the choice to build the first slice around a 3D house. The existing Unity 6000.6.0f1 project and its pinned packages are retained.
 

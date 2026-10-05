@@ -249,6 +249,17 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
+        /// E2 personal chat opens more of a person's non-secret life and temperament. The goal
+        /// remains a game conversation's job. Old seasons retain the exact original facet order.
+        /// A new array is returned: a reader cannot alter the catalogue's next conversation.
+        /// </summary>
+        public static string[] FacetsFor(EpisodeState state, EpisodeCommandKind kind) =>
+            kind == EpisodeCommandKind.PersonalChat && ConversationIntentRules.PersonalLoreOn(state)
+                ? new[] { Facets.Origin, Facets.Home, Facets.Comfort, Facets.Respects, Facets.Unforgivable,
+                    Facets.Romance, Facets.Work, Facets.HotButton, Facets.ConflictStyle, Facets.Legacy, Facets.Tendency }
+                : FacetsFor(kind);
+
+        /// <summary>
         /// The next fact a conversation reveals: the shallowest hidden one, within reach, whose
         /// facet the conversation opens onto. Secrets never come this way.
         /// </summary>
@@ -256,7 +267,7 @@ namespace Gamesim.Simulation
         {
             if (!Rules(state)) return null;
             int reach = Depth(state, id, finishedPersonalBeat);
-            var facets = FacetsFor(kind);
+            var facets = FacetsFor(state, kind);
             return FactsOf(state, id)
                 .Where(f => f.depth <= reach && f.depth < 4 && f.facet != Facets.Secret && Array.IndexOf(facets, f.facet) >= 0 && !Knows(state, f.id))
                 .OrderBy(f => f.depth).ThenBy(f => Array.IndexOf(facets, f.facet)).ThenBy(f => f.id, StringComparer.Ordinal)

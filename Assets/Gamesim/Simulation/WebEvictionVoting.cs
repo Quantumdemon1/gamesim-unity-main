@@ -102,6 +102,16 @@ namespace Gamesim.Simulation
         /// the two that weigh a game still to be played (<see cref="EpisodeEngine.FinalChoiceLeavesOut"/>).
         /// </summary>
         public List<string> omittedFactors = new List<string>();
+        // Native E5 only; imported web rounds retain the original ten factors exactly.
+        // Ephemeral derived input, NOT a persisted simulation DTO or mutable vote authority.
+        public bool nativeSpeechRulesOn, speechHearer;
+        public List<WebVoteSpeechAppeal> speechAppeals = new List<WebVoteSpeechAppeal>();
+    }
+
+    public sealed class WebVoteSpeechAppeal
+    {
+        public string nomineeId, approach, evidenceId;
+        public bool heard, opponentAlly;
     }
 
     /// <summary>A voter's grudge against a nominee and the bond between them, as vote factors.</summary>
@@ -229,6 +239,7 @@ namespace Gamesim.Simulation
                 }).Where(t => t.grudge != 0 || t.bond != 0).ToList(),
                 obligations = EpisodeEngine.LeverTerms(state, voterId),
             };
+            BlockSpeeches.Configure(state, options);
             return options;
         }
 
@@ -245,6 +256,9 @@ namespace Gamesim.Simulation
                 throw new ArgumentException("Nominees must be two distinct contestants.");
             var weights = TraitWeights(options.voter.traits, options.state.activeCount);
             var evaluations = options.nominees.Select(n => EvaluateNominee(options, n, weights)).ToList();
+            // The complete pair is evaluated first, including the caller's actual bloc directive.
+            // Both speech terms share that immutable baseline; no recursive/tie RNG evaluation.
+            BlockSpeeches.Apply(options, evaluations);
             int selectedIndex;
             if (evaluations[0].score == evaluations[1].score)
             {

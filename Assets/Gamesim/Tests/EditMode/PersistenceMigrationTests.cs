@@ -60,6 +60,7 @@ namespace Gamesim.Tests.EditMode
         public static JObject StripSchema22(JObject payload)
         {
             if (payload == null) return null;
+            StripSchema23(payload);
             payload.Remove("commitmentRulesStartWeek");
             foreach (var name in new[] { "deals", "promises" })
                 if (payload[name] is JArray rows)
@@ -67,6 +68,15 @@ namespace Gamesim.Tests.EditMode
                         foreach (var field in new[] { "brokenById", "settledWeek", "linkedDealId" }) row.Remove(field);
             if (payload["alliances"] is JArray alliances)
                 foreach (var alliance in alliances.OfType<JObject>()) alliance.Remove("playerJoined");
+            return payload;
+        }
+
+        /// <summary>Only for synthetic historical fixtures; real old-save bytes must never be rewritten or resealed.</summary>
+        public static JObject StripSchema23(JObject payload)
+        {
+            if (payload == null) return null;
+            payload.Remove("economyRulesVersion");
+            payload.Remove("moveInExtrasSpent");
             return payload;
         }
 
@@ -362,13 +372,13 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, original, new UTF8Encoding(false));
             var before = File.ReadAllBytes(fixture.Store.SavePath);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(22));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(23));
             Assert.That(loaded.randomState, Is.Zero);
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(before));
             Assert.That(File.Exists(fixture.Store.BackupPath), Is.False);
             fixture.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(before));
-            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(22));
+            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(23));
         }
 
         [Test]
@@ -394,7 +404,7 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, "damaged primary");
             var before = File.ReadAllBytes(fixture.Store.BackupPath);
             Assert.That(fixture.Store.TryRecoverBackup(out var recovered, out var message), Is.True, message);
-            Assert.That(recovered.schemaVersion, Is.EqualTo(22));
+            Assert.That(recovered.schemaVersion, Is.EqualTo(23));
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(before));
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(before));
             Assert.That(File.ReadAllText(Directory.GetFiles(fixture.DirectoryPath, "*.before-recovery-*.json").Single()),
@@ -457,7 +467,7 @@ namespace Gamesim.Tests.EditMode
             var original = Envelope(payload);
             File.WriteAllText(fixture.Store.SavePath, original);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(22));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(23));
             Assert.That(loaded.finaleRulesStartWeek, Is.Zero, "A legacy finale plays the catalogue's rules.");
             Assert.That(loaded.finalArgument, Is.Null, "and has no final argument.");
             Assert.That(loaded.commitmentRulesStartWeek, Is.Zero, "A legacy season plays without the commitment rules.");

@@ -673,7 +673,13 @@ namespace Gamesim.Episode
             // and so does free time's: its board opens again on its root and its first page.
             ForgetNominationView();
             ForgetFreeTimeView();
+            ForgetActionPurchase();
+            ForgetInformationShare();
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
+            replyCardView = null;
+            blockSpeechView = null;
+            nomineeIntelView = null;
+            if (conversationPick == NomineeIntelPickerCaption) ClosePicker();
             // A chip's card goes with everything else Escape closes; the campaign opens folded.
             castMenuFor = null; emoteMenuOpen = false; campaignMore = false;
             ClearLobbyDraft();
@@ -688,7 +694,8 @@ namespace Gamesim.Episode
             EndDiaryVisit(!render);
             // The line said where the player was; once they have left, it says so. Anything the
             // visit put there since - a result, a discarded choice - stays.
-            if (diaryOpen && message == DiaryInsideMessage) message = "You left the private diary room.";
+            if (diaryOpen && (message == DiaryInsideMessage || message == DiaryPitchInsideMessage
+                || message == DiaryBlockSpeechInsideMessage)) message = "You left the private diary room.";
             diaryOpen = false; diaryDraft = null;
             lastSocialAction = null;
             // The recap is a panel by IsPanelOpen's reckoning, so closing panels has to close it —
@@ -797,6 +804,10 @@ namespace Gamesim.Episode
             if (result.accepted)
             {
                 diaryDraft = null; // A draft never survives a different committed revision.
+                ForgetActionPurchase();
+                ForgetInformationShare();
+                replyCardView = null;
+                nomineeIntelView = null;
                 if (focusedNpc != null)
                 {
                     lastSocialAction = command.kind;
@@ -1101,7 +1112,11 @@ namespace Gamesim.Episode
         /// </summary>
         public void SubmitEvictionSpeech(string text)
         {
-            if (phaseOpen || diaryOpen) Commit(projected, EpisodeCommandKind.SubmitEvictionSpeech, text: text);
+            // Compatibility entry for existing callers. Real HUD controls use the captured,
+            // consumed view authority in RenderBlockSpeech rather than this live-state entry.
+            if (!BlockSpeechPending(projected) || (!phaseOpen && !diaryOpen)
+                || (diaryOpen && (!CanUseDiary || !IsDiarySettled))) return;
+            CommitBlockSpeech(projected, text, LobbyApproach.Emotional);
         }
         public void AnswerJury(string choice)
         {
@@ -1224,11 +1239,19 @@ namespace Gamesim.Episode
 
         private void Render()
         {
+            pitchNavigationView = null;
+            blockSpeechView = null;
             if (hud == null || engine == null) return;
+            // Any replacement retires the old question controls, including screens that return
+            // before drawing a conversation. A rendered question creates a new view authority.
+            nomineeIntelView = null;
+            informationShareControls = null; informationShareOpener = null;
+            replyCardView = null;
             // Which screen is up decides what the music does, and a render is exactly the moment
             // that changed. SetMusic ignores a state it is already in, so this costs nothing.
             ApplyMusic();
             var state = projected ?? engine.Snapshot;
+            BindBlockSpeechDraft(state);
             // Repainted from committed state on every render rather than on the eviction event, so a
             // wall restored from a save shows the same thing as one that watched the vote.
             if (memoryWall == null)
@@ -1354,6 +1377,7 @@ namespace Gamesim.Episode
                 // The two-shot keeps its usual place unless the conversation's own screen says where
                 // it has left room for the pair (below, once the stage is laid out).
                 if (cameraRig != null) cameraRig.ConversationWindowOffset = 0f;
+                if (RenderInformationShare(state)) return;
                 // Outside free time the house cannot talk, so there is nothing to choose: a card
                 // sized to the one thing it says (Refinement Kit 6), not the drawer cut short. Mood
                 // and your trust are two pills - the drawer's "Neutral -9" was a band and a number
@@ -1446,7 +1470,10 @@ namespace Gamesim.Episode
                 // The petals are the six openings a conversation actually has here. Everything else
                 // - the promises, the alliance, the rumours, the deals - is beneath the dial in the
                 // group it belongs to, and the seventh petal moves the keyboard to the first row.
-                hud.ConversationRadial(npc.id, 7);
+                // Fresh E2 seasons move plain Talk to BOND below the dial; old saves retain all
+                // seven petals. The six-seat ring still keeps every other caption and command.
+                bool intentRules = EpisodeEngine.EconomyRulesOn(state);
+                hud.ConversationRadial(npc.id, intentRules ? 6 : 7);
                 hud.Tag(hud.Petal(EpisodeHud.SmallTalkCaption, "chat", UiTheme.Accent,
                         () => Commit(state, EpisodeCommandKind.SmallTalk, npc.id)),
                     Category(EpisodeCommandKind.SmallTalk), EpisodeHud.TagSeat.CardFoot);
@@ -1455,7 +1482,7 @@ namespace Gamesim.Episode
                     Category(EpisodeCommandKind.StrategicDiscussion), EpisodeHud.TagSeat.CardFoot);
                 hud.Tag(hud.Petal(EpisodeHud.PersonalChatCaption, "heart", UiTheme.Flirt,
                         () => Commit(state, EpisodeCommandKind.PersonalChat, npc.id)),
-                    Category(EpisodeCommandKind.PersonalChat), EpisodeHud.TagSeat.CardFoot);
+                    VerbTag(state, EpisodeCommandKind.PersonalChat), EpisodeHud.TagSeat.CardFoot);
                 hud.Petal(EpisodeHud.MorePetalCaption, "journal", UiTheme.Muted, hud.RevealBeyondRadial);
                 hud.Tag(hud.Petal(EpisodeHud.RelationshipBuildingCaption, "handshake", UiTheme.Allied,
                         () => Commit(state, EpisodeCommandKind.RelationshipBuilding, npc.id)),
@@ -1463,7 +1490,7 @@ namespace Gamesim.Episode
                 hud.Tag(hud.Petal(EpisodeHud.ShareSecretCaption, "gossip", UiTheme.Strategic,
                         () => Commit(state, EpisodeCommandKind.ShareSecret, npc.id)),
                     Category(EpisodeCommandKind.ShareSecret), EpisodeHud.TagSeat.CardFoot);
-                hud.Tag(hud.Petal("Spend time together", "star", UiTheme.Joke,
+                if (!intentRules) hud.Tag(hud.Petal("Spend time together", "star", UiTheme.Joke,
                         () => Commit(state, EpisodeCommandKind.Talk, npc.id)),
                     Category(EpisodeCommandKind.Talk), EpisodeHud.TagSeat.CardFoot);
                 // Everything else, under the dial in four groups by what it is for - bond, learn,
@@ -1474,6 +1501,7 @@ namespace Gamesim.Episode
             }
             if (sceneCardOpen) { SceneCard(state); return; }
             if (!phaseOpen) return;
+            if (RenderActionPurchase(state)) return;
             // The episode screen is a decision screen: it takes the stage, the frame from the rail
             // to the right edge. A quiet beat - "Continue episode" under the house's status, or the
             // reflection prompt - stays a card sized to its few lines. A dedicated layout (the
@@ -1582,6 +1610,7 @@ namespace Gamesim.Episode
             // card the player never sees. It never blocks the decision under it.
             PendingStoryBeats(state);
             if (RenderPlayerDecision(state, false)) return;
+            RenderBlockSpeechReadback(state);
             CeremonyScreen(state);
             if (finalChoice)
             {

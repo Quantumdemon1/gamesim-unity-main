@@ -33,6 +33,38 @@ namespace Gamesim.Tests.EditMode
             return state;
         }
 
+        [TestCase(3)] [TestCase(8)] [TestCase(12)] [TestCase(16)]
+        public void NewEconomySaysTwoBaseActionsAndOnlyUnspentExtrasCarry(int size)
+        {
+            var night = MoveIn(size);
+            EpisodeEngine.EnableEconomy(night);
+            Assert.That(EpisodeDirector.BudgetRule(night), Is.EqualTo("2 actions tonight; they do not carry into the week."));
+            night.boughtActionPoints = 2;
+            Assert.That(EpisodeDirector.BudgetRule(night), Is.EqualTo("4 actions tonight; the 2 base actions do not carry into the week. Only unspent extras carry."));
+            Assert.That(EpisodeDirector.FreeTimeCostLine(night), Does.Contain("Only unspent extras carry into the week."));
+            for (int spent = 0; spent <= 4; spent++)
+            {
+                night.windowActions[Windows.AfterEviction] = spent;
+                int lost = System.Math.Max(0, 2 - spent);
+                Assert.That(WaitingOnYou.ActionsLostOnAdvance(night), Is.EqualTo(lost));
+                Assert.That(EpisodeDirector.UnusedActionsNote(night), lost == 0 ? Is.Null
+                    : Is.EqualTo(lost + (lost == 1 ? " unused action will be lost." : " unused actions will be lost.")));
+            }
+        }
+
+        [Test]
+        public void NewEconomyDistinguishesWindowCarryFromWeekEndLoss()
+        {
+            var s = MoveIn(8); EpisodeEngine.EnableEconomy(s);
+            foreach (var phase in new[] { EpisodePhase.Nomination, EpisodePhase.VetoSelection, EpisodePhase.VetoMeeting, EpisodePhase.Campaign })
+            {
+                s.phase = phase;
+                Assert.That(EpisodeDirector.BudgetRule(s), Does.Contain("unspent extras remain available this week"));
+            }
+            s.phase = EpisodePhase.Social; s.evictionResolved = true;
+            Assert.That(EpisodeDirector.BudgetRule(s), Does.Contain("All unspent actions are lost when this week ends."));
+        }
+
         [Test]
         public void MoveInNightSaysItsOneActionDoesNotCarryIntoTheWeek()
         {

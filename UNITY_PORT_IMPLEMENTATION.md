@@ -1,5 +1,52 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC — batch-test relay isolation; focused verification passed
+
+The latest closed full NoUMA candidate is `g22n2` at `a9f11ad05725b0d295ef6bd7e8a2ff796d740888`:
+Edit2529/2529 passed; Play902/903 passed, one failed, zero skipped. The sole failure was an
+unhandled optional Unity AI relay startup error in
+`CeremonyRevealPlayModeTests.KeyCeremony_TheLastKeyWaitsABeatLongerThanTheOthers` (bus validation
+canceled after34 attempts over30.9 seconds), not a gameplay assertion. The earlier competition
+capture failures did not recur. No source drift, timeout, cleanup errors or unowned descendants;
+all native owners exited naturally. This is a failed full run, not shipping authorization.
+
+- Closed controller: `D:/CodexGamesimEvidence/orchestration/full-suite-runs/g22n2-20261005T042524375Z-befaa264/controller-terminal.json`,
+  SHA256 `cbdefad6aee0a4f1d9bc630a09fabbe5b6af804cbe8ae80a9e8b9d7140f78002`.
+- Before further native work,758 mixed-timestamp captures/manifests/diagnostics and9 proof files
+  were preserved at `D:/CodexGamesimEvidence/integration-20261004/captures-after-g22n2`.
+  Receipt SHA256 `799aa5a6d96606620b50c1d940f9c3c249c2394805ec93fb093678a2aacb36f5`.
+  Originals remain; this is preservation, not capture freshness or visual acceptance.
+- New editor-only `BatchTestRelayIsolation` calls the pinned Assistant2.19.0-pre.2 package's
+  documented `RelayService.SuppressAutoStart()` hook only in explicit batch `-runTests` runs.
+  It never resolves the relay instance. Interactive MCP and lazy initialization are unchanged.
+  No vendor code, preferences, runtime/simulation/save behavior, scene or asset was changed;
+  no error log/assertion is ignored. Missing optional package is supported; an incompatible
+  installed hook fails visibly. Unity's `CurrentAssemblies` supplies the loaded assembly lookup.
+- Eleven new Edit cases cover exact batch-argument policy, the static hook without connecting,
+  incompatible hooks and read-only proof that the actual pinned package's suppression flag is set.
+  Edit floor2540; Play903/UMA77/pure1501 unchanged. The first focused `g22e3` passed11/11 but exposed
+  a Unity assembly-enumeration warning; its artifacts are retained. The final API revision passed
+  `g22e4`11/11 and `g22p3`24/24 ceremony cases (68.62 seconds), exit0, zero failed/skipped and empty
+  before/after input drift. Summaries in `D:/GamesimNoUma/Logs`, SHA256 respectively
+  `d6b6aebf723b84ba96c2efee1b227133f0f563acc6201cb97bf1a360836ccd77` and
+  `c538ba22236fd107be5c7016833883a3264a066addf823627d65d5c215266809`.
+  These bind the dirty increment above a9, not an entire passing candidate suite.
+- Final offline compilation8/8, zero errors; log `relay-isolation-offline-02.log` in the external
+  integration evidence root, SHA256 `1260ef5aa756db22113d914ebe8835b36aef236f7705aeae0ac18b9b665933e8`.
+  Independent agent review is unavailable; root source/package/test review is not labeled independent.
+- After g22n2 closed, read-only MCP matched the live C: project: saved EpisodeHouse,21 roots,
+  Console0 errors, idle editor. Live HEAD remains b25edcb4, with local edits/recoveries preserved.
+  The machine-local UMA define is not committed. Nothing has been promoted or published.
+
+Owner decisions: all four Wave D additions are required (unified commitments, all-week strategic
+NPC activity, negotiated alliance plans, deeper secret leaks/double-dealing), and final performance
+is1920x1080 at60 FPS on GTX1060. Existing900p/headless reports do not meet that target. Separately,
+E1/schema23 is implemented on `codex/wave-c-economy` at `a17429a3`: pure1612, two54-season compatibility
+walks plus480 paired balance seasons, managed Mono persistence28 and offline8/8 passed. Its native
+suites/build/desktop/human acceptance and integration remain open; it is NOT in this schema22 candidate.
+Do not fold E1 or later gameplay into the frozen QA run. Full same-pin NoUMA then UMA, a matching
+shipping build, actual player/visual/performance checks and guarded live promotion remain ahead.
+
 ## 2026-10-04 integration resumption — acceptance in progress
 
 The live project remains on `b25edcb4` (schema 21); the existing

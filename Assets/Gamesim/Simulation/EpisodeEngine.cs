@@ -1136,7 +1136,7 @@ namespace Gamesim.Simulation
                     Require(known != null, "You have no personal information to share yet.");
                     Remember(s, target.id, known.subjectId, "Heard from you: " + known.text, true);
                     Change(s, s.playerId, target.id, 3); Log(s, "information", "You shared something you personally knew with " + target.name + ".", s.playerId, target.id); break;
-                case EpisodeCommandKind.AskForIntel: AskForIntel(s, target); break;
+                case EpisodeCommandKind.AskForIntel: AskForIntel(s, target, c.secondTargetId); break;
                 case EpisodeCommandKind.Eavesdrop: Eavesdrop(s, c); break;
                 case EpisodeCommandKind.SpreadLie: SpreadLie(s, target, c.secondTargetId); break;
                 case EpisodeCommandKind.VentAbout: VentAbout(s, target, c.secondTargetId); break;
@@ -1231,8 +1231,13 @@ namespace Gamesim.Simulation
         /// improvement: a second <see cref="Roll"/> would advance the stream and re-roll every
         /// season from this point, which is never a local change in a seeded simulation.</para>
         /// </summary>
-        private static void AskForIntel(EpisodeState s, ContestantState target)
+        private static void AskForIntel(EpisodeState s, ContestantState target, string aboutId)
         {
+            // E3: an explicit nominee uses the same earned answer and the SAME roll. A bad choice
+            // is rejected before any draw, never silently exchanged for a random houseguest.
+            // Old seasons retain the previously ignored secondTargetId, including old replays.
+            bool aimed = EconomyRulesOn(s) && !string.IsNullOrEmpty(aboutId);
+            if (aimed) Require(NomineeIntel.Targets(s, target.id).Contains(aboutId), "Choose another active nominee to ask about.");
             double roll = Roll(s);
             double improvement = 2 + Math.Floor(roll * 3);
             Change(s, s.playerId, target.id, improvement);
@@ -1250,7 +1255,7 @@ namespace Gamesim.Simulation
                 return;
             }
 
-            var subject = about[Math.Min(about.Count - 1, (int)(roll * about.Count))];
+            var subject = aimed ? s.Find(aboutId) : about[Math.Min(about.Count - 1, (int)(roll * about.Count))];
             double between = s.Score(target.id, subject.id);
             AddStanding(s, target.id, subject.id, ClaimSource.Told, between);
             string reading = between >= 25 ? "is solid with"
@@ -1258,7 +1263,8 @@ namespace Gamesim.Simulation
                 : "is still working out";
             Remember(s, s.playerId, target.id, target.name + " told me in week " + s.week + " that they "
                 + reading + " " + subject.name + ".", true);
-            Log(s, "information", "You asked " + target.name + " what they had been hearing. They "
+            string question = aimed ? " what they think of " + subject.name + ". They " : " what they had been hearing. They ";
+            Log(s, "information", "You asked " + target.name + question
                 + reading + " " + subject.name + ".", s.playerId, target.id);
         }
 

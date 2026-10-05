@@ -580,6 +580,7 @@ namespace Gamesim.Episode
         {
             hud.Tag(hud.Action("Ask what they have heard", () => Commit(state, EpisodeCommandKind.AskForIntel, npc.id)),
                 Category(EpisodeCommandKind.AskForIntel));
+            NomineeIntelRows(state, npc);
             // The question is for a voter while there is a vote to ask about; the look is for anyone,
             // in free time or the campaign.
             if (VoteRead.Available(state) && EpisodeEngine.Voters(state).Any(v => v.id == npc.id)

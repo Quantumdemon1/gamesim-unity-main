@@ -14,8 +14,9 @@ already implements that contract. Both native UI adapters omitted the target. Th
 adds the missing deliberate choice without changing the engine, its fallback, costs, ceiling,
 RNG policy, command types, durable transaction pipeline, schema23 or saved fields.
 
-This is the burn-bridge portion of E3, not completion of E3 or Wave C. Targeted nominee opinion
-questions and a picker for shared information remain, as do E2, E4, E5 and all required Wave D.
+This is the burn-bridge portion of E3, not completion of E3 or Wave C. The subsequent targeted
+nominee question increment is recorded in `WAVE_C_NOMINEE_INTEL_IMPLEMENTATION.md` (not native
+accepted). A picker for shared information remains, as do E2, E4, E5 and all required Wave D.
 
 ## Material changes
 

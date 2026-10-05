@@ -1,5 +1,20 @@
 # Gamesim Unity port
 
+**Latest authority adapters/native repairs, 2026-10-05 UTC:** internal atomic
+Safety storage/response plus detached references are staged with105new cases;
+ONLYHoH-pitch and notebook readers are routed. Production activation still
+refused; all writer/settler/incident-reader gates remain. Final2398regular pure,
+385managed and8/8offline pass;55scripted cross-build disabled seasons match.
+Seven existingPlay test partials retain76cases; source-backed fixture repairs
+plus assessedDiary-button and full-copy reply-layout fixes require fresh native
+execution. g23n1 is now CLOSED FAILED (Edit3230/3240,Play950/992), clean ownership/
+source audit, all failed evidence+801captures preserved. Branch floors3632/988/
+77/2398; combined must3643/992/77/2398 retainingQA11/4. See
+`WAVE_D_AUTHORITY_ADAPTERS_IMPLEMENTATION.md` for EVERY change/failure/limit.
+All4WaveD, widerE2, real coherent assets, actual1080p60GTX1060, native/build/visual
+and0of3first-time human playtests remain required. Live project untouched.
+Older dated notes below retain historical state, not current execution status.
+
 **Latest disabled foundation, 2026-10-05 UTC:** schema24 reserves a canonical
 commitment list with rules0/empty; ALL actual factories and imported1-23 remain
 off. Strict frozen23 migration adds only those defaults. Pure prospective safety

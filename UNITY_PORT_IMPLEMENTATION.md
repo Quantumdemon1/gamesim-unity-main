@@ -1,5 +1,23 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC - inactive authority adapters and combined-native repairs
+
+See `WAVE_D_AUTHORITY_ADAPTERS_IMPLEMENTATION.md` for every material change and
+retained failure. Internal sole-Safety storage, atomic mixed counter reservation,
+late NPC acceptance and detached stable-ID reference readers are implemented;
+only HoH-pitch/notebook consumer routes move. Legacy handles, all source fields,
+caps/history and notebook party/ballot boundaries preserved. All actual engine/
+save/factory rule1activation remains refused: no new-game unified authority yet.
+105newcases, final2398pure/385managed/8offline pass;55cross-build disabled-model
+seasons/5956attempts match. SevenPlay partials retain76cases and strict recovery/
+stale callbacks/real hit testing. AssessedDiarybutton and full-copy measured reply
+layout fixes are compiled/reviewed, NOT native accepted. Wholeg23n1 closedFAILED,
+Edit3230/3240 andPlay950/992 with clean ownership/drift; evidence and801mixed
+captures preserved. New floors3632/988/77/2398; combined3643/992/77/2398 preserving
+QA11/4. No live or remote promotion, art/scene/settings/package/fixture/frozen
+contract changes, normal saves or retained builds/recovery deletion. Every
+remaining WaveD/widerE2/art/native/build/1080p60/visual/human gate stays open.
+
 ## 2026-10-05 UTC - schema24 disabled canonical foundation staged
 
 See `WAVE_D_FOUNDATION_IMPLEMENTATION.md` for EVERY material change and remaining

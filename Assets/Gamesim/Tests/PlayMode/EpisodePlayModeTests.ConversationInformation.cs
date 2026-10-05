@@ -12,6 +12,8 @@ namespace Gamesim.Tests.PlayMode
 {
     public sealed partial class EpisodePlayModeTests
     {
+        private string informationListenerId;
+
         private IEnumerator InstallInformationHouse(bool lands = true, bool fresh = true, bool campaign = false, int size = 8)
         {
             yield return InstallTalkingHouse(size, campaign, s =>
@@ -26,6 +28,7 @@ namespace Gamesim.Tests.PlayMode
                     { s.randomState = seed; break; }
                 }
             });
+            informationListenerId = Listener(director.Snapshot).id;
         }
         private static int AiringReads(EpisodeState s) => s.events.Count(e =>
             e.kind == ConversationIntentRules.AiringBacked || e.kind == ConversationIntentRules.AiringOpposed);
@@ -33,13 +36,13 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator ConversationInformation_OpenGameButtonEarnsOpinionsOnceAndReloadsTheExactCommit()
         {
-            yield return InstallInformationHouse(); yield return TalkTo(ContentCatalog.MayaId);
+            yield return InstallInformationHouse(); yield return TalkTo(informationListenerId);
             Assert.That(TagOn(ButtonWithCaption(EpisodeHud.DiscussGameCaption)), Is.EqualTo(EpisodeDirector.LearnTag + " · " + EpisodeDirector.RiskTag));
             var before = director.Snapshot; var click = ButtonWithCaption(EpisodeHud.DiscussGameCaption).onClick;
             click.Invoke(); var after = director.Snapshot;
             Assert.That(after.ledger.standings.Count - before.ledger.standings.Count, Is.EqualTo(2));
-            Assert.That(after.memories.Count(m => m.ownerId == after.playerId && m.subjectId == ContentCatalog.MayaId), Is.GreaterThanOrEqualTo(2));
-            AssertIntentCommand(before, EpisodeCommandKind.DiscussGame, ContentCatalog.MayaId);
+            Assert.That(after.memories.Count(m => m.ownerId == after.playerId && m.subjectId == informationListenerId), Is.GreaterThanOrEqualTo(2));
+            AssertIntentCommand(before, EpisodeCommandKind.DiscussGame, informationListenerId);
             click.Invoke(); AssertIntentDurable(after);
             director.LoadNow(); HoldTheHouseForTheFixture(); AssertIntentDurable(after);
             yield return null;
@@ -48,24 +51,29 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator ConversationInformation_OpenGameBackfireSpendsOnceButDisclosesNothing()
         {
-            yield return InstallInformationHouse(lands: false); yield return TalkTo(ContentCatalog.MayaId);
+            yield return InstallInformationHouse(lands: false); yield return TalkTo(informationListenerId);
             var before = director.Snapshot;
             ButtonWithCaption(EpisodeHud.DiscussGameCaption).onClick.Invoke();
             var after = director.Snapshot;
             Assert.That(after.ledger.standings.Count, Is.EqualTo(before.ledger.standings.Count));
             Assert.That(after.windowActions[Windows.AfterEviction], Is.EqualTo(before.windowActions[Windows.AfterEviction] + 1));
-            AssertIntentCommand(before, EpisodeCommandKind.DiscussGame, ContentCatalog.MayaId);
+            AssertIntentCommand(before, EpisodeCommandKind.DiscussGame, informationListenerId);
             yield return null;
         }
 
         [UnityTest]
         public IEnumerator ConversationInformation_FailedSavePublishesNeitherOpinionsNorMeetingReads()
         {
-            yield return InstallInformationHouse(); yield return TalkTo(ContentCatalog.MayaId);
+            yield return InstallInformationHouse(); yield return TalkTo(informationListenerId);
             var before = director.Snapshot; byte[] bytes = File.ReadAllBytes(director.SavePath);
             using (new FileStream(director.SavePath, FileMode.Open, FileAccess.Read, FileShare.None))
                 ButtonWithCaption(EpisodeHud.DiscussGameCaption).onClick.Invoke();
             AssertIntentDurable(before); Assert.That(File.ReadAllBytes(director.SavePath), Is.EqualTo(bytes));
+            // The locked primary could not be reconciled, so recover deliberately before testing
+            // another action. Releasing the lock alone must not grant a decision authority.
+            Assert.That(director.SeasonInProgress, Is.False);
+            director.LoadNow(); HoldTheHouseForTheFixture(); AssertIntentDurable(before);
+            Assert.That(director.SeasonInProgress, Is.True);
             director.ClosePanels(); yield return OpenStation();
             before = director.Snapshot; bytes = File.ReadAllBytes(director.SavePath);
             using (new FileStream(director.SavePath, FileMode.Open, FileAccess.Read, FileShare.None))
@@ -95,8 +103,9 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator ConversationInformation_HouseguestScreenUsesTheSameAiringWithAnHonestPayoffDescription()
         {
             yield return InstallInformationHouse(); yield return OpenStation();
-            director.OpenHouseguestScreen(ContentCatalog.MayaId); yield return null;
-            Assert.That(director.HouseguestScreenFor, Is.EqualTo(ContentCatalog.MayaId));
+            director.OpenHouseguestScreen(informationListenerId);
+            yield return WaitOutThePointerHold();
+            Assert.That(director.HouseguestScreenFor, Is.EqualTo(informationListenerId));
             var button = ButtonWithCaption(EpisodeHud.AirLaundryCaption);
             Assert.That(button.GetComponentsInChildren<TMP_Text>().Any(t => t.text.Contains("No vote is promised")), Is.True);
             var before = director.Snapshot; button.onClick.Invoke();
@@ -125,12 +134,12 @@ namespace Gamesim.Tests.PlayMode
             var before = director.Snapshot; ButtonWithCaption(EpisodeHud.AirLaundryCaption).onClick.Invoke();
             Assert.That(AiringReads(director.Snapshot), Is.Zero);
             AssertIntentCommand(before, EpisodeCommandKind.HouseMeeting, null, EpisodeEngine.AirDirtyLaundry);
-            yield return InstallInformationHouse(fresh: false); yield return TalkTo(ContentCatalog.MayaId);
+            yield return InstallInformationHouse(fresh: false); yield return TalkTo(informationListenerId);
             Assert.That(TagOn(ButtonWithCaption(EpisodeHud.DiscussGameCaption)), Is.EqualTo(EpisodeDirector.VerbTag(EpisodeCommandKind.DiscussGame)));
             Assert.That(EpisodeDirector.AiringRiskLabel(director.Snapshot), Is.EqualTo("High risk"));
             before = director.Snapshot; ButtonWithCaption(EpisodeHud.DiscussGameCaption).onClick.Invoke();
             Assert.That(director.Snapshot.ledger.standings.Count, Is.EqualTo(before.ledger.standings.Count));
-            AssertIntentCommand(before, EpisodeCommandKind.DiscussGame, ContentCatalog.MayaId);
+            AssertIntentCommand(before, EpisodeCommandKind.DiscussGame, informationListenerId);
         }
 
         [UnityTest]
@@ -139,7 +148,7 @@ namespace Gamesim.Tests.PlayMode
             yield return InstallInformationHouse(size: 16);
             foreach (bool large in new[] { false, true })
             {
-                yield return ApplyTextSize(large); yield return TalkTo(ContentCatalog.MayaId);
+                yield return ApplyTextSize(large); yield return TalkTo(informationListenerId);
                 Assert.That(TagOn(ButtonWithCaption(EpisodeHud.DiscussGameCaption)), Is.EqualTo(EpisodeDirector.LearnTag + " · " + EpisodeDirector.RiskTag));
                 yield return AssertKeyboardRing("Information conversation " + large, ModalRoot);
                 director.ClosePanels(); yield return OpenStation();

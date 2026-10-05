@@ -304,7 +304,7 @@ namespace Gamesim.Tests.PlayMode
                 BlockSpeechInput().text = words;
                 ButtonWithCaption(BlockSpeeches.Label(LobbyApproach.Deal)).onClick.Invoke();
                 var old = ButtonWithCaption(EpisodeHud.EvictionSpeechCaption).onClick;
-                using (new FileStream(director.SavePath, FileMode.Open, FileAccess.Read, FileShare.None)) old.Invoke();
+                FailUiWriteBeforeReplacement(old.Invoke);
                 AssertIntentDurable(before); Assert.That(File.ReadAllBytes(director.SavePath), Is.EqualTo(bytes));
                 old.Invoke(); AssertIntentDurable(before);
                 Assert.That(BlockSpeechInput().text, Is.EqualTo(words));
@@ -323,7 +323,7 @@ namespace Gamesim.Tests.PlayMode
                 var before = director.Snapshot; byte[] bytes = File.ReadAllBytes(director.SavePath);
                 BlockSpeechInput().text = "Keep this until I make a durable choice.";
                 var old = ButtonWithCaption(EpisodeHud.EvictionSpeechSkipCaption).onClick;
-                using (new FileStream(director.SavePath, FileMode.Open, FileAccess.Read, FileShare.None)) old.Invoke();
+                FailUiWriteBeforeReplacement(old.Invoke);
                 AssertIntentDurable(before); Assert.That(File.ReadAllBytes(director.SavePath), Is.EqualTo(bytes));
                 old.Invoke(); AssertIntentDurable(before);
                 Assert.That(BlockSpeechInput().text, Is.EqualTo("Keep this until I make a durable choice."));

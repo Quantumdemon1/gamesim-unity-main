@@ -47,10 +47,10 @@ namespace Gamesim.Simulation
             && s.ledger.replies.Any(r => r.week == card.week && r.cardId == card.id && r.kind == ReplyCards.Pitch
                 && r.fromId == card.fromId && r.replyKey == FeelOutKey);
 
-        public static bool HasSafetyPromise(EpisodeState s, string fromId) => s.promises.Any(p =>
+        public static bool HasSafetyPromise(EpisodeState s, string fromId) => CommitmentReferences.Promises(s).Any(p =>
             p.status == PromiseStatus.Active && p.fromId == s.playerId && p.toId == fromId && p.kind == PromiseKind.Safety);
 
-        public static bool CanPromiseSafety(EpisodeState s, string fromId) => HasSafetyPromise(s, fromId) || s.promises.Count < 200;
+        public static bool CanPromiseSafety(EpisodeState s, string fromId) => HasSafetyPromise(s, fromId) || CommitmentReferences.PromiseCount(s) < 200;
 
         /// <summary>Display the standing learned by the assessment, never the live hidden score.</summary>
         public static string Assessment(EpisodeState s, ReplyCardState card)
@@ -67,7 +67,7 @@ namespace Gamesim.Simulation
 
         public static string SafetyDescription(EpisodeState s, string fromId) => HasSafetyPromise(s, fromId)
             ? "Reaffirm your existing safety promise; no second promise is made. Nominating them can break your word."
-            : s.promises.Count >= 200 ? "Your promise record is full. Hear them out or turn them down instead."
+            : CommitmentReferences.PromiseCount(s) >= 200 ? "Your promise record is full. Hear them out or turn them down instead."
             : "Gain trust; promise them safety through next week. Nominating them now or as a replacement can break your word.";
     }
 }

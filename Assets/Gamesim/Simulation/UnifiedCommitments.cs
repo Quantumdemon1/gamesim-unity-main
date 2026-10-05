@@ -98,7 +98,14 @@ namespace Gamesim.Simulation
             if ((!promise && row.sourcePolicy != DealPolicy) || (promise ? !IsPromiseOrigin(row.origin) : !IsDealOrigin(row.origin))
                 || row.reciprocal == promise || !DealStatus.IsKnown(row.status) || !DealTrust.IsKnown(row.trustImpact))
                 return Refuse(out error, "Invalid canonical safety source policy.");
-            if (row.createdWeek < 1 || row.createdWeek > state.week || row.expiresWeek != row.createdWeek + (promise || row.origin == Lobby ? 1 : 0))
+            // A proposed NPC safety offer can survive the week turn until the next NPC deal
+            // pass. Its answer preserves the proposal week/ID, but acceptance resets the term
+            // to the answering week (EpisodeEngine.RespondToDeal). Decline never resets it.
+            bool answeredNpcOffer = row.origin == NpcOffer && row.status != DealStatus.Proposed && row.status != DealStatus.Declined;
+            bool validTerm = answeredNpcOffer
+                ? row.expiresWeek >= row.createdWeek && row.expiresWeek <= state.week
+                : row.expiresWeek == row.createdWeek + (promise || row.origin == Lobby ? 1 : 0);
+            if (row.createdWeek < 1 || row.createdWeek > state.week || !validTerm)
                 return Refuse(out error, "Invalid canonical safety term.");
             if (promise && (row.status == DealStatus.Proposed || row.status == DealStatus.Accepted || row.status == DealStatus.Declined || row.status == DealStatus.Fulfilled
                 || row.trustImpact != DealTrust.Medium || row.linkedCommitmentId != null))

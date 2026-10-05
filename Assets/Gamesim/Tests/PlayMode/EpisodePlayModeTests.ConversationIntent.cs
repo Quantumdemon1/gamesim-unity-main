@@ -15,6 +15,8 @@ namespace Gamesim.Tests.PlayMode
 {
     public sealed partial class EpisodePlayModeTests
     {
+        private string intentListenerId;
+
         private IEnumerator InstallIntentHouse(bool fresh = true, int size = 8, bool campaign = false)
         {
             yield return InstallTalkingHouse(size, campaign, s =>
@@ -22,7 +24,8 @@ namespace Gamesim.Tests.PlayMode
                 EpisodeEngine.EnableWeek(s); EpisodeEngine.EnableStory(s);
                 s.economyRulesVersion = fresh ? 1 : 0;
             });
-            yield return TalkTo(ContentCatalog.MayaId);
+            intentListenerId = Listener(director.Snapshot).id;
+            yield return TalkTo(intentListenerId);
         }
 
         private void AssertIntentDurable(EpisodeState expected)
@@ -32,13 +35,15 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(JsonUtility.ToJson(disk), Is.EqualTo(JsonUtility.ToJson(expected)));
         }
 
-        private void AssertIntentCommand(EpisodeState before, EpisodeCommandKind kind, string target, string text = null)
+        private void AssertIntentCommand(EpisodeState before, EpisodeCommandKind kind, string target, string text = null,
+            string secondTargetId = null)
         {
             var after = director.Snapshot;
             Assert.That(after.acceptedCommandIds.Count, Is.EqualTo(before.acceptedCommandIds.Count + 1));
             Assert.That(after.acceptedCommandIds.Take(before.acceptedCommandIds.Count), Is.EqualTo(before.acceptedCommandIds));
             var command = new EpisodeCommand { id = after.acceptedCommandIds.Last(), actorId = before.playerId,
-                expectedRevision = before.revision, expectedPhase = before.phase, kind = kind, targetId = target, text = text };
+                expectedRevision = before.revision, expectedPhase = before.phase, kind = kind, targetId = target,
+                secondTargetId = secondTargetId, text = text };
             var replay = new EpisodeEngine(before).Apply(command);
             Assert.That(replay.accepted, Is.True, replay.reason);
             AssertIntentDurable(replay.state);
@@ -51,7 +56,7 @@ namespace Gamesim.Tests.PlayMode
             foreach (bool large in new[] { false, true })
             {
                 yield return ApplyTextSize(large);
-                yield return TalkTo(ContentCatalog.MayaId);
+                yield return TalkTo(intentListenerId);
                 var before = director.Snapshot;
                 var dial = ActiveRect(EpisodeHud.DialName);
                 Assert.That(dial, Is.Not.Null);
@@ -95,9 +100,9 @@ namespace Gamesim.Tests.PlayMode
             var click = ButtonWithCaption(EpisodeHud.PersonalChatCaption).onClick;
             click.Invoke();
             var after = director.Snapshot;
-            Assert.That(Lore.Learned(after, ContentCatalog.MayaId).Count, Is.EqualTo(2));
+            Assert.That(Lore.Learned(after, intentListenerId).Count, Is.EqualTo(2));
             Assert.That(after.windowActions[Windows.AfterEviction], Is.EqualTo(1));
-            AssertIntentCommand(before, EpisodeCommandKind.PersonalChat, ContentCatalog.MayaId);
+            AssertIntentCommand(before, EpisodeCommandKind.PersonalChat, intentListenerId);
             click.Invoke(); AssertIntentDurable(after);
             director.LoadNow(); HoldTheHouseForTheFixture();
             AssertIntentDurable(after);
@@ -113,7 +118,7 @@ namespace Gamesim.Tests.PlayMode
             var after = director.Snapshot;
             Assert.That(after.revision, Is.EqualTo(before.revision + 1));
             Assert.That(after.windowActions[Windows.AfterEviction], Is.EqualTo(1));
-            AssertIntentCommand(before, EpisodeCommandKind.Talk, ContentCatalog.MayaId);
+            AssertIntentCommand(before, EpisodeCommandKind.Talk, intentListenerId);
         }
 
         [UnityTest]
@@ -137,7 +142,7 @@ namespace Gamesim.Tests.PlayMode
                 ButtonWithCaption(EpisodeHud.PersonalChatCaption).onClick.Invoke();
             Assert.That(JsonUtility.ToJson(director.Snapshot), Is.EqualTo(JsonUtility.ToJson(before)));
             Assert.That(File.ReadAllBytes(director.SavePath), Is.EqualTo(original));
-            Assert.That(Lore.Learned(director.Snapshot, ContentCatalog.MayaId), Is.Empty);
+            Assert.That(Lore.Learned(director.Snapshot, intentListenerId), Is.Empty);
             yield return null;
         }
 
@@ -151,7 +156,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(after.revision, Is.EqualTo(before.revision + 1));
             Assert.That(after.windowActions[Windows.AfterVeto], Is.EqualTo(before.windowActions[Windows.AfterVeto] + 1));
             Assert.That(after.windowActions[Windows.AfterEviction], Is.EqualTo(before.windowActions[Windows.AfterEviction]));
-            Assert.That(Lore.Learned(after, ContentCatalog.MayaId).Count, Is.EqualTo(2));
+            Assert.That(Lore.Learned(after, intentListenerId).Count, Is.EqualTo(2));
             AssertIntentDurable(after);
             yield return null;
         }

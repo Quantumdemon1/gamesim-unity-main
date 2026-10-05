@@ -781,6 +781,11 @@ namespace Gamesim.Tests.PlayMode
 
         private sealed class CompetitionInspectionGeometry
         {
+            private sealed class TriangleBlock
+            {
+                public Bounds Bounds;
+                public int Begin,End;
+            }
             private sealed class Solid
             {
                 public Renderer Renderer;
@@ -788,9 +793,35 @@ namespace Gamesim.Tests.PlayMode
                 public Bounds Bounds;
                 public Vector3[] Points;
                 public int[][] Faces;
+                public TriangleBlock[][] Blocks;
             }
             private readonly List<Solid> solids=new List<Solid>();
-            private int triangleTests;
+            private int intersectionWork;
+            public int IntersectionWork=>intersectionWork;
+
+            private void CountIntersectionWork()
+            {
+                // The original twenty-million work limit is not raised. Count broad-phase
+                // visits too, so acceleration cannot hide unbounded scanning behind the cap.
+                if(++intersectionWork>20000000)Assert.Fail("Inspection segment/triangle work exceeds its per-capture bound.");
+            }
+
+            private static TriangleBlock[] Blocks(Vector3[] points,int[] faces)
+            {
+                const int indicesPerBlock=64*3;
+                var blocks=new List<TriangleBlock>((faces.Length+indicesPerBlock-1)/indicesPerBlock);
+                for(int begin=0;begin<faces.Length;begin+=indicesPerBlock)
+                {
+                    int end=Math.Min(begin+indicesPerBlock,faces.Length);
+                    var bounds=new Bounds(points[faces[begin]],Vector3.zero);
+                    for(int i=begin+1;i<end;i++)bounds.Encapsulate(points[faces[i]]);
+                    // Conservative padding only broadens candidates. Exact retained faces,
+                    // not these boxes, still decide every obstruction and segment distance.
+                    bounds.Expand(.0002f);
+                    blocks.Add(new TriangleBlock {Bounds=bounds,Begin=begin,End=end});
+                }
+                return blocks.ToArray();
+            }
 
             public CompetitionInspectionGeometry(Renderer[] renderers)
             {
@@ -839,6 +870,7 @@ namespace Gamesim.Tests.PlayMode
                                 if(!CompetitionInspectionFinite(solid.Points[i]))Assert.Fail("Inspection mesh vertex must be finite.");
                             }
                             solid.Faces=new int[data[0].subMeshCount][];
+                            solid.Blocks=new TriangleBlock[data[0].subMeshCount][];
                             for(int sub=0;sub<solid.Faces.Length;sub++)
                             {
                                 Assert.That(sub,Is.LessThan(materials.Length),"Each actual submesh needs its rendered material.");
@@ -858,6 +890,7 @@ namespace Gamesim.Tests.PlayMode
                                 }
                                 Assert.That(solid.Faces[sub].All(index=>index>=0 && index<solid.Points.Length),Is.True,
                                     "Inspection triangle indices refer to actual retained vertices.");
+                                solid.Blocks[sub]=Blocks(solid.Points,solid.Faces[sub]);
                             }
                         }
                         solids.Add(solid);
@@ -875,42 +908,99 @@ namespace Gamesim.Tests.PlayMode
                         "The synchronous inspection retains its opaque renderer.");
                     Assert.That(solid.Renderer.localToWorldMatrix,Is.EqualTo(solid.Matrix),
                         "An inspection blocker moved after the native geometry snapshot: "+solid.Renderer.name);
+                    CountIntersectionWork();
                     if(!solid.Bounds.IntersectRay(ray,out float entry) || entry>length)continue;
                     for(int sub=0;sub<solid.Faces.Length;sub++)
                     {
                         var faces=solid.Faces[sub];if(faces==null)continue;
-                        for(int i=0;i<faces.Length;i+=3)
+                        foreach(var block in solid.Blocks[sub])
                         {
-                            if(++triangleTests>20000000)Assert.Fail("Inspection segment/triangle work exceeds its per-capture bound.");
-                            if(!CompetitionInspectionTriangleHit(ray,solid.Points[faces[i]],solid.Points[faces[i+1]],solid.Points[faces[i+2]],out float distance)
-                                || distance>=length)continue;
-                            failure="subject sight blocked by opaque mesh face: "+solid.Renderer.name+"; submesh="+sub
-                                +"; triangle="+(i/3)+"; distance="+distance.ToString("F5")
-                                +"; actualWorldA="+solid.Points[faces[i]].ToString("R")
-                                +"; actualWorldB="+solid.Points[faces[i+1]].ToString("R")
-                                +"; actualWorldC="+solid.Points[faces[i+2]].ToString("R")
-                                +"; actualWorldHit="+ray.GetPoint(distance).ToString("R");
-                            // Diagnostics read the same retained face that rejected the view.
-                            // Include every actual draw material on the final physical submesh,
-                            // where Unity may render additional material passes.
-                            var materials=solid.Renderer.sharedMaterials;
-                            int materialEnd=sub==solid.Faces.Length-1?materials.Length:sub+1;
-                            for(int materialIndex=sub;materialIndex<materialEnd;materialIndex++)
+                            CountIntersectionWork();
+                            if(!block.Bounds.IntersectRay(ray,out float blockEntry) || blockEntry>length)continue;
+                            for(int i=block.Begin;i<block.End;i+=3)
                             {
-                                var material=materials[materialIndex];
-                                failure+="; drawMaterial["+materialIndex+"]="+(material!=null?material.name:"null");
-                                if(material==null)continue;
-                                failure+=", shader="+(material.shader!=null?material.shader.name:"null")
-                                    +", queue="+material.renderQueue+", renderType="+material.GetTag("RenderType",false,"");
-                                foreach(string property in new[]{"_Cull","_CullMode","_RenderFace","_AlphaClip"})
-                                    failure+=", "+property+"="+(material.HasProperty(property)?material.GetFloat(property).ToString("R"):"missing");
+                                CountIntersectionWork();
+                                if(!CompetitionInspectionTriangleHit(ray,solid.Points[faces[i]],solid.Points[faces[i+1]],solid.Points[faces[i+2]],out float distance)
+                                    || distance>=length)continue;
+                                failure="subject sight blocked by opaque mesh face: "+solid.Renderer.name+"; submesh="+sub
+                                    +"; triangle="+(i/3)+"; distance="+distance.ToString("F5")
+                                    +"; actualWorldA="+solid.Points[faces[i]].ToString("R")
+                                    +"; actualWorldB="+solid.Points[faces[i+1]].ToString("R")
+                                    +"; actualWorldC="+solid.Points[faces[i+2]].ToString("R")
+                                    +"; actualWorldHit="+ray.GetPoint(distance).ToString("R");
+                                // Diagnostics read the same retained face that rejected the view.
+                                // Include every actual draw material on the final physical submesh,
+                                // where Unity may render additional material passes.
+                                var materials=solid.Renderer.sharedMaterials;
+                                int materialEnd=sub==solid.Faces.Length-1?materials.Length:sub+1;
+                                for(int materialIndex=sub;materialIndex<materialEnd;materialIndex++)
+                                {
+                                    var material=materials[materialIndex];
+                                    failure+="; drawMaterial["+materialIndex+"]="+(material!=null?material.name:"null");
+                                    if(material==null)continue;
+                                    failure+=", shader="+(material.shader!=null?material.shader.name:"null")
+                                        +", queue="+material.renderQueue+", renderType="+material.GetTag("RenderType",false,"");
+                                    foreach(string property in new[]{"_Cull","_CullMode","_RenderFace","_AlphaClip"})
+                                        failure+=", "+property+"="+(material.HasProperty(property)?material.GetFloat(property).ToString("R"):"missing");
+                                }
+                                return true;
                             }
-                            return true;
                         }
                     }
                 }
                 failure=null;return false;
             }
+        }
+
+        [UnityTest]
+        public IEnumerator Apparatus_InspectionBlocksPreserveExactFacesAndTheOriginalWorkLimit()
+        {
+            var root=new GameObject("Owned dense inspection fixture");Mesh mesh=null;Material material=null;
+            try
+            {
+                root.transform.SetPositionAndRotation(new Vector3(73,19,-47),Quaternion.Euler(0,37,0));
+                root.transform.localScale=new Vector3(1.4f,.8f,1.2f);
+                var vertices=new List<Vector3>();var faces=new List<int>();
+                // 32,768 real triangles, two dense walls with a genuinely empty opening.
+                // A whole-renderer scan would exceed twenty million on the repeated gap rays.
+                foreach(int side in new[]{-1,1})for(int x=0;x<64;x++)for(int y=0;y<128;y++)
+                {
+                    float a=side<0?-4+x*3.5f/64:.5f+x*3.5f/64,b=-2+y/32f;
+                    int start=vertices.Count;
+                    vertices.AddRange(new[]{new Vector3(a,b,1),new Vector3(a+3.5f/64,b,1),new Vector3(a+3.5f/64,b+1/32f,1),new Vector3(a,b+1/32f,1)});
+                    faces.AddRange(new[]{start,start+1,start+2,start,start+2,start+3});
+                }
+                mesh=new Mesh {indexFormat=UnityEngine.Rendering.IndexFormat.UInt32,hideFlags=HideFlags.HideAndDontSave};
+                mesh.SetVertices(vertices);mesh.SetTriangles(faces,0);mesh.RecalculateBounds();
+                root.AddComponent<MeshFilter>().sharedMesh=mesh;var renderer=root.AddComponent<MeshRenderer>();
+                material=new Material(Shader.Find("Universal Render Pipeline/Lit")){hideFlags=HideFlags.HideAndDontSave,renderQueue=2000};
+                renderer.sharedMaterial=material;
+                var geometry=new CompetitionInspectionGeometry(new Renderer[]{renderer});
+                var world=vertices.Select(v=>root.transform.TransformPoint(v)).ToArray();
+                foreach(float x in new[]{-3.97f,-2f,-.5f,-.25f,0f,.25f,.5f,2f,3.97f})
+                foreach(bool back in new[]{false,true})foreach(float length in new[]{.4f,3f})
+                {
+                    var ray=new Ray(root.transform.TransformPoint(new Vector3(x,.137f,back?2:0)),root.transform.forward*(back?-1:1));
+                    bool exact=false;
+                    for(int i=0;i<faces.Count;i+=3)
+                        if(CompetitionInspectionTriangleHit(ray,world[faces[i]],world[faces[i+1]],world[faces[i+2]],out float distance) && distance<length)
+                        {exact=true;break;}
+                    Assert.That(geometry.Blocked(ray,length,out _),Is.EqualTo(exact),"Acceleration must agree with the exact retained triangles, including edge and short segments.");
+                }
+                int before=geometry.IntersectionWork;
+                for(int i=0;i<1000;i++)
+                {
+                    var ray=new Ray(root.transform.TransformPoint(new Vector3((i%11-5)*.04f,.137f,0)),root.transform.forward);
+                    Assert.That(renderer.bounds.IntersectRay(ray),Is.True);
+                    Assert.That(geometry.Blocked(ray,3,out _),Is.False,"Bounds must never fill the real opening.");
+                }
+                Assert.That(geometry.IntersectionWork-before,Is.LessThan(1000000),"All broad-phase visits count; the old scan would need32,768,000 triangle tests.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);if(mesh!=null)Object.DestroyImmediate(mesh);if(material!=null)Object.DestroyImmediate(material);
+            }
+            yield return null;
         }
 
         private static bool CompetitionInspectionTriangleHit(Ray ray,Vector3 a,Vector3 b,Vector3 c,out float distance)

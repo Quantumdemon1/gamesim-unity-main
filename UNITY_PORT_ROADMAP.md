@@ -1,5 +1,23 @@
 # Gamesim Unity port
 
+**Native checkpoint closed,2026-10-05 UTC:** integration714 NoUMA g24n3 now passes
+4124Edit/995Play with0failed/skipped, natural closure and no source drift. It
+does not contain the newer outcome/story or hearing/schema25 increments.
+Hearing staging whitespace repair was rechecked against a fresh frozen03 image:
+8assemblies/3042pure/1029Mono and55legacy replay comparisons pass. Native153
+new persistence cases and integration/activation remain pending; no UMA/build/
+1080p60/visual/human acceptance is claimed. Older live-run notes are historical.
+
+**Durable Safety hearing/schema25,2026-10-05 UTC:** actual audible-fact archives
+and once-only incident/listener receipts are staged, with209newEdit cases
+(56pure/153native). Eightfresh assemblies/3042regular pure/1029focused Mono pass;
+55paired legacy digests ANDattempts match retained24,975source+2Tools before/after
+hashes identical. Native153cases remain compiled,not Unity-executed. Detached old
+upgrades add ONLY hearing0/empty lists; production unified/hearing1 stay refused.
+See WAVE_D_SAFETY_HEARING_IMPLEMENTATION.md. Integration714
+remains frozen under its separate g24n3 owner. All remainingD1families, requiredD2-D4,
+widerE2, realassets and native/build/1080p60/visual/0of3human gates remain open.
+
 **Canonical Safety outcome/story readers,2026-10-05 UTC:** nine remaining
 summary/story consumers are implemented with163new Edit cases(127pure/36native).
 Eightfresh assemblies,2986regular pure and973focused Mono pass;55paired legacy

@@ -21,6 +21,36 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 25) return (JObject)original.DeepClone();
+            if (version < 1 || version > 24) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV24ToV25(version == 24 ? original : PrepareV24Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds only disabled, empty hearing coordination. Never convert existing facts, infer an
+        /// audience, backfill hearing effects or receipts, renumber IDs, or advance any RNG stream.
+        /// The complete former-24 payload is validated before cloning and remains untouched.
+        /// </summary>
+        public static JObject UpgradeV24ToV25(JObject original)
+        {
+            FrozenEpisodeV24.Validate(original);
+            var result = (JObject)original.DeepClone();
+            result.Add("unifiedHearingRulesVersion", 0);
+            result.Add("unifiedHearingEvidence", new JArray());
+            result.Add("unifiedHearingReceipts", new JArray());
+            result["schemaVersion"] = 25;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v23-to-v24 dispatch; the schema-24 step retains exactly its original two additions.</summary>
+        public static JObject PrepareV24Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 24) return (JObject)original.DeepClone();
             if (version < 1 || version > 23) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV23ToV24(version == 23 ? original : PrepareV23Payload(original, out _));

@@ -85,8 +85,33 @@ namespace Gamesim.Tests.EditMode
         public static JObject StripSchema24(JObject payload)
         {
             if (payload == null) return null;
+            StripSchema25(payload);
             payload.Remove("unifiedCommitmentRulesVersion");
             payload.Remove("unifiedCommitments");
+            return payload;
+        }
+
+        /// <summary>Only synthetic disabled captures: never rewrite or reseal real historical save bytes.</summary>
+        public static JObject StripSchema25(JObject payload)
+        {
+            if (payload == null) return null;
+            var hearingFields = new[] { "unifiedHearingRulesVersion", "unifiedHearingEvidence", "unifiedHearingReceipts" };
+            bool currentOrFuture = payload["schemaVersion"]?.Type == JTokenType.Integer
+                && (long)payload["schemaVersion"] >= 25;
+            if (currentOrFuture || hearingFields.Any(field => payload.Property(field) != null))
+            {
+                Assert.That(payload["schemaVersion"].Type, Is.EqualTo(JTokenType.Integer));
+                Assert.That((int)payload["schemaVersion"], Is.EqualTo(25), "Only a known current capture may be projected.");
+                Assert.That(payload["unifiedHearingRulesVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
+                Assert.That((int)payload["unifiedHearingRulesVersion"], Is.Zero, "Do not erase enabled hearing history.");
+                Assert.That(payload["unifiedHearingEvidence"], Is.TypeOf<JArray>());
+                Assert.That(payload["unifiedHearingReceipts"], Is.TypeOf<JArray>());
+                Assert.That((JArray)payload["unifiedHearingEvidence"], Is.Empty);
+                Assert.That((JArray)payload["unifiedHearingReceipts"], Is.Empty);
+            }
+            payload.Remove("unifiedHearingRulesVersion");
+            payload.Remove("unifiedHearingEvidence");
+            payload.Remove("unifiedHearingReceipts");
             return payload;
         }
 
@@ -382,13 +407,13 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, original, new UTF8Encoding(false));
             var before = File.ReadAllBytes(fixture.Store.SavePath);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(24));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(25));
             Assert.That(loaded.randomState, Is.Zero);
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(before));
             Assert.That(File.Exists(fixture.Store.BackupPath), Is.False);
             fixture.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(before));
-            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(24));
+            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(25));
         }
 
         [Test]
@@ -414,7 +439,7 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, "damaged primary");
             var before = File.ReadAllBytes(fixture.Store.BackupPath);
             Assert.That(fixture.Store.TryRecoverBackup(out var recovered, out var message), Is.True, message);
-            Assert.That(recovered.schemaVersion, Is.EqualTo(24));
+            Assert.That(recovered.schemaVersion, Is.EqualTo(25));
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(before));
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(before));
             Assert.That(File.ReadAllText(Directory.GetFiles(fixture.DirectoryPath, "*.before-recovery-*.json").Single()),
@@ -477,7 +502,7 @@ namespace Gamesim.Tests.EditMode
             var original = Envelope(payload);
             File.WriteAllText(fixture.Store.SavePath, original);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(24));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(25));
             Assert.That(loaded.finaleRulesStartWeek, Is.Zero, "A legacy finale plays the catalogue's rules.");
             Assert.That(loaded.finalArgument, Is.Null, "and has no final argument.");
             Assert.That(loaded.commitmentRulesStartWeek, Is.Zero, "A legacy season plays without the commitment rules.");

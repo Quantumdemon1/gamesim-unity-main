@@ -73,7 +73,7 @@ namespace Gamesim.Simulation
         /// <summary>The player's broken word the house knows of, in the order the season wrote it. Empty while the house keeps no knowledge of it (<see cref="On"/>).</summary>
         public static List<HouseFactState> Breaches(EpisodeState s)
         {
-            var facts = On(s) && s.story?.facts != null ? s.story.facts.Where(f => IsYours(s, f)).ToList() : new List<HouseFactState>();
+            var facts = On(s) && s.story?.facts != null ? AudibleFacts(s) : new List<HouseFactState>();
             if (!UnifiedCommitments.RulesOn(s)) return facts;
             // Hearings count one actual betrayal, even if several agreement references retain
             // knowledge of it. Only combine knowers actually recorded on its audible facts.
@@ -235,7 +235,7 @@ namespace Gamesim.Simulation
             {
                 var incident = UnifiedCommitmentHistory.Breaches(s).FirstOrDefault(item => item.ActorId == fact.actorId
                     && item.WrongedId == fact.subjectId && item.EvidenceIds.Contains(fact.refId));
-                if (incident != null && s.story.facts.Where(item => IsYours(s, item) && item.actorId == fact.actorId
+                if (incident != null && AudibleFacts(s).Where(item => IsYours(s, item) && item.actorId == fact.actorId
                     && item.subjectId == fact.subjectId && incident.EvidenceIds.Contains(item.refId))
                     .Select(item => CommitmentReferences.FindCanonical(s, item.refId)?.sourcePolicy).Distinct().Count() > 1)
                     return "word of safety to " + with;
@@ -244,6 +244,9 @@ namespace Gamesim.Simulation
                 return "promise of safety to " + with;
             return deal == null ? "word to " + with : CommitmentsRead.DealNoun(deal.type) + " with " + with;
         }
+
+        private static List<HouseFactState> AudibleFacts(EpisodeState s) => UnifiedCommitmentHearings.RulesOn(s)
+            ? UnifiedCommitmentHearings.AudibleFacts(s) : s.story.facts.Where(f => IsYours(s, f)).ToList();
 
         private static string Many(int n) => n == 1 ? "1 houseguest has" : n + " houseguests have";
 

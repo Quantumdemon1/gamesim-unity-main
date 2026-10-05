@@ -365,6 +365,7 @@ namespace Gamesim.Simulation
         /// <summary>The systems that run at particular anchors, before any cycle pulses.</summary>
         private static void StorySystemsAt(EpisodeState s, string anchor)
         {
+            if (UnifiedCommitmentHearings.RulesOn(s)) UnifiedCommitmentHearings.RequireValid(s);
             if (anchor == StoryAnchors.EvictionNight && StoryAt(s, StoryRules.Bonds)) NpcShowmancePass(s);
             if (StoryAt(s, StoryRules.Bonds) && anchor != StoryAnchors.Conversation)
                 foreach (var (fact, listener) in Knowledge.Spread(s, anchor))

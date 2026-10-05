@@ -244,7 +244,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 24;
+        public int schemaVersion = 25;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
@@ -295,6 +295,12 @@ namespace Gamesim.Simulation
         public int unifiedCommitmentRulesVersion;
         /// <summary>Schema 24's separately owned canonical records. Must stay empty while the foundation gate is disabled.</summary>
         public List<UnifiedCommitmentState> unifiedCommitments = new List<UnifiedCommitmentState>();
+        /// <summary>Schema 25: durable hearing coordination, separately disabled on historical and newly constructed states.</summary>
+        public int unifiedHearingRulesVersion;
+        /// <summary>Actual audible canonical facts retained independently of the story world's bounded fact list.</summary>
+        public List<UnifiedHearingEvidenceState> unifiedHearingEvidence = new List<UnifiedHearingEvidenceState>();
+        /// <summary>One actual initial/spread receipt per canonical incident and non-player listener; never FIFO-pruned.</summary>
+        public List<UnifiedHearingReceiptState> unifiedHearingReceipts = new List<UnifiedHearingReceiptState>();
         public List<CompetitionScore> competitionScores = new List<CompetitionScore>();
         public List<EpisodeEvent> events = new List<EpisodeEvent>();
         public List<string> acceptedCommandIds = new List<string>();
@@ -506,6 +512,8 @@ namespace Gamesim.Simulation
             copy.relationships = relationships.Select(x => x.Clone()).ToList();
             copy.promises = promises.Select(x => x.Clone()).ToList();
             copy.unifiedCommitments = unifiedCommitments?.Select(x => x?.Clone()).ToList();
+            copy.unifiedHearingEvidence = unifiedHearingEvidence?.Select(x => x?.Clone()).ToList();
+            copy.unifiedHearingReceipts = unifiedHearingReceipts?.Select(x => x?.Clone()).ToList();
             copy.alliances = alliances.Select(x => x.Clone()).ToList();
             copy.memories = memories.Select(x => x.Clone()).ToList();
             copy.nominees = new List<string>(nominees); copy.vetoPlayers = new List<string>(vetoPlayers);

@@ -88,6 +88,8 @@ namespace Gamesim.Simulation
         {
             if (!CommitmentRulesOn(s) || !UnifiedCommitments.ValidateRecords(s, out _))
                 throw new ArgumentException("A valid enabled commitment context is required for safety settlement.");
+            if (!UnifiedCommitmentHearings.ValidateStorage(s, out string hearingError))
+                throw new ArgumentException(hearingError, nameof(s));
             var ids = s.promises.Select(row => row.id).Concat(s.deals.Select(row => row.id))
                 .Concat(s.unifiedCommitments.Select(row => row.id)).ToList();
             if (ids.Any(string.IsNullOrEmpty) || ids.Distinct(StringComparer.Ordinal).Count() != ids.Count)

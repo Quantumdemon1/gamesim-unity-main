@@ -1,5 +1,32 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC - older714 NoUMA checkpoint closed; hearing image refreshed
+
+Whole g24n3/root36248 CLOSED0:4124Edit/995Play,0failed/skipped, four owned exits0,
+source/cleanup/unowned drift0,5383retained hashes verified. Terminal
+3a79b516d4431dfb264f827125fff9bc8fbc0fa2e5b5e67ea2cecb9391bb1f47.
+This is714's technical NoUMA acceptance only, not newer isolated source or release.
+Hearing staged diff-check found47whitespace-only blanks in two NEW frozen helper
+files; only whitespace removed and exact-image03 reverified8assemblies/3042pure/
+1029Mono/55legacy digests+attempts. Before/after975source+2Tools identical.
+See WAVE_D_SAFETY_HEARING_IMPLEMENTATION.md for fresh and retained evidence.
+Schema25native153, enabled-save/transaction/fresh activation, otherD1-D4,
+broaderE2/assets/same-pinUMA/build/actual1080p60/visual/human gates remain open.
+
+## 2026-10-05 UTC - durable Safety hearing/schema25 diagnostics closed
+
+See `WAVE_D_SAFETY_HEARING_IMPLEMENTATION.md` for every material source/test/tool
+change and review finding. Actual-fact archive/listener receipts and frozen24->25
+disabled migration are staged, NOT production activation. Eightfresh assemblies,
+3042regular pure and1029focused Mono pass;55paired legacy digests/counts match
+retained24.975source+2Tools before/after hashes match.56hearing pure plus
+58frozen24/95migration native cases added; native153 remain compiled,not executed
+inUnity. Full native fixtures stay outside pure/Mono allowlists, never stubbed or
+selectively omitted. Floors4485Edit/991Play/77UMA/3042pure; futurecombined must
+retainQA11/4:4496/995/77/3042. Integration714/g24n3 remains separately frozen;
+full enabled-save/transactions/fresh-onlyactivation, otherD1families/D2-D4,
+balance/assets/shipping1080p60/visual/accessibility/0of3human gates remain.
+
 ## 2026-10-05 UTC - canonical Safety outcome summaries and story consumers
 
 WAVE_D_SAFETY_OUTCOME_STORY_IMPLEMENTATION.md enumerates every material change,

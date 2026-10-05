@@ -9,6 +9,10 @@ namespace Gamesim.Simulation
     /// </summary>
     public static class ConversationIntentRules
     {
+        // Stored event kinds, not new save fields or claim vocabulary. Reaction notes retain the
+        // exact witnessed side and words even if their later view of the player changes.
+        public const string AiringBacked = "airing-backed", AiringOpposed = "airing-opposed";
+
         public static bool PersonalLoreOn(EpisodeState state) =>
             EpisodeEngine.EconomyRulesOn(state) && EpisodeEngine.StoryAt(state, StoryRules.Lore);
 

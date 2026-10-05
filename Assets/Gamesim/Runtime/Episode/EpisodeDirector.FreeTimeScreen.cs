@@ -337,8 +337,9 @@ namespace Gamesim.Episode
             {
                 Tile(EpisodeHud.RallyHouseCaption, "Rally the house for a meeting. Moves everybody at once: mostly warmer, with one sceptic.",
                     EpisodeCommandKind.HouseMeeting, "people", () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.RallyTroops), "Risky"),
-                Tile(EpisodeHud.AirLaundryCaption, "No middle ground: each housemate comes down with you or against you.",
-                    EpisodeCommandKind.HouseMeeting, "target", () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.AirDirtyLaundry), "High risk"),
+                Tile(EpisodeHud.AirLaundryCaption, "No middle ground: each housemate comes down with you or against you."
+                        + (EpisodeEngine.EconomyRulesOn(state) ? " If the airing lands, record their reactions in your reads. No vote is promised." : ""),
+                    EpisodeCommandKind.HouseMeeting, "target", () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.AirDirtyLaundry), AiringRiskLabel(state)),
             };
             // At three, first of all: the comparison, which costs nothing (ENDGAME-PLAN F2).
             if (asCards && Preparing(state)) tiles.Insert(0, CompareTile(OpenFinalistComparison));

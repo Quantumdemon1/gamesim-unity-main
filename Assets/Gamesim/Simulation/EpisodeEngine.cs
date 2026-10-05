@@ -1729,6 +1729,7 @@ namespace Gamesim.Simulation
             Change(s, s.playerId, target.id, delta);
             Remember(s, target.id, s.playerId, line, true);
             Log(s, landed ? "conversation" : "conversation-backfire", line, s.playerId, target.id);
+            if (landed && EconomyRulesOn(s)) OpenGameOpinions(s, target);
         }
 
         /// <summary>
@@ -1849,6 +1850,7 @@ namespace Gamesim.Simulation
                     : i == sceptic ? WebSocialVocabulary.MeetingSceptic
                     : WebSocialVocabulary.MeetingRally(Roll(s));
                 Change(s, s.playerId, house[i].id, delta);
+                if (airing && worked && EconomyRulesOn(s)) AiringReaction(s, house[i], delta);
             }
 
             Log(s, "house-meeting", !worked

@@ -32,13 +32,13 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(JsonUtility.ToJson(disk), Is.EqualTo(JsonUtility.ToJson(expected)));
         }
 
-        private void AssertIntentCommand(EpisodeState before, EpisodeCommandKind kind, string target)
+        private void AssertIntentCommand(EpisodeState before, EpisodeCommandKind kind, string target, string text = null)
         {
             var after = director.Snapshot;
             Assert.That(after.acceptedCommandIds.Count, Is.EqualTo(before.acceptedCommandIds.Count + 1));
             Assert.That(after.acceptedCommandIds.Take(before.acceptedCommandIds.Count), Is.EqualTo(before.acceptedCommandIds));
             var command = new EpisodeCommand { id = after.acceptedCommandIds.Last(), actorId = before.playerId,
-                expectedRevision = before.revision, expectedPhase = before.phase, kind = kind, targetId = target };
+                expectedRevision = before.revision, expectedPhase = before.phase, kind = kind, targetId = target, text = text };
             var replay = new EpisodeEngine(before).Apply(command);
             Assert.That(replay.accepted, Is.True, replay.reason);
             AssertIntentDurable(replay.state);

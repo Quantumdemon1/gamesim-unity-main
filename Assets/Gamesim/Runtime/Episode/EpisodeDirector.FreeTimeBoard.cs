@@ -432,7 +432,7 @@ namespace Gamesim.Episode
                 tiles.Add(CostedTile(OverviewListenCaption, "eye", "Works 7 in 10", UiTheme.Joke, () => Commit(state, EpisodeCommandKind.Eavesdrop)));
             tiles.Add(CostedTile(EpisodeHud.RallyHouseCaption, "people", "Risky", UiTheme.Joke,
                 () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.RallyTroops)));
-            tiles.Add(CostedTile(EpisodeHud.AirLaundryCaption, "target", "High risk", UiTheme.Danger,
+            tiles.Add(CostedTile(EpisodeHud.AirLaundryCaption, "target", AiringRiskLabel(state), UiTheme.Danger,
                 () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.AirDirtyLaundry)));
             tiles.Add(FreeTile(DoAnActivityCaption, "dumbbell", OpenHouseActivities));
             return tiles;

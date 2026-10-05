@@ -61,9 +61,14 @@ namespace Gamesim.Episode
         /// <summary>The pill beside a command's control in a conversation (<see cref="Category"/>). A read for tests.</summary>
         public static string VerbTag(EpisodeCommandKind kind) => Category(kind);
 
-        /// <summary>Fresh personal chat's main payoff is lore; old or lore-less seasons keep their tag.</summary>
+        /// <summary>Fresh topics advertise their information payoff as well as their risk.</summary>
         public static string VerbTag(EpisodeState state, EpisodeCommandKind kind) =>
-            kind == EpisodeCommandKind.PersonalChat && ConversationIntentRules.PersonalLoreOn(state) ? LearnTag : Category(kind);
+            kind == EpisodeCommandKind.PersonalChat && ConversationIntentRules.PersonalLoreOn(state) ? LearnTag
+                : kind == EpisodeCommandKind.DiscussGame && EpisodeEngine.EconomyRulesOn(state) ? LearnTag + " · " + RiskTag
+                : Category(kind);
+
+        public static string AiringRiskLabel(EpisodeState state) =>
+            EpisodeEngine.EconomyRulesOn(state) ? "Read · high risk" : "High risk";
 
         /// <summary>
         /// What a loyalty declaration on offer says it is (X12). The engine checks every nomination and
@@ -136,7 +141,7 @@ namespace Gamesim.Episode
             // the first row after the dial, which is where the dial's More petal sends the keyboard.
             hud.ConversationGroup(BondGroupTitle, "heart", BondLine);
             hud.Tag(hud.Action(EpisodeHud.DiscussGameCaption, () => Commit(state, EpisodeCommandKind.DiscussGame, npc.id)),
-                Category(EpisodeCommandKind.DiscussGame));
+                VerbTag(state, EpisodeCommandKind.DiscussGame));
             // E2 removes the overlapping plain Talk from the fresh dial, not from the game.
             // Its caption, command, cost and first-row keyboard destination remain unchanged.
             if (EpisodeEngine.EconomyRulesOn(state))

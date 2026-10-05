@@ -109,6 +109,17 @@ namespace Gamesim.Simulation
                 else if (standing.source == ClaimSource.Deflected)
                     notes.Add(new Note { week = standing.week, kind = Kinds.Vote, text = first + " wouldn't say where their vote is", brief = "Wouldn't say their vote" });
             }
+            // E2: keep the exact observed side as a read entry, without turning a house-meeting
+            // reaction into ReadPerson's live agenda report. The learned attitude itself is an
+            // Overheard standing; this event also distinguishes backing this airing from loyalty.
+            foreach (var reaction in s.events.Where(e =>
+                         (e.kind == ConversationIntentRules.AiringBacked || e.kind == ConversationIntentRules.AiringOpposed)
+                         && e.audienceIds.Count == 2 && e.audienceIds.Contains(s.playerId) && e.audienceIds.Contains(id)))
+            {
+                bool backed = reaction.kind == ConversationIntentRules.AiringBacked;
+                notes.Add(new Note { week = reaction.week, kind = Kinds.Read, text = reaction.text,
+                    brief = backed ? "Backed your airing" : "Opposed your airing" });
+            }
             foreach (var reply in s.ledger.replies.Where(r => r.fromId == id))
             {
                 var answer = ReplyCards.Find(reply.kind, reply.replyKey);

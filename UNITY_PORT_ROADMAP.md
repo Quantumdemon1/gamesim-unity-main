@@ -1,5 +1,47 @@
 # Gamesim Unity port
 
+**Current combined hearing checkpoint, 2026-10-05 UTC:** this local merge combines
+integration714 with reviewed isolated29dad8fee6, retaining all eight integration
+QA/apparatus/isolation inputs and the additional11Edit/4Play cases. Combined
+authored floors are4496Edit/995Play/77UMA/3042pure. The outcome/story and
+hearing/schema25 increments are now in the combined working source, not live.
+Fresh combined compilation, pure and native runs are still required. The closed
+g24n3 result belongs ONLY to older714. Production unified/hearing1 remain refused;
+the next enabled-save drafts are NOT included. See WAVE_D_COMBINED_HEARING_REVIEW.md.
+All D1 families, requiredD2-D4, widerE2, coherent assets, same-pinUMA/build,
+actualGTX1060 1920x1080at60FPS, visual/accessibility and0of3human gates remain.
+The dated statements below retain their own historical pins and are not current
+process or release evidence. The historical U08 row is not current acceptance.
+
+**Native checkpoint closed,2026-10-05 UTC:** integration714 NoUMA g24n3 now passes
+4124Edit/995Play with0failed/skipped, natural closure and no source drift. It
+does not contain the newer outcome/story or hearing/schema25 increments.
+Hearing staging whitespace repair was rechecked against a fresh frozen03 image:
+8assemblies/3042pure/1029Mono and55legacy replay comparisons pass. Native153
+new persistence cases and integration/activation remain pending; no UMA/build/
+1080p60/visual/human acceptance is claimed. Older live-run notes are historical.
+
+**Durable Safety hearing/schema25,2026-10-05 UTC:** actual audible-fact archives
+and once-only incident/listener receipts are staged, with209newEdit cases
+(56pure/153native). Eightfresh assemblies/3042regular pure/1029focused Mono pass;
+55paired legacy digests ANDattempts match retained24,975source+2Tools before/after
+hashes identical. Native153cases remain compiled,not Unity-executed. Detached old
+upgrades add ONLY hearing0/empty lists; production unified/hearing1 stay refused.
+See WAVE_D_SAFETY_HEARING_IMPLEMENTATION.md. Integration714
+remains frozen under its separate g24n3 owner. All remainingD1families, requiredD2-D4,
+widerE2, realassets and native/build/1080p60/visual/0of3human gates remain open.
+
+**Canonical Safety outcome/story readers,2026-10-05 UTC:** nine remaining
+summary/story consumers are implemented with163new Edit cases(127pure/36native).
+Eightfresh assemblies,2986regular pure and973focused Mono pass;55paired legacy
+digests/counts and961source+2Tools before/after hashes match. Actual WeeklyRecap.Build cases are
+compiled,not executed in Unity. See WAVE_D_SAFETY_OUTCOME_STORY_IMPLEMENTATION.md.
+No productionrule1 activation, integration/live promotion, native/build/1080p60/
+visual/human acceptance is claimed. Actual hearing/full enabled-save/native
+transaction gates, otherD1families, requiredD2/D3/D4 and release gates remain.
+Integration714ad86a is separately frozen under g24n3; it does not include these
+newer isolated readers. Older status blocks retain historical evidence.
+
 **Latest combined Safety consumers,2026-10-05 UTC:** integration`bb0f21e7` plus
 isolated`075f9bfd` now combines voting/Your Word, durable summaries and the latest
 conversation/negotiation/presentation consumers and scoped counter test repair.

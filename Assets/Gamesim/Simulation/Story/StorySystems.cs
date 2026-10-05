@@ -158,6 +158,22 @@ namespace Gamesim.Simulation
         {
             if (state?.story == null || deal?.id == null || string.IsNullOrEmpty(breakerId) || string.IsNullOrEmpty(wrongedId)
                 || breakerId == wrongedId) return null;
+            if (UnifiedCommitmentHearings.RulesOn(state) && state.unifiedCommitments.Any(row => row.id == deal.id))
+            {
+                UnifiedCommitmentHearings.RequireValid(state);
+                var staged = state.Clone();
+                var emitted = BrokenWordCore(staged, deal, breakerId, wrongedId);
+                UnifiedCommitmentHearings.RecordInitial(staged, emitted);
+                state.story.facts = staged.story.facts;
+                state.nextSequence = staged.nextSequence;
+                UnifiedCommitmentHearings.Install(state, staged);
+                return state.story.facts.First(f => f.id == emitted.id);
+            }
+            return BrokenWordCore(state, deal, breakerId, wrongedId);
+        }
+
+        private static HouseFactState BrokenWordCore(EpisodeState state, DealState deal, string breakerId, string wrongedId)
+        {
             var existing = Of(state, FactKinds.BrokenWord, deal.id);
             if (existing != null) return existing;
             MakeRoom(state);
@@ -194,6 +210,7 @@ namespace Gamesim.Simulation
         {
             var facts = state?.story?.facts;
             if (facts == null || facts.Count < Ceiling) return;
+            UnifiedCommitmentHearings.RefreshObserved(state);
             int at = 0;
             if (EpisodeEngine.CommitmentRulesOn(state))
             {
@@ -235,9 +252,11 @@ namespace Gamesim.Simulation
         public static void MakeKnown(EpisodeState state, HouseFactState fact, string visibility)
         {
             if (state?.story == null || fact == null) return;
+            if (UnifiedCommitmentHearings.RulesOn(state)) UnifiedCommitmentHearings.RequireValid(state);
             fact.visibility = Wider(fact.visibility, FactVisibility.IsKnown(visibility) ? visibility : FactVisibility.Public);
             if (fact.visibility == FactVisibility.Public)
                 foreach (var c in state.Active) AddKnower(state, fact, c.id);
+            UnifiedCommitmentHearings.RefreshObserved(state);
         }
 
         /// <summary>Makes a cycle's fact of a kind more widely known.</summary>
@@ -246,9 +265,11 @@ namespace Gamesim.Simulation
             if (state?.story == null || cycle == null) return;
             var fact = ForCycle(state, cycle, kind);
             if (fact == null) return;
+            if (UnifiedCommitmentHearings.RulesOn(state)) UnifiedCommitmentHearings.RequireValid(state);
             fact.visibility = Wider(fact.visibility, FactVisibility.IsKnown(visibility) ? visibility : FactVisibility.Public);
             if (fact.visibility == FactVisibility.Public)
                 foreach (var c in state.Active) AddKnower(state, fact, c.id);
+            UnifiedCommitmentHearings.RefreshObserved(state);
         }
 
         /// <summary>A cycle's fact of a kind: by the cycle's id, or for a couple by whoever of its cast is in one.</summary>
@@ -274,6 +295,22 @@ namespace Gamesim.Simulation
         /// one new knower per fact per pass, so it spreads like gossip rather than a broadcast.
         /// </summary>
         public static List<(HouseFactState fact, string listener)> Spread(EpisodeState state, string anchor)
+        {
+            if (UnifiedCommitmentHearings.RulesOn(state))
+            {
+                UnifiedCommitmentHearings.RequireValid(state);
+                var staged = state.Clone();
+                UnifiedCommitmentHearings.RefreshObserved(staged);
+                var observed = SpreadCore(staged, anchor);
+                UnifiedCommitmentHearings.ObserveSpread(staged, observed);
+                state.story.facts = staged.story.facts;
+                UnifiedCommitmentHearings.Install(state, staged);
+                return observed.Select(t => (fact: state.story.facts.First(f => f.id == t.fact.id), listener: t.listener)).ToList();
+            }
+            return SpreadCore(state, anchor);
+        }
+
+        private static List<(HouseFactState fact, string listener)> SpreadCore(EpisodeState state, string anchor)
         {
             var told = new List<(HouseFactState, string)>();
             if (!EpisodeEngine.StoryAt(state, StoryRules.Bonds)) return told;

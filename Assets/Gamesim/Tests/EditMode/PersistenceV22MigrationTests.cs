@@ -85,7 +85,7 @@ namespace Gamesim.Tests.EditMode
             string original = old.ToString();
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(24));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(25));
             Assert.That((int)migrated["commitmentRulesStartWeek"], Is.Zero, "A season saved before the rules plays without them to its end.");
             foreach (var name in new[] { "deals", "promises" })
                 foreach (JObject row in (JArray)migrated[name])
@@ -155,7 +155,7 @@ namespace Gamesim.Tests.EditMode
             old["schemaVersion"] = 15;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(24));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(25));
             Assert.That((int)migrated["commitmentRulesStartWeek"], Is.Zero);
             Assert.That((int)migrated["finaleRulesStartWeek"], Is.Zero);
             Assert.That(EpisodeSaveMigrations.PrepareV21Payload(old, out _)["schemaVersion"].Value<int>(), Is.EqualTo(21), "The frozen dispatch still stops at twenty-one.");
@@ -251,9 +251,9 @@ namespace Gamesim.Tests.EditMode
             files.Write(payload);
             var originalBytes = File.ReadAllBytes(files.Store.SavePath);
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 21").And.Contain("schema 24 in memory"));
+            Assert.That(message, Does.Contain("Schema 21").And.Contain("schema 25 in memory"));
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(originalBytes), "Loading must not rewrite the file.");
-            Assert.That(loaded.schemaVersion, Is.EqualTo(24));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(25));
             Assert.That(loaded.commitmentRulesStartWeek, Is.Zero, "It plays without the rules to its end.");
             Assert.That(loaded.deals.All(d => d.brokenById == null && d.settledWeek == 0), Is.True, "No deal's breaker is guessed.");
             Assert.That(loaded.promises.All(p => p.brokenById == null && p.settledWeek == 0), Is.True, "Nor any promise's.");
@@ -287,8 +287,8 @@ namespace Gamesim.Tests.EditMode
             var originalBytes = File.ReadAllBytes(files.Store.SavePath);
 
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 21").And.Contain("schema 24 in memory"));
-            Assert.That(loaded.schemaVersion, Is.EqualTo(24));
+            Assert.That(message, Does.Contain("Schema 21").And.Contain("schema 25 in memory"));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(25));
             Assert.That(loaded.commitmentRulesStartWeek, Is.Zero);
             Assert.That(loaded.deals.Single(d => d.id == "deal-pact").brokenById, Is.Null);
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(originalBytes), "Loading must not rewrite the file.");
@@ -321,8 +321,8 @@ namespace Gamesim.Tests.EditMode
             File.Copy(fixture, files.Store.SavePath, overwrite: false);
             Assert.That(HashBytes(File.ReadAllBytes(files.Store.SavePath)), Is.EqualTo(originalHash));
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 21").And.Contain("schema 24 in memory"));
-            Assert.That(loaded.schemaVersion, Is.EqualTo(24));
+            Assert.That(message, Does.Contain("Schema 21").And.Contain("schema 25 in memory"));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(25));
             Assert.That(loaded.commitmentRulesStartWeek, Is.Zero);
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(originalBytes), "Loading never rewrites the original save.");
             Assert.That(File.Exists(files.Store.BackupPath), Is.False, "Loading does not create or rotate a backup.");
@@ -336,7 +336,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(HashBytes(File.ReadAllBytes(files.Store.BackupPath)), Is.EqualTo(originalHash));
             var savedBytes = File.ReadAllBytes(files.Store.SavePath);
             var savedPayload = (JObject)JObject.Parse(File.ReadAllText(files.Store.SavePath))["state"];
-            Assert.That((int)savedPayload["schemaVersion"], Is.EqualTo(24));
+            Assert.That((int)savedPayload["schemaVersion"], Is.EqualTo(25));
             Assert.That(JToken.DeepEquals(savedPayload, expected), Is.True);
             Assert.That(files.Store.TryLoad(out var reloaded, out message), Is.True, message);
             Assert.That(message, Does.Not.Contain("migrated"));

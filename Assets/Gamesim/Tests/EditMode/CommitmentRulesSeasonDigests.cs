@@ -379,6 +379,25 @@ namespace Gamesim.Tests.EditMode
                     Assert.That(value.Value<int>(), Is.Zero, "Legacy goldens must not run the new economy: " + field);
                 o.Remove(field);
             }
+            // Schema 25's hearing fields are removable only as a complete disabled/empty group.
+            // This guards the source projection rather than concealing newly active consequences.
+            bool hasHearingRules = o.TryGetValue("unifiedHearingRulesVersion", out var hearingRules);
+            bool hasHearingEvidence = o.TryGetValue("unifiedHearingEvidence", out var hearingEvidence);
+            bool hasHearingReceipts = o.TryGetValue("unifiedHearingReceipts", out var hearingReceipts);
+            Assert.That(hasHearingEvidence, Is.EqualTo(hasHearingRules));
+            Assert.That(hasHearingReceipts, Is.EqualTo(hasHearingRules));
+            if (o["schemaVersion"].Value<int>() >= 25)
+                Assert.That(hasHearingRules, Is.True, "A current season must contain all hearing fields.");
+            if (hasHearingRules)
+            {
+                Assert.That(hearingRules.Type, Is.EqualTo(JTokenType.Integer));
+                Assert.That(hearingRules.Value<long>(), Is.Zero, "Legacy goldens must not activate hearing coordination.");
+                Assert.That(hearingEvidence, Is.InstanceOf<JArray>());
+                Assert.That(hearingReceipts, Is.InstanceOf<JArray>());
+                Assert.That(((JArray)hearingEvidence).Count, Is.Zero, "Never hide audible evidence in legacy parity.");
+                Assert.That(((JArray)hearingReceipts).Count, Is.Zero, "Never hide a hearing effect in legacy parity.");
+                o.Remove("unifiedHearingRulesVersion"); o.Remove("unifiedHearingEvidence"); o.Remove("unifiedHearingReceipts");
+            }
             // Schema 24 reserves two INACTIVE fields only. Keep compiling against old recorded
             // assemblies, but never erase an active/nonempty authority to manufacture old parity.
             bool hasUnifiedRules = o.TryGetValue("unifiedCommitmentRulesVersion", out var unifiedRules);

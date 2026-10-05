@@ -16,8 +16,8 @@ complete Safety activation or a claim that other commitment families are ported.
 | Notebook/profile/web | Addressed in actual director/profile/web readers. Component/built-control fixtures are compiled; full native notebook lifecycle remains open. |
 | Capacity presentation | Addressed: `PastTheDealCeiling` uses canonical-aware historical DealCount, including NPC/declined/ended rows, not promises or only active records. |
 | Known history | Addressed: `KnownOdds.History` retains each own-pair agreement provenance and legitimate own-memory/reply/call/pact contributions; no NPC-only knowledge. |
-| Active/kept summaries | `WeeklyRecap.Ledger`, `AllianceRead`, `FinalCaseResume`, and remaining `FinalistRead` predicates omit canonical records. Agreement lists/counts use provenance; mechanical outcome summaries use grouped incidents/fulfillments. |
-| Story progression/casting | `StoryCatalog.Plays.PromisedSafe`, `StoryCatalog.Spine`, `StoryCatalog.Ported`, `HouseEventSources`, and related `EpisodeEngine.StoryHooks` predicates need canonical Safety. Keep each source predicate; no player-facing omniscient projection. |
+| Active/kept summaries | Addressed by the outcome/story increment: actual `WeeklyRecap.Build` carry inventory, `AllianceRead` deal provenance, `FinalCaseResume` actual own-party incidents and `FinalistRead` grouped pair/week fulfillments. The36new native recap cases are compiled, not yet executed in Unity. |
+| Story progression/casting | Addressed by the outcome/story increment: actual TheirWord/Confession/Eavesdropping/Crisis and conversation hook include canonical Safety while retaining each source predicate/status/ranking and rules0.53new pure cases pass; no omniscient player projection or knowledge writer change. |
 
 HouseguestNotes is already canonical-aware and uses durable attribution. Existing
 StoryConsumers, ThreatAssessment, WebJuryVoting, Safety call-in protection and
@@ -30,8 +30,13 @@ transition. Do not blindly replace every raw-list occurrence.
 `Knowledge.BrokenWord` is currently deal-shaped/reference-keyed; `Knowledge.Spread`
 processes facts independently and `StorySystemsAt` applies hearing effects to each
 returned fact/listener. Grouping YourWord's page is not actual hearing deduplication.
-New-model spread needs incident/listener coordination and explicit audible evidence,
-without inventing witnesses or additional penalty/RNG procedures.
+The schema25 hearing increment now stages separately versioned actual audible-fact
+archives and incident/listener receipts. The full gossip pass completes before
+effects;56pure hearing cases pass, and guarded disabled25/24 legacy replays match
+whole persisted state. This closes the prospective hearing implementation, not
+enabled-save/native transaction/activation acceptance. See
+WAVE_D_SAFETY_HEARING_IMPLEMENTATION.md. No witnesses or extra source penalty/RNG
+procedures are invented; historical/factory/imported states remain hearing0/empty.
 
 The existing source promise routine intentionally emits no deal-style BrokenWord
 fact. `UnifiedSafetyResolutionTests` explicitly retains that source distinction:
@@ -68,8 +73,12 @@ rules; changing storage is not authority to rewrite outcomes.
 Real gateway to opportunity reconciliation to GameSense and pure canonical
 conversation/refusal/mend readers have regression evidence; capacity surface
 coverage is compiled, not executed. Actual
-native decision/profile/web/notebook lifecycle remains open. Next: Safety story
-progress; own-pair active/kept summaries;
-actual gossip incident/listener effects; corrupt enabled-save references and
-native transaction/reload. Preserve all existing rules0 assertions and legacy
+native decision/profile/web/notebook/recap lifecycle remains open. Summary/story
+consumer and prospective actual gossip-hearing coverage are addressed; next are
+corrupt enabled-save references and actual native transaction/reload. Shared
+numeric counter suffixes and opportunity/deal ID aliases are lawful source
+identities, not duplicates; unrelated raw veto-price bundles retain their actual
+prefix policy. Opportunity reconciliation occurs only at its actual anchors,
+so validate legal intermediate snapshots without forcing premature outcomes.
+Preserve all existing rules0 assertions and legacy
 season digests. Then complete the remaining D1 families and required D2/D3/D4.

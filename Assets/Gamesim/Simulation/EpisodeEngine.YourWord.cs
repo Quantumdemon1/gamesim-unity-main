@@ -23,6 +23,26 @@ namespace Gamesim.Simulation
         {
             var listener = s.Find(listenerId);
             if (listener == null || listener.isPlayer) return;
+            if (UnifiedCommitmentHearings.RulesOn(s) && UnifiedCommitmentHearings.CanonicalLeaf(s, fact))
+            {
+                var staged = UnifiedCommitmentHearings.PrepareHearing(s, fact, listenerId, out bool added);
+                if (added)
+                {
+                    HeardOfYourWordCore(staged, fact, listenerId);
+                    // Exactly the existing HeardAbout/Log surfaces; no unrelated state is replaced.
+                    s.relationships = staged.relationships;
+                    s.relationshipArcs = staged.relationshipArcs;
+                    s.events = staged.events;
+                    s.nextSequence = staged.nextSequence;
+                }
+                UnifiedCommitmentHearings.Install(s, staged);
+                return;
+            }
+            HeardOfYourWordCore(s, fact, listenerId);
+        }
+
+        private static void HeardOfYourWordCore(EpisodeState s, HouseFactState fact, string listenerId)
+        {
             // The record the house's spread always wrote, in its own words.
             string heard = "Heard that " + Name(s, fact.actorId) + " broke a deal with " + Name(s, fact.subjectId) + ".";
             HeardAbout(s, listenerId, YourWord.HeardImpact, heard, YourWord.HeardType);

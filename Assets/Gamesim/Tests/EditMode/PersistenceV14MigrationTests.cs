@@ -64,7 +64,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(old.ToString(), Is.EqualTo(original));
             string frozen23 = completed.ToString();
             var current24 = EpisodeSaveMigrations.UpgradeV23ToV24(completed);
-            Assert.That((int)current24["schemaVersion"], Is.EqualTo(24));
+            Assert.That((int)current24["schemaVersion"], Is.EqualTo(25));
             Assert.That((int)current24["unifiedCommitmentRulesVersion"], Is.Zero);
             Assert.That((JArray)current24["unifiedCommitments"], Is.Empty);
             var projection23 = PersistenceMigrationTests.StripSchema24((JObject)current24.DeepClone());
@@ -120,7 +120,7 @@ namespace Gamesim.Tests.EditMode
             old["schemaVersion"] = 12;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(24), "The whole chain, not one step.");
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(25), "The whole chain, not one step.");
             Assert.That((int)migrated["competitionRulesVersion"], Is.EqualTo(1));
             Assert.That((int)migrated["haveNotRulesStartWeek"], Is.Zero);
             Assert.That(EpisodeSaveMigrations.PrepareV13Payload(old, out _)["schemaVersion"].Value<int>(), Is.EqualTo(13),

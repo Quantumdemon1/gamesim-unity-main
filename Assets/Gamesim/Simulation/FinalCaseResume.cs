@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -11,8 +12,9 @@ namespace Gamesim.Simulation
     /// and roll-free, like the argument it sits beside.
     ///
     /// <para>Never why an alliance ended (<see cref="AllianceRow.why"/>), and never the week a
-    /// promise or a deal broke: the record keeps the week it was made, and a break is known only
-    /// by what the house saw after it, so a dated break would be a date the player never had.</para>
+    /// promise or a deal broke in the caption: legacy rows retain creation chronology, while
+    /// canonical own-party incidents are ordered by their recorded settlement week. No date is
+    /// invented from the power ledger or from somebody else's private agreements.</para>
     /// </summary>
     public sealed class FinalCaseResume
     {
@@ -33,7 +35,7 @@ namespace Gamesim.Simulation
         public List<string> alliances = new List<string>();
         public int moreAlliances;
         public int brokenByYou, brokenAgainstYou;
-        /// <summary>Up to three broken promises and deals, either way, the most recently made first. Undated.</summary>
+        /// <summary>Up to three betrayals, either way: legacy creation chronology or canonical actual settlement. Undated captions.</summary>
         public List<string> betrayals = new List<string>();
         /// <summary>Up to four weeks, oldest first, the last always the one the player reached this far.</summary>
         public List<Line> keyWeeks = new List<Line>();
@@ -93,6 +95,31 @@ namespace Gamesim.Simulation
                 string title = DealKind.Title(deal.type).ToLowerInvariant();
                 if (by == player) { resume.brokenByYou++; broken.Add((deal.week, "You broke your " + title + " with " + Name(s, other) + ".")); }
                 else { resume.brokenAgainstYou++; broken.Add((deal.week, Name(s, other) + " broke your " + title + ".")); }
+            }
+            if (UnifiedCommitments.RulesOn(s))
+            {
+                var rows = UnifiedCommitmentHistory.Records(s).ToDictionary(row => row.id, StringComparer.Ordinal);
+                foreach (var incident in UnifiedCommitmentHistory.Breaches(s)
+                    .Where(incident => incident.ActorId == player || incident.WrongedId == player))
+                {
+                    // All agreement IDs remain evidence; only the actual actor/pair incident is
+                    // another betrayal. Reuse its selected source procedure's existing caption.
+                    var owner = rows[incident.EffectOwnerId];
+                    bool promise = owner.sourcePolicy == UnifiedCommitments.PromisePolicy;
+                    string title = DealKind.Title(DealKind.SafetyAgreement).ToLowerInvariant();
+                    if (incident.ActorId == player)
+                    {
+                        resume.brokenByYou++;
+                        broken.Add((owner.settledWeek, promise ? "You broke your word to " + Name(s, incident.WrongedId) + "."
+                            : "You broke your " + title + " with " + Name(s, incident.WrongedId) + "."));
+                    }
+                    else
+                    {
+                        resume.brokenAgainstYou++;
+                        broken.Add((owner.settledWeek, promise ? Name(s, incident.ActorId) + " broke their word to you."
+                            : Name(s, incident.ActorId) + " broke your " + title + "."));
+                    }
+                }
             }
             resume.betrayals = broken.OrderByDescending(b => b.week).Take(MostBetrayals).Select(b => b.text).ToList();
 

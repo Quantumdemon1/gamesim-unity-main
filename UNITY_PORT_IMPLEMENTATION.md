@@ -1,5 +1,64 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC - reviewed combined outcome/story/hearing checkpoint
+
+Local merge parents714ad86ae6d9c89c2af60faaa4364cb4d42338cc and
+29dad8fee6311fe25e3d3ef63df83da2d84fbf93 combine the reviewed isolated
+outcome/story and hearing/schema25 work with retained integration QA. Exactly
+three content conflicts (baseline and these two progress documents) preserve both
+dated histories and set combined floors4496Edit/995Play/77UMA/3042pure. All eight
+integration-only QA/apparatus/isolation blobs match714; other Assets inputs and
+the pure-project registration match29. Local settings remain unstaged and exact.
+See WAVE_D_COMBINED_HEARING_REVIEW.md for preservation and evidence boundaries.
+Fresh combined checks/native acceptance are required; older714/g24n3 and isolated
+29 diagnostics are not relabelled as this combined pin's results. New enabled-save
+drafts stay in the separate WaveC checkout, not this merge. Public unified/hearing1
+remain refused. Live edits/recovery/scenes/saves/builds/snapshots remain protected.
+All4D systems, broaderE2, realassets, same-pinUMA/shipping1080p60GTX1060,
+visual/accessibility and0of3human acceptance remain open. Older sections below
+retain historical state rather than proving current completion or process status.
+
+## 2026-10-05 UTC - older714 NoUMA checkpoint closed; hearing image refreshed
+
+Whole g24n3/root36248 CLOSED0:4124Edit/995Play,0failed/skipped, four owned exits0,
+source/cleanup/unowned drift0,5383retained hashes verified. Terminal
+3a79b516d4431dfb264f827125fff9bc8fbc0fa2e5b5e67ea2cecb9391bb1f47.
+This is714's technical NoUMA acceptance only, not newer isolated source or release.
+Hearing staged diff-check found47whitespace-only blanks in two NEW frozen helper
+files; only whitespace removed and exact-image03 reverified8assemblies/3042pure/
+1029Mono/55legacy digests+attempts. Before/after975source+2Tools identical.
+See WAVE_D_SAFETY_HEARING_IMPLEMENTATION.md for fresh and retained evidence.
+Schema25native153, enabled-save/transaction/fresh activation, otherD1-D4,
+broaderE2/assets/same-pinUMA/build/actual1080p60/visual/human gates remain open.
+
+## 2026-10-05 UTC - durable Safety hearing/schema25 diagnostics closed
+
+See `WAVE_D_SAFETY_HEARING_IMPLEMENTATION.md` for every material source/test/tool
+change and review finding. Actual-fact archive/listener receipts and frozen24->25
+disabled migration are staged, NOT production activation. Eightfresh assemblies,
+3042regular pure and1029focused Mono pass;55paired legacy digests/counts match
+retained24.975source+2Tools before/after hashes match.56hearing pure plus
+58frozen24/95migration native cases added; native153 remain compiled,not executed
+inUnity. Full native fixtures stay outside pure/Mono allowlists, never stubbed or
+selectively omitted. Floors4485Edit/991Play/77UMA/3042pure; futurecombined must
+retainQA11/4:4496/995/77/3042. Integration714/g24n3 remains separately frozen;
+full enabled-save/transactions/fresh-onlyactivation, otherD1families/D2-D4,
+balance/assets/shipping1080p60/visual/accessibility/0of3human gates remain.
+
+## 2026-10-05 UTC - canonical Safety outcome summaries and story consumers
+
+WAVE_D_SAFETY_OUTCOME_STORY_IMPLEMENTATION.md enumerates every material change,
+lawful new-fixture repair, independent review and evidence limitation. Nine
+production consumers and163new Edit cases(127pure/36native) cover actual own
+agreement inventories, once-only breach/fulfillment summaries and actual source
+story predicates.8fresh assemblies/2986regular pure/973focused Mono pass;
+55paired legacy digests/counts and961source+2Tools input hashes match. Native WeeklyRecap.Build36 is
+compiled,not executed. Floors4276Edit/991Play/77UMA/2986pure; futurecombined
+must retainQA11/4 ->4287/995/77/2986. Integration714ad86a remains frozen under
+g24n3 and does not include this isolated increment. Rule1 remains refused;
+actual hearing/fullsave/native activation, otherD1families, requiredD2/D3/D4,
+balance/art/desktop1080p60/visual/accessibility/0of3human gates remain open.
+
 ## 2026-10-05 UTC - Safety voting/summaries/consumers combined; native rerun required
 
 Local merge combines integration`bb0f21e7` and isolated`075f9bfd`, retaining all

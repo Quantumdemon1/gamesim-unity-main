@@ -209,8 +209,15 @@ namespace Gamesim.Simulation
             if (chance <= 0) return;
             double strength = Math.Abs(s.Score(s.playerId, npcId));
             chance *= strength >= 60 ? 1.8 : strength >= 40 ? 1.4 : strength >= 20 ? 1.1 : 0.6;
-            if (s.deals.Any(d => d.status == DealStatus.Broken && d.week == s.week
-                                 && ((d.proposerId == npcId && d.recipientId == s.playerId) || (d.proposerId == s.playerId && d.recipientId == npcId))))
+            bool unifiedSafety = UnifiedCommitments.RulesOn(s);
+            var deals = unifiedSafety ? CommitmentReferences.Deals(s) : s.deals;
+            // A broken canonical deal needs an actual decision receipt, not just a status label.
+            // Validate its history without turning unilateral promises into this source's deal trigger.
+            if (unifiedSafety && s.unifiedCommitments.Any(row => row.sourcePolicy == UnifiedCommitments.DealPolicy
+                && row.status == DealStatus.Broken)) UnifiedCommitmentHistory.Breaches(s);
+            if (deals.Any(d => d.status == DealStatus.Broken
+                && (unifiedSafety ? CommitmentReferences.ReceiptWeek(s, d.id, d.week) : d.week) == s.week
+                && ((d.proposerId == npcId && d.recipientId == s.playerId) || (d.proposerId == s.playerId && d.recipientId == npcId))))
                 chance += 0.25;
             if (s.alliances.Any(a => a.active && a.members.Contains(npcId) && a.members.Contains(s.playerId)
                                      && s.events.Any(e => e.kind == "alliance" && e.week == s.week && e.audienceIds.Contains(npcId))))
@@ -358,6 +365,7 @@ namespace Gamesim.Simulation
         /// <summary>The systems that run at particular anchors, before any cycle pulses.</summary>
         private static void StorySystemsAt(EpisodeState s, string anchor)
         {
+            if (UnifiedCommitmentHearings.RulesOn(s)) UnifiedCommitmentHearings.RequireValid(s);
             if (anchor == StoryAnchors.EvictionNight && StoryAt(s, StoryRules.Bonds)) NpcShowmancePass(s);
             if (StoryAt(s, StoryRules.Bonds) && anchor != StoryAnchors.Conversation)
                 foreach (var (fact, listener) in Knowledge.Spread(s, anchor))

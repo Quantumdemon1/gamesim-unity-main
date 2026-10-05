@@ -1,5 +1,20 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC - Safety voting/summaries/consumers combined; native rerun required
+
+Local merge combines integration`bb0f21e7` and isolated`075f9bfd`, retaining all
+QA/contact/isolation work plus the latest voting, Your Word, durable summaries,
+finale aliases, conversation/negotiation/presentation consumers and scoped native
+counter test repair. Only baseline and the two progress documents conflicted;
+both histories remain below. Combined floors4124Edit/995Play/77UMA/2859pure
+retainQA11/4. All eight integration-only QA/apparatus/isolation files match the
+premerge pin; localUMAsettings SHAeb0525c7... remains unstaged/unchanged.
+The isolated8fresh/2859pure/846managed/55legacy replay checks do not certify the
+combined candidate. Fresh combined checks/full nativeNoUMA+UMA, separate desktop,
+actual1080p60/visual/accessibility/human gates remain. Rule1 stays refused; no
+live/remote promotion. See `WAVE_D_COMBINED_CONSUMERS_REVIEW.md`.
+Older dated blocks are historical evidence, not current process state.
+
 ## 2026-10-05 UTC - reviewed adapters/repairs combined; native acceptance pending
 
 Combines preserved QA parent`ed492fce` with reviewed WaveC parent`65781636`,
@@ -93,6 +108,54 @@ walks plus480 paired balance seasons, managed Mono persistence28 and offline8/8 
 suites/build/desktop/human acceptance and integration remain open; it is NOT in this schema22 candidate.
 Do not fold E1 or later gameplay into the frozen QA run. Full same-pin NoUMA then UMA, a matching
 shipping build, actual player/visual/performance checks and guarded live promotion remain ahead.
+
+## 2026-10-05 UTC - canonical Safety conversation/negotiation consumers
+
+`WAVE_D_SAFETY_CONSUMERS_IMPLEMENTATION.md` enumerates every material change,
+first failed compiler/pure runs, fixture-only repairs, independent review and
+final evidence. Ten production readers now include canonical own-party agreement
+provenance or grouped actual-actor history without changing source-family or
+audible knowledge policy.129 new Edit cases (109pure/20native); isolated floors
+4113Edit/991Play/77UMA/2859pure, combined4124/995/77/2859 retainingQA11/4.
+Final8fresh assemblies,2859regular pure,846focused Mono and55paired scripted
+legacy digests/counts pass;958source+2tool before/after images match exactly.
+The old bb0f21e7 NoUMA g24n2 fully CLOSED FAILED:3826Edit/994of995Play, no skips,
+no drift/cleanup errors/unowned descendants. Its counter test held a button
+retired by capture's HUD rebuild; scoped test repair reacquires the current
+active/interactable answer. Fresh native execution remains required. These
+checks are not native lifecycle/disk-save/enabled-season or shipping acceptance.
+Rule1 remains refused; remaining summary/story/hearing/full-save gates, other
+D1 families, D2/D3/D4, balance/art,1080p60/visual/accessibility/0of3humans stay open.
+Live source/scenes/fonts/UMA/settings/recoveries/saves/builds remain preserved.
+
+## 2026-10-05 UTC - canonical Safety summaries and stable finale references
+
+`WAVE_D_SAFETY_SUMMARIES_IMPLEMENTATION.md` records every material change and
+independent source review. Durable grouped outcomes, actual canonical opportunity
+reconciliation, settlement-dated Game Sense/jury evidence, private receipt guards,
+audible reputation provenance and mechanical/templated finale alias deduplication
+are staged.91authored regression cases; floors3984Edit/991Play/77UMA/2750pure,
+future combined3995Edit/995Play/77UMA/2750pure retainsQA11/4. Final8fresh compile,
+2750regular pure,737focused Mono and55paired legacy replay digests/counts pass;
+955source+2tool image unchanged. First pure4fixture wording failures retained and
+repaired without weakening assertions. Production rule1 is still refused. This is not
+native, shipping-build, performance/visual/accessibility or0of3human acceptance.
+Other canonical consumers/knowledge effects/full enabled validation, activation,
+all other D1 families, D2/D3/D4 and the agreed balance/art/release gates remain.
+
+## 2026-10-05 UTC - staged canonical Safety voting and Your Word readers
+
+`WAVE_D_SAFETY_VOTING_WORD_IMPLEMENTATION.md` enumerates every material change,
+retained failed run, repairs, exact source image and closed diagnostics. Adds
+37voting/41page+warning pure cases; source values/max protection, grouped history,
+shared legacy threat cap, combined obligation clamp, private evidence, canonical
+actor/date and action-target-only previews. Legacy source leaf/test contracts,
+all29 protection cases and source-shaped mixed-family presentation retained.
+Final8fresh assemblies,2659regular pure,646focused Mono and55paired legacy season
+digests pass. These do not activate rule1 or establish native UI/desktop acceptance.
+The separate frozen bb0f21e7 g24n2 remains live; no live-project/remote promotion.
+Full validation/references/native transactional activation, other D1 families,
+D2/D3/D4, balance/art and actual1080p60/visual/accessibility/0of3human gates remain.
 
 ## 2026-10-05 UTC - inactive authority adapters and combined-native repairs
 

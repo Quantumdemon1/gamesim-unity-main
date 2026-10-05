@@ -70,6 +70,10 @@ namespace Gamesim.Simulation
             public string byId;
             /// <summary>For a call's member, what the verdict rests on (<see cref="Bases"/>); null for the other kinds.</summary>
             public string basis;
+            /// <summary>Canonical agreement provenance, not extra outcome counts; null for legacy lines.</summary>
+            public IReadOnlyList<string> evidenceIds;
+            /// <summary>One canonical breach identity, or null for a fulfillment or legacy line.</summary>
+            public string effectKey;
 
             public override string ToString() => verdict == null ? text : text + " · " + verdict;
         }
@@ -118,6 +122,7 @@ namespace Gamesim.Simulation
             Reads(s, week, power, revealed, mine.reads);
             Deals(s, week, mine.word);
             Promises(s, week, mine.word);
+            CanonicalWord(s, week, mine.word);
             Calls(s, week, power, revealed, mine.calls);
             mine.sense = SenseSoFar(s, week);
             return mine;
@@ -199,6 +204,8 @@ namespace Gamesim.Simulation
             foreach (var (partner, record) in settled)
             {
                 bool kept = record.type == DealKept;
+                if (UnifiedCommitments.RulesOn(s) && ReadDeal(s, record.description, partner, out _, out string canonicalType, out _)
+                    && canonicalType == DealKind.SafetyAgreement && HasCanonicalOutcome(s, week, partner, kept)) continue;
                 var line = new Line { kind = Kinds.Deal, verdict = kept ? Verdicts.Kept : Verdicts.Broken, aboutId = partner };
                 if (ReadDeal(s, record.description, partner, out string actorId, out string type, out bool said) && said == kept)
                 {
@@ -289,6 +296,8 @@ namespace Gamesim.Simulation
                 .Where(x => ReadPromise(s, x.text, x.partner, out _, out _, out _)).ToList();
             foreach (var outcome in told.Concat(remembered).Distinct().ToList())
             {
+                if (UnifiedCommitments.RulesOn(s) && ReadPromise(s, outcome.text, outcome.partner, out _, out PromiseKind canonicalKind, out bool canonicalKept)
+                    && canonicalKind == PromiseKind.Safety && HasCanonicalOutcome(s, week, outcome.partner, canonicalKept)) continue;
                 int heard = told.Count(x => x == outcome);
                 int recalled = Math.Min(remembered.Count(x => x == outcome), PromisesItCouldBe(s, week, outcome.text, outcome.partner));
                 for (int i = 0; i < Math.Max(heard, recalled); i++) lines.Add(PromiseLine(s, week, outcome.text, outcome.partner));
@@ -305,8 +314,40 @@ namespace Gamesim.Simulation
             if (!ReadPromise(s, text, partnerId, out string fromId, out PromiseKind kind, out bool kept)) return 0;
             string toId = fromId == s.playerId ? partnerId : s.playerId;
             var ended = kept ? PromiseStatus.Fulfilled : PromiseStatus.Broken;
-            return s.promises.Count(p => p.fromId == fromId && p.toId == toId && p.kind == kind && p.status == ended
+            return CommitmentReferences.Promises(s).Count(p => p.fromId == fromId && p.toId == toId && p.kind == kind && p.status == ended
                 && p.week <= week && (p.expiresWeek == 0 || week <= p.expiresWeek));
+        }
+
+        private static bool HasCanonicalOutcome(EpisodeState s, int week, string partner, bool kept) =>
+            UnifiedCommitmentHistory.Records(s).Any(row => row.settledWeek == week
+                && row.status == (kept ? DealStatus.Fulfilled : DealStatus.Broken)
+                && ((row.makerId == s.playerId && row.beneficiaryId == partner) || (row.makerId == partner && row.beneficiaryId == s.playerId)));
+
+        private static void CanonicalWord(EpisodeState s, int week, List<Line> lines)
+        {
+            if (!UnifiedCommitments.RulesOn(s)) return;
+            var rows = UnifiedCommitmentHistory.Records(s).ToDictionary(row => row.id, StringComparer.Ordinal);
+            foreach (var incident in UnifiedCommitmentHistory.Breaches(s).Where(incident =>
+                rows[incident.EffectOwnerId].settledWeek == week && (incident.ActorId == s.playerId || incident.WrongedId == s.playerId)))
+            {
+                var owner = rows[incident.EffectOwnerId];
+                bool promise = owner.sourcePolicy == UnifiedCommitments.PromisePolicy;
+                string partner = incident.ActorId == s.playerId ? incident.WrongedId : incident.ActorId;
+                string what = promise ? "promise of safety" : "safety deal";
+                lines.Add(new Line { kind = promise ? Kinds.Promise : Kinds.Deal, verdict = Verdicts.Broken,
+                    aboutId = partner, byId = incident.ActorId, effectKey = incident.EffectKey, evidenceIds = incident.EvidenceIds,
+                    text = incident.ActorId == s.playerId ? "You broke the " + what + " with " + Whom(s, partner) + "."
+                        : Who(s, partner) + " broke the " + what + " with you." });
+            }
+            foreach (var receipt in UnifiedCommitmentHistory.Fulfillments(s).Where(receipt => receipt.SettledWeek == week
+                && (receipt.FirstId == s.playerId || receipt.SecondId == s.playerId)))
+            {
+                string partner = receipt.FirstId == s.playerId ? receipt.SecondId : receipt.FirstId;
+                // Both sides kept it. The record stores no fulfillment actor; never invent one
+                // from a current HoH or a historical power row that may no longer be retained.
+                lines.Add(new Line { kind = Kinds.Deal, verdict = Verdicts.Kept, aboutId = partner,
+                    evidenceIds = receipt.EvidenceIds, text = "You and " + Whom(s, partner) + " kept your safety deal." });
+            }
         }
 
         private static Line PromiseLine(EpisodeState s, int week, string text, string partner)

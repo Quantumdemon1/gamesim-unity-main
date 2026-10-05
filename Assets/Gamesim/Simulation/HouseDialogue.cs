@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 
 namespace Gamesim.Simulation
 {
@@ -376,8 +377,9 @@ namespace Gamesim.Simulation
         {
             string id = ContentCatalog.CanonicalId(npc.id);
             // Promise outcomes are only those made by the player directly to this speaker.
-            // Use the last resolved direct promise in saved list order; this DTO has no separate
-            // settlement timestamp. Active promises do not erase an earlier recorded outcome.
+            // Legacy seasons retain saved list order. New-model records use actual settlement
+            // chronology, not the order detached references happen to join their source stores.
+            // Active promises do not erase an earlier recorded outcome.
             var outcome = LatestDirectOutcome(state, npc.id);
             if (outcome != null && outcome.status == PromiseStatus.Broken)
                 return Vary(state,
@@ -554,6 +556,13 @@ namespace Gamesim.Simulation
 
         private static PromiseState LatestDirectOutcome(EpisodeState state, string npcId)
         {
+            if (UnifiedCommitments.RulesOn(state))
+                return CommitmentReferences.Promises(state).Where(promise => promise != null
+                        && promise.fromId == state.playerId && promise.toId == npcId
+                        && promise.week <= state.week && promise.settledWeek <= state.week
+                        && (promise.status == PromiseStatus.Broken || promise.status == PromiseStatus.Fulfilled))
+                    .OrderByDescending(promise => promise.settledWeek > 0 ? promise.settledWeek : promise.week)
+                    .ThenBy(promise => promise.id, StringComparer.Ordinal).FirstOrDefault();
             if (state.promises == null) return null;
             for (int index = state.promises.Count - 1; index >= 0; index--)
             {
@@ -567,7 +576,7 @@ namespace Gamesim.Simulation
         private static bool DirectActivePromise(EpisodeState state, string npcId, PromiseKind kind)
         {
             if (state.promises == null) return false;
-            foreach (var promise in state.promises)
+            foreach (var promise in CommitmentReferences.Promises(state))
                 if (promise != null && promise.fromId == state.playerId && promise.toId == npcId && promise.kind == kind &&
                     promise.status == PromiseStatus.Active && promise.week <= state.week &&
                     (promise.expiresWeek == 0 || promise.expiresWeek >= state.week)) return true;

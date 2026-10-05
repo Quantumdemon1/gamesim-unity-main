@@ -196,7 +196,7 @@ namespace Gamesim.Simulation
         {
             if (s?.ledger == null) return;
             bool rules = CommitmentRulesOn(s);
-            foreach (var deal in s.deals.Where(d => d.proposerId == s.playerId || d.recipientId == s.playerId))
+            foreach (var deal in CommitmentReferences.Deals(s).Where(d => d.proposerId == s.playerId || d.recipientId == s.playerId))
             {
                 var row = Opportunity(s, deal.id, OpportunityKinds.Deal, deal.week);
                 row.source = deal.type + (deal.targetId != null ? ":" + deal.targetId : "");

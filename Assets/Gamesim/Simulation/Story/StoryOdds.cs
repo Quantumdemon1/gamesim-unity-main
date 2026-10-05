@@ -48,7 +48,9 @@ namespace Gamesim.Simulation
                 int standing = (int)Math.Round(Math.Max(-25, Math.Min(25, 0.5 * state.Score(state.playerId, subject.id))));
                 if (standing != 0) terms.Add(new Term("your standing", standing));
                 if (state.Allied(state.playerId, subject.id)) terms.Add(new Term("you're allied", 15));
-                if (state.deals.Any(d => d.status == DealStatus.Active && Pair(d.proposerId, d.recipientId, state.playerId, subject.id)))
+                if (state.deals.Any(d => d.status == DealStatus.Active && Pair(d.proposerId, d.recipientId, state.playerId, subject.id))
+                    || (UnifiedCommitments.RulesOn(state) && UnifiedCommitments.Binding(state, state.playerId, subject.id)
+                        .Any(row => row.sourcePolicy == UnifiedCommitments.DealPolicy)))
                     terms.Add(new Term("a live deal", 10));
                 if (state.nominees.Contains(subject.id)) terms.Add(new Term(subject.name + " is on the block", 10));
                 if (PermanentBadBlood(state, state.playerId, subject.id)) terms.Add(new Term("bad blood between you", -20));
@@ -118,7 +120,9 @@ namespace Gamesim.Simulation
         public static bool PlayerBrokeTheirWord(EpisodeState state, string npcId) =>
             state.promises.Any(p => p.status == PromiseStatus.Broken && p.fromId == state.playerId && p.toId == npcId)
             || state.deals.Any(d => d.status == DealStatus.Broken && Pair(d.proposerId, d.recipientId, state.playerId, npcId)
-                                    && (EpisodeEngine.CommitmentRulesOn(state) ? Breaches.Broke(state, d, state.playerId) : BrokeIt(state, d, state.playerId)));
+                                    && (EpisodeEngine.CommitmentRulesOn(state) ? Breaches.Broke(state, d, state.playerId) : BrokeIt(state, d, state.playerId)))
+            || (UnifiedCommitments.RulesOn(state) && UnifiedCommitmentHistory.Breaches(state)
+                .Any(incident => incident.ActorId == state.playerId && incident.WrongedId == npcId));
 
         private static bool BrokeIt(EpisodeState state, DealState deal, string who) =>
             // The ledger records the wronged party's view of whoever broke it (EpisodeEngine.SettleDeals).

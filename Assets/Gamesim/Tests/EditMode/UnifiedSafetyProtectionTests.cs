@@ -55,18 +55,21 @@ namespace Gamesim.Tests.EditMode
         [TestCase(false, DealStatus.Expired)] [TestCase(false, DealStatus.Fulfilled)]
         [TestCase(false, DealStatus.Broken)] [TestCase(true, DealStatus.Expired)]
         [TestCase(true, DealStatus.Broken)]
-        public void NonactiveSafetyAddsNoProtectionAndDoesNotInventABreachHistoryPolicy(bool promise, string status)
+        public void NonactiveSafetyAddsNoProtectionAndDoesNotBlameTheWrongedCandidate(bool promise, string status)
         {
             var s = State(); var row = promise ? Promise(s, "promise") : Deal(s, "deal");
             row.status = status;
             if (status == DealStatus.Fulfilled || status == DealStatus.Broken) row.settledWeek = s.week;
             if (status == DealStatus.Broken)
             {
-                row.brokenById = row.makerId; row.settlementEffectKey = "safety:reader-test";
+                // A real historical nomination receipt; the candidate was wronged, not its actor.
+                row.status = DealStatus.Active; row.settledWeek = 0; s.unifiedCommitments.Add(row);
+                var changed = UnifiedCommitments.EvaluateNomination(s, "nomination", row.makerId, new[] { row.beneficiaryId }).Changes.Single();
+                s.unifiedCommitments[0] = changed.Record.Clone();
             }
-            s.unifiedCommitments.Add(row); Hold(s, Negotiation.Threaten);
-            // Canonical incident/breach-history scoring is a separate prerequisite; do not count
-            // each source-shaped evidence row as another penalty while routing protection.
+            else s.unifiedCommitments.Add(row);
+            Hold(s, Negotiation.Threaten);
+            // Historical scoring counts incidents against the breaker, never the wronged candidate.
             AssertRead(s, 12);
         }
 

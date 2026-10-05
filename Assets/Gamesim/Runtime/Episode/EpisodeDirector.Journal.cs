@@ -441,7 +441,7 @@ namespace Gamesim.Episode
                     + " \u00b7 Nominated " + Times(actor.timesNominated),
             };
             int personal = 0;
-            foreach (var promise in state.promises.Where(p => (p.fromId == state.playerId && p.toId == actor.id)
+            foreach (var promise in CommitmentReferences.Promises(state).Where(p => (p.fromId == state.playerId && p.toId == actor.id)
                          || (p.fromId == actor.id && p.toId == state.playerId)))
             {
                 bool mine = promise.fromId == state.playerId;

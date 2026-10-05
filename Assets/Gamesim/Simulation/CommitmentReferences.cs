@@ -61,6 +61,13 @@ namespace Gamesim.Simulation
         public static DealState FindDeal(EpisodeState state, string id) =>
             id == null ? null : Deals(state).FirstOrDefault(row => row?.id == id);
 
+        /// <summary>Canonical outcomes name their actual settlement week; legacy references retain their original meaning.</summary>
+        public static int ReceiptWeek(EpisodeState state, string id, int legacyWeek)
+        {
+            var row = FindCanonical(state, id);
+            return row != null && row.settledWeek > 0 ? row.settledWeek : legacyWeek;
+        }
+
         /// <summary>Includes the canonical effect identity, which a legacy-shaped DTO cannot carry.</summary>
         public static UnifiedCommitmentState FindCanonical(EpisodeState state, string id)
         {

@@ -1,5 +1,17 @@
 # Gamesim Unity port
 
+**Latest combined Safety consumers,2026-10-05 UTC:** integration`bb0f21e7` plus
+isolated`075f9bfd` now combines voting/Your Word, durable summaries and the latest
+conversation/negotiation/presentation consumers and scoped counter test repair.
+Only floors/progress docs conflicted; both histories retained. QA11Edit/4Play
+and all eight QA/apparatus/isolation files remain unchanged; combined floors
+4124Edit/995Play/77UMA/2859pure. Isolated8fresh/2859pure/846managed/55paired legacy
+checks are not combined/native/shipping acceptance. Fresh same-pin fullNoUMA/
+UMA and desktop1080p60/visual/accessibility/0of3human acceptance remain, as do
+remaining Safety summary/story/hearing/full-save gates, other D1 families and
+required D2/D3/D4. Rule1 stays refused; live edits/recoveries/saves preserved.
+See `WAVE_D_COMBINED_CONSUMERS_REVIEW.md`. Older status blocks are historical.
+
 **Latest combined increment, 2026-10-05 UTC:** merged integration retains QA11Edit/
 4Play plus the historical-test repair, literal frozen23/disabled24 persistence,
 1080p diagnostic path, inactive authority adapters and reviewed native UI fixes.
@@ -21,6 +33,39 @@ the merge. LocalGAMESIM_UMA stays uncommitted. ALL4 Wave D systems, wider
 E2 balance, consistent real assets, actualGTX1060 **1920x1080 at60FPS**, visual
 review and three first-time human playtests remain required. Dated notes below
 are retained evidence for older pins, not current completion claims.
+
+**Canonical Safety conversation/negotiation consumers,2026-10-05 UTC:** direct
+dialogue, decision/profile/notebook/web records, capacity, refusal/mend history
+and source-family reputation now read detached canonical provenance/incidents.
+129 new Edit cases include109 pure and20 native surface cases. Final2859regular
+pure,846focused Mono and8fresh assemblies pass;55paired legacy digests/counts
+remain unchanged. First compiler/pure fixture failures are preserved and the
+two repairs independently reviewed. See `WAVE_D_SAFETY_CONSUMERS_IMPLEMENTATION.md`.
+The older bb0f21e7 native g24n2 CLOSED FAILED:3826Edit passed,994/995Play passed.
+Its stale captured-counter test is repaired without relaxing runtime safeguards,
+but fresh native execution is required. No productionrule1 activation, live
+promotion, desktop1080p60/visual/human acceptance or complete D1-D4 is claimed.
+Older running status blocks below are historical, not current process evidence.
+
+**Canonical Safety summaries,2026-10-05 UTC:** the previously interrupted readers
+now include durable weekly outcomes, actual opportunity reconciliation/settlement
+dates, audible-knowledge grouping, guarded jury receipts and once-only finale
+Speech/Term aliases.91new cases execute; final2750regular pure,737focused Mono and
+8fresh assemblies pass.55paired legacy replay digests/counts remain unchanged;
+exact955source+2tool image has zero drift. See `WAVE_D_SAFETY_SUMMARIES_IMPLEMENTATION.md` for every
+material change, review and verification limits. Rule1 remains refused; no native,
+desktop,1080p60, visual or human acceptance is claimed. Other Safety consumers,
+full enabled validation/activation, all other D1 families and D2/D3/D4 remain.
+
+**Latest canonical Safety voting/Your Word increment,2026-10-05 UTC:** additional
+78pure cases pass (37voting/41page+warnings);2659regular pure,646focused Mono and
+8fresh assemblies pass.55scripted legacy replay digests/counts remain unchanged.
+Canonical voting/history/story odds, page/preview and durable breaker attribution
+are staged; see `WAVE_D_SAFETY_VOTING_WORD_IMPLEMENTATION.md`. Rule1 still refused
+by production. Remaining references/full validation/native transactions/fresh-only
+activation, other D1 families and all required D2/D3/D4 remain. The separate bb
+native candidate remains frozen under g24n2; this isolated source is NOT native,
+desktop,1080p60, visual or0of3human acceptance. Older status blocks are historical.
 
 **Latest authority adapters/native repairs, 2026-10-05 UTC:** internal atomic
 Safety storage/response plus detached references are staged with105new cases;

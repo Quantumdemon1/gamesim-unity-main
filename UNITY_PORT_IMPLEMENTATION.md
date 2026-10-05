@@ -1,5 +1,24 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC - canonical Safety conversation/negotiation consumers
+
+`WAVE_D_SAFETY_CONSUMERS_IMPLEMENTATION.md` enumerates every material change,
+first failed compiler/pure runs, fixture-only repairs, independent review and
+final evidence. Ten production readers now include canonical own-party agreement
+provenance or grouped actual-actor history without changing source-family or
+audible knowledge policy.129 new Edit cases (109pure/20native); isolated floors
+4113Edit/991Play/77UMA/2859pure, combined4124/995/77/2859 retainingQA11/4.
+Final8fresh assemblies,2859regular pure,846focused Mono and55paired scripted
+legacy digests/counts pass;958source+2tool before/after images match exactly.
+The old bb0f21e7 NoUMA g24n2 fully CLOSED FAILED:3826Edit/994of995Play, no skips,
+no drift/cleanup errors/unowned descendants. Its counter test held a button
+retired by capture's HUD rebuild; scoped test repair reacquires the current
+active/interactable answer. Fresh native execution remains required. These
+checks are not native lifecycle/disk-save/enabled-season or shipping acceptance.
+Rule1 remains refused; remaining summary/story/hearing/full-save gates, other
+D1 families, D2/D3/D4, balance/art,1080p60/visual/accessibility/0of3humans stay open.
+Live source/scenes/fonts/UMA/settings/recoveries/saves/builds remain preserved.
+
 ## 2026-10-05 UTC - canonical Safety summaries and stable finale references
 
 `WAVE_D_SAFETY_SUMMARIES_IMPLEMENTATION.md` records every material change and

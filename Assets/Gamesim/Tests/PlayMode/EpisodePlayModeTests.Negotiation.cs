@@ -143,7 +143,12 @@ namespace Gamesim.Tests.PlayMode
                 if (take) yield return CaptureConversation("conversation-counter" + (larger ? "-large" : ""), where, null);
 
                 int revision = director.Snapshot.revision, deals = director.Snapshot.deals.Count;
-                (take ? yes : no).onClick.Invoke();
+                // CaptureFraming explicitly re-renders for each canvas and again afterward.
+                // Its original controls are retired, so press the actual current answer rather
+                // than a stale button whose guarded callback must no longer commit anything.
+                var answer = ButtonWithCaption(take ? EpisodeHud.CounterAcceptCaption(first) : EpisodeHud.CounterDeclineCaption(first));
+                Assert.That(answer.gameObject.activeInHierarchy && answer.IsInteractable(), Is.True, where + ": the current answer is usable.");
+                answer.onClick.Invoke();
                 yield return null;
                 var after = director.Snapshot;
                 Assert.That(after.revision, Is.EqualTo(revision + 1), where + ": one command.");

@@ -1,5 +1,18 @@
 # Gamesim Unity port
 
+**Canonical Safety conversation/negotiation consumers,2026-10-05 UTC:** direct
+dialogue, decision/profile/notebook/web records, capacity, refusal/mend history
+and source-family reputation now read detached canonical provenance/incidents.
+129 new Edit cases include109 pure and20 native surface cases. Final2859regular
+pure,846focused Mono and8fresh assemblies pass;55paired legacy digests/counts
+remain unchanged. First compiler/pure fixture failures are preserved and the
+two repairs independently reviewed. See `WAVE_D_SAFETY_CONSUMERS_IMPLEMENTATION.md`.
+The older bb0f21e7 native g24n2 CLOSED FAILED:3826Edit passed,994/995Play passed.
+Its stale captured-counter test is repaired without relaxing runtime safeguards,
+but fresh native execution is required. No productionrule1 activation, live
+promotion, desktop1080p60/visual/human acceptance or complete D1-D4 is claimed.
+Older running status blocks below are historical, not current process evidence.
+
 **Canonical Safety summaries,2026-10-05 UTC:** the previously interrupted readers
 now include durable weekly outcomes, actual opportunity reconciliation/settlement
 dates, audible-knowledge grouping, guarded jury receipts and once-only finale

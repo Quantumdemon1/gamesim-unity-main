@@ -96,8 +96,18 @@ namespace Gamesim.Simulation
         /// of (<see cref="Breaches.CountsAgainst(EpisodeState, DealState, string)"/>). The player's own
         /// count is what the acceptance roll and its line read too.
         /// </summary>
-        public static int BrokenDeals(EpisodeState state, string whoId) =>
-            state.deals.Count(d => Breaches.CountsAgainst(state, d, whoId));
+        public static int BrokenDeals(EpisodeState state, string whoId)
+        {
+            int legacy = state.deals.Count(d => Breaches.CountsAgainst(state, d, whoId));
+            if (!UnifiedCommitments.RulesOn(state)) return legacy;
+            // This source term measures broken deals, not every kind of word. A promise-only
+            // incident stays outside it; any number of reciprocal Safety deal aliases counts
+            // once, against the actual actor and never against the person they wronged.
+            var deals = new HashSet<string>(UnifiedCommitmentHistory.Records(state)
+                .Where(row => row.sourcePolicy == UnifiedCommitments.DealPolicy).Select(row => row.id), StringComparer.Ordinal);
+            return legacy + UnifiedCommitmentHistory.Breaches(state)
+                .Count(incident => incident.ActorId == whoId && incident.EvidenceIds.Any(deals.Contains));
+        }
 
         /// <summary>Deals currently binding these two, in either direction.</summary>
         public static List<DealState> Between(EpisodeState state, string a, string b) =>

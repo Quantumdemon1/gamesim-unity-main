@@ -456,7 +456,8 @@ namespace Gamesim.Simulation
             if (NpcDeals.Between(s, npcId, s.playerId).Count > 0) chance += 10;
             string trait = TraitBonus(move);
             if (trait != null && me.traits != null && me.traits.Any(t => string.Equals(t, trait, StringComparison.OrdinalIgnoreCase))) chance += 15;
-            if (s.deals.Any(d => asKnown ? KnownBreach(s, d, npcId) : Pair(d, npcId, s.playerId) && Breaches.CountsAgainst(s, d, s.playerId)))
+            if (s.deals.Any(d => asKnown ? KnownBreach(s, d, npcId) : Pair(d, npcId, s.playerId) && Breaches.CountsAgainst(s, d, s.playerId))
+                || CanonicalBreaches(s, npcId, dealsOnly: true).Any())
                 chance -= 30;
             return Math.Max(PlayerDeals.MinimumChance, Math.Min(PlayerDeals.MaximumChance, Math.Floor(chance + 0.5)));
         }
@@ -601,7 +602,22 @@ namespace Gamesim.Simulation
             if (!EpisodeEngine.CommitmentRulesOn(s) || string.IsNullOrEmpty(npcId)) return 0;
             string me = s.playerId;
             return s.deals.Count(d => KnownBreach(s, d, npcId))
-                   + s.promises.Count(p => p.fromId == me && p.toId == npcId && Breaches.CountsAgainst(s, p, me));
+                   + s.promises.Count(p => p.fromId == me && p.toId == npcId && Breaches.CountsAgainst(s, p, me))
+                   + CanonicalBreaches(s, npcId, dealsOnly: false).Count();
+        }
+
+        // A Safety nomination/replacement is the player's own observable act, not an inferred
+        // ballot. Group the actual actor/wronged incident before applying a source-family term.
+        // Never project each agreement into another refusal penalty or mend allowance.
+        private static IEnumerable<UnifiedCommitmentIncident> CanonicalBreaches(EpisodeState s, string npcId, bool dealsOnly)
+        {
+            if (!UnifiedCommitments.RulesOn(s)) return Array.Empty<UnifiedCommitmentIncident>();
+            var incidents = UnifiedCommitmentHistory.Breaches(s)
+                .Where(incident => incident.ActorId == s.playerId && incident.WrongedId == npcId);
+            if (!dealsOnly) return incidents;
+            var deals = new HashSet<string>(UnifiedCommitmentHistory.Records(s)
+                .Where(row => row.sourcePolicy == UnifiedCommitments.DealPolicy).Select(row => row.id), StringComparer.Ordinal);
+            return incidents.Where(incident => incident.EvidenceIds.Any(deals.Contains));
         }
 
         /// <summary>
@@ -639,6 +655,21 @@ namespace Gamesim.Simulation
                 .OrderByDescending(d => d.settledWeek).ThenByDescending(d => d.week).FirstOrDefault();
             var promise = s.promises.Where(p => p.fromId == me && p.toId == npcId && Breaches.CountsAgainst(s, p, me))
                 .OrderByDescending(p => p.settledWeek).ThenByDescending(p => p.week).FirstOrDefault();
+            if (UnifiedCommitments.RulesOn(s))
+            {
+                var rows = UnifiedCommitmentHistory.Records(s).ToDictionary(row => row.id, StringComparer.Ordinal);
+                var latest = CanonicalBreaches(s, npcId, dealsOnly: false)
+                    .OrderByDescending(incident => rows[incident.EffectOwnerId].settledWeek)
+                    .ThenBy(incident => incident.EffectKey, StringComparer.Ordinal).FirstOrDefault();
+                int legacyWeek = Math.Max(deal == null ? 0 : Math.Max(deal.settledWeek, deal.week),
+                    promise == null ? 0 : Math.Max(promise.settledWeek, promise.week));
+                // On an equal week retain the old family/list-order choice. Canonical evidence
+                // selects by actual settlement, not proposal week, and names the actual owner.
+                if (latest != null && rows[latest.EffectOwnerId].settledWeek > legacyWeek)
+                    return rows[latest.EffectOwnerId].sourcePolicy == UnifiedCommitments.PromisePolicy
+                        ? "the promise of safety you broke"
+                        : "the " + DealKind.Title(DealKind.SafetyAgreement).ToLowerInvariant() + " you broke";
+            }
             if (deal != null && (promise == null || Math.Max(deal.settledWeek, deal.week) >= Math.Max(promise.settledWeek, promise.week)))
                 return "the " + DealKind.Title(deal.type).ToLowerInvariant() + " you broke";
             if (promise != null) return "the promise of " + PromiseWords(promise.kind) + " you broke";

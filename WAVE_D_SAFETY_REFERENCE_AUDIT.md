@@ -1,7 +1,7 @@
 # Remaining canonical Safety consumers and enabled-save gates
 
 2026-10-05 UTC. Independent read-only audit above ab65017d, supplemented by the
-current Summary increment. This is an implementation queue, not a passing test,
+Summary and conversation/negotiation consumer increments. This is a coverage queue, not a passing test,
 complete Safety activation or a claim that other commitment families are ported.
 
 ## Reader and writer coverage still required
@@ -9,13 +9,13 @@ complete Safety activation or a claim that other commitment families are ported.
 | Area | Remaining source path and intended contract |
 | --- | --- |
 | Actual opportunities | `EpisodeEngine.Ledger.ReconcileOpportunities` was addressed by the Summary increment: detached canonical deal provenance, unchanged legacy responses, no writable mirrors. |
-| Negotiation | `Negotiation` rejection consequences, `BreachesAgainst` and `BreachWords` still miss canonical incidents. Pair-specific refusal/mend counts must group one actual breach and use actual actor/settlement chronology. Preserve the legacy-family rules. |
-| Proposal reputation | `NpcDeals.BrokenDeals` and `PlayerDeals.AcceptanceChance` raw broken-deal/promise predicates miss canonical evidence. Specify incident-versus-agreement semantics explicitly; never sum projected aliases as repeated penalties. |
-| Conversation acknowledgment | `HouseDialogue.LatestDirectOutcome` and `DirectActivePromise`: canonical direct-party references, actual settlement date for new-rule outcomes, exact original list-order behavior in rules0. |
-| Decision cards | `Runtime/Presentation/DecisionContext` promise comparisons still read raw rows. Keep own-party provenance and captions; deal comparison already uses CommitmentsRead. |
-| Notebook/profile/web | `EpisodeDirector`, `EpisodeDirector.Journal`, and `RelationshipWeb` raw promise/deal lookups omit canonical Safety. Move reads only; retain private pair filtering and stable reference identities. |
-| Capacity presentation | `EpisodeDirector.Conversation.PastTheDealCeiling` raw deal count differs from actual canonical command capacity. Use the same canonical-aware historical family count; do not count only active rows. |
-| Known history | `KnownOdds.History` measures own-pair agreement evidence, not betrayal incidents. Include canonical provenance without turning private NPC relationships into player knowledge. |
+| Negotiation | Addressed by the consumer increment: grouped actual player/wronged incidents, source-family chance terms, refusal/mend counts and settlement-dated captions; rules0 retained. |
+| Proposal reputation | Addressed: `NpcDeals.BrokenDeals` counts once per actual deal-evidenced incident; `PlayerDeals` includes canonical broken-promise track-record copy while retaining audible YourWord acceptance policy. |
+| Conversation acknowledgment | Addressed: detached direct PromisePolicy provenance, actual settlement chronology and exact original reverse-list behavior in rules0. |
+| Decision cards | Addressed in actual `DecisionContext`; own-party provenance/captions retained. Native execution of the new cases remains required. |
+| Notebook/profile/web | Addressed in actual director/profile/web readers. Component/built-control fixtures are compiled; full native notebook lifecycle remains open. |
+| Capacity presentation | Addressed: `PastTheDealCeiling` uses canonical-aware historical DealCount, including NPC/declined/ended rows, not promises or only active records. |
+| Known history | Addressed: `KnownOdds.History` retains each own-pair agreement provenance and legitimate own-memory/reply/call/pact contributions; no NPC-only knowledge. |
 | Active/kept summaries | `WeeklyRecap.Ledger`, `AllianceRead`, `FinalCaseResume`, and remaining `FinalistRead` predicates omit canonical records. Agreement lists/counts use provenance; mechanical outcome summaries use grouped incidents/fulfillments. |
 | Story progression/casting | `StoryCatalog.Plays.PromisedSafe`, `StoryCatalog.Spine`, `StoryCatalog.Ported`, `HouseEventSources`, and related `EpisodeEngine.StoryHooks` predicates need canonical Safety. Keep each source predicate; no player-facing omniscient projection. |
 
@@ -65,9 +65,11 @@ rules; changing storage is not authority to rewrite outcomes.
 
 ## Next source-backed regression inventory
 
-Real gateway to opportunity reconciliation to GameSense; canonical-only direct
-conversation and decision-card displays; capacity reason parity; pair-incident
-refusal/mend allowances; Safety story progress; own-pair active/kept summaries;
+Real gateway to opportunity reconciliation to GameSense and pure canonical
+conversation/refusal/mend readers have regression evidence; capacity surface
+coverage is compiled, not executed. Actual
+native decision/profile/web/notebook lifecycle remains open. Next: Safety story
+progress; own-pair active/kept summaries;
 actual gossip incident/listener effects; corrupt enabled-save references and
 native transaction/reload. Preserve all existing rules0 assertions and legacy
 season digests. Then complete the remaining D1 families and required D2/D3/D4.

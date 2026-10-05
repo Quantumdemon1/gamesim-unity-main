@@ -1207,7 +1207,7 @@ namespace Gamesim.Episode
             hud.Paragraph("Your mood: " + state.Find(state.playerId).mood + " · Stress: " + state.Find(state.playerId).stressLevel);
             // Aggregate source arcs have no participant/knowledge provenance.
             // NPC-only conversations must not masquerade as the player's bonds.
-            foreach (var promise in state.promises.Where(p => p.fromId == state.playerId || p.toId == state.playerId))
+            foreach (var promise in CommitmentReferences.Promises(state).Where(p => p.fromId == state.playerId || p.toId == state.playerId))
             {
                 // Was the raw enum on both ends: "AllianceLoyalty - Dana -> You - Active". The
                 // vocabulary the player was given when they made the promise already exists.

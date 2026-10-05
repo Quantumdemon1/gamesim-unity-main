@@ -417,8 +417,10 @@ namespace Gamesim.Simulation
             if (s == null || string.IsNullOrEmpty(npcId)) return 0;
             string me = s.playerId;
             bool Pair(string a, string b) => (a == npcId && b == me) || (a == me && b == npcId);
-            return s.promises.Count(p => Pair(p.fromId, p.toId))
-                + s.deals.Count(d => Pair(d.proposerId, d.recipientId))
+            // A history is every agreement the player was party to, not the number of betrayal
+            // incidents. Detached canonical provenance keeps each alias and excludes NPC-only pairs.
+            return (UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Promises(s) : s.promises).Count(p => Pair(p.fromId, p.toId))
+                + (UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Deals(s) : s.deals).Count(d => Pair(d.proposerId, d.recipientId))
                 + (s.ledger?.replies?.Count(r => r.fromId == npcId) ?? 0)
                 + (s.ledger?.calls?.Count(c => c.callerId == me && (c.followed.Contains(npcId) || c.defected.Contains(npcId))) ?? 0)
                 + s.alliances.Count(a => a.members.Contains(me) && a.members.Contains(npcId))

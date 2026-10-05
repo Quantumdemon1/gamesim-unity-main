@@ -31,7 +31,7 @@ namespace Gamesim.Presentation
             string relationship = id == state.playerId ? "Your houseguest"
                 : "Your trust: " + state.Score(state.playerId, id).ToString("+0;-0;0")
                     + (state.Allied(state.playerId, id) ? " · Shared alliance" : "");
-            var promises = state.promises.Where(p =>
+            var promises = CommitmentReferences.Promises(state).Where(p =>
                 (p.fromId == state.playerId && p.toId == id) || (p.fromId == id && p.toId == state.playerId)).ToArray();
             string known = promises.Length == 0 ? "No promises recorded between you."
                 : string.Join("\n", promises.Reverse().Take(2).Select(p =>

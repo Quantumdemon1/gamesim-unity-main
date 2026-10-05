@@ -630,7 +630,7 @@ namespace Gamesim.Episode
 
         /// <summary>Whether the deal table is empty because the season has reached its deal ceiling: the refusal <see cref="PlayerDeals.CanPropose"/> makes before any other.</summary>
         public static bool PastTheDealCeiling(EpisodeState state) =>
-            state != null && state.week >= state.dealRulesStartWeek && state.deals.Count >= PlayerDeals.PlayerDealCeiling;
+            state != null && state.week >= state.dealRulesStartWeek && CommitmentReferences.DealCount(state) >= PlayerDeals.PlayerDealCeiling;
 
         /// <summary>A houseguest's offer of a final three deal, in words (C9): "Maya Hassan wants the two of you to take each other to the final three: neither of you puts the other up until then."</summary>
         public static string FinalThreeOfferSentence(string who) =>

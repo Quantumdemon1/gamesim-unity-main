@@ -277,7 +277,10 @@ namespace Gamesim.Simulation
         /// the player's own ballot, which the house never sees, costs nothing here, though the one it
         /// was broken against still holds it in their own view and record. Otherwise
         /// <see cref="BrokenDealPenalty"/> for every deal held against the player: under the commitment
-        /// rules the ones they broke (C0, X3), before them every one they were a party to.</para>
+        /// rules the ones they broke (C0, X3), before them every one they were a party to. Under the
+        /// canonical Safety rules that fallback counts actual incidents containing deal evidence,
+        /// not projected aliases or promise-only incidents. It never replaces the audible knowledge
+        /// policy with private canonical history.</para>
         /// </summary>
         public static double WordPenalty(EpisodeState state) =>
             YourWord.On(state) ? YourWord.Cost(state) : BrokenDealPenalty * NpcDeals.BrokenDeals(state, state.playerId);
@@ -375,10 +378,20 @@ namespace Gamesim.Simulation
             // A track record: under the commitment rules the player's own broken promises, and their broken
             // deals - where the house keeps their word, only the ones the house has heard of (C8).
             bool brokenDeals = word ? YourWord.Cost(state) > 0 : broken > 0;
-            if (rules ? brokenDeals || state.promises.Any(p => Breaches.CountsAgainst(state, p, state.playerId))
+            if (rules ? brokenDeals || HasBrokenPromise(state)
                     : ThreatAssessment.TrustScore(state, state.playerId, npcId) < 40)
                 return "Your track record concerns me.";
             return "I'm not sure this is the right move for me.";
+        }
+
+        private static bool HasBrokenPromise(EpisodeState state)
+        {
+            if (state.promises.Any(p => Breaches.CountsAgainst(state, p, state.playerId))) return true;
+            if (!UnifiedCommitments.RulesOn(state)) return false;
+            var promises = new HashSet<string>(UnifiedCommitmentHistory.Records(state)
+                .Where(row => row.sourcePolicy == UnifiedCommitments.PromisePolicy).Select(row => row.id), StringComparer.Ordinal);
+            return UnifiedCommitmentHistory.Breaches(state)
+                .Any(incident => incident.ActorId == state.playerId && incident.EvidenceIds.Any(promises.Contains));
         }
 
         /// <summary>

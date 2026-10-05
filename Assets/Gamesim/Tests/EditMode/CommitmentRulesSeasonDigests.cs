@@ -379,6 +379,21 @@ namespace Gamesim.Tests.EditMode
                     Assert.That(value.Value<int>(), Is.Zero, "Legacy goldens must not run the new economy: " + field);
                 o.Remove(field);
             }
+            // Schema 24 reserves two INACTIVE fields only. Keep compiling against old recorded
+            // assemblies, but never erase an active/nonempty authority to manufacture old parity.
+            bool hasUnifiedRules = o.TryGetValue("unifiedCommitmentRulesVersion", out var unifiedRules);
+            bool hasUnifiedRows = o.TryGetValue("unifiedCommitments", out var unifiedRows);
+            Assert.That(hasUnifiedRows, Is.EqualTo(hasUnifiedRules), "The schema-24 fields occur together.");
+            if (o["schemaVersion"].Value<int>() >= 24)
+                Assert.That(hasUnifiedRules, Is.True, "A current season must contain both reserved fields.");
+            if (hasUnifiedRules)
+            {
+                Assert.That(unifiedRules.Type, Is.EqualTo(JTokenType.Integer));
+                Assert.That(unifiedRules.Value<long>(), Is.Zero, "Legacy goldens must not activate unified commitments.");
+                Assert.That(unifiedRows, Is.InstanceOf<JArray>());
+                Assert.That(((JArray)unifiedRows).Count, Is.Zero, "Never hide a canonical commitment in legacy parity.");
+                o.Remove("unifiedCommitmentRulesVersion"); o.Remove("unifiedCommitments");
+            }
             o.Remove("schemaVersion"); o.Remove("commitmentRulesStartWeek");
             // Schema 22's deal fields - C7's link with C0's record - which a season without the rules leaves null and 0.
             foreach (var row in ((JArray)o["deals"]).OfType<JObject>()) { row.Remove("brokenById"); row.Remove("settledWeek"); row.Remove("linkedDealId"); }

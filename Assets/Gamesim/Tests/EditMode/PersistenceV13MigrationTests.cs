@@ -25,7 +25,7 @@ namespace Gamesim.Tests.EditMode
             var old = V12(); string original = old.ToString();
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(23));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(24));
             Assert.That((int)migrated["competitionRulesVersion"], Is.EqualTo(1));
             foreach (var person in (JArray)migrated["contestants"])
             {
@@ -98,7 +98,16 @@ namespace Gamesim.Tests.EditMode
             Assert.That(JToken.DeepEquals(originalProjection, old), Is.True);
             Assert.That(version22.ToString(), Is.EqualTo(previous));
             Assert.That(old.ToString(), Is.EqualTo(original));
-            var loaded = completed.ToObject<EpisodeState>(Serializer());
+            string frozen23 = completed.ToString();
+            var current24 = EpisodeSaveMigrations.UpgradeV23ToV24(completed);
+            Assert.That((int)current24["schemaVersion"], Is.EqualTo(24));
+            Assert.That((int)current24["unifiedCommitmentRulesVersion"], Is.Zero);
+            Assert.That((JArray)current24["unifiedCommitments"], Is.Empty);
+            var projection23 = PersistenceMigrationTests.StripSchema24((JObject)current24.DeepClone());
+            projection23["schemaVersion"] = 23;
+            Assert.That(JToken.DeepEquals(projection23, completed), Is.True);
+            Assert.That(completed.ToString(), Is.EqualTo(frozen23));
+            var loaded = current24.ToObject<EpisodeState>(Serializer());
             Assert.That(field == "socialActions" ? loaded.socialActions : loaded.outOfPhaseSocialActions, Is.EqualTo(count));
             Assert.That(EpisodeEngine.EconomyRulesOn(loaded), Is.False, "Historical seasons keep the old action economy.");
             Assert.That(EpisodeValidation.TryValidate(loaded, out var error), Is.True, error);

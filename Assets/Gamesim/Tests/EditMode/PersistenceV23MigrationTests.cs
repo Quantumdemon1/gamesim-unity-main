@@ -37,7 +37,7 @@ namespace Gamesim.Tests.EditMode
         {
             var old = (JObject)JObject.Parse(File.ReadAllText(FixturePath))["state"];
             string original = old.ToString();
-            var next = EpisodeSaveMigrations.PrepareCurrentPayload(old, out bool migrated);
+            var next = EpisodeSaveMigrations.PrepareV23Payload(old, out bool migrated);
             Assert.That(migrated, Is.True);
             Assert.That((int)next["schemaVersion"], Is.EqualTo(23));
             Assert.That((int)next["economyRulesVersion"], Is.Zero);
@@ -48,13 +48,22 @@ namespace Gamesim.Tests.EditMode
             Assert.That(old.ToString(), Is.EqualTo(original));
             Assert.That(EpisodeEngine.IsFirstNight(Read(old)), Is.True);
             Assert.That(EpisodeEngine.EconomyRulesOn(Read(old)), Is.False, "Even a pristine historical opening stays legacy.");
-            var repeated = EpisodeSaveMigrations.PrepareCurrentPayload(next, out migrated);
+            var repeated = EpisodeSaveMigrations.PrepareV23Payload(next, out migrated);
             Assert.That(migrated, Is.False);
             Assert.That(JToken.DeepEquals(next, repeated), Is.True);
             Assert.That(ReferenceEquals(next, repeated), Is.False);
             var frozen = EpisodeSaveMigrations.PrepareV22Payload(old, out migrated);
             Assert.That(migrated, Is.False);
             Assert.That(JToken.DeepEquals(frozen, old), Is.True);
+            var current = EpisodeSaveMigrations.PrepareCurrentPayload(old, out migrated);
+            Assert.That(migrated, Is.True);
+            Assert.That((int)current["schemaVersion"], Is.EqualTo(24));
+            Assert.That((int)current["unifiedCommitmentRulesVersion"], Is.Zero);
+            Assert.That((JArray)current["unifiedCommitments"], Is.Empty);
+            var historical23 = PersistenceMigrationTests.StripSchema24((JObject)current.DeepClone());
+            historical23["schemaVersion"] = 23;
+            Assert.That(JToken.DeepEquals(historical23, next), Is.True);
+            Assert.That(old.ToString(), Is.EqualTo(original));
         }
 
         [Test]
@@ -143,7 +152,7 @@ namespace Gamesim.Tests.EditMode
             Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(old, out _));
         }
 
-        [TestCase(0)] [TestCase(24)] [TestCase(-1)]
+        [TestCase(0)] [TestCase(25)] [TestCase(-1)]
         public void UnknownSchemasAreNeverGuessed(int schema)
         {
             var old = AsV22(EconomyRulesTests.Fresh(enable: false)); old["schemaVersion"] = schema;
@@ -196,9 +205,11 @@ namespace Gamesim.Tests.EditMode
             // fresh isolated test slot is writable; the retained original stays protected.
             File.WriteAllBytes(files.Store.SavePath, original);
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 22").And.Contain("schema 23 in memory"));
+            Assert.That(message, Does.Contain("Schema 22").And.Contain("schema 24 in memory"));
             Assert.That(loaded.economyRulesVersion, Is.Zero);
             Assert.That(loaded.moveInExtrasSpent, Is.Zero);
+            Assert.That(loaded.unifiedCommitmentRulesVersion, Is.Zero);
+            Assert.That(loaded.unifiedCommitments, Is.Empty);
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(original));
             Assert.That(File.Exists(files.Store.BackupPath), Is.False);
             files.Store.Save(loaded);

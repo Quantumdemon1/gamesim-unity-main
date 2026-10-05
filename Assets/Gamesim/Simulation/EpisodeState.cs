@@ -244,7 +244,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 23;
+        public int schemaVersion = 24;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
@@ -291,6 +291,10 @@ namespace Gamesim.Simulation
         /// every season saved before they existed, and every season a test builds directly.
         /// </summary>
         public int commitmentRulesStartWeek;
+        /// <summary>Schema 24 foundation only: zero retains the existing commitment writers. No production opt-in exists yet.</summary>
+        public int unifiedCommitmentRulesVersion;
+        /// <summary>Schema 24's separately owned canonical records. Must stay empty while the foundation gate is disabled.</summary>
+        public List<UnifiedCommitmentState> unifiedCommitments = new List<UnifiedCommitmentState>();
         public List<CompetitionScore> competitionScores = new List<CompetitionScore>();
         public List<EpisodeEvent> events = new List<EpisodeEvent>();
         public List<string> acceptedCommandIds = new List<string>();
@@ -501,6 +505,7 @@ namespace Gamesim.Simulation
             copy.contestants = contestants.Select(x => x.Clone()).ToList();
             copy.relationships = relationships.Select(x => x.Clone()).ToList();
             copy.promises = promises.Select(x => x.Clone()).ToList();
+            copy.unifiedCommitments = unifiedCommitments?.Select(x => x?.Clone()).ToList();
             copy.alliances = alliances.Select(x => x.Clone()).ToList();
             copy.memories = memories.Select(x => x.Clone()).ToList();
             copy.nominees = new List<string>(nominees); copy.vetoPlayers = new List<string>(vetoPlayers);

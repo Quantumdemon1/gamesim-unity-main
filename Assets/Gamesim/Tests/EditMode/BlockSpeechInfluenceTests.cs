@@ -146,7 +146,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Json(after.relationships), Is.EqualTo(Json(before.relationships)));
             Assert.That(Json(after.promises), Is.EqualTo(Json(before.promises)), "A rhetorical deal is not a new promise.");
             Assert.That(Json(after.deals), Is.EqualTo(Json(before.deals)));
-            Assert.That(after.schemaVersion, Is.EqualTo(23));
+            Assert.That(after.schemaVersion, Is.EqualTo(24));
             Assert.That(Json(before), Is.EqualTo(input));
         }
 

@@ -1,5 +1,18 @@
 # Gamesim Unity port
 
+**Latest disabled foundation, 2026-10-05 UTC:** schema24 reserves a canonical
+commitment list with rules0/empty; ALL actual factories and imported1-23 remain
+off. Strict frozen23 migration adds only those defaults. Pure prospective safety
+policy is staged, NOT activated D1a/B1. Final2293 regular pure cases,280 focused
+managed cases and8/8 offline assemblies pass;55 cross-build seasons/5956 attempted
+transitions match whole persisted state after ONLY disabled-field projection.
+See `WAVE_D_FOUNDATION_IMPLEMENTATION.md` for every change, retained failures and
+independent review. Branch3527/988/77/2293; futurecombined3538/992/77/2293.
+Next complete every safety writer/settler/reader and atomic bundle BEFOREfresh
+opt-in, then final-two/vote/oath/call families. All4WaveD, widerE2, actual assets,
+combinednative/build/1920x1080at60FPS GTX1060/visual and0of3humanplaytests remain.
+Live untouched; ed492/g23n1 still frozen/running. Older notes below are historical.
+
 **Latest dependency preparation, 2026-10-05 UTC:** the separate Wave C checkout
 adds an unused strict schema23 forward contract,110 authored Edit cases, and
 actual1920x1080 Windowed/uncapped profile evidence with18 authored Edit cases.

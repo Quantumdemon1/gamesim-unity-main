@@ -12,9 +12,9 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// Authored native Edit tests for an unused forward contract. No migration route, old fixture,
-    /// or save is changed. Synthetic payloads are explicitly built with the current schema-23
-    /// reducers/DTOs and checked before mutation; they are not historical shipping-save evidence.
+    /// Native Edit tests for the frozen schema-23 contract. Synthetic payloads explicitly remove
+    /// only schema 24's disabled/empty foundation from current reducer states before claiming 23.
+    /// No historical fixture bytes are changed; these are not captured shipping-save evidence.
     /// </summary>
     public sealed class FrozenEpisodeV23ContractTests
     {
@@ -25,8 +25,14 @@ namespace Gamesim.Tests.EditMode
         private static JObject Payload(EpisodeState s)
         {
             EpisodeSaveValidation.Validate(s);
-            Assert.That(s.schemaVersion, Is.EqualTo(23), "This fixture must be consciously frozen before the live model changes.");
-            return JObject.FromObject(s, Serializer());
+            Assert.That(s.schemaVersion, Is.EqualTo(24));
+            Assert.That(s.unifiedCommitmentRulesVersion, Is.Zero);
+            Assert.That(s.unifiedCommitments, Is.Empty);
+            var historical = JObject.FromObject(s, Serializer());
+            historical.Remove("unifiedCommitmentRulesVersion");
+            historical.Remove("unifiedCommitments");
+            historical["schemaVersion"] = 23;
+            return historical;
         }
         private static object Invoke(Type type, string name, JObject o)
         {

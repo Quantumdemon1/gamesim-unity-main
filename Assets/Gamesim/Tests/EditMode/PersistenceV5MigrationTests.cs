@@ -18,7 +18,7 @@ namespace Gamesim.Tests.EditMode
         public void FreshGamesStartInWeekOneAndThePrimitiveIsDetachedInEverySnapshot()
         {
             var input = ContentCatalog.Create(501);
-            Assert.That(input.schemaVersion, Is.EqualTo(23));
+            Assert.That(input.schemaVersion, Is.EqualTo(24));
             Assert.That(input.blocRulesStartWeek, Is.EqualTo(1));
             var engine = new EpisodeEngine(input);
             var copy = engine.Snapshot; copy.blocRulesStartWeek = 2; input.blocRulesStartWeek = 2;
@@ -37,10 +37,12 @@ namespace Gamesim.Tests.EditMode
             var v4 = version < 4 ? EpisodeSaveMigrations.PrepareV4Payload(original, out _) : original;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(original, out bool changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(23));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(24));
             Assert.That((int)migrated["blocRulesStartWeek"], Is.EqualTo(8));
             Assert.That((int)migrated["economyRulesVersion"], Is.Zero);
             Assert.That((int)migrated["moveInExtrasSpent"], Is.Zero);
+            Assert.That((int)migrated["unifiedCommitmentRulesVersion"], Is.Zero);
+            Assert.That((JArray)migrated["unifiedCommitments"], Is.Empty);
             Assert.That((uint)migrated["randomState"], Is.Zero);
             // Without schema 7's card copy: see the note on the v4 twin.
             AssertOldFieldsEqual(v4, PersistenceMigrationTests.StripCardCopy(
@@ -298,7 +300,8 @@ namespace Gamesim.Tests.EditMode
                     "agencyRulesStartWeek",
                     "finaleRulesStartWeek", "finalArgument",
                     "commitmentRulesStartWeek",
-                    "economyRulesVersion", "moveInExtrasSpent" }.Contains(field);
+                    "economyRulesVersion", "moveInExtrasSpent",
+                    "unifiedCommitmentRulesVersion", "unifiedCommitments" }.Contains(field);
                 case "state.contestants[]": return new[] { "occupation", "archetype", "age", "hometown", "bio", "sourceTemplateId", "appearance" }.Contains(field);
                 case "state.juryExchanges[]": return new[] { "category", "receiptKind", "receiptId" }.Contains(field);
                 case "state.promises[]": return new[] { "brokenById", "settledWeek" }.Contains(field);

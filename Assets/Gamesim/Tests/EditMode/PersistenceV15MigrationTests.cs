@@ -62,7 +62,16 @@ namespace Gamesim.Tests.EditMode
             Assert.That(JToken.DeepEquals(originalProjection, old), Is.True, "Every original field survives the complete chain.");
             Assert.That(version22.ToString(), Is.EqualTo(previous));
             Assert.That(old.ToString(), Is.EqualTo(original));
-            var state = completed.ToObject<EpisodeState>(Serializer());
+            string frozen23 = completed.ToString();
+            var current24 = EpisodeSaveMigrations.UpgradeV23ToV24(completed);
+            Assert.That((int)current24["schemaVersion"], Is.EqualTo(24));
+            Assert.That((int)current24["unifiedCommitmentRulesVersion"], Is.Zero);
+            Assert.That((JArray)current24["unifiedCommitments"], Is.Empty);
+            var projection23 = PersistenceMigrationTests.StripSchema24((JObject)current24.DeepClone());
+            projection23["schemaVersion"] = 23;
+            Assert.That(JToken.DeepEquals(projection23, completed), Is.True);
+            Assert.That(completed.ToString(), Is.EqualTo(frozen23));
+            var state = current24.ToObject<EpisodeState>(Serializer());
             Assert.That(state.strategyRulesStartWeek, Is.Zero);
             Assert.That(state.lobbies, Is.Empty); Assert.That(state.replyCards, Is.Empty);
             Assert.That(EpisodeEngine.EconomyRulesOn(state), Is.False);
@@ -145,7 +154,7 @@ namespace Gamesim.Tests.EditMode
             old["schemaVersion"] = 12;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(23), "The whole chain, not one step.");
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(24), "The whole chain, not one step.");
             Assert.That(EpisodeSaveMigrations.PrepareV15Payload(old, out _)["schemaVersion"].Value<int>(), Is.EqualTo(15),
                 "The frozen dispatch still stops at fifteen.");
             Assert.That((int)migrated["haveNotRulesStartWeek"], Is.Zero);

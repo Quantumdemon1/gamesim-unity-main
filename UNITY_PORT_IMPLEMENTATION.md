@@ -1,5 +1,22 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC - schema24 disabled canonical foundation staged
+
+See `WAVE_D_FOUNDATION_IMPLEMENTATION.md` for EVERY material change and remaining
+tasks. Adds strict inactive0/empty24 storage, detached immutable23 migration and
+pure prospective safety policy,111 policy/59 persistence cases. ALL real games
+stay on the existing writers;1 is refused until complete integration. Final
+2293 regular pure/280 managed/8offline assemblies pass,55 old23/newinactive24
+seasons and5956attempted transitions compare equal including commands/results/
+RNG/history. Retained failed test setups repaired without loosening validation;
+all historical cases and Frozen1-23/fixture bytes preserved. Current/frozen
+endpoints are consciously distinct; native cases are not claimed executed.
+Floors3527/988/77/2293; combined must3538/992/77/2293 preserving QA11/4. Runtime
+writers/readers/effects/atomic links/activation and all otherD1 families remain;
+all4WaveD, widerE2, actual assets, complete nativeintegration, separate desktop,
+actual1080p60GTX1060/visual/human acceptance are still required. Combineded492
+nativeg23n1 still runs unchanged; live dirty edits/recoveries/saves/builds retained.
+
 ## 2026-10-05 UTC - schema23 prerequisite and1080 verification prepared
 
 The isolated branch adds a literal strict forward contract for the actual23

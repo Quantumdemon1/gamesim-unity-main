@@ -1,5 +1,25 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC — E5 block-speech influence staged; baseline native QA closed
+
+E5 now records explicit public speech approaches and applies a bounded private
+NPC vote term from a single complete post-bloc baseline, with invariant private
+read counts and actual player/saved NPC ballot authority preserved. Station and
+Diary Room drafts, durable callbacks and exact public readback are implemented.
+See `WAVE_C_BLOCK_SPEECH_IMPLEMENTATION.md` for EVERY material change, source/native
+boundary, compatibility, retained compilation failures and independent review.
+Final pure2182/2182 and offline8/8 pass; 32 new native SaveStore Edit and15 Play
+cases are compiled, NOT executed. Floors3229/988/77/2182; combined c272 must retain
+its11 QA Edit/4 Play cases, yielding3240/992/77/2182. No live promotion.
+
+Separately, same-pin c272 NoUMA g22n4 closed2026-10-05T12:51:01Z: Edit2540/2540,
+Play907/907, zero failures/skips; whole-run clean drift/process/timeout audit.
+Previous UMA g22u2 is also closed green. Neither baseline contains Wave C. Live
+MCP identity/scene reverified read-only: EpisodeHouse saved/idle; Console contains
+four historical MCP argument errors, preserved. Combined native/gameplay, build,
+visual/performance and human acceptance remain open, as do wider E2 balance,
+all four required Wave D systems and actual assets. Target remains1080p60 GTX1060.
+
 ## 2026-10-05 UTC — E4 HoH pitches staged; frozen UMA QA closes green
 
 The separate Wave C branch now implements the player HoH's incoming pitch cards,

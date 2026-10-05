@@ -104,14 +104,24 @@ namespace Gamesim.Simulation
                         "The nominees are not speaking right now.");
                     Require(s.nominees.Contains(s.playerId), "Only a nominee speaks from the block.");
                     Require(!s.evictionSpeeches.Any(x => x.speakerId == s.playerId), "Your speech is already committed.");
+                    string speechApproach = c.secondTargetId ?? LobbyApproach.Emotional;
+                    if (BlockSpeeches.RulesOn(s))
+                        Require(BlockSpeeches.IsApproach(speechApproach) && (speechApproach != BlockSpeeches.Quiet || string.IsNullOrWhiteSpace(c.text)),
+                            "Choose one of the speech approaches offered by the house.");
                     s.evictionSpeeches.Add(new EvictionSpeechState
                     {
                         speakerId = s.playerId, week = s.week, isPlayerAuthored = true,
                         text = (c.text ?? string.Empty).Trim(),
                     });
-                    Log(s, "eviction-speech", string.IsNullOrWhiteSpace(c.text)
-                        ? "You let your game speak for itself."
-                        : "You addressed the house from the block.");
+                    if (BlockSpeeches.RulesOn(s))
+                    {
+                        var speech = s.evictionSpeeches.Last();
+                        if (string.IsNullOrWhiteSpace(speech.text)) speechApproach = BlockSpeeches.Quiet;
+                        Log(s, BlockSpeeches.EventPrefix + speechApproach, BlockSpeeches.ReceiptText(speech),
+                            BlockSpeeches.Audience(s, s.playerId));
+                    }
+                    else Log(s, "eviction-speech", string.IsNullOrWhiteSpace(c.text)
+                            ? "You let your game speak for itself." : "You addressed the house from the block.");
                     break;
                 case EpisodeCommandKind.SetBackdoorPlan: SetBackdoorPlan(s, s.Find(c.targetId)); break;
                 case EpisodeCommandKind.MarkOpeningBeat: MarkOpeningBeat(s, c.targetId); break;
@@ -968,10 +978,14 @@ namespace Gamesim.Simulation
                 s.evictionSpeeches.Add(new EvictionSpeechState
                 {
                     speakerId = nomineeId, week = s.week, isPlayerAuthored = false,
-                    text = HouseDialogue.EvictionPlea(s, nomineeId),
+                    text = HouseDialogue.EvictionPlea(s, nomineeId) + (BlockSpeeches.RulesOn(s)
+                        ? BlockSpeeches.NpcClosing(BlockSpeeches.NpcApproach(nominee)) : ""),
                 });
-                Log(s, "eviction-speech", Name(s, nomineeId) + ": "
-                    + s.evictionSpeeches.Last(x => x.speakerId == nomineeId).text);
+                var spoken = s.evictionSpeeches.Last(x => x.speakerId == nomineeId);
+                if (BlockSpeeches.RulesOn(s))
+                    Log(s, BlockSpeeches.EventPrefix + BlockSpeeches.NpcApproach(nominee), spoken.text,
+                        BlockSpeeches.Audience(s, nomineeId));
+                else Log(s, "eviction-speech", Name(s, nomineeId) + ": " + spoken.text);
             }
         }
 
@@ -2404,7 +2418,13 @@ namespace Gamesim.Simulation
         internal static void Log(EpisodeState s, string kind, string text, params string[] audience)
         {
             s.events.Add(new EpisodeEvent { sequence = s.nextSequence++, week = s.week, phase = s.phase, kind = kind, text = text, audienceIds = audience.ToList() });
-            if (s.events.Count > 256) s.events.RemoveAt(0);
+            // A current speech's public receipt owns its bounded lifetime (at most two records).
+            // Preserve it while the night/week still holds the speech; all other events keep FIFO.
+            if (s.events.Count > 256)
+            {
+                int oldest = s.events.FindIndex(e => !BlockSpeeches.ProtectedReceipt(s, e));
+                s.events.RemoveAt(oldest);
+            }
         }
         private static void Require(bool condition, string message) { if (!condition) throw new RuleException(message); }
         private sealed class RuleException : Exception { public RuleException(string message) : base(message) { } }

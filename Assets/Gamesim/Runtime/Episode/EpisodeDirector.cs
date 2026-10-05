@@ -677,6 +677,7 @@ namespace Gamesim.Episode
             ForgetInformationShare();
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             replyCardView = null;
+            blockSpeechView = null;
             nomineeIntelView = null;
             if (conversationPick == NomineeIntelPickerCaption) ClosePicker();
             // A chip's card goes with everything else Escape closes; the campaign opens folded.
@@ -693,7 +694,8 @@ namespace Gamesim.Episode
             EndDiaryVisit(!render);
             // The line said where the player was; once they have left, it says so. Anything the
             // visit put there since - a result, a discarded choice - stays.
-            if (diaryOpen && (message == DiaryInsideMessage || message == DiaryPitchInsideMessage)) message = "You left the private diary room.";
+            if (diaryOpen && (message == DiaryInsideMessage || message == DiaryPitchInsideMessage
+                || message == DiaryBlockSpeechInsideMessage)) message = "You left the private diary room.";
             diaryOpen = false; diaryDraft = null;
             lastSocialAction = null;
             // The recap is a panel by IsPanelOpen's reckoning, so closing panels has to close it —
@@ -1110,7 +1112,11 @@ namespace Gamesim.Episode
         /// </summary>
         public void SubmitEvictionSpeech(string text)
         {
-            if (phaseOpen || diaryOpen) Commit(projected, EpisodeCommandKind.SubmitEvictionSpeech, text: text);
+            // Compatibility entry for existing callers. Real HUD controls use the captured,
+            // consumed view authority in RenderBlockSpeech rather than this live-state entry.
+            if (!BlockSpeechPending(projected) || (!phaseOpen && !diaryOpen)
+                || (diaryOpen && (!CanUseDiary || !IsDiarySettled))) return;
+            CommitBlockSpeech(projected, text, LobbyApproach.Emotional);
         }
         public void AnswerJury(string choice)
         {
@@ -1234,6 +1240,7 @@ namespace Gamesim.Episode
         private void Render()
         {
             pitchNavigationView = null;
+            blockSpeechView = null;
             if (hud == null || engine == null) return;
             // Any replacement retires the old question controls, including screens that return
             // before drawing a conversation. A rendered question creates a new view authority.
@@ -1244,6 +1251,7 @@ namespace Gamesim.Episode
             // that changed. SetMusic ignores a state it is already in, so this costs nothing.
             ApplyMusic();
             var state = projected ?? engine.Snapshot;
+            BindBlockSpeechDraft(state);
             // Repainted from committed state on every render rather than on the eviction event, so a
             // wall restored from a save shows the same thing as one that watched the vote.
             if (memoryWall == null)
@@ -1602,6 +1610,7 @@ namespace Gamesim.Episode
             // card the player never sees. It never blocks the decision under it.
             PendingStoryBeats(state);
             if (RenderPlayerDecision(state, false)) return;
+            RenderBlockSpeechReadback(state);
             CeremonyScreen(state);
             if (finalChoice)
             {

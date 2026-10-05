@@ -1399,6 +1399,7 @@ namespace Gamesim.Episode
         /// deals in green, talk in the glow blue, the power in gold.</summary>
         private static Color EventTint(string kind)
         {
+            if (BlockSpeeches.IsReceiptKind(kind)) return UiTheme.Glow;
             switch (kind)
             {
                 case "nomination": case "final-eviction": case "eviction": case "vote-reveal": case "private-vote":
@@ -1416,6 +1417,7 @@ namespace Gamesim.Episode
         /// </summary>
         private static string EventGlyph(string kind)
         {
+            if (BlockSpeeches.IsReceiptKind(kind)) return "chat";
             switch (kind)
             {
                 case "nomination": case "final-eviction": return "target";

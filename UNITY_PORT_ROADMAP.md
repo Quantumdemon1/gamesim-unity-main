@@ -1,12 +1,13 @@
 # Gamesim Unity port
 
-**Latest staged gameplay, 2026-10-05 UTC:** E4 HoH pitch cards and the free
-per-card assessment are implemented on the separate Wave C branch. See
-`WAVE_C_HOH_PITCHES_IMPLEMENTATION.md` for all changes, compatibility and evidence.
-Final pure2091/2091 and offline8/8 pass; actual SaveStore/UI native tests remain
-unexecuted. Branch floors3106/973/77/2091; combined c272 floors3117/977/77/2091.
-Frozen c272 UMA g22u2 passed Edit2540/Play935/UMA77 with a clean whole-run closure;
-same-pin NoUMA g22n4 remains active. Neither run contains Wave C. E2 balance, E5,
+**Latest staged gameplay, 2026-10-05 UTC:** E4 HoH pitches and E5 bounded explicit
+block-speech influence are implemented on the separate Wave C branch. See
+`WAVE_C_HOH_PITCHES_IMPLEMENTATION.md` and `WAVE_C_BLOCK_SPEECH_IMPLEMENTATION.md`
+for all changes, compatibility and distinct evidence. Final pure2182/2182 and
+offline8/8 pass; actual SaveStore/UI native tests remain unexecuted. Branch floors
+3229/988/77/2182; combined c272 floors3240/992/77/2182. Frozen c272 UMA g22u2 passed
+Edit2540/Play935/UMA77; same-pin NoUMA g22n4 now passed Edit2540/Play907. Both whole
+controllers closed with clean audits. Neither contains Wave C. Wider E2 balance,
 all four owner-required Wave D systems, consistent real assets, deliberate merge,
 desktop build, actual GTX1060 **1920x1080 at60FPS** and human acceptance remain.
 No live promotion or fully ported/AAA completion is claimed. Older totals below

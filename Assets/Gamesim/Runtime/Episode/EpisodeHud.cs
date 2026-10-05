@@ -25,6 +25,9 @@ namespace Gamesim.Episode
         public const string SpeechSubmitCaption = "Submit final speech";
         public const string EvictionSpeechCaption = "Deliver your speech";
         public const string EvictionSpeechSkipCaption = "Say nothing";
+        public const string BlockSpeechDraftName = "Block speech draft";
+        public const string BlockSpeechApproachesName = "Block speech approaches";
+        public const string BlockSpeechReadbackHeading = "SPEECHES FROM THE BLOCK";
         public const string SpeechSkipCaption = "Skip my final speech";
         public const string SpeechContinueCaption = "Continue to jury voting";
         public const string DiaryTravelCaption = "Go to diary room [R]";
@@ -1122,7 +1125,7 @@ namespace Gamesim.Episode
             Paragraph("Write your final speech, or skip it. Your speech becomes part of the saved record; no jury result is promised.");
             Paragraph("Up to 2,000 characters. Enter adds a line; Tab or Shift+Tab moves to another control.");
             var input = SpeechDraft("Final speech draft","What do you want the jury to remember about your game?",
-                "Final speech character count");
+                "Final speech character count", retainedSpeech, value => retainedSpeech = value);
             Action(SpeechSubmitCaption,() => director.SubmitSpeech(input.text));
             Action(SpeechSkipCaption,() => director.SubmitSpeech(""));
         }
@@ -1135,7 +1138,8 @@ namespace Gamesim.Episode
         /// than inserting a tab, and the draft survives a HUD rebuild, so a repaint cannot silently
         /// erase what someone was part way through writing.</para>
         /// </summary>
-        private EpisodeSpeechInputField SpeechDraft(string panelName,string hintText,string counterName)
+        private EpisodeSpeechInputField SpeechDraft(string panelName,string hintText,string counterName,
+            string draft, Action<string> changed)
         {
             var rect = Panel(panelName,content,Surface);
             // TMP creates its selection caret and registers the text callbacks in OnEnable. Keep
@@ -1162,22 +1166,26 @@ namespace Gamesim.Episode
             input.onValidateInput = (value,index,character) => character == '\t' ? '\0' : character;
             input.customCaretColor = true; input.caretColor = Accent;
             input.selectionColor = new Color(Accent.r,Accent.g,Accent.b,.3f);
-            input.text = retainedSpeech;
-            var count = FlowText(retainedSpeech.Length + " / 2000 characters",17,Paper);
+            input.text = draft ?? "";
+            var count = FlowText(input.text.Length + " / 2000 characters",17,Paper);
             count.gameObject.name = counterName;
-            input.onValueChanged.AddListener(value => { retainedSpeech = value; count.text = value.Length + " / 2000 characters"; });
+            input.onValueChanged.AddListener(value =>
+            {
+                changed?.Invoke(value);
+                if (count != null) count.text = value.Length + " / 2000 characters";
+            });
             rect.gameObject.SetActive(true);
             return input;
         }
 
         /// <summary>A nominee's speech from the block, using the editor the finale uses.</summary>
-        public void EvictionSpeech(Action<string> commit)
+        public void EvictionSpeech(string draft, Action<string> changed, Action deliver, Action skip)
         {
             Paragraph("Up to 2,000 characters. Enter adds a line; Tab or Shift+Tab moves to another control.");
-            var input = SpeechDraft("Block speech draft",
-                "What do you want the house to have heard before it votes?","Block speech character count");
-            Action(EvictionSpeechCaption,() => commit(input.text));
-            Action(EvictionSpeechSkipCaption,() => commit(""));
+            SpeechDraft(BlockSpeechDraftName,
+                "What do you want the house to have heard before it votes?","Block speech character count", draft, changed);
+            Action(EvictionSpeechCaption, deliver);
+            Action(EvictionSpeechSkipCaption, skip);
         }
 
         private TMP_Text FlowText(string value,int size,Color color)

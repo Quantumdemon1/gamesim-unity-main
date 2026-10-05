@@ -967,9 +967,9 @@ namespace Gamesim.Presentation
         private float ReactionsTab(RectTransform body, WeeklyRecap.Week recap, float inner)
         {
             float y = 0f;
-            var speeches = shown.events.Where(e => e.week == recap.week && e.kind == "eviction-speech"
+            var speeches = shown.events.Where(e => e.week == recap.week && (e.kind == "eviction-speech" || BlockSpeeches.IsReceiptKind(e.kind))
                     && (e.audienceIds.Count == 0 || e.audienceIds.Contains(shown.playerId)))
-                .OrderBy(e => e.sequence).Select(e => e.text).ToList();
+                .OrderBy(e => e.sequence).Select(e => BlockSpeeches.PublicLine(shown, e)).ToList();
             y = Section(body, "From the block, eviction night", speeches, UiTheme.Danger, y, inner);
             // The player's own feelings, as their trust reads them; how the house feels about them
             // is the house's, and never shown during play.

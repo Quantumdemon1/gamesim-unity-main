@@ -100,8 +100,9 @@ namespace Gamesim.Episode
             diaryTab = DiaryTab.Record; diaryTabChosen = false; diaryRulesOpen = false;
             // The line under the frame said how to get in here - "walk to the private room, then
             // press E" - for the whole visit. It says where the player is now.
-            message = HoHPitches.Available(projected) && ReplyCards.Pending(projected)?.kind == ReplyCards.Pitch
-                ? DiaryPitchInsideMessage : DiaryInsideMessage;
+            message = BlockSpeechPending(projected) ? DiaryBlockSpeechInsideMessage
+                : HoHPitches.Available(projected) && ReplyCards.Pending(projected)?.kind == ReplyCards.Pitch
+                    ? DiaryPitchInsideMessage : DiaryInsideMessage;
             player.SetInputEnabled(false); cameraRig.ControlsEnabled = false;
             // Physical arrival authorizes the visit. Seating is temporary presentation, restored
             // before movement resumes; the shot frames this player's face against the diary set.
@@ -355,6 +356,7 @@ namespace Gamesim.Episode
         /// <summary>The line under the frame while the player is in the chair.</summary>
         public const string DiaryInsideMessage = "In the private diary room. Nothing here is committed until you confirm it.";
         public const string DiaryPitchInsideMessage = "In the private diary room. Pitch answers and assessments save when pressed; nominations require confirmation.";
+        public const string DiaryBlockSpeechInsideMessage = "In the private diary room. Delivering your block speech addresses the house and saves immediately; Say nothing records that choice immediately too.";
 
         private enum DiaryTab { Record, Memories, Pending }
         private DiaryTab diaryTab;
@@ -446,13 +448,15 @@ namespace Gamesim.Episode
             bool ballotCast = state.phase == EpisodePhase.Eviction && state.votes.Any(vote => vote.voterId == state.playerId);
             if (choice)
                 hud.DiaryStatusCard("A private decision is waiting", "It is under " + DiaryPendingTabCaption + ". "
-                    + (ReplyCards.Pending(state)?.kind == ReplyCards.Pitch
-                        ? "Pitch answers and assessments save immediately. Nominations require confirmation."
-                        : "Nothing is committed until you confirm it."));
+                    + (BlockSpeechPending(state) ? BlockSpeechSaveLine
+                        : ReplyCards.Pending(state)?.kind == ReplyCards.Pitch
+                            ? "Pitch answers and assessments save immediately. Nominations require confirmation."
+                            : "Nothing is committed until you confirm it."));
             else
                 hud.DiaryStatusCard("No private decision pending", ballotCast
                     ? "Your ballot has already been recorded. Return to the episode screen for the eviction reveal."
                     : "Viewing this page changes nothing.");
+            RenderBlockSpeechReadback(state);
             int reflections = state.playerPersona.history.Count;
             int jurors = state.jurySentiment.jurors.Count;
             hud.RecordSummary(new List<(string, string, string, string)>
@@ -498,11 +502,13 @@ namespace Gamesim.Episode
             {
                 hud.DiarySection("YOUR PENDING DECISION");
                 RenderPlayerDecision(state, true);
-                hud.Aside(!nominationPitchesDismissed && ReplyCards.Pending(state)?.kind == ReplyCards.Pitch
-                    ? "Pitch answers and assessments save immediately. You can return to your nominees without answering."
-                    : "Choose an option to review it before confirming. Episode ceremonies continue only at the episode screen.");
+                hud.Aside(BlockSpeechPending(state) ? BlockSpeechSaveLine
+                    : !nominationPitchesDismissed && ReplyCards.Pending(state)?.kind == ReplyCards.Pitch
+                        ? "Pitch answers and assessments save immediately. You can return to your nominees without answering."
+                        : "Choose an option to review it before confirming. Episode ceremonies continue only at the episode screen.");
                 any = true;
             }
+            if (!BlockSpeechPending(state)) any |= RenderBlockSpeechReadback(state);
             any |= RenderStudyHouse(state);
             if (any) return;
             hud.DiaryNothingPending(state.phase == EpisodePhase.Eviction && state.votes.Any(vote => vote.voterId == state.playerId)
@@ -829,14 +835,9 @@ namespace Gamesim.Episode
                 var savedByNpc = EpisodeEngine.NpcVetoSave(state);
                 if (savedByNpc != null) { VetoReplacements(state, savedByNpc, privateRoom); return true; }
             }
-            if (state.phase == EpisodePhase.Eviction && state.evictionStage == EvictionStage.Speeches
-                && state.nominees.Contains(state.playerId)
-                && !state.evictionSpeeches.Any(speech => speech.speakerId == state.playerId))
+            if (BlockSpeechPending(state))
             {
-                hud.Heading("YOUR SPEECH FROM THE BLOCK");
-                hud.Paragraph("The house votes after this. Say what you want them to have heard, or say nothing — "
-                    + "an empty speech is a choice the house will read too.");
-                hud.EvictionSpeech(SubmitEvictionSpeech);
+                RenderBlockSpeech(state, privateRoom);
                 return true;
             }
             if (BallotIsLive(state))

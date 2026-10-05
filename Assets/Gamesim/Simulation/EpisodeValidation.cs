@@ -131,6 +131,7 @@ namespace Gamesim.Simulation
                     x.week < 1 || x.week > s.week || x.isPlayerAuthored != (x.speakerId == s.playerId)) ||
                 s.evictionSpeeches.GroupBy(x => x.speakerId).Any(g => g.Count() > 1))
                 return Fail(out error, "Invalid eviction speeches.");
+            if (!BlockSpeeches.ValidateReceipts(s, out error)) return false;
             if (!Optional(s.backdoorTargetId) || (s.backdoorTargetId != null && s.backdoorTargetId == s.playerId))
                 return Fail(out error, "Invalid backdoor plan.");
             // Bounded at the old flat ceiling rather than at the new budget: a season saved while

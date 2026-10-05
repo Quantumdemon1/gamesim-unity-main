@@ -36,13 +36,14 @@ namespace Gamesim.Simulation
             }
             CheckUnifiedSafetyLinks(s, evaluation.Changes.Select(change => before[change.Record.id]));
             s.unifiedCommitments = staged;
+            var currentEffectKeys = evaluation.Breaches.Select(incident => incident.EffectKey).ToArray();
             foreach (var incident in evaluation.Breaches)
             {
                 var owner = before[incident.EffectOwnerId];
                 if (owner.sourcePolicy == UnifiedCommitments.PromisePolicy)
-                    SettlePromise(s, promises[owner.id], PromiseStatus.Broken);
-                else SettleDeals(s, new List<DealResolution.Verdict> {
-                    new DealResolution.Verdict { deal = deals[owner.id], status = DealStatus.Broken, actorId = actorId } });
+                    SettlePromiseBeforeSafetyEffects(s, promises[owner.id], PromiseStatus.Broken, currentEffectKeys);
+                else SettleDealsBeforeSafetyEffects(s, new List<DealResolution.Verdict> {
+                    new DealResolution.Verdict { deal = deals[owner.id], status = DealStatus.Broken, actorId = actorId } }, currentEffectKeys);
                 // The selected source routine already voids its own price. Calling every affected
                 // bought row also handles non-owner evidence; the existing true-owner void is idempotent.
                 foreach (string id in incident.EvidenceIds)

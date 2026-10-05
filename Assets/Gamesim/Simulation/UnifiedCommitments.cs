@@ -289,7 +289,7 @@ namespace Gamesim.Simulation
         }
 
         // Source-only scalar calculation: no relationship changes, gossip rolls or facts are emitted.
-        private static double SourceConsequence(UnifiedCommitmentState row, bool fulfilled)
+        internal static double SourceConsequence(UnifiedCommitmentState row, bool fulfilled)
         {
             if (row.sourcePolicy == PromisePolicy) return WebRules.PromiseImpact(Safety, fulfilled ? DealStatus.Fulfilled : DealStatus.Broken);
             bool accepted = row.origin == NpcOffer || row.origin == CounterDeal || row.origin == CounterPrice;

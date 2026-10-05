@@ -760,6 +760,10 @@ namespace Gamesim.Simulation
         /// </summary>
         public static double NominationWeight(EpisodeState s, string hohId, string id) =>
             StrategyRules.NominationReluctance(s, hohId, id) + StoryConsumers.NominationPreference(s, hohId, id) - s.Score(hohId, id)
+            // Native unified rules: story's word and strategy's hold describe the same protection.
+            // Subtract only their overlap; grudges, alliances, bonds, targets and pleas stay independent.
+            - (UnifiedCommitments.RulesOn(s) ? Math.Min(UnifiedCommitments.StrongestProtection(s, hohId, id).Strength,
+                StoryConsumers.SafetyPreference(s, hohId, id)) : 0)
             // Under agency, how dangerous they are, as the Head of Household and their pact read it (NPC-AGENCY-PLAN.md §5.1).
             - ThreatTerm(s, hohId, id);
 
@@ -2085,6 +2089,10 @@ namespace Gamesim.Simulation
         /// on, and the same reason.</para>
         /// </summary>
         private static void SettleDeals(EpisodeState s, List<DealResolution.Verdict> verdicts)
+            => SettleDealsBeforeSafetyEffects(s, verdicts, null);
+
+        private static void SettleDealsBeforeSafetyEffects(EpisodeState s, List<DealResolution.Verdict> verdicts,
+            IReadOnlyList<string> excludedSafetyEffects)
         {
             // Under the commitment rules (C0) a deal says who broke it and when, and its breach is held
             // by the one wronged and never fades (X11). Before them the record is both ways and fades,
@@ -2151,7 +2159,8 @@ namespace Gamesim.Simulation
                     // under the commitment rules (C1): the story's "You Broke Your Word" would tell them a
                     // ballot they may not know (decision 4). The memory and the line wait for the ballot.
                     bool theirBallotAgainstYou = keepPlayersView && wronged == s.playerId;
-                    if (!kept && !theirBallotAgainstYou) StoryWordBroken(s, wronged, verdict.actorId, GrudgeCauses.DealBroken, 60);
+                    if (!kept && !theirBallotAgainstYou)
+                        StoryWordBrokenBeforeSafetyEffects(s, wronged, verdict.actorId, GrudgeCauses.DealBroken, 60, excludedSafetyEffects);
                 }
 
                 if (!kept) SpreadBetrayal(s, deal, verdict.actorId);
@@ -2201,6 +2210,10 @@ namespace Gamesim.Simulation
         }
 
         private static void SettlePromise(EpisodeState s, PromiseState promise, PromiseStatus status)
+            => SettlePromiseBeforeSafetyEffects(s, promise, status, null);
+
+        private static void SettlePromiseBeforeSafetyEffects(EpisodeState s, PromiseState promise, PromiseStatus status,
+            IReadOnlyList<string> excludedSafetyEffects)
         {
             promise.status = status;
             // Under the commitment rules (C0) a promise says who broke it - its maker, whose act settles
@@ -2228,7 +2241,8 @@ namespace Gamesim.Simulation
             // (KnownBallots.PromiseOutcomeKnown). Every other promise's line goes to the pair.
             if (promise.kind == PromiseKind.Vote) Log(s, "promise-outcome", text, promise.fromId);
             else Log(s, "promise-outcome", text, promise.fromId, promise.toId);
-            if (status == PromiseStatus.Broken) StoryWordBroken(s, promise.toId, promise.fromId, GrudgeCauses.PromiseBroken, 60);
+            if (status == PromiseStatus.Broken)
+                StoryWordBrokenBeforeSafetyEffects(s, promise.toId, promise.fromId, GrudgeCauses.PromiseBroken, 60, excludedSafetyEffects);
             if (status == PromiseStatus.Broken)
             {
                 foreach (var witness in s.Active.Where(c => c.id != promise.fromId && c.id != promise.toId))

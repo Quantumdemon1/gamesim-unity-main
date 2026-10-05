@@ -381,6 +381,11 @@ namespace Gamesim.Simulation
             if (deals > 0) parts.Add(deals == 1 ? "Broke a deal with you" : "Broke " + deals + " deals with you");
             if (block) parts.Add("Your voting bloc fell apart");
             if (promises > 0) parts.Add(promises == 1 ? "Broke a promise to you" : "Broke " + promises + " promises to you");
+            if (UnifiedCommitments.RulesOn(s))
+            {
+                int safety = UnifiedCommitmentHistory.Breaches(s).Count(incident => incident.ActorId == finalistId && incident.WrongedId == player);
+                if (safety > 0) parts.Add(safety == 1 ? "Broke a safety commitment to you" : "Broke " + safety + " safety commitments to you");
+            }
             return parts.Count == 0 ? new Fact("What they did to you", "Nothing on the record", Unknown)
                 : new Fact("What they did to you", string.Join(" · ", parts), Confirmed);
         }

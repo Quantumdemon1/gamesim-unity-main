@@ -118,8 +118,10 @@ namespace Gamesim.Simulation
                 if (ally == null) return null;
                 // Somebody the ally is really working with, else the ally's closest other friend.
                 var offerer = Npcs(c).Where(x => x.id != ally.id)
-                    .OrderByDescending(x => c.state.Allied(ally.id, x.id) || c.state.deals.Any(d => DealStatus.Binds(d.status)
-                        && ((d.proposerId == ally.id && d.recipientId == x.id) || (d.proposerId == x.id && d.recipientId == ally.id))))
+                    .OrderByDescending(x => c.state.Allied(ally.id, x.id)
+                        || (UnifiedCommitments.RulesOn(c.state) ? CommitmentReferences.Deals(c.state) : c.state.deals)
+                        .Any(d => DealStatus.Binds(d.status)
+                            && ((d.proposerId == ally.id && d.recipientId == x.id) || (d.proposerId == x.id && d.recipientId == ally.id))))
                     .ThenByDescending(x => c.Score(ally.id, x.id)).ThenBy(x => x.id, StringComparer.Ordinal).FirstOrDefault();
                 return offerer == null ? null : Bind().With("ALLY", ally.id).With("OFFERER", offerer.id).Headlining(ally.id);
             },

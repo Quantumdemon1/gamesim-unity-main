@@ -423,7 +423,9 @@ namespace Gamesim.Simulation
             // Under the commitment rules a deal the vote settled - a partnership too (C1) - says how it
             // ended once the player knows the ballot that settled it (KnownBallots).
             bool rules = EpisodeEngine.CommitmentRulesOn(s);
-            return s.deals.Where(d => d != null && d.type != DealKind.AllianceInvite
+            // This inventory retains every own agreement with a member; it is not a once-per-
+            // breach mechanical score. Canonical promises never masquerade as reciprocal deals.
+            return (UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Deals(s) : s.deals).Where(d => d != null && d.type != DealKind.AllianceInvite
                     && (d.status == DealStatus.Accepted || d.status == DealStatus.Active || d.status == DealStatus.Fulfilled || d.status == DealStatus.Broken)
                     && ((d.proposerId == s.playerId && others.Contains(d.recipientId)) || (d.recipientId == s.playerId && others.Contains(d.proposerId))))
                 .OrderBy(d => d.week)

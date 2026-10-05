@@ -298,10 +298,12 @@ namespace Gamesim.Simulation
         /// <summary>Whether somebody has promised the player safety, or struck a safety agreement with them, that still holds.</summary>
         private static bool PromisedSafe(StoryContext c, string id) =>
             id != null
-            && (c.state.promises.Any(p => p.status == PromiseStatus.Active && p.fromId == id && p.toId == P(c)
-                                          && (p.kind == PromiseKind.Safety || p.kind == PromiseKind.Vote))
-                || c.state.deals.Any(d => DealStatus.Binds(d.status) && d.type == DealKind.SafetyAgreement
-                                          && ((d.proposerId == id && d.recipientId == P(c)) || (d.proposerId == P(c) && d.recipientId == id))));
+            && ((UnifiedCommitments.RulesOn(c.state) ? CommitmentReferences.Promises(c.state) : c.state.promises)
+                .Any(p => p.status == PromiseStatus.Active && p.fromId == id && p.toId == P(c)
+                    && (p.kind == PromiseKind.Safety || p.kind == PromiseKind.Vote))
+                || (UnifiedCommitments.RulesOn(c.state) ? CommitmentReferences.Deals(c.state) : c.state.deals)
+                    .Any(d => DealStatus.Binds(d.status) && d.type == DealKind.SafetyAgreement
+                        && ((d.proposerId == id && d.recipientId == P(c)) || (d.proposerId == P(c) && d.recipientId == id))));
 
         // ---------------------------------------------------------------- Trust: settle it
 

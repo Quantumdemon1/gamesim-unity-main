@@ -332,7 +332,7 @@ namespace Gamesim.Simulation
             if (npcs.Count < 2) return null;
 
             // Whoever has actually agreed something, if anybody has.
-            var deal = state.deals
+            var deal = (UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Deals(state) : state.deals)
                 .Where(d => d.status == DealStatus.Active
                             && d.proposerId != state.playerId && d.recipientId != state.playerId)
                 .OrderBy(d => d.id, StringComparer.Ordinal)

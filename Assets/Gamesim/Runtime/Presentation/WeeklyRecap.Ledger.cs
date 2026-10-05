@@ -340,8 +340,12 @@ namespace Gamesim.Presentation
             var you = state.Find(state.playerId);
             if (you != null && you.status == ContestantStatus.Active)
             {
-                int word = state.promises.Count(p => p.status == PromiseStatus.Active && (p.fromId == state.playerId || p.toId == state.playerId))
-                    + state.deals.Count(d => d.status == DealStatus.Active && (d.proposerId == state.playerId || d.recipientId == state.playerId));
+                // What carries is each standing agreement, not a count of past incidents.
+                // Preserve the original Active predicate and the legacy stores' list semantics.
+                int word = (UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Promises(state) : state.promises)
+                    .Count(p => p.status == PromiseStatus.Active && (p.fromId == state.playerId || p.toId == state.playerId))
+                    + (UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Deals(state) : state.deals)
+                    .Count(d => d.status == DealStatus.Active && (d.proposerId == state.playerId || d.recipientId == state.playerId));
                 if (word > 0) lines.Add(word == 1 ? "You carry one promise or deal into the week." : "You carry " + word + " promises and deals into the week.");
             }
             return lines;

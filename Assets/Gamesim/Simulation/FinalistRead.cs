@@ -496,6 +496,11 @@ namespace Gamesim.Simulation
             bool rules = EpisodeEngine.CommitmentRulesOn(s);
             int kept = s.deals.Count(d => d.status == DealStatus.Fulfilled && Between(d.proposerId, d.recipientId, s.playerId, finalistId)
                 && (!rules || KnownBallots.DealOutcomeKnown(s, d)));
+            if (UnifiedCommitments.RulesOn(s))
+                // A final-veto receipt belongs to the reciprocal pair/week, not to each alias
+                // and not to a made-up keeping actor. Promise expiry is never a fulfillment.
+                kept += UnifiedCommitmentHistory.Fulfillments(s)
+                    .Count(receipt => Between(receipt.FirstId, receipt.SecondId, s.playerId, finalistId));
             if (kept > 0) parts.Add(kept == 1 ? "Kept a deal with you" : "Kept " + kept + " deals with you");
             var acts = TowardYou(s, finalistId);
             if (acts.certainty == Confirmed) parts.Add(acts.value);

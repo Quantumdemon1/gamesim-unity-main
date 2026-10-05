@@ -16,8 +16,8 @@ complete Safety activation or a claim that other commitment families are ported.
 | Notebook/profile/web | Addressed in actual director/profile/web readers. Component/built-control fixtures are compiled; full native notebook lifecycle remains open. |
 | Capacity presentation | Addressed: `PastTheDealCeiling` uses canonical-aware historical DealCount, including NPC/declined/ended rows, not promises or only active records. |
 | Known history | Addressed: `KnownOdds.History` retains each own-pair agreement provenance and legitimate own-memory/reply/call/pact contributions; no NPC-only knowledge. |
-| Active/kept summaries | `WeeklyRecap.Ledger`, `AllianceRead`, `FinalCaseResume`, and remaining `FinalistRead` predicates omit canonical records. Agreement lists/counts use provenance; mechanical outcome summaries use grouped incidents/fulfillments. |
-| Story progression/casting | `StoryCatalog.Plays.PromisedSafe`, `StoryCatalog.Spine`, `StoryCatalog.Ported`, `HouseEventSources`, and related `EpisodeEngine.StoryHooks` predicates need canonical Safety. Keep each source predicate; no player-facing omniscient projection. |
+| Active/kept summaries | Addressed by the outcome/story increment: actual `WeeklyRecap.Build` carry inventory, `AllianceRead` deal provenance, `FinalCaseResume` actual own-party incidents and `FinalistRead` grouped pair/week fulfillments. The36new native recap cases are compiled, not yet executed in Unity. |
+| Story progression/casting | Addressed by the outcome/story increment: actual TheirWord/Confession/Eavesdropping/Crisis and conversation hook include canonical Safety while retaining each source predicate/status/ranking and rules0.53new pure cases pass; no omniscient player projection or knowledge writer change. |
 
 HouseguestNotes is already canonical-aware and uses durable attribution. Existing
 StoryConsumers, ThreatAssessment, WebJuryVoting, Safety call-in protection and
@@ -68,8 +68,8 @@ rules; changing storage is not authority to rewrite outcomes.
 Real gateway to opportunity reconciliation to GameSense and pure canonical
 conversation/refusal/mend readers have regression evidence; capacity surface
 coverage is compiled, not executed. Actual
-native decision/profile/web/notebook lifecycle remains open. Next: Safety story
-progress; own-pair active/kept summaries;
+native decision/profile/web/notebook/recap lifecycle remains open. Summary/story
+consumer coverage is addressed; next are
 actual gossip incident/listener effects; corrupt enabled-save references and
 native transaction/reload. Preserve all existing rules0 assertions and legacy
 season digests. Then complete the remaining D1 families and required D2/D3/D4.

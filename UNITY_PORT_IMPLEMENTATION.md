@@ -1,5 +1,19 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC - canonical Safety outcome summaries and story consumers
+
+WAVE_D_SAFETY_OUTCOME_STORY_IMPLEMENTATION.md enumerates every material change,
+lawful new-fixture repair, independent review and evidence limitation. Nine
+production consumers and163new Edit cases(127pure/36native) cover actual own
+agreement inventories, once-only breach/fulfillment summaries and actual source
+story predicates.8fresh assemblies/2986regular pure/973focused Mono pass;
+55paired legacy digests/counts and961source+2Tools input hashes match. Native WeeklyRecap.Build36 is
+compiled,not executed. Floors4276Edit/991Play/77UMA/2986pure; futurecombined
+must retainQA11/4 ->4287/995/77/2986. Integration714ad86a remains frozen under
+g24n3 and does not include this isolated increment. Rule1 remains refused;
+actual hearing/fullsave/native activation, otherD1families, requiredD2/D3/D4,
+balance/art/desktop1080p60/visual/accessibility/0of3human gates remain open.
+
 ## 2026-10-05 UTC - canonical Safety conversation/negotiation consumers
 
 `WAVE_D_SAFETY_CONSUMERS_IMPLEMENTATION.md` enumerates every material change,

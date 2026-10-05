@@ -1,5 +1,16 @@
 # Gamesim Unity port
 
+**Canonical Safety outcome/story readers,2026-10-05 UTC:** nine remaining
+summary/story consumers are implemented with163new Edit cases(127pure/36native).
+Eightfresh assemblies,2986regular pure and973focused Mono pass;55paired legacy
+digests/counts and961source+2Tools before/after hashes match. Actual WeeklyRecap.Build cases are
+compiled,not executed in Unity. See WAVE_D_SAFETY_OUTCOME_STORY_IMPLEMENTATION.md.
+No productionrule1 activation, integration/live promotion, native/build/1080p60/
+visual/human acceptance is claimed. Actual hearing/full enabled-save/native
+transaction gates, otherD1families, requiredD2/D3/D4 and release gates remain.
+Integration714ad86a is separately frozen under g24n3; it does not include these
+newer isolated readers. Older status blocks retain historical evidence.
+
 **Canonical Safety conversation/negotiation consumers,2026-10-05 UTC:** direct
 dialogue, decision/profile/notebook/web records, capacity, refusal/mend history
 and source-family reputation now read detached canonical provenance/incidents.

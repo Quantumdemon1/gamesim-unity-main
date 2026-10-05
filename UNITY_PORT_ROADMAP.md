@@ -1,5 +1,16 @@
 # Gamesim Unity port
 
+**Latest dependency preparation, 2026-10-05 UTC:** the separate Wave C checkout
+adds an unused strict schema23 forward contract,110 authored Edit cases, and
+actual1920x1080 Windowed/uncapped profile evidence with18 authored Edit cases.
+Focused managed contract110/110 and offline8/8 pass; native execution, shipping
+build and actual GTX1060 performance are NOT performed. See
+`WAVE_D_PREPARATION_IMPLEMENTATION.md` for every change and limits, and
+`WAVE_D_COMMITMENT_AUTHORITY_DESIGN.md` for the reviewed authority contract.
+Branch floors3357/988/77/2182; future combined3368/992/77/2182. Existing dispatch
+stays23; no unified commitment authority or other Wave D system is implemented
+by this preparation. Integrationed492/g23n1 remains frozen until whole closure.
+
 **Latest native follow-up, 2026-10-05 UTC:** combined ed492's Edit suite reports
 3230/3240 pass,10 fail,0 skip. Historical-test wiring is repaired in the separate
 Wave C checkout; no production/frozen/fixture changes or lowered floors. All ten

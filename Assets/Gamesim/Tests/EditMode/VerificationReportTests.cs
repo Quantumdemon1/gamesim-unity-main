@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Gamesim.Episode;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -80,6 +81,128 @@ namespace Gamesim.Tests.EditMode
             Assert.That((bool)coverage.GetValue(runner), Is.False, "An unvisited room cannot be hidden by UI requests.");
         }
 
+        [Test]
+        public void ProfileTargetIsExplicit1080pUncappedWithoutVSync()
+        {
+            Assert.That(PortVerification.ProfileWidth, Is.EqualTo(1920));
+            Assert.That(PortVerification.ProfileHeight, Is.EqualTo(1080));
+            Assert.That(PortVerification.ProfileFrameCap, Is.EqualTo(-1));
+            Assert.That(PortVerification.ProfileVSyncCount, Is.Zero);
+        }
+
+        [Test]
+        public void Complete1080pSamplingReportsSettingsButDoesNotAwardSixtyFpsAcceptance()
+        {
+            InstallProfileEvidence();
+            var report = ProfileReport();
+            Assert.That((string)report["status"], Is.EqualTo("Passed"));
+            Assert.That((string)report["overallStatus"], Is.EqualTo("Passed"));
+            Assert.That((string)report["requestedResolution"], Is.EqualTo("1920x1080"));
+            Assert.That((string)report["sampledResolution"], Is.EqualTo("1920x1080"));
+            Assert.That((int)report["sampledDisplayFrames"], Is.EqualTo((int)report["frameCount"]).And.EqualTo(101));
+            Assert.That((int)report["sampledResolutionMismatchCount"], Is.Zero);
+            Assert.That((int)report["requestedFrameCap"], Is.EqualTo(-1));
+            Assert.That((int)report["sampledFrameCap"], Is.EqualTo(-1));
+            Assert.That((int)report["requestedVSyncCount"], Is.Zero);
+            Assert.That((int)report["sampledVSyncCount"], Is.Zero);
+            Assert.That((int)report["sampledFrameCapMismatchCount"], Is.Zero);
+            Assert.That((string)report["requestedDisplayMode"], Is.EqualTo("Windowed"));
+            Assert.That((string)report["sampledDisplayMode"], Is.EqualTo("Windowed"));
+            Assert.That((int)report["sampledDisplayModeMismatchCount"], Is.Zero);
+            Assert.That((bool)report["uncapped"], Is.True);
+            Assert.That((double)report["frameMedianMs"], Is.EqualTo(100), "Deliberately slow synthetic evidence is not a 60 FPS result.");
+            Assert.That((string)report["performanceAcceptance"], Is.EqualTo("Not assessed; uncapped diagnostic sample only."));
+            Assert.That((string)report["workload"], Does.Contain("not the 60 FPS performance target"));
+        }
+
+        [TestCase(1600, 900)]
+        [TestCase(1280, 720)]
+        [TestCase(1280, 800)]
+        [TestCase(1919, 1080)]
+        [TestCase(1920, 1079)]
+        public void OneWrongResolutionFrameCannotBeHiddenByRestoringTheTarget(int width, int height)
+        {
+            InstallProfileEvidence();
+            ProfileFrame(width, height, -1, 0);
+            ProfileFrame(1920, 1080, -1, 0);
+            var report = ProfileReport();
+            Assert.That((string)report["status"], Is.EqualTo("Failed"));
+            Assert.That((string)report["overallStatus"], Is.EqualTo("Failed"));
+            Assert.That((string)report["sampledResolution"], Is.EqualTo("1920x1080"), "First sample alone does not establish all-frame resolution.");
+            Assert.That((int)report["sampledDisplayFrames"], Is.EqualTo(103));
+            Assert.That((int)report["sampledResolutionMismatchCount"], Is.EqualTo(1));
+            Assert.That((int)report["sampledFrameCapMismatchCount"], Is.Zero);
+            Assert.That(report["errors"].Values<string>(), Has.Some.Contains("1920x1080"));
+        }
+
+        [TestCase(-1, 1)]
+        [TestCase(60, 0)]
+        [TestCase(0, 0)]
+        public void OneCappedFrameCannotBeHiddenByRestoringUncappedSettings(int cap, int vSync)
+        {
+            InstallProfileEvidence();
+            ProfileFrame(1920, 1080, cap, vSync);
+            ProfileFrame(1920, 1080, -1, 0);
+            var report = ProfileReport();
+            Assert.That((string)report["status"], Is.EqualTo("Failed"));
+            Assert.That((int)report["sampledFrameCap"], Is.EqualTo(-1));
+            Assert.That((int)report["sampledVSyncCount"], Is.Zero);
+            Assert.That((int)report["sampledFrameCapMismatchCount"], Is.EqualTo(1));
+            Assert.That((bool)report["uncapped"], Is.False);
+            Assert.That(report["errors"].Values<string>(), Has.Some.Contains("VSync"));
+        }
+
+        [TestCase(FullScreenMode.ExclusiveFullScreen)]
+        [TestCase(FullScreenMode.FullScreenWindow)]
+        [TestCase(FullScreenMode.MaximizedWindow)]
+        public void Fullscreen1080pCannotMasqueradeAsWindowedEvidence(FullScreenMode mode)
+        {
+            InstallProfileEvidence();
+            ProfileFrame(1920, 1080, -1, 0, mode);
+            ProfileFrame(1920, 1080, -1, 0);
+            var report = ProfileReport();
+            Assert.That((string)report["status"], Is.EqualTo("Failed"));
+            Assert.That((string)report["sampledDisplayMode"], Is.EqualTo("Windowed"));
+            Assert.That((int)report["sampledDisplayModeMismatchCount"], Is.EqualTo(1));
+            Assert.That((int)report["sampledResolutionMismatchCount"], Is.Zero);
+            Assert.That((int)report["sampledFrameCapMismatchCount"], Is.Zero);
+            Assert.That(report["errors"].Values<string>(), Has.Some.Contains("Windowed"));
+        }
+
+        [TestCase(0)]
+        [TestCase(100)]
+        public void TimingFramesWithoutMatchingDisplayEvidenceCannotPass(int displaySamples)
+        {
+            InstallProfileEvidence(displaySamples);
+            var report = ProfileReport();
+            Assert.That((int)report["frameCount"], Is.EqualTo(101));
+            Assert.That((int)report["sampledDisplayFrames"], Is.EqualTo(displaySamples));
+            Assert.That((string)report["status"], Is.EqualTo("Failed"));
+            Assert.That(report["errors"].Values<string>(), Has.Some.Contains("Every measured frame"));
+            if (displaySamples == 0) Assert.That((bool)report["uncapped"], Is.False);
+        }
+
+        [TestCase(false, false)]
+        [TestCase(true, true)]
+        public void CorrectResolutionDoesNotMakeBatchOrNongraphicalEvidencePass(bool graphical, bool batchMode)
+        {
+            InstallProfileEvidence();
+            var report = ProfileReport(graphical, batchMode);
+            Assert.That((string)report["status"], Is.EqualTo("Failed"));
+            Assert.That((bool)report["graphical"], Is.EqualTo(graphical));
+            Assert.That((bool)report["batchMode"], Is.EqualTo(batchMode));
+        }
+
+        [Test]
+        public void CorrectResolutionDoesNotDiscardSharedRuntimeErrors()
+        {
+            InstallProfileEvidence();
+            Collect(LogType.Exception);
+            var report = ProfileReport();
+            Assert.That((string)report["status"], Is.EqualTo("Failed"));
+            Assert.That(report["errors"].Values<string>(), Has.Some.Contains("shared runtime failure"));
+        }
+
         [TestCase(LogType.Log, false)]
         [TestCase(LogType.Warning, false)]
         [TestCase(LogType.Error, true)]
@@ -114,6 +237,31 @@ namespace Gamesim.Tests.EditMode
             Assert.That(field, Is.Not.Null, name);
             return field;
         }
+
+        private void InstallProfileEvidence(int displaySamples = 101)
+        {
+            Field("seconds").SetValue(runner, 10d);
+            // Synthetic contract data only: no native frame, window, capture or performance claim.
+            var samples = (List<float>)Field("frames").GetValue(runner);
+            for (int i = 0; i < 101; i++) samples.Add(100);
+            for (int i = 0; i < displaySamples; i++) RecordDisplay(1920, 1080, -1, 0);
+            var captures = (List<VerificationFrameEvidence>)Field("capturedFrames").GetValue(runner);
+            for (int i = 0; i < 6; i++) captures.Add(new VerificationFrameEvidence { rendered = true });
+        }
+
+        private void ProfileFrame(int width, int height, int frameCap, int vSync, FullScreenMode mode = FullScreenMode.Windowed)
+        {
+            ((List<float>)Field("frames").GetValue(runner)).Add(100);
+            RecordDisplay(width, height, frameCap, vSync, mode);
+        }
+
+        private void RecordDisplay(int width, int height, int frameCap, int vSync, FullScreenMode mode = FullScreenMode.Windowed)
+            => typeof(PortVerification).GetMethod("RecordProfileDisplaySample", PrivateInstance)
+                .Invoke(runner, new object[] { width, height, frameCap, vSync, mode });
+
+        private JObject ProfileReport(bool graphical = true, bool batchMode = false)
+            => JObject.Parse(JsonUtility.ToJson(typeof(PortVerification).GetMethod("CompleteProfileReport", PrivateInstance)
+                .Invoke(runner, new object[] { 11d, graphical, batchMode })));
 
         private object InstallCompleteRouteReport()
         {

@@ -1,5 +1,22 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-05 UTC - schema23 prerequisite and1080 verification prepared
+
+The isolated branch adds a literal strict forward contract for the actual23
+economy, pitch, widened lobby and speech receipt vocabulary without wiring it
+into dispatch or changing saves.110 authored Edit cases pass a focused managed
+Mono diagnostic; offline8/8 compiles. The standalone verifier now requests
+1920x1080 Windowed and records actual resolution/mode/cap/VSync per timing
+sample;18 new native Edit contract cases are authored/compiled, not executed.
+Operational Passed explicitly does not award60FPS. External launcher39/39 and
+telemetry8/8 synthetic checks pass without opening Unity or the game. See
+`WAVE_D_PREPARATION_IMPLEMENTATION.md` for all files, evidence and limitations.
+Floors3357/988/77/2182; future combined3368/992/77/2182, never lowered. Old freezers,
+dispatch/schema23, fixtures, simulation, scene/art/settings and live dirty edits
+are untouched. The reviewed D1 authority design is a plan, not another ledger
+or completed gameplay. Combineded492 native96249/g23n1 still runs unchanged;
+merge/nativeNoUMA+UMA/shipping/1080p60/visual/human and all4WaveD remain open.
+
 ## 2026-10-05 UTC — historical-test wiring repaired; combined native still running
 
 Combined ed492's closed Edit report is3230/3240 passed,10 failed,0 skipped.

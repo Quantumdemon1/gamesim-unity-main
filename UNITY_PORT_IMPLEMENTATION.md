@@ -1,5 +1,22 @@
 # Integrated Unity port — implementation and acceptance record
 
+## Inactive Vote obligation verdict prerequisite,2026-10-06 UTC
+
+NEW promise/targetedSaveEvict pure verdict and complete-archive overload do NOT
+install authority, settle effects, validate terms/producers or activate mode2.
+144new regular cases actualpass; pure19 4015Passed/0Failed plus13OLDExplicit
+NotExecuted, compiler19 all8fresh. Before22/after22 exact1011source+2Tools equal;
+independent source/scoped144/plumbing/physicalartifact auditsCLEAR:1003C#once,
+16fresh internal dependencies and144uniquePassed; no source/Tools drift.
+NEW structuralfingerprint control closes KVPnested-value proofgap beforechecks.
+See WAVE_D_VOTE_OBLIGATIONS_IMPLEMENTATION.md for EVERY material change, source
+native-vs-original distinctions, exact pins, warning and all remaining gates.
+Floors5848/999/77/4015; combined5859/1003 retainsQA11/4. No live/integration/asset/
+engine/schema/save/mode0/1 mutation; native/build/1080p60/visual/threehumans open.
+Original integration969 g26n1 closed Failed, no timeout:Edit5185Pass/1Fail/0Skip
+of5186;Play1003/1003Pass/0Skip. All owned handles closed; integration source equal,
+copy dynamic-font cache drift separately permitted. Captures remain unaccepted.
+
 ## Complete regular-reveal archive prerequisite,2026-10-06 UTC
 
 Pure detached complete-history validation/current projection is reviewed and

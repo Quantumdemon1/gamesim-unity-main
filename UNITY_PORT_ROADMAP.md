@@ -1,5 +1,18 @@
 # Gamesim Unity port
 
+**Inactive Vote obligation prerequisite,2026-10-06 UTC:** NEWpromise/targeted
+SaveEvict leaf plus complete-archive overload; no authority/mode2/save/term/effect
+installation. Actual144newcases pass; pure19 4015/0fail plus13OLDExplicitNotExecuted,
+compiler19 all8fresh, exactbefore22/after22 1011source+2Tools equality. Independent
+source/144/plumbing/fullartifact auditsCLEAR;1003C#once/16fresh dependencies,
+144uniquePassed,0source/Tools drift. StructuralKVPfingerprint
+proofrepair occurred BEFOREchecks. Materialrecord WAVE_D_VOTE_OBLIGATIONS_IMPLEMENTATION.md
+separates original/native predicates and actualproducer versus detachedcontrols.
+Floors5848/999/77/4015; combined5859/1003 retainsQA11/4. FullVoteadmission/owners/
+readers/whole-save/durability plus publicremoval, remainingD1/D2-D4, realassets,
+native/desktop/1080p60/visual/threefirst-time humans remainOPEN. Live/frozen
+integration/oldmodes/sourcecorpora untouched; no remote publication.
+
 **Complete regular-reveal archive prerequisite,2026-10-06 UTC:**181new pure
 cases actualpass; full pure18 3871Passed/0Failed plus13priorExplicitNotExecuted,
 compiler18 all8/1001CS once/16fresh dependencies and before21/after21 exact

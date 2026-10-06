@@ -1,5 +1,17 @@
 # Gamesim Unity port
 
+**Portable former25 replay closed,2026-10-06 UTC:** actual02 witnesses are packaged
+with exact byte/index/metadata pins. Fresh14 compiles8assemblies;34 JSON-only
+historical cases and166 separate current-engine checks pass,0failed. Source999+
+2Tools before/after unchanged. Earlier portable02 timeout remains retained; only
+two exact-byte assertion mechanisms were optimized, no checks/deadline removed.
+Final boundartifact audit CLEAR; local checkpoint pending. Floors5068Edit/999Play/77UMA/
+3399pure; futurecombined5079/1003 preservesQA11/4. See
+WAVE_D_FROZEN25_PORTABLE_IMPLEMENTATION.md. No schema26, migration routing, source
+policy, live/integration promotion or native/build/1080p60/visual/human acceptance.
+Only after this historical proof is audited/pinned: inert detached25-to26 boundary,
+then complete Vote owners/readers/native durability. OtherD1families/D2-D4 remain.
+
 **Former25 test witnesses captured,2026-10-06 UTC:** actual166-case null-observer
 diagnostic and reviewed capture02 pass. Twelve openings, three complete Finished
 season chains and436aliases (366accepted/70semantic-refused) retain304distinct

@@ -1,5 +1,19 @@
 # Integrated Unity port — implementation and acceptance record
 
+## Portable former25 historical replay,2026-10-06 UTC
+
+See `WAVE_D_FROZEN25_PORTABLE_IMPLEMENTATION.md` for EVERY material file/test/floor,
+retained timeout, scoped repair and bound evidence. Actual02 raw JSON/provenance
+is packaged without reserialization:775 original files,1555inside+rootmeta and
+779uniqueGUIDs; fixed relative index28c7ff14...fee8d0. Fresh14 passes8assemblies,
+34 JSON-only historical cases and166 unchanged current-engine cases,0failed.
+Source999+2Tools before14/after14 exactlymatch. Independent finalartifact audits
+03/04 CLEAR; localcheckpoint pending. This is managed history/compatibility evidence, not new pure/native/
+standalone/shipping performance/visual/human acceptance. Schema25/production/rules/
+saved authorities/IDs/RNG/knowledge/live/integration remain unchanged. Next audited
+pin theninert additive25-to26; futureunified2 staysrefused. Floors5068/999/77/3399;
+futurecombined5079/1003 retainsQA11/4. All D1 families/D2-D4 and release gates remain.
+
 ## 2026-10-06 UTC - actual former25 corpus captured, final02 closure
 
 Existing166-case fixture adds a private null-default detached test observer,

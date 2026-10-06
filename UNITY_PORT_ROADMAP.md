@@ -1,5 +1,45 @@
 # Gamesim Unity port
 
+**Saved-Safety checkpoint06 verified,2026-10-06 UTC:** the reviewed source-owned
+Ownership fixture repair now passes:8fresh assemblies/3314regular pure/1301focused
+Mono/12historical migration diagnostics,0failed.980source+2Tools before/after
+images match exactly. Formal55legacy digests/5956attempts match both retained24
+bindings. These are managed diagnostics, NOT native disk/public activation or
+shipping acceptance. Public unified/hearing1 remains refused. New native cases,
+deliberate integration/fullNoUMA+UMA, fullD1-D4/E2/realassets/build/1080p60/visual/
+accessibility/0of3human/promotion remain required. Earlier failures stay retained.
+
+**Prospective saved-Safety validation draft,2026-10-05 UTC:** the separate WaveC
+checkout now has the shared complete-core seam, strict source-owned saved Safety
+references and typed opportunity/fact/hearing/jury/finale checks, with161reference/
+111whole-state pure cases and25native refusal cases. Seven migration-test wiring
+repairs preserve frozen checks and add one unsupported26 case. Independently
+static-reviewed; first offline01/pure01 CLOSED1 at compilation, no new tests
+executed. Three fixture API-only repairs are clear; exact-image02 compiles8fresh
+assemblies but pure3208/3306 and Mono1195/1293 fail98 fixture cases. Source-backed
+public Reconcile and strongest-Promise fixes pass in03. Offline03 compiles8fresh;
+pure3305/3306 and Mono1292/1293 retain one bounded Ownership-receipt fixture failure.
+Before03/after03 inputs match. The04 legal final-HoH diagnostic also fails the same
+case; before04/after04 match and55/5956legacy replay comparison passes separately.
+An actual historical source-returned receipt now proves stable saved-reference
+wording. Per-incident durable emission completeness and live/archive historical
+knowledge eligibility have eight new source controls. Fresh05 compiles8assemblies;
+pure3313/3314 and Mono1300/1301 retain the same bounded Ownership-search failure.
+All eight new controls pass in both diagnostics;12migration checks pass separately.
+Before05/after05 are identical; formal55/5956legacy replay comparison passes only
+as managed legacy evidence. A bounded actual-source trace now proves the fixture
+policy caused the missing branch:32 original seasons/0player finalists versus
+32 legal-self-veto seasons/28finalists/35qualified receipts. Only that diagnostic's
+legal command selection changed; all111cases/bounds/assertions remain. Fresh06
+checks are pending; reviewed repair is not a passing result.
+Ordinary engine/save/factory still refuse1.
+Authored floors4783Edit/991Play/77UMA/3314pure; future combined4794/995/77/3314.
+See WAVE_D_SAFETY_SAVED_STATE_IMPLEMENTATION.md. Integratione53/g25n1 now CLOSED
+FAILED:Edit4496/4485pass/11fail,Play995/995pass,0skips, natural owned closure/no
+source drift. New saved-state fixtures are absent from that candidate. Fresh checks,
+full native transactions/fresh-only activation, otherD1families/D2-D4, widerE2,
+realassets, same-pinUMA/build/actual1080p60/visual/0of3human remain open.
+
 **Native checkpoint closed,2026-10-05 UTC:** integration714 NoUMA g24n3 now passes
 4124Edit/995Play with0failed/skipped, natural closure and no source drift. It
 does not contain the newer outcome/story or hearing/schema25 increments.

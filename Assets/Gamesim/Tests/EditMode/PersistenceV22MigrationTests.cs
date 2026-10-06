@@ -213,13 +213,20 @@ namespace Gamesim.Tests.EditMode
             old["finalArgument"] = new JObject { ["theme"] = FinalArgument.Themes[0], ["momentRefs"] = new JArray(1) };
             Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(old, out _), "A moment is a reference, never a number.");
 
-            // What schema 21 could hold passes its frozen contract and is carried unchanged; its
-            // meaning is the live finale validator's to judge once loaded.
+            // Schema 21's own shape contract carries this argument unchanged at its frozen step.
+            // That shape proof is not acceptance of a complete current save: this played state
+            // has not reached the final eviction, so former24's full semantics must refuse it.
             old = V21WithABreach(out _);
             var argument = new JObject { ["theme"] = FinalArgument.Themes[0], ["momentRefs"] = new JArray("win:1:HoH") };
             old["finalArgument"] = argument;
-            var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out _);
+            string original = old.ToString(Formatting.None);
+            var migrated = EpisodeSaveMigrations.UpgradeV21ToV22(old);
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(22), "The frozen shape step stops at twenty-two.");
             Assert.That(JToken.DeepEquals(migrated["finalArgument"], argument), Is.True);
+            Assert.That(old.ToString(Formatting.None), Is.EqualTo(original));
+            var refusal = Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(old, out _));
+            Assert.That(refusal.Message, Does.Contain("Finale records cannot precede the final eviction."));
+            Assert.That(old.ToString(Formatting.None), Is.EqualTo(original), "The whole-chain refusal leaves historical bytes unchanged.");
         }
 
         private static string V21FixturePath =>

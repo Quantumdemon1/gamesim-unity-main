@@ -1,5 +1,66 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-06 UTC - repaired saved-Safety checkpoint06 closed
+
+All fresh diagnostic owners CLOSED0:8assemblies,3314regular pure/0failed/0skipped,
+1301focused Mono/0failed(no timeout,26.094s),12historical migration checks, and
+55legacy seasons/5956attempts(no timeout,107.726s).13older Explicit reports remain
+unselected and are not passes. Source980+2Tools before06/after06 match exactly:
+fileSHAe4e334986df5eb6f552d1cade7370de43966f88dbef649aae1fd3353589e9ef1.
+PureTRXSHAee2d5cbabe6307834813f25b0f5f02f77874bbf22a5061c03fa00bc71aafaa20.
+Formal fixturecomparison06 PassedManagedLegacyReplayOnly55digests/5956attempts
+against both retained24 bindings, SHA3af751d0a4a24e28e8e990b93bf7d404675e1419f0ed695b3679ae325a8bdb13.
+This validates the reviewed fixture repair, not native transactions or public
+activation. Production1 still refused. Exact-source native/integration evidence,
+otherD1families/D2-D4, widerE2/assets/reactions/audio/input, samepinUMA/shipping,
+actual1080p60GTX1060/visual/accessibility/0of3human/preserved promotion stay open.
+
+## 2026-10-05 UTC - prospective whole-state Safety and native fixture repairs
+
+Separate WaveC draft, not live/integratione53: shared complete episode validator
+core plus internal prospective entry, source-owned ID/policy/role/link leaf and
+typed opportunity/fact/hearing/jury/finale saved references. Public1 remains
+refused.161reference+111whole-state pure and25native refusal cases are authored/
+independently static-clear. Seven historical migration fixtures are source-backed
+repaired after fresh frozene53 Edit4496/4485pass/11fail, adding one unsupported26
+case without changing production/frozen/goldens. Authored4783/991/77/3314 floors;
+future combined4794/995/77/3314 retains QA11/4. First offline01/pure01 CLOSED1 at
+compilation; no new tests executed. Three fixture API-only repairs are independently
+clear; before02/after02 capture980source+2Tools byte-identically. Offline02 CLOSED0
+eightfresh; pure02 CLOSED1 3208/3306 and Mono02 CLOSED1 1195/1293, both98failures.
+Actual12named migration checks pass separately. Two source-backed fixture repairs
+address public Reconcile visibility and Promise-47 versus Deal-30 grouped ownership;
+fresh03 compiles8fresh and passes3305/3306pure,1292/1293Mono, with one bounded
+Ownership-receipt search failure. Before03/after03 inputs match;12named migration
+checks and both55-season/5956-attempt replays close successfully, formal paired
+comparison pending at that checkpoint. The04 legal-input attempt also fails the
+same onecase; before04/after04 match and formal55/5956legacy comparison separately
+passes. An actual historical source-returned receipt now strengthens saved-wording
+coverage. Per-incident missing-emission and live/archive past-knowledge checks
+have eight new controls. Fresh05 compiles8assemblies; pure3313/3314 and Mono1300/1301
+retain one bounded Ownership-search fixture failure. All eight new controls pass;
+12historical migration diagnostics pass separately. Before05/after05 match exactly,
+SHA0b14b1e203d17bd98b62a21299d1abaab3f5cdaa6d7da762f78def44e10fb0a0.
+Formal lineagecomparison05 passes55legacy digests/5956attempts only as managed
+legacy replay evidence, SHA23aeca00323c50072b7571ddbc582c059c0f36f40ca41fb8d0f1ef2cda32525a.
+Actual-source trace02 CLOSED0 now proves the fixture policy caused the missing
+branch:32 original-policy seasons/0player finalists versus32legal-self-veto
+seasons/28finalists/35qualified receipts. Only the false Ownership diagnostic's
+legal command selection changed;111cases/allbounds/assertions stay intact.
+Trace01 failed in its external launcher before game execution; original evidence
+and launcher bytes retained. Fresh06 checks remain pending, not inferred green.
+No enabled/native acceptance is inferred. See
+WAVE_D_SAFETY_SAVED_STATE_IMPLEMENTATION.md for every change and evidence limits.
+Integratione53/g25n1 now CLOSED FAILED:Edit4496/4485passed/11failed,Play995/995passed,
+0skips; owned processes closed naturally, source/cleanup/unowned audits clear.
+TerminalSHA1901c67bc4a36ede66e3acfeed88f7de851b52692ed99f7b489890aa742f45b2.
+Earlier hearing/migration/recap/presentation cases executed on e53; these NEW
+saved-state/refusal fixtures did not. Exact repaired source still needs fresh
+native integration acceptance. Native transactions/
+fresh-only activation, all otherD1families, requiredD2-D4, widerE2/art/ship1080p60/
+visual/accessibility/0of3human remain the full objective. Existing dated blocks
+below retain historical pins/results, not current activation or release evidence.
+
 ## 2026-10-05 UTC - older714 NoUMA checkpoint closed; hearing image refreshed
 
 Whole g24n3/root36248 CLOSED0:4124Edit/995Play,0failed/skipped, four owned exits0,

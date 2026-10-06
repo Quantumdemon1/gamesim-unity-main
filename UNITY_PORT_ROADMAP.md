@@ -1,5 +1,17 @@
 # Gamesim Unity port
 
+**Completed regular reveal prerequisite,2026-10-06 UTC:** bounded leaf140 cases
+actualpass, full pure17 3690/0failed plus13 priorExplicitNotExecuted; compiler17
+all8/999CS once/16fresh internal references, before19/after19 exact equal and
+independent compile/pure audit clear. Floors5523/999/77/3690; futurecombined
+5534/1003 retainsQA11/4. Test-only LegalPactReplay fields-only serialization
+bridge preserves strict validation/golden; repaired native case still pending.
+Actual bounded public V03 FAILED134attempts/23808commands/four tie/untied witnesses,
+no required same-week ordinary-voter removal. That evidence gate remains open.
+No archive/mode2 authority, schema, legacy-rule, live/editor or asset change.
+See WAVE_D_COMPLETED_REVEAL_IMPLEMENTATION.md; completearchive/owners/readers/
+durability, otherD1families/D2-D4 and release1080p60/visual/threehumans remain.
+
 **VoteTogether local/source increment authored,2026-10-06 UTC:** inactive bounded
 leaf122 and portable original-source consumer86 actual208pass; pure3550/0failed,
 13Explicit reports notexecuted. Compiler16 passes8/all997C# once;1005source+2Tools

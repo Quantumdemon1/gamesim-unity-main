@@ -1,5 +1,18 @@
 # Integrated Unity port — implementation and acceptance record
 
+## Completed regular reveal prerequisite,2026-10-06 UTC
+
+See WAVE_D_COMPLETED_REVEAL_IMPLEMENTATION.md for every source/test/serializer-
+bridge change and its limits. Pure bounded leaf140 actualpass; full pure17
+3690pass/0failed plus13 priorExplicitNotExecuted. Fresh compiler17 all8/999CS once,
+16fresh internal edges, before19/after19 byte-identical; independent audit clear.
+Floors5523/999/77/3690; futurecombined5534/1003 retainsQA11/4. Test-only strict
+fields serialization bridge compiles; repaired original native case not rerun.
+Bounded public witness V03 naturally FAILED/incomplete134attempts/23808commands,
+four real tie/untied positives but no qualifying ordinary-voter removal. No waiver
+or substitute detached witness. Archive/mode2, all remainingD1/D2-D4/native/art/
+desktop1080p60/visual/human gates remain open. No live promotion or remote write.
+
 ## VoteTogether local/source increment authored,2026-10-06 UTC
 
 See WAVE_D_VOTE_TOGETHER_IMPLEMENTATION.md for every new leaf/test/package and

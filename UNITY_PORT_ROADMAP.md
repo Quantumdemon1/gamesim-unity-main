@@ -1,5 +1,18 @@
 # Gamesim Unity port
 
+**Exact former25 contract verified,2026-10-06 UTC:** NEW unused literal72DTO/
+540field/fixed-enum/data/validator/helper snapshot of publicSafety commitf456.
+Fresh corrected09 passes3399regular pure; final whitespace-only image10 compiles
+8assemblies and passes166focused managed contract cases with990C#+8asmdef+2Tools
+before/after content unchanged. Pure09 is not retagged as10. Initial08
+missing-IsStory compiler failure is retained, not a pass; exact source getter
+repair and full independent source/dependency/fixture review are clear. No schema26,
+migration routing, behavior change or live/integration promotion. Authored floors
+5034Edit/999Play/77UMA/3399pure; future combined5045/1003 retains QA11/4.
+See WAVE_D_SAFETY_FROZEN25_IMPLEMENTATION.md. Before26, capture actual tested25
+JSON; current regenerated witnesses alone are not a future historical corpus.
+Nativeg25n2 is still separate; runtime/build/1080p60/visual/human/fullplan remain.
+
 **Public Safety exact-image07 diagnostics closed,2026-10-06 UTC:** all eight
 assemblies compile;3399 regular pure/1306 focused managed/12 migration cases pass,
 including80 actual public-command cases. Source974 C#+8asmdef+2Tools before/after
@@ -9,7 +22,8 @@ helper are retained; independently reviewed v2 fixes only its argument syntax.
 These are diagnostics, not execution of the new Play8/evolved native Save25,
 enabled disk/runtime, same-pinUMA/build/1080p60/visual/human/live acceptance.
 See WAVE_D_SAFETY_PUBLIC_IMPLEMENTATION.md for every material change and exact
-bindings. Commit/integration/native gates follow; allD1families/D2-D4/E2/art and
+bindings. PublicSafety was committed locally asf456; integration/native gates
+remain. AllD1families/D2-D4/E2/art and
 final shipping/human completion requirements remain open.
 
 **Historical pre07 public Safety authoring checkpoint,2026-10-06 UTC:** superseded

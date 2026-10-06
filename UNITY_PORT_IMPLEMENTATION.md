@@ -1,5 +1,49 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-06 UTC - final frozen25 image10 diagnostic closure
+
+Scoped stage check found six whitespace-only blank lines in two NEW frozen helper
+files. Removed only those spaces; all other production bytes, fixture and Tools
+unchanged. Fresh compiler10 CLOSED0 builds8 assemblies; independent990source/
+8response/freshdependency/cache/input audits clear. Fresh managed session27821
+CLOSED0:166/166 pass,0fail,21.8610986s,no timeout, no native launch. BindingSHA
+0062cff930c9f8bde4f58bd99cb384a7eb30455c669b731674096d73adc0adea.
+Before10/after10 have equal ordered998source+2Tools and HEADf456, contentSHA
+8cd312790e2fc624ff3ad3b8247a613507f8b096acd5d4209348acdf114bcdbe. Evidence
+JSON file hashes differ only in PowerShell5/7 indentation; not byte-equal files.
+Final30production-file digest9893a545093c76e23e91d8e948e2b6dc8abd4b7157b975bb15d95a67c2e4670d.
+Pure09 remains its original3399-case evidence; no new10 pure run is claimed.
+Historical25 corpus and all native/build/visual/performance/human gates stay open.
+
+## 2026-10-06 UTC - exact former25 snapshot, corrected09 diagnostics closed
+
+NEW unused FrozenEpisodeV25 contract, literal72DTO/540fields/five enums and local
+complete publicSafety/storage/knowledge/finale closure pinned tof456. No growing
+model/validator, stripping/backfill/writer/migration dispatcher or rule activation.
+Fifteen production C#+metas and one166-case fixture+meta; Editfloor4868→5034,
+Play999/UMA77/pure3399 unchanged. Exact material inventory is in
+WAVE_D_SAFETY_FROZEN25_IMPLEMENTATION.md; future combined5045/1003 retains QA11/4.
+
+First compiler08 CLOSED1, fixed data carrier lacked source IsStory getter; no
+new test executed and onlySimulation compiled. Failure/preimage/output retained,
+byte-verified original-data reconstruction transparently labeled. Only NEW data
+getter/comment changed;29 production siblings unchanged. Corrected09 CLOSED0
+8fresh assemblies/3399regular pure(80publicincluded)/166actual focused Mono,
+0failed/no timeout.13older Explicit remain NotExecuted. All998source(990C#+8asmdef)
+and2Tools before09/after09 identicalSHA
+d47e714e815ec61112739adc0855a9b282a6f9764af6ea378a1aaff3862f3119.
+Independent exactDTO/enum/validator/helper/metadata/fixture and compiler response/
+freshDLL/cache/source drift audits are clear. Managed bindingSHA
+44a1597b73c85b046f8a64634dc3cd9f8beb8848f51d19e4e4edd815318f4866.
+
+This is current25 in-memory diagnostic evidence, NOT native save/migration/full
+suite/desktop/performance/visual/human acceptance. Before schema26, pin actual25
+opening/checkpoint/full-season JSON; current regenerated witnesses and later
+unsupported-header refusals cannot define historical acceptance. Corpus capture
+has not run. Separate nativeg25n2 atintegration6e66 remains LIVE; liveb25 edits,
+recovery/scenes/saves/builds/snapshots retained, no promotion or remote mutation.
+AllD1-D4/widerE2/art and final owner-required acceptance gates remain open.
+
 ## 2026-10-06 UTC - public Safety exact-image07 diagnostics closed
 
 Eightfresh assemblies/3399regular pure/1306focused managed/12historical migration

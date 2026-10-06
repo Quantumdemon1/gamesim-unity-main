@@ -45,7 +45,7 @@ namespace Gamesim.Simulation
         private static bool TryValidateCore(EpisodeState s, bool prospectiveSafety, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 25) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 26) return Fail(out error, "Unsupported episode schema.");
             if (prospectiveSafety)
             {
                 if (s.unifiedCommitmentRulesVersion != UnifiedCommitments.ProspectiveVersion
@@ -69,6 +69,10 @@ namespace Gamesim.Simulation
                     || s.unifiedHearingReceipts == null || s.unifiedHearingReceipts.Count != 0)
                     return Fail(out error, "Unified hearing coordination is not enabled in this build.");
             }
+            // The schema adds storage only. Neither legacy nor canonical Safety mode owns a Vote
+            // reveal archive yet; do not clear a nonempty or null container into an accepted state.
+            if (s.unifiedVoteReveals == null || s.unifiedVoteReveals.Count != 0)
+                return Fail(out error, "Unified Vote evidence is not enabled in this build.");
             if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > CompetitionRules.Current)
                 return Fail(out error, "Unsupported competition rules version.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||

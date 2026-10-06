@@ -1,5 +1,22 @@
 # Integrated Unity port — implementation and acceptance record
 
+## Inert schema26 boundary,2026-10-06 UTC
+
+See WAVE_D_INERT26_IMPLEMENTATION.md for EVERY material production/test/plumbing/
+Tools/doc change. Strict original fixed25 validity precedes detached null/null/
+empty additions only. Current mode0/1 accepts no Vote archive; future2 refused.
+Fresh playable commitment/story rules start immediately, old-save rules unchanged.
+Independent source/fixtures/plumbing/helpers CLEAR; fresh15 all994C#/8assemblies
+compile with exact1002source+2Tools before/after equality. Pure15passes3428regular,
+13explicitreports notexecuted; managed107/166pass,0failed,107fullartifact auditCLEAR.
+Original portable34pass/fullartifact auditCLEAR; originallegacy01 retainedFAILED
+180stimeout/45of55seasons (partialtuplesmatch). Separate sharded01 closes all10
+workers/55seasons/5956attempts, independentphysicalauditCLEAR. Reviewed comparator-v2
+fresh02 matches BOTH retained baselines; failedcomparison01's variable collision
+and originalprocedures are preserved, no checks waived or evidence retagged;
+authored floors5175/999/77/3428, combined5186/1003 retainsQA11/4. No live/
+integration promotion or native/build/actual1080p60/visual/human acceptance.
+
 ## Portable former25 historical replay,2026-10-06 UTC
 
 See `WAVE_D_FROZEN25_PORTABLE_IMPLEMENTATION.md` for EVERY material file/test/floor,

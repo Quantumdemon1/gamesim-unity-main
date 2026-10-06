@@ -1,5 +1,20 @@
 # Gamesim Unity port
 
+**Inert26 source boundary,2026-10-06 UTC:** strict fixed25 acceptance before a
+detached additive migration; no Vote authority, ballots, knowledge or legacy-rule
+activation. Independent source/107newcase/166compatibility/plumbing reviews CLEAR.
+Fresh15 compiles all994C# once into8fresh assemblies; source1002+2Tools unchanged.
+Pure3428 and focused107/166 managed diagnostics pass;107fullartifact audit CLEAR.
+Historical34 passes with finalartifact audit CLEAR. Originallegacy01 retainedFAILED
+timeout after45/55; separate sharded01 passes all55/5956 with finalartifact audit
+CLEAR. Reviewed comparison-v2/fresh02 matches BOTH retained baselines; failed
+comparison01's variable collision is retained, no checks waived or evidence retagged.
+These are managed diagnostics; native/build/actual1080p60/visual/human remain open.
+Authored floors5175/999/77/3428; future
+combined5186/1003 retainsQA11/4. See WAVE_D_INERT26_IMPLEMENTATION.md for EVERY
+material change. Portable history is locally pinned at4ed8; original evidence is
+not retagged. Fresh playable rules active from the start; old saves keep old rules.
+
 **Portable former25 replay closed,2026-10-06 UTC:** actual02 witnesses are packaged
 with exact byte/index/metadata pins. Fresh14 compiles8assemblies;34 JSON-only
 historical cases and166 separate current-engine checks pass,0failed. Source999+

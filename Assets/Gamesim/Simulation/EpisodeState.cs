@@ -244,7 +244,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 25;
+        public int schemaVersion = 26;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
@@ -301,6 +301,8 @@ namespace Gamesim.Simulation
         public List<UnifiedHearingEvidenceState> unifiedHearingEvidence = new List<UnifiedHearingEvidenceState>();
         /// <summary>One actual initial/spread receipt per canonical incident and non-player listener; never FIFO-pruned.</summary>
         public List<UnifiedHearingReceiptState> unifiedHearingReceipts = new List<UnifiedHearingReceiptState>();
+        /// <summary>Schema 26's inert private Vote proof storage. Must remain empty until Vote authority is separately integrated.</summary>
+        public List<UnifiedVoteRevealState> unifiedVoteReveals = new List<UnifiedVoteRevealState>();
         public List<CompetitionScore> competitionScores = new List<CompetitionScore>();
         public List<EpisodeEvent> events = new List<EpisodeEvent>();
         public List<string> acceptedCommandIds = new List<string>();
@@ -514,6 +516,7 @@ namespace Gamesim.Simulation
             copy.unifiedCommitments = unifiedCommitments?.Select(x => x?.Clone()).ToList();
             copy.unifiedHearingEvidence = unifiedHearingEvidence?.Select(x => x?.Clone()).ToList();
             copy.unifiedHearingReceipts = unifiedHearingReceipts?.Select(x => x?.Clone()).ToList();
+            copy.unifiedVoteReveals = unifiedVoteReveals?.Select(x => x?.Clone()).ToList();
             copy.alliances = alliances.Select(x => x.Clone()).ToList();
             copy.memories = memories.Select(x => x.Clone()).ToList();
             copy.nominees = new List<string>(nominees); copy.vetoPlayers = new List<string>(vetoPlayers);

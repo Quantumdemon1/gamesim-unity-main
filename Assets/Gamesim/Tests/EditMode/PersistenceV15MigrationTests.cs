@@ -75,7 +75,10 @@ namespace Gamesim.Tests.EditMode
             var current25 = EpisodeSaveMigrations.UpgradeV24ToV25(current24);
             PersistenceV25TestPayloads.OnlyHearingDefaults(current24, current25);
             Assert.That(current24.ToString(), Is.EqualTo(frozen24));
-            var state = current25.ToObject<EpisodeState>(Serializer());
+            string frozen25 = current25.ToString();
+            var current26 = EpisodeSaveMigrations.UpgradeV25ToV26(current25);
+            Assert.That(current25.ToString(), Is.EqualTo(frozen25));
+            var state = current26.ToObject<EpisodeState>(Serializer());
             Assert.That(state.strategyRulesStartWeek, Is.Zero);
             Assert.That(state.lobbies, Is.Empty); Assert.That(state.replyCards, Is.Empty);
             Assert.That(EpisodeEngine.EconomyRulesOn(state), Is.False);
@@ -158,7 +161,7 @@ namespace Gamesim.Tests.EditMode
             old["schemaVersion"] = 12;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(25), "The whole chain, not one step.");
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(26), "The whole chain, not one step.");
             Assert.That(EpisodeSaveMigrations.PrepareV15Payload(old, out _)["schemaVersion"].Value<int>(), Is.EqualTo(15),
                 "The frozen dispatch still stops at fifteen.");
             Assert.That((int)migrated["haveNotRulesStartWeek"], Is.Zero);

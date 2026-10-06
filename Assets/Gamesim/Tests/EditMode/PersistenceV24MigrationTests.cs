@@ -23,7 +23,7 @@ namespace Gamesim.Tests.EditMode
         private static JObject Payload(EpisodeState s) => JObject.FromObject(s, Serializer());
         private static void Off(EpisodeState s)
         {
-            Assert.That(s.schemaVersion, Is.EqualTo(25));
+            Assert.That(s.schemaVersion, Is.EqualTo(26));
             Assert.That(s.unifiedCommitmentRulesVersion, Is.Zero);
             Assert.That(s.unifiedCommitments, Is.Not.Null.And.Empty);
             Assert.That(s.unifiedHearingRulesVersion, Is.Zero);
@@ -48,6 +48,7 @@ namespace Gamesim.Tests.EditMode
         private static void OnlyDefaults(JObject old23, JObject current)
         {
             Assert.That((int)old23["schemaVersion"], Is.EqualTo(23));
+            current = PersistenceMigrationTests.StripSchema26((JObject)current.DeepClone());
             // This fixture still pins the exact old23->24 step. A current load also has the
             // separately tested inactive hearing defaults; refuse nonempty values before projecting.
             if ((int)current["schemaVersion"] == 25)
@@ -161,7 +162,7 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(files.Store.SavePath, PersistenceMigrationTests.Envelope(old));
             byte[] bytes = File.ReadAllBytes(files.Store.SavePath);
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 23").And.Contain("schema 25 in memory"));
+            Assert.That(message, Does.Contain("Schema 23").And.Contain("schema 26 in memory"));
             Off(loaded); Equivalent(s, loaded);
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(bytes));
             Assert.That(File.Exists(files.Store.BackupPath), Is.False);
@@ -214,7 +215,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(old.ToString(Formatting.None), Is.EqualTo(original));
         }
 
-        [TestCase(0)] [TestCase(-1)] [TestCase(26)]
+        [TestCase(0)] [TestCase(-1)] [TestCase(27)]
         public void UnsupportedVersionsAreNotGuessed(int version)
         {
             var o = Payload(Fresh()); o["schemaVersion"] = version;

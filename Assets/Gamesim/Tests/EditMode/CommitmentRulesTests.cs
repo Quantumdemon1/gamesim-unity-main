@@ -22,7 +22,7 @@ namespace Gamesim.Tests.EditMode
         public void ASeasonBuiltDirectlyPlaysWithoutTheRulesAndTheirStartIsNeverPastNextWeek()
         {
             var s = Season(3);
-            Assert.That(s.schemaVersion, Is.EqualTo(25));
+            Assert.That(s.schemaVersion, Is.EqualTo(26));
             Assert.That(s.commitmentRulesStartWeek, Is.Zero, "A season a test builds plays without them, as every recorded one does.");
             Assert.That(EpisodeEngine.CommitmentRulesOn(s), Is.False);
             EpisodeEngine.EnableCommitments(s);

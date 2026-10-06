@@ -19,6 +19,8 @@ namespace Gamesim.Simulation
         public string status;
         public int settledWeek;
         public string brokenById, trustImpact, linkedCommitmentId, settlementEffectKey;
+        // Schema 26 storage only. Safety has neither a vote target nor a vote subtype.
+        public string targetId, subtype;
 
         // All members are scalars or immutable strings. Deep-copy any collections added in a later family.
         public UnifiedCommitmentState Clone() => (UnifiedCommitmentState)MemberwiseClone();
@@ -91,6 +93,7 @@ namespace Gamesim.Simulation
             error = null;
             if (!RulesOn(state)) return Refuse(out error, "Unified commitments are not enabled.");
             if (!IdentityContextValid(state) || row == null || !Token(row.id) || row.kind != Safety
+                || row.targetId != null || row.subtype != null
                 || !Token(row.makerId) || !Token(row.beneficiaryId) || row.makerId == row.beneficiaryId
                 || state.Find(row.makerId) == null || state.Find(row.beneficiaryId) == null)
                 return Refuse(out error, "Invalid canonical safety identity.");

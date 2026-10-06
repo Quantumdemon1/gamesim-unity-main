@@ -14,10 +14,11 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// The complete former25 contract, including the publicly supported Safety authority.
+    /// Current schema26 mode0/1 compatibility with the complete fixed former25 contract.
     /// Every positive role, election, duty and hearing is factory/public-Apply produced. Only
     /// fresh rule selection precedes construction; later JSON corruption is explicitly negative.
-    /// These in-memory contract tests do not establish disk, Unity, build or human acceptance.
+    /// The explicit neutral bridge is NOT retained historical evidence; the separate immutable
+    /// JSON-only corpus tests retain that evidence. These tests establish no disk/native acceptance.
     /// </summary>
     public sealed class FrozenEpisodeV25ContractTests
     {
@@ -456,6 +457,57 @@ namespace Gamesim.Tests.EditMode
         private static JsonSerializer Serializer() => (JsonSerializer)JsonApi.GetMethod("Serializer", Static).Invoke(null, null);
         private static JObject Payload(EpisodeState state) => JObject.FromObject(state, Serializer());
         private static string Text(JToken value) => value.ToString(Formatting.None);
+        private static void ValidateCurrentShape(JObject payload)
+        {
+            try { JsonApi.GetMethod("CheckDtoShape", Static).Invoke(null, new object[] { payload, typeof(EpisodeState), "state" }); }
+            catch (TargetInvocationException error) { throw error.InnerException ?? error; }
+        }
+        private static void AcceptCurrent(JObject payload)
+        {
+            string original = Text(payload);
+            Assert.That(payload["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
+            Assert.That((int)payload["schemaVersion"], Is.EqualTo(26));
+            Assert.DoesNotThrow(() => ValidateCurrentShape(payload));
+            var state = payload.ToObject<EpisodeState>(Serializer()); string beforeState = Text(Payload(state));
+            Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
+            Assert.DoesNotThrow(() => EpisodeSaveValidation.Validate(state));
+            Assert.That(Text(Payload(state)), Is.EqualTo(beforeState));
+            Assert.That(Text(payload), Is.EqualTo(original));
+        }
+        // Shape-only lift also supports semantic NEGATIVES. It never repairs the defect, clears
+        // authority, converts a raw mirror, or assumes the lifted state is semantically accepted.
+        private static JObject LiftFormer25(JObject former)
+        {
+            Assert.That(former["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
+            Assert.That((int)former["schemaVersion"], Is.EqualTo(25));
+            Assert.DoesNotThrow(() => ValidateFrozenShape(former));
+            string original = Text(former); var current = (JObject)former.DeepClone();
+            foreach (JObject row in (JArray)current["unifiedCommitments"])
+            { row.Add("targetId", JValue.CreateNull()); row.Add("subtype", JValue.CreateNull()); }
+            current.Add("unifiedVoteReveals", new JArray()); current["schemaVersion"] = 26;
+            Assert.That(Text(former), Is.EqualTo(original)); return current;
+        }
+        private static JObject NeutralFormer25(JObject current)
+        {
+            // Current validity and all neutral extensions are proved BEFORE removal. Payload()
+            // stays raw current JSON, so existing clone/Apply/input assertions see every field.
+            AcceptCurrent(current); string original = Text(current);
+            Assert.That((int)current["unifiedCommitmentRulesVersion"], Is.InRange(0, 1));
+            Assert.That((int)current["unifiedHearingRulesVersion"], Is.InRange(0, 1));
+            Assert.That(current["unifiedVoteReveals"], Is.TypeOf<JArray>());
+            Assert.That((JArray)current["unifiedVoteReveals"], Is.Empty);
+            var former = (JObject)current.DeepClone(); former.Remove("unifiedVoteReveals");
+            foreach (JObject row in (JArray)former["unifiedCommitments"])
+            {
+                Assert.That((string)row["kind"], Is.EqualTo(UnifiedCommitments.Safety));
+                Assert.That(row.Property("targetId"), Is.Not.Null); Assert.That(row["targetId"].Type, Is.EqualTo(JTokenType.Null));
+                Assert.That(row.Property("subtype"), Is.Not.Null); Assert.That(row["subtype"].Type, Is.EqualTo(JTokenType.Null));
+                row.Remove("targetId"); row.Remove("subtype");
+            }
+            former["schemaVersion"] = 25;
+            Assert.That(JToken.DeepEquals(LiftFormer25(former), current), Is.True, "The neutral bridge has an exact inverse; no other historical field is dropped.");
+            Assert.That(Text(current), Is.EqualTo(original)); return former;
+        }
         private static void Validate(JObject payload)
         {
             var method = Contract.GetMethod("Validate", Static);
@@ -488,14 +540,17 @@ namespace Gamesim.Tests.EditMode
         private static void Accept(JObject payload)
         {
             string original = Text(payload);
-            var state = payload.ToObject<EpisodeState>(Serializer());
-            string beforeState = Text(Payload(state));
-            Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
-            Assert.DoesNotThrow(() => EpisodeSaveValidation.Validate(state));
-            Assert.That(Text(Payload(state)), Is.EqualTo(beforeState));
-            Assert.DoesNotThrow(() => Validate(payload));
+            JObject former;
+            if (payload["schemaVersion"]?.Type == JTokenType.Integer && (int)payload["schemaVersion"] == 26)
+                former = NeutralFormer25(payload);
+            else
+            {
+                Assert.DoesNotThrow(() => Validate(payload));
+                AcceptCurrent(LiftFormer25(payload)); former = payload;
+            }
+            Assert.DoesNotThrow(() => Validate(former));
             Assert.That(Text(payload), Is.EqualTo(original), "Frozen validation never repairs/defaults/reorders the caller's complete JSON tree.");
-            Notify("accepted", payload);
+            Notify("accepted", former);
         }
         private static void Reject(JObject payload)
         {
@@ -509,16 +564,20 @@ namespace Gamesim.Tests.EditMode
             Assert.That(payload["schemaVersion"].Type, Is.EqualTo(JTokenType.Integer));
             Assert.That((int)payload["schemaVersion"], Is.EqualTo(25));
             Assert.DoesNotThrow(() => ValidateFrozenShape(payload), "A semantic refusal cannot be merely an incompatible DTO shape.");
-            var state = payload.ToObject<EpisodeState>(Serializer());
+            var current = LiftFormer25(payload); string currentOriginal = Text(current);
+            Assert.DoesNotThrow(() => ValidateCurrentShape(current));
+            var state = current.ToObject<EpisodeState>(Serializer());
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.False, "The source-valid baseline has a real former25 invariant defect.");
             Assert.That(reason, Is.Not.Empty);
+            Assert.That(reason, Does.Not.Contain("Unsupported episode schema"), "The companion's literal26 header must not substitute for the intended semantic defect.");
+            Assert.That(Text(current), Is.EqualTo(currentOriginal));
             Assert.That(Text(payload), Is.EqualTo(original));
             Reject(payload);
             Notify("semantic-refused", payload, reason);
         }
         private static JObject Baseline(int mode, string checkpoint)
         {
-            var payload = Payload(Witness(mode, checkpoint)); Accept(payload); return payload;
+            var payload = Payload(Witness(mode, checkpoint)); Accept(payload); return NeutralFormer25(payload);
         }
         private static JObject Canonical(JObject payload, string origin) => ((JArray)payload["unifiedCommitments"]).OfType<JObject>().Single(r => (string)r["origin"] == origin && (string)r["makerId"] == (string)payload["playerId"]);
         private static JObject Evidence(JObject payload)
@@ -749,7 +808,8 @@ namespace Gamesim.Tests.EditMode
 
         private static void AssertMode(EpisodeState state, int mode)
         {
-            Assert.That(state.schemaVersion, Is.EqualTo(25));
+            Assert.That(state.schemaVersion, Is.EqualTo(26));
+            Assert.That((int)NeutralFormer25(Payload(state))["schemaVersion"], Is.EqualTo(25));
             Assert.That(state.unifiedCommitmentRulesVersion, Is.EqualTo(mode == 0 ? 0 : 1));
             Assert.That(state.unifiedHearingRulesVersion, Is.EqualTo(mode == 2 ? 1 : 0));
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);

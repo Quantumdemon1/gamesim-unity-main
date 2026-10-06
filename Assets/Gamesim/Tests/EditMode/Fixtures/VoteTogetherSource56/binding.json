@@ -1,0 +1,190 @@
+{
+    "schema":  1,
+    "kind":  "gamesim-original-vote-source-oracle-binding",
+    "accepted":  true,
+    "name":  "wave-d-vote-source-04",
+    "runRoot":  "D:\\CodexGamesimEvidence\\integration-20261004\\wave-d-vote-source-04",
+    "expectedCases":  56,
+    "requiredIndependentRuns":  2,
+    "procedureReferencePolicy":  "Generator manifest retains the original3 immutable procedures; retained v2/v3 and actual v4 launcher are separately bound here.",
+    "node":  {
+                 "path":  "C:\\Program Files\\nodejs\\node.exe",
+                 "sha256":  "995a3fb3cefad590cd3f4b321532a4b9582fb9c6575320ed2e3e894caac3e362",
+                 "bytes":  85268464
+             },
+    "deadlineSecondsPerNodeProcess":  180,
+    "limitation":  [
+                       "Two fresh headless Node processes execute the same actual imported original source owners.",
+                       "Source-system stored-deal boundary fixtures, not full public web seasons or creation RNG.",
+                       "Relationship/interaction outputs are effect requests, not copied relationship arithmetic.",
+                       "Private actual ballots and emitted bus events do not grant player or NPC knowledge.",
+                       "Original targeted vote_save/vote_evict negative settlement controls are not native extension acceptance.",
+                       "Retained14 promise predicate and63 promise-impact goldens are hashed/reused, not regenerated.",
+                       "Owned process sampling is bounded; not a complete OS process trace.",
+                       "Only the exact pinned, validly Microsoft-signed Windows console host is separately observed; it has no stop authority.",
+                       "No Unity/editor/native suites/ordinary saves/desktop build/shipping acceptance."
+                   ],
+    "actualLauncher":  {
+                           "label":  "actual-v4-launcher",
+                           "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\implement-integration-20261004\\run-vote-settlement-fixtures-v4.ps1",
+                           "bytes":  31891,
+                           "sha256":  "dc5a4bf54cc93d8d803d130c6ef7c4af54a757d918f731ca2b307d7b5a33a272"
+                       },
+    "retainedV2Launcher":  {
+                               "label":  "retained-v2-launcher",
+                               "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\implement-integration-20261004\\run-vote-settlement-fixtures-v2.ps1",
+                               "bytes":  25458,
+                               "sha256":  "dd7e0e36553431c31b99f46027187393f88636ccb4947d37e465cd626a319cf4"
+                           },
+    "retainedV3Launcher":  {
+                               "label":  "retained-v3-launcher",
+                               "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\implement-integration-20261004\\run-vote-settlement-fixtures-v3.ps1",
+                               "bytes":  31234,
+                               "sha256":  "768023d081a7f3423043ca0df2f32fe3a8a4ca9d72621f2783fbad79178eb291"
+                           },
+    "consoleHost":  {
+                        "label":  "console-host-tool",
+                        "path":  "C:\\Windows\\System32\\conhost.exe",
+                        "bytes":  1003520,
+                        "sha256":  "c86146188b78e484f32cc29e2331689659943b47689a85570342044f499938ac",
+                        "signatureStatus":  "Valid",
+                        "signatureSubject":  "CN=Microsoft Windows, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"
+                    },
+    "before":  {
+                   "label":  "inputs-before",
+                   "path":  "D:\\CodexGamesimEvidence\\integration-20261004\\wave-d-vote-source-04\\inputs-before.json",
+                   "bytes":  9566,
+                   "sha256":  "b417352cd3fdbd00df8ea04a3a2ae063301bc5e620d1b4841239641a2070d256"
+               },
+    "after":  {
+                  "label":  "inputs-after",
+                  "path":  "D:\\CodexGamesimEvidence\\integration-20261004\\wave-d-vote-source-04\\inputs-after.json",
+                  "bytes":  9566,
+                  "sha256":  "b417352cd3fdbd00df8ea04a3a2ae063301bc5e620d1b4841239641a2070d256"
+              },
+    "twiceByteEqual":  true,
+    "sourceInputsUnchanged":  true,
+    "actualCasesPerRun":  56,
+    "runs":  [
+                 {
+                     "slot":  "oracle-a",
+                     "completed":  true,
+                     "timedOut":  false,
+                     "exitCode":  0,
+                     "seconds":  1.1948693,
+                     "nativeHandleCaptured":  true,
+                     "pid":  20476,
+                     "startTicks":  639268587226464887,
+                     "fixture":  {
+                                     "label":  "fixture",
+                                     "path":  "D:\\CodexGamesimEvidence\\integration-20261004\\wave-d-vote-source-04\\oracle-a\\vote-settlement-fixtures.json",
+                                     "bytes":  824319,
+                                     "sha256":  "9795ad5d415fdcf503a490087faf7e1a63abc53c2cf88dc21f5e7d648d9e901f"
+                                 },
+                     "manifest":  {
+                                      "label":  "manifest",
+                                      "path":  "D:\\CodexGamesimEvidence\\integration-20261004\\wave-d-vote-source-04\\oracle-a\\source-manifest.json",
+                                      "bytes":  6459,
+                                      "sha256":  "5d061fbc5863a078551d8e9e90e1a84d5f71e298e0ae8d584956acf0bec028c0"
+                                  },
+                     "sourceClosureSha256":  "9887247435621defc04309be74ebd7916f7607c3e2db068f3e9ef20b696ddfdb",
+                     "stdout":  {
+                                    "label":  "stdout",
+                                    "path":  "D:\\CodexGamesimEvidence\\integration-20261004\\wave-d-vote-source-04\\oracle-a-stdout.log",
+                                    "bytes":  358,
+                                    "sha256":  "4624b976fda156b0e2795f611a74d41fa492a6e5ef90b4e8202becb7aa87f979"
+                                },
+                     "stderr":  {
+                                    "label":  "stderr",
+                                    "path":  "D:\\CodexGamesimEvidence\\integration-20261004\\wave-d-vote-source-04\\oracle-a-stderr.log",
+                                    "bytes":  0,
+                                    "sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                                }
+                 },
+                 {
+                     "slot":  "oracle-b",
+                     "completed":  true,
+                     "timedOut":  false,
+                     "exitCode":  0,
+                     "seconds":  1.0942212999999998,
+                     "nativeHandleCaptured":  true,
+                     "pid":  15644,
+                     "startTicks":  639268587238594130,
+                     "fixture":  {
+                                     "label":  "fixture",
+                                     "path":  "D:\\CodexGamesimEvidence\\integration-20261004\\wave-d-vote-source-04\\oracle-b\\vote-settlement-fixtures.json",
+                                     "bytes":  824319,
+                                     "sha256":  "9795ad5d415fdcf503a490087faf7e1a63abc53c2cf88dc21f5e7d648d9e901f"
+                                 },
+                     "manifest":  {
+                                      "label":  "manifest",
+                                      "path":  "D:\\CodexGamesimEvidence\\integration-20261004\\wave-d-vote-source-04\\oracle-b\\source-manifest.json",
+                                      "bytes":  6459,
+                                      "sha256":  "5d061fbc5863a078551d8e9e90e1a84d5f71e298e0ae8d584956acf0bec028c0"
+                                  },
+                     "sourceClosureSha256":  "9887247435621defc04309be74ebd7916f7607c3e2db068f3e9ef20b696ddfdb",
+                     "stdout":  {
+                                    "label":  "stdout",
+                                    "path":  "D:\\CodexGamesimEvidence\\integration-20261004\\wave-d-vote-source-04\\oracle-b-stdout.log",
+                                    "bytes":  358,
+                                    "sha256":  "4624b976fda156b0e2795f611a74d41fa492a6e5ef90b4e8202becb7aa87f979"
+                                },
+                     "stderr":  {
+                                    "label":  "stderr",
+                                    "path":  "D:\\CodexGamesimEvidence\\integration-20261004\\wave-d-vote-source-04\\oracle-b-stderr.log",
+                                    "bytes":  0,
+                                    "sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                                }
+                 }
+             ],
+    "ownedProcesses":  [
+                           {
+                               "role":  "node",
+                               "pid":  20476,
+                               "path":  "C:\\Program Files\\nodejs\\node.exe",
+                               "startTicks":  639268587226464887
+                           },
+                           {
+                               "role":  "node",
+                               "pid":  15644,
+                               "path":  "C:\\Program Files\\nodejs\\node.exe",
+                               "startTicks":  639268587238594130
+                           }
+                       ],
+    "consoleObservers":  [
+                             {
+                                 "role":  "console-host-observer",
+                                 "pid":  31284,
+                                 "path":  "C:\\Windows\\System32\\conhost.exe",
+                                 "startTicks":  639268587226545548,
+                                 "sha256":  "c86146188b78e484f32cc29e2331689659943b47689a85570342044f499938ac",
+                                 "bytes":  1003520,
+                                 "signatureStatus":  "Valid",
+                                 "signatureSubject":  "CN=Microsoft Windows, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+                                 "parentPid":  20476,
+                                 "parentStartTicks":  639268587226464887,
+                                 "parentClosed":  true,
+                                 "closed":  true,
+                                 "closureWaitAttempted":  false,
+                                 "closureWaitBoundMilliseconds":  1000,
+                                 "closureError":  null
+                             },
+                             {
+                                 "role":  "console-host-observer",
+                                 "pid":  24220,
+                                 "path":  "C:\\Windows\\System32\\conhost.exe",
+                                 "startTicks":  639268587238664883,
+                                 "sha256":  "c86146188b78e484f32cc29e2331689659943b47689a85570342044f499938ac",
+                                 "bytes":  1003520,
+                                 "signatureStatus":  "Valid",
+                                 "signatureSubject":  "CN=Microsoft Windows, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+                                 "parentPid":  15644,
+                                 "parentStartTicks":  639268587238594130,
+                                 "parentClosed":  true,
+                                 "closed":  true,
+                                 "closureWaitAttempted":  false,
+                                 "closureWaitBoundMilliseconds":  1000,
+                                 "closureError":  null
+                             }
+                         ]
+}

@@ -1,5 +1,22 @@
 # Integrated Unity port — implementation and acceptance record
 
+## VoteTogether local/source increment authored,2026-10-06 UTC
+
+See WAVE_D_VOTE_TOGETHER_IMPLEMENTATION.md for every new leaf/test/package and
+Tools/doc change. Pure122 plus original-source consumer86 actually execute/pass
+208; pure16 passes3550/0failed,13Explicit reports notexecuted. Local predicate is
+inactive and has no effects or saved
+authority. Source04 raw witnesses are portable byte-exact, not native acceptance.
+Final bounded-reader/static/fullartifact reviews clear; fresh compiler16 passes8,
+all997C# once,1005source+2Tools exactbefore17/after17/after18 equality.
+Legacyreplay02 closes10groups/55seasons/5956attempts404.393s; unchangedv2
+freshcomparison03 matchesBOTH retained baselines. Final independent legacy/
+comparison artifact audit CLEAR, all1499 bound physical inputs/ten closed receipts
+and exact55/5956 aggregate/both baselines match. Actualmanagedrunsbind3b95+authoredimage,notfuturepin.
+Authored floors5383/999/77/3550;
+futurecombined5394/1003 retains QA11/4. No live or integration promotion,
+public2, Vote archive, schema, legacy-rule, asset or desktop acceptance change.
+
 ## Inert schema26 boundary,2026-10-06 UTC
 
 See WAVE_D_INERT26_IMPLEMENTATION.md for EVERY material production/test/plumbing/

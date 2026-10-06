@@ -1,5 +1,17 @@
 # Gamesim Unity port
 
+**VoteTogether local/source increment authored,2026-10-06 UTC:** inactive bounded
+leaf122 and portable original-source consumer86 actual208pass; pure3550/0failed,
+13Explicit reports notexecuted. Compiler16 passes8/all997C# once;1005source+2Tools
+exactbefore17/after17/after18 equal. D16/208fullartifactauditclear; legacyreplay02
+closes55/5956, unchangedv2 freshcomparison03 matchesBOTH retained baselines.
+Final independent legacy/comparison artifact audit CLEAR:1499 physical inputs,
+ten closed receipts,55/5956 aggregate and both baselines match; zero drift.
+Every material change is recorded in WAVE_D_VOTE_TOGETHER_IMPLEMENTATION.md.
+Final bounded-reader static review clear. Floors5383/999/77/3550; futurecombined
+5394/1003 retains QA11/4. No public2, Vote archive, schema or legacy-rule change;
+live/integration and native/build/1080p60/visual/human acceptance remain open.
+
 **Inert26 source boundary,2026-10-06 UTC:** strict fixed25 acceptance before a
 detached additive migration; no Vote authority, ballots, knowledge or legacy-rule
 activation. Independent source/107newcase/166compatibility/plumbing reviews CLEAR.

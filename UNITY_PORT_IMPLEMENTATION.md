@@ -1,5 +1,30 @@
 # Integrated Unity port — implementation and acceptance record
 
+## Combined public Safety / inert26 candidate, 2026-10-06 UTC
+
+The current local merge combines integration6e66a82923ce8c03258df74f8b1dc63febc4a806
+with isolated3b95d1728d2dcaa545dbbdc45d6251ee8253806c. Only the two progress
+documents and Tools/baseline.txt had content conflicts; both evidence histories
+remain below. All eight integration-only QA/apparatus/isolation inputs and their
+additional11Edit/4Play cases are retained. Combined authored floors are
+5186Edit/1003Play/77UMA/3428pure, NOT newly executed passes. Public canonical
+Safety, exact former25 contract/corpus, portable witnesses and the strict inert
+schema26 boundary are now combined source. Vote mode2/nonempty archives remain
+refused. New pure VoteTogether work is separate and is not part of this merge.
+
+Fresh combined pure01 passes3428,0failed;13Explicit reports notexecuted.
+Sequential before04/compiler02/after04 passes8fresh assemblies with exact
+1004source+2Tools equality; final independent compiler02 audit CLEAR. Before03
+was midcompiler01, retained with that qualification. Actual runs bind6e66 plus
+the staged merge, not a future commit. Independent union/GUID/package/all8QA
+review clear. Complete same-pin NoUMA/UMA suites and native public
+Safety/storage/UI transactions remain required. Prior6e66 native
+g25n2 and isolated compiler15/managed diagnostics are not retagged as this image.
+See WAVE_D_COMBINED_INERT26_REVIEW.md. Liveb25/schema21 edits, fonts, settings,
+scenes, recoveries, saves, builds and snapshots remain untouched. No desktop,
+actual1080p60, visual/accessibility, human acceptance or live promotion is claimed.
+All required D1-D4, broaderE2, real coherent assets and final acceptance stay open.
+
 ## 2026-10-06 UTC - reviewed combined saved-state checkpoint
 
 Local merge parents e53c348f95eeb422e89d28a547f3a911416a97a4 and
@@ -33,6 +58,141 @@ remain refused. Live edits/recovery/scenes/saves/builds/snapshots remain protect
 All4D systems, broaderE2, realassets, same-pinUMA/shipping1080p60GTX1060,
 visual/accessibility and0of3human acceptance remain open. Older sections below
 retain historical state rather than proving current completion or process status.
+
+## Inert schema26 boundary,2026-10-06 UTC
+
+See WAVE_D_INERT26_IMPLEMENTATION.md for EVERY material production/test/plumbing/
+Tools/doc change. Strict original fixed25 validity precedes detached null/null/
+empty additions only. Current mode0/1 accepts no Vote archive; future2 refused.
+Fresh playable commitment/story rules start immediately, old-save rules unchanged.
+Independent source/fixtures/plumbing/helpers CLEAR; fresh15 all994C#/8assemblies
+compile with exact1002source+2Tools before/after equality. Pure15passes3428regular,
+13explicitreports notexecuted; managed107/166pass,0failed,107fullartifact auditCLEAR.
+Original portable34pass/fullartifact auditCLEAR; originallegacy01 retainedFAILED
+180stimeout/45of55seasons (partialtuplesmatch). Separate sharded01 closes all10
+workers/55seasons/5956attempts, independentphysicalauditCLEAR. Reviewed comparator-v2
+fresh02 matches BOTH retained baselines; failedcomparison01's variable collision
+and originalprocedures are preserved, no checks waived or evidence retagged;
+authored floors5175/999/77/3428, combined5186/1003 retainsQA11/4. No live/
+integration promotion or native/build/actual1080p60/visual/human acceptance.
+
+## Portable former25 historical replay,2026-10-06 UTC
+
+See `WAVE_D_FROZEN25_PORTABLE_IMPLEMENTATION.md` for EVERY material file/test/floor,
+retained timeout, scoped repair and bound evidence. Actual02 raw JSON/provenance
+is packaged without reserialization:775 original files,1555inside+rootmeta and
+779uniqueGUIDs; fixed relative index28c7ff14...fee8d0. Fresh14 passes8assemblies,
+34 JSON-only historical cases and166 unchanged current-engine cases,0failed.
+Source999+2Tools before14/after14 exactlymatch. Independent finalartifact audits
+03/04 CLEAR; localcheckpoint pending. This is managed history/compatibility evidence, not new pure/native/
+standalone/shipping performance/visual/human acceptance. Schema25/production/rules/
+saved authorities/IDs/RNG/knowledge/live/integration remain unchanged. Next audited
+pin theninert additive25-to26; futureunified2 staysrefused. Floors5068/999/77/3399;
+futurecombined5079/1003 retainsQA11/4. All D1 families/D2-D4 and release gates remain.
+
+## 2026-10-06 UTC - actual former25 corpus captured, final02 closure
+
+Existing166-case fixture adds a private null-default detached test observer,
+literal25/fixedshape guards before semantic refusals and actual command-coordinate
+hash receipts. Production/metas/Tools/floors unchanged. Fresh compiler11 checks
+all990C# once/8assemblies. Observer-null managed03 passes166/166, no native/corpus.
+Reviewed task-local capture02 passes166/166/0fail,no timeout34.4823517s: twelve
+openings, three complete67-boundary/66-command Finished sequences,436aliases
+(366accepted/70semantic-refused),304distinct payloads/469packetfiles and706command
+records. Metadata classifier defect in01 preserved and narrowly fixed;02 raw773
+files are byte-equal to01, but its final metadata is a fresh corrected export.
+Binding984401d1cd2081bd2d0c3152f6689969acf332aa02b3a165103427ee40046501;
+manifest96e1fd4e26d82d3ceac0945df99a56b5396f8492774e98e5b36851ca39f94b38.
+Before12/after12 exactly match compiler11's998source+2Tools image at8016+single
+dirty fixture. Reused unchanged compiler11 DLLs, not a new compiler12/pure run.
+Full inventory, source limits, corrected metadata and remaining gates are in
+WAVE_D_FROZEN25_CORPUS_IMPLEMENTATION.md. Portable immutable pin/fixed25 replay
+precedes schema26. No migration/activation/live promotion/native/desktop/perf/
+visual/human acceptance. Older integration6e66 native76183 naturallyCLOSED0,
+Edit4794/4794 andPlay995/995,0fail/0skip; independentfinalsource/process/5424artifact
+auditCLEAR. That olderpin does not execute the new increment; UMA77/pure3314
+were not run by it, and no desktop/visual/1080p60/human acceptance follows.
+
+## 2026-10-06 UTC - final frozen25 image10 diagnostic closure
+
+Scoped stage check found six whitespace-only blank lines in two NEW frozen helper
+files. Removed only those spaces; all other production bytes, fixture and Tools
+unchanged. Fresh compiler10 CLOSED0 builds8 assemblies; independent990source/
+8response/freshdependency/cache/input audits clear. Fresh managed session27821
+CLOSED0:166/166 pass,0fail,21.8610986s,no timeout, no native launch. BindingSHA
+0062cff930c9f8bde4f58bd99cb384a7eb30455c669b731674096d73adc0adea.
+Before10/after10 have equal ordered998source+2Tools and HEADf456, contentSHA
+8cd312790e2fc624ff3ad3b8247a613507f8b096acd5d4209348acdf114bcdbe. Evidence
+JSON file hashes differ only in PowerShell5/7 indentation; not byte-equal files.
+Final30production-file digest9893a545093c76e23e91d8e948e2b6dc8abd4b7157b975bb15d95a67c2e4670d.
+Pure09 remains its original3399-case evidence; no new10 pure run is claimed.
+Historical25 corpus and all native/build/visual/performance/human gates stay open.
+
+## 2026-10-06 UTC - exact former25 snapshot, corrected09 diagnostics closed
+
+NEW unused FrozenEpisodeV25 contract, literal72DTO/540fields/five enums and local
+complete publicSafety/storage/knowledge/finale closure pinned tof456. No growing
+model/validator, stripping/backfill/writer/migration dispatcher or rule activation.
+Fifteen production C#+metas and one166-case fixture+meta; Editfloor4868→5034,
+Play999/UMA77/pure3399 unchanged. Exact material inventory is in
+WAVE_D_SAFETY_FROZEN25_IMPLEMENTATION.md; future combined5045/1003 retains QA11/4.
+
+First compiler08 CLOSED1, fixed data carrier lacked source IsStory getter; no
+new test executed and onlySimulation compiled. Failure/preimage/output retained,
+byte-verified original-data reconstruction transparently labeled. Only NEW data
+getter/comment changed;29 production siblings unchanged. Corrected09 CLOSED0
+8fresh assemblies/3399regular pure(80publicincluded)/166actual focused Mono,
+0failed/no timeout.13older Explicit remain NotExecuted. All998source(990C#+8asmdef)
+and2Tools before09/after09 identicalSHA
+d47e714e815ec61112739adc0855a9b282a6f9764af6ea378a1aaff3862f3119.
+Independent exactDTO/enum/validator/helper/metadata/fixture and compiler response/
+freshDLL/cache/source drift audits are clear. Managed bindingSHA
+44a1597b73c85b046f8a64634dc3cd9f8beb8848f51d19e4e4edd815318f4866.
+
+This is current25 in-memory diagnostic evidence, NOT native save/migration/full
+suite/desktop/performance/visual/human acceptance. Before schema26, pin actual25
+opening/checkpoint/full-season JSON; current regenerated witnesses and later
+unsupported-header refusals cannot define historical acceptance. Corpus capture
+has not run. Separate nativeg25n2 atintegration6e66 remains LIVE; liveb25 edits,
+recovery/scenes/saves/builds/snapshots retained, no promotion or remote mutation.
+AllD1-D4/widerE2/art and final owner-required acceptance gates remain open.
+
+## 2026-10-06 UTC - public Safety exact-image07 diagnostics closed
+
+Eightfresh assemblies/3399regular pure/1306focused managed/12historical migration
+cases naturally closed0. All80 new actual public-command cases passed;13older
+Explicit reports remain NotExecuted.974C#+8asmdef+2Tools before07/after07 match
+SHA256ddd1b01ee59d965416a3b06b341238111640d8836562112f6d7e6929f6c1b705.
+Independent full source/DLL/procedure/log/output and seven-production-diff/native
+fixture review is clear. Replay07 closed0 at55unique/5956attempts. Formal08
+comparison against both retained24 bindings closed0, status
+PassedManagedLegacyReplayOnly,SHA2560619a72ce924f490b63a41ae1cdfc5538a31393960154bb91d0dce2145e16e4a.
+Comparison07 failed only in its PowerShell5.1 multiline argument launcher and
+produced noJSON; original helper retained, scoped v2 syntax repair independently
+reviewed. No assertion/input/legacy outcome changed to obtain the comparison.
+Exact artifacts, authored tests and source changes are in
+WAVE_D_SAFETY_PUBLIC_IMPLEMENTATION.md. New nativePlay8 and evolved Save25 have
+not executed on this enabled image. No integrated/live/save/runtime/build/1080p60/
+visual/human/fullplan acceptance is inferred. Currentintegration6e66/g25n2 remains
+separately frozen and active; reviewed commit, deliberate merge, exact native
+NoUMA+UMA, desktop and final owner-required gates still follow.
+
+## 2026-10-06 UTC - historical pre07 public Safety authoring checkpoint
+
+This original authoring-only status is superseded by the closed exact-image07
+diagnostic record above; native runtime and shipping acceptance remain separate.
+
+Public canonical1 now requires currentC0+activeStory/Bonds and selects the exact
+shared complete saved-state core; legacy0 remains disabled/empty, unknown versions
+and off/scheduled prerequisite authorities refuse. The internal prospective seam
+keeps lawful historical creation and pre-activation diagnostics. Persistence uses
+the complete public validator before unchanged storage bounds; no raw mirrors or
+weakened checksum/shape/migration ordering. Only actual freshStartSeason sets1/1
+after existing Story/C0 initialization and before firstSave/install. Factories,
+import/load/migration/recovery are unchanged. Enabled public/native transaction
+tests and independent review were in progress; no check had run at that checkpoint.
+No live or integration promotion, save/scene/build/recovery/remote mutation.
+
 
 ## 2026-10-06 UTC - repaired saved-Safety checkpoint06 closed
 

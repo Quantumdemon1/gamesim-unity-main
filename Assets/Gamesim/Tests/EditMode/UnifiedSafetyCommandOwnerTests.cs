@@ -9,7 +9,7 @@ namespace Gamesim.Tests.EditMode
 {
     /// <summary>
     /// Invokes actual command-owned routines on prospective snapshots. These are not accepted
-    /// public commands: the production engine/save validators deliberately still reject rules1.
+    /// public commands: these isolated fixtures omit active story authority and complete progression.
     /// </summary>
     public sealed class UnifiedSafetyCommandOwnerTests
     {
@@ -23,7 +23,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(s.unifiedCommitments[0].id, Is.EqualTo(id));
             Assert.That(s.unifiedCommitments[0].origin, Is.EqualTo(origin));
             Assert.That(s.unifiedCommitments[0].expiresWeek, Is.EqualTo(s.week + 1));
-            Assert.That(EpisodeValidation.TryValidate(s, out _), Is.False);
+            Assert.That(EpisodeEngine.StoryOn(s), Is.False);
+            Assert.That(EpisodeValidation.TryValidate(s, out string publicError), Is.False);
+            Assert.That(publicError, Does.Contain("active commitment and story knowledge rules"));
         }
 
         [TestCase(UnifiedCommitments.PlayerPromise)] [TestCase(UnifiedCommitments.HoHPitch)]

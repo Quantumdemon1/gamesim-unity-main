@@ -372,6 +372,17 @@ namespace Gamesim.Tests.EditMode
         private static void Checkpoint(EpisodeState s, StringBuilder trace)
         {
             var o = JObject.FromObject(s);
+            // Only the literal inert26 archive is removable. This file must also compile
+            // against old recorded assemblies, so inspect JSON rather than growing DTO fields.
+            bool hasVoteArchive = o.TryGetValue("unifiedVoteReveals", out var voteArchive);
+            if (o["schemaVersion"].Value<int>() >= 26 || hasVoteArchive)
+            {
+                Assert.That(o["schemaVersion"].Value<int>(), Is.EqualTo(26), "Do not project an unknown future schema.");
+                Assert.That(hasVoteArchive, Is.True);
+                Assert.That(voteArchive, Is.InstanceOf<JArray>());
+                Assert.That(((JArray)voteArchive).Count, Is.Zero, "Never erase actual ballots in legacy parity.");
+                o.Remove("unifiedVoteReveals");
+            }
             // Keep this harness compilable against the recorded pre-schema-23 assembly too.
             foreach (var field in new[] { "economyRulesVersion", "moveInExtrasSpent" })
             {

@@ -287,6 +287,11 @@ namespace Gamesim.Episode
                 // The commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN R0, C0): study costs the window's
                 // action, a whisper reaches who it is told to, a breach counts against whoever broke it.
                 EpisodeEngine.EnableCommitments(fresh);
+                // Fresh playable seasons use canonical Safety and durable hearing authority from
+                // the start, with C0 and story knowledge already active. Do not infer this opt-in
+                // while loading, recovering, migrating or importing an existing legacy season.
+                fresh.unifiedCommitmentRulesVersion = UnifiedCommitments.ProspectiveVersion;
+                fresh.unifiedHearingRulesVersion = UnifiedCommitmentHearings.ProspectiveVersion;
                 CharacterAppearanceSnapshots.Materialize(fresh);
                 fresh.sessionId = Guid.NewGuid().ToString("N");
                 nextStore.Save(fresh); // Stage and validate on disk before replacing the current in-memory session.

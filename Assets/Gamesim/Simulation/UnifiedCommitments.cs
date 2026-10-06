@@ -6,9 +6,9 @@ using System.Linq;
 namespace Gamesim.Simulation
 {
     /// <summary>
-    /// Prospective canonical record for every commitment family. Only safety has a policy here so
-    /// far. Schema 24 keeps this list empty and its version disabled: this is NOT engine authority
-    /// until every safety writer, reader, save transaction and effect owner has been integrated.
+    /// Canonical record for commitment families. Only Safety has a policy here so far. Enabled
+    /// schema25 seasons use it as Safety authority; legacy seasons keep this list disabled/empty.
+    /// Other families continue under their existing versioned owners until separately integrated.
     /// </summary>
     [Serializable]
     public sealed class UnifiedCommitmentState
@@ -19,6 +19,8 @@ namespace Gamesim.Simulation
         public string status;
         public int settledWeek;
         public string brokenById, trustImpact, linkedCommitmentId, settlementEffectKey;
+        // Schema 26 storage only. Safety has neither a vote target nor a vote subtype.
+        public string targetId, subtype;
 
         // All members are scalars or immutable strings. Deep-copy any collections added in a later family.
         public UnifiedCommitmentState Clone() => (UnifiedCommitmentState)MemberwiseClone();
@@ -64,9 +66,9 @@ namespace Gamesim.Simulation
     public enum UnifiedCommitmentExpiry { PromiseWeekTurn, DealPass, Departure, Expulsion }
 
     /// <summary>
-    /// Pure, prospective safety policy, NOT an activated production writer/settler. Every returned
-    /// row is detached. No helper changes state, rolls, relationships, memories, facts or commands.
-    /// The ordinary engine and validator do not accept version 1 yet. Other families are refused.
+    /// Pure Safety policy; the engine owns activated writers and settlement transactions. Every
+    /// returned row is detached. No helper changes state, rolls, relationships, memories, facts or
+    /// commands. Public enabled mode requires active C0 and story knowledge. Other families are refused.
     /// </summary>
     public static class UnifiedCommitments
     {
@@ -91,6 +93,7 @@ namespace Gamesim.Simulation
             error = null;
             if (!RulesOn(state)) return Refuse(out error, "Unified commitments are not enabled.");
             if (!IdentityContextValid(state) || row == null || !Token(row.id) || row.kind != Safety
+                || row.targetId != null || row.subtype != null
                 || !Token(row.makerId) || !Token(row.beneficiaryId) || row.makerId == row.beneficiaryId
                 || state.Find(row.makerId) == null || state.Find(row.beneficiaryId) == null)
                 return Refuse(out error, "Invalid canonical safety identity.");

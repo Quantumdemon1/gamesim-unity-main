@@ -21,6 +21,39 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 26) return (JObject)original.DeepClone();
+            if (version < 1 || version > 25) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV25ToV26(version == 25 ? original : PrepareV25Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds only inert Vote storage after the complete fixed public schema25 contract accepts
+        /// the original payload. No authority, audience, ballot, identity or RNG is inferred.
+        /// Existing canonical Safety rows gain literal null extensions; the private archive is empty.
+        /// </summary>
+        public static JObject UpgradeV25ToV26(JObject original)
+        {
+            FrozenEpisodeV25.Validate(original);
+            var result = (JObject)original.DeepClone();
+            foreach (JObject row in (JArray)result["unifiedCommitments"])
+            {
+                row.Add("targetId", JValue.CreateNull());
+                row.Add("subtype", JValue.CreateNull());
+            }
+            result.Add("unifiedVoteReveals", new JArray());
+            result["schemaVersion"] = 26;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v24-to-v25 dispatch; the schema24 step retains exactly its original hearing additions.</summary>
+        public static JObject PrepareV25Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 25) return (JObject)original.DeepClone();
             if (version < 1 || version > 24) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV24ToV25(version == 24 ? original : PrepareV24Payload(original, out _));

@@ -17,12 +17,27 @@ namespace Gamesim.Simulation
         /// </summary>
         public const int MinimumCast = 3, MaximumCast = 16;
 
-        public static bool TryValidate(EpisodeState s, out string error) => TryValidateCore(s, false, out error);
+        public static bool TryValidate(EpisodeState s, out string error)
+        {
+            // Only supported canonical mode selects the enabled complete core. Legacy saves stay
+            // disabled; validation never activates, converts or clears any stored authority.
+            if (s != null && s.unifiedCommitmentRulesVersion == UnifiedCommitments.ProspectiveVersion)
+            {
+                // Real new seasons start C0 and story knowledge together. An enabled save cannot
+                // turn either authority off or schedule it for later and strand settlement owners.
+                // Historical rows may still have been created before either rule's start week.
+                if (!YourWord.On(s))
+                    return Fail(out error, "Unified Safety requires active commitment and story knowledge rules.");
+                return TryValidateCore(s, true, out error);
+            }
+            return TryValidateCore(s, false, out error);
+        }
 
         /// <summary>
-        /// Complete prospective saved-Safety validation for internal verification only. This does
-        /// not activate ordinary engine/save/factory authority, clear fields or install raw mirrors.
-        /// Both entries share the unchanged complete episode invariants below.
+        /// Complete prospective saved-Safety validation for internal historical diagnostics. This
+        /// also accepts data before public enabled-mode prerequisites are active; it does not
+        /// activate authority, clear fields or install raw mirrors. Both entries share the complete
+        /// episode invariants below; public validation additionally requires active C0 and knowledge.
         /// </summary>
         internal static bool TryValidateProspectiveUnifiedSafety(EpisodeState s, out string error) =>
             TryValidateCore(s, true, out error);
@@ -30,7 +45,7 @@ namespace Gamesim.Simulation
         private static bool TryValidateCore(EpisodeState s, bool prospectiveSafety, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 25) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 26) return Fail(out error, "Unsupported episode schema.");
             if (prospectiveSafety)
             {
                 if (s.unifiedCommitmentRulesVersion != UnifiedCommitments.ProspectiveVersion
@@ -45,17 +60,19 @@ namespace Gamesim.Simulation
             }
             else
             {
-                // Schema 24 reserves a canonical commitments store. No real season may activate it
-                // until every writer, settlement path and reader has moved to the same authority.
-                // A save must not opt in to a partially integrated ruleset, nor silently discard rows.
+                // Legacy disabled mode must stay empty. Unknown versions cannot opt in to a
+                // partially integrated ruleset, nor silently discard canonical rows.
                 if (s.unifiedCommitmentRulesVersion != 0 || s.unifiedCommitments == null || s.unifiedCommitments.Count != 0)
                     return Fail(out error, "Unified commitments are not enabled in this build.");
-                // Durable hearing state is versioned independently. Until the complete enabled-save
-                // and native transaction gates close, no importer or hand-edited save may opt in.
+                // Durable hearing state is versioned independently, but requires canonical mode.
                 if (s.unifiedHearingRulesVersion != 0 || s.unifiedHearingEvidence == null || s.unifiedHearingEvidence.Count != 0
                     || s.unifiedHearingReceipts == null || s.unifiedHearingReceipts.Count != 0)
                     return Fail(out error, "Unified hearing coordination is not enabled in this build.");
             }
+            // The schema adds storage only. Neither legacy nor canonical Safety mode owns a Vote
+            // reveal archive yet; do not clear a nonempty or null container into an accepted state.
+            if (s.unifiedVoteReveals == null || s.unifiedVoteReveals.Count != 0)
+                return Fail(out error, "Unified Vote evidence is not enabled in this build.");
             if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > CompetitionRules.Current)
                 return Fail(out error, "Unsupported competition rules version.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||

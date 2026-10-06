@@ -95,7 +95,7 @@ namespace Gamesim.Tests.EditMode
                 case "unknown-root": old["futureAuthority"] = false; break;
                 case "fraction-schema": old["schemaVersion"] = 24.0; break;
                 case "wrong-schema": old["schemaVersion"] = 25; break;
-                case "unsupported-schema": old["schemaVersion"] = 26; break;
+                case "unsupported-schema": old["schemaVersion"] = 27; break;
                 default: Assert.Fail("Unknown defect"); break;
             }
             if (defect == "wrong-schema")
@@ -103,9 +103,10 @@ namespace Gamesim.Tests.EditMode
                 string original = old.ToString(Formatting.None);
                 Assert.Throws<InvalidDataException>(() => Validate(old), "A current header is not a former24 header.");
                 Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.UpgradeV24ToV25(old));
-                // Current dispatch clones, but it does not replace the strict shape/store boundary.
-                // Relabelling a24 tree as25 still lacks all three required hearing fields.
-                var current = EpisodeSaveMigrations.PrepareCurrentPayload(old, out bool migrated);
+                // Preserve the original former25 clone-dispatch witness explicitly. Current26
+                // instead validates fixed25 before migration and refuses this missing-hearing tree.
+                Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(old, out _));
+                var current = EpisodeSaveMigrations.PrepareV25Payload(old, out bool migrated);
                 Assert.That(migrated, Is.False);
                 Assert.That(ReferenceEquals(current, old), Is.False);
                 Assert.That(JToken.DeepEquals(current, old), Is.True);
@@ -114,7 +115,7 @@ namespace Gamesim.Tests.EditMode
                 byte[] bytes = File.ReadAllBytes(files.Store.SavePath);
                 Assert.That(files.Store.TryLoad(out var installed, out string message), Is.False);
                 Assert.That(installed, Is.Null);
-                Assert.That(message, Does.Contain("missing or unknown schema fields").And.Not.Contain("checksum"));
+                Assert.That(message, Does.Contain("missing or unknown").And.Not.Contain("checksum"));
                 Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(bytes));
                 Assert.That(File.Exists(files.Store.BackupPath), Is.False);
                 files.AssertNoPending();

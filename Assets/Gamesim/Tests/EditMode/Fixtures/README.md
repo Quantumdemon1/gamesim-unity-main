@@ -1,5 +1,20 @@
 # Web parity fixtures
 
+## Retained fixed25 contract witnesses (not web parity)
+
+`FrozenV25/` contains the byte-exact actual managed public-command test capture02:
+304 payloads,469 command packets, the original manifest/binding and a pinned
+relative index. The loader never follows absolute provenance paths. These are
+managed TEST witnesses, not old shipping/user saves or Unity runtime evidence.
+Archive-only is explicitly a detached lawful after-pruning projection.
+
+`FrozenEpisodeV25CorpusTests` replays retained JSON using only the fixed25 contract;
+the original166 current-engine tests remain separate. Thirty-four new cases passed
+under managed Mono after a retained incomplete timeout and reviewed exact-byte
+assertion optimization. Full native/build/visual/performance/human gates remain.
+See root `WAVE_D_FROZEN25_PORTABLE_IMPLEMENTATION.md` for exact pins and limitations.
+The nested `.gitattributes` prevents historical JSON byte normalization.
+
 ## Schema 23 migration input (not a web-parity fixture)
 
 `V22MonoOpeningSave.json` is an unchanged 52,534-byte copy of the retained

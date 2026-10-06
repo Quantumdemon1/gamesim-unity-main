@@ -20,7 +20,7 @@ namespace Gamesim.Simulation
 
     /// <summary>
     /// Read-only canonical evidence and grouped breach history. No legacy projection is counted
-    /// as another betrayal. Production still refuses rule 1 pending full integration/validation.
+    /// as another betrayal. Public rule1 requires the complete validated enabled-mode context.
     /// </summary>
     public static class UnifiedCommitmentHistory
     {

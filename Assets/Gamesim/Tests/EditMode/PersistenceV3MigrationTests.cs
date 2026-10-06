@@ -112,7 +112,7 @@ namespace Gamesim.Tests.EditMode
             var before = source.ToString(Formatting.None);
             var current = EpisodeSaveMigrations.PrepareCurrentPayload(source, out var migrated);
             Assert.That(migrated, Is.True);
-            Assert.That((int)current["schemaVersion"], Is.EqualTo(25));
+            Assert.That((int)current["schemaVersion"], Is.EqualTo(26));
             var oldV2 = version == 1 ? EpisodeSaveMigrations.PrepareV2Payload(source, out _) : source;
             Assert.That(current.Properties().Select(p => p.Name).Except(oldV2.Properties().Select(p => p.Name)), Is.EquivalentTo(new[]
             {
@@ -153,11 +153,15 @@ namespace Gamesim.Tests.EditMode
                 // Schema 24: the inactive foundation is never a reconstruction of old promises.
                 "unifiedCommitmentRulesVersion", "unifiedCommitments",
                 // Schema 25: no historical fact audience or hearing effect is reconstructed.
-                "unifiedHearingRulesVersion", "unifiedHearingEvidence", "unifiedHearingReceipts"
+                "unifiedHearingRulesVersion", "unifiedHearingEvidence", "unifiedHearingReceipts",
+                // Schema 26: no actual ballot evidence is inferred from old history.
+                "unifiedVoteReveals"
             }));
             Assert.That((int)current["economyRulesVersion"], Is.Zero);
             Assert.That((int)current["moveInExtrasSpent"], Is.Zero);
             Assert.That((int)current["unifiedCommitmentRulesVersion"], Is.Zero);
+            Assert.That(current["unifiedVoteReveals"], Is.TypeOf<JArray>());
+            Assert.That((JArray)current["unifiedVoteReveals"], Is.Empty);
             Assert.That((JArray)current["unifiedCommitments"], Is.Empty);
             Assert.That(current["unifiedHearingRulesVersion"].Type, Is.EqualTo(JTokenType.Integer));
             Assert.That((int)current["unifiedHearingRulesVersion"], Is.Zero);
@@ -193,8 +197,8 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, PersistenceMigrationTests.Envelope(source), new UTF8Encoding(false));
             var originalBytes = File.ReadAllBytes(fixture.Store.SavePath);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(25));
-            Assert.That(message, Does.Contain("Schema 2").And.Contain("schema 25 in memory"));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(26));
+            Assert.That(message, Does.Contain("Schema 2").And.Contain("schema 26 in memory"));
             Assert.That(loaded.randomState, Is.Zero);
             Assert.That(loaded.relationships[0].events[0].description, Is.EqualTo("Pinned directed history"));
             Assert.That(loaded.relationshipArcs[0].weeklyHistory[0].reason, Is.EqualTo("Pinned arc history"));
@@ -203,7 +207,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Directory.GetFiles(fixture.DirectoryPath), Has.Length.EqualTo(1));
             fixture.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(originalBytes));
-            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(25));
+            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(26));
             Assert.That(fixture.Store.TryLoad(out _, out message), Is.True, message);
             Assert.That(message, Does.Not.Contain("migrated"));
         }
@@ -216,11 +220,11 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, "broken primary");
             var original = File.ReadAllBytes(fixture.Store.BackupPath);
             Assert.That(fixture.Store.TryRecoverBackup(out var state, out var message), Is.True, message);
-            Assert.That(state.schemaVersion, Is.EqualTo(25));
+            Assert.That(state.schemaVersion, Is.EqualTo(26));
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(original));
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(original));
             Assert.That(File.ReadAllText(Directory.GetFiles(fixture.DirectoryPath, "*.before-recovery-*.json").Single()), Is.EqualTo("broken primary"));
-            Assert.That(message, Does.Contain("Schema 2").And.Contain("schema 25 in memory"));
+            Assert.That(message, Does.Contain("Schema 2").And.Contain("schema 26 in memory"));
         }
 
         [TestCase(false)]

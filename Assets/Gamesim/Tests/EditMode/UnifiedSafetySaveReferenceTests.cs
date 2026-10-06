@@ -461,12 +461,15 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void ThisProspectiveLeafDoesNotEnablePublicValidationOrTheProductionEngine()
+        public void AValidReferenceLeafDoesNotMakeAStoryOffDiagnosticPubliclyPlayable()
         {
             var s = Written(UnifiedCommitments.PlayerPromise); AcceptedUnchanged(s);
+            Assert.That(UnifiedCommitments.RulesOn(s), Is.True);
+            Assert.That(EpisodeEngine.CommitmentRulesOn(s), Is.True);
+            Assert.That(EpisodeEngine.StoryOn(s), Is.False);
             string before = Json(s);
             Assert.That(EpisodeValidation.TryValidate(s, out string reason), Is.False);
-            Assert.That(reason, Does.Contain("not enabled"));
+            Assert.That(reason, Does.Contain("active commitment and story knowledge rules"));
             Assert.Throws<ArgumentException>(() => new EpisodeEngine(s)); Assert.That(Json(s), Is.EqualTo(before));
         }
 

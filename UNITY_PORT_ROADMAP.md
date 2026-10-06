@@ -7,7 +7,10 @@ floors4794Edit/995Play/77UMA/3314pure. Managed06 evidence belongs to the separat
 reviewed WaveC image; this new combined source requires fresh compilation/pure
 and native NoUMA/UMA execution. Public unified/hearing1 remains refused. No
 shipping/1080p60/visual/human/live promotion is accepted. Older dated blocks below
-retain historical statuses and do not claim the new candidate passed.
+retain historical statuses and do not claim the new candidate passed. Owner
+selected fresh seasons with commitment/story rules active from the start; legacy
+saves keep their rules. Public activation still requires supported transaction
+tests and is not enabled by this checkpoint.
 
 **Current combined hearing checkpoint, 2026-10-05 UTC:** this local merge combines
 integration714 with reviewed isolated29dad8fee6, retaining all eight integration

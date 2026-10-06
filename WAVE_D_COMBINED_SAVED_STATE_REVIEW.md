@@ -41,8 +41,13 @@ reviewed exact merge pin. Keep combined source/Tools/controllers/cache frozen un
 whole closure/audit. Same-pin UMA and separate desktop build follow; no native
 pass is inferred from compilation or managed results.
 
-Public command/save/hearing activation remains refused pending actual supported
-transaction tests and an explicit pre-C0 support contract. RemainingD1families,
+Owner selected fresh playable seasons with commitment and story rules active from
+the start; older saves retain their legacy rules. Public command/save/hearing
+activation remains refused pending actual supported transaction tests. The next
+increment must activate only the genuine fresh StartSeason path, not factories,
+imports, migration, load or recovery. Preserve lawful historical pre-C0 creation;
+the public enabled-mode prerequisite is active rules, not a global creation ban.
+RemainingD1families,
 requiredD2-D4,widerE2,coherent real assets/reactions/audio/input,actualGTX1060
 1920x1080at60FPS,shipping visual/accessibility/0of3human and preserved live
 promotion remain the full objective. No live scene/save/build/recovery or remote,

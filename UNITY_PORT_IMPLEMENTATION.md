@@ -12,7 +12,9 @@ Separate Wave06 diagnostics are passing, not combined/native/public acceptance.
 Fresh exact combined-source compiler/pure and whole NoUMA/UMA/native disk tests
 remain required. See WAVE_D_COMBINED_SAVED_STATE_REVIEW.md. Earlier dated records
 remain historical; fullD1-D4/E2/assets/build/1080p60/visual/accessibility/0of3human
-and preserved local promotion remain open.
+and preserved local promotion remain open. Owner selected fresh seasons with
+commitment/story rules active from the start; legacy saves retain their rules.
+This selects the next support contract, not current enabled-mode acceptance.
 
 ## 2026-10-05 UTC - reviewed combined outcome/story/hearing checkpoint
 

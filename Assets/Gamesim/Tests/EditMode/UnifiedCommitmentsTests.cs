@@ -9,7 +9,7 @@ using NUnit.Framework;
 
 namespace Gamesim.Tests.EditMode
 {
-    /// <summary>Prospective pure policy only. Version 1 snapshots are deliberately NOT engine-valid yet.</summary>
+    /// <summary>Pure policy diagnostics; a valid row is not proof of complete public active-rule authority.</summary>
     public sealed class UnifiedCommitmentsTests
     {
         [Test]
@@ -60,13 +60,14 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void CurrentFactoriesStayDisabledAndFullValidationRefusesTheProspectiveVersion()
+        public void RawFactoriesStayDisabledAndAStoryOffPolicyDiagnosticIsNotPubliclyPlayable()
         {
             var fresh = ContentCatalog.Create(17);
             Assert.That(fresh.unifiedCommitmentRulesVersion, Is.Zero); Assert.That(fresh.unifiedCommitments, Is.Empty);
             var state = State();
-            Assert.That(EpisodeValidation.TryValidate(state, out string error), Is.False, "Pure tests do not authorize production opt-in.");
-            Assert.That(error, Does.Contain("Unified commitments are not enabled"));
+            Assert.That(EpisodeEngine.StoryOn(state), Is.False);
+            Assert.That(EpisodeValidation.TryValidate(state, out string error), Is.False, "The row policy fixture has no active story authority.");
+            Assert.That(error, Does.Contain("active commitment and story knowledge rules"));
             state.unifiedCommitmentRulesVersion = 0;
             Assert.That(UnifiedCommitments.ValidateRecords(state, out _), Is.True);
             state.unifiedCommitments.Add(Row(state, "forged"));

@@ -12,10 +12,10 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// Real native SaveStore refusal/preservation, NOT enabled-save acceptance. The good copies
-    /// progress through public commands with canonical/hearing rules off. Prospective records use
-    /// actual internal source owners in detached copies; their staged nomination is not evidence
-    /// that the public engine accepts rule 1 or that a complete enabled-state validator accepts it.
+    /// Native SaveStore classification and preservation. Good legacy copies progress through public
+    /// commands with canonical/hearing rules off. Complete active source-owner snapshots can round
+    /// trip, while disabled-record corruption and explicit hearing/settlement corruption remain refused.
+    /// Internal source owners are not evidence of a publicly played enabled command or HoH win.
     /// Every filesystem target is a guarded private slot. No retained fixture is changed.
     /// </summary>
     public sealed class UnifiedSafetySaveRefusalTests
@@ -23,13 +23,13 @@ namespace Gamesim.Tests.EditMode
         [TestCase("empty-one")]
         [TestCase("promise")]
         [TestCase("deal")]
-        [TestCase("hearing")]
-        [TestCase("broken-promise")]
+        [TestCase("hearing-missing-initial")]
+        [TestCase("broken-promise-attribution")]
         [TestCase("disabled-promise")]
         [TestCase("disabled-deal")]
         [TestCase("disabled-evidence")]
         [TestCase("disabled-receipt")]
-        public void ProspectiveCandidateSaveRefusalsPreserveBothCommandProgressedCopies(string sample)
+        public void CandidateSaveAcceptsCompleteSourcesAndPreservesCopiesWhenRefused(string sample)
         {
             using var files = new Files();
             var good = SeedTwoCopies(files);
@@ -37,6 +37,19 @@ namespace Gamesim.Tests.EditMode
             var candidate = Prospective(good, sample);
             string unchangedCandidate = Json(candidate);
             var retained = files.Image();
+
+            if (SupportedSourceSnapshot(sample))
+            {
+                byte[] previous = File.ReadAllBytes(files.Store.SavePath);
+                files.Store.Save(candidate);
+                Assert.That(File.ReadAllBytes(files.Store.BackupPath), Is.EqualTo(previous));
+                Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
+                EquivalentSupported(candidate, loaded);
+                Assert.That(Json(candidate), Is.EqualTo(unchangedCandidate));
+                Assert.That(Json(good), Is.EqualTo(unchangedGood));
+                Assert.That(Directory.GetFiles(files.Root, "*.pending-*"), Is.Empty);
+                return;
+            }
 
             for (int attempt = 0; attempt < 2; attempt++)
             {
@@ -56,13 +69,13 @@ namespace Gamesim.Tests.EditMode
         [TestCase("empty-one")]
         [TestCase("promise")]
         [TestCase("deal")]
-        [TestCase("hearing")]
-        [TestCase("broken-promise")]
+        [TestCase("hearing-missing-initial")]
+        [TestCase("broken-promise-attribution")]
         [TestCase("disabled-promise")]
         [TestCase("disabled-deal")]
         [TestCase("disabled-evidence")]
         [TestCase("disabled-receipt")]
-        public void ChecksummedProspectivePrimaryIsNotReturnedOrSilentlyReplacedByTheGoodBackup(string sample)
+        public void ChecksummedPrimaryHonorsSupportedRulesWithoutRepairingInvalidSources(string sample)
         {
             using var files = new Files();
             var good = SeedTwoCopies(files);
@@ -71,6 +84,18 @@ namespace Gamesim.Tests.EditMode
             // This is a newly constructed current-schema test envelope, not a resealed golden.
             files.Write(files.Store.SavePath, candidate);
             var retained = files.Image();
+
+            if (SupportedSourceSnapshot(sample))
+            {
+                for (int attempt = 0; attempt < 2; attempt++)
+                {
+                    Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
+                    EquivalentSupported(candidate, loaded);
+                    files.AssertImage(retained);
+                }
+                Assert.That(Json(candidate), Is.EqualTo(unchangedCandidate));
+                return;
+            }
 
             for (int attempt = 0; attempt < 2; attempt++)
             {
@@ -96,10 +121,10 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Json(candidate), Is.EqualTo(unchangedCandidate));
         }
 
-        [TestCase("promise")]
-        [TestCase("deal")]
-        [TestCase("hearing")]
-        public void ProspectiveBackupCannotBeRecoveredOrArchiveTheGoodPrimary(string sample)
+        [TestCase("disabled-promise")]
+        [TestCase("disabled-deal")]
+        [TestCase("hearing-missing-initial")]
+        public void InvalidSourceBackupCannotBeRecoveredOrArchiveTheGoodPrimary(string sample)
         {
             using var files = new Files();
             var good = SeedTwoCopies(files);
@@ -126,10 +151,10 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Json(candidate), Is.EqualTo(unchangedCandidate));
         }
 
-        [TestCase("promise")]
-        [TestCase("deal")]
-        [TestCase("hearing")]
-        public void ProspectiveFirstSaveCannotCreateAnySlotFile(string sample)
+        [TestCase("disabled-promise")]
+        [TestCase("disabled-deal")]
+        [TestCase("hearing-missing-initial")]
+        public void InvalidSourceFirstSaveCannotCreateAnySlotFile(string sample)
         {
             using var files = new Files();
             var good = Progress(Fresh());
@@ -153,7 +178,7 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void DisabledCommandProgressAndRoundTripAreThePositiveControlNotAnEnabledRoundTrip()
+        public void DisabledCommandProgressAndRoundTripRetainTheirRecordedLegacyRules()
         {
             using var files = new Files();
             var good = SeedTwoCopies(files);
@@ -235,8 +260,8 @@ namespace Gamesim.Tests.EditMode
             s.unifiedCommitmentRulesVersion = UnifiedCommitments.ProspectiveVersion;
             var player = s.Find(s.playerId);
             var other = s.Active.First(p => !p.isPlayer);
-            bool promise = sample == "promise" || sample == "disabled-promise" || sample == "broken-promise";
-            bool deal = sample == "deal" || sample == "disabled-deal" || sample == "hearing"
+            bool promise = sample == "promise" || sample == "disabled-promise" || sample == "broken-promise-attribution";
+            bool deal = sample == "deal" || sample == "disabled-deal" || sample == "hearing-missing-initial"
                 || sample == "disabled-evidence" || sample == "disabled-receipt";
             if (promise)
                 Invoke("MakePromise", s, other.id, PromiseKind.Safety, null, null);
@@ -255,14 +280,15 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(row.id, Does.StartWith(promise ? "promise-" : "deal-story-"));
             }
 
-            bool hearing = sample == "hearing" || sample == "broken-promise"
+            bool hearing = sample == "hearing-missing-initial" || sample == "broken-promise-attribution"
                 || sample == "disabled-evidence" || sample == "disabled-receipt";
             if (hearing)
             {
                 s.unifiedHearingRulesVersion = UnifiedCommitmentHearings.ProspectiveVersion;
-                // A detached prospective source-owner fixture, not a claim of a publicly played
-                // HoH win or enabled command transaction. Nominate itself owns the nomination,
-                // source effects, real fact emission and initial archive/receipt installation.
+                // A detached source-owner fixture, not a claim of a publicly played HoH win or
+                // enabled command transaction. Current nominations can be stored before a PowerRow:
+                // Nominate itself owns the nomination, source effects, real fact emission and initial
+                // archive/receipt installation. The complete valid base is proved before corruption.
                 s.phase = EpisodePhase.Nomination;
                 s.hohId = player.id;
                 string second = s.Active.First(p => !p.isPlayer && p.id != other.id).id;
@@ -297,7 +323,32 @@ namespace Gamesim.Tests.EditMode
                 }
             }
 
-            if (sample == "disabled-promise" || sample == "disabled-deal")
+            // These actual source-produced snapshots are complete-data-valid under today's active
+            // C0/story authority, including a current nomination before its later PowerRow. Refusal
+            // below must follow an explicit defect, never an invented earned-HoH or ceremony gate.
+            string validBase = Json(s);
+            Assert.That(EpisodeValidation.TryValidate(s, out string baseReason), Is.True, baseReason);
+            Assert.DoesNotThrow(() => new EpisodeEngine(s));
+            Assert.DoesNotThrow(() => EpisodeSaveValidation.Validate(s));
+            Assert.That(Json(s), Is.EqualTo(validBase));
+
+            if (sample == "hearing-missing-initial")
+            {
+                var receipt = s.unifiedHearingReceipts.Single();
+                Assert.That(receipt.kind, Is.EqualTo(UnifiedCommitmentHearings.Initial));
+                Assert.That(s.unifiedHearingReceipts.Remove(receipt), Is.True);
+                Assert.That(s.unifiedHearingEvidence, Has.Count.EqualTo(1), "The genuine archive remains; only its required Initial is removed.");
+                Assert.That(UnifiedCommitmentHearings.ValidateStorage(s, out string storageReason), Is.True, storageReason,
+                    "Intermediate hearing storage does not establish complete emitted-source lineage.");
+            }
+            else if (sample == "broken-promise-attribution")
+            {
+                var row = s.unifiedCommitments.Single();
+                Assert.That(row.sourcePolicy, Is.EqualTo(UnifiedCommitments.PromisePolicy));
+                Assert.That(row.brokenById, Is.EqualTo(row.makerId));
+                row.brokenById = row.beneficiaryId;
+            }
+            else if (sample == "disabled-promise" || sample == "disabled-deal")
                 s.unifiedCommitmentRulesVersion = 0;
             else if (sample == "disabled-evidence" || sample == "disabled-receipt")
             {
@@ -307,10 +358,21 @@ namespace Gamesim.Tests.EditMode
                 else s.unifiedHearingEvidence.Clear();
             }
 
-            Assert.That(EpisodeValidation.TryValidate(s, out _), Is.False, "The public validator must remain closed.");
-            Assert.Throws<ArgumentException>(() => new EpisodeEngine(s), "Public construction never installs the prospective mode.");
+            if (SupportedSourceSnapshot(sample))
+            {
+                Assert.That(EpisodeValidation.TryValidate(s, out string reason), Is.True, reason);
+                Assert.DoesNotThrow(() => new EpisodeEngine(s));
+            }
+            else
+            {
+                Assert.That(EpisodeValidation.TryValidate(s, out _), Is.False,
+                    "Explicitly corrupted settlement attribution, Initial lineage or disabled retained records remain invalid.");
+                Assert.Throws<ArgumentException>(() => new EpisodeEngine(s));
+            }
             return s;
         }
+
+        private static bool SupportedSourceSnapshot(string sample) => sample == "empty-one" || sample == "promise" || sample == "deal";
 
         private static void AssertOff(EpisodeState s)
         {
@@ -333,6 +395,15 @@ namespace Gamesim.Tests.EditMode
             AssertOff(actual);
             Assert.That(JToken.DeepEquals(Payload(expected), Payload(actual)), Is.True,
                 "All source rules, identities, history, knowledge, RNG and command receipts remain exact.");
+        }
+
+        private static void EquivalentSupported(EpisodeState expected, EpisodeState actual)
+        {
+            EpisodeSaveValidation.Validate(actual);
+            Assert.That(actual.unifiedCommitmentRulesVersion, Is.EqualTo(1));
+            Assert.That(actual.unifiedHearingRulesVersion, Is.Zero, "These source snapshots do not claim an actual public hearing transaction.");
+            Assert.That(JToken.DeepEquals(Payload(expected), Payload(actual)), Is.True,
+                "An enabled load preserves exact rules, source provenance, RNG, history and receipts without conversion.");
         }
 
         private static void Invoke(string name, params object[] arguments)

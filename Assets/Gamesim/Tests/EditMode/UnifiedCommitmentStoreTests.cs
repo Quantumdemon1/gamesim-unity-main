@@ -7,7 +7,7 @@ using NUnit.Framework;
 
 namespace Gamesim.Tests.EditMode
 {
-    /// <summary>Storage-only prospective snapshots; the production validator still refuses all of them.</summary>
+    /// <summary>Storage-only diagnostics; source writer preflight is not complete public saved-state validation.</summary>
     public sealed class UnifiedCommitmentStoreTests
     {
         [TestCase(0)] [TestCase(2)] [TestCase(-1)]
@@ -35,7 +35,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Json(CommitmentReferences.FindPromise(state, draft.id)), Is.EqualTo(original));
             draft.toId = C(state); Assert.That(state.unifiedCommitments.Single().beneficiaryId, Is.Not.EqualTo(C(state)));
             Assert.That(OutsideStorage(state), Is.EqualTo(untouched));
-            Assert.That(EpisodeValidation.TryValidate(state, out _), Is.False, "Storage readiness is not permission to activate the engine.");
+            Assert.That(EpisodeEngine.StoryOn(state), Is.False);
+            Assert.That(EpisodeValidation.TryValidate(state, out string publicError), Is.False, "Storage readiness does not supply missing story authority.");
+            Assert.That(publicError, Does.Contain("active commitment and story knowledge rules"));
         }
 
         [TestCase(UnifiedCommitments.PlayerDeal)] [TestCase(UnifiedCommitments.NpcDeal)]

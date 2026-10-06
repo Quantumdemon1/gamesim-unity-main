@@ -1,5 +1,41 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-06 UTC - public Safety exact-image07 diagnostics closed
+
+Eightfresh assemblies/3399regular pure/1306focused managed/12historical migration
+cases naturally closed0. All80 new actual public-command cases passed;13older
+Explicit reports remain NotExecuted.974C#+8asmdef+2Tools before07/after07 match
+SHA256ddd1b01ee59d965416a3b06b341238111640d8836562112f6d7e6929f6c1b705.
+Independent full source/DLL/procedure/log/output and seven-production-diff/native
+fixture review is clear. Replay07 closed0 at55unique/5956attempts. Formal08
+comparison against both retained24 bindings closed0, status
+PassedManagedLegacyReplayOnly,SHA2560619a72ce924f490b63a41ae1cdfc5538a31393960154bb91d0dce2145e16e4a.
+Comparison07 failed only in its PowerShell5.1 multiline argument launcher and
+produced noJSON; original helper retained, scoped v2 syntax repair independently
+reviewed. No assertion/input/legacy outcome changed to obtain the comparison.
+Exact artifacts, authored tests and source changes are in
+WAVE_D_SAFETY_PUBLIC_IMPLEMENTATION.md. New nativePlay8 and evolved Save25 have
+not executed on this enabled image. No integrated/live/save/runtime/build/1080p60/
+visual/human/fullplan acceptance is inferred. Currentintegration6e66/g25n2 remains
+separately frozen and active; reviewed commit, deliberate merge, exact native
+NoUMA+UMA, desktop and final owner-required gates still follow.
+
+## 2026-10-06 UTC - historical pre07 public Safety authoring checkpoint
+
+This original authoring-only status is superseded by the closed exact-image07
+diagnostic record above; native runtime and shipping acceptance remain separate.
+
+Public canonical1 now requires currentC0+activeStory/Bonds and selects the exact
+shared complete saved-state core; legacy0 remains disabled/empty, unknown versions
+and off/scheduled prerequisite authorities refuse. The internal prospective seam
+keeps lawful historical creation and pre-activation diagnostics. Persistence uses
+the complete public validator before unchanged storage bounds; no raw mirrors or
+weakened checksum/shape/migration ordering. Only actual freshStartSeason sets1/1
+after existing Story/C0 initialization and before firstSave/install. Factories,
+import/load/migration/recovery are unchanged. Enabled public/native transaction
+tests and independent review were in progress; no check had run at that checkpoint.
+No live or integration promotion, save/scene/build/recovery/remote mutation.
+
 ## 2026-10-06 UTC - repaired saved-Safety checkpoint06 closed
 
 All fresh diagnostic owners CLOSED0:8assemblies,3314regular pure/0failed/0skipped,

@@ -146,10 +146,12 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void ReadingProspectiveProtectionDoesNotAuthorizeAProductionSeason()
+        public void ReadingProtectionDoesNotSupplyMissingStoryAuthorityForAnIsolatedDiagnostic()
         {
             var s = State(); s.unifiedCommitments.Add(Deal(s, "deal")); AssertRead(s, 47);
-            Assert.That(EpisodeValidation.TryValidate(s, out _), Is.False);
+            Assert.That(EpisodeEngine.StoryOn(s), Is.False);
+            Assert.That(EpisodeValidation.TryValidate(s, out string publicError), Is.False);
+            Assert.That(publicError, Does.Contain("active commitment and story knowledge rules"));
         }
 
         private static EpisodeState State()

@@ -25,8 +25,8 @@ namespace Gamesim.Simulation
     }
 
     /// <summary>
-    /// Prospective, separately versioned hearing authority. It observes real facts, not the strongest
-    /// agreement's private evidence. Production still refuses activation. No helper rolls, publishes
+    /// Separately versioned hearing authority. It observes real facts, not the strongest agreement's
+    /// private evidence. Fresh playable seasons select it explicitly. No helper rolls, publishes
     /// relationship effects, creates facts, or silently reconstructs old hearings.
     /// </summary>
     public static class UnifiedCommitmentHearings

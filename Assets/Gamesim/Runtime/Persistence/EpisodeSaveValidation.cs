@@ -11,11 +11,8 @@ namespace Gamesim.Persistence
         {
             if (!EpisodeValidation.TryValidate(state, out var reason)) throw new InvalidDataException(reason);
             Require(state.schemaVersion == 25, "Unsupported simulation schema version.");
-            Require(state.unifiedCommitmentRulesVersion == 0 && state.unifiedCommitments != null && state.unifiedCommitments.Count == 0,
-                "Unified commitments are not enabled in this persistence foundation.");
-            Require(state.unifiedHearingRulesVersion == 0 && state.unifiedHearingEvidence != null && state.unifiedHearingEvidence.Count == 0
-                && state.unifiedHearingReceipts != null && state.unifiedHearingReceipts.Count == 0,
-                "Unified hearing coordination is not enabled in this persistence foundation.");
+            // The shared complete validator owns mode dispatch, prerequisites, source provenance,
+            // canonical/mixed links and durable hearings. Never bypass it or rebuild raw mirrors.
             Require(state.sessionId != null && state.sessionId.Length <= 256, "Session identifier is too long.");
             Require(state.week <= 10000 && state.promises.Count <= 10000 && state.alliances.Count <= 1000
                 && state.memories.Count <= 100000 && state.events.Count <= 100000

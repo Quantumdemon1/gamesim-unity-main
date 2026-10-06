@@ -1,5 +1,30 @@
 # Gamesim Unity port
 
+**Public Safety exact-image07 diagnostics closed,2026-10-06 UTC:** all eight
+assemblies compile;3399 regular pure/1306 focused managed/12 migration cases pass,
+including80 actual public-command cases. Source974 C#+8asmdef+2Tools before/after
+hashes match. Formal comparison08 matches55 legacy digests/5956 attempts against
+both retained24 bindings. Original comparison07 PowerShell launcher failure and
+helper are retained; independently reviewed v2 fixes only its argument syntax.
+These are diagnostics, not execution of the new Play8/evolved native Save25,
+enabled disk/runtime, same-pinUMA/build/1080p60/visual/human/live acceptance.
+See WAVE_D_SAFETY_PUBLIC_IMPLEMENTATION.md for every material change and exact
+bindings. Commit/integration/native gates follow; allD1families/D2-D4/E2/art and
+final shipping/human completion requirements remain open.
+
+**Historical pre07 public Safety authoring checkpoint,2026-10-06 UTC:** superseded
+by the closed exact-image07 diagnostic record above. Owner selected fresh playable
+seasons with commitment and story rules active from the start; older saves retain
+legacy rules. In this isolated WaveC draft, public canonical1 dispatches through
+the shared complete validator only with currentC0+Story/Bonds active; historical
+creation before rule activation is not globally forbidden. Persistence retains
+full validation and bounded storage. Only actual freshStartSeason selects1/1
+before its first save; factories/import/load/migration/recovery remain unchanged.
+At that original checkpoint, enabled public command/save/fault/arrival/hearing
+tests and independent review were being authored, not passed. Nothing was
+promoted to live or integration.
+All native/samepinUMA/build/1080p60/visual/human/fullplan gates remain open.
+
 **Saved-Safety checkpoint06 verified,2026-10-06 UTC:** the reviewed source-owned
 Ownership fixture repair now passes:8fresh assemblies/3314regular pure/1301focused
 Mono/12historical migration diagnostics,0failed.980source+2Tools before/after

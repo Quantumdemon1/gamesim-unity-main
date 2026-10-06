@@ -9,8 +9,8 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// Actual writer hooks on explicitly unsupported prospective snapshots. Reflection reaches only
-    /// named simulation owners; this is not evidence that version 1 can pass public command/save gates.
+    /// Actual writer hooks on isolated Story-off diagnostics. Reflection reaches only
+    /// named simulation owners; this is not evidence of actual public command/save transactions.
     /// Normalized comparisons preserve the legacy records, RNG, event ordering and source effects.
     /// </summary>
     public sealed class UnifiedSafetyWriterTests
@@ -27,8 +27,10 @@ namespace Gamesim.Tests.EditMode
             Assert.That(canonical.randomState, Is.EqualTo(random));
             Assert.That(Normalized(canonical), Is.EqualTo(Json(legacy)));
             Assert.That(UnifiedCommitments.ValidateRecords(canonical, out string why), Is.True, why);
-            Assert.That(EpisodeValidation.TryValidate(canonical, out _), Is.False,
-                "Writer coverage must not switch on prospective production rules.");
+            Assert.That(EpisodeEngine.StoryOn(canonical), Is.False);
+            Assert.That(EpisodeValidation.TryValidate(canonical, out string publicError), Is.False,
+                "Isolated writer coverage does not supply current story authority.");
+            Assert.That(publicError, Does.Contain("active commitment and story knowledge rules"));
         }
 
         [TestCase("npc-promise")] [TestCase("npc-deal")]

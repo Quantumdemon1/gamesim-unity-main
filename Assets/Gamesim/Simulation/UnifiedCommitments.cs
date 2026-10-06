@@ -6,9 +6,9 @@ using System.Linq;
 namespace Gamesim.Simulation
 {
     /// <summary>
-    /// Prospective canonical record for every commitment family. Only safety has a policy here so
-    /// far. Schema 24 keeps this list empty and its version disabled: this is NOT engine authority
-    /// until every safety writer, reader, save transaction and effect owner has been integrated.
+    /// Canonical record for commitment families. Only Safety has a policy here so far. Enabled
+    /// schema25 seasons use it as Safety authority; legacy seasons keep this list disabled/empty.
+    /// Other families continue under their existing versioned owners until separately integrated.
     /// </summary>
     [Serializable]
     public sealed class UnifiedCommitmentState
@@ -64,9 +64,9 @@ namespace Gamesim.Simulation
     public enum UnifiedCommitmentExpiry { PromiseWeekTurn, DealPass, Departure, Expulsion }
 
     /// <summary>
-    /// Pure, prospective safety policy, NOT an activated production writer/settler. Every returned
-    /// row is detached. No helper changes state, rolls, relationships, memories, facts or commands.
-    /// The ordinary engine and validator do not accept version 1 yet. Other families are refused.
+    /// Pure Safety policy; the engine owns activated writers and settlement transactions. Every
+    /// returned row is detached. No helper changes state, rolls, relationships, memories, facts or
+    /// commands. Public enabled mode requires active C0 and story knowledge. Other families are refused.
     /// </summary>
     public static class UnifiedCommitments
     {

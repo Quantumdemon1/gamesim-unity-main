@@ -5,8 +5,8 @@ using System.Linq;
 namespace Gamesim.Simulation
 {
     /// <summary>
-    /// Prospective safety storage writer, callable only from simulation command owners. Production
-    /// still refuses version 1. This does not activate rules, spend, roll, mint IDs, publish effects,
+    /// Safety storage writer, callable only from simulation command owners. It does not select
+    /// public mode or activate prerequisites. This does not spend, roll, mint IDs, publish effects,
     /// settle commitments, or bypass the command's save-before-publication transaction.
     /// New records and changed lists are detached; every refusal leaves the entire input unchanged.
     /// </summary>

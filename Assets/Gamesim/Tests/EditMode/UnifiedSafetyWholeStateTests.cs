@@ -9,13 +9,14 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// The complete internal prospective saved-Safety validator, not a writable projection or
-    /// public activation. Positive scenarios select the flags on an asserted raw-Safety-empty
+    /// The shared complete saved-Safety validator, not a writable projection or fresh-season
+    /// activation. Positive scenarios select the flags on an asserted raw-Safety-empty
     /// real factory and progress the actual private Execute and post-command owners. They never
     /// assign an HoH, contestant status, nomination, settlement, source ID or artificial PowerRow.
     /// This detached source progression deliberately does not manufacture public command receipts
-    /// or revisions. Public construction/validation remain closed; native saves and enabled public
-    /// transactions require their own later gates. Negative controls corrupt rows; the explicitly
+    /// or revisions. Complete active-rule snapshots also pass public validation and detached
+    /// construction; native saves and actual public Apply transactions have separate gates.
+    /// Historical diagnostics before active C0/story remain public-refused. Negative controls corrupt rows; the explicitly
     /// labeled retained-archive projection omits a real live fact, without claiming a capacity-pruner
     /// run. The weaker-alias diagnostic invokes the real fact core and observed-spread owners, not an
     /// ordinary nomination emission or a public enabled transaction. Wording diagnostics project an
@@ -25,13 +26,35 @@ namespace Gamesim.Tests.EditMode
     {
         [TestCase(false, false)] [TestCase(false, true)]
         [TestCase(true, false)] [TestCase(true, true)]
-        public void RealFreshFactoriesValidateInternallyButCannotActivatePublicly(bool builtRoster, bool hearing)
+        public void RealFreshFactoryDiagnosticsCanConstructExplicitlyEnabledPublicSnapshots(bool builtRoster, bool hearing)
         {
             var s = Fresh(2505, hearing, builtRoster ? 8 : 6, builtRoster);
             Assert.That(s.contestants, Has.Count.EqualTo(builtRoster ? 8 : 6));
             Assert.That(s.unifiedCommitments, Is.Empty);
             AcceptedUnchanged(s);
-            PublicRefusedUnchanged(s);
+            PublicAcceptedUnchanged(s);
+        }
+
+        [TestCase("commitments-off")] [TestCase("commitments-later")]
+        [TestCase("story-off")] [TestCase("story-later")] [TestCase("story-before-bonds")]
+        public void PublicEnabledModeRequiresCurrentCommitmentAndStoryAuthorityWithoutChangingHistoricalDiagnostics(string prerequisite)
+        {
+            var s = Fresh(2505, false);
+            PublicAcceptedUnchanged(s);
+            switch (prerequisite)
+            {
+                case "commitments-off": s.commitmentRulesStartWeek = 0; break;
+                case "commitments-later": EpisodeEngine.EnableCommitments(s, s.week + 1); break;
+                case "story-off": s.story.rulesStartWeek = 0; break;
+                case "story-later": EpisodeEngine.EnableStory(s, s.week + 1); break;
+                case "story-before-bonds": s.story.rulesVersion = StoryRules.Bonds - 1; break;
+                default: Assert.Fail("Unknown public authority prerequisite: " + prerequisite); break;
+            }
+            Assert.That(YourWord.On(s), Is.False);
+            // Complete stored data can still be a lawful internal historical diagnostic. Public
+            // support does not activate either authority, erase it, or schedule a fresh season.
+            AcceptedUnchanged(s);
+            PublicRefusedUnchanged(s, "active commitment and story knowledge rules");
         }
 
         [TestCase(true, false)] [TestCase(true, true)]
@@ -47,7 +70,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(owned.State.Find(owned.Other).nominationWeeks, Does.Contain(row.settledWeek));
             AssertEmission(owned, promise, hearing);
             AcceptedUnchanged(owned.State);
-            PublicRefusedUnchanged(owned.State);
+            PublicAcceptedUnchanged(owned.State);
         }
 
         [TestCase(false)] [TestCase(true)]
@@ -507,7 +530,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(observed.unifiedHearingReceipts.Single(r => r.factId == realSelectedFact.id && r.kind == UnifiedCommitmentHearings.Initial).listenerId,
                 Is.EqualTo(realSelectedFact.subjectId));
             AcceptedUnchanged(observed);
-            PublicRefusedUnchanged(observed);
+            PublicAcceptedUnchanged(observed);
         }
 
         [TestCase("reverse-promise")] [TestCase("npc-pair")]
@@ -618,7 +641,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(s.finalArgument.momentRefs.All(r => FinalArgument.Resolves(s, r)), Is.True);
             Assert.That(s.juryExchanges.All(q => q.completed), Is.True);
             AcceptedUnchanged(s);
-            PublicRefusedUnchanged(s);
+            PublicAcceptedUnchanged(s);
         }
 
         [TestCase(true)] [TestCase(false)]
@@ -992,6 +1015,9 @@ namespace Gamesim.Tests.EditMode
         {
             string before = Json(s);
             Assert.That(Prospective(s, out string error), Is.True, error);
+            if (YourWord.On(s))
+                Assert.That(EpisodeValidation.TryValidate(s, out string publicError), Is.True, publicError);
+            else PublicRefusedUnchanged(s, "active commitment and story knowledge rules");
             Assert.That(Json(s), Is.EqualTo(before));
         }
 
@@ -1003,12 +1029,45 @@ namespace Gamesim.Tests.EditMode
             Assert.That(accepted, Is.False);
             Assert.That(error, Is.Not.Null.And.Not.Empty);
             Assert.That(Json(s), Is.EqualTo(before), "Refusal must retain even corrupt/null fields, not normalize or replace them.");
+            PublicRefusedUnchanged(s);
         }
 
-        private static void PublicRefusedUnchanged(EpisodeState s)
+        private static void PublicAcceptedUnchanged(EpisodeState s)
         {
             string before = Json(s);
-            Assert.That(EpisodeValidation.TryValidate(s, out _), Is.False);
+            Assert.That(YourWord.On(s), Is.True, "Public enabled mode needs current C0 and story knowledge authority.");
+            Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.True, error);
+            var constructorInput = s.Clone();
+            var engine = new EpisodeEngine(constructorInput);
+            Assert.That(Json(constructorInput), Is.EqualTo(before));
+            Assert.That(Json(engine.Snapshot), Is.EqualTo(before), "Construction may clone, not activate or normalize.");
+            // Neither the constructor input nor a returned snapshot can rewrite the engine's
+            // canonical owner, archived fact, hearing receipt or cast. Only test-owned copies
+            // are mutated; no Apply or native durable save is claimed by these checks.
+            MutateDetachedDiagnostic(constructorInput);
+            Assert.That(Json(engine.Snapshot), Is.EqualTo(before));
+            var detached = engine.Snapshot;
+            MutateDetachedDiagnostic(detached);
+            Assert.That(Json(engine.Snapshot), Is.EqualTo(before));
+            Assert.That(Json(s), Is.EqualTo(before));
+        }
+
+        private static void MutateDetachedDiagnostic(EpisodeState detached)
+        {
+            detached.contestants[0].name = "Changed only on the detached snapshot";
+            if (detached.unifiedCommitments.Count != 0) detached.unifiedCommitments[0].makerId = "detached-only";
+            if (detached.unifiedHearingEvidence.Count != 0) detached.unifiedHearingEvidence[0].fact.actorId = "detached-only";
+            if (detached.unifiedHearingReceipts.Count != 0) detached.unifiedHearingReceipts[0].kind = "detached-only";
+        }
+
+        private static void PublicRefusedUnchanged(EpisodeState s, string expectedReason = null)
+        {
+            string before = Json(s);
+            bool accepted = true; string error = null;
+            Assert.DoesNotThrow(() => accepted = EpisodeValidation.TryValidate(s, out error));
+            Assert.That(accepted, Is.False);
+            Assert.That(error, Is.Not.Null.And.Not.Empty);
+            if (expectedReason != null) Assert.That(error, Does.Contain(expectedReason));
             Assert.Throws<ArgumentException>(() => new EpisodeEngine(s));
             Assert.That(Json(s), Is.EqualTo(before));
         }

@@ -212,7 +212,8 @@ namespace Gamesim.Tests.EditMode
                     "finaleRulesStartWeek", "finalArgument",
                     "commitmentRulesStartWeek",
                     "economyRulesVersion", "moveInExtrasSpent",
-                    "unifiedCommitmentRulesVersion", "unifiedCommitments" }.Contains(field);
+                    "unifiedCommitmentRulesVersion", "unifiedCommitments",
+                    "unifiedHearingRulesVersion", "unifiedHearingEvidence", "unifiedHearingReceipts" }.Contains(field);
                 case "state.contestants[]": return new[] { "occupation", "archetype", "age", "hometown", "bio", "sourceTemplateId", "appearance" }.Contains(field);
                 case "state.juryExchanges[]": return new[] { "category", "receiptKind", "receiptId" }.Contains(field);
                 case "state.promises[]": return new[] { "brokenById", "settledWeek" }.Contains(field);

@@ -151,12 +151,20 @@ namespace Gamesim.Tests.EditMode
                 // Schema 23.
                 "economyRulesVersion", "moveInExtrasSpent",
                 // Schema 24: the inactive foundation is never a reconstruction of old promises.
-                "unifiedCommitmentRulesVersion", "unifiedCommitments"
+                "unifiedCommitmentRulesVersion", "unifiedCommitments",
+                // Schema 25: no historical fact audience or hearing effect is reconstructed.
+                "unifiedHearingRulesVersion", "unifiedHearingEvidence", "unifiedHearingReceipts"
             }));
             Assert.That((int)current["economyRulesVersion"], Is.Zero);
             Assert.That((int)current["moveInExtrasSpent"], Is.Zero);
             Assert.That((int)current["unifiedCommitmentRulesVersion"], Is.Zero);
             Assert.That((JArray)current["unifiedCommitments"], Is.Empty);
+            Assert.That(current["unifiedHearingRulesVersion"].Type, Is.EqualTo(JTokenType.Integer));
+            Assert.That((int)current["unifiedHearingRulesVersion"], Is.Zero);
+            Assert.That(current["unifiedHearingEvidence"], Is.TypeOf<JArray>());
+            Assert.That((JArray)current["unifiedHearingEvidence"], Is.Empty);
+            Assert.That(current["unifiedHearingReceipts"], Is.TypeOf<JArray>());
+            Assert.That((JArray)current["unifiedHearingReceipts"], Is.Empty);
             Assert.That((string)current["playerPersona"]["current"], Is.EqualTo("Neutral"));
             Assert.That(current["playerPersona"]["scores"].Select(item => (string)item["persona"]),
                 Is.EqualTo(new[] { "Neutral", "Remorseful", "Ruthless", "Calculated", "Social Butterfly" }));

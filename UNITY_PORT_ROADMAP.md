@@ -1,5 +1,16 @@
 # Gamesim Unity port
 
+**Former25 test witnesses captured,2026-10-06 UTC:** actual166-case null-observer
+diagnostic and reviewed capture02 pass. Twelve openings, three complete Finished
+season chains and436aliases (366accepted/70semantic-refused) retain304distinct
+payloads plus706actual command records. Source/Tools and compiler11 DLLs unchanged;
+no production/schema/activation change. First export01's metadata caveat is
+retained; corrected02 is a fresh execution, not a rewrite. See
+WAVE_D_FROZEN25_CORPUS_IMPLEMENTATION.md. Next: portable immutable package/fixed25
+replay before26. Older6e66 nativeg25n2 CLOSED0 Edit4794/Play995,0fail/0skip; final
+source/process/5424artifact auditCLEAR. Newincrement runtime/UMA/desktop/1080p60/
+visual/human remain open; older UMA/pure floors were not executed by that run.
+
 **Exact former25 contract verified,2026-10-06 UTC:** NEW unused literal72DTO/
 540field/fixed-enum/data/validator/helper snapshot of publicSafety commitf456.
 Fresh corrected09 passes3399regular pure; final whitespace-only image10 compiles
@@ -9,8 +20,8 @@ missing-IsStory compiler failure is retained, not a pass; exact source getter
 repair and full independent source/dependency/fixture review are clear. No schema26,
 migration routing, behavior change or live/integration promotion. Authored floors
 5034Edit/999Play/77UMA/3399pure; future combined5045/1003 retains QA11/4.
-See WAVE_D_SAFETY_FROZEN25_IMPLEMENTATION.md. Before26, capture actual tested25
-JSON; current regenerated witnesses alone are not a future historical corpus.
+See WAVE_D_SAFETY_FROZEN25_IMPLEMENTATION.md. This original snapshot increment
+preceded the separately captured25 JSON record above; portable pin/replay is next.
 Nativeg25n2 is still separate; runtime/build/1080p60/visual/human/fullplan remain.
 
 **Public Safety exact-image07 diagnostics closed,2026-10-06 UTC:** all eight

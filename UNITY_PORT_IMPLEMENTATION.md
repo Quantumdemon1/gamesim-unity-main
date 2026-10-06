@@ -1,5 +1,28 @@
 # Integrated Unity port — implementation and acceptance record
 
+## 2026-10-06 UTC - actual former25 corpus captured, final02 closure
+
+Existing166-case fixture adds a private null-default detached test observer,
+literal25/fixedshape guards before semantic refusals and actual command-coordinate
+hash receipts. Production/metas/Tools/floors unchanged. Fresh compiler11 checks
+all990C# once/8assemblies. Observer-null managed03 passes166/166, no native/corpus.
+Reviewed task-local capture02 passes166/166/0fail,no timeout34.4823517s: twelve
+openings, three complete67-boundary/66-command Finished sequences,436aliases
+(366accepted/70semantic-refused),304distinct payloads/469packetfiles and706command
+records. Metadata classifier defect in01 preserved and narrowly fixed;02 raw773
+files are byte-equal to01, but its final metadata is a fresh corrected export.
+Binding984401d1cd2081bd2d0c3152f6689969acf332aa02b3a165103427ee40046501;
+manifest96e1fd4e26d82d3ceac0945df99a56b5396f8492774e98e5b36851ca39f94b38.
+Before12/after12 exactly match compiler11's998source+2Tools image at8016+single
+dirty fixture. Reused unchanged compiler11 DLLs, not a new compiler12/pure run.
+Full inventory, source limits, corrected metadata and remaining gates are in
+WAVE_D_FROZEN25_CORPUS_IMPLEMENTATION.md. Portable immutable pin/fixed25 replay
+precedes schema26. No migration/activation/live promotion/native/desktop/perf/
+visual/human acceptance. Older integration6e66 native76183 naturallyCLOSED0,
+Edit4794/4794 andPlay995/995,0fail/0skip; independentfinalsource/process/5424artifact
+auditCLEAR. That olderpin does not execute the new increment; UMA77/pure3314
+were not run by it, and no desktop/visual/1080p60/human acceptance follows.
+
 ## 2026-10-06 UTC - final frozen25 image10 diagnostic closure
 
 Scoped stage check found six whitespace-only blank lines in two NEW frozen helper

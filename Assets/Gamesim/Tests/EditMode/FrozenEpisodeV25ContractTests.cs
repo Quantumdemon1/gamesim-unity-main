@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 using Gamesim.Persistence;
 using Gamesim.Simulation;
 using Newtonsoft.Json;
@@ -24,6 +26,9 @@ namespace Gamesim.Tests.EditMode
         private static readonly Type Contract = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.FrozenEpisodeV25", true);
         private static readonly Type JsonApi = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.SaveJson", true);
         private static readonly Dictionary<string, EpisodeState> Witnesses = new Dictionary<string, EpisodeState>(StringComparer.Ordinal);
+        // Test-only, disabled by default. The bounded task-local harness supplies its own
+        // case metadata and captures detached observations; ordinary NUnit performs no I/O.
+        private static Action<string, JObject, string> CorpusObserver = null;
 
         [TestCase(0, 3)] [TestCase(0, 6)] [TestCase(0, 8)] [TestCase(0, 12)]
         [TestCase(1, 3)] [TestCase(1, 6)] [TestCase(1, 8)] [TestCase(1, 12)]
@@ -458,6 +463,28 @@ namespace Gamesim.Tests.EditMode
             try { method.Invoke(null, new object[] { payload }); }
             catch (TargetInvocationException error) { throw error.InnerException ?? error; }
         }
+        private static void ValidateFrozenShape(JObject payload)
+        {
+            var shape = Contract.Assembly.GetType("Gamesim.Persistence.FrozenV25Shape", true);
+            var method = shape.GetMethod("Validate", Static);
+            Assert.That(method, Is.Not.Null, "Semantic negatives must first pass the fixed former25 shape.");
+            try { method.Invoke(null, new object[] { payload }); }
+            catch (TargetInvocationException error) { throw error.InnerException ?? error; }
+        }
+        private static void Notify(string kind, JObject payload, string reason = null)
+        {
+            var observer = CorpusObserver;
+            if (observer != null) observer(kind, (JObject)payload.DeepClone(), reason);
+        }
+        private static string PayloadHash(string actualPayload)
+        {
+            using (var digest = SHA256.Create())
+                return BitConverter.ToString(digest.ComputeHash(Encoding.UTF8.GetBytes(actualPayload)))
+                    .Replace("-", "").ToLowerInvariant();
+        }
+        private static JObject Coordinates(EpisodeState state, string actualPayload) => new JObject {
+            ["seed"] = state.seed, ["sessionId"] = state.sessionId, ["revision"] = state.revision,
+            ["week"] = state.week, ["phase"] = (int)state.phase, ["payloadSha256"] = PayloadHash(actualPayload) };
         private static void Accept(JObject payload)
         {
             string original = Text(payload);
@@ -468,6 +495,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Text(Payload(state)), Is.EqualTo(beforeState));
             Assert.DoesNotThrow(() => Validate(payload));
             Assert.That(Text(payload), Is.EqualTo(original), "Frozen validation never repairs/defaults/reorders the caller's complete JSON tree.");
+            Notify("accepted", payload);
         }
         private static void Reject(JObject payload)
         {
@@ -477,11 +505,16 @@ namespace Gamesim.Tests.EditMode
         }
         private static void RejectSemantic(JObject payload)
         {
-            string original = Text(payload); var state = payload.ToObject<EpisodeState>(Serializer());
+            string original = Text(payload);
+            Assert.That(payload["schemaVersion"].Type, Is.EqualTo(JTokenType.Integer));
+            Assert.That((int)payload["schemaVersion"], Is.EqualTo(25));
+            Assert.DoesNotThrow(() => ValidateFrozenShape(payload), "A semantic refusal cannot be merely an incompatible DTO shape.");
+            var state = payload.ToObject<EpisodeState>(Serializer());
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.False, "The source-valid baseline has a real former25 invariant defect.");
             Assert.That(reason, Is.Not.Empty);
             Assert.That(Text(payload), Is.EqualTo(original));
             Reject(payload);
+            Notify("semantic-refused", payload, reason);
         }
         private static JObject Baseline(int mode, string checkpoint)
         {
@@ -746,6 +779,17 @@ namespace Gamesim.Tests.EditMode
             Assert.That(JObject.FromObject(command, Serializer()).ToString(Formatting.None), Is.EqualTo(commandBefore));
             Assert.That(JToken.DeepEquals(Payload(result.state), Payload(engine.Snapshot)), Is.True);
             Assert.That(EpisodeValidation.TryValidate(result.state, out string reason), Is.True, reason);
+            if (CorpusObserver != null)
+            {
+                // Actual accepted public Apply, not an inference from a history row. Helper
+                // intermediates are current-validated; only separate accepted observations
+                // establish complete frozen25 acceptance of a particular payload.
+                var packet = new JObject {
+                    ["command"] = JObject.Parse(commandBefore),
+                    ["before"] = Coordinates(before, original),
+                    ["after"] = Coordinates(result.state, Text(Payload(result.state))) };
+                Notify("accepted-public-command", packet);
+            }
             return result;
         }
 

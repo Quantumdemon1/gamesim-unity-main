@@ -5,6 +5,10 @@ not live or integration. The former contract is pinned to public Safety commit
 f4566b69afc10c1008d64e112c12ed39241caa36. No schema26, migration routing, rule
 activation, game behavior, scene, asset, account or remote change is included.
 
+Later separate test-witness capture02 is recorded in
+WAVE_D_FROZEN25_CORPUS_IMPLEMENTATION.md. Historical statuses below describe this
+original snapshot increment, not that later capture or portable replay acceptance.
+
 ## Material changes
 
 - NEW `Runtime/Persistence/FrozenEpisodeV25.cs`: unused internal
@@ -145,7 +149,9 @@ header change, current-semantic rejection could falsely pass merely on unsupport
 schema; it cannot define former25 validity. Historical negatives must first pass
 fixed25 shape, then fail fixed25 semantics, with original bytes preserved. Neutral
 future26→25 projections may be separate synthetic compatibility controls, never
-a substitute for captured25 values. Corpus capture has NOT run in this increment.
+a substitute for captured25 values. Corpus capture had NOT run in this original
+snapshot increment; the later separate capture02 now retains the actual bytes,
+with portable immutable packaging/fixed25 replay still required before26.
 
 Only after that dependency: additive detached25→26 migration following exact old
 checksum/shape/Frozen25 validation, null target/subtype and empty private ballot

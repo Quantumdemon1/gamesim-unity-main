@@ -1,5 +1,18 @@
 # Gamesim Unity port
 
+**Complete regular-reveal archive prerequisite,2026-10-06 UTC:**181new pure
+cases actualpass; full pure18 3871Passed/0Failed plus13priorExplicitNotExecuted,
+compiler18 all8/1001CS once/16fresh dependencies and before21/after21 exact
+1009source+2Tools equality, independent physical audit CLEAR. Pure complete
+history/current projection is separate private evidence, not installed gameplay,
+mode2/save/schema/knowledge authority. Old140 fixture unchanged; final-Jury guard
+fixed before execution. Material record WAVE_D_REVEAL_ARCHIVE_IMPLEMENTATION.md
+also clarifies real execution IDs versus unchanged old display-label collisions.
+Floors5704/999/77/3871; combined5715/1003 retainsQA11/4. Genuine public removal,
+Vote owners/readers/full durability and remainingD1/D2-D4 plus realassets/build/
+actual1080p60/visual/three first-time human acceptance remain OPEN. Live/frozen
+integration untouched; no remote write or legacy-save conversion.
+
 **Completed regular reveal prerequisite,2026-10-06 UTC:** bounded leaf140 cases
 actualpass, full pure17 3690/0failed plus13 priorExplicitNotExecuted; compiler17
 all8/999CS once/16fresh internal references, before19/after19 exact equal and

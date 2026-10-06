@@ -1,5 +1,19 @@
 # Integrated Unity port — implementation and acceptance record
 
+## Complete regular-reveal archive prerequisite,2026-10-06 UTC
+
+Pure detached complete-history validation/current projection is reviewed and
+executed:181new actualpass, full pure18 3871Passed/0Failed plus13priorExplicit
+NotExecuted; fresh compiler18 all8/1001CS once/16fresh internal references,
+before21/after21 exact1009source+2Tools equality and independent physical audit
+CLEAR. No archive installation, mode2, schema, save, engine or knowledge authority
+change. Existing140 fixture unchanged; final-Jury classification gap fixed before
+checks. See WAVE_D_REVEAL_ARCHIVE_IMPLEMENTATION.md for EVERY material change,
+exact pins and execution-ID versus old adapter-label collision clarification.
+Floors5704/999/77/3871; combined5715/1003 retainsQA11/4. Genuine public removal,
+native serializer repair, complete Vote owners/readers/durability, otherD1families,
+D2-D4/art/build/1080p60/visual/three first-time human acceptance remain OPEN.
+
 ## Completed regular reveal prerequisite,2026-10-06 UTC
 
 See WAVE_D_COMPLETED_REVEAL_IMPLEMENTATION.md for every source/test/serializer-

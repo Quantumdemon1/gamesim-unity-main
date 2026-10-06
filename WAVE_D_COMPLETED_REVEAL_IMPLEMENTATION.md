@@ -57,7 +57,10 @@ No later commit is substituted for that actual observed image.
 
 Pure17 naturally closes0:3690 actual regular cases passed/0failed, including all
 140 new distinct cases. Thirteen prior Explicit report rows remain separately
-NotExecuted, not passes. TRX3703 distinct result IDs; SHA
+NotExecuted, not passes. TRX3703 distinct execution IDs, not adapter test IDs;
+there are3655 adapter IDs because two unchanged WebVotingBlocParityTests methods
+reuse48 source rows with identical SetName labels. Both are actual executions.
+See WAVE_D_REVEAL_ARCHIVE_IMPLEMENTATION.md for the independently checked distinction. SHA
 7c0f77b0fbd2dbcbd2953c684d66c16727c23dec7cec84e49d6824ff6f5b5690.
 Evidence resides under D:/CodexGamesimEvidence/integration-20261004.
 

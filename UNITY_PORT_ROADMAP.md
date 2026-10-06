@@ -1,5 +1,19 @@
 # Gamesim Unity port
 
+**Combined Vote prerequisites/replay repair,2026-10-06 UTC:** integration969 plus
+reviewed isolatedc15eb54f, retaining all eight QA/apparatus/isolation inputs and
+11Edit/4Play cases. Current authored floors5859/1003/77/4015 are not newly executed
+combined results. Inactive Together/source-consumer/completed-reveal/archive/
+promise/targeted prerequisites and the strict test-only serializer bridge are
+combined; mode2/archive authority remains refused. Both dated evidence histories
+below retain their own source images and historical process statuses. Old969
+g26n1 closed whole Failed (Edit5185/1/0,Play1003/0/0), not a new combined pass.
+Fresh frozen compilation/pure/fullNoUMA+UMA precede promotion; source-bound
+diagnostics do not replace native/durability/build acceptance. Settings/liveC
+edits/recovery/scenes/saves/builds/snapshots and source corpora remain preserved.
+Full D1-D4, coherent real assets, clean desktop build, actual1920x1080@60FPS
+GTX1060, visuals/accessibility/balance and three first-time human gates remainOPEN.
+
 **Combined public Safety / inert26 candidate,2026-10-06 UTC:** current local
 merge combines6e66 with3b95, retaining both histories and all eight integration
 QA/apparatus/isolation files plus11Edit/4Play cases. Authored combined floors
@@ -40,6 +54,55 @@ All D1 families, requiredD2-D4, widerE2, coherent assets, same-pinUMA/build,
 actualGTX1060 1920x1080at60FPS, visual/accessibility and0of3human gates remain.
 The dated statements below retain their own historical pins and are not current
 process or release evidence. The historical U08 row is not current acceptance.
+**Inactive Vote obligation prerequisite,2026-10-06 UTC:** NEWpromise/targeted
+SaveEvict leaf plus complete-archive overload; no authority/mode2/save/term/effect
+installation. Actual144newcases pass; pure19 4015/0fail plus13OLDExplicitNotExecuted,
+compiler19 all8fresh, exactbefore22/after22 1011source+2Tools equality. Independent
+source/144/plumbing/fullartifact auditsCLEAR;1003C#once/16fresh dependencies,
+144uniquePassed,0source/Tools drift. StructuralKVPfingerprint
+proofrepair occurred BEFOREchecks. Materialrecord WAVE_D_VOTE_OBLIGATIONS_IMPLEMENTATION.md
+separates original/native predicates and actualproducer versus detachedcontrols.
+Floors5848/999/77/4015; combined5859/1003 retainsQA11/4. FullVoteadmission/owners/
+readers/whole-save/durability plus publicremoval, remainingD1/D2-D4, realassets,
+native/desktop/1080p60/visual/threefirst-time humans remainOPEN. Live/frozen
+integration/oldmodes/sourcecorpora untouched; no remote publication.
+
+**Complete regular-reveal archive prerequisite,2026-10-06 UTC:**181new pure
+cases actualpass; full pure18 3871Passed/0Failed plus13priorExplicitNotExecuted,
+compiler18 all8/1001CS once/16fresh dependencies and before21/after21 exact
+1009source+2Tools equality, independent physical audit CLEAR. Pure complete
+history/current projection is separate private evidence, not installed gameplay,
+mode2/save/schema/knowledge authority. Old140 fixture unchanged; final-Jury guard
+fixed before execution. Material record WAVE_D_REVEAL_ARCHIVE_IMPLEMENTATION.md
+also clarifies real execution IDs versus unchanged old display-label collisions.
+Floors5704/999/77/3871; combined5715/1003 retainsQA11/4. Genuine public removal,
+Vote owners/readers/full durability and remainingD1/D2-D4 plus realassets/build/
+actual1080p60/visual/three first-time human acceptance remain OPEN. Live/frozen
+integration untouched; no remote write or legacy-save conversion.
+
+**Completed regular reveal prerequisite,2026-10-06 UTC:** bounded leaf140 cases
+actualpass, full pure17 3690/0failed plus13 priorExplicitNotExecuted; compiler17
+all8/999CS once/16fresh internal references, before19/after19 exact equal and
+independent compile/pure audit clear. Floors5523/999/77/3690; futurecombined
+5534/1003 retainsQA11/4. Test-only LegalPactReplay fields-only serialization
+bridge preserves strict validation/golden; repaired native case still pending.
+Actual bounded public V03 FAILED134attempts/23808commands/four tie/untied witnesses,
+no required same-week ordinary-voter removal. That evidence gate remains open.
+No archive/mode2 authority, schema, legacy-rule, live/editor or asset change.
+See WAVE_D_COMPLETED_REVEAL_IMPLEMENTATION.md; completearchive/owners/readers/
+durability, otherD1families/D2-D4 and release1080p60/visual/threehumans remain.
+
+**VoteTogether local/source increment authored,2026-10-06 UTC:** inactive bounded
+leaf122 and portable original-source consumer86 actual208pass; pure3550/0failed,
+13Explicit reports notexecuted. Compiler16 passes8/all997C# once;1005source+2Tools
+exactbefore17/after17/after18 equal. D16/208fullartifactauditclear; legacyreplay02
+closes55/5956, unchangedv2 freshcomparison03 matchesBOTH retained baselines.
+Final independent legacy/comparison artifact audit CLEAR:1499 physical inputs,
+ten closed receipts,55/5956 aggregate and both baselines match; zero drift.
+Every material change is recorded in WAVE_D_VOTE_TOGETHER_IMPLEMENTATION.md.
+Final bounded-reader static review clear. Floors5383/999/77/3550; futurecombined
+5394/1003 retains QA11/4. No public2, Vote archive, schema or legacy-rule change;
+live/integration and native/build/1080p60/visual/human acceptance remain open.
 
 **Inert26 source boundary,2026-10-06 UTC:** strict fixed25 acceptance before a
 detached additive migration; no Vote authority, ballots, knowledge or legacy-rule

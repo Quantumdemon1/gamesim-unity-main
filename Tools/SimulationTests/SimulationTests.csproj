@@ -73,6 +73,10 @@
     <Compile Include="$(EditMode)CommitmentRulesTests.cs" />
     <Compile Include="$(EditMode)UnifiedCommitmentsTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteInertSchema26Tests.cs" />
+    <Compile Include="$(EditMode)UnifiedVoteTogetherTests.cs" />
+    <Compile Include="$(EditMode)UnifiedVoteCompletedRevealTests.cs" />
+    <Compile Include="$(EditMode)UnifiedVoteRevealArchiveTests.cs" />
+    <Compile Include="$(EditMode)UnifiedVoteObligationsTests.cs" />
     <Compile Include="$(EditMode)CommitmentReferencesTests.cs" />
     <Compile Include="$(EditMode)UnifiedCommitmentStoreTests.cs" />
     <Compile Include="$(EditMode)UnifiedSafetyCommandOwnerTests.cs" />

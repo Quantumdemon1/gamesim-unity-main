@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Gamesim.Persistence;
 using Gamesim.Simulation;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -99,7 +100,7 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void LegalPactReplayMatchesOriginalSourceAndChangesTargetThroughPrivatePressure()
         {
-            var fixture = Fixture(); var state = Witness().Snapshot;
+            var fixture = Fixture(); var engine = Witness(); var state = engine.Snapshot;
             Assert.That(state.schemaVersion, Is.EqualTo(26));
             Assert.That((int)fixture["state"]["schemaVersion"], Is.EqualTo(5), "Keep the original witness unchanged.");
             // Compared against a subsystem created with the same declared boundary, because that
@@ -108,14 +109,39 @@ namespace Gamesim.Tests.EditMode
             Assert.That(JToken.DeepEquals(JObject.FromObject(state.npcSocial),
                     JObject.FromObject(NpcSocialState.Create(state.seed, 2))), Is.True,
                 "The explicit command replay must not silently run background conversations.");
+            // The current save contract contains public fields, not computed Active/IsStory views.
+            // Prove its complete shape and semantics before deriving any historical projection.
+            string projectionBefore = Json(state);
+            var saveJson = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.SaveJson", true);
+            var serializer = (JsonSerializer)saveJson.GetMethod("Serializer").Invoke(null, null);
+            var currentFields = JObject.FromObject(state, serializer);
+            string currentFieldsBefore = currentFields.ToString(Formatting.None);
+            Assert.DoesNotThrow(() =>
+            {
+                saveJson.GetMethod("CheckDtoShape").Invoke(null, new object[] { currentFields, typeof(EpisodeState), "state" });
+                EpisodeSaveValidation.Validate(currentFields.ToObject<EpisodeState>(serializer));
+            }, "The actual fields-only current save must validate before historical field removal.");
             // The fixture is a v5 witness, so the replayed state is compared in v5's shape: without
             // the NPC subsystem schema 6 added, and without the contestant card copy schema 7 did.
             var historicalView = PersistenceMigrationTests.StripCardCopy(
                 PersistenceMigrationTests.StripSchema8(
-                    PersistenceMigrationTests.StripSchema9(PersistenceMigrationTests.StripSchema10(PersistenceMigrationTests.StripSchema11(PersistenceMigrationTests.StripSchema12(JObject.FromObject(state)))))));
+                    PersistenceMigrationTests.StripSchema9(PersistenceMigrationTests.StripSchema10(PersistenceMigrationTests.StripSchema11(PersistenceMigrationTests.StripSchema12((JObject)currentFields.DeepClone()))))));
             historicalView.Remove("npcSocial");
             historicalView["schemaVersion"] = fixture["state"]["schemaVersion"].DeepClone();
+            // The immutable v5 recording includes its computed Active view. Reconstruct that
+            // view from the actual projected contestant rows, retaining their order and data;
+            // never remove it from the golden or smuggle it into the strict current save shape.
+            Assert.That(historicalView.Property("Active"), Is.Null);
+            Assert.That(fixture["state"]["Active"], Is.TypeOf<JArray>());
+            var historicalActive = ((JArray)historicalView["contestants"]).OfType<JObject>()
+                .Where(row => (int)row["status"] == (int)ContestantStatus.Active).ToArray();
+            Assert.That(historicalActive.Select(row => (string)row["id"]),
+                Is.EqualTo(state.Active.Select(actor => actor.id)), "Historical Active membership and order must come from the actual state.");
+            historicalView["Active"] = new JArray(historicalActive.Select(row => row.DeepClone()));
             WebVotingBlocParityTests.Equivalent(fixture["state"], historicalView, "legal command replay");
+            Assert.That(currentFields.ToString(Formatting.None), Is.EqualTo(currentFieldsBefore), "Historical projection owns only a detached JSON tree.");
+            Assert.That(Json(state), Is.EqualTo(projectionBefore), "Serialization and historical projection must not change the complete source state.");
+            Assert.That(Json(engine.Snapshot), Is.EqualTo(projectionBefore), "Historical projection must not change engine authority.");
             Assert.That(state.phase, Is.EqualTo(EpisodePhase.Eviction));
             Assert.That(state.votes, Is.Empty);
             Assert.That(state.alliances.Single().members, Is.EquivalentTo(new[] { "player", "maya-hassan" }));

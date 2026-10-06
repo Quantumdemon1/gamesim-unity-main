@@ -1,0 +1,181 @@
+{
+  "schema": 1,
+  "kind": "original-web-vote-together-source-system-boundary-manifest",
+  "accepted": true,
+  "expectedCases": 56,
+  "actualCases": 56,
+  "sourceClosure": [
+    {
+      "path": "src/config.ts",
+      "bytes": 2952,
+      "sha256": "ab153b7074f7b2734db31e454bab33dad5305082a0a22a241e0e7fd5cbb69836"
+    },
+    {
+      "path": "src/contexts/reducers/reducers/eviction-reducer.ts",
+      "bytes": 8412,
+      "sha256": "8508b9d77296699222234172fe42ae2cf300e8a28a4b90f40436ef1dc9eb3fb9"
+    },
+    {
+      "path": "src/models/deal.ts",
+      "bytes": 3918,
+      "sha256": "d825bd3f6cf3fe7e6d08e92e073eac585111f81383057a6adeaebcc012c09580"
+    },
+    {
+      "path": "src/models/game-state.ts",
+      "bytes": 9750,
+      "sha256": "be5707c1c29b69aea22736d6789069606902cd013a76b576e796170f82e84b5d"
+    },
+    {
+      "path": "src/systems/admin-config.ts",
+      "bytes": 1727,
+      "sha256": "94ff04bd5bf9df90a1ff50ce25049f44110dfe69db56f9c6316255289bc889d6"
+    },
+    {
+      "path": "src/systems/deal-action-rules.ts",
+      "bytes": 2753,
+      "sha256": "fded23fea12c34455d682c1c5ffadc0cbf94a76744b8865009b6dbbae7d81041"
+    },
+    {
+      "path": "src/systems/deal-system.ts",
+      "bytes": 31978,
+      "sha256": "6c4d911fefd370b23d5ba29c974efbd478fda1faa9c76a6d4870447433d00a75"
+    },
+    {
+      "path": "src/systems/game-event-bus.ts",
+      "bytes": 4610,
+      "sha256": "24319cf278339f301cb1ee11d15f97c876972e06ef72fafc462696dca76815af"
+    },
+    {
+      "path": "src/systems/relationship-arc-tracker.ts",
+      "bytes": 4555,
+      "sha256": "75390992ede5a314180cbf1e564ce8184eaea4efe54ecf1b4418ad5b7fef54a5"
+    },
+    {
+      "path": "src/utils/random.ts",
+      "bytes": 987,
+      "sha256": "cdd0f9420523c370b2eb1d6a040e56cdfe990e40918a003d614cbfcda54f2737"
+    },
+    {
+      "path": "src/utils/relationship-snapshot.ts",
+      "bytes": 812,
+      "sha256": "d11e8344c1d7fb99ba67e630829555ce594747c84601a83217cdc05c83b8548b"
+    }
+  ],
+  "sourceClosureSha256": "9887247435621defc04309be74ebd7916f7607c3e2db068f3e9ef20b696ddfdb",
+  "actualBundledOriginalModules": 11,
+  "collectorModules": 1,
+  "bundleSha256": "3fd5a9afde819c9c8361d15546ba463e8bd88681918820dd90ad38c90d85eea6",
+  "procedures": [
+    {
+      "path": "collect-vote-settlement-fixtures.ts",
+      "bytes": 13131,
+      "sha256": "82e24521de1d1f1d052782a3415c5279c0332f35af14bb2ee56415149bcb788f"
+    },
+    {
+      "path": "generate-vote-settlement-fixtures.mjs",
+      "bytes": 14982,
+      "sha256": "0dc4b343a7df773acb4e471eca609f88642ca07ec0c7d7ededfb20ba7670f82b"
+    },
+    {
+      "path": "run-vote-settlement-fixtures.ps1",
+      "bytes": 24190,
+      "sha256": "8ebb0c688b0be907c9f47e119436d915bee9ac53de539a759f2382b86b9e631d"
+    }
+  ],
+  "tools": [
+    {
+      "label": "node",
+      "bytes": 85268464,
+      "sha256": "995a3fb3cefad590cd3f4b321532a4b9582fb9c6575320ed2e3e894caac3e362"
+    },
+    {
+      "label": "esbuild-main",
+      "bytes": 88706,
+      "sha256": "0d1241812c443111d39475dfc66836003e9ef8b87e54d990dd67df29d20010e1"
+    },
+    {
+      "label": "esbuild-package",
+      "bytes": 1490,
+      "sha256": "cb7d5b1fe478f8cbaae566a86031b6fdf5f7d444354f35d1cb3cba9adf6d2935"
+    },
+    {
+      "label": "esbuild-executable",
+      "bytes": 10617344,
+      "sha256": "cae1bbc86f4df800b01d99e28aea0a154b02243de6797e98f48a9b88a64a7be0"
+    }
+  ],
+  "nodeVersion": "v22.19.0",
+  "esbuildVersion": "0.25.12",
+  "originalTsconfig": {
+    "bytes": 635,
+    "sha256": "62acc5455b10569e80d9f799b5cca1c5144d2d5fdad024a48a60114f2532fdc5"
+  },
+  "originalPackage": {
+    "bytes": 3515,
+    "sha256": "5d3ab222b52b1c26c4e1b1fb629897eda9358b5fafed5a100d5d01b6e0a52d78"
+  },
+  "reusedGoldens": {
+    "path": "work/unity-port-reference/golden-fixtures.json",
+    "sha256": "a16c43a5cf80f4bdc90c072e6b6fea67203e5820d339d04c0246b38baeade907",
+    "groups": [
+      {
+        "name": "promises",
+        "rows": 14,
+        "sha256": "6339c163619c75971ee47c2d4b8a0c622bd0952ebefe946b2234cf57f466d84c"
+      },
+      {
+        "name": "promiseImpacts",
+        "rows": 63,
+        "sha256": "4d7946eb9c59a3659a4cdb85e1a98b63f641e2d335126d06ad98f9a178e81e99"
+      }
+    ],
+    "retainedCaptureProcedure": [
+      {
+        "label": "retained-collector",
+        "bytes": 18023,
+        "sha256": "d890d4ecea502de5aa185b23ddab05bef8311883ed45f354967601c3d3026fb3"
+      },
+      {
+        "label": "retained-generator",
+        "bytes": 1849,
+        "sha256": "09127b70b1d5de2d9b654f27dfc7e020fcacbac85bd522c063b490268457be3a"
+      },
+      {
+        "label": "retained-source-manifest",
+        "bytes": 5432,
+        "sha256": "ab06f62c6f03394654b78887589314803a179dd48015b2c3be404ce9f992466a"
+      }
+    ],
+    "votePredicateZeroBasedIndices": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "regenerated": false
+  },
+  "files": [
+    {
+      "path": "vote-settlement-fixtures.json",
+      "bytes": 824319,
+      "sha256": "9795ad5d415fdcf503a490087faf7e1a63abc53c2cf88dc21f5e7d648d9e901f"
+    }
+  ],
+  "sourceInputsUnchanged": true,
+  "nativeUnityAcceptance": false,
+  "ordinarySaveAcceptance": false,
+  "targetedNativeExtensionAcceptance": false,
+  "limitations": [
+    "Actual imported SET_EVICTION_VOTE -> singleton event bus -> DealSystem constructor subscriber.",
+    "Explicit source-shaped stored-deal boundary inputs; creation ID/RNG and complete public web seasons not exercised.",
+    "Relationship/interaction requests are source outputs, not application by a copied relationship reducer.",
+    "Source-mutated alliance stability; fixed Active cast order and supplied deterministic random tape.",
+    "Global listener delivery is nested callback order; source history has insertion order and mutable deal aliases at each snapshot.",
+    "Returned private actual ballots and source bus truth are not UI/NPC knowledge grants or durable Unity evidence.",
+    "No loyalty oaths or optional PromiseSystem; retained14 predicate/63 impact goldens are reused separately.",
+    "VoteSave/VoteEvict are negative original settlement controls, not native targeted-extension positives.",
+    "Original Math.round outputs are observed unchanged; native legacy raw-double arithmetic is not rewritten or asserted equivalent.",
+    "Original null-target promise pending behavior remains in the retained predicate goldens, not a newly executed PromiseSystem path.",
+    "No Unity/native game/save/build/portable corpus mutation or acceptance proof."
+  ]
+}

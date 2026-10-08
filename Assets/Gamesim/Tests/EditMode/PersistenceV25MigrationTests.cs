@@ -27,7 +27,7 @@ namespace Gamesim.Tests.EditMode
             if (defect == "all-missing" || defect == "future-all-missing")
                 foreach (string field in new[] { "unifiedHearingRulesVersion", "unifiedHearingEvidence", "unifiedHearingReceipts" }) payload.Remove(field);
             else PersistenceV25TestPayloads.CorruptHearing(payload, defect);
-            if (defect == "future-all-missing") payload["schemaVersion"] = 27;
+            if (defect == "future-all-missing") payload["schemaVersion"] = 29;
             string original = payload.ToString(Formatting.None);
             Assert.Throws<AssertionException>(() => PersistenceMigrationTests.StripSchema25(payload));
             Assert.That(payload.ToString(Formatting.None), Is.EqualTo(original), "A synthetic downgrade must not hide missing or enabled current fields.");

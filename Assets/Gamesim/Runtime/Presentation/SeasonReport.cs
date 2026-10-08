@@ -448,9 +448,8 @@ namespace Gamesim.Presentation
         /// </summary>
         internal static float StickLean()
         {
-            var pad = Gamepad.current;
-            if (pad == null) return 0f;
-            float lean = pad.rightStick.ReadValue().y;
+            // The Report map's Scroll: the right stick.
+            float lean = Gamesim.House.HouseInput.Actions.ReportScroll.ReadValue<Vector2>().y;
             return Mathf.Abs(lean) > StickDeadZone ? lean : 0f;
         }
 
@@ -461,8 +460,8 @@ namespace Gamesim.Presentation
         /// </summary>
         internal static bool StickIsScrolling()
         {
-            var pad = Gamepad.current;
-            return pad != null && StickLean() != 0f && !pad.dpad.IsActuated() && pad.leftStick.ReadValue().magnitude < .5f;
+            // The Report map's Walk is the d-pad and the left stick, the pad's ways round the ring.
+            return StickLean() != 0f && Gamesim.House.HouseInput.Actions.ReportWalk.ReadValue<Vector2>().magnitude < .5f;
         }
 
         /// <summary>
@@ -482,15 +481,13 @@ namespace Gamesim.Presentation
             float travel = Travel;
             if (travel <= 0f) return;
             float from = content.anchoredPosition.y, to = from;
-            var keyboard = Keyboard.current;
-            if (keyboard != null)
-            {
-                float page = Mathf.Max(viewport.rect.height - PageOverlap, viewport.rect.height * .5f);
-                if (keyboard.pageDownKey.wasPressedThisFrame) to += page;
-                if (keyboard.pageUpKey.wasPressedThisFrame) to -= page;
-                if (keyboard.homeKey.wasPressedThisFrame) to = 0f;
-                if (keyboard.endKey.wasPressedThisFrame) to = travel;
-            }
+            // The Report map: Page Up and Page Down or the shoulders, Home and End or the triggers.
+            var input = Gamesim.House.HouseInput.Actions;
+            float page = Mathf.Max(viewport.rect.height - PageOverlap, viewport.rect.height * .5f);
+            if (input.ReportPageDown.WasPressedThisFrame()) to += page;
+            if (input.ReportPageUp.WasPressedThisFrame()) to -= page;
+            if (input.ReportHome.WasPressedThisFrame()) to = 0f;
+            if (input.ReportEnd.WasPressedThisFrame()) to = travel;
             // Leaning up reads back up the season, as a wheel turned away from you does. A hitch in
             // the frame rate is not a leap down the page.
             to -= StickLean() * StickSpeed * Mathf.Min(Time.unscaledDeltaTime, .1f);

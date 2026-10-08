@@ -78,7 +78,7 @@ namespace Gamesim.Episode
             // A menu, not a beat of the week: its own tall panel and its own head (mockup
             // language: the glyph, the title, the eyebrow), with its rows under section labels.
             hud.SetActivityLayout(EpisodeHud.ActivityLayout.Settings);
-            hud.ScreenHeader(EpisodeHud.SettingsHeaderName, "OFFLINE \u00b7 NO ACCOUNT NEEDED",
+            hud.ScreenHeader(EpisodeHud.SettingsHeaderName, SettingsEyebrow(),
                 blockedRecovery ? "SAVE RECOVERY" : "SETTINGS & SAVES", UiTheme.Icon("settings"));
             hud.Aside("Offline play is available. No credentials or online connection are required.");
             hud.Section("YOUR SAVE");
@@ -117,6 +117,7 @@ namespace Gamesim.Episode
             hud.Paragraph("Supports receipt-free, six-active-cast social snapshots. Complex in-progress web saves are rejected and archived unchanged, never silently simplified.");
             hud.PathInput("Full path to exported JSON", ImportFile);
             hud.Paragraph("Optional cloud login and generated AI dialogue are not configured. The local episode never waits for those services.");
+            ControlsSettings();
         }
 
         public void SaveNow()
@@ -188,6 +189,8 @@ namespace Gamesim.Episode
         private void OpenSettingsFromMenu()
         {
             if (mainMenu != null) mainMenu.Hide();
+            // Not the pause menu: nothing the player was in is held behind these (A3).
+            settingsFromFrontDoor = true;
             OpenSettings();
         }
 

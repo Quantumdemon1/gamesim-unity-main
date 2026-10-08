@@ -427,25 +427,15 @@ namespace Gamesim.Presentation
         /// The legend and the key hints follow the device last used: a pad press turns the caps into
         /// the pad's buttons, a key or a click turns them back.
         /// </summary>
-        private void NoteInputDevice(Keyboard keyboard, Gamepad pad)
+        private void NoteInputDevice()
         {
-            bool padNow = usingPad;
-            if (pad != null && PadPressed(pad)) padNow = true;
-            else if ((keyboard != null && keyboard.anyKey.wasPressedThisFrame)
-                || (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)) padNow = false;
-            if (padNow == usingPad) return;
-            usingPad = padNow;
+            // Which kind of device pressed something this frame, as the ceremony cards ask it.
+            var pad = Gamesim.House.HouseInput.PadUsed();
+            if (!pad.HasValue || pad.Value == usingPad) return;
+            usingPad = pad.Value;
             FillLegend();
             RefreshKeyHints();
         }
-
-        private static bool PadPressed(Gamepad pad) =>
-            pad.buttonSouth.wasPressedThisFrame || pad.buttonEast.wasPressedThisFrame || pad.buttonWest.wasPressedThisFrame
-            || pad.buttonNorth.wasPressedThisFrame || pad.startButton.wasPressedThisFrame || pad.selectButton.wasPressedThisFrame
-            || pad.leftShoulder.wasPressedThisFrame || pad.rightShoulder.wasPressedThisFrame
-            || pad.leftTrigger.wasPressedThisFrame || pad.rightTrigger.wasPressedThisFrame
-            || pad.dpad.up.wasPressedThisFrame || pad.dpad.down.wasPressedThisFrame
-            || pad.dpad.left.wasPressedThisFrame || pad.dpad.right.wasPressedThisFrame;
 
         // ---------------------------------------------------------------- the field
 

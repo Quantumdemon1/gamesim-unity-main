@@ -80,6 +80,17 @@ namespace Gamesim.Episode
         private float walkOutUntil, walkOutPressGuard;
         private OpeningDoorSet walkOutDoor;
 
+        /// <summary>The frame a press skipped the walk out: the walk is over by the time Escape's chain runs in it.</summary>
+        private int walkOutSkippedFrame = -1;
+
+        /// <summary>
+        /// Whether the walk out has this frame's Escape, Start or B (PLAN A, A2): it reads the
+        /// Ceremony map's Skip as a card does, without being a card, so the press that skips it -
+        /// or any press while it walks - stops there, rather than going on to open the pause menu
+        /// over the goodbye (EpisodeDirector.Controls.cs).
+        /// </summary>
+        private bool WalkOutHasThePress => walkingOutId != null || walkOutSkippedFrame == Time.frameCount;
+
         /// <summary>Whether the walk out under way is a staged eviction's: watched, slow, through a door that shuts behind it.</summary>
         private bool walkOutStaged;
         private StagedLeg stagedLeg;
@@ -261,7 +272,12 @@ namespace Gamesim.Episode
             if (walkingOutId == null) return;
             if (Time.unscaledTime > walkOutUntil || npcMeetings == null || npcWorldFailed)
             { AbortWalkOut(npcWorldFailure ?? "The walk out exceeded its budget or lost its coordinator."); return; }
-            if (Time.unscaledTime >= walkOutPressGuard && CeremonyTakeover.SkipPressed()) { SkipWalkOut(); return; }
+            if (Time.unscaledTime >= walkOutPressGuard && CeremonyTakeover.SkipPressed())
+            {
+                walkOutSkippedFrame = Time.frameCount;
+                SkipWalkOut();
+                return;
+            }
             if (walkOutStaged) { TickStagedWalkOut(); return; }
             switch (walkOutLeg)
             {

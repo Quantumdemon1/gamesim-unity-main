@@ -231,6 +231,8 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Dice.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Words.cs" />
     <Compile Include="$(EditMode)ScrambleDealTests.cs" />
+    <!-- The verification-only stress house: sixteen from both rosters, for the standalone profile's stress run. -->
+    <Compile Include="$(EditMode)StressHouseTests.cs" />
 
     <!--
       Several parity tests already carry an #else branch for running outside the editor: without

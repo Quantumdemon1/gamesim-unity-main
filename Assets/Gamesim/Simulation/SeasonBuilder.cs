@@ -74,6 +74,56 @@ namespace Gamesim.Simulation
         public static int ClampHouseSize(CastTemplates.Roster roster, int wanted)
             => Math.Max(MinimumHouse, Math.Min(LargestHouse(roster), wanted));
 
+        /// <summary>The largest house any one roster seats: twelve. Every playable season is at most this.</summary>
+        public static int LargestRosterHouse
+            => Enum.GetValues(typeof(CastTemplates.Roster)).Cast<CastTemplates.Roster>().Max(LargestHouse);
+
+        /// <summary>The largest stress house: what validation stores, from both rosters together (sixteen).</summary>
+        public static int LargestStressHouse => Math.Min(EpisodeValidation.MaximumCast, CastTemplates.Everyone.Count + 1);
+
+        /// <summary>
+        /// <b>Verification only.</b> A house larger than any roster seats - thirteen to sixteen - for the
+        /// standalone profile's stress run (<c>--gamesim-verify --gamesim-house-size 16
+        /// --gamesim-stress-roster</c>), and for nothing else: the cast screen, the creator, the importer
+        /// and every playable season go through <see cref="Create"/>, which never pads one roster with
+        /// the other. Validation stores sixteen; no roster seats more than twelve, so without this a
+        /// sixteen-person request was profiled at twelve, which is not a sixteen-person measurement.
+        ///
+        /// <para>The player is the unaffiliated newcomer, as on a default choice. The houseguests are
+        /// both rosters' templates taken in turn - the regular season's first, the all-stars' first,
+        /// the regular season's second - each in its roster's table order, so the house holds both
+        /// rosters and the same size and seed always build the same house. Every template id and name
+        /// is distinct across the two rosters, so nobody is cast twice. Like <see cref="Create"/>, it
+        /// draws nothing from the season's generator.</para>
+        /// </summary>
+        public static EpisodeState CreateVerificationStressHouse(int houseSize, uint seed)
+        {
+            if (houseSize <= LargestRosterHouse || houseSize > LargestStressHouse)
+                throw new ArgumentOutOfRangeException(nameof(houseSize), houseSize,
+                    "The stress house seats " + (LargestRosterHouse + 1) + " to " + LargestStressHouse
+                    + " houseguests; a house a roster can seat is built by SeasonBuilder.Create.");
+            var state = NewState(seed);
+            state.contestants.Add(Player(null, null));
+            foreach (var template in StressCast().Take(houseSize - 1))
+                state.contestants.Add(CastTemplates.ToContestant(template, false));
+            Seat(state, CastTemplates.Roster.Regular);
+            return state;
+        }
+
+        /// <summary>The stress house's casting order: the two rosters taken in turn, each in table order.</summary>
+        private static List<CastTemplates.Template> StressCast()
+        {
+            var regular = CastTemplates.In(CastTemplates.Roster.Regular).ToList();
+            var allStars = CastTemplates.In(CastTemplates.Roster.AllStars).ToList();
+            var order = new List<CastTemplates.Template>(regular.Count + allStars.Count);
+            for (int i = 0; i < Math.Max(regular.Count, allStars.Count); i++)
+            {
+                if (i < regular.Count) order.Add(regular[i]);
+                if (i < allStars.Count) order.Add(allStars[i]);
+            }
+            return order;
+        }
+
         public static EpisodeState Create(Choice choice, uint seed)
         {
             if (choice == null) throw new ArgumentNullException(nameof(choice));
@@ -89,20 +139,7 @@ namespace Gamesim.Simulation
             foreach (var profile in choice.CustomHouseguests)
                 if (profile == null || !profile.TryValidate(out _)) throw new ArgumentException("A selected custom houseguest is invalid.");
 
-            var state = new EpisodeState
-            {
-                sessionId = "gamesim-" + seed.ToString("x8"),
-                seed = seed,
-                competitionRulesVersion = CompetitionRules.Current,
-                haveNotRulesStartWeek = 1,
-                strategyRulesStartWeek = 1,
-                npcSocial = NpcSocialState.Create(seed),
-                randomState = seed == 0 ? 0x6D2B79F5u : seed,
-                playerId = ContentCatalog.PlayerId,
-                phase = EpisodePhase.Social,
-                week = 1,
-                socialActions = 0,
-            };
+            var state = NewState(seed);
 
             state.contestants.Add(Player(persona, choice.Authored));
             var reservedTemplates = new HashSet<string>(StringComparer.Ordinal);
@@ -123,6 +160,29 @@ namespace Gamesim.Simulation
                          .Take(size - state.contestants.Count))
                 state.contestants.Add(CastTemplates.ToContestant(template, false));
 
+            Seat(state, choice.Roster);
+            return state;
+        }
+
+        /// <summary>A season with nobody in it yet: week one's free time, its generator at the seed.</summary>
+        private static EpisodeState NewState(uint seed) => new EpisodeState
+        {
+            sessionId = "gamesim-" + seed.ToString("x8"),
+            seed = seed,
+            competitionRulesVersion = CompetitionRules.Current,
+            haveNotRulesStartWeek = 1,
+            strategyRulesStartWeek = 1,
+            npcSocial = NpcSocialState.Create(seed),
+            randomState = seed == 0 ? 0x6D2B79F5u : seed,
+            playerId = ContentCatalog.PlayerId,
+            phase = EpisodePhase.Social,
+            week = 1,
+            socialActions = 0,
+        };
+
+        /// <summary>Every ordered pair's relationship at zero, then the arrival line: the house as it walks in.</summary>
+        private static void Seat(EpisodeState state, CastTemplates.Roster roster)
+        {
             foreach (var from in state.contestants)
                 foreach (var to in state.contestants)
                     if (from.id != to.id)
@@ -134,10 +194,9 @@ namespace Gamesim.Simulation
                 week = 1,
                 phase = EpisodePhase.Social,
                 kind = "arrival",
-                text = Arrival(state.contestants.Count, choice.Roster),
+                text = Arrival(state.contestants.Count, roster),
                 audienceIds = state.contestants.Select(c => c.id).ToList(),
             });
-            return state;
         }
 
         /// <summary>

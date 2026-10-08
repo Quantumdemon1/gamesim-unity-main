@@ -94,6 +94,8 @@ namespace Gamesim.Tests.EditMode
         /// The sixteen-person house with every rule a season the director starts has (EpisodeDirector.StartSeason
         /// at 2ea986df): competitions, have-nots and strategy from week one, the story, the read, the levers, the
         /// week, the economy, NPC agency, the finale, the commitment rules and the prospective unified versions.
+        /// A hand copy, held to the director's by <see cref="TheStressSeasonSwitchesOnEveryRuleADirectorSeasonDoes"/>:
+        /// a rule the director's start gains fails that test until it is added here.
         /// </summary>
         private static EpisodeState DirectorStressSeason(uint seed)
         {
@@ -146,7 +148,7 @@ namespace Gamesim.Tests.EditMode
                 peakDeals = Math.Max(peakDeals, after.deals.Count);
                 peakStorylines = Math.Max(peakStorylines, after.storylines?.Count ?? 0);
                 if (logFullFromWeek == 0 && after.events.Count >= 256) logFullFromWeek = after.week;
-                if (playerDealsClosedFromWeek == 0 && CommitmentReferences.DealCount(after) >= PlayerDeals.PlayerDealCeiling) playerDealsClosedFromWeek = after.week;
+                if (playerDealsClosedFromWeek == 0 && PlayerDealsAtTheCeiling(after)) playerDealsClosedFromWeek = after.week;
                 weeks = Math.Max(weeks, after.week);
                 if (after.week != s.week || after.phase == EpisodePhase.Finished)
                 {
@@ -187,6 +189,17 @@ namespace Gamesim.Tests.EditMode
             Assert.That(finished.phase, Is.EqualTo(EpisodePhase.Finished));
             Assert.That(finished.Find(finished.winnerId), Is.Not.Null);
             Assert.That(EpisodeValidation.TryValidate(finished, out var error), Is.True, error);
+        }
+
+        /// <summary>
+        /// Whether the deal table refuses the player for its ceiling: asked of <see cref="PlayerDeals.CanPropose"/>
+        /// itself, so the diagnostic counts whatever the gate counts, however that count is kept.
+        /// </summary>
+        private static bool PlayerDealsAtTheCeiling(EpisodeState s)
+        {
+            var someone = s.Active.FirstOrDefault(c => !c.isPlayer);
+            return someone != null && !PlayerDeals.CanPropose(s, someone.id, DealKind.InformationSharing, null, out string reason)
+                && reason == Negotiation.TooManyArrangements;
         }
 
         /// <summary>The busy player's next free action, or null when the walk should take the phase's own step.</summary>
@@ -254,11 +267,47 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Naming("StressRosterArgument"), Is.EqualTo(new[] { "PortVerification.cs", "VerificationPerformance.cs" }));
         }
 
+        /// <summary>
+        /// The stress seasons claim the director's rules, and <see cref="DirectorStressSeason"/> is a hand copy of
+        /// them: every <c>EpisodeEngine.Enable*(fresh)</c> and every rule field the director's StartSeason sets on a
+        /// fresh season (its session id aside) must appear there too. A rule the director gains - a later wave's
+        /// enable line - fails here until the copy has it, rather than leaving the stress seasons on yesterday's rules.
+        /// </summary>
+        [Test]
+        public void TheStressSeasonSwitchesOnEveryRuleADirectorSeasonDoes()
+        {
+            string root = SourceRoot();
+            string director = File.ReadAllText(Path.Combine(root, "Runtime", "Episode", "EpisodeDirector.Season.cs"));
+            int start = director.IndexOf("Func<uint, EpisodeState> build)", StringComparison.Ordinal);
+            int end = start < 0 ? -1 : director.IndexOf("nextStore.Save(fresh)", start, StringComparison.Ordinal);
+            Assert.That(start, Is.GreaterThanOrEqualTo(0), "The director's StartSeason body was found.");
+            Assert.That(end, Is.GreaterThan(start), "...up to where it stages the season.");
+            string body = director.Substring(start, end - start);
+            var rules = System.Text.RegularExpressions.Regex.Matches(body,
+                    @"EpisodeEngine\.Enable\w+\(fresh\);|fresh\.(?!sessionId\b)\w+\s*=\s*[^;]+;")
+                .Cast<System.Text.RegularExpressions.Match>().Select(match => Normalise(match.Value.Replace("(fresh)", "(s)").Replace("fresh.", "s."))).ToList();
+            Assert.That(rules.Count(rule => rule.StartsWith("EpisodeEngine.Enable", StringComparison.Ordinal)), Is.GreaterThanOrEqualTo(8), "The director's enable lines were read.");
+
+            string tests = File.ReadAllText(Path.Combine(root, "Tests", "EditMode", "StressHouseTests.cs"));
+            int copyStart = tests.IndexOf("private static EpisodeState DirectorStressSeason(uint seed)", StringComparison.Ordinal);
+            int copyEnd = copyStart < 0 ? -1 : tests.IndexOf("return s;", copyStart, StringComparison.Ordinal);
+            Assert.That(copyEnd, Is.GreaterThan(copyStart).And.GreaterThan(0), "The stress season's rules were found.");
+            string copy = Normalise(tests.Substring(copyStart, copyEnd - copyStart));
+            var missing = rules.Where(rule => !copy.Contains(rule)).ToList();
+            Assert.That(missing, Is.Empty, "DirectorStressSeason lacks the director's: " + string.Join(" ", missing));
+        }
+
+        private static string Normalise(string code) => System.Text.RegularExpressions.Regex.Replace(code, @"\s+", "");
+
         /// <summary>Assets/Gamesim, found upward from the working directory (the Unity project) or the test binary (Tools/SimulationTests).</summary>
         private static string SourceRoot()
         {
             var found = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (string start in new[] { Directory.GetCurrentDirectory(), Path.GetDirectoryName(typeof(StressHouseTests).Assembly.Location) })
+            // An assembly loaded from bytes has no location, and Path.GetDirectoryName("") throws on Mono.
+            string binary = typeof(StressHouseTests).Assembly.Location;
+            var starts = new List<string> { Directory.GetCurrentDirectory() };
+            if (!string.IsNullOrEmpty(binary)) starts.Add(Path.GetDirectoryName(binary));
+            foreach (string start in starts)
             {
                 string at = start;
                 for (int depth = 0; depth < 12 && !string.IsNullOrEmpty(at); depth++)

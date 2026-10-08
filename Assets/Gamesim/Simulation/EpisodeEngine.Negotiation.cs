@@ -170,9 +170,13 @@ namespace Gamesim.Simulation
             if (price.expiresWeek != 0 && s.week > price.expiresWeek) return;
             if (UnifiedCommitments.SafetyAuthorityOn(s))
             {
-                // Mode 2 (vote family V3b): the safety store voids a canonical safety price as in mode 1; a
-                // canonical vote price waits for the Vote family's endings (V4), its void neither written nor said.
-                if (UnifiedVoteStore.On(s) ? s.unifiedCommitments.Any(row => row.id == price.id)
+                // Mode 2: the safety store voids a canonical safety price as in mode 1 (vote family V3b), and the
+                // Vote family's own ending a canonical vote price (V4).
+                if (UnifiedVoteStore.On(s) && s.unifiedCommitments.Any(row => row.id == price.id && row.kind == UnifiedVoteTogether.Vote))
+                {
+                    if (!VoidUnifiedVotePrice(s, price.id, bought.id, breakerId)) return;
+                }
+                else if (UnifiedVoteStore.On(s) ? s.unifiedCommitments.Any(row => row.id == price.id)
                     : CommitmentReferences.FindCanonical(s, price.id) != null)
                 {
                     if (!UnifiedCommitmentStore.TryExpireLinkedPrice(s, bought.id, breakerId, out _)) return;

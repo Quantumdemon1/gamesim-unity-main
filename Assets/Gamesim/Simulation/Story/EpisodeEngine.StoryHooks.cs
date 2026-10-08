@@ -99,9 +99,11 @@ namespace Gamesim.Simulation
             if (hoh == null || evicted == null || s.nominees.Count != 2) return;
             string target = s.nominees.OrderBy(id => s.Score(hoh.id, id)).ThenBy(id => id, StringComparer.Ordinal).First();
             if (target == evicted) return;
+            // Mode 2 (vote family V4): the vote deals are canonical rows; read them with the raw ones, as one list.
+            var deals = UnifiedVoteStore.On(s) ? UnifiedVoteReferences.DealsUnchecked(s) : (IReadOnlyList<DealState>)s.deals;
             foreach (var vote in s.votes.Where(v => v.voterId != hoh.id && v.targetId != target))
             {
-                bool meantToBeWithThem = s.Allied(hoh.id, vote.voterId) || s.deals.Any(d =>
+                bool meantToBeWithThem = s.Allied(hoh.id, vote.voterId) || deals.Any(d =>
                     (d.type == DealKind.VoteTogether || d.type == DealKind.VoteEvict || d.type == DealKind.TargetAgreement)
                     && (d.status == DealStatus.Active || d.status == DealStatus.Broken || d.status == DealStatus.Fulfilled) && d.week == s.week
                     && ((d.proposerId == hoh.id && d.recipientId == vote.voterId) || (d.proposerId == vote.voterId && d.recipientId == hoh.id)));
@@ -331,6 +333,7 @@ namespace Gamesim.Simulation
             NpcAlliances.EndBroken(s);
             s.oathOpportunities.Remove(id);
             s.loyaltyOaths.RemoveAll(o => o.playerId == id || o.targetId == id);
+            ResolveUnifiedVoteExpiry(s, UnifiedCommitmentExpiry.Expulsion, id);
             if (UnifiedCommitments.SafetyAuthorityOn(s)) ResolveUnifiedSafetyExpiry(s, UnifiedCommitmentExpiry.Expulsion, id);
             foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && (p.fromId == id || p.toId == id)))
                 promise.status = PromiseStatus.Expired;

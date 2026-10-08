@@ -21,11 +21,10 @@ namespace Gamesim.Tests.EditMode
     /// a fact no owner files - filler history that only fills a shelf (the deal-lapsed rows), a breach for an
     /// owner to judge, a state the core refuses - says so where it constructs it.</para>
     ///
-    /// <para>Before the first reveal only: until the reveal publishes its archive frame (vote family V4) a
-    /// mode-2 reveal cannot complete - the mode-2 readers in the middle of it throw on the missing frame -
-    /// so the twin cannot be carried past one. A season the public game carries past a reveal is projected
-    /// with the owners and frames <see cref="PinnedVoteSeason"/> observed, and compared through
-    /// <see cref="AssertProjection"/>.</para>
+    /// <para>Before the first reveal only: a twin projected here has no frames to carry. A mode-2 reveal settles
+    /// and publishes its own frame (vote family V4), and a season the public game carries past a reveal is
+    /// projected with the owners and frames <see cref="PinnedVoteSeason"/> observed, and compared through
+    /// <see cref="AssertProjection"/> (UnifiedVoteSettlementTests carries both games so).</para>
     /// </summary>
     internal static class ProspectiveVoteTwins
     {

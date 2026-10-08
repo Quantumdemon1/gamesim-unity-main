@@ -9,7 +9,7 @@ namespace Gamesim.Simulation
         // These gateways run only inside the command owner's detached transaction. They do not
         // activate rules, save, invent a decision, or turn read projections into writable mirrors.
         // They settle wherever canonical Safety is the authority: mode 1, and the prospective mode 2
-        // (vote family V3b), where they settle the Safety rows only and the Vote rows wait for theirs (V4).
+        // (vote family V3b), where they settle the Safety rows only; the Vote rows settle and end by their own (V4).
         internal static void ResolveUnifiedSafetyNomination(EpisodeState s, string decisionId, string actorId,
             IReadOnlyList<string> actionNominees)
         {

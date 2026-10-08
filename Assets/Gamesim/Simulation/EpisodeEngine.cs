@@ -280,6 +280,7 @@ namespace Gamesim.Simulation
                         if (LeverRulesOn(s)) s.boughtActionPoints = 0;
                         foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.expiresWeek > 0 && p.expiresWeek < s.week))
                             promise.status = PromiseStatus.Expired;
+                        ResolveUnifiedVoteExpiry(s, UnifiedCommitmentExpiry.PromiseWeekTurn);
                         ResolveUnifiedSafetyExpiry(s, UnifiedCommitmentExpiry.PromiseWeekTurn);
                         if (StoryAt(s, StoryRules.Bonds)) MoodsSettle(s);
                         StoryWeekTurn(s);
@@ -480,13 +481,18 @@ namespace Gamesim.Simulation
                     else evicted = tally.OrderByDescending(x => x.count).First().id;
                     // Resolve oath vote consequences only at the public reveal. Pending private ballots
                     // must not disclose themselves via a breach log or influence this round's remaining voters.
+                    // Mode 2 (vote family V4): the canonical Vote rows settle in the same lanes, once, by the plan.
+                    var votePlan = UnifiedVoteStore.On(s) ? BeginUnifiedVoteReveal(s) : null;
                     foreach (var vote in s.votes)
                     {
                         foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.Vote && p.fromId == vote.voterId).ToArray())
                             SettlePromise(s, promise, promise.targetId == vote.targetId ? PromiseStatus.Fulfilled : PromiseStatus.Broken);
+                        if (votePlan != null) SettleUnifiedVotePromises(s, votePlan, vote.voterId);
                         ApplyOathPlan(s, WebLoyaltyOaths.EvictionVote(OathSnapshot(s), vote.voterId, vote.targetId));
                     }
-                    SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Votes, null, voteDeals: LeverRulesOn(s)));
+                    var dealVerdicts = DealResolution.Verdicts(s, DealResolution.Votes, null, voteDeals: LeverRulesOn(s));
+                    if (votePlan != null) SettleUnifiedVoteDeals(s, votePlan, dealVerdicts);
+                    else SettleDeals(s, dealVerdicts);
                     StoryVotesRevealed(s, evicted);
                     s.Find(evicted).status = ContestantStatus.Jury; s.evictionResolved = true;
                     // Off the block by the house's vote is saved too.
@@ -509,6 +515,7 @@ namespace Gamesim.Simulation
                         + Target(s, vote.targetId, vote.voterId) + ". " + vote.reason, vote.voterId);
                     SettleVoteRead(s, evicted);
                     RecordReveal(s, evicted, tally.Select(x => x.count).ToList());
+                    if (votePlan != null) PublishUnifiedVoteReveal(s, votePlan);
                     RecordJurorStanding(s, evicted);
                     // Under the commitment rules (C2) an ally whose ballot went against the player has
                     // turned on their pact - told to the betrayer alone, as the ballot is.
@@ -1069,6 +1076,12 @@ namespace Gamesim.Simulation
             RecordFinalEviction(s, target, s.Active.Where(c => c.id != s.hohId).Select(c => c.id).ToList());
             RecordJurorStanding(s, target);
             s.Find(target).status = ContestantStatus.Jury;
+            // Mode 2 (vote family V4): the canonical vote deals still binding them end as the departure is
+            // published, before the jury's readers check the season - no social week follows to end them first.
+            // Mode 1 ends them only after the reconcile below, so that reconcile reads each one at the status it
+            // ended from: a story's deal nobody marked taken as it was struck, or an offer never answered, goes
+            // on the record as mode 1's does.
+            var endedWithTheEvictee = ResolveUnifiedVoteExpiry(s, UnifiedCommitmentExpiry.Departure, target);
             if (StoryOn(s)) Bonds.Apart(s, target);
             s.jurySentiment = WebJurySentiment.AddJuror(s.jurySentiment, target, Name(s, target), s.Score(s.playerId, target));
             // No social week follows this eviction, so the settle that ends an evictee's alliances
@@ -1087,7 +1100,8 @@ namespace Gamesim.Simulation
             // Last in the step, as at the weekly settle: nothing minted above moves, and it is the
             // line the status bar shows.
             TellThePlayerWhichAlliancesEnded(s, ended.Where(a => a.members.Contains(s.playerId)).ToList());
-            ReconcileOpportunities(s);
+            if (endedWithTheEvictee != null) ReconcileOpportunities(s, endedWithTheEvictee);
+            else ReconcileOpportunities(s);
             // Under the commitment rules (C1, X4) whatever still bound the one evicted ends with them,
             // as at the weekly eviction: after the reconcile, so a deal the player took stays on the
             // record as taken, and drawing nothing.

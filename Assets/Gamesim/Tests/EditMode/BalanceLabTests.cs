@@ -11,28 +11,27 @@ namespace Gamesim.Tests.EditMode
 {
     /// <summary>
     /// The balance lab's own tests (BALANCE plan B2-B4): the smoke tier, which plays one season per policy
-    /// and size and proves every player stays legal; determinism; the statistics; the knowledge gate's
+    /// and house of the full grid (4 to 12 and the All-Stars 8 and 12) and proves every player stays legal; determinism; the statistics; the knowledge gate's
     /// structure; the seeds and the performance model. The headline tier is in
     /// <see cref="BalanceLabReports"/>, explicit. The Unity-free run only: Unity's batch runner would play
     /// these seasons under Mono several times slower, and the lab's files are compiled out of Unity.
     /// </summary>
     public sealed class BalanceLabTests
     {
-        private static readonly int[] SmokeSizes = { 6, 8, 12 };
-
         // ---------------------------------------------------------------- the smoke tier
 
         [Test]
         public void Smoke_EveryPolicyPlaysALegalSeasonAtEverySize()
         {
             var clock = BalanceLab.Clock();
-            var runs = BalanceLab.Run(BalanceLab.Grid(BalancePolicies.All, SmokeSizes), 1);
+            // The full tier's grid, one season a cell: every house any tier plays is legal for every player.
+            var runs = BalanceLab.Run(BalanceLabReports.FullGrid(), 1);
             double seconds = clock.Elapsed.TotalSeconds;
             TestContext.WriteLine("Smoke tier: " + runs.Length + " seasons in " + BalanceLab.Num(seconds, "0.0") + " s on " + Environment.ProcessorCount + " threads.");
-            TestContext.WriteLine("| policy | size | outcome | weeks | commands | own | walker | free | refused | top refusal |");
+            TestContext.WriteLine("| policy | house | outcome | weeks | commands | own | walker | free | refused | top refusal |");
             TestContext.WriteLine("|---|---|---|---|---|---|---|---|---|---|");
             foreach (var r in runs)
-                TestContext.WriteLine("| " + r.cell.policy + " | " + r.cell.size + " | " + (r.error ?? r.autopsy.outcome + " (" + r.autopsy.placement + ")") + " | " + r.autopsy?.weeks
+                TestContext.WriteLine("| " + r.cell.policy + " | " + BalanceLabReports.HouseOf(r.cell) + " | " + (r.error ?? r.autopsy.outcome + " (" + r.autopsy.placement + ")") + " | " + r.autopsy?.weeks
                     + " | " + r.commands + " | " + r.own + " | " + r.fallbacks + " | " + r.freeActions + " | " + r.refusals + " | "
                     + r.refusalsByKind.OrderByDescending(p => p.Value).Select(p => p.Key + " x" + p.Value).FirstOrDefault() + " |");
             TestContext.WriteLine("Rows: " + BalanceLab.Write("smoke", BalanceLab.Jsonl(runs)));

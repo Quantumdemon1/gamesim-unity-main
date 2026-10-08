@@ -22,7 +22,8 @@ namespace Gamesim.Tests.EditMode
     /// <see cref="ShippedRules.ApplyFresh"/>) and played through the public engine. Each step the policy
     /// proposes (up to three times, told each refusal); when it proposes nothing, or nothing it proposes is
     /// accepted, the engine tests' walker takes the phase's own step. Every competition's performance comes
-    /// from <see cref="PerformanceModel"/>. The state is validated at every phase change and at the end.
+    /// from <see cref="PerformanceModel"/>. The state is validated after every Advance, at every phase change
+    /// and at the end.
     /// The NPC world is not driven (B5): no NPC-to-NPC conversation happens in these seasons.</para>
     ///
     /// <para><b>Seeds</b> are a hash of the house (roster, size, NPC budget) and the index, never of the policy
@@ -122,10 +123,12 @@ namespace Gamesim.Tests.EditMode
                 if (Free.Contains(used.kind)) run.freeActions++;
                 var after = applied.state;
                 run.pace.Watch(used, after);
-                if (SeasonAutopsy.IsPhaseChange(s, after))
+                bool phaseChange = SeasonAutopsy.IsPhaseChange(s, after);
+                if (phaseChange) changes.Add(new SeasonAutopsy.PhaseChange(s, after));
+                if ((phaseChange || used.kind == EpisodeCommandKind.Advance) && !EpisodeValidation.TryValidate(after, out string invalid))
                 {
-                    changes.Add(new SeasonAutopsy.PhaseChange(s, after));
-                    if (!EpisodeValidation.TryValidate(after, out string invalid)) { run.error = "week " + after.week + " " + after.phase + ": invalid: " + invalid; break; }
+                    run.error = "week " + after.week + " " + after.phase + " after " + used.kind + ": invalid: " + invalid;
+                    break;
                 }
                 s = after;
             }

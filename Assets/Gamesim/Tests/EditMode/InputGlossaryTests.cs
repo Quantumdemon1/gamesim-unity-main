@@ -91,6 +91,62 @@ namespace Gamesim.Tests.EditMode
             Assert.That(InputGlossary.Join(new[] { "Esc", "", "Esc", "B" }), Is.EqualTo("Esc / B"), "Each word once, empties dropped.");
         }
 
+        [Test]
+        public void TheHints_KeepTheKeyboardsWordsAndNameThePadsButtons()
+        {
+            // The keyboard's words are what they always were (A4 changes nothing for a keyboard player).
+            Assert.That(InputGlossary.HelpCard(false), Is.EqualTo(InputGlossary.KeyboardHelpCard));
+            Assert.That(InputGlossary.TourLine(false), Is.EqualTo(InputGlossary.KeyboardTourLine));
+            Assert.That(InputGlossary.KeyboardHelpCard, Does.StartWith("Click a houseguest: talk\n").And.EndWith("Esc: close"));
+
+            string card = InputGlossary.HelpCard(true);
+            Assert.That(card.Split('\n'), Has.Length.EqualTo(5), "The pad's card fills the same five lines.");
+            foreach (var line in card.Split('\n'))
+                Assert.That(line.Length, Is.LessThanOrEqualTo(33), "'" + line + "' fits the card's box as the keyboard's longest line does.");
+            // Each button named is the one its row says, so a rebinding cannot leave the card behind.
+            foreach (var (map, action) in new[] { ("Shortcuts", "Interact"), ("Shortcuts", "Diary"), ("Camera", "Pan"), ("Camera", "Recenter"),
+                ("Camera", "OrbitRate"), ("Camera", "Next"), ("Camera", "Previous"), ("Shortcuts", "Overview"), ("Shortcuts", "Back"), ("Shortcuts", "Menu") })
+                Assert.That(card, Does.Contain(InputGlossary.Find(map, action).Pad.Replace(" / ", "/")), map + "/" + action);
+            Assert.That(card, Does.Not.Contain("Click").And.Not.Contain("Esc"), "Nothing a pad cannot press.");
+
+            string tour = InputGlossary.TourLine(true);
+            Assert.That(tour, Does.Contain("Press " + InputGlossary.Find("Shortcuts", "Interact").Pad + " near a houseguest"));
+            Assert.That(tour, Does.Contain(InputGlossary.Find("Shortcuts", "Back").Pad + " closes this tour"));
+            Assert.That(tour, Does.Not.Contain("Click").And.Not.Contain("Esc"));
+        }
+
+        [Test]
+        public void ThePrompt_NamesTheKeyOrTheButton()
+        {
+            Assert.That(InputGlossary.PromptKey(false), Is.EqualTo("E"));
+            Assert.That(InputGlossary.PromptKey(true), Is.EqualTo("X"));
+            Assert.That(InputGlossary.PromptFor("E  ·  Talk to Maya", false), Is.EqualTo("E  ·  Talk to Maya"), "The keyboard's prompt is unchanged.");
+            Assert.That(InputGlossary.PromptFor("E  ·  Talk to Maya", true), Is.EqualTo("X  ·  Talk to Maya"));
+            Assert.That(InputGlossary.PromptFor("E  ·  Get out of the pool", true), Is.EqualTo("X  ·  Get out of the pool"));
+            Assert.That(InputGlossary.PromptFor("", true), Is.EqualTo(""));
+            Assert.That(InputGlossary.PromptFor(null, true), Is.Null);
+            Assert.That(InputGlossary.PromptFor("Elena is here", true), Is.EqualTo("Elena is here"), "Only the key at the front is the key.");
+        }
+
+        [Test]
+        public void CaptionsThatNameAKey_HaveAnActionWithAPadButton()
+        {
+            foreach (var pair in InputGlossary.CaptionKeys)
+            {
+                var parts = pair.Value.Split('/');
+                var row = InputGlossary.Find(parts[0], parts[1]);
+                Assert.That(row, Is.Not.Null, pair.Key);
+                Assert.That(row.Pad, Is.Not.Empty, pair.Key + " has a pad button to stand beside it.");
+            }
+            Assert.That(InputGlossary.CaptionAction("Close  [Esc]"), Is.EqualTo("Shortcuts/Back"));
+            Assert.That(InputGlossary.CaptionAction("Save now  [F5]"), Is.EqualTo("Shortcuts/Save"));
+            Assert.That(InputGlossary.CaptionAction("Notebook [J]"), Is.EqualTo("Shortcuts/Notebook"));
+            Assert.That(InputGlossary.CaptionAction("Go to diary room [R]"), Is.EqualTo("Shortcuts/Diary"));
+            Assert.That(InputGlossary.CaptionAction("STOP marker  [Space]"), Is.EqualTo("Shortcuts/Hit"));
+            Assert.That(InputGlossary.CaptionAction("Promise safety"), Is.Null);
+            Assert.That(InputGlossary.CaptionAction(null), Is.Null);
+        }
+
         private static List<KeyValuePair<string, string>> Parts(params (string Name, string Path)[] parts) =>
             parts.Select(part => new KeyValuePair<string, string>(part.Name, part.Path)).ToList();
     }

@@ -68,8 +68,29 @@ namespace Gamesim.Presentation
         /// ignore Space and have a "Skip Introductions" of their own, and a season offered the tour
         /// without an opening has none to press them in.
         /// </summary>
-        public const string ControlsLine =
-            "Click the floor to walk. Press E near a houseguest to talk. Esc closes this tour.";
+        public const string ControlsLine = InputGlossary.KeyboardTourLine;
+
+        /// <summary>
+        /// Whether the controls line speaks of the pad's buttons: the device last pressed on, as
+        /// the ceremony cards follow it (PLAN A, A4). The tour starts on the keyboard's words.
+        /// </summary>
+        public bool PadLine { get; private set; }
+
+        /// <summary>A step's words, with the controls line in the device's words.</summary>
+        private string BodyFor(Step current) =>
+            PadLine ? current.Body.Replace(ControlsLine, InputGlossary.TourLine(true)) : current.Body;
+
+        /// <summary>A press on the other kind of device rewords the step on screen, in place.</summary>
+        private void FollowDevice()
+        {
+            var pad = Gamesim.House.HouseInput.PadUsed();
+            if (!pad.HasValue || pad.Value == PadLine) return;
+            PadLine = pad.Value;
+            if (step < 0 || step >= visible.Count || body == null) return;
+            body.text = Localisation.Text(BodyFor(visible[step]));
+            Layout();
+            Place();
+        }
 
         /// <summary>The reference card's width: its max-w-sm, in the canvas's 1600x900 units.</summary>
         private const float CardWidth = 384f;
@@ -286,7 +307,7 @@ namespace Gamesim.Presentation
             var current = visible[step];
             counter.text = Localisation.Format("{0} of {1}", step + 1, visible.Count);
             title.text = Localisation.Text(current.Title);
-            body.text = Localisation.Text(current.Body);
+            body.text = Localisation.Text(BodyFor(current));
             nextLabel.text = Localisation.Text(step == visible.Count - 1 ? FinishCaption : NextCaption);
 
             Layout();
@@ -304,6 +325,7 @@ namespace Gamesim.Presentation
         private void LateUpdate()
         {
             if (step < 0 || card == null) return;
+            FollowDevice();
             float delta = Time.unscaledDeltaTime;
             stepAge += delta;
             Track(delta);

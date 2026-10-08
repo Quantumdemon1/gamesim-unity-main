@@ -132,6 +132,76 @@ namespace Gamesim.Presentation
         /// <summary>Every row, in the order the controls page shows them.</summary>
         public static IReadOnlyList<Row> Rows => rows;
 
+        // ---------------------------------------------------------------- hints that follow the device (A4)
+
+        /// <summary>The help card's words on the keyboard and mouse, as they have always read.</summary>
+        public const string KeyboardHelpCard =
+            "Click a houseguest: talk\nClick floor: walk  ·  F: recenter\nWASD/arrows: pan  ·  Wheel: zoom\nRight-drag: orbit · Mid-drag: pan\nR: diary · E: interact · Esc: close";
+
+        /// <summary>The tour's controls line on the keyboard and mouse, as it has always read.</summary>
+        public const string KeyboardTourLine =
+            "Click the floor to walk. Press E near a houseguest to talk. Esc closes this tour.";
+
+        /// <summary>
+        /// The help card for the device last used. On a pad, five lines in the card's same box, each
+        /// button named the way its row is: X talks, Y is the diary, the sticks move and turn the
+        /// camera, the shoulders follow, B closes and Start pauses.
+        /// </summary>
+        public static string HelpCard(bool pad)
+        {
+            if (!pad) return KeyboardHelpCard;
+            return PadOf("Shortcuts", "Interact") + ": talk · " + PadOf("Shortcuts", "Diary") + ": diary\n"
+                + PadOf("Camera", "Pan") + ": pan · " + PadOf("Camera", "Recenter") + ": recenter\n"
+                + PadOf("Camera", "OrbitRate") + ": orbit · " + PadOf("Camera", "ZoomRate") + ": zoom\n"
+                + PadOf("Camera", "Previous") + "/" + PadOf("Camera", "Next") + ": follow · " + PadOf("Shortcuts", "Overview") + ": map\n"
+                + PadOf("Shortcuts", "Back") + ": close · " + PadOf("Shortcuts", "Menu") + ": pause";
+        }
+
+        /// <summary>The tour's controls line for the device last used.</summary>
+        public static string TourLine(bool pad) => !pad ? KeyboardTourLine
+            : "Press " + PadOf("Shortcuts", "Interact") + " near a houseguest to talk. " + PadOf("Shortcuts", "Back") + " closes this tour.";
+
+        /// <summary>The key or button the house prompt names: "E  ·  Talk to Maya", or X on a pad.</summary>
+        public static string PromptKey(bool pad) => pad ? PadOf("Shortcuts", "Interact") : Find("Shortcuts", "Interact").Keyboard;
+
+        /// <summary>
+        /// The house prompt in the device's words: on a pad, the leading E of "E  ·  Open episode
+        /// screen" is the pad's button; on the keyboard it is the prompt, unchanged.
+        /// </summary>
+        public static string PromptFor(string prompt, bool pad)
+        {
+            string key = PromptKey(false);
+            if (!pad || string.IsNullOrEmpty(prompt) || !prompt.StartsWith(key + "  ", StringComparison.Ordinal)) return prompt;
+            return PromptKey(true) + prompt.Substring(key.Length);
+        }
+
+        /// <summary>
+        /// The keys the HUD's captions name, each with the action whose pad button stands beside it:
+        /// "Close  [Esc]" is B, "Save now  [F5]" the left stick's press, "Notebook [J]" Select. The
+        /// caption keeps its words; the pad's button is a chip of its own.
+        /// </summary>
+        public static readonly KeyValuePair<string, string>[] CaptionKeys =
+        {
+            new KeyValuePair<string, string>("[Esc]", "Shortcuts/Back"),
+            new KeyValuePair<string, string>("[F5]", "Shortcuts/Save"),
+            new KeyValuePair<string, string>("[J]", "Shortcuts/Notebook"),
+            new KeyValuePair<string, string>("[R]", "Shortcuts/Diary"),
+            new KeyValuePair<string, string>("[E]", "Shortcuts/Interact"),
+            new KeyValuePair<string, string>("[Space]", "Shortcuts/Hit"),
+        };
+
+        /// <summary>The map and action whose pad button stands beside a caption naming a key, or null.</summary>
+        public static string CaptionAction(string caption)
+        {
+            if (string.IsNullOrEmpty(caption)) return null;
+            foreach (var pair in CaptionKeys)
+                if (caption.EndsWith(pair.Key, StringComparison.Ordinal)) return pair.Value;
+            return null;
+        }
+
+        /// <summary>A row's pad words with the slashes closed up, for the help card's narrow box.</summary>
+        private static string PadOf(string map, string action) => Find(map, action).Pad.Replace(" / ", "/");
+
         /// <summary>The row for an action, or null.</summary>
         public static Row Find(string map, string action)
         {

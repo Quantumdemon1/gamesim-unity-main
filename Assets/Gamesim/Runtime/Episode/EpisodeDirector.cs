@@ -337,6 +337,8 @@ namespace Gamesim.Episode
 
         private void Update()
         {
+            // Which device the hints speak of, before anything this frame words one (A4).
+            NoteInputDevice();
             // First, and whatever else returns early: the dip is only a clock, and a frame that
             // skipped it would hold the house black for as long as a card or a load owned the frame.
             TickTravelDip();
@@ -473,7 +475,7 @@ namespace Gamesim.Episode
                     if (EpisodeHud.IsFinalThree(projected)) hint = EpisodeHud.TalkHint;
                 }
                 else if (choice == InteractTarget.StepIn) prompt = "E  \u00b7  " + EpisodeHud.StepInCaption;
-                hud.SetPrompt(prompt, hint);
+                hud.SetPrompt(InputGlossary.PromptFor(prompt, padHints), hint);
             }
             else hud.SetPrompt("");
         }

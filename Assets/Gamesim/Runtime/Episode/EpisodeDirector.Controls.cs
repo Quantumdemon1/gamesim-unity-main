@@ -14,6 +14,56 @@ namespace Gamesim.Episode
         /// <summary>The settings' eyebrow otherwise.</summary>
         public const string SettingsEyebrowCopy = "OFFLINE · NO ACCOUNT NEEDED";
 
+        private bool padHints;
+
+        /// <summary>
+        /// Whether the house's hints - the prompt, the help card, the glyph chips - are in the pad's
+        /// words: the device last pressed on was a pad (PLAN A, A4). A new scene starts on the
+        /// keyboard's.
+        /// </summary>
+        public bool HintsForPad => padHints;
+
+        /// <summary>A press on the other kind of device rewords the hints: the prompt on its next line, the HUD at once.</summary>
+        private void NoteInputDevice()
+        {
+            var pad = HouseInput.PadUsed();
+            if (!pad.HasValue || pad.Value == padHints) return;
+            padHints = pad.Value;
+            // The talk prompt is kept for the houseguest it names; worded afresh for the device.
+            promptNpc = null;
+            if (hud != null) hud.SetPadHints(padHints);
+        }
+
+        /// <summary>The settings' disclosure that shows every control, and hides them again.</summary>
+        public const string ShowControlsCaption = "Show the controls";
+        public const string HideControlsCaption = "Hide the controls";
+        private bool controlsShown;
+
+        /// <summary>
+        /// The settings' CONTROLS section (PLAN A, A4): folded under one control, and open, a line
+        /// for every action of the episode's maps - what it does, its keys and its pad buttons, read
+        /// off the actions the house is reading now.
+        /// </summary>
+        private void ControlsSettings()
+        {
+            hud.Section("CONTROLS");
+            hud.Disclosure(controlsShown ? HideControlsCaption : ShowControlsCaption, controlsShown,
+                () =>
+                {
+                    controlsShown = !controlsShown;
+                    Render();
+                    // The keyboard stays on the control it pressed, under its new words.
+                    hud.FocusWhenWired(controlsShown ? HideControlsCaption : ShowControlsCaption);
+                });
+            if (!controlsShown) return;
+            string context = null;
+            foreach (var line in ControlsPage.Lines(HouseActions))
+            {
+                if (line.Context != context) { context = line.Context; hud.Heading(context); }
+                hud.NamedParagraph(line.Name, line.Text);
+            }
+        }
+
         /// <summary>The house's actions: the rig's, or the shared copy when there is no rig (HouseInput).</summary>
         private HouseCameraActions HouseActions => cameraRig != null ? cameraRig.Actions : HouseInput.Actions;
 

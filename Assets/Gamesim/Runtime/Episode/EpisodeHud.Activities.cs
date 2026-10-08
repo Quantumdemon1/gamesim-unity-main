@@ -576,10 +576,11 @@ namespace Gamesim.Episode
             if (medium != null) words.font = medium;
             if (!helpExpanded && HudPrimitives.Glyph("Help mark", toggle.transform, "bulb", UiTheme.Joke, new Vector2(10f, -8f), 18f) != null)
                 Stretch(words.rectTransform, 34, 5, 10, 5);
-            if (helpExpanded)
-                FixedText(explorationHelp,
-                    "Click a houseguest: talk\nClick floor: walk  ·  F: recenter\nWASD/arrows: pan  ·  Wheel: zoom\nRight-drag: orbit · Mid-drag: pan\nR: diary · E: interact · Esc: close",
-                    16,Paper,new Vector2(14,-50),new Vector2(258,122));
+            // The card's words follow the device last used (PLAN A, A4): the keyboard's as they
+            // always read, or the pad's buttons, swapped in place when the device changes.
+            helpText = helpExpanded
+                ? FixedText(explorationHelp, InputGlossary.HelpCard(padHints), 16, Paper, new Vector2(14, -50), new Vector2(258, 122))
+                : null;
         }
     }
 }

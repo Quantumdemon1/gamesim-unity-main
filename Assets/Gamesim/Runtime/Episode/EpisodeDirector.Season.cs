@@ -112,6 +112,7 @@ namespace Gamesim.Episode
                 () => { SetCeremonyPace(ceremonyPace == CeremonyPace.Suspenseful ? CeremonyPace.Quick : CeremonyPace.Suspenseful); Render(); });
             DisplaySettings();
             CareerSettings();
+            ControlsSettings();
             hud.Paragraph("All dialogue and ceremony information is captioned. Mouse buttons and keyboard alternatives are available; precision competitions have an untimed assisted option.");
             hud.Heading("Import a supported web save");
             hud.Paragraph("Supports receipt-free, six-active-cast social snapshots. Complex in-progress web saves are rejected and archived unchanged, never silently simplified.");

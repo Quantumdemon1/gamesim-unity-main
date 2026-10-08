@@ -2007,6 +2007,8 @@ namespace Gamesim.Episode
             // A name a picker drew over a card that a row drawn after it uses as its caption comes off
             // now the render is done (EpisodeHud.ConversationGroups.cs).
             if (pickerNames.Count > 0) StandDownNamesThatAreCaptions();
+            // The pad's buttons beside the captions that name a key (EpisodeHud.Glyphs.cs).
+            SyncGlyphChips();
             var events = EventSystem.current;
             if (canvas == null || !canvas.gameObject.activeInHierarchy || events == null) return;
             var overlay = ActiveOverlay();

@@ -78,7 +78,7 @@ namespace Gamesim.Episode
             // A menu, not a beat of the week: its own tall panel and its own head (mockup
             // language: the glyph, the title, the eyebrow), with its rows under section labels.
             hud.SetActivityLayout(EpisodeHud.ActivityLayout.Settings);
-            hud.ScreenHeader(EpisodeHud.SettingsHeaderName, "OFFLINE \u00b7 NO ACCOUNT NEEDED",
+            hud.ScreenHeader(EpisodeHud.SettingsHeaderName, SettingsEyebrow(),
                 blockedRecovery ? "SAVE RECOVERY" : "SETTINGS & SAVES", UiTheme.Icon("settings"));
             hud.Aside("Offline play is available. No credentials or online connection are required.");
             hud.Section("YOUR SAVE");

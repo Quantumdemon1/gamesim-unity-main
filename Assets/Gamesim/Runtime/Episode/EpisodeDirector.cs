@@ -431,42 +431,8 @@ namespace Gamesim.Episode
                 hud.SetChallenge(challengeValue, challengeHits);
                 if (shortcuts != null && shortcuts.Hit.WasPressedThisFrame()) RecordChallengeHit();
             }
-            if (shortcuts != null && shortcuts.Menu.WasPressedThisFrame())
-            {
-                // The game surface consumes Escape / Start itself, including the dismissal frame.
-                if (competitionScreen != null && competitionScreen.OwnsMenuInput) return;
-                if (challengeActive) { CancelChallenge(); return; }
-                // The opening before anything: it draws over every screen, and Escape underneath it
-                // used to close panels and release the shot it was holding.
-                if (OpeningOwnsHouse) { OpeningMenuPressed(); return; }
-                // A ceremony card reads Escape itself - it skips the reveal - so the press does not
-                // also close the panels or open the settings underneath it.
-                if (CeremonyOverlays.OnScreen) return;
-                // The tour offered outside the opening - an imported season - dims the house and
-                // takes the pointer; Escape closes it, as the tour's own card says.
-                if (TourIsUp) { tutorial.Skip(); return; }
-                // Topmost first. The main menu sits above the cast screen, which sits above the
-                // HUD; closing a panel underneath either of them would leave a screen on top of the
-                // house with nothing behind it. The menu itself ignores Escape when there is no
-                // season to go back to, because there is nowhere for it to close to.
-                if (mainMenu != null && mainMenu.IsShowing) { if (SeasonInProgress) CloseMainMenu(); }
-                // The creator draws above the cast screen, so it takes Escape first — otherwise
-                // the screen underneath would close out from under the form on top of it.
-                else if (characterCreator != null && characterCreator.IsShowing) characterCreator.Dismiss();
-                else if (castSelect != null && castSelect.IsShowing) castSelect.Dismiss();
-                // The report draws over the finale panel; Escape closes it and leaves the panel.
-                else if (IsSeasonReportOpen) seasonReport.Close();
-                else
-                {
-                    // With nothing open, Escape does nothing - the keyboard has the HUD's own
-                    // buttons - but a pad has no other way to the settings, so Start opens them.
-                    bool wasOpen = IsPanelOpen;
-                    ClosePanels();
-                    var pressed = shortcuts.Menu.activeControl;
-                    if (!wasOpen && pressed != null && pressed.device is Gamepad) OpenSettings();
-                }
-                return;
-            }
+            // Escape or Start: the priority chain, topmost first (EpisodeDirector.Controls.cs).
+            if (shortcuts != null && shortcuts.Menu.WasPressedThisFrame()) { MenuPressed(); return; }
             // Not while a ceremony card is up either: it reads the pad's face buttons itself - X
             // speeds a reveal up, and X is also Interact - so a press meant for the card went on to
             // act in the house underneath it.

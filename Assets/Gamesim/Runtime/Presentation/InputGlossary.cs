@@ -74,7 +74,7 @@ namespace Gamesim.Presentation
             new Row(CameraContext, "Camera", "Previous", "[ / Shift+Tab", "LB", "Follow the previous houseguest"),
 
             // The house's shortcuts.
-            new Row(HouseContext, "Shortcuts", "Menu", "Esc", "Start", "Close the top panel; Start opens the settings"),
+            new Row(HouseContext, "Shortcuts", "Menu", "Esc", "Start", "Close the top panel; with nothing open, the pause menu"),
             new Row(HouseContext, "Shortcuts", "Notebook", "J", "Select", "Open the notebook"),
             new Row(HouseContext, "Shortcuts", "Save", "F5", "L3", "Save now"),
             new Row(HouseContext, "Shortcuts", "Diary", "R", "Y", "Walk to the diary room"),

@@ -24,8 +24,13 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsPanelOpen, Is.True, "Start with nothing open opens the settings: a pad has no other way there.");
             yield return PressPad(pad, GamepadButton.Start);
             Assert.That(director.IsPanelOpen, Is.False, "Start again closes it, as Escape does.");
+            // PLAN A, A3 (the owner's decision 1): Escape with nothing open is the pause menu, as
+            // Start is. It used to do nothing, and a first-time player looking for "pause" found nothing.
             yield return PressKey(Key.Escape);
-            Assert.That(director.IsPanelOpen, Is.False, "Escape with nothing open still does nothing: the keyboard has the HUD's buttons.");
+            Assert.That(director.IsPanelOpen, Is.True, "Escape with nothing open opens the pause menu, as Start does.");
+            Assert.That(director.IsHouseClockHeld, Is.True, "and the house is held under it.");
+            yield return PressKey(Key.Escape);
+            Assert.That(director.IsPanelOpen, Is.False, "Escape again closes it.");
 
             yield return PressPad(pad, GamepadButton.Select);
             Assert.That(director.IsPanelOpen, Is.True, "Select opens the notebook.");

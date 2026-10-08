@@ -295,6 +295,27 @@ namespace Gamesim.Tests.EditMode
             Assert.That(CampaignBrief.PlanProgress(new PactPlanRow { stance = PactPlanStance.Countered }), Is.EqualTo("Pushed back"));
             Assert.That(CampaignBrief.PlanProgress(new PactPlanRow { stance = PactPlanStance.Low }), Is.EqualTo("Lay low"));
 
+            // A pact of three that met this week as C6's - nobody at it had a say - meets no more: no goal it cannot reach.
+            var cold = PactPlanTests.WarRoom(out pact);
+            foreach (string id in new[] { NpcIds(cold)[3], NpcIds(cold)[4] }) PactPlanTests.SetScore(cold, id, cold.playerId, -40);
+            var met = PactPlanTests.Apply(new EpisodeEngine(cold), EpisodeCommandKind.AllianceMeet, NpcIds(cold)[3], text: PactId);
+            Assert.That(met.accepted, Is.True, met.reason);
+            Assert.That(PactPlans.ThisWeek(met.state, PactId), Is.Null, "Precondition: nobody had a say, so the meeting was C6's.");
+            Assert.That(Goals(met.state), Is.Empty, "No 'Meet first' for a pact that has met this week,");
+            Assert.That(CampaignBrief.PlanPoint(met.state, met.state.alliances.Single(a => a.id == PactId)), Is.Null, "nor a talking point to meet it.");
+
+            // A plan in a pact the player has left, or that has ended, takes no answer of theirs.
+            foreach (bool ended in new[] { true, false })
+            {
+                var gone = PactPlanTests.Opened(out _);
+                var theirs = gone.alliances.Single(a => a.id == PactId);
+                if (ended) theirs.active = false; else theirs.members.Remove(gone.playerId);
+                string why = ended ? "An ended pact" : "A pact the player left";
+                Assert.That(PactPlans.OpenPlan(gone, PactId), Is.Not.Null, "Precondition: its plan is still open.");
+                Assert.That(Goals(gone), Is.Empty, why + ": no goal waiting on the player,");
+                Assert.That(CampaignBrief.PlanPoint(gone, theirs), Is.Null, why + ": no talking point.");
+            }
+
             var off = PactPlanTests.WarRoom(out pact, rules: false);
             Assert.That(Goals(off), Is.EqualTo(new[] { "[ ] Call the vote in " + PactName + " · Once this week" }), "Without the war rooms, the call it always was.");
             Assert.That(CampaignBrief.PlanPoint(off, pact), Is.Null);

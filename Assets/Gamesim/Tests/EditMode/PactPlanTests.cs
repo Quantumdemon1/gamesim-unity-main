@@ -147,6 +147,13 @@ namespace Gamesim.Tests.EditMode
             SetScore(cold, npcs[3], cold.playerId, -40); SetScore(cold, npcs[4], cold.playerId, -40);
             Assert.That(PactPlans.CouldConvene(cold, pact), Is.True, "Whether anybody says is theirs: the player can see it could convene,");
             Assert.That(PactPlans.Convenes(cold, pact), Is.False, "and with nobody saying it does not.");
+            // Met as C6's then - nobody at it had a say - it meets no more this week, and the player can see it cannot.
+            var metCold = Apply(new EpisodeEngine(cold), EpisodeCommandKind.AllianceMeet, npcs[3], text: PactId);
+            Assert.That(metCold.accepted, Is.True, metCold.reason);
+            var coldPact = metCold.state.alliances.Single(a => a.id == PactId);
+            Assert.That(PactPlans.ThisWeek(metCold.state, PactId), Is.Null, "Precondition: nobody had a say, so the meeting was C6's,");
+            Assert.That(EpisodeEngine.MetThisWeek(metCold.state, coldPact), Is.True, "and the pact has met this week.");
+            Assert.That(PactPlans.CouldConvene(metCold.state, coldPact), Is.False, "Not where the pact has met this week.");
             var noVoter = Campaign();
             var hohAndNominees = Pact(noVoter, PactId, PactName, noVoter.playerId, NpcIds(noVoter)[0], NpcIds(noVoter)[1]);
             Warm(noVoter, hohAndNominees);

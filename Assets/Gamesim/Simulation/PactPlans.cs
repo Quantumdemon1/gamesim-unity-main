@@ -66,14 +66,16 @@ namespace Gamesim.Simulation
         /// <summary>
         /// Whether a meeting of this pact now would be a war room, by what the player can see: the rules on,
         /// a pact of three or more, the block set, somebody of it besides the player voting this week, and
-        /// neither a plan nor a call of it this week. Whether anybody at it will say is theirs
-        /// (<see cref="Convenes"/>). For the meeting row's pill.
+        /// neither a plan nor a call nor a meeting of it this week - a war room where nobody had a say met as
+        /// C6's, and meets no more this week (<see cref="EpisodeEngine.MetThisWeek"/>). Whether anybody at it
+        /// will say is theirs (<see cref="Convenes"/>). For the meeting row's pill and the campaign's goal.
         /// </summary>
         public static bool CouldConvene(EpisodeState s, AllianceState pact) =>
             EpisodeEngine.PactPlanRulesOn(s) && IsWarRoomPact(s, pact) && BlockSet(s)
             && EpisodeEngine.Voters(s).Any(v => !v.isPlayer && pact.members.Contains(v.id))
             && ThisWeek(s, pact.id) == null
-            && !s.ledger.calls.Any(k => k != null && k.week == s.week && k.allianceId == pact.id);
+            && !s.ledger.calls.Any(k => k != null && k.week == s.week && k.allianceId == pact.id)
+            && !EpisodeEngine.MetThisWeek(s, pact);
 
         /// <summary>Whether a meeting of this pact now is a war room: it could convene, and somebody at it has a say.</summary>
         public static bool Convenes(EpisodeState s, AllianceState pact) => CouldConvene(s, pact) && Says(s, pact).Count > 0;

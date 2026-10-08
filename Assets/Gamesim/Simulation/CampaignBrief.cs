@@ -115,8 +115,9 @@ namespace Gamesim.Simulation
 
             // Under the war rooms (WAVE-D-NPC-PACTS-PLAN D3-S7) a pact of three or more settles its call when it
             // meets: meeting it once the block is set, then answering its plan - as far as the player has got.
+            // Only a standing pact of the player's: one they left, or that ended, takes no answer of theirs.
             if (EpisodeEngine.PactPlanRulesOn(s) && VoteRead.Available(s))
-                foreach (var pact in s.alliances)
+                foreach (var pact in s.alliances.Where(a => YoursStanding(s, a)))
                 {
                     var plan = PactPlans.ThisWeek(s, pact.id);
                     if (plan == null && !PactPlans.CouldConvene(s, pact)) continue;
@@ -152,18 +153,22 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// The campaign's talking point for a pact's plan this week, under the war rooms (D3-S7), or null
-        /// where it has none - not a pact of three or more that could meet, nor one that has: meeting it, the
-        /// plan waiting on the player's answer, or the plan settled.
+        /// where it has none - not a standing pact of the player's, nor a pact of three or more that could
+        /// meet, nor one that has: meeting it, the plan waiting on the player's answer, or the plan settled.
         /// </summary>
         public static string PlanPoint(EpisodeState s, AllianceState pact)
         {
-            if (!EpisodeEngine.PactPlanRulesOn(s) || !VoteRead.Available(s) || pact == null) return null;
+            if (!EpisodeEngine.PactPlanRulesOn(s) || !VoteRead.Available(s) || !YoursStanding(s, pact)) return null;
             var plan = PactPlans.ThisWeek(s, pact.id);
             if (plan == null)
                 return PactPlans.CouldConvene(s, pact) ? "Meet " + pact.name + " through one of its members to settle who the bloc evicts: once a week." : null;
             return plan.stance == PactPlanStance.Open ? pact.name + "'s plan waits on your answer: tell somebody who was at the meeting."
                 : "You have settled " + pact.name + "'s plan this week.";
         }
+
+        /// <summary>A standing pact the player is still in: the only kind whose plan takes their answer.</summary>
+        private static bool YoursStanding(EpisodeState s, AllianceState pact) =>
+            pact != null && pact.active && pact.members != null && pact.members.Contains(s.playerId);
 
         /// <summary>How far the player has got with a pact's plan this week, in a few words: none yet, one waiting on them, or how they answered it.</summary>
         public static string PlanProgress(PactPlanRow plan)

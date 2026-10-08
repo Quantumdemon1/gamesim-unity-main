@@ -189,6 +189,8 @@ namespace Gamesim.Episode
         private void OpenSettingsFromMenu()
         {
             if (mainMenu != null) mainMenu.Hide();
+            // Not the pause menu: nothing the player was in is held behind these (A3).
+            settingsFromFrontDoor = true;
             OpenSettings();
         }
 

@@ -52,5 +52,33 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(director.EmoteMenuOpen, Is.False, "and closes them.");
         }
+
+        /// <summary>
+        /// The front door's screens are not panels, and a pad walks them with the d-pad and the
+        /// shoulders: under the main menu, the d-pad's right is not your moves, its up is not the
+        /// overview, and the shoulders follow nobody - the house underneath stays as it was.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Input_ThePadsHouseButtonsWaitBehindTheFrontDoor()
+        {
+            director.ClosePanels();
+            yield return null;
+            director.OpenMainMenu();
+            yield return null;
+            Assert.That(Menu().IsShowing, Is.True, "The main menu is up.");
+            Assert.That(director.IsPanelOpen, Is.False, "and it is not a panel.");
+            string followed = director.FollowedId;
+
+            var pad = TestGamepad();
+            foreach (var button in new[] { GamepadButton.DpadRight, GamepadButton.DpadUp, GamepadButton.RightShoulder, GamepadButton.LeftShoulder })
+            {
+                yield return PressPad(pad, button);
+                yield return null;
+                Assert.That(Menu().IsShowing, Is.True, button + ": the menu stays up.");
+                Assert.That(director.EmoteMenuOpen, Is.False, button + ": your moves wait behind the front door.");
+                Assert.That(director.IsOverview, Is.False, button + ": so does the overview.");
+                Assert.That(director.FollowedId, Is.EqualTo(followed), button + ": and the camera follows whom it followed.");
+            }
+        }
     }
 }

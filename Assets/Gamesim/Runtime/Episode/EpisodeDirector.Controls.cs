@@ -74,13 +74,31 @@ namespace Gamesim.Episode
         private bool ClosableChromeUp => overviewOpen || emoteMenuOpen || castMenuFor != null;
 
         /// <summary>
+        /// The front door's screens - the main menu, the cast screen, the creator - none of them a
+        /// panel. A pad walks them with the d-pad and the shoulders, so the house's camera and
+        /// chrome buttons on those (follow, your moves, the overview) wait until they are gone,
+        /// rather than toggling the house and redrawing its HUD underneath on every step.
+        /// </summary>
+        private bool FrontDoorUp => (mainMenu != null && mainMenu.IsShowing)
+            || (castSelect != null && castSelect.IsShowing)
+            || (characterCreator != null && characterCreator.IsShowing);
+
+        /// <summary>
         /// Whether the house is held right now - nothing in it ticks: the settings' eyebrow says
         /// PAUSED while it is, which is every moment the settings are open over a running house.
         /// </summary>
         public bool IsHouseClockHeld => IsReady && !NpcCanAdvance;
 
-        /// <summary>The settings' eyebrow: PAUSED while the panel holds the house's clock.</summary>
-        private string SettingsEyebrow() => settingsOpen && !blockedRecovery && IsHouseClockHeld ? PausedEyebrow : SettingsEyebrowCopy;
+        /// <summary>
+        /// Whether the settings on screen were opened from the main menu: the front door, which has
+        /// no house being played behind it to pause - on a fresh install, no season played at all.
+        /// Set as the menu opens them, and let go when they close.
+        /// </summary>
+        private bool settingsFromFrontDoor;
+
+        /// <summary>The settings' eyebrow: PAUSED while the panel holds the house's clock over the house the player was in.</summary>
+        private string SettingsEyebrow() =>
+            settingsOpen && !settingsFromFrontDoor && !blockedRecovery && IsHouseClockHeld ? PausedEyebrow : SettingsEyebrowCopy;
 
         /// <summary>
         /// Escape, or Start. Topmost first: the game surface, a challenge, the opening, a ceremony

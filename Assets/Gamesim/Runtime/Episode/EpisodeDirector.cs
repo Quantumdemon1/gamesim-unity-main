@@ -375,7 +375,7 @@ namespace Gamesim.Episode
             // open. Tab does the same only when no HUD control is focused - a mouse player who
             // clicked the house - because with one focused, Tab is the keyboard ring's, and the HUD
             // keeps a control focused whenever it can.
-            if (IsReady && !IsPanelOpen && !challengeActive && cameraRig != null && !TourIsUp && !CeremonyOverlays.OnScreen)
+            if (IsReady && !IsPanelOpen && !challengeActive && cameraRig != null && !TourIsUp && !CeremonyOverlays.OnScreen && !FrontDoorUp)
             {
                 var actions = cameraRig.Actions;
                 bool nothingFocused = EventSystem.current == null || EventSystem.current.currentSelectedGameObject == null;
@@ -448,7 +448,7 @@ namespace Gamesim.Episode
             {
                 if (shortcuts.Notebook.WasPressedThisFrame()) OpenJournal();
                 if (shortcuts.Save.WasPressedThisFrame()) SaveNow();
-                if (shortcuts.Overview.WasPressedThisFrame() && !IsPanelOpen) ToggleOverview();
+                if (shortcuts.Overview.WasPressedThisFrame() && !IsPanelOpen && !FrontDoorUp) ToggleOverview();
                 if (shortcuts.Diary.WasPressedThisFrame() && !IsPanelOpen) GoToDiary();
                 // Busy at a piece of furniture, E is getting up, before it is anything else.
                 if (shortcuts.Interact.WasPressedThisFrame()) Interact();
@@ -650,6 +650,8 @@ namespace Gamesim.Episode
             ForgetFreeTimeView();
             ForgetActionPurchase();
             ForgetInformationShare();
+            // Settings the main menu opened say so until they close (EpisodeDirector.Controls.cs).
+            if (settingsOpen) settingsFromFrontDoor = false;
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             replyCardView = null;
             blockSpeechView = null;

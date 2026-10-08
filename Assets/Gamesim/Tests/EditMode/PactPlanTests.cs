@@ -17,7 +17,7 @@ namespace Gamesim.Tests.EditMode
     /// </summary>
     public sealed class PactPlanTests
     {
-        private const string PactId = "alliance-war-room", PactName = "The War Room";
+        internal const string PactId = "alliance-war-room", PactName = "The War Room";
 
         // ------------------------------------------------------------ D3-S1: the gate, the numbers, the majority
 
@@ -792,14 +792,14 @@ namespace Gamesim.Tests.EditMode
 
         private static string Name(EpisodeState s, string id) => s.Find(id).name;
 
-        private static EpisodeCommand Command(EpisodeState s, EpisodeCommandKind kind, string target = null, string second = null, string text = null) =>
+        internal static EpisodeCommand Command(EpisodeState s, EpisodeCommandKind kind, string target = null, string second = null, string text = null) =>
             new EpisodeCommand
             {
                 id = "plan-" + kind + "-" + s.revision + "-" + target + "-" + second, actorId = s.playerId, kind = kind,
                 targetId = target, secondTargetId = second, text = text, expectedRevision = s.revision, expectedPhase = s.phase,
             };
 
-        private static CommandResult Apply(EpisodeEngine engine, EpisodeCommandKind kind, string target = null, string second = null, string text = null) =>
+        internal static CommandResult Apply(EpisodeEngine engine, EpisodeCommandKind kind, string target = null, string second = null, string text = null) =>
             engine.Apply(Command(engine.Snapshot, kind, target, second, text));
 
         /// <summary>The bloc's pressure in a voter's ballot as it stands, on a nominee: −40 where the call's directive reaches them.</summary>
@@ -807,7 +807,7 @@ namespace Gamesim.Tests.EditMode
             EpisodeEngine.ProjectBallot(s, voterId).nomineeEvaluations.Single(n => n.nomineeId == nomineeId).factors.Single(f => f.code == "blocPressure").value;
 
         /// <summary>Free time in the catalogue's six-house, the story, the commitment rules and the levers on, the player's pact of three warm.</summary>
-        private static EpisodeState FreeTime(bool rules, out AllianceState pact)
+        internal static EpisodeState FreeTime(bool rules, out AllianceState pact)
         {
             var s = ContentCatalog.Create(7);
             EpisodeEngine.EnableStory(s);
@@ -825,7 +825,7 @@ namespace Gamesim.Tests.EditMode
         /// The war room's campaign with both voters' minds made up: each wants the first nominee out, by
         /// how they see the two on the block - or, <paramref name="split"/>, the fifth wants the second out.
         /// </summary>
-        private static EpisodeState Decided(out AllianceState pact, bool split = false)
+        internal static EpisodeState Decided(out AllianceState pact, bool split = false)
         {
             var s = WarRoom(out pact);
             var npcs = NpcIds(s);
@@ -843,7 +843,7 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>The war room held through the fourth houseguest: its plan open.</summary>
-        private static EpisodeState Opened(out AllianceState pact, bool split = false)
+        internal static EpisodeState Opened(out AllianceState pact, bool split = false)
         {
             var s = Decided(out pact, split);
             var result = Apply(new EpisodeEngine(s), EpisodeCommandKind.AllianceMeet, NpcIds(s)[3], text: PactId);

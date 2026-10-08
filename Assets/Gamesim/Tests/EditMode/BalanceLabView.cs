@@ -218,7 +218,8 @@ namespace Gamesim.Tests.EditMode
         public bool AskedThisWeek(string id) => EpisodeEngine.AskedThisWeek(s, id);
         public bool ReadThisWeek(string id) => EpisodeEngine.ReadThisWeek(s, id);
         public bool CalledThisWeek(string pactId) => s.ledger.calls.Any(k => k.week == s.week && k.allianceId == pactId);
-        public bool ProximityOpen(string a, string b) => EpisodeEngine.ProximityOpen(s, a, b);
+        // No walk-in (WitnessProximity) until B5: the director offers one only for a pair the NPC world puts
+        // together, and the lab does not drive that world; asking of any pair would hand a policy more than a player has.
         public bool RoomActsOpen => EpisodeEngine.RoomActsOpen(s);
         public IReadOnlyList<string> Voters => EpisodeEngine.Voters(s).Select(c => c.id).ToList();
         public IReadOnlyList<string> NominationCandidates => EpisodeEngine.NominationCandidates(s).Select(c => c.id).ToList();

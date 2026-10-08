@@ -639,8 +639,9 @@ namespace Gamesim.Tests.EditMode
 
     /// <summary>
     /// Exploit hunter: greedy on everything that costs nothing and comes round again - every voter asked and
-    /// read each week, every walk-in, every reply and oath, every pact renamed, time bought to the ceiling at
-    /// the cheaper price - and every seat on the warmest verb. What it gets away with is the measurement.
+    /// read each week, every reply and oath, every pact renamed, time bought to the ceiling at the cheaper
+    /// price - and every seat on the warmest verb. What it gets away with is the measurement. No walk-ins: the
+    /// view offers none until the NPC world is driven (B5).
     /// </summary>
     internal sealed class ExploitPolicy : GatedPolicy
     {
@@ -682,11 +683,6 @@ namespace Gamesim.Tests.EditMode
             }
             if (v.Phase == EpisodePhase.Social)
             {
-                var others = v.Others.OrderBy(id => id, StringComparer.Ordinal).ToList();
-                foreach (var a in others)
-                    foreach (var b in others.Where(x => string.CompareOrdinal(a, x) < 0))
-                        if (v.ProximityOpen(a, b) && !WasRefused(EpisodeCommandKind.WitnessProximity, a, b))
-                            return Make(v, EpisodeCommandKind.WitnessProximity, a, b, "the kitchen");
                 foreach (var pact in v.MyPacts.Where(p => p.active))
                 {
                     var member = pact.members.Select(m => m.id).FirstOrDefault(id => v.Others.Contains(id));

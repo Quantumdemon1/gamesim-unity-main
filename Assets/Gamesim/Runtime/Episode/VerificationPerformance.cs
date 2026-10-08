@@ -15,9 +15,9 @@ namespace Gamesim.Episode
     /// <para>The owner's target (OWNER_COMPLETION_DECISIONS, 2026-10-04): 1920x1080 at 60 fps on the
     /// GTX 1060 machine. The acceptance thresholds: the steady sample's 95th percentile frame at or
     /// under 16.7 ms and its 99th at or under 33.3 ms, with the raw distribution kept beside the
-    /// report. A verdict is given only for a run that measured that target - graphical, not
-    /// <c>-batchmode</c>, windowed, uncapped with VSync off, 1920x1080 on every measured frame, for at
-    /// least 300 s. Anything else is <see cref="NotAssessed"/> with its reasons. The report's own
+    /// report. A verdict is given only for a run that measured that target - the shipping (not a
+    /// development) player, graphical, not <c>-batchmode</c>, windowed, uncapped with VSync off,
+    /// 1920x1080 on every measured frame, for at least 300 s. Anything else is <see cref="NotAssessed"/> with its reasons. The report's own
     /// <c>status</c> is the run's execution checks and is never this verdict.</para>
     /// </summary>
     public static class VerificationPerformance
@@ -34,6 +34,9 @@ namespace Gamesim.Episode
         /// <summary>The explicit flag that, with a house size above any roster's, profiles the verification-only stress house.</summary>
         public const string StressRosterArgument = "--gamesim-stress-roster";
 
+        /// <summary>The profile's house-size argument: how many houseguests the measured season seats.</summary>
+        public const string HouseSizeArgument = "--gamesim-house-size";
+
         /// <summary>The frame-time histogram's bucket tops, in milliseconds; one more bucket counts everything over the last.</summary>
         public static readonly float[] HistogramUpperMs = { 4.2f, 8.3f, 11.1f, 16.7f, 20f, 25f, 33.3f, 50f, 100f };
 
@@ -41,6 +44,8 @@ namespace Gamesim.Episode
         public sealed class Evidence
         {
             public bool Graphical, BatchMode;
+            /// <summary>A development player (Debug.isDebugBuild): its checks and profiler hooks make it no shipping executable.</summary>
+            public bool DevelopmentBuild;
             public int RequestedWidth = TargetWidth, RequestedHeight = TargetHeight, RequestedFrameCap = -1, RequestedVSyncCount;
             public bool RequestedWindowed = true;
             public double MeasuredSeconds;
@@ -69,6 +74,7 @@ namespace Gamesim.Episode
             var why = new List<string>();
             if (e.BatchMode) why.Add("the player ran with -batchmode");
             if (!e.Graphical) why.Add("no graphics device presented the frames");
+            if (e.DevelopmentBuild) why.Add("a development build, not the shipping player");
             if (e.RequestedWidth != TargetWidth || e.RequestedHeight != TargetHeight)
                 why.Add("the profile requested " + e.RequestedWidth + "x" + e.RequestedHeight + ", not " + TargetWidth + "x" + TargetHeight);
             if (!e.RequestedWindowed) why.Add("the profile did not request a window");
@@ -123,14 +129,55 @@ namespace Gamesim.Episode
             if (args.Contains("--gamesim-verify-creator") || args.Contains("--gamesim-look-sheet"))
                 return StressRosterArgument + " is a profile workload; the creator and look-sheet modes build their own seasons.";
             if (requestedHouseSize <= SeasonBuilder.LargestRosterHouse || requestedHouseSize > SeasonBuilder.LargestStressHouse)
-                return StressRosterArgument + " requires --gamesim-house-size from " + (SeasonBuilder.LargestRosterHouse + 1) + " to "
+                return StressRosterArgument + " requires " + HouseSizeArgument + " from " + (SeasonBuilder.LargestRosterHouse + 1) + " to "
                     + SeasonBuilder.LargestStressHouse + " (a roster seats " + SeasonBuilder.LargestRosterHouse + "); requested "
-                    + (requestedHouseSize > 0 ? requestedHouseSize.ToString(CultureInfo.InvariantCulture) : "none") + ".";
+                    + (requestedHouseSize != 0 ? requestedHouseSize.ToString(CultureInfo.InvariantCulture) : "none") + ".";
             return null;
         }
 
+        /// <summary>
+        /// The house size the command line asked for, exactly as written: false (and 0) when the argument
+        /// is missing or not a whole number. Never clamped here - <see cref="StressRosterRefusal"/> judges
+        /// the request as made, so a stress request for forty is refused rather than run at sixteen; the
+        /// runner clamps an ordinary profile's size afterwards.
+        /// </summary>
+        public static bool TryReadHouseSize(IList<string> args, out int requested)
+        {
+            requested = 0;
+            if (args == null) return false;
+            int at = -1;
+            for (int i = 0; i < args.Count; i++) if (args[i] == HouseSizeArgument) { at = i; break; }
+            return at >= 0 && at + 1 < args.Count
+                && int.TryParse(args[at + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out requested);
+        }
+
+        /// <summary>
+        /// Which season a profile measures. A size asked for is always a season the director starts - the
+        /// stress house above every roster, or a roster's own at that size - so the six, the twelve and the
+        /// sixteen all play under the rules a started season has from week one. The scene's own season (the
+        /// bootstrap six, every rule off) is measured only when no size is asked for, as before sizes existed.
+        /// </summary>
+        public static VerificationProfileSeason ProfileSeason(int houseSize, bool stressRoster)
+            => houseSize <= 0 ? VerificationProfileSeason.Scene
+                : stressRoster ? VerificationProfileSeason.Stress : VerificationProfileSeason.Director;
+
+        /// <summary>A display's refresh rate in hertz, or -1 when the player reports none (a zero denominator would be NaN, which a JSON reader rejects).</summary>
+        public static double RefreshHz(uint numerator, uint denominator)
+            => denominator == 0 ? -1 : (double)numerator / denominator;
+
         private static string Ms(double ms) => ms.ToString("0.00", CultureInfo.InvariantCulture);
         private static string Count(int n) => n.ToString(CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>The season a standalone profile measures (<see cref="VerificationPerformance.ProfileSeason"/>).</summary>
+    public enum VerificationProfileSeason
+    {
+        /// <summary>The scene's own bootstrap season: no size was asked for.</summary>
+        Scene,
+        /// <summary>A season the director starts at the size asked for, as the cast screen would.</summary>
+        Director,
+        /// <summary>The verification-only stress house (<c>--gamesim-stress-roster</c>).</summary>
+        Stress,
     }
 
     /// <summary>One stretch of frames, summarised: the steady sample, or a stage of the startup before it.</summary>

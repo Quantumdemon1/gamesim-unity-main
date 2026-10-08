@@ -48,11 +48,9 @@ namespace Gamesim.Episode
                 && (!args.Contains("--gamesim-verify") || !args.Contains("--gamesim-verify-season")))
             { Debug.LogError("Study/bloc/autonomy verification requires both --gamesim-verify and --gamesim-verify-season, plus an isolated absolute save root."); Application.Quit(2); return; }
             // The stress house is verification-only and asked for twice: a size no roster seats AND the flag.
-            int requestedHouseSize = 0;
-            int size = Array.IndexOf(args, "--gamesim-house-size");
-            if (size >= 0 && size + 1 < args.Length && int.TryParse(args[size + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedSize))
-                requestedHouseSize = Math.Clamp(parsedSize, 3, 16);
-            string stressRefusal = VerificationPerformance.StressRosterRefusal(args, requestedHouseSize);
+            // The refusal judges the size as written; only an ordinary profile's size is clamped, below.
+            bool sized = VerificationPerformance.TryReadHouseSize(args, out int askedHouseSize);
+            string stressRefusal = VerificationPerformance.StressRosterRefusal(args, askedHouseSize);
             if (stressRefusal != null) { Debug.LogError(stressRefusal); Application.Quit(2); return; }
             if (!args.Contains("--gamesim-verify")) return;
             int root = Array.IndexOf(args, "--gamesim-save-root");
@@ -72,7 +70,7 @@ namespace Gamesim.Episode
             int duration = Array.IndexOf(args, "--gamesim-profile-seconds");
             if (duration >= 0 && duration + 1 < args.Length && double.TryParse(args[duration + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
                 runner.seconds = Math.Clamp(parsed, 10, 1800);
-            runner.houseSize = requestedHouseSize;
+            runner.houseSize = sized ? Math.Clamp(askedHouseSize, 3, 16) : 0;
             runner.stressRoster = args.Contains(VerificationPerformance.StressRosterArgument);
         }
 
@@ -83,6 +81,8 @@ namespace Gamesim.Episode
             Directory.CreateDirectory(outputDirectory);
             // Every frame before the steady sample is the startup, reported stage by stage beside it.
             BeginStartupStage("bootstrap");
+            // The scene's own season began building with the scene; a season the profile starts moves this.
+            seasonStartSeconds = Time.realtimeSinceStartupAsDouble;
             EpisodeDirector director = null;
             double deadline = Time.realtimeSinceStartupAsDouble + 35;
             while ((director == null || !director.IsReady) && Time.realtimeSinceStartupAsDouble < deadline)
@@ -101,19 +101,26 @@ namespace Gamesim.Episode
             var rooms = FindObjectsByType<HouseRoomMarker>().OrderBy(room => room.RoomName, StringComparer.Ordinal).ToArray();
             profileRoomCount = rooms.Length;
             if (player == null || rooms.Length < 5) errors.Add("Expected a navigable player and five room markers.");
-            if (houseSize > 0 && stressRoster)
+            profileSeason = VerificationPerformance.ProfileSeason(houseSize, stressRoster);
+            string sceneSession = director.Snapshot.sessionId;
+            if (profileSeason == VerificationProfileSeason.Stress)
             {
                 // The sixteen-person stress run: a house no roster seats, from both rosters, and only
                 // here (VerificationPerformance.StressRosterRefusal admitted the size at launch).
                 houseSizeNote = "Verification-only stress house: " + houseSize + " houseguests from both rosters "
                     + "(SeasonBuilder.CreateVerificationStressHouse); no roster seats more than " + SeasonBuilder.LargestRosterHouse + ".";
+                seasonStartSeconds = Time.realtimeSinceStartupAsDouble;
                 director.StartVerificationStressSeason(houseSize);
                 for (int i = 0; i < 30; i++) yield return null;
                 if (director.Snapshot.contestants.Count != houseSize)
                     errors.Add("The stress house did not start: " + director.Snapshot.contestants.Count + " of " + houseSize + ".");
             }
-            else if (houseSize > 0 && director.Snapshot.contestants.Count != houseSize)
+            else if (profileSeason == VerificationProfileSeason.Director)
             {
+                // Every size asked for is a season the director starts, even six: the scene's own six
+                // (ContentCatalog's bootstrap) plays with every rule off - no story, read, levers, week,
+                // economy, agency, finale or commitments - so keeping it would measure a different game
+                // from the twelve and the sixteen.
                 // A roster seats twelve, and the builder will not pad a season with the other
                 // roster to reach a number (SeasonBuilder.LargestHouse). Sixteen is what a save may
                 // hold, not what a season can start with, so a larger request profiles the largest
@@ -125,15 +132,23 @@ namespace Gamesim.Episode
                     houseSizeNote = "The " + CastTemplates.RosterName(choice.Roster) + " roster seats " + seated
                         + "; profiled at " + seated + " (" + houseSize + " requested).";
                 choice.HouseSize = seated;
+                seasonStartSeconds = Time.realtimeSinceStartupAsDouble;
                 director.StartSeason(choice);
                 for (int i = 0; i < 30; i++) yield return null;
                 if (director.Snapshot.contestants.Count != seated)
                     errors.Add("The requested house size did not start: " + director.Snapshot.contestants.Count + " of " + seated + ".");
             }
+            if (profileSeason != VerificationProfileSeason.Scene && director.Snapshot.sessionId == sceneSession)
+                errors.Add("The profile's season did not start: the scene's own season is still installed.");
+            // StartSeason seeds from the clock: the seed and session say which season this run measured.
+            seasonSeed = director.Snapshot.seed;
+            seasonSessionId = director.Snapshot.sessionId;
             measuredHouseSize = director.Snapshot.contestants.Count;
             // The opening put away and every body built before anything is measured or captured.
             yield return SettleTheHouse();
             BeginStartupStage("verification");
+            // Started a stage early, so the counters hold a frame's sample when the steady sample reads them.
+            StartMemoryRecorders();
             // A benchmark, so uncapped: the display preference defaults to VSync, which would make
             // every windowed profile read as 16.7 ms and say nothing about the frame's cost. Set
             // as the director's own preference, because the workload toggles other preferences
@@ -250,7 +265,7 @@ namespace Gamesim.Episode
         private void Finish(double measured, bool graphical)
         {
             WriteRawFrameTimes();
-            var report = CompleteProfileReport(measured, graphical, Application.isBatchMode);
+            var report = CompleteProfileReport(measured, graphical, Application.isBatchMode, Debug.isDebugBuild);
             File.WriteAllText(Path.Combine(outputDirectory, "verification.json"), JsonUtility.ToJson(report, true));
             Debug.Log("Gamesim standalone profile " + report.status + "; functional season " + report.seasonStatus
                 + "; overall " + report.overallStatus + ": " + Path.Combine(outputDirectory, "verification.json"));
@@ -274,7 +289,7 @@ namespace Gamesim.Episode
         }
 
         // Kept separate from file output and Quit so native Edit tests can check the report contract.
-        private VerificationReport CompleteProfileReport(double measured, bool graphical, bool batchMode)
+        private VerificationReport CompleteProfileReport(double measured, bool graphical, bool batchMode, bool developmentBuild)
         {
             // Sorted copies: the frames stay in the order measured, which is the raw distribution kept beside the report.
             var steady = VerificationFrameSummary.Of("steady", frames);
@@ -326,9 +341,9 @@ namespace Gamesim.Episode
                 houseSizeRequested = houseSize, houseSizeNote = houseSizeNote,
                 unityVersion = Application.unityVersion, processor = SystemInfo.processorType, gpu = SystemInfo.graphicsDeviceName,
                 systemMemoryMB = SystemInfo.systemMemorySize, graphicsMemoryMB = SystemInfo.graphicsMemorySize,
-                developmentBuild = Debug.isDebugBuild, errors = reportErrors.ToArray(), saveDirectory = outputDirectory
+                developmentBuild = developmentBuild, errors = reportErrors.ToArray(), saveDirectory = outputDirectory
             };
-            CompletePerformanceReport(report, steady, measured, graphical, batchMode);
+            CompletePerformanceReport(report, steady, measured, graphical, batchMode, developmentBuild);
             return report;
         }
 
@@ -355,6 +370,7 @@ namespace Gamesim.Episode
             // Everything before the steady sample, stage by stage: bootstrap, season, bodies, verification.
             public VerificationFrameSummary startup;
             public List<VerificationFrameSummary> startupStages;
+            // bodyAssemblySeconds: from the measured season's start (seasonStartedSeconds) until every body was built.
             public double startupReadySeconds, startupSampleBeganSeconds, bodyAssemblySeconds;
             public bool bodiesAssembled, openingSkipped;
             public int bodiesAssemblingAtSampleStart;
@@ -370,6 +386,11 @@ namespace Gamesim.Episode
             public double displayRefreshHz;
             public int processorCount, processorFrequencyMHz;
             public bool stressRoster;
+            // Which season was measured: "scene" (the bootstrap, no size asked for), "director" or "stress";
+            // its seed and session, since a started season seeds from the clock; and when it was started.
+            public string seasonSource, sessionId;
+            public long seasonSeed;
+            public double seasonStartedSeconds;
             public string requestedDisplayMode, sampledDisplayMode;
             public int sampledDisplayModeMismatchCount;
             public int sampledDisplayFrames, sampledResolutionMismatchCount, requestedFrameCap, requestedVSyncCount;

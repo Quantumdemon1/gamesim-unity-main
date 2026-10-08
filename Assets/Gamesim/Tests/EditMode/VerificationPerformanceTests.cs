@@ -59,6 +59,7 @@ namespace Gamesim.Tests.EditMode
 
         [TestCase("batch", "-batchmode")]
         [TestCase("nographics", "no graphics device")]
+        [TestCase("development", "a development build, not the shipping player")]
         [TestCase("short", "ran 299.9 s of the 300 s required")]
         [TestCase("unmeasured", "ran NaN s")]
         [TestCase("resolution", "1 measured frames were not 1920x1080")]
@@ -77,6 +78,7 @@ namespace Gamesim.Tests.EditMode
             {
                 case "batch": evidence.BatchMode = true; break;
                 case "nographics": evidence.Graphical = false; break;
+                case "development": evidence.DevelopmentBuild = true; break;
                 case "short": evidence.MeasuredSeconds = 299.9; break;
                 case "unmeasured": evidence.MeasuredSeconds = double.NaN; break;
                 case "resolution": evidence.ResolutionMismatches = 1; break;
@@ -248,5 +250,55 @@ namespace Gamesim.Tests.EditMode
         public void TheFlagWithAModeThatBuildsItsOwnSeasonIsRefused(string mode)
             => Assert.That(VerificationPerformance.StressRosterRefusal(Args(VerificationPerformance.StressRosterArgument, mode), 16),
                 Does.Contain("profile workload"));
+
+        // ------------------------------------------------------------------ the size asked for, and the season it starts
+
+        [TestCase("40", 40)]
+        [TestCase("16", 16)]
+        [TestCase("-2", -2)]
+        public void TheHouseSizeIsReadAsWrittenNeverClamped(string value, int expected)
+        {
+            Assert.That(VerificationPerformance.TryReadHouseSize(Args(VerificationPerformance.HouseSizeArgument, value), out int requested), Is.True);
+            Assert.That(requested, Is.EqualTo(expected));
+        }
+
+        [TestCase("sixteen")]
+        [TestCase("(absent)")]
+        public void AMissingOrUnreadableHouseSizeIsNoRequest(string value)
+        {
+            var args = value == "(absent)" ? Args() : Args(VerificationPerformance.HouseSizeArgument, value);
+            Assert.That(VerificationPerformance.TryReadHouseSize(args, out int requested), Is.False);
+            Assert.That(requested, Is.Zero);
+            Assert.That(VerificationPerformance.TryReadHouseSize(Args(VerificationPerformance.HouseSizeArgument), out _), Is.False, "The argument with no value after it.");
+        }
+
+        [Test]
+        public void AStressRequestAboveSixteenIsRefusedNotRunAtSixteen()
+        {
+            var args = Args(VerificationPerformance.StressRosterArgument, VerificationPerformance.HouseSizeArgument, "40");
+            VerificationPerformance.TryReadHouseSize(args, out int requested);
+            Assert.That(VerificationPerformance.StressRosterRefusal(args, requested), Does.Contain("from 13 to 16").And.Contain("requested 40."),
+                "The launch judges the size as written; a clamp before it would admit forty as sixteen.");
+        }
+
+        [TestCase(0, false, VerificationProfileSeason.Scene)]
+        [TestCase(6, false, VerificationProfileSeason.Director)]
+        [TestCase(12, false, VerificationProfileSeason.Director)]
+        [TestCase(16, false, VerificationProfileSeason.Director)]
+        [TestCase(16, true, VerificationProfileSeason.Stress)]
+        public void EverySizeAskedForIsASeasonTheDirectorStarts(int houseSize, bool stress, VerificationProfileSeason expected)
+            => Assert.That(VerificationPerformance.ProfileSeason(houseSize, stress), Is.EqualTo(expected),
+                "The scene's own six plays with every rule off; a six-person profile measures a started season like the twelve and the sixteen.");
+
+        [TestCase(60000u, 1000u, 60d)]
+        [TestCase(143856u, 1000u, 143.856d)]
+        [TestCase(0u, 0u, -1d)]
+        [TestCase(60u, 0u, -1d)]
+        public void ARefreshRateWithNoDenominatorIsUnavailableNotNaN(uint numerator, uint denominator, double expected)
+        {
+            double hz = VerificationPerformance.RefreshHz(numerator, denominator);
+            Assert.That(double.IsNaN(hz) || double.IsInfinity(hz), Is.False, "A NaN in the report stops the profile runner's JSON reader.");
+            Assert.That(hz, Is.EqualTo(expected).Within(1e-9));
+        }
     }
 }

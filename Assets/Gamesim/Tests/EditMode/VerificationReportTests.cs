@@ -149,16 +149,48 @@ namespace Gamesim.Tests.EditMode
         [TestCase("resolution")]
         [TestCase("window")]
         [TestCase("cap")]
+        [TestCase("development")]
         public void AFastRunThatMissedTheTargetIsNotAssessed(string condition)
         {
             InstallTargetRun(5f);
-            bool graphical = condition != "nographics", batch = condition == "batch";
+            bool graphical = condition != "nographics", batch = condition == "batch", development = condition == "development";
             double measured = condition == "short" ? 299.0 : 300.5;
             if (condition == "resolution") ProfileFrame(1600, 900, -1, 0);
             if (condition == "window") ProfileFrame(1920, 1080, -1, 0, FullScreenMode.FullScreenWindow);
             if (condition == "cap") ProfileFrame(1920, 1080, 60, 1);
-            var report = ProfileReport(graphical, batch, measured);
+            var report = ProfileReport(graphical, batch, measured, development);
             Assert.That((string)report["performanceAcceptance"], Does.StartWith("Not assessed: "), condition);
+            Assert.That((bool)report["developmentBuild"], Is.EqualTo(development), "The report names the build it judged.");
+        }
+
+        [Test]
+        public void TheMeasuredSeasonIsNamedBySourceSeedAndSession()
+        {
+            InstallProfileEvidence();
+            Field("profileSeason").SetValue(runner, VerificationProfileSeason.Director);
+            Field("seasonSeed").SetValue(runner, 4000000000L);
+            Field("seasonSessionId").SetValue(runner, "0123abcd");
+            Field("seasonStartSeconds").SetValue(runner, 12.5);
+            var report = ProfileReport();
+            Assert.That((string)report["seasonSource"], Is.EqualTo("director"));
+            Assert.That((long)report["seasonSeed"], Is.EqualTo(4000000000L), "A uint seed survives whole.");
+            Assert.That((string)report["sessionId"], Is.EqualTo("0123abcd"));
+            Assert.That((double)report["seasonStartedSeconds"], Is.EqualTo(12.5));
+        }
+
+        [Test]
+        public void AMemoryCounterThatHasNotSampledReadsUnavailableNotZero()
+        {
+            // Read in the frame the counters start, as the steady sample once did: no frame has ended
+            // under them, so a reading is either a real one or -1 - never the 0 a fresh recorder holds.
+            typeof(PortVerification).GetMethod("StartMemoryRecorders", PrivateInstance).Invoke(runner, null);
+            try
+            {
+                var sample = (VerificationMemorySample)typeof(PortVerification).GetMethod("SampleMemory", PrivateInstance).Invoke(runner, null);
+                Assert.That(sample.systemUsedBytes, Is.EqualTo(-1L).Or.GreaterThan(0L));
+                Assert.That(sample.gfxUsedBytes, Is.EqualTo(-1L).Or.GreaterThan(0L));
+            }
+            finally { typeof(PortVerification).GetMethod("DisposeMemoryRecorders", PrivateInstance).Invoke(runner, null); }
         }
 
         [Test]
@@ -421,9 +453,9 @@ namespace Gamesim.Tests.EditMode
             => typeof(PortVerification).GetMethod("RecordProfileDisplaySample", PrivateInstance)
                 .Invoke(runner, new object[] { width, height, frameCap, vSync, mode });
 
-        private JObject ProfileReport(bool graphical = true, bool batchMode = false, double measured = 11d)
+        private JObject ProfileReport(bool graphical = true, bool batchMode = false, double measured = 11d, bool developmentBuild = false)
             => JObject.Parse(JsonUtility.ToJson(typeof(PortVerification).GetMethod("CompleteProfileReport", PrivateInstance)
-                .Invoke(runner, new object[] { measured, graphical, batchMode })));
+                .Invoke(runner, new object[] { measured, graphical, batchMode, developmentBuild })));
 
         private object InstallCompleteRouteReport()
         {

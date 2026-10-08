@@ -26,6 +26,12 @@ namespace Gamesim.Episode
         /// <summary>--gamesim-stress-roster: the house is the verification-only stress house (SeasonBuilder.CreateVerificationStressHouse).</summary>
         private bool stressRoster;
 
+        // The season measured (VerificationPerformance.ProfileSeason), its seed and session, and when it started.
+        private VerificationProfileSeason profileSeason;
+        private long seasonSeed;
+        private string seasonSessionId;
+        private double seasonStartSeconds = -1;
+
         // The startup, a stage at a time: every frame from the runner's first until the steady sample.
         private readonly List<string> startupStageNames = new List<string>();
         private readonly List<List<float>> startupStageFrames = new List<List<float>>();
@@ -68,10 +74,10 @@ namespace Gamesim.Episode
             for (int i = 0; i < 5; i++) yield return null;
             yield return SkipOpening();
             BeginStartupStage("bodies");
-            double started = Time.realtimeSinceStartupAsDouble;
-            double deadline = started + CharacterPresentation.AssemblyTimeoutSeconds + 15;
+            double deadline = Time.realtimeSinceStartupAsDouble + CharacterPresentation.AssemblyTimeoutSeconds + 15;
             while (BodiesAssembling() > 0 && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
-            bodyAssemblySeconds = Time.realtimeSinceStartupAsDouble - started;
+            // From the season's start, not this wait's: the bodies began building when it was installed.
+            bodyAssemblySeconds = Time.realtimeSinceStartupAsDouble - seasonStartSeconds;
             bodiesAssembled = BodiesAssembling() == 0;
             if (!bodiesAssembled) errors.Add("Bodies were still assembling " + bodyAssemblySeconds.ToString("0.0", CultureInfo.InvariantCulture) + " s after the season started.");
         }
@@ -84,8 +90,6 @@ namespace Gamesim.Episode
             bodiesAssemblingAtSampleStart = BodiesAssembling();
             if (bodiesAssemblingAtSampleStart > 0)
                 errors.Add(bodiesAssemblingAtSampleStart + " bodies were still assembling when the steady sample began; their construction is inside it.");
-            systemMemory = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "System Used Memory", 1);
-            gfxMemory = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "Gfx Used Memory", 1);
             memoryAtSampleStart = SampleMemory();
             memorySamples.Add(memoryAtSampleStart);
             nextMemorySample = started + 1;
@@ -106,7 +110,21 @@ namespace Gamesim.Episode
             DisposeMemoryRecorders();
         }
 
+        /// <summary>
+        /// The two memory counters, started before the steady sample: a recorder holds no sample until a
+        /// frame has ended under it, and one read in the frame it started would report 0.
+        /// </summary>
+        private void StartMemoryRecorders()
+        {
+            DisposeMemoryRecorders();
+            systemMemory = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "System Used Memory", 1);
+            gfxMemory = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "Gfx Used Memory", 1);
+        }
+
         private void DisposeMemoryRecorders() { systemMemory.Dispose(); gfxMemory.Dispose(); }
+
+        /// <summary>A counter's last sample, or -1 when it is not available or has collected none yet.</summary>
+        private static long Counter(ProfilerRecorder recorder) => recorder.Valid && recorder.Count > 0 ? recorder.LastValue : -1;
 
         private VerificationMemorySample SampleMemory() => new VerificationMemorySample
         {
@@ -116,8 +134,8 @@ namespace Gamesim.Episode
             monoUsedBytes = UnityEngine.Profiling.Profiler.GetMonoUsedSizeLong(),
             monoHeapBytes = UnityEngine.Profiling.Profiler.GetMonoHeapSizeLong(),
             gfxDriverBytes = UnityEngine.Profiling.Profiler.GetAllocatedMemoryForGraphicsDriver(),
-            systemUsedBytes = systemMemory.Valid ? systemMemory.LastValue : -1,
-            gfxUsedBytes = gfxMemory.Valid ? gfxMemory.LastValue : -1,
+            systemUsedBytes = Counter(systemMemory),
+            gfxUsedBytes = Counter(gfxMemory),
         };
 
         /// <summary>
@@ -148,7 +166,7 @@ namespace Gamesim.Episode
         }
 
         /// <summary>The performance sections of the report: distribution, startup, memory, identity, settings and the verdict.</summary>
-        private void CompletePerformanceReport(VerificationReport report, VerificationFrameSummary steady, double measured, bool graphical, bool batchMode)
+        private void CompletePerformanceReport(VerificationReport report, VerificationFrameSummary steady, double measured, bool graphical, bool batchMode, bool developmentBuild)
         {
             report.steady = steady;
             report.frameMeanMs = steady.meanMs; report.frameMinMs = steady.minMs; report.frameMaxMs = steady.maxMs;
@@ -189,7 +207,8 @@ namespace Gamesim.Episode
             report.renderScale = pipeline is UniversalRenderPipelineAsset universal ? universal.renderScale : -1f;
             var display = Screen.currentResolution;
             report.displayResolution = display.width + "x" + display.height;
-            report.displayRefreshHz = display.refreshRateRatio.value;
+            var refresh = display.refreshRateRatio;
+            report.displayRefreshHz = VerificationPerformance.RefreshHz(refresh.numerator, refresh.denominator);
             report.graphicsDeviceType = SystemInfo.graphicsDeviceType.ToString();
             report.graphicsDeviceVersion = SystemInfo.graphicsDeviceVersion;
             report.graphicsDeviceVendor = SystemInfo.graphicsDeviceVendor;
@@ -197,10 +216,14 @@ namespace Gamesim.Episode
             report.processorCount = SystemInfo.processorCount;
             report.processorFrequencyMHz = SystemInfo.processorFrequency;
             report.stressRoster = stressRoster;
+            report.seasonSource = profileSeason.ToString().ToLowerInvariant();
+            report.seasonSeed = seasonSeed;
+            report.sessionId = seasonSessionId;
+            report.seasonStartedSeconds = seasonStartSeconds;
 
             var evidence = new VerificationPerformance.Evidence
             {
-                Graphical = graphical, BatchMode = batchMode, MeasuredSeconds = measured,
+                Graphical = graphical, BatchMode = batchMode, DevelopmentBuild = developmentBuild, MeasuredSeconds = measured,
                 RequestedWidth = ProfileWidth, RequestedHeight = ProfileHeight,
                 RequestedFrameCap = ProfileFrameCap, RequestedVSyncCount = ProfileVSyncCount, RequestedWindowed = true,
                 Frames = frames.Count, DisplaySamples = profileDisplaySampleCount,

@@ -245,6 +245,13 @@
     <!-- The balance plan: the shipped rules (B0) and the season autopsy (B1). -->
     <Compile Include="$(EditMode)ShippedRulesTests.cs" />
     <Compile Include="$(EditMode)SeasonAutopsyTests.cs" />
+    <!--
+      The balance lab (B2-B4), compiled out of Unity: the player's view, the policies, the performance
+      model, the lab, its smoke tier (not Explicit) and its explicit report tiers.
+    -->
+    <Compile Include="$(EditMode)BalanceLabView.cs" />
+    <Compile Include="$(EditMode)BalanceLabPolicies.cs" />
+    <Compile Include="$(EditMode)BalanceLabPerformance.cs" />
 
     <!--
       Several parity tests already carry an #else branch for running outside the editor: without

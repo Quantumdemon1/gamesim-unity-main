@@ -75,8 +75,8 @@ namespace Gamesim.Tests.EditMode
 
         private static ContestantState[] NpcVoters(EpisodeState s) => EpisodeEngine.Voters(s).Where(v => !v.isPlayer).ToArray();
 
-        /// <summary>The reader: gathers reads and acts on them.</summary>
-        private static EpisodeCommand ReaderNext(EpisodeState s, uint seed)
+        /// <summary>The reader: gathers reads and acts on them. Internal: the balance lab plays it as its oracle reader.</summary>
+        internal static EpisodeCommand ReaderNext(EpisodeState s, uint seed)
         {
             if (s.pendingDiary != null) return null;
             var beat = AnswerBeat(s);

@@ -26,8 +26,10 @@ namespace Gamesim.Simulation
     /// <para><b>Another houseguest's pact</b> shows only on evidence the player holds: its own fact
     /// with the player among the knowers, or out in the open (<see cref="FinalistRead.AllianceCertainty"/>),
     /// or a line the player was shown that names everyone in it - a play's receipt, "You learned: ...
-    /// are working together." The whisper that told the player dates a pact they know of; it never
-    /// makes one known, because its two names could belong to more than one pact. A pact with no
+    /// are working together." The whisper that told the player dates a pact they know of - in either of
+    /// its forms: the two names it always said, or, under the leak rules (WAVE-D-NPC-PACTS-PLAN D4),
+    /// everyone in it - and never makes one known, because two names could belong to more than one
+    /// pact. A pact with no
     /// evidence never appears, not even as an unknown, and nothing the player cannot know of one is
     /// said either: not its name, not when it formed, not whether it still stands. One card is one
     /// set of people, however many records share it, so two pacts of the same people read as one and
@@ -474,11 +476,8 @@ namespace Gamesim.Simulation
                     // The whisper that told them dates a pact they know of; on its own it proves nothing.
                     var fact = Knowledge.Of(s, FactKinds.Alliance, alliance.id);
                     if (fact != null)
-                    {
-                        string whisper = WhisperLine(s, fact);
-                        foreach (var e in seen.Where(e => e.kind == StoryLog.Whisper && e.text == whisper))
+                        foreach (var e in seen.Where(e => e.kind == StoryLog.Whisper && IsWhisperLine(s, fact, alliance, e.text)))
                             evidence.Add(new Evidence { week = e.week, text = e.text });
-                    }
                     if (certainty == FinalistRead.Confirmed) evidence.Add(new Evidence { text = OutInTheOpen });
                     else if (evidence.Count == 0) evidence.Add(new Evidence { text = HeardOfIt });
                 }
@@ -540,6 +539,16 @@ namespace Gamesim.Simulation
             string actor = s.Find(fact.actorId)?.name ?? "somebody", subject = s.Find(fact.subjectId)?.name ?? "somebody";
             return "Word in the house: " + actor + " and " + subject + " are working together.";
         }
+
+        /// <summary>
+        /// Whether a whisper is the one a pact's fact reached the player in: the two-name whisper the
+        /// season always said (<see cref="WhisperLine"/>), or, under the leak rules, the one naming
+        /// everyone in it (<see cref="AllianceLeaks.WhisperLine"/>) - both forms, so a line said before
+        /// the rules still dates its card.
+        /// </summary>
+        public static bool IsWhisperLine(EpisodeState s, HouseFactState fact, AllianceState alliance, string text) =>
+            text != null && ((fact != null && text == WhisperLine(s, fact))
+                || (alliance?.members != null && text == AllianceLeaks.WhisperLine(s, alliance)));
 
         // ------------------------------------------------------------ helpers
 

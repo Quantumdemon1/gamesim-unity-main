@@ -775,9 +775,12 @@ namespace Gamesim.Simulation
             var effects = result == StoryResults.Backfire ? choice.backfire : choice.effects;
             string key = item.id + ":" + choice.optionId;
             var applied = new List<StoryEffectState>();
+            // Under the leak rules, the pact each alliance spread grants, so a play's receipt names that pact.
+            var spread = AllianceLeaks.On(s) ? new Dictionary<StoryEffectState, AllianceState>() : null;
             foreach (var effect in effects.ToList())
             {
                 var resolved = Substitute(effect, picked);
+                RememberSpreadPact(s, resolved, spread);
                 ApplyStoryEffect(s, resolved, cycleRecord, subject?.id, key, reception, result == StoryResults.Backfire);
                 applied.Add(resolved);
             }
@@ -800,7 +803,7 @@ namespace Gamesim.Simulation
             if (!lapsed && subject != null)
                 Remember(s, s.playerId, subject.id, (item.title ?? "A moment") + ": " + choice.label + ".", true);
             // A play's step says what it changed (plan 30 §4); other arcs keep to their outcome line.
-            if (template.play != null) Receipts(s, applied);
+            if (template.play != null) Receipts(s, applied, spread);
 
             string next = result == StoryResults.Backfire ? choice.nextOnBackfire ?? choice.next : choice.next;
             AdvanceCycle(s, cycle, next, CurrentAnchor(s));

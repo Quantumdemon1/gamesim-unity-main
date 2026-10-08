@@ -45,11 +45,23 @@ namespace Gamesim.Simulation
             },
         };
 
-        /// <summary>The active alliance two people share, or null.</summary>
-        private static AllianceState AllianceOf(StoryContext c, string a, string b) =>
-            a == null || b == null ? null
-                : c.state.alliances.Where(x => x.active && x.members.Contains(a) && x.members.Contains(b))
-                    .OrderBy(x => x.id, StringComparer.Ordinal).FirstOrDefault();
+        /// <summary>
+        /// The active alliance two people share, or null. Under the leak rules it is the one pact the two
+        /// of them name to the player (<see cref="Knowledge.PactOfPair"/>): one the player does not yet know
+        /// of before one they do, so a play about a secret pact is about that pact and not a known one of
+        /// the same two people.
+        /// </summary>
+        private static AllianceState AllianceOf(StoryContext c, string a, string b)
+        {
+            if (a == null || b == null) return null;
+            if (AllianceLeaks.On(c.state))
+            {
+                var pact = Knowledge.PactOfPair(c.state, a, b, P(c));
+                return pact != null && pact.active ? pact : null;
+            }
+            return c.state.alliances.Where(x => x.active && x.members.Contains(a) && x.members.Contains(b))
+                .OrderBy(x => x.id, StringComparer.Ordinal).FirstOrDefault();
+        }
 
         // ---------------------------------------------------------------- Intel: the secret alliance
 

@@ -383,7 +383,14 @@ namespace Gamesim.Simulation
             string actor = s.Find(fact.actorId)?.name ?? "somebody", subject = s.Find(fact.subjectId)?.name ?? "somebody";
             switch (fact.kind)
             {
-                case FactKinds.Alliance: return "Word in the house: " + actor + " and " + subject + " are working together.";
+                case FactKinds.Alliance:
+                {
+                    // Under the leak rules the whisper names everyone in it (WAVE-D-NPC-PACTS-PLAN §2.3), so it
+                    // can only be about this pact; for a pair it is the two names it always said.
+                    var pact = AllianceLeaks.On(s) ? s.alliances.FirstOrDefault(a => a?.id == fact.refId) : null;
+                    if (pact != null) return AllianceLeaks.WhisperLine(s, pact);
+                    return "Word in the house: " + actor + " and " + subject + " are working together.";
+                }
                 case FactKinds.Couple: return "Word in the house: " + actor + " and " + subject + " are more than friends.";
                 case FactKinds.BrokenWord: return "Word in the house: " + actor + " went back on their word to " + subject + ".";
                 case FactKinds.Strike: return "Word in the house: " + actor + " was called to the Diary Room and came back quiet.";

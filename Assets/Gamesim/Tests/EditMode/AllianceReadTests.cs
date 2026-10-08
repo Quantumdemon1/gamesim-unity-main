@@ -180,11 +180,12 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// A story's leak (LeakAlliance), applied as a beat applies it. Today the engine makes the
-        /// player a knower of every pact holding the two people it names, while the receipt names
-        /// one; the page follows the engine's knowledge, so the bigger pact shows too, undated.
-        /// This pins that behaviour as it is: narrowing the spread to the pact the receipt names is
-        /// the engine's change to make (wave B, C8/B4), and this test changes with it.
+        /// A story's leak (LeakAlliance), applied as a beat applies it, in a season without the leak
+        /// rules: the engine makes the player a knower of every pact holding the two people it names,
+        /// while the receipt names one; the page follows the engine's knowledge, so the bigger pact
+        /// shows too, undated. Pinned as such a season plays it, to its end; under the leak rules
+        /// (WAVE-D-NPC-PACTS-PLAN D4) the spread grants one pact, the receipt's
+        /// (<see cref="UnderTheLeakRulesAStoryLeakLetsThePlayerKnowOnlyThePactItsReceiptNames"/>).
         /// </summary>
         [Test]
         public void AStoryLeakTodayLetsThePlayerKnowEveryPactOfThePairItNames()
@@ -209,6 +210,53 @@ namespace Gamesim.Tests.EditMode
             Assert.That(cards.Select(c => c.memberIds.Count), Is.EqualTo(new[] { 2, 3 }), "The leaked pact, dated, then the bigger one.");
             Assert.That(Dated(cards[0]), Is.EqualTo(new[] { s.week + ": " + receipt }));
             Assert.That(Dated(cards[1]), Is.EqualTo(new[] { "0: " + AllianceRead.HeardOfIt }), "Known to the engine, with no line that told the player.");
+        }
+
+        /// <summary>
+        /// The same leak under the leak rules (WAVE-D-NPC-PACTS-PLAN §2.3, the C8 defect fixed): one pair
+        /// is one pact, so the spread grants the pact the player does not yet know of - here the first -
+        /// and the receipt names that pact. The bigger pact the same two open stays dark, and the page
+        /// shows one card, dated by the receipt. A second leak of the same two, the first now known,
+        /// grants the bigger one, and its receipt names it.
+        /// </summary>
+        [Test]
+        public void UnderTheLeakRulesAStoryLeakLetsThePlayerKnowOnlyThePactItsReceiptNames()
+        {
+            var s = House();
+            EpisodeEngine.EnableStory(s, s.week);
+            EpisodeEngine.EnableCommitments(s, s.week);
+            EpisodeEngine.EnableAllianceLeaks(s, s.week);
+            Assert.That(AllianceLeaks.On(s), Is.True);
+            var n = Others(s);
+            var pair = Pact(s, "pair", true, n[0].id, n[1].id);
+            var pairFact = PrivateFact(s, pair);
+            var bigger = Pact(s, "bigger", true, n[0].id, n[1].id, n[2].id);
+            var biggerFact = PrivateFact(s, bigger);
+            var leak = new StoryEffectState { kind = StoryEffects.Spread, fromId = n[0].id, toId = n[1].id, thirdId = s.playerId,
+                type = FactKinds.Alliance, text = FactVisibility.Whispered };
+            uint random = s.randomState; int ids = s.nextSequence;
+            ApplyStoryEffect(s, leak);
+            Assert.That(s.randomState, Is.EqualTo(random), "The spread draws nothing,");
+            Assert.That(s.nextSequence, Is.EqualTo(ids), "and writes no id.");
+            string receipt = PlayReceipts.For(s, new[] { leak }).Single();
+            Line(s, s.week, StoryLog.Receipt, receipt);
+            Assert.That(receipt, Is.EqualTo(AllianceRead.LearnedLine(s, pair)), "The receipt names the pact the spread granted.");
+            Assert.That(Knowledge.Knows(pairFact, s.playerId), Is.True);
+            Assert.That(pairFact.visibility, Is.EqualTo(FactVisibility.Whispered));
+            Assert.That(Knowledge.Knows(biggerFact, s.playerId), Is.False, "One pair, one pact: the bigger one stays dark.");
+            Assert.That(biggerFact.visibility, Is.EqualTo(FactVisibility.Private), "and is not widened.");
+
+            var cards = AllianceRead.Suspected(s);
+            Assert.That(cards.Select(c => c.memberIds.Count), Is.EqualTo(new[] { 2 }), "One card: the pact the player was given.");
+            Assert.That(Dated(cards[0]), Is.EqualTo(new[] { s.week + ": " + receipt }));
+
+            // Again, the pair now known: the resolver turns to the one the player does not know of.
+            var again = new StoryEffectState { kind = StoryEffects.Spread, fromId = n[1].id, toId = n[0].id, thirdId = s.playerId,
+                type = FactKinds.Alliance, text = FactVisibility.Whispered };
+            ApplyStoryEffect(s, again);
+            Assert.That(Knowledge.Knows(biggerFact, s.playerId), Is.True);
+            Assert.That(PlayReceipts.For(s, new[] { again }, new Dictionary<StoryEffectState, AllianceState> { [again] = bigger }).Single(),
+                Is.EqualTo(AllianceRead.LearnedLine(s, bigger)), "The engine's receipt names the pact it resolved before the grant.");
         }
 
         [Test]

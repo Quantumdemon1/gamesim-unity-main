@@ -223,5 +223,142 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Knowledge.PactOfPair(s, n[0].id, n[1].id, s.playerId), Is.SameAs(ended), "All ended: the oldest unknown.");
             Assert.That(Knowledge.PactOfPair(s, n[0].id, n[1].id, null), Is.SameAs(ended), "and with no listener, the oldest.");
         }
+
+        // ------------------------------------------------------------ D4-1: one pair, one pact; the whisper names everyone
+
+        /// <summary>One story effect, applied the way a beat applies it (EpisodeEngine.ApplyStoryEffect).</summary>
+        private static void ApplyStoryEffect(EpisodeState s, StoryEffectState effect) =>
+            EngineMethod("ApplyStoryEffect", typeof(EpisodeState), typeof(StoryEffectState), typeof(StorylineState),
+                    typeof(string), typeof(string), typeof(int), typeof(bool))
+                .Invoke(null, new object[] { s, effect, null, null, "leaks-test", 0, false });
+
+        private static string Whisper(EpisodeState s, HouseFactState fact) =>
+            (string)EngineMethod("Whisper", typeof(EpisodeState), typeof(HouseFactState)).Invoke(null, new object[] { s, fact });
+
+        [Test]
+        public void AStoryMadePublicGoesPublicForOnePactOfThePairAndTheOthersStayDark()
+        {
+            foreach (bool rules in new[] { false, true })
+            {
+                var s = rules ? Rules() : House();
+                if (!rules) EpisodeEngine.EnableStory(s, s.week);
+                var n = Others(s);
+                var first = Pact(s, "first", true, n[0].id, n[1].id, n[2].id);
+                var firstFact = PrivateFact(s, first);
+                var second = Pact(s, "second", true, n[1].id, n[0].id);
+                var secondFact = PrivateFact(s, second);
+                // SpreadAlliance: the pair's pact out in the open, nobody named.
+                ApplyStoryEffect(s, new StoryEffectState { kind = StoryEffects.Spread, fromId = n[0].id, toId = n[1].id,
+                    type = FactKinds.Alliance, text = FactVisibility.Public });
+                Assert.That(firstFact.visibility, Is.EqualTo(FactVisibility.Public), "The resolver's pact goes public.");
+                Assert.That(secondFact.visibility, Is.EqualTo(rules ? FactVisibility.Private : FactVisibility.Public),
+                    rules ? "Under the rules the other stays as it was." : "Without them every pact of the pair goes.");
+                Assert.That(Knowledge.Knows(secondFact, n[5].id), Is.EqualTo(!rules));
+            }
+        }
+
+        [Test]
+        public void UnderTheRulesTheWhisperNamesEveryoneAndThePageDatesBothForms()
+        {
+            var off = House();
+            EpisodeEngine.EnableStory(off, off.week);
+            var o = Others(off);
+            var trioOff = Pact(off, "trio", true, o[0].id, o[1].id, o[2].id);
+            var offFact = PrivateFact(off, trioOff);
+            Assert.That(Whisper(off, offFact), Is.EqualTo("Word in the house: " + o[0].name + " and " + o[1].name + " are working together."),
+                "Without the rules: the two names it always said.");
+            Assert.That(Whisper(off, offFact), Is.EqualTo(AllianceRead.WhisperLine(off, offFact)));
+
+            var s = Rules();
+            var n = Others(s);
+            var trio = Pact(s, "trio", true, n[0].id, n[1].id, n[2].id);
+            var fact = PrivateFact(s, trio);
+            string everyone = Whisper(s, fact);
+            Assert.That(everyone, Is.EqualTo("Word in the house: " + n[0].name + ", " + n[1].name + " and " + n[2].name + " are working together."),
+                "Under the rules it names everyone, in the pact's own order.");
+            Assert.That(everyone, Is.EqualTo(AllianceLeaks.WhisperLine(s, trio)));
+            var pair = Pact(s, "pair", true, n[3].id, n[4].id);
+            var pairFact = PrivateFact(s, pair);
+            Assert.That(Whisper(s, pairFact), Is.EqualTo(AllianceRead.WhisperLine(s, pairFact)), "For a pair it is the line it always was.");
+
+            // The page dates a card it knows of by either form: a line said before the rules, and one since.
+            Knowledge.AddKnower(s, fact, s.playerId);
+            string twoNames = AllianceRead.WhisperLine(s, fact);
+            s.events.Add(new EpisodeEvent { sequence = s.nextSequence++, week = 3, kind = StoryLog.Whisper, text = twoNames, audienceIds = new List<string> { s.playerId } });
+            s.events.Add(new EpisodeEvent { sequence = s.nextSequence++, week = 5, kind = StoryLog.Whisper, text = everyone, audienceIds = new List<string> { s.playerId } });
+            var card = AllianceRead.Suspected(s).Single();
+            Assert.That(card.evidence.Select(e => e.week + ": " + e.text), Is.EqualTo(new[] { "3: " + twoNames, "5: " + everyone }));
+            Assert.That(AllianceRead.IsWhisperLine(s, fact, trio, twoNames) && AllianceRead.IsWhisperLine(s, fact, trio, everyone), Is.True);
+            Assert.That(AllianceRead.IsWhisperLine(s, pairFact, pair, everyone), Is.False);
+        }
+
+        // ------------------------------------------------------------ the secret alliance under the rules
+
+        private static EpisodeState Apply(EpisodeState s, EpisodeCommand c)
+        {
+            var result = new EpisodeEngine(s).Apply(c);
+            Assert.That(result.accepted, Is.True, c.kind + ": " + result.reason);
+            return result.state;
+        }
+
+        private static StorylineState Cycle(EpisodeState s, string arcId) => s.storylines.Last(x => x.templateId == arcId);
+
+        private static EpisodeState Answer(EpisodeState s, string arcId, string optionId)
+        {
+            var command = EpisodeEngineTests.Command(s, EpisodeCommandKind.ProgressStoryline);
+            command.targetId = s.houseEvents.Single(e => e.cycleId == Cycle(s, arcId).id && !e.resolved).id;
+            command.secondTargetId = optionId;
+            return Apply(s, command);
+        }
+
+        /// <summary>
+        /// The Secret Alliance (plan 30, Intel) when the secret pair also sits in a pact of three the whole
+        /// house knows, made first: under the rules the play is about the secret pact - one the player does
+        /// not know of before one they do - so taking it on wins nothing, and the leak it pays with grants
+        /// the secret pair and names it in its receipt. The pact of three is never named to the player.
+        /// </summary>
+        [Test]
+        public void UnderTheRulesTheSecretAllianceIsAboutTheSecretPactAndItsReceiptNamesIt()
+        {
+            var engine = new EpisodeEngine(SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 31));
+            for (int i = 0; i < 800 && !(engine.Snapshot.week >= 2 && engine.Snapshot.phase == EpisodePhase.Nomination
+                     && engine.Snapshot.nominees.Count == 0 && engine.Snapshot.hohId != engine.Snapshot.playerId); i++)
+                Assert.That(engine.Apply(EpisodeEngineTests.NextCommand(engine.Snapshot)).accepted, Is.True);
+            var s = engine.Snapshot;
+            Assert.That(s.phase, Is.EqualTo(EpisodePhase.Nomination));
+            Assert.That(s.Find(s.playerId).status, Is.EqualTo(ContestantStatus.Active));
+            EpisodeEngine.EnableStory(s, s.week);
+            EpisodeEngine.EnableCommitments(s, s.week);
+            EpisodeEngine.EnableAllianceLeaks(s, s.week);
+            Assert.That(AllianceLeaks.On(s), Is.True);
+            foreach (var other in s.alliances) other.active = false;
+            var npcs = s.Active.Where(c => !c.isPlayer).OrderBy(c => c.id, StringComparer.Ordinal).ToList();
+            // The pact of three the house knows of, first; then the secret pair inside it.
+            var known = NpcAlliances.FormFromStory(s, new List<string> { npcs[0].id, npcs[1].id, npcs[2].id });
+            Knowledge.AllianceFormed(s, known);
+            Knowledge.MakeKnown(s, Knowledge.Of(s, FactKinds.Alliance, known.id), FactVisibility.Public);
+            var secret = new AllianceState { id = "alliance-story-" + s.nextSequence++, name = "The Secret Pair", active = true,
+                members = new List<string> { npcs[0].id, npcs[1].id } };
+            s.alliances.Add(secret);
+            Knowledge.AllianceFormed(s, secret);
+            // One more the player knows of, between two others, to trade.
+            var traded = NpcAlliances.FormFromStory(s, new List<string> { npcs[3].id, npcs[4].id });
+            Knowledge.AllianceFormed(s, traded);
+            Knowledge.MakeKnown(s, Knowledge.Of(s, FactKinds.Alliance, traded.id), FactVisibility.Public);
+            Assert.That(Knowledge.AllianceVisibleTo(s, secret, s.playerId), Is.False, "The fixture's pair is secret.");
+            Assert.That(Knowledge.PactOfPair(s, npcs[0].id, npcs[1].id, s.playerId), Is.SameAs(secret));
+
+            Assert.That(EpisodeEngine.StartStory(s, "the-secret-alliance", StoryAnchors.HohCrowned), Is.True, "The Secret Alliance casts.");
+            s = Answer(s, "the-secret-alliance", PlayOptions.TakeItOn);
+            Assert.That(Cycle(s, "the-secret-alliance").endingId, Is.Null.Or.Empty,
+                "Taken on and not yet won: the pact of three the player knows of is not the one it is about.");
+            s = Answer(s, "the-secret-alliance", "trade-what-you-know");
+            Assert.That(Cycle(s, "the-secret-alliance").endingId, Is.EqualTo(PlayEndings.Won), "Found out: won on the spot.");
+            var secretAfter = s.alliances.Single(a => a.id == secret.id);
+            Assert.That(Knowledge.AllianceVisibleTo(s, secretAfter, s.playerId), Is.True);
+            var receipts = s.events.Where(e => e.kind == StoryLog.Receipt).Select(e => e.text).ToList();
+            Assert.That(receipts, Has.Member(AllianceRead.LearnedLine(s, secretAfter)), "The receipt names the secret pair,");
+            Assert.That(receipts, Has.No.Member(AllianceRead.LearnedLine(s, s.alliances.Single(a => a.id == known.id))), "never the pact of three.");
+        }
     }
 }

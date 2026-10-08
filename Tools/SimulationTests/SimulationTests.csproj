@@ -242,8 +242,9 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/VerificationPerformance.cs" />
     <Compile Include="$(EditMode)VerificationPerformanceTests.cs" />
     <Compile Include="$(EditMode)StressHouseTests.cs" />
-    <!-- The balance plan: the shipped rules (B0). -->
+    <!-- The balance plan: the shipped rules (B0) and the season autopsy (B1). -->
     <Compile Include="$(EditMode)ShippedRulesTests.cs" />
+    <Compile Include="$(EditMode)SeasonAutopsyTests.cs" />
 
     <!--
       Several parity tests already carry an #else branch for running outside the editor: without

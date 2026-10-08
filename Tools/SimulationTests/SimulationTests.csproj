@@ -159,6 +159,8 @@
     <!-- Explicit, and compiled out of Unity: D4's recorded-season evidence over the digests' 54 seasons, run on demand. -->
     <Compile Include="$(EditMode)AllianceLeakSeasonDigests.cs" />
     <Compile Include="$(EditMode)PactPlanTests.cs" />
+    <!-- Explicit, and compiled out of Unity: D3's recorded-season evidence over the digests' 54 seasons, run on demand. -->
+    <Compile Include="$(EditMode)PactPlanSeasonDigests.cs" />
     <Compile Include="$(EditMode)FinalBracketTests.cs" />
     <Compile Include="$(EditMode)JuryHouseReadTests.cs" />
     <Compile Include="$(EditMode)FinaleRulesTests.cs" />

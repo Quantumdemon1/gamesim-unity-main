@@ -267,17 +267,19 @@ namespace Gamesim.Simulation
                 .Select(group => Join(group.Select(say => Who(say.memberId)).ToList()) + " wanted " + Who(group.Key) + " out").ToList();
             string text = parts.Count == 0 ? "Plan: nobody said." : "Plan: " + string.Join("; ", parts) + ".";
             string target = Who(row.targetId);
+            // The player on the block as the plan reads as such, never "evict you".
+            string evict = row.targetId == s.playerId ? "it named you" : "evict " + target;
             switch (row.stance)
             {
                 case PactPlanStance.Open: text += " You have not answered it yet."; break;
-                case PactPlanStance.Agreed: text += " You went with it: evict " + target + "."; break;
+                case PactPlanStance.Agreed: text += " You went with it: " + evict + "."; break;
                 case PactPlanStance.Countered:
                     var came = (row.cameRound ?? new List<string>()).Select(Who).ToList();
                     text += " You pushed for " + Who(row.counterId) + (came.Count > 0 ? ", and " + Join(came) + " came round" : "") + "."
-                        + (row.targetId == row.counterId ? " It carried." : " The pact held to " + target + ".");
+                        + (row.targetId == row.counterId ? " It carried." : row.targetId == s.playerId ? " The pact held to its plan for you." : " The pact held to " + target + ".");
                     break;
-                case PactPlanStance.Low: text += " You lay low: evict " + target + "."; break;
-                case PactPlanStance.Lapsed: text += " You let it stand: evict " + target + "."; break;
+                case PactPlanStance.Low: text += " You lay low: " + evict + "."; break;
+                case PactPlanStance.Lapsed: text += " You let it stand: " + evict + "."; break;
                 default: text += " It came to nothing."; break;
             }
             if (string.IsNullOrEmpty(row.targetId) || row.followed == null || row.followed.Count == 0) return text;

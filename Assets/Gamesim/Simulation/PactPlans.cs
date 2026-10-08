@@ -418,11 +418,14 @@ namespace Gamesim.Simulation
                 if (came.Count > 0) parts.Add(Allegiance.Join(came) + " came round");
                 if (held.Count > 0) parts.Add(Allegiance.Join(held) + " held to " + Name(s, settled.membersPlanId));
                 string line = "You pushed for " + Name(s, chosenId) + "." + (parts.Count > 0 ? " " + string.Join("; ", parts) + "." : "")
-                    + " " + name + " goes with " + target + ".";
+                    + " " + name + (settled.targetId == s.playerId ? " goes with its plan to evict you." : " goes with " + target + ".");
                 return settled.callerId == s.playerId ? line + WithYou(s, settled) : line;
             }
             var wanted = settled.finalSays.Where(say => say.targetId == settled.targetId).Select(say => Name(s, say.memberId)).ToList();
-            return "You let " + name + "'s plan stand: evict " + target + (wanted.Count > 0 ? ", as " + Allegiance.Join(wanted) + " wanted" : "") + ".";
+            string because = wanted.Count > 0 ? ", as " + Allegiance.Join(wanted) + " wanted" : "";
+            // The player on the block as the plan: "You let The Riley Pact's plan to evict you stand, as Riley Chen wanted."
+            if (settled.targetId == s.playerId) return "You let " + name + "'s plan to evict you stand" + because + ".";
+            return "You let " + name + "'s plan stand: evict " + target + because + ".";
         }
 
         /// <summary>" Riley Chen and Sam Ortiz are with you; Jo Park isn't." - the members who vote, as a call says it.</summary>

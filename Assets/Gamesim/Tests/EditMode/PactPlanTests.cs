@@ -784,6 +784,30 @@ namespace Gamesim.Tests.EditMode
             Assert.That(GameSense.Evaluate(forced).notes.Single(n => n.rowKind == "call").text, Does.Contain("1 followed, 1 did not"));
         }
 
+        /// <summary>The player on the block as the members' plan: never offered going with it, and never told to evict themselves.</summary>
+        [Test]
+        public void ThePlayerOnTheBlockAsThePlanIsNeverToldToEvictThemselves()
+        {
+            var s = Campaign();
+            var npcs = NpcIds(s);
+            s.nominees = new List<string> { s.playerId, npcs[2] };
+            var pact = Pact(s, PactId, PactName, s.playerId, npcs[3], npcs[4]);
+            Warm(s, pact);
+            var row = Row(s, (npcs[3], s.playerId), (npcs[4], s.playerId));
+            s.ledger.plans.Add(row);
+            Assert.That(PactPlans.AnswerRefusal(s, pact, npcs[3], s.playerId), Is.EqualTo(PactPlans.NomineeRefusal), "Never going with a plan to evict the player.");
+            Assert.That(PactPlans.AnswerRefusal(s, pact, npcs[3], npcs[2]), Is.Null, "Pushing for the other is open,");
+            Assert.That(PactPlans.AnswerKind(s, pact, row, npcs[2]), Is.EqualTo(PactPlans.Counter));
+            var low = PactPlans.Settle(s, pact, row, PactPlans.LieLow, null);
+            Assert.That(low.targetId, Is.EqualTo(s.playerId), "and lying low lets it stand.");
+            Assert.That(PactPlans.SettledLine(s, pact, null, low, null),
+                Is.EqualTo("You let " + PactName + "'s plan to evict you stand, as " + Name(s, npcs[3]) + " and " + Name(s, npcs[4]) + " wanted."));
+            var settled = row.Clone();
+            settled.stance = PactPlanStance.Low; settled.targetId = s.playerId; settled.callerId = low.callerId;
+            Assert.That(AllianceRead.PlanText(s, settled), Is.EqualTo("Plan: " + FinalistRead.FirstName(Name(s, npcs[3])) + " and "
+                + FinalistRead.FirstName(Name(s, npcs[4])) + " wanted you out. You lay low: it named you."));
+        }
+
         // ------------------------------------------------------------ D3-S5: follow-through on the page
 
         [Test]

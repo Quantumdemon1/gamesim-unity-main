@@ -44,7 +44,7 @@ namespace Gamesim.Tests.PlayMode
             public bool Hold = true;
         }
 
-        [UnityTest, Timeout(1200000)]
+        [UnityTest, Timeout(1500000)]
         public IEnumerator Back_EveryOverlayClosesOrSkipsTheSameWayByKeyAndPad()
         {
             KeyCeremony keys = null;
@@ -75,6 +75,10 @@ namespace Gamesim.Tests.PlayMode
                 new BackCase { Name = "key ceremony", Presses = 2, MayCommit = true,
                     Open = () => OpenKeyCeremonyForBack(found => keys = found), Done = () => keys != null && !keys.IsPlaying },
                 new BackCase { Name = "competition board", Open = () => OpenPracticeBoardForBack(found => board = found),
+                    Done = () => board != null && !board.IsShowing && director.IsPanelOpen },
+                // Paused, the board's focus is on Resume and its clock is stopped: the press still
+                // leaves a practice, by either device.
+                new BackCase { Name = "competition board, paused", Open = () => OpenPracticeBoardForBack(found => board = found, paused: true),
                     Done = () => board != null && !board.IsShowing && director.IsPanelOpen },
                 new BackCase { Name = "competition results", MayCommit = true, Open = () => OpenResultsForBack(found => results = found),
                     Done = () => results != null && !results.IsPlaying },
@@ -281,7 +285,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(keys.IsPlaying && !keys.ShowingBlock, Is.True, "The keys are still coming out.");
         }
 
-        private IEnumerator OpenPracticeBoardForBack(Action<CompetitionGameScreen> found)
+        private IEnumerator OpenPracticeBoardForBack(Action<CompetitionGameScreen> found, bool paused = false)
         {
             WarpPlayer(director.StationPosition);
             Assert.That(director.TryOpenPhasePanel(), Is.True);
@@ -294,6 +298,11 @@ namespace Gamesim.Tests.PlayMode
             var screen = SceneComponents<CompetitionGameScreen>().Single();
             found(screen);
             Assert.That(screen.IsShowing, Is.True);
+            if (!paused) yield break;
+            // Paused as its own control pauses it, so both runs reach the press by the same way.
+            screen.TogglePause();
+            yield return null;
+            Assert.That(screen.IsShowing && screen.Paused, Is.True, "The board is paused.");
         }
 
         private IEnumerator OpenResultsForBack(Action<CompetitionResult> found)

@@ -21,6 +21,37 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 27) return (JObject)original.DeepClone();
+            if (version < 1 || version > 26) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV26ToV27(version == 26 ? original : PrepareV26Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds only zero chronology markers after the complete fixed26 public contract accepts
+        /// the original payload. No binding, disclosure, Vote authority or historical ballot is inferred.
+        /// </summary>
+        public static JObject UpgradeV26ToV27(JObject original)
+        {
+            FrozenEpisodeV26.Validate(original);
+            var result = (JObject)original.DeepClone();
+            foreach (JObject row in (JArray)result["unifiedCommitments"])
+            {
+                row.Add("voteBindingWeek", 0);
+                row.Add("voteFirstRevealWeek", 0);
+            }
+            result["schemaVersion"] = 27;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v25-to-v26 dispatch; every historical step retains its original output.</summary>
+        public static JObject PrepareV26Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 26) return (JObject)original.DeepClone();
             if (version < 1 || version > 25) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV25ToV26(version == 25 ? original : PrepareV25Payload(original, out _));

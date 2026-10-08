@@ -45,7 +45,7 @@ namespace Gamesim.Simulation
         private static bool TryValidateCore(EpisodeState s, bool prospectiveSafety, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 26) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 27) return Fail(out error, "Unsupported episode schema.");
             if (prospectiveSafety)
             {
                 if (s.unifiedCommitmentRulesVersion != UnifiedCommitments.ProspectiveVersion

@@ -40,8 +40,9 @@
       Tests that touch nothing but System, NUnit, Newtonsoft and Gamesim.Simulation. Nothing of
       Unity's is stubbed: the web parity tests find their fixtures through Application.dataPath
       only under UNITY_EDITOR, and beside the binary otherwise. Tests that parse through
-      JsonUtility or reach Gamesim.Persistence are deliberately NOT here - standing Newtonsoft in
-      for JsonUtility would change what is being tested.
+      JsonUtility or growing Gamesim.Persistence owners are deliberately NOT here - standing
+      Newtonsoft in for JsonUtility would change what is being tested. The narrow fixed JSON
+      historical-contract exception below never includes a live serializer, save store or migration.
     -->
     <Compile Include="$(EditMode)CastSizeTests.cs" />
     <Compile Include="$(EditMode)CompetitionRulesV4Tests.cs" />
@@ -73,6 +74,9 @@
     <Compile Include="$(EditMode)CommitmentRulesTests.cs" />
     <Compile Include="$(EditMode)UnifiedCommitmentsTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteInertSchema26Tests.cs" />
+    <Compile Include="$(EditMode)UnifiedVoteInertSchema27Tests.cs" />
+    <Compile Include="$(EditMode)LegacyDigestSchema27Observer.cs" />
+    <Compile Include="$(EditMode)LegacyDigestSchema27ObserverTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteTogetherTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteCompletedRevealTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteRevealArchiveTests.cs" />
@@ -106,6 +110,29 @@
     <Compile Include="$(EditMode)EndgameCommitmentsTests.cs" />
     <!-- Explicit, and compiled out of Unity: the commitment rules' recorded-season evidence, run on demand. -->
     <Compile Include="$(EditMode)CommitmentRulesSeasonDigests.cs" />
+    <!--
+      Independent fixed JSON contracts ONLY: a source-bound test observer validates a separate
+      public-field view, while legacy digest traces retain their getters and original bytes.
+      These sixteen immutable BCL/Newtonsoft sources are not growing Persistence. This pure
+      structural/historical inverse is distinct from actual native SaveJson/migration/disk tests.
+      Never replace these explicit entries with a Persistence wildcard or add Unity stubs.
+    -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenEpisodeV26.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenEpisodeV25.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Data.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Shape.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.Ballots.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.Finale.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.Leaves.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.Ledger.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.NpcSocial.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.SafetyLeaves.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.SafetyReferences.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.SocialHistory.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.Storage.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.Story.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.Vocabulary.cs" />
     <!-- Explicit, and compiled out of Unity: the final Head of Household's choice over sampled seasons (C9), run on demand. -->
     <Compile Include="$(EditMode)FinalChoiceSeasonHarness.cs" />
     <Compile Include="$(EditMode)CampaignBriefTests.cs" />

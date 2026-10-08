@@ -244,7 +244,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 26;
+        public int schemaVersion = 27;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;

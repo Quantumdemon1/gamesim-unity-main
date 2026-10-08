@@ -51,7 +51,67 @@ namespace Gamesim.Tests.EditMode
                 // measurement, so it answers only to the walker and the validator.
                 if (r.cell.policy != BalancePolicies.Exploit)
                     Assert.That(r.refusals, Is.LessThanOrEqualTo(Math.Max(6, r.own / 4)), at + ": refusals " + string.Join("; ", r.refusalsByKind.Select(p => p.Key + " x" + p.Value)));
+                // A veto holder is never evicted that week: on the block they save themselves, and off it they
+                // cannot be named. (The final four's lock binds only a holder off the block; the final
+                // eviction has no veto.)
+                Assert.That(r.autopsy.weeksPlayed.Where(w => w.playerEvicted && w.playerVetoHolder && !w.finalEviction).Select(w => w.week), Is.Empty,
+                    at + ": the player was evicted in a week they held the veto.");
             }
+        }
+
+        /// <summary>
+        /// Whoever plays - the walker for the passive player, each gated policy, each oracle - a player who holds
+        /// the veto at the meeting while on the block comes off it. The meeting - the player in the block's second
+        /// chair, where the engine tests' walker saved the other nominee - is found in the passive player's seasons
+        /// at eight and played on from there by every player through the lab's own step.
+        /// </summary>
+        [Test]
+        public void APlayerWhoHoldsTheVetoOnTheBlockSavesThemselvesWhoeverPlays()
+        {
+            var finder = new BalanceLab.Cell { policy = BalancePolicies.Passive, size = 8 };
+            EpisodeState meeting = null;
+            uint seed = 0;
+            for (int index = 0; index < 80 && meeting == null; index++)
+            {
+                seed = BalanceLab.Seed(finder, index);
+                meeting = TheVetoMeetingWithThePlayerOnTheBlock(finder, index);
+            }
+            Assert.That(meeting, Is.Not.Null, "No season put a veto-holding player in the block's second chair.");
+            Assert.That(meeting.nominees[0], Is.Not.EqualTo(meeting.playerId));
+            foreach (string name in BalancePolicies.All)
+            {
+                var engine = new EpisodeEngine(meeting.Clone());
+                var agent = BalancePolicies.Create(name);
+                var run = new BalanceLab.SeasonRun { cell = new BalanceLab.Cell { policy = name, size = 8 }, seed = seed };
+                for (int step = 0; step < 20 && !engine.Snapshot.vetoResolved; step++)
+                {
+                    var s = engine.Snapshot;
+                    var result = BalanceLab.Step(engine, agent, s, run, out var used);
+                    Assert.That(result.accepted, Is.True, name + ": " + used.kind + ": " + result.reason);
+                }
+                var after = engine.Snapshot;
+                Assert.That(after.vetoResolved, Is.True, name + ": the meeting was decided.");
+                Assert.That(after.nominees, Does.Not.Contain(after.playerId), name + ": the veto holder left themselves on the block.");
+            }
+        }
+
+        /// <summary>The passive player's season to the first veto meeting at which they hold the veto on the block, or null.</summary>
+        private static EpisodeState TheVetoMeetingWithThePlayerOnTheBlock(BalanceLab.Cell cell, int index)
+        {
+            var run = new BalanceLab.SeasonRun { cell = cell, index = index, seed = BalanceLab.Seed(cell, index) };
+            var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = cell.size }, run.seed);
+            ShippedRules.ApplyFresh(fresh);
+            var engine = new EpisodeEngine(fresh);
+            var agent = BalancePolicies.Create(cell.policy);
+            for (int i = 0; i < BalanceLab.CommandCap; i++)
+            {
+                var s = engine.Snapshot;
+                if (s.phase == EpisodePhase.Finished || s.Find(s.playerId).status != ContestantStatus.Active) return null;
+                // The second chair: the engine tests' walker saves the first nominee, which there is somebody else.
+                if (s.phase == EpisodePhase.VetoMeeting && !s.vetoResolved && s.vetoHolderId == s.playerId && s.nominees.IndexOf(s.playerId) > 0) return s.Clone();
+                Assert.That(BalanceLab.Step(engine, agent, s, run, out _).accepted, Is.True);
+            }
+            return null;
         }
 
         [Test]

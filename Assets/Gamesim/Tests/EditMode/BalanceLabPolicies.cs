@@ -66,12 +66,17 @@ namespace Gamesim.Tests.EditMode
             }
         }
 
+        /// <summary>
+        /// A harness's player as an oracle. A veto holder on the block saves themselves
+        /// (<see cref="BalanceLab.SavesThePlayer"/>): the story sweep's skilled player answers the meeting with
+        /// the engine tests' walker, which would leave it up.
+        /// </summary>
         private sealed class Oracle : IOraclePolicy
         {
             private readonly Func<EpisodeState, uint, EpisodeCommand> next;
             public string Name { get; }
             public Oracle(string name, Func<EpisodeState, uint, EpisodeCommand> next) { Name = name; this.next = next; }
-            public EpisodeCommand Next(EpisodeState state, uint seed) => next(state, seed);
+            public EpisodeCommand Next(EpisodeState state, uint seed) => BalanceLab.SavesThePlayer(next(state, seed), state);
         }
     }
 
@@ -221,7 +226,7 @@ namespace Gamesim.Tests.EditMode
 
     // -------------------------------------------------------------------- the ten
 
-    /// <summary>Passive: does only what each phase asks, as the engine tests' walker does.</summary>
+    /// <summary>Passive: does only what each phase asks, as the lab's walker does (a veto it holds on the block saves itself).</summary>
     internal sealed class PassivePolicy : GatedPolicy
     {
         public override string Name => BalancePolicies.Passive;
@@ -599,7 +604,8 @@ namespace Gamesim.Tests.EditMode
     /// <summary>
     /// Novice, a first-timer: spends about half its seats on plain talk with whoever it likes, answers what
     /// the house asks with the first thing offered, takes every offer, swears every oath, reads nothing and
-    /// pulls no lever; votes out and nominates whoever it likes least. Its performance runs low.
+    /// pulls no lever; votes out and nominates whoever it likes least, and holding the veto saves itself and
+    /// nobody else. Its performance runs low.
     /// </summary>
     internal sealed class NovicePolicy : GatedPolicy
     {
@@ -607,6 +613,7 @@ namespace Gamesim.Tests.EditMode
 
         protected override EpisodeCommand Nominate(PlayerView v) => NominateBy(v, id => -v.MyView(id));
         protected override EpisodeCommand Vote(PlayerView v) => VoteAgainst(v, v.Nominees.Where(id => id != v.Me).OrderBy(id => v.MyView(id)).FirstOrDefault());
+        protected override EpisodeCommand Veto(PlayerView v) => VetoAs(v, null, id => -v.MyView(id));
         protected override EpisodeCommand FinalEvict(PlayerView v) => FinalEvictBy(v, id => -v.MyView(id));
 
         protected override EpisodeCommand Answer(PlayerView v)

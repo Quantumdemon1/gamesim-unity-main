@@ -108,32 +108,11 @@ namespace Gamesim.Tests.EditMode
             var s = engine.Snapshot;
             while (s.phase != EpisodePhase.Finished && run.commands < CommandCap)
             {
-                CommandResult applied = null;
-                EpisodeCommand used = null;
-                // An oracle proposes once: it keeps no notes, so a refused proposal would only come again.
-                int attempts = agent is IBalancePolicy ? Attempts : 1;
-                for (int attempt = 0; attempt < attempts && applied == null; attempt++)
+                var applied = Step(engine, agent, s, run, out var used);
+                if (!applied.accepted)
                 {
-                    var command = agent is IBalancePolicy policy ? policy.Next(new PlayerView(s, run.seed)) : ((IOraclePolicy)agent).Next(s, run.seed);
-                    if (command == null) break;
-                    Perform(command, s, run);
-                    var result = engine.Apply(command);
-                    if (result.accepted) { applied = result; used = command; run.own++; break; }
-                    run.refusals++;
-                    Count(run.refusalsByKind, command.kind + ": " + result.reason);
-                    (agent as IBalancePolicy)?.Refused(command, result.reason);
-                }
-                if (applied == null)
-                {
-                    used = Walker(s);
-                    Perform(used, s, run);
-                    applied = engine.Apply(used);
-                    if (!applied.accepted)
-                    {
-                        run.error = "week " + s.week + " " + s.phase + "/" + s.evictionStage + ": the walker's " + used.kind + " was refused: " + applied.reason;
-                        break;
-                    }
-                    run.fallbacks++;
+                    run.error = "week " + s.week + " " + s.phase + "/" + s.evictionStage + ": the walker's " + used.kind + " was refused: " + applied.reason;
+                    break;
                 }
                 run.commands++;
                 if (used.kind != EpisodeCommandKind.Advance) Count(run.decisionsByWeek, s.week);
@@ -152,6 +131,33 @@ namespace Gamesim.Tests.EditMode
             Ceremonies(run);
         }
 
+        /// <summary>
+        /// One step of a season: the player proposes (a gated policy up to <see cref="Attempts"/> times, told each
+        /// refusal; an oracle once, as it keeps no notes and a refused proposal would only come again); when it
+        /// proposes nothing, or nothing it proposes is accepted, the walker takes the phase's own step. Returns
+        /// the accepted result, or the walker's refusal (an error the caller reports).
+        /// </summary>
+        internal static CommandResult Step(EpisodeEngine engine, object agent, EpisodeState s, SeasonRun run, out EpisodeCommand used)
+        {
+            int attempts = agent is IBalancePolicy ? Attempts : 1;
+            for (int attempt = 0; attempt < attempts; attempt++)
+            {
+                var command = agent is IBalancePolicy policy ? policy.Next(new PlayerView(s, run.seed)) : ((IOraclePolicy)agent).Next(s, run.seed);
+                if (command == null) break;
+                Perform(command, s, run);
+                var result = engine.Apply(command);
+                if (result.accepted) { used = command; run.own++; return result; }
+                run.refusals++;
+                Count(run.refusalsByKind, command.kind + ": " + result.reason);
+                (agent as IBalancePolicy)?.Refused(command, result.reason);
+            }
+            used = Walker(s);
+            Perform(used, s, run);
+            var walked = engine.Apply(used);
+            if (walked.accepted) run.fallbacks++;
+            return walked;
+        }
+
         /// <summary>A competition's performance is the model's, whoever issued the command: skill is not a decision.</summary>
         private static void Perform(EpisodeCommand command, EpisodeState s, SeasonRun run)
         {
@@ -159,10 +165,14 @@ namespace Gamesim.Tests.EditMode
                 command.performance = PerformanceModel.Draw(run.cell.performance, run.cell.policy, run.seed, s.week, s.phase);
         }
 
-        /// <summary>The engine tests' walker, answering a finale question with an offered response, and a production-removed player sitting the jury out.</summary>
+        /// <summary>
+        /// The engine tests' walker, answering a finale question with an offered response, a production-removed
+        /// player sitting the jury out, and a player who holds the veto on the block saving themselves
+        /// (<see cref="SavesThePlayer"/>). The walker itself is left as it is: the recorded-season digests walk it.
+        /// </summary>
         internal static EpisodeCommand Walker(EpisodeState s)
         {
-            var command = EpisodeEngineTests.NextCommand(s);
+            var command = SavesThePlayer(EpisodeEngineTests.NextCommand(s), s);
             command.id = "walk-" + s.revision.ToString(CultureInfo.InvariantCulture);
             if (command.kind == EpisodeCommandKind.AnswerJury && EpisodeEngine.FinaleOn(s))
             {
@@ -171,6 +181,22 @@ namespace Gamesim.Tests.EditMode
             }
             if (command.kind == EpisodeCommandKind.CastVote && s.phase == EpisodePhase.Jury && s.Find(s.playerId).status == ContestantStatus.Expelled)
                 command.kind = EpisodeCommandKind.Advance;
+            return command;
+        }
+
+        /// <summary>
+        /// A player who holds the veto while on the block uses it on themselves. The engine tests' walker uses it
+        /// on the first nominee whoever that is, so a player who won the veto and sat in the second chair left
+        /// themselves up - and every lab player who fell back on the walker at the meeting (the passive player,
+        /// both oracles) was evicted in weeks they held the veto. Applied to the walker's step and to an oracle's
+        /// own command (the story sweep's skilled player answers the meeting with the walker's). The final four's
+        /// lock binds only a holder who is off the block, so it never applies here.
+        /// </summary>
+        internal static EpisodeCommand SavesThePlayer(EpisodeCommand command, EpisodeState s)
+        {
+            if (command != null && command.kind == EpisodeCommandKind.ResolveVeto && command.useVeto
+                && s.vetoHolderId == s.playerId && s.nominees.Contains(s.playerId))
+                command.targetId = s.playerId;
             return command;
         }
 

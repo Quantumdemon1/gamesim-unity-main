@@ -80,9 +80,10 @@ namespace Gamesim.Episode
             // answered and who voted with it, by the ballots the player can place. Lines, not controls.
             foreach (var plan in pact.plans) lines.Add(Dated(plan.week, plan.text));
             // Said only where a call could be made: a standing pact, the levers on, and the player still in the
-            // house. A pact of three or more under the war rooms calls only when it meets, and says so.
+            // house. A pact of three or more under the war rooms calls only when it meets, and says so until the
+            // block is set; from then its meeting is the conversation's to offer.
             if (pact.active && pact.calls.Count == 0 && pact.plans.Count == 0 && EpisodeEngine.LeverRulesOn(state)
-                && state.Find(state.playerId)?.status == ContestantStatus.Active)
+                && state.Find(state.playerId)?.status == ContestantStatus.Active && !(pact.warRoom && PactPlans.BlockSet(state)))
                 lines.Add(pact.warRoom ? MeetsOnceTheBlockIsSetCopy : NoCallsYetCopy);
             foreach (var deal in pact.deals) lines.Add(Dated(deal.week, deal.text));
             // Who found out about it, under the leak rules (WAVE-D-NPC-PACTS-PLAN D4): after the calls - and
@@ -99,7 +100,7 @@ namespace Gamesim.Episode
         /// <summary>A standing pact of the player's with no call in it yet, where calls can be made.</summary>
         public const string NoCallsYetCopy = "You have not called a vote in it yet.";
 
-        /// <summary>A standing pact of three or more under the war rooms with no plan yet (WAVE-D-NPC-PACTS-PLAN D3): it calls when it meets.</summary>
+        /// <summary>A standing pact of three or more under the war rooms with no plan yet, before the block is set (WAVE-D-NPC-PACTS-PLAN D3): it calls when it meets.</summary>
         public const string MeetsOnceTheBlockIsSetCopy = "Meets once the block is set.";
 
         /// <summary>A pact between others the player has evidence of: who, how sure, and what they saw or heard.</summary>

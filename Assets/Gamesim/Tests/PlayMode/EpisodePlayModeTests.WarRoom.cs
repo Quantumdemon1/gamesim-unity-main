@@ -95,6 +95,9 @@ namespace Gamesim.Tests.PlayMode
                 var state = director.Snapshot;
                 var pact = WarRoomPact();
                 Assert.That(EpisodeDirector.PlanCardPact(state, listener.id)?.id, Is.EqualTo(WarRoomPactId), where + ": the plan is open.");
+                // The answers below go with the first nominee and push for the second: both who vote must have said the first.
+                Assert.That(PactPlans.MembersPlan(PactPlans.StandingSays(state, pact, PactPlans.OpenPlan(state, WarRoomPactId))), Is.EqualTo(state.nominees[0]),
+                    where + ": precondition, the members' plan is the first nominee.");
 
                 // The heading, each say, and the answers, found by their captions.
                 Assert.That(ShownText(), Does.Contain(PactPlans.Heading(WarRoomPactName)), where + ": the card's heading.");
@@ -180,6 +183,8 @@ namespace Gamesim.Tests.PlayMode
             var met = director.Snapshot;
             Assert.That(met.revision, Is.EqualTo(revision + 1), "The war room is one command.");
             Assert.That(PactPlans.OpenPlan(met, WarRoomPactId), Is.Not.Null, "Its plan is open.");
+            Assert.That(PactPlans.MembersPlan(PactPlans.OpenPlan(met, WarRoomPactId).says), Is.EqualTo(met.nominees[0]),
+                "Precondition: the members' plan is the first nominee, so pushing for the second is the counter.");
             Assert.That(met.events.Last(e => e.kind == "conversation").text, Does.StartWith(WarRoomPactName + " met where nobody listens: you, "));
 
             // The card, in the conversation the player comes back to.

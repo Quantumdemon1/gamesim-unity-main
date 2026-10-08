@@ -13,11 +13,37 @@ namespace Gamesim.Simulation
         private EpisodeState current;
         public EpisodeState Snapshot => current.Clone();
 
-        public EpisodeEngine(EpisodeState initial)
+        /// <summary>
+        /// Whether this engine runs the internal exact-mode-2 seam (<see cref="ProspectiveVote"/>): its
+        /// input and every candidate are held to the complete prospective Vote core instead of public
+        /// validation. Fixed at construction; only the internal factory sets it.
+        /// </summary>
+        private readonly bool prospectiveVote;
+
+        public EpisodeEngine(EpisodeState initial) : this(initial, false) { }
+
+        private EpisodeEngine(EpisodeState initial, bool prospectiveVote)
         {
-            if (!EpisodeValidation.TryValidate(initial, out var error)) throw new ArgumentException(error, nameof(initial));
+            this.prospectiveVote = prospectiveVote;
+            if (!Valid(initial, out var error)) throw new ArgumentException(error, nameof(initial));
             current = initial.Clone();
         }
+
+        /// <summary>
+        /// The internal exact-mode-2 engine seam (vote family V2). Public mode 2 stays refused: the public
+        /// constructor, load, migration and save validate publicly and never dispatch here. This engine
+        /// keeps every guard of the public path - command identity and duplicates, revision, phase, actor,
+        /// kind, text and performance - and the same Execute body, and selects the complete prospective
+        /// Vote core (<see cref="EpisodeValidation.TryValidateProspectiveUnifiedVote"/>) at its input and
+        /// for every candidate, which is a detached clone installed only once it passes. No callback, flag
+        /// or relabelling lets a caller skip that core. Tests reach it through their reflection facade.
+        /// </summary>
+        internal static EpisodeEngine ProspectiveVote(EpisodeState initial) => new EpisodeEngine(initial, true);
+
+        /// <summary>The engine's one validator: public, or under the seam the complete prospective Vote core.</summary>
+        private bool Valid(EpisodeState state, out string error) => prospectiveVote
+            ? EpisodeValidation.TryValidateProspectiveUnifiedVote(state, out error)
+            : EpisodeValidation.TryValidate(state, out error);
 
         public CommandResult Apply(EpisodeCommand command)
         {
@@ -42,7 +68,7 @@ namespace Gamesim.Simulation
                 next.revision = checked(current.revision + 1);
                 next.acceptedCommandIds.Add(command.id);
                 if (next.acceptedCommandIds.Count > 256) next.acceptedCommandIds.RemoveAt(0);
-                if (!EpisodeValidation.TryValidate(next, out var error)) throw new RuleException("Candidate rejected: " + error);
+                if (!Valid(next, out var error)) throw new RuleException("Candidate rejected: " + error);
                 current = next;
                 return new CommandResult { accepted = true, reason = "Committed", state = Snapshot };
             }

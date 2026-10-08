@@ -104,6 +104,10 @@ namespace Gamesim.Tests.EditMode
         internal static IReadOnlyList<DealState> DealsUnchecked(EpisodeState s) =>
             (IReadOnlyList<DealState>)Call(ReferencesType, "DealsUnchecked", new[] { typeof(EpisodeState) }, s);
 
+        /// <summary>EpisodeEngine.ProspectiveVote: the internal exact-mode-2 engine seam (vote family V2).</summary>
+        internal static EpisodeEngine Engine(EpisodeState s) =>
+            (EpisodeEngine)Call(typeof(EpisodeEngine), "ProspectiveVote", new[] { typeof(EpisodeState) }, s);
+
         private static bool Try(Type owner, string name, Type[] parameters, EpisodeState s, out string error)
         {
             var args = new object[] { s, null };

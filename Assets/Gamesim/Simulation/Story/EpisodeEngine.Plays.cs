@@ -53,23 +53,26 @@ namespace Gamesim.Simulation
             var effects = ending == PlayEndings.Won ? play.won : ending == PlayEndings.Part ? play.part : play.lost;
             string outcome = ending == PlayEndings.Won ? play.wonOutcome : ending == PlayEndings.Part ? play.partOutcome : play.lostOutcome;
             var applied = new List<StoryEffectState>();
+            // Under the leak rules, the pact each alliance spread grants, so its receipt names that pact.
+            var spread = AllianceLeaks.On(s) ? new Dictionary<StoryEffectState, AllianceState>() : null;
             foreach (var fx in effects ?? Array.Empty<Fx>())
             {
                 var effect = ResolveFx(s, cycle, fx);
                 if (effect == null) continue;
+                RememberSpreadPact(s, effect, spread);
                 ApplyStoryEffect(s, effect, cycle.record, null, cycle.Id + ":" + ending, 0, false);
                 applied.Add(effect);
             }
             EndCycle(s, cycle.record, ending);
             if (!string.IsNullOrEmpty(outcome))
                 Log(s, StoryLog.Play, cycle.template.title + ": " + StoryText.Fill(s, outcome, cycle.record.cast), s.playerId);
-            Receipts(s, applied);
+            Receipts(s, applied, spread);
         }
 
         /// <summary>What the player learns a play changed: one line each, only to the player.</summary>
-        private static void Receipts(EpisodeState s, IEnumerable<StoryEffectState> applied)
+        private static void Receipts(EpisodeState s, IEnumerable<StoryEffectState> applied, IReadOnlyDictionary<StoryEffectState, AllianceState> spread = null)
         {
-            foreach (var line in PlayReceipts.For(s, applied)) Log(s, StoryLog.Receipt, line, s.playerId);
+            foreach (var line in PlayReceipts.For(s, applied, spread)) Log(s, StoryLog.Receipt, line, s.playerId);
         }
 
         /// <summary>Whether this ending turned a play down for the first time: it may be offered once more.</summary>

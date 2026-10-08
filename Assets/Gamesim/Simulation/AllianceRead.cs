@@ -26,12 +26,16 @@ namespace Gamesim.Simulation
     /// <para><b>Another houseguest's pact</b> shows only on evidence the player holds: its own fact
     /// with the player among the knowers, or out in the open (<see cref="FinalistRead.AllianceCertainty"/>),
     /// or a line the player was shown that names everyone in it - a play's receipt, "You learned: ...
-    /// are working together." The whisper that told the player dates a pact they know of; it never
-    /// makes one known, because its two names could belong to more than one pact. A pact with no
+    /// are working together." The whisper that told the player dates a pact they know of - in either of
+    /// its forms: the two names it always said, or, under the leak rules (WAVE-D-NPC-PACTS-PLAN D4),
+    /// everyone in it - and never makes one known, because two names could belong to more than one
+    /// pact. A pact with no
     /// evidence never appears, not even as an unknown, and nothing the player cannot know of one is
     /// said either: not its name, not when it formed, not whether it still stands. One card is one
     /// set of people, however many records share it, so two pacts of the same people read as one and
-    /// say nothing more. No listen-in, read or claim names another houseguest's pact: an overheard
+    /// say nothing more. No read or claim names another houseguest's pact, and nor does a listen-in,
+    /// save one under the leak rules (WAVE-D-NPC-PACTS-PLAN D4-M2) on a pact whose people in the house
+    /// are exactly the two overheard, whose line names everyone the card shows: otherwise an overheard
     /// pair is a standing, and an ally's claim (<see cref="ClaimSource.Ally"/>, written since
     /// ACTIONS-DEALS-ALLIANCES-PLAN C6) is a member's own word at a meeting of a pact the player is
     /// in, so it is evidence of no other pact.</para>
@@ -93,6 +97,18 @@ namespace Gamesim.Simulation
             public List<Call> calls = new List<Call>();
             /// <summary>The deals the player agreed with its members, oldest first.</summary>
             public List<Deal> deals = new List<Deal>();
+            /// <summary>
+            /// Who found out about it under the leak rules (WAVE-D-NPC-PACTS-PLAN D4), oldest first: "Riley
+            /// found out about it.", by the double-dealing line that told the player, matched by the pact's
+            /// name while the log holds it.
+            /// </summary>
+            public List<Evidence> exposures = new List<Evidence>();
+            /// <summary>
+            /// The risk of word of it getting out (D4-6), as the player can reckon it from who is in it and
+            /// how many pacts they hold - "Risk of word getting out: some." - or null where there is none
+            /// to read (<see cref="AllianceLeaks.RiskWord"/>).
+            /// </summary>
+            public string risk;
         }
 
         /// <summary>A member of one of the player's pacts, as the player reads them.</summary>
@@ -205,7 +221,29 @@ namespace Gamesim.Simulation
             Formed(s, alliance, row, pact);
             if (!alliance.active) Ended(s, alliance, row, pact);
             pact.deals = Deals(s, alliance);
+            pact.exposures = Exposures(s, alliance);
+            pact.risk = AllianceLeaks.RiskLine(AllianceLeaks.RiskWord(s, alliance));
             return pact;
+        }
+
+        /// <summary>
+        /// Who found out about one of the player's pacts and holds it against them (WAVE-D-NPC-PACTS-PLAN
+        /// D4): each double-dealing line the player was shown that names this pact - "Riley Chen found out
+        /// about The Jo Pact, your alliance with ..." - as "Riley found out about it.", in its week. Only
+        /// what those lines said: never who else knows, nor how it got out. A pact renamed since its line
+        /// no longer matches it, the gap a renamed pact's other lines have too.
+        /// </summary>
+        private static List<Evidence> Exposures(EpisodeState s, AllianceState alliance)
+        {
+            var found = new List<Evidence>();
+            if (string.IsNullOrEmpty(alliance.name)) return found;
+            foreach (var e in Seen(s).Where(e => AllianceLeaks.IsDoubleDealingLine(e) && e.text != null))
+            {
+                var who = s.contestants.FirstOrDefault(c => c != null && !c.isPlayer && !string.IsNullOrEmpty(c.name)
+                    && e.text.StartsWith(AllianceLeaks.FoundOutPrefix(c.name, alliance.name), StringComparison.Ordinal));
+                if (who != null) found.Add(new Evidence { week = e.week, text = FinalistRead.FirstName(who.name) + " found out about it." });
+            }
+            return found;
         }
 
         /// <summary>
@@ -469,16 +507,18 @@ namespace Gamesim.Simulation
                 foreach (var e in seen.Where(e => e.kind == "alliance" && EpisodeEngine.IsLeftGoesOnLine(e.text, alliance.name)
                              && e.audienceIds != null && e.audienceIds.Where(id => id != s.playerId).All(alliance.members.Contains)))
                     evidence.Add(new Evidence { week = e.week, text = e.text });
+                // A listen-in that heard them as a pact, under the leak rules (WAVE-D-NPC-PACTS-PLAN D4): its
+                // line ends naming everyone the card shows, so it is evidence as a receipt is.
+                string overheard = AllianceLeaks.ListenInSentence(s, alliance);
+                foreach (var e in seen.Where(e => e.kind == "eavesdrop" && e.text != null && e.text.EndsWith(overheard, StringComparison.Ordinal)))
+                    evidence.Add(new Evidence { week = e.week, text = e.text });
                 if (certainty != null)
                 {
                     // The whisper that told them dates a pact they know of; on its own it proves nothing.
                     var fact = Knowledge.Of(s, FactKinds.Alliance, alliance.id);
                     if (fact != null)
-                    {
-                        string whisper = WhisperLine(s, fact);
-                        foreach (var e in seen.Where(e => e.kind == StoryLog.Whisper && e.text == whisper))
+                        foreach (var e in seen.Where(e => e.kind == StoryLog.Whisper && IsWhisperLine(s, fact, alliance, e.text)))
                             evidence.Add(new Evidence { week = e.week, text = e.text });
-                    }
                     if (certainty == FinalistRead.Confirmed) evidence.Add(new Evidence { text = OutInTheOpen });
                     else if (evidence.Count == 0) evidence.Add(new Evidence { text = HeardOfIt });
                 }
@@ -540,6 +580,16 @@ namespace Gamesim.Simulation
             string actor = s.Find(fact.actorId)?.name ?? "somebody", subject = s.Find(fact.subjectId)?.name ?? "somebody";
             return "Word in the house: " + actor + " and " + subject + " are working together.";
         }
+
+        /// <summary>
+        /// Whether a whisper is the one a pact's fact reached the player in: the two-name whisper the
+        /// season always said (<see cref="WhisperLine"/>), or, under the leak rules, the one naming
+        /// everyone in it (<see cref="AllianceLeaks.WhisperLine"/>) - both forms, so a line said before
+        /// the rules still dates its card.
+        /// </summary>
+        public static bool IsWhisperLine(EpisodeState s, HouseFactState fact, AllianceState alliance, string text) =>
+            text != null && ((fact != null && text == WhisperLine(s, fact))
+                || (alliance?.members != null && text == AllianceLeaks.WhisperLine(s, alliance)));
 
         // ------------------------------------------------------------ helpers
 

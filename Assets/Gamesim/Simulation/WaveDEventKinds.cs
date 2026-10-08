@@ -2,8 +2,9 @@ namespace Gamesim.Simulation
 {
     /// <summary>
     /// Schema 28 vocabulary: the event kinds Wave D's lines will carry (WAVE-D-NPC-PACTS-PLAN §0.3).
-    /// Constants only. Nothing in this build logs them, and validation refuses each until its own
-    /// design's start week (<c>EpisodeValidation.WaveD</c>).
+    /// Constants. Only D4's double-dealing line is logged so far, under its start week (the leak rules,
+    /// <see cref="AllianceLeaks"/>); validation refuses each until its own design's start week
+    /// (<c>EpisodeValidation.WaveD</c>).
     /// </summary>
     public static class WaveDEventKinds
     {

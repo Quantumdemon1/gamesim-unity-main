@@ -367,6 +367,9 @@ namespace Gamesim.Simulation
         {
             if (UnifiedCommitmentHearings.RulesOn(s)) UnifiedCommitmentHearings.RequireValid(s);
             if (anchor == StoryAnchors.EvictionNight && StoryAt(s, StoryRules.Bonds)) NpcShowmancePass(s);
+            // The weekly leak (WAVE-D-NPC-PACTS-PLAN §2.3): after the showmances, before the gossip, so the
+            // same anchor's gossip can carry a pact that has just got out.
+            if (anchor == StoryAnchors.EvictionNight && AllianceLeaks.On(s)) LeakPass(s);
             if (StoryAt(s, StoryRules.Bonds) && anchor != StoryAnchors.Conversation)
                 foreach (var (fact, listener) in Knowledge.Spread(s, anchor))
                 {
@@ -374,6 +377,9 @@ namespace Gamesim.Simulation
                     // Your word in the house (ACTIONS-DEALS-ALLIANCES-PLAN C8): a houseguest the gossip
                     // tells of the player's broken word thinks less of them, and the player hears who.
                     else if (YourWord.On(s) && YourWord.IsYours(s, fact)) HeardOfYourWord(s, fact, listener);
+                    // Double-dealing (WAVE-D-NPC-PACTS-PLAN §2.3): an ally of the player's the gossip tells
+                    // of the player's other pact holds it against them, and the player hears who.
+                    else if (AllianceLeaks.On(s)) CaughtDoubleDealing(s, fact, listener);
                 }
         }
 
@@ -383,7 +389,14 @@ namespace Gamesim.Simulation
             string actor = s.Find(fact.actorId)?.name ?? "somebody", subject = s.Find(fact.subjectId)?.name ?? "somebody";
             switch (fact.kind)
             {
-                case FactKinds.Alliance: return "Word in the house: " + actor + " and " + subject + " are working together.";
+                case FactKinds.Alliance:
+                {
+                    // Under the leak rules the whisper names everyone in it (WAVE-D-NPC-PACTS-PLAN §2.3), so it
+                    // can only be about this pact; for a pair it is the two names it always said.
+                    var pact = AllianceLeaks.On(s) ? s.alliances.FirstOrDefault(a => a?.id == fact.refId) : null;
+                    if (pact != null) return AllianceLeaks.WhisperLine(s, pact);
+                    return "Word in the house: " + actor + " and " + subject + " are working together.";
+                }
                 case FactKinds.Couple: return "Word in the house: " + actor + " and " + subject + " are more than friends.";
                 case FactKinds.BrokenWord: return "Word in the house: " + actor + " went back on their word to " + subject + ".";
                 case FactKinds.Strike: return "Word in the house: " + actor + " was called to the Diary Room and came back quiet.";

@@ -241,6 +241,24 @@ namespace Gamesim.Simulation
             return fact == null || Knows(fact, evaluatorId);
         }
 
+        /// <summary>
+        /// One pair, one pact (WAVE-D-NPC-PACTS-PLAN §2.3): of the pacts holding both people, the one a
+        /// thing said about the two of them is about - a standing pact before an ended one; with a
+        /// listener named, one the listener does not yet know of (<see cref="AllianceVisibleTo"/>) before
+        /// one they do; then the house's own order. Null when no pact holds both. Under the leak rules
+        /// (<see cref="AllianceLeaks.On"/>) a story's spread grants and widens this pact alone, its
+        /// receipt names it, a play reads it, and a listen-in asks it of the pair overheard.
+        /// </summary>
+        public static AllianceState PactOfPair(EpisodeState state, string a, string b, string listenerId)
+        {
+            if (state?.alliances == null || string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return null;
+            // OrderBy is stable: ties keep the house's own order.
+            return state.alliances.Where(x => x?.members != null && x.members.Contains(a) && x.members.Contains(b))
+                .OrderBy(x => x.active ? 0 : 1)
+                .ThenBy(x => listenerId != null && AllianceVisibleTo(state, x, listenerId) ? 1 : 0)
+                .FirstOrDefault();
+        }
+
         public static void AddKnower(EpisodeState state, HouseFactState fact, string who)
         {
             if (fact == null || string.IsNullOrEmpty(who) || fact.knowers.Contains(who)) return;

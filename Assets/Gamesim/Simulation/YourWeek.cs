@@ -45,6 +45,8 @@ namespace Gamesim.Simulation
         public static class Kinds
         {
             public const string WhipCount = "whip count", Claim = "claim", Deal = "deal", Promise = "promise", Call = "call", Member = "member";
+            /// <summary>Under the leak rules (WAVE-D-NPC-PACTS-PLAN D4-6): somebody found out about another of the player's pacts.</summary>
+            public const string FoundOut = "found out";
         }
 
         /// <summary>What a call member's verdict rests on: the ballot as the player knows it, or what they said at the call.</summary>
@@ -103,13 +105,15 @@ namespace Gamesim.Simulation
             public List<Line> word = new List<Line>();
             /// <summary>Each call the player made: its own line, then who followed and who would not.</summary>
             public List<Line> calls = new List<Line>();
+            /// <summary>Who found out about another of the player's pacts, under the leak rules (D4-6): each line the player read.</summary>
+            public List<Line> exposed = new List<Line>();
             public Sense sense = new Sense();
 
             /// <summary>A week with nothing of the player's to judge.</summary>
-            public bool Empty => reads.Count == 0 && word.Count == 0 && calls.Count == 0;
+            public bool Empty => reads.Count == 0 && word.Count == 0 && calls.Count == 0 && exposed.Count == 0;
 
             /// <summary>Every line, reads first, as the recap prints them.</summary>
-            public IEnumerable<Line> Lines => reads.Concat(word).Concat(calls);
+            public IEnumerable<Line> Lines => reads.Concat(word).Concat(calls).Concat(exposed);
         }
 
         /// <summary>The player's week <paramref name="week"/>, judged as far as the house can see it now.</summary>
@@ -124,6 +128,7 @@ namespace Gamesim.Simulation
             Promises(s, week, mine.word);
             CanonicalWord(s, week, mine.word);
             Calls(s, week, power, revealed, mine.calls);
+            Exposures(s, week, mine.exposed);
             mine.sense = SenseSoFar(s, week);
             return mine;
         }
@@ -439,6 +444,21 @@ namespace Gamesim.Simulation
                     lines.Add(line);
                 }
             }
+        }
+
+        // ---------------------------------------------------------------- who found out (D4-6)
+
+        /// <summary>
+        /// Who found out about another of the player's pacts that week, under the leak rules
+        /// (WAVE-D-NPC-PACTS-PLAN D4-6): each double-dealing line the player read, in its own words and in
+        /// the order they read them, about the one who found out. No verdict: the line says what it did.
+        /// The log keeps the house's last 256 lines, so a long-past week may show fewer.
+        /// </summary>
+        private static void Exposures(EpisodeState s, int week, List<Line> lines)
+        {
+            foreach (var e in (s.events ?? new List<EpisodeEvent>()).Where(e => AllianceLeaks.IsDoubleDealingLine(e) && e.week == week
+                         && e.text != null && e.audienceIds != null && e.audienceIds.Contains(s.playerId)))
+                lines.Add(new Line { kind = Kinds.FoundOut, text = e.text, aboutId = e.audienceIds.FirstOrDefault(id => id != s.playerId) });
         }
 
         // ---------------------------------------------------------------- Game Sense so far

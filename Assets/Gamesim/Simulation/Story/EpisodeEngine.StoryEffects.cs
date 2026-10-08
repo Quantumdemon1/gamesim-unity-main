@@ -163,6 +163,9 @@ namespace Gamesim.Simulation
                     // A named pair's alliance going public, rather than a fact this cycle made.
                     if (e.type == FactKinds.Alliance && from != null && to != null)
                     {
+                        // Under the leak rules one pair is one pact (WAVE-D-NPC-PACTS-PLAN §2.3): the
+                        // spread grants and widens the pact the two of them name, and no other.
+                        if (AllianceLeaks.On(s)) { SpreadOnePact(s, e); return; }
                         foreach (var alliance in s.alliances.Where(a => a.members.Contains(from.id) && a.members.Contains(to.id)).ToList())
                         {
                             // An alliance with no fact is known to everyone already: under the reach

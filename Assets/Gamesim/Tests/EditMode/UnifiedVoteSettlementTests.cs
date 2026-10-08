@@ -909,22 +909,47 @@ namespace Gamesim.Tests.EditMode
                 prospective.state, "A broken veto word voids its price");
         }
 
+        private static EpisodeState onTheBlock;
+
         /// <summary>
-        /// The one void a reveal's own week can write: a counter's voting-bloc price whose payer was put on the block
-        /// after it was struck (so no ballot decides the price), whose payee then lies about their vote - the bought
-        /// information deal broken by the payee when the reveal judges the claim, after the reveal's verdicts. The
-        /// price is voided in that week (VoidThePrice), and the core accepts it Expired there - and refuses it Active,
-        /// an ending outlived. A constructed control on a real post-reveal season: the counter's two rows are added as
-        /// AnswerCounter files them, the information deal as the reveal breaks it; no command produced them here.
+        /// A first reveal the player cast no ballot in: the open vote with the player on the block, its whole box
+        /// pinned against the other nominee, and the counting Advance played through the seam on the mode-2 twin.
+        /// </summary>
+        private static EpisodeState RevealOnTheBlock() => (onTheBlock ??= ProspectiveVoteTwins.Find("a first reveal with the player on the block",
+            seed =>
+            {
+                var s = ProspectiveVoteTwins.Walk(seed, x => PinnedVoteSeason.OpenVote(x) && x.nominees.Contains(x.playerId) && x.votes.Count == 0);
+                if (s == null) return null;
+                string other = s.nominees.Single(id => id != s.playerId);
+                foreach (string voter in PinnedVoteSeason.NpcVoters(s).ToList())
+                    s.votes.Add(new VoteState { voterId = voter, targetId = other, reason = PinnedVoteSeason.PinnedReason });
+                var twin = ProspectiveVoteTwins.Twin(ProspectiveVoteTwins.Valid(s));
+                var result = ProspectiveVoteFacade.Engine(twin).Apply(EpisodeEngineTests.Command(twin, EpisodeCommandKind.Advance));
+                Assert.That(result.accepted, Is.True, "The reveal through the seam: " + result.reason);
+                Assert.That(result.state.evictionResolved && result.state.Find(s.playerId).status == ContestantStatus.Active, Is.True,
+                    "Fixture: the box counted, the player kept.");
+                return result.state;
+            })).Clone();
+
+        /// <summary>
+        /// The one void a reveal's own week can write: a counter's voting-bloc price whose payer - the player - was put
+        /// on the block after it was struck (the replacement nominee), so no ballot decides the price, and whose payee,
+        /// an ordinary voter, lied about their vote: the bought information deal is broken by the payee when the reveal
+        /// judges their Told claim (BreakTheDealsOfLyingPartners), after the reveal's verdicts. The price is voided in
+        /// that week (VoidThePrice), and the core accepts it Expired there - and refuses it Active, an ending outlived.
+        /// A constructed control on a real post-reveal season the player sat out on the block: the counter's two rows
+        /// are added as AnswerCounter files them, the information deal as the reveal breaks it; no command produced them
+        /// here, and the claim itself is not constructed (the core reads the broken deal, not the claim).
         /// </summary>
         [TestCase(DealStatus.Expired, true)] [TestCase(DealStatus.Active, false)]
         public void AVoidInTheRevealsOwnWeekIsAnEndingTheCoreAccepts(string priceStatus, bool accepted)
         {
-            var s = Campaign();
-            var reveal = Play(s, s.nominees[0], Pins(NpcVoters(s).Select(v => (v, s.nominees[0])).ToArray()));
-            var copy = reveal.After.Clone();
-            string payee = copy.nominees[1], player = copy.playerId;
-            Assert.That(reveal.Frame.ballots.Any(b => b.voterId == payee), Is.False, "Fixture: the payee cast no ballot, so nothing decided the price.");
+            var copy = RevealOnTheBlock();
+            var frame = copy.unifiedVoteReveals.Last();
+            string player = copy.playerId, payee = PinnedVoteSeason.NpcVoters(copy).First();
+            Assert.That((frame.week, copy.nominees.Contains(player)), Is.EqualTo((copy.week, true)), "Fixture: this week's frame, the player on the block.");
+            Assert.That(frame.ballots.Any(b => b.voterId == payee) && !frame.ballots.Any(b => b.voterId == player), Is.True,
+                "Fixture: the payee voted, the player did not, so nothing decided the price.");
             long sequence = copy.nextSequence++;
             string boughtId = Negotiation.CounterDealPrefix + sequence, priceId = Negotiation.PricePrefix + sequence;
             copy.deals.Add(new DealState { id = boughtId, type = DealKind.InformationSharing, proposerId = player, recipientId = payee,

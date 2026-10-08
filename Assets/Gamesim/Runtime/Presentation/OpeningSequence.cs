@@ -398,8 +398,8 @@ namespace Gamesim.Presentation
         private void Update()
         {
             if (running == null || IsMeeting) return;
-            var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.spaceKey.wasPressedThisFrame) Advance();
+            // The Ceremony map's Advance: Space. A pad presses the focused Continue instead.
+            if (Gamesim.House.HouseInput.Actions.Advance.WasPressedThisFrame()) Advance();
         }
 
         // ---------------------------------------------------------------- the sequence

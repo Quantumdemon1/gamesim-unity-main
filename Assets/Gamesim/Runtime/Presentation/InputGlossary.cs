@@ -70,8 +70,8 @@ namespace Gamesim.Presentation
             new Row(CameraContext, "Camera", "ZoomRate", "- / =", "LT / RT", "Zoom in and out, held"),
             new Row(CameraContext, "Camera", "Recenter", "F", "R3", "Back to your houseguest"),
             new Row(CameraContext, "Camera", "Point", "Pointer", "", "Zoom toward the cursor, and pan at the screen's edges"),
-            new Row(CameraContext, "Camera", "Next", "]", "RB", "Follow the next houseguest"),
-            new Row(CameraContext, "Camera", "Previous", "[", "LB", "Follow the previous houseguest"),
+            new Row(CameraContext, "Camera", "Next", "] / Tab", "RB", "Follow the next houseguest (Tab with nothing focused)"),
+            new Row(CameraContext, "Camera", "Previous", "[ / Shift+Tab", "LB", "Follow the previous houseguest"),
 
             // The house's shortcuts.
             new Row(HouseContext, "Shortcuts", "Menu", "Esc", "Start", "Close the top panel; Start opens the settings"),
@@ -81,6 +81,39 @@ namespace Gamesim.Presentation
             new Row(HouseContext, "Shortcuts", "Interact", "E", "X", "Talk, enter the diary room, or open the episode screen"),
             new Row(HouseContext, "Shortcuts", "Hit", "Space", "A", "Stop the marker in a house challenge"),
             new Row(HouseContext, "Shortcuts", "Overview", "M", "D-pad up", "The whole house from above, and back"),
+            new Row(HouseContext, "Shortcuts", "Emote", "G", "D-pad right", "Your moves: cheer, dance, shrug"),
+
+            // The ceremony cards, and the opening's Space.
+            new Row(CeremonyContext, "Ceremony", "Skip", "Enter / Num Enter / Esc / Left click", "A / B", "Skip a reveal to its result; again to close the card"),
+            new Row(CeremonyContext, "Ceremony", "Speed", "Space", "X", "Speed a reveal up, or back to its own pace"),
+            new Row(CeremonyContext, "Ceremony", "Advance", "Space", "", "Move the opening on"),
+
+            // A competition's board and its results.
+            new Row(CompetitionContext, "Competition", "Up", "Up / W", "D-pad up / Left stick up", "Answer up"),
+            new Row(CompetitionContext, "Competition", "Right", "Right / D", "D-pad right / Left stick right", "Answer right"),
+            new Row(CompetitionContext, "Competition", "Down", "Down / S", "D-pad down / Left stick down", "Answer down"),
+            new Row(CompetitionContext, "Competition", "Left", "Left / A", "D-pad left / Left stick left", "Answer left"),
+            new Row(CompetitionContext, "Competition", "Hit", "Space", "", "Hit the target in the classic reaction game"),
+            new Row(CompetitionContext, "Competition", "Hold", "Space", "RT", "Hold on in the endurance game"),
+            new Row(CompetitionContext, "Competition", "Pause", "P", "Start", "Pause and resume"),
+            new Row(CompetitionContext, "Competition", "Back", "Esc", "B", "Leave the board; in a ranked attempt the first press asks"),
+            new Row(CompetitionContext, "Competition", "Undo", "Backspace", "X", "Take a letter back in the word game"),
+            new Row(CompetitionContext, "Competition", "FocusNext", "Tab", "RB", "The board's next control"),
+            new Row(CompetitionContext, "Competition", "FocusPrevious", "Shift+Tab", "LB", "The board's previous control"),
+            new Row(CompetitionContext, "Competition", "Confirm", "Enter", "A", "Continue from the results"),
+
+            // The season report.
+            new Row(ReportContext, "Report", "PageUp", "Page Up", "LB", "Read back a page"),
+            new Row(ReportContext, "Report", "PageDown", "Page Down", "RB", "Read on a page"),
+            new Row(ReportContext, "Report", "Home", "Home", "LT", "The top of the season"),
+            new Row(ReportContext, "Report", "End", "End", "RT", "The foot of the season"),
+            new Row(ReportContext, "Report", "Scroll", "", "Right stick", "Scroll the season"),
+            new Row(ReportContext, "Report", "Walk", "", "D-pad / Left stick", "Walk the report's controls; the stick stops scrolling while you do"),
+
+            // The prototype house's conversation.
+            new Row(PrototypeContext, "Dialogue", "Reply1", "1 / Num 1", "", "Choose the first reply"),
+            new Row(PrototypeContext, "Dialogue", "Reply2", "2 / Num 2", "", "Choose the second reply"),
+            new Row(PrototypeContext, "Dialogue", "Reply3", "3 / Num 3", "", "Choose the third reply"),
 
             // The event system's module: the package's default UI actions.
             new Row(PanelsContext, InterfaceMap, "Navigate", "Up / Down", "D-pad / Left stick", "Move between a panel's controls"),

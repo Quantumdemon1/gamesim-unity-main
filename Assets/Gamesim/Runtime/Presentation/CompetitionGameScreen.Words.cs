@@ -237,11 +237,13 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// The keyboard on the word board: each letter key types the letter it carries on the
-        /// keyboard's own layout, Backspace takes one back, and the pad's X does too.
+        /// keyboard's own layout - typing, the one place a competition reads the keyboard itself -
+        /// and the Competition map's Undo, Backspace or the pad's X, takes one back.
         /// </summary>
-        private void ReadWordKeys(Keyboard keyboard, Gamepad pad)
+        private void ReadWordKeys(Gamesim.House.HouseCameraActions input)
         {
             if (!WordsBoard || !IsPlaying) return;
+            var keyboard = Keyboard.current;
             if (keyboard != null)
             {
                 for (var key = Key.A; key <= Key.Z; key++)
@@ -251,9 +253,8 @@ namespace Gamesim.Presentation
                     string name = control.displayName;
                     TypeWordLetter(!string.IsNullOrEmpty(name) && char.IsLetter(name[0]) ? name[0] : (char)('A' + (key - Key.A)));
                 }
-                if (keyboard.backspaceKey.wasPressedThisFrame) UndoLetter();
             }
-            if (pad != null && pad.buttonWest.wasPressedThisFrame) UndoLetter();
+            if (input.CompetitionUndo.WasPressedThisFrame()) UndoLetter();
         }
     }
 }

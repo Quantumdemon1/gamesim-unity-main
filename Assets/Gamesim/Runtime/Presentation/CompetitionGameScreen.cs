@@ -268,20 +268,20 @@ namespace Gamesim.Presentation
         private void Update()
         {
             if (!IsShowing) return;
-            var keyboard = Keyboard.current; var pad = Gamepad.current;
-            NoteInputDevice(keyboard, pad);
-            if ((keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
-                || (pad != null && pad.buttonEast.wasPressedThisFrame))
-            { LeaveRequested(); return; }
-            // On the word board every letter spells while it is played, P among them.
-            if ((keyboard != null && keyboard.pKey.wasPressedThisFrame && !(WordsBoard && IsPlaying))
-                || (pad != null && pad.startButton.wasPressedThisFrame))
+            // The board's keys come through the Competition map (PLAN A, A1): Escape or B leaves,
+            // P or Start pauses, Tab and the shoulders walk the board's controls.
+            var input = Gamesim.House.HouseInput.Actions;
+            NoteInputDevice();
+            if (input.CompetitionBack.WasPressedThisFrame()) { LeaveRequested(); return; }
+            // On the word board every letter spells while it is played, P among them: the key's
+            // pause waits, the pad's Start does not.
+            var pause = input.CompetitionPause;
+            if (pause.WasPressedThisFrame() && !(WordsBoard && IsPlaying && Gamesim.House.HouseInput.PressedByKeyboard(pause)))
                 TogglePause();
-            else ReadWordKeys(keyboard, pad);
-            if (keyboard != null && keyboard.tabKey.wasPressedThisFrame)
-                MoveControlFocus(keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed);
-            else if (pad != null && pad.rightShoulder.wasPressedThisFrame) MoveControlFocus(false);
-            else if (pad != null && pad.leftShoulder.wasPressedThisFrame) MoveControlFocus(true);
+            else ReadWordKeys(input);
+            // Shift+Tab is both actions' press; the previous control wins, as the shifted Tab did.
+            if (input.CompetitionFocusPrevious.WasPressedThisFrame()) MoveControlFocus(true);
+            else if (input.CompetitionFocusNext.WasPressedThisFrame()) MoveControlFocus(false);
             RememberGameFocus();
             RescueFocus();
             // The board's own beats - a card turning, GO, a hit mark fading - run on the screen's

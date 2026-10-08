@@ -375,12 +375,15 @@ namespace Gamesim.Episode
             {
                 var actions = cameraRig.Actions;
                 bool nothingFocused = EventSystem.current == null || EventSystem.current.currentSelectedGameObject == null;
-                if (actions.Next.WasPressedThisFrame()) FollowNext(false);
-                else if (actions.Previous.WasPressedThisFrame()) FollowNext(true);
-                else if (nothingFocused && Keyboard.current != null && Keyboard.current.tabKey.wasPressedThisFrame)
-                    FollowNext(Keyboard.current.shiftKey.isPressed);
-                // G is your moves: the card over your own chip.
-                else if (Keyboard.current != null && Keyboard.current.gKey.wasPressedThisFrame && !OpeningOwnsHouse) ToggleEmoteMenu();
+                // Tab is a binding of Next and Previous (Shift+Tab), folded in behind the same
+                // guard it always had: the camera's only while nothing is focused.
+                bool nextByTab = HouseInput.PressedByKey(actions.Next, Key.Tab);
+                bool previousByTab = HouseInput.PressedByKey(actions.Previous, Key.Tab);
+                if (actions.Next.WasPressedThisFrame() && !nextByTab) FollowNext(false);
+                else if (actions.Previous.WasPressedThisFrame() && !previousByTab) FollowNext(true);
+                else if (nothingFocused && (nextByTab || previousByTab)) FollowNext(previousByTab);
+                // G, or the d-pad's right, is your moves: the card over your own chip.
+                else if (actions.Emote.WasPressedThisFrame() && !OpeningOwnsHouse) ToggleEmoteMenu();
             }
             if (IsReady) { TickEmote(); TickAnswers(); }
             // The chip follows the subject however it was chosen: a click on a body sets the

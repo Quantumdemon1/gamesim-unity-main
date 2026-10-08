@@ -79,48 +79,21 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// A press that moves a ceremony card on: a left click, Enter (either one), Escape, or the
-        /// pad's A or B. Read straight off the devices, never through the event system, so the rule
-        /// in the class notes holds for every card that uses it - a card cannot take a click, or a
-        /// Submit, that was meant for the house, and nothing can be stranded behind one.
+        /// pad's A or B - the Ceremony map's Skip. Read off the actions, never through the event
+        /// system, so the rule in the class notes holds for every card that uses it - a card cannot
+        /// take a click, or a Submit, that was meant for the house, and nothing can be stranded
+        /// behind one.
         /// </summary>
-        internal static bool SkipPressed()
-        {
-            var mouse = Mouse.current;
-            var keyboard = Keyboard.current;
-            var pad = Gamepad.current;
-            return (mouse != null && mouse.leftButton.wasPressedThisFrame)
-                || (keyboard != null && (keyboard.enterKey.wasPressedThisFrame
-                    || keyboard.numpadEnterKey.wasPressedThisFrame || keyboard.escapeKey.wasPressedThisFrame))
-                || (pad != null && (pad.buttonSouth.wasPressedThisFrame || pad.buttonEast.wasPressedThisFrame));
-        }
+        internal static bool SkipPressed() => Gamesim.House.HouseInput.Actions.Skip.WasPressedThisFrame();
 
-        /// <summary>A press that speeds a reveal up, or back to its own pace: Space, or the pad's X.</summary>
-        internal static bool SpeedPressed()
-        {
-            var keyboard = Keyboard.current;
-            var pad = Gamepad.current;
-            return (keyboard != null && keyboard.spaceKey.wasPressedThisFrame)
-                || (pad != null && pad.buttonWest.wasPressedThisFrame);
-        }
+        /// <summary>A press that speeds a reveal up, or back to its own pace: Space, or the pad's X (the Ceremony map's Speed).</summary>
+        internal static bool SpeedPressed() => Gamesim.House.HouseInput.Actions.Speed.WasPressedThisFrame();
 
         /// <summary>
         /// Where this frame's press came from, for the key hints to follow: true for the pad, false
         /// for a key or a click, null when nothing was pressed.
         /// </summary>
-        internal static bool? PadUsed()
-        {
-            var pad = Gamepad.current;
-            if (pad != null && (pad.buttonSouth.wasPressedThisFrame || pad.buttonEast.wasPressedThisFrame
-                || pad.buttonWest.wasPressedThisFrame || pad.buttonNorth.wasPressedThisFrame
-                || pad.startButton.wasPressedThisFrame || pad.selectButton.wasPressedThisFrame))
-                return true;
-            var keyboard = Keyboard.current;
-            var mouse = Mouse.current;
-            if ((keyboard != null && keyboard.anyKey.wasPressedThisFrame)
-                || (mouse != null && mouse.leftButton.wasPressedThisFrame))
-                return false;
-            return null;
-        }
+        internal static bool? PadUsed() => Gamesim.House.HouseInput.PadUsed();
 
         /// <summary>
         /// The card up and the card down, so a stage in the house can cut with it as it does with

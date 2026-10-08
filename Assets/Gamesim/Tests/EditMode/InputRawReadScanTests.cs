@@ -37,20 +37,19 @@ namespace Gamesim.Tests.EditMode
         /// <summary>Each Runtime file that may read a device directly, relative to Assets/Gamesim/Runtime.</summary>
         private static readonly Allowed[] Allowlist =
         {
-            new Allowed("Episode/EpisodeDirector.Challenge.cs", 1, Allowance.Pending, "Space taps a classic reaction target"),
-            new Allowed("Episode/EpisodeDirector.cs", 5, Allowance.Pending, "Tab follows with nothing focused; G opens your moves"),
-            new Allowed("Episode/EpisodeHud.cs", 2, Allowance.Pending, "Tab walks the HUD's ring; the speech field swallows Escape and Tab"),
-            new Allowed("House/HouseInteraction.cs", 1, Allowance.Pending, "the prototype house's E, Escape and reply digits"),
+            // A1 rerouted the rest through the actions asset (HouseInput): the director's Tab and G,
+            // the HUD's ring and the speech field, the ceremony cards, a competition's board, hold,
+            // directions and results, the opening, the season report and the prototype house.
             new Allowed("House/HousePlayerController.cs", 1, Allowance.Pointer, "a left click on the floor walks there"),
-            new Allowed("Presentation/CeremonyTakeover.cs", 8, Allowance.Pending, "a ceremony card's skip, speed and which device was last used"),
-            new Allowed("Presentation/CompetitionDirectionControl.cs", 2, Allowance.Pending, "a direction game's four directions"),
-            new Allowed("Presentation/CompetitionGameScreen.Chrome.cs", 2, Allowance.Pending, "the legend follows the device last used"),
-            new Allowed("Presentation/CompetitionGameScreen.Endurance.cs", 2, Allowance.Pending, "Space or the right trigger holds on"),
-            new Allowed("Presentation/CompetitionGameScreen.cs", 2, Allowance.Pending, "Escape, P, Tab and the pad's buttons on the board"),
-            new Allowed("Presentation/CompetitionResult.cs", 2, Allowance.Pending, "back and continue on the results card"),
-            new Allowed("Presentation/OpeningSequence.cs", 1, Allowance.Pending, "Space moves the opening on"),
-            new Allowed("Presentation/SeasonReport.cs", 3, Allowance.Pending, "Page Up, Page Down, Home, End and the right stick"),
+            new Allowed("Presentation/CompetitionGameScreen.Words.cs", 1, Allowance.Typing, "the word board types each letter on the keyboard's own layout"),
         };
+
+        [Test]
+        public void TheAllowlist_HoldsOnlyThePointerAndTyping()
+        {
+            // PLAN A, A1's acceptance: nothing left pending a reroute.
+            Assert.That(Allowlist.Where(entry => entry.Why == Allowance.Pending).Select(entry => entry.File), Is.Empty);
+        }
 
         private static readonly Regex RawRead = new Regex(@"\b(Keyboard|Gamepad|Mouse)\.current\b", RegexOptions.CultureInvariant);
 

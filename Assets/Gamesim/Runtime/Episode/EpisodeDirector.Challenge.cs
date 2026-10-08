@@ -419,11 +419,10 @@ namespace Gamesim.Episode
                 SyncCompetitionPlayerInstrument();
                 return;
             }
-            var keyboard = Keyboard.current;
             if (challengeRun.Kind == CompetitionMiniGames.Kind.Endurance) competitionScreen.SyncHoldKey();
             else if (challengeRun.Kind == CompetitionMiniGames.Kind.Reaction
                 && challengeRun.RulesVersion == CompetitionMiniGames.LegacyRules
-                && keyboard != null && keyboard.spaceKey.wasPressedThisFrame) TapTarget();
+                && HouseActions.CompetitionHit.WasPressedThisFrame()) TapTarget();
             int expired = challengeRun.ExpiredTargets;
             challengeRun.Tick(Time.unscaledDeltaTime);
             if (challengeRun.ExpiredTargets > expired) audioBed.PlayCue(HouseAudio.Cue.SocialDown);

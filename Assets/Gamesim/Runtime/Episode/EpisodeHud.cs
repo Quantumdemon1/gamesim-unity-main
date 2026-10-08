@@ -2096,13 +2096,13 @@ namespace Gamesim.Episode
             }
 
             var selected = events.currentSelectedGameObject;
-            var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.tabKey.wasPressedThisFrame && selected != null
+            // Tab, through the camera's Next and Previous (HouseInput.TabStep): the ring's while a
+            // control is focused, the camera's while none is. Shift+Tab walks back.
+            if (Gamesim.House.HouseInput.TabStep(out bool reverse) && selected != null
                 && (overlay == null || overlay.GetComponent<CompetitionGameScreen>() == null))
             {
                 var current = selected.GetComponent<Selectable>();
                 int index = System.Array.IndexOf(tabOrder, current);
-                bool reverse = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed;
                 var next = index < 0 || tabOrder.Length == 0 ? null
                     : tabOrder[(index + (reverse ? tabOrder.Length - 1 : 1)) % tabOrder.Length];
                 if (next != null && next.IsActive() && next.IsInteractable())
@@ -2470,8 +2470,8 @@ namespace Gamesim.Episode
     {
         public override void OnUpdateSelected(BaseEventData eventData)
         {
-            var keyboard = Keyboard.current;
-            if (keyboard != null && (keyboard.escapeKey.wasPressedThisFrame || keyboard.tabKey.wasPressedThisFrame))
+            // The director's Menu (Escape) and the ring's Tab, read through the same actions they are.
+            if (Gamesim.House.HouseInput.Actions.Menu.WasPressedThisFrame() || Gamesim.House.HouseInput.TabStep(out _))
             {
                 eventData.Use();
                 return;

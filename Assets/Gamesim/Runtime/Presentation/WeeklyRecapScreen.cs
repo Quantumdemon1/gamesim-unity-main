@@ -53,6 +53,8 @@ namespace Gamesim.Presentation
         /// <summary>The Your week tab's parts, by name: the week in a line, its cards (the empty week's included), and a judged line's row.</summary>
         public const string YourWeekLineName = "Your week line", ReadsName = "Reads and claims", WordName = "Deals and promises",
             CallsName = "Your calls", SenseName = "Game Sense so far", NothingJudgedName = "Nothing judged", VerdictRowName = "Judged line";
+        /// <summary>The Your week tab's card of who found out about another of the player's pacts (WAVE-D-NPC-PACTS-PLAN D4-6).</summary>
+        public const string FoundOutName = "Pacts found out";
 
         private float Width = 1080f;
         private RectTransform content, viewport;
@@ -806,6 +808,9 @@ namespace Gamesim.Presentation
                 cards.Add((WordName, "Deals and promises", "As far as you can know how they ended.", "handshake", mine.word));
             if (mine.calls.Count > 0)
                 cards.Add((CallsName, "Your calls", "Who followed you, as they said at the call.", "people", mine.calls));
+            // Under the leak rules (D4-6): an ally who found out about another of the player's pacts, in the line they read.
+            if (mine.exposed.Count > 0)
+                cards.Add((FoundOutName, "Found out", "Allies who learned of another of your alliances.", "handshake", mine.exposed));
 
             foreach (var card in cards)
             {

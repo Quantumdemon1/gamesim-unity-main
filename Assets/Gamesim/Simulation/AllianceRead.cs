@@ -103,6 +103,12 @@ namespace Gamesim.Simulation
             /// name while the log holds it.
             /// </summary>
             public List<Evidence> exposures = new List<Evidence>();
+            /// <summary>
+            /// The risk of word of it getting out (D4-6), as the player can reckon it from who is in it and
+            /// how many pacts they hold - "Risk of word getting out: some." - or null where there is none
+            /// to read (<see cref="AllianceLeaks.RiskWord"/>).
+            /// </summary>
+            public string risk;
         }
 
         /// <summary>A member of one of the player's pacts, as the player reads them.</summary>
@@ -216,6 +222,7 @@ namespace Gamesim.Simulation
             if (!alliance.active) Ended(s, alliance, row, pact);
             pact.deals = Deals(s, alliance);
             pact.exposures = Exposures(s, alliance);
+            pact.risk = AllianceLeaks.RiskLine(AllianceLeaks.RiskWord(s, alliance));
             return pact;
         }
 

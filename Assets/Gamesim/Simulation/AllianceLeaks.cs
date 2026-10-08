@@ -168,6 +168,31 @@ namespace Gamesim.Simulation
             " From the way they talked, " + Names(s, s.contestants.Where(c => pact.members.Contains(c.id)).Select(c => c.id).ToList())
             + " are working together.";
 
+        // ------------------------------------------------------------ the risk word (D4-6)
+
+        /// <summary>How likely one of the player's pacts is to get out this week, in a word.</summary>
+        public const string RiskLow = "low", RiskSome = "some", RiskHigh = "high";
+
+        /// <summary>
+        /// The player's own read of how likely a pact of theirs is to get out: its weekly odds as the
+        /// player can work them out - from how many of it are in the house and how many pacts the player
+        /// holds, both theirs to see - in a word: five or eight in a hundred <see cref="RiskLow"/>, ten to
+        /// fifteen <see cref="RiskSome"/>, sixteen or more <see cref="RiskHigh"/>. Never from whether it has got
+        /// out, which the player cannot know, so a pact already whispered reads as one still secret. Null
+        /// where there is nothing to read: the rules off, a pact that has ended or is not the player's, or
+        /// the player out of the house.
+        /// </summary>
+        public static string RiskWord(EpisodeState s, AllianceState pact)
+        {
+            if (!On(s) || pact?.members == null || !pact.active || !pact.members.Contains(s.playerId)) return null;
+            if (s.Find(s.playerId)?.status != ContestantStatus.Active) return null;
+            double odds = Odds(ActiveMembers(s, pact), EpisodeEngine.PlayerPactsHeld(s), true);
+            return odds < 0.095 ? RiskLow : odds < 0.155 ? RiskSome : RiskHigh;
+        }
+
+        /// <summary>The card's line for the risk word: "Risk of word getting out: some."</summary>
+        public static string RiskLine(string word) => word == null ? null : "Risk of word getting out: " + word + ".";
+
         /// <summary>Whether a line is a double-dealing line.</summary>
         public static bool IsDoubleDealingLine(EpisodeEvent e) => e != null && e.kind == WaveDEventKinds.DoubleDealing;
 

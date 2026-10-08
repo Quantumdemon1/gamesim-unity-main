@@ -802,6 +802,72 @@ namespace Gamesim.Tests.EditMode
             Assert.That(UnifiedCommitmentHearings.ValidateStorage(s, out string error), Is.True, error);
         }
 
+        // ------------------------------------------------------------ D4-6: the risk word and Your week
+
+        /// <summary>
+        /// The risk word on the player's card: the odds as the player can reckon them - who of it is in the
+        /// house, how many pacts they hold - in a word, and never whether it has got out: two pacts that
+        /// differ only in their fact's visibility read the same. Nothing for a pact between others, an ended
+        /// one, a player out of the house, or without the rules.
+        /// </summary>
+        [Test]
+        public void TheRiskWordIsThePlayersOwnReckoningAndNeverWhetherItGotOut()
+        {
+            var s = Rules();
+            var n = Others(s);
+            var pair = Pact(s, "pair", true, s.playerId, n[0].id);
+            var fact = PrivateFact(s, pair, s.week - 1);
+            Assert.That(AllianceLeaks.RiskWord(s, pair), Is.EqualTo(AllianceLeaks.RiskLow), "Two of them and one pact held: five in a hundred.");
+            var trio = Pact(s, "trio", true, s.playerId, n[1].id, n[2].id);
+            PrivateFact(s, trio, s.week - 1);
+            Assert.That(AllianceLeaks.RiskWord(s, pair), Is.EqualTo(AllianceLeaks.RiskSome), "A second pact held: ten.");
+            Assert.That(AllianceLeaks.RiskWord(s, trio), Is.EqualTo(AllianceLeaks.RiskSome), "Three in it and two held: thirteen.");
+            var four = Pact(s, "four", true, s.playerId, n[3].id, n[4].id, n[5].id);
+            PrivateFact(s, four, s.week - 1);
+            Assert.That(AllianceLeaks.RiskWord(s, four), Is.EqualTo(AllianceLeaks.RiskHigh), "Four in it and three held: twenty-one.");
+            Assert.That(AllianceLeaks.RiskWord(s, pair), Is.EqualTo(AllianceLeaks.RiskSome), "Two and three held: fifteen.");
+            Assert.That(AllianceLeaks.RiskWord(s, trio), Is.EqualTo(AllianceLeaks.RiskHigh), "Three and three held: eighteen.");
+
+            // Out as a whisper, or out in the open: the player cannot know, and the word does not say.
+            string secret = AllianceLeaks.RiskWord(s, pair);
+            Knowledge.MakeKnown(s, fact, FactVisibility.Whispered);
+            Assert.That(AllianceLeaks.RiskWord(s, pair), Is.EqualTo(secret));
+            Knowledge.MakeKnown(s, fact, FactVisibility.Public);
+            Assert.That(AllianceLeaks.RiskWord(s, pair), Is.EqualTo(secret));
+            Assert.That(AllianceRead.Yours(s).Single(p => p.id == pair.id).risk, Is.EqualTo("Risk of word getting out: " + secret + "."));
+
+            var theirs = Pact(s, "theirs", true, n[5].id, n[6].id);
+            Assert.That(AllianceLeaks.RiskWord(s, theirs), Is.Null, "Not the player's.");
+            trio.active = false;
+            Assert.That(AllianceLeaks.RiskWord(s, trio), Is.Null, "Ended.");
+            Assert.That(AllianceRead.Yours(s).Single(p => p.id == trio.id).risk, Is.Null);
+            s.allianceLeakRulesStartWeek = 0;
+            Assert.That(AllianceLeaks.RiskWord(s, pair), Is.Null, "Without the rules.");
+            Assert.That(AllianceRead.Yours(s).Single(p => p.id == pair.id).risk, Is.Null);
+            EpisodeEngine.EnableAllianceLeaks(s, s.week);
+            s.Find(s.playerId).status = ContestantStatus.Evicted;
+            Assert.That(AllianceLeaks.RiskWord(s, pair), Is.Null, "A player out of the house.");
+        }
+
+        /// <summary>Your week lists who found out about another of the player's pacts that week, in the line they read, about them.</summary>
+        [Test]
+        public void YourWeekSaysWhoFoundOutThatWeek()
+        {
+            var (s, ally, other) = Juggling(4107);
+            var n = Others(s);
+            Assert.That(YourWeek.Build(s, s.week).exposed, Is.Empty);
+            Tell(s, s.playerId, n[1].id, ally.id);
+            var week = YourWeek.Build(s, s.week);
+            var line = week.exposed.Single();
+            Assert.That(line.kind, Is.EqualTo(YourWeek.Kinds.FoundOut));
+            Assert.That(line.text, Is.EqualTo(AllianceLeaks.Line(s, ally.id, other)), "In the words the player read.");
+            Assert.That(line.aboutId, Is.EqualTo(ally.id));
+            Assert.That(line.verdict, Is.Null);
+            Assert.That(week.Empty, Is.False);
+            Assert.That(week.Lines, Has.Member(line));
+            Assert.That(YourWeek.Build(s, s.week - 1).exposed, Is.Empty, "Another week's says nothing of it.");
+        }
+
         /// <summary>The listen-in as the player presses it: one command, accepted, and the season legal after it.</summary>
         [Test]
         public void TheListenInIsOneLegalCommand()

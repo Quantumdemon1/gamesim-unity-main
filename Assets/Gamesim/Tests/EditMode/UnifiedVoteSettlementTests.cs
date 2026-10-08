@@ -839,9 +839,54 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// A row bound after its week's reveal is next week's: the player says yes to the surviving nominee's vote
+        /// offer at the night's results, the box already counted. Its first reveal floor is the next week's, so the
+        /// frame just published - in which the player's ballot did keep that nominee - cannot decide it; its term is
+        /// this week's, so no later frame can either. It stands Active, unstamped, through the week's turn and ends at
+        /// next week's deal pass, as mode 1's raw deal ends - mode 1's at every command.
+        /// </summary>
+        [Test]
+        public void AnOfferAnsweredAfterTheRevealIsNextWeeksAndEndsAtItsDealPass()
+        {
+            var s = HouseCampaign();
+            var offers = s.deals.Where(d => d.id.StartsWith(NpcDeals.OfferPrefix, StringComparison.Ordinal) && d.status == DealStatus.Proposed).ToList();
+            string survivor = s.nominees.First(id => offers.Any(o => o.proposerId == id && o.type == DealKind.VoteSave)), evictee = s.nominees.Single(id => id != survivor);
+            string answered = offers.First(o => o.proposerId == survivor && o.type == DealKind.VoteSave).id;
+            // As the deal-pass case pins the box: each bargain's voter keeps their nominee, the rest vote the evictee out.
+            var bargains = s.deals.Where(d => d.id.StartsWith("deal-npc-", StringComparison.Ordinal) && d.type == DealKind.VoteSave).ToList();
+            var pins = NpcVoters(s).ToDictionary(v => v, v => evictee, StringComparer.Ordinal);
+            foreach (var b in bargains) pins[b.recipientId] = s.nominees.Single(id => id != b.proposerId);
+            Assert.That(pins.Values.Count(t => t == evictee) + 1, Is.GreaterThan(pins.Values.Count(t => t == survivor)), "Fixture: the evictee goes.");
+            var reveal = Play(s, evictee, pins);
+            Assert.That(Status(reveal.After, answered), Is.EqualTo(DealStatus.Proposed), "Fixture: the offer is still unanswered at the night's results.");
+            var carried = Carry(reveal);
+            int week = s.week;
+            var yes = Next(carried, "The player says yes after the reveal",
+                ProspectiveVoteTwins.Command(carried.Legacy, EpisodeCommandKind.RespondToDeal, answered, text: EpisodeEngine.AcceptDeal));
+            var row = Row(yes, answered);
+            Assert.That((row.status, row.voteBindingWeek, row.voteFirstRevealWeek, row.expiresWeek, row.settledWeek),
+                Is.EqualTo((DealStatus.Active, week, week + 1, week, 0)), "Bound this week, first judged next week, its term this week's.");
+            Assert.That(yes.unifiedVoteReveals.Single(frame => frame.week == week).ballots.Single(b => b.voterId == yes.playerId).targetId,
+                Is.EqualTo(evictee), "Fixture: the published frame would have kept the survivor - had it been eligible.");
+            Assert.That(yes.ledger.opportunities.Single(o => o.id == answered).response, Is.EqualTo(OpportunityResponse.Taken));
+            for (int step = 0; step < 60; step++)
+            {
+                var before = carried.Prospective;
+                var after = Next(carried, "To next week's campaign");
+                bool pass = before.week == week + 1 && after.phase == EpisodePhase.Campaign && before.phase != EpisodePhase.Campaign;
+                Assert.That((Status(after, answered), Row(after, answered).settledWeek), Is.EqualTo((pass ? DealStatus.Expired : DealStatus.Active, 0)),
+                    answered + (pass ? " ends at the deal pass, no verdict." : " stands until it."));
+                if (pass) return;
+            }
+            Assert.Fail("Fixture: next week's campaign never opened.");
+        }
+
+        /// <summary>
         /// Production's removal of a party ends their vote rows as it ends their raw ones (StoryHooks.Expel): the
         /// house's vote promise its nominee made, undecided, and the player's voting bloc with them expire as the
-        /// social window closes - before the week's turn would have ended the promise on its own.
+        /// social window closes - before the week's turn would have ended the promise on its own. So does a deal that
+        /// only names them: a story's vote-to-evict deal between the player and another houseguest, struck in the
+        /// social week after the reveal (so next week's), its target the one production removes.
         /// </summary>
         [Test]
         public void AProductionRemovalEndsTheRemovedPartysRows()
@@ -855,6 +900,18 @@ namespace Gamesim.Tests.EditMode
             var carried = Carry(reveal);
             var social = ToSocial(carried);
             Assert.That(social.phase == EpisodePhase.Social && Production.RemovalWindow(social), Is.True, "Fixture: production's removal window is open.");
+            var legacy = carried.Legacy;
+            var twin = carried.Prospective;
+            // Constructed, as StoryDeal files it (the swing-vote beats strike a vote-to-evict naming the player's pick):
+            // the raw deal in mode 1, the canonical row through the Vote store's own admission in mode 2, one id spent.
+            string swing = social.Active.First(c => !c.isPlayer && c.id != removed).id, story = "deal-story-" + social.nextSequence;
+            Assert.That(twin.nextSequence, Is.EqualTo(legacy.nextSequence));
+            legacy.deals.Add(PlayerDeals.Draft(legacy, swing, DealKind.VoteEvict, removed, story)); legacy.nextSequence++;
+            Assert.That(ProspectiveVoteFacade.StoreTryAddDeal(twin, PlayerDeals.Draft(twin, swing, DealKind.VoteEvict, removed, story),
+                UnifiedCommitments.StoryDeal, out var admission), Is.True, admission);
+            twin.nextSequence++;
+            Assert.That((Row(twin, story).targetId, Row(twin, story).voteBindingWeek, Row(twin, story).voteFirstRevealWeek),
+                Is.EqualTo((removed, s.week, s.week + 1)), "Fixture: struck after the reveal, it names the one removed and is next week's.");
             // Constructed, as OrdinaryVoterRemovalTests constructs it: two strikes, the last the week before; production's
             // own ladder decides the third and schedules the removal - on both copies alike.
             void Schedule(EpisodeState copy)
@@ -864,16 +921,18 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(Production.Strike(copy, removed, "fixture"), Is.EqualTo(3));
                 Assert.That(copy.story.pendingRemovalId, Is.EqualTo(removed));
             }
-            var legacy = carried.Legacy; Schedule(legacy);
-            var twin = carried.Prospective; Schedule(twin);
+            Schedule(legacy); Schedule(twin);
+            var observed = carried.Season;
             carried = new Carried { Season = new PinnedVoteSeason(0, ProspectiveVoteTwins.Valid(legacy)), Engine = ProspectiveVoteFacade.Engine(twin) };
-            foreach (var pair in reveal.Owners) carried.Season.Owners.Add(pair.Key, pair.Value.Clone());
-            carried.Season.Frames.Add(reveal.Frame);
-            Assert.That((Status(twin, promise.id), Status(twin, bloc)), Is.EqualTo((DealStatus.Active, DealStatus.Active)));
+            foreach (var pair in observed.Owners) carried.Season.Owners.Add(pair.Key, pair.Value.Clone());
+            carried.Season.Owners.Add(story, new ProspectiveVoteOwner { Origin = UnifiedCommitments.StoryDeal, BindingWeek = s.week, FirstWeek = s.week + 1 });
+            carried.Season.Frames.AddRange(observed.Frames);
+            Assert.That((Status(twin, promise.id), Status(twin, bloc), Status(twin, story)), Is.EqualTo((DealStatus.Active, DealStatus.Active, DealStatus.Active)));
             var after = Next(carried, "The social window closes");
             Assert.That(after.Find(removed).status, Is.EqualTo(ContestantStatus.Expelled));
             Assert.That(after.story.removals.Single(r => r.contestantId == removed).week, Is.EqualTo(s.week), "Removed before the week turned.");
             Assert.That((Status(after, promise.id), Status(after, bloc)), Is.EqualTo((DealStatus.Expired, DealStatus.Expired)));
+            Assert.That((Status(after, story), Row(after, story).settledWeek), Is.EqualTo((DealStatus.Expired, 0)), "The deal naming them ends with them.");
         }
 
         /// <summary>

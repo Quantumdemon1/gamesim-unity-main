@@ -143,6 +143,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(InputGlossary.CaptionAction("Notebook [J]"), Is.EqualTo("Shortcuts/Notebook"));
             Assert.That(InputGlossary.CaptionAction("Go to diary room [R]"), Is.EqualTo("Shortcuts/Diary"));
             Assert.That(InputGlossary.CaptionAction("STOP marker  [Space]"), Is.EqualTo("Shortcuts/Hit"));
+            Assert.That(InputGlossary.CaptionAction("Hit the target  [Space]"), Is.Null,
+                "A competition's Hit has no pad button: no A beside a caption that names Space there.");
+            Assert.That(InputGlossary.CaptionAction("Interact [E]"), Is.Null, "The prompt names the pad's X in its own words, so no chip says it again.");
             Assert.That(InputGlossary.CaptionAction("Promise safety"), Is.Null);
             Assert.That(InputGlossary.CaptionAction(null), Is.Null);
         }

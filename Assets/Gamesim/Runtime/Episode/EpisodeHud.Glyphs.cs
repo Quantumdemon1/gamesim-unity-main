@@ -24,6 +24,23 @@ namespace Gamesim.Episode
         private TMP_Text helpText;
         private readonly List<Button> glyphScan = new List<Button>();
 
+        /// <summary>
+        /// What each control's caption asks for, read once per control: the action whose pad button
+        /// stands beside it, or null. The scan runs on every frame a pad is the device, and reading
+        /// a name makes a string, so each control's is read the first time the scan meets it rather
+        /// than on every frame. A control's name is its caption from the moment it is built; the
+        /// controls renamed in place - the show/hide toggles - never name a key. Keyed by the object
+        /// itself, and let go when it outgrows the controls alive: the HUD throws its controls away
+        /// with every rebuild.
+        /// </summary>
+        private readonly Dictionary<Button, string> glyphActions = new Dictionary<Button, string>(new SameControl());
+
+        private sealed class SameControl : IEqualityComparer<Button>
+        {
+            public bool Equals(Button a, Button b) => ReferenceEquals(a, b);
+            public int GetHashCode(Button button) => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(button);
+        }
+
         /// <summary>Whether the hints are in the pad's words: the device last pressed on was a pad.</summary>
         public bool PadHints => padHints;
 
@@ -44,10 +61,15 @@ namespace Gamesim.Episode
         {
             if ((!padHints && !glyphsShown) || canvas == null) return;
             canvas.GetComponentsInChildren(false, glyphScan);
+            if (glyphActions.Count > 4 * glyphScan.Count + 256) glyphActions.Clear();
             foreach (var button in glyphScan)
             {
                 if (button == null) continue;
-                string action = InputGlossary.CaptionAction(button.name);
+                if (!glyphActions.TryGetValue(button, out var action))
+                {
+                    action = InputGlossary.CaptionAction(button.name);
+                    glyphActions[button] = action;
+                }
                 if (action == null) continue;
                 var chip = button.transform.Find(PadGlyphName);
                 if (chip != null) { if (chip.gameObject.activeSelf != padHints) chip.gameObject.SetActive(padHints); continue; }

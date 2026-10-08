@@ -179,6 +179,13 @@ namespace Gamesim.Presentation
         /// The keys the HUD's captions name, each with the action whose pad button stands beside it:
         /// "Close  [Esc]" is B, "Save now  [F5]" the left stick's press, "Notebook [J]" Select. The
         /// caption keeps its words; the pad's button is a chip of its own.
+        ///
+        /// <para>Space only on the house challenge's "STOP marker  [Space]", whose press is the
+        /// shortcuts' Hit and so the pad's A. A competition's Hit has no pad button - a board takes
+        /// A only as the press of whichever control has the focus - so a caption there that named
+        /// Space would have worn an A that does not hit. And not the prompt's "Interact [E]": its
+        /// own words name the pad's button on a pad (<see cref="PromptFor"/>), and a chip there
+        /// said it twice.</para>
         /// </summary>
         public static readonly KeyValuePair<string, string>[] CaptionKeys =
         {
@@ -186,9 +193,11 @@ namespace Gamesim.Presentation
             new KeyValuePair<string, string>("[F5]", "Shortcuts/Save"),
             new KeyValuePair<string, string>("[J]", "Shortcuts/Notebook"),
             new KeyValuePair<string, string>("[R]", "Shortcuts/Diary"),
-            new KeyValuePair<string, string>("[E]", "Shortcuts/Interact"),
-            new KeyValuePair<string, string>("[Space]", "Shortcuts/Hit"),
+            new KeyValuePair<string, string>(HouseChallengeStopCaption, "Shortcuts/Hit"),
         };
+
+        /// <summary>The house challenge's control, the one caption naming Space that the shortcuts' Hit presses.</summary>
+        public const string HouseChallengeStopCaption = "STOP marker  [Space]";
 
         /// <summary>The map and action whose pad button stands beside a caption naming a key, or null.</summary>
         public static string CaptionAction(string caption)

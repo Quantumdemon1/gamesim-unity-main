@@ -62,13 +62,24 @@ namespace Gamesim.Episode
         /// <summary>
         /// A chip at the control's top-right corner, over its border and clear of its words, that
         /// takes no pointer and no layout: the control and its caption are exactly what they were.
+        ///
+        /// <para>It stands mostly above the control's top edge - 7 of its 18 inside - because every
+        /// control that wears one centres its words on its height, and the shortest of them, the
+        /// screens' compact Close (34 tall, its words 15, centred), keeps only about the top 8 of
+        /// its height clear of them. Standing 12 inside, as it first did, the chip came within a
+        /// pixel or two of the bracket of "[Esc]" there, by the font's measures, and of the rail's
+        /// "Go to diary room [R]", which is fitted to its row. The PlayMode frames of A3 and A4
+        /// (EpisodePlayModeTests.InputFrames.cs) hold it clear of every word around it.
+        /// Its right edge stands 3 past the control's, inside the 8 a panel's column keeps from
+        /// its viewport's mask, so a wide chip - Select - grows to the left rather than off the
+        /// column.</para>
         /// </summary>
         private void GlyphChip(Button button, string glyph)
         {
             float s = FontScale;
             var size = new Vector2(Mathf.Max(22f, glyph.Length * 8f + 12f) * s, 18f * s);
             var chip = Panel(PadGlyphName, button.transform, new Color(Accent.r, Accent.g, Accent.b, .92f));
-            Anchor(chip, new Vector2(1f, 1f), new Vector2(.5f, .5f), new Vector2(-8f * s, -3f * s), size);
+            Anchor(chip, new Vector2(1f, 1f), new Vector2(1f, .5f), new Vector2(3f * s, 2f * s), size);
             chip.GetComponent<Image>().raycastTarget = false;
             chip.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
             // A 12 in a box 18 tall: the 1.3 TMP needs, and more.

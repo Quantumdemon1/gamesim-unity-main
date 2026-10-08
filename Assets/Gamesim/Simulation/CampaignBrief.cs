@@ -15,10 +15,12 @@ namespace Gamesim.Simulation
     /// </summary>
     public static class CampaignBrief
     {
-        /// <summary>What kind of thing a goal is: a card to answer, the read, the pleas, a call, a play.</summary>
+        /// <summary>What kind of thing a goal is: a card to answer, the read, the pleas, a call, a pact's plan (under the war rooms), a play.</summary>
         public static class GoalKinds
         {
             public const string Plea = "plea", Read = "read", Ask = "ask", Call = "call", Play = "play";
+            /// <summary>Under the war rooms (WAVE-D-NPC-PACTS-PLAN D3-S7): a pact of three or more's plan, met and answered.</summary>
+            public const string Plan = "plan";
         }
 
         /// <summary>One row of the goals card: what to do, how far along it is, and whether it is done.</summary>
@@ -54,7 +56,8 @@ namespace Gamesim.Simulation
         /// <summary>
         /// The player's goals for this campaign, in the order the week gave them: the pleas that came
         /// to them, getting a read on the voters, asking the voters to keep them from the block, calling
-        /// the vote in each alliance they are in, then the plays they took on. Empty outside a
+        /// the vote in each alliance they are in - under the war rooms, settling the plan of each pact of
+        /// three or more instead - then the plays they took on. Empty outside a
         /// campaign or for a player who is out of the game.
         /// </summary>
         public static List<Goal> Goals(EpisodeState s)
@@ -110,6 +113,17 @@ namespace Gamesim.Simulation
                     goals.Add(new Goal { kind = GoalKinds.Call, text = "Call the vote in " + pact.name, progress = called ? "Called" : "Once this week", done = called });
                 }
 
+            // Under the war rooms (WAVE-D-NPC-PACTS-PLAN D3-S7) a pact of three or more settles its call when it
+            // meets: meeting it once the block is set, then answering its plan - as far as the player has got.
+            if (EpisodeEngine.PactPlanRulesOn(s) && VoteRead.Available(s))
+                foreach (var pact in s.alliances)
+                {
+                    var plan = PactPlans.ThisWeek(s, pact.id);
+                    if (plan == null && !PactPlans.CouldConvene(s, pact)) continue;
+                    goals.Add(new Goal { kind = GoalKinds.Plan, text = "Settle " + pact.name + "'s plan", progress = PlanProgress(plan),
+                        done = plan != null && plan.stance != PactPlanStance.Open });
+                }
+
             // The plays the player took on and is still chasing, with how far along each is.
             foreach (var play in EpisodeEngine.Plays(s).Where(p => p.takenOn && p.ending == null))
                 goals.Add(new Goal
@@ -125,12 +139,46 @@ namespace Gamesim.Simulation
         /// one: an active pact of theirs with a member besides them who votes - still in the game,
         /// not on the block, and not the Head of Household. A pact whose only partner is nominated
         /// or holds the house has nobody to follow the call, and the engine refuses it ("Nobody in
-        /// {pact} votes this week."), so neither the goals nor the talking points offer it.
+        /// {pact} votes this week."), so neither the goals nor the talking points offer it. Under the
+        /// war rooms (WAVE-D-NPC-PACTS-PLAN §6 Q2) nor a pact of three or more, which settles its call
+        /// when it meets ("{pact} settles its call when it meets."), nor one that has met this week:
+        /// its goal is its plan.
         /// </summary>
         public static bool CanCallIn(EpisodeState s, AllianceState a) =>
             s != null && a != null && a.active && a.members != null && a.members.Contains(s.playerId)
             && a.members.Any(id => id != s.playerId && s.Find(id)?.status == ContestantStatus.Active
-                                   && !s.nominees.Contains(id) && id != s.hohId);
+                                   && !s.nominees.Contains(id) && id != s.hohId)
+            && !(EpisodeEngine.PactPlanRulesOn(s) && (PactPlans.IsWarRoomPact(s, a) || PactPlans.ThisWeek(s, a.id) != null));
+
+        /// <summary>
+        /// The campaign's talking point for a pact's plan this week, under the war rooms (D3-S7), or null
+        /// where it has none - not a pact of three or more that could meet, nor one that has: meeting it, the
+        /// plan waiting on the player's answer, or the plan settled.
+        /// </summary>
+        public static string PlanPoint(EpisodeState s, AllianceState pact)
+        {
+            if (!EpisodeEngine.PactPlanRulesOn(s) || !VoteRead.Available(s) || pact == null) return null;
+            var plan = PactPlans.ThisWeek(s, pact.id);
+            if (plan == null)
+                return PactPlans.CouldConvene(s, pact) ? "Meet " + pact.name + " through one of its members to settle who the bloc evicts: once a week." : null;
+            return plan.stance == PactPlanStance.Open ? pact.name + "'s plan waits on your answer: tell somebody who was at the meeting."
+                : "You have settled " + pact.name + "'s plan this week.";
+        }
+
+        /// <summary>How far the player has got with a pact's plan this week, in a few words: none yet, one waiting on them, or how they answered it.</summary>
+        public static string PlanProgress(PactPlanRow plan)
+        {
+            if (plan == null) return "Meet first";
+            switch (plan.stance)
+            {
+                case PactPlanStance.Open: return "Waiting on you";
+                case PactPlanStance.Agreed: return "Went with it";
+                case PactPlanStance.Countered: return "Pushed back";
+                case PactPlanStance.Low: return "Lay low";
+                case PactPlanStance.Lapsed: return "Let it stand";
+                default: return "Came to nothing";
+            }
+        }
 
         /// <summary>
         /// The newest things the player has learned, newest first, at most <paramref name="count"/>:

@@ -781,7 +781,7 @@ namespace Gamesim.Tests.EditMode
             forced.ledger.plans[0].followed = new List<string> { npcs[3] };
             forced.ledger.calls[0].followed = new List<string> { npcs[3] };
             Assert.That(GameSense.Evaluate(forced).notes.Single(n => n.rowKind == "call").points, Is.EqualTo(2 - 1));
-            Assert.That(GameSense.Evaluate(forced).notes.Single(n => n.rowKind == "call").text, Does.Contain("1 followed, 1 did not"));
+            Assert.That(GameSense.Evaluate(forced).notes.Single(n => n.rowKind == "call").text, Does.Contain("1 went with it, 1 did not"));
         }
 
         /// <summary>The player on the block as the members' plan: never offered going with it, and never told to evict themselves.</summary>

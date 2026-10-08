@@ -367,6 +367,54 @@ namespace Gamesim.Simulation
                 && (revealed ? id != power.hohId && !power.nominees.Contains(id) : live == null || live.Contains(id))).ToList();
         }
 
+        // ------------------------------------------------------------ the readers (D3-S7)
+
+        /// <summary>The plan a call row is, where a war room's plan made it - that week's plan of the pact - or null for a call the levers made.</summary>
+        public static PactPlanRow PlanOf(EpisodeState s, BlocCallRow call) =>
+            call == null || s?.ledger?.plans == null ? null
+                : s.ledger.plans.LastOrDefault(p => p != null && p.week == call.week && p.allianceId == call.allianceId);
+
+        /// <summary>A week's plans, in the order the pacts met; none without the war rooms.</summary>
+        public static List<PactPlanRow> OfWeek(EpisodeState s, int week) =>
+            s?.ledger?.plans == null ? new List<PactPlanRow>() : s.ledger.plans.Where(p => p != null && p.week == week).ToList();
+
+        /// <summary>Whether a plan settled as the player's call: they went with it, or pushed for the other nominee and it carried.</summary>
+        public static bool PlayerCalled(EpisodeState s, PactPlanRow row) =>
+            s != null && row != null && !string.IsNullOrEmpty(row.targetId) && row.callerId == s.playerId;
+
+        /// <summary>The nominee a member ended a plan on: the counter where they came round to it, else what they said at the meeting; null for one who kept quiet, or came into the plan since.</summary>
+        public static string FinalSay(PactPlanRow row, string memberId)
+        {
+            if (row == null || string.IsNullOrEmpty(memberId)) return null;
+            if (row.cameRound != null && row.cameRound.Contains(memberId) && !string.IsNullOrEmpty(row.counterId)) return row.counterId;
+            string said = row.says?.FirstOrDefault(say => say != null && say.memberId == memberId)?.targetId;
+            return string.IsNullOrEmpty(said) ? null : said;
+        }
+
+        /// <summary>
+        /// The members of a settled plan who voted that week, in the order they met: those with it and those
+        /// not (<see cref="NotFollowing"/>). None for a plan still open or void.
+        /// </summary>
+        public static List<string> Voted(EpisodeState s, PactPlanRow row)
+        {
+            if (s == null || row?.present == null || string.IsNullOrEmpty(row.targetId)) return new List<string>();
+            var followed = row.followed ?? new List<string>();
+            var not = NotFollowing(s, row);
+            return row.present.Where(id => id != s.playerId && (followed.Contains(id) || not.Contains(id))).Distinct().ToList();
+        }
+
+        /// <summary>
+        /// Who of a settled plan's voters the player was told is with it: where the player called it, everybody
+        /// with it, as the answer's line named them ("Riley Chen and Sam Ortiz are with you"); where an NPC leads
+        /// it, those who ended on its target, as its line said ("as Riley Chen wanted", "held to") - a dissenter
+        /// who went along on their own coin was never said, so is not here.
+        /// </summary>
+        public static List<string> ToldWith(EpisodeState s, PactPlanRow row)
+        {
+            var with = Voted(s, row).Where(id => row.followed != null && row.followed.Contains(id));
+            return (PlayerCalled(s, row) ? with : with.Where(id => FinalSay(row, id) == row.targetId)).ToList();
+        }
+
         // ------------------------------------------------------------ the words
 
         /// <summary>

@@ -27,7 +27,10 @@ namespace Gamesim.Tests.EditMode
     /// it can - every command legal, and every step checked: each war room's says are lawful, each answer and
     /// each lapse draws nothing from the season's stream and says one line, the season's first war room draws
     /// exactly what the meeting draws without the rules, a plan the player backs is that week's call, and at
-    /// each reveal who of those with a plan voted with it. Counted by house size: the campaign weeks a trio of
+    /// each reveal who of those with a plan voted with it; and D3-S7's readers wherever a plan settles or its
+    /// vote is read - the week's review says each plan once, as a plan, never flagging a member not with it, the
+    /// notes say whether each voter was with a plan the player backed, and no campaign goal offers a pact of three
+    /// the call the engine refuses. Counted by house size: the campaign weeks a trio of
     /// the player's could meet (D3-S0's measure), war rooms held, majority targets and splits, answers,
     /// counters and those carried, members come round, those with a plan and those not (dissent), lapses and
     /// void plans, and follow-through. The legacy set has no levers, so it never plays the war rooms: rates are
@@ -139,6 +142,14 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(Get(all, "open-after-campaign"), Is.Zero, name + ": no plan is open past its campaign.");
                 Assert.That(Get(all, "agreed") + Get(all, "countered") + Get(all, "low") + Get(all, "lapsed") + Get(all, "void"),
                     Is.EqualTo(Get(all, "war-room")), name + ": every war room's plan settled, once.");
+                // D3-S7's readers over the seasons' own plans.
+                Assert.That(Get(all, "reader-plan-line"), Is.Zero, name + ": the week's review says each plan of the week once, as a plan.");
+                Assert.That(Get(all, "reader-call-line"), Is.Zero, name + ": a call a plan made is never said as a call of the levers'.");
+                Assert.That(Get(all, "reader-flagged"), Is.Zero, name + ": no reader flags a member not with a plan.");
+                Assert.That(Get(all, "reader-told"), Is.Zero, name + ": who the player was told is with a plan voted that week.");
+                Assert.That(Get(all, "reader-notes"), Is.Zero, name + ": the notes on each voter of a plan the player backed say whether they were with it.");
+                Assert.That(Get(all, "reader-call-goal"), Is.Zero, name + ": the campaign offers no call the engine refuses a pact of three.");
+                if (Get(all, "war-room") > 0) Assert.That(Get(all, "reader-weeks"), Is.GreaterThan(0), name + ": the readers ran.");
             }
             var both = Total(busy).Concat(Total(trio)).GroupBy(k => k.Key).ToDictionary(g => g.Key, g => g.Sum(k => k.Value));
             Assert.That(Get(Total(trio), "war-room"), Is.GreaterThan(0), "War rooms were held.");
@@ -420,7 +431,8 @@ namespace Gamesim.Tests.EditMode
             if (after.phase != EpisodePhase.Campaign && after.ledger.plans.Any(p => p.stance == PactPlanStance.Open)) Count(counts, "open-after-campaign");
 
             // Follow-through at the reveal: who of those with a plan voted with it.
-            if (!before.evictionResolved && after.evictionResolved && after.phase == EpisodePhase.Eviction)
+            bool reveal = !before.evictionResolved && after.evictionResolved && after.phase == EpisodePhase.Eviction;
+            if (reveal)
                 foreach (var row in after.ledger.plans.Where(p => p.week == after.week && !string.IsNullOrEmpty(p.targetId)))
                 {
                     foreach (string id in row.followed)
@@ -430,6 +442,50 @@ namespace Gamesim.Tests.EditMode
                     }
                     if (after.ledger.power.LastOrDefault(p => p.week == after.week)?.evicteeId == row.targetId) Count(counts, "target-evicted");
                 }
+
+            // D3-S7's readers, wherever a plan settled or its vote was read; and in every campaign step, no goal
+            // of a call the engine refuses a pact of three.
+            if (settled > 0 || (reveal && after.ledger.plans.Any(p => p.week == after.week))) Readers(after, counts);
+            if (after.phase == EpisodePhase.Campaign && EpisodeEngine.PactPlanRulesOn(after)
+                && CampaignBrief.Goals(after).Any(g => g.kind == CampaignBrief.GoalKinds.Call
+                    && after.alliances.Any(a => PactPlans.IsWarRoomPact(after, a) && g.text == "Call the vote in " + a.name)))
+                Count(counts, "reader-call-goal");
+        }
+
+        /// <summary>
+        /// The war rooms' readers over a season's own plans (D3-S7): the week's review says each plan of the week
+        /// once, as a plan, and never its call as a call; a voter it judges by what the player was told is with it
+        /// or not known, never defected; the notes, the Your word page and Game Sense read every plan without
+        /// flagging a member not with it.
+        /// </summary>
+        private static void Readers(EpisodeState s, Dictionary<string, int> counts)
+        {
+            Count(counts, "reader-weeks");
+            var plans = PactPlans.OfWeek(s, s.week);
+            var calls = YourWeek.Build(s, s.week).calls;
+            if (calls.Count(l => l.kind == YourWeek.Kinds.Plan) != plans.Count) Count(counts, "reader-plan-line");
+            foreach (var plan in plans)
+            {
+                string pact = s.alliances.FirstOrDefault(a => a.id == plan.allianceId)?.name ?? "";
+                if (calls.Any(l => l.kind == YourWeek.Kinds.Call && l.text.StartsWith("You called it in " + pact + ":", StringComparison.Ordinal)))
+                    Count(counts, "reader-call-line");
+                var voted = PactPlans.Voted(s, plan);
+                if (PactPlans.ToldWith(s, plan).Any(id => !voted.Contains(id))) Count(counts, "reader-told");
+                if (calls.Any(l => l.kind == YourWeek.Kinds.Member && l.basis == YourWeek.Bases.Call && l.verdict == YourWeek.Verdicts.Defected && voted.Contains(l.aboutId)))
+                    Count(counts, "reader-flagged");
+                if (PactPlans.PlayerCalled(s, plan))
+                    foreach (string id in voted)
+                    {
+                        string brief = plan.followed.Contains(id) ? "With your plan" : "Not with your plan";
+                        if (!HouseguestNotes.For(s, id).Any(n => n.week == plan.week && n.brief == brief)) Count(counts, "reader-notes");
+                    }
+                if (PactPlans.PlayerCalled(s, plan) && GameSense.Evaluate(s).notes.Any(n => n.rowKind == "call" && n.rowId == plan.allianceId + ":" + plan.week
+                        && n.text.Contains("you called the vote in your alliance")))
+                    Count(counts, "reader-call-line");
+            }
+            if (CommitmentsRead.Of(s).Any(c => c.kind == CommitmentsRead.Kinds.Call && c.outcome == CommitmentsRead.Outcomes.Broken
+                    && c.title.StartsWith("The plan you backed in ", StringComparison.Ordinal)))
+                Count(counts, "reader-flagged");
         }
     }
 }

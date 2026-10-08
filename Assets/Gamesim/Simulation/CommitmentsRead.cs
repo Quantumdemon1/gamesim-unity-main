@@ -327,6 +327,10 @@ namespace Gamesim.Simulation
                 if (call == null || call.callerId != player) continue;
                 var pact = s.alliances.FirstOrDefault(a => a.id == call.allianceId);
                 string pactName = pact != null && !string.IsNullOrEmpty(pact.name) ? pact.name : "your alliance";
+                // Under the war rooms (WAVE-D-NPC-PACTS-PLAN D3-S7) a call a pact's plan made is the plan the player
+                // backed: those with it are with the player, and a member not with it never gave its word, so is
+                // not here (§3.3: a dissenter is never flagged).
+                string title = PactPlans.PlanOf(s, call) != null ? "The plan you backed in " + pactName : "Your call in " + pactName;
                 // A call binds that week's vote, and the vote is over once its eviction is.
                 bool revealed = call.week < s.week || (call.week == s.week && s.evictionResolved);
                 var members = (call.followed ?? new List<string>()).Concat(call.defected ?? new List<string>()).Distinct().ToList();
@@ -338,7 +342,7 @@ namespace Gamesim.Simulation
                     {
                         kind = Kinds.Call, id = "call:" + call.allianceId + ":" + call.week + ":" + member,
                         withId = member, aboutId = s.Find(call.targetId) != null ? call.targetId : null, yours = true,
-                        title = "Your call in " + pactName,
+                        title = title,
                         binds = "their vote to evict " + Named(s, call.targetId),
                         week = call.week, untilWeek = call.week,
                         outcome = !followed ? Outcomes.Broken : revealed ? Outcomes.Kept : Outcomes.Open,

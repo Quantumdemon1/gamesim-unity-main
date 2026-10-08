@@ -110,7 +110,9 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// Refused at every step of a played season, before anything is spent, drawn or logged: the
         /// state is byte-identical after the refusal. A start week set changes nothing until the rule
-        /// slice replaces the refusal.
+        /// slice replaces the refusal. D3's has (PactPlanTests): with the war rooms' start week set, a
+        /// season that holds no war room has no plan to answer, so the answer is still refused before
+        /// anything happens, for the war rooms' own reasons.
         /// </summary>
         [TestCase(EpisodeCommandKind.AnswerPactPlan, false)] [TestCase(EpisodeCommandKind.WitnessNpcAct, false)]
         [TestCase(EpisodeCommandKind.AnswerPactPlan, true)] [TestCase(EpisodeCommandKind.WitnessNpcAct, true)]
@@ -131,7 +133,9 @@ namespace Gamesim.Tests.EditMode
                 command.text = state.alliances.Select(a => a.id).FirstOrDefault() ?? "1-3-0";
                 var refused = engine.Apply(command);
                 Assert.That(refused.accepted, Is.False, state.phase + ": " + kind);
-                Assert.That(refused.reason, Is.EqualTo(EpisodeEngine.WaveDKindRefusal));
+                if (kind == EpisodeCommandKind.AnswerPactPlan && EpisodeEngine.PactPlanRulesOn(state))
+                    Assert.That(refused.reason, Is.Not.EqualTo(EpisodeEngine.WaveDKindRefusal).And.Not.Empty, "The war rooms' own reason.");
+                else Assert.That(refused.reason, Is.EqualTo(EpisodeEngine.WaveDKindRefusal));
                 Assert.That(Json(engine.Snapshot), Is.EqualTo(before), "Nothing spent, drawn, logged or received.");
                 refusals++;
                 var next = engine.Apply(Next(state));
@@ -292,8 +296,10 @@ namespace Gamesim.Tests.EditMode
             s.ledger.plans.Add(Plan(s, PactPlanStance.Open)); Accepted(s);
             var earlier = s.Clone(); earlier.pactPlanRulesStartWeek = 1; earlier.ledger.plans[0].week = s.week - 1;
             Refused(earlier, "Invalid pact plan data.");
-            // The same earlier row, settled, is lawful history: the refusal is the open plan's week.
-            var settled = earlier.Clone(); settled.ledger.plans[0].stance = PactPlanStance.Agreed;
+            // The same earlier row, settled, is lawful history: the refusal is the open plan's week. A settled
+            // plan names its target and its caller (D3's engine slice), here an NPC's lead.
+            var settled = earlier.Clone(); var row = settled.ledger.plans[0];
+            row.stance = PactPlanStance.Agreed; row.targetId = row.says[0].targetId; row.callerId = row.says[0].memberId;
             Accepted(settled);
         }
 
@@ -349,7 +355,9 @@ namespace Gamesim.Tests.EditMode
         /// Whole seasons, with every start week 0 and with every one set: nothing in this build plans a
         /// beat, records an act, writes a plan or logs D2's or D3's lines. D4 has landed: with its start
         /// week set, its double-dealing line and its receipt are its own to write (AllianceLeakTests), and
-        /// with every start week 0 neither ever appears.
+        /// with every start week 0 neither ever appears. D3 has landed too, and only a war room the player
+        /// holds writes a plan or a plan's line (PactPlanTests): this player only ever does what each phase
+        /// asks, so with its start week set its storage stays empty as well.
         /// </summary>
         [TestCase(2817u, false)] [TestCase(2818u, true)]
         public void NothingInThisBuildWritesWaveDStorage(uint seed, bool started)
@@ -419,16 +427,23 @@ namespace Gamesim.Tests.EditMode
             room = "Kitchen", week = s.week, window = Windows.AfterEviction, firedTick = 0,
         };
 
+        /// <summary>
+        /// A lawful plan row of a stance, as D3's engine writes them: an open or void plan names nobody and
+        /// binds nobody; a settled one names its target and an NPC caller (a plan the player backs is that
+        /// week's call row in their name too, which PactPlanTests pins).
+        /// </summary>
         private static PactPlanRow Plan(EpisodeState s, string stance)
         {
             var npcs = s.Active.Where(c => !c.isPlayer).Select(c => c.id).ToList();
+            bool named = stance != PactPlanStance.Open && stance != PactPlanStance.Void;
             return new PactPlanRow
             {
                 week = s.week, allianceId = "pact-x", throughId = npcs[0], stance = stance,
-                present = new List<string> { s.playerId, npcs[0], npcs[1] }, cameRound = new List<string> { npcs[0] },
-                followed = new List<string> { npcs[0], npcs[1] },
+                present = new List<string> { s.playerId, npcs[0], npcs[1] },
+                cameRound = named ? new List<string> { npcs[0] } : new List<string>(),
+                followed = named ? new List<string> { npcs[0], npcs[1] } : new List<string>(),
                 says = new List<PlanSay> { new PlanSay { memberId = npcs[0], targetId = npcs[2] }, new PlanSay { memberId = npcs[1], targetId = npcs[2] } },
-                targetId = npcs[2], callerId = s.playerId,
+                targetId = named ? npcs[2] : null, callerId = named ? npcs[0] : null,
             };
         }
 

@@ -67,7 +67,7 @@ namespace Gamesim.Simulation
                     || c.defected == null || c.defected.Count > MaximumCast || c.defected.Any(id => !Id(id))))
                 return Fail(out error, "Invalid bloc call record data.");
             // Schema 28: D3's war-room plans (WAVE-D-NPC-PACTS-PLAN §3.3), none while its start week is 0
-            // and none before it. These are the storage bounds; D3's engine slice adds the call links.
+            // and none before it. These are the storage bounds; D3's engine slice adds the call links below.
             if (l.plans == null || l.plans.Any(p => p == null))
                 return Fail(out error, "Invalid pact plan data.");
             if (s.pactPlanRulesStartWeek == 0 && l.plans.Count != 0)
@@ -85,6 +85,28 @@ namespace Gamesim.Simulation
                     || (p.stance == PactPlanStance.Open && (s.phase != EpisodePhase.Campaign || p.week != s.week)))
                 || l.plans.GroupBy(p => new { p.week, p.allianceId }).Any(g => g.Count() > 1))
                 return Fail(out error, "Invalid pact plan data.");
+            // D3's engine slice: what each stance holds, and the call links. An open plan names no target,
+            // caller or counter and binds nobody yet; a void one names nobody either; every other settled one
+            // names its target and its caller. The player says nothing at the table and is never bound.
+            if (l.plans.Any(p => (p.stance == PactPlanStance.Open || p.stance == PactPlanStance.Void)
+                    ? !string.IsNullOrEmpty(p.targetId) || !string.IsNullOrEmpty(p.callerId) || !string.IsNullOrEmpty(p.counterId)
+                      || p.cameRound.Count != 0 || p.followed.Count != 0
+                    : !Id(p.targetId) || !Id(p.callerId))
+                || l.plans.Any(p => p.followed.Contains(s.playerId) || p.cameRound.Contains(s.playerId) || p.says.Any(say => say.memberId == s.playerId)))
+                return Fail(out error, "Invalid pact plan data.");
+            // A plan the player backs is that week's call in their name: exactly one call row of the pact that
+            // week, its target and who is with it, nobody defected - at least one while the calls have never
+            // reached their cap. Every call row in a week a pact planned belongs to its plan.
+            foreach (var p in l.plans)
+            {
+                var calls = l.calls.Where(k => k.week == p.week && k.allianceId == p.allianceId).ToList();
+                bool backed = !string.IsNullOrEmpty(p.callerId) && p.callerId == s.playerId;
+                if (!backed ? calls.Count != 0
+                        : calls.Count > 1 || (calls.Count == 0 && l.calls.Count < most)
+                          || calls.Any(k => k.callerId != s.playerId || k.targetId != p.targetId || k.defected.Count != 0
+                              || !k.followed.SequenceEqual(p.followed)))
+                    return Fail(out error, "A pact plan the player backs is that week's call in their alliance, and only it.");
+            }
             return true;
         }
     }

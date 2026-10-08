@@ -397,11 +397,482 @@ namespace Gamesim.Tests.EditMode
                 Is.EqualTo(PactName + "'s plan came to nothing."));
         }
 
+        // ------------------------------------------------------------ D3-S3: the engine
+
+        [Test]
+        public void WithoutTheRulesAPactOfThreeMeetsAndCallsAsBeforeAndTheAnswerIsRefused()
+        {
+            // Free time: C6's meeting of the pact, as every recorded season holds it.
+            var free = FreeTime(false, out var pact);
+            var npcs = NpcIds(free);
+            var met = Apply(new EpisodeEngine(free), EpisodeCommandKind.AllianceMeet, npcs[3], text: PactId);
+            Assert.That(met.accepted, Is.True, met.reason);
+            Assert.That(met.state.ledger.plans, Is.Empty);
+            Assert.That(EpisodeEngine.MeetingPact(free, npcs[3])?.id, Is.EqualTo(PactId), "Offered in free time.");
+
+            // The campaign: C6's meeting with one ally's claim, and a call the levers always took.
+            var s = WarRoom(out pact, rules: false);
+            Assert.That(EpisodeEngine.PactPlanRulesOn(s), Is.False);
+            var meeting = Apply(new EpisodeEngine(s), EpisodeCommandKind.AllianceMeet, npcs[3], text: PactId);
+            Assert.That(meeting.accepted, Is.True, meeting.reason);
+            Assert.That(meeting.state.ledger.plans, Is.Empty, "No plan,");
+            Assert.That(meeting.state.ledger.claims.Count(k => k.source == ClaimSource.Ally), Is.EqualTo(1), "and C6's claim.");
+            var call = Apply(new EpisodeEngine(s), EpisodeCommandKind.CallTheVote, npcs[3], s.nominees[0], PactId);
+            Assert.That(call.accepted, Is.True, call.reason);
+
+            // Kind 62 without the rules: refused before anything is spent, drawn or logged.
+            string before = Json(meeting.state);
+            var engine = new EpisodeEngine(meeting.state);
+            var answer = Apply(engine, EpisodeCommandKind.AnswerPactPlan, npcs[3], s.nominees[0], PactId);
+            Assert.That(answer.accepted, Is.False);
+            Assert.That(answer.reason, Is.EqualTo(EpisodeEngine.WaveDKindRefusal));
+            Assert.That(Json(engine.Snapshot), Is.EqualTo(before));
+        }
+
+        /// <summary>D3-M1: the engine refuses a pact of three or more named by the command before the block is set, before anything is spent.</summary>
+        [Test]
+        public void TheEngineRefusesANamedPactOfThreeBeforeTheBlockIsSet()
+        {
+            var s = FreeTime(true, out var pact);
+            var npcs = NpcIds(s);
+            Assert.That(EpisodeEngine.MeetingPact(s, npcs[3]), Is.Null, "The house never offers it,");
+            string before = Json(s);
+            var engine = new EpisodeEngine(s);
+            var refused = Apply(engine, EpisodeCommandKind.AllianceMeet, npcs[3], text: PactId);
+            Assert.That(refused.accepted, Is.False, "and the engine refuses it by its id.");
+            Assert.That(refused.reason, Is.EqualTo(PactPlans.NotYetRefusal(PactName)));
+            Assert.That(Json(engine.Snapshot), Is.EqualTo(before), "Nothing spent, drawn or logged.");
+            Assert.That(Apply(engine, EpisodeCommandKind.AllianceMeet, npcs[3]).reason, Is.EqualTo(PactPlans.NotYetRefusal(PactName)),
+                "Unnamed, the meeting falls to the same pact and the same refusal.");
+
+            // A pair still meets in free time.
+            var pair = s.Clone();
+            pair.alliances.Single(a => a.id == PactId).members.Remove(npcs[4]);
+            Assert.That(EpisodeEngine.MeetingPact(pair, npcs[3])?.id, Is.EqualTo(PactId));
+            Assert.That(Apply(new EpisodeEngine(pair), EpisodeCommandKind.AllianceMeet, npcs[3], text: PactId).accepted, Is.True);
+        }
+
+        [Test]
+        public void AWarRoomOpensAPlanWithTheSaysAndDrawsWhatAMeetingDraws()
+        {
+            var s = Decided(out var pact);
+            var npcs = NpcIds(s);
+            Assert.That(EpisodeEngine.MeetingPact(s, npcs[3])?.id, Is.EqualTo(PactId), "Offered once the block is set.");
+            var on = Apply(new EpisodeEngine(s), EpisodeCommandKind.AllianceMeet, npcs[3], text: PactId);
+            Assert.That(on.accepted, Is.True, on.reason);
+            var off = s.Clone(); off.pactPlanRulesStartWeek = 0;
+            var c6 = Apply(new EpisodeEngine(off), EpisodeCommandKind.AllianceMeet, npcs[3], text: PactId);
+            Assert.That(c6.accepted, Is.True, c6.reason);
+
+            var after = on.state;
+            var row = after.ledger.plans.Single();
+            Assert.That((row.week, row.allianceId, row.throughId, row.stance), Is.EqualTo((s.week, PactId, npcs[3], PactPlanStance.Open)));
+            Assert.That(row.present, Is.EqualTo(new[] { s.playerId, npcs[3], npcs[4] }), "The player and everybody of it in the house.");
+            Assert.That(row.says.Select(x => (x.memberId, x.targetId)), Is.EqualTo(new[] { (npcs[3], npcs[1]), (npcs[4], npcs[1]) }), "Each ally's say.");
+            Assert.That(row.targetId + row.callerId + row.counterId, Is.Empty, "Open: nobody named yet.");
+            var line = after.events.Last(e => e.kind == "conversation");
+            Assert.That(line.text, Is.EqualTo(PactPlans.WarRoomLine(after, after.alliances.Single(a => a.id == PactId), new[] { npcs[3], npcs[4] }, row.says)));
+            Assert.That(line.text, Does.EndWith(Name(after, npcs[3]) + " and " + Name(after, npcs[4]) + " want " + Name(after, npcs[1]) + " out."));
+            Assert.That(line.audienceIds, Is.EquivalentTo(new[] { s.playerId, npcs[3], npcs[4] }));
+            Assert.That(after.ledger.claims.Any(k => k.source == ClaimSource.Ally), Is.False, "No ally's claim at a war room (§6 Q8),");
+            Assert.That(c6.state.ledger.claims.Any(k => k.source == ClaimSource.Ally), Is.True, "where C6's meeting makes one.");
+            Assert.That(after.randomState, Is.EqualTo(c6.state.randomState), "A war room draws exactly what C6's meeting draws.");
+            Assert.That(after.events.Count(e => e.kind == WaveDEventKinds.PactPlan), Is.Zero, "The plan's line waits for its answer.");
+            var nominees = s.nominees.Select(id => Name(s, id)).ToList();
+            Assert.That(after.memories.Skip(s.memories.Count).Where(m => nominees.Any(n => m.text.Contains(n))), Is.Empty, "No memory names a nominee.");
+            Assert.That(EpisodeEngine.MetThisWeek(after, after.alliances.Single(a => a.id == PactId)), Is.True);
+            Assert.That(EpisodeEngine.MeetingPact(after, npcs[4]), Is.Null, "Once a week.");
+            Valid(after);
+        }
+
+        [Test]
+        public void APactMeetsOnceAWeekEvenWithEveryCooldownTaken()
+        {
+            var s = Decided(out var pact);
+            var npcs = NpcIds(s);
+            for (int i = s.story.cooldowns.Count; i < 256; i++) s.story.cooldowns.Add(new StoryCooldownState { key = "filler:" + i, untilWeek = s.week + 5 });
+            Valid(s);
+            var engine = new EpisodeEngine(s);
+            Assert.That(Apply(engine, EpisodeCommandKind.AllianceMeet, npcs[3], text: PactId).accepted, Is.True);
+            var after = engine.Snapshot;
+            Assert.That(EpisodeEngine.MetThisWeek(after, after.alliances.Single(a => a.id == PactId)), Is.False, "Precondition: the cooldown found no room.");
+            Assert.That(EpisodeEngine.MeetingPact(after, npcs[4]), Is.Null, "The plan is the attempt: the house offers no second meeting,");
+            string before = Json(after);
+            var again = Apply(engine, EpisodeCommandKind.AllianceMeet, npcs[4], text: PactId);
+            Assert.That(again.accepted, Is.False, "and the engine holds none.");
+            Assert.That(again.reason, Is.EqualTo(PactName + " has already met this week."));
+            Assert.That(Json(engine.Snapshot), Is.EqualTo(before));
+        }
+
+        [Test]
+        public void APactOfThreeTakesNoCallOfItsOwnAndAPairStillDoes()
+        {
+            var s = Decided(out var pact);
+            var npcs = NpcIds(s);
+            Pact(s, "alliance-pair", "The Pair", s.playerId, npcs[3]);
+            Valid(s);
+            string before = Json(s);
+            var engine = new EpisodeEngine(s);
+            var refused = Apply(engine, EpisodeCommandKind.CallTheVote, npcs[3], s.nominees[0], PactId);
+            Assert.That(refused.accepted, Is.False);
+            Assert.That(refused.reason, Is.EqualTo(PactPlans.CallRefusal(PactName)));
+            Assert.That(Json(engine.Snapshot), Is.EqualTo(before), "Refused before anything is spent or drawn.");
+            Assert.That(Apply(engine, EpisodeCommandKind.CallTheVote, npcs[3], s.nominees[0], "alliance-pair").accepted, Is.True, "A pair calls as ever.");
+        }
+
+        [Test]
+        public void GoingWithThePlanIsThePlayersCallAndBindsWhoSaidIt()
+        {
+            var open = Opened(out var pact);
+            var npcs = NpcIds(open);
+            string plan = npcs[1];
+            var engine = new EpisodeEngine(open);
+            var agreed = Apply(engine, EpisodeCommandKind.AnswerPactPlan, npcs[4], plan, PactId);
+            Assert.That(agreed.accepted, Is.True, agreed.reason);
+            var after = agreed.state;
+            var row = after.ledger.plans.Single();
+            Assert.That((row.stance, row.targetId, row.callerId), Is.EqualTo((PactPlanStance.Agreed, plan, after.playerId)));
+            Assert.That(row.followed, Is.EqualTo(new[] { npcs[3], npcs[4] }), "Both said it: both bound, with no draw.");
+            var call = after.ledger.calls.Single();
+            Assert.That((call.week, call.allianceId, call.callerId, call.targetId), Is.EqualTo((open.week, PactId, after.playerId, plan)), "The week's call, in the player's name,");
+            Assert.That(call.followed, Is.EqualTo(row.followed));
+            Assert.That(call.defected, Is.Empty, "and nobody flagged.");
+            foreach (string bound in row.followed)
+                Assert.That(BlocPressure(after, bound, plan), Is.EqualTo(-40), "A bound member carries the call's directive: " + bound);
+            Assert.That(after.randomState, Is.EqualTo(open.randomState), "Free, and nothing drawn.");
+            Assert.That(after.nextSequence, Is.EqualTo(open.nextSequence + 1), "One line,");
+            var line = after.events.Last();
+            Assert.That(line.kind, Is.EqualTo(WaveDEventKinds.PactPlan));
+            Assert.That(line.text, Is.EqualTo("You went with " + PactName + "'s plan: evict " + Name(after, plan) + ". "
+                + Name(after, npcs[3]) + " and " + Name(after, npcs[4]) + " are with you."));
+            Assert.That(line.audienceIds, Is.EquivalentTo(new[] { after.playerId, npcs[3], npcs[4] }), "to the pact.");
+            Assert.That(after.socialActions + after.outOfPhaseSocialActions, Is.EqualTo(open.socialActions + open.outOfPhaseSocialActions), "No action spent.");
+            Assert.That(PactPlans.OpenPlan(after, PactId), Is.Null);
+
+            // Once: a second answer is refused before anything happens.
+            string before = Json(after);
+            var again = Apply(engine, EpisodeCommandKind.AnswerPactPlan, npcs[3], null, PactId);
+            Assert.That(again.accepted, Is.False);
+            Assert.That(again.reason, Is.EqualTo(PactPlans.SettledRefusal(PactName)));
+            Assert.That(Json(engine.Snapshot), Is.EqualTo(before));
+        }
+
+        [Test]
+        public void EveryAnswerLeavesTheSameStreamAndSaysOneLine()
+        {
+            var open = Opened(out var pact);
+            var npcs = NpcIds(open);
+            var answers = new[] { (npcs[1], PactPlanStance.Agreed), (npcs[2], PactPlanStance.Countered), ((string)null, PactPlanStance.Low) };
+            foreach (var (nominee, stance) in answers)
+            {
+                var result = Apply(new EpisodeEngine(open), EpisodeCommandKind.AnswerPactPlan, npcs[3], nominee, PactId);
+                Assert.That(result.accepted, Is.True, stance + ": " + result.reason);
+                Assert.That(result.state.ledger.plans.Single().stance, Is.EqualTo(stance));
+                Assert.That(result.state.randomState, Is.EqualTo(open.randomState), stance + ": the season's stream untouched.");
+                Assert.That(result.state.nextSequence, Is.EqualTo(open.nextSequence + 1), stance + ": one line, one id.");
+                Assert.That(result.state.events.Last().kind, Is.EqualTo(WaveDEventKinds.PactPlan));
+                Valid(result.state);
+            }
+        }
+
+        [Test]
+        public void ACounterIsDecidedByTheKeyedCoinsAndTheTally()
+        {
+            var open = Opened(out var pact);
+            var npcs = NpcIds(open);
+            var row = open.ledger.plans.Single();
+            var expected = PactPlans.Settle(open, pact, row, PactPlans.Counter, npcs[2]);
+            var result = Apply(new EpisodeEngine(open), EpisodeCommandKind.AnswerPactPlan, npcs[3], npcs[2], PactId);
+            Assert.That(result.accepted, Is.True, result.reason);
+            var after = result.state.ledger.plans.Single();
+            Assert.That(after.counterId, Is.EqualTo(npcs[2]));
+            Assert.That(after.cameRound, Is.EqualTo(expected.cameRound));
+            Assert.That(after.cameRound, Is.EqualTo(new[] { npcs[3], npcs[4] }.Where(id => PactPlans.ComesRound(open, PactId, id)).ToArray()),
+                "Each who said the plan came round on their own coin.");
+            Assert.That(after.targetId, Is.EqualTo(expected.targetId));
+            int forCounter = 1 + after.cameRound.Count, forPlan = 2 - after.cameRound.Count;
+            Assert.That(after.targetId, Is.EqualTo(forCounter >= forPlan ? npcs[2] : npcs[1]), "More says wins; a tie goes to the player, who founded it.");
+            Assert.That(result.state.ledger.calls.Count, Is.EqualTo(after.callerId == result.state.playerId ? 1 : 0), "A call row only where the counter carried.");
+            string text = result.state.events.Last().text;
+            Assert.That(text, Does.StartWith("You pushed for " + Name(open, npcs[2]) + "."));
+            Assert.That(text, Does.Contain(PactName + " goes with " + Name(open, after.targetId) + "."));
+        }
+
+        [Test]
+        public void LyingLowLeavesAPlanAnNpcLeadsThatTheBlocRoundReads()
+        {
+            var open = Opened(out var pact);
+            var npcs = NpcIds(open);
+            var engine = new EpisodeEngine(open);
+            var low = Apply(engine, EpisodeCommandKind.AnswerPactPlan, npcs[3], null, PactId);
+            Assert.That(low.accepted, Is.True, low.reason);
+            var row = low.state.ledger.plans.Single();
+            Assert.That((row.stance, row.targetId, row.callerId), Is.EqualTo((PactPlanStance.Low, npcs[1], npcs[3])), "The plan, an NPC calling it.");
+            Assert.That(low.state.ledger.calls, Is.Empty, "No call row: every row is the player's to its readers.");
+            Assert.That(low.state.events.Last().text, Is.EqualTo("You let " + PactName + "'s plan stand: evict " + Name(open, npcs[1]) + ", as "
+                + Name(open, npcs[3]) + " and " + Name(open, npcs[4]) + " wanted."));
+            var call = EpisodeEngine.PlanCallThisWeek(low.state, PactId);
+            Assert.That((call.callerId, call.targetId), Is.EqualTo((npcs[3], npcs[1])));
+            Assert.That(EpisodeEngine.CallThisWeek(low.state, PactId), Is.Null);
+            foreach (string bound in row.followed)
+                Assert.That(BlocPressure(low.state, bound, npcs[1]), Is.EqualTo(-40), "In the campaign: " + bound);
+            var advanced = Apply(engine, EpisodeCommandKind.Advance);
+            Assert.That(advanced.accepted, Is.True, advanced.reason);
+            Assert.That(advanced.state.phase, Is.EqualTo(EpisodePhase.Eviction));
+            foreach (string bound in row.followed)
+                Assert.That(BlocPressure(advanced.state, bound, npcs[1]), Is.EqualTo(-40), "At the eviction: " + bound);
+            Assert.That(advanced.state.events.Count(e => e.kind == WaveDEventKinds.PactPlan), Is.EqualTo(1), "A settled plan does not lapse again.");
+        }
+
+        [Test]
+        public void AnOpenPlanLapsesLastAsTheCampaignClosesOrComesToNothing()
+        {
+            var open = Opened(out var pact);
+            var npcs = NpcIds(open);
+            var closed = Apply(new EpisodeEngine(open), EpisodeCommandKind.Advance);
+            Assert.That(closed.accepted, Is.True, closed.reason);
+            var row = closed.state.ledger.plans.Single();
+            Assert.That((row.stance, row.targetId, row.callerId), Is.EqualTo((PactPlanStance.Lapsed, npcs[1], npcs[3])), "Settled as lying low would.");
+            var said = closed.state.events.Where(e => e.sequence >= open.nextSequence).ToList();
+            Assert.That(said.Last().kind, Is.EqualTo(WaveDEventKinds.PactPlan), "Last in the step: after the readings and the eviction eve.");
+            Assert.That(said.Last().text, Does.StartWith("You let " + PactName + "'s plan stand: evict " + Name(open, npcs[1])));
+            Assert.That(said.Any(e => e.kind == "campaign-close" && e.text == "Campaigning has closed. The house votes privately to evict."), Is.True,
+                "The frozen campaign-close sentence is untouched.");
+            Assert.That(closed.state.randomState, Is.EqualTo(new EpisodeEngine(PlanFree(open)).Apply(Command(PlanFree(open), EpisodeCommandKind.Advance)).state.randomState),
+                "The lapse draws nothing from the season's stream.");
+
+            // A pact that has ended by the close: the plan comes to nothing.
+            var ended = open.Clone();
+            ended.alliances.Single(a => a.id == PactId).active = false;
+            var voided = Apply(new EpisodeEngine(ended), EpisodeCommandKind.Advance);
+            Assert.That(voided.accepted, Is.True, voided.reason);
+            var gone = voided.state.ledger.plans.Single();
+            Assert.That((gone.stance, gone.targetId, gone.callerId), Is.EqualTo((PactPlanStance.Void, (string)null, (string)null)));
+            Assert.That(voided.state.events.Last().text, Is.EqualTo(PactName + "'s plan came to nothing."));
+            Assert.That(EpisodeEngine.PlanCallThisWeek(voided.state, PactId), Is.Null, "No call.");
+        }
+
+        [Test]
+        public void ThePlayerWhoLeavesCannotAnswerAndThePlanLapsesWithoutThem()
+        {
+            var open = Opened(out var pact);
+            var npcs = NpcIds(open);
+            var engine = new EpisodeEngine(open);
+            var left = Apply(engine, EpisodeCommandKind.LeaveAlliance, npcs[3], text: PactId);
+            Assert.That(left.accepted, Is.True, left.reason);
+            Assert.That(left.state.alliances.Single(a => a.id == PactId).members, Has.No.Member(left.state.playerId), "A pact of three goes on without the player.");
+            string before = Json(left.state);
+            var refused = Apply(engine, EpisodeCommandKind.AnswerPactPlan, npcs[3], npcs[1], PactId);
+            Assert.That(refused.accepted, Is.False);
+            Assert.That(refused.reason, Is.EqualTo(EpisodeEngine.NotYourPactRefusal));
+            Assert.That(Json(engine.Snapshot), Is.EqualTo(before));
+            var closed = Apply(engine, EpisodeCommandKind.Advance);
+            Assert.That(closed.accepted, Is.True, closed.reason);
+            var row = closed.state.ledger.plans.Single();
+            Assert.That(row.stance, Is.EqualTo(PactPlanStance.Lapsed));
+            Assert.That(row.callerId, Is.Not.EqualTo(closed.state.playerId), "Led by an NPC.");
+            Assert.That(closed.state.ledger.calls, Is.Empty);
+        }
+
+        [Test]
+        public void TheAnswerIsSaidToSomebodyWhoWasThereAboutSomebodyOnTheBlock()
+        {
+            var open = Opened(out var pact);
+            var npcs = NpcIds(open);
+            var engine = new EpisodeEngine(open);
+            string before = Json(open);
+            foreach (var (through, nominee, text, reason) in new[]
+                     {
+                         (npcs[0], npcs[1], PactId, PactPlans.ThroughRefusal),
+                         (npcs[3], open.playerId, PactId, PactPlans.NomineeRefusal),
+                         (npcs[3], npcs[4], PactId, PactPlans.NomineeRefusal),
+                         (npcs[3], npcs[1], "alliance-nobody", EpisodeEngine.NotYourPactRefusal),
+                     })
+            {
+                var refused = Apply(engine, EpisodeCommandKind.AnswerPactPlan, through, nominee, text);
+                Assert.That(refused.accepted, Is.False, reason);
+                Assert.That(refused.reason, Is.EqualTo(reason));
+                Assert.That(Json(engine.Snapshot), Is.EqualTo(before), "Nothing spent, drawn or logged: " + reason);
+            }
+        }
+
+        [Test]
+        public void ADissenterIsNeverFlaggedAtTheReveal()
+        {
+            var open = Opened(out var pact, split: true);
+            var npcs = NpcIds(open);
+            // A split: the player goes with the fourth's say, the fifth decides whether to go along.
+            string chosen = open.ledger.plans.Single().says.Single(x => x.memberId == npcs[3]).targetId;
+            var agreed = Apply(new EpisodeEngine(open), EpisodeCommandKind.AnswerPactPlan, npcs[3], chosen, PactId);
+            Assert.That(agreed.accepted, Is.True, agreed.reason);
+            Assert.That(agreed.state.ledger.calls.Single().defected, Is.Empty, "A dissenter is written to the plan alone,");
+            var revealed = Reveal(agreed.state);
+            var record = revealed.relationships.Where(r => r.fromId == revealed.playerId).SelectMany(r => r.events)
+                .Where(e => e.type == Allegiance.BetrayedType && e.description.Contains("ignored your call")).ToList();
+            Assert.That(record, Is.Empty, "never to the call's defectors that C2's betrayal check reads.");
+        }
+
+        [Test]
+        public void SavingAnOpenPlanAndAnsweringAfterTheLoadIsAnsweringWithout()
+        {
+            var open = Opened(out var pact);
+            var npcs = NpcIds(open);
+            var settings = new JsonSerializerSettings { ObjectCreationHandling = ObjectCreationHandling.Replace };
+            var loaded = JsonConvert.DeserializeObject<EpisodeState>(Json(open), settings);
+            Valid(loaded);
+            foreach (string nominee in new[] { npcs[1], npcs[2], null })
+            {
+                var direct = Apply(new EpisodeEngine(open), EpisodeCommandKind.AnswerPactPlan, npcs[3], nominee, PactId);
+                var reloaded = Apply(new EpisodeEngine(loaded), EpisodeCommandKind.AnswerPactPlan, npcs[3], nominee, PactId);
+                Assert.That(Json(reloaded.state), Is.EqualTo(Json(direct.state)), "Answer " + (nominee ?? "low") + ": the same after a reload.");
+            }
+        }
+
+        [Test]
+        public void ValidationHoldsTheStancesAndTheCallLinks()
+        {
+            var open = Opened(out var pact);
+            var npcs = NpcIds(open);
+            var agreed = Apply(new EpisodeEngine(open), EpisodeCommandKind.AnswerPactPlan, npcs[3], npcs[1], PactId).state;
+            var low = Apply(new EpisodeEngine(open), EpisodeCommandKind.AnswerPactPlan, npcs[3], null, PactId).state;
+            Valid(agreed); Valid(low);
+            var defects = new Dictionary<string, (EpisodeState from, Action<EpisodeState> change)>
+            {
+                ["backed-without-its-call"] = (agreed, x => x.ledger.calls.Clear()),
+                ["backed-twice"] = (agreed, x => x.ledger.calls.Add(x.ledger.calls[0].Clone())),
+                ["call-to-another-target"] = (agreed, x => x.ledger.calls[0].targetId = npcs[2]),
+                ["call-with-another-following"] = (agreed, x => x.ledger.calls[0].followed.RemoveAt(0)),
+                ["call-with-a-defector"] = (agreed, x => x.ledger.calls[0].defected.Add(npcs[4])),
+                ["npc-led-with-a-call"] = (low, x => x.ledger.calls.Add(new BlocCallRow { week = x.week, allianceId = PactId, callerId = x.playerId, targetId = npcs[1] })),
+                ["player-bound"] = (agreed, x => { x.ledger.plans[0].followed.Add(x.playerId); x.ledger.calls[0].followed.Add(x.playerId); }),
+                ["player-says"] = (open, x => x.ledger.plans[0].says.Add(new PlanSay { memberId = x.playerId, targetId = npcs[1] })),
+                ["open-with-a-target"] = (open, x => x.ledger.plans[0].targetId = npcs[1]),
+                ["open-binding"] = (open, x => x.ledger.plans[0].followed.Add(npcs[3])),
+                ["settled-without-a-caller"] = (low, x => x.ledger.plans[0].callerId = null),
+                ["settled-without-a-target"] = (low, x => x.ledger.plans[0].targetId = ""),
+            };
+            foreach (var defect in defects)
+            {
+                var copy = defect.Value.from.Clone();
+                defect.Value.change(copy);
+                Assert.That(EpisodeValidation.TryValidate(copy, out string error), Is.False, defect.Key);
+                Assert.That(error, Does.Contain("pact plan").IgnoreCase, defect.Key + ": " + error);
+            }
+            // A JsonUtility round trip writes an absent name as "", which an open plan holds as nothing.
+            var blank = open.Clone();
+            blank.ledger.plans[0].targetId = blank.ledger.plans[0].callerId = blank.ledger.plans[0].counterId = "";
+            Valid(blank);
+        }
+
+        [Test]
+        public void GameSenseCountsEveryVoterNotWithAPlanBackedCall()
+        {
+            var open = Opened(out var pact, split: true);
+            var npcs = NpcIds(open);
+            string chosen = open.ledger.plans.Single().says.Single(x => x.memberId == npcs[3]).targetId;
+            var after = Apply(new EpisodeEngine(open), EpisodeCommandKind.AnswerPactPlan, npcs[3], chosen, PactId).state;
+            var row = after.ledger.plans.Single();
+            var note = GameSense.Evaluate(after).notes.Single(n => n.rowKind == "call");
+            int against = new[] { npcs[3], npcs[4] }.Count(id => !row.followed.Contains(id));
+            Assert.That(PactPlans.NotFollowing(after, row), Has.Count.EqualTo(against));
+            Assert.That(note.points, Is.EqualTo(row.followed.Count * 2 - against), "Followed twice over, less every voter at it not with it.");
+            // Forced, so the count is seen to move: one bound and one who is not.
+            var forced = after.Clone();
+            forced.ledger.plans[0].followed = new List<string> { npcs[3] };
+            forced.ledger.calls[0].followed = new List<string> { npcs[3] };
+            Assert.That(GameSense.Evaluate(forced).notes.Single(n => n.rowKind == "call").points, Is.EqualTo(2 - 1));
+            Assert.That(GameSense.Evaluate(forced).notes.Single(n => n.rowKind == "call").text, Does.Contain("1 followed, 1 did not"));
+        }
+
         // ------------------------------------------------------------ fixtures
 
         private static List<string> NpcIds(EpisodeState s) => s.Active.Where(c => !c.isPlayer).Select(c => c.id).ToList();
 
         private static string Json(EpisodeState s) => JsonConvert.SerializeObject(s);
+
+        private static string Name(EpisodeState s, string id) => s.Find(id).name;
+
+        private static EpisodeCommand Command(EpisodeState s, EpisodeCommandKind kind, string target = null, string second = null, string text = null) =>
+            new EpisodeCommand
+            {
+                id = "plan-" + kind + "-" + s.revision + "-" + target + "-" + second, actorId = s.playerId, kind = kind,
+                targetId = target, secondTargetId = second, text = text, expectedRevision = s.revision, expectedPhase = s.phase,
+            };
+
+        private static CommandResult Apply(EpisodeEngine engine, EpisodeCommandKind kind, string target = null, string second = null, string text = null) =>
+            engine.Apply(Command(engine.Snapshot, kind, target, second, text));
+
+        /// <summary>The bloc's pressure in a voter's ballot as it stands, on a nominee: −40 where the call's directive reaches them.</summary>
+        private static double BlocPressure(EpisodeState s, string voterId, string nomineeId) =>
+            EpisodeEngine.ProjectBallot(s, voterId).nomineeEvaluations.Single(n => n.nomineeId == nomineeId).factors.Single(f => f.code == "blocPressure").value;
+
+        /// <summary>Free time in the catalogue's six-house, the story, the commitment rules and the levers on, the player's pact of three warm.</summary>
+        private static EpisodeState FreeTime(bool rules, out AllianceState pact)
+        {
+            var s = ContentCatalog.Create(7);
+            EpisodeEngine.EnableStory(s);
+            EpisodeEngine.EnableCommitments(s);
+            EpisodeEngine.EnableLevers(s);
+            if (rules) EpisodeEngine.EnablePactPlans(s);
+            var npcs = NpcIds(s);
+            pact = Pact(s, PactId, PactName, s.playerId, npcs[3], npcs[4]);
+            Warm(s, pact);
+            Valid(s);
+            return s;
+        }
+
+        /// <summary>
+        /// The war room's campaign with both voters' minds made up: each wants the first nominee out, by
+        /// how they see the two on the block - or, <paramref name="split"/>, the fifth wants the second out.
+        /// </summary>
+        private static EpisodeState Decided(out AllianceState pact, bool split = false)
+        {
+            var s = WarRoom(out pact);
+            var npcs = NpcIds(s);
+            foreach (string voter in new[] { npcs[3], npcs[4] })
+            {
+                bool other = split && voter == npcs[4];
+                SetScore(s, voter, other ? npcs[2] : npcs[1], -60);
+                SetScore(s, voter, other ? npcs[1] : npcs[2], 40);
+            }
+            var says = PactPlans.Says(s, pact);
+            Assert.That(says.Select(x => (x.memberId, x.targetId)),
+                Is.EqualTo(new[] { (npcs[3], npcs[1]), (npcs[4], split ? npcs[2] : npcs[1]) }), "Precondition: the voters' minds as made up.");
+            Valid(s);
+            return s;
+        }
+
+        /// <summary>The war room held through the fourth houseguest: its plan open.</summary>
+        private static EpisodeState Opened(out AllianceState pact, bool split = false)
+        {
+            var s = Decided(out pact, split);
+            var result = Apply(new EpisodeEngine(s), EpisodeCommandKind.AllianceMeet, NpcIds(s)[3], text: PactId);
+            Assert.That(result.accepted, Is.True, result.reason);
+            Assert.That(PactPlans.OpenPlan(result.state, PactId), Is.Not.Null, "Precondition: the plan is open.");
+            pact = result.state.alliances.Single(a => a.id == PactId);
+            return result.state;
+        }
+
+        /// <summary>The same state with no plan on the ledger: what the step would draw without one.</summary>
+        private static EpisodeState PlanFree(EpisodeState s)
+        {
+            var copy = s.Clone();
+            copy.ledger.plans.Clear();
+            return copy;
+        }
+
+        /// <summary>The house plays to the reveal.</summary>
+        private static EpisodeState Reveal(EpisodeState before)
+        {
+            var engine = new EpisodeEngine(before);
+            for (int i = 0; i < 40 && !engine.Snapshot.evictionResolved; i++)
+            {
+                var result = engine.Apply(EpisodeEngineTests.NextCommand(engine.Snapshot));
+                Assert.That(result.accepted, Is.True, result.reason);
+            }
+            Assert.That(engine.Snapshot.evictionResolved, Is.True, "The eviction resolved.");
+            return engine.Snapshot;
+        }
 
         /// <summary>
         /// The campaign of the catalogue's six-house: a houseguest at the head of the house, the next two

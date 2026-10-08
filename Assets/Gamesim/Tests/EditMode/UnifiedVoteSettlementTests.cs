@@ -17,9 +17,14 @@ namespace Gamesim.Tests.EditMode
     ///
     /// <para>Where they deliberately do not, the case says so and pins the difference exactly: Rule2 groups the
     /// directed consequences of overlapping rows at one reveal (one wins each polarity, actor and partner; only an
-    /// owner runs its memory, line, Story and witness lanes), and the Story hook's reputation read at a reveal
-    /// never counts that reveal's own Vote incident, where mode 1's raw store counts the promise it has just
-    /// broken. Every reveal is seen as tapes - the views, the record, the memories, the lines and the draws.</para>
+    /// owner runs its memory, line, Story and witness lanes). Every reveal is seen as tapes - the views, the
+    /// record, the memories, the lines and the draws.</para>
+    ///
+    /// <para>One difference is no rule but a reader still to move (vote family V5): the Story grudge's threat
+    /// scaling (ThreatAssessment.ReputationThreat) counts raw promises, and canonical breaches only under mode 1,
+    /// so in mode 2 it counts no canonical Vote or Safety breach at all - not the reveal's own, which the approved
+    /// Rule2 policy excludes, and not an earlier one, which it does not exclude. A first reveal cannot tell the two
+    /// apart; V5 moves the reader and passes the reveal's own exclusions to it.</para>
     ///
     /// <para>Fixtures are seasons walked with real public commands; the constructed facts are the ones
     /// <see cref="ProspectiveVoteTwins"/> and <see cref="PinnedVoteSeason"/> allow - a relationship score, the
@@ -247,12 +252,12 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// The player's vote promise, broken: stamped Broken by its maker with its breach identity; the view, record,
-        /// memories, line and the witness loop's draws as mode 1 writes them. The one value Rule2 sets apart is the
-        /// Story grudge's threat scaling, which never counts the reveal's own incident: mode 1's raw store counts the
-        /// promise it has just broken, so its grudge can only be the heavier.
+        /// memories, line and the witness loop's draws as mode 1 writes them. The one value apart is the Story
+        /// grudge's threat scaling, a reader still to move (vote family V5): mode 1's raw store counts the promise it
+        /// has just broken, mode 2's reader counts no canonical breach, so mode 1's grudge can only be the heavier.
         /// </summary>
         [Test]
-        public void ABrokenVotePromiseSettlesAsModeOneSettlesItSaveItsOwnReputation()
+        public void ABrokenVotePromiseSettlesAsModeOneSettlesItSaveTheThreatReadersGap()
         {
             var s = Campaign();
             string to = NpcVoters(s)[0], promised = s.nominees[0], other = s.nominees[1];
@@ -265,7 +270,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(tape.Lines, Is.EqualTo(new[] { "promise-outcome [" + s.playerId + "] You broke a Vote promise." }));
             Assert.That(tape.Draw, Is.EqualTo(reveal.Legacy.state.randomState), "The witness loop draws as mode 1 draws it.");
             Assert.That(tape.Draw, Is.Not.EqualTo(reveal.CastTwin.randomState), "Fixture: the witness loop drew.");
-            AssertParityButTheOwnIncidentReputation(reveal, "A broken vote promise", to, s.playerId);
+            AssertParityButTheThreatReadersGap(reveal, "A broken vote promise", to, s.playerId);
         }
 
         /// <summary>
@@ -1151,22 +1156,24 @@ namespace Gamesim.Tests.EditMode
             return state;
         }
 
-        // ------------------------------------------------------------ helpers for the Rule2 difference
+        // ------------------------------------------------------------ helpers for the reader still to move (V5)
 
         /// <summary>
-        /// The reveal equals mode 1's but for the wronged party's grudge against the breaker, whose threat scaling in
-        /// mode 2 does not count the reveal's own breach (the Rule2 current-incident exclusion; mode 1's raw store
-        /// counts the promise it has just broken). The same holder, target, cause, week and count; a severity lighter
-        /// by what one broken promise adds to the breaker's reputation - three threat points, scaled by 60/200 and
-        /// rounded: never more than one.
+        /// The reveal equals mode 1's but for the wronged party's grudge against the breaker. Its threat scaling
+        /// (ThreatAssessment.ReputationThreat) is a reader vote family V5 moves: it counts raw promises, and canonical
+        /// breaches only under mode 1, so in mode 2 it counts none - neither this reveal's breach (which the approved
+        /// Rule2 policy excludes) nor an earlier one (which it does not). At a first reveal, as here, the two coincide:
+        /// mode 1 counts the promise it has just broken. The same holder, target, cause, week and count; a severity
+        /// lighter by what one broken promise adds to the breaker's reputation - three threat points, scaled by 60/200
+        /// and rounded: never more than one. Not a Rule2 difference: V5 replaces it with the exclusion itself.
         /// </summary>
-        private static void AssertParityButTheOwnIncidentReputation(Reveal reveal, string what, string holder, string breaker)
+        private static void AssertParityButTheThreatReadersGap(Reveal reveal, string what, string holder, string breaker)
         {
             var expected = reveal.Projection;
             var mode1 = expected.story.grudges.Single(g => g.holderId == holder && g.targetId == breaker);
             var mode2 = reveal.After.story.grudges.Single(g => g.holderId == holder && g.targetId == breaker);
             Assert.That((mode2.cause, mode2.originWeek, mode2.count), Is.EqualTo((mode1.cause, mode1.originWeek, mode1.count)), what + ": the same grudge.");
-            Assert.That(mode1.severity - mode2.severity, Is.InRange(0, 1), what + ": the reveal's own breach does not scale its grudge.");
+            Assert.That(mode1.severity - mode2.severity, Is.InRange(0, 1), what + ": mode 2's threat reader counts no canonical breach (V5).");
             mode1.severity = mode2.severity;
             ProspectiveVoteTwins.AssertProjection(expected, reveal.After, what);
         }

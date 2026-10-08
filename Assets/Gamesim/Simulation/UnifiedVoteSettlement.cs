@@ -108,6 +108,11 @@ namespace Gamesim.Simulation
     ///
     /// <para>This is a deliberate new overlap rule, not byte-identical execution of overlapping legacy effects.
     /// A reveal with no overlap writes exactly what mode 1 writes. Modes 0 and 1 never reach this class.</para>
+    ///
+    /// <para>Not built here: the policy's typed command-local exclusions of this reveal's Vote incidents (later
+    /// selected winners included) from the Story threat assessment the recipes' StoryWordBroken reads. That reader
+    /// (ThreatAssessment.ReputationThreat) counts no canonical breach under mode 2 yet - not this reveal's, nor an
+    /// earlier one - so there is nothing for an exclusion to remove; vote family V5 moves it and passes them.</para>
     /// </summary>
     internal static class UnifiedVoteSettlement
     {

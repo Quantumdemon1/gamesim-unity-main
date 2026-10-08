@@ -205,18 +205,74 @@ namespace Gamesim.Tests.EditMode
 
         // ---------------------------------------------------------------- the knowledge gate
 
-        /// <summary>The types a policy must never be handed: the season and its state objects.</summary>
-        private static readonly Type[] Hidden =
+        /// <summary>
+        /// The row types the player is handed by a reader because they are what the player was told: a
+        /// houseguest's word about their vote, as heard or overheard (<see cref="VoteRead.VoterRead"/>'s claims).
+        /// </summary>
+        private static readonly Type[] PlayerKnown = { typeof(ClaimRow) };
+
+        /// <summary>
+        /// The types a policy must never be handed: the engine, and the season with every state type reachable
+        /// from it - its public fields' and properties' types, through collections and generic arguments, enums,
+        /// primitives and strings aside - less <see cref="PlayerKnown"/>. Built, not listed, so a state type
+        /// added later is hidden without anybody remembering to add it.
+        /// </summary>
+        private static readonly HashSet<Type> Hidden = HiddenTypes();
+
+        private static HashSet<Type> HiddenTypes()
         {
-            typeof(EpisodeState), typeof(EpisodeEngine), typeof(CommandResult), typeof(ContestantState), typeof(ContestantStats), typeof(RelationshipState),
-            typeof(AllianceState), typeof(DealState), typeof(PromiseState), typeof(MemoryState), typeof(SeasonLedger), typeof(CompetitionRow),
-            typeof(StoryWorldState), typeof(NpcSocialState), typeof(HouseEventState), typeof(ReplyCardState), typeof(StorylineState),
-        };
+            var hidden = StateClosure();
+            hidden.ExceptWith(PlayerKnown);
+            return hidden;
+        }
+
+        /// <summary>The engine, and every Gamesim type reachable from the season's public members.</summary>
+        private static HashSet<Type> StateClosure()
+        {
+            var seen = new HashSet<Type>();
+            var queue = new Queue<Type>();
+            void Visit(Type type)
+            {
+                if (type == null || type == typeof(void)) return;
+                if (type.IsByRef || type.IsArray || type.IsPointer) { Visit(type.GetElementType()); return; }
+                if (type.IsGenericType) foreach (var argument in type.GetGenericArguments()) Visit(argument);
+                if (type.IsEnum || type.IsPrimitive || type == typeof(string) || type.Namespace == null || !type.Namespace.StartsWith("Gamesim", StringComparison.Ordinal)) return;
+                if (seen.Add(type)) queue.Enqueue(type);
+            }
+            Visit(typeof(EpisodeState));
+            while (queue.Count > 0)
+            {
+                var type = queue.Dequeue();
+                foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public)) Visit(field.FieldType);
+                foreach (var property in type.GetProperties(BindingFlags.Instance | BindingFlags.Public)) Visit(property.PropertyType);
+            }
+            seen.Add(typeof(EpisodeEngine));
+            seen.Add(typeof(CommandResult));
+            return seen;
+        }
+
+        /// <summary>The closure finds what was once listed by hand: the season's own state objects.</summary>
+        [Test]
+        public void TheHiddenTypesAreTheSeasonsWholeState()
+        {
+            var listed = new[]
+            {
+                typeof(EpisodeState), typeof(EpisodeEngine), typeof(CommandResult), typeof(ContestantState), typeof(ContestantStats), typeof(RelationshipState),
+                typeof(AllianceState), typeof(DealState), typeof(PromiseState), typeof(MemoryState), typeof(SeasonLedger), typeof(CompetitionRow),
+                typeof(StoryWorldState), typeof(NpcSocialState), typeof(HouseEventState), typeof(ReplyCardState), typeof(StorylineState),
+            };
+            Assert.That(listed.Where(type => !Hidden.Contains(type)).Select(type => type.Name), Is.Empty);
+            Assert.That(Hidden.Count, Is.GreaterThan(listed.Length), "The closure reaches past the hand-made list.");
+            var closure = StateClosure();
+            Assert.That(PlayerKnown.Where(type => !closure.Contains(type)).Select(type => type.Name), Is.Empty,
+                "An allowed type is a piece of the state the player was told, or it needs no allowance.");
+        }
 
         /// <summary>
         /// Gating is structural: every type reachable from what <see cref="PlayerView"/> hands out - its public
         /// members' types, and theirs, through fields, properties, collections and tuples - is a record of its own
-        /// or a reader's, never the season or a piece of it. And the policies take a view, never a state.
+        /// or a reader's, never the season or a piece of it (<see cref="Hidden"/>: the whole state, less what the
+        /// player was told). And the policies take a view, never a state.
         /// </summary>
         [Test]
         public void ThePlayerViewHandsOutNothingOfTheSeasonItself()

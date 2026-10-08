@@ -40,9 +40,11 @@ namespace Gamesim.Episode
         private bool controlsShown;
 
         /// <summary>
-        /// The settings' CONTROLS section (PLAN A, A4): folded under one control, and open, a line
-        /// for every action of the episode's maps - what it does, its keys and its pad buttons, read
-        /// off the actions the house is reading now.
+        /// The settings' CONTROLS section (PLAN A, A4), the panel's last: folded under one control,
+        /// and open, a line for every action of the episode's maps - what it does, its keys and its
+        /// pad buttons, read off the actions the house is reading now - and for the presses outside
+        /// them: the pointer, the panels' own keys and typing. Last, so the accessibility note and
+        /// the web save's import stay under the section they always stood in.
         /// </summary>
         private void ControlsSettings()
         {
@@ -57,7 +59,7 @@ namespace Gamesim.Episode
                 });
             if (!controlsShown) return;
             string context = null;
-            foreach (var line in ControlsPage.Lines(HouseActions))
+            foreach (var line in ControlsPage.Page(HouseActions))
             {
                 if (line.Context != context) { context = line.Context; hud.Heading(context); }
                 hud.NamedParagraph(line.Name, line.Text);

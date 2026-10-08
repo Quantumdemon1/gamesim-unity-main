@@ -9,6 +9,11 @@ namespace Gamesim.House
     /// words) and what it is bound to now - the keys and the pad's buttons read off its bindings, so
     /// the page says what the map does rather than what someone remembered to write down. The
     /// prototype house's dialogue map is not the episode's and is left out.
+    ///
+    /// <para>The page (<see cref="Page"/>) also carries the presses no action of the asset holds -
+    /// the event system's module, the pointer on the house and typing - as the glossary words them:
+    /// walking to the floor clicked and pressing the focused control are how most of the game is
+    /// played, and a page of controls without them sent a player looking for them.</para>
     /// </summary>
     public static class ControlsPage
     {
@@ -50,6 +55,25 @@ namespace Gamesim.House
                 }
             }
             return lines;
+        }
+
+        /// <summary>
+        /// The page as the settings show it: every action's line (<see cref="Lines"/>), and each of
+        /// the glossary's rows outside the asset after the last line of its own context - a context
+        /// none of the actions has goes at the foot - so each heading is said once.
+        /// </summary>
+        public static List<Line> Page(HouseCameraActions actions)
+        {
+            var page = Lines(actions);
+            foreach (var row in InputGlossary.Rows)
+            {
+                if (!row.OutsideTheAsset) continue;
+                var line = new Line(row.Context, row.Map, row.Action, row.Keyboard, row.Pad, row.Hint);
+                int last = page.FindLastIndex(existing => existing.Context == row.Context);
+                if (last < 0) page.Add(line);
+                else page.Insert(last + 1, line);
+            }
+            return page;
         }
 
         /// <summary>A line's words: what it does, then the keys, then the pad's buttons, each only when there are some.</summary>

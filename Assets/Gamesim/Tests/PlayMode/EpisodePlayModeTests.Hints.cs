@@ -119,6 +119,16 @@ namespace Gamesim.Tests.PlayMode
             }
             Assert.That(shown.Any(label => label.name == ControlsPage.RowPrefix + "Shortcuts/Back" && label.text.Contains("Pad B")), Is.True,
                 "B is on the page, beside Start's pause menu.");
+            // And the presses no action holds: the pointer on the house, the panels' own keys, typing.
+            var page = ControlsPage.Page(cameraRig.Actions);
+            Assert.That(page, Has.Count.EqualTo(lines.Count + InputGlossary.Rows.Count(row => row.OutsideTheAsset)));
+            foreach (var line in page.Where(line => !lines.Any(action => action.Name == line.Name)))
+            {
+                var text = shown.LastOrDefault(label => label.name == line.Name);
+                Assert.That(text, Is.Not.Null, line.Name + " is on the page.");
+                Assert.That(text.text, Is.EqualTo(line.Text), line.Name);
+            }
+            Assert.That(shown.Select(label => label.name).Distinct().Count(), Is.EqualTo(page.Count), "A line for each, once.");
 
             ButtonWithCaption(EpisodeDirector.HideControlsCaption).onClick.Invoke();
             yield return Frames(2);

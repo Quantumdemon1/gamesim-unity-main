@@ -232,8 +232,8 @@ namespace Gamesim.Tests.PlayMode
             Canvas.ForceUpdateCanvases();
             var fold = (RectTransform)FindButton(EpisodeDirector.HideControlsCaption).transform;
             var lines = ControlLines();
-            Assert.That(lines.Select(line => line.name).Distinct().Count(), Is.EqualTo(ControlsPage.Lines(cameraRig.Actions).Count),
-                where + ": a line for every action.");
+            Assert.That(lines.Select(line => line.name).Distinct().Count(), Is.EqualTo(ControlsPage.Page(cameraRig.Actions).Count),
+                where + ": a line for every action, and for the presses outside them.");
             AssertRowInView(fold, where + ", the fold-out");
             AssertRowInView(lines.First().rectTransform, where + ", '" + lines.First().text + "'");
             foreach (var line in lines) AssertLineHasRoom(line, where + ", " + line.name);

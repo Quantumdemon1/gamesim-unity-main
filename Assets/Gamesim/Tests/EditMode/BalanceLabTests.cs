@@ -44,6 +44,7 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(r.autopsy.finished, Is.True, at);
                 Assert.That(r.autopsy.houseSize, Is.EqualTo(r.cell.size), at);
                 Assert.That(r.autopsy.npcTicks, Is.Zero, at + ": the lab does not drive the NPC world yet (B5).");
+                Assert.That(r.pace.weeks, Is.EqualTo(r.autopsy.weeks), at + ": the story's pace was watched to the end.");
                 if (r.cell.policy == BalancePolicies.Passive) Assert.That(r.own, Is.Zero, at + ": the passive player leaves every step to the walker.");
                 else Assert.That(r.own, Is.GreaterThan(0), at + ": the player acted.");
                 // Legal play: the house refuses a player now and then (a deal it will not take, a person

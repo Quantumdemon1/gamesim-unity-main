@@ -293,25 +293,56 @@ namespace Gamesim.Tests.EditMode
             md.AppendLine();
         }
 
-        /// <summary>The house itself: its agendas, its warmest and coldest pair, and the story's pace (all policies' seasons).</summary>
+        /// <summary>
+        /// The house itself (its agendas, its warmest and coldest pair), and the story's pace counted as the
+        /// story pacing report counts it (<see cref="StoryPacingTests.Pace"/>), so the two read side by side;
+        /// all policies' seasons.
+        /// </summary>
         private static void House(StringBuilder md, IReadOnlyList<BalanceLab.SeasonRun> runs)
         {
-            md.AppendLine("### The house: agendas, pairs and the story's pace (all policies' seasons)");
+            var sizes = runs.Select(r => (r.cell.roster, r.cell.size)).Distinct().OrderBy(x => x.roster).ThenBy(x => x.size).ToList();
+            List<BalanceLab.SeasonRun> Of((CastTemplates.Roster roster, int size) house) =>
+                runs.Where(r => r.error == null && r.cell.roster == house.roster && r.cell.size == house.size).ToList();
+            string Name((CastTemplates.Roster roster, int size) house) => house.roster == CastTemplates.Roster.Regular ? house.size.ToString(CultureInfo.InvariantCulture) : house.roster + " " + house.size;
+
+            md.AppendLine("### The house: agendas and pairs (all policies' seasons)");
             md.AppendLine();
-            md.AppendLine("| size | NPC agendas as each social week closed | warmest pair (mutual, mean / max) | coldest pair (mutual, mean / min) | story asks / season | weeks with a card | storylines finished | NPC removals | showmances | pile-ons | pariah weeks |");
-            md.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|");
-            foreach (int size in runs.Select(r => r.cell.size).Distinct().OrderBy(x => x))
+            md.AppendLine("| house | NPC agendas as each social week closed | warmest pair (mutual, mean / max) | coldest pair (mutual, mean / min) |");
+            md.AppendLine("|---|---|---|---|");
+            foreach (var house in sizes)
             {
-                var list = runs.Where(r => r.error == null && r.cell.size == size).Select(r => r.autopsy).ToList();
+                var list = Of(house).Select(r => r.autopsy).ToList();
+                if (list.Count == 0) continue;
                 var agendas = list.SelectMany(a => a.agency.agendas).GroupBy(p => p.Key).Select(g => (kind: g.Key, total: g.Sum(p => p.Value))).OrderByDescending(x => x.total).ToList();
                 double all = Math.Max(1, agendas.Sum(x => x.total));
-                md.AppendLine("| " + size + " | " + string.Join(", ", agendas.Select(x => x.kind + " " + BalanceLab.Pct(x.total / all))) + " | "
+                md.AppendLine("| " + Name(house) + " | " + string.Join(", ", agendas.Select(x => x.kind + " " + BalanceLab.Pct(x.total / all))) + " | "
                     + BalanceLab.Num(list.Average(a => a.warmest.mutual), "0") + " / " + BalanceLab.Num(list.Max(a => a.warmest.mutual), "0") + " | "
-                    + BalanceLab.Num(list.Average(a => a.coldest.mutual), "0") + " / " + BalanceLab.Num(list.Min(a => a.coldest.mutual), "0") + " | "
-                    + BalanceLab.Num(list.Average(a => a.story.asks), "0.0") + " | " + BalanceLab.Num(list.Average(a => a.story.weeksWithACard), "0.0") + " | "
-                    + BalanceLab.Num(list.Average(a => a.story.completed), "0.0") + " | " + BalanceLab.Num(list.Average(a => a.story.npcRemovals), "0.00") + " | "
-                    + BalanceLab.Num(list.Average(a => a.story.showmances), "0.00") + " | " + BalanceLab.Num(list.Average(a => a.story.pileOns), "0.00") + " | "
-                    + BalanceLab.Num(list.Average(a => a.story.pariahWeeks), "0.00") + " |");
+                    + BalanceLab.Num(list.Average(a => a.coldest.mutual), "0") + " / " + BalanceLab.Num(list.Min(a => a.coldest.mutual), "0") + " |");
+            }
+            md.AppendLine();
+
+            md.AppendLine("### The story's pace (all policies' seasons), counted as StoryPacingTests.PacingReport counts it");
+            md.AppendLine();
+            md.AppendLine("Asks are the beats put to the player, a storyline's beats closing at one anchor one ask; the first night, summons and plays apart; "
+                + "budgeted asks leave out production's must-fires and urgent moments. A pariah season has some houseguest (not the reigning Head of Household) "
+                + "with three in the house at forty against them after two Advances running. The last column is the autopsy's own count, every story house event "
+                + "in the final state, which is not comparable with the plan's targets.");
+            md.AppendLine();
+            md.AppendLine("| house | budgeted asks / season (target 4-6) | + must-fires | summons | play offers | weeks with a card (target 30-60%) | stories finished (target about 3) | moments | seasons with a pariah (target at most 20%) | NPC showmances | seasons with an NPC removal | seasons with a pile-on (target at most 25%) | story house events / season (autopsy) |");
+            md.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+            foreach (var house in sizes)
+            {
+                var list = Of(house).Where(r => r.pace != null).ToList();
+                if (list.Count == 0) continue;
+                var paces = list.Select(r => r.pace).ToList();
+                double weeks = Math.Max(1, paces.Sum(p => p.weeks));
+                md.AppendLine("| " + Name(house) + " | " + BalanceLab.Num(paces.Average(p => p.budgetedAsks), "0.0") + " (max " + paces.Max(p => p.budgetedAsks) + ") | "
+                    + BalanceLab.Num(paces.Average(p => p.asks - p.budgetedAsks), "0.0") + " | " + BalanceLab.Num(paces.Average(p => p.summons), "0.0") + " | "
+                    + BalanceLab.Num(paces.Average(p => p.playOffers), "0.0") + " | " + BalanceLab.Pct(paces.Sum(p => p.weeksWithACard) / weeks) + " | "
+                    + BalanceLab.Num(paces.Average(p => p.storiesFinished), "0.0") + " | " + BalanceLab.Num(paces.Average(p => p.arcsFinished - p.storiesFinished), "0.0") + " | "
+                    + BalanceLab.Pct((double)paces.Count(p => p.pariah) / paces.Count) + " | " + BalanceLab.Num(paces.Average(p => p.showmances), "0.00") + " | "
+                    + BalanceLab.Pct((double)paces.Count(p => p.npcRemovals > 0) / paces.Count) + " | " + BalanceLab.Pct((double)paces.Count(p => p.pileOns > 0) / paces.Count) + " | "
+                    + BalanceLab.Num(list.Average(r => r.autopsy.story.asks), "0.0") + " |");
             }
             md.AppendLine();
         }

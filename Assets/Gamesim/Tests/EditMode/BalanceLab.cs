@@ -72,6 +72,8 @@ namespace Gamesim.Tests.EditMode
             public uint seed;
             public string error;
             public SeasonAutopsy.Report autopsy;
+            /// <summary>The story's pace as the story pacing report counts it (<see cref="StoryPacingTests.Pace.Watch"/>).</summary>
+            public StoryPacingTests.Pace pace;
             public int commands, own, fallbacks, refusals, freeActions;
             public readonly SortedDictionary<string, int> refusalsByKind = new SortedDictionary<string, int>(StringComparer.Ordinal);
             public readonly SortedDictionary<int, int> decisionsByWeek = new SortedDictionary<int, int>();
@@ -105,6 +107,7 @@ namespace Gamesim.Tests.EditMode
             var engine = new EpisodeEngine(fresh);
             var agent = BalancePolicies.Create(cell.policy);
             var changes = new List<SeasonAutopsy.PhaseChange>();
+            run.pace = new StoryPacingTests.Pace { removalWindow = fresh.contestants.Count >= 7 };
             var s = engine.Snapshot;
             while (s.phase != EpisodePhase.Finished && run.commands < CommandCap)
             {
@@ -118,6 +121,7 @@ namespace Gamesim.Tests.EditMode
                 if (used.kind != EpisodeCommandKind.Advance) Count(run.decisionsByWeek, s.week);
                 if (Free.Contains(used.kind)) run.freeActions++;
                 var after = applied.state;
+                run.pace.Watch(used, after);
                 if (SeasonAutopsy.IsPhaseChange(s, after))
                 {
                     changes.Add(new SeasonAutopsy.PhaseChange(s, after));
@@ -128,6 +132,7 @@ namespace Gamesim.Tests.EditMode
             if (run.error == null && s.phase != EpisodePhase.Finished) run.error = "did not finish in " + run.commands + " commands (week " + s.week + " " + s.phase + ")";
             if (run.error == null && !EpisodeValidation.TryValidate(s, out string finalError)) run.error = "the final state is invalid: " + finalError;
             run.autopsy = SeasonAutopsy.Of(changes, s);
+            run.pace.Close(s);
             Ceremonies(run);
         }
 
@@ -277,7 +282,14 @@ namespace Gamesim.Tests.EditMode
                 agency = a == null ? null : new { nominations = a.agency.npcNominations, topThreat = a.agency.topThreatNominated, agendas = new SortedDictionary<string, int>(a.agency.agendas, StringComparer.Ordinal) },
                 warmest = a?.warmest?.mutual ?? 0, coldest = a?.coldest?.mutual ?? 0,
                 jury = a == null ? null : new { jurors = a.jury.jurors, margin = a.jury.margin, bitter = a.jury.bitterJurors, withEvictor = a.jury.jurorsWithEvictorFinalist, playerVotes = a.jury.playerVotes },
+                // The autopsy's story counts: "asks" is every story house event in the final state, and a pariah week an eviction night that closed with one.
                 story = a == null ? null : new { a.story.storylines, a.story.completed, a.story.asks, a.story.weeksWithACard, a.story.npcRemovals, a.story.showmances, a.story.pileOns, a.story.pariahWeeks },
+                // The story pacing report's counts (Pace): asks deduplicated per storyline and anchor, the first night, summons and plays apart.
+                pace = r.pace == null ? null : new
+                {
+                    asks = r.pace.asks, budgeted = r.pace.budgetedAsks, summons = r.pace.summons, playOffers = r.pace.playOffers, weeksWithACard = r.pace.weeksWithACard,
+                    stories = r.pace.storiesFinished, moments = r.pace.arcsFinished - r.pace.storiesFinished, pariah = r.pace.pariah,
+                },
                 commands = r.commands, own = r.own, fallbacks = r.fallbacks, freeActions = r.freeActions, refusals = r.refusals, refusalsBy = r.refusalsByKind,
                 decisions = r.decisionsByWeek, ceremony = r.ceremonyByWeek, finaleSeconds = r.finaleSeconds,
                 npcTicksUsed = a?.npcTicks ?? 0,

@@ -483,6 +483,93 @@ namespace Gamesim.Tests.EditMode
                 Is.EqualTo("You overheard Riley Chen and Jo Park. They sounded close. [vote] [act] [pact]"));
         }
 
+        // ------------------------------------------------------------ D4-3: the weekly leak
+
+        private static void LeakPass(EpisodeState s) => EngineMethod("LeakPass", typeof(EpisodeState)).Invoke(null, new object[] { s });
+
+        private static void StorySystemsAt(EpisodeState s, string anchor) =>
+            EngineMethod("StorySystemsAt", typeof(EpisodeState), typeof(string)).Invoke(null, new object[] { s, anchor });
+
+        /// <summary>Whether the plan's coin lands for a pact this week, worked out here from its key and its odds.</summary>
+        private static bool CoinLands(EpisodeState s, AllianceState pact) =>
+            AllianceLeaks.Rolls(s, pact) != null && StoryRandom.Unit(s, "w" + s.week + ":leak:" + pact.id) < AllianceLeaks.Odds(s, pact);
+
+        /// <summary>
+        /// The leak pass, over forty houses: each pact that rolls goes out as a whisper exactly when its
+        /// keyed coin lands under its odds, and nothing else moves - no knower, no line, no id, no draw.
+        /// A pact formed this week never rolls, and the order the pacts are taken in changes nothing.
+        /// </summary>
+        [Test]
+        public void TheLeakPassWhispersExactlyThePactsWhoseCoinLandsAndMovesNothingElse()
+        {
+            int leaked = 0, kept = 0;
+            for (uint seed = 4400; seed < 4440; seed++)
+            {
+                var s = Rules(seed);
+                var n = Others(s);
+                PrivateFact(s, Pact(s, "ours", true, s.playerId, n[0].id, n[1].id), s.week - 1);
+                Pact(s, "second", true, s.playerId, n[2].id);
+                PrivateFact(s, Pact(s, "theirs", true, n[2].id, n[3].id, n[4].id, n[5].id), s.week - 1);
+                PrivateFact(s, Pact(s, "fresh", true, n[4].id, n[5].id));
+                var expected = s.alliances.ToDictionary(a => a.id, a => CoinLands(s, a));
+                Assert.That(expected["fresh"], Is.False, "A pact formed this week waits a week.");
+                var reversed = s.Clone();
+                reversed.alliances.Reverse();
+                uint random = s.randomState; int ids = s.nextSequence; int lines = s.events.Count;
+                string knowers = string.Join(";", s.story.facts.Select(f => f.id + ":" + string.Join(",", f.knowers)));
+                LeakPass(s);
+                LeakPass(reversed);
+                foreach (var pact in s.alliances)
+                {
+                    var fact = Knowledge.Of(s, FactKinds.Alliance, pact.id);
+                    if (fact == null) continue;
+                    Assert.That(fact.visibility, Is.EqualTo(expected[pact.id] ? FactVisibility.Whispered : FactVisibility.Private), "Seed " + seed + ", " + pact.id);
+                    Assert.That(Knowledge.Of(reversed, FactKinds.Alliance, pact.id).visibility, Is.EqualTo(fact.visibility), "Order changes nothing.");
+                    if (expected[pact.id]) leaked++; else kept++;
+                }
+                Assert.That(s.randomState, Is.EqualTo(random), "No draw from the season,");
+                Assert.That(s.nextSequence, Is.EqualTo(ids), "no id,");
+                Assert.That(s.events.Count, Is.EqualTo(lines), "no line,");
+                Assert.That(string.Join(";", s.story.facts.Select(f => f.id + ":" + string.Join(",", f.knowers))), Is.EqualTo(knowers), "and no knower.");
+            }
+            Assert.That(leaked, Is.GreaterThan(0), "Some pacts got out,");
+            Assert.That(kept, Is.GreaterThan(leaked), "most did not.");
+        }
+
+        /// <summary>
+        /// Where the leak runs: at the eviction night anchor only, after the showmances and before the
+        /// gossip, which can carry what got out the same night - and not at all without the rules.
+        /// </summary>
+        [Test]
+        public void TheLeakRunsAtEvictionNightOnlyAndItsGossipCanCarryItTheSameNight()
+        {
+            int carried = 0, leaks = 0;
+            for (uint seed = 4500; seed < 4580; seed++)
+            {
+                var s = Rules(seed);
+                var n = Others(s);
+                var pact = Pact(s, "leaky", true, n[0].id, n[1].id, n[2].id, n[3].id);
+                PrivateFact(s, pact, s.week - 1);
+                if (!CoinLands(s, pact)) continue;
+                leaks++;
+                var otherAnchor = s.Clone();
+                StorySystemsAt(otherAnchor, StoryAnchors.HohCrowned);
+                Assert.That(Knowledge.Of(otherAnchor, FactKinds.Alliance, pact.id).visibility, Is.EqualTo(FactVisibility.Private), "Only eviction night leaks.");
+                var off = s.Clone();
+                off.allianceLeakRulesStartWeek = 0;
+                StorySystemsAt(off, StoryAnchors.EvictionNight);
+                Assert.That(Knowledge.Of(off, FactKinds.Alliance, pact.id).visibility, Is.EqualTo(FactVisibility.Private), "Without the rules nothing leaks.");
+                uint random = s.randomState;
+                StorySystemsAt(s, StoryAnchors.EvictionNight);
+                var fact = Knowledge.Of(s, FactKinds.Alliance, pact.id);
+                Assert.That(fact.visibility, Is.EqualTo(FactVisibility.Whispered));
+                Assert.That(s.randomState, Is.EqualTo(random));
+                if (fact.knowers.Any(id => !pact.members.Contains(id))) carried++;
+            }
+            Assert.That(leaks, Is.GreaterThan(0), "Eighty houses: some coins land.");
+            Assert.That(carried, Is.GreaterThan(0), "and the same night's gossip carried one.");
+        }
+
         /// <summary>The listen-in as the player presses it: one command, accepted, and the season legal after it.</summary>
         [Test]
         public void TheListenInIsOneLegalCommand()

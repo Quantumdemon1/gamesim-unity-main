@@ -17,6 +17,23 @@ namespace Gamesim.Simulation
             s.allianceLeakRulesStartWeek = Math.Max(1, Math.Min(fromWeek, s.week + 1));
         }
 
+        // ---------------------------------------------------------------- the weekly leak
+
+        /// <summary>
+        /// The weekly leak, at the eviction night anchor under the leak rules: every pact that rolls this
+        /// week (<see cref="AllianceLeaks.Rolls"/>), in the house's order, draws its keyed coin, and a pact
+        /// whose coin lands is out as a whisper - its fact widened and nothing else: no knower, no line, no
+        /// id. The house's gossip carries it from there, this anchor's first, and a whispered fact never
+        /// rolls again. Each coin is the week's and the pact's alone, so the order changes nothing and a
+        /// reload before the commit draws the same.
+        /// </summary>
+        private static void LeakPass(EpisodeState s)
+        {
+            foreach (var pact in s.alliances.ToList())
+                if (AllianceLeaks.Leaks(s, pact))
+                    Knowledge.MakeKnown(s, Knowledge.Of(s, FactKinds.Alliance, pact.id), FactVisibility.Whispered);
+        }
+
         // ---------------------------------------------------------------- one pair, one pact
 
         /// <summary>

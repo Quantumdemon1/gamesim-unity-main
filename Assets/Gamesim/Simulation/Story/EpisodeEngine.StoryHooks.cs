@@ -367,6 +367,9 @@ namespace Gamesim.Simulation
         {
             if (UnifiedCommitmentHearings.RulesOn(s)) UnifiedCommitmentHearings.RequireValid(s);
             if (anchor == StoryAnchors.EvictionNight && StoryAt(s, StoryRules.Bonds)) NpcShowmancePass(s);
+            // The weekly leak (WAVE-D-NPC-PACTS-PLAN §2.3): after the showmances, before the gossip, so the
+            // same anchor's gossip can carry a pact that has just got out.
+            if (anchor == StoryAnchors.EvictionNight && AllianceLeaks.On(s)) LeakPass(s);
             if (StoryAt(s, StoryRules.Bonds) && anchor != StoryAnchors.Conversation)
                 foreach (var (fact, listener) in Knowledge.Spread(s, anchor))
                 {

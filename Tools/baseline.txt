@@ -10,7 +10,7 @@
 #
 #   <assembly> <minimum tests>
 Gamesim.EditModeTests 6969
-Gamesim.PlayModeTests 1003
+Gamesim.PlayModeTests 1005
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 Gamesim.Uma.PlayModeTests 77
 # Tools/SimulationTests: the Unity-free subset CI runs on every push (.github/workflows/ci.yml).

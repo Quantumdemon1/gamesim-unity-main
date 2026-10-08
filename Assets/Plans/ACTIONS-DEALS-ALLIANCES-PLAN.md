@@ -1087,6 +1087,53 @@ Every fix applies under the commitment rules only; seasons without them digest b
 - **Unity-free subset, 1328 to 1501.**
 - **PlayMode:** stays at 863 until C5 to C8's tests have run in Unity.
 
+**B4 as Wave D's D4, leaks and double-dealing, built 2026-10-08** on `claude/d4-leaks` from the lead's 2ea986df (schema 28 landed: `allianceLeakRulesStartWeek`, `story:double-dealt`, the four event kinds). WAVE-D-NPC-PACTS-PLAN §2's slices D4-0 to D4-5, one commit or two each. Everything is keyed to `allianceLeakRulesStartWeek` through `AllianceLeaks.On` - the start week reached, the story's facts (`StoryRules.Bonds`) and the commitment rules - so a season without them plays as it did, roll for roll and line for line. No schema bump, no command kind, no new caption.
+
+| Slice | Commit | What landed |
+|---|---|---|
+| D4-0 | 3026407d | `AllianceLeaks`: the gate, the odds `min(0.5, 0.05 + 0.03·max(0, m−2) + J)` with the juggling term only on the player's own pacts while they are in the house, the keyed coin `w{week}:leak:{pact}`, which pacts roll, who is caught out, the rival test and the words. `Knowledge.PactOfPair`: standing before ended, one the listener does not know of, then the house's order. `EnableAllianceLeaks`, clamped as `EnableCommitments` is. |
+| D4-1 | 753d8856 | One pair, one pact: a story's alliance spread grants and widens only the resolver's pact (the C8 defect). A play's receipt names the pact the spread granted, resolved before the grant; The Secret Alliance reads the resolver. The alliance whisper names everyone ("Word in the house: A, B and C are working together."), and the page dates a card by either form. `AllianceReadTests`' over-grant pin kept as the rules-off case, with a rules-on twin. |
+| D4-2 | 82845240, 2eab223a | The listen-in: a pact whose people in the house are exactly the two overheard makes the player a knower (the fact stays private, the memory unchanged) and the line gains " From the way they talked, A and B are working together." Two of a bigger pact, the player's own pact, a known one or a caught listen-in give nothing. `EpisodeEngine.EavesdropLine` is the one builder (X5): with every clause empty it is today's line byte for byte, and D2's act clause slots before D4's sentence. |
+| D4-3 | df8eb162 | The weekly leak at the eviction night anchor, after the NPC showmances and before the gossip: each rolling pact's coin, and a landed coin is `MakeKnown(Whispered)` and nothing else - no knower, no line, no id, no season draw. |
+| D4-4 | d8405c7b | Double-dealing at both knower paths (the gossip, beside `HeardOfYourWord`, and a story's spread): an ally outside the player's other pact holds the alliance-betrayed grudge (40, 48 while allied) if a member in the house is their rival, or keeps the permanent `story:double-dealt` receipt at −10 (`HeardAbout`); either way one line, kind `double-dealing`, to the player and them. `AllianceRead.Pact.exposures` and the card's "Week 5 · Riley found out about it." The four Wave D kinds' tint and glyph. The enable lines: the director's `StartSeason` at week one, the importer at week + 1, `PortVerification.Season` asserting 1 - D4's start week alone. |
+| D4-5 | (this commit) | The evidence below, the PlayMode test, this entry, the floors. |
+
+**Evidence:**
+- **Unity-free subset:** 4494 to 4526, all green (`AllianceLeakTests`, 31; `AllianceReadTests`' rules-on twin).
+- **Mutations:** each slice's lines were broken one at a time and each failed its test, restored byte for byte: the odds, the week a fact may roll and the resolver's listener term (D4-0); the spread reaching every pact, the receipt resolved after the grant, the play's `AllianceOf`, the whisper's names and the page's second form (D4-1); the exact-pair rule, the grant, a grant that widened the fact, the clause order and the page's listen-in reading (D4-2); the leak at every anchor, after the gossip, for every rolling pact, and with a knower (D4-3); each knower path, the rival test, the allied multiplier, the ally and member checks, the receipt's impact and the card's exposures (D4-4). One survived as equivalent: the "player in the house" check, which the commitment rules' `Allied` already makes.
+- **Digests (`CommitmentRulesSeasonDigests`, both halves):** without the commitment rules the 54 seasons digest byte for byte as recorded; under them they move and stay legal as before.
+- **`AllianceLeakSeasonDigests` (new, explicit, compiled out of Unity):** the leak rules need the commitment rules, so its rules-off half holds those 54 seasons' digests *under the commitment rules* as 2ea986df played them, and with the leak rules off every one is byte-identical. Its rules-on half plays the same seasons from week one twice, by the digests' busy player and by one who keeps three pacts, every command legal, and checks every step: each leak recomputed from the eviction night's state is its coin (no coin without its leak), each double-dealing line has its receipt or grudge and each receipt its line, no receipt is between two houseguests, and each listen-in sentence taught the player the pact.
+
+| Per season | Rolls | Leaks | Spreads (to the player) | Double-dealing (receipts + grudges) | Listen-ins |
+|---|---|---|---|---|---|
+| Busy, 6 | 0 | 0 | 0.22 (0.11) | 0 | 0 |
+| Busy, 8 | 0.67 | 0.06 | 0.50 (0.17) | 0 | 0 |
+| Busy, 12 | 4.39 | 0.22 | 1.72 (0.22) | 0 | 0 |
+| Three pacts, 6 | 0.72 | 0.06 | 0.11 (0) | 0.11 (0 + 0.11) | 0 |
+| Three pacts, 8 | 2.94 | 0.44 | 2.00 (0.28) | 0.50 (0.44 + 0.06) | 0.06 |
+| Three pacts, 12 | 6.67 | 0.56 | 5.78 (0.56) | 0.50 (0.39 + 0.11) | 0 |
+
+  Eighteen seasons a size and player. In all, 24 of 277 coins landed (8.7%, against odds of 5 to 21%); every landed coin leaked. The sixteen-person house is the combined roster's, another lane's, and is not measured here.
+
+**PlayMode, written and not run:** `Alliances_DoubleDealingAndListenIn` - the player's juggled pact shows "Week N · Riley found out about it." and the pact they share does not, a pair heard for what they are shows by its listen-in line, at FontScale 1.0 and 1.2 with every label at least 1.3 times its words and drawn whole; the double-dealing kind tints conflict red. Captures `alliances-double-dealt` and `alliances-overheard`, each with `-large` and `-4x3`. `AllianceLeaks_ASeasonTheDirectorStartsPlaysThem` - both starts play the leak rules from week one, D3's and D2's weeks stay 0, and the rules survive a save.
+
+**Where the build departs from the plan:**
+- **The play receipt is resolved before the grant.** Asked after, a listener who now knows the granted pact is pointed at another one of the same two. The engine keeps each spread's pact as it applies a beat's or a play's effects; a direct caller of `PlayReceipts.For` without it gets the first pact of the two the player now knows of.
+- **The listen-in names everyone the card shows**, in the cast's order: for an exact pair that is the two overheard, and a pact with a member gone names them too.
+- **A rival is a member in the house.** Under the commitment rules somebody gone has left every pact.
+- **`AllianceLeaks.Partners`** names the player's partners in the house, and everybody on the record only where nobody is left.
+
+**Found on the way:** `EpisodeState`'s schema 28 block still says nothing writes or reads its fields; `allianceLeakRulesStartWeek` now is. The file is W28's (WAVE-D §7), so the comment is left for the lead.
+
+**Tell the story session:**
+- `story:double-dealt` is now written (by the leak rules' double-dealing, on the one who found out's view of the player), and so is the event kind `double-dealing`; `sighting`, `overheard` and `pact-plan` are still unwritten.
+- Under the leak rules the resolver (`Knowledge.PactOfPair`) decides `LeakAlliance` and `SpreadAlliance`: one pact per pair, the receipt names it, and The Secret Alliance's goal reads it. The alliance whisper names everyone in the pact.
+- Facts now get out on their own each eviction night, so the Staged Feud's `AllianceKnowers ≥ 3` fires sooner, The Secret Alliance casts less often, and the emergency meeting may cast more.
+- Double-dealing writes alliance-betrayed grudges against the player (48 while allied), which every grudge reader sees.
+- The director starts every season under the leak rules; the importer from the week after.
+
+**Floors:** the Unity-free subset 4494 to 4526; EditMode 6937 to 6969 (the same 32); PlayMode 1003 to 1005; UMA unchanged.
+
 ## Wave C staged checkpoint — 2026-10-05
 
 These are isolated gameplay-branch implementations, not live integration or native

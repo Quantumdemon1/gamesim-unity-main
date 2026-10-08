@@ -192,24 +192,33 @@ namespace Gamesim.Simulation
         /// plays offered by the story (taken, declined, let pass; won, part, lost), and the week's read.
         /// Run at the reveal, the final eviction and the end, when statuses have settled.
         /// </summary>
-        public static void ReconcileOpportunities(EpisodeState s)
+        public static void ReconcileOpportunities(EpisodeState s) => ReconcileOpportunities(s, null);
+
+        /// <summary>
+        /// As <see cref="ReconcileOpportunities(EpisodeState)"/>, reading each deal <paramref name="endedFrom"/> names at
+        /// the status it held before this command ended it. Mode 2's final eviction ends the canonical vote deals
+        /// still binding its evictee before the jury's readers run (vote family V4), where mode 1 ends them after
+        /// this reconcile: so the reconcile meets them as mode 1's meets them. Null reads every deal as it stands.
+        /// </summary>
+        private static void ReconcileOpportunities(EpisodeState s, IReadOnlyDictionary<string, string> endedFrom)
         {
             if (s?.ledger == null) return;
             bool rules = CommitmentRulesOn(s);
             foreach (var deal in CommitmentReferences.Deals(s).Where(d => d.proposerId == s.playerId || d.recipientId == s.playerId))
             {
+                string status = endedFrom != null && endedFrom.TryGetValue(deal.id, out string before) ? before : deal.status;
                 var row = Opportunity(s, deal.id, OpportunityKinds.Deal, deal.week);
                 row.source = deal.type + (deal.targetId != null ? ":" + deal.targetId : "");
-                row.note = (deal.proposerId == s.playerId ? "put to " + deal.recipientId : "offered by " + deal.proposerId) + ", " + deal.status;
+                row.note = (deal.proposerId == s.playerId ? "put to " + deal.recipientId : "offered by " + deal.proposerId) + ", " + status;
                 // Under the commitment rules (C1, X4) a deal ends with an evictee, after the reveal's
                 // reconcile has seen it taken: a deal the player took and that then ended is still a
                 // deal they took, not an offer left on the table.
                 bool takenBefore = rules && row.response == OpportunityResponse.Taken;
-                row.response = deal.status == DealStatus.Declined ? OpportunityResponse.Declined
-                    : deal.status == DealStatus.Expired ? (takenBefore ? OpportunityResponse.Taken : OpportunityResponse.Expired)
-                    : deal.status == DealStatus.Proposed ? OpportunityResponse.Ignored : OpportunityResponse.Taken;
-                row.outcome = deal.status == DealStatus.Fulfilled ? OpportunityOutcome.Won
-                    : deal.status == DealStatus.Broken ? OpportunityOutcome.Lost : OpportunityOutcome.NotApplicable;
+                row.response = status == DealStatus.Declined ? OpportunityResponse.Declined
+                    : status == DealStatus.Expired ? (takenBefore ? OpportunityResponse.Taken : OpportunityResponse.Expired)
+                    : status == DealStatus.Proposed ? OpportunityResponse.Ignored : OpportunityResponse.Taken;
+                row.outcome = status == DealStatus.Fulfilled ? OpportunityOutcome.Won
+                    : status == DealStatus.Broken ? OpportunityOutcome.Lost : OpportunityOutcome.NotApplicable;
             }
             foreach (var cycle in s.storylines)
             {

@@ -1078,8 +1078,10 @@ namespace Gamesim.Simulation
             s.Find(target).status = ContestantStatus.Jury;
             // Mode 2 (vote family V4): the canonical vote deals still binding them end as the departure is
             // published, before the jury's readers check the season - no social week follows to end them first.
-            // The player took them as they struck them (C1), so the reconcile below records them as taken alike.
-            ResolveUnifiedVoteExpiry(s, UnifiedCommitmentExpiry.Departure, target);
+            // Mode 1 ends them only after the reconcile below, so that reconcile reads each one at the status it
+            // ended from: a story's deal nobody marked taken as it was struck, or an offer never answered, goes
+            // on the record as mode 1's does.
+            var endedWithTheEvictee = ResolveUnifiedVoteExpiry(s, UnifiedCommitmentExpiry.Departure, target);
             if (StoryOn(s)) Bonds.Apart(s, target);
             s.jurySentiment = WebJurySentiment.AddJuror(s.jurySentiment, target, Name(s, target), s.Score(s.playerId, target));
             // No social week follows this eviction, so the settle that ends an evictee's alliances
@@ -1098,7 +1100,8 @@ namespace Gamesim.Simulation
             // Last in the step, as at the weekly settle: nothing minted above moves, and it is the
             // line the status bar shows.
             TellThePlayerWhichAlliancesEnded(s, ended.Where(a => a.members.Contains(s.playerId)).ToList());
-            ReconcileOpportunities(s);
+            if (endedWithTheEvictee != null) ReconcileOpportunities(s, endedWithTheEvictee);
+            else ReconcileOpportunities(s);
             // Under the commitment rules (C1, X4) whatever still bound the one evicted ends with them,
             // as at the weekly eviction: after the reconcile, so a deal the player took stays on the
             // record as taken, and drawing nothing.

@@ -196,10 +196,14 @@ namespace Gamesim.Simulation
         /// its own week's turn, as the source's does), and a production removal (every active promise of theirs,
         /// every deal still binding them). An ending is no verdict: no view, record, line or draw - the raw loops'
         /// own rule, which run beside this for the families still raw.
+        /// <para>Returns the rows it ended, each with the status it ended from - empty when none - or null
+        /// outside mode 2. Only the final eviction reads it, where the ending comes before the source's own
+        /// reconcile (<see cref="FinalEvict"/>).</para>
         /// </summary>
-        internal static void ResolveUnifiedVoteExpiry(EpisodeState s, UnifiedCommitmentExpiry boundary, string departedId = null)
+        internal static Dictionary<string, string> ResolveUnifiedVoteExpiry(EpisodeState s, UnifiedCommitmentExpiry boundary, string departedId = null)
         {
-            if (!UnifiedVoteStore.On(s)) return;
+            if (!UnifiedVoteStore.On(s)) return null;
+            var endedFrom = new Dictionary<string, string>(StringComparer.Ordinal);
             for (int index = 0; index < s.unifiedCommitments.Count; index++)
             {
                 var row = s.unifiedCommitments[index];
@@ -221,10 +225,12 @@ namespace Gamesim.Simulation
                     default: throw new ArgumentOutOfRangeException(nameof(boundary));
                 }
                 if (!ends) continue;
+                endedFrom[row.id] = row.status;
                 var ended = row.Clone();
                 ended.status = DealStatus.Expired;
                 s.unifiedCommitments[index] = ended;
             }
+            return endedFrom;
         }
 
         /// <summary>

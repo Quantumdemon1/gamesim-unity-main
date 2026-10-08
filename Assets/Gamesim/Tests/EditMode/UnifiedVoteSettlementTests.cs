@@ -936,9 +936,10 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// The final eviction is a departure too: a voting bloc the player struck at the final four with a nominee -
         /// undecided there, since a nominee casts no ballot, and past its week at the final three, where no deal pass
-        /// runs - ends with its partner when the final Head of Household sends them to the jury. The command reconciles
-        /// the player's deals first and ends them after (the source's order), and the core holds after it. A mode-2
-        /// season through the seam, the bloc's draw and the player's choices its only steering.
+        /// runs - ends with its partner when the final Head of Household sends them to the jury, and the core holds
+        /// after it. The bloc ends before the command's reconcile, which reads it at the status it ended from (Active),
+        /// so it stays on the record as taken - as it already was, since the player's own proposal marks a deal taken
+        /// as it is struck. A mode-2 season through the seam, the bloc's draw and the player's choices its only steering.
         /// </summary>
         [Test]
         public void TheFinalEvictionEndsADealStillBindingItsEvictee()
@@ -986,8 +987,105 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Status(ended, bloc), Is.EqualTo(DealStatus.Expired), "The bloc ended with " + partner + ".");
             Assert.That(Row(ended, bloc).settledWeek, Is.Zero, "No verdict: the final choice is not a ballot.");
             Assert.That(ended.ledger.opportunities.Single(o => o.id == bloc).response, Is.EqualTo(OpportunityResponse.Taken),
-                "Reconciled first: a deal the player took stays on the record as taken.");
+                "A deal the player took stays on the record as taken.");
         }
+
+        /// <summary>
+        /// The final eviction ends the evictee's rows before its reconcile, where mode 1 ends them after it - so the
+        /// reconcile reads each at the status it ended from, and a row nobody marked taken goes on the record as mode
+        /// 1's does: an offer the evictee put to the player at the final four and the player never answered is
+        /// ignored there, not expired (or a story's deal, struck without that mark, taken). The whole command equals
+        /// mode 1's after projection. A public mode-1 season walked to its final eviction - the final four's ballot
+        /// and the final choice steered to keep and then evict the one whose row stands - and its twin projected
+        /// there with the owners and frames the walk observed, the one command through both. Constructed: the box
+        /// pinned whenever the player is on the block, and the final four's nominees' view of the player (40), set
+        /// before the campaign opens so the house's own pass puts its vote offers to them.
+        /// </summary>
+        [Test]
+        public void TheFinalEvictionsReconcileReadsWhatItEndedAsModeOneReadsIt()
+        {
+            string evictee = null, open = null;
+            CommandResult legacy = null, prospective = null;
+            PinnedVoteSeason season = null;
+            ProspectiveVoteTwins.Find("a final eviction of a finalist whose vote row with the player nobody marked taken", seed =>
+            {
+                var walk = new PinnedVoteSeason(seed, PinnedVoteSeason.Fresh(seed));
+                bool warmed = false;
+                for (int step = 0; step < 2000; step++)
+                {
+                    var s = walk.State;
+                    if (s.phase == EpisodePhase.Finished || s.Find(s.playerId).status != ContestantStatus.Active || !walk.Supported) return null;
+                    // The player on the block is kept: the whole box pinned against the other nominee.
+                    if (PinnedVoteSeason.OpenVote(s) && s.nominees.Contains(s.playerId) && s.votes.Count == 0)
+                    {
+                        walk.PinBox(PinnedVoteSeason.NpcVoters(s).ToDictionary(id => id, id => s.nominees.Single(n => n != s.playerId), StringComparer.Ordinal));
+                        continue;
+                    }
+                    // The final four's block set, the player off it: its nominees read the player warmly enough to put
+                    // a vote to them as the campaign opens - the house's own pass files the offers.
+                    if (!warmed && s.phase == EpisodePhase.VetoMeeting && s.vetoResolved && s.Active.Count() == 4 && !s.nominees.Contains(s.playerId))
+                    {
+                        foreach (string nominee in s.nominees) ProspectiveVoteTwins.Set(s, nominee, s.playerId, 40);
+                        var warm = new PinnedVoteSeason(seed, ProspectiveVoteTwins.Valid(s));
+                        foreach (var pair in walk.Owners) warm.Owners.Add(pair.Key, pair.Value.Clone());
+                        warm.Frames.AddRange(walk.Frames);
+                        walk = warm; warmed = true;
+                        continue;
+                    }
+                    var command = EpisodeEngineTests.NextCommand(s);
+                    if (command.kind == EpisodeCommandKind.Compete && s.Active.Count() == 3) command.performance = 1;
+                    // At the final four the player keeps whoever's row stands, where their ballot can.
+                    if (command.kind == EpisodeCommandKind.CastVote && s.phase == EpisodePhase.Eviction && s.Active.Count() == 4)
+                    {
+                        string kept = s.nominees.FirstOrDefault(id => Unmarked(s, id).Any());
+                        if (kept != null) command.targetId = s.nominees.Single(id => id != kept);
+                    }
+                    if (command.kind == EpisodeCommandKind.FinalEvict)
+                    {
+                        command.targetId = s.Active.Where(c => c.id != s.hohId && !c.isPlayer).Select(c => c.id)
+                            .FirstOrDefault(id => Unmarked(s, id).Any());
+                        if (command.targetId == null) return null;
+                    }
+                    EpisodeState twin = null;
+                    Dictionary<string, List<string>> unmarked = null;
+                    if (s.phase == EpisodePhase.FinalEviction)
+                    {
+                        twin = PinnedVoteSeason.Project(s, walk.Owners, walk.Frames);
+                        Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(twin, out var error), Is.True, "The projected final eviction: " + error);
+                        unmarked = s.Active.Where(c => !c.isPlayer).ToDictionary(c => c.id, c => Unmarked(s, c.id).Select(d => d.id).ToList());
+                    }
+                    var result = walk.Apply(command);
+                    // The walk's own stock answers can miss a season's offered choices: a miss.
+                    if (!result.accepted) return null;
+                    if (twin == null || result.state.phase == EpisodePhase.FinalEviction) continue;
+                    string gone = result.state.ledger.power.Last().evicteeId;
+                    if (gone == null || !unmarked.TryGetValue(gone, out var rows) || rows.Count == 0) return null;
+                    legacy = result;
+                    prospective = ProspectiveVoteFacade.Engine(twin).Apply(command);
+                    evictee = gone; open = rows[0]; season = walk;
+                    return prospective.state;
+                }
+                return null;
+            });
+            Assert.That(prospective.accepted, Is.True, "The final eviction through the seam: " + prospective.reason);
+            var row = Row(prospective.state, open);
+            Assert.That((row.status, row.settledWeek), Is.EqualTo((DealStatus.Expired, 0)), open + " ended with " + evictee + ", no verdict.");
+            var mode1 = legacy.state.ledger.opportunities.Single(o => o.id == open);
+            var mode2 = prospective.state.ledger.opportunities.Single(o => o.id == open);
+            Assert.That((mode2.response, mode2.note), Is.EqualTo((mode1.response, mode1.note)), "Recorded as mode 1 records it.");
+            Assert.That(mode2.response, Is.Not.EqualTo(OpportunityResponse.Expired), "Read at the status it ended from.");
+            ProspectiveVoteTwins.AssertProjection(PinnedVoteSeason.Project(legacy.state, season.Owners, season.Frames), prospective.state,
+                "The final eviction of " + evictee);
+        }
+
+        /// <summary>
+        /// The player's vote rows with this houseguest still binding and not on the record as taken: an offer never
+        /// answered, or a deal struck without the mark (a story's).
+        /// </summary>
+        private static IEnumerable<DealState> Unmarked(EpisodeState s, string with) =>
+            s.deals.Where(d => KnownBallots.IsVoteDeal(d.type) && DealStatus.Binds(d.status)
+                && (d.proposerId == with && d.recipientId == s.playerId || d.proposerId == s.playerId && d.recipientId == with)
+                && !s.ledger.opportunities.Any(o => o.id == d.id && o.response == OpportunityResponse.Taken));
 
         // ------------------------------------------------------------ whole seasons
 

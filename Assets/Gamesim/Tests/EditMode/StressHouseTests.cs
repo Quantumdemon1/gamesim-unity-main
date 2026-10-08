@@ -113,10 +113,13 @@ namespace Gamesim.Tests.EditMode
         /// which is what fills the house's facts and the save.
         /// </summary>
         [TestCase(1601u, false)]
+        [TestCase(1601u, true)]
+#if !UNITY_5_3_OR_NEWER
+        // Three more seeds in Tools/SimulationTests only: each season is seconds there and several times that under Unity's Mono.
         [TestCase(1602u, false)]
         [TestCase(1603u, false)]
-        [TestCase(1601u, true)]
         [TestCase(1602u, true)]
+#endif
         public void ASixteenPersonStressSeasonUnderTheDirectorsRulesPlaysToTheFinale(uint seed, bool busy)
         {
             var fresh = DirectorStressSeason(seed);

@@ -16,6 +16,15 @@ namespace Gamesim.Simulation
         public const int Version = 2;
         public const string VoteLobby = "vote-lobby", VetoAskPrice = "veto-ask-price", OwnVetoPrice = "own-veto-price";
 
+        /// <summary>
+        /// The live episode schema: the one a new <see cref="EpisodeState"/> is written at, which
+        /// whole-episode validation also demands. The aggregate is a live-state leaf with no saved
+        /// field of its own, so it reads the schema from the DTO instead of restating it as a
+        /// literal: a schema bump carries this leaf with it, where a literal here would make every
+        /// state of the bumped schema fail the aggregate and every mode 2 reader throw.
+        /// </summary>
+        private static readonly int LiveSchema = new EpisodeState().schemaVersion;
+
         public static bool TryValidate(EpisodeState s, IReadOnlyList<UnifiedVoteRevealState> archive, out string error)
             => TryValidateCore(s, archive, null, out error);
 
@@ -99,12 +108,12 @@ namespace Gamesim.Simulation
             HashSet<string> draftIds, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 27 || s.unifiedCommitmentRulesVersion != Version
+            if (s == null || s.schemaVersion != LiveSchema || s.unifiedCommitmentRulesVersion != Version
                 || !YourWord.On(s) || s.week < 1 || s.week > 100 || s.nextSequence < 1 || s.nextSequence > 1000000
                 || s.unifiedCommitments == null || s.unifiedCommitments.Count > UnifiedCommitments.FamilyCapacity * 2
                 || s.promises == null || s.deals == null || s.promises.Count > UnifiedCommitments.FamilyCapacity
                 || s.deals.Count > UnifiedCommitments.FamilyCapacity)
-                return Fail(out error, "Expected the explicit prospective schema27 Vote aggregate.");
+                return Fail(out error, "Expected the explicit prospective Vote aggregate at the live episode schema.");
             // The archive leaf establishes bounded cast/status/departure/power ownership first.
             // Its current private-box proof is deliberately not a UI or listener knowledge grant.
             if (!UnifiedVoteCompletedReveal.TryContext(s, out var context, out error)

@@ -27,6 +27,21 @@ namespace Gamesim.Tests.EditMode
             Assert.That(UnifiedCommitmentHearings.RulesOn(s), Is.False);
         }
 
+        /// <summary>
+        /// The aggregate accepts the schema a new state is written at and no other: it reads that
+        /// schema from the DTO, so a schema bump carries it without a literal to sweep.
+        /// </summary>
+        [TestCase(-1)] [TestCase(1)]
+        public void TheVoteAggregateAcceptsOnlyTheLiveEpisodeSchema(int offset)
+        {
+            var s = Opening(); var row = OpeningDeal(s); s.unifiedCommitments.Add(row);
+            Assert.That(s.schemaVersion, Is.EqualTo(new EpisodeState().schemaVersion));
+            Assert.That(UnifiedVoteFamilyValidation.TryValidate(s, s.unifiedVoteReveals, out var error), Is.True, error);
+            s.schemaVersion += offset;
+            Assert.That(UnifiedVoteFamilyValidation.TryValidate(s, s.unifiedVoteReveals, out error), Is.False);
+            Assert.That(error, Does.Contain("live episode schema"));
+        }
+
         [TestCase(0)] [TestCase(1)] [TestCase(2)] [TestCase(3)] [TestCase(4)] [TestCase(5)]
         [TestCase(6)] [TestCase(7)] [TestCase(8)] [TestCase(9)] [TestCase(10)] [TestCase(11)]
         public void TypedVoteOpportunityRejectsSingleChangedSourceScalar(int defect)

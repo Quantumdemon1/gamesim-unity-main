@@ -149,6 +149,40 @@ namespace Gamesim.Tests.PlayMode
             yield return Frames(2);
         }
 
+        /// <summary>
+        /// The tour's line is on its first card, which a pad's A leaves at once: a player who came
+        /// through the menu and the opening on a pad reads the pad's line from the moment the tour
+        /// opens, without pressing anything while it is up - and on the keyboard, the keyboard's.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Tour_OpensInTheWordsOfTheDeviceAlreadyInUse()
+        {
+            var tour = DirectorTour();
+            Assert.That(tour.IsShowing, Is.False);
+            yield return PressOnPad(GamepadButton.RightStick);
+            yield return Frames(2);
+            Assert.That(director.HintsForPad, Is.True, "The house was last pressed on a pad.");
+
+            tour.Show(TourChrome);
+            Assert.That(tour.IsShowing && tour.StepIndex == 0, Is.True, "The tour is on its first card.");
+            Assert.That(tour.PadLine, Is.True, "It opens in the pad's words,");
+            Assert.That(TourWords(tour).Any(words => words.Contains(InputGlossary.TourLine(true))), Is.True,
+                "its first card carrying the pad's line: " + string.Join(" | ", TourWords(tour)));
+            Assert.That(TourWords(tour).Any(words => words.Contains(HouseTutorial.ControlsLine)), Is.False, "and not the keyboard's.");
+            yield return Frames(2);
+            Assert.That(TourWords(tour).Any(words => words.Contains(InputGlossary.TourLine(true))), Is.True, "It stays so with nothing pressed.");
+            tour.Skip();
+            yield return Frames(2);
+
+            yield return PressKey(Key.LeftCtrl);
+            yield return Frames(2);
+            tour.Show(TourChrome);
+            Assert.That(tour.PadLine, Is.False, "After a key, the next showing opens in the keyboard's words.");
+            Assert.That(TourWords(tour).Any(words => words.Contains(HouseTutorial.ControlsLine)), Is.True);
+            tour.Skip();
+            yield return Frames(2);
+        }
+
         private IEnumerator PressOnPad(GamepadButton button)
         {
             if (testGamepad == null) testGamepad = InputSystem.AddDevice<Gamepad>();

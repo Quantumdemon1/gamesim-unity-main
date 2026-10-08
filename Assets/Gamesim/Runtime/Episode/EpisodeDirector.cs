@@ -174,6 +174,8 @@ namespace Gamesim.Episode
             tutorial.RememberCompletion = SaveRootOverride == null;
             // The reference build's rising blip on every step of the tour.
             tutorial.StepSound = () => { if (audioBed != null) audioBed.PlayCue(HouseAudio.Cue.TutorialStep); };
+            // The tour opens in the words of the device the house was last pressed on (A4).
+            tutorial.LastDeviceWasPad = () => padHints;
             opening = OpeningSequence.Attach(gameObject);
             // Both take the keyboard while they are up: the opening's Continue and skip, and the
             // tour's Next, rather than a HUD control hidden underneath them.

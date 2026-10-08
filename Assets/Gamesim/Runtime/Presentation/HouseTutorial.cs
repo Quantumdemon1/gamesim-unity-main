@@ -72,9 +72,20 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// Whether the controls line speaks of the pad's buttons: the device last pressed on, as
-        /// the ceremony cards follow it (PLAN A, A4). The tour starts on the keyboard's words.
+        /// the ceremony cards follow it (PLAN A, A4). Each showing starts on the device the house
+        /// was last pressed on (<see cref="LastDeviceWasPad"/>), and a press on the other kind
+        /// rewords the step in place.
         /// </summary>
         public bool PadLine { get; private set; }
+
+        /// <summary>
+        /// Asked as each showing starts: whether the device the house was last pressed on is a pad.
+        /// The director answers with its hints' device. The line lives on the tour's first card,
+        /// which a pad's A leaves at once, so a tour that waited for a press while it was up kept
+        /// the keyboard's line for a player who came through the menu and the opening on a pad.
+        /// Unset, a showing starts on the keyboard's words.
+        /// </summary>
+        public Func<bool> LastDeviceWasPad { get; set; }
 
         /// <summary>A step's words, with the controls line in the device's words.</summary>
         private string BodyFor(Step current) =>
@@ -257,6 +268,7 @@ namespace Gamesim.Presentation
                     visible.Add(candidate);
             step = 0;
             fadeFrom = 0f;
+            PadLine = LastDeviceWasPad != null && LastDeviceWasPad();
             canvas.gameObject.SetActive(true);
             // A canvas switched on this frame has not been sized yet, and the first step is placed
             // against it now rather than a frame late.

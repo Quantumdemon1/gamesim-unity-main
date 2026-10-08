@@ -368,6 +368,27 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// The reveal's Story hook reads the canonical vote deals as mode 1's read its raw ones: a houseguest Head of
+        /// Household whose real target survived resents a vote-deal partner of this week who voted the other nominee
+        /// out - here the player, with an undecided voting bloc between them - as mode 1's resents them.
+        /// </summary>
+        [Test]
+        public void AHeadOfHouseholdResentsAVoteDealPartnerWhoseBallotSparedTheirTarget()
+        {
+            var s = Campaign();
+            string hoh = s.hohId;
+            s = Deal(s, hoh, DealKind.VoteTogether);
+            string target = s.nominees.OrderBy(id => s.Score(hoh, id)).ThenBy(id => id, StringComparer.Ordinal).First();
+            string other = s.nominees.Single(id => id != target);
+            Assert.That(s.Allied(hoh, s.playerId), Is.False, "Fixture: only the deal makes the player one meant to be with them.");
+            var reveal = Play(s, other, Pins(NpcVoters(s).Select(v => (v, other)).ToArray()));
+            Assert.That(reveal.After.ledger.power.Single(p => p.week == s.week).evicteeId, Is.EqualTo(other), "Fixture: the Head of Household's target survived.");
+            Assert.That(reveal.After.story.grudges.Any(g => g.holderId == hoh && g.targetId == s.playerId && g.cause == GrudgeCauses.VotedAgainst), Is.True,
+                "The Head of Household resents the player their ballot.");
+            ProspectiveVoteTwins.AssertProjection(reveal.Projection, reveal.After, "A Head of Household's resentment");
+        }
+
+        /// <summary>
         /// The house's own rows at one reveal: a nominee's vote bargain with a voter (an NPC deal, decided by the
         /// voter's ballot, its spread drawn), and the player's yes to a nominee's offer (an accepted offer, its breach
         /// one step heavier) - each mode 1's, the Story grudge between houseguests included.
@@ -910,6 +931,62 @@ namespace Gamesim.Tests.EditMode
                 linkedCommitmentId = boughtId, voteBindingWeek = copy.week, voteFirstRevealWeek = copy.week });
             Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(copy, out var error), Is.EqualTo(accepted), error);
             if (!accepted) Assert.That(error, Is.EqualTo("An Active Vote row cannot survive an already-published source departure/void ending."));
+        }
+
+        /// <summary>
+        /// The final eviction is a departure too: a voting bloc the player struck at the final four with a nominee -
+        /// undecided there, since a nominee casts no ballot, and past its week at the final three, where no deal pass
+        /// runs - ends with its partner when the final Head of Household sends them to the jury. The command reconciles
+        /// the player's deals first and ends them after (the source's order), and the core holds after it. A mode-2
+        /// season through the seam, the bloc's draw and the player's choices its only steering.
+        /// </summary>
+        [Test]
+        public void TheFinalEvictionEndsADealStillBindingItsEvictee()
+        {
+            string partner = null, bloc = null;
+            EpisodeState ended = null;
+            ProspectiveVoteTwins.Find("a final eviction of the player's final-four bloc partner", seed =>
+            {
+                var engine = ProspectiveVoteFacade.Engine(PinnedVoteSeason.Project(PinnedVoteSeason.Fresh(seed),
+                    new Dictionary<string, ProspectiveVoteOwner>(), Array.Empty<UnifiedVoteRevealState>()));
+                string with = null, id = null;
+                for (int step = 0; step < 2000; step++)
+                {
+                    var s = engine.Snapshot;
+                    if (s.phase == EpisodePhase.Finished || s.Find(s.playerId).status != ContestantStatus.Active) return null;
+                    var command = EpisodeEngineTests.NextCommand(s);
+                    bool steered = true;
+                    if (id == null && s.phase == EpisodePhase.Campaign && s.Active.Count() == 4 && PinnedVoteSeason.PlayerVotes(s))
+                    {
+                        with = s.nominees[0];
+                        if (!PlayerDeals.CanPropose(s, with, DealKind.VoteTogether, null, out _)) return null;
+                        s.randomState = ProspectiveVoteTwins.Draw(true, PlayerDeals.AcceptanceChance(s, with, DealKind.VoteTogether, null));
+                        engine = ProspectiveVoteFacade.Engine(s);
+                        id = "deal-player-" + s.nextSequence;
+                        command = ProspectiveVoteTwins.Command(s, EpisodeCommandKind.ProposeDeal, with, null, DealKind.VoteTogether);
+                    }
+                    else if (id != null && command.kind == EpisodeCommandKind.CastVote && s.phase == EpisodePhase.Eviction) command.targetId = s.nominees.Single(n => n != with);
+                    else if (id != null && command.kind == EpisodeCommandKind.FinalEvict) command.targetId = with;
+                    else steered = false;
+                    var result = engine.Apply(command);
+                    // The walk's own stock answers can miss a season's offered choices (mode 1 refuses them alike): a miss.
+                    if (!steered && !result.accepted) return null;
+                    Assert.That(result.accepted, Is.True, "week " + s.week + " " + s.phase + " " + command.kind + ": " + result.reason);
+                    if (command.kind == EpisodeCommandKind.ProposeDeal)
+                        Assert.That(Status(result.state, id), Is.EqualTo(DealStatus.Active), "Fixture: the bloc was struck.");
+                    if (id == null || result.state.phase != EpisodePhase.JuryQuestioning && result.state.phase != EpisodePhase.FinalSpeeches) continue;
+                    if (result.state.ledger.power.Last().evicteeId != with) return null;
+                    Assert.That(s.phase, Is.EqualTo(EpisodePhase.FinalEviction));
+                    Assert.That(Status(s, id), Is.EqualTo(DealStatus.Active), "Fixture: the bloc still bound its partner going into the final eviction.");
+                    partner = with; bloc = id; ended = result.state;
+                    return result.state;
+                }
+                return null;
+            });
+            Assert.That(Status(ended, bloc), Is.EqualTo(DealStatus.Expired), "The bloc ended with " + partner + ".");
+            Assert.That(Row(ended, bloc).settledWeek, Is.Zero, "No verdict: the final choice is not a ballot.");
+            Assert.That(ended.ledger.opportunities.Single(o => o.id == bloc).response, Is.EqualTo(OpportunityResponse.Taken),
+                "Reconciled first: a deal the player took stays on the record as taken.");
         }
 
         // ------------------------------------------------------------ whole seasons

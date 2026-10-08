@@ -196,11 +196,7 @@ namespace Gamesim.Simulation
         {
             if (s?.ledger == null) return;
             bool rules = CommitmentRulesOn(s);
-            // Mode 2 (vote family V4): the detached projection of both families, unchecked - the final eviction
-            // reconciles before its departure ending, a moment the family core would refuse mid-step; the
-            // command's candidate is held to the whole core.
-            var deals = UnifiedVoteStore.On(s) ? UnifiedVoteReferences.DealsUnchecked(s) : CommitmentReferences.Deals(s);
-            foreach (var deal in deals.Where(d => d.proposerId == s.playerId || d.recipientId == s.playerId))
+            foreach (var deal in CommitmentReferences.Deals(s).Where(d => d.proposerId == s.playerId || d.recipientId == s.playerId))
             {
                 var row = Opportunity(s, deal.id, OpportunityKinds.Deal, deal.week);
                 row.source = deal.type + (deal.targetId != null ? ":" + deal.targetId : "");

@@ -1076,6 +1076,10 @@ namespace Gamesim.Simulation
             RecordFinalEviction(s, target, s.Active.Where(c => c.id != s.hohId).Select(c => c.id).ToList());
             RecordJurorStanding(s, target);
             s.Find(target).status = ContestantStatus.Jury;
+            // Mode 2 (vote family V4): the canonical vote deals still binding them end as the departure is
+            // published, before the jury's readers check the season - no social week follows to end them first.
+            // The player took them as they struck them (C1), so the reconcile below records them as taken alike.
+            ResolveUnifiedVoteExpiry(s, UnifiedCommitmentExpiry.Departure, target);
             if (StoryOn(s)) Bonds.Apart(s, target);
             s.jurySentiment = WebJurySentiment.AddJuror(s.jurySentiment, target, Name(s, target), s.Score(s.playerId, target));
             // No social week follows this eviction, so the settle that ends an evictee's alliances

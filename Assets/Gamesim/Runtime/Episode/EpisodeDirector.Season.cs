@@ -303,6 +303,9 @@ namespace Gamesim.Episode
                 // Leaks and double-dealing (WAVE-D-NPC-PACTS-PLAN D4): secret pacts get out on a keyed coin,
                 // one pair is one pact, and an ally who finds out about another pact holds it against you.
                 EpisodeEngine.EnableAllianceLeaks(fresh);
+                // The war rooms (WAVE-D-NPC-PACTS-PLAN D3): a pact of three or more meets once the block is
+                // set, its members say who they want out, and the player goes with it, counters once or lies low.
+                EpisodeEngine.EnablePactPlans(fresh);
                 // Fresh playable seasons use canonical Safety and durable hearing authority from
                 // the start, with C0 and story knowledge already active. Do not infer this opt-in
                 // while loading, recovering, migrating or importing an existing legacy season.

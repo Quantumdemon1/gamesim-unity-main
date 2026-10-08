@@ -784,6 +784,75 @@ namespace Gamesim.Tests.EditMode
             Assert.That(GameSense.Evaluate(forced).notes.Single(n => n.rowKind == "call").text, Does.Contain("1 followed, 1 did not"));
         }
 
+        // ------------------------------------------------------------ D3-S5: follow-through on the page
+
+        [Test]
+        public void ThePageSaysThePlanInPlaceOfItsCallAndFollowThroughByTheBallotsThePlayerCanPlace()
+        {
+            var open = Opened(out var pact);
+            var npcs = NpcIds(open);
+            string First(EpisodeState s, string id) => FinalistRead.FirstName(s.Find(id).name);
+            var card = AllianceRead.Read(open).yours.Single(p => p.id == PactId);
+            Assert.That(card.warRoom, Is.True, "A pact of three under the war rooms.");
+            Assert.That(card.plans.Single().text, Is.EqualTo("Plan: " + First(open, npcs[3]) + " and " + First(open, npcs[4]) + " wanted "
+                + First(open, npcs[1]) + " out. You have not answered it yet."));
+
+            var agreed = Apply(new EpisodeEngine(open), EpisodeCommandKind.AnswerPactPlan, npcs[3], npcs[1], PactId).state;
+            card = AllianceRead.Read(agreed).yours.Single(p => p.id == PactId);
+            Assert.That(card.calls, Is.Empty, "The call the plan made is said by its plan,");
+            Assert.That(card.plans.Single().text, Does.EndWith(" You went with it: evict " + First(agreed, npcs[1]) + "."), "as the player answered it,");
+            Assert.That(card.members.Where(m => m.id == npcs[3] || m.id == npcs[4]).Select(m => m.followed), Is.EqualTo(new[] { 1, 1 }),
+                "and its members' follow count still counts it.");
+
+            // The vote read: the player votes with the plan, and the count proves the rest.
+            var engine = new EpisodeEngine(agreed);
+            for (int i = 0; i < 40 && !engine.Snapshot.evictionResolved; i++)
+            {
+                var next = EpisodeEngineTests.NextCommand(engine.Snapshot);
+                if (next.kind == EpisodeCommandKind.CastVote) next.targetId = npcs[1];
+                var result = engine.Apply(next);
+                Assert.That(result.accepted, Is.True, result.reason);
+            }
+            var revealed = engine.Snapshot;
+            Assert.That(revealed.evictionResolved, Is.True);
+            var sheet = KnownBallots.Read(revealed, revealed.week);
+            Assert.That(sheet.Revealed, Is.True);
+            var with = new[] { npcs[3], npcs[4] }.Where(id => sheet.Knows(id) && sheet.TargetOf(id) == npcs[1]).Select(id => First(revealed, id)).ToList();
+            var not = new[] { npcs[3], npcs[4] }.Where(id => sheet.Knows(id) && sheet.TargetOf(id) != npcs[1]).Select(id => First(revealed, id)).ToList();
+            Assert.That(with.Count + not.Count, Is.GreaterThan(0), "Precondition: the player can place a ballot of the plan's.");
+            string expected = with.Count > 0 && not.Count > 0 ? " " + AllianceRead.Join(with) + " voted with it; " + AllianceRead.Join(not) + " didn't."
+                : with.Count > 0 ? " " + AllianceRead.Join(with) + " voted with it." : " " + AllianceRead.Join(not) + " didn't vote with it.";
+            string text = AllianceRead.Read(revealed).yours.Single(p => p.id == PactId).plans.Single().text;
+            Assert.That(text, Does.EndWith(expected), "Follow-through by the ballots the player can place.");
+            Assert.That(text, Does.Not.Match("[0-9]"), "No number on the page.");
+        }
+
+        [Test]
+        public void ThePageSaysEveryStanceInWords()
+        {
+            var open = Opened(out var pact);
+            var npcs = NpcIds(open);
+            string First(string id) => FinalistRead.FirstName(open.Find(id).name);
+            string Text(EpisodeState s) => AllianceRead.Read(s).yours.Single(p => p.id == PactId).plans.Single().text;
+            var low = Apply(new EpisodeEngine(open), EpisodeCommandKind.AnswerPactPlan, npcs[3], null, PactId).state;
+            Assert.That(Text(low), Does.EndWith(" You lay low: evict " + First(npcs[1]) + "."));
+            var lapsed = Apply(new EpisodeEngine(open), EpisodeCommandKind.Advance).state;
+            Assert.That(Text(lapsed), Does.EndWith(" You let it stand: evict " + First(npcs[1]) + "."));
+            var countered = Apply(new EpisodeEngine(open), EpisodeCommandKind.AnswerPactPlan, npcs[3], npcs[2], PactId).state;
+            var row = countered.ledger.plans.Single();
+            string came = row.cameRound.Count > 0 ? ", and " + AllianceRead.Join(row.cameRound.Select(First).ToList()) + " came round" : "";
+            Assert.That(Text(countered), Does.EndWith(" You pushed for " + First(npcs[2]) + came + "."
+                + (row.targetId == npcs[2] ? " It carried." : " The pact held to " + First(npcs[1]) + ".")));
+            var ended = open.Clone(); ended.alliances.Single(a => a.id == PactId).active = false;
+            var voided = Apply(new EpisodeEngine(ended), EpisodeCommandKind.Advance).state;
+            Assert.That(Text(voided), Does.EndWith(" It came to nothing."));
+            foreach (var s in new[] { open, low, lapsed, countered, voided }) Assert.That(Text(s), Does.Not.Match("[0-9]"));
+            var off = open.Clone(); off.pactPlanRulesStartWeek = 0; off.ledger.plans.Clear();
+            var none = AllianceRead.Read(off).yours.Single(p => p.id == PactId);
+            Assert.That(none.plans, Is.Empty);
+            Assert.That(none.warRoom, Is.False, "Without the war rooms the pact calls as a pair does.");
+        }
+
         // ------------------------------------------------------------ fixtures
 
         private static List<string> NpcIds(EpisodeState s) => s.Active.Where(c => !c.isPlayer).Select(c => c.id).ToList();

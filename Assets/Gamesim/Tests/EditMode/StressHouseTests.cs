@@ -93,8 +93,8 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// The sixteen-person house with every rule a season the director starts has (EpisodeDirector.StartSeason
         /// at 2ea986df): competitions, have-nots and strategy from week one, the story, the read, the levers, the
-        /// week, the economy, NPC agency, the finale, the commitment rules, the leak rules and the prospective
-        /// unified versions.
+        /// week, the economy, NPC agency, the finale, the commitment rules, the leak rules, the war rooms and the
+        /// prospective unified versions.
         /// A hand copy, held to the director's by <see cref="TheStressSeasonSwitchesOnEveryRuleADirectorSeasonDoes"/>:
         /// a rule the director's start gains fails that test until it is added here.
         /// </summary>
@@ -105,7 +105,7 @@ namespace Gamesim.Tests.EditMode
             s.haveNotRulesStartWeek = 1; s.strategyRulesStartWeek = 1;
             EpisodeEngine.EnableStory(s); EpisodeEngine.EnableRead(s); EpisodeEngine.EnableLevers(s); EpisodeEngine.EnableWeek(s);
             EpisodeEngine.EnableEconomy(s); EpisodeEngine.EnableAgency(s); EpisodeEngine.EnableFinale(s); EpisodeEngine.EnableCommitments(s);
-            EpisodeEngine.EnableAllianceLeaks(s);
+            EpisodeEngine.EnableAllianceLeaks(s); EpisodeEngine.EnablePactPlans(s);
             s.unifiedCommitmentRulesVersion = UnifiedCommitments.ProspectiveVersion;
             s.unifiedHearingRulesVersion = UnifiedCommitmentHearings.ProspectiveVersion;
             return s;

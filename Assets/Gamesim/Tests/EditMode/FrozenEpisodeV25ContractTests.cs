@@ -14,7 +14,7 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// Current schema26 mode0/1 compatibility with the complete fixed former25 contract.
+    /// Current schema27 mode0/1 compatibility with the complete fixed former25 contract.
     /// Every positive role, election, duty and hearing is factory/public-Apply produced. Only
     /// fresh rule selection precedes construction; later JSON corruption is explicitly negative.
     /// The explicit neutral bridge is NOT retained historical evidence; the separate immutable
@@ -466,7 +466,7 @@ namespace Gamesim.Tests.EditMode
         {
             string original = Text(payload);
             Assert.That(payload["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
-            Assert.That((int)payload["schemaVersion"], Is.EqualTo(26));
+            Assert.That((int)payload["schemaVersion"], Is.EqualTo(27));
             Assert.DoesNotThrow(() => ValidateCurrentShape(payload));
             var state = payload.ToObject<EpisodeState>(Serializer()); string beforeState = Text(Payload(state));
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
@@ -483,8 +483,11 @@ namespace Gamesim.Tests.EditMode
             Assert.DoesNotThrow(() => ValidateFrozenShape(former));
             string original = Text(former); var current = (JObject)former.DeepClone();
             foreach (JObject row in (JArray)current["unifiedCommitments"])
-            { row.Add("targetId", JValue.CreateNull()); row.Add("subtype", JValue.CreateNull()); }
-            current.Add("unifiedVoteReveals", new JArray()); current["schemaVersion"] = 26;
+            {
+                row.Add("targetId", JValue.CreateNull()); row.Add("subtype", JValue.CreateNull());
+                row.Add("voteBindingWeek", 0); row.Add("voteFirstRevealWeek", 0);
+            }
+            current.Add("unifiedVoteReveals", new JArray()); current["schemaVersion"] = 27;
             Assert.That(Text(former), Is.EqualTo(original)); return current;
         }
         private static JObject NeutralFormer25(JObject current)
@@ -496,7 +499,10 @@ namespace Gamesim.Tests.EditMode
             Assert.That((int)current["unifiedHearingRulesVersion"], Is.InRange(0, 1));
             Assert.That(current["unifiedVoteReveals"], Is.TypeOf<JArray>());
             Assert.That((JArray)current["unifiedVoteReveals"], Is.Empty);
-            var former = (JObject)current.DeepClone(); former.Remove("unifiedVoteReveals");
+            // The native current27->26 helper proves actual full validation, fixed26
+            // acceptance and the real additive migration inverse BEFORE removing markers.
+            var former = (JObject)current.DeepClone(); PersistenceMigrationTests.StripSchema27(former);
+            Assert.That((int)former["schemaVersion"], Is.EqualTo(26)); former.Remove("unifiedVoteReveals");
             foreach (JObject row in (JArray)former["unifiedCommitments"])
             {
                 Assert.That((string)row["kind"], Is.EqualTo(UnifiedCommitments.Safety));
@@ -541,7 +547,7 @@ namespace Gamesim.Tests.EditMode
         {
             string original = Text(payload);
             JObject former;
-            if (payload["schemaVersion"]?.Type == JTokenType.Integer && (int)payload["schemaVersion"] == 26)
+            if (payload["schemaVersion"]?.Type == JTokenType.Integer && (int)payload["schemaVersion"] == 27)
                 former = NeutralFormer25(payload);
             else
             {
@@ -569,7 +575,7 @@ namespace Gamesim.Tests.EditMode
             var state = current.ToObject<EpisodeState>(Serializer());
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.False, "The source-valid baseline has a real former25 invariant defect.");
             Assert.That(reason, Is.Not.Empty);
-            Assert.That(reason, Does.Not.Contain("Unsupported episode schema"), "The companion's literal26 header must not substitute for the intended semantic defect.");
+            Assert.That(reason, Does.Not.Contain("Unsupported episode schema"), "The companion's literal27 header must not substitute for the intended semantic defect.");
             Assert.That(Text(current), Is.EqualTo(currentOriginal));
             Assert.That(Text(payload), Is.EqualTo(original));
             Reject(payload);
@@ -808,7 +814,7 @@ namespace Gamesim.Tests.EditMode
 
         private static void AssertMode(EpisodeState state, int mode)
         {
-            Assert.That(state.schemaVersion, Is.EqualTo(26));
+            Assert.That(state.schemaVersion, Is.EqualTo(27));
             Assert.That((int)NeutralFormer25(Payload(state))["schemaVersion"], Is.EqualTo(25));
             Assert.That(state.unifiedCommitmentRulesVersion, Is.EqualTo(mode == 0 ? 0 : 1));
             Assert.That(state.unifiedHearingRulesVersion, Is.EqualTo(mode == 2 ? 1 : 0));

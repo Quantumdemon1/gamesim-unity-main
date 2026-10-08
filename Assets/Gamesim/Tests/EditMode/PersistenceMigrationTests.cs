@@ -123,6 +123,7 @@ namespace Gamesim.Tests.EditMode
         public static JObject StripSchema26(JObject payload)
         {
             if (payload == null) return null;
+            StripSchema27(payload);
             bool extensions = payload.Property("unifiedVoteReveals") != null
                 || (payload["unifiedCommitments"] is JArray rows && rows.OfType<JObject>()
                     .Any(row => row.Property("targetId") != null || row.Property("subtype") != null));
@@ -131,13 +132,12 @@ namespace Gamesim.Tests.EditMode
             if (!extensions && !currentOrFuture) return payload;
             Assert.That(payload["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
             Assert.That((int)payload["schemaVersion"], Is.EqualTo(26), "Only the exact inert26 capture may be projected.");
-            var saveJson = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.SaveJson", true);
-            var serializer = (JsonSerializer)saveJson.GetMethod("Serializer").Invoke(null, null);
             Assert.DoesNotThrow(() =>
             {
-                saveJson.GetMethod("CheckDtoShape").Invoke(null, new object[] { payload, typeof(Gamesim.Simulation.EpisodeState), "state" });
-                EpisodeSaveValidation.Validate(payload.ToObject<Gamesim.Simulation.EpisodeState>(serializer));
-            }, "A historical projection requires the complete current shape and semantics first.");
+                var fixed26 = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.FrozenEpisodeV26", true);
+                fixed26.GetMethod("Validate", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                    .Invoke(null, new object[] { payload });
+            }, "A genuine historical26 projection requires fixed26, not a growing current DTO.");
             Assert.That((int)payload["unifiedCommitmentRulesVersion"], Is.InRange(0, 1));
             Assert.That(payload["unifiedVoteReveals"], Is.TypeOf<JArray>());
             Assert.That((JArray)payload["unifiedVoteReveals"], Is.Empty, "Never hide actual private reveal evidence.");
@@ -160,6 +160,48 @@ namespace Gamesim.Tests.EditMode
             foreach (var row in ((JArray)payload["unifiedCommitments"]).OfType<JObject>())
             { row.Remove("targetId"); row.Remove("subtype"); }
             payload["schemaVersion"] = 25;
+            return payload;
+        }
+
+        /// <summary>
+        /// Test-only inverse of the inert27 additions. Complete real current validation, literal
+        /// neutrality, fixed26 acceptance and the actual migration inverse precede caller mutation.
+        /// </summary>
+        public static JObject StripSchema27(JObject payload)
+        {
+            if (payload == null) return null;
+            bool markers = payload["unifiedCommitments"] is JArray rows && rows.OfType<JObject>()
+                .Any(row => row.Property("voteBindingWeek") != null || row.Property("voteFirstRevealWeek") != null);
+            bool currentOrFuture = payload["schemaVersion"]?.Type == JTokenType.Integer
+                && (long)payload["schemaVersion"] >= 27;
+            if (!markers && !currentOrFuture) return payload;
+            Assert.That(payload["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
+            Assert.That((int)payload["schemaVersion"], Is.EqualTo(27), "Only the exact inert27 capture may be projected.");
+            var saveJson = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.SaveJson", true);
+            var serializer = (JsonSerializer)saveJson.GetMethod("Serializer").Invoke(null, null);
+            Assert.DoesNotThrow(() =>
+            {
+                saveJson.GetMethod("CheckDtoShape").Invoke(null, new object[] { payload, typeof(Gamesim.Simulation.EpisodeState), "state" });
+                EpisodeSaveValidation.Validate(payload.ToObject<Gamesim.Simulation.EpisodeState>(serializer));
+            }, "A current projection requires complete actual current shape and saved semantics.");
+            Assert.That((int)payload["unifiedCommitmentRulesVersion"], Is.InRange(0, 1));
+            foreach (var row in ((JArray)payload["unifiedCommitments"]).OfType<JObject>())
+                foreach (var marker in new[] { "voteBindingWeek", "voteFirstRevealWeek" })
+                {
+                    Assert.That(row[marker]?.Type, Is.EqualTo(JTokenType.Integer));
+                    Assert.That((long)row[marker], Is.Zero, "Never erase real chronology.");
+                }
+            var projected = (JObject)payload.DeepClone();
+            foreach (var row in ((JArray)projected["unifiedCommitments"]).OfType<JObject>())
+            { row.Remove("voteBindingWeek"); row.Remove("voteFirstRevealWeek"); }
+            projected["schemaVersion"] = 26;
+            JObject restored = null;
+            Assert.DoesNotThrow(() => restored = EpisodeSaveMigrations.UpgradeV26ToV27(projected),
+                "The projected tree must satisfy complete fixed26 before any caller removal.");
+            Assert.That(JToken.DeepEquals(restored, payload), Is.True, "The projection must be the exact two-zero/header inverse.");
+            foreach (var row in ((JArray)payload["unifiedCommitments"]).OfType<JObject>())
+            { row.Remove("voteBindingWeek"); row.Remove("voteFirstRevealWeek"); }
+            payload["schemaVersion"] = 26;
             return payload;
         }
 
@@ -455,13 +497,13 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, original, new UTF8Encoding(false));
             var before = File.ReadAllBytes(fixture.Store.SavePath);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(26));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(27));
             Assert.That(loaded.randomState, Is.Zero);
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(before));
             Assert.That(File.Exists(fixture.Store.BackupPath), Is.False);
             fixture.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(before));
-            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(26));
+            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(27));
         }
 
         [Test]
@@ -487,7 +529,7 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, "damaged primary");
             var before = File.ReadAllBytes(fixture.Store.BackupPath);
             Assert.That(fixture.Store.TryRecoverBackup(out var recovered, out var message), Is.True, message);
-            Assert.That(recovered.schemaVersion, Is.EqualTo(26));
+            Assert.That(recovered.schemaVersion, Is.EqualTo(27));
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(before));
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(before));
             Assert.That(File.ReadAllText(Directory.GetFiles(fixture.DirectoryPath, "*.before-recovery-*.json").Single()),
@@ -550,7 +592,7 @@ namespace Gamesim.Tests.EditMode
             var original = Envelope(payload);
             File.WriteAllText(fixture.Store.SavePath, original);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(26));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(27));
             Assert.That(loaded.finaleRulesStartWeek, Is.Zero, "A legacy finale plays the catalogue's rules.");
             Assert.That(loaded.finalArgument, Is.Null, "and has no final argument.");
             Assert.That(loaded.commitmentRulesStartWeek, Is.Zero, "A legacy season plays without the commitment rules.");

@@ -8,14 +8,14 @@ using NUnit.Framework;
 
 namespace Gamesim.Tests.EditMode
 {
-    /// <summary>Pure in-memory inert26 contracts, not persistence/native or enabled Vote evidence.</summary>
+    /// <summary>Current-producer compatibility for the inert26 leaves; not retained historical26 or native Vote evidence.</summary>
     public sealed class UnifiedVoteInertSchema26Tests
     {
         [TestCase(false)] [TestCase(true)]
         public void ActualFactoriesCreateOnlyEmptyInertStorage(bool builder)
         {
             var s = builder ? SeasonBuilder.Create(new SeasonBuilder.Choice(), 2505) : ContentCatalog.Create(2505);
-            Accepted(s); Assert.That(s.schemaVersion, Is.EqualTo(26));
+            Accepted(s); Assert.That(s.schemaVersion, Is.EqualTo(27));
             Assert.That(s.unifiedCommitmentRulesVersion, Is.Zero); Assert.That(s.unifiedHearingRulesVersion, Is.Zero);
             Assert.That(s.unifiedCommitments, Is.Empty); Assert.That(s.unifiedVoteReveals, Is.Not.Null.And.Empty);
             var clone = s.Clone(); Assert.That(clone.unifiedVoteReveals, Is.Not.SameAs(s.unifiedVoteReveals));

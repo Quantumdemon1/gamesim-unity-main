@@ -372,6 +372,23 @@ namespace Gamesim.Tests.EditMode
         private static void Checkpoint(EpisodeState s, StringBuilder trace)
         {
             var o = JObject.FromObject(s);
+            // Preserve compatibility with recorded older assemblies: only exact27 requires
+            // the new test observer. It validates a separate field view; returned trace26
+            // retains the original computed getters and feeds the unchanged legacy suffix.
+            bool chronology = o["unifiedCommitments"] is JArray canonical && canonical.OfType<JObject>()
+                .Any(row => row.Property("voteBindingWeek") != null || row.Property("voteFirstRevealWeek") != null);
+            Assert.That(o["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
+            if ((long)o["schemaVersion"] >= 27 || chronology)
+            {
+                Assert.That((long)o["schemaVersion"], Is.EqualTo(27), "Do not project future or wrongly grouped chronology.");
+                var observer = typeof(CommitmentRulesSeasonDigests).Assembly
+                    .GetType("Gamesim.Tests.EditMode.LegacyDigestSchema27Observer", true);
+                var method = observer.GetMethod("ProjectTrace", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
+                    null, new[] { typeof(EpisodeState), typeof(JObject) }, null);
+                Assert.That(method, Is.Not.Null, "Exact27 requires its reviewed observer; it never skips an absent dependency.");
+                Assert.That(method.ReturnType, Is.EqualTo(typeof(JObject)));
+                o = (JObject)method.Invoke(null, new object[] { s, o });
+            }
             // Only the literal inert26 archive is removable. This file must also compile
             // against old recorded assemblies, so inspect JSON rather than growing DTO fields.
             bool hasVoteArchive = o.TryGetValue("unifiedVoteReveals", out var voteArchive);

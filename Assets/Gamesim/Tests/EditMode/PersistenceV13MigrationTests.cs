@@ -25,7 +25,7 @@ namespace Gamesim.Tests.EditMode
             var old = V12(); string original = old.ToString();
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(26));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(27));
             Assert.That((int)migrated["competitionRulesVersion"], Is.EqualTo(1));
             foreach (var person in (JArray)migrated["contestants"])
             {
@@ -114,7 +114,10 @@ namespace Gamesim.Tests.EditMode
             string frozen25 = current25.ToString();
             var current26 = EpisodeSaveMigrations.UpgradeV25ToV26(current25);
             Assert.That(current25.ToString(), Is.EqualTo(frozen25));
-            var loaded = current26.ToObject<EpisodeState>(Serializer());
+            string frozen26 = current26.ToString();
+            var current27 = EpisodeSaveMigrations.UpgradeV26ToV27(current26);
+            Assert.That(current26.ToString(), Is.EqualTo(frozen26));
+            var loaded = current27.ToObject<EpisodeState>(Serializer());
             Assert.That(field == "socialActions" ? loaded.socialActions : loaded.outOfPhaseSocialActions, Is.EqualTo(count));
             Assert.That(EpisodeEngine.EconomyRulesOn(loaded), Is.False, "Historical seasons keep the old action economy.");
             Assert.That(EpisodeValidation.TryValidate(loaded, out var error), Is.True, error);

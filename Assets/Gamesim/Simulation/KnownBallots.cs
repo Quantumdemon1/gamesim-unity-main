@@ -656,18 +656,27 @@ namespace Gamesim.Simulation
             /// still in it now, or gone in a later week by the record - less the Head of Household
             /// and the block. Where the count disagrees with this list the list is not trusted for
             /// the last ballot's proof (<see cref="exact"/>).
+            ///
+            /// <para>Production removes only in a post-eviction Social window, after that week's
+            /// reveal, so somebody removed in a week voted in it. Under the commitment rules that
+            /// removal counts them as in the house for their own week's vote, as the completed-reveal
+            /// check does (D1 V1b): without it the list is short by one, the count stops proving the
+            /// last ballot, and a vote deal with the removed voter reads as settled by the player's
+            /// ballot alone - their ballot's outcome shown to the player. A season without the rules
+            /// keeps the list it always read.</para>
             /// </summary>
             private static List<string> Reconstruct(EpisodeState s, int week, Frame frame)
             {
                 var voters = new List<string>();
                 var rows = s.ledger?.power ?? new List<PowerRow>();
                 var removals = s.story?.removals ?? new List<RemovalState>();
+                int removedFrom = EpisodeEngine.CommitmentRulesOn(s) ? week : week + 1;
                 foreach (var c in s.contestants)
                 {
                     if (c == null || c.id == frame.hohId || frame.nominees.Contains(c.id)) continue;
                     bool inHouse = c.status == ContestantStatus.Active || c.status == ContestantStatus.Winner || c.status == ContestantStatus.RunnerUp
                         || rows.Any(p => p != null && p.evicteeId == c.id && p.week > week)
-                        || removals.Any(r => r != null && r.contestantId == c.id && r.week > week);
+                        || removals.Any(r => r != null && r.contestantId == c.id && r.week >= removedFrom);
                     if (inHouse) voters.Add(c.id);
                 }
                 return voters;

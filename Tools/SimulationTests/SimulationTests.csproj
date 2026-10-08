@@ -86,6 +86,7 @@
     <Compile Include="$(EditMode)UnifiedVoteProspectiveAdmissionTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteProspectiveJuryTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteProspectiveWholeStateTests.cs" />
+    <Compile Include="$(EditMode)OrdinaryVoterRemovalTests.cs" />
     <Compile Include="$(EditMode)CommitmentReferencesTests.cs" />
     <Compile Include="$(EditMode)UnifiedCommitmentStoreTests.cs" />
     <Compile Include="$(EditMode)UnifiedSafetyCommandOwnerTests.cs" />

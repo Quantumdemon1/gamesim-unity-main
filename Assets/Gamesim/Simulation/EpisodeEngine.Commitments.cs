@@ -143,6 +143,7 @@ namespace Gamesim.Simulation
         private static void EndWithTheEvictee(EpisodeState s, string evictedId)
         {
             if (string.IsNullOrEmpty(evictedId)) return;
+            ResolveUnifiedVoteExpiry(s, UnifiedCommitmentExpiry.Departure, evictedId);
             ResolveUnifiedSafetyExpiry(s, UnifiedCommitmentExpiry.Departure, evictedId);
             foreach (var deal in s.deals.Where(d => DealStatus.Binds(d.status)
                          && (d.proposerId == evictedId || d.recipientId == evictedId || d.targetId == evictedId)))

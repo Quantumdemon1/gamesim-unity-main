@@ -22,8 +22,9 @@ namespace Gamesim.Simulation
     /// skip past: it is thrown as the whole command's refusal (<see cref="Refused"/>), so a failing state
     /// cannot silently drop a house pass's or a story's row.</para>
     ///
-    /// <para>Settlement, the reveal's archive, endings and the readers are not this writer's: under mode 2
-    /// a written row stays as written until those slices land.</para>
+    /// <para>Settlement, the reveal's archive and the endings are not this writer's: the reveal stamps and
+    /// publishes them, and the week's turn, deal pass, departures, removals and voided prices end them
+    /// (<see cref="UnifiedVoteSettlement"/>, EpisodeEngine.UnifiedVote, vote family V4). The readers move in V5.</para>
     /// </summary>
     internal static class UnifiedVoteStore
     {

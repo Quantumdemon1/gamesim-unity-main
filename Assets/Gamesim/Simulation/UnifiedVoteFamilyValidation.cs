@@ -326,14 +326,7 @@ namespace Gamesim.Simulation
             var draft = row.Clone(); draft.status = DealStatus.Active;
             foreach (var frame in archive)
             {
-                if (frame.week < row.voteFirstRevealWeek || frame.week > cutoff
-                    || row.expiresWeek != 0 && frame.week > row.expiresWeek) continue;
-                // Engine454 passes LeverRulesOn at the ACTUAL reveal week. Only targeted
-                // Deal Save/Evict uses that gate (DealResolution329); Promise and Together
-                // status verdicts remain unconditional even before C0 metadata stamping.
-                if (row.sourcePolicy == UnifiedCommitments.DealPolicy
-                    && (row.subtype == DealKind.VoteSave || row.subtype == DealKind.VoteEvict)
-                    && (s.leverRulesStartWeek < 1 || frame.week < s.leverRulesStartWeek)) continue;
+                if (!Eligible(s, row, frame.week, cutoff)) continue;
                 var power = s.ledger.power.First(item => item.week == frame.week);
                 if (row.sourcePolicy == UnifiedCommitments.DealPolicy && row.subtype == DealKind.VoteTogether)
                 {
@@ -350,7 +343,26 @@ namespace Gamesim.Simulation
             return true;
         }
 
-        private static int EndingCutoff(EpisodeState s, UnifiedCommitmentState row)
+        /// <summary>
+        /// Whether a regular reveal in <paramref name="week"/> may decide this row at all: no earlier than its first
+        /// reveal floor, no later than its ending <paramref name="cutoff"/> or its finite term, and - for a targeted
+        /// Save/Evict deal only - at a week the levers were on. The one predicate the family validation proves a
+        /// terminal row by (<see cref="FirstDecision"/>) and the reveal's settlement decides it by
+        /// (<see cref="UnifiedVoteSettlement"/>).
+        /// </summary>
+        internal static bool Eligible(EpisodeState s, UnifiedCommitmentState row, int week, int cutoff)
+        {
+            if (week < row.voteFirstRevealWeek || week > cutoff || row.expiresWeek != 0 && week > row.expiresWeek) return false;
+            // Engine454 passes LeverRulesOn at the ACTUAL reveal week. Only targeted
+            // Deal Save/Evict uses that gate (DealResolution329); Promise and Together
+            // status verdicts remain unconditional even before C0 metadata stamping.
+            return !(row.sourcePolicy == UnifiedCommitments.DealPolicy
+                && (row.subtype == DealKind.VoteSave || row.subtype == DealKind.VoteEvict)
+                && (s.leverRulesStartWeek < 1 || week < s.leverRulesStartWeek));
+        }
+
+        /// <summary>The last week a regular reveal may still decide this row: its parties' or target's departure, or its price's void.</summary>
+        internal static int EndingCutoff(EpisodeState s, UnifiedCommitmentState row)
         {
             int cutoff = s.week;
             bool promise = row.sourcePolicy == UnifiedCommitments.PromisePolicy;
@@ -361,29 +373,48 @@ namespace Gamesim.Simulation
                 foreach (var power in s.ledger.power)
                     if (power.evicteeId == row.makerId || power.evicteeId == row.beneficiaryId
                         || power.evicteeId != null && power.evicteeId == row.targetId) cutoff = Math.Min(cutoff, power.week);
-            var price = row.sourcePolicy == UnifiedCommitments.DealPolicy ? UnifiedVoteReferences.ProjectDeal(row) : null;
-            if (price != null && Price(price) && row.linkedCommitmentId != null)
-            {
-                var bought = UnifiedVoteReferences.DealsUnchecked(s).FirstOrDefault(item => item.id == row.linkedCommitmentId);
-                if (bought != null && bought.status == DealStatus.Broken && bought.brokenById == price.recipientId
-                    && bought.settledWeek > 0 && !KnownBallots.SettledByABallot(bought)
-                    && (price.expiresWeek == 0 || bought.settledWeek <= price.expiresWeek))
-                    // Actual regular Reveal settles Vote Verdicts BEFORE SettleVoteRead judges
-                    // InformationSharing lies (Engine454/475, VoteRead198). That same frame can
-                    // already decide the price, so even an Expired claim cannot erase it. Other
-                    // non-ballot bought actions settle before the regular reveal and cut it off.
-                    cutoff = Math.Min(cutoff, bought.settledWeek - (bought.type == DealKind.InformationSharing ? 0 : 1));
-            }
+            var bought = VoidingBreach(s, row);
+            if (bought != null)
+                // Actual regular Reveal settles Vote Verdicts BEFORE SettleVoteRead judges
+                // InformationSharing lies (Engine454/475, VoteRead198). That same frame can
+                // already decide the price, so even an Expired claim cannot erase it. Other
+                // non-ballot bought actions settle before the regular reveal and cut it off.
+                cutoff = Math.Min(cutoff, bought.settledWeek - (bought.type == DealKind.InformationSharing ? 0 : 1));
             return cutoff;
         }
 
+        /// <summary>
+        /// The breach that voids this row, when it is a price: what it bought, broken by the one the price is owed
+        /// to, by an act and not a ballot, while the price still bound (EpisodeEngine.VoidThePrice's own rule).
+        /// The source voids such a price in the command that breaks what it bought, so from then on the price has
+        /// ended, whatever week it is: an Active one has outlived its ending, and an Expired one is that ending -
+        /// even in the week an information deal's lie, judged after the reveal, ends it (vote family V4).
+        /// </summary>
+        private static DealState VoidingBreach(EpisodeState s, UnifiedCommitmentState row)
+        {
+            var price = row.sourcePolicy == UnifiedCommitments.DealPolicy ? UnifiedVoteReferences.ProjectDeal(row) : null;
+            if (price == null || !Price(price) || row.linkedCommitmentId == null) return null;
+            var bought = UnifiedVoteReferences.DealsUnchecked(s).FirstOrDefault(item => item.id == row.linkedCommitmentId);
+            return bought != null && bought.status == DealStatus.Broken && bought.brokenById == price.recipientId
+                && bought.settledWeek > 0 && !KnownBallots.SettledByABallot(bought)
+                && (price.expiresWeek == 0 || bought.settledWeek <= price.expiresWeek) ? bought : null;
+        }
+
+        /// <summary>
+        /// Whether an Expired row has an ending to have expired by: its term passed, or an ending that exists -
+        /// including, at regular Results, this week's evictee's departure, which the following Advance writes
+        /// first thing and so may already have written (vote family V4).
+        /// </summary>
         private static bool CompatibleEnding(EpisodeState s, UnifiedCommitmentState row)
         {
             if (row.expiresWeek > 0 && row.expiresWeek < s.week) return true;
-            return PublishedEnding(s, row);
+            return Ending(s, row, true);
         }
 
-        private static bool PublishedEnding(EpisodeState s, UnifiedCommitmentState row)
+        /// <summary>Whether a still-binding row has outlived an ending the source has already written.</summary>
+        private static bool PublishedEnding(EpisodeState s, UnifiedCommitmentState row) => Ending(s, row, false);
+
+        private static bool Ending(EpisodeState s, UnifiedCommitmentState row, bool departureDue)
         {
             bool promise = row.sourcePolicy == UnifiedCommitments.PromisePolicy;
             if (s.story.removals.Any(item => item.contestantId == row.makerId || item.contestantId == row.beneficiaryId
@@ -392,10 +423,10 @@ namespace Gamesim.Simulation
                 || item.evicteeId != null && item.evicteeId == row.targetId)
                 // At regular Results the ballot writer has marked the evictee Jury, but
                 // EndWithTheEvictee still belongs to the subsequent real Advance command.
-                && (item.week < s.week || s.phase != EpisodePhase.Eviction || !s.evictionResolved
+                && (departureDue || item.week < s.week || s.phase != EpisodePhase.Eviction || !s.evictionResolved
                     || s.evictionStage != EvictionStage.Results))) return true;
             return EndingCutoff(s, row) < s.week || row.linkedCommitmentId != null
-                && EndingCutoff(s, row) < row.voteFirstRevealWeek;
+                && (EndingCutoff(s, row) < row.voteFirstRevealWeek || VoidingBreach(s, row) != null);
         }
 
         private static bool ValidateBindingDuties(EpisodeState s, out string error)

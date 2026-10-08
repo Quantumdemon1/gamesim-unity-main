@@ -432,6 +432,9 @@ namespace Gamesim.Simulation
         /// </summary>
         private static void Expire(EpisodeState state)
         {
+            // Mode 2 (vote family V4): the canonical vote deals and offers past their week end here too - first, so
+            // the safety gateway's check of the whole commitment storage meets them already ended.
+            EpisodeEngine.ResolveUnifiedVoteExpiry(state, UnifiedCommitmentExpiry.DealPass);
             if (UnifiedCommitments.SafetyAuthorityOn(state))
                 EpisodeEngine.ResolveUnifiedSafetyExpiry(state, UnifiedCommitmentExpiry.DealPass);
             foreach (var deal in state.deals)

@@ -470,6 +470,19 @@ namespace Gamesim.Tests.EditMode
             Assert.That(u.events.Any(e => e.kind == "eavesdrop" && e.text.Contains("From the way they talked")), Is.False);
         }
 
+        /// <summary>
+        /// The shared builder (X5): with every clause empty it is the line the season always said; with
+        /// them, in the plan's order - what was overheard, the vote, D2's act, D4's sentence.
+        /// </summary>
+        [Test]
+        public void TheEavesdropLineIsTodaysLineAndThenItsClausesInOrder()
+        {
+            Assert.That(EpisodeEngine.EavesdropLine("Riley Chen", "Jo Park", "sounded close", "", null, null),
+                Is.EqualTo("You overheard Riley Chen and Jo Park. They sounded close."));
+            Assert.That(EpisodeEngine.EavesdropLine("Riley Chen", "Jo Park", "sounded close", " [vote]", " [act]", " [pact]"),
+                Is.EqualTo("You overheard Riley Chen and Jo Park. They sounded close. [vote] [act] [pact]"));
+        }
+
         /// <summary>The listen-in as the player presses it: one command, accepted, and the season legal after it.</summary>
         [Test]
         public void TheListenInIsOneLegalCommand()

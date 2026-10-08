@@ -41,18 +41,27 @@ namespace Gamesim.Simulation
         public static bool RulesOn(EpisodeState s) => s != null
             && s.unifiedHearingRulesVersion == ProspectiveVersion && UnifiedCommitments.RulesOn(s);
 
-        public static bool ValidateStorage(EpisodeState s, out string error)
+        public static bool ValidateStorage(EpisodeState s, out string error) => ValidateStorageCore(s, false, out error);
+
+        internal static bool TryValidateProspectiveVoteStorage(EpisodeState s, out string error) => ValidateStorageCore(s, true, out error);
+
+        private static bool ValidateStorageCore(EpisodeState s, bool prospectiveVote, out string error)
         {
             error = null;
             if (s == null || s.unifiedHearingEvidence == null || s.unifiedHearingReceipts == null)
                 return Refuse(out error, "Missing durable hearing storage.");
+            if (prospectiveVote && s.unifiedCommitmentRulesVersion != UnifiedVoteFamilyValidation.Version)
+                return Refuse(out error, "Expected explicit prospective Vote hearing storage.");
             if (s.unifiedHearingRulesVersion == 0)
                 return (s.unifiedHearingEvidence.Count == 0 && s.unifiedHearingReceipts.Count == 0)
                     || Refuse(out error, "Disabled hearing authority must remain empty.");
-            if (!RulesOn(s) || !YourWord.On(s) || s.story?.facts == null || s.story.facts.Any(f => f == null)
+            bool enabled = prospectiveVote ? s.unifiedHearingRulesVersion == ProspectiveVersion : RulesOn(s);
+            if (!enabled || !YourWord.On(s) || s.story?.facts == null || s.story.facts.Any(f => f == null)
                 || s.unifiedHearingEvidence.Count > EvidenceCapacity || s.unifiedHearingReceipts.Count > ReceiptCapacity)
                 return Refuse(out error, "Invalid prospective hearing storage.");
-            if (!UnifiedCommitments.ValidateRecords(s, out error)) return false;
+            if (prospectiveVote
+                ? !UnifiedVoteFamilyValidation.TryValidate(s, s.unifiedVoteReveals, out error)
+                : !UnifiedCommitments.ValidateRecords(s, out error)) return false;
             IReadOnlyList<UnifiedCommitmentIncident> incidents;
             try { incidents = UnifiedCommitmentHistory.Breaches(s); }
             catch (ArgumentException e) { return Refuse(out error, e.Message); }
@@ -109,7 +118,7 @@ namespace Gamesim.Simulation
         }
 
         internal static bool CanonicalLeaf(EpisodeState s, HouseFactState fact) =>
-            fact != null && s.unifiedCommitments.Any(row => row.id == fact.refId);
+            fact != null && s.unifiedCommitments.Any(row => row.kind == UnifiedCommitments.Safety && row.id == fact.refId);
 
         /// <summary>Called only after the actual selected deal source emitted its real fact.</summary>
         internal static void RecordInitial(EpisodeState s, HouseFactState fact)
@@ -225,7 +234,7 @@ namespace Gamesim.Simulation
             && i.ActorId == s.playerId && i.ActorId == f.actorId && i.WrongedId == f.subjectId && i.EvidenceIds.Contains(f.refId)
             // Current sources emit no PromisePolicy-ref BrokenWord. A genuine heard deal alias may
             // differ from a stronger promise owner, but observing it never proves an initial emission.
-            && s.unifiedCommitments.Any(row => row.id == f.refId && row.sourcePolicy == UnifiedCommitments.DealPolicy
+            && s.unifiedCommitments.Any(row => row.kind == UnifiedCommitments.Safety && row.id == f.refId && row.sourcePolicy == UnifiedCommitments.DealPolicy
                 && row.settledWeek == f.week);
         private static bool ValidFact(EpisodeState s, HouseFactState f) => f != null && FactIdentity(s, f.id) && Token(f.refId)
             && f.kind == FactKinds.BrokenWord && f.actorId == s.playerId && s.Find(f.subjectId) != null

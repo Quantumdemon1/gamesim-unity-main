@@ -419,6 +419,30 @@ namespace Gamesim.Simulation
                 if (canonical != null && canonical.sourcePolicy == UnifiedCommitments.DealPolicy
                     && canonical.status == DealStatus.Broken) return canonical.brokenById;
             }
+            if (s.unifiedCommitmentRulesVersion == UnifiedVoteFamilyValidation.Version)
+            {
+                var canonical = CommitmentReferences.FindCanonical(s, deal.id);
+                if (canonical != null && canonical.sourcePolicy == UnifiedCommitments.DealPolicy
+                    && canonical.status == DealStatus.Broken)
+                {
+                    if (canonical.kind == UnifiedCommitments.Safety) return canonical.brokenById;
+                    if (canonical.kind == UnifiedVoteTogether.Vote)
+                    {
+                        // A Together break still has no sole public breaker. Targeted duties
+                        // use their actual first decision, never an earlier created-week ballot.
+                        if (canonical.subtype == DealKind.VoteTogether) return null;
+                        var decision = UnifiedVoteHistory.FindDecision(s, canonical.id);
+                        if (decision == null) return null;
+                        var own = decision.Reveal.ballots.FirstOrDefault(b => b.voterId == player);
+                        bool mine = own != null && (canonical.subtype == DealKind.VoteEvict
+                            ? own.targetId != canonical.targetId : own.targetId == canonical.targetId);
+                        if (mine) return player;
+                        string partner = canonical.makerId == player ? canonical.beneficiaryId : canonical.makerId;
+                        return decision.ActorId == partner && KnownBallots.Knows(s, decision.SettledWeek, partner)
+                            ? partner : null;
+                    }
+                }
+            }
             string other = deal.proposerId == player ? deal.recipientId : deal.proposerId;
             var rows = s.ledger?.power ?? new List<PowerRow>();
             bool Final(PowerRow p) => p.tally.Count == 0 && p.evicteeId != null && p.vetoHolderId == null;

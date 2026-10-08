@@ -500,6 +500,13 @@ namespace Gamesim.Simulation
         public static int PromiseSettledWeek(EpisodeState s, PromiseState p)
         {
             if (s == null || p == null) return 0;
+            if (s.unifiedCommitmentRulesVersion == UnifiedVoteFamilyValidation.Version)
+            {
+                var canonical = CommitmentReferences.FindCanonical(s, p.id);
+                if (canonical != null && canonical.kind == UnifiedVoteTogether.Vote
+                    && canonical.sourcePolicy == UnifiedCommitments.PromisePolicy)
+                    return canonical.settledWeek;
+            }
             int last = p.expiresWeek >= p.week && p.expiresWeek > 0 ? p.expiresWeek : s.week;
             foreach (int week in Weeks(s))
             {
@@ -514,6 +521,13 @@ namespace Gamesim.Simulation
         public static int DealSettledWeek(EpisodeState s, DealState d, string partnerId)
         {
             if (s == null || d == null) return 0;
+            if (s.unifiedCommitmentRulesVersion == UnifiedVoteFamilyValidation.Version)
+            {
+                var canonical = CommitmentReferences.FindCanonical(s, d.id);
+                if (canonical != null && canonical.kind == UnifiedVoteTogether.Vote
+                    && canonical.sourcePolicy == UnifiedCommitments.DealPolicy)
+                    return canonical.settledWeek;
+            }
             if (d.type == DealKind.Partnership) return Math.Max(0, d.settledWeek);
             int last = d.expiresWeek >= d.week && d.expiresWeek > 0 ? d.expiresWeek : s.week;
             foreach (int week in Weeks(s))

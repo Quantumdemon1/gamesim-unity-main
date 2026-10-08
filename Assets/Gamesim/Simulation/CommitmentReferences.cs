@@ -21,6 +21,8 @@ namespace Gamesim.Simulation
         public static IReadOnlyList<PromiseState> Promises(EpisodeState state)
         {
             CheckRules(state);
+            if (state.unifiedCommitmentRulesVersion == UnifiedVoteFamilyValidation.Version)
+                return UnifiedVoteReferences.PromisesUnchecked(state);
             var rows = state.promises.Select(row => row?.Clone()).ToList();
             if (UnifiedCommitments.RulesOn(state))
                 rows.AddRange(state.unifiedCommitments.Where(row => row.sourcePolicy == UnifiedCommitments.PromisePolicy)
@@ -32,6 +34,8 @@ namespace Gamesim.Simulation
         public static IReadOnlyList<DealState> Deals(EpisodeState state)
         {
             CheckRules(state);
+            if (state.unifiedCommitmentRulesVersion == UnifiedVoteFamilyValidation.Version)
+                return UnifiedVoteReferences.DealsUnchecked(state);
             var rows = state.deals.Select(row => row?.Clone()).ToList();
             if (UnifiedCommitments.RulesOn(state))
                 rows.AddRange(state.unifiedCommitments.Where(row => row.sourcePolicy == UnifiedCommitments.DealPolicy)
@@ -43,6 +47,8 @@ namespace Gamesim.Simulation
         public static int PromiseCount(EpisodeState state)
         {
             CheckRules(state);
+            if (state.unifiedCommitmentRulesVersion == UnifiedVoteFamilyValidation.Version)
+                return state.promises.Count + state.unifiedCommitments.Count(row => row.sourcePolicy == UnifiedCommitments.PromisePolicy);
             return state.promises.Count + (UnifiedCommitments.RulesOn(state)
                 ? state.unifiedCommitments.Count(row => row.sourcePolicy == UnifiedCommitments.PromisePolicy) : 0);
         }
@@ -51,6 +57,8 @@ namespace Gamesim.Simulation
         public static int DealCount(EpisodeState state)
         {
             CheckRules(state);
+            if (state.unifiedCommitmentRulesVersion == UnifiedVoteFamilyValidation.Version)
+                return state.deals.Count + state.unifiedCommitments.Count(row => row.sourcePolicy == UnifiedCommitments.DealPolicy);
             return state.deals.Count + (UnifiedCommitments.RulesOn(state)
                 ? state.unifiedCommitments.Count(row => row.sourcePolicy == UnifiedCommitments.DealPolicy) : 0);
         }
@@ -72,6 +80,8 @@ namespace Gamesim.Simulation
         public static UnifiedCommitmentState FindCanonical(EpisodeState state, string id)
         {
             CheckRules(state);
+            if (state.unifiedCommitmentRulesVersion == UnifiedVoteFamilyValidation.Version)
+                return id == null ? null : state.unifiedCommitments.FirstOrDefault(row => row.id == id)?.Clone();
             return id == null || !UnifiedCommitments.RulesOn(state) ? null
                 : state.unifiedCommitments.FirstOrDefault(row => row.id == id)?.Clone();
         }
@@ -108,6 +118,12 @@ namespace Gamesim.Simulation
             if (state == null) throw new ArgumentNullException(nameof(state));
             // Do not add new validity checks to legacy reader paths or rewrite their records.
             if (state.unifiedCommitmentRulesVersion == 0) return;
+            if (state.unifiedCommitmentRulesVersion == UnifiedVoteFamilyValidation.Version)
+            {
+                if (!UnifiedVoteFamilyValidation.TryValidate(state, state.unifiedVoteReveals, out string aggregateError))
+                    throw new ArgumentException(aggregateError, nameof(state));
+                return;
+            }
             if (!UnifiedCommitments.ValidateRecords(state, out string error))
                 throw new ArgumentException(error, nameof(state));
         }

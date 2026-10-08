@@ -115,12 +115,13 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// Whether a houseguest has a rival among the pact's other members in the house: one they hold a
-        /// grudge of twenty or more against, or think ten or more below nothing of. Deterministic, no draw.
+        /// Whether a houseguest has a rival among the pact's other members (WAVE-D-NPC-PACTS-PLAN §2.3,
+        /// "some other member"): one they hold a grudge of twenty or more against, or think ten or more
+        /// below nothing of. A member who has left the house is still in the pact - eviction takes nobody
+        /// out of one - so the player kept a pact with them all the same. Deterministic, no draw.
         /// </summary>
         public static bool HasRival(EpisodeState s, string knowerId, AllianceState pact) =>
             pact?.members != null && pact.members.Any(id => id != s.playerId && id != knowerId
-                && s.Find(id)?.status == ContestantStatus.Active
                 && (Grudges.Severity(s, knowerId, id) >= RivalGrudge || s.Score(knowerId, id) <= RivalScore));
 
         /// <summary>

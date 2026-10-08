@@ -672,6 +672,20 @@ namespace Gamesim.Tests.EditMode
             Grudges.Add(stack, stackAlly.id, stack.playerId, 10, GrudgeCauses.Story);
             Tell(stack, stack.playerId, m[1].id, stackAlly.id);
             Assert.That(Grudges.Severity(stack, stackAlly.id, stack.playerId), Is.EqualTo(10 + 48 * 0.5).Within(1e-9));
+
+            // A rival who has left the house is still in the pact (eviction takes nobody out of one), and
+            // still a rival: "some other member" (§2.3). The line names the partner left in the house.
+            var (gone, goneAlly, goneOther) = Juggling();
+            var g = Others(gone);
+            Grudges.Add(gone, goneAlly.id, g[2].id, AllianceLeaks.RivalGrudge, GrudgeCauses.Story);
+            g[2].status = ContestantStatus.Evicted;
+            Assert.That(goneOther.active && goneOther.members.Contains(g[2].id), Is.True, "Evicted, and still in the pact.");
+            Assert.That(AllianceLeaks.HasRival(gone, goneAlly.id, goneOther), Is.True, "A member out of the house is a rival all the same.");
+            Tell(gone, gone.playerId, g[1].id, goneAlly.id);
+            Assert.That(DoubleDealingLines(gone).Single().text, Is.EqualTo(goneAlly.name + " found out about The other Pact, your alliance with "
+                + g[1].name + ". They won't forget you kept it from them."));
+            Assert.That(Receipts(gone, goneAlly.id), Is.Empty, "A grudge, not the receipt.");
+            Assert.That(Grudges.Severity(gone, goneAlly.id, gone.playerId), Is.EqualTo(48).Within(1e-9));
         }
 
         [Test]

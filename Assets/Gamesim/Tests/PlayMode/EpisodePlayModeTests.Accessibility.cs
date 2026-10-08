@@ -142,7 +142,8 @@ namespace Gamesim.Tests.PlayMode
         /// without presenting, so screen captures come back solid black — the standalone harness's
         /// own PNGs from such a run are all identical black frames, which is worth knowing before
         /// anyone treats them as visual evidence. Pointing the scene camera at a RenderTexture and
-        /// rendering the HUD through it produces a real frame.</para>
+        /// drawing the HUD over it through the capture's lens (<see cref="CaptureLens"/>) produces a
+        /// real frame.</para>
         /// </summary>
         [UnityTest]
         public IEnumerator Accessibility_CapturesTheHudOverTheSetForReview()
@@ -154,63 +155,41 @@ namespace Gamesim.Tests.PlayMode
             // review frames quietly misleading about what the game looks like.
             yield return SettleCast();
 
-            var camera = cameraRig.ViewCamera;
             var canvas = director.GetComponentsInChildren<Canvas>(true)
                 .FirstOrDefault(c => c.renderMode == RenderMode.ScreenSpaceOverlay && c.isActiveAndEnabled);
             Assert.That(canvas, Is.Not.Null, "The HUD canvas should be a screen-space overlay.");
 
-            var previousMode = canvas.renderMode;
-            var previousTarget = camera.targetTexture;
-            try
+            foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1600, 900), new Vector2Int(2560, 1440) })
             {
-                canvas.renderMode = RenderMode.ScreenSpaceCamera;
-                canvas.worldCamera = camera;
-                canvas.planeDistance = Mathf.Max(camera.nearClipPlane + 0.1f, 1f);
-
-                foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1600, 900), new Vector2Int(2560, 1440) })
+                var lens = new CaptureLens(cameraRig.ViewCamera, size.x, size.y);
+                Texture2D readback = null;
+                try
                 {
-                    var texture = new RenderTexture(size.x, size.y, 24);
-                    var readback = new Texture2D(size.x, size.y, TextureFormat.RGB24, false);
-                    var previousActive = RenderTexture.active;
-                    try
-                    {
-                        camera.targetTexture = texture;
-                        Canvas.ForceUpdateCanvases();
-                        yield return null;
-                        camera.Render();
+                    Canvas.ForceUpdateCanvases();
+                    yield return null;
+                    yield return lens.MakeSureTheCanvasesAreDrawn();
+                    readback = lens.Read();
 
-                        RenderTexture.active = texture;
-                        readback.ReadPixels(new Rect(0, 0, size.x, size.y), 0, 0);
-                        readback.Apply();
+                    var pixels = readback.GetPixels32();
+                    var distinct = new System.Collections.Generic.HashSet<int>();
+                    for (int i = 0; i < pixels.Length; i += 53)
+                        distinct.Add((pixels[i].r << 16) | (pixels[i].g << 8) | pixels[i].b);
+                    Assert.That(distinct.Count, Is.GreaterThan(8),
+                        "The " + size.x + "x" + size.y + " capture has only " + distinct.Count +
+                        " sampled colours, so the set and HUD did not both render.");
 
-                        var pixels = readback.GetPixels32();
-                        var distinct = new System.Collections.Generic.HashSet<int>();
-                        for (int i = 0; i < pixels.Length; i += 53)
-                            distinct.Add((pixels[i].r << 16) | (pixels[i].g << 8) | pixels[i].b);
-                        Assert.That(distinct.Count, Is.GreaterThan(8),
-                            "The " + size.x + "x" + size.y + " capture has only " + distinct.Count +
-                            " sampled colours, so the set and HUD did not both render.");
-
-                        var path = System.IO.Path.GetFullPath(System.IO.Path.Combine(
-                            Application.dataPath, "..", "hud-over-set-" + size.x + "x" + size.y + ".png"));
-                        System.IO.File.WriteAllBytes(path, readback.EncodeToPNG());
-                        Debug.Log("[Gamesim] HUD review capture -> " + path + " (" + distinct.Count + " sampled colours)");
-                    }
-                    finally
-                    {
-                        RenderTexture.active = previousActive;
-                        camera.targetTexture = previousTarget;
-                        Object.Destroy(readback);
-                        texture.Release();
-                        Object.Destroy(texture);
-                    }
+                    var path = System.IO.Path.GetFullPath(System.IO.Path.Combine(
+                        Application.dataPath, "..", "hud-over-set-" + size.x + "x" + size.y + ".png"));
+                    System.IO.File.WriteAllBytes(path, readback.EncodeToPNG());
+                    Debug.Log("[Gamesim] HUD review capture -> " + path + " (" + distinct.Count + " sampled colours)");
+                }
+                finally
+                {
+                    lens.Dispose();
+                    if (readback != null) Object.Destroy(readback);
                 }
             }
-            finally
-            {
-                canvas.renderMode = previousMode;
-                camera.targetTexture = previousTarget;
-            }
+            Assert.That(canvas.renderMode, Is.EqualTo(RenderMode.ScreenSpaceOverlay), "The HUD is an overlay again after its captures.");
         }
 
         /// <summary>
@@ -319,39 +298,42 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Photographs what the player would see - the view camera with every overlay canvas drawn
-        /// through it - into <c>{name}.png</c> beside the project, and fails a frame that did not
-        /// render.
+        /// Photographs what the player would see - the set through the view camera, and every
+        /// overlay canvas drawn over it as the screen draws them (<see cref="CaptureLens"/>) - into
+        /// <c>{name}.png</c> beside the project, and fails a frame that did not render.
         ///
         /// <para><paramref name="inspect"/>, when given, is handed the frame before it is thrown
-        /// away, while the overlays are still drawn through the camera: a
-        /// <see cref="RectTransform"/>'s world corners projected by the view camera are then its
-        /// pixels in the frame, which is how a caller asks whether a portrait or a card actually drew
-        /// where it stands (<see cref="AssertRegionHasContent"/>). A whole-frame check cannot tell a
-        /// face from the empty disc it lands in.</para>
+        /// away, while the lens is still up: a <see cref="RectTransform"/>'s world corners projected
+        /// through its canvas's camera (<see cref="LensOf"/>) are then its pixels in the frame,
+        /// which is how a caller asks whether a portrait or a card actually drew where it stands
+        /// (<see cref="AssertRegionHasContent"/>). A whole-frame check cannot tell a face from the
+        /// empty disc it lands in.</para>
+        ///
+        /// <para><paramref name="arrange"/>, when given, runs once the HUD has been laid out again for
+        /// the frame, with a frame after it: the render rebuilds the panels, so a scroll the caller
+        /// set before the capture is set again here.</para>
+        ///
+        /// <para><paramref name="panel"/>, when given, finds the panel the frame was taken for, and
+        /// the capture proves it is in the frame: its rect is not one flat colour, and with its ground
+        /// painted the probe's magenta a frame before the frame is drawn again - a colour set and
+        /// drawn in one frame is not yet the canvas's - the paint shows in every ninth of it
+        /// (<see cref="AssertTheGroundShowsEverywhere"/>). The panel is found again after that
+        /// frame, and a new copy painted too: the HUD can render in between.</para>
         ///
         /// <para>The frame is 1600 by 900 unless <paramref name="width"/> and <paramref name="height"/>
         /// say otherwise: 1200 by 900 photographs a 4:3 layout as the batch canvas laid it out.</para>
         /// </summary>
-        private IEnumerator CaptureFraming(string name, bool settle = true, Action<Texture2D> inspect = null, int width = 1600, int height = 900)
+        private IEnumerator CaptureFraming(string name, bool settle = true, Action<Texture2D> inspect = null, int width = 1600, int height = 900,
+            (Func<RectTransform> Find, string What)? panel = null, Action arrange = null, Action<string> observe = null,
+            Func<IEnumerator> prepare = null)
         {
-            var camera = cameraRig.ViewCamera;
-            var overlays = Object.FindObjectsByType<Canvas>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
-                .Where(canvas => canvas.renderMode == RenderMode.ScreenSpaceOverlay).ToArray();
-
-            var texture = new RenderTexture(width, height, 24);
-            var readback = new Texture2D(width, height, TextureFormat.RGB24, false);
-            var previousTarget = camera.targetTexture;
-            var previousActive = RenderTexture.active;
+            observe?.Invoke("capture entered");
+            var lens = new CaptureLens(cameraRig.ViewCamera, width, height);
+            Texture2D readback = null, probe = null;
+            var painted = new List<(Image Ground, Color Was)>();
             try
             {
-                camera.targetTexture = texture;
-                foreach (var canvas in overlays)
-                {
-                    canvas.renderMode = RenderMode.ScreenSpaceCamera;
-                    canvas.worldCamera = camera;
-                    canvas.planeDistance = Mathf.Max(camera.nearClipPlane + 0.1f, 1f);
-                }
+                observe?.Invoke("capture lens constructed");
                 // Let queued portraits land first: a frame with empty discs where the faces go
                 // cannot say what the screen looks like. The studio builds one look at a time, so
                 // in a short filtered run the queue can still be working seconds after the panel
@@ -371,13 +353,41 @@ namespace Gamesim.Tests.PlayMode
                 // kept its 4:3 numbers and photographed distorted, which made the review frames
                 // unusable for judging a screen against its mockup.
                 RenderHudForTheCurrentCanvas();
+                observe?.Invoke("capture before layout frame");
                 yield return null;
-                Canvas.ForceUpdateCanvases();
-                camera.Render();
-
-                RenderTexture.active = texture;
-                readback.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-                readback.Apply();
+                observe?.Invoke("capture after layout frame");
+                if (arrange != null)
+                {
+                    arrange();
+                    Canvas.ForceUpdateCanvases();
+                    yield return null;
+                }
+                observe?.Invoke("capture before guard preparation");
+                yield return lens.MakeSureTheCanvasesAreDrawn();
+                observe?.Invoke("capture after guard preparation");
+                // Creator previews may rebuild after the lens changes their layout. Their optional
+                // preparation runs against this final canvas, before reading its actual frame.
+                // Every existing caller keeps its previous timing when no preparation is supplied.
+                if (prepare != null)
+                {
+                    var preparation = prepare();
+                    try
+                    {
+                        // MoveNext belongs to this scope: the installed test runner can stop its
+                        // parent without disposal when a separately yielded enumerator throws.
+                        while (preparation.MoveNext())
+                        {
+                            if (preparation.Current is IEnumerator)
+                                throw new InvalidOperationException("Capture preparation must yield frames directly, rather than nested enumerators.");
+                            yield return preparation.Current;
+                        }
+                    }
+                    finally { (preparation as IDisposable)?.Dispose(); }
+                    Canvas.ForceUpdateCanvases();
+                }
+                observe?.Invoke("capture immediately before pixel read");
+                readback = lens.Read();
+                observe?.Invoke("capture immediately after pixel read");
                 var path = System.IO.Path.GetFullPath(System.IO.Path.Combine(
                     Application.dataPath, "..", name + ".png"));
                 System.IO.File.WriteAllBytes(path, readback.EncodeToPNG());
@@ -389,22 +399,48 @@ namespace Gamesim.Tests.PlayMode
                 AssertNotBlank(readback, name);
                 // Before the finally: the frame is destroyed there and the canvases go back to overlays.
                 inspect?.Invoke(readback);
+
+                if (panel.HasValue)
+                {
+                    string what = panel.Value.What + " in '" + name + "'";
+                    var found = panel.Value.Find();
+                    AssertRegionHasContent(readback, PanelInterior(found, readback, what), what);
+                    PaintTheGround(found, painted, what);
+                    for (int wait = 0; wait < 5; wait++)
+                    {
+                        yield return null;
+                        var now = panel.Value.Find();
+                        if (now == found) break;
+                        // The HUD rendered again - a body finishing its assembly rebuilds it - and the
+                        // panel in the frame is a new copy: painted too, and given its frame.
+                        found = now;
+                        PaintTheGround(found, painted, what);
+                    }
+                    probe = lens.Read();
+                    AssertTheGroundShowsEverywhere(readback, probe, PanelInterior(found, readback, what), what);
+                }
             }
             finally
             {
-                RenderTexture.active = previousActive;
-                camera.targetTexture = previousTarget;
-                // A canvas can be gone by now: the wait above spans frames, and a panel's fade-out
-                // ghost is a canvas that destroys itself when its fade ends.
-                foreach (var canvas in overlays)
-                    if (canvas != null) canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                Object.Destroy(readback);
-                texture.Release();
-                Object.Destroy(texture);
+                foreach (var (ground, was) in painted)
+                    if (ground != null) ground.color = was;
+                lens.Dispose();
+                if (readback != null) Object.Destroy(readback);
+                if (probe != null) Object.Destroy(probe);
+                if (prepare != null)
+                {
+                    // Preparation assertions must restore the ordinary HUD layout as well as its
+                    // cameras. A stopped iterator never reaches the normal tail below.
+                    Canvas.ForceUpdateCanvases();
+                    RenderHudForTheCurrentCanvas();
+                }
             }
             // And back to the layout the rest of the test is measuring.
-            Canvas.ForceUpdateCanvases();
-            RenderHudForTheCurrentCanvas();
+            if (prepare == null)
+            {
+                Canvas.ForceUpdateCanvases();
+                RenderHudForTheCurrentCanvas();
+            }
             yield return null;
         }
 

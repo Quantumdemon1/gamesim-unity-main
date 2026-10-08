@@ -926,7 +926,7 @@ namespace Gamesim.Presentation
                 var between = new List<string>();
                 foreach (var alliance in state.alliances.Where(a => a.active && a.members.Contains(state.playerId) && a.members.Contains(focus.id)))
                     between.Add(alliance.name + " · " + Localisation.Text("alliance"));
-                foreach (var promise in state.promises.Where(p =>
+                foreach (var promise in CommitmentReferences.Promises(state).Where(p =>
                              (p.fromId == state.playerId && p.toId == focus.id) || (p.fromId == focus.id && p.toId == state.playerId)))
                     between.Add((promise.fromId == state.playerId
                                     ? Localisation.Text("You promised") + " " + PromiseWord(promise.kind)
@@ -937,7 +937,7 @@ namespace Gamesim.Presentation
                 // commitment appeared was the panel where it was made - so it was forgotten until
                 // DealResolution took up to forty-five points off for breaking it. Promises and
                 // alliances were both here from the start; the newer of the two systems was not.
-                foreach (var deal in state.deals.Where(item => DealStatus.Binds(item.status)
+                foreach (var deal in CommitmentReferences.Deals(state).Where(item => DealStatus.Binds(item.status)
                              && ((item.proposerId == state.playerId && item.recipientId == focus.id)
                                  || (item.proposerId == focus.id && item.recipientId == state.playerId))))
                 {

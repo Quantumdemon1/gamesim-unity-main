@@ -36,6 +36,11 @@
 Assets/Gamesim/Data/HousePrototypeNavMesh.asset binary
 Assets/Gamesim/Data/EpisodeHouseNavMesh.asset binary
 
+# UMA explicitly serializes its index and skinned slots as binary, even in Force Text projects.
+Assets/UMAProjectData/Resources/AssetIndexerProject.asset binary
+Assets/Gamesim/Uma/Content/HouseGarments/*_Slot.asset binary
+Assets/Gamesim/Uma/Content/HouseGarments/*_Mesh.asset binary
+
 # So is baked lighting data. Stored as text, the CR-LF byte pairs inside it came back as LF,
 # and every fresh clone got a copy four bytes short that Unity cannot load.
 LightingData.asset binary

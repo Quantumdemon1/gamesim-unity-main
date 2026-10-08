@@ -39,7 +39,7 @@ namespace Gamesim.Presentation
             public string Basis = KnownBallots.Basis.Unknown;
             /// <summary>What the voter said, where the ballot is known by a claim; null otherwise.</summary>
             public string SaidName;
-            /// <summary>A claim the reveal caught out: they said one name and cast the other.</summary>
+            /// <summary>A claim the reveal caught out: they said one name and cast the other. Worded by <see cref="KnownBallots.SaidWords"/>: of an ally's account, a vote that changed, never a lie.</summary>
             public bool Lied;
             public bool Known => TargetId != null;
         }

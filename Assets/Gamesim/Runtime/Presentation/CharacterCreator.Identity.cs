@@ -113,13 +113,23 @@ namespace Gamesim.Presentation
             input.characterLimit = limit;
             input.lineType = multiline ? TMP_InputField.LineType.MultiLineNewline : TMP_InputField.LineType.SingleLine;
             input.text = value ?? string.Empty;
+            string lastPresented = input.text;
             input.onValueChanged.AddListener(written => write(written));
             // The preview only catches up when the field is left, and on the next frame. Rebuilding
             // on every keystroke would destroy the field being typed into; rebuilding inside the end
             // of the edit destroyed the control whose press ended it, mid-press, so the first click
             // after typing did nothing. And only while the field is alive: a focused field raises
             // onEndEdit from its own OnDisable, which is also what a scene unload or a rebuild does.
-            input.onEndEdit.AddListener(_ => { if (input.isActiveAndEnabled && isActiveAndEnabled) rebuildSoon = true; });
+            input.onEndEdit.AddListener(written =>
+            {
+                // Merely walking the keyboard ring must not replace every control. Only a real
+                // edit changes the summary or validation that the deferred rebuild refreshes.
+                if (input.isActiveAndEnabled && isActiveAndEnabled && written != lastPresented)
+                {
+                    lastPresented = written;
+                    rebuildSoon = true;
+                }
+            });
         }
 
         /// <summary>

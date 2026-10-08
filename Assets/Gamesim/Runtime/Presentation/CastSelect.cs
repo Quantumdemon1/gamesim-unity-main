@@ -125,6 +125,7 @@ namespace Gamesim.Presentation
         private CharacterDraft retainedDraft;
         private string resumeError;
         private CharacterCreator creator;
+        private string pendingSlotFocus;
         private CharacterProfileStore profileStore;
         private readonly CharacterProfileBrowser profileBrowser = new CharacterProfileBrowser();
         public CharacterProfileStore ProfileStore => profileStore ?? (profileStore = new CharacterProfileStore());
@@ -162,7 +163,16 @@ namespace Gamesim.Presentation
             if (IsShowing) Rebuild();
         }
 
-        public void SetDraft(CharacterDraft draft) => retainedDraft = draft?.Copy();
+        public void SetDraft(CharacterDraft draft) => SetDraft(draft, CharacterCreator.EntryMode.Detailed);
+
+        public void SetDraft(CharacterDraft draft, CharacterCreator.EntryMode mode)
+        {
+            retainedDraft = draft?.Copy();
+            retainedCreatorMode = mode;
+        }
+
+        private CharacterCreator.EntryMode retainedCreatorMode = CharacterCreator.EntryMode.Detailed;
+        public CharacterCreator.EntryMode PreferredCreatorMode { get; private set; } = CharacterCreator.EntryMode.Detailed;
         private readonly List<KeyValuePair<RawImage, ContestantState>> portraits = new List<KeyValuePair<RawImage, ContestantState>>();
 
         private void Update()
@@ -172,6 +182,7 @@ namespace Gamesim.Presentation
             // footer's row are laid out for the frame, so a new frame gets a new layout.
             var size = ((RectTransform)transform).rect.size;
             if (Mathf.Abs(size.x - builtFor.x) > 2f || Mathf.Abs(size.y - builtFor.y) > 2f) Rebuild();
+            RestoreSlotFocus();
             // A houseguest with no glamour photo shows their rendered face, filled in as it lands.
             foreach (var item in portraits)
             {
@@ -285,6 +296,7 @@ namespace Gamesim.Presentation
             customHouseguests.Clear();
             profileBrowser.Reset();
             retainedDraft = null;
+            pendingSlotFocus = null;
             resumeError = null;
             scrollToTop = true;
             houseSize = SeasonBuilder.ClampHouseSize(roster, SeasonBuilder.DefaultHouseSize);
@@ -477,10 +489,10 @@ namespace Gamesim.Presentation
             if (onCustomise == null) return;
             var row = Row(44f);
             Chip(row, "Choose a houseguest", -448f, 216f, !libraryMode && !castSlotsMode, () => { libraryMode = false; castSlotsMode = false; scrollToTop = true; Rebuild(); });
-            Chip(row, CharacterCreator.CreateCaption, -224f, 216f, false, () => OpenCreator(CharacterDraft.Blank()));
+            Chip(row, CharacterCreator.CreateCaption, -224f, 216f, false, () => OpenCreator(CharacterDraft.Blank(), CharacterCreator.EntryMode.Quick));
             Chip(row, retainedDraft == null ? CharacterCreator.CustomiseCaption : "Resume setup", 0f, 216f, false, () =>
             {
-                if (retainedDraft != null) { OpenCreator(retainedDraft.Copy()); return; }
+                if (retainedDraft != null) { OpenCreator(retainedDraft.Copy(), retainedCreatorMode); return; }
                 var chosen = CastTemplates.Find(selectedId);
                 OpenCreator(chosen == null ? CharacterDraft.Blank() : CharacterDraft.FromAppearance(chosen));
             });
@@ -1350,8 +1362,9 @@ namespace Gamesim.Presentation
         /// back, and re-showing it would reset the roster, the filter and the pick the player has
         /// just spent time on.</para>
         /// </summary>
-        private void OpenCreator(CharacterDraft start)
+        private void OpenCreator(CharacterDraft start, CharacterCreator.EntryMode mode = CharacterCreator.EntryMode.Detailed)
         {
+            PreferredCreatorMode = mode;
             var catalog = (CharacterBodySource.Provider as IModularCharacterBodyProvider)?.Catalog;
             if (catalog != null) start.Appearance = catalog.Materialize(start.Appearance);
             var choice = new SeasonBuilder.Choice
@@ -1383,8 +1396,28 @@ namespace Gamesim.Presentation
             {
                 // This changes the proposed cast instance only, not its library profile or the player's setup.
                 customHouseguests[slot] = CharacterProfile.FromDraft(profile.id, changed);
-                Resume();
-            }, Resume);
+                ResumeCastSlot(slot);
+            }, () => ResumeCastSlot(slot));
+        }
+
+        private void ResumeCastSlot(int slot)
+        {
+            Resume();
+            pendingSlotFocus = "Edit slot " + (slot + 1);
+            RestoreSlotFocus();
+        }
+
+        // The creator rebuilt its controls while the cast was asleep. Return to the edited slot,
+        // keeping the existing scroll/filter; the HUD then retains this selection when it rewires.
+        private void RestoreSlotFocus()
+        {
+            if (pendingSlotFocus == null || !IsShowing) return;
+            var events = EventSystem.current;
+            if (events == null || events.alreadySelecting) return;
+            var button = GetComponentsInChildren<Button>()
+                .FirstOrDefault(item => item.name == pendingSlotFocus && item.IsActive() && item.IsInteractable());
+            pendingSlotFocus = null;
+            if (button != null) events.SetSelectedGameObject(button.gameObject);
         }
 
         /// <summary>Brings the screen back with the player's roster, filter and pick intact.</summary>

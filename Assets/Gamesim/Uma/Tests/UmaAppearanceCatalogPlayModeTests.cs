@@ -82,7 +82,10 @@ namespace Gamesim.Uma.Tests
                     Assert.That(item.CompatibleBodies, Is.EquivalentTo(catalog.Bodies.Select(body => body.Id)), item.Id + " fits both bodies.");
                     continue;
                 }
-                Assert.That(item.Id, Does.StartWith("uma-"), "Authored save IDs must not depend on asset names.");
+                Assert.That(string.IsNullOrWhiteSpace(item.Id), Is.False, "Authored content needs a stable save ID.");
+                Assert.That(item.Id.StartsWith("uma-", System.StringComparison.Ordinal)
+                    || item.Id.StartsWith("gamesim.", System.StringComparison.Ordinal), Is.True,
+                    "Authored IDs use the installed UMA or project-owned Gamesim namespace: " + item.Id);
                 string recipe = catalog.ResolveRecipeName(item.Id);
                 Assert.That(UMAAssetIndexer.Instance.GetAsset<UMAWardrobeRecipe>(recipe), Is.Not.Null, item.Id);
                 Assert.That(AppearanceEditing.Find(catalog, recipe), Is.SameAs(item), "Schema 13 raw recipe names remain aliases.");
@@ -170,6 +173,43 @@ namespace Gamesim.Uma.Tests
         }
 
 #if UNITY_EDITOR
+        [UnityTest]
+        public IEnumerator UnresolvedIndexerRecipesAreIgnoredWhileTheCatalogBuilds()
+        {
+            yield return null;
+            var index = UMAAssetIndexer.Instance;
+            var recipes = index.GetAssetDictionary(typeof(UMAWardrobeRecipe));
+            var originalRecipes = recipes.ToArray();
+            var originalSerialized = index.SerializedItems.ToArray();
+            string missingName = "GamesimUnresolved-" + System.Guid.NewGuid().ToString("N");
+            var unresolved = new AssetItem(typeof(UMAWardrobeRecipe), missingName, "", null);
+            try
+            {
+                // GetAllAssets enumerates this real index dictionary. Adding only our unresolved
+                // row exercises that reader without changing the shared serialized index, GUID
+                // table or race/slot recipe lists. RemoveAsset(null) would alter those other lists.
+                recipes.Add(missingName, unresolved);
+                Assert.That(index.GetAllAssets<UMAWardrobeRecipe>().Any(recipe => recipe == null), Is.True,
+                    "The fixture models an index entry whose imported recipe can no longer be resolved.");
+                Assert.That(() => new UmaAppearanceCatalog(), Throws.Nothing,
+                    "An unresolved optional wardrobe asset must not stop every character body from building.");
+            }
+            finally
+            {
+                if (recipes.TryGetValue(missingName, out var owned) && ReferenceEquals(owned, unresolved))
+                    recipes.Remove(missingName);
+                Assert.That(recipes.Count, Is.EqualTo(originalRecipes.Length), "The temporary index row is the only one removed.");
+                foreach (var entry in originalRecipes)
+                    Assert.That(recipes.TryGetValue(entry.Key, out var retained) && ReferenceEquals(retained, entry.Value), Is.True,
+                        "Original index entry changed: " + entry.Key);
+                Assert.That(index.SerializedItems.Count, Is.EqualTo(originalSerialized.Length), "Existing null rows are retained too.");
+                for (int i = 0; i < originalSerialized.Length; i++)
+                    Assert.That(ReferenceEquals(index.SerializedItems[i], originalSerialized[i]), Is.True,
+                        "Original serialized index row changed: " + i);
+            }
+            yield return null;
+        }
+
         [UnityTest]
         public IEnumerator AdditionalHairAndOutfitAreDiscoverableAndBuildFromCatalogEntriesOnly()
         {

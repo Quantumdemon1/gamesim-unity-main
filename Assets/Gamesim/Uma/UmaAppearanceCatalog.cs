@@ -104,9 +104,9 @@ namespace Gamesim.Uma
             }
 
             var slots = new HashSet<string> { "Hair", "Beard", "Eyebrows", "Face", "Chest", "Legs", "Feet", "BottomUnderlayer", "TopUnderlayer" };
-            foreach (var recipe in index.GetAllAssets<UMAWardrobeRecipe>().OrderBy(recipe => recipe.name, StringComparer.Ordinal))
+            foreach (var recipe in index.GetAllAssets<UMAWardrobeRecipe>().Where(recipe => recipe != null).OrderBy(recipe => recipe.name, StringComparer.Ordinal))
             {
-                if (recipe == null || !slots.Contains(recipe.wardrobeSlot)) continue;
+                if (!slots.Contains(recipe.wardrobeSlot)) continue;
                 metadata.TryGetValue(recipe.name, out var entry);
                 // Authored catalogs are an allowlist. Optional UMA installations with no catalog retain discovery.
                 if (catalogs.Length > 0 && (entry == null || !entry.available)) continue;

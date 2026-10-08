@@ -82,7 +82,12 @@ namespace Gamesim.Presentation
         {
             RefitToFrame();
             RebuildIfAsked();
-            if (previewStatus != null && studioPreview != null) previewStatus.text = studioPreview.Status;
+            RefreshPreviewStatus();
+        }
+
+        private void RefreshPreviewStatus()
+        {
+            if (previewStatus != null && studioPreview != null) previewStatus.text = studioPreview.DisplayStatus;
             if (retryPreviewButton != null && studioPreview != null) retryPreviewButton.interactable = studioPreview.CanRetry;
         }
 
@@ -226,8 +231,9 @@ namespace Gamesim.Presentation
                 .transform.Find("Glyph").localRotation = Quaternion.Euler(0f, 0f, 180f);
             GlyphButton(turntable, "Rotate right", new Rect(252f, 4f, 44f, 44f), null, UiTheme.PlayMark(), () => studioPreview.Rotate(30f));
             Words(turntable, "Rotate", 17f, UiTheme.Paper, new Rect(50f, 0f, 200f, 52f), TextAlignmentOptions.Center);
-            previewStatus = Words(stage, studioPreview.Status, 13f, UiTheme.Muted, new Rect(8f, 8f, r.width * .6f, 20f),
+            previewStatus = Words(stage, studioPreview.DisplayStatus, 13f, UiTheme.Muted, new Rect(8f, 8f, r.width - 156f, 44f),
                 TextAlignmentOptions.TopLeft, "Preview status");
+            previewStatus.textWrappingMode = TextWrappingModes.Normal;
             retryPreviewButton = Pill(stage, "Retry preview", new Rect(r.width - 132f, 2f, 132f, 30f), Tone.Quiet,
                 () => studioPreview.Retry(), size: 13f);
             retryPreviewButton.interactable = studioPreview.CanRetry;
@@ -252,7 +258,15 @@ namespace Gamesim.Presentation
         /// <summary>The live preview, awake and showing the look on the draft (or the original being compared).</summary>
         private void EnsureStudio()
         {
-            if (studioPreview == null) { studioPreview = CharacterStudioPreview.Create(); studioPreview.Transparent = true; studioFace = null; }
+            if (studioPreview == null)
+            {
+                studioPreview = CharacterStudioPreview.Create();
+                // A build may finish after the form's Update. Publish its words and retry state
+                // together rather than leaving one frame showing the previous build's status.
+                studioPreview.StatusChanged += RefreshPreviewStatus;
+                studioPreview.Transparent = true;
+                studioFace = null;
+            }
             studioPreview.gameObject.SetActive(true);
             previewOnPage = true;
             // The close-up belongs to the face and hair, and the comparison with the original to the
@@ -611,8 +625,8 @@ namespace Gamesim.Presentation
                 var template = CastTemplates.Find(id);
                 string label = template != null ? template.Name.Split(' ')[0] : "You";
                 Thumbnail(studioControls, "Starting look " + label, label, new Rect(x, studioCursor, face, face + 18f), i == current, null,
-                    null, "houseguest", () => ChangeAppearance(() => draft.Appearance = Catalog?.Materialize(new CharacterAppearance { presetId = id })
-                        ?? new CharacterAppearance { presetId = id }), template != null ? CastTemplates.ToContestant(template, false) : null);
+                    null, "houseguest", () => ChangeAppearance(() => draft.Appearance = StartingAppearance(id)),
+                    template != null ? CastTemplates.ToContestant(template, false) : null);
                 x += face + gap;
             }
             GlyphButton(studioControls, "Next starting look", new Rect(studioWidth - 12f - arrow, studioCursor + (face - arrow) * .5f, arrow, arrow), null,
@@ -833,6 +847,7 @@ namespace Gamesim.Presentation
             appearanceRedo.Clear();
             lastSlider = null;
             comparingOriginal = false;
+            appearanceNotice = null;
             if (Catalog != null) draft.Appearance = Catalog.Materialize(draft.Appearance);
             change();
             studioPreview?.Show(draft.Appearance);
@@ -924,6 +939,7 @@ namespace Gamesim.Presentation
         private void UndoAppearance()
         {
             if (appearanceUndo.Count == 0) return;
+            appearanceNotice = null;
             appearanceRedo.Push(draft.Appearance.Clone()); draft.Appearance = appearanceUndo.Pop();
             studioPreview?.Show(draft.Appearance); Rebuild();
         }
@@ -931,6 +947,7 @@ namespace Gamesim.Presentation
         private void RedoAppearance()
         {
             if (appearanceRedo.Count == 0) return;
+            appearanceNotice = null;
             appearanceUndo.Push(draft.Appearance.Clone()); draft.Appearance = appearanceRedo.Pop();
             studioPreview?.Show(draft.Appearance); Rebuild();
         }
@@ -940,8 +957,16 @@ namespace Gamesim.Presentation
             var ids = PresetIds();
             int current = Math.Max(0, ids.IndexOf(draft.Appearance?.presetId));
             string id = ids[(current + direction + ids.Count) % ids.Count];
-            ChangeAppearance(() => draft.Appearance = Catalog?.Materialize(new CharacterAppearance { presetId = id })
-                ?? new CharacterAppearance { presetId = id });
+            ChangeAppearance(() => draft.Appearance = StartingAppearance(id));
+        }
+
+        private CharacterAppearance StartingAppearance(string id)
+        {
+            var appearance = CharacterAppearance.Preset(id);
+            var template = CastTemplates.Find(id);
+            if (template != null)
+                appearance.fallbackId = CharacterPresentation.AppearanceId(CastTemplates.ToContestant(template, false), template.Id);
+            return Catalog?.Materialize(appearance) ?? appearance;
         }
 
         /// <summary>A band across the slider's track, centred on it and <paramref name="height"/> tall.</summary>

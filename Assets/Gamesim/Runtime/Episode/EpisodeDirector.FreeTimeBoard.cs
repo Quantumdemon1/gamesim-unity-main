@@ -47,6 +47,17 @@ namespace Gamesim.Episode
             + "house activities and answering anyone who comes to you are free.";
 
         /// <summary>
+        /// The same under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN R0, X1), where studying
+        /// the house in the diary room is one of the window's actions too.
+        /// </summary>
+        public const string FreeTimeCostCopyWithStudy = "Talking, listening in, house meetings and studying the house each spend one action. "
+            + "Walking the house, house activities and answering anyone who comes to you are free.";
+
+        /// <summary>What costs an action in this season's free time: a study too, under the commitment rules.</summary>
+        public static string FreeTimeCostCopyFor(EpisodeState state) =>
+            EpisodeEngine.CommitmentRulesOn(state) ? FreeTimeCostCopyWithStudy : FreeTimeCostCopy;
+
+        /// <summary>
         /// The budget card's copy: what costs and what is free, then what beginning the next
         /// competition loses, as the engine counts it. Everything left goes when the week turns; on a
         /// night that does not turn it - move-in night - what was bought carries into the week's
@@ -55,8 +66,11 @@ namespace Gamesim.Episode
         public static string FreeTimeCostLine(EpisodeState state)
         {
             const string lost = "Unspent actions are lost when you begin the next competition";
-            if (state != null && !state.evictionResolved) return FreeTimeCostCopy + " " + lost + ", but actions you buy carry into the week.";
-            return FreeTimeCostCopy + " " + lost + (EpisodeEngine.LeverRulesOn(state) ? "." : "; actions you buy come back every week.");
+            string costs = FreeTimeCostCopyFor(state);
+            if (EpisodeEngine.EconomyRulesOn(state) && EpisodeEngine.IsFirstNight(state))
+                return costs + " Unspent base actions are lost when you begin the next competition. Only unspent extras carry into the week.";
+            if (state != null && !state.evictionResolved) return costs + " " + lost + ", but actions you buy carry into the week.";
+            return costs + " " + lost + (EpisodeEngine.LeverRulesOn(state) ? "." : "; actions you buy come back every week.");
         }
 
         /// <summary>The words at a tile's foot: what it costs, that it is free, or why it is locked.</summary>
@@ -274,14 +288,15 @@ namespace Gamesim.Episode
                 spec.ReplyMessage = ReplyCards.Message(state, card);
                 spec.RepliesWaiting = state.replyCards.Count;
                 spec.ReplyNext = next != null ? state.Find(next.fromId)?.name : null;
+                object replyView = BeginReplyChoices();
                 spec.Replies = ReplyCards.Replies(card.kind).Select(reply =>
                 {
                     string key = reply.Key;
                     return new EpisodeHud.CampaignReply
                     {
-                        Caption = EpisodeHud.ReplyCaption(reply.Label), Key = key, Description = reply.Description,
+                        Caption = EpisodeHud.ReplyCaption(reply.Label), Key = key, Description = ReplyCardPayoffs.Description(state, card, reply),
                         Risk = EpisodeHud.RiskTag(reply.Risk),
-                        Choose = () => Commit(state, EpisodeCommandKind.ReplyToHouseguest, cardId, text: key),
+                        Choose = ReplyChoice(state, cardId, key, replyView),
                     };
                 }).ToList();
             }
@@ -335,8 +350,8 @@ namespace Gamesim.Episode
             {
                 spec.Buys.Add(new EpisodeHud.BuyButton
                 {
-                    Caption = EpisodeHud.BuyBurnOneCaption, Price = Mathf.Abs((int)WebSocialVocabulary.BurnOneCost) + " goodwill with one housemate",
-                    Choose = () => Commit(state, EpisodeCommandKind.BuyActionPoint, text: WebSocialVocabulary.BurnOne),
+                    Caption = EpisodeHud.BuyBurnOneCaption, Price = Mathf.Abs((int)WebSocialVocabulary.BurnOneCost) + " goodwill · choose a housemate",
+                    Choose = () => OpenActionPurchase(state),
                 });
                 spec.Buys.Add(new EpisodeHud.BuyButton
                 {
@@ -418,7 +433,7 @@ namespace Gamesim.Episode
                 tiles.Add(CostedTile(OverviewListenCaption, "eye", "Works 7 in 10", UiTheme.Joke, () => Commit(state, EpisodeCommandKind.Eavesdrop)));
             tiles.Add(CostedTile(EpisodeHud.RallyHouseCaption, "people", "Risky", UiTheme.Joke,
                 () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.RallyTroops)));
-            tiles.Add(CostedTile(EpisodeHud.AirLaundryCaption, "target", "High risk", UiTheme.Danger,
+            tiles.Add(CostedTile(EpisodeHud.AirLaundryCaption, "target", AiringRiskLabel(state), UiTheme.Danger,
                 () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.AirDirtyLaundry)));
             tiles.Add(FreeTile(DoAnActivityCaption, "dumbbell", OpenHouseActivities));
             return tiles;

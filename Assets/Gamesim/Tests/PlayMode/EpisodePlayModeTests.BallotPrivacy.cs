@@ -29,8 +29,8 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>The verbs a line says a ballot with, after the voter's name in the same sentence (the subset's BallotPrivacyTests has the same rule).</summary>
         private static readonly string[] PrivacyBallotVerbs = { "voted", "votes", "is voting", "broke", "kept", "honoured", "followed", "ignored", "lied", "defected", "fell out" };
 
-        /// <summary>Lines that are a record of what was said, never a ballot read, by the words they open with: a voter's own stated lean on a whip count, and the claims the player gathered.</summary>
-        private static readonly string[] PrivacyAccountPrefixes = { "Says: evict", "Overheard", "An ally heard" };
+        /// <summary>Lines that are a record of what was said, never a ballot read, by the words they open with: a voter's own stated lean on a whip count, and the claims the player gathered - an ally's own word to the pact included (C6).</summary>
+        private static readonly string[] PrivacyAccountPrefixes = { "Says: evict", "Overheard", "Told the pact" };
 
         /// <summary>
         /// An eight-house walked to its first reveal with the player among the voters: the player

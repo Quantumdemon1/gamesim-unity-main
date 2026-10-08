@@ -35,6 +35,22 @@
 [Aa]ssets/UMA_Assets/
 [Aa]ssets/UMA_Assets.meta
 
+# UMA's preferred project index registers source-owned clothing. Keep that override and its
+# GUIDs portable while leaving generated tasks, tests and other local library data untracked.
+Assets/UMAProjectData/*
+!Assets/UMAProjectData/Resources/
+!Assets/UMAProjectData/Resources.meta
+Assets/UMAProjectData/Resources/*
+!Assets/UMAProjectData/Resources/AssetIndexerProject.asset
+!Assets/UMAProjectData/Resources/AssetIndexerProject.asset.meta
+
+# Unity's crash-recovery scenes and the test runner's bootstrap scene, which a run that is cut
+# short leaves behind. Neither is project source.
+[Aa]ssets/_Recovery/
+[Aa]ssets/_Recovery.meta
+[Aa]ssets/InitTestScene*.unity
+[Aa]ssets/InitTestScene*.unity.meta
+
 # OS files
 .DS_Store
 Thumbs.db

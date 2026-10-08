@@ -29,15 +29,34 @@ namespace Gamesim.Simulation
         /// <summary>
         /// The player's alliance, formed with the roll injected: the command path passes the
         /// season's own stream and a story passes a keyed one. The body is the old
-        /// <c>FormAlliance</c> case, unchanged.
+        /// <c>FormAlliance</c> case, unchanged. Under the commitment rules the command asks instead
+        /// (<c>ProposeAlliance</c>, ACTIONS-DEALS-ALLIANCES-PLAN C4), and only a story still comes
+        /// through this gate.
         /// </summary>
         private static void FormAllianceWith(EpisodeState s, ContestantState target, Func<double> nextRoll)
         {
-            Require(!s.Allied(s.playerId, target.id), "You already share an active alliance.");
+            Require(!s.Allied(s.playerId, target.id), AlreadyAlliedRefusal);
             Require(s.Score(target.id, s.playerId) >= 8, "Build some trust before proposing an alliance.");
-            s.alliances.Add(new AllianceState { id = "alliance-" + s.nextSequence, name = "The " + target.name.Split(' ')[0] + " Pact", members = new List<string> { s.playerId, target.id } });
+            FormPact(s, target, nextRoll);
+        }
+
+        /// <summary>
+        /// The player's pact with one houseguest, however it was agreed: the two of them, the warmth
+        /// it brings with its reciprocal draw from <paramref name="nextRoll"/>, and the line - and,
+        /// under the commitment rules, its place on the ledger (ACTIONS-DEALS-ALLIANCES-PLAN C4). The
+        /// gate a story keeps is <see cref="FormAllianceWith"/>'s; the proposal's roll is
+        /// <c>ProposeAlliance</c>'s.
+        /// </summary>
+        private static void FormPact(EpisodeState s, ContestantState target, Func<double> nextRoll)
+        {
+            var pact = new AllianceState { id = "alliance-" + s.nextSequence, name = "The " + target.name.Split(' ')[0] + " Pact", members = new List<string> { s.playerId, target.id } };
+            // Under the commitment rules (C5) no two of the player's standing pacts share a name: the
+            // captions that name them must stay apart.
+            if (CommitmentRulesOn(s)) pact.name = PactNames.Unique(s, pact.name);
+            s.alliances.Add(pact);
             ChangeWithRoll(s, s.playerId, target.id, 8, nextRoll);
             Log(s, "alliance", "You and " + target.name + " formed a private alliance.", s.playerId, target.id);
+            RecordPactFormed(s, pact, pact.name + " was formed");
         }
 
         /// <summary>Applies one resolved story effect.</summary>
@@ -282,6 +301,9 @@ namespace Gamesim.Simulation
             if (a == null || b == null || !Alive(a) || !Alive(b)) return;
             var members = new List<ContestantState> { a, b };
             if (c != null && Alive(c) && c.id != a.id && c.id != b.id) members.Add(c);
+            // The player's three (ACTIONS-DEALS-ALLIANCES-PLAN C4, decision 10): under the commitment
+            // rules a story brings the player into no fourth pact, as nothing else does.
+            if (members.Any(m => m.isPlayer) && AtPactCap(s)) return;
             if (members.Any(m => m.isPlayer) && members.Count == 2)
             {
                 var other = members.First(m => !m.isPlayer);
@@ -300,13 +322,20 @@ namespace Gamesim.Simulation
         {
             if (from == null || to == null || from.id == to.id || !Alive(from) || !Alive(to)) return;
             if (!Enum.TryParse(kindName, out PromiseKind kind)) return;
-            if (s.promises.Any(p => p.status == PromiseStatus.Active && p.fromId == from.id && p.toId == to.id && p.kind == kind)) return;
-            if (s.promises.Count >= 200) return;
-            s.promises.Add(new PromiseState
+            if ((UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Promises(s) : s.promises)
+                .Any(p => p.status == PromiseStatus.Active && p.fromId == from.id && p.toId == to.id && p.kind == kind)) return;
+            if ((UnifiedCommitments.RulesOn(s) ? CommitmentReferences.PromiseCount(s) : s.promises.Count) >= 200) return;
+            var promise = new PromiseState
             {
-                id = "promise-" + s.nextSequence++, fromId = from.id, toId = to.id, kind = kind, status = PromiseStatus.Active,
+                id = "promise-" + s.nextSequence, fromId = from.id, toId = to.id, kind = kind, status = PromiseStatus.Active,
                 week = s.week, expiresWeek = kind == PromiseKind.FinalTwo ? 0 : kind == PromiseKind.Safety ? s.week + 1 : s.week,
-            });
+            };
+            if (UnifiedCommitments.RulesOn(s) && kind == PromiseKind.Safety)
+            {
+                if (!UnifiedCommitmentStore.TryAddPromise(s, promise, UnifiedCommitments.StoryPromise, out _)) return;
+            }
+            else s.promises.Add(promise);
+            s.nextSequence++;
             Remember(s, to.id, from.id, "Made me a " + kind + " promise.", true);
             if (from.isPlayer || to.isPlayer)
                 Log(s, "promise", (from.isPlayer ? "You promised " + kind + " to " + to.name : from.name + " promised you " + kind) + ".",
@@ -321,16 +350,23 @@ namespace Gamesim.Simulation
         private static void StoryDeal(EpisodeState s, ContestantState a, ContestantState b, ContestantState target, string type)
         {
             if (a == null || b == null || a.id == b.id || !Alive(a) || !Alive(b) || !DealKind.IsKnown(type)) return;
+            // A final three deal is the commitment rules' own (C9): a story strikes one only under them.
+            if (DealKind.CommitmentRulesOnly(type) && !CommitmentRulesOn(s)) return;
             if (DealKind.NamesATarget(type) && (target == null || !Alive(target))) return;
-            if (s.deals.Any(d => DealStatus.Binds(d.status) && d.type == type
+            if ((UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Deals(s) : s.deals).Any(d => DealStatus.Binds(d.status) && d.type == type
                                  && ((d.proposerId == a.id && d.recipientId == b.id) || (d.proposerId == b.id && d.recipientId == a.id))
                                  && d.targetId == target?.id)) return;
-            if (s.deals.Count >= 200) return;
-            var deal = PlayerDeals.Draft(s, b.id, type, target?.id, "deal-story-" + s.nextSequence++);
+            if ((UnifiedCommitments.RulesOn(s) ? CommitmentReferences.DealCount(s) : s.deals.Count) >= 200) return;
+            var deal = PlayerDeals.Draft(s, b.id, type, target?.id, "deal-story-" + s.nextSequence);
             deal.proposerId = a.id;
             deal.recipientId = b.id;
             deal.status = DealStatus.Active;
-            s.deals.Add(deal);
+            if (UnifiedCommitments.RulesOn(s) && type == DealKind.SafetyAgreement)
+            {
+                if (!UnifiedCommitmentStore.TryAddDeal(s, deal, UnifiedCommitments.StoryDeal, out _)) return;
+            }
+            else s.deals.Add(deal);
+            s.nextSequence++;
             if (a.isPlayer || b.isPlayer)
             {
                 var other = a.isPlayer ? b : a;

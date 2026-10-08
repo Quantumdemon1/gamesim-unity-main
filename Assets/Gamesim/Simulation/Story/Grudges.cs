@@ -136,8 +136,13 @@ namespace Gamesim.Simulation
         /// threat is how dangerous the breaker looks to the holder, capped at a hundred.
         /// </summary>
         public static double ThreatScaled(EpisodeState state, double severity, string holderId, string breakerId)
+            => ThreatScaledBeforeSafetyEffects(state, severity, holderId, breakerId, null);
+
+        internal static double ThreatScaledBeforeSafetyEffects(EpisodeState state, double severity, string holderId,
+            string breakerId, IReadOnlyList<string> excludedSafetyEffects)
         {
-            double threat = Math.Max(0, Math.Min(100, ThreatAssessment.Total(state, holderId, breakerId)));
+            double threat = Math.Max(0, Math.Min(100,
+                ThreatAssessment.TotalBeforeSafetyEffects(state, holderId, breakerId, excludedSafetyEffects)));
             return Math.Round(severity * (1 + threat / 200));
         }
     }

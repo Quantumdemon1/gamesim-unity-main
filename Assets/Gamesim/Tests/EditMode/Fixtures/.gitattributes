@@ -1,0 +1,4 @@
+# This historical player save is an exact-byte checksum/migration fixture, including CRLF.
+# CR is part of the retained line ending, not trailing whitespace. Keep normal whitespace checks.
+V21StandaloneProfileSave.json -text -eol whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+V22MonoOpeningSave.json -text -eol whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

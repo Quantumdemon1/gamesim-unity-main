@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Gamesim.Presentation;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -426,10 +427,11 @@ namespace Gamesim.House
                 else if (component is Collider)
                 { reason = "An additional root collider requires explicit body-ownership review."; return false; }
                 else if (component is MonoBehaviour behaviour && behaviour != character && behaviour != owner
-                    // Reviewed visual-only seating offsets CharacterPresentation.VisualRoot, never
-                    // this navigation root, its agent, capsule or obstacle.
+                    // Reviewed presentation changes the visual body and child arm bones,
+                    // never this navigation root, its agent, capsule or obstacle.
                     && !(behaviour is HouseSeatPresentation)
                     && !(behaviour is HouseFurniturePose)
+                    && !(behaviour is CompetitionInstrumentPose)
                     && behaviour.GetType().FullName != "Gamesim.Presentation.CharacterPresentation")
                 { reason = "An unrecognized root behaviour requires explicit movement-ownership review."; return false; }
             }

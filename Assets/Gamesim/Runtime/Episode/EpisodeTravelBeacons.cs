@@ -79,7 +79,7 @@ namespace Gamesim.Episode
         /// <summary>Tells its beacon the pointer is over it, for the tip that names what a click does.</summary>
         private sealed class Hover : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
         {
-            public Beacon beacon;
+            [System.NonSerialized] public Beacon beacon;
             public void OnPointerEnter(PointerEventData data) { if (beacon != null) beacon.hovered = true; }
             public void OnPointerExit(PointerEventData data) { if (beacon != null) beacon.hovered = false; }
         }

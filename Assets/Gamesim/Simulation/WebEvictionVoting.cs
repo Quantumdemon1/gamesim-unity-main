@@ -17,6 +17,14 @@ namespace Gamesim.Simulation
     {
         public string id, name, status;
         public List<string> members = new List<string>();
+
+        /// <summary>
+        /// Native, not the web's (ACTIONS-DEALS-ALLIANCES-PLAN C2, C3): the members whose own commitment
+        /// to the player has lapsed under the commitment rules - one who turned on the pact, or has gone
+        /// cold on the player (<see cref="Allegiance.Lapsed"/>) - whose alliance term toward the player
+        /// counts for nothing. Empty on an imported web round and on every season without the rules.
+        /// </summary>
+        public List<string> lapsedIds = new List<string>();
     }
 
     [Serializable] public sealed class WebVotePromise
@@ -28,6 +36,26 @@ namespace Gamesim.Simulation
     [Serializable] public sealed class WebVoteDeal
     {
         public string id, proposerId, recipientId, type, status, targetHouseguestId;
+
+        /// <summary>
+        /// Native, not the web's (ACTIONS-DEALS-ALLIANCES-PLAN C0): who broke it, as
+        /// <see cref="Breaches.DealBreaker"/> reads it. Null on an imported web round.
+        /// </summary>
+        public string brokenById;
+
+        /// <summary>
+        /// Native: whether the season holds a breach against whoever broke it alone - the
+        /// commitment rules. False on an imported web round and on every season without the rules,
+        /// where the threat term holds a broken deal against both sides, as the web does.
+        /// </summary>
+        public bool heldByBreaker;
+
+        /// <summary>
+        /// Native, under the commitment rules: both sides broke it at once - a voting bloc that fell
+        /// apart, or a vote deal both of them voted against (ACTIONS-DEALS-ALLIANCES-PLAN C1,
+        /// <see cref="Breaches.BrokenByBoth"/>) - so it is held against each. False otherwise.
+        /// </summary>
+        public bool brokenByBoth;
     }
 
     [Serializable] public sealed class WebVoteRelationshipArc
@@ -66,6 +94,35 @@ namespace Gamesim.Simulation
         /// </summary>
         public List<WebVoteStoryTerm> storyTerms = new List<WebVoteStoryTerm>();
         public List<WebVoteObligation> obligations = new List<WebVoteObligation>();
+
+        /// <summary>
+        /// Native, not the web's (ACTIONS-DEALS-ALLIANCES-PLAN C9): the evaluator's own factors this caller
+        /// leaves out, by code. Empty on every ballot and every imported round, so the web's ten factors
+        /// are the web's ten; the final Head of Household's choice under the commitment rules leaves out
+        /// the two that weigh a game still to be played (<see cref="EpisodeEngine.FinalChoiceLeavesOut"/>).
+        /// </summary>
+        public List<string> omittedFactors = new List<string>();
+        // Native E5 only; imported web rounds retain the original ten factors exactly.
+        // Ephemeral derived input, NOT a persisted simulation DTO or mutable vote authority.
+        public bool nativeSpeechRulesOn, speechHearer;
+        public List<WebVoteSpeechAppeal> speechAppeals = new List<WebVoteSpeechAppeal>();
+        // Native unified rules only. Derived from the sole canonical authority, never saved or
+        // reconstructed from web fixtures, and never writable commitment mirrors.
+        public List<WebVoteSafetyTerm> safetyTerms = new List<WebVoteSafetyTerm>();
+    }
+
+    [Serializable] public sealed class WebVoteSafetyTerm
+    {
+        public string nomineeId;
+        public double obligation;
+        public int brokenIncidents;
+        public List<string> evidenceIds = new List<string>();
+    }
+
+    public sealed class WebVoteSpeechAppeal
+    {
+        public string nomineeId, approach, evidenceId;
+        public bool heard, opponentAlly;
     }
 
     /// <summary>A voter's grudge against a nominee and the bond between them, as vote factors.</summary>
@@ -141,6 +198,9 @@ namespace Gamesim.Simulation
             if (state.nominees.Count != 2 || state.Find(voterId) == null)
                 throw new ArgumentException("Voting requires a known voter and two nominees.");
             var active = state.Active.Select(NativeContestant).ToList();
+            // Under the commitment rules (C0, X3) a breach is held against whoever broke it, here as in
+            // every other reader; who that was is read only where it is used.
+            bool heldByBreaker = EpisodeEngine.CommitmentRulesOn(state);
             var options = new WebVoteOptions
             {
                 voter = NativeContestant(state.Find(voterId)),
@@ -154,10 +214,14 @@ namespace Gamesim.Simulation
                     { npcId = a.npcId, npcName = a.npcName, arcType = a.arcType, intensity = a.intensity, escalationLevel = a.escalationLevel }).ToList(),
                     // A voter weighs only the alliances they know about. Every alliance without a
                     // story fact is known to all, so a season before the knowledge rules is unchanged.
+                    // Under the commitment rules a member who has left the house has left the pact, so
+                    // its size in threat and loyalty is the members still in it (X5), and a member whose
+                    // own commitment to the player has lapsed holds none of its loyalty toward them (C2, C3).
                     alliances = state.alliances.Where(a => Knowledge.AllianceVisibleTo(state, a, voterId)).Select(a => new WebVoteAlliance
                     {
                         id = a.id, name = a.name, status = a.active ? "Active" : "Dissolved",
-                        members = new List<string>(a.members)
+                        members = Allegiance.Counted(state, a),
+                        lapsedIds = Allegiance.LapsedMembers(state, a),
                     }).ToList(),
                     promises = state.promises.Select(p => new WebVotePromise
                     {
@@ -170,7 +234,10 @@ namespace Gamesim.Simulation
                     deals = state.deals.Select(d => new WebVoteDeal
                     {
                         id = d.id, proposerId = d.proposerId, recipientId = d.recipientId,
-                        type = d.type, status = d.status, targetHouseguestId = d.targetId
+                        type = d.type, status = d.status, targetHouseguestId = d.targetId,
+                        heldByBreaker = heldByBreaker,
+                        brokenById = heldByBreaker ? Breaches.DealBreaker(state, d) : null,
+                        brokenByBoth = heldByBreaker && Breaches.BrokenByBoth(d),
                     }).ToList()
                 },
                 memories = state.memories.Where(m => m.ownerId == voterId).Reverse().Take(10).Select(m => m.text).ToList(),
@@ -183,7 +250,40 @@ namespace Gamesim.Simulation
                 }).Where(t => t.grudge != 0 || t.bond != 0).ToList(),
                 obligations = EpisodeEngine.LeverTerms(state, voterId),
             };
+            if (UnifiedCommitments.RulesOn(state)) options.safetyTerms = SafetyTerms(state, voterId);
+            BlockSpeeches.Configure(state, options);
             return options;
+        }
+
+        private static List<WebVoteSafetyTerm> SafetyTerms(EpisodeState state, string voterId)
+        {
+            var records = UnifiedCommitmentHistory.Records(state);
+            var incidents = UnifiedCommitmentHistory.Breaches(state);
+            return state.nominees.Select(targetId =>
+            {
+                var pair = records.Where(row => (row.makerId == voterId && row.beneficiaryId == targetId)
+                    || (row.makerId == targetId && row.beneficiaryId == voterId)).ToArray();
+                var active = pair.Where(row => row.status == DealStatus.Active).ToArray();
+                var kept = pair.Where(row => row.status == DealStatus.Fulfilled).ToArray();
+                var wronged = incidents.Where(incident => incident.ActorId == targetId && incident.WrongedId == voterId).ToArray();
+                var term = new WebVoteSafetyTerm { nomineeId = targetId,
+                    // Source values, strongest active protection once; fulfilled evidence grouped by
+                    // the actual final-veto settlement week. Source promises never fulfill there.
+                    obligation = active.Length == 0 ? 0 : active.Max(row => row.sourcePolicy == UnifiedCommitments.DealPolicy
+                        ? 35 : row.makerId == voterId ? 30 : 10),
+                    brokenIncidents = incidents.Count(incident => incident.ActorId == targetId),
+                };
+                term.obligation += 5 * kept.Select(row => row.settledWeek).Distinct().Count();
+                foreach (var incident in wronged)
+                {
+                    var owner = records.Single(row => row.id == incident.EffectOwnerId);
+                    term.obligation -= owner.sourcePolicy == UnifiedCommitments.PromisePolicy ? 25 : 35;
+                }
+                term.evidenceIds = active.Select(row => row.id).Concat(kept.Select(row => row.id))
+                    .Concat(wronged.SelectMany(incident => incident.EvidenceIds)).Distinct(StringComparer.Ordinal)
+                    .OrderBy(id => id, StringComparer.Ordinal).ToList();
+                return term;
+            }).ToList();
         }
 
         public static WebVoteEvaluation EvaluateNative(EpisodeState state, string voterId) => Evaluate(FromNative(state, voterId));
@@ -199,6 +299,9 @@ namespace Gamesim.Simulation
                 throw new ArgumentException("Nominees must be two distinct contestants.");
             var weights = TraitWeights(options.voter.traits, options.state.activeCount);
             var evaluations = options.nominees.Select(n => EvaluateNominee(options, n, weights)).ToList();
+            // The complete pair is evaluated first, including the caller's actual bloc directive.
+            // Both speech terms share that immutable baseline; no recursive/tie RNG evaluation.
+            BlockSpeeches.Apply(options, evaluations);
             int selectedIndex;
             if (evaluations[0].score == evaluations[1].score)
             {
@@ -243,6 +346,9 @@ namespace Gamesim.Simulation
                 case "bond": return "I'm not turning on " + saved.name + ".";
                 case "obligation": return "I gave my word on this vote, and I keep my word.";
                 case "plea": return "You asked me to keep you, and I heard you.";
+                // The final choice's own, under the commitment rules (C9).
+                case "pact": return saved.name + " and I made a pact, and it still holds.";
+                case "jury": return "I can beat " + saved.name + " in front of the jury.";
                 default: return "Keeping " + saved.name + " is better for my game right now.";
             }
         }
@@ -270,7 +376,11 @@ namespace Gamesim.Simulation
             return w;
         }
 
-        private static double Threat(WebVoteContestant evaluator, WebVoteContestant target, WebVoteState state)
+        // Retain the unique three-argument source leaf used by the legacy contract tests.
+        private static double Threat(WebVoteContestant evaluator, WebVoteContestant target, WebVoteState state) =>
+            ThreatWithSafety(evaluator, target, state, 0);
+
+        private static double ThreatWithSafety(WebVoteContestant evaluator, WebVoteContestant target, WebVoteState state, int safetyBreaches)
         {
             double competition = Math.Min(40, target.hohWins * 8 + target.vetoWins * 6);
             var others = state.allActive.Where(c => c.id != target.id && c.id != evaluator.id).ToArray();
@@ -279,16 +389,34 @@ namespace Gamesim.Simulation
             double alliance = Math.Min(20, state.alliances.Where(a => Active(a) && a.members.Contains(target.id)).Sum(a => a.members.Count * 4));
             double potential = (target.stats.competition / 10) * 3 + (target.stats.strategic / 10) * 2;
             if (target.stats.social >= 7 && target.stats.strategic >= 7) potential += 2;
-            double broken = Math.Min(8, state.deals.Count(d => d.status == "broken" && (d.proposerId == target.id || d.recipientId == target.id)) * 3);
+            double broken = Math.Min(8, (state.deals.Count(d => d.status == "broken" && HeldAgainst(d, target.id)) + safetyBreaches) * 3);
             var arc = target.isPlayer ? state.relationshipArcs.FirstOrDefault(a => a.npcId == evaluator.id) : null;
             double arcThreat = arc?.arcType == "rivalry" ? Math.Min(7, Math.Floor(arc.intensity / 15)) :
                 arc?.arcType == "friendship" ? -Math.Min(5, Math.Floor(arc.intensity / 20)) : 0;
             return Clamp(competition + social + alliance + Math.Min(10, potential) + broken + arcThreat, 0, 100);
         }
 
+        /// <summary>
+        /// Whether a broken deal adds to this houseguest's threat. The web holds it against both
+        /// sides. Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C0) it is held against
+        /// whoever broke it - both sides of a voting bloc, which each walked away from, and of a vote
+        /// deal both of them broke (C1) - and never against the one wronged: a Head of Household who
+        /// nominates their safety partner does not put them up with three more points of threat in
+        /// every ballot besides.
+        /// </summary>
+        private static bool HeldAgainst(WebVoteDeal d, string id)
+        {
+            bool pair = d.proposerId == id || d.recipientId == id;
+            return d.heldByBreaker ? d.brokenById == id || ((d.type == DealKind.VoteTogether || d.brokenByBoth) && pair) : pair;
+        }
+
         private static EvidenceValue AllianceLoyalty(string evaluatorId, string targetId, WebVoteState state)
         {
-            var shared = state.alliances.Where(a => Active(a) && a.members.Contains(evaluatorId) && a.members.Contains(targetId)).ToArray();
+            // Native (C2, C3): a voter whose own commitment to the player has lapsed weighs none of the
+            // pact's loyalty toward them. No imported round names anybody, so the web's term is the web's.
+            bool towardThePlayer = state.allActive.Any(c => c.id == targetId && c.isPlayer);
+            var shared = state.alliances.Where(a => Active(a) && a.members.Contains(evaluatorId) && a.members.Contains(targetId)
+                && !(towardThePlayer && a.lapsedIds != null && a.lapsedIds.Contains(evaluatorId))).ToArray();
             return new EvidenceValue
             {
                 value = Math.Min(100, shared.Sum(a => Math.Min(a.members.Count * 10, 50) + (a.members.Count <= 3 ? 20 : 0))),
@@ -296,7 +424,10 @@ namespace Gamesim.Simulation
             };
         }
 
-        private static EvidenceValue DealObligation(string evaluatorId, string targetId, WebVoteState state)
+        private static EvidenceValue DealObligation(string evaluatorId, string targetId, WebVoteState state) =>
+            DealObligationWithSafety(evaluatorId, targetId, state, null);
+
+        private static EvidenceValue DealObligationWithSafety(string evaluatorId, string targetId, WebVoteState state, WebVoteSafetyTerm safety)
         {
             var result = new EvidenceValue();
             foreach (var promise in state.promises)
@@ -325,8 +456,17 @@ namespace Gamesim.Simulation
                     else if (pair) result.value += PairDealValue(deal.type);
                     result.evidenceIds.Add(deal.id);
                 }
-                else if (deal.status == "broken" && pair) { result.value -= 35; result.evidenceIds.Add(deal.id); }
+                // A broken deal between them, held by the voter against the nominee. Under the commitment
+                // rules only when the nominee broke it (or walked away from a voting bloc), as the web's own
+                // promise term reads a broken promise and as the threat term holds a breach (C0): a voter's
+                // own breach is no grievance of theirs against the one they wronged.
+                else if (deal.status == "broken" && pair && HeldAgainst(deal, targetId)) { result.value -= 35; result.evidenceIds.Add(deal.id); }
                 else if (deal.status == "fulfilled" && pair) { result.value += 5; result.evidenceIds.Add(deal.id); }
+            }
+            if (safety != null)
+            {
+                result.value += safety.obligation;
+                result.evidenceIds.AddRange(safety.evidenceIds);
             }
             result.value = Clamp(result.value, -50, 50);
             return result;
@@ -343,6 +483,9 @@ namespace Gamesim.Simulation
                 case "veto_use": return 40;
                 case "information_sharing": return 10;
                 case "alliance_invite": return 25;
+                // Native, the port's own kind (C9): a final three deal is weighed in a ballot on the
+                // partner as a safety pact is, since it binds what a safety pact binds.
+                case DealKind.FinalThree: return 35;
                 default: return 10;
             }
         }
@@ -417,7 +560,8 @@ namespace Gamesim.Simulation
         private static WebNomineeEvaluation EvaluateNominee(WebVoteOptions o, WebVoteContestant nominee, Weights weights)
         {
             var alliance = AllianceLoyalty(o.voter.id, nominee.id, o.state);
-            var deal = DealObligation(o.voter.id, nominee.id, o.state);
+            var safety = o.safetyTerms?.FirstOrDefault(term => term.nomineeId == nominee.id);
+            var deal = DealObligationWithSafety(o.voter.id, nominee.id, o.state, safety);
             var arc = nominee.isPlayer ? o.state.relationshipArcs.FirstOrDefault(a => a.npcId == o.voter.id) : null;
             double history = arc == null ? 0 : (arc.arcType == "rivalry" ? -1 : arc.arcType == "friendship" ? 1 : 0) * arc.intensity;
             double persona = nominee.isPlayer && !string.IsNullOrEmpty(o.playerPersonaLabel) ? Persona(o.playerPersonaLabel) : 0;
@@ -426,7 +570,7 @@ namespace Gamesim.Simulation
             var factors = new List<WebVoteFactor>
             {
                 Factor("relationship", Score(o.state, o.voter.id, nominee.id) * weights.relationship, "private", "relationship:" + o.voter.id + ":" + nominee.id),
-                Factor("threat", -Threat(o.voter, nominee, o.state) * weights.threat, "public", "resume:" + nominee.id),
+                Factor("threat", -ThreatWithSafety(o.voter, nominee, o.state, safety?.brokenIncidents ?? 0) * weights.threat, "public", "resume:" + nominee.id),
                 Factor("alliance", alliance.value * weights.alliance, "private", alliance.evidenceIds.ToArray()),
                 Factor("deal", deal.value * weights.deal, "private", deal.evidenceIds.ToArray()),
                 Factor("strategicValue", StrategicValue(o.voter, nominee, o.state) * weights.strategicValue * 0.5, "private"),
@@ -436,6 +580,9 @@ namespace Gamesim.Simulation
                 Factor("persona", persona, "private", persona == 0 ? Array.Empty<string>() : new[] { "persona:" + o.playerPersonaLabel }),
                 Factor("blocPressure", follows ? -40 : 0, "private", follows ? new[] { o.blocDirective.allianceId } : Array.Empty<string>())
             };
+            // Native (C9): a caller may leave some of the ten out. None does but the final choice under
+            // the commitment rules, so every ballot weighs the ten as it always did.
+            if (o.omittedFactors != null && o.omittedFactors.Count > 0) factors.RemoveAll(f => o.omittedFactors.Contains(f.code));
             // The story system's two terms, native: present only when they say something, so the
             // web's ten factors are exactly the web's ten wherever there is no story to tell.
             var story = o.storyTerms?.FirstOrDefault(t => t.nomineeId == nominee.id);
@@ -444,8 +591,11 @@ namespace Gamesim.Simulation
             // The levers' terms: what this voter owes the player on this nominee, and how they
             // answered a plea, known to the player because they are the player's own doing.
             // Present only where there is one.
+            // The final choice's own terms under the commitment rules (C9) - a pact the Head of Household holds
+            // to, the jury they read - are theirs, never the player's to know: private. No ballot carries them.
             foreach (var term in (o.obligations ?? new List<WebVoteObligation>()).Where(t => t.nomineeId == nominee.id && t.value != 0))
-                factors.Add(Factor(term.code ?? "obligation", term.value, "playerKnown", term.evidenceIds.ToArray()));
+                factors.Add(Factor(term.code ?? "obligation", term.value,
+                    term.code == EpisodeEngine.PactFactor || term.code == EpisodeEngine.JuryFactor ? "private" : "playerKnown", term.evidenceIds.ToArray()));
             return new WebNomineeEvaluation { nomineeId = nominee.id, factors = factors, score = factors.Sum(f => f.value) };
         }
 

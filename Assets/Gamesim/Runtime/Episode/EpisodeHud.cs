@@ -25,6 +25,9 @@ namespace Gamesim.Episode
         public const string SpeechSubmitCaption = "Submit final speech";
         public const string EvictionSpeechCaption = "Deliver your speech";
         public const string EvictionSpeechSkipCaption = "Say nothing";
+        public const string BlockSpeechDraftName = "Block speech draft";
+        public const string BlockSpeechApproachesName = "Block speech approaches";
+        public const string BlockSpeechReadbackHeading = "SPEECHES FROM THE BLOCK";
         public const string SpeechSkipCaption = "Skip my final speech";
         public const string SpeechContinueCaption = "Continue to jury voting";
         public const string DiaryTravelCaption = "Go to diary room [R]";
@@ -70,6 +73,40 @@ namespace Gamesim.Episode
             DealProposeCaption((kind == Gamesim.Simulation.DealKind.VoteSave ? "vote to keep " : "vote to evict ") + who);
         /// <summary>Calling the vote in an alliance: "Call the vote in The Pact: evict Jo".</summary>
         public static string CallTheVoteCaption(string alliance, string who) => "Call the vote in " + alliance + ": evict " + who;
+
+        /// <summary>
+        /// The answers to a counter-offer (ACTIONS-DEALS-ALLIANCES-PLAN C7), by the first name of whoever
+        /// made it: "Take Maya's counter-offer", "Turn down Maya's counter-offer". New words, no other
+        /// control's: an offer's own answers keep theirs.
+        /// </summary>
+        public static string CounterAcceptCaption(string first) => "Take " + first + "'s counter-offer";
+        public static string CounterDeclineCaption(string first) => "Turn down " + first + "'s counter-offer";
+
+        /// <summary>
+        /// Calling in a promise a houseguest made the player (C7), each of the web's three ways, naming
+        /// them and what they promised: "Remind Maya of their promise of safety", "Demand Maya keep their
+        /// promise of safety", "Threaten to tell the house if Maya breaks their promise of safety".
+        /// </summary>
+        public static string CallInCaption(string approach, string first, string promised)
+        {
+            string promise = "their promise of " + promised;
+            switch (approach)
+            {
+                case Gamesim.Simulation.Negotiation.Remind: return "Remind " + first + " of " + promise;
+                case Gamesim.Simulation.Negotiation.Demand: return "Demand " + first + " keep " + promise;
+                default: return "Threaten to tell the house if " + first + " breaks " + promise;
+            }
+        }
+
+        /// <summary>Mending fences with a houseguest the player broke their word to (C7): "Mend fences with Maya".</summary>
+        public static string MendFencesCaption(string first) => "Mend fences with " + first;
+
+        /// <summary>
+        /// A veto for a price (C7), the holder's word to a nominee and what it costs them: "Use the veto on
+        /// Maya, for their vote to keep you", "Use the veto on Maya, for a final two".
+        /// </summary>
+        public static string VetoPriceCaption(string first, string kind) =>
+            "Use the veto on " + first + (kind == Gamesim.Simulation.DealKind.FinalTwo ? ", for a final two" : ", for their vote to keep you");
 
         /// <summary>
         /// "a " or "an ", so a caption built from a deal's own title reads as English.
@@ -403,10 +440,16 @@ namespace Gamesim.Episode
             // full run). Never under the gate: opening a panel renders before the tick clears it.
             if (!string.IsNullOrEmpty(promptAsked) && director != null && !director.IsHouseUnderChrome)
                 SetPrompt(promptAsked, promptHintAsked);
+            // The line down under a ceremony's card that says the same beat (UI-UX-PASS-PLAN V0),
+            // asked of the director now - the render a commit makes comes in the frame its card
+            // begins, before the director's next tick says so - and before the Nearby card is put
+            // back, which stands the line down by the same rule.
+            SetStatusUnderCard(director != null && director.CeremonyCardAnnouncing);
             // The Nearby card and its bar as last asked for, now that the status line they stand
             // in for is built: a render between the director's ticks used to leave the new status
             // over the bar until the next tick, and a frame is what a capture photographs.
             ApplyNearby();
+            ApplyStatusLine();
             content = null;
             if (!open && !recovery)
             {
@@ -1082,7 +1125,7 @@ namespace Gamesim.Episode
             Paragraph("Write your final speech, or skip it. Your speech becomes part of the saved record; no jury result is promised.");
             Paragraph("Up to 2,000 characters. Enter adds a line; Tab or Shift+Tab moves to another control.");
             var input = SpeechDraft("Final speech draft","What do you want the jury to remember about your game?",
-                "Final speech character count");
+                "Final speech character count", retainedSpeech, value => retainedSpeech = value);
             Action(SpeechSubmitCaption,() => director.SubmitSpeech(input.text));
             Action(SpeechSkipCaption,() => director.SubmitSpeech(""));
         }
@@ -1095,35 +1138,54 @@ namespace Gamesim.Episode
         /// than inserting a tab, and the draft survives a HUD rebuild, so a repaint cannot silently
         /// erase what someone was part way through writing.</para>
         /// </summary>
-        private EpisodeSpeechInputField SpeechDraft(string panelName,string hintText,string counterName)
+        private EpisodeSpeechInputField SpeechDraft(string panelName,string hintText,string counterName,
+            string draft, Action<string> changed)
         {
             var rect = Panel(panelName,content,Surface);
-            rect.gameObject.AddComponent<LayoutElement>().minHeight = 210 * FontScale;
+            // TMP creates its selection caret and registers the text callbacks in OnEnable. Keep
+            // the field inactive until its text and viewport exist, as a serialized field would.
+            rect.gameObject.SetActive(false);
+            var fieldLayout = rect.gameObject.AddComponent<LayoutElement>();
+            fieldLayout.minHeight = fieldLayout.preferredHeight = 210 * FontScale;
+            fieldLayout.flexibleHeight = 0f;
             var input = rect.gameObject.AddComponent<EpisodeSpeechInputField>();
-            var text = NewText(rect,"",21,Paper); Stretch(text.rectTransform,14,12,14,12);
+            // TMP itself advertises the entire draft's preferred height at layout priority 1.
+            // This bounded editor must outrank it; equal priorities take the larger height.
+            fieldLayout.layoutPriority = input.layoutPriority + 1;
+            var viewport = new GameObject("Speech text viewport", typeof(RectTransform), typeof(RectMask2D)).GetComponent<RectTransform>();
+            viewport.SetParent(rect, false); Stretch(viewport,14,12,14,12);
+            var text = NewText(viewport,"",21,Paper); Stretch(text.rectTransform,0,0,0,0);
             text.alignment = TextAlignmentOptions.TopLeft;
-            var hint = NewText(rect,hintText,21,UiTheme.Muted);
-            Stretch(hint.rectTransform,14,12,14,12);
-            input.textComponent = text; input.placeholder = hint;
+            // The viewport clips the full text geometry. The HUD's usual Truncate mode drops
+            // lines that TMP_InputField needs to calculate wheel movement and the caret position.
+            text.overflowMode = TextOverflowModes.Overflow;
+            var hint = NewText(viewport,hintText,21,UiTheme.Muted);
+            Stretch(hint.rectTransform,0,0,0,0);
+            input.textViewport = viewport; input.textComponent = text; input.placeholder = hint;
             input.characterLimit = 2000; input.lineType = TMP_InputField.LineType.MultiLineNewline;
             input.onValidateInput = (value,index,character) => character == '\t' ? '\0' : character;
             input.customCaretColor = true; input.caretColor = Accent;
             input.selectionColor = new Color(Accent.r,Accent.g,Accent.b,.3f);
-            input.text = retainedSpeech;
-            var count = FlowText(retainedSpeech.Length + " / 2000 characters",17,Paper);
+            input.text = draft ?? "";
+            var count = FlowText(input.text.Length + " / 2000 characters",17,Paper);
             count.gameObject.name = counterName;
-            input.onValueChanged.AddListener(value => { retainedSpeech = value; count.text = value.Length + " / 2000 characters"; });
+            input.onValueChanged.AddListener(value =>
+            {
+                changed?.Invoke(value);
+                if (count != null) count.text = value.Length + " / 2000 characters";
+            });
+            rect.gameObject.SetActive(true);
             return input;
         }
 
         /// <summary>A nominee's speech from the block, using the editor the finale uses.</summary>
-        public void EvictionSpeech(Action<string> commit)
+        public void EvictionSpeech(string draft, Action<string> changed, Action deliver, Action skip)
         {
             Paragraph("Up to 2,000 characters. Enter adds a line; Tab or Shift+Tab moves to another control.");
-            var input = SpeechDraft("Block speech draft",
-                "What do you want the house to have heard before it votes?","Block speech character count");
-            Action(EvictionSpeechCaption,() => commit(input.text));
-            Action(EvictionSpeechSkipCaption,() => commit(""));
+            SpeechDraft(BlockSpeechDraftName,
+                "What do you want the house to have heard before it votes?","Block speech character count", draft, changed);
+            Action(EvictionSpeechCaption, deliver);
+            Action(EvictionSpeechSkipCaption, skip);
         }
 
         private TMP_Text FlowText(string value,int size,Color color)
@@ -1306,12 +1368,16 @@ namespace Gamesim.Episode
         }
 
         public void ChoosePair(Option[] options,Action<string,string> commit,string commitCaption = "Commit nominations",
-            Action<string,string> selectionChanged = null)
+            Action<string,string> selectionChanged = null, string firstPicked = null, string secondPicked = null)
         {
-            string first = null, second = null;
+            string first = options.Any(o => o.Id == firstPicked) ? firstPicked : null;
+            string second = secondPicked != first && options.Any(o => o.Id == secondPicked) ? secondPicked : null;
             // Same framing the notebook uses, so a trust number is never mistaken for fact.
             Paragraph("Trust readings are your own perspective; another housemate may feel differently.");
-            var selection = FlowText("Choose two houseguests below.",21,Accent);
+            string Label(string id) => id == null ? "—" : Array.Find(options, o => o.Id == id).Label ?? "—";
+            var selection = FlowText(first == null && second == null ? "Choose two houseguests below."
+                : "Selected: " + Label(first) + " and " + Label(second),21,Accent);
+            selection.gameObject.name = SelectedNomineesName;
 
             // The candidates as cards (mockup-09): a photo, the name, where the player stands with
             // them and the trust reading, in a grid as wide as the panel allows. A card is pressed
@@ -1341,13 +1407,13 @@ namespace Gamesim.Episode
                     else if (second == captured.Id) second = null;
                     else if (first == null) first = captured.Id;
                     else second = captured.Id;
-                    string Label(string id) => Array.Find(options,o=>o.Id==id).Label ?? "—";
                     selection.text = "Selected: " + Label(first) + " and " + Label(second);
                     foreach (var pair in cards) MarkPicked(pair.Value, pair.Key == first || pair.Key == second);
                     selectionChanged?.Invoke(first,second);
                 });
                 cards[option.Id] = (RectTransform)card.transform;
             }
+            foreach (var pair in cards) MarkPicked(pair.Value, pair.Key == first || pair.Key == second);
             Action(commitCaption,() => commit(first,second));
         }
 
@@ -1938,13 +2004,18 @@ namespace Gamesim.Episode
             // A panel redrawn under the pointer takes its presses back once the hold's time is up
             // (EpisodeHud.FreeTimeBoard.cs), whether or not anything renders again.
             if (pointerHeldUntil > 0f) ApplyPointerHold();
+            // A name a picker drew over a card that a row drawn after it uses as its caption comes off
+            // now the render is done (EpisodeHud.ConversationGroups.cs).
+            if (pickerNames.Count > 0) StandDownNamesThatAreCaptions();
             var events = EventSystem.current;
             if (canvas == null || !canvas.gameObject.activeInHierarchy || events == null) return;
             var overlay = ActiveOverlay();
             if (overlay != lastOverlay) { lastOverlay = overlay; restoreSelection = true; }
             // A screen that rebuilds its form on every press (the character creator) hands the ring
-            // a new set of controls each time; rewire when the count moves.
-            int controls = overlay != null ? overlay.GetComponentsInChildren<Selectable>().Length : 0;
+            // a new set of controls each time. Count eligible controls: an asynchronous preview can
+            // enable Retry without adding an object, and that newly usable control needs a place.
+            int controls = overlay != null ? overlay.GetComponentsInChildren<Selectable>()
+                .Count(item => item.IsActive() && item.IsInteractable() && !(item is Scrollbar) && item != interactButton) : 0;
             if (controls != overlayControls) { overlayControls = controls; if (overlay != null) restoreSelection = true; }
             // A screen can also redraw itself with exactly as many controls as it had - the season
             // report sorting its table does - and then the count says nothing while the ring still
@@ -2012,12 +2083,14 @@ namespace Gamesim.Episode
                 // reason to move the keyboard. The HUD's own rebuilds destroy the old selection, so
                 // for them this is null and the named restore below takes over as before.
                 var current = events.currentSelectedGameObject;
+                // Never, of the HUD's own accord, a control that commits the final choice: the
+                // final Head of Household's page opens on Close (MayFocusOnItsOwn).
                 var focus = eligible.FirstOrDefault(item => current != null && item.gameObject == current)
-                    ?? eligible.FirstOrDefault(item => item.name == preferredSelection)
-                    ?? OpeningControl(eligible)
+                    ?? eligible.FirstOrDefault(item => item.name == preferredSelection && MayFocusOnItsOwn(item))
+                    ?? OpeningControl(eligible.Where(MayFocusOnItsOwn).ToArray())
                     ?? PinnedSelectable(eligible)
                     ?? eligible.FirstOrDefault(item => item.name == "Go to episode screen")
-                    ?? eligible.FirstOrDefault();
+                    ?? eligible.FirstOrDefault(MayFocusOnItsOwn);
                 RestoreFocus(events, focus != null ? focus.gameObject : null);
                 restoreSelection = false;
             }
@@ -2041,9 +2114,9 @@ namespace Gamesim.Episode
             }
             if (scope != null && (selected == null || !selected.transform.IsChildOf(scope)))
             {
-                var focus = (overlay != null ? overlay : content).GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable())
+                var focus = (overlay != null ? overlay : content).GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable() && MayFocusOnItsOwn(item))
                     ?? (overlay == null && pinnedAction != null ? pinnedAction.GetComponent<Selectable>() : null)
-                    ?? scope.GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable());
+                    ?? scope.GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable() && MayFocusOnItsOwn(item));
                 RestoreFocus(events, focus != null ? focus.gameObject : null);
                 selected = events.currentSelectedGameObject;
             }
@@ -2054,6 +2127,18 @@ namespace Gamesim.Episode
                     RevealSelection(selected.transform);
             }
         }
+
+        /// <summary>
+        /// Whether the HUD may put the keyboard on <paramref name="item"/> on its own account - a
+        /// panel opening, a rebuild's restore, a lost selection's fallback. Never a control that
+        /// commits the final Head of Household's choice (it wears a <see cref="ChoiceLight"/>), unless
+        /// it is the one the player lit, handed back across a rebuild: an irreversible choice is never
+        /// left under an Enter the player did not aim (UI-UX-PASS-PLAN Q0's review). That page opens
+        /// on Close, which commits nothing; Tab or an arrow takes the keyboard to a choice, which
+        /// lights its card.
+        /// </summary>
+        private bool MayFocusOnItsOwn(Selectable item) =>
+            item != null && (item.GetComponent<ChoiceLight>() == null || (litChoice != null && item.name == litChoice));
 
         /// <summary>
         /// Selects <paramref name="target"/> on the HUD's own account rather than the player's: a
@@ -2068,11 +2153,11 @@ namespace Gamesim.Episode
             finally { restoringFocus = false; }
         }
 
-        /// <summary>Whether the keyboard ring holds a control that has been destroyed or hidden since it was wired.</summary>
+        /// <summary>Whether the keyboard ring holds a control that is no longer eligible since it was wired.</summary>
         private bool RingHoldsLeftovers()
         {
             foreach (var item in tabOrder)
-                if (item == null || !item.gameObject.activeInHierarchy) return true;
+                if (item == null || !item.IsActive() || !item.IsInteractable()) return true;
             return false;
         }
 

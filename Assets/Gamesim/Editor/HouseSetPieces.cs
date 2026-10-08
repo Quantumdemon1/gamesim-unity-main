@@ -40,6 +40,8 @@ namespace Gamesim.Editor
     public static class HouseSetPieces
     {
         public const string RootName = "Set Pieces";
+        /// <summary>The spare lounger stays west of both unchanged saved Home seats and their approaches.</summary>
+        public const float SpareLoungerFloorX = .261f;
         private const string EpisodeScene = "Assets/Gamesim/Scenes/EpisodeHouse.unity";
         private const string WorldRoot = "House Architecture";
         private const string Kit = "Assets/Gamesim/Art/External/KenneyFurniture/";
@@ -72,7 +74,7 @@ namespace Gamesim.Editor
         }
 
         /// <summary>Every model id the plan names, for the catalogue audit.</summary>
-        public static IEnumerable<string> PlanModels => Plan.Select(prop => prop.Model).Concat(SteppedModels);
+        public static IEnumerable<string> PlanModels => Plan.Select(prop => prop.Model).Concat(SteppedModels).Concat(HouseAmenitiesAuthoring.ModelIds);
         /// <summary>Models placed by a step rather than a plan row: the competition set.</summary>
         private static readonly string[] SteppedModels =
         {
@@ -316,7 +318,9 @@ namespace Gamesim.Editor
             new Prop("Competition yard floor", "bb_set_hottub",  -0.357f, 0.30f,   0f, 0f),
             new Prop("Competition yard floor", "bb_set_lounger",  0.336f, -0.40f,  0f, 0f),
             new Prop("Competition yard floor", "bb_set_lounger",  0.386f, -0.40f,  0f, 0f),
-            new Prop("Competition yard floor", "bb_set_lounger",  0.436f, -0.40f,  0f, 0f),
+            // Keep the spare west of the saved Home pair, with its own approach and enough room
+            // beyond its right edge for Home slot zero's unchanged left-side navigation root.
+            new Prop("Competition yard floor", "bb_set_lounger", SpareLoungerFloorX, -0.40f, 0f, 0f),
             new Prop("Competition yard floor", "pottedPlant",  -0.42f, -0.34f,   0f, 0.90f),
             new Prop("Competition yard floor", "pottedPlant",  -0.46f,  0.34f,   0f, 1.05f),
             new Prop("Competition yard floor", "pottedPlant",   0.24f,  0.44f,   0f, 1.05f),
@@ -375,6 +379,8 @@ namespace Gamesim.Editor
             int shell = Shell(world.transform, root);
             // Before the collision and the bake, so both see the living room as it will be played.
             string gallery = HouseLivingGallery.Dress(world.transform, root);
+
+            HouseAmenitiesAuthoring.Place(world.transform, root);
 
             // The anchors that hang on set pieces - the dining chairs' and loungers' meeting seats,
             // the counter's and the tub's activities, the diary chair, the episode station - went

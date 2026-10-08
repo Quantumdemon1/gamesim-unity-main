@@ -35,7 +35,7 @@ namespace Gamesim.Episode
             blocReport = verifyBlocs ? new BlocReport() : null;
             seasonReport = new SeasonReport
             {
-                status = "Running", startedUtc = DateTime.UtcNow.ToString("O"), graphical = graphical,
+                status = "Running", startedUtc = DateTime.UtcNow.ToString("O"), graphical = graphical, batchMode = Application.isBatchMode,
                 artifactId = Guid.NewGuid().ToString("N"), saveDirectory = outputDirectory,
                 workload = "One legally created six-person season using actual active uGUI buttons, real NavMesh routes, diary confirmations, eligible finale choices, and save/reload. Interaction activation uses the same director methods as E; floor movement is API-driven, not simulated mouse input. Assisted competitions are used. Not a performance sample, human playtest, pacing measure, or exhaustive role-branch test."
             };
@@ -135,6 +135,8 @@ namespace Gamesim.Episode
                 && fresh.contestants.Count(actor => actor.isPlayer) == 1,"The cast screen must start a genuine default-size season.");
             // A lost EnableFinale would fall back to the catalogue's A and B and never walk the responses.
             RequireSeason(fresh.finaleRulesStartWeek == 1,"The cast screen's season must play the finale rules from its first week.");
+            // A lost EnableCommitments would leave study free and a breach held against its victim.
+            RequireSeason(fresh.commitmentRulesStartWeek == 1,"The cast screen's season must play the commitment rules from its first week.");
             CheckSaveIsIsolated();
             seasonReport.sessionId = fresh.sessionId; seasonReport.seed = fresh.seed.ToString();
             seasonReport.profileSavePath = previousSlot; seasonReport.seasonSavePath = seasonDirector.SavePath;
@@ -212,7 +214,8 @@ namespace Gamesim.Episode
         private IEnumerator PerformSeasonDecision(EpisodeState state,bool graphical)
         {
             // Somebody who came to the player is answered first, as the panel draws them first.
-            if ((state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign) && ReplyCards.Pending(state) != null)
+            if ((state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign || HoHPitches.Available(state))
+                && ReplyCards.Pending(state) != null)
             { yield return AnswerSeasonReplyCard(state); yield break; }
             if (state.phase == EpisodePhase.Social && HouseEvents.Pending(state) != null)
             { yield return ResolveSeasonHouseEvent(state,graphical); yield break; }
@@ -254,8 +257,9 @@ namespace Gamesim.Episode
                 && (state.evictionStage == EvictionStage.Voting || state.evictionStage == EvictionStage.Tiebreaker)
                 && (EpisodeEngine.Voters(state).Any(actor => actor.isPlayer) || EpisodeEngine.NeedsPlayerTieBreak(state)))
             { yield return ClickSeasonButton("Vote to evict " + state.Find(state.nominees[0]).name); yield break; }
+            // The final choice's control says both halves of it, "Take Maya · evict Taylor" (UI-UX-PASS-PLAN Q0).
             if (state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId)
-            { yield return ClickSeasonButton("Evict " + state.Active.First(actor => !actor.isPlayer).name); yield break; }
+            { yield return ClickSeasonButton(FinalChoiceWords.CaptionToEvict(state, state.Active.First(actor => !actor.isPlayer).id)); yield break; }
             if (state.phase == EpisodePhase.JuryQuestioning)
             {
                 if (!seasonReport.juryReloadVerified)
@@ -383,6 +387,7 @@ namespace Gamesim.Episode
             // coverage may simply run out of actions before the milestone. It breaks out and records
             // a note rather than failing: the oath path is optional by design.
             int weeklyBudget = EpisodeEngine.SocialActionBudget(seasonDirector.Snapshot);
+            bool proposed = false;
             for (int spent = 0; spent < weeklyBudget && !seasonDirector.Snapshot.oathOpportunities.Contains(npc.Id); spent++)
             {
                 var before = seasonDirector.Snapshot;
@@ -390,9 +395,13 @@ namespace Gamesim.Episode
                     || EpisodeEngine.SocialActionsSpent(before) >= EpisodeEngine.SocialActionBudget(before)
                     || !HasSeasonButton("Spend time together")) break;
                 // Plain +4 conversations climb slowly from a neutral start.
-                // Use the same legal alliance opportunity as the live Play Mode fixture.
-                string action = !before.Allied(before.playerId,npc.Id) && before.Score(npc.Id,before.playerId) >= 8
+                // Use the same legal alliance opportunity as the live Play Mode fixture - once. Under the
+                // commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C4) the proposal rolls on the invitation's
+                // odds and a no spends the action, so asking again would spend the oath's budget on the
+                // roll; before them a proposal at this score was never refused, so once is all it took.
+                string action = !proposed && !before.Allied(before.playerId,npc.Id) && before.Score(npc.Id,before.playerId) >= 8
                     && HasSeasonButton("Propose an alliance") ? "Propose an alliance" : "Spend time together";
+                proposed |= action == "Propose an alliance";
                 yield return ClickSeasonButton(action);
                 if (seasonDirector.Snapshot.revision != before.revision + 1) break;
                 seasonReport.optionalSocialCommands++;
@@ -405,7 +414,7 @@ namespace Gamesim.Episode
                 RequireSeason(seasonDirector.Snapshot.revision == before.revision + 1
                     && seasonDirector.Snapshot.loyaltyOaths.Any(oath => oath.playerId == before.playerId && oath.targetId == npc.Id),"An available oath button must commit the player's declaration.");
                 seasonReport.oathOutcome = "Legally earned and declared";
-                seasonReport.oathNote = "Earned through at most eighteen actual social actions, including an eligible alliance proposal; no fabricated role, score, seed, or oath state.";
+                seasonReport.oathNote = "Earned through at most eighteen actual social actions, at most one of them an alliance proposal, whatever its answer; no fabricated role, score, seed, or oath state.";
                 yield return CaptureSeason("oath-recorded",graphical);
             }
             else seasonReport.oathNote = verifyStudy
@@ -559,11 +568,7 @@ namespace Gamesim.Episode
             Canvas.ForceUpdateCanvases();
             for (int frame = 0; frame < 5; frame++) yield return null;
             string path = Path.Combine(outputDirectory,"season-" + seasonReport.artifactId + "-" + label + ".png");
-            ScreenCapture.CaptureScreenshot(path);
-            double deadline = Time.realtimeSinceStartupAsDouble + 5;
-            while ((!File.Exists(path) || new FileInfo(path).Length == 0) && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
-            yield return null; yield return null;
-            RequireSeason(File.Exists(path) && new FileInfo(path).Length > 0,"A requested graphical season capture was not written: " + label);
+            yield return CaptureVerifiedFrame(path, seasonReport.capturedFrames.Add, reason => RequireSeason(false, reason));
             seasonReport.screenshots.Add(path);
         }
 
@@ -587,7 +592,8 @@ namespace Gamesim.Episode
         {
             public string status, startedUtc, finishedUtc, workload, artifactId, sessionId, seed, saveDirectory,
                 profileSavePath, seasonSavePath, winnerId, playerFinalStatus, oathOutcome, oathNote;
-            public bool graphical, finished, playerSpeechSubmitted, juryReloadVerified, profileSavePreserved, finalArgumentLocked;
+            public bool graphical, batchMode, finished, playerSpeechSubmitted, juryReloadVerified, profileSavePreserved, finalArgumentLocked;
+            public List<VerificationFrameEvidence> capturedFrames = new List<VerificationFrameEvidence>();
             public StudyReport study;
             public BlocReport blocs;
             public AutonomyReport autonomy;

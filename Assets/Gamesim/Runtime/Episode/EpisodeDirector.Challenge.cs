@@ -411,7 +411,14 @@ namespace Gamesim.Episode
             // The arena gates the start, not a game under way: a houseguest stepping off their mark
             // mid-attempt used to freeze the clock while taps still scored.
             if (!CompetitionArenaReady && !competitionScreen.IsPlaying) { competitionScreen.HoldReady("Houseguests are taking their places"); return; }
-            if (!competitionScreen.AdvanceReady(Time.unscaledDeltaTime)) return;
+            if (!competitionScreen.AdvanceReady(Time.unscaledDeltaTime))
+            {
+                // The preview can end on this frame even though gameplay deliberately starts
+                // on the next. Publish that new phase to the console before it is rendered:
+                // the preceding arena pass still read the preview's exposed card faces.
+                SyncCompetitionPlayerInstrument();
+                return;
+            }
             var keyboard = Keyboard.current;
             if (challengeRun.Kind == CompetitionMiniGames.Kind.Endurance) competitionScreen.SyncHoldKey();
             else if (challengeRun.Kind == CompetitionMiniGames.Kind.Reaction
@@ -421,6 +428,7 @@ namespace Gamesim.Episode
             challengeRun.Tick(Time.unscaledDeltaTime);
             if (challengeRun.ExpiredTargets > expired) audioBed.PlayCue(HouseAudio.Cue.SocialDown);
             competitionScreen.Refresh();
+            SyncCompetitionPlayerInstrument();
             if (!challengeRun.Finished) return;
             challengeResultShown = true;
             if (challengePractice)
@@ -526,7 +534,10 @@ namespace Gamesim.Episode
         {
             RestoreCompetitionAssemblyHud();
             EndCompetitionArena();
-            competitionScreen?.Hide(); challengeRun = null; challengeOrigin = null;
+            // A sibling scene root can be destroyed before the director is disabled.
+            // Unity's null check recognizes that native object; ?. only checks its CLR wrapper.
+            if (competitionScreen != null) competitionScreen.Hide();
+            challengeRun = null; challengeOrigin = null;
             challengeActive = false; challengeResultShown = false; challengeCommitting = false; challengeFinishHold = 0f;
         }
 

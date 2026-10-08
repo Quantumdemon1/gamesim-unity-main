@@ -10,6 +10,10 @@ namespace Gamesim.Simulation
     /// held, what you read of them, what they put to you and how you answered, the pacts you share
     /// and what you remember of them. Nothing you have not learned: every line is a row the engine
     /// wrote when it happened. The notebook's notes page and the free-time cards read it.
+    ///
+    /// <para>One line is not a row but the house's own behaviour, by design (ACTIONS-DEALS-ALLIANCES-PLAN
+    /// C3): an ally whose own commitment to you has lapsed has "gone quiet" (<see cref="Allegiance.GoneQuiet"/>),
+    /// in words and never a number - the warning before they can end the pact from their side.</para>
     /// </summary>
     public static class HouseguestNotes
     {
@@ -43,7 +47,7 @@ namespace Gamesim.Simulation
             string first = FirstName(who.name);
             string Name(string other) => other == s.playerId ? "you" : s.Find(other)?.name ?? "somebody";
 
-            foreach (var promise in s.promises.Where(p => (p.fromId == id && p.toId == s.playerId) || (p.fromId == s.playerId && p.toId == id)))
+            foreach (var promise in CommitmentReferences.Promises(s).Where(p => (p.fromId == id && p.toId == s.playerId) || (p.fromId == s.playerId && p.toId == id)))
             {
                 bool theirs = promise.fromId == id;
                 // Their vote promise ended by their ballot is told once you know the ballot (decision 4).
@@ -55,7 +59,7 @@ namespace Gamesim.Simulation
                     brief = (theirs ? "Their word: " : "Your word: ") + standing,
                 });
             }
-            foreach (var deal in s.deals.Where(d => (d.proposerId == id && d.recipientId == s.playerId) || (d.proposerId == s.playerId && d.recipientId == id)))
+            foreach (var deal in CommitmentReferences.Deals(s).Where(d => (d.proposerId == id && d.recipientId == s.playerId) || (d.proposerId == s.playerId && d.recipientId == id)))
             {
                 bool theirs = deal.proposerId == id;
                 string title = DealKind.Title(deal.type).ToLowerInvariant();
@@ -74,15 +78,20 @@ namespace Gamesim.Simulation
             }
             foreach (var claim in s.ledger.claims.Where(c => c.voterId == id))
             {
+                // An ally's claim is their own word to the pact at a meeting (ACTIONS-DEALS-ALLIANCES-PLAN
+                // C6), told as it was said; a ballot that went against it is a vote that changed, as the
+                // season's tapes say it, and costs them nothing - only a lie told to the player's face does.
+                bool ally = claim.source == ClaimSource.Ally;
                 string how = claim.source == ClaimSource.Told ? first + " told you: evict "
                     : claim.source == ClaimSource.Overheard ? "Overheard: " + first + " is voting out "
-                    : "An ally heard " + first + " is voting out ";
-                string verdict = claim.status == ClaimStatus.Kept ? " · and did" : claim.status == ClaimStatus.Lied ? " · a lie" : "";
+                    : "Told the pact they'd vote out ";
+                string verdict = claim.status == ClaimStatus.Kept ? " · and did"
+                    : claim.status == ClaimStatus.Lied ? (ally ? " · voted the other way" : " · a lie") : "";
                 notes.Add(new Note
                 {
                     week = claim.week, kind = Kinds.Vote, text = how + Name(claim.targetId) + verdict,
-                    brief = claim.status == ClaimStatus.Lied ? "Lied to you about the vote"
-                        : claim.status == ClaimStatus.Kept ? "Told you the truth about the vote"
+                    brief = claim.status == ClaimStatus.Lied ? (ally ? "Voted the other way" : "Lied to you about the vote")
+                        : claim.status == ClaimStatus.Kept ? (ally ? "Told the pact the truth about the vote" : "Told you the truth about the vote")
                         : "Says: evict " + FirstName(Name(claim.targetId)),
                 });
             }
@@ -100,17 +109,36 @@ namespace Gamesim.Simulation
                 else if (standing.source == ClaimSource.Deflected)
                     notes.Add(new Note { week = standing.week, kind = Kinds.Vote, text = first + " wouldn't say where their vote is", brief = "Wouldn't say their vote" });
             }
+            // E2: keep the exact observed side as a read entry, without turning a house-meeting
+            // reaction into ReadPerson's live agenda report. The learned attitude itself is an
+            // Overheard standing; this event also distinguishes backing this airing from loyalty.
+            foreach (var reaction in s.events.Where(e =>
+                         (e.kind == ConversationIntentRules.AiringBacked || e.kind == ConversationIntentRules.AiringOpposed)
+                         && e.audienceIds.Count == 2 && e.audienceIds.Contains(s.playerId) && e.audienceIds.Contains(id)))
+            {
+                bool backed = reaction.kind == ConversationIntentRules.AiringBacked;
+                notes.Add(new Note { week = reaction.week, kind = Kinds.Read, text = reaction.text,
+                    brief = backed ? "Backed your airing" : "Opposed your airing" });
+            }
             foreach (var reply in s.ledger.replies.Where(r => r.fromId == id))
             {
+                if (reply.kind == ReplyCards.Pitch && reply.replyKey == HoHPitches.FeelOutKey)
+                {
+                    notes.Add(new Note { week = reply.week, kind = Kinds.Read,
+                        text = first + " explained their nomination pitch; asking made no new promise", brief = "Explained their pitch" });
+                    continue;
+                }
                 var answer = ReplyCards.Find(reply.kind, reply.replyKey);
                 string what = reply.kind == ReplyCards.Confrontation ? first + " confronted you"
                     : reply.kind == ReplyCards.Gossip ? first + " talked about you to " + Name(reply.listenerId)
+                    : reply.kind == ReplyCards.Pitch ? first + " pitched before your nominations"
                     : first + " asked for your vote";
                 notes.Add(new Note
                 {
                     week = reply.week, kind = Kinds.Came,
                     text = what + (answer != null ? " · you: " + answer.Label.ToLowerInvariant() : ""),
-                    brief = reply.kind == ReplyCards.Confrontation ? "Confronted you" : reply.kind == ReplyCards.Gossip ? "Talked about you" : "Asked for your vote",
+                    brief = reply.kind == ReplyCards.Confrontation ? "Confronted you" : reply.kind == ReplyCards.Gossip ? "Talked about you"
+                        : reply.kind == ReplyCards.Pitch ? "Made a nomination pitch" : "Asked for your vote",
                 });
             }
             foreach (var call in s.ledger.calls.Where(c => c.callerId == s.playerId && (c.followed.Contains(id) || c.defected.Contains(id))))
@@ -123,15 +151,44 @@ namespace Gamesim.Simulation
                     brief = followed ? "Followed your call" : "Ignored your call",
                 });
             }
+            bool rules = EpisodeEngine.CommitmentRulesOn(s);
             foreach (var alliance in s.alliances.Where(a => a.members.Contains(s.playerId) && a.members.Contains(id)))
             {
                 var row = s.ledger.alliances.FirstOrDefault(x => x.id == alliance.id);
+                // Under the commitment rules somebody who has left the house has left every pact, though a
+                // pact of three or more goes on without them (X5): they did, or the player did.
+                bool theyLeft = who.status != ContestantStatus.Active;
+                bool youLeft = s.Find(s.playerId)?.status != ContestantStatus.Active;
+                bool left = rules && alliance.active && (theyLeft || youLeft);
+                string gone = theyLeft && youLeft ? "you both left the house" : theyLeft ? first + " left the house" : "you left the house";
                 notes.Add(new Note
                 {
                     week = row?.startedWeek ?? 0, kind = Kinds.Pact,
-                    text = "You are both in " + alliance.name + (alliance.active ? "" : " · ended"),
-                    brief = alliance.active ? "In " + alliance.name + " with you" : alliance.name + " ended",
+                    text = left ? "You were both in " + alliance.name + " · " + gone
+                        : "You are both in " + alliance.name + (alliance.active ? "" : " · ended"),
+                    brief = left ? (theyLeft ? first + " left " + alliance.name : "You left " + alliance.name)
+                        : alliance.active ? "In " + alliance.name + " with you" : alliance.name + " ended",
                 });
+            }
+            // Under the commitment rules (C2) an ally who turned on a pact of yours, where you can know it:
+            // the act as your record holds it - a ballot only once it is yours to know - and while it is
+            // this week's, the way out it opened.
+            foreach (var betrayal in Allegiance.KnownBetrayals(s, id))
+            {
+                bool open = betrayal.week == s.week && Allegiance.FreeExit(s, id);
+                notes.Add(new Note
+                {
+                    week = betrayal.week, kind = Kinds.Pact,
+                    text = betrayal.description.TrimEnd('.') + (open ? " · you can cut ties this week at no cost" : ""),
+                    brief = "Turned on your pact",
+                });
+            }
+            // An ally gone quiet (C3): their own commitment has lapsed. Said in words, never a number;
+            // a refused call and a read are the other two ways the player learns it.
+            if (Allegiance.GoneQuiet(s, id))
+            {
+                var pacts = s.alliances.Where(a => a.active && a.members.Contains(s.playerId) && a.members.Contains(id)).Select(a => a.name);
+                notes.Add(new Note { week = s.week, kind = Kinds.Pact, text = first + " has gone quiet on " + Allegiance.Join(pacts), brief = "Gone quiet on you" });
             }
             // A memory of a vote deal's or a vote promise's ending tells the ballot that ended it:
             // left out while that ballot is not yours to know (KnownBallots; decision 4).
@@ -190,7 +247,12 @@ namespace Gamesim.Simulation
             if (deal == null) return "";
             if (s != null && !KnownBallots.DealOutcomeKnown(s, deal)) return KnownBallots.Unresolved;
             if (deal.status != DealStatus.Broken || s == null) return DealStanding(deal.status, theirs);
-            string breaker = FinalistRead.DealBreaker(s, deal);
+            // Canonical safety names the actual settlement actor. The old finalist reader
+            // infers it from the legacy public ledger and cannot resolve this new authority.
+            // Keep that legacy interpretation unchanged for every old-model record.
+            bool playerParty = deal.proposerId == s.playerId || deal.recipientId == s.playerId;
+            string breaker = playerParty && CommitmentReferences.FindCanonical(s, deal.id) != null
+                ? Breaches.DealBreaker(s, deal) : FinalistRead.DealBreaker(s, deal);
             if (breaker == s.playerId) return "broken by you";
             if (breaker != null) return "broken by " + FirstName(s.Find(breaker)?.name);
             return deal.type == DealKind.VoteTogether ? "fell apart" : "broken";

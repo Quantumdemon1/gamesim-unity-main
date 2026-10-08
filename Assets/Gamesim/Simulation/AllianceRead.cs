@@ -31,9 +31,10 @@ namespace Gamesim.Simulation
     /// evidence never appears, not even as an unknown, and nothing the player cannot know of one is
     /// said either: not its name, not when it formed, not whether it still stands. One card is one
     /// set of people, however many records share it, so two pacts of the same people read as one and
-    /// say nothing more. No listen-in, read or claim names a pact today: an overheard pair is a
-    /// standing, and <see cref="ClaimSource.Ally"/> is declared and never written. When one does,
-    /// it is evidence here.</para>
+    /// say nothing more. No listen-in, read or claim names another houseguest's pact: an overheard
+    /// pair is a standing, and an ally's claim (<see cref="ClaimSource.Ally"/>, written since
+    /// ACTIONS-DEALS-ALLIANCES-PLAN C6) is a member's own word at a meeting of a pact the player is
+    /// in, so it is evidence of no other pact.</para>
     ///
     /// <para>Pure and read-only, like <see cref="FinalistRead"/>: it neither mutates the state nor
     /// draws from its generator, and it lives in the simulation so the Unity-free subset tests it.</para>
@@ -48,6 +49,8 @@ namespace Gamesim.Simulation
         /// </summary>
         public const string FellApart = "It fell apart.", YouLeft = "You left it.", CalledOff = "It was called off.",
             JustEnded = "It ended.";
+        /// <summary>A pact the player cut ties in after a member turned on it, at no cost (ACTIONS-DEALS-ALLIANCES-PLAN C2).</summary>
+        public const string CutTies = "You cut ties after it was betrayed.";
         /// <summary>How the player came into a pact whose invitation the record no longer holds.</summary>
         public const string BroughtIn = "You were brought into it.";
         /// <summary>A suspected pact's evidence when the line that told the player has left the record.</summary>
@@ -77,6 +80,11 @@ namespace Gamesim.Simulation
             public int formedWeek;
             /// <summary>How it came about, as a sentence ("You invited Riley."), or null when the record holds nothing.</summary>
             public string formed;
+            /// <summary>
+            /// Who the player brought into it since (ACTIONS-DEALS-ALLIANCES-PLAN C5), oldest first: "You
+            /// brought Maya in.", by the line that told the player, while the log holds it.
+            /// </summary>
+            public List<Evidence> joined = new List<Evidence>();
             /// <summary>The week it ended, or 0 while it stands (or when the record cannot say).</summary>
             public int endedWeek;
             /// <summary>Why it ended, in the words the player was told; null while it stands.</summary>
@@ -210,11 +218,17 @@ namespace Gamesim.Simulation
         /// </summary>
         private static void Formed(EpisodeState s, AllianceState alliance, AllianceRow row, Pact pact)
         {
-            var firsts = pact.members.Select(m => FinalistRead.FirstName(m.name)).ToList();
+            // Who the player brought in since (C5) did not form it: their own line says when they joined.
+            var brought = BroughtInSince(s, alliance, row);
+            foreach (var join in brought) pact.joined.Add(new Evidence { week = join.week, text = "You brought " + First(s, join.id) + " in." });
+            var founding = pact.members.Where(m => brought.All(join => join.id != m.id)).ToList();
+            if (founding.Count == 0) founding = pact.members;
+            var firsts = founding.Select(m => FinalistRead.FirstName(m.name)).ToList();
             pact.formedWeek = FinalistRead.PlayerAlliedSince(s, alliance);
-            // With no ledger row (an old save) the order is all there is: the player's pacts open with them.
+            // With no ledger row (an old save) the order is all there is: the player's pacts open with them -
+            // unless the pact itself says they were invited in (C5), which no cut since can undo.
             bool founder = row != null ? FinalistRead.FoundedByPlayer(s, alliance, row)
-                : alliance.members.Count > 0 && alliance.members[0] == s.playerId;
+                : !alliance.playerJoined && alliance.members.Count > 0 && alliance.members[0] == s.playerId;
             if (!founder)
             {
                 var invitation = FinalistRead.BroughtInLine(s, alliance, row);
@@ -230,12 +244,17 @@ namespace Gamesim.Simulation
             {
                 // A story's pact is said the way the story said it: "Riley and Jo let you in" is not
                 // a pact the player formed, and "you proposed a three-way alliance" is.
-                pact.formed = StoryOutcome(s, alliance, row.startedWeek) ?? "It came together in a story, with " + Join(firsts) + ".";
+                var made = new[] { s.playerId }.Concat(founding.Select(m => m.id)).ToList();
+                pact.formed = StoryOutcome(s, made, row.startedWeek) ?? "It came together in a story, with " + Join(firsts) + ".";
                 return;
             }
-            // An invitation the player put or accepted, agreed the week it began: that is how.
+            // An invitation the player put or accepted, agreed the week it began: that is how. Under the
+            // commitment rules an agreed invitation - open-ended, where an unanswered one keeps its own
+            // week - ends when a member is evicted (C1, X4), and is still how the pact began.
+            bool rules = EpisodeEngine.CommitmentRulesOn(s);
             var invite = s.deals.LastOrDefault(d => d != null && d.type == DealKind.AllianceInvite && d.week == row.startedWeek
-                && (d.status == DealStatus.Active || d.status == DealStatus.Accepted || d.status == DealStatus.Fulfilled || d.status == DealStatus.Broken)
+                && (d.status == DealStatus.Active || d.status == DealStatus.Accepted || d.status == DealStatus.Fulfilled || d.status == DealStatus.Broken
+                    || (rules && d.status == DealStatus.Expired && d.expiresWeek == 0))
                 && ((d.proposerId == s.playerId && alliance.members.Contains(d.recipientId))
                     || (d.recipientId == s.playerId && alliance.members.Contains(d.proposerId))));
             if (invite != null)
@@ -248,11 +267,34 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// The line a story showed the player when its beat made the pact: the step that week whose
-        /// option formed an alliance of exactly these people, in the story's own words ("Riley and
-        /// Jo let you in. The three of you are a bloc now."). Null when no step on the record did.
+        /// The partners the player brought into a pact since it began (ACTIONS-DEALS-ALLIANCES-PLAN C5),
+        /// and the week each joined, oldest first: by the line that told the player - "Maya Hassan joined
+        /// The Riley Pact." - while the log holds it. A line of this pact's: told to the player and to the
+        /// one who joined, under the pact's name, or, renamed since, to nobody but its members.
         /// </summary>
-        private static string StoryOutcome(EpisodeState s, AllianceState alliance, int week)
+        private static List<(string id, int week)> BroughtInSince(EpisodeState s, AllianceState alliance, AllianceRow row)
+        {
+            var found = new List<(string id, int week)>();
+            foreach (string id in alliance.members.Where(id => id != s.playerId))
+            {
+                string name = s.Find(id)?.name;
+                if (string.IsNullOrEmpty(name)) continue;
+                var line = Seen(s).LastOrDefault(e => e.kind == "alliance" && (row == null || e.week >= row.startedWeek)
+                    && e.text != null && e.text.StartsWith(name + " joined ", StringComparison.Ordinal)
+                    && e.audienceIds != null && e.audienceIds.Contains(s.playerId) && e.audienceIds.Contains(id)
+                    && (e.text == EpisodeEngine.JoinedLine(name, alliance.name) || e.audienceIds.All(alliance.members.Contains)));
+                if (line != null) found.Add((id, line.week));
+            }
+            return found.OrderBy(join => join.week).ToList();
+        }
+
+        /// <summary>
+        /// The line a story showed the player when its beat made the pact: the step that week whose
+        /// option formed an alliance of exactly these people - the ones it was made with, the player
+        /// among them, not anybody brought in since - in the story's own words ("Riley and Jo let you
+        /// in. The three of you are a bloc now."). Null when no step on the record did.
+        /// </summary>
+        private static string StoryOutcome(EpisodeState s, IList<string> members, int week)
         {
             foreach (var cycle in s.storylines ?? new List<StorylineState>())
             {
@@ -267,7 +309,7 @@ namespace Gamesim.Simulation
                     {
                         var ids = new[] { fx.from, fx.to, fx.third }.Where(role => !string.IsNullOrEmpty(role))
                             .Select(role => Cast(s, cycle, role)).ToList();
-                        if (ids.Any(id => id == null) || ids.Distinct().Count() != alliance.members.Count || !ids.All(alliance.members.Contains)) continue;
+                        if (ids.Any(id => id == null) || ids.Distinct().Count() != members.Count || !ids.All(members.Contains)) continue;
                         return StoryText.Fill(s, option.outcome, cycle.cast);
                     }
                 }
@@ -333,6 +375,11 @@ namespace Gamesim.Simulation
             }
             if (partners.Any(a => lines.Contains("You left the alliance with " + a.name + ".") && !rivals.Any(r => r.members.Contains(a.id))))
                 return YouLeft;
+            // The free exit says a line to each pact it ended, naming the betrayer and the pact: this
+            // pact's only when it is that exact line (one that cut a betrayer out of a bigger pact did
+            // not end it, and a pact whose name holds another's is a different pact).
+            if (partners.Any(a => lines.Contains(Allegiance.CutTiesLine(a.name, alliance.name, true))))
+                return CutTies;
             return null;
         }
 
@@ -373,7 +420,12 @@ namespace Gamesim.Simulation
         private static List<Deal> Deals(EpisodeState s, AllianceState alliance)
         {
             var others = alliance.members.Where(id => id != s.playerId).ToList();
-            return s.deals.Where(d => d != null && d.type != DealKind.AllianceInvite
+            // Under the commitment rules a deal the vote settled - a partnership too (C1) - says how it
+            // ended once the player knows the ballot that settled it (KnownBallots).
+            bool rules = EpisodeEngine.CommitmentRulesOn(s);
+            // This inventory retains every own agreement with a member; it is not a once-per-
+            // breach mechanical score. Canonical promises never masquerade as reciprocal deals.
+            return (UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Deals(s) : s.deals).Where(d => d != null && d.type != DealKind.AllianceInvite
                     && (d.status == DealStatus.Accepted || d.status == DealStatus.Active || d.status == DealStatus.Fulfilled || d.status == DealStatus.Broken)
                     && ((d.proposerId == s.playerId && others.Contains(d.recipientId)) || (d.recipientId == s.playerId && others.Contains(d.proposerId))))
                 .OrderBy(d => d.week)
@@ -381,10 +433,11 @@ namespace Gamesim.Simulation
                 {
                     string with = d.proposerId == s.playerId ? d.recipientId : d.proposerId;
                     string about = string.IsNullOrEmpty(d.targetId) ? "" : ", on " + (d.targetId == s.playerId ? "you" : First(s, d.targetId));
+                    string standing = rules && !KnownBallots.DealOutcomeKnown(s, d) ? KnownBallots.Unresolved : HouseguestNotes.DealStanding(d.status, d.proposerId == with);
                     return new Deal
                     {
                         week = d.week, withId = with, type = d.type, status = d.status,
-                        text = DealKind.Title(d.type) + " with " + First(s, with) + about + " · " + HouseguestNotes.DealStanding(d.status, d.proposerId == with),
+                        text = DealKind.Title(d.type) + " with " + First(s, with) + about + " · " + standing,
                     };
                 }).ToList();
         }
@@ -409,6 +462,12 @@ namespace Gamesim.Simulation
                 // A play's receipt names everyone in it: what the player was shown, said as it was shown.
                 string learned = LearnedLine(s, alliance);
                 foreach (var e in seen.Where(e => e.kind == StoryLog.Receipt && e.text == learned))
+                    evidence.Add(new Evidence { week = e.week, text = e.text });
+                // A pact of three or more the player walked out of, which went on without them
+                // (ACTIONS-DEALS-ALLIANCES-PLAN C5): no longer theirs, and known to them by their own line,
+                // told to everyone left in it.
+                foreach (var e in seen.Where(e => e.kind == "alliance" && EpisodeEngine.IsLeftGoesOnLine(e.text, alliance.name)
+                             && e.audienceIds != null && e.audienceIds.Where(id => id != s.playerId).All(alliance.members.Contains)))
                     evidence.Add(new Evidence { week = e.week, text = e.text });
                 if (certainty != null)
                 {

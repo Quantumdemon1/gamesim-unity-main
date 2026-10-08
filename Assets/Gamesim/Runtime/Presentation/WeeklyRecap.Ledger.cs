@@ -33,7 +33,7 @@ namespace Gamesim.Presentation
             public string basis;
             /// <summary>What the voter said, where the ballot is known by a claim; null otherwise.</summary>
             public string saidId;
-            /// <summary>A claim the reveal caught out.</summary>
+            /// <summary>A claim the reveal caught out. Worded by <see cref="KnownBallots.SaidWords"/>: of an ally's account, a vote that changed, never a lie.</summary>
             public bool lied;
         }
 
@@ -120,9 +120,12 @@ namespace Gamesim.Presentation
                 string words = spoken?.text;
                 if (string.IsNullOrWhiteSpace(words))
                 {
-                    var line = events.FirstOrDefault(e => e.kind == "eviction-speech" && e.text != null
-                        && e.text.StartsWith(evictee.name + ": ", StringComparison.Ordinal));
-                    words = line?.text.Substring(evictee.name.Length + 2);
+                    var line = events.FirstOrDefault(e => e.text != null
+                        && ((e.kind == "eviction-speech" && e.text.StartsWith(evictee.name + ": ", StringComparison.Ordinal))
+                            || (BlockSpeeches.IsReceiptKind(e.kind) && BlockSpeeches.EventApproach(e) != BlockSpeeches.Quiet
+                                && e.audienceIds.Count > 0 && e.audienceIds[0] == evictee.id)));
+                    words = line == null ? null : BlockSpeeches.IsReceiptKind(line.kind) ? line.text
+                        : line.text.Substring(evictee.name.Length + 2);
                 }
                 recap.evicteeQuote = string.IsNullOrWhiteSpace(words) ? null : words.Trim();
             }
@@ -293,9 +296,15 @@ namespace Gamesim.Presentation
                 + events.Count(e => Seen(e) && e.kind == "alliance" && Says(e, "fallen apart", "left the alliance", "is finished", "is out of"));
             if (broken > 0)
                 readings.Add(new Reading { label = "Trust tested", evidence = broken == 1 ? "A broken promise, deal or alliance reached you." : broken + " broken promises, deals or alliances reached you." });
-            int formed = events.Count(e => Seen(e) && e.kind == "alliance" && Says(e, "formed", "brought you into", "joined"));
+            // Somebody brought into a pact of the player's (ACTIONS-DEALS-ALLIANCES-PLAN C5, "Maya Hassan
+            // joined The Riley Pact.") grew one; it formed none.
+            bool Joined(EpisodeEvent e) => e.kind == "alliance" && e.text != null && e.text.Contains(" joined ") && !Says(e, "formed", "brought you into");
+            int formed = events.Count(e => Seen(e) && e.kind == "alliance" && Says(e, "formed", "brought you into", "joined") && !Joined(e));
             if (formed > 0)
                 readings.Add(new Reading { label = "Alliances forming", evidence = formed == 1 ? "An alliance formed that you saw." : formed + " alliances formed that you saw." });
+            int joined = events.Count(e => Seen(e) && Joined(e));
+            if (joined > 0)
+                readings.Add(new Reading { label = "Alliances growing", evidence = joined == 1 ? "Somebody joined an alliance of yours." : joined + " people joined alliances of yours." });
             if (readings.Count == 0)
                 readings.Add(new Reading { label = "A quiet week", evidence = "Nothing you saw split the house." });
             return readings.Take(3).ToList();
@@ -331,8 +340,12 @@ namespace Gamesim.Presentation
             var you = state.Find(state.playerId);
             if (you != null && you.status == ContestantStatus.Active)
             {
-                int word = state.promises.Count(p => p.status == PromiseStatus.Active && (p.fromId == state.playerId || p.toId == state.playerId))
-                    + state.deals.Count(d => d.status == DealStatus.Active && (d.proposerId == state.playerId || d.recipientId == state.playerId));
+                // What carries is each standing agreement, not a count of past incidents.
+                // Preserve the original Active predicate and the legacy stores' list semantics.
+                int word = (UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Promises(state) : state.promises)
+                    .Count(p => p.status == PromiseStatus.Active && (p.fromId == state.playerId || p.toId == state.playerId))
+                    + (UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Deals(state) : state.deals)
+                    .Count(d => d.status == DealStatus.Active && (d.proposerId == state.playerId || d.recipientId == state.playerId));
                 if (word > 0) lines.Add(word == 1 ? "You carry one promise or deal into the week." : "You carry " + word + " promises and deals into the week.");
             }
             return lines;

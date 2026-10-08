@@ -14,6 +14,38 @@ namespace Gamesim.Tests.EditMode
     {
         private const float Tolerance = 1e-4f;
 
+        [TestCase(0f)]
+        [TestCase(0.35f)]
+        [TestCase(0.38f)]
+        [TestCase(0.5f)]
+        public void TheOpeningRouteDoesNotClearLeavesStillAcrossTheBody(float openness)
+        {
+            Assert.That(OpeningDoorSet.CanWalkThrough(DoorLayout.Yard, openness,
+                new Vector3(-3.85f, 0f, 13.8f), new Vector3(-1.6f, 0f, 14.1f), 0.35f), Is.False,
+                "The complete .7 m wide body corridor must clear both leaves before the walk begins.");
+        }
+
+        [Test]
+        public void OpenLeavesClearTheOpeningRouteAndTheMovedLivingDoor()
+        {
+            var from = new Vector3(-3.85f, 0f, 13.8f);
+            var to = new Vector3(-1.6f, 0f, 14.1f);
+            Assert.That(OpeningDoorSet.CanWalkThrough(DoorLayout.Yard, 1f, from, to, 0.35f), Is.True);
+            Assert.That(OpeningDoorSet.CanWalkThrough(DoorLayout.Living, 1f,
+                from + DoorLayout.Living.Origin, to + DoorLayout.Living.Origin, 0.35f), Is.True,
+                "Moving the set and route together preserves physical clearance.");
+            Assert.That(OpeningDoorSet.CanWalkThrough(DoorLayout.Yard, 1f, from, to, 0.8f), Is.False,
+                "Even fully open leaves cannot clear a body wider than this route allows.");
+        }
+
+        [Test]
+        public void ABodyBetweenTheOpenLeafAndItsHingeStillCannotPass()
+        {
+            Assert.That(OpeningDoorSet.CanWalkThrough(DoorLayout.Yard, 1f,
+                new Vector3(-3.85f, 0f, 12.8f), new Vector3(-1.6f, 0f, 12.8f), 0.35f), Is.False,
+                "Open is insufficient when the actor's route runs through a leaf near the jamb.");
+        }
+
         [Test]
         public void TheYardsLayoutIsTheSetsOwnGeometry()
         {

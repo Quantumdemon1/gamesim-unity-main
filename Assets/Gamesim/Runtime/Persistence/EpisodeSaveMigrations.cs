@@ -21,6 +21,167 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 26) return (JObject)original.DeepClone();
+            if (version < 1 || version > 25) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV25ToV26(version == 25 ? original : PrepareV25Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds only inert Vote storage after the complete fixed public schema25 contract accepts
+        /// the original payload. No authority, audience, ballot, identity or RNG is inferred.
+        /// Existing canonical Safety rows gain literal null extensions; the private archive is empty.
+        /// </summary>
+        public static JObject UpgradeV25ToV26(JObject original)
+        {
+            FrozenEpisodeV25.Validate(original);
+            var result = (JObject)original.DeepClone();
+            foreach (JObject row in (JArray)result["unifiedCommitments"])
+            {
+                row.Add("targetId", JValue.CreateNull());
+                row.Add("subtype", JValue.CreateNull());
+            }
+            result.Add("unifiedVoteReveals", new JArray());
+            result["schemaVersion"] = 26;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v24-to-v25 dispatch; the schema24 step retains exactly its original hearing additions.</summary>
+        public static JObject PrepareV25Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
+            if (version == 25) return (JObject)original.DeepClone();
+            if (version < 1 || version > 24) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV24ToV25(version == 24 ? original : PrepareV24Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds only disabled, empty hearing coordination. Never convert existing facts, infer an
+        /// audience, backfill hearing effects or receipts, renumber IDs, or advance any RNG stream.
+        /// The complete former-24 payload is validated before cloning and remains untouched.
+        /// </summary>
+        public static JObject UpgradeV24ToV25(JObject original)
+        {
+            FrozenEpisodeV24.Validate(original);
+            var result = (JObject)original.DeepClone();
+            result.Add("unifiedHearingRulesVersion", 0);
+            result.Add("unifiedHearingEvidence", new JArray());
+            result.Add("unifiedHearingReceipts", new JArray());
+            result["schemaVersion"] = 25;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v23-to-v24 dispatch; the schema-24 step retains exactly its original two additions.</summary>
+        public static JObject PrepareV24Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
+            if (version == 24) return (JObject)original.DeepClone();
+            if (version < 1 || version > 23) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV23ToV24(version == 23 ? original : PrepareV23Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds an inactive, empty unified authority only. Old promises, deals, oaths, RNG and
+        /// receipts are not converted, replayed or inferred; existing rules retain their meaning.
+        /// </summary>
+        public static JObject UpgradeV23ToV24(JObject original)
+        {
+            FrozenEpisodeV23.Validate(original);
+            var result = (JObject)original.DeepClone();
+            result.Add("unifiedCommitmentRulesVersion", 0);
+            result.Add("unifiedCommitments", new JArray());
+            result["schemaVersion"] = 24;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v22-to-v23 dispatch. The v22 step still adds only its original two economy fields.</summary>
+        public static JObject PrepareV23Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
+            if (version == 23) return (JObject)original.DeepClone();
+            if (version < 1 || version > 22) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV22ToV23(version == 22 ? original : PrepareV22Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>Old seasons retain their economy forever, including pristine opening saves. No RNG, history or budgets are rewritten.</summary>
+        public static JObject UpgradeV22ToV23(JObject original)
+        {
+            FrozenEpisodeV22.Validate(original);
+            var result = (JObject)original.DeepClone();
+            result.Add("economyRulesVersion", 0);
+            result.Add("moveInExtrasSpent", 0);
+            result["schemaVersion"] = 23;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v21-to-v22 dispatch.</summary>
+        public static JObject PrepareV22Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
+            if (version == 22) return (JObject)original.DeepClone();
+            if (version < 1 || version > 21) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV21ToV22(version == 21 ? original : PrepareV21Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds the commitment rules switched off (ACTIONS-DEALS-ALLIANCES-PLAN R0, C0): a rules week of
+        /// 0, so a season saved before them plays without them to its end, as a season keeps the
+        /// finale rules it was saved under; and on every deal and every promise the two fields only a
+        /// settlement under the rules fills, empty - who broke it, and the week it was settled. Never a
+        /// guess: a reader that needs who broke a deal settled before the record existed reads it by
+        /// <see cref="FinalistRead.DealBreaker"/>'s rule (<see cref="Breaches.DealBreaker"/>), and a
+        /// promise by its maker. And on every deal the link only a negotiation under the rules writes
+        /// (C7, <see cref="DealState.linkedDealId"/>), empty: no deal of a season saved before them was
+        /// a price or bought with one. And on every alliance the mark only an invitation under the rules
+        /// writes (C5, <see cref="AllianceState.playerJoined"/>), false: without them nobody joins a pact
+        /// after the player, so its order still says who founded it. Hand-written literals, never the live type.
+        /// </summary>
+        public static JObject UpgradeV21ToV22(JObject original)
+        {
+            FrozenEpisodeV21.Validate(original);
+            var result = (JObject)original.DeepClone();
+            result.Add("commitmentRulesStartWeek", 0);
+            foreach (var name in new[] { "deals", "promises" })
+                foreach (JObject row in ((JArray)result[name]).OfType<JObject>())
+                {
+                    row.Add("brokenById", JValue.CreateNull());
+                    row.Add("settledWeek", 0);
+                    if (name == "deals") row.Add("linkedDealId", JValue.CreateNull());
+                }
+            if (result["alliances"] is JArray alliances)
+                foreach (var alliance in alliances.OfType<JObject>()) alliance.Add("playerJoined", false);
+            result["schemaVersion"] = 22;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v20-to-v21 dispatch.</summary>
+        public static JObject PrepareV21Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 21) return (JObject)original.DeepClone();
             if (version < 1 || version > 20) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV20ToV21(version == 20 ? original : PrepareV20Payload(original, out _));

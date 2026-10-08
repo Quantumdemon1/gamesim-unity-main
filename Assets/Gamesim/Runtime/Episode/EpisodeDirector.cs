@@ -673,7 +673,13 @@ namespace Gamesim.Episode
             // and so does free time's: its board opens again on its root and its first page.
             ForgetNominationView();
             ForgetFreeTimeView();
+            ForgetActionPurchase();
+            ForgetInformationShare();
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
+            replyCardView = null;
+            blockSpeechView = null;
+            nomineeIntelView = null;
+            if (conversationPick == NomineeIntelPickerCaption) ClosePicker();
             // A chip's card goes with everything else Escape closes; the campaign opens folded.
             castMenuFor = null; emoteMenuOpen = false; campaignMore = false;
             ClearLobbyDraft();
@@ -688,7 +694,8 @@ namespace Gamesim.Episode
             EndDiaryVisit(!render);
             // The line said where the player was; once they have left, it says so. Anything the
             // visit put there since - a result, a discarded choice - stays.
-            if (diaryOpen && message == DiaryInsideMessage) message = "You left the private diary room.";
+            if (diaryOpen && (message == DiaryInsideMessage || message == DiaryPitchInsideMessage
+                || message == DiaryBlockSpeechInsideMessage)) message = "You left the private diary room.";
             diaryOpen = false; diaryDraft = null;
             lastSocialAction = null;
             // The recap is a panel by IsPanelOpen's reckoning, so closing panels has to close it —
@@ -797,6 +804,10 @@ namespace Gamesim.Episode
             if (result.accepted)
             {
                 diaryDraft = null; // A draft never survives a different committed revision.
+                ForgetActionPurchase();
+                ForgetInformationShare();
+                replyCardView = null;
+                nomineeIntelView = null;
                 if (focusedNpc != null)
                 {
                     lastSocialAction = command.kind;
@@ -991,6 +1002,11 @@ namespace Gamesim.Episode
             if (takeover != null) takeover.Play(kind, state.week, CeremonySubjects(state, kind, wasActive, wasNominated), reducedMotion, null, line);
             // The final Head of Household's choice is an endgame card: the chrome stands aside for it.
             if (takeover != null && kind == CeremonySting.FinalEvictionKind) HoldHudForReveal(redraw: false);
+            // So does the veto meeting's card on the HUD frame (UI-UX-PASS-PLAN V0): the episode screen
+            // the decision was made on redraws as the meeting's outcome under it, its sentence and its
+            // VETO USED, beside the strip that says the sentence once. Not under a stage, which holds
+            // the chrome itself; nothing it draws names what the card has not, so no redraw.
+            if (takeover != null && kind == CeremonySting.VetoKind && !IsCeremonyStaged) HoldHudForReveal(redraw: false);
             if (sting != null) sting.Play(kind, text, reducedMotion);
             // Under a stage - a reveal that declined the set's screen - the stage has the camera
             // and the bodies, and the card only reports: framing the room as well put two hands on
@@ -1096,7 +1112,11 @@ namespace Gamesim.Episode
         /// </summary>
         public void SubmitEvictionSpeech(string text)
         {
-            if (phaseOpen || diaryOpen) Commit(projected, EpisodeCommandKind.SubmitEvictionSpeech, text: text);
+            // Compatibility entry for existing callers. Real HUD controls use the captured,
+            // consumed view authority in RenderBlockSpeech rather than this live-state entry.
+            if (!BlockSpeechPending(projected) || (!phaseOpen && !diaryOpen)
+                || (diaryOpen && (!CanUseDiary || !IsDiarySettled))) return;
+            CommitBlockSpeech(projected, text, LobbyApproach.Emotional);
         }
         public void AnswerJury(string choice)
         {
@@ -1110,6 +1130,7 @@ namespace Gamesim.Episode
         {
             var state = engine.Snapshot;
             projected = state;
+            HousePublicDisplays.Project(gameObject.scene,state);
             playerIsActive = state.Find(state.playerId).status == ContestantStatus.Active;
             promptNpc = null; npcPrompt = null;
             // Finale night brings the jury back into the living room; their places are chosen once.
@@ -1186,7 +1207,7 @@ namespace Gamesim.Episode
             hud.Paragraph("Your mood: " + state.Find(state.playerId).mood + " · Stress: " + state.Find(state.playerId).stressLevel);
             // Aggregate source arcs have no participant/knowledge provenance.
             // NPC-only conversations must not masquerade as the player's bonds.
-            foreach (var promise in state.promises.Where(p => p.fromId == state.playerId || p.toId == state.playerId))
+            foreach (var promise in CommitmentReferences.Promises(state).Where(p => p.fromId == state.playerId || p.toId == state.playerId))
             {
                 // Was the raw enum on both ends: "AllianceLoyalty - Dana -> You - Active". The
                 // vocabulary the player was given when they made the promise already exists.
@@ -1218,11 +1239,19 @@ namespace Gamesim.Episode
 
         private void Render()
         {
+            pitchNavigationView = null;
+            blockSpeechView = null;
             if (hud == null || engine == null) return;
+            // Any replacement retires the old question controls, including screens that return
+            // before drawing a conversation. A rendered question creates a new view authority.
+            nomineeIntelView = null;
+            informationShareControls = null; informationShareOpener = null;
+            replyCardView = null;
             // Which screen is up decides what the music does, and a render is exactly the moment
             // that changed. SetMusic ignores a state it is already in, so this costs nothing.
             ApplyMusic();
             var state = projected ?? engine.Snapshot;
+            BindBlockSpeechDraft(state);
             // Repainted from committed state on every render rather than on the eviction event, so a
             // wall restored from a save shows the same thing as one that watched the vote.
             if (memoryWall == null)
@@ -1348,6 +1377,7 @@ namespace Gamesim.Episode
                 // The two-shot keeps its usual place unless the conversation's own screen says where
                 // it has left room for the pair (below, once the stage is laid out).
                 if (cameraRig != null) cameraRig.ConversationWindowOffset = 0f;
+                if (RenderInformationShare(state)) return;
                 // Outside free time the house cannot talk, so there is nothing to choose: a card
                 // sized to the one thing it says (Refinement Kit 6), not the drawer cut short. Mood
                 // and your trust are two pills - the drawer's "Neutral -9" was a band and a number
@@ -1397,6 +1427,8 @@ namespace Gamesim.Episode
                     + "  ·  " + ActionsLeft(state) + " left");
                 hud.NpcDialogue(state, npc.id, lastSocialAction, standingLineBefore);
                 if (lastSocialAction.HasValue) hud.OutcomeChips(lastSocialDelta);
+                // A counter to the proposal just turned down (C7) is answered here or not at all: first.
+                CounterCard(state, npc);
                 // What the player came for, first (their screen's "Ask for information" or "Pitch a
                 // deal"): the rows it names are drawn here and not again below.
                 bool cameToAsk = conversationIntent == IntentAsk, cameToDeal = conversationIntent == IntentDeal;
@@ -1438,7 +1470,10 @@ namespace Gamesim.Episode
                 // The petals are the six openings a conversation actually has here. Everything else
                 // - the promises, the alliance, the rumours, the deals - is beneath the dial in the
                 // group it belongs to, and the seventh petal moves the keyboard to the first row.
-                hud.ConversationRadial(npc.id, 7);
+                // Fresh E2 seasons move plain Talk to BOND below the dial; old saves retain all
+                // seven petals. The six-seat ring still keeps every other caption and command.
+                bool intentRules = EpisodeEngine.EconomyRulesOn(state);
+                hud.ConversationRadial(npc.id, intentRules ? 6 : 7);
                 hud.Tag(hud.Petal(EpisodeHud.SmallTalkCaption, "chat", UiTheme.Accent,
                         () => Commit(state, EpisodeCommandKind.SmallTalk, npc.id)),
                     Category(EpisodeCommandKind.SmallTalk), EpisodeHud.TagSeat.CardFoot);
@@ -1447,7 +1482,7 @@ namespace Gamesim.Episode
                     Category(EpisodeCommandKind.StrategicDiscussion), EpisodeHud.TagSeat.CardFoot);
                 hud.Tag(hud.Petal(EpisodeHud.PersonalChatCaption, "heart", UiTheme.Flirt,
                         () => Commit(state, EpisodeCommandKind.PersonalChat, npc.id)),
-                    Category(EpisodeCommandKind.PersonalChat), EpisodeHud.TagSeat.CardFoot);
+                    VerbTag(state, EpisodeCommandKind.PersonalChat), EpisodeHud.TagSeat.CardFoot);
                 hud.Petal(EpisodeHud.MorePetalCaption, "journal", UiTheme.Muted, hud.RevealBeyondRadial);
                 hud.Tag(hud.Petal(EpisodeHud.RelationshipBuildingCaption, "handshake", UiTheme.Allied,
                         () => Commit(state, EpisodeCommandKind.RelationshipBuilding, npc.id)),
@@ -1455,7 +1490,7 @@ namespace Gamesim.Episode
                 hud.Tag(hud.Petal(EpisodeHud.ShareSecretCaption, "gossip", UiTheme.Strategic,
                         () => Commit(state, EpisodeCommandKind.ShareSecret, npc.id)),
                     Category(EpisodeCommandKind.ShareSecret), EpisodeHud.TagSeat.CardFoot);
-                hud.Tag(hud.Petal("Spend time together", "star", UiTheme.Joke,
+                if (!intentRules) hud.Tag(hud.Petal("Spend time together", "star", UiTheme.Joke,
                         () => Commit(state, EpisodeCommandKind.Talk, npc.id)),
                     Category(EpisodeCommandKind.Talk), EpisodeHud.TagSeat.CardFoot);
                 // Everything else, under the dial in four groups by what it is for - bond, learn,
@@ -1466,6 +1501,7 @@ namespace Gamesim.Episode
             }
             if (sceneCardOpen) { SceneCard(state); return; }
             if (!phaseOpen) return;
+            if (RenderActionPurchase(state)) return;
             // The episode screen is a decision screen: it takes the stage, the frame from the rail
             // to the right edge. A quiet beat - "Continue episode" under the house's status, or the
             // reflection prompt - stays a card sized to its few lines. A dedicated layout (the
@@ -1490,6 +1526,14 @@ namespace Gamesim.Episode
             // And so is the finale page, in the campaign's neutral shell: Pack 9 brings cards, not a
             // shell of its own (EpisodeDirector.FinalePage.cs).
             else if (FinalePageBeat(state)) hud.StrategyStage(PackArt.Pack8CampaignShell);
+            // The final Head of Household's choice is a page of the same kit, in the same shell, laid
+            // for the frame's whole width before anything - a story beat over it included - is built
+            // (EpisodeDirector.FinalThree.cs; UI-UX-PASS-PLAN Q0).
+            else if (FinalChoiceBeat(state))
+            {
+                hud.StrategyStage(PackArt.Pack8CampaignShell);
+                hud.StrategyWholeWidth();
+            }
             else hud.SetActivityLayout(EpisodeHud.ActivityLayout.Stage);
             // The phase and week now live in the panel's fixed header band, which stays on screen
             // while this content scrolls. Repeating them as the first line of the scroll was the
@@ -1547,16 +1591,15 @@ namespace Gamesim.Episode
             // footer, in place of everything below (EpisodeDirector.FreeTimeBoard.cs).
             if (FreeTimeBoard(state)) return;
             // Who holds what this week, on one line, before whatever there is to decide: the stage
-            // stands the strip and its badges down, so this is where the roles are read. The final
-            // Head of Household's choice opens on its own gold head instead: the house is down to
-            // the three, and the two it is between are on its cards (MOCKUP-PASS M8). Not over a
-            // view at three either (the comparison, the final case, the jury house): those are
-            // screens of their own, and the roles they would sit under are the final-four week's,
-            // which stay in state until the window closes and can name a juror as a nominee.
+            // stands the strip and its badges down, so this is where the roles are read. Not over the
+            // final Head of Household's choice, whose band says it under the crown: the house is down
+            // to the three, and the two it is between are on its cards (MOCKUP-PASS M8; UI-UX-PASS-PLAN
+            // Q0). Not over a view at three either (the comparison, the final case, the jury house):
+            // those are screens of their own, and the roles they would sit under are the final-four
+            // week's, which stay in state until the window closes and can name a juror as a nominee.
             bool finalChoice = state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId;
-            if (finalChoice) FinalTwoHead();
             // The veto meeting says it in a strip across the stage's header (PACK8-PASS-PLAN B3).
-            else if (!VetoMeetingStatus(state))
+            if (!finalChoice && !VetoMeetingStatus(state))
             {
                 // Not over the campaign, whose situation card says each of these on a row of its own.
                 string houseStatus = ViewOverPreparation(state) || state.phase == EpisodePhase.Campaign ? null : HouseStatus(state);
@@ -1567,12 +1610,13 @@ namespace Gamesim.Episode
             // card the player never sees. It never blocks the decision under it.
             PendingStoryBeats(state);
             if (RenderPlayerDecision(state, false)) return;
+            RenderBlockSpeechReadback(state);
             CeremonyScreen(state);
             if (finalChoice)
             {
-                hud.Paragraph("You won the final HoH. Choose who to evict; the other housemate joins you in the final two.");
                 // The two of them side by side as cards, with what the player knows about each and
-                // what taking each means, over the controls that decide it (ENDGAME-PLAN F2).
+                // what taking each means, over the controls that decide it: one page, with nothing to
+                // scroll (ENDGAME-PLAN F2; UI-UX-PASS-PLAN Q0).
                 FinalTwoChoice(state);
                 return;
             }
@@ -1690,7 +1734,8 @@ namespace Gamesim.Episode
                 case EpisodePhase.Social: return "FREE TIME";
                 case EpisodePhase.HoH: return "HEAD OF HOUSEHOLD";
                 case EpisodePhase.VetoSelection: return "VETO PLAYER SELECTION";
-                case EpisodePhase.VetoMeeting: return "VETO CEREMONY";
+                // The veto meeting, as every other screen and card names it (UI-UX-PASS-PLAN V0).
+                case EpisodePhase.VetoMeeting: return "VETO MEETING";
                 case EpisodePhase.FinalHoHPart1:
                 case EpisodePhase.FinalHoHPart2:
                 case EpisodePhase.FinalHoHPart3: return "FINAL HEAD OF HOUSEHOLD";

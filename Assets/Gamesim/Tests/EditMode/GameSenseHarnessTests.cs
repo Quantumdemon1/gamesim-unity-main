@@ -31,11 +31,20 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>An eight-house season with the story, the read and the levers on, as the director ships one.</summary>
-        private static EpisodeState Season(uint seed)
+        private static EpisodeState Season(uint seed, bool? newEconomy = null)
         {
             var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, seed);
             s.strategyRulesStartWeek = 1; s.blocRulesStartWeek = 1;
             EpisodeEngine.EnableStory(s); EpisodeEngine.EnableRead(s); EpisodeEngine.EnableLevers(s); EpisodeEngine.EnableAgency(s);
+            if (newEconomy.HasValue)
+            {
+                // A controlled E1 comparison: both arms have exactly the fresh director's other
+                // rules. The original harness above remains unchanged when no arm is selected.
+                s.competitionRulesVersion = CompetitionRules.Current;
+                s.haveNotRulesStartWeek = 1;
+                EpisodeEngine.EnableWeek(s); EpisodeEngine.EnableFinale(s); EpisodeEngine.EnableCommitments(s);
+                if (newEconomy.Value) EpisodeEngine.EnableEconomy(s);
+            }
             return s;
         }
 
@@ -146,9 +155,9 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>One season to the end under a policy, the default walker filling in what the policy leaves alone; its verdict.</summary>
-        private static (GameSense.Report report, EpisodeState final, string error) Play(uint seed, Func<EpisodeState, uint, EpisodeCommand> policy)
+        private static (GameSense.Report report, EpisodeState final, string error) Play(uint seed, Func<EpisodeState, uint, EpisodeCommand> policy, bool? newEconomy = null)
         {
-            var engine = new EpisodeEngine(Season(seed));
+            var engine = new EpisodeEngine(Season(seed, newEconomy));
             string error = null;
             int i = 0;
             for (; i < 2500 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
@@ -158,6 +167,12 @@ namespace Gamesim.Tests.EditMode
                 var ownResult = own == null ? null : engine.Apply(own);
                 if (ownResult != null && ownResult.accepted) continue;
                 var fallback = EpisodeEngineTests.NextCommand(s);
+                if (newEconomy.HasValue && fallback.kind == EpisodeCommandKind.AnswerJury && EpisodeEngine.FinaleOn(s))
+                {
+                    var exchange = s.juryExchanges[s.juryQuestionIndex];
+                    if (exchange.finalistId == s.playerId)
+                        fallback.secondTargetId = FinaleQuestions.Offered(exchange.category, exchange.receiptKind)[0];
+                }
                 var next = engine.Apply(fallback);
                 if (!next.accepted)
                 {
@@ -172,13 +187,13 @@ namespace Gamesim.Tests.EditMode
             return (GameSense.Evaluate(final), final, error);
         }
 
-        private static Sweep Run(string player, IEnumerable<uint> seeds, Func<EpisodeState, uint, EpisodeCommand> policy)
+        private static Sweep Run(string player, IEnumerable<uint> seeds, Func<EpisodeState, uint, EpisodeCommand> policy, bool? newEconomy = null)
         {
             var sweep = new Sweep { player = player };
             double comps = 0, strategy = 0, social = 0, taken = 0, offered = 0;
             foreach (uint seed in seeds)
             {
-                var (report, final, error) = Play(seed, policy);
+                var (report, final, error) = Play(seed, policy, newEconomy);
                 sweep.seasons++;
                 if (error != null) { sweep.errors++; sweep.firstError = sweep.firstError ?? error; continue; }
                 sweep.scores.Add(report.score);
@@ -208,6 +223,40 @@ namespace Gamesim.Tests.EditMode
         }
 
 #if !UNITY_5_3_OR_NEWER
+        /// <summary>A deliberately greedy social walk: spend every available window action on the warmest person, without buying time.</summary>
+        private static EpisodeCommand GreedyNext(EpisodeState s, uint seed)
+        {
+            if (s.pendingDiary != null) return null;
+            var beat = AnswerBeat(s);
+            if (beat != null) return beat;
+            if (s.Find(s.playerId).status == ContestantStatus.Active && ActionsLeft(s))
+            {
+                var best = s.Active.Where(c => !c.isPlayer).OrderByDescending(c => s.Score(s.playerId, c.id))
+                    .ThenBy(c => c.id, StringComparer.Ordinal).FirstOrDefault();
+                if (best != null) return Command(s, EpisodeCommandKind.Talk, best.id);
+            }
+            return null;
+        }
+
+        [Test, Explicit("E1 paired economy measurement, not a human balance or performance acceptance test.")]
+        public void EconomyComparisonReport()
+        {
+            var seeds = Enumerable.Range(1, 80).Select(i => (uint)i).ToList();
+            foreach (bool economy in new[] { false, true })
+            {
+                string label = economy ? "E1" : "legacy windows";
+                var reader = Run(label + " reader", seeds, ReaderNext, economy);
+                var random = Run(label + " random", seeds, RandomNext, economy);
+                var greedy = Run(label + " greedy-social", seeds, GreedyNext, economy);
+                TestContext.WriteLine(reader); TestContext.WriteLine(random); TestContext.WriteLine(greedy);
+                TestContext.WriteLine(label + " reader-minus-random Game Sense gap: " + (reader.meanScore - random.meanScore).ToString("0.00"));
+                Assert.That(reader.errors + random.errors + greedy.errors, Is.Zero, reader.firstError ?? random.firstError ?? greedy.firstError);
+                Assert.That(reader.seasons, Is.EqualTo(80));
+                Assert.That(random.seasons, Is.EqualTo(80));
+                Assert.That(greedy.seasons, Is.EqualTo(80));
+            }
+        }
+
         /// <summary>The sweep the plan asks for: eighty seasons a player, the numbers every lever weight is tuned against. Run it by name.</summary>
         [Test, Explicit("A report: run it by name.")]
         public void GameSenseReport()

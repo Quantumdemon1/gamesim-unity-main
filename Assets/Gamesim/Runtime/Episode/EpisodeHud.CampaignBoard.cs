@@ -295,14 +295,30 @@ namespace Gamesim.Episode
             said.anchoredPosition = new Vector2(pad, -y);
             y += EndScreenKit.Wrapped(message, inner, 3) + pad;
 
-            // The answers, abreast, as tall as a caption, two lines of what each means, and a gap.
-            float tiles = 64f * s, height = Mathf.Max(y, tiles + 2f * pad);
+            // Consequences are decision text: reserve the full measured copy, not a fixed
+            // two-line box that silently clips a longer tradeoff.
             float left = column + gap, room = Mathf.Max(120f * s, width - left - pad);
             int count2 = spec.Replies.Count;
             float tileGap = 10f * s, each = (room - (count2 - 1) * tileGap) / count2;
+            var probe = NewText(strip, "", 12, UiTheme.Muted);
+            float tiles = CampaignReplyHeight(probe, room, spec.Replies, 64f * s);
+            probe.gameObject.SetActive(false); Destroy(probe.gameObject);
+            float height = Mathf.Max(y, tiles + 2f * pad);
             var grid = EndScreenKit.Box(EventChoicesName, strip, left, (height - tiles) * .5f, room, tiles);
             for (int i = 0; i < count2; i++) CampaignReplyTile(grid, i * (each + tileGap), each, tiles, spec.Replies[i]);
             EndScreenKit.Place(strip, 0f, 0f, width, height);
+            return height;
+        }
+
+        /// <summary>One shared row height that fits every original consequence at its normal text size.</summary>
+        private float CampaignReplyHeight(TMP_Text probe, float width, IList<CampaignReply> replies, float minimum)
+        {
+            if (replies == null || replies.Count == 0) return minimum;
+            float s = FontScale, each = (width - (replies.Count - 1) * 10f * s) / replies.Count;
+            float copyWidth = Mathf.Max(1f, each - 20f * s);
+            float height = minimum;
+            foreach (var reply in replies)
+                height = Mathf.Max(height, 33f * s + BoardMeasure(probe, reply.Description, 12, copyWidth));
             return height;
         }
 

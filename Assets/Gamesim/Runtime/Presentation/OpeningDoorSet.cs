@@ -141,6 +141,49 @@ namespace Gamesim.Presentation
         public float Openness => openness;
 
         /// <summary>
+        /// Whether the whole horizontal route fits between the moving leaves. The actor's radius
+        /// expands each leaf's rectangle, so a clear centre line also clears the body. The complete
+        /// route is checked before a walk starts; clearance never depends on how many frames the
+        /// actor will take to reach the door, or how much further the leaves will swing meanwhile.
+        /// </summary>
+        public bool CanWalkThrough(Vector3 from, Vector3 to, float actorRadius) =>
+            !jittering && CanWalkThrough(layout, openness, from, to, actorRadius);
+
+        /// <summary>The route test on the set's published geometry, also used without a rendered set.</summary>
+        public static bool CanWalkThrough(DoorLayout where, float howOpen, Vector3 from, Vector3 to, float actorRadius)
+        {
+            float yaw = Mathf.Clamp01(howOpen) * OpenYaw;
+            return ClearsLeaf(new Vector3(where.FacadeFrontX, 0f, where.ApertureMinZ), yaw, 1f, from, to, actorRadius)
+                && ClearsLeaf(new Vector3(where.FacadeFrontX, 0f, where.ApertureMaxZ), -yaw, -1f, from, to, actorRadius);
+        }
+
+        private static bool ClearsLeaf(Vector3 hinge, float yaw, float side, Vector3 from, Vector3 to, float actorRadius)
+        {
+            var inverse = Quaternion.Inverse(Quaternion.Euler(0f, yaw, 0f));
+            var a = inverse * (from - hinge);
+            var b = inverse * (to - hinge);
+            // Leaf() builds the slab behind the hinge's plane; its panels and rail extend forward,
+            // and the handle's centre at .035 plus its .03 radius reaches .065 m. Include them all.
+            // Expanding an oriented rectangle rather than rounding its corners is conservative.
+            float padding = Mathf.Max(0f, actorRadius) + 0.01f;
+            float first = 0f, last = 1f;
+            bool intersects = Clips(a.x, b.x - a.x, -LeafThickness - padding, 0.065f + padding, ref first, ref last)
+                && Clips(a.z, b.z - a.z, Mathf.Min(0f, side * LeafWidth) - padding,
+                    Mathf.Max(0f, side * LeafWidth) + padding, ref first, ref last);
+            return !intersects;
+        }
+
+        private static bool Clips(float start, float delta, float low, float high, ref float first, ref float last)
+        {
+            if (Mathf.Abs(delta) < 0.000001f) return start >= low && start <= high;
+            float enter = (low - start) / delta, leave = (high - start) / delta;
+            if (enter > leave) { float swap = enter; enter = leave; leave = swap; }
+            first = Mathf.Max(first, enter);
+            last = Mathf.Min(last, leave);
+            return first <= last;
+        }
+
+        /// <summary>
         /// Builds the whole set, closed and dark, as a root of its own in <paramref name="scene"/>.
         ///
         /// <para>A scene root rather than a child of the director or the yard floor: the stage strikes

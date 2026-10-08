@@ -183,9 +183,8 @@ namespace Gamesim.Episode
         /// <summary>
         /// How many of the actions left beginning the next competition loses, as the engine counts
         /// it: all of them when the week turns. Move-in night does not turn it, and the window's
-        /// spending is cleared as it closes, so what the week's extras give - bought time, a
-        /// storyline's bonus - is there again, whole, in the week's first window; only the night's
-        /// own unspent actions go.
+        /// spending is cleared as it closes; only the night's own unspent actions go. Under the
+        /// new economy, extras already spent are debited; legacy seasons keep their old refund.
         /// </summary>
         private static int ActionsLostByMovingOn(EpisodeState state)
         {
@@ -218,11 +217,17 @@ namespace Gamesim.Episode
             {
                 int tonight = EpisodeEngine.WindowSeats(state, window);
                 int extra = EpisodeEngine.SocialActionBudget(state) - tonight;
+                if (extra > 0 && EpisodeEngine.EconomyRulesOn(state))
+                    return (tonight + extra) + " actions tonight; the " + tonight + " base actions do not carry into the week. Only unspent extras carry.";
                 if (extra > 0)
                     return (tonight + extra) + " actions tonight; " + tonight + (tonight == 1 ? " does" : " do") + " not carry into the week, the extra "
                         + extra + (extra == 1 ? " does." : " do.");
                 return tonight + (tonight == 1 ? " action tonight; it does not" : " actions tonight; they do not") + " carry into the week.";
             }
+            if (EpisodeEngine.EconomyRulesOn(state))
+                return Windows.Names[window] + (window == Windows.AfterEviction
+                    ? ". All unspent actions are lost when this week ends."
+                    : ". Unspent base actions do not carry to the next window; unspent extras remain available this week.");
             return Windows.Names[window] + ". What you do not spend here does not carry to the next window.";
         }
 
@@ -332,8 +337,9 @@ namespace Gamesim.Episode
             {
                 Tile(EpisodeHud.RallyHouseCaption, "Rally the house for a meeting. Moves everybody at once: mostly warmer, with one sceptic.",
                     EpisodeCommandKind.HouseMeeting, "people", () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.RallyTroops), "Risky"),
-                Tile(EpisodeHud.AirLaundryCaption, "No middle ground: each housemate comes down with you or against you.",
-                    EpisodeCommandKind.HouseMeeting, "target", () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.AirDirtyLaundry), "High risk"),
+                Tile(EpisodeHud.AirLaundryCaption, "No middle ground: each housemate comes down with you or against you."
+                        + (EpisodeEngine.EconomyRulesOn(state) ? " If the airing lands, record their reactions in your reads. No vote is promised." : ""),
+                    EpisodeCommandKind.HouseMeeting, "target", () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.AirDirtyLaundry), AiringRiskLabel(state)),
             };
             // At three, first of all: the comparison, which costs nothing (ENDGAME-PLAN F2).
             if (asCards && Preparing(state)) tiles.Insert(0, CompareTile(OpenFinalistComparison));
@@ -349,8 +355,8 @@ namespace Gamesim.Episode
             {
                 string purchases = left + (left == 1 ? " purchase" : " purchases") + " left.";
                 tiles.Add(Tile(EpisodeHud.BuyBurnOneCaption, "One more interaction for " + Mathf.Abs((int)WebSocialVocabulary.BurnOneCost)
-                        + " goodwill with one housemate. " + purchases,
-                    EpisodeCommandKind.BuyActionPoint, "exit", () => Commit(state, EpisodeCommandKind.BuyActionPoint, text: WebSocialVocabulary.BurnOne), "Risky", "Gains 1 action"));
+                        + " goodwill with a housemate you choose. " + purchases,
+                    EpisodeCommandKind.BuyActionPoint, "exit", () => OpenActionPurchase(state), "Risky", "Gains 1 action"));
                 tiles.Add(Tile(EpisodeHud.BuySpreadCaption, "One more interaction for " + Mathf.Abs((int)WebSocialVocabulary.SpreadAllCost)
                         + " goodwill with every housemate. " + purchases,
                     EpisodeCommandKind.BuyActionPoint, "chat", () => Commit(state, EpisodeCommandKind.BuyActionPoint, text: WebSocialVocabulary.SpreadAll), null, "Gains 1 action"));
@@ -575,6 +581,7 @@ namespace Gamesim.Episode
         {
             hud.Tag(hud.Action("Ask what they have heard", () => Commit(state, EpisodeCommandKind.AskForIntel, npc.id)),
                 Category(EpisodeCommandKind.AskForIntel));
+            NomineeIntelRows(state, npc);
             // The question is for a voter while there is a vote to ask about; the look is for anyone,
             // in free time or the campaign.
             if (VoteRead.Available(state) && EpisodeEngine.Voters(state).Any(v => v.id == npc.id)
@@ -596,9 +603,45 @@ namespace Gamesim.Episode
                 Category(EpisodeCommandKind.PromiseSafety));
             hud.Tag(hud.Action("Propose a final-two promise", () => Commit(state, EpisodeCommandKind.PromiseFinalTwo, npc.id)),
                 Category(EpisodeCommandKind.PromiseFinalTwo));
-            hud.Tag(hud.Action(allied ? "Leave our alliance" : "Propose an alliance",
-                    () => Commit(state, allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance, npc.id)),
-                Category(allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance));
+            bool rules = EpisodeEngine.CommitmentRulesOn(state);
+            // The week an ally turned on the pact, leaving them costs nothing (ACTIONS-DEALS-ALLIANCES-PLAN
+            // C2): the pill says so - and, in a pact of three or more, that it cuts them out of it - and
+            // the caption is the one it always was.
+            bool free = allied && Allegiance.FreeExit(state, npc.id);
+            if (!allied && rules) ProposeAllianceRow(state, npc);
+            // Under the rules any other leave names its pact, and leaves a pact of three or more going on
+            // without the player (C5).
+            else if (allied && rules && !free) LeaveRows(state, npc);
+            else
+                hud.Tag(hud.Action(allied ? "Leave our alliance" : "Propose an alliance",
+                        () => Commit(state, allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance, npc.id)),
+                    free ? (Allegiance.FreeExitKeepsAPact(state, npc.id) ? FreeExitCutOutTag : FreeExitTag)
+                        : Category(allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance));
+            // Growing and naming the player's pacts (C5), under the rules only.
+            PactRows(state, npc);
+        }
+
+        /// <summary>
+        /// 'Propose an alliance' under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C4). It rolls
+        /// on the alliance invitation's odds and a no spends the action, so the row carries the
+        /// player's read of the chance as a deal's row does (<see cref="KnownOdds.Alliance"/>, never the
+        /// roll's own number), under the note that says whose read it is - once a render, above the
+        /// first chance the conversation shows. At the player's three pacts it is drawn locked, under
+        /// the line that says why, as an offer's yes that cannot be given is: same caption, nothing
+        /// committed, and nothing about the houseguest told.
+        /// </summary>
+        private void ProposeAllianceRow(EpisodeState state, ContestantState npc)
+        {
+            string refusal = EpisodeEngine.AllianceRefusal(state, npc.id);
+            if (refusal != null)
+            {
+                hud.Paragraph(refusal);
+                hud.LockedAction("Propose an alliance");
+                return;
+            }
+            OddsAreYourRead(state, npc);
+            hud.Tag(hud.Action("Propose an alliance", () => Commit(state, EpisodeCommandKind.FormAlliance, npc.id)),
+                Category(EpisodeCommandKind.FormAlliance) + " · " + KnownOdds.Alliance(state, npc.id).word);
         }
 
         /// <summary>What you have on them: the play about them as a bar, where you stand, the threads they are in, and the latest note.</summary>

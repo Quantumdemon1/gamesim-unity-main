@@ -42,25 +42,25 @@ namespace Gamesim.Episode
                 .SelectMany(root => root.GetComponentsInChildren<HouseNpc>(true))
                 .Where(actor => actor.gameObject.activeInHierarchy && voterIds.Contains(actor.Id))
                 .ToList();
-            if (bodies.Count == 0) { seasonReport.readNote = "No voter had a body to approach for the read."; Missed(); seasonReadCommitted = false; yield break; }
+            if (bodies.Count == 0) { seasonReport.readNote = "No voter had a body to approach for the read."; Missed(); yield break; }
 
             yield return CloseSeasonPanel();
             HouseNpc chosen = null; var approach = Vector3.zero;
             foreach (var candidate in bodies)
                 if (FindSeasonNpcApproach(candidate, out approach)) { chosen = candidate; break; }
-            if (chosen == null) { seasonReport.readNote = "No safe approach to a voter; the read was skipped."; Missed(); seasonReadCommitted = false; yield break; }
-            if (!seasonPlayer.TryMoveTo(approach)) { seasonReport.readNote = "The read's approach was not accepted."; Missed(); seasonReadCommitted = false; yield break; }
+            if (chosen == null) { seasonReport.readNote = "No safe approach to a voter; the read was skipped."; Missed(); yield break; }
+            if (!seasonPlayer.TryMoveTo(approach)) { seasonReport.readNote = "The read's approach was not accepted."; Missed(); yield break; }
             yield return WaitSeasonWalk("read conversation", approach, false);
             if (!seasonPlayer.HasArrived || Vector3.Distance(seasonPlayer.transform.position, approach) >= 1.1f)
-            { seasonReport.readNote = "The read's approach did not complete within its route deadline."; Missed(); seasonReadCommitted = false; yield break; }
-            if (!seasonDirector.TryOpenNpc(chosen.Id)) { seasonReport.readNote = chosen.Id + " was not interactable for the read."; Missed(); seasonReadCommitted = false; yield break; }
+            { seasonReport.readNote = "The read's approach did not complete within its route deadline."; Missed(); yield break; }
+            if (!seasonDirector.TryOpenNpc(chosen.Id)) { seasonReport.readNote = chosen.Id + " was not interactable for the read."; Missed(); yield break; }
             yield return null; yield return null;
             if (!HasSeasonButtonText(caption))
             {
                 seasonReport.readNote = "The conversation offered no \"" + caption + "\" to " + chosen.Id + ".";
                 Consume();
                 yield return CloseSeasonPanel();
-                seasonReadCommitted = false; yield break;
+                yield break;
             }
             Consume();
             var before = seasonDirector.Snapshot;
@@ -77,11 +77,10 @@ namespace Gamesim.Episode
                 seasonReport.votesAsked++;
             }
             else seasonReport.peopleRead++;
-            seasonReadCommitted = true;
             yield return CloseSeasonPanel();
         }
 
-        private bool seasonReadCommitted, seasonPlayTaken;
+        private bool seasonPlayTaken;
 
         /// <summary>
         /// Takes the play the Pull offers, once a season, and checks the notebook's Story section

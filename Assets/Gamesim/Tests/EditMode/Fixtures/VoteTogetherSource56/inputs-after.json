@@ -1,0 +1,172 @@
+[
+    {
+        "label":  "node",
+        "path":  "C:\\Program Files\\nodejs\\node.exe",
+        "bytes":  85268464,
+        "sha256":  "995a3fb3cefad590cd3f4b321532a4b9582fb9c6575320ed2e3e894caac3e362"
+    },
+    {
+        "label":  "esbuild-executable",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\gamesim\\node_modules\\@esbuild\\win32-x64\\esbuild.exe",
+        "bytes":  10617344,
+        "sha256":  "cae1bbc86f4df800b01d99e28aea0a154b02243de6797e98f48a9b88a64a7be0"
+    },
+    {
+        "label":  "esbuild-main",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\gamesim\\node_modules\\esbuild\\lib\\main.js",
+        "bytes":  88706,
+        "sha256":  "0d1241812c443111d39475dfc66836003e9ef8b87e54d990dd67df29d20010e1"
+    },
+    {
+        "label":  "esbuild-package",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\gamesim\\node_modules\\esbuild\\package.json",
+        "bytes":  1490,
+        "sha256":  "cb7d5b1fe478f8cbaae566a86031b6fdf5f7d444354f35d1cb3cba9adf6d2935"
+    },
+    {
+        "label":  "original-tsconfig",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\gamesim\\tsconfig.app.json",
+        "bytes":  635,
+        "sha256":  "62acc5455b10569e80d9f799b5cca1c5144d2d5fdad024a48a60114f2532fdc5"
+    },
+    {
+        "label":  "original-package",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\gamesim\\package.json",
+        "bytes":  3515,
+        "sha256":  "5d3ab222b52b1c26c4e1b1fb629897eda9358b5fafed5a100d5d01b6e0a52d78"
+    },
+    {
+        "label":  "src/config.ts",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\gamesim\\src\\config.ts",
+        "bytes":  2952,
+        "sha256":  "ab153b7074f7b2734db31e454bab33dad5305082a0a22a241e0e7fd5cbb69836"
+    },
+    {
+        "label":  "src/contexts/reducers/reducers/eviction-reducer.ts",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\gamesim\\src\\contexts\\reducers\\reducers\\eviction-reducer.ts",
+        "bytes":  8412,
+        "sha256":  "8508b9d77296699222234172fe42ae2cf300e8a28a4b90f40436ef1dc9eb3fb9"
+    },
+    {
+        "label":  "src/models/deal.ts",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\gamesim\\src\\models\\deal.ts",
+        "bytes":  3918,
+        "sha256":  "d825bd3f6cf3fe7e6d08e92e073eac585111f81383057a6adeaebcc012c09580"
+    },
+    {
+        "label":  "src/models/game-state.ts",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\gamesim\\src\\models\\game-state.ts",
+        "bytes":  9750,
+        "sha256":  "be5707c1c29b69aea22736d6789069606902cd013a76b576e796170f82e84b5d"
+    },
+    {
+        "label":  "src/systems/admin-config.ts",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\gamesim\\src\\systems\\admin-config.ts",
+        "bytes":  1727,
+        "sha256":  "94ff04bd5bf9df90a1ff50ce25049f44110dfe69db56f9c6316255289bc889d6"
+    },
+    {
+        "label":  "src/systems/deal-action-rules.ts",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\gamesim\\src\\systems\\deal-action-rules.ts",
+        "bytes":  2753,
+        "sha256":  "fded23fea12c34455d682c1c5ffadc0cbf94a76744b8865009b6dbbae7d81041"
+    },
+    {
+        "label":  "src/systems/deal-system.ts",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\gamesim\\src\\systems\\deal-system.ts",
+        "bytes":  31978,
+        "sha256":  "6c4d911fefd370b23d5ba29c974efbd478fda1faa9c76a6d4870447433d00a75"
+    },
+    {
+        "label":  "src/systems/game-event-bus.ts",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\gamesim\\src\\systems\\game-event-bus.ts",
+        "bytes":  4610,
+        "sha256":  "24319cf278339f301cb1ee11d15f97c876972e06ef72fafc462696dca76815af"
+    },
+    {
+        "label":  "src/systems/relationship-arc-tracker.ts",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\gamesim\\src\\systems\\relationship-arc-tracker.ts",
+        "bytes":  4555,
+        "sha256":  "75390992ede5a314180cbf1e564ce8184eaea4efe54ecf1b4418ad5b7fef54a5"
+    },
+    {
+        "label":  "src/utils/random.ts",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\gamesim\\src\\utils\\random.ts",
+        "bytes":  987,
+        "sha256":  "cdd0f9420523c370b2eb1d6a040e56cdfe990e40918a003d614cbfcda54f2737"
+    },
+    {
+        "label":  "src/utils/relationship-snapshot.ts",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\gamesim\\src\\utils\\relationship-snapshot.ts",
+        "bytes":  812,
+        "sha256":  "d11e8344c1d7fb99ba67e630829555ce594747c84601a83217cdc05c83b8548b"
+    },
+    {
+        "label":  "retained-golden-fixtures.json",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\unity-port-reference\\golden-fixtures.json",
+        "bytes":  315485,
+        "sha256":  "a16c43a5cf80f4bdc90c072e6b6fea67203e5820d339d04c0246b38baeade907"
+    },
+    {
+        "label":  "retained-collect-fixtures.ts",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\unity-port-reference\\collect-fixtures.ts",
+        "bytes":  18023,
+        "sha256":  "d890d4ecea502de5aa185b23ddab05bef8311883ed45f354967601c3d3026fb3"
+    },
+    {
+        "label":  "retained-generate-fixtures.mjs",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\unity-port-reference\\generate-fixtures.mjs",
+        "bytes":  1849,
+        "sha256":  "09127b70b1d5de2d9b654f27dfc7e020fcacbac85bd522c063b490268457be3a"
+    },
+    {
+        "label":  "retained-source-manifest.json",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\unity-port-reference\\source-manifest.json",
+        "bytes":  5432,
+        "sha256":  "ab06f62c6f03394654b78887589314803a179dd48015b2c3be404ce9f992466a"
+    },
+    {
+        "label":  "procedure-collect-vote-settlement-fixtures.ts",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\implement-integration-20261004\\collect-vote-settlement-fixtures.ts",
+        "bytes":  13131,
+        "sha256":  "82e24521de1d1f1d052782a3415c5279c0332f35af14bb2ee56415149bcb788f"
+    },
+    {
+        "label":  "procedure-generate-vote-settlement-fixtures.mjs",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\implement-integration-20261004\\generate-vote-settlement-fixtures.mjs",
+        "bytes":  14982,
+        "sha256":  "0dc4b343a7df773acb4e471eca609f88642ca07ec0c7d7ededfb20ba7670f82b"
+    },
+    {
+        "label":  "procedure-run-vote-settlement-fixtures.ps1",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\implement-integration-20261004\\run-vote-settlement-fixtures.ps1",
+        "bytes":  24190,
+        "sha256":  "8ebb0c688b0be907c9f47e119436d915bee9ac53de539a759f2382b86b9e631d"
+    },
+    {
+        "label":  "retained-v2-launcher",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\implement-integration-20261004\\run-vote-settlement-fixtures-v2.ps1",
+        "bytes":  25458,
+        "sha256":  "dd7e0e36553431c31b99f46027187393f88636ccb4947d37e465cd626a319cf4"
+    },
+    {
+        "label":  "console-host-tool",
+        "path":  "C:\\Windows\\System32\\conhost.exe",
+        "bytes":  1003520,
+        "sha256":  "c86146188b78e484f32cc29e2331689659943b47689a85570342044f499938ac",
+        "signatureStatus":  "Valid",
+        "signatureSubject":  "CN=Microsoft Windows, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"
+    },
+    {
+        "label":  "retained-v3-launcher",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\implement-integration-20261004\\run-vote-settlement-fixtures-v3.ps1",
+        "bytes":  31234,
+        "sha256":  "768023d081a7f3423043ca0df2f32fe3a8a4ca9d72621f2783fbad79178eb291"
+    },
+    {
+        "label":  "actual-v4-launcher",
+        "path":  "C:\\Users\\kelli\\Documents\\Codex\\2026-09-09\\github-plugin-github-openai-curated-remote-2\\work\\implement-integration-20261004\\run-vote-settlement-fixtures-v4.ps1",
+        "bytes":  31891,
+        "sha256":  "dc5a4bf54cc93d8d803d130c6ef7c4af54a757d918f731ca2b307d7b5a33a272"
+    }
+]

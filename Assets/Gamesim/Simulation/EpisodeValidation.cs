@@ -19,8 +19,60 @@ namespace Gamesim.Simulation
 
         public static bool TryValidate(EpisodeState s, out string error)
         {
+            // Only supported canonical mode selects the enabled complete core. Legacy saves stay
+            // disabled; validation never activates, converts or clears any stored authority.
+            if (s != null && s.unifiedCommitmentRulesVersion == UnifiedCommitments.ProspectiveVersion)
+            {
+                // Real new seasons start C0 and story knowledge together. An enabled save cannot
+                // turn either authority off or schedule it for later and strand settlement owners.
+                // Historical rows may still have been created before either rule's start week.
+                if (!YourWord.On(s))
+                    return Fail(out error, "Unified Safety requires active commitment and story knowledge rules.");
+                return TryValidateCore(s, true, out error);
+            }
+            return TryValidateCore(s, false, out error);
+        }
+
+        /// <summary>
+        /// Complete prospective saved-Safety validation for internal historical diagnostics. This
+        /// also accepts data before public enabled-mode prerequisites are active; it does not
+        /// activate authority, clear fields or install raw mirrors. Both entries share the complete
+        /// episode invariants below; public validation additionally requires active C0 and knowledge.
+        /// </summary>
+        internal static bool TryValidateProspectiveUnifiedSafety(EpisodeState s, out string error) =>
+            TryValidateCore(s, true, out error);
+
+        private static bool TryValidateCore(EpisodeState s, bool prospectiveSafety, out string error)
+        {
             error = null;
-            if (s == null || s.schemaVersion != 21) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 26) return Fail(out error, "Unsupported episode schema.");
+            if (prospectiveSafety)
+            {
+                if (s.unifiedCommitmentRulesVersion != UnifiedCommitments.ProspectiveVersion
+                    || s.unifiedCommitments == null || s.unifiedCommitments.Count > UnifiedCommitments.FamilyCapacity * 2
+                    || s.unifiedHearingRulesVersion < 0 || s.unifiedHearingRulesVersion > UnifiedCommitmentHearings.ProspectiveVersion
+                    || s.unifiedHearingEvidence == null || s.unifiedHearingReceipts == null
+                    || s.unifiedHearingEvidence.Count > UnifiedCommitmentHearings.EvidenceCapacity
+                    || s.unifiedHearingReceipts.Count > UnifiedCommitmentHearings.ReceiptCapacity
+                    || (s.unifiedHearingRulesVersion == 0
+                        && (s.unifiedHearingEvidence.Count != 0 || s.unifiedHearingReceipts.Count != 0)))
+                    return Fail(out error, "Invalid prospective Safety or hearing storage.");
+            }
+            else
+            {
+                // Legacy disabled mode must stay empty. Unknown versions cannot opt in to a
+                // partially integrated ruleset, nor silently discard canonical rows.
+                if (s.unifiedCommitmentRulesVersion != 0 || s.unifiedCommitments == null || s.unifiedCommitments.Count != 0)
+                    return Fail(out error, "Unified commitments are not enabled in this build.");
+                // Durable hearing state is versioned independently, but requires canonical mode.
+                if (s.unifiedHearingRulesVersion != 0 || s.unifiedHearingEvidence == null || s.unifiedHearingEvidence.Count != 0
+                    || s.unifiedHearingReceipts == null || s.unifiedHearingReceipts.Count != 0)
+                    return Fail(out error, "Unified hearing coordination is not enabled in this build.");
+            }
+            // The schema adds storage only. Neither legacy nor canonical Safety mode owns a Vote
+            // reveal archive yet; do not clear a nonempty or null container into an accepted state.
+            if (s.unifiedVoteReveals == null || s.unifiedVoteReveals.Count != 0)
+                return Fail(out error, "Unified Vote evidence is not enabled in this build.");
             if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > CompetitionRules.Current)
                 return Fail(out error, "Unsupported competition rules version.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
@@ -37,10 +89,17 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Week-rules activation week must be within the saved season boundary.");
             if (s.windowActions == null || s.windowActions.Count != Windows.Count || s.windowActions.Any(n => n < 0 || n > MostActionsAWeekCanHold))
                 return Fail(out error, "Invalid window action counts.");
+            if (s.economyRulesVersion < 0 || s.economyRulesVersion > 1
+                || s.moveInExtrasSpent < 0 || s.moveInExtrasSpent > MostActionsAWeekCanHold
+                || (s.moveInExtrasSpent != 0 && (s.economyRulesVersion == 0 || !EpisodeEngine.WeekRulesOn(s)
+                    || s.week != 1 || EpisodeEngine.IsFirstNight(s))))
+                return Fail(out error, "Invalid economy rules or move-in extras debit.");
             if (s.agencyRulesStartWeek < 0 || s.agencyRulesStartWeek > 101 || s.agencyRulesStartWeek > s.week + 1)
                 return Fail(out error, "Agency-rules activation week must be within the saved season boundary.");
             if (s.finaleRulesStartWeek < 0 || s.finaleRulesStartWeek > 101 || s.finaleRulesStartWeek > s.week + 1)
                 return Fail(out error, "Finale-rules activation week must be within the saved season boundary.");
+            if (s.commitmentRulesStartWeek < 0 || s.commitmentRulesStartWeek > 101 || s.commitmentRulesStartWeek > s.week + 1)
+                return Fail(out error, "Commitment-rules activation week must be within the saved season boundary.");
             if (s.socialBudgetRulesStartWeek < 1 || s.socialBudgetRulesStartWeek > 101 || s.socialBudgetRulesStartWeek > s.week + 1)
                 return Fail(out error, "Social-budget activation week must be within the saved season boundary.");
             if (s.playerStudyBonus < 0 || s.playerStudyBonus > 5) return Fail(out error, "Study preparation must be between zero and five.");
@@ -77,6 +136,16 @@ namespace Gamesim.Simulation
             if (s.promises == null || s.promises.Count > 200 || s.promises.Any(p => p == null || !Text(p.id, 160) || !Id(p.fromId) || !Id(p.toId) || p.fromId == p.toId ||
                 !Optional(p.targetId) || !Defined(p.kind) || !Defined(p.status) || p.week < 1 || p.week > s.week || p.expiresWeek < 0 || p.expiresWeek > 101) ||
                 s.promises.GroupBy(p => p.id).Any(g => g.Count() > 1)) return Fail(out error, "Invalid promise data.");
+            // Schema 22 (C0): the week a kept or broken promise was settled - no earlier than it was
+            // made, nor than the rules that write it - and, on a broken one, its maker, whose act
+            // settles a promise: written together, at the settlement, or not at all. 0 and null on
+            // one settled before the rules.
+            if (s.promises.Any(p => (p.brokenById != null && (p.status != PromiseStatus.Broken || p.brokenById != p.fromId || p.settledWeek == 0))
+                    || p.settledWeek < 0 || p.settledWeek > s.week
+                    || (p.settledWeek > 0 && (p.settledWeek < p.week || p.settledWeek < s.commitmentRulesStartWeek
+                        || (p.status != PromiseStatus.Fulfilled && p.status != PromiseStatus.Broken)
+                        || (p.status == PromiseStatus.Broken && p.brokenById == null)))))
+                return Fail(out error, "Invalid promise settlement.");
             if (s.alliances == null || s.alliances.Count > 100 || s.alliances.Any(a => a == null || !Text(a.id, 160) || !Text(a.name, 100) || a.members == null ||
                 a.members.Count < 2 || a.members.Count > s.contestants.Count || a.members.Any(id => !Id(id)) || a.members.Distinct().Count() != a.members.Count) ||
                 s.alliances.GroupBy(a => a.id).Any(g => g.Count() > 1)) return Fail(out error, "Invalid alliance data.");
@@ -114,6 +183,7 @@ namespace Gamesim.Simulation
                     x.week < 1 || x.week > s.week || x.isPlayerAuthored != (x.speakerId == s.playerId)) ||
                 s.evictionSpeeches.GroupBy(x => x.speakerId).Any(g => g.Count() > 1))
                 return Fail(out error, "Invalid eviction speeches.");
+            if (!BlockSpeeches.ValidateReceipts(s, out error)) return false;
             if (!Optional(s.backdoorTargetId) || (s.backdoorTargetId != null && s.backdoorTargetId == s.playerId))
                 return Fail(out error, "Invalid backdoor plan.");
             // Bounded at the old flat ceiling rather than at the new budget: a season saved while
@@ -133,6 +203,48 @@ namespace Gamesim.Simulation
                                  || d.expiresWeek < 0 || d.expiresWeek > 101) ||
                 s.deals.GroupBy(d => d.id).Any(g => g.Count() > 1))
                 return Fail(out error, "Invalid deal data.");
+            // Schema 22 (C0): the week a kept or broken deal was settled - no earlier than it was struck,
+            // nor than the rules that write it - and, on a broken one, who broke it, one of its two
+            // sides: written together, at the settlement, or not at all. A voting bloc may name
+            // nobody, since both walked away from it, and so may a vote deal, which both of its sides
+            // can break at the one vote (C1); every other broken deal names somebody. 0 and null on
+            // one settled before the rules.
+            if (s.deals.Any(d => (d.brokenById != null && (d.status != DealStatus.Broken || d.settledWeek == 0
+                        || (d.brokenById != d.proposerId && d.brokenById != d.recipientId)))
+                    || d.settledWeek < 0 || d.settledWeek > s.week
+                    || (d.settledWeek > 0 && (d.settledWeek < d.week || d.settledWeek < s.commitmentRulesStartWeek
+                        || (d.status != DealStatus.Fulfilled && d.status != DealStatus.Broken)
+                        || (d.status == DealStatus.Broken && d.brokenById == null
+                            && d.type != DealKind.VoteTogether && d.type != DealKind.VoteSave && d.type != DealKind.VoteEvict)))))
+                return Fail(out error, "Invalid deal settlement.");
+            // Schema 22 (C7): a deal and the price paid for it name each other, both ways - the same two
+            // houseguests, struck the same week, exactly one of the two a price (Negotiation.PricePrefix) -
+            // and a price is never without what it bought.
+            // Validate canonical identities/source shape before any mixed-link or finale reader
+            // can project a row. No duplicate or malformed row may turn validation into a throw.
+            if (prospectiveSafety && !UnifiedSafetySaveReferences.TryValidate(s, out error)) return false;
+            foreach (var deal in prospectiveSafety ? Enumerable.Empty<DealState>() : s.deals)
+            {
+                bool price = Negotiation.IsPrice(deal);
+                if (deal.linkedDealId == null)
+                {
+                    if (price) return Fail(out error, "Invalid deal link.");
+                    continue;
+                }
+                var link = s.deals.FirstOrDefault(x => x.id == deal.linkedDealId);
+                if (link == null || ReferenceEquals(link, deal) || link.linkedDealId != deal.id || link.week != deal.week
+                    || !((deal.proposerId == link.proposerId && deal.recipientId == link.recipientId)
+                         || (deal.proposerId == link.recipientId && deal.recipientId == link.proposerId))
+                    || price == Negotiation.IsPrice(link))
+                    return Fail(out error, "Invalid deal link.");
+            }
+            // The commitment rules write those records, so a season that never played them holds none.
+            if (s.commitmentRulesStartWeek == 0 && (s.deals.Any(d => d.brokenById != null || d.settledWeek != 0 || d.linkedDealId != null)
+                    || s.promises.Any(p => p.brokenById != null || p.settledWeek != 0) || s.alliances.Any(a => a.playerJoined)))
+                return Fail(out error, "A season without the commitment rules has none of their records.");
+            // Nor a final three deal, their own kind (C9), struck before they began.
+            if (s.deals.Any(d => DealKind.CommitmentRulesOnly(d.type) && (s.commitmentRulesStartWeek == 0 || d.week < s.commitmentRulesStartWeek)))
+                return Fail(out error, "A season without the commitment rules has none of their records.");
             if (s.dealRulesStartWeek < 1 || s.dealRulesStartWeek > Math.Min(101, s.week + 1))
                 return Fail(out error, "A deal rules boundary cannot be further off than next week.");
             // Bought actions are bounded like everything else a player can accumulate: nothing
@@ -209,9 +321,12 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Invalid lobbying data.");
             if (s.replyCards == null || s.replyCards.Count > 24 || s.replyCards.Any(r => r == null || !Text(r.id, 160)
                     || r.week != s.week || !ReplyCards.IsKnown(r.kind) || s.Find(r.fromId) == null || r.fromId == s.playerId
-                    || (r.aboutId != null && s.Find(r.aboutId) == null))
+                    || (r.aboutId != null && s.Find(r.aboutId) == null)
+                    || (r.kind == ReplyCards.Pitch ? !HoHPitches.ValidCard(s, r)
+                        : s.phase != EpisodePhase.Social && s.phase != EpisodePhase.Campaign))
                 || s.replyCards.Select(r => r.id).Distinct(StringComparer.Ordinal).Count() != s.replyCards.Count
-                || (s.replyCards.Count > 0 && s.phase != EpisodePhase.Social && s.phase != EpisodePhase.Campaign))
+                || s.replyCards.Where(r => r.kind == ReplyCards.Pitch).Select(r => r.fromId).Distinct(StringComparer.Ordinal).Count()
+                    != s.replyCards.Count(r => r.kind == ReplyCards.Pitch))
                 return Fail(out error, "Invalid reply card data.");
             if (s.strategyRulesStartWeek == 0 && (s.lobbies.Count > 0 || s.replyCards.Count > 0))
                 return Fail(out error, "A season without the strategy windows has none of their records.");
@@ -268,8 +383,13 @@ namespace Gamesim.Simulation
                     return Fail(out error, "HoH ballots are valid only after a complete tied vote.");
             }
             if (s.phase == EpisodePhase.Jury && s.votes.Any(v => !Live(v.targetId) || Live(v.voterId))) return Fail(out error, "Invalid jury ballot eligibility.");
+            // Prospective finale readers resolve canonical and ledger references. Validate their
+            // containers before those readers run, rather than letting a malformed saved list throw.
+            // The ordinary disabled entry keeps its existing validation order and behavior.
+            if (prospectiveSafety && (!TryValidateStory(s, out error) || !TryValidateLedger(s, out error))) return false;
             return TryValidateV2(s, out error) && TryValidateV3(s, out error) && TryValidateNpcSocial(s, out error)
-                && TryValidateStory(s, out error) && TryValidateLedger(s, out error);
+                && TryValidateStory(s, out error) && TryValidateLedger(s, out error)
+                && (!prospectiveSafety || TryValidateUnifiedSafetyReferences(s, out error));
         }
 
         /// <summary>

@@ -10,7 +10,9 @@ namespace Gamesim.Persistence
         public static void Validate(EpisodeState state)
         {
             if (!EpisodeValidation.TryValidate(state, out var reason)) throw new InvalidDataException(reason);
-            Require(state.schemaVersion == 21, "Unsupported simulation schema version.");
+            Require(state.schemaVersion == 26, "Unsupported simulation schema version.");
+            // The shared complete validator owns mode dispatch, prerequisites, source provenance,
+            // canonical/mixed links and durable hearings. Never bypass it or rebuild raw mirrors.
             Require(state.sessionId != null && state.sessionId.Length <= 256, "Session identifier is too long.");
             Require(state.week <= 10000 && state.promises.Count <= 10000 && state.alliances.Count <= 1000
                 && state.memories.Count <= 100000 && state.events.Count <= 100000

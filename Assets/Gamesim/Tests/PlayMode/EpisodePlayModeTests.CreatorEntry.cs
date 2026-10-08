@@ -1,0 +1,337 @@
+using System;
+using System.Collections;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using Gamesim.Episode;
+using Gamesim.Persistence;
+using Gamesim.Presentation;
+using Gamesim.Simulation;
+using NUnit.Framework;
+using TMPro;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.TestTools;
+using UnityEngine.UI;
+
+namespace Gamesim.Tests.PlayMode
+{
+    public sealed partial class EpisodePlayModeTests
+    {
+        private IEnumerator CreatorEntrySubmit(string caption, bool controller = false)
+        {
+            var target = CastButtons(caption).Single();
+            target.Select();
+            yield return null;
+            // Fields and previews may have rebuilt after selection; press the current control.
+            target = CastButtons(caption).Single();
+            target.Select();
+            if (controller)
+            {
+                if (testGamepad == null) testGamepad = InputSystem.AddDevice<Gamepad>();
+                yield return PressPad(testGamepad, GamepadButton.South);
+            }
+            else yield return PressKey(Key.Enter);
+            yield return null; yield return null;
+        }
+
+        private void CreatorEntryName(string name) => Creator().GetComponentsInChildren<TMP_InputField>()
+            .Single(field => field.name == "Name field").text = name;
+
+#if GAMESIM_UMA
+        [UnityTest]
+        public IEnumerator CreatorEntry_QuickBodyChoicePreservesThePersonAndUndoesAcrossModes()
+        {
+            yield return OpenCreator(detailed: false);
+            var creator = Creator();
+            var catalog = (CharacterBodySource.Provider as IModularCharacterBodyProvider)?.Catalog;
+            Assert.That(catalog, Is.Not.Null);
+            Assert.That(catalog.Bodies.Count, Is.GreaterThanOrEqualTo(2));
+            CreatorEntryName("Body Robin");
+            yield return CreatorEntrySubmit("they/them");
+            creator.Draft.AddTrait("Loyal");
+            var original = creator.Draft.Copy();
+            var other = catalog.Bodies.First(body => body.Id != original.Appearance.bodyId);
+            yield return CreatorEntrySubmit(other.Label);
+            Assert.That(creator.Mode, Is.EqualTo(CharacterCreator.EntryMode.Quick));
+            Assert.That(creator.Draft.Appearance.bodyId, Is.EqualTo(other.Id));
+            Assert.That(creator.Draft.Pronouns, Is.EqualTo(original.Pronouns));
+            Assert.That(creator.Draft.Traits, Is.EqualTo(original.Traits));
+            foreach (string stat in WebTraits.StatNames)
+                Assert.That(WebTraits.Get(creator.Draft.Stats, stat), Is.EqualTo(WebTraits.Get(original.Stats, stat)), stat);
+            Assert.That(creator.GetComponentsInChildren<TMP_Text>().Any(label => label.text.StartsWith("Changed body.")
+                || label.text.StartsWith("Changed clothing:")), Is.True, "The change explains fitted or substituted clothing.");
+            string changed = creator.Draft.Appearance.ContentKey();
+            yield return CreatorEntrySubmit(CharacterCreator.DetailedCaption);
+            yield return CreatorEntrySubmit("Undo");
+            AssertCreatorEntryDraft(original, creator.Draft);
+            yield return CreatorEntrySubmit(CharacterCreator.QuickCaption);
+            yield return CreatorEntrySubmit("Redo");
+            Assert.That(creator.Draft.Appearance.ContentKey(), Is.EqualTo(changed));
+            Assert.That(creator.Draft.Pronouns, Is.EqualTo("they/them"));
+        }
+#endif
+
+        [UnityTest]
+        public IEnumerator CreatorEntry_FreshQuickBackResumeAndCosmeticDetailedUseTheirOwnRoutes()
+        {
+            yield return OpenCreator(detailed: false);
+            CreatorEntryName("Quick Robin");
+            yield return CreatorEntrySubmit(CharacterCreator.BackCaption);
+            yield return CreatorEntrySubmit("Resume setup");
+            Assert.That(Creator().Mode, Is.EqualTo(CharacterCreator.EntryMode.Quick));
+            Assert.That(Creator().Draft.Name, Is.EqualTo("Quick Robin"));
+            yield return CreatorEntrySubmit(CharacterCreator.BackCaption);
+            // Picking another person clears the retained authored draft before the cosmetic route.
+            yield return CreatorEntrySubmit("Emma Brown");
+            yield return CreatorEntrySubmit(CharacterCreator.CustomiseCaption);
+            Assert.That(Creator().Mode, Is.EqualTo(CharacterCreator.EntryMode.Detailed));
+            Assert.That(Creator().Draft.SourceTemplateId, Is.EqualTo("emma-brown"));
+            Assert.That(Creator().Draft.PreserveStats, Is.True);
+        }
+
+        [UnityTest]
+        public IEnumerator CreatorEntry_ModeChangesKeepTheDraftAllOutfitsAndPresetUndoRedo()
+        {
+            yield return OpenCreator(detailed: false);
+            var creator = Creator();
+            var sameDraft = creator.Draft;
+            CreatorEntryName("Modular Robin");
+            sameDraft.Occupation = "Designer"; sameDraft.Hometown = "Seattle"; sameDraft.Bio = "A complete draft.";
+            sameDraft.AddTrait("Loyal");
+            foreach (string id in new[] { "Everyday", "Competition", "Formal", "Sleepwear", "Swimwear" })
+                if (!sameDraft.Appearance.outfits.Any(outfit => outfit.id == id))
+                    sameDraft.Appearance.outfits.Add(new CharacterOutfit { id = id });
+            AppearanceEditing.SetColor(sameDraft.Appearance, "Hair", new Color(.18f, .12f, .08f));
+            sameDraft.Appearance.activeOutfit = "Formal";
+            var original = sameDraft.Copy();
+            yield return CreatorEntrySubmit(CharacterCreator.DetailedCaption);
+            yield return CreatorEntrySubmit("Identity");
+            yield return CreatorEntrySubmit(CharacterCreator.QuickCaption);
+            Assert.That(creator.Draft, Is.SameAs(sameDraft));
+            AssertCreatorEntryDraft(original, creator.Draft);
+            yield return CreatorEntrySubmit("Next starting look");
+            string replaced = creator.Draft.Appearance.ContentKey();
+            Assert.That(replaced, Is.Not.EqualTo(original.Appearance.ContentKey()));
+            yield return CreatorEntrySubmit(CharacterCreator.DetailedCaption);
+            yield return CreatorEntrySubmit("Appearance");
+            yield return CreatorEntrySubmit("Undo");
+            AssertCreatorEntryDraft(original, creator.Draft);
+            yield return CreatorEntrySubmit(CharacterCreator.QuickCaption);
+            yield return CreatorEntrySubmit("Redo");
+            Assert.That(creator.Draft.Appearance.ContentKey(), Is.EqualTo(replaced));
+            Assert.That(creator.Draft.Name, Is.EqualTo(original.Name));
+            Assert.That(creator.Draft.Traits, Is.EqualTo(original.Traits));
+        }
+
+        [UnityTest]
+        public IEnumerator CreatorEntry_SharedReviewAndLibraryKeepTheirPageAndExplicitRenameOpensDetailed()
+        {
+            yield return OpenCreator(detailed: false);
+            CreatorEntryName("Shared Robin");
+            yield return CreatorEntrySubmit("Review");
+            yield return CreatorEntrySubmit(CharacterCreator.DetailedCaption);
+            Assert.That(Creator().GetComponentsInChildren<Transform>().Any(item => item.name == "Review houseguest"), Is.True);
+            yield return CreatorEntrySubmit(CharacterCreator.QuickCaption);
+            yield return CreatorEntrySubmit("My Houseguests");
+            yield return CreatorEntrySubmit("Save this houseguest");
+            yield return CreatorEntrySubmit(CharacterCreator.DetailedCaption);
+            Assert.That(CastButtons("Save this houseguest"), Has.Length.EqualTo(1), "The shared library stays open.");
+            yield return CreatorEntrySubmit(CharacterCreator.QuickCaption);
+            yield return CreatorEntrySubmit("Rename Shared Robin");
+            Assert.That(Creator().Mode, Is.EqualTo(CharacterCreator.EntryMode.Detailed));
+            Assert.That(Creator().GetComponentsInChildren<TMP_InputField>().Any(field => field.name == "Name field"), Is.True);
+            Assert.That(Creator().Draft.Name, Is.EqualTo("Shared Robin"));
+        }
+
+        [UnityTest]
+        public IEnumerator CreatorEntry_QuickReviewStartsAndReloadsTheSameHouseguest()
+        {
+            yield return OpenCreator(detailed: false);
+            CreatorEntryName("Quick Season Robin");
+            yield return CreatorEntrySubmit("they/them");
+            yield return CreatorEntrySubmit("Next starting look");
+            var expected = Creator().Draft.Copy();
+            yield return CreatorEntrySubmit("Review");
+            yield return CreatorEntrySubmit(CharacterCreator.StartCaption);
+            Assert.That(Creator().IsShowing, Is.False);
+            var person = director.Snapshot.Find(director.Snapshot.playerId);
+            Assert.That(person.name, Is.EqualTo(expected.Name));
+            Assert.That(person.pronouns, Is.EqualTo(expected.Pronouns));
+            Assert.That(person.appearance.ContentKey(), Is.EqualTo(expected.Appearance.ContentKey()));
+            Assert.That(File.Exists(director.SavePath), Is.True);
+            string savedPath = director.SavePath, sessionId = director.Snapshot.sessionId;
+            Assert.That(new EpisodeSaveStore(savedPath).TryLoad(out var persisted, out var failure), Is.True, failure);
+            var savedPerson = persisted.Find(persisted.playerId);
+            Assert.That(savedPerson.name, Is.EqualTo(expected.Name));
+            Assert.That(savedPerson.pronouns, Is.EqualTo(expected.Pronouns));
+            Assert.That(savedPerson.appearance.ContentKey(), Is.EqualTo(expected.Appearance.ContentKey()));
+            // Starting creates a new slot, while the isolated scene bootstrap deliberately opens
+            // episode.json and never changes the user's active-slot preference. Reload this new
+            // slot through the actual Settings control, not the test bootstrap's different file.
+            director.OpenSettings();
+            yield return CreatorEntrySubmit("Reload current slot");
+            Assert.That(director.SavePath, Is.EqualTo(savedPath));
+            Assert.That(director.Snapshot.sessionId, Is.EqualTo(sessionId));
+            Assert.That(director.StatusMessage, Does.StartWith("Local episode loaded and validated."));
+            person = director.Snapshot.Find(director.Snapshot.playerId);
+            Assert.That(person.name, Is.EqualTo(expected.Name));
+            Assert.That(person.pronouns, Is.EqualTo(expected.Pronouns));
+            Assert.That(person.appearance.ContentKey(), Is.EqualTo(expected.Appearance.ContentKey()));
+        }
+
+        [UnityTest]
+        public IEnumerator CreatorEntry_FailedQuickStartResumesItsModeDraftHistoryAndErrorThenRetries()
+        {
+            yield return OpenCreator(detailed: false);
+            CreatorEntryName("Retry Robin");
+            yield return CreatorEntrySubmit("Next starting look");
+            var creator = Creator();
+            var draft = creator.Draft;
+            var expected = draft.Copy();
+            string previousSession = director.Snapshot.sessionId, previousPath = director.SavePath;
+            string blocked = Path.Combine(temporaryDirectory, "blocked-creator-root");
+            File.WriteAllText(blocked, "test-owned file prevents creation of a save directory");
+            var saveRoot = typeof(EpisodeDirector).GetField("saveRoot", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(saveRoot, Is.Not.Null);
+            saveRoot.SetValue(director, blocked);
+            try
+            {
+                yield return CreatorEntrySubmit(CharacterCreator.StartCaption);
+                Assert.That(creator.IsShowing, Is.True);
+                Assert.That(creator.Mode, Is.EqualTo(CharacterCreator.EntryMode.Quick));
+                Assert.That(creator.Draft, Is.SameAs(draft));
+                AssertCreatorEntryDraft(expected, creator.Draft);
+                Assert.That(director.StatusMessage, Does.StartWith("New season could not be saved."));
+                Assert.That(creator.GetComponentsInChildren<TMP_Text>().Any(label => label.text == director.StatusMessage), Is.True);
+                Assert.That(director.Snapshot.sessionId, Is.EqualTo(previousSession));
+                Assert.That(director.SavePath, Is.EqualTo(previousPath));
+                Assert.That(CastButtons("Undo").Single().interactable, Is.True);
+            }
+            finally { saveRoot.SetValue(director, temporaryDirectory); }
+            yield return CreatorEntrySubmit(CharacterCreator.StartCaption);
+            Assert.That(creator.IsShowing, Is.False);
+            Assert.That(director.Snapshot.sessionId, Is.Not.EqualTo(previousSession));
+            Assert.That(director.Snapshot.Find(director.Snapshot.playerId).appearance.ContentKey(), Is.EqualTo(expected.Appearance.ContentKey()));
+        }
+
+        [UnityTest]
+        public IEnumerator CreatorEntry_ActualKeyboardAndControllerNavigateModesAndKeepFocusVisible()
+        {
+            yield return OpenCreator(detailed: false);
+            // Preview completion can enable Retry. Take the ring only once its controls have
+            // settled; navigating without editing must then keep those same controls alive.
+            float previewDeadline = Time.realtimeSinceStartup + 25f;
+            while (Creator().StudioPreview.IsBuilding && Time.realtimeSinceStartup < previewDeadline) yield return null;
+            Assert.That(Creator().StudioPreview.IsBuilding, Is.False, "The preview must finish or offer its bounded fallback.");
+            var untouchedName = Creator().GetComponentsInChildren<TMP_InputField>().Single(field => field.name == "Name field");
+            yield return AssertKeyboardRing("Quick creator", "Gamesim Character Creator");
+            Assert.That(untouchedName != null && untouchedName.IsActive(), Is.True,
+                "Tabbing out of an unchanged field must not destroy and rebuild the form.");
+            yield return CreatorEntrySubmit(CharacterCreator.DetailedCaption);
+            Assert.That(Creator().Mode, Is.EqualTo(CharacterCreator.EntryMode.Detailed), "Enter reached the mode control through the input module.");
+            yield return CreatorEntrySubmit(CharacterCreator.QuickCaption, controller: true);
+            Assert.That(Creator().Mode, Is.EqualTo(CharacterCreator.EntryMode.Quick), "Controller Submit reached the same control.");
+            var selected = EventSystem.current.currentSelectedGameObject;
+            Assert.That(selected, Is.Not.Null);
+            Assert.That(selected.transform.IsChildOf(Creator().transform), Is.True);
+            yield return PressPad(testGamepad, GamepadButton.DpadDown);
+            Assert.That(EventSystem.current.currentSelectedGameObject, Is.Not.EqualTo(selected), "The controller moves through the scoped ring.");
+            var focused = EventSystem.current.currentSelectedGameObject.GetComponent<Button>();
+            if (focused != null)
+                Assert.That(focused.GetComponentsInChildren<Image>().Any(image => image.name == "Focus ring" && image.enabled), Is.True);
+            yield return AssertKeyboardRing("Quick creator after controller input", "Gamesim Character Creator");
+        }
+
+        [UnityTest]
+        public IEnumerator CreatorEntry_KeyboardRingTracksEligibilityChangesWithoutRebuilding()
+        {
+            yield return OpenCreator(detailed: false);
+            float previewDeadline = Time.realtimeSinceStartup + 25f;
+            while (Creator().StudioPreview.IsBuilding && Time.realtimeSinceStartup < previewDeadline) yield return null;
+            Assert.That(Creator().StudioPreview.IsBuilding, Is.False, "The preview must finish or offer its bounded fallback.");
+            var left = CastButtons("Rotate left").Single();
+            var right = CastButtons("Rotate right").Single();
+            try
+            {
+                right.interactable = false;
+                yield return AssertKeyboardRing("Creator with one disabled control", "Gamesim Character Creator");
+                // The eligible count stays the same. Losing an old ring member must still rewire
+                // it so the newly usable control is reachable instead of leaving Tab stuck.
+                left.interactable = false;
+                right.interactable = true;
+                yield return AssertKeyboardRing("Creator after exchanging eligible controls", "Gamesim Character Creator");
+                left.interactable = true;
+                yield return AssertKeyboardRing("Creator after enabling another control", "Gamesim Character Creator");
+            }
+            finally
+            {
+                if (left != null) left.interactable = true;
+                if (right != null) right.interactable = true;
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator CreatorEntry_QuickFitsAndRendersAt720p1080pAndFourByThreeWithLargerText()
+        {
+            yield return OpenCreator(detailed: false);
+            CreatorEntryName("Frame Robin");
+            foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1920, 1080), new Vector2Int(1200, 900) })
+                foreach (float scale in new[] { 1f, 1.2f })
+                {
+                    Creator().FontScale = scale;
+                    yield return null; yield return null;
+                    yield return CaptureCreatorFraming("creator-quick-" + size.x + "x" + size.y + (scale > 1f ? "-large" : "-normal"),
+                        width: size.x, height: size.y, arrange: () => AssertCreatorFits(Creator(), "Quick " + size + " at " + scale));
+                }
+            Creator().FontScale = 1f;
+        }
+
+        [UnityTest]
+        public IEnumerator CreatorEntry_FallbackStatusAndRetryRemainCompleteAtSupportedNarrowLayouts()
+        {
+            yield return OpenCreator(detailed:false);
+            var creator=Creator();
+            foreach(var size in new[]{new Vector2Int(1280,720),new Vector2Int(1920,1080),new Vector2Int(1200,900)})
+                using(var lens=new CaptureLens(cameraRig.ViewCamera,size.x,size.y))
+                    foreach(float scale in new[]{1f,1.2f})
+                        foreach(string mode in new[]{CharacterCreator.QuickCaption,CharacterCreator.DetailedCaption})
+                        {
+                            creator.FontScale=scale;yield return null;yield return null;
+                            yield return CreatorEntrySubmit(mode);
+                            var status=creator.GetComponentsInChildren<TMP_Text>().Single(t=>t.name=="Preview status" && t.gameObject.activeInHierarchy);
+                            var retry=creator.GetComponentsInChildren<UnityEngine.UI.Button>().Single(button=>button.IsActive()
+                                && button.GetComponentInChildren<TMP_Text>()?.text=="Retry preview");
+                            var dimensions=status.rectTransform.rect;
+                            var wanted=status.GetPreferredValues(CharacterStudioPreview.FallbackDisplayStatus,Mathf.Infinity,Mathf.Infinity);
+                            Assert.That(wanted.x,Is.LessThanOrEqualTo(dimensions.width),mode+" "+size+" "+scale+": both complete sentences fit without squeezing type.");
+                            Assert.That(wanted.y,Is.LessThanOrEqualTo(dimensions.height),mode+" "+size+" "+scale+": both lines have room.");
+                            Assert.That(status.fontSize,Is.EqualTo(13f).Within(.01f),"The existing scaler magnifies normal type; font size is not reduced.");
+                            Assert.That(((RectTransform)retry.transform).rect.width,Is.EqualTo(132f),"Retry keeps its existing control size.");
+                            if(creator.StudioPreview.CanRetry)
+                            {
+                                Assert.That(status.text,Is.EqualTo(creator.StudioPreview.DisplayStatus));
+                                Assert.That(retry.IsInteractable(),Is.True);
+                                retry.onClick.Invoke();
+                                Assert.That(creator.StudioPreview.CanRetry,Is.False);
+                                Assert.That(status.text,Is.EqualTo("Updating preview…"),"Retry publishes its new status in the same input callback.");
+                                Assert.That(retry.IsInteractable(),Is.False,"A retry in progress cannot still offer another retry.");
+                            }
+                            AssertCreatorFits(creator,"fallback status "+mode+" "+size+" "+scale);
+                        }
+        }
+
+        private static void AssertCreatorEntryDraft(CharacterDraft expected, CharacterDraft actual)
+        {
+            Assert.That(actual.Name, Is.EqualTo(expected.Name)); Assert.That(actual.Age, Is.EqualTo(expected.Age));
+            Assert.That(actual.Pronouns, Is.EqualTo(expected.Pronouns)); Assert.That(actual.Occupation, Is.EqualTo(expected.Occupation));
+            Assert.That(actual.Hometown, Is.EqualTo(expected.Hometown)); Assert.That(actual.Bio, Is.EqualTo(expected.Bio));
+            Assert.That(actual.SourceTemplateId, Is.EqualTo(expected.SourceTemplateId)); Assert.That(actual.PreserveStats, Is.EqualTo(expected.PreserveStats));
+            Assert.That(actual.Traits, Is.EqualTo(expected.Traits)); Assert.That(actual.Remaining, Is.EqualTo(expected.Remaining));
+            foreach (string stat in WebTraits.StatNames) Assert.That(WebTraits.Get(actual.Stats, stat), Is.EqualTo(WebTraits.Get(expected.Stats, stat)), stat);
+            Assert.That(actual.Appearance.ContentKey(), Is.EqualTo(expected.Appearance.ContentKey()), "Every outfit, selection and dye survives.");
+        }
+    }
+}

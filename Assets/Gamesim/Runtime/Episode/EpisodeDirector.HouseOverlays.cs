@@ -1,4 +1,5 @@
 using Gamesim.Presentation;
+using Gamesim.House;
 
 namespace Gamesim.Episode
 {
@@ -31,6 +32,7 @@ namespace Gamesim.Episode
 
         /// <summary>The late pass the plates are measured in, attached the first time the house ticks.</summary>
         private HouseOverlayPass overlayPass;
+        private HousePublicDisplays publicDisplays;
 
         /// <summary>
         /// Each frame, what the house draws over itself as the chrome allows it (<see cref="Update"/>):
@@ -41,14 +43,19 @@ namespace Gamesim.Episode
         private void TickHouseOverlays()
         {
             bool under = IsHouseUnderChrome;
-            bool down = CompetitionGameScreen.AnyDrawn || IsBriefing;
+            bool boardDrawn = CompetitionGameScreen.AnyDrawn;
+            bool down = boardDrawn || IsBriefing;
             if (down != chromePlatesDown) { chromePlatesDown = down; ApplyPlates(); }
             // The arena stands under its own board, not under the episode screen the attempt was
             // opened from: the screen's flag holds for the whole attempt while the HUD and its panel
             // stand down, and asked as a panel, the sign and the discs never drew at all - not even
             // in the look sheet's capture, which switches the board off to photograph the yard.
-            bool arenaUnder = challengeActive ? CompetitionGameScreen.AnyDrawn || CeremonyOverlays.OnScreen : under;
+            bool arenaUnder = challengeActive ? boardDrawn || CeremonyOverlays.OnScreen : under;
             SetCompetitionOverlaysVisible(!arenaUnder);
+            if (publicDisplays == null) publicDisplays = HousePublicDisplays.Find(gameObject.scene);
+            // Public yard lettering follows the same owner as the arena's sign: the board,
+            // committed result and other panels. An attempt's canvas-off world view still draws it.
+            if (publicDisplays != null && publicDisplays.isActiveAndEnabled) publicDisplays.SetCompetitionBoardDrawn(arenaUnder);
             if (roomLabels != null) roomLabels.Hidden = under;
             // Explicitly: a missing component is Unity's fake null in the editor, which ?? keeps.
             if (overlayPass == null)

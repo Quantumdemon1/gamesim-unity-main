@@ -32,6 +32,19 @@ namespace Gamesim.Simulation
         /// <summary>Whether the week runs in windows this week.</summary>
         public static bool WeekRulesOn(EpisodeState s) => s != null && s.weekRulesStartWeek >= 1 && s.week >= s.weekRulesStartWeek;
 
+        /// <summary>E1 is selected only at fresh-season creation, never inferred from an old save's week or phase.</summary>
+        public static void EnableEconomy(EpisodeState s)
+        {
+            if (s == null) throw new ArgumentNullException(nameof(s));
+            if (!IsFirstNight(s) || !WeekRulesOn(s) || s.revision != 0 || s.socialActions != 0 || s.outOfPhaseSocialActions != 0
+                || s.boughtActionPoints != 0 || s.moveInExtrasSpent != 0 || s.acceptedCommandIds == null || s.acceptedCommandIds.Count != 0
+                || s.windowActions == null || s.windowActions.Count != Windows.Count || s.windowActions.Any(n => n != 0))
+                throw new ArgumentException("The new economy can only be selected for a fresh, unplayed season with window rules.", nameof(s));
+            s.economyRulesVersion = 1;
+        }
+
+        public static bool EconomyRulesOn(EpisodeState s) => WeekRulesOn(s) && s.economyRulesVersion == 1;
+
         /// <summary>The window a phase sits in, or none: competitions, ceremonies and eviction night have no seats.</summary>
         public static int Window(EpisodeState s)
         {
@@ -49,9 +62,8 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// A window's seats: two after the HoH, one after the nominations, two after the veto, and
-        /// after the eviction what the old pool would have given the week (half the house, rounded
-        /// up, plus two) less the five already seated, floored at one. An eight-house week has six
-        /// seats where its pool had four; the campaign has two of its own.
+        /// after the eviction ceil(half the house) minus three. Legacy seasons floor that at one;
+        /// E1 floors it at two and gives move-in night two independent seats regardless of cast size.
         /// </summary>
         public static int WindowSeats(EpisodeState s, int window)
         {
@@ -61,7 +73,9 @@ namespace Gamesim.Simulation
                 case Windows.AfterNominations: return AfterNominationsSeats;
                 case Windows.AfterVeto: return AfterVetoSeats;
                 case Windows.AfterEviction:
-                    return Math.Max(1, (int)Math.Ceiling(Math.Max(0, s.Active.Count()) / 2.0) + 2 - (AfterHoHSeats + AfterNominationsSeats + AfterVetoSeats));
+                    if (EconomyRulesOn(s) && IsFirstNight(s)) return 2;
+                    return Math.Max(EconomyRulesOn(s) ? 2 : 1,
+                        (int)Math.Ceiling(Math.Max(0, s.Active.Count()) / 2.0) + 2 - (AfterHoHSeats + AfterNominationsSeats + AfterVetoSeats));
                 default: return 0;
             }
         }
@@ -83,7 +97,10 @@ namespace Gamesim.Simulation
             int seats = WindowSeats(s, window);
             int extras = WeeklyExtras(s);
             if (extras < 0) return Math.Max(1, seats + (window == Windows.AfterHoH ? extras : 0));
-            int usedElsewhere = 0;
+            // Opening counters reset when the first competition starts, but the extras spent there
+            // are not refunded. Keep this debit inside the positive-credit clamp: an expired bonus
+            // is not a new penalty, and Have-Not penalties keep their existing separate branch.
+            int usedElsewhere = EconomyRulesOn(s) ? s.moveInExtrasSpent : 0;
             for (int other = 0; other < Windows.Count; other++)
             {
                 if (other == window) continue;

@@ -147,6 +147,7 @@ namespace Gamesim.House
                 }
             }
             HouseActivityAnchors.EnsureDefaults(scene,existing,all,markers);
+            HouseRestAnchors.Ensure(scene);
             EnsureDestination(existing,all,markers,EpisodeDestination,"bb_set_ceremonyscreen",
                 markers.Any(m=>m.RoomName=="Nomination") ? "Nomination" : "Living",-2.2f);
             var yard=all.FirstOrDefault(t=>t.name=="Competition yard floor");

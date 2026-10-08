@@ -271,10 +271,16 @@ namespace Gamesim.Simulation
             void Add(string category, string kind, string id, int week) => found.Add(new Receipt { category = category, kind = kind, id = id, week = week });
 
             // Accountability: a promise the player broke to them, or a deal between them the player broke.
-            var brokenWord = s.promises.Where(p => p.fromId == player && p.toId == jurorId && p.status == PromiseStatus.Broken).OrderBy(p => p.week).LastOrDefault();
-            var brokenDeal = s.deals.Where(d => (d.proposerId == jurorId || d.recipientId == jurorId) && FinalistRead.DealBreaker(s, d) == player).OrderBy(d => d.week).LastOrDefault();
-            if (brokenWord != null && (brokenDeal == null || brokenWord.week >= brokenDeal.week)) Add(Accountability, PromiseReceipt, brokenWord.id, brokenWord.week);
-            else if (brokenDeal != null) Add(Accountability, DealReceipt, brokenDeal.id, brokenDeal.week);
+            var brokenOwners = new HashSet<string>(UnifiedCommitmentHistory.Breaches(s).Select(incident => incident.EffectOwnerId), StringComparer.Ordinal);
+            bool IsOwner(string id) => CommitmentReferences.FindCanonical(s, id) == null || brokenOwners.Contains(id);
+            int When(string id, int original) => CommitmentReferences.ReceiptWeek(s, id, original);
+            var brokenWord = CommitmentReferences.Promises(s).Where(p => p.fromId == player && p.toId == jurorId
+                && p.status == PromiseStatus.Broken && IsOwner(p.id)).OrderBy(p => When(p.id, p.week)).LastOrDefault();
+            var brokenDeal = CommitmentReferences.Deals(s).Where(d => (d.proposerId == jurorId || d.recipientId == jurorId)
+                && FinalistRead.DealBreaker(s, d) == player && IsOwner(d.id)).OrderBy(d => When(d.id, d.week)).LastOrDefault();
+            if (brokenWord != null && (brokenDeal == null || When(brokenWord.id, brokenWord.week) >= When(brokenDeal.id, brokenDeal.week)))
+                Add(Accountability, PromiseReceipt, brokenWord.id, When(brokenWord.id, brokenWord.week));
+            else if (brokenDeal != null) Add(Accountability, DealReceipt, brokenDeal.id, When(brokenDeal.id, brokenDeal.week));
 
             // Ownership: the player's power put them up or sent them out; else the player's ballot against them.
             var ceremony = ledger.power.Where(p => (p.hohId == player && (FinalistRead.PutUp(p, jurorId) || (Final(p) && p.evicteeId == jurorId)))
@@ -311,7 +317,7 @@ namespace Gamesim.Simulation
             if (miss != null) Add(Mistake, BallotReceipt, W(miss.week), miss.week);
 
             // Personal: a promise the player kept to them, an alliance they shared, a deal they kept.
-            var keptWord = s.promises.Where(p => p.fromId == player && p.toId == jurorId && p.status == PromiseStatus.Fulfilled).OrderBy(p => p.week).LastOrDefault();
+            var keptWord = CommitmentReferences.Promises(s).Where(p => p.fromId == player && p.toId == jurorId && p.status == PromiseStatus.Fulfilled).OrderBy(p => p.week).LastOrDefault();
             // An alliance that still stands, or that ended only because the juror left the house -
             // not one that broke, which is no bond to ask about.
             int? leftWeek = JuryHouseRead.LeftWeek(s, jurorId);
@@ -319,11 +325,16 @@ namespace Gamesim.Simulation
                     && (a.active || ledger.alliances.Any(r => r.id == a.id && r.why != null && r.why.EndsWith("/left-house", StringComparison.Ordinal)
                         && leftWeek != null && r.endedWeek == leftWeek)))
                 .LastOrDefault();
-            var keptDeal = s.deals.Where(d => d.status == DealStatus.Fulfilled && (d.proposerId == player || d.recipientId == player)
-                && (d.proposerId == jurorId || d.recipientId == jurorId)).OrderBy(d => d.week).LastOrDefault();
+            // Under the commitment rules a deal the vote settled - a partnership too (C1) - is a receipt
+            // only once the player knows the ballot that kept it (KnownBallots).
+            bool rules = EpisodeEngine.CommitmentRulesOn(s);
+            var keptOwners = new HashSet<string>(UnifiedCommitmentHistory.Fulfillments(s).Select(receipt => receipt.EffectOwnerId), StringComparer.Ordinal);
+            var keptDeal = CommitmentReferences.Deals(s).Where(d => d.status == DealStatus.Fulfilled && (d.proposerId == player || d.recipientId == player)
+                && (d.proposerId == jurorId || d.recipientId == jurorId) && (!rules || KnownBallots.DealOutcomeKnown(s, d))
+                && (CommitmentReferences.FindCanonical(s, d.id) == null || keptOwners.Contains(d.id))).OrderBy(d => When(d.id, d.week)).LastOrDefault();
             if (keptWord != null) Add(Personal, PromiseReceipt, keptWord.id, keptWord.week);
             else if (shared != null) Add(Personal, AllianceReceipt, shared.id, ledger.alliances.FirstOrDefault(r => r.id == shared.id)?.startedWeek ?? 0);
-            else if (keptDeal != null) Add(Personal, DealReceipt, keptDeal.id, keptDeal.week);
+            else if (keptDeal != null) Add(Personal, DealReceipt, keptDeal.id, When(keptDeal.id, keptDeal.week));
             return found;
         }
 
@@ -383,12 +394,14 @@ namespace Gamesim.Simulation
             switch (exchange.receiptKind)
             {
                 case PromiseReceipt:
-                    var promise = s.promises.FirstOrDefault(p => p.id == id);
-                    return promise == null ? null : "Week " + promise.week + " · you gave them your word, and "
+                    if (!CanonicalReceiptBelongsToPlayerAndJuror(s, id, juror, UnifiedCommitments.PromisePolicy)) return null;
+                    var promise = CommitmentReferences.FindPromise(s, id);
+                    return promise == null ? null : "Week " + CommitmentReferences.ReceiptWeek(s, id, promise.week) + " · you gave them your word, and "
                         + (promise.status == PromiseStatus.Broken ? "broke it." : promise.status == PromiseStatus.Fulfilled ? "kept it." : "it stands.");
                 case DealReceipt:
-                    var deal = s.deals.FirstOrDefault(d => d.id == id);
-                    return deal == null ? null : "Week " + deal.week + " · your " + DealKind.Title(deal.type).ToLowerInvariant() + ": "
+                    if (!CanonicalReceiptBelongsToPlayerAndJuror(s, id, juror, UnifiedCommitments.DealPolicy)) return null;
+                    var deal = CommitmentReferences.FindDeal(s, id);
+                    return deal == null ? null : "Week " + CommitmentReferences.ReceiptWeek(s, id, deal.week) + " · your " + DealKind.Title(deal.type).ToLowerInvariant() + ": "
                         + (deal.status == DealStatus.Broken ? "broken." : deal.status == DealStatus.Fulfilled ? "kept." : deal.status + ".");
                 case PowerReceipt:
                     var power = ledger.power.FirstOrDefault(p => p.week == week);
@@ -423,6 +436,20 @@ namespace Gamesim.Simulation
             }
         }
 
+        // Saved IDs are provenance, not permission to inspect an unrelated canonical agreement.
+        // Preserve legacy receipt interpretation; strict enabled-save reference validation is separate.
+        private static bool CanonicalReceiptBelongsToPlayerAndJuror(EpisodeState s, string id, string juror, string policy)
+        {
+            if (!UnifiedCommitments.RulesOn(s)) return true;
+            var row = CommitmentReferences.FindCanonical(s, id);
+            if (row == null) return true;
+            if (row.sourcePolicy != policy) return false;
+            return policy == UnifiedCommitments.PromisePolicy
+                ? row.makerId == s.playerId && row.beneficiaryId == juror
+                : (row.makerId == s.playerId && row.beneficiaryId == juror)
+                    || (row.makerId == juror && row.beneficiaryId == s.playerId);
+        }
+
         // ------------------------------------------------------------ the receipt, read for the screen
 
         /// <summary>
@@ -437,8 +464,8 @@ namespace Gamesim.Simulation
             var ledger = s.ledger ?? new SeasonLedger();
             switch (exchange.receiptKind)
             {
-                case PromiseReceipt: return s.promises.First(p => p.id == id).week;
-                case DealReceipt: return s.deals.First(d => d.id == id).week;
+                case PromiseReceipt: return CommitmentReferences.ReceiptWeek(s, id, CommitmentReferences.FindPromise(s, id).week);
+                case DealReceipt: return CommitmentReferences.ReceiptWeek(s, id, CommitmentReferences.FindDeal(s, id).week);
                 case PowerReceipt:
                 case BallotReceipt: return ParsedWeek(id);
                 case ReplyReceipt: return ledger.replies.First(r => r.cardId == id).week;
@@ -459,10 +486,11 @@ namespace Gamesim.Simulation
         /// words are never touched: this is drawn above them. Null with no receipt, or with a row
         /// the record no longer holds.
         ///
-        /// <para>A promise or a deal is dated by the week it was made, and its words say so. It is
+        /// <para>A legacy promise or deal is dated by the week it was made, and its words say so. It is
         /// kept or broken later - a final two at the final eviction, a safety promise at a
         /// nomination - and the record holds no week for that, so the week never stands on the
-        /// break or the keeping. <see cref="ReceiptLine"/> words it the same way.</para>
+        /// break or the keeping. Canonical outcomes retain the actual settlement week instead.
+        /// <see cref="ReceiptLine"/> words it the same way.</para>
         /// </summary>
         public static string Kicker(EpisodeState s, JuryExchangeState exchange)
         {
@@ -474,12 +502,12 @@ namespace Gamesim.Simulation
             switch (exchange.receiptKind)
             {
                 case PromiseReceipt:
-                    var promise = s.promises.First(p => p.id == id);
+                    var promise = CommitmentReferences.FindPromise(s, id);
                     words = "you gave them your word" + (promise.status == PromiseStatus.Broken ? ", and broke it"
                         : promise.status == PromiseStatus.Fulfilled ? ", and kept it" : "");
                     break;
                 case DealReceipt:
-                    var deal = s.deals.First(d => d.id == id);
+                    var deal = CommitmentReferences.FindDeal(s, id);
                     words = "your " + DealKind.Title(deal.type).ToLowerInvariant() + " with them"
                         + (deal.status == DealStatus.Broken ? ", broken" : deal.status == DealStatus.Fulfilled ? ", kept" : "");
                     break;

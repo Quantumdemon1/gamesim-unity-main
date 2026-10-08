@@ -61,7 +61,7 @@ namespace Gamesim.Tests.EditMode
             var old = V20(); string original = old.ToString();
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(21));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(26));
             Assert.That((int)migrated["finaleRulesStartWeek"], Is.Zero, "A season saved before the finale rules keeps the catalogue to its end.");
             Assert.That(migrated["finalArgument"].Type, Is.EqualTo(JTokenType.Null));
 
@@ -96,7 +96,7 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void TheWholeChainFromV15ReachesTwentyOne()
+        public void TheWholeChainFromV15ReachesTheCurrentSchemaThroughTwentyOne()
         {
             var engine = new EpisodeEngine(ContentCatalog.Create(1019));
             for (int i = 0; i < 40 && engine.Snapshot.week < 2; i++) Assert.That(engine.Apply(EpisodeEngineTests.NextCommand(engine.Snapshot)).accepted, Is.True);
@@ -104,7 +104,7 @@ namespace Gamesim.Tests.EditMode
             old["schemaVersion"] = 15;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(21));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(26));
             Assert.That((int)migrated["finaleRulesStartWeek"], Is.Zero);
             Assert.That((int)migrated["agencyRulesStartWeek"], Is.EqualTo((int)old["week"] + 1));
             CheckShape(migrated);

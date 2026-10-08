@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "version": 1,
+  "kind": "gamesim-original-vote-together-source56-portable",
+  "files": [
+    { "path": "binding.json", "bytes": 12213, "sha256": "38603c886f23d046316cf141c8145fca4f01ce38017f736701c30fb5816655ed" },
+    { "path": "inputs-after.json", "bytes": 9566, "sha256": "b417352cd3fdbd00df8ea04a3a2ae063301bc5e620d1b4841239641a2070d256" },
+    { "path": "inputs-before.json", "bytes": 9566, "sha256": "b417352cd3fdbd00df8ea04a3a2ae063301bc5e620d1b4841239641a2070d256" },
+    { "path": "source-manifest.json", "bytes": 6459, "sha256": "5d061fbc5863a078551d8e9e90e1a84d5f71e298e0ae8d584956acf0bec028c0" },
+    { "path": "vote-settlement-fixtures.json", "bytes": 824319, "sha256": "9795ad5d415fdcf503a490087faf7e1a63abc53c2cf88dc21f5e7d648d9e901f" }
+  ]
+}

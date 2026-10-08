@@ -1,5 +1,850 @@
 # Integrated Unity port — implementation and acceptance record
 
+## Combined Vote prerequisites and replay repair,2026-10-06 UTC
+
+This new local candidate combines integration969dfd00c63d2cfaddfb1c5566338ca48dda9cd2
+with reviewed isolatedc15eb54fe0b3428633571cc034d99ec7199efffe. Preserve both dated
+histories below; statements in older blocks describe their own pins, not this
+candidate. All eight integration QA/apparatus/isolation inputs and11Edit/4Play
+cases remain unchanged. Current authored floors5859Edit/1003Play/77UMA/4015pure
+are not this combined pin's executed results. The VoteTogether122/source86,
+completed-reveal140/archive181 and promise/targeted144 prerequisites plus the
+test-only strict historical serialization bridge are included. No Vote authority,
+mode2, saved archive, production rules/effects or live-editor activation occurs.
+
+Old969 g26n1 is whole Failed, Edit5185/1/0 and Play1003/0/0, no timeout. Never
+retag its successful Play subset or captures as this candidate's acceptance.
+Fresh combined input/compiler/pure and full native NoUMA/UMA checks precede
+any live promotion. Local Settings remain unstaged and byte-preserved. LiveC
+edits/scenes/recovery/saves/builds/snapshots, source corpora and old goldens remain
+protected. Full D1-D4, real assets, clean desktop build, actual GTX1060 1080p60,
+shipping visuals/accessibility/balance and three first-time human gates are OPEN.
+
+## Combined public Safety / inert26 candidate, 2026-10-06 UTC
+
+The current local merge combines integration6e66a82923ce8c03258df74f8b1dc63febc4a806
+with isolated3b95d1728d2dcaa545dbbdc45d6251ee8253806c. Only the two progress
+documents and Tools/baseline.txt had content conflicts; both evidence histories
+remain below. All eight integration-only QA/apparatus/isolation inputs and their
+additional11Edit/4Play cases are retained. Combined authored floors are
+5186Edit/1003Play/77UMA/3428pure, NOT newly executed passes. Public canonical
+Safety, exact former25 contract/corpus, portable witnesses and the strict inert
+schema26 boundary are now combined source. Vote mode2/nonempty archives remain
+refused. New pure VoteTogether work is separate and is not part of this merge.
+
+Fresh combined pure01 passes3428,0failed;13Explicit reports notexecuted.
+Sequential before04/compiler02/after04 passes8fresh assemblies with exact
+1004source+2Tools equality; final independent compiler02 audit CLEAR. Before03
+was midcompiler01, retained with that qualification. Actual runs bind6e66 plus
+the staged merge, not a future commit. Independent union/GUID/package/all8QA
+review clear. Complete same-pin NoUMA/UMA suites and native public
+Safety/storage/UI transactions remain required. Prior6e66 native
+g25n2 and isolated compiler15/managed diagnostics are not retagged as this image.
+See WAVE_D_COMBINED_INERT26_REVIEW.md. Liveb25/schema21 edits, fonts, settings,
+scenes, recoveries, saves, builds and snapshots remain untouched. No desktop,
+actual1080p60, visual/accessibility, human acceptance or live promotion is claimed.
+All required D1-D4, broaderE2, real coherent assets and final acceptance stay open.
+
+## 2026-10-06 UTC - reviewed combined saved-state checkpoint
+
+Local merge parents e53c348f95eeb422e89d28a547f3a911416a97a4 and
+4fa73dec4d70633475ddfc5901be99df8a85a455. All prior QA/apparatus/isolation source
+and test blobs stay unchanged; resolve only additive documentation and aggregate
+floors4794Edit/995Play/77UMA/3314pure. Prospective full saved-Safety validation,
+272pure/25native refusal cases and seven source-backed migration-test repairs
+are now combined, plus one native unsupported26 case. Production1 still refused.
+Separate Wave06 diagnostics are passing, not combined/native/public acceptance.
+Fresh exact combined-source compiler/pure and whole NoUMA/UMA/native disk tests
+remain required. See WAVE_D_COMBINED_SAVED_STATE_REVIEW.md. Earlier dated records
+remain historical; fullD1-D4/E2/assets/build/1080p60/visual/accessibility/0of3human
+and preserved local promotion remain open. Owner selected fresh seasons with
+commitment/story rules active from the start; legacy saves retain their rules.
+This selects the next support contract, not current enabled-mode acceptance.
+
+## 2026-10-05 UTC - reviewed combined outcome/story/hearing checkpoint
+
+Local merge parents714ad86ae6d9c89c2af60faaa4364cb4d42338cc and
+29dad8fee6311fe25e3d3ef63df83da2d84fbf93 combine the reviewed isolated
+outcome/story and hearing/schema25 work with retained integration QA. Exactly
+three content conflicts (baseline and these two progress documents) preserve both
+dated histories and set combined floors4496Edit/995Play/77UMA/3042pure. All eight
+integration-only QA/apparatus/isolation blobs match714; other Assets inputs and
+the pure-project registration match29. Local settings remain unstaged and exact.
+See WAVE_D_COMBINED_HEARING_REVIEW.md for preservation and evidence boundaries.
+Fresh combined checks/native acceptance are required; older714/g24n3 and isolated
+29 diagnostics are not relabelled as this combined pin's results. New enabled-save
+drafts stay in the separate WaveC checkout, not this merge. Public unified/hearing1
+remain refused. Live edits/recovery/scenes/saves/builds/snapshots remain protected.
+All4D systems, broaderE2, realassets, same-pinUMA/shipping1080p60GTX1060,
+visual/accessibility and0of3human acceptance remain open. Older sections below
+retain historical state rather than proving current completion or process status.
+## Inactive Vote obligation verdict prerequisite,2026-10-06 UTC
+
+NEW promise/targetedSaveEvict pure verdict and complete-archive overload do NOT
+install authority, settle effects, validate terms/producers or activate mode2.
+144new regular cases actualpass; pure19 4015Passed/0Failed plus13OLDExplicit
+NotExecuted, compiler19 all8fresh. Before22/after22 exact1011source+2Tools equal;
+independent source/scoped144/plumbing/physicalartifact auditsCLEAR:1003C#once,
+16fresh internal dependencies and144uniquePassed; no source/Tools drift.
+NEW structuralfingerprint control closes KVPnested-value proofgap beforechecks.
+See WAVE_D_VOTE_OBLIGATIONS_IMPLEMENTATION.md for EVERY material change, source
+native-vs-original distinctions, exact pins, warning and all remaining gates.
+Floors5848/999/77/4015; combined5859/1003 retainsQA11/4. No live/integration/asset/
+engine/schema/save/mode0/1 mutation; native/build/1080p60/visual/threehumans open.
+Original integration969 g26n1 closed Failed, no timeout:Edit5185Pass/1Fail/0Skip
+of5186;Play1003/1003Pass/0Skip. All owned handles closed; integration source equal,
+copy dynamic-font cache drift separately permitted. Captures remain unaccepted.
+
+## Complete regular-reveal archive prerequisite,2026-10-06 UTC
+
+Pure detached complete-history validation/current projection is reviewed and
+executed:181new actualpass, full pure18 3871Passed/0Failed plus13priorExplicit
+NotExecuted; fresh compiler18 all8/1001CS once/16fresh internal references,
+before21/after21 exact1009source+2Tools equality and independent physical audit
+CLEAR. No archive installation, mode2, schema, save, engine or knowledge authority
+change. Existing140 fixture unchanged; final-Jury classification gap fixed before
+checks. See WAVE_D_REVEAL_ARCHIVE_IMPLEMENTATION.md for EVERY material change,
+exact pins and execution-ID versus old adapter-label collision clarification.
+Floors5704/999/77/3871; combined5715/1003 retainsQA11/4. Genuine public removal,
+native serializer repair, complete Vote owners/readers/durability, otherD1families,
+D2-D4/art/build/1080p60/visual/three first-time human acceptance remain OPEN.
+
+## Completed regular reveal prerequisite,2026-10-06 UTC
+
+See WAVE_D_COMPLETED_REVEAL_IMPLEMENTATION.md for every source/test/serializer-
+bridge change and its limits. Pure bounded leaf140 actualpass; full pure17
+3690pass/0failed plus13 priorExplicitNotExecuted. Fresh compiler17 all8/999CS once,
+16fresh internal edges, before19/after19 byte-identical; independent audit clear.
+Floors5523/999/77/3690; futurecombined5534/1003 retainsQA11/4. Test-only strict
+fields serialization bridge compiles; repaired original native case not rerun.
+Bounded public witness V03 naturally FAILED/incomplete134attempts/23808commands,
+four real tie/untied positives but no qualifying ordinary-voter removal. No waiver
+or substitute detached witness. Archive/mode2, all remainingD1/D2-D4/native/art/
+desktop1080p60/visual/human gates remain open. No live promotion or remote write.
+
+## VoteTogether local/source increment authored,2026-10-06 UTC
+
+See WAVE_D_VOTE_TOGETHER_IMPLEMENTATION.md for every new leaf/test/package and
+Tools/doc change. Pure122 plus original-source consumer86 actually execute/pass
+208; pure16 passes3550/0failed,13Explicit reports notexecuted. Local predicate is
+inactive and has no effects or saved
+authority. Source04 raw witnesses are portable byte-exact, not native acceptance.
+Final bounded-reader/static/fullartifact reviews clear; fresh compiler16 passes8,
+all997C# once,1005source+2Tools exactbefore17/after17/after18 equality.
+Legacyreplay02 closes10groups/55seasons/5956attempts404.393s; unchangedv2
+freshcomparison03 matchesBOTH retained baselines. Final independent legacy/
+comparison artifact audit CLEAR, all1499 bound physical inputs/ten closed receipts
+and exact55/5956 aggregate/both baselines match. Actualmanagedrunsbind3b95+authoredimage,notfuturepin.
+Authored floors5383/999/77/3550;
+futurecombined5394/1003 retains QA11/4. No live or integration promotion,
+public2, Vote archive, schema, legacy-rule, asset or desktop acceptance change.
+
+## Inert schema26 boundary,2026-10-06 UTC
+
+See WAVE_D_INERT26_IMPLEMENTATION.md for EVERY material production/test/plumbing/
+Tools/doc change. Strict original fixed25 validity precedes detached null/null/
+empty additions only. Current mode0/1 accepts no Vote archive; future2 refused.
+Fresh playable commitment/story rules start immediately, old-save rules unchanged.
+Independent source/fixtures/plumbing/helpers CLEAR; fresh15 all994C#/8assemblies
+compile with exact1002source+2Tools before/after equality. Pure15passes3428regular,
+13explicitreports notexecuted; managed107/166pass,0failed,107fullartifact auditCLEAR.
+Original portable34pass/fullartifact auditCLEAR; originallegacy01 retainedFAILED
+180stimeout/45of55seasons (partialtuplesmatch). Separate sharded01 closes all10
+workers/55seasons/5956attempts, independentphysicalauditCLEAR. Reviewed comparator-v2
+fresh02 matches BOTH retained baselines; failedcomparison01's variable collision
+and originalprocedures are preserved, no checks waived or evidence retagged;
+authored floors5175/999/77/3428, combined5186/1003 retainsQA11/4. No live/
+integration promotion or native/build/actual1080p60/visual/human acceptance.
+
+## Portable former25 historical replay,2026-10-06 UTC
+
+See `WAVE_D_FROZEN25_PORTABLE_IMPLEMENTATION.md` for EVERY material file/test/floor,
+retained timeout, scoped repair and bound evidence. Actual02 raw JSON/provenance
+is packaged without reserialization:775 original files,1555inside+rootmeta and
+779uniqueGUIDs; fixed relative index28c7ff14...fee8d0. Fresh14 passes8assemblies,
+34 JSON-only historical cases and166 unchanged current-engine cases,0failed.
+Source999+2Tools before14/after14 exactlymatch. Independent finalartifact audits
+03/04 CLEAR; localcheckpoint pending. This is managed history/compatibility evidence, not new pure/native/
+standalone/shipping performance/visual/human acceptance. Schema25/production/rules/
+saved authorities/IDs/RNG/knowledge/live/integration remain unchanged. Next audited
+pin theninert additive25-to26; futureunified2 staysrefused. Floors5068/999/77/3399;
+futurecombined5079/1003 retainsQA11/4. All D1 families/D2-D4 and release gates remain.
+
+## 2026-10-06 UTC - actual former25 corpus captured, final02 closure
+
+Existing166-case fixture adds a private null-default detached test observer,
+literal25/fixedshape guards before semantic refusals and actual command-coordinate
+hash receipts. Production/metas/Tools/floors unchanged. Fresh compiler11 checks
+all990C# once/8assemblies. Observer-null managed03 passes166/166, no native/corpus.
+Reviewed task-local capture02 passes166/166/0fail,no timeout34.4823517s: twelve
+openings, three complete67-boundary/66-command Finished sequences,436aliases
+(366accepted/70semantic-refused),304distinct payloads/469packetfiles and706command
+records. Metadata classifier defect in01 preserved and narrowly fixed;02 raw773
+files are byte-equal to01, but its final metadata is a fresh corrected export.
+Binding984401d1cd2081bd2d0c3152f6689969acf332aa02b3a165103427ee40046501;
+manifest96e1fd4e26d82d3ceac0945df99a56b5396f8492774e98e5b36851ca39f94b38.
+Before12/after12 exactly match compiler11's998source+2Tools image at8016+single
+dirty fixture. Reused unchanged compiler11 DLLs, not a new compiler12/pure run.
+Full inventory, source limits, corrected metadata and remaining gates are in
+WAVE_D_FROZEN25_CORPUS_IMPLEMENTATION.md. Portable immutable pin/fixed25 replay
+precedes schema26. No migration/activation/live promotion/native/desktop/perf/
+visual/human acceptance. Older integration6e66 native76183 naturallyCLOSED0,
+Edit4794/4794 andPlay995/995,0fail/0skip; independentfinalsource/process/5424artifact
+auditCLEAR. That olderpin does not execute the new increment; UMA77/pure3314
+were not run by it, and no desktop/visual/1080p60/human acceptance follows.
+
+## 2026-10-06 UTC - final frozen25 image10 diagnostic closure
+
+Scoped stage check found six whitespace-only blank lines in two NEW frozen helper
+files. Removed only those spaces; all other production bytes, fixture and Tools
+unchanged. Fresh compiler10 CLOSED0 builds8 assemblies; independent990source/
+8response/freshdependency/cache/input audits clear. Fresh managed session27821
+CLOSED0:166/166 pass,0fail,21.8610986s,no timeout, no native launch. BindingSHA
+0062cff930c9f8bde4f58bd99cb384a7eb30455c669b731674096d73adc0adea.
+Before10/after10 have equal ordered998source+2Tools and HEADf456, contentSHA
+8cd312790e2fc624ff3ad3b8247a613507f8b096acd5d4209348acdf114bcdbe. Evidence
+JSON file hashes differ only in PowerShell5/7 indentation; not byte-equal files.
+Final30production-file digest9893a545093c76e23e91d8e948e2b6dc8abd4b7157b975bb15d95a67c2e4670d.
+Pure09 remains its original3399-case evidence; no new10 pure run is claimed.
+Historical25 corpus and all native/build/visual/performance/human gates stay open.
+
+## 2026-10-06 UTC - exact former25 snapshot, corrected09 diagnostics closed
+
+NEW unused FrozenEpisodeV25 contract, literal72DTO/540fields/five enums and local
+complete publicSafety/storage/knowledge/finale closure pinned tof456. No growing
+model/validator, stripping/backfill/writer/migration dispatcher or rule activation.
+Fifteen production C#+metas and one166-case fixture+meta; Editfloor4868→5034,
+Play999/UMA77/pure3399 unchanged. Exact material inventory is in
+WAVE_D_SAFETY_FROZEN25_IMPLEMENTATION.md; future combined5045/1003 retains QA11/4.
+
+First compiler08 CLOSED1, fixed data carrier lacked source IsStory getter; no
+new test executed and onlySimulation compiled. Failure/preimage/output retained,
+byte-verified original-data reconstruction transparently labeled. Only NEW data
+getter/comment changed;29 production siblings unchanged. Corrected09 CLOSED0
+8fresh assemblies/3399regular pure(80publicincluded)/166actual focused Mono,
+0failed/no timeout.13older Explicit remain NotExecuted. All998source(990C#+8asmdef)
+and2Tools before09/after09 identicalSHA
+d47e714e815ec61112739adc0855a9b282a6f9764af6ea378a1aaff3862f3119.
+Independent exactDTO/enum/validator/helper/metadata/fixture and compiler response/
+freshDLL/cache/source drift audits are clear. Managed bindingSHA
+44a1597b73c85b046f8a64634dc3cd9f8beb8848f51d19e4e4edd815318f4866.
+
+This is current25 in-memory diagnostic evidence, NOT native save/migration/full
+suite/desktop/performance/visual/human acceptance. Before schema26, pin actual25
+opening/checkpoint/full-season JSON; current regenerated witnesses and later
+unsupported-header refusals cannot define historical acceptance. Corpus capture
+has not run. Separate nativeg25n2 atintegration6e66 remains LIVE; liveb25 edits,
+recovery/scenes/saves/builds/snapshots retained, no promotion or remote mutation.
+AllD1-D4/widerE2/art and final owner-required acceptance gates remain open.
+
+## 2026-10-06 UTC - public Safety exact-image07 diagnostics closed
+
+Eightfresh assemblies/3399regular pure/1306focused managed/12historical migration
+cases naturally closed0. All80 new actual public-command cases passed;13older
+Explicit reports remain NotExecuted.974C#+8asmdef+2Tools before07/after07 match
+SHA256ddd1b01ee59d965416a3b06b341238111640d8836562112f6d7e6929f6c1b705.
+Independent full source/DLL/procedure/log/output and seven-production-diff/native
+fixture review is clear. Replay07 closed0 at55unique/5956attempts. Formal08
+comparison against both retained24 bindings closed0, status
+PassedManagedLegacyReplayOnly,SHA2560619a72ce924f490b63a41ae1cdfc5538a31393960154bb91d0dce2145e16e4a.
+Comparison07 failed only in its PowerShell5.1 multiline argument launcher and
+produced noJSON; original helper retained, scoped v2 syntax repair independently
+reviewed. No assertion/input/legacy outcome changed to obtain the comparison.
+Exact artifacts, authored tests and source changes are in
+WAVE_D_SAFETY_PUBLIC_IMPLEMENTATION.md. New nativePlay8 and evolved Save25 have
+not executed on this enabled image. No integrated/live/save/runtime/build/1080p60/
+visual/human/fullplan acceptance is inferred. Currentintegration6e66/g25n2 remains
+separately frozen and active; reviewed commit, deliberate merge, exact native
+NoUMA+UMA, desktop and final owner-required gates still follow.
+
+## 2026-10-06 UTC - historical pre07 public Safety authoring checkpoint
+
+This original authoring-only status is superseded by the closed exact-image07
+diagnostic record above; native runtime and shipping acceptance remain separate.
+
+Public canonical1 now requires currentC0+activeStory/Bonds and selects the exact
+shared complete saved-state core; legacy0 remains disabled/empty, unknown versions
+and off/scheduled prerequisite authorities refuse. The internal prospective seam
+keeps lawful historical creation and pre-activation diagnostics. Persistence uses
+the complete public validator before unchanged storage bounds; no raw mirrors or
+weakened checksum/shape/migration ordering. Only actual freshStartSeason sets1/1
+after existing Story/C0 initialization and before firstSave/install. Factories,
+import/load/migration/recovery are unchanged. Enabled public/native transaction
+tests and independent review were in progress; no check had run at that checkpoint.
+No live or integration promotion, save/scene/build/recovery/remote mutation.
+
+
+## 2026-10-06 UTC - repaired saved-Safety checkpoint06 closed
+
+All fresh diagnostic owners CLOSED0:8assemblies,3314regular pure/0failed/0skipped,
+1301focused Mono/0failed(no timeout,26.094s),12historical migration checks, and
+55legacy seasons/5956attempts(no timeout,107.726s).13older Explicit reports remain
+unselected and are not passes. Source980+2Tools before06/after06 match exactly:
+fileSHAe4e334986df5eb6f552d1cade7370de43966f88dbef649aae1fd3353589e9ef1.
+PureTRXSHAee2d5cbabe6307834813f25b0f5f02f77874bbf22a5061c03fa00bc71aafaa20.
+Formal fixturecomparison06 PassedManagedLegacyReplayOnly55digests/5956attempts
+against both retained24 bindings, SHA3af751d0a4a24e28e8e990b93bf7d404675e1419f0ed695b3679ae325a8bdb13.
+This validates the reviewed fixture repair, not native transactions or public
+activation. Production1 still refused. Exact-source native/integration evidence,
+otherD1families/D2-D4, widerE2/assets/reactions/audio/input, samepinUMA/shipping,
+actual1080p60GTX1060/visual/accessibility/0of3human/preserved promotion stay open.
+
+## 2026-10-05 UTC - prospective whole-state Safety and native fixture repairs
+
+Separate WaveC draft, not live/integratione53: shared complete episode validator
+core plus internal prospective entry, source-owned ID/policy/role/link leaf and
+typed opportunity/fact/hearing/jury/finale saved references. Public1 remains
+refused.161reference+111whole-state pure and25native refusal cases are authored/
+independently static-clear. Seven historical migration fixtures are source-backed
+repaired after fresh frozene53 Edit4496/4485pass/11fail, adding one unsupported26
+case without changing production/frozen/goldens. Authored4783/991/77/3314 floors;
+future combined4794/995/77/3314 retains QA11/4. First offline01/pure01 CLOSED1 at
+compilation; no new tests executed. Three fixture API-only repairs are independently
+clear; before02/after02 capture980source+2Tools byte-identically. Offline02 CLOSED0
+eightfresh; pure02 CLOSED1 3208/3306 and Mono02 CLOSED1 1195/1293, both98failures.
+Actual12named migration checks pass separately. Two source-backed fixture repairs
+address public Reconcile visibility and Promise-47 versus Deal-30 grouped ownership;
+fresh03 compiles8fresh and passes3305/3306pure,1292/1293Mono, with one bounded
+Ownership-receipt search failure. Before03/after03 inputs match;12named migration
+checks and both55-season/5956-attempt replays close successfully, formal paired
+comparison pending at that checkpoint. The04 legal-input attempt also fails the
+same onecase; before04/after04 match and formal55/5956legacy comparison separately
+passes. An actual historical source-returned receipt now strengthens saved-wording
+coverage. Per-incident missing-emission and live/archive past-knowledge checks
+have eight new controls. Fresh05 compiles8assemblies; pure3313/3314 and Mono1300/1301
+retain one bounded Ownership-search fixture failure. All eight new controls pass;
+12historical migration diagnostics pass separately. Before05/after05 match exactly,
+SHA0b14b1e203d17bd98b62a21299d1abaab3f5cdaa6d7da762f78def44e10fb0a0.
+Formal lineagecomparison05 passes55legacy digests/5956attempts only as managed
+legacy replay evidence, SHA23aeca00323c50072b7571ddbc582c059c0f36f40ca41fb8d0f1ef2cda32525a.
+Actual-source trace02 CLOSED0 now proves the fixture policy caused the missing
+branch:32 original-policy seasons/0player finalists versus32legal-self-veto
+seasons/28finalists/35qualified receipts. Only the false Ownership diagnostic's
+legal command selection changed;111cases/allbounds/assertions stay intact.
+Trace01 failed in its external launcher before game execution; original evidence
+and launcher bytes retained. Fresh06 checks remain pending, not inferred green.
+No enabled/native acceptance is inferred. See
+WAVE_D_SAFETY_SAVED_STATE_IMPLEMENTATION.md for every change and evidence limits.
+Integratione53/g25n1 now CLOSED FAILED:Edit4496/4485passed/11failed,Play995/995passed,
+0skips; owned processes closed naturally, source/cleanup/unowned audits clear.
+TerminalSHA1901c67bc4a36ede66e3acfeed88f7de851b52692ed99f7b489890aa742f45b2.
+Earlier hearing/migration/recap/presentation cases executed on e53; these NEW
+saved-state/refusal fixtures did not. Exact repaired source still needs fresh
+native integration acceptance. Native transactions/
+fresh-only activation, all otherD1families, requiredD2-D4, widerE2/art/ship1080p60/
+visual/accessibility/0of3human remain the full objective. Existing dated blocks
+below retain historical pins/results, not current activation or release evidence.
+
+## 2026-10-05 UTC - older714 NoUMA checkpoint closed; hearing image refreshed
+
+Whole g24n3/root36248 CLOSED0:4124Edit/995Play,0failed/skipped, four owned exits0,
+source/cleanup/unowned drift0,5383retained hashes verified. Terminal
+3a79b516d4431dfb264f827125fff9bc8fbc0fa2e5b5e67ea2cecb9391bb1f47.
+This is714's technical NoUMA acceptance only, not newer isolated source or release.
+Hearing staged diff-check found47whitespace-only blanks in two NEW frozen helper
+files; only whitespace removed and exact-image03 reverified8assemblies/3042pure/
+1029Mono/55legacy digests+attempts. Before/after975source+2Tools identical.
+See WAVE_D_SAFETY_HEARING_IMPLEMENTATION.md for fresh and retained evidence.
+Schema25native153, enabled-save/transaction/fresh activation, otherD1-D4,
+broaderE2/assets/same-pinUMA/build/actual1080p60/visual/human gates remain open.
+
+## 2026-10-05 UTC - durable Safety hearing/schema25 diagnostics closed
+
+See `WAVE_D_SAFETY_HEARING_IMPLEMENTATION.md` for every material source/test/tool
+change and review finding. Actual-fact archive/listener receipts and frozen24->25
+disabled migration are staged, NOT production activation. Eightfresh assemblies,
+3042regular pure and1029focused Mono pass;55paired legacy digests/counts match
+retained24.975source+2Tools before/after hashes match.56hearing pure plus
+58frozen24/95migration native cases added; native153 remain compiled,not executed
+inUnity. Full native fixtures stay outside pure/Mono allowlists, never stubbed or
+selectively omitted. Floors4485Edit/991Play/77UMA/3042pure; futurecombined must
+retainQA11/4:4496/995/77/3042. Integration714/g24n3 remains separately frozen;
+full enabled-save/transactions/fresh-onlyactivation, otherD1families/D2-D4,
+balance/assets/shipping1080p60/visual/accessibility/0of3human gates remain.
+
+## 2026-10-05 UTC - canonical Safety outcome summaries and story consumers
+
+WAVE_D_SAFETY_OUTCOME_STORY_IMPLEMENTATION.md enumerates every material change,
+lawful new-fixture repair, independent review and evidence limitation. Nine
+production consumers and163new Edit cases(127pure/36native) cover actual own
+agreement inventories, once-only breach/fulfillment summaries and actual source
+story predicates.8fresh assemblies/2986regular pure/973focused Mono pass;
+55paired legacy digests/counts and961source+2Tools input hashes match. Native WeeklyRecap.Build36 is
+compiled,not executed. Floors4276Edit/991Play/77UMA/2986pure; futurecombined
+must retainQA11/4 ->4287/995/77/2986. Integration714ad86a remains frozen under
+g24n3 and does not include this isolated increment. Rule1 remains refused;
+actual hearing/fullsave/native activation, otherD1families, requiredD2/D3/D4,
+balance/art/desktop1080p60/visual/accessibility/0of3human gates remain open.
+
+## 2026-10-05 UTC - Safety voting/summaries/consumers combined; native rerun required
+
+Local merge combines integration`bb0f21e7` and isolated`075f9bfd`, retaining all
+QA/contact/isolation work plus the latest voting, Your Word, durable summaries,
+finale aliases, conversation/negotiation/presentation consumers and scoped native
+counter test repair. Only baseline and the two progress documents conflicted;
+both histories remain below. Combined floors4124Edit/995Play/77UMA/2859pure
+retainQA11/4. All eight integration-only QA/apparatus/isolation files match the
+premerge pin; localUMAsettings SHAeb0525c7... remains unstaged/unchanged.
+The isolated8fresh/2859pure/846managed/55legacy replay checks do not certify the
+combined candidate. Fresh combined checks/full nativeNoUMA+UMA, separate desktop,
+actual1080p60/visual/accessibility/human gates remain. Rule1 stays refused; no
+live/remote promotion. See `WAVE_D_COMBINED_CONSUMERS_REVIEW.md`.
+Older dated blocks are historical evidence, not current process state.
+
+## 2026-10-05 UTC - reviewed adapters/repairs combined; native acceptance pending
+
+Combines preserved QA parent`ed492fce` with reviewed WaveC parent`65781636`,
+includingc98historical migration test-wiring repair, strict schema23 freeze/
+disabled24 foundation, actual1080 diagnostic configuration, atomic internal
+Safety storage/detached readers and native UI/fixture repairs. Only baseline
+and two root progress docs conflicted; both histories retained below. New
+floors3643Edit/992Play/77UMA/2398pure retainQA11Edit/4Play. No scene/art/fixture/
+package/settings mutation; localGAMESIM_UMA remains uncommitted. Stage-bound
+2398pure/385managed/8offline and55cross-build disabled-model seasons pass;
+complete nativeNoUMA+UMA and a separately pinned desktop remain pending.
+Oldg23n1 has fully closedFAILED (3230/3240Edit,950/992Play), no input/cleanup/
+ownership drift; proof files and801mixed captures retained unchanged.
+All fourWaveD, widerE2, consistent assets, actual1920x1080Windowed60FPSGTX1060,
+visual review and three first-time human playtests remain. No live/remote
+promotion, normal save or retained build/recovery deletion, optional accounts,
+services, credentials, access changes or deployment. New-model rules1 remain
+unplayable until every writer/reader/settler/full validator is integrated.
+
+## 2026-10-05 UTC — QA and Wave C combined; new candidate acceptance pending
+
+The isolated integration worktree combines baseline QA/contact/readout commit
+`c2725b53a16e3a08e85d083d4c02d6c851ca7081` with Wave C E1-E5 commit
+`88986ee1f3def7eddbe04e53070b004eace33dba`. This is NOT live promotion. Only
+Tools/baseline.txt and these two root progress documents conflicted; both histories
+are retained below. All runtime, tests, source fixtures, schema23 save boundary,
+relay isolation and physical competition contact/readout changes merge unchanged.
+Combined floors3240 Edit /992 Play /77 UMA /2182 pure retain the separate11 QA
+Edit/4 Play tests. The machine-local GAMESIM_UMA settings change stays uncommitted.
+
+c272's full baseline NoUMA (2540 Edit/907 Play) and UMA (2540 Edit/935 generalPlay/
+77 UMA) passed with clean whole-run audits. The merged source also passed2182/2182
+executed pure tests (`combined-wave-c-pure-01/combined.trx`,13 explicit reports
+unexecuted) and8/8 fresh offline assemblies (`combined-wave-c-offline-01.log`)
+under the dedicated external integration evidence directory. Independent staged-
+index review verified both parents' unique files unchanged except exactly the
+three reconciliations; fixture hashes and local-only settings boundary retained.
+This is not native/SaveStore/UI acceptance or a shipping build. Fresh pinned
+combined native validation is required, then a separately pinned
+desktop build, actual windowed1920x1080/60FPS GTX1060 profile and visual review.
+
+All four owner-required Wave D additions, wider E2 context/room/bargain balance,
+consistent actual assets and three first-time human playtests remain open. Older
+dated statements below describe their original pins, not current merge/acceptance.
+No old web PR, remote publish, optional account/cloud/AI or retained save/build
+deletion is part of this increment. Live b25edcb4 edits/recoveries remain preserved.
+
+## 2026-10-05 UTC — batch-test relay isolation; focused verification passed
+
+The latest closed full NoUMA candidate is `g22n2` at `a9f11ad05725b0d295ef6bd7e8a2ff796d740888`:
+Edit2529/2529 passed; Play902/903 passed, one failed, zero skipped. The sole failure was an
+unhandled optional Unity AI relay startup error in
+`CeremonyRevealPlayModeTests.KeyCeremony_TheLastKeyWaitsABeatLongerThanTheOthers` (bus validation
+canceled after34 attempts over30.9 seconds), not a gameplay assertion. The earlier competition
+capture failures did not recur. No source drift, timeout, cleanup errors or unowned descendants;
+all native owners exited naturally. This is a failed full run, not shipping authorization.
+
+- Closed controller: `D:/CodexGamesimEvidence/orchestration/full-suite-runs/g22n2-20261005T042524375Z-befaa264/controller-terminal.json`,
+  SHA256 `cbdefad6aee0a4f1d9bc630a09fabbe5b6af804cbe8ae80a9e8b9d7140f78002`.
+- Before further native work,758 mixed-timestamp captures/manifests/diagnostics and9 proof files
+  were preserved at `D:/CodexGamesimEvidence/integration-20261004/captures-after-g22n2`.
+  Receipt SHA256 `799aa5a6d96606620b50c1d940f9c3c249c2394805ec93fb093678a2aacb36f5`.
+  Originals remain; this is preservation, not capture freshness or visual acceptance.
+- New editor-only `BatchTestRelayIsolation` calls the pinned Assistant2.19.0-pre.2 package's
+  documented `RelayService.SuppressAutoStart()` hook only in explicit batch `-runTests` runs.
+  It never resolves the relay instance. Interactive MCP and lazy initialization are unchanged.
+  No vendor code, preferences, runtime/simulation/save behavior, scene or asset was changed;
+  no error log/assertion is ignored. Missing optional package is supported; an incompatible
+  installed hook fails visibly. Unity's `CurrentAssemblies` supplies the loaded assembly lookup.
+- Eleven new Edit cases cover exact batch-argument policy, the static hook without connecting,
+  incompatible hooks and read-only proof that the actual pinned package's suppression flag is set.
+  Edit floor2540; Play903/UMA77/pure1501 unchanged. The first focused `g22e3` passed11/11 but exposed
+  a Unity assembly-enumeration warning; its artifacts are retained. The final API revision passed
+  `g22e4`11/11 and `g22p3`24/24 ceremony cases (68.62 seconds), exit0, zero failed/skipped and empty
+  before/after input drift. Summaries in `D:/GamesimNoUma/Logs`, SHA256 respectively
+  `d6b6aebf723b84ba96c2efee1b227133f0f563acc6201cb97bf1a360836ccd77` and
+  `c538ba22236fd107be5c7016833883a3264a066addf823627d65d5c215266809`.
+  These bind the dirty increment above a9, not an entire passing candidate suite.
+- Final offline compilation8/8, zero errors; log `relay-isolation-offline-02.log` in the external
+  integration evidence root, SHA256 `1260ef5aa756db22113d914ebe8835b36aef236f7705aeae0ac18b9b665933e8`.
+  Independent agent review is unavailable; root source/package/test review is not labeled independent.
+- After g22n2 closed, read-only MCP matched the live C: project: saved EpisodeHouse,21 roots,
+  Console0 errors, idle editor. Live HEAD remains b25edcb4, with local edits/recoveries preserved.
+  The machine-local UMA define is not committed. Nothing has been promoted or published.
+
+Owner decisions: all four Wave D additions are required (unified commitments, all-week strategic
+NPC activity, negotiated alliance plans, deeper secret leaks/double-dealing), and final performance
+is1920x1080 at60 FPS on GTX1060. Existing900p/headless reports do not meet that target. Separately,
+E1/schema23 is implemented on `codex/wave-c-economy` at `a17429a3`: pure1612, two54-season compatibility
+walks plus480 paired balance seasons, managed Mono persistence28 and offline8/8 passed. Its native
+suites/build/desktop/human acceptance and integration remain open; it is NOT in this schema22 candidate.
+Do not fold E1 or later gameplay into the frozen QA run. Full same-pin NoUMA then UMA, a matching
+shipping build, actual player/visual/performance checks and guarded live promotion remain ahead.
+
+## 2026-10-05 UTC - canonical Safety conversation/negotiation consumers
+
+`WAVE_D_SAFETY_CONSUMERS_IMPLEMENTATION.md` enumerates every material change,
+first failed compiler/pure runs, fixture-only repairs, independent review and
+final evidence. Ten production readers now include canonical own-party agreement
+provenance or grouped actual-actor history without changing source-family or
+audible knowledge policy.129 new Edit cases (109pure/20native); isolated floors
+4113Edit/991Play/77UMA/2859pure, combined4124/995/77/2859 retainingQA11/4.
+Final8fresh assemblies,2859regular pure,846focused Mono and55paired scripted
+legacy digests/counts pass;958source+2tool before/after images match exactly.
+The old bb0f21e7 NoUMA g24n2 fully CLOSED FAILED:3826Edit/994of995Play, no skips,
+no drift/cleanup errors/unowned descendants. Its counter test held a button
+retired by capture's HUD rebuild; scoped test repair reacquires the current
+active/interactable answer. Fresh native execution remains required. These
+checks are not native lifecycle/disk-save/enabled-season or shipping acceptance.
+Rule1 remains refused; remaining summary/story/hearing/full-save gates, other
+D1 families, D2/D3/D4, balance/art,1080p60/visual/accessibility/0of3humans stay open.
+Live source/scenes/fonts/UMA/settings/recoveries/saves/builds remain preserved.
+
+## 2026-10-05 UTC - canonical Safety summaries and stable finale references
+
+`WAVE_D_SAFETY_SUMMARIES_IMPLEMENTATION.md` records every material change and
+independent source review. Durable grouped outcomes, actual canonical opportunity
+reconciliation, settlement-dated Game Sense/jury evidence, private receipt guards,
+audible reputation provenance and mechanical/templated finale alias deduplication
+are staged.91authored regression cases; floors3984Edit/991Play/77UMA/2750pure,
+future combined3995Edit/995Play/77UMA/2750pure retainsQA11/4. Final8fresh compile,
+2750regular pure,737focused Mono and55paired legacy replay digests/counts pass;
+955source+2tool image unchanged. First pure4fixture wording failures retained and
+repaired without weakening assertions. Production rule1 is still refused. This is not
+native, shipping-build, performance/visual/accessibility or0of3human acceptance.
+Other canonical consumers/knowledge effects/full enabled validation, activation,
+all other D1 families, D2/D3/D4 and the agreed balance/art/release gates remain.
+
+## 2026-10-05 UTC - staged canonical Safety voting and Your Word readers
+
+`WAVE_D_SAFETY_VOTING_WORD_IMPLEMENTATION.md` enumerates every material change,
+retained failed run, repairs, exact source image and closed diagnostics. Adds
+37voting/41page+warning pure cases; source values/max protection, grouped history,
+shared legacy threat cap, combined obligation clamp, private evidence, canonical
+actor/date and action-target-only previews. Legacy source leaf/test contracts,
+all29 protection cases and source-shaped mixed-family presentation retained.
+Final8fresh assemblies,2659regular pure,646focused Mono and55paired legacy season
+digests pass. These do not activate rule1 or establish native UI/desktop acceptance.
+The separate frozen bb0f21e7 g24n2 remains live; no live-project/remote promotion.
+Full validation/references/native transactional activation, other D1 families,
+D2/D3/D4, balance/art and actual1080p60/visual/accessibility/0of3human gates remain.
+
+## 2026-10-05 UTC - inactive authority adapters and combined-native repairs
+
+See `WAVE_D_AUTHORITY_ADAPTERS_IMPLEMENTATION.md` for every material change and
+retained failure. Internal sole-Safety storage, atomic mixed counter reservation,
+late NPC acceptance and detached stable-ID reference readers are implemented;
+only HoH-pitch/notebook consumer routes move. Legacy handles, all source fields,
+caps/history and notebook party/ballot boundaries preserved. All actual engine/
+save/factory rule1activation remains refused: no new-game unified authority yet.
+105newcases, final2398pure/385managed/8offline pass;55cross-build disabled-model
+seasons/5956attempts match. SevenPlay partials retain76cases and strict recovery/
+stale callbacks/real hit testing. AssessedDiarybutton and full-copy measured reply
+layout fixes are compiled/reviewed, NOT native accepted. Wholeg23n1 closedFAILED,
+Edit3230/3240 andPlay950/992 with clean ownership/drift; evidence and801mixed
+captures preserved. New floors3632/988/77/2398; combined3643/992/77/2398 preserving
+QA11/4. No live or remote promotion, art/scene/settings/package/fixture/frozen
+contract changes, normal saves or retained builds/recovery deletion. Every
+remaining WaveD/widerE2/art/native/build/1080p60/visual/human gate stays open.
+
+## 2026-10-05 UTC - schema24 disabled canonical foundation staged
+
+See `WAVE_D_FOUNDATION_IMPLEMENTATION.md` for EVERY material change and remaining
+tasks. Adds strict inactive0/empty24 storage, detached immutable23 migration and
+pure prospective safety policy,111 policy/59 persistence cases. ALL real games
+stay on the existing writers;1 is refused until complete integration. Final
+2293 regular pure/280 managed/8offline assemblies pass,55 old23/newinactive24
+seasons and5956attempted transitions compare equal including commands/results/
+RNG/history. Retained failed test setups repaired without loosening validation;
+all historical cases and Frozen1-23/fixture bytes preserved. Current/frozen
+endpoints are consciously distinct; native cases are not claimed executed.
+Floors3527/988/77/2293; combined must3538/992/77/2293 preserving QA11/4. Runtime
+writers/readers/effects/atomic links/activation and all otherD1 families remain;
+all4WaveD, widerE2, actual assets, complete nativeintegration, separate desktop,
+actual1080p60GTX1060/visual/human acceptance are still required. Combineded492
+nativeg23n1 still runs unchanged; live dirty edits/recoveries/saves/builds retained.
+
+## 2026-10-05 UTC - schema23 prerequisite and1080 verification prepared
+
+The isolated branch adds a literal strict forward contract for the actual23
+economy, pitch, widened lobby and speech receipt vocabulary without wiring it
+into dispatch or changing saves.110 authored Edit cases pass a focused managed
+Mono diagnostic; offline8/8 compiles. The standalone verifier now requests
+1920x1080 Windowed and records actual resolution/mode/cap/VSync per timing
+sample;18 new native Edit contract cases are authored/compiled, not executed.
+Operational Passed explicitly does not award60FPS. External launcher39/39 and
+telemetry8/8 synthetic checks pass without opening Unity or the game. See
+`WAVE_D_PREPARATION_IMPLEMENTATION.md` for all files, evidence and limitations.
+Floors3357/988/77/2182; future combined3368/992/77/2182, never lowered. Old freezers,
+dispatch/schema23, fixtures, simulation, scene/art/settings and live dirty edits
+are untouched. The reviewed D1 authority design is a plan, not another ledger
+or completed gameplay. Combineded492 native96249/g23n1 still runs unchanged;
+merge/nativeNoUMA+UMA/shipping/1080p60/visual/human and all4WaveD remain open.
+
+## 2026-10-05 UTC — historical-test wiring repaired; combined native still running
+
+Combined ed492's closed Edit report is3230/3240 passed,10 failed,0 skipped.
+Six tests stopped at22 before live23 validation; four exact-field comparisons
+omitted the two reviewed23 economy fields. The six-file isolated repair retains
+all rejection/history/type checks and strengthens zero-default/input-preservation
+assertions. No runtime/migration/fixture change or suite-floor decrease.
+See `WAVE_C_MIGRATION_WIRING_REPAIR.md` for every change and retained evidence.
+Direct managed Mono calls reproduce the same10 failures before, then12/12 named
+tests (including two negative controls) pass after; offline8/8 compiles. This is
+NOT native rerun/whole-suite acceptance. Scoped original native SaveStore classes
+pass24 schema23/23 pitch/32 speech cases, but the full Edit suite remains failed.
+Full Play/controller g23n1 is still active/frozen; repaired integration and fresh
+NoUMA/UMA, all4 Wave D, actual assets, build/1080p60/visual/humans remain required.
+
+## 2026-10-05 UTC — E5 block-speech influence staged; baseline native QA closed
+
+E5 now records explicit public speech approaches and applies a bounded private
+NPC vote term from a single complete post-bloc baseline, with invariant private
+read counts and actual player/saved NPC ballot authority preserved. Station and
+Diary Room drafts, durable callbacks and exact public readback are implemented.
+See `WAVE_C_BLOCK_SPEECH_IMPLEMENTATION.md` for EVERY material change, source/native
+boundary, compatibility, retained compilation failures and independent review.
+Final pure2182/2182 and offline8/8 pass; 32 new native SaveStore Edit and15 Play
+cases are compiled, NOT executed. Floors3229/988/77/2182; combined c272 must retain
+its11 QA Edit/4 Play cases, yielding3240/992/77/2182. No live promotion.
+
+Separately, same-pin c272 NoUMA g22n4 closed2026-10-05T12:51:01Z: Edit2540/2540,
+Play907/907, zero failures/skips; whole-run clean drift/process/timeout audit.
+Previous UMA g22u2 is also closed green. Neither baseline contains Wave C. Live
+MCP identity/scene reverified read-only: EpisodeHouse saved/idle; Console contains
+four historical MCP argument errors, preserved. Combined native/gameplay, build,
+visual/performance and human acceptance remain open, as do wider E2 balance,
+all four required Wave D systems and actual assets. Target remains1080p60 GTX1060.
+
+## 2026-10-05 UTC — E4 HoH pitches staged; frozen UMA QA closes green
+
+The separate Wave C branch now implements the player HoH's incoming pitch cards,
+free once-per-card assessment and three explicit replies using existing safety
+promises. Nominee drafts, Diary Room routes, durable guards, knowledge boundaries
+and ignored-card expiry are covered in `WAVE_C_HOH_PITCHES_IMPLEMENTATION.md`,
+which reports every material source/test change and the source/native-adapter boundary.
+Final pure2091/2091 and offline8/8 pass; 23 actual-SaveStore Edit cases and15 Play
+cases are authored/compiled, NOT executed. Floors3106/973/77/2091; combining c272
+requires3117/977/77/2091. No merge, live promotion, native gameplay or desktop acceptance.
+
+Separately, c272's frozen UMA g22u2 closed2026-10-05T11:11:52Z with Edit2540/2540,
+general Play935/935 and UMA77/77, zero failures/skips/drift/timeout/cleanup errors.
+It contains NONE of Wave C. Same-pin NoUMA g22n4 is active; integration and its
+controllers remain frozen. Build, graphical/performance and human gates remain open.
+
+The older dated entries below are retained historical evidence, not current totals.
+E2's broader balance gate, E5, all four required Wave D systems, actual asset
+completion and combined acceptance at1920x1080/60FPS on GTX1060 still remain.
+
+## 2026-10-05 UTC — personal-lore trade-off staged; NoUMA QA candidate passes
+
+E2's personal chat now trades lower warmth for up to two broader, reachable lore facts in fresh
+seasons with active lore. Plain "Spend time together" moves off the fresh six-petal dial into BOND;
+its command/caption remain, and legacy saves retain their original behavior. This is only part of
+E2. Every material change and compatibility boundary is in `WAVE_C_PERSONAL_LORE_IMPLEMENTATION.md`.
+Pure1759/1759, offline8/8 and three explicit regression reports pass. Seven new Play cases are
+authored/compiled, NOT executed. Floors2751/939/77; combined with eda, Edit2762. No merge or live promotion.
+
+Separately, frozen eda's full NoUMA g22n3 closed with Edit2540/2540 and Play903/903, zero failed/skipped,
+all owned processes exited naturally0, no source drift/cleanup errors/unowned descendants/timeout.
+Controller completed2026-10-05T07:53:37Z; terminal SHA256
+`8a054524e8cb8ffdda813c087a6b066464562e1a5b83ce9e1b6f4801bc620e1e`.
+The same-pin full UMA g22u1 started07:59:50Z and remains in progress. Neither run contains these
+Wave C gameplay changes. Visual review, build/player/profile and human acceptance are still separate.
+
+## 2026-10-05 UTC — isolated E3 targeting implemented, not native accepted
+
+The isolated Wave C branch now implements all three E3 selectors: the goodwill target of an
+extra action (`b2481608`), a nominee opinion (`060859af`), and deliberate memory sharing with
+review/confirmation. See `WAVE_C_TARGETING_IMPLEMENTATION.md`,
+`WAVE_C_NOMINEE_INTEL_IMPLEMENTATION.md` and `WAVE_C_SHARING_IMPLEMENTATION.md` for changes,
+compatibility decisions, retained failures and exact evidence. No live promotion or merge.
+
+Final sharing subset1721/1721 and offline compilation8/8 pass. Ten new sharing Play tests are
+authored/compiled, not executed; E1 and all new E3 runtime/migration gates remain open. Current
+branch floors2713/932/77 become2724 Edit when combined with eda's11 QA cases. The separate
+integration run `g22n3` at eda remains frozen: Edit2540/2540 closed, Play in progress. It does
+not certify these gameplay changes. Source-fixture parity, native suites, shipping build,
+standalone profiles/visual review and human playtests remain distinct completion gates.
+
+The owner requires all four Wave D systems and GTX1060 desktop acceptance at1920x1080/60 FPS.
+E2/E4/E5, those four larger additions, remaining actual art assets, integration, desktop and
+human acceptance are still in scope. No optional account/cloud/AI integration is authorized.
+
+## 2026-10-05 UTC — isolated Wave C E1 development, not promotion
+
+`D:/GamesimWaveC`, branch `codex/wave-c-economy`, starts from `a9f11ad0` while that exact
+schema-22 candidate's full native tests continue. Only this separate branch receives the schema-23
+economy and its migration/tests. Live source, scenes, settings, saves, old builds and the running
+acceptance copy are not edited. See `WAVE_C_ECONOMY_IMPLEMENTATION.md`; its native and desktop
+gates remain open. The older resumption evidence below still describes its own pinned candidate.
+
+## 2026-10-04 integration resumption — acceptance in progress
+
+The live project remains on `b25edcb4` (schema 21); the existing
+`codex/orchestration-integration` worktree starts at `b9f5c99c` (schema 22), 198 commits ahead.
+This increment combines and repairs that existing work; it does not reopen historical web PRs.
+The historical September records below do not certify this candidate. No promotion to the live
+project or new desktop acceptance is claimed until the combined candidate passes its gates.
+
+Material changes in this increment:
+
+- Preserve the live six authored FBX prop replacements, support/separation/provenance tests and
+  UMA catalog null-recipe fix. Combine the room tests with the newer shared-material restoration
+  fixture; use a temporary dictionary-only UMA fixture so original index/race/serialized rows survive.
+- Give multiline speech a padded, masked TMP viewport, complete non-truncated text geometry and
+  a fixed-height layout with priority over TMP's content sizing. Configure it before enabling its
+  caret/callback lifecycle; test real wheel movement, unchanged draft/simulation and HUD rebuilds.
+- Resolve creator preset fallback identity before preview/save, avoid rebuilding unchanged text
+  fields, synchronize preview status/Retry, and refresh keyboard navigation on eligibility changes.
+  Verify the created save itself and reload its actual slot rather than the fixture's separate default.
+- Restore real coordinator ownership in HoH rest fixtures; require spare-lounger approaches to
+  remain on the actual Yard floor with mesh and static-capsule clearance, and preserve each endpoint
+  when constructing seated conversation pairs. Move only the spare imported lounger west of the
+  unchanged saved Home pair: the original east location cannot fit a safe, conversation-reachable
+  approach between its neighbors, pool and fence. Isolated scene/NavMesh authoring preserves the
+  original navigation GUID, exact previously reachable room pairs/approaches, all other transforms,
+  serialized anchors and lighting configuration. The spare is lightmapped: authoring first refused
+  to move it without a bake; the explicitly opted-in repair rebakes the existing lighting rig's
+  outputs without re-running its global setup. Preserve the old maps and verify the new ones.
+  Keep real route/access/contact/outfit assertions.
+- Retain diagnostic causes for refused/aborted eviction departures. One focused successful run
+  does not resolve the previously intermittent week-three failure; do not weaken its assertion.
+- Replace seven reported obsolete runtime object-query calls with Unity 6000.6 equivalents,
+  preserving inactive inclusion and unsorted behavior. Remove the write-only season verifier field
+  and explicitly exclude a transient beacon handle from serialization. Build verification remains separate.
+- Add an untouched schema-21 standalone-save fixture and native migration regression: load without
+  modifying its original bytes, explicitly save schema 22 with the exact original-byte backup, then
+  reload equivalent state. This fixture is not re-sealed and Git must not normalize its CRLF bytes.
+- Share bounded native screenshot validation across Profile, Season, Creator, LookSheet and Autonomy:
+  require complete decoded PNGs, correct dimensions and non-dark/non-uniform pixels; preserve failed
+  captures and reject stale paths. Record batch-mode and pixel evidence; batch-mode cannot certify
+  graphical profiling. Five deterministic tests cover black/flat/truncated/wrong-size/valid images.
+  Nonblank frames do not establish visual quality or human acceptance.
+- Raise native suite floors to Edit 2515, Play 902 and UMA 77; never lower a floor to accept failures.
+
+Evidence (each snapshot has its own input manifests):
+
+- Prior live-derived asset snapshot: `D:/GamesimAcceptance-AssetReplace-20261004/Logs/assetreplace-20261004-final3-summary.json`,
+  2232 Edit / 864 Play / 65 UMA passed, zero drift; no matching desktop build.
+- Prior integration baseline: `D:/GamesimNoUma/Logs/orchfinalfull5nouma-summary.json`,
+  2507 Edit passed; 892/900 Play passed, eight failures.
+- First repair iteration: `D:/GamesimNoUma/Logs/implement-blockers-20261004-01-summary.json`,
+  filtered 20/24 passed, four failures retained. This is not a full-suite pass and predates subsequent repairs.
+- Second iteration: `implement-blockers-20261004-02` filtered 31/33 passed; `implement-assets-20261004-02`
+  filtered Edit 16/16 passed. Third iteration `implement-blockers-20261004-03` retained two diagnostic
+  failures in four selected cases, exposing the expanding speech viewport and off-floor rest approach.
+  These failures are not relabeled as passes by later repairs.
+- Pure simulation/fixture suite: 1566 executed cases passed, no failures; 12 explicit diagnostic/report
+  cases were not selected. TRX retained in this task's `work/implement-integration-20261004/simulation-01`.
+  This is not Unity runtime, standalone, profiling or human-playtest evidence.
+- Scene authoring, before/after inputs, original/generated scene copies and pre-run capture backups
+  are retained under this task's `work/implement-integration-20261004`. Only reviewed generated scene
+  content may be promoted; existing live scenes, materials, fonts, saves, recoveries and builds remain protected.
+- The retained October 3 desktop build (229 files, 1,447,640,145 bytes) is independently copied and
+  hash-verified at `D:/CodexGamesimEvidence/integration-20261004/retained-review13-20261003`.
+  C: lacked space for that copy; its incomplete new archive was moved to D: and retained separately.
+  The original build is untouched. New large build/test evidence uses D:.
+- The earlier schema-21 standalone run `D:/GamesimVerify/pr22e` provides native save provenance,
+  but its `house.png` is black. Its functional report and `graphical:true` flag do not establish
+  rendered-graphics acceptance or representative performance; fresh images must be inspected.
+- Spare-lounger authoring: `D:/CodexGamesimEvidence/integration-20261004/spare-lounger-layout-01`
+  safely refused to move a lightmapped prop. `spare-lounger-layout-02` completed the explicit existing-rig
+  bake and reopened its result: all 28 previously reachable room-pair identities and saved approaches
+  retained, original navigation GUID retained, only the spare transformed from x12.208 to x7.308.
+  Independent review verified all 28 archived/generated product hashes and all 3317 scene documents:
+  only the spare's X position changed semantically. Exactly 13 changed products were promoted to this
+  integration worktree, retaining source whitespace and all metadata/settings; the separate
+  `spare-lounger-layout-02/integration-promotion.json` records integrated hashes. The original
+  authoring summary remains unchanged and correctly records that its own run did not promote files.
+- Corrected focused native checks: NoUMA `implement-blockers-20261004-04` passed 35/35 Play Mode
+  cases (324.13 seconds), including both speech-wheel directions, creator/keyboard flow, physical rest,
+  weekly departures and native baked-light/reflection references. NoUMA `implement-assets-20261004-04`
+  passed 23/23 Edit Mode cases (6.82 seconds): authored-prop provenance/spacing, safe rest anchors,
+  exact-byte native schema-21 save migration/backup/reload and five capture-validation negatives/positive.
+  Each closed with zero input drift. UMA `implement-uma-20261004-04` passed all 77 selected provider
+  assembly cases, zero failures/skips. These focused results do not substitute for full candidate suites.
+- After the user freed C: space and authorized a safe editor close, read-only MCP confirmed the live
+  C: project, idle editor, one saved EpisodeHouse scene and no prefab stage. The Console still contained
+  historical TMP scroll errors and MCP executable-signature warnings; nothing was cleared or relabeled.
+  Normal File/Exit completed without a force stop. A subsequent guarded command refused to act after
+  MCP switched to the busy D: test copy; no test-copy close or scene mutation occurred.
+- Independent post-shutdown audit: `D:/CodexGamesimEvidence/integration-20261004/live-shutdown-audit`.
+  All original 97 archived files remain hash-verified. Shutdown restored 76 materials to candidate
+  bytes and cleared dynamic font glyph/atlas data, leaving four populated font-feature caches; the
+  other 17 files are unchanged. The four current fonts are separately preserved. Structural comparison
+  found no font family, face, style, fallback or configuration edits. Keep these generated caches and
+  the machine-local UMA define local, with recovery/Init scenes untouched. Do not claim byte-identical
+  live and tested trees across these explicit generated/configuration exceptions.
+- The separately reviewed external player runner now supports an explicit `-VisibleWindow` opt-in,
+  authorized by the user; default remains hidden. Windows PowerShell 5.1 checks passed 24/24 runner,
+  8/8 telemetry, 71/71 full-suite controller and 37/37 shipping-controller controls. Use explicit
+  Windows PowerShell 5.1: default PowerShell 7 exposed an existing timestamp-parser incompatibility.
+  No native execution or graphical acceptance is inferred from these script checks.
+
+### 2026-10-05 UTC — full-run failure retained; focused capture/QA repairs passed
+
+- Full NoUMA run `g22n1`, source `b1cfccddfe4813fd54dc1fcaaa2c5d149214e34f`,
+  closed Failed: Edit 2515/2515 passed; Play 900/902 passed, two failed, zero skipped.
+  Both failures were Mental competition captures for 12/16 contestants. Native arrivals were
+  proved, but the tests asserted active apparatus before the subsequent fitted-geometry update.
+  Earlier focused passes do not relabel this failed full run.
+- Closed controller evidence:
+  `D:/CodexGamesimEvidence/orchestration/full-suite-runs/g22n1-20261005T015648685Z-36cb5998/controller-terminal.json`,
+  SHA256 `d41d4c3dfac345ffda0b3388e5c107abf19fc24669a3b593c1c8904fb37e44d6`.
+  All retained owners stopped naturally; no timeout, cleanup errors, unowned descendants,
+  native input drift or integration-source drift. This failed run does not authorize a shipping build.
+- The preceding long-name run retained 18 persistence failures with 260-268-character paths.
+  Repeating the same source with a short isolated TEMP path removed all 18 failures. Separately,
+  the external full-suite controller now recognizes an exact retained PID/creation-time pair
+  before re-proving an exiting CIM row's command line. Fresh-identity checks remain strict.
+  Windows PowerShell 5.1 pure checks passed 79/79 full-controller and 37/37 shipping-controller cases.
+- The capture fixture now waits, with a five-second bound, for real native readiness and active
+  fitted apparatus. A new real-input pause/resume regression checks reacquired arrivals, the paused
+  clock, retained ownership and unchanged simulation revision/RNG. Production competition gates,
+  static-clearance checks and synchronous before/after-capture assertions are unchanged; no actor
+  is moved or instrument force-enabled by the new barrier. This is lifecycle coverage, not a claim
+  of deterministically reproducing every possible callback interleaving.
+- Standalone QA now schedules every room followed by notebook, settings and station requests.
+  Reports count those requests and reject missing cycle coverage in sufficiently long profiles;
+  request counts do not prove physical arrival, UI visibility or successful saves. Look-sheet
+  completion includes shared runtime errors, including errors logged before its report exists.
+  Fourteen new Edit Mode cases test those contracts. Synthetic report sentinels are not screenshots
+  or visual acceptance. Current native floors are Edit 2529, Play 903 and UMA 77.
+- Offline compilation passed all eight assemblies with zero errors. Focused native NoUMA `g22e2`
+  passed 14/14 Edit Mode cases (0.98 seconds), and `g22p2` passed 3/3 Play Mode cases (218.16 seconds).
+  UMA-enabled `g22pu2` passed the same 3/3 Play Mode cases (230.56 seconds). Each closed with exit 0,
+  zero failures/skips and empty input drift. Their exact XML, logs and before/after manifests are
+  in the respective D: acceptance project's `Logs` directory. These results bind the reviewed
+  dirty-source increment above base commit `b1cfccdd`, not a complete new full-suite result.
+- Before these reruns, 752 fixed-name images/diagnostics and nine proof files were preserved in
+  `D:/CodexGamesimEvidence/integration-20261004/captures-after-g22n1`.
+  Receipt SHA256 `575cecb45531f1f243a2e77014891edd814faec4c9e3bf7d0d5249972023b53b`.
+  Timestamps are mixed: preservation does not prove freshness, visual approval or passing captures.
+- The focused follow-up's 12 exact competition-field PNGs and 18 proof files are separately retained
+  at `D:/CodexGamesimEvidence/integration-20261004/captures-after-g22focused2`.
+  Receipt SHA256 `30342a3af107b3c2ad4bdd573d5ca5563e5accb43be65a96ab89b95274928002`.
+  All copied/source hashes match; six reviewed source contracts match all six native before/after
+  manifests. Timestamps fall within possible writer windows, but without before-run image witnesses
+  this archive does not independently establish image freshness or visual acceptance.
+- No simulation rule, save schema, ordinary save, scene, imported model, material or package changed
+  in this follow-up. The machine-local UMA define remains uncommitted. The separate live project
+  remains unpromoted; matching full suites, shipping build and desktop checks are still required.
+
+Pure/script checks, focused native results, complete native suites, separately built desktop
+verification/profiling and human playtests remain distinct gates. No new desktop or human acceptance
+is established by this follow-up.
+
+Still separate/open: complete native UMA/non-UMA suites, source fixture parity, clean shipping build,
+standalone season/save/reload/creator checks, shipping-renderer stability, full-house profiling,
+remaining Wave C/D gameplay and actual human acceptance. No optional accounts/cloud/AI or paid assets enabled.
+
+## Historical implementation record
+
 Last verified: 2026-09-13 (original integration September10). Project: `C:\Users\kelli\Gamesim Big Brother`, Unity 6000.6.0f1. The local six-person house/season is playable; the original game's complete feature set and AAA production acceptance are **not** claimed complete.
 
 ## Material changes from the preserved U02 baseline

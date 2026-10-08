@@ -20,6 +20,9 @@ namespace Gamesim.House
         public const string PoolAnchor="pool-swim";
         public const string HotTubAnchor="hot-tub-activity";
         public const string DanceAnchor="living-dance-activity";
+        public const string LoungeAnchor="living-lounge-rest";
+        public const string LoungerAnchor="yard-lounger-chat";
+        public const string HoHBenchAnchor="hoh-bench-rest";
 
         public const string SleepCaption="Lie down", SwimCaption="Take a swim", SoakCaption="Soak in the hot tub",
             CookCaption="Cook a meal", DanceCaption="Dance to the music";
@@ -34,7 +37,7 @@ namespace Gamesim.House
         /// player can do must not quietly send the cast to bed.
         /// </summary>
         public static bool Ambient(HouseInteractionAnchor anchor)
-            => TryDescribe(anchor,out var activity,out _) && (activity==HouseFurnitureActivity.PrepareSnack
+            => anchor!=null && anchor.RoomId!="HoH" && TryDescribe(anchor,out var activity,out _) && (activity==HouseFurnitureActivity.PrepareSnack
                 || activity==HouseFurnitureActivity.SitAtTable || activity==HouseFurnitureActivity.Rest);
 
         /// <summary>
@@ -58,7 +61,11 @@ namespace Gamesim.House
         /// Whether a venue's places are for company: two people at once, each on their own lease.
         /// The hot tub's two seats are; a conversation venue's two chairs are one meeting's.
         /// </summary>
-        public static bool SeatsCompany(string venueId) => venueId==HotTubAnchor;
+        public static bool SeatsCompany(string venueId) => venueId==HotTubAnchor || venueId==LoungeAnchor || venueId==LoungerAnchor || venueId==HoHBenchAnchor;
+
+        /// <summary>Furniture shared cushion by cushion, also measured against overlapping chat places.</summary>
+        public static bool IndependentRest(HouseInteractionAnchor anchor)
+            => anchor!=null && (anchor.VenueId==LoungeAnchor || anchor.VenueId==LoungerAnchor || anchor.VenueId==HoHBenchAnchor);
 
         /// <summary>The E prompt, and the status line, while the player is doing this.</summary>
         public static string StopPrompt(HouseFurnitureActivity activity)
@@ -82,7 +89,9 @@ namespace Gamesim.House
             {
                 case KitchenAnchor:activity=HouseFurnitureActivity.PrepareSnack;caption="Prepare a snack";return true;
                 case "kitchen-table-chat":activity=HouseFurnitureActivity.SitAtTable;caption="Sit at the dining table";return anchor.Seated;
-                case "yard-lounger-chat":activity=HouseFurnitureActivity.Rest;caption="Rest on a lounger";return anchor.Seated;
+                case LoungerAnchor:activity=HouseFurnitureActivity.Rest;caption="Rest on a lounger";return anchor.Seated;
+                case LoungeAnchor:activity=HouseFurnitureActivity.Rest;caption="Rest on a couch";return anchor.Seated;
+                case HoHBenchAnchor:activity=HouseFurnitureActivity.Rest;caption="Rest on the HoH bench";return anchor.Seated;
                 case StoveAnchor:activity=HouseFurnitureActivity.Cook;caption=CookCaption;return true;
                 case PoolAnchor:activity=HouseFurnitureActivity.Swim;caption=SwimCaption;return anchor.Pose==HouseAnchorPose.Float;
                 case HotTubAnchor:activity=HouseFurnitureActivity.Soak;caption=SoakCaption;return anchor.Seated;

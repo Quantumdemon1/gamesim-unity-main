@@ -50,6 +50,13 @@ namespace Gamesim.Simulation
             public static readonly string[] All = { Open, Kept, Broken, Lapsed, Unresolved };
         }
 
+        /// <summary>
+        /// The status of a price voided because what it paid for was broken by the one it was owed to
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN C7, <see cref="Negotiation.Voided"/>): its outcome stays lapsed,
+        /// since nobody broke it, and the words say why.
+        /// </summary>
+        public const string VoidedWord = "void: what it paid for was broken";
+
         /// <summary>One commitment the player is a party to, as the page says it.</summary>
         public sealed class Commitment
         {
@@ -132,10 +139,18 @@ namespace Gamesim.Simulation
         /// <summary>A houseguest a commitment names, as the player reads it: "you" for the player, a first name for anybody else.</summary>
         private static string Named(EpisodeState s, string id) => s != null && id == s.playerId ? "you" : First(s, id);
 
+        // Detached provenance views, not a second writer or a summed mechanical obligation.
+        // Legacy seasons retain their original list order and null-handling branches.
+        private static IEnumerable<PromiseState> ReadPromises(EpisodeState s) =>
+            UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Promises(s) : s.promises;
+
+        private static IEnumerable<DealState> ReadDeals(EpisodeState s) =>
+            UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Deals(s) : s.deals;
+
         private static void AddPromises(EpisodeState s, List<Commitment> into)
         {
             string player = s.playerId;
-            foreach (var p in s.promises)
+            foreach (var p in ReadPromises(s))
             {
                 if (p == null || (p.fromId != player && p.toId != player)) continue;
                 bool yours = p.fromId == player;
@@ -153,6 +168,7 @@ namespace Gamesim.Simulation
                     // A promise is one-sided: only whoever gave it can break it, and the engine
                     // breaks it only on their act (a nomination, a ballot, the final choice).
                     brokenById = !withheld && p.status == PromiseStatus.Broken ? p.fromId : null,
+                    settledWeek = !withheld && UnifiedCommitments.RulesOn(s) && p.kind == PromiseKind.Safety ? p.settledWeek : 0,
                 };
                 c.binds = PromiseBinds(s, p, yours);
                 c.status = withheld ? KnownBallots.Unresolved
@@ -166,7 +182,7 @@ namespace Gamesim.Simulation
         private static void AddDeals(EpisodeState s, List<Commitment> into)
         {
             string player = s.playerId;
-            foreach (var d in s.deals)
+            foreach (var d in ReadDeals(s))
             {
                 if (d == null || (d.proposerId != player && d.recipientId != player)) continue;
                 bool yours = d.proposerId == player;
@@ -181,11 +197,24 @@ namespace Gamesim.Simulation
                     title = Capitalise(DealNoun(d.type)) + (yours ? " you proposed" : " they offered"),
                     week = d.week, untilWeek = Math.Max(0, d.expiresWeek),
                     outcome = withheld ? Outcomes.Unresolved : DealOutcome(d.status),
+                    settledWeek = !withheld && UnifiedCommitments.RulesOn(s) && d.type == DealKind.SafetyAgreement ? d.settledWeek : 0,
                 };
                 if (d.status == DealStatus.Broken && !withheld) c.brokenById = FinalistRead.DealBreaker(s, d);
                 c.binds = DealBinds(s, d);
                 c.status = withheld ? KnownBallots.Unresolved : DealStatusWord(d, yours, c.brokenById, player);
+                // A price voided because what it paid for was broken (C7) says so, rather than "lapsed".
+                if (!withheld && Negotiation.Voided(s, d)) c.status = VoidedWord;
                 c.term = Term(s, c);
+                // A final three deal runs until the house is down to three (C9), not forever.
+                if (d.type == DealKind.FinalThree && d.expiresWeek == 0) c.term = UntilTheFinalThree;
+                // Under the commitment rules an open-ended deal ends when one of the two leaves the house
+                // (C1, X4): its term says so, as an oath's does, rather than "never expires".
+                if (EpisodeEngine.CommitmentRulesOn(s) && d.status == DealStatus.Expired && d.expiresWeek == 0)
+                {
+                    string leaver = s.Find(other).status != ContestantStatus.Active ? other
+                        : s.Find(player).status != ContestantStatus.Active ? player : null;
+                    if (leaver != null) { c.untilWeek = LeftWeek(s, leaver); c.term = UntilLeft(s, leaver); }
+                }
                 into.Add(c);
             }
         }
@@ -389,6 +418,7 @@ namespace Gamesim.Simulation
                 case DealKind.InformationSharing: return "information deal";
                 case DealKind.FinalTwo: return "final two deal";
                 case DealKind.AllianceInvite: return "alliance invitation";
+                case DealKind.FinalThree: return "final three deal";
                 default: return "partnership";
             }
         }
@@ -397,6 +427,13 @@ namespace Gamesim.Simulation
         private static string DealBinds(EpisodeState s, DealState d)
         {
             bool named = s.Find(d.targetId) != null;
+            // Under the commitment rules a partnership is judged at the vote and an information deal
+            // passes its reading as the house votes (C1): what they bind is what is judged.
+            if (EpisodeEngine.CommitmentRulesOn(s))
+            {
+                if (d.type == DealKind.Partnership) return "not to vote each other out";
+                if (d.type == DealKind.InformationSharing) return "to tell you where their vote is going, each week they vote";
+            }
             switch (d.type)
             {
                 case DealKind.TargetAgreement: return named ? "to put " + Named(s, d.targetId) + " up, not each other" : "to put the same person up";
@@ -410,9 +447,17 @@ namespace Gamesim.Simulation
                 case DealKind.InformationSharing: return "to share what you each hear";
                 case DealKind.FinalTwo: return "to take each other to the final two";
                 case DealKind.AllianceInvite: return "to join forces in an alliance";
+                // The commitment rules' own (C9): what breaks it is a nomination, as a safety pact's.
+                case DealKind.FinalThree: return FinalThreeBinds;
                 default: return "to work together";
             }
         }
+
+        /// <summary>What a final three deal binds, in words (C9): a safety pact's act, until the final three.</summary>
+        public const string FinalThreeBinds = "to take each other to the final three: neither nominates the other";
+
+        /// <summary>A final three deal's term (C9): it runs until the house is down to three.</summary>
+        public const string UntilTheFinalThree = "until the final three";
 
         private static string DealStatusWord(DealState d, bool yours, string brokenBy, string player)
         {
@@ -480,6 +525,8 @@ namespace Gamesim.Simulation
             public string subtype;
             /// <summary><see cref="Acts"/>, and the houseguest that part of the decision is about: the nominee, the one saved, the replacement, the ballot's target, the finalist taken. Null for not using the veto.</summary>
             public string act, causeId;
+            /// <summary>Canonical incident identity; all affected agreements remain separate evidence rows. Null for legacy rows.</summary>
+            public string effectKey;
         }
 
         /// <summary>
@@ -495,14 +542,17 @@ namespace Gamesim.Simulation
             if (s == null || string.IsNullOrEmpty(s.playerId)) return false;
             switch (decisionKind)
             {
+                // A final three deal (C9) is settled by a nomination, as a safety deal is.
                 case DecisionKinds.Nominate:
-                    return DealStanding(s, DealKind.SafetyAgreement, DealKind.TargetAgreement)
+                    return DealStanding(s, DealKind.SafetyAgreement, DealKind.TargetAgreement, DealKind.FinalThree)
                         || PromiseStanding(s, PromiseKind.Safety, PromiseKind.AllianceLoyalty) || OathStanding(s);
                 case DecisionKinds.Veto:
-                    return DealStanding(s, DealKind.VetoUse, DealKind.SafetyAgreement, DealKind.TargetAgreement)
+                    return DealStanding(s, DealKind.VetoUse, DealKind.SafetyAgreement, DealKind.TargetAgreement, DealKind.FinalThree)
                         || PromiseStanding(s, PromiseKind.Safety, PromiseKind.AllianceLoyalty) || OathStanding(s);
                 case DecisionKinds.Vote:
-                    return DealStanding(s, DealKind.VoteSave, DealKind.VoteEvict) || PromiseStanding(s, PromiseKind.Vote) || OathStanding(s);
+                    return DealStanding(s, DealKind.VoteSave, DealKind.VoteEvict) || PromiseStanding(s, PromiseKind.Vote) || OathStanding(s)
+                        // Under the commitment rules the vote judges a partnership too (C1).
+                        || (EpisodeEngine.CommitmentRulesOn(s) && DealStanding(s, DealKind.Partnership));
                 case DecisionKinds.FinalEviction:
                     return DealStanding(s, DealKind.FinalTwo) || PromiseStanding(s, PromiseKind.FinalTwo);
                 default:
@@ -511,11 +561,11 @@ namespace Gamesim.Simulation
         }
 
         private static bool DealStanding(EpisodeState s, params string[] types) =>
-            s.deals != null && s.deals.Any(d => d != null && d.status == DealStatus.Active
+            s.deals != null && ReadDeals(s).Any(d => d != null && d.status == DealStatus.Active
                 && (d.proposerId == s.playerId || d.recipientId == s.playerId) && Array.IndexOf(types, d.type) >= 0);
 
         private static bool PromiseStanding(EpisodeState s, params PromiseKind[] kinds) =>
-            s.promises != null && s.promises.Any(p => p != null && p.status == PromiseStatus.Active
+            s.promises != null && ReadPromises(s).Any(p => p != null && p.status == PromiseStatus.Active
                 && p.fromId == s.playerId && Array.IndexOf(kinds, p.kind) >= 0);
 
         private static bool OathStanding(EpisodeState s) =>
@@ -607,6 +657,25 @@ namespace Gamesim.Simulation
             foreach (var oath in before.loyaltyOaths.Where(o => o.playerId == player || o.targetId == player))
                 if (!after.loyaltyOaths.Any(o => o.playerId == oath.playerId && o.targetId == oath.targetId && o.week == oath.week && o.timestamp == oath.timestamp))
                     breaches.Add(OathBreach(before, oath, d));
+            if (UnifiedCommitments.RulesOn(before) && UnifiedCommitments.RulesOn(after))
+            {
+                // Once the engine is activated, use its actual canonical transitions, not every
+                // broken historical row. In particular another HoH's replacement is not ours.
+                var now = UnifiedCommitmentHistory.Records(after).ToDictionary(row => row.id, StringComparer.Ordinal);
+                var ownEffects = new HashSet<string>(UnifiedCommitmentHistory.Breaches(after)
+                    .Where(incident => incident.ActorId == player).Select(incident => incident.EffectKey), StringComparer.Ordinal);
+                if (before.hohId == player && (d.kind == DecisionKinds.Nominate || (d.kind == DecisionKinds.Veto && d.useVeto)))
+                {
+                    var named = d.kind == DecisionKinds.Nominate ? new[] { d.firstId, d.secondId } : new[] { d.secondId };
+                    var expected = UnifiedCommitments.EvaluateNomination(before,
+                        d.kind == DecisionKinds.Nominate ? "nomination" : "replacement", player, named);
+                    foreach (var change in expected.Changes)
+                        if (now.TryGetValue(change.Record.id, out var settled) && settled.status == DealStatus.Broken
+                            && settled.settlementEffectKey == change.Record.settlementEffectKey
+                            && ownEffects.Contains(settled.settlementEffectKey))
+                            breaches.Add(SafetyBreach(before, UnifiedCommitments.Find(before, settled.id), d, settled.settlementEffectKey));
+                }
+            }
             return breaches;
         }
 
@@ -618,7 +687,7 @@ namespace Gamesim.Simulation
         /// </summary>
         private static bool SettledByThePlayer(EpisodeState s, Decision d, string type)
         {
-            bool nomination = type == DealKind.SafetyAgreement || type == DealKind.TargetAgreement;
+            bool nomination = type == DealKind.SafetyAgreement || type == DealKind.TargetAgreement || type == DealKind.FinalThree;
             switch (d.kind)
             {
                 case DecisionKinds.Nominate: return nomination;
@@ -703,7 +772,9 @@ namespace Gamesim.Simulation
                     if (selected == null) return breaches;
                     foreach (var verdict in DealResolution.Verdicts(s, DealResolution.Selects, player, selectedId: selected))
                         if (verdict.status == DealStatus.Broken) breaches.Add(DealBreach(s, verdict.deal, decision));
-                    foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.FinalTwo && p.fromId == player))
+                    // The engine's own test of which promises the final choice settles: under the
+                    // commitment rules, none made to somebody already gone (C1, X4).
+                    foreach (var promise in s.promises.Where(p => EpisodeEngine.FinalChoiceSettles(s, p, player)))
                         if (promise.toId != selected) breaches.Add(PromiseBreach(s, promise, decision));
                     return breaches;
                 default:
@@ -719,6 +790,16 @@ namespace Gamesim.Simulation
         private static void NominationRules(EpisodeState s, List<string> named, Decision decision, List<Breach> breaches)
         {
             string player = s.playerId;
+            if (UnifiedCommitments.RulesOn(s))
+            {
+                // Exactly the action's named nominees: old nominees and a veto-saved guest
+                // must not be treated as replacement nominations. Evaluation is read-only.
+                var verdict = UnifiedCommitments.EvaluateNomination(s,
+                    decision.kind == DecisionKinds.Nominate ? "nomination" : "replacement", player, named);
+                foreach (var change in verdict.Changes)
+                    breaches.Add(SafetyBreach(s, UnifiedCommitments.Find(s, change.Record.id), decision,
+                        change.Record.settlementEffectKey));
+            }
             var promisesBroken = new HashSet<string>(StringComparer.Ordinal);
             foreach (var nominee in named)
             {
@@ -732,9 +813,10 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// The ballot, judged on the player's own: every standing vote promise of theirs that names
-        /// somebody else, an oath with the nominee, and - under the levers - a vote deal the
-        /// player's ballot alone breaks (DealResolution.VoteDeal reads only the ballots it is given).
-        /// Nothing unless it is a ballot the player can cast now (<see cref="CanCast"/>).
+        /// somebody else, an oath with the nominee, under the levers a vote deal the player's ballot
+        /// alone breaks (DealResolution.VoteDeal reads only the ballots it is given), and under the
+        /// commitment rules a partnership with the nominee the ballot names (C1). Nothing unless it
+        /// is a ballot the player can cast now (<see cref="CanCast"/>).
         /// </summary>
         private static List<Breach> BallotRules(EpisodeState s, Decision decision, List<Breach> breaches)
         {
@@ -744,8 +826,12 @@ namespace Gamesim.Simulation
                 if (promise.targetId != target) breaches.Add(PromiseBreach(s, promise, decision));
             var oath = s.loyaltyOaths.FirstOrDefault(o => (o.playerId == player && o.targetId == target) || (o.playerId == target && o.targetId == player));
             if (oath != null) breaches.Add(OathBreach(s, oath, decision));
-            if (!EpisodeEngine.LeverRulesOn(s)) return breaches;
             var ballot = new List<VoteState> { new VoteState { voterId = player, targetId = target, reason = "dry run" } };
+            if (EpisodeEngine.CommitmentRulesOn(s))
+                foreach (var deal in s.deals.Where(d => d.status == DealStatus.Active && d.type == DealKind.Partnership && (d.proposerId == player || d.recipientId == player)))
+                    if (DealResolution.PartnershipAtTheVote(deal, ballot, s.nominees, out string actor) == DealStatus.Broken && actor == player)
+                        breaches.Add(DealBreach(s, deal, decision));
+            if (!EpisodeEngine.LeverRulesOn(s)) return breaches;
             foreach (var deal in s.deals.Where(d => d.status == DealStatus.Active && (d.proposerId == player || d.recipientId == player)))
             {
                 if (deal.type != DealKind.VoteSave && deal.type != DealKind.VoteEvict) continue;
@@ -795,6 +881,15 @@ namespace Gamesim.Simulation
                 case DecisionKinds.Vote: breach.act = Acts.Vote; breach.causeId = d.firstId; break;
                 case DecisionKinds.FinalEviction: breach.act = Acts.Take; breach.causeId = Taken(s, d.firstId); break;
             }
+            return breach;
+        }
+
+        private static Breach SafetyBreach(EpisodeState s, UnifiedCommitmentState row, Decision decision, string effectKey)
+        {
+            var breach = row.sourcePolicy == UnifiedCommitments.PromisePolicy
+                ? PromiseBreach(s, CommitmentReferences.FindPromise(s, row.id), decision, row.beneficiaryId)
+                : DealBreach(s, CommitmentReferences.FindDeal(s, row.id), decision);
+            breach.effectKey = effectKey;
             return breach;
         }
 

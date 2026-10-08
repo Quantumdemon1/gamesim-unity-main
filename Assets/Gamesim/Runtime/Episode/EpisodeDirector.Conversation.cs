@@ -310,7 +310,12 @@ namespace Gamesim.Episode
                 case EpisodeCommandKind.PromiseVote:
                 case EpisodeCommandKind.PromiseFinalTwo:
                 case EpisodeCommandKind.FormAlliance:
+                // Asking somebody into a pact is a pact with them (C5): it binds the player as a proposal does.
+                case EpisodeCommandKind.BringIntoAlliance:
                     return BindsYouTag;
+                // A pact's new name changes nothing anybody weighs, and spends no action (C5).
+                case EpisodeCommandKind.RenameAlliance:
+                    return FreeTag;
                 case EpisodeCommandKind.SwearLoyalty:
                     return BindsYouTag + " · " + FreeTag;
                 case EpisodeCommandKind.DeclineLoyalty:
@@ -507,15 +512,17 @@ namespace Gamesim.Episode
                     {
                         string about = subject.id;
                         if (!PlayerDeals.CanPropose(state, npc.id, kind, about, out _)) continue;
-                        hud.Tag(hud.ActionFor(about, EpisodeHud.DealProposeCaption(
+                        // A target agreement names a third houseguest, and the conversation folds them
+                        // into a picker of people (FoldedDealPanel): on each person's card the stakes
+                        // stand on a chip with the player's read of the chance beside it - "no read"
+                        // where it has nothing behind it (KnownOdds.CardWord). Drawn as a row, the tag
+                        // would sit past the row's trust reading with the read's own word, as every
+                        // row's does (EpisodeHud.DealTag): the HUD has the read, and says it as the
+                        // place it lands on says it.
+                        hud.DealTag(hud.ActionFor(about, EpisodeHud.DealProposeCaption(
                                     DealKind.Title(kind).ToLowerInvariant() + " against " + subject.name),
                                 () => Commit(state, EpisodeCommandKind.ProposeDeal, npc.id, about, text: kind)),
-                            Stakes(kind) + " · " + Chance(state, npc.id, kind, about),
-                            // A target agreement names a third houseguest, so its row is fronted by
-                            // their portrait and already spends its right-hand end on a trust
-                            // reading. The tag has to sit left of that; the plain deal rows below
-                            // have no portrait and no reading, so they do not.
-                            EpisodeHud.TagSeat.PastReading);
+                            Stakes(kind), KnownOdds.Deal(state, npc.id, kind, about));
                     }
                     continue;
                 }
@@ -550,9 +557,10 @@ namespace Gamesim.Episode
         /// difference the simulation already knew.</para>
         ///
         /// <para>A tag beside the control rather than words inside it, for the same reason the
-        /// chance is: the caption is how a test and a screen reader find a button.</para>
+        /// chance is: the caption is how a test and a screen reader find a button. A read for tests:
+        /// a target agreement's card in the picker carries these words on its chip.</para>
         /// </summary>
-        private static string Stakes(string kind)
+        public static string Stakes(string kind)
         {
             switch (DealKind.DefaultTrust(kind))
             {
@@ -593,11 +601,24 @@ namespace Gamesim.Episode
         /// them, a chip and a line that say how little the read has to go on. Once a render: a
         /// conversation that draws the plea's chances and the deal table's explains them above the
         /// first, and the second says nothing more (<see cref="EpisodeHud.ExplainOdds"/>).
+        ///
+        /// <para>Where the house keeps the player's word as knowledge and somebody has heard of them
+        /// going back on it (ACTIONS-DEALS-ALLIANCES-PLAN C8), the note says so last: the reading, who has
+        /// heard, what it weighs on and what it does not (<see cref="YourWord.OddsLine"/>). It weighs on the
+        /// chances of a deal or an alliance the player proposes, a term the roll and the shown odds take
+        /// alike; it never weighs on a plea's or a veto for a price's, and the note names those two: it
+        /// stands over the first table drawn, which can be either, and the Your word page can list the
+        /// deal either strikes as one the player proposed. A story's choice strikes deals without it too,
+        /// but is never drawn under the note - a beat the conversation raised is the conversation until it
+        /// is answered (<see cref="ConversationBeat"/>) - so the Your word page names it and the note does
+        /// not. Nothing is added while nobody has heard, or without the rules.</para>
         /// </summary>
         private void OddsAreYourRead(EpisodeState state, ContestantState npc)
         {
             bool little = KnownOdds.Unknowns(state, npc.id) == KnownOdds.Many;
-            hud.ExplainOdds(OddsReadLine(FinalistRead.FirstName(npc.name)) + (little ? " " + LittleToGoOnLine : ""), little);
+            string word = YourWord.OddsLine(state);
+            hud.ExplainOdds(OddsReadLine(FinalistRead.FirstName(npc.name)) + (little ? " " + LittleToGoOnLine : "")
+                + (word == null ? "" : " " + word), little);
         }
 
         /// <summary>
@@ -609,7 +630,11 @@ namespace Gamesim.Episode
 
         /// <summary>Whether the deal table is empty because the season has reached its deal ceiling: the refusal <see cref="PlayerDeals.CanPropose"/> makes before any other.</summary>
         public static bool PastTheDealCeiling(EpisodeState state) =>
-            state != null && state.week >= state.dealRulesStartWeek && state.deals.Count >= PlayerDeals.PlayerDealCeiling;
+            state != null && state.week >= state.dealRulesStartWeek && CommitmentReferences.DealCount(state) >= PlayerDeals.PlayerDealCeiling;
+
+        /// <summary>A houseguest's offer of a final three deal, in words (C9): "Maya Hassan wants the two of you to take each other to the final three: neither of you puts the other up until then."</summary>
+        public static string FinalThreeOfferSentence(string who) =>
+            who + " wants the two of you to take each other to the final three: neither of you puts the other up until then.";
 
         /// <summary>What the houseguest is actually asking for, in words.</summary>
         private static string DealSentence(EpisodeState state, DealState offer)
@@ -619,7 +644,9 @@ namespace Gamesim.Episode
             switch (offer.type)
             {
                 case DealKind.VetoUse:
-                    return who + " is on the block and wants your word that you will use the veto on them.";
+                    // Under the commitment rules (C7) the ask carries a price, struck with the yes.
+                    string price = Negotiation.AskPriceLine(state, offer);
+                    return who + " is on the block and wants your word that you will use the veto on them." + (price == null ? "" : " " + price);
                 case DealKind.VoteSave:
                     return who + " wants your vote to keep " + (about ?? "them") + " in the house this week.";
                 case DealKind.VoteEvict:
@@ -636,6 +663,9 @@ namespace Gamesim.Episode
                     return who + " wants to sit beside you at the end.";
                 case DealKind.AllianceInvite:
                     return who + " thinks it is time the two of you made it official.";
+                // The commitment rules' own (C9): what it binds, in the page's words (CommitmentsRead.FinalThreeBinds).
+                case DealKind.FinalThree:
+                    return FinalThreeOfferSentence(who);
                 default:
                     return who + " wants to partner up properly.";
             }

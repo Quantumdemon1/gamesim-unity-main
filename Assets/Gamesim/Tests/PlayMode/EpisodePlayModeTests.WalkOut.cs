@@ -249,7 +249,10 @@ namespace Gamesim.Tests.PlayMode
                 }
                 else
                 {
-                    Assert.That(director.WalkingOutId, Is.EqualTo(leaving), before.phase + " in week " + before.week + ": the evicted walks out.");
+                    Assert.That(director.WalkingOutId, Is.EqualTo(leaving), before.phase + " in week " + before.week
+                        + ": the evicted walks out. " + director.LastWalkOutFailure
+                        + " Body at " + body.transform.position.ToString("F2") + "; motion " + body.GetComponent<HouseNpcMotion>()?.State
+                        + "; binding " + body.GetComponent<HouseNpcMotion>()?.FailureReason + "; world " + director.NpcAutonomyDiagnostic);
                     Assert.That(director.IsWeeklyRecapOpen, Is.False, "The week's recap waits for the walk out,");
                     walked++;
                     director.SkipWalkOut();

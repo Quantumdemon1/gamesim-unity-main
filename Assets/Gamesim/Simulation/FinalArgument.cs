@@ -166,16 +166,26 @@ namespace Gamesim.Simulation
                 Add("whip:" + W(ballot.week), Cerebral, ballot.week,
                     "Week " + ballot.week + ": your whip count said " + Name(s, ballot.readBefore) + " would go, and they did.",
                     "In week " + ballot.week + ", I counted the votes before anyone else, and I was right.");
-            foreach (var promise in s.promises.Where(x => x.fromId == player && x.status == PromiseStatus.Fulfilled))
+            foreach (var promise in CommitmentReferences.Promises(s).Where(x => x.fromId == player && x.status == PromiseStatus.Fulfilled))
                 Add("promise:" + promise.id, Emotional, promise.week,
                     "Week " + promise.week + ": you promised " + Name(s, promise.toId) + " " + HouseguestNotes.PromiseWord(promise.kind) + ", and kept it.",
                     "In week " + promise.week + ", I gave " + Name(s, promise.toId) + " my word, and I kept it.");
-            foreach (var deal in s.deals.Where(x => x.status == DealStatus.Fulfilled && (x.proposerId == player || x.recipientId == player)))
+            // Under the commitment rules a deal the vote settled - a partnership too (C1) - is one the
+            // player can claim only once they know the ballot that kept it (KnownBallots).
+            bool rules = EpisodeEngine.CommitmentRulesOn(s);
+            var canonicalKeptOwners = new HashSet<string>(UnifiedCommitmentHistory.Fulfillments(s)
+                .Select(receipt => receipt.EffectOwnerId), StringComparer.Ordinal);
+            foreach (var deal in CommitmentReferences.Deals(s).Where(x => x.status == DealStatus.Fulfilled && (x.proposerId == player || x.recipientId == player)
+                         && (!rules || KnownBallots.DealOutcomeKnown(s, x))
+                         && (CommitmentReferences.FindCanonical(s, x.id) == null || canonicalKeptOwners.Contains(x.id))))
             {
                 string other = deal.proposerId == player ? deal.recipientId : deal.proposerId;
                 string title = DealKind.Title(deal.type).ToLowerInvariant();
-                Add("deal:" + deal.id, Emotional, deal.week, "Week " + deal.week + ": you and " + Name(s, other) + " kept your " + title + ".",
-                    "In week " + deal.week + ", " + Name(s, other) + " and I made a " + title + ", and I kept it.");
+                int receiptWeek = CommitmentReferences.ReceiptWeek(s, deal.id, deal.week);
+                Add("deal:" + deal.id, Emotional, receiptWeek, "Week " + receiptWeek + ": you and " + Name(s, other) + " kept your " + title + ".",
+                    CommitmentReferences.FindCanonical(s, deal.id) == null
+                        ? "In week " + deal.week + ", " + Name(s, other) + " and I made a " + title + ", and I kept it."
+                        : "In week " + receiptWeek + ", " + Name(s, other) + " and I kept our " + title + ".");
             }
             foreach (var row in ledger.alliances)
             {
@@ -243,9 +253,9 @@ namespace Gamesim.Simulation
                     if (at <= parts[0].Length || !Week(reference.Substring(at + 1), out int w4)) return null;
                     string allianceId = reference.Substring(parts[0].Length + 1, at - parts[0].Length - 1);
                     return ledger.calls.FirstOrDefault(c => c.week == w4 && c.allianceId == allianceId && c.callerId == player)?.targetId;
-                case "promise": return s.promises.FirstOrDefault(x => "promise:" + x.id == reference && x.fromId == player)?.toId;
+                case "promise": return CommitmentReferences.Promises(s).FirstOrDefault(x => "promise:" + x.id == reference && x.fromId == player)?.toId;
                 case "deal":
-                    var deal = s.deals.FirstOrDefault(x => "deal:" + x.id == reference && (x.proposerId == player || x.recipientId == player));
+                    var deal = CommitmentReferences.Deals(s).FirstOrDefault(x => "deal:" + x.id == reference && (x.proposerId == player || x.recipientId == player));
                     return deal == null ? null : deal.proposerId == player ? deal.recipientId : deal.proposerId;
                 case "alliance":
                     return s.alliances.FirstOrDefault(a => "alliance:" + a.id == reference && a.members.Contains(player))?.members.FirstOrDefault(id => id != player);
@@ -343,8 +353,8 @@ namespace Gamesim.Simulation
                     int at = reference.LastIndexOf(':');
                     string allianceId = reference.Substring(parts[0].Length + 1, Math.Max(0, at - parts[0].Length - 1));
                     return at > parts[0].Length && Week(reference.Substring(at + 1), out int w6) && ledger.calls.Any(c => c.week == w6 && c.allianceId == allianceId);
-                case "promise": return s.promises.Any(x => "promise:" + x.id == reference && x.fromId == player);
-                case "deal": return s.deals.Any(x => "deal:" + x.id == reference && (x.proposerId == player || x.recipientId == player));
+                case "promise": return CommitmentReferences.Promises(s).Any(x => "promise:" + x.id == reference && x.fromId == player);
+                case "deal": return CommitmentReferences.Deals(s).Any(x => "deal:" + x.id == reference && (x.proposerId == player || x.recipientId == player));
                 case "alliance": return s.alliances.Any(a => "alliance:" + a.id == reference && a.members.Contains(player));
                 case "record": return reference == "record:unnominated" || reference == "record:off-the-block";
                 default: return false;
@@ -375,7 +385,7 @@ namespace Gamesim.Simulation
             if (argument == null) return "";
             var moments = Moments(s);
             var lines = new List<string> { Opening(argument.theme) };
-            foreach (var reference in argument.momentRefs ?? new List<string>())
+            foreach (var reference in ArgumentReferences(s, argument.momentRefs ?? new List<string>()))
             {
                 var moment = moments.FirstOrDefault(m => m.reference == reference);
                 if (moment != null) lines.Add(moment.said);
@@ -429,8 +439,35 @@ namespace Gamesim.Simulation
             var argument = s?.finalArgument;
             if (argument == null || finalistId != s.playerId || !EpisodeEngine.FinaleOn(s)) return 0;
             if (ThemeOf(s.Find(jurorId)) != argument.theme) return 0;
-            int backing = (argument.momentRefs ?? new List<string>()).Count(reference => ThemeOfReference(reference) == argument.theme);
+            int backing = ArgumentReferences(s, argument.momentRefs ?? new List<string>())
+                .Count(reference => ThemeOfReference(reference) == argument.theme);
             return Math.Min(Cap, PerMoment * backing);
+        }
+
+        // Every original reference still resolves as provenance. A locked alias is not another
+        // kept moment, and a canonical agreement that was never kept cannot back that claim.
+        private static IEnumerable<string> ArgumentReferences(EpisodeState s, IEnumerable<string> references)
+        {
+            if (!UnifiedCommitments.RulesOn(s)) return references;
+            var rows = UnifiedCommitmentHistory.Records(s).ToDictionary(row => row.id, StringComparer.Ordinal);
+            var receipts = UnifiedCommitmentHistory.Fulfillments(s)
+                .Where(receipt => receipt.FirstId == s.playerId || receipt.SecondId == s.playerId)
+                .SelectMany(receipt => receipt.EvidenceIds.Select(id => (id, receipt.EffectOwnerId)))
+                .ToDictionary(item => item.id, item => item.EffectOwnerId, StringComparer.Ordinal);
+            var counted = new HashSet<string>(StringComparer.Ordinal);
+            var selected = new List<string>();
+            foreach (string reference in references)
+            {
+                int colon = reference == null ? -1 : reference.IndexOf(':');
+                string kind = colon < 0 ? null : reference.Substring(0, colon);
+                if ((kind == "promise" || kind == "deal") && rows.ContainsKey(reference.Substring(colon + 1)))
+                {
+                    if (kind == "deal" && receipts.TryGetValue(reference.Substring(colon + 1), out string owner)
+                        && counted.Add(owner)) selected.Add("deal:" + owner);
+                }
+                else selected.Add(reference);
+            }
+            return selected;
         }
 
         private static string Name(EpisodeState s, string id) => s.Find(id)?.name ?? "somebody";

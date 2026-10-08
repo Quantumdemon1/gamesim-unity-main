@@ -26,6 +26,11 @@ namespace Gamesim.Simulation
             Require(SocialActionsSpent(s) < SocialActionBudget(s), "You have no conversations left this week.");
 
             var decider = s.Find(c.targetId);
+            if (UnifiedCommitments.RulesOn(s) && approach == LobbyApproach.Deal
+                && (ask != LobbyAsk.Vote || NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.VoteSave))
+                && !NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.SafetyAgreement))
+                Require(UnifiedCommitmentStore.CanAddDeal(s, DraftLobbySafety(s, decider.id), UnifiedCommitments.Lobby,
+                    out string safetyRefusal), safetyRefusal);
             var read = ask == LobbyAsk.Vote ? LeverRead(s, decider.id) : null;
             double chance = StrategyRules.Chance(s, decider.id, ask, c.secondTargetId, approach);
             var answer = StrategyRules.Respond(chance, Roll(s), () => Roll(s));
@@ -47,7 +52,7 @@ namespace Gamesim.Simulation
             // For the vote it is the voter's word on the vote itself: a vote to keep the player,
             // their obligation in the ballot and judged at the reveal like any vote deal.
             if (ask == LobbyAsk.Vote && approach == LobbyApproach.Deal && StrategyRules.Landed(answer.response)
-                && s.deals.Count < NpcDeals.DealCeiling
+                && (UnifiedCommitments.RulesOn(s) ? CommitmentReferences.DealCount(s) : s.deals.Count) < NpcDeals.DealCeiling
                 && !NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.VoteSave))
             {
                 s.deals.Add(new DealState
@@ -59,20 +64,25 @@ namespace Gamesim.Simulation
                 Log(s, "deal", decider.name + " has given you their vote: a vote to keep you, judged at the reveal.", s.playerId, decider.id);
             }
             else if (approach == LobbyApproach.Deal && StrategyRules.Landed(answer.response)
-                && s.deals.Count < NpcDeals.DealCeiling
+                && (UnifiedCommitments.RulesOn(s) ? CommitmentReferences.DealCount(s) : s.deals.Count) < NpcDeals.DealCeiling
                 && !NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.SafetyAgreement))
             {
-                s.deals.Add(new DealState
-                {
-                    id = "deal-lobby-" + s.nextSequence, type = DealKind.SafetyAgreement,
-                    proposerId = s.playerId, recipientId = decider.id, status = DealStatus.Active,
-                    week = s.week, expiresWeek = s.week + 1, trustImpact = DealKind.DefaultTrust(DealKind.SafetyAgreement),
-                });
+                var deal = DraftLobbySafety(s, decider.id);
+                if (UnifiedCommitments.RulesOn(s))
+                    Require(UnifiedCommitmentStore.TryAddDeal(s, deal, UnifiedCommitments.Lobby, out string error), error);
+                else s.deals.Add(deal);
                 Log(s, "deal", "You and " + decider.name + " have a safety agreement through next week.", s.playerId, decider.id);
             }
             if (ask == LobbyAsk.Vote) LeverLine(s, decider.id, read, s.nominees.FirstOrDefault(id => id != s.playerId), "your plea");
             SpendSocialAction(s);
         }
+
+        private static DealState DraftLobbySafety(EpisodeState s, string deciderId) => new DealState
+        {
+            id = "deal-lobby-" + s.nextSequence, type = DealKind.SafetyAgreement,
+            proposerId = s.playerId, recipientId = deciderId, status = DealStatus.Active,
+            week = s.week, expiresWeek = s.week + 1, trustImpact = DealKind.DefaultTrust(DealKind.SafetyAgreement),
+        };
 
         /// <summary>
         /// Answering a houseguest who came to the player: a confrontation, gossip the player found
@@ -86,6 +96,7 @@ namespace Gamesim.Simulation
             Require(card != null, "That moment has passed.");
             var from = s.Find(card.fromId);
             Require(from != null && from.status == ContestantStatus.Active, "They are no longer in the house.");
+            if (card.kind == ReplyCards.Pitch) { AnswerHoHPitch(s, card, (c.text ?? string.Empty).Trim()); return; }
             var reply = ReplyCards.Find(card.kind, (c.text ?? string.Empty).Trim());
             Require(reply != null, "Choose one of the answers you were offered.");
 
@@ -119,6 +130,7 @@ namespace Gamesim.Simulation
                 && s.nominees.Contains(from.id) && s.nominees.Contains(card.aboutId ?? "")
                 && !s.promises.Any(p => p.status == PromiseStatus.Active && p.fromId == s.playerId && p.toId == from.id && p.kind == PromiseKind.Vote))
                 MakePromise(s, from.id, PromiseKind.Vote, card.aboutId);
+            ReplyPayoff(s, card, reply);
         }
 
         /// <summary>
@@ -144,9 +156,15 @@ namespace Gamesim.Simulation
             if (theirs != null)
             {
                 theirs.members.Add(s.playerId);
+                // Under the commitment rules (C5) the player's coming in is on the pact itself: a
+                // bring-in and a cut can leave them first, and they still did not found it.
+                if (CommitmentRulesOn(s)) theirs.playerJoined = true;
                 // Joining is learning: the alliance's fact, if it has one, gains the player as a knower.
                 if (ReadRulesOn(s)) Knowledge.AddKnower(s, Knowledge.Of(s, FactKinds.Alliance, theirs.id), s.playerId);
                 Log(s, "alliance", npc.name + " brought you into " + theirs.name + ".", s.playerId, npcId);
+                // Under the commitment rules the player's place in it is on the record with every
+                // member, as a pact's founding is (ACTIONS-DEALS-ALLIANCES-PLAN C4).
+                RecordPactFormed(s, theirs, theirs.name + " was joined");
                 return;
             }
             var pact = new AllianceState
@@ -154,9 +172,12 @@ namespace Gamesim.Simulation
                 id = "alliance-" + s.nextSequence, name = "The " + npc.name.Split(' ')[0] + " Pact",
                 members = new List<string> { s.playerId, npcId },
             };
+            // Under the commitment rules (C5) no two of the player's standing pacts share a name.
+            if (CommitmentRulesOn(s)) pact.name = PactNames.Unique(s, pact.name);
             s.alliances.Add(pact);
             AllianceFormedUnderRead(s, pact);
             Log(s, "alliance", "You and " + npc.name + " formed a private alliance.", s.playerId, npcId);
+            RecordPactFormed(s, pact, pact.name + " was formed");
         }
     }
 }

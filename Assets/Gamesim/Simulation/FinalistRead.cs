@@ -204,6 +204,10 @@ namespace Gamesim.Simulation
         {
             var finalists = new HashSet<string>(Others(s).Select(c => c.id));
             var names = new List<string>();
+            // Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C1, X4) the final eviction breaks
+            // nothing with somebody already gone: their deals and final two promises ended as they
+            // left, and the choice passes over any that did not.
+            if (EpisodeEngine.CommitmentRulesOn(s)) return names;
             foreach (var deal in s.deals.Where(d => d.type == DealKind.FinalTwo && d.status == DealStatus.Active
                 && (d.proposerId == s.playerId || d.recipientId == s.playerId)))
             {
@@ -377,6 +381,11 @@ namespace Gamesim.Simulation
             if (deals > 0) parts.Add(deals == 1 ? "Broke a deal with you" : "Broke " + deals + " deals with you");
             if (block) parts.Add("Your voting bloc fell apart");
             if (promises > 0) parts.Add(promises == 1 ? "Broke a promise to you" : "Broke " + promises + " promises to you");
+            if (UnifiedCommitments.RulesOn(s))
+            {
+                int safety = UnifiedCommitmentHistory.Breaches(s).Count(incident => incident.ActorId == finalistId && incident.WrongedId == player);
+                if (safety > 0) parts.Add(safety == 1 ? "Broke a safety commitment to you" : "Broke " + safety + " safety commitments to you");
+            }
             return parts.Count == 0 ? new Fact("What they did to you", "Nothing on the record", Unknown)
                 : new Fact("What they did to you", string.Join(" · ", parts), Confirmed);
         }
@@ -395,12 +404,21 @@ namespace Gamesim.Simulation
         /// own ballot, so a deal their ballot broke was theirs; one their ballot kept was the other's,
         /// which the player can say only once they know the other's ballot (<see cref="KnownBallots"/>,
         /// decision 4). A Final 2 deal is settled by the final Head of Household. A voting block is
-        /// settled by both at once, so by neither; anything else, by nobody the record names.
+        /// settled by both at once, so by neither. A final three deal (C9), which only the commitment
+        /// rules make, says who broke it on its record. Anything else, by nobody the record names.
         /// </summary>
         public static string DealBreaker(EpisodeState s, DealState deal)
         {
             string player = s.playerId;
             if (deal == null || deal.status != DealStatus.Broken || (deal.proposerId != player && deal.recipientId != player)) return null;
+            if (UnifiedCommitments.RulesOn(s))
+            {
+                // Canonical safety's actual actor is durable authority. The capped power ledger
+                // may no longer contain its nomination, and must not overwrite that attribution.
+                var canonical = CommitmentReferences.FindCanonical(s, deal.id);
+                if (canonical != null && canonical.sourcePolicy == UnifiedCommitments.DealPolicy
+                    && canonical.status == DealStatus.Broken) return canonical.brokenById;
+            }
             string other = deal.proposerId == player ? deal.recipientId : deal.proposerId;
             var rows = s.ledger?.power ?? new List<PowerRow>();
             bool Final(PowerRow p) => p.tally.Count == 0 && p.evicteeId != null && p.vetoHolderId == null;
@@ -436,6 +454,19 @@ namespace Gamesim.Simulation
                 case DealKind.FinalTwo:
                     var chose = rows.Where(Final).OrderBy(p => p.week).LastOrDefault();
                     return chose != null && (chose.hohId == player || chose.hohId == other) ? chose.hohId : null;
+                case DealKind.Partnership:
+                    // Only the vote settles one, under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN
+                    // C1), and the record says who: the player's own ballot, known to them, or the
+                    // other's, told once the player knows it (KnownBallots). Before them none broke.
+                    return deal.settledWeek > 0 && KnownBallots.DealOutcomeKnown(s, deal) ? deal.brokenById : null;
+                case DealKind.InformationSharing:
+                    // Only a lie the reveal caught breaks one, under the commitment rules (C1), and the
+                    // player was told that lie and the ballot it hid. Before them none broke.
+                    return deal.settledWeek > 0 ? deal.brokenById : null;
+                case DealKind.FinalThree:
+                    // The commitment rules' own (C9), so always on the record: broken only by a nomination,
+                    // in front of the house.
+                    return deal.settledWeek > 0 ? deal.brokenById : null;
                 default:
                     return null;
             }
@@ -460,7 +491,16 @@ namespace Gamesim.Simulation
                 .Select(a => PlayerAlliedSince(s, a))
                 .Where(week => week > 0).ToList();
             if (weeks.Count > 0) parts.Add("Allied since week " + weeks.Min());
-            int kept = s.deals.Count(d => d.status == DealStatus.Fulfilled && Between(d.proposerId, d.recipientId, s.playerId, finalistId));
+            // Under the commitment rules a deal the vote settled - a partnership too (C1) - is told once
+            // the player knows the ballot that kept it (KnownBallots).
+            bool rules = EpisodeEngine.CommitmentRulesOn(s);
+            int kept = s.deals.Count(d => d.status == DealStatus.Fulfilled && Between(d.proposerId, d.recipientId, s.playerId, finalistId)
+                && (!rules || KnownBallots.DealOutcomeKnown(s, d)));
+            if (UnifiedCommitments.RulesOn(s))
+                // A final-veto receipt belongs to the reciprocal pair/week, not to each alias
+                // and not to a made-up keeping actor. Promise expiry is never a fulfillment.
+                kept += UnifiedCommitmentHistory.Fulfillments(s)
+                    .Count(receipt => Between(receipt.FirstId, receipt.SecondId, s.playerId, finalistId));
             if (kept > 0) parts.Add(kept == 1 ? "Kept a deal with you" : "Kept " + kept + " deals with you");
             var acts = TowardYou(s, finalistId);
             if (acts.certainty == Confirmed) parts.Add(acts.value);
@@ -492,10 +532,13 @@ namespace Gamesim.Simulation
         /// by proposing it or by an invitation that made a new pair (the ledger's "player"), or a
         /// story's pact that formed around them. A story opens such a pact with the player; an
         /// invitation into somebody else's pact adds the player at its end, so a story's pact that
-        /// does not begin with the player is one they were let into later.
+        /// does not begin with the player is one they were let into later. Under the commitment rules
+        /// the invitation is on the pact itself (<see cref="AllianceState.playerJoined"/>), and a pact
+        /// the player came into that way never reads as theirs - not even once somebody they brought in
+        /// stands after them and the members ahead of them are cut away, leaving them first.
         /// </summary>
         internal static bool FoundedByPlayer(EpisodeState s, AllianceState alliance, AllianceRow row) =>
-            row?.why != null && (row.why.StartsWith("player", System.StringComparison.Ordinal)
+            !alliance.playerJoined && row?.why != null && (row.why.StartsWith("player", System.StringComparison.Ordinal)
                 || (row.why.StartsWith("story", System.StringComparison.Ordinal) && alliance.members.Count > 0 && alliance.members[0] == s.playerId));
 
         /// <summary>

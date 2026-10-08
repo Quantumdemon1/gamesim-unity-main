@@ -21,6 +21,7 @@ namespace Gamesim.Presentation
                 var material = target.material;
                 if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", null);
                 if (material.HasProperty("_MainTex")) material.SetTexture("_MainTex", null);
+                if (material.HasProperty("_EmissionMap")) material.SetTexture("_EmissionMap", null);
             }
             request = next;
             enabled = true; Refresh();
@@ -38,6 +39,7 @@ namespace Gamesim.Presentation
             var material = target.material;
             if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", texture);
             if (material.HasProperty("_MainTex")) material.SetTexture("_MainTex", texture);
+            if (material.HasProperty("_EmissionMap")) material.SetTexture("_EmissionMap", texture);
             completed = texture;
         }
     }

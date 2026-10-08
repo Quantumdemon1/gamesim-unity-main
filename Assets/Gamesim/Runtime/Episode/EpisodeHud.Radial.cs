@@ -320,7 +320,13 @@ namespace Gamesim.Episode
             var press = rect.gameObject.AddComponent<HudPress>();
             press.ReducedMotion = ReducedMotion;
             press.Hovered = () => Foley(HouseAudio.Cue.Hover);
-            button.onClick.AddListener(() => action());
+            button.onClick.AddListener(() =>
+            {
+                // A retained UnityEvent can outlive its control, or be invoked directly while
+                // disabled. Match real button eligibility before calling the bounded UI action.
+                if (button == null || !button.IsActive() || !button.IsInteractable()) return;
+                action?.Invoke();
+            });
             return button;
         }
     }

@@ -2,10 +2,79 @@
 function Get-ReviewHash([string]$Path) {
     (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
+function Get-ReviewSuiteFloor([string]$Path, [string]$Assembly) {
+    $floors = @{}
+    foreach ($line in [IO.File]::ReadAllLines($Path)) {
+        $trimmed = $line.Trim()
+        if (-not $trimmed -or $trimmed.StartsWith('#')) { continue }
+        $fields = @($trimmed -split '\s+')
+        $minimum = 0
+        if ($fields.Count -ne 2 -or $fields[0] -notmatch '^[a-zA-Z0-9_.]+$' -or
+            -not [int]::TryParse($fields[1], [ref]$minimum) -or $minimum -lt 1 -or $floors.ContainsKey($fields[0])) {
+            throw "Malformed or duplicate suite floor in ${Path}: $line"
+        }
+        $floors[$fields[0]] = $minimum
+    }
+    if (-not $floors.ContainsKey($Assembly)) { throw "No suite floor for $Assembly in $Path" }
+    return $floors[$Assembly]
+}
+function Assert-ReviewSuiteMinimum([string]$Assembly, [int]$Total, [int]$Minimum) {
+    if ($Total -lt $Minimum) { throw "SHORTFALL: $Assembly ran $Total, floor is $Minimum (Tools/baseline.txt). This is not a pass." }
+}
+function Assert-ReviewSuiteFloorEvidence($Summary, [string]$BaselinePath, [string[]]$ExpectedSuites, $TestedBefore, $TestedAfter) {
+    $hash = Get-ReviewHash $BaselinePath
+    if ($Summary.baselineSha256 -ne $hash) {
+        throw 'The passing summary does not bind the current Tools/baseline.txt bytes; run fresh full suites.'
+    }
+    foreach ($manifest in @($TestedBefore,$TestedAfter)) {
+        $entries = @($manifest.files | Where-Object path -eq 'Tools/baseline.txt')
+        if ($entries.Count -ne 1 -or $entries[0].sha256 -ne $hash) {
+            throw 'Both tested manifests must bind the same current Tools/baseline.txt bytes.'
+        }
+    }
+    foreach ($assembly in $ExpectedSuites) {
+        $minimum = Get-ReviewSuiteFloor $BaselinePath $assembly
+        $entries = @($Summary.suites | Where-Object suite -eq $assembly)
+        if ($entries.Count -ne 1 -or $Summary.suiteFloors.$assembly -ne $minimum -or $entries[0].minimumCount -ne $minimum) {
+            throw "The summary's recorded floor does not match the current floor for $assembly."
+        }
+        Assert-ReviewSuiteMinimum $assembly $entries[0].total $minimum
+    }
+    if ((Get-ReviewHash $BaselinePath) -ne $hash) { throw 'Suite baseline changed during validation.' }
+    return $hash
+}
 function Get-ReviewTextHash([string]$Text) {
     $algorithm = [Security.Cryptography.SHA256]::Create()
     try { ([BitConverter]::ToString($algorithm.ComputeHash([Text.Encoding]::UTF8.GetBytes($Text)))).Replace('-','').ToLowerInvariant() }
     finally { $algorithm.Dispose() }
+}
+function Get-ReviewOptionalUmaContentPaths {
+    # These source-owned native assets require the optional provider/vendor types.
+    # Code/asmdefs and the existing top-level retained cache policy are independent.
+    @('Assets/Gamesim/Uma/Content', 'Assets/Gamesim/Uma/Content.meta',
+      'Assets/Gamesim/Uma/Resources', 'Assets/Gamesim/Uma/Resources.meta')
+}
+function Assert-ReviewNoUmaContentAbsent([string]$Root) {
+    foreach ($relative in @(Get-ReviewOptionalUmaContentPaths)) {
+        if (Get-Item -LiteralPath (Join-Path $Root $relative) -Force -ErrorAction SilentlyContinue) {
+            throw "A NoUMA acceptance copy must omit optional native content: $relative"
+        }
+    }
+}
+function Get-ReviewProjectUmaOverrides {
+    param([string]$ProjectRoot, [switch]$WithoutUma)
+    if ($WithoutUma) { return }
+    # This preferred index is project source; every other UMAProjectData file remains local.
+    $paths = @('Assets/UMAProjectData.meta', 'Assets/UMAProjectData/Resources.meta',
+        'Assets/UMAProjectData/Resources/AssetIndexerProject.asset',
+        'Assets/UMAProjectData/Resources/AssetIndexerProject.asset.meta')
+    if (-not (Test-Path -LiteralPath (Join-Path $ProjectRoot $paths[2]) -PathType Leaf)) { return }
+    foreach ($path in $paths) {
+        if (-not (Test-Path -LiteralPath (Join-Path $ProjectRoot $path) -PathType Leaf)) {
+            throw "The source-owned UMA index is incomplete: $path"
+        }
+    }
+    return $paths
 }
 function Write-ReviewJson($Value, [string]$Path) {
     ConvertTo-Json -InputObject $Value -Depth 12 | Set-Content -LiteralPath $Path -Encoding utf8
@@ -67,12 +136,24 @@ function New-ReviewInputManifest {
             $files = @($files | Where-Object {
                 $local = $_.FullName.Substring($ProjectRoot.Length + 1).Replace('\','/')
                 $local -notmatch '^Assets/(Resources|UMAProjectData)(/|\.meta$)' -and
-                    (-not $WithoutUma -or $local -notmatch '^Assets/UMA(/|\.meta$)')
+                    (-not $WithoutUma -or ($local -notmatch '^Assets/UMA(/|\.meta$)' -and
+                        $local -notmatch '^Assets/Gamesim/Uma/(Content|Resources)(/|\.meta$)'))
             })
             foreach ($retained in @('Assets/Resources','Assets/UMAProjectData')) {
                 $retainedPath = Join-Path $RetainedRoot $retained
                 if (Test-Path -LiteralPath $retainedPath) { $files += @(Get-ChildItem -LiteralPath $retainedPath -File -Recurse -Force) }
                 if (Test-Path -LiteralPath ($retainedPath + '.meta')) { $files += Get-Item -LiteralPath ($retainedPath + '.meta') }
+            }
+            $overrides = @(Get-ReviewProjectUmaOverrides -ProjectRoot $ProjectRoot -WithoutUma:$WithoutUma)
+            if ($overrides.Count -gt 0) {
+                $files = @($files | Where-Object {
+                    if ($_.FullName.StartsWith($RetainedRoot.TrimEnd('\','/') + '\', [StringComparison]::OrdinalIgnoreCase)) {
+                        $relativeFile = $_.FullName.Substring($RetainedRoot.TrimEnd('\','/').Length + 1).Replace('\','/')
+                        return $overrides -notcontains $relativeFile
+                    }
+                    return $true
+                })
+                foreach ($relativeOverride in $overrides) { $files += Get-Item -LiteralPath (Join-Path $ProjectRoot $relativeOverride) }
             }
         }
         foreach ($file in $files) {
@@ -170,6 +251,7 @@ function Compare-ReviewInputs {
 function Assert-ReviewConfiguration([string]$Root, [bool]$WithoutUma, [int]$GpuMode) {
     $installed = Test-Path -LiteralPath (Join-Path $Root 'Assets/UMA') -PathType Container
     if ($installed -eq $WithoutUma) { throw 'The acceptance UMA installation does not match the requested configuration.' }
+    if ($WithoutUma) { Assert-ReviewNoUmaContentAbsent $Root }
     $settings = [IO.File]::ReadAllText((Join-Path $Root 'ProjectSettings/ProjectSettings.asset'))
     $defines = [regex]::Match($settings, '(?ms)^  scriptingDefineSymbols:\r?\n(?<entries>(?:    [^\r\n]*\r?\n)*)').Groups['entries'].Value
     $standalone = [regex]::Match($defines, '(?m)^    Standalone: ([^\r\n]*)').Groups[1].Value

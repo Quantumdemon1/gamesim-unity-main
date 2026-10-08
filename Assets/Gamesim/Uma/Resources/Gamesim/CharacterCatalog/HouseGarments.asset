@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f90b2db5bfdf4b97874f64fa7533bb14, type: 3}
+  m_Name: HouseGarments
+  m_EditorClassIdentifier: Gamesim.Uma::Gamesim.Uma.UmaWardrobeCatalog
+  version: 1
+  entries:
+  - id: gamesim.knit.crew.a
+    recipeName: Gamesim_KnitCrew_A_Recipe
+    aliases:
+    - Gamesim_KnitCrew_A_Recipe
+    label: Crew-neck knit
+    styleGroup: gamesim-knit-crew
+    tags:
+    - chest
+    - knit
+    - casual
+    fallbackPriority: 20
+    available: 1
+  - id: gamesim.vest.competition.a
+    recipeName: Gamesim_CompetitionVest_A_Recipe
+    aliases:
+    - Gamesim_CompetitionVest_A_Recipe
+    label: Competition vest
+    styleGroup: gamesim-competition-vest
+    tags:
+    - chest
+    - competition
+    - athletic
+    fallbackPriority: 20
+    available: 1
+  - id: gamesim.knit.crew.b
+    recipeName: Gamesim_KnitCrew_B_Recipe
+    aliases:
+    - Gamesim_KnitCrew_B_Recipe
+    label: Crew-neck knit
+    styleGroup: gamesim-knit-crew
+    tags:
+    - chest
+    - knit
+    - casual
+    fallbackPriority: 20
+    available: 1
+  - id: gamesim.vest.competition.b
+    recipeName: Gamesim_CompetitionVest_B_Recipe
+    aliases:
+    - Gamesim_CompetitionVest_B_Recipe
+    label: Competition vest
+    styleGroup: gamesim-competition-vest
+    tags:
+    - chest
+    - competition
+    - athletic
+    fallbackPriority: 20
+    available: 1

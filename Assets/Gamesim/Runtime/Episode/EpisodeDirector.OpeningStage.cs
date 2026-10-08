@@ -71,9 +71,8 @@ namespace Gamesim.Episode
             private Vector3 deck, door, mark, exit;
             private OpeningDoorSet set;
             private bool begun, ended;
-            // Who is waiting for the leaves to clear before walking through, and how open that is.
+            // Who is waiting for the leaves to clear the whole body and route before walking through.
             private string throughWhenClear;
-            private const float DoorClearOpenness = 0.35f;
 
             public bool Placed { get; private set; }
 
@@ -85,12 +84,17 @@ namespace Gamesim.Episode
                 director = owner;
                 rooms = query;
                 filter = new NavMeshQueryFilter { agentTypeID = owner.player.Agent.agentTypeID, areaMask = owner.player.Agent.areaMask };
-                radius = 0.35f; height = 1.9f;
+                radius = Mathf.Max(0.35f, owner.player.Agent.radius); height = 1.9f;
+                var playerCapsule = owner.player.GetComponent<CapsuleCollider>();
+                if (playerCapsule != null)
+                    radius = Mathf.Max(radius, playerCapsule.radius * Mathf.Max(Mathf.Abs(playerCapsule.transform.lossyScale.x), Mathf.Abs(playerCapsule.transform.lossyScale.z)));
                 foreach (var npc in owner.housemates)
                 {
                     var capsule = npc != null ? npc.GetComponent<CapsuleCollider>() : null;
                     if (capsule == null) continue;
-                    radius = Mathf.Max(radius, capsule.radius);
+                    radius = Mathf.Max(radius, capsule.radius * Mathf.Max(Mathf.Abs(capsule.transform.lossyScale.x), Mathf.Abs(capsule.transform.lossyScale.z)));
+                    var agent = npc.GetComponent<NavMeshAgent>();
+                    if (agent != null) radius = Mathf.Max(radius, agent.radius);
                     height = Mathf.Max(height, capsule.height);
                 }
             }
@@ -125,6 +129,8 @@ namespace Gamesim.Episode
                 { Debug.Log("Opening stage: " + refusals.Last() + "."); return false; }
                 if (!Route(deck, door) || !Route(door, mark) || !Route(mark, exit))
                 { Debug.Log("Opening stage: there is no walk through the front door."); return false; }
+                if (!DoorRouteClears(door, radius, fullyOpen: true))
+                { Debug.Log("Opening stage: even fully open, the leaves cannot clear the house's bodies on the reveal route."); return false; }
 
                 foreach (var spot in Grid(QueueX, QueueZ).OrderBy(spot => (spot - DeckMark).sqrMagnitude))
                     if ((spot - DeckMark).magnitude >= 1.0f && Accept(spot, accepted, out var sampled, "a place to wait") && Route(sampled, deck)) queue.Add(sampled);
@@ -309,16 +315,56 @@ namespace Gamesim.Episode
             /// <summary>
             /// Walks them through once the leaves are out of their way. The leaves shut flush and rattle
             /// shut for 0.3 s before they swing, and a walk begun with the door was through a closed
-            /// leaf before it moved - the reference's leaves stand ajar with a slot down the middle, so
-            /// its walker could go at once. Held here, the walk starts a third of the way into the
-            /// swing, and the leaves are three quarters open by the time anybody reaches them.
+            /// leaf before it moved. Clearance is measured for the whole route and body against both
+            /// leaves, including their handles: navigation can move a long way on a slow frame, so
+            /// the walk cannot rely on the leaves opening further before the actor reaches them.
             /// </summary>
             public bool ThroughDoor(string id)
             {
                 if (!Placed || ended) return false;
-                if (set != null && set.Openness < DoorClearOpenness) { throughWhenClear = id; return true; }
+                // A sampled door mark fitting during Survey does not guarantee that this body's
+                // actual arrival fits. Refuse an impossible route instead of queuing forever.
+                if (!DoorClears(id, fullyOpen: true)) { throughWhenClear = null; return false; }
+                if (!DoorClears(id)) { throughWhenClear = id; return true; }
                 throughWhenClear = null;
                 return Send(id, mark);
+            }
+
+            private bool DoorClears(string id, bool fullyOpen = false)
+            {
+                if (set == null) return true;
+                var visual = Visual(id);
+                // Use the actor's current start, including the approach's arrival tolerance.
+                if (visual == null) return false;
+                float bodyRadius = radius;
+                var capsule = visual.GetComponent<CapsuleCollider>();
+                if (capsule != null) bodyRadius = Mathf.Max(bodyRadius,
+                    capsule.radius * Mathf.Max(Mathf.Abs(capsule.transform.lossyScale.x), Mathf.Abs(capsule.transform.lossyScale.z)));
+                var agent = visual.GetComponent<NavMeshAgent>();
+                if (agent != null) bodyRadius = Mathf.Max(bodyRadius, agent.radius);
+                return DoorRouteClears(visual.transform.position, bodyRadius, fullyOpen);
+            }
+
+            private bool DoorRouteClears(Vector3 from, float bodyRadius, bool fullyOpen)
+            {
+                var path = new NavMeshPath();
+                if (!NavMesh.CalculatePath(from, mark, filter, path) || path.status != NavMeshPathStatus.PathComplete) return false;
+                // A navmesh may bend the path even though this yard normally gives a straight one.
+                // Check every segment, including the actual start's step onto the sampled path.
+                var corners = path.corners;
+                if (corners.Length == 0) return false;
+                // Survey projects a fully open set. A live walk uses the instance, whose rattle
+                // guard also covers the leaves' transient pose rather than their cached openness.
+                bool ClearSegment(Vector3 a, Vector3 b) => fullyOpen
+                    ? OpeningDoorSet.CanWalkThrough(DoorLayout.Yard, 1f, a, b, bodyRadius)
+                    : set != null && set.CanWalkThrough(a, b, bodyRadius);
+                var previous = from;
+                foreach (var corner in corners)
+                {
+                    if (!ClearSegment(previous, corner)) return false;
+                    previous = corner;
+                }
+                return ClearSegment(previous, mark);
             }
             public bool OnMark(string id) => Arrived(id, mark);
 
@@ -376,6 +422,14 @@ namespace Gamesim.Episode
             /// <summary>Off to the left, out of shot, and on to a place behind the camera where the house gathers.</summary>
             public void SendOff(string id)
             {
+                // The reveal's wait can expire with this person still behind the leaves. Only a
+                // completed walk to the mark may continue past them; fallback cleanup must not
+                // create a fresh route through the door whose clearance that walk was waiting on.
+                if (!OnMark(id))
+                {
+                    if (throughWhenClear == id) throughWhenClear = null;
+                    return;
+                }
                 var visual = Visual(id);
                 if (visual != null) visual.SetFacing(float.NaN);
                 StopDancing(visual);
@@ -449,7 +503,7 @@ namespace Gamesim.Episode
             {
                 if (!Active) return;
                 if (begun && director.npcMeetings != null) director.npcMeetings.ResumeOpeningActors();
-                if (throughWhenClear != null && (set == null || set.Openness >= DoorClearOpenness))
+                if (throughWhenClear != null && DoorClears(throughWhenClear))
                 {
                     var id = throughWhenClear;
                     throughWhenClear = null;

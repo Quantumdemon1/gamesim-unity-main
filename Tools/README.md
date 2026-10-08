@@ -9,7 +9,7 @@ Unity (it sits outside `Assets/`). Machine-specific paths are derived or overrid
 | --- | --- | --- |
 | `offline-compile.ps1` | Smoke-compiles all eight owned assemblies from current source lists using cached editor references. Missing assemblies/configuration mismatches fail; outputs and dependencies are unique to this invocation. `-WithoutUma` requires matching UMA-free cached responses. | seconds |
 | `player-compile.ps1` | Same for all three player assemblies (two with `-WithoutUma`); validates player/UMA defines and refuses stale dependency outputs. Cached compiler checks do not replace Unity tests/builds. | seconds |
-| `verify-review-candidate.ps1 -Name <fresh-name>` | Runs every owned suite, retains before/after complete input manifests, exact `.meta` archives, XML/log hashes and individual test names. Unexpected product-input drift fails. `-WithoutUma` requires the existing separate UMA-free copy. | depends on suites and input hashing |
+| `verify-review-candidate.ps1 -Name <fresh-name>` | Runs every owned suite, enforces each assembly's minimum in `baseline.txt`, and retains before/after complete input manifests, exact `.meta` archives, XML/log hashes and individual test names. Missing/malformed floors, short suites and unexpected product-input drift fail. `-WithoutUma` requires the existing separate UMA-free copy. | depends on suites and input hashing |
 | `build-review-candidate.ps1 -TestName <passing-name>` | Requires a passing complete same-configuration test summary. Checks live and synced inputs, builds Review13, checks final inputs, retains a timestamped report and hashes the entire build tree. Supports `-WithoutUma`. | depends on changed assets |
 | `test-review-evidence.ps1` | Exercises evidence comparisons against temporary synthetic fixtures. No Unity, mirroring or acceptance-copy access. | seconds |
 | `test-acceptance-mirror.ps1` | Exercises the real mirror runner against temporary fixture projects, including retained subtrees, folder GUIDs, ordinary deletion and manifest prediction. No Unity or real acceptance-copy writes. | seconds |
@@ -42,6 +42,10 @@ symbol that the installed inference package removes on batch startup. The live e
 preference is untouched. `-WithoutUma` also removes the exact Standalone `GAMESIM_UMA` token.
 The source preview applies those same declared copy settings. Explicitly retained `Assets/Resources`
 and `Assets/UMAProjectData` directories retain their `.meta` companions as well as their contents.
+The source-owned `Assets/UMAProjectData/Resources/AssetIndexerProject.asset` is the narrow exception:
+UMA copies receive that file, its `.meta`, and the two parent-folder `.meta` files from source.
+Other local UMA data remains retained. NoUMA skips the override. An incomplete four-file override
+fails before any mirror starts, and manifest prediction uses the same allowlist as the real copy.
 Dynamic font assets start with cleared generated caches, matching TextMesh Pro's documented-in-source
 editor-exit behavior; font files are still fully hashed and any further byte changes fail the audit.
 
@@ -69,6 +73,15 @@ to both commands. This configuration never removes a locally installed UMA packa
 exercise the editor configuration; run the reported player explicitly for shipping-render visual and
 performance checks, always providing a fresh isolated `--gamesim-save-root`. Neither a successful build
 nor passing automated tests establishes visual quality or a frame-time improvement.
+
+The UMA-free mirror also omits `Assets/Gamesim/Uma/Content` and `Assets/Gamesim/Uma/Resources`,
+including their folder `.meta` files. These native recipes, slots, overlays and catalog assets require
+the absent optional provider/vendor types; loading them can rewrite binary assets as missing-type YAML.
+After the existing idle/package guards, the mirror preflights all four exact destination paths and their
+ancestors/children for reparse points, then removes stale copies before mirroring. Provider code/asmdefs
+and the retained top-level `Assets/Resources` / `Assets/UMAProjectData` policy remain unchanged. Preview
+input accounting applies the same omission; NoUMA configuration checks reject any remaining optional
+content. UMA mirrors continue to copy it normally. No asset conversion or drift approval is involved.
 
 ## The acceptance copy
 

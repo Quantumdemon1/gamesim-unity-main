@@ -1,5 +1,33 @@
 # Web parity fixtures
 
+## Retained fixed25 contract witnesses (not web parity)
+
+`FrozenV25/` contains the byte-exact actual managed public-command test capture02:
+304 payloads,469 command packets, the original manifest/binding and a pinned
+relative index. The loader never follows absolute provenance paths. These are
+managed TEST witnesses, not old shipping/user saves or Unity runtime evidence.
+Archive-only is explicitly a detached lawful after-pruning projection.
+
+`FrozenEpisodeV25CorpusTests` replays retained JSON using only the fixed25 contract;
+the original166 current-engine tests remain separate. Thirty-four new cases passed
+under managed Mono after a retained incomplete timeout and reviewed exact-byte
+assertion optimization. Full native/build/visual/performance/human gates remain.
+See root `WAVE_D_FROZEN25_PORTABLE_IMPLEMENTATION.md` for exact pins and limitations.
+The nested `.gitattributes` prevents historical JSON byte normalization.
+
+## Schema 23 migration input (not a web-parity fixture)
+
+`V22MonoOpeningSave.json` is an unchanged 52,534-byte copy of the retained
+`C:/Users/kelli/Documents/Codex/2026-09-20/re/outputs/frozen-profile-input/episode.json`.
+Its adjacent external `manifest.json` records source pins `67a4c387` and `5a188ab8`, a
+12-person Social/week1/revision0 state, and real `EpisodeSaveStore.Save/TryLoad` under
+Unity's Mono **without launching the Editor or a player**. It is historical managed persistence
+evidence, not a standalone capture. The SHA256 is pinned by `PersistenceV23MigrationTests`;
+`.gitattributes` prevents checkout normalization. No checksum resealing was performed.
+The test copies the envelope into an isolated temporary slot, checks migration without a disk
+write, and checks the exact historical backup after an explicit save. Native execution of that
+new regression is still pending. The older V21 standalone fixture below remains untouched.
+
 `WebParityFixtures.json` contains expected results captured by executing the preserved Gamesim TypeScript source, bundled in memory with esbuild. Its expected values are not recomputed by C# tests. `WebSourceManifest.json` identifies the original source hashes and the full reference fixture hash.
 
 The generator and complete reference capture live in the development task at `work/unity-port-reference/generate-fixtures.mjs`, `collect-fixtures.ts`, `golden-fixtures.json`, and `source-manifest.json`. Running the generator twice produced byte-identical JSON. The bundle uses default balance settings because the Node process has no browser localStorage overrides; development-only logging is disabled.
@@ -45,3 +73,13 @@ The native adapter supplies the actual stored cast, stats/wins/traits, directed 
 `WebNpcActivityFixtures.json`: 1,091 rows plus the complete61-point/12-phase/8-chain/2-carry metadata catalogs, executing guarded original TypeScript AST bodies from motives, activityChains, interactionPhases, interactionPoints, roomMapping and useNPCAutonomy. Fixture SHA-256 `3e1997f03f97b69ef0a3b6a55c55d6f4219d804566e07173f3f28c17b6558cab`,932,036 bytes. Generator/handoff: task `work/unity-port-next/motives/activity`. Furniture-score and actual seek-block inputs retain ordered context/draw counts but omit source coordinates from native data. All-list stable in-place sorting and original-reference selection are intentional. Source chain precedence and the excluded-player seek route are retained. Furniture score alone allows2e-13 accumulated transcendental error; choices/order/draw counts are exact. Duplicate/null IDs reject rather than double-count source Map entries. Detached catalogs and finite/shape guards do not claim arbitrary malformed-JavaScript parity.
 
 Both new generators repeat byte-identically without modifying original source. Separate real React18 production/development-StrictMode caller evidence lives under task `work/unity-port-next/motives/caller`: it demonstrates stale needs publication and mode-dependent updater draw/timer/event replay. These controlled jsdom/fake-clock observations are not a browser gameplay test or a universal scheduling guarantee. A later native furniture scheduler must explicitly define durable single-completion, world occupancy, clock/needs policy and RNG ownership; the pure leaves do not supply those systems.
+
+# Native save fixtures
+
+`V21StandaloneProfileSave.json` is an exact-byte copy of `D:/GamesimVerify/pr22e/episode.json`, written by the Unity 6000.6.0f1 Mono Windows player on 2026-10-03 at 05:20:43 UTC. It is 28,122 bytes, SHA-256 `ec715f20e9e8be1b62d4edfc32cd876b683f13867e47461935abf5a16596f78c`, with its original schema-21 envelope, checksum, and CRLF line endings. The adjacent `.gitattributes` exception prevents checkout normalization. No reserialization, checksum resealing, or source modification is used to prepare this fixture.
+
+Provenance is retained in `D:/GamesimVerify/pr22e/player.log` (SHA-256 `5e69f9bd99c96ce98d1383d2ddcd7558b9c1b877dedbeee94982e740831313ee`), which identifies the actual `D:/GamesimAcceptance/Builds/Port-Windows-Review13/Gamesim_Data` Mono player, and `D:/GamesimVerify/pr22e/season-verification.json` (SHA-256 `a2493cccea8bb69b294d83ee2dd51d89c5647c49f0fb8baa40461049cc37b253`), which names this profile slot and records its preservation during the subsequent functional season. The build is bound to tests and complete source hashes by `D:/GamesimAcceptance/Logs/review13-build-20261003T050418359Z-evidence.json`, its `-inputs-before.json` manifest and `-build-tree.json`. The manifest's `EpisodeState.cs`, `EpisodeSaveStore.cs`, and `EpisodeSaveMigrations.cs` hashes match the live `b25edcb45aa19a44ec46301dde990491892fc049` source lineage. This records source provenance, not a claim that every local build input was a clean Git tree.
+
+`UntouchedV21StandaloneSaveMigratesInUnityAndRetainsExactBytesUntilExplicitSave` runs only under `UNITY_EDITOR`, copies these bytes into a fresh isolated directory, and exercises the real save store's original-checksum verification, schema-21-to-22 in-memory migration, explicit save, exact old-byte backup, and equivalent reload. The existing fixture below instead verifies a .NET-generated historical payload. Passing the new regression establishes native Unity Editor/Mono persistence compatibility, not a separately built player, scene-install, visual, performance, or human acceptance result. The old `pr22e` functional report passed, but its inspected `house.png` capture is black; its `graphical: true` flag does not establish rendered-graphics acceptance.
+
+`V21CommitmentsSave.json` is a save written by the schema 21 build itself, not a schema 22 capture with the new fields taken off: the simulation and persistence sources of 7991687 (`git archive 7991687 Assets/Gamesim/Simulation Assets/Gamesim/Runtime/Persistence`, with a one-line `UnityEngine.Application` stand-in for the importer's convenience overload), driven by a scratch program and saved by that build's own `EpisodeSaveStore`. The season is an eight-house (`SeasonBuilder`, seed 29) whose first Head of Household holds a safety pact and a safety promise with the player and nominates them anyway; a voting bloc is struck between two voters at the campaign, and the week is played through its eviction with the plainest legal answers. So it holds deals and promises kept and broken before the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN R0, C0) recorded who broke them and when. `PersistenceV22MigrationTests` loads its state through the whole chain. Line endings are normalised to LF; the envelope's checksum is over the canonical state and does not see them. It does see a double's round-trip text, which is the runtime's: the checksum was made by .NET, which writes `4.625035332515836` where Unity's Mono can write a seventeenth digit, and in the editor the file as written reads as damaged. The test seals the state again for the runtime it runs in; not a value of it changes.

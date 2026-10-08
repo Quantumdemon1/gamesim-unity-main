@@ -58,7 +58,7 @@ namespace Gamesim.Tests.EditMode
             var old = V16();
             var current = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)current["schemaVersion"], Is.EqualTo(21));
+            Assert.That((int)current["schemaVersion"], Is.EqualTo(26));
             CheckShape(current);
             var state = current.ToObject<EpisodeState>(Serializer());
             Assert.That(EpisodeValidation.TryValidate(state, out var error), Is.True, error);
@@ -77,7 +77,7 @@ namespace Gamesim.Tests.EditMode
             old["schemaVersion"] = 15;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(21));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(26));
             Assert.That(migrated["story"], Is.Not.Null);
             Assert.That(migrated["ledger"], Is.Not.Null);
             CheckShape(migrated);

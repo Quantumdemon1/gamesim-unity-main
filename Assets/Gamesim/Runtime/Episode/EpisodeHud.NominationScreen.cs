@@ -27,6 +27,7 @@ namespace Gamesim.Episode
         public const string BackToNomineesCaption = "Back to your nominees";
         /// <summary>The picker's door to the backdoor view, which holds the "Aim this week at" rows.</summary>
         public const string PlanBackdoorCaption = "Plan a backdoor";
+        public const string HearHoHPitchesCaption = "Hear houseguest pitches", FeelOutPitchCaption = "Feel them out (free)";
         /// <summary>The nomination's parts, by the names a test finds them by.</summary>
         public const string NominationStatusRowName = "Status row", NominationTrackerRowName = "Tracker row";
         public const string StoryStepName = "Story step", StepTitleName = "Step title", SelectedNomineesName = "Selected nominees";
@@ -464,7 +465,7 @@ namespace Gamesim.Episode
         /// the footer's secondary slot, swapping the grid for the two records in place.
         /// </summary>
         public void NominationPicker(Option[] options, string firstPicked, string secondPicked, Action<string, string> picked,
-            Action<string, string> commit, string commitCaption, string aimLine, Action planBackdoor)
+            Action<string, string> commit, string commitCaption, string aimLine, Action planBackdoor, Action hearPitches = null)
         {
             if (content == null || options == null) return;
             var state = director != null ? director.Snapshot : null;
@@ -482,7 +483,7 @@ namespace Gamesim.Episode
 
             var columnLayout = content.GetComponent<VerticalLayoutGroup>();
             float planHeight = 44f * s, spacing = columnLayout != null ? columnLayout.spacing : 12f;
-            float fit = Mathf.Max(0f, NominationRoomLeft() - (planBackdoor != null ? planHeight + spacing : 0f));
+            float fit = Mathf.Max(0f, NominationRoomLeft() - (planBackdoor != null || hearPitches != null ? planHeight + spacing : 0f));
             float width = ContentWidth(), gap = 10f * s;
             int count = Mathf.Max(1, options.Length);
             // As cards while one reads at nine tenths of the text size: the largest the column and the
@@ -565,13 +566,16 @@ namespace Gamesim.Episode
             foreach (var pair in built) if (pair.Key == first || pair.Key == second) MarkNominee(pair.Value, true);
 
             RectTransform planRow = null;
-            if (planBackdoor != null)
+            if (planBackdoor != null || hearPitches != null)
             {
                 planRow = new GameObject(PlanBackdoorRowName, typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
                 planRow.SetParent(content, false);
                 var element = planRow.GetComponent<LayoutElement>();
                 element.minHeight = element.preferredHeight = planHeight;
-                FixedButton(planRow, PlanBackdoorCaption, Vector2.zero, new Vector2(Mathf.Min(width, 300f * s), planHeight), planBackdoor);
+                float buttonWidth = Mathf.Min(planBackdoor != null && hearPitches != null ? (width - gap) / 2f : width, 300f * s);
+                if (planBackdoor != null) FixedButton(planRow, PlanBackdoorCaption, Vector2.zero, new Vector2(buttonWidth, planHeight), planBackdoor);
+                if (hearPitches != null) FixedButton(planRow, HearHoHPitchesCaption,
+                    new Vector2(planBackdoor != null ? buttonWidth + gap : 0f, 0f), new Vector2(buttonWidth, planHeight), hearPitches);
             }
 
             WearNominationPrimary(PinnedAction(commitCaption, () => commit(first, second)));

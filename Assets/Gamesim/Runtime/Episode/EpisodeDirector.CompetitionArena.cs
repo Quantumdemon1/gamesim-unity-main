@@ -12,13 +12,28 @@ namespace Gamesim.Episode
     public sealed partial class EpisodeDirector
     {
         private GameObject competitionArenaRoot;
-        private Material competitionArenaMaterial;
-        private Mesh competitionStationMesh;
-        /// <summary>The arena's own overlays - the sign's words and the station discs - drawn only while nothing stands over the house.</summary>
+        /// <summary>The arena's words are hidden under the board; physical instruments remain on the stage.</summary>
         private TextMeshPro competitionSign;
         private readonly List<Renderer> competitionArenaMarks=new List<Renderer>();
         private bool competitionOverlaysShown=true;
         private readonly Dictionary<string,HouseInteractionAnchor> competitionArenaActors=new Dictionary<string,HouseInteractionAnchor>();
+        private readonly Dictionary<string,CompetitionApparatus> competitionInstruments=new Dictionary<string,CompetitionApparatus>();
+        private sealed class CompetitionBody
+        {
+            public GameObject root; public CapsuleCollider capsule; public CharacterPresentation visual;
+            public CompetitionInstrumentPose contact;
+            public bool arrived; public Vector3 arrivedPosition;
+        }
+        private readonly Dictionary<string,CompetitionBody> competitionBodies=new Dictionary<string,CompetitionBody>();
+        private readonly Dictionary<string,CompetitionStageFootprint> competitionFootprints=new Dictionary<string,CompetitionStageFootprint>();
+        private readonly Collider[] competitionPlacementHits=new Collider[256];
+        private readonly HashSet<Transform> competitionRouteOwners=new HashSet<Transform>();
+        private Collider competitionStageFloor;
+        private System.Func<CompetitionApparatus,bool> competitionFitGate;
+        /// <summary>The complete reserved station envelopes, for world-fit diagnostics.</summary>
+        public IReadOnlyDictionary<string,CompetitionStageFootprint> CompetitionFootprints=>competitionFootprints;
+        private sealed class CompetitionPose { public CharacterPresentation.Pose previous, written; public CompetitionInstrumentPose contact; }
+        private readonly Dictionary<CharacterPresentation,CompetitionPose> competitionPoses=new Dictionary<CharacterPresentation,CompetitionPose>();
         private readonly List<HouseSeatPresentation> competitionAudienceSeats=new List<HouseSeatPresentation>();
         private readonly object competitionPlayerOwner=new object();
         private HouseInteractionAnchor competitionPlayerStation;
@@ -27,6 +42,13 @@ namespace Gamesim.Episode
         private float competitionAssemblyDeadline;
         private string competitionArenaStatus, competitionAudienceStatus;
         private bool competitionArenaStaging;
+        private bool competitionEffortFramed;
+        private bool competitionArenaWasReady;
+        // The house approaches the deck from -Z. Matching rows face +Z, with the
+        // instrument ahead and the native approach behind its actor. Path corner
+        // directions remain the agent's concern, rather than rotating each whole
+        // reservation into an irregular packing problem.
+        private const float CompetitionContestantFacing=0f;
 
         private bool BeginCompetitionArena(EpisodeState state)
         {
@@ -39,30 +61,71 @@ namespace Gamesim.Episode
             if(floor==null || player==null || player.Agent==null || !HouseRoomQuery.TryCreate(gameObject.scene,out var rooms,out _))
             { competitionArenaStatus="The competition floor is unavailable. Return when its route is ready."; return false; }
             var bounds=floor.bounds;
+            var definition=CompetitionDefinitions.For(state);
+            var instrumentFamily=CompetitionApparatus.For(definition,EpisodeEngine.CompetitionCategory(state));
+            competitionStageFloor=floor;
+            competitionFitGate=ValidateCompetitionInstrumentFit;
+            Physics.SyncTransforms();
             competitionArenaRoot=new GameObject("Competition stage runtime");
             competitionArenaRoot.transform.SetParent(floor.transform,false);
             var scale=floor.transform.lossyScale;
             competitionArenaRoot.transform.localScale=new Vector3(1/scale.x,1/scale.y,1/scale.z);
             var filter=new NavMeshQueryFilter{agentTypeID=player.Agent.agentTypeID,areaMask=player.Agent.areaMask};
+            var playerCapsule=player.GetComponent<CapsuleCollider>();
+            float layoutRadius=Mathf.Max(player.Agent.radius,playerCapsule!=null?playerCapsule.radius:0);
+            foreach(var npc in housemates)
+                if(npc!=null && state.Active.Any(actor=>actor.id==npc.Id))
+                {
+                    var npcCapsule=npc.GetComponent<CapsuleCollider>();
+                    if(npcCapsule!=null)layoutRadius=Mathf.Max(layoutRadius,npcCapsule.radius);
+                }
+            float layoutArrival=Mathf.Max(.25f,player.Agent.stoppingDistance+.1f);
+            // Use the deepest family for every game so a later instrument can reuse
+            // the same aligned rows. The old 1.6 m stride was shorter than both a
+            // console's 1.95 m and a grip's 2.15 m reservation; neighbouring rows
+            // excluded each other and left unusable strips between the set pieces.
+            var deepest=CompetitionStageFootprint.Station(CompetitionApparatus.Family.GripRig,
+                Vector3.zero,CompetitionContestantFacing,layoutRadius,player.Agent.height,layoutArrival);
+            float rowStride=deepest.HalfSize.z*2f+.06f;
+            // Reserve the actual forward reach, then .15 m for the back wall and
+            // separation. The wall extends .09 m into this deck. All real solids
+            // still pass the complete-envelope query; this is only a grid boundary.
+            float backRow=bounds.max.z-(deepest.Center.z+deepest.HalfSize.z)-.15f;
+            // A row at10.91 m filled the doorway's exit: stopped Quinn/Riley held
+            // Sam/Taylor against their native routes. Leave the entrance band open.
+            // At default dimensions these complete, separated rows end at11.59 m,
+            // while retaining capacity for the validated16-person stored field.
+            float frontLimit=Mathf.Max(bounds.min.z+1.5f,bounds.min.z+layoutRadius+layoutArrival+.14f);
             var candidates=new List<Vector3>();
-            for(float z=bounds.min.z+1.5f;z<bounds.max.z-1.5f;z+=1.6f)
+            for(float z=backRow;z>frontLimit;z-=rowStride)
                 for(float x=bounds.min.x+2f;x<bounds.max.x-2f;x+=1.8f)
                     candidates.Add(new Vector3(x,bounds.max.y,z));
-            var preferred=new Vector3(bounds.center.x,bounds.max.y,bounds.min.z+2f);
+            // Fill the far rows first so stopped arrivals do not occupy the entrance
+            // while the rest of the field is still walking through it. Every candidate
+            // retains its real floor/path and complete apparatus-clearance checks.
+            var contestantCandidates=candidates.OrderByDescending(p=>p.z)
+                .ThenBy(p=>Mathf.Abs(p.x-bounds.center.x)).ThenBy(p=>p.x).ToArray();
             // The player uses a real complete path under an owner token. Ordinary input remains
             // locked; neither the navigation root nor its collider is teleported or reconfigured.
-            foreach(var wanted in candidates.OrderBy(p=>(p-preferred).sqrMagnitude))
+            foreach(var wanted in contestantCandidates)
             {
                 if(!rooms.TrySampleFloor(wanted,player.Agent.radius,filter,.25f,out var position,out var room)
-                    || room!="Yard" || !rooms.HasCapsuleClearance(position,player.Agent.radius,player.Agent.height,player.transform)
-                    || !player.TryBeginActivityMove(competitionPlayerOwner,position,out _))continue;
-                competitionPlayerStation=HouseInteractionAnchor.Create(competitionArenaRoot.transform,"competition-player","Yard",0,position,180,false);
+                    || room!="Yard" || !rooms.HasCapsuleClearance(position,player.Agent.radius,player.Agent.height,player.transform))continue;
+                float facing=CompetitionContestantFacing;
+                float radius=Mathf.Max(player.Agent.radius,playerCapsule!=null?playerCapsule.radius:0);
+                var footprint=CompetitionStageFootprint.Station(instrumentFamily,position,facing,radius,player.Agent.height,
+                    Mathf.Max(.25f,player.Agent.stoppingDistance+.1f));
+                if(!FitsCompetitionFootprint(footprint,floor,player.transform) || !player.TryBeginActivityMove(competitionPlayerOwner,position,out _))continue;
+                competitionRouteOwners.Add(player.transform);
+                competitionFootprints[state.playerId]=footprint;
+                competitionPlayerStation=HouseInteractionAnchor.Create(competitionArenaRoot.transform,"competition-player","Yard",0,position,facing,false);
                 competitionPlayerStationPosition=position; competitionPlayerStationFacing=competitionPlayerStation.Facing;
                 break;
             }
             if(competitionPlayerStation==null)
             { EndCompetitionArena(); competitionArenaStatus="Your competition station has no clear route. Try again after the path is clear."; return false; }
             competitionArenaStaging=true; competitionAssemblyDeadline=Time.unscaledTime+30;
+            CacheCompetitionBody(state.playerId,player.gameObject);
             var contestants=new HashSet<string>(EpisodeEngine.CompetitionPlayers(state).Select(c=>c.id));
             var ids=new List<string>(); var anchors=new List<HouseInteractionAnchor>();
             var used=new List<Vector3>{competitionPlayerStationPosition};
@@ -82,8 +145,17 @@ namespace Gamesim.Episode
                 {
                     var npc=housemates.FirstOrDefault(n=>n!=null && n.Id==actor.id);
                     var capsule=npc!=null ? npc.GetComponent<CapsuleCollider>() : null;
-                    if(capsule==null || (npc.GetComponent<HouseSeatPresentation>()?.Active ?? false))continue;
+                    if(capsule==null || (npc.GetComponent<HouseSeatPresentation>()?.Active ?? false))
+                    {
+                        Debug.Log("[Gamesim competition stage] unavailable "+actor.id+": capsule="+(capsule!=null)
+                            +", seated="+(npc!=null && (npc.GetComponent<HouseSeatPresentation>()?.Active ?? false)),this);
+                        continue;
+                    }
+                    CacheCompetitionBody(actor.id,npc.gameObject);
                     HouseInteractionAnchor anchor=null;
+                    CompetitionStageFootprint footprint=default;
+                    int floorMisses=0,occupiedMisses=0,envelopeMisses=0;
+                    Vector3 lastCandidate=default;CompetitionStageFootprint lastEnvelope=default;
                     var existingSeat=npc.GetComponent<HouseSeatPresentation>();
                     if(!contestants.Contains(actor.id) && (existingSeat==null || existingSeat.isActiveAndEnabled))
                         foreach(var seat in seats.Where(a=>!usedSeats.Contains(a)))
@@ -91,37 +163,70 @@ namespace Gamesim.Episode
                                 && room=="Yard" && (approach-seat.Approach).sqrMagnitude<.09f
                                 && used.All(p=>(p-approach).sqrMagnitude>=1.6f)
                                 && rooms.HasCapsuleClearance(approach,capsule.radius,capsule.height,npc.transform))
-                            {anchor=seat;usedSeats.Add(seat);break;}
-                    var actorPreferred=contestants.Contains(actor.id) ? preferred : new Vector3(bounds.min.x+2f,bounds.max.y,bounds.center.z);
+                            {
+                                // The authored seat owns its furniture contact. Reserve both its
+                                // approach and seated body against the other stage participants.
+                                var approachFootprint=CompetitionStageFootprint.Actor(approach,capsule.radius,capsule.height);
+                                var seatedFootprint=CompetitionStageFootprint.Actor(seat.Position,capsule.radius,capsule.height);
+                                if(!ClearsCompetitionNeighbours(approachFootprint) || !ClearsCompetitionNeighbours(seatedFootprint))continue;
+                                anchor=seat;footprint=seatedFootprint;usedSeats.Add(seat);break;
+                            }
+                    var audiencePreferred=new Vector3(bounds.min.x+2f,bounds.max.y,bounds.center.z);
+                    IEnumerable<Vector3> actorCandidates=contestants.Contains(actor.id) ? contestantCandidates
+                        :candidates.OrderBy(p=>(p-audiencePreferred).sqrMagnitude);
                     if(anchor==null)
-                        foreach(var wanted in candidates.OrderBy(p=>(p-actorPreferred).sqrMagnitude))
+                        foreach(var wanted in actorCandidates)
                         {
-                            if(!rooms.TrySampleFloor(wanted,capsule.radius,filter,.25f,out var position,out var room)
-                                || room!="Yard" || used.Any(p=>(p-position).sqrMagnitude<1.6f)
-                                || !rooms.HasCapsuleClearance(position,capsule.radius,capsule.height,npc.transform))continue;
+                            if(!rooms.TrySampleFloor(wanted,capsule.radius,filter,.25f,out var position,out var room) || room!="Yard")
+                            {floorMisses++;continue;}
+                            if(used.Any(p=>(p-position).sqrMagnitude<1.6f)
+                                || !rooms.HasCapsuleClearance(position,capsule.radius,capsule.height,npc.transform))
+                            {occupiedMisses++;continue;}
+                            float facing=contestants.Contains(actor.id)?CompetitionContestantFacing
+                                :Mathf.Atan2(bounds.center.x-position.x,bounds.center.z-position.z)*Mathf.Rad2Deg;
+                            footprint=contestants.Contains(actor.id)
+                                ?CompetitionStageFootprint.Station(instrumentFamily,position,facing,capsule.radius,capsule.height)
+                                :CompetitionStageFootprint.Actor(position,capsule.radius,capsule.height);
+                            if(!FitsCompetitionFootprint(footprint,floor,npc.transform))
+                            {envelopeMisses++;lastCandidate=position;lastEnvelope=footprint;continue;}
                             anchor=HouseInteractionAnchor.Create(competitionArenaRoot.transform,
                                 contestants.Contains(actor.id)?"competition-contestant":"competition-audience","Yard",ids.Count,
-                                position,contestants.Contains(actor.id)?180:Mathf.Atan2(bounds.center.x-position.x,bounds.center.z-position.z)*Mathf.Rad2Deg,false);
+                                position,facing,false);
                             break;
                         }
-                    if(anchor==null)continue;
+                    if(anchor==null)
+                    {
+                        Debug.Log("[Gamesim competition stage] no station for "+actor.id+" family="+instrumentFamily
+                            +" from="+npc.transform.position.ToString("F3")+" candidates="+candidates.Count
+                            +" rowStride="+rowStride.ToString("F3")+" layoutRadius="+layoutRadius.ToString("F3")
+                            +" floor="+floorMisses+" occupied="+occupiedMisses+" envelope="+envelopeMisses
+                            +" last="+lastCandidate.ToString("F3")+" deck="+lastEnvelope.FitsOn(floor.bounds)
+                            +" neighbour="+ClearsCompetitionNeighbours(lastEnvelope)
+                            +" blockers="+CompetitionStaticBlockers(lastEnvelope,npc.transform)
+                            +" rejected="+CompetitionRejectedCandidates(candidates,used,npc,capsule,floor,rooms,filter,instrumentFamily,contestants.Contains(actor.id)),this);
+                        continue;
+                    }
                     ids.Add(actor.id); anchors.Add(anchor); used.Add(anchor.Approach); competitionArenaActors[actor.id]=anchor;
+                    competitionFootprints[actor.id]=footprint;
+                    if(anchor.Seated)competitionFootprints[actor.id+":approach"]=CompetitionStageFootprint.Actor(anchor.Approach,capsule.radius,capsule.height);
                 }
-                if(ids.Count>0 && npcMeetings.BeginCompetitionStage(ids,anchors,out var reason))
+                string stageReason=null;
+                if(ids.Count>0 && npcMeetings.BeginCompetitionStage(ids,anchors,out stageReason))
+                {
+                    foreach(var id in ids)if(competitionBodies.TryGetValue(id,out var body) && body.root!=null)
+                        competitionRouteOwners.Add(body.root.transform);
                     competitionAudienceStatus=ids.Count<state.Active.Count(c=>!c.isPlayer) ? "Some houseguests are unavailable; the eligible field remains listed." : "";
-                else { EndCompetitionCast(); competitionAudienceStatus="Other houseguests could not reach their stage places; the eligible field is listed."; }
+                }
+                else
+                {
+                    Debug.Log("[Gamesim competition stage] native lease request failed: "+stageReason+". "+CompetitionStageDiagnostic(),this);
+                    EndCompetitionCast(); competitionAudienceStatus="Other houseguests could not reach their stage places; the eligible field is listed.";
+                }
             }
-            var shader=Shader.Find("Universal Render Pipeline/Unlit")??Shader.Find("Unlit/Color");
-            if(shader!=null)
-            {
-                competitionArenaMaterial=new Material(shader){name="Competition award accent"};
-                competitionArenaMaterial.color=state.phase==EpisodePhase.Veto?UiTheme.Award:UiTheme.Gold;
-                competitionOverlaysShown=true;
-                CreateCompetitionStationMesh();
-                AddCompetitionStationMarker(competitionPlayerStation,"Your competition station");
-                foreach(var pair in competitionArenaActors.Where(pair=>contestants.Contains(pair.Key)))
-                    AddCompetitionStationMarker(pair.Value,state.phase==EpisodePhase.Veto?"Veto station":IsFinalHoHPart(state.phase)?"Final HoH station":"HoH station");
-            }
+            Color accent=state.phase==EpisodePhase.Veto?UiTheme.Award:UiTheme.Gold;
+            AddCompetitionInstrument(state.playerId,competitionPlayerStation,definition,EpisodeEngine.CompetitionCategory(state),accent);
+            foreach(var pair in competitionArenaActors.Where(pair=>contestants.Contains(pair.Key)))
+                AddCompetitionInstrument(pair.Key,pair.Value,definition,EpisodeEngine.CompetitionCategory(state),accent);
             var sign=new GameObject(CompetitionSignName,typeof(TextMeshPro));
             sign.transform.SetParent(competitionArenaRoot.transform,false);
             // Facing the deck, where the house and the competition camera look from - the backdrop's
@@ -133,7 +238,7 @@ namespace Gamesim.Episode
                 :IsFinalHoHPart(state.phase)?"FINAL HOH \u00b7 PART "+(state.phase==EpisodePhase.FinalHoHPart1?1:state.phase==EpisodePhase.FinalHoHPart2?2:3)
                 :"HEAD OF HOUSEHOLD";
             label.text=award+"\n"+EpisodeEngine.CompetitionCategory(state).ToUpperInvariant();
-            var definition=CompetitionDefinitions.For(state);if(definition!=null)label.text+="\n"+definition.Title;
+            if(definition!=null)label.text+="\n"+definition.Title;
             label.color=state.phase==EpisodePhase.Veto?UiTheme.Award:UiTheme.Gold;
             // Lifted clear of whatever stands between the deck and the words: at 2.7 m the centre
             // gate's neon ran through them, and lifted over the gate alone they ran through the
@@ -208,10 +313,11 @@ namespace Gamesim.Episode
         public const float CompetitionSignLineCeiling=6f;
 
         /// <summary>
-        /// The arena's own overlays - the award sign's words and the station discs - drawn only
+        /// The arena's own overlays - the award sign and instrument readouts - drawn only
         /// while nothing stands over the house (UI-UX-PASS-PLAN G0): the sign read through the
         /// competition board's glass on every game, straddling the seam between the briefing card
-        /// and the play area, and a disc's edge peeked from under the field card. The renderers
+        /// and the play area. Physical apparatus stays on the stage while its words are gated.
+        /// The word renderers
         /// go, not the objects: the sign keeps its place and its words for the tests that read them,
         /// and a board switched off for a frame - a capture of the yard - gets the yard back.
         /// </summary>
@@ -227,30 +333,263 @@ namespace Gamesim.Episode
             foreach(var mark in competitionArenaMarks)if(mark!=null)mark.enabled=visible;
         }
 
-        /// <summary>Whether the arena's sign and discs are drawn this frame. A read, for tests.</summary>
+        /// <summary>Whether the arena's sign and instrument readouts are drawn this frame. A read, for tests.</summary>
         public bool CompetitionOverlaysShown=>competitionArenaRoot!=null && competitionOverlaysShown;
 
-        private void CreateCompetitionStationMesh()
+        private void AddCompetitionInstrument(string id,HouseInteractionAnchor anchor,CompetitionDefinition definition,string category,Color accent)
         {
-            const int edges=32; var vertices=new Vector3[edges+1]; var triangles=new int[edges*3];
-            for(int i=0;i<edges;i++)
+            var instrument=CompetitionApparatus.Create(anchor.transform,definition,category,id,accent);
+            competitionInstruments[id]=instrument;
+            // Owning/fitting scenery does not require humanoid action capability. Primitive
+            // bodies also need a late clearance gate; stance and hand borrowing remain separate.
+            if(competitionBodies.TryGetValue(id,out var body) && body.root!=null)
             {
-                float angle=i*Mathf.PI*2/edges;vertices[i+1]=new Vector3(Mathf.Cos(angle)*.425f,0,Mathf.Sin(angle)*.425f);
-                triangles[i*3]=0;triangles[i*3+1]=(i+1)%edges+1;triangles[i*3+2]=i+1;
+                if(body.contact==null)body.contact=body.root.AddComponent<CompetitionInstrumentPose>();
+                body.contact.SetFitGate(competitionFitGate);
             }
-            competitionStationMesh=new Mesh{name="Competition station disc"};competitionStationMesh.vertices=vertices;
-            competitionStationMesh.triangles=triangles;competitionStationMesh.RecalculateNormals();competitionStationMesh.RecalculateBounds();
+            competitionArenaMarks.AddRange(instrument.OverlayRenderers);
+            instrument.gameObject.SetActive(false); // Dress an occupied station, never a route somebody is still crossing.
         }
 
-        private void AddCompetitionStationMarker(HouseInteractionAnchor anchor,string name)
+        private bool ClearsCompetitionNeighbours(CompetitionStageFootprint footprint)
         {
-            var disc=new GameObject(name,typeof(MeshFilter),typeof(MeshRenderer));
-            disc.transform.SetParent(anchor.transform,false);disc.transform.localPosition=Vector3.up*.018f;
-            disc.GetComponent<MeshFilter>().sharedMesh=competitionStationMesh;
-            var renderer=disc.GetComponent<MeshRenderer>();renderer.sharedMaterial=competitionArenaMaterial;
-            renderer.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;renderer.receiveShadows=false;
-            renderer.enabled=competitionOverlaysShown;
-            competitionArenaMarks.Add(renderer);
+            foreach(var reserved in competitionFootprints.Values)if(footprint.Overlaps(reserved))return false;
+            return true;
+        }
+
+        private bool FitsCompetitionFootprint(CompetitionStageFootprint footprint,Collider floor,Transform prospectiveSelf=null)
+            =>footprint.FitsOn(floor.bounds) && ClearsCompetitionNeighbours(footprint)
+                && footprint.HasStaticClearance(gameObject.scene.GetPhysicsScene(),floor,competitionPlacementHits,competitionRouteOwners,prospectiveSelf);
+
+        private string CompetitionRejectedCandidates(IReadOnlyList<Vector3> candidates,IReadOnlyList<Vector3> used,HouseNpc npc,
+            CapsuleCollider capsule,Collider floor,HouseRoomQuery rooms,NavMeshQueryFilter filter,CompetitionApparatus.Family family,bool contestant)
+        {
+            var refused=new List<string>();
+            foreach(var wanted in candidates.Take(128))
+            {
+                if(!rooms.TrySampleFloor(wanted,capsule.radius,filter,.25f,out var position,out var room) || room!="Yard")
+                {refused.Add(wanted.ToString("F3")+":floor:"+rooms.LastFailure);continue;}
+                bool spacing=used.All(p=>(p-position).sqrMagnitude>=1.6f);
+                bool bodyClear=rooms.HasCapsuleClearance(position,capsule.radius,capsule.height,npc.transform);
+                string bodyReason=bodyClear?"clear":rooms.LastFailure;
+                var footprint=contestant?CompetitionStageFootprint.Station(family,position,CompetitionContestantFacing,capsule.radius,capsule.height)
+                    :CompetitionStageFootprint.Actor(position,capsule.radius,capsule.height);
+                bool staticClear=footprint.HasStaticClearance(gameObject.scene.GetPhysicsScene(),floor,competitionPlacementHits,competitionRouteOwners,npc.transform);
+                refused.Add(wanted.ToString("F3")+"->"+position.ToString("F3")+":spacing="+spacing+",body="+bodyReason
+                    +",deck="+footprint.FitsOn(floor.bounds)+",neighbours="+ClearsCompetitionNeighbours(footprint)
+                    +",static="+staticClear+",blockers="+(staticClear?"none":CompetitionStaticBlockers(footprint,npc.transform)));
+            }
+            return (candidates.Count>128?"first128 only; ":"")+string.Join("; ",refused);
+        }
+
+        private bool ValidateCompetitionInstrumentFit(CompetitionApparatus instrument)
+        {
+            if(instrument==null || !competitionArenaStaging || competitionStageFloor==null
+                || !competitionInstruments.TryGetValue(instrument.ActorId,out var owned) || owned!=instrument
+                || !competitionBodies.TryGetValue(instrument.ActorId,out var body) || body.root==null)return false;
+            // A completed ranked attempt owns its finish plate and imminent commit. Scenery
+            // can stand down while that plate holds, but clearance cannot discard the result.
+            if(challengeFinishHold>0f || !challengePractice && challengeRun!=null && challengeRun.Finished)
+            {instrument.gameObject.SetActive(false);return false;}
+            bool mine=challengeOrigin!=null && instrument.ActorId==challengeOrigin.playerId;
+            bool arrived=CompetitionBodyOccupiesStation(instrument.ActorId,body,mine);
+            if(!arrived || !CompetitionPresentationReady || body.visual!=null && (body.visual.IsBodyAssembling || body.visual.IsChangingOutfit))
+            {instrument.gameObject.SetActive(false);return false;}
+            Physics.SyncTransforms();
+            bool routeOwned=competitionRouteOwners.Contains(body.root.transform);
+            bool reserved=competitionFootprints.TryGetValue(instrument.ActorId,out var footprint);
+            bool fitted=reserved && instrument.Fits(footprint);
+            bool clear=reserved && footprint.HasStaticClearance(gameObject.scene.GetPhysicsScene(),competitionStageFloor,competitionPlacementHits,competitionRouteOwners);
+            if(!routeOwned || !reserved || !fitted || !clear)
+            {
+                var outside=reserved?instrument.GetComponentsInChildren<MeshFilter>(true).FirstOrDefault(mesh=>!footprint.Contains(mesh)):null;
+                Debug.Log("[Gamesim competition stage] fitted station refused actor="+instrument.ActorId+" family="+instrument.Instrument
+                    +" owned="+routeOwned+" reserved="+reserved+" fitted="+fitted+" clear="+clear
+                    +" mesh="+(outside!=null?outside.name:"none")+" actor="+body.root.transform.position.ToString("F3")
+                    +" instrumentOffset="+instrument.transform.localPosition.ToString("F3")
+                    +" corner="+(outside!=null?CompetitionOutsideCorner(footprint,outside):"none")
+                    +" blockers="+(reserved?CompetitionStaticBlockers(footprint):"no reservation")+". "+CompetitionStageDiagnostic(),this);
+                message="An instrument's reserved place is obstructed. Return to the briefing and try again.";
+                CancelChallenge();return false;
+            }
+            instrument.gameObject.SetActive(true);return true;
+        }
+
+        private bool CompetitionBodyOccupiesStation(string id,CompetitionBody body,bool mine)
+        {
+            if(mine)return player!=null && player.ActivityHasArrived(competitionPlayerOwner);
+            if(competitionScreen!=null && competitionScreen.Paused)return PausedCompetitionArrival(body);
+            body.arrived=npcMeetings!=null && npcMeetings.CompetitionActorArrived(id);
+            if(body.arrived && body.root!=null)body.arrivedPosition=body.root.transform.position;
+            return body.arrived;
+        }
+
+        // Failure-only native evidence is recorded before cancellation releases the routes.
+        // The public message remains short; these reads never change actor roots or season state.
+        private string CompetitionStageDiagnostic()
+        {
+            return "playerArrived="+(player!=null && player.ActivityHasArrived(competitionPlayerOwner))
+                +" native="+(npcMeetings!=null?npcMeetings.CompetitionArrivals+"/"+npcMeetings.CompetitionStageCount:"missing")
+                +" actors="+string.Join("; ",competitionArenaActors.Select(pair=>
+                {
+                    if(!competitionBodies.TryGetValue(pair.Key,out var body) || body.root==null)return pair.Key+":missing";
+                    var motion=body.root.GetComponent<HouseNpcMotion>();
+                    return pair.Key+" "+(motion!=null?motion.State.ToString():"no motion")+" at="+body.root.transform.position.ToString("F3")
+                        +" destination="+(motion!=null?motion.ReservedDestination.ToString("F3"):"none")
+                        +" arrival="+(motion!=null?motion.ArrivalFailure??"proved":"no motion")
+                        +(motion!=null && motion.State==HouseNpcMotionState.Walking?CompetitionWalkerDiagnostic(body.root):"");
+                }));
+        }
+
+        private static string CompetitionOutsideCorner(CompetitionStageFootprint footprint,MeshFilter mesh)
+        {
+            if(mesh.sharedMesh==null)return "no mesh";
+            if(footprint.TryOutsideCorner(mesh,out var world,out var local,out var excess))
+                return "world="+world.ToString("F9")+" local="+local.ToString("F9")+" limit="+footprint.ContainmentLimit.ToString("F9")
+                    +" excess="+excess.ToString("F9")+" reservedCenter="+footprint.Center.ToString("F9")
+                    +" meshScale="+mesh.transform.lossyScale.ToString("F9")
+                    +" anchorScale="+mesh.transform.parent.parent.lossyScale.ToString("F9");
+            return "all corners inside";
+        }
+
+        private string CompetitionWalkerDiagnostic(GameObject body)
+        {
+            var agent=body.GetComponent<NavMeshAgent>();
+            string route=" agent="+(agent!=null && agent.enabled && agent.isOnNavMesh);
+            if(agent!=null && agent.enabled && agent.isOnNavMesh)
+                route+=" stopped="+agent.isStopped+" speed="+agent.speed.ToString("F3")
+                    +" desired="+agent.desiredVelocity.ToString("F3")+" velocity="+agent.velocity.ToString("F3")
+                    +" pending="+agent.pathPending+" status="+agent.pathStatus+" remaining="+agent.remainingDistance.ToString("F3")
+                    +" corners="+string.Join(",",agent.path.corners.Take(4).Select(p=>p.ToString("F3")));
+            var nearby=housemates.Where(npc=>npc!=null && npc.gameObject!=body && (npc.transform.position-body.transform.position).sqrMagnitude<2.25f)
+                .Select(npc=>
+                {
+                    var motion=npc.GetComponent<HouseNpcMotion>();var otherAgent=npc.GetComponent<NavMeshAgent>();
+                    return npc.Id+"@"+npc.transform.position.ToString("F3")+" "+(motion!=null?motion.State.ToString():"no motion")
+                        +" lease="+(motion!=null?motion.LeaseId??"none":"none")
+                        +" stopped="+(otherAgent!=null && otherAgent.enabled && otherAgent.isOnNavMesh?otherAgent.isStopped.ToString():"no agent");
+                });
+            int count=gameObject.scene.GetPhysicsScene().OverlapSphere(body.transform.position+Vector3.up*.9f,1.5f,
+                competitionPlacementHits,~0,QueryTriggerInteraction.Ignore);
+            var solids=new List<string>();
+            for(int i=0;i<count;i++)
+            {
+                var collider=competitionPlacementHits[i];
+                if(collider==null || collider==competitionStageFloor || collider.transform.IsChildOf(body.transform))continue;
+                solids.Add(collider.name+"@"+collider.transform.position.ToString("F3"));
+            }
+            return route+" nearbyActors=["+string.Join(";",nearby)+"] nearbySolids=["
+                +(count==competitionPlacementHits.Length?"query overflow;":"")+string.Join(";",solids)+"]";
+        }
+
+        private string CompetitionStaticBlockers(CompetitionStageFootprint footprint,Transform prospectiveSelf=null)
+        {
+            int count=gameObject.scene.GetPhysicsScene().OverlapBox(footprint.Center,footprint.HalfSize,competitionPlacementHits,
+                footprint.Rotation,~0,QueryTriggerInteraction.Ignore);
+            var blocked=new List<string>();
+            for(int i=0;i<count;i++)
+            {
+                var collider=competitionPlacementHits[i];if(collider==null || collider==competitionStageFloor)continue;
+                bool owned=false;
+                for(var at=collider.transform;at!=null;at=at.parent)
+                    if(at==prospectiveSelf || competitionRouteOwners.Contains(at)){owned=true;break;}
+                if(!owned)blocked.Add(collider.name+"@"+collider.transform.position.ToString("F3"));
+            }
+            return (count==competitionPlacementHits.Length?"query overflow; ":"")+string.Join(",",blocked);
+        }
+
+        private bool PausedCompetitionArrival(CompetitionBody body)
+            =>body!=null && body.root!=null && body.arrived && competitionRouteOwners.Contains(body.root.transform)
+                && (body.root.transform.position-body.arrivedPosition).sqrMagnitude<=.0025f;
+
+        // Native arrivals still exclusively gate GO. Paused presentation may retain only a
+        // field whose native arrivals were proven before pause and whose owned roots stay put.
+        private bool CompetitionPresentationReady
+        {
+            get
+            {
+                if(CompetitionArenaReady)return true;
+                if(!competitionArenaStaging || !competitionArenaWasReady || competitionScreen==null || !competitionScreen.Paused
+                    || player==null || !player.ActivityHasArrived(competitionPlayerOwner))return false;
+                foreach(var id in competitionArenaActors.Keys)
+                    if(!competitionBodies.TryGetValue(id,out var body) || !PausedCompetitionArrival(body))return false;
+                return true;
+            }
+        }
+
+        private void SyncCompetitionInstruments()
+        {
+            foreach(var pair in competitionInstruments)
+            {
+                SyncCompetitionInstrument(pair.Key,pair.Value);
+            }
+        }
+
+        private void CacheCompetitionBody(string id,GameObject body)
+        {
+            competitionBodies[id]=new CompetitionBody{root=body,capsule=body.GetComponent<CapsuleCollider>(),
+                visual=body.GetComponent<CharacterPresentation>(),contact=body.GetComponent<CompetitionInstrumentPose>()};
+        }
+
+        // Only the player's attempt changes in TickMiniGame. NPC stations already synchronized
+        // with their leases in TickCompetitionArena; a second full field pass serves no new state.
+        private void SyncCompetitionPlayerInstrument()
+        {
+            if(challengeOrigin!=null && competitionInstruments.TryGetValue(challengeOrigin.playerId,out var instrument))
+                SyncCompetitionInstrument(challengeOrigin.playerId,instrument);
+        }
+
+        private void SyncCompetitionInstrument(string id,CompetitionApparatus instrument)
+        {
+                if(instrument==null || !competitionBodies.TryGetValue(id,out var body) || body.root==null)return;
+                bool mine=challengeOrigin!=null && id==challengeOrigin.playerId;
+                bool arrived=CompetitionBodyOccupiesStation(id,body,mine);
+                // Every approach route finishes before any solid scenery appears on the floor.
+                // The late fitted-geometry gate alone may activate scenery. This pass can only
+                // hide it when a native arrival or the complete field's route proof is lost.
+                if(!arrived || !CompetitionPresentationReady)instrument.gameObject.SetActive(false);
+                if(body.capsule!=null)instrument.FitActorClearance(body.capsule.radius*Mathf.Max(body.root.transform.lossyScale.x,body.root.transform.lossyScale.z),
+                    instrument.transform.parent.InverseTransformPoint(body.root.transform.position));
+                instrument.Sync(mine?challengeRun:null,competitionScreen!=null && competitionScreen.IsPlaying,
+                    competitionScreen!=null && competitionScreen.IsPreviewing,competitionScreen!=null && competitionScreen.Paused,reducedMotion);
+                body.contact?.Bind(instrument,mine?challengeRun:null,
+                    competitionScreen!=null && competitionScreen.IsPlaying,competitionScreen!=null && competitionScreen.Paused,arrived);
+        }
+
+        private void CompetitionStance(CharacterPresentation visual,bool arrived,CompetitionApparatus instrument)
+        {
+            if(visual==null || !arrived || instrument==null || !visual.IsStill || !visual.CanAct(CharacterPresentation.BodyActivity.Posing))return;
+            if(!competitionPoses.TryGetValue(visual,out var own))
+            {
+                if(visual.Activity!=CharacterPresentation.BodyActivity.None)return;
+                own=new CompetitionPose{previous=visual.HeldPose};competitionPoses.Add(visual,own);
+            }
+            else if(visual.Activity!=CharacterPresentation.BodyActivity.Posing)return;
+            bool effort=instrument.Instrument==CompetitionApparatus.Family.GripRig && competitionScreen!=null && competitionScreen.IsPlaying;
+            if(visual.gameObject==player.gameObject)effort&=challengeRun!=null && challengeRun.Holding;
+            own.written=effort?CharacterPresentation.Pose.PowerStance:CharacterPresentation.Pose.AtEase;
+            visual.SetPose(own.written);visual.SetActivity(CharacterPresentation.BodyActivity.Posing);
+            var contact=own.contact;
+            if(contact==null)
+            {
+                contact=visual.GetComponent<CompetitionInstrumentPose>();
+                if(contact==null)contact=visual.gameObject.AddComponent<CompetitionInstrumentPose>();
+                own.contact=contact;
+            }
+            bool mine=visual.gameObject==player.gameObject;
+            string id=mine?challengeOrigin?.playerId:instrument.ActorId;
+            if(id!=null && competitionBodies.TryGetValue(id,out var body))body.contact=contact;
+            contact.SetFitGate(competitionFitGate);
+            contact.Bind(instrument,mine?challengeRun:null,competitionScreen!=null && competitionScreen.IsPlaying,competitionScreen!=null && competitionScreen.Paused,arrived);
+        }
+
+        private void ReleaseCompetitionStance(CharacterPresentation visual)
+        {
+            if(visual==null || !competitionPoses.TryGetValue(visual,out var own))return;
+            if(own.contact!=null)own.contact.Release();
+            if(visual.Activity==CharacterPresentation.BodyActivity.Posing && visual.HeldPose==own.written)
+            {visual.SetActivity(CharacterPresentation.BodyActivity.None);visual.SetPose(own.previous);}
+            competitionPoses.Remove(visual);
         }
 
         private void TickCompetitionArena()
@@ -263,26 +602,46 @@ namespace Gamesim.Episode
                 || Mathf.Abs(Mathf.DeltaAngle(competitionPlayerStation.Facing,competitionPlayerStationFacing))>.5f
                 || !player.IsActivityMoveValid(competitionPlayerOwner))
             { message="Your competition route changed. Return to the briefing and try again.";CancelChallenge();return; }
+            competitionArenaWasReady|=CompetitionArenaReady;
             bool paused=competitionScreen!=null && competitionScreen.Paused;
             player.PauseActivityMove(competitionPlayerOwner,paused);
             bool castStaged=npcMeetings!=null && npcMeetings.HasCompetitionStage;
             if(castStaged && !npcMeetings.ValidateCompetitionStage(out var reason))
             { EndCompetitionCast();competitionAudienceStatus=reason+" The eligible field is still listed.";castStaged=false; }
             if(castStaged)npcMeetings.SetCompetitionStagePaused(paused);
+            SyncCompetitionInstruments();
             if(paused){competitionAssemblyDeadline+=Time.unscaledDeltaTime;return;}
             player.GetComponent<CharacterPresentation>()?.SetFacing(player.ActivityHasArrived(competitionPlayerOwner)?competitionPlayerStation.Facing:float.NaN);
+            if(challengeOrigin!=null && competitionInstruments.TryGetValue(challengeOrigin.playerId,out var playerInstrument))
+            {
+                CompetitionStance(player.GetComponent<CharacterPresentation>(),player.ActivityHasArrived(competitionPlayerOwner),playerInstrument);
+                // Endurance's translucent play area was intended to show the effort. The assembly
+                // keeps its wide shot; in play the camera can read the actor's hands and pressure rig.
+                if(!competitionEffortFramed && CompetitionArenaReady && competitionScreen!=null && competitionScreen.IsPlaying
+                    && playerInstrument.Instrument==CompetitionApparatus.Family.GripRig && cameraRig!=null && !cameraRig.ReducedMotion)
+                {
+                    competitionEffortFramed=true;
+                    cameraRig.MoveTo(new HouseCameraRig.Shot
+                    {
+                        Focus=competitionPlayerStationPosition+Vector3.up*1.05f+competitionPlayerStation.transform.forward*.20f,
+                        Distance=6.6f,Pitch=19f,Yaw=competitionPlayerStationFacing+35f,FieldOfView=40f,Seconds=CompetitionShotSeconds,
+                    });
+                }
+            }
             foreach(var pair in competitionArenaActors)
             {
-                var npc=housemates.FirstOrDefault(n=>n!=null && n.Id==pair.Key);
-                var visual=npc!=null ? npc.GetComponent<CharacterPresentation>() : null;
+                if(!competitionBodies.TryGetValue(pair.Key,out var body) || body.root==null)continue;
+                var npc=body.root;
+                var visual=body.visual;
                 if(visual==null)continue;
-                bool arrived=npcMeetings.CompetitionActorArrived(pair.Key);
+                bool arrived=CompetitionBodyOccupiesStation(pair.Key,body,false);
                 visual.SetTalking(false);visual.SetArguing(false);visual.SetFacing(arrived?pair.Value.Facing:float.NaN);
+                if(competitionInstruments.TryGetValue(pair.Key,out var instrument))CompetitionStance(visual,arrived,instrument);
                 if(arrived && pair.Value.Seated)
                 {
                     // Explicitly: a missing component is Unity's fake null in the editor, which ?? keeps.
                     var seat=npc.GetComponent<HouseSeatPresentation>();
-                    if(seat==null)seat=npc.gameObject.AddComponent<HouseSeatPresentation>();
+                    if(seat==null)seat=npc.AddComponent<HouseSeatPresentation>();
                     if(seat.isActiveAndEnabled && !seat.Active)
                     {
                         string id=pair.Key;
@@ -295,8 +654,12 @@ namespace Gamesim.Episode
             int arrivals=(player.ActivityHasArrived(competitionPlayerOwner)?1:0)+(castStaged?npcMeetings.CompetitionArrivals:0);
             int total=1+(castStaged?npcMeetings.CompetitionStageCount:0);
             competitionArenaStatus=arrivals+" / "+total+" houseguests in position. "+competitionAudienceStatus;
-            if(Time.unscaledTime>competitionAssemblyDeadline && !CompetitionArenaReady)
+            // The deadline bounds the initial assembly, not an attempt whose whole
+            // native field already arrived. Pausing a running attempt re-establishes
+            // its native stopped proof on resume; that cannot expire its old assembly.
+            if(!competitionArenaWasReady && Time.unscaledTime>competitionAssemblyDeadline && !CompetitionArenaReady)
             {
+                Debug.Log("[Gamesim competition stage] native assembly deadline. "+CompetitionStageDiagnostic(),this);
                 if(!player.ActivityHasArrived(competitionPlayerOwner))
                 {message="Your competition route could not finish. Your attempt has not started.";CancelChallenge();}
                 else {EndCompetitionCast();competitionAudienceStatus="Some audience routes did not finish. The eligible field remains listed.";}
@@ -312,8 +675,15 @@ namespace Gamesim.Episode
             competitionAudienceSeats.Clear(); npcMeetings?.EndCompetitionStage();
             foreach(var pair in competitionArenaActors)
             {
-                var npc=housemates?.FirstOrDefault(n=>n!=null && n.Id==pair.Key);
-                if(npc!=null)npc.GetComponent<CharacterPresentation>()?.SetFacing(float.NaN);
+                if(competitionBodies.TryGetValue(pair.Key,out var body))
+                {
+                    if(body.contact!=null)body.contact.Release();
+                    ReleaseCompetitionStance(body.visual);body.visual?.SetFacing(float.NaN);
+                    if(body.root!=null)competitionRouteOwners.Remove(body.root.transform);
+                }
+                competitionInstruments.Remove(pair.Key);
+                competitionBodies.Remove(pair.Key);
+                competitionFootprints.Remove(pair.Key);competitionFootprints.Remove(pair.Key+":approach");
                 // Authored furniture belongs to the scene. Only transient stage anchors are ours.
                 if(pair.Value!=null && competitionArenaRoot!=null && pair.Value.transform.IsChildOf(competitionArenaRoot.transform))
                     Destroy(pair.Value.gameObject);
@@ -324,13 +694,20 @@ namespace Gamesim.Episode
         private void EndCompetitionArena()
         {
             competitionArenaStaging=false;EndCompetitionCast();
+            if(challengeOrigin!=null && competitionBodies.TryGetValue(challengeOrigin.playerId,out var playerBody) && playerBody.contact!=null)
+                playerBody.contact.Release();
+            foreach(var visual in competitionPoses.Keys.ToArray())ReleaseCompetitionStance(visual);
             if(player!=null && player.ReleaseActivityMove(competitionPlayerOwner))
                 player.GetComponent<CharacterPresentation>()?.SetFacing(float.NaN);
             competitionPlayerStation=null;
+            competitionEffortFramed=false;
+            competitionArenaWasReady=false;
             competitionSign=null;competitionArenaMarks.Clear();competitionOverlaysShown=true;
+            competitionInstruments.Clear();
+            competitionBodies.Clear();
+            competitionFootprints.Clear();
+            competitionRouteOwners.Clear();competitionStageFloor=null;competitionFitGate=null;
             if(competitionArenaRoot!=null){Destroy(competitionArenaRoot);competitionArenaRoot=null;}
-            if(competitionArenaMaterial!=null){Destroy(competitionArenaMaterial);competitionArenaMaterial=null;}
-            if(competitionStationMesh!=null){Destroy(competitionStationMesh);competitionStationMesh=null;}
         }
     }
 }

@@ -24,6 +24,10 @@ namespace Gamesim.Presentation
         public Texture Texture => texture;
         public bool IsBuilding => dirty || building;
         public string Status { get; private set; }
+        public event Action StatusChanged;
+        public const string FallbackDisplayStatus = "Preview unavailable.\nYour look is kept.";
+        /// <summary>The compact screen copy; Status retains the detailed failure reason for diagnostics.</summary>
+        public string DisplayStatus => CanRetry ? FallbackDisplayStatus : Status;
         public string CompletedKey => shownKey;
         /// <summary>How far round the body is turned, in degrees: what a drag or a slow turn has done to it.</summary>
         public float Turn => turn;
@@ -101,6 +105,7 @@ namespace Gamesim.Presentation
             buildAt = Time.unscaledTime + .16f;
             Status = "Updating preview…";
             CanRetry = false;
+            StatusChanged?.Invoke();
         }
 
         public void Retry()
@@ -139,6 +144,7 @@ namespace Gamesim.Presentation
             LastBuildMilliseconds = (Time.realtimeSinceStartupAsDouble - requestedAt) * 1000;
             Status = state != null && !string.IsNullOrEmpty(state.Substitution) ? state.Substitution
                 : fallbackStatus ?? "Preview ready";
+            StatusChanged?.Invoke();
             RenderCompleted();
         }
 
@@ -180,6 +186,7 @@ namespace Gamesim.Presentation
             subject.transform.localPosition = Vector3.up;
             fallbackStatus = reason + " Showing a fallback; your appearance is retained. Retry preview to try again.";
             CanRetry = true;
+            StatusChanged?.Invoke();
             foreach (var collider in subject.GetComponentsInChildren<Collider>()) Destroy(collider);
         }
 

@@ -646,7 +646,10 @@ namespace Gamesim.Presentation
                 var name = EndScreenKit.Text("Name", row, HudPrimitives.WithYou(voter?.name ?? ballot.voterId, ballot.voterId == shown.playerId), 14f,
                     ballot.voterId == shown.playerId ? UiTheme.Accent : UiTheme.Paper, 44f, 2f, width - 52f, 19f);
                 name.enableAutoSizing = true; name.fontSizeMax = 14f; name.fontSizeMin = 10f;
-                var basis = EndScreenKit.Text("Basis", row, BasisWords(ballot), 11f, UiTheme.Muted, 44f, 21f, width - 52f, 15f);
+                // One line under the name, some 184 wide in a 1920 room but 140 on a 4:3 screen and
+                // 132 on a 5:4 at the larger text, where an ally's changed vote was cut off, whole and
+                // as "voted the other way": said short here, and whole in the vote breakdown's list.
+                var basis = EndScreenKit.Text("Basis", row, BasisWords(ballot, true), 11f, UiTheme.Muted, 44f, 21f, width - 52f, 15f);
                 basis.enableAutoSizing = true; basis.fontSizeMax = 11f; basis.fontSizeMin = 8f;
                 y += 44f;
             }
@@ -663,13 +666,11 @@ namespace Gamesim.Presentation
             return y;
         }
 
-        /// <summary>How the player knows a ballot, for the tag under its name: the basis word, and a lie caught where the voter said otherwise.</summary>
-        private string BasisWords(WeeklyRecap.Ballot ballot)
+        /// <summary>How the player knows a ballot, for the tag under its name: the basis word, and what the voter said where they cast the other way, by first name - a lie told to the player's face, an ally's word to the pact a vote that changed (<see cref="KnownBallots.SaidWords"/>), said short where <paramref name="brief"/> holds it to one line.</summary>
+        private string BasisWords(WeeklyRecap.Ballot ballot, bool brief = false)
         {
-            string words = KnownBallots.Basis.Word(ballot.basis);
-            if (ballot.lied && ballot.saidId != null)
-                words += " · said " + FinalistRead.FirstName(shown.Find(ballot.saidId)?.name ?? "") + ", a lie";
-            return words;
+            string said = ballot.saidId != null ? FinalistRead.FirstName(shown.Find(ballot.saidId)?.name ?? "") : null;
+            return KnownBallots.Basis.Word(ballot.basis) + KnownBallots.SaidWords(ballot.basis, ballot.lied, said, brief);
         }
 
         /// <summary>KEY MOMENTS: the week's ceremonies on a line, each with the face it belongs to and its mark.</summary>
@@ -966,9 +967,9 @@ namespace Gamesim.Presentation
         private float ReactionsTab(RectTransform body, WeeklyRecap.Week recap, float inner)
         {
             float y = 0f;
-            var speeches = shown.events.Where(e => e.week == recap.week && e.kind == "eviction-speech"
+            var speeches = shown.events.Where(e => e.week == recap.week && (e.kind == "eviction-speech" || BlockSpeeches.IsReceiptKind(e.kind))
                     && (e.audienceIds.Count == 0 || e.audienceIds.Contains(shown.playerId)))
-                .OrderBy(e => e.sequence).Select(e => e.text).ToList();
+                .OrderBy(e => e.sequence).Select(e => BlockSpeeches.PublicLine(shown, e)).ToList();
             y = Section(body, "From the block, eviction night", speeches, UiTheme.Danger, y, inner);
             // The player's own feelings, as their trust reads them; how the house feels about them
             // is the house's, and never shown during play.

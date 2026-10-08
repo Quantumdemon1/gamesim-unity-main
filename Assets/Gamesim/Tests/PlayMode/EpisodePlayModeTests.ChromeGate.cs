@@ -34,8 +34,8 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// The lens a part is drawn through: none for an overlay canvas, whose world corners are its
-        /// pixels; the canvas's camera for a camera canvas, as a capture makes every overlay; the
-        /// view for a world-space canvas.
+        /// pixels; the canvas's camera for a camera canvas, as a capture makes every overlay
+        /// (<see cref="CaptureLens"/>); the view for a world-space canvas.
         /// </summary>
         private Camera LensOf(Component part)
         {
@@ -170,9 +170,11 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// The chrome covers what it stands over, as the house asks: the middle of every piece, and
-        /// the whole of it. Through a capture's lens this is the H0 root cause (the play sweep's row
-        /// 10): a camera canvas's corners read as an overlay's are metres in front of the lens and
-        /// cover no pixel, so every icon was shown under every card in every frame photographed.
+        /// the whole of it. Through a camera canvas this is the H0 root cause (the play sweep's row
+        /// 10): its corners read as an overlay's were metres in front of the lens and covered no
+        /// pixel, so every icon was shown under every card in every frame photographed. The capture's
+        /// lens now stands on the frame's pixels, where the two readings agree; a lens off them
+        /// (<see cref="AtFrame"/>'s <c>pixelAligned</c> false) still tells them apart.
         /// </summary>
         private void AssertTheChromeCoversWhatItStandsOver(string where)
         {
@@ -228,12 +230,15 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Through a capture's lens - every overlay drawn through the view camera into a target, as
-        /// the look sheet's frames are - the chrome covers what it stands over and nothing of the
-        /// house projects into it, on the 16:9 frame and the 4:3: over the house with an offer
-        /// waiting (the 'offer-badges' frame), on the overview's map, and under its briefing (the
-        /// 'overview-dashboard' frame), where every room chip is down. Read as an overlay, a camera
-        /// canvas covered nothing (the play sweep's row 10).
+        /// Through a capture's lens - the set drawn through the view camera into a target and every
+        /// overlay drawn over it by the capture's own camera (<see cref="CaptureLens"/>), as the
+        /// review frames are - the chrome covers what it stands over and nothing of the house
+        /// projects into it, on the 16:9 frame and the 4:3: over the house with an offer waiting (the
+        /// 'offer-badges' frame), on the overview's map, and under its briefing (the
+        /// 'overview-dashboard' frame), where every room chip is down. And through a lens that stands
+        /// off the frame's pixels, where a canvas's world corners are not its pixels: the house asks
+        /// the canvas's own camera, whatever it is. Read as an overlay, a camera canvas covered
+        /// nothing (the play sweep's row 10).
         /// </summary>
         [UnityTest]
         public IEnumerator ChromeGate_ThroughACaptureLensTheChromeCoversWhatItStandsOver()
@@ -253,6 +258,19 @@ namespace Gamesim.Tests.PlayMode
                 AssertTheChromeCoversWhatItStandsOver(where);
                 AssertNothingOfTheHouseUnderTheChrome(where);
             });
+            yield return AtFrame(1600, 900, () =>
+            {
+                const string where = "The house from above through a lens off the frame's pixels";
+                var hud = HudCanvasOrNull();
+                Assert.That(hud, Is.Not.Null, where + ": the HUD is up.");
+                var corners = new Vector3[4];
+                ((RectTransform)hud.transform).GetWorldCorners(corners);
+                Assert.That(Vector2.Distance(corners[0], RectTransformUtility.WorldToScreenPoint(LensOf(hud), corners[0])), Is.GreaterThan(100f),
+                    where + ": the HUD's corner is not its pixel there, so the check below asks its camera or fails.");
+                Assert.That(director.TravelBeacons.IsShowing, Is.True, where + ": the rooms carry their icons.");
+                AssertTheChromeCoversWhatItStandsOver(where);
+                AssertNothingOfTheHouseUnderTheChrome(where);
+            }, pixelAligned: false);
 
             Assert.That(director.ToggleOverview(), Is.True);
             yield return WaitForTheOverviewLens();
@@ -387,48 +405,122 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator ChromeGate_ACompetitionBoardHidesTheYardSignTheStationDiscsAndThePlates()
         {
-            WarpPlayer(director.StationPosition);
-            Assert.That(director.TryOpenPhasePanel(), Is.True);
-            ButtonWithCaption("Begin the next competition").onClick.Invoke();
-            yield return null;
-            WarpPlayer(director.StationPosition);
-            Assert.That(director.TryOpenPhasePanel(), Is.True);
-            ButtonWithCaption("Practice this competition").onClick.Invoke();
-            yield return Frames(3);
-            var screen = SceneComponents<CompetitionGameScreen>().Single();
-            Assert.That(screen.IsDrawn, Is.True, "The practice puts its board up over the yard.");
-            Assert.That(CompetitionGameScreen.AnyDrawn, Is.True, "and the house knows a board is drawn.");
-            Assert.That(director.IsHouseUnderChrome, Is.True, "A board is the gate.");
-            Assert.That(director.IsPhasePanelOpen, Is.True, "The attempt keeps the episode screen it was opened from.");
+            var publicDisplays = SceneComponents<HousePublicDisplays>().Single();
+            var yard = SceneComponents<Renderer>().Single(renderer => renderer.name == HousePublicDisplays.YardName);
+            var publicLabel = yard.GetComponentInChildren<TextMeshProUGUI>(true);
+            Assert.That(publicLabel, Is.Not.Null, "The saved yard face has its current public world-space label.");
+            var publicCanvas = publicLabel.GetComponentInParent<Canvas>();
+            Assert.That(publicCanvas, Is.Not.Null);
+            Assert.That(publicCanvas.renderMode, Is.EqualTo(RenderMode.WorldSpace));
+            bool canvasOriginallyEnabled = publicCanvas.enabled;
+            Assert.That(canvasOriginallyEnabled, Is.True);
+            var course = SceneComponents<Transform>().Single(node => node.name == "House Architecture")
+                .Find("Set Pieces/Competition course");
+            Assert.That(course, Is.Not.Null);
+            var lettering = new List<Renderer>();
+            foreach (string name in new[] { "bb_set_sign_hoh", "bb_set_sign_pillars", "bb_set_sign_samehouse" })
+            {
+                var model = course.Find(name);
+                Assert.That(model, Is.Not.Null, "The actual authored yard carries " + name + ".");
+                var words = model.GetComponentsInChildren<Renderer>(true);
+                Assert.That(words, Is.Not.Empty, name + " has its actual saved lettering mesh.");
+                lettering.AddRange(words);
+            }
+            var originals = lettering.Select(renderer => (Renderer: renderer, Enabled: renderer.enabled)).ToArray();
+            var backdrop = course.Find("bb_set_comp_backdrop");
+            Assert.That(backdrop, Is.Not.Null);
+            var scenery = backdrop.GetComponentsInChildren<Renderer>(true)
+                .Select(renderer => (Renderer: renderer, Enabled: renderer.enabled)).ToArray();
+            Assert.That(scenery, Is.Not.Empty);
+            // A renderer that was already off is still off after chrome relinquishes ownership.
+            lettering[0].enabled = false;
+            var expected = lettering.Select(renderer => (Renderer: renderer, Enabled: renderer.enabled)).ToArray();
+            try
+            {
+                WarpPlayer(director.StationPosition);
+                Assert.That(director.TryOpenPhasePanel(), Is.True);
+                ButtonWithCaption("Begin the next competition").onClick.Invoke();
+                yield return null;
+                WarpPlayer(director.StationPosition);
+                Assert.That(director.TryOpenPhasePanel(), Is.True);
+                ButtonWithCaption("Practice this competition").onClick.Invoke();
+                yield return Frames(3);
+                var screen = SceneComponents<CompetitionGameScreen>().Single();
+                Assert.That(screen.IsDrawn, Is.True, "The practice puts its board up over the yard.");
+                Assert.That(CompetitionGameScreen.AnyDrawn, Is.True, "and the house knows a board is drawn.");
+                Assert.That(director.IsHouseUnderChrome, Is.True, "A board is the gate.");
+                Assert.That(director.IsPhasePanelOpen, Is.True, "The attempt keeps the episode screen it was opened from.");
 
-            var sign = SceneComponents<TextMeshPro>().Single(text => text.name == EpisodeDirector.CompetitionSignName && text.gameObject.activeInHierarchy);
-            var discs = SceneComponents<MeshRenderer>().Where(IsStationDisc).ToList();
-            Assert.That(discs, Is.Not.Empty, "The arena marks its stations.");
-            var npcs = SceneComponents<HouseNpc>().Where(npc => npc.gameObject.activeInHierarchy).ToList();
-            Assert.That(npcs, Is.Not.Empty, "The house has houseguests to name.");
-            AssertArenaOverlays(sign, discs, npcs, false, "under the board");
-            Assert.That(sign.text, Is.Not.Empty, "The sign keeps its words under the board.");
+                var sign = SceneComponents<TextMeshPro>().Single(text => text.name == EpisodeDirector.CompetitionSignName && text.gameObject.activeInHierarchy);
+                var discs = SceneComponents<MeshRenderer>().Where(IsStationDisc).ToList();
+                Assert.That(discs, Is.Not.Empty, "The arena marks its stations.");
+                var npcs = SceneComponents<HouseNpc>().Where(npc => npc.gameObject.activeInHierarchy).ToList();
+                Assert.That(npcs, Is.Not.Empty, "The house has houseguests to name.");
+                AssertArenaOverlays(sign, discs, npcs, false, "under the board");
+                AssertYardPublicWords(publicCanvas, expected, scenery, true, "under the board");
+                Assert.That(sign.text, Is.Not.Empty, "The sign keeps its words under the board.");
 
-            // The board in play, the yard framed, and the frame through a capture's lens.
-            if (screen.IsAssembling)
-                screen.GetComponentsInChildren<Button>().First(button => button.name == "Continue to competition").onClick.Invoke();
-            yield return Settle(() => cameraRig.HasShot && !cameraRig.IsTravelling && cameraRig.HasArrived(.1f), 4f);
-            yield return ThroughTheLens(1600, 900, () => AssertNoWorldLabelOnTheBoard(screen, "The practice board through the capture's lens", true));
+                var updatedPublic = director.Snapshot.Clone();
+                updatedPublic.week++;
+                string latestWords = HousePublicDisplays.PublicYardText(updatedPublic);
+                HousePublicDisplays.Project(player.gameObject.scene, updatedPublic);
+                Assert.That(publicLabel.text, Is.EqualTo(latestWords), "Public projection still updates while its canvas is hidden.");
+                AssertYardPublicWords(publicCanvas, expected, scenery, true, "after hidden projection");
 
-            var surface = screen.GetComponent<Canvas>();
-            surface.enabled = false;
-            yield return Frames(3);
-            Assert.That(screen.IsDrawn, Is.False, "A board whose canvas is off is not drawn.");
-            Assert.That(director.IsHouseUnderChrome, Is.True, "The episode screen the attempt was opened from is still open,");
-            AssertArenaOverlays(sign, discs, npcs, true, "with the board off");
+                // The board in play, the yard framed, and the frame through a capture's lens.
+                if (screen.IsAssembling)
+                    screen.GetComponentsInChildren<Button>().First(button => button.name == "Continue to competition").onClick.Invoke();
+                yield return Settle(() => cameraRig.HasShot && !cameraRig.IsTravelling && cameraRig.HasArrived(.1f), 4f);
+                yield return ThroughTheLens(1600, 900, () =>
+                {
+                    AssertNoWorldLabelOnTheBoard(screen, "The practice board through the capture's lens", true);
+                    AssertYardPublicWords(publicCanvas, expected, scenery, true, "through the capture lens");
+                });
 
-            surface.enabled = true;
-            yield return Frames(3);
-            AssertArenaOverlays(sign, discs, npcs, false, "with the board back");
+                var surface = screen.GetComponent<Canvas>();
+                surface.enabled = false;
+                yield return Frames(3);
+                Assert.That(screen.IsDrawn, Is.False, "A board whose canvas is off is not drawn.");
+                Assert.That(director.IsHouseUnderChrome, Is.True, "The episode screen the attempt was opened from is still open,");
+                AssertArenaOverlays(sign, discs, npcs, true, "with the board off");
+                AssertYardPublicWords(publicCanvas, expected, scenery, false, "with the board off");
+                Assert.That(publicLabel.text, Is.EqualTo(latestWords), "The world-only view reads the latest projection, not stale words.");
+
+                surface.enabled = true;
+                yield return Frames(3);
+                AssertArenaOverlays(sign, discs, npcs, false, "with the board back");
+                AssertYardPublicWords(publicCanvas, expected, scenery, true, "with the board back");
+                director.ClosePanels();
+                yield return Frames(3);
+                Assert.That(screen.IsDrawn, Is.False, "Closing the attempt relinquishes the yard view.");
+                AssertYardPublicWords(publicCanvas, expected, scenery, false, "after close");
+                Assert.That(publicLabel.text, Is.EqualTo(latestWords));
+            }
+            finally
+            {
+                director.ClosePanels();
+                publicDisplays.SetCompetitionBoardDrawn(false);
+                if (publicCanvas != null) publicCanvas.enabled = canvasOriginallyEnabled;
+                foreach (var original in originals) if (original.Renderer != null) original.Renderer.enabled = original.Enabled;
+                HousePublicDisplays.Project(player.gameObject.scene, director.Snapshot);
+            }
+        }
+
+        private static void AssertYardPublicWords(Canvas publicCanvas, IEnumerable<(Renderer Renderer, bool Enabled)> lettering,
+            IEnumerable<(Renderer Renderer, bool Enabled)> scenery, bool hidden, string when)
+        {
+            Assert.That(publicCanvas.enabled, Is.EqualTo(!hidden), "The public yard canvas is " + (hidden ? "hidden " : "restored ") + when + ".");
+            foreach (var word in lettering)
+            {
+                Assert.That(word.Renderer.enabled, Is.EqualTo(hidden ? false : word.Enabled), "Authored " + word.Renderer.name + " respects original visibility " + when + ".");
+                Assert.That(word.Renderer.gameObject.activeInHierarchy, Is.True, "Chrome changes lettering output, never its physical scene ownership.");
+            }
+            foreach (var part in scenery)
+                Assert.That(part.Renderer.enabled, Is.EqualTo(part.Enabled), "The physical backdrop and its neon stay " + when + ".");
         }
 
         private static bool IsStationDisc(MeshRenderer renderer) =>
-            renderer.TryGetComponent<MeshFilter>(out var filter) && filter.sharedMesh != null && filter.sharedMesh.name == "Competition station disc";
+            CompetitionApparatus.IsOverlayRenderer(renderer);
 
         private void AssertArenaOverlays(TextMeshPro sign, List<MeshRenderer> discs, List<HouseNpc> npcs, bool drawn, string when)
         {
@@ -525,27 +617,16 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Runs <paramref name="check"/> with every overlay canvas drawn through the view camera into
-        /// a target of this size, as a capture draws the frame, the HUD rendered for it. Unlike
-        /// <see cref="AtFrame"/> it asks nothing of the HUD's shape, so it holds while the HUD stands
-        /// down for a competition. Everything is put back afterwards.
+        /// Runs <paramref name="check"/> with the frame drawn through the capture's lens
+        /// (<see cref="CaptureLens"/>) on a target of this size, as a capture draws it, the HUD
+        /// rendered for it. Unlike <see cref="AtFrame"/> it asks nothing of the HUD's shape, so it
+        /// holds while the HUD stands down for a competition. Everything is put back afterwards.
         /// </summary>
         private IEnumerator ThroughTheLens(int width, int height, System.Action check)
         {
-            var camera = cameraRig.ViewCamera;
-            var overlays = Object.FindObjectsByType<Canvas>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
-                .Where(canvas => canvas.renderMode == RenderMode.ScreenSpaceOverlay).ToArray();
-            var texture = new RenderTexture(width, height, 24);
-            var previousTarget = camera.targetTexture;
+            var lens = new CaptureLens(cameraRig.ViewCamera, width, height);
             try
             {
-                camera.targetTexture = texture;
-                foreach (var canvas in overlays)
-                {
-                    canvas.renderMode = RenderMode.ScreenSpaceCamera;
-                    canvas.worldCamera = camera;
-                    canvas.planeDistance = Mathf.Max(camera.nearClipPlane + 0.1f, 1f);
-                }
                 Canvas.ForceUpdateCanvases();
                 yield return null; yield return null;
                 Canvas.ForceUpdateCanvases();
@@ -556,11 +637,7 @@ namespace Gamesim.Tests.PlayMode
             }
             finally
             {
-                camera.targetTexture = previousTarget;
-                foreach (var canvas in overlays)
-                    if (canvas != null) canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                texture.Release();
-                Object.Destroy(texture);
+                lens.Dispose();
             }
             Canvas.ForceUpdateCanvases();
             yield return null; yield return null;

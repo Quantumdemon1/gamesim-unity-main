@@ -61,14 +61,38 @@ namespace Gamesim.Tests.PlayMode
 
             // The result read, and its cue played: the room takes it where it sits.
             var vote = SceneComponents<VoteReveal>().Single();
-            vote.SkipToResult();
-            yield return RealSeconds(1.8f);
-            Assert.That(vote.IsPlaying && vote.ShowingResult, Is.True, "The result is still up.");
             var leaving = HouseguestBody(evicted);
             var staying = HouseguestBody(survivor);
+            float readAt = Time.unscaledTime;
+            float cueDelay = Mathf.Min(1.5f, vote.ResultHoldSeconds * 0.4f) / Mathf.Max(1f, vote.SpeedMultiplier);
+            float observeBy = Time.realtimeSinceStartup + vote.ResultHoldSeconds;
+            bool wasHeld = vote.Held;
+            // A wall-clock sleep could finish before the director's next unscaled cue tick, or
+            // after the result had already closed on one slow frame. Hold the card's reading
+            // frame while observing the actual reaction; the stage's cues keep their own clock.
+            // Restore its clock before testing the card-down -> goodbye -> walk handover below.
+            vote.Held = true;
+            try
+            {
+                vote.SkipToResult();
+                bool TookTheResult()
+                {
+                    var look = Presentation(leaving).LookTarget;
+                    return look != null && look.name.StartsWith("Ceremony look mark");
+                }
+                while (!TookTheResult() && vote.IsPlaying
+                    && director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing
+                    && Time.realtimeSinceStartup < observeBy) yield return null;
+            }
+            finally { vote.Held = wasHeld; }
+            Assert.That(vote.IsPlaying && vote.ShowingResult, Is.True, "The result is still up.");
             var leavingLook = Presentation(leaving).LookTarget;
             Assert.That(leavingLook != null && leavingLook.name.StartsWith("Ceremony look mark"), Is.True,
-                "The evicted take the result head down, in the chair: looking at " + (leavingLook != null ? leavingLook.name : "nothing") + ".");
+                "The evicted take the result head down, in the chair: looking at " + (leavingLook != null ? leavingLook.name : "nothing")
+                + "; stage clock advanced " + (Time.unscaledTime - readAt).ToString("F2") + " s, cue due after " + cueDelay.ToString("F2")
+                + " s. " + director.CeremonyStageReport("seated result reaction"));
+            Assert.That(Time.unscaledTime - readAt, Is.GreaterThanOrEqualTo(cueDelay - 0.01f),
+                "The seated reaction follows the result's reading beat, rather than firing before its cue.");
             var survivorSeat = staying.GetComponent<HouseSeatPresentation>();
             Assert.That(survivorSeat != null && survivorSeat.Active, Is.True, "The survivor stays seated,");
             Assert.That(Presentation(staying).LastReaction, Is.Not.EqualTo(CharacterPresentation.Reaction.Won),

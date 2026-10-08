@@ -11,12 +11,18 @@ namespace Gamesim.Simulation
             Require(s.phase == EpisodePhase.Social, "Study preparation is available only during free time.");
             Require(s.Find(s.playerId).status == ContestantStatus.Active, "Only an active player can study.");
             Require(s.pendingDiary == null, "Resolve or skip the pending diary reflection before studying.");
-            Require(s.socialActions < 18, "This social window is complete. Continue the episode.");
+            // Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN R0, X1) a study is one of the
+            // window's actions, as the diary has always said it was: before them the week's windows
+            // never charged it, so five studies in one free time were a free and permanent +5.
+            bool rules = CommitmentRulesOn(s);
+            Require(rules ? SocialActionsSpent(s) < SocialActionBudget(s) : s.socialActions < 18,
+                "This social window is complete. Continue the episode.");
             Require(c.targetId == "memorize-layout" || c.targetId == "sneak-peek", "Choose a supported study approach.");
             // Native cast stores traits, not source personalityTraits. Do not merge those fields.
             var plan = WebStudyHouse.PlanStudy(s.playerStudyBonus, c.targetId, null, () => Roll(s));
             s.playerStudyBonus = plan.studyBonus;
-            s.socialActions++;
+            if (rules) SpendSocialAction(s);
+            else s.socialActions++;
             string result = c.targetId == "memorize-layout" ? "You studied the house; preparation increased by one, up to its cap." :
                 plan.success ? "Your risky preparation attempt succeeded." : "Your risky preparation attempt failed; study progress was reduced, down to its floor.";
             Log(s, "study-house", result + " Preparation: " + s.playerStudyBonus + "/5. One social action spent.", s.playerId);

@@ -226,11 +226,18 @@ namespace Gamesim.Episode
             // player lands where they pressed it: see StartSeason(choice, failed).
             castSelect.Show(choice => StartSeason(choice, castSelect.Resume), back,
                 characterCreator == null ? (Action<SeasonBuilder.Choice, CharacterDraft>)null
-                : (choice, draft) => characterCreator.Show(choice, draft, built => StartSeason(built, characterCreator.Resume), () =>
+                : (choice, draft) =>
                 {
-                    castSelect.SetDraft(characterCreator.Draft);
-                    castSelect.Resume();
-                }));
+                    Action<SeasonBuilder.Choice> commit = built => StartSeason(built, characterCreator.Resume);
+                    Action returnToCast = () =>
+                    {
+                        castSelect.SetDraft(characterCreator.Draft, characterCreator.Mode);
+                        castSelect.Resume();
+                    };
+                    if (castSelect.PreferredCreatorMode == CharacterCreator.EntryMode.Quick)
+                        characterCreator.ShowQuick(choice, draft, commit, returnToCast);
+                    else characterCreator.Show(choice, draft, commit, returnToCast);
+                });
             // Setup is one of the screens the music rule silences, and putting one up is not a
             // render: from the finale's panel, the report or settings the season's track played
             // on under the cast screen until something else happened to repaint.
@@ -271,11 +278,20 @@ namespace Gamesim.Episode
                 EpisodeEngine.EnableRead(fresh);
                 EpisodeEngine.EnableLevers(fresh);
                 EpisodeEngine.EnableWeek(fresh);
+                EpisodeEngine.EnableEconomy(fresh);
                 // NPC agency from week one, and with it the house's first impressions of each other
                 // and of the player's persona (NPC-AGENCY-PLAN.md §2).
                 EpisodeEngine.EnableAgency(fresh);
                 // The finale rules (ENDGAME-PLAN §3): history questions, the five responses, the argument.
                 EpisodeEngine.EnableFinale(fresh);
+                // The commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN R0, C0): study costs the window's
+                // action, a whisper reaches who it is told to, a breach counts against whoever broke it.
+                EpisodeEngine.EnableCommitments(fresh);
+                // Fresh playable seasons use canonical Safety and durable hearing authority from
+                // the start, with C0 and story knowledge already active. Do not infer this opt-in
+                // while loading, recovering, migrating or importing an existing legacy season.
+                fresh.unifiedCommitmentRulesVersion = UnifiedCommitments.ProspectiveVersion;
+                fresh.unifiedHearingRulesVersion = UnifiedCommitmentHearings.ProspectiveVersion;
                 CharacterAppearanceSnapshots.Materialize(fresh);
                 fresh.sessionId = Guid.NewGuid().ToString("N");
                 nextStore.Save(fresh); // Stage and validate on disk before replacing the current in-memory session.

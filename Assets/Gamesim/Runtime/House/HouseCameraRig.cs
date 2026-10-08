@@ -41,6 +41,8 @@ namespace Gamesim.House
         [SerializeField, Min(0f)] private float occlusionMargin = 0.25f;
         private float appliedDistance;
         private static readonly RaycastHit[] occlusionHits = new RaycastHit[16];
+        private static readonly RaycastHit[] conversationSolidHits = new RaycastHit[32];
+        private static readonly Collider[] conversationEyeOverlaps = new Collider[32];
         // Phase 3 (MASTER-PLAN §3.E). Every control arrives through one Input Actions map, so a
         // mouse, the keyboard and a gamepad are the same code path and a test drives any of them
         // by queueing device state. Nothing assigned means the map built in code.
@@ -294,9 +296,9 @@ namespace Gamesim.House
 
         /// <summary>
         /// The two-shot: across the pair, so both faces read, on the side that turns the camera
-        /// least - or, for a pair sitting side by side, the side they face - unless somebody else is
-        /// standing where the camera would be, in which case the other side. A third houseguest a
-        /// metre in front of the lens is a back, not a scene.
+        /// least - or, for a pair sitting side by side, the side they face - unless a bystander or
+        /// solid furniture blocks that view and the other side is clear. If both sides are blocked,
+        /// the preferred framing remains the fallback.
         /// </summary>
         private Shot TwoShot(Transform player, Transform npc)
         {
@@ -307,9 +309,10 @@ namespace Gamesim.House
             float toward = TrySeatedFront(player, npc, out float front) ? front : yaw;
             float nearer = Mathf.Abs(Mathf.DeltaAngle(toward, left)) <= Mathf.Abs(Mathf.DeltaAngle(toward, right)) ? left : right;
             float farther = nearer == left ? right : left;
-            var pivot = ConversationFocus() + Vector3.up * TwoShotLift;
-            float side = TwoShotSideIsClear(pivot, nearer, player, npc) || !TwoShotSideIsClear(pivot, farther, player, npc) ? nearer : farther;
-            pivot = TwoShotPivot(side);
+            bool preferredClear = TwoShotSideIsClear(nearer, player, npc);
+            bool alternativeClear = TwoShotSideIsClear(farther, player, npc);
+            float side = preferredClear || !alternativeClear ? nearer : farther;
+            var pivot = TwoShotPivot(side);
             return new Shot
             {
                 Focus = pivot, Distance = TwoShotDistance, Pitch = TwoShotPitch, Yaw = side,
@@ -519,17 +522,55 @@ namespace Gamesim.House
             desiredDistance = Mathf.Clamp(desiredDistance, minimumDistance, maximumDistance);
         }
 
-        /// <summary>Whether no houseguest but the pair stands within the clearance of where the eye would be.</summary>
-        private bool TwoShotSideIsClear(Vector3 pivot, float sideYaw, Transform player, Transform npc)
+        /// <summary>Whether the actual shifted eye is clear of bystanders and solid geometry blocking either face.</summary>
+        private bool TwoShotSideIsClear(float sideYaw, Transform player, Transform npc)
         {
-            var eye = pivot + Quaternion.Euler(TwoShotPitch, sideYaw, 0f) * Vector3.back * TwoShotDistance;
-            foreach (var other in FindObjectsByType<HouseNpc>(FindObjectsSortMode.None))
+            var eye = TwoShotPivot(sideYaw) + Quaternion.Euler(TwoShotPitch, sideYaw, 0f) * Vector3.back * TwoShotDistance;
+            foreach (var other in FindObjectsByType<HouseNpc>())
             {
                 if (other.transform == npc || other.transform == player || !other.gameObject.activeInHierarchy) continue;
                 var at = other.transform.position;
                 if (Vector3.Distance(new Vector3(at.x, eye.y, at.z), eye) < TwoShotClearance) return false;
             }
+            // Furniture stays out of social witnessing and ordinary boom pull-in. The two-shot
+            // separately needs a clear eye and face rays: a tall solid screen at the native
+            // second-press pair hid both faces despite a clear HouseLayers.Sight query.
+            int solids = HouseLayers.Sight | (1 << HouseLayers.Furniture);
+            int nearEye = Physics.OverlapSphereNonAlloc(eye, .18f, conversationEyeOverlaps, solids, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < nearEye; i++)
+                if (!ConversationParticipant(conversationEyeOverlaps[i].transform, player, npc)) return false;
+            if (SolidBlocksFace(eye, ConversationFace(player), solids, player, npc)
+                || SolidBlocksFace(eye, ConversationFace(npc), solids, player, npc)) return false;
             return true;
+        }
+
+        private static bool SolidBlocksFace(Vector3 eye, Vector3 face, int solids, Transform player, Transform npc)
+        {
+            var direction = face - eye;
+            float length = direction.magnitude;
+            if (length <= .001f) return false;
+            // Low furniture remains below these rays. This is a camera query only, using the
+            // actual solid bounds rather than an asset name or a new social visibility rule.
+            int hits = Physics.RaycastNonAlloc(eye, direction / length, conversationSolidHits, length,
+                solids, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < hits; i++)
+                if (!ConversationParticipant(conversationSolidHits[i].transform, player, npc)) return true;
+            return false;
+        }
+
+        private static bool ConversationParticipant(Transform hit, Transform player, Transform npc)
+            => hit.IsChildOf(player) || hit.IsChildOf(npc);
+
+        private static Vector3 ConversationFace(Transform actor)
+        {
+            foreach (var animator in actor.GetComponentsInChildren<Animator>())
+                if (animator.isHuman && animator.isActiveAndEnabled)
+                {
+                    var head = animator.GetBoneTransform(HumanBodyBones.Head);
+                    if (head != null) return head.position;
+                }
+            var seat = actor.GetComponent<HouseSeatPresentation>();
+            return seat != null && seat.Active ? seat.VisualFocus : actor.position + Vector3.up * 1.5f;
         }
 
         private void BeginTravel(float seconds)
@@ -716,7 +757,7 @@ namespace Gamesim.House
         private void FindCloseUpVolume()
         {
             closeUpVolumeLookedUp = true;
-            foreach (var volume in FindObjectsByType<Volume>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var volume in FindObjectsByType<Volume>(FindObjectsInactive.Include))
             {
                 if (volume.name != CloseUpVolumeName || volume.gameObject.scene != gameObject.scene) continue;
                 closeUpVolume = volume;
@@ -921,11 +962,26 @@ namespace Gamesim.House
             return ConversationFocus() + Vector3.up * TwoShotLift + Quaternion.Euler(0f, sideYaw, 0f) * Vector3.right * shift;
         }
 
+        private float conversationWindowOffset;
+
         /// <summary>
         /// Where the conversation's screen leaves the pair, in half-heights right of the frame's
         /// centre (EpisodeHud.ConversationWindowOffset). Zero keeps <see cref="TwoShotShift"/>.
         /// </summary>
-        public float ConversationWindowOffset { get; set; }
+        public float ConversationWindowOffset
+        {
+            get => conversationWindowOffset;
+            set
+            {
+                if (Mathf.Approximately(conversationWindowOffset, value)) return;
+                conversationWindowOffset = value;
+                // The HUD publishes its panel width after the conversation first opens. Check
+                // that actual shifted eye as well, without reopening or moving either actor.
+                if (IsConversationFocused && !reducedMotion && activeShot.HasValue
+                    && conversationPlayer != null && conversationNpc != null)
+                    MoveTo(TwoShot(conversationPlayer, conversationNpc));
+            }
+        }
 
         /// <summary>
         /// Where the camera looks when riding a houseguest: their position, lifted to head height so

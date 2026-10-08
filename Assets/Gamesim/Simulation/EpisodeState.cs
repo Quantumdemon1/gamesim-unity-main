@@ -170,6 +170,14 @@ namespace Gamesim.Simulation
         public PromiseStatus status;
         public int week, expiresWeek;
         public string impact = "medium";
+        /// <summary>
+        /// Schema 22 (ACTIONS-DEALS-ALLIANCES-PLAN C0): who broke a broken promise - the one who made
+        /// it, every time, since only a promiser's act settles one - and the week the promise was
+        /// kept or broken. Written under the commitment rules (<see cref="EpisodeEngine.CommitmentRulesOn"/>);
+        /// null and 0 on a promise settled before them, which <see cref="Breaches.PromiseBreaker"/> reads.
+        /// </summary>
+        public string brokenById;
+        public int settledWeek;
         public PromiseState Clone() => (PromiseState)MemberwiseClone();
     }
 
@@ -179,6 +187,16 @@ namespace Gamesim.Simulation
         public string id, name;
         public List<string> members = new List<string>();
         public bool active = true;
+        /// <summary>
+        /// Schema 22 (ACTIONS-DEALS-ALLIANCES-PLAN C5): the player came into this pact by an invitation
+        /// into one somebody else had made, so it is never theirs to name nor said to be one they formed
+        /// (<see cref="FinalistRead.FoundedByPlayer"/>). The order alone cannot say so under the rules: a
+        /// bring-in puts somebody after the player, and once the members ahead of them are cut away the
+        /// player is first. Written under the commitment rules (<see cref="EpisodeEngine.CommitmentRulesOn"/>)
+        /// and never cleared; false on every pact of a season without them, where nobody joins after the
+        /// player and the order still tells.
+        /// </summary>
+        public bool playerJoined;
         public AllianceState Clone()
         {
             var copy = (AllianceState)MemberwiseClone(); copy.members = new List<string>(members); return copy;
@@ -226,7 +244,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 21;
+        public int schemaVersion = 26;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
@@ -257,10 +275,34 @@ namespace Gamesim.Simulation
         public int weekRulesStartWeek;
         /// <summary>Schema 19: the conversations spent in each of the week's four windows, reset as the week turns.</summary>
         public List<int> windowActions = new List<int> { 0, 0, 0, 0 };
+        /// <summary>Schema 23: 0 keeps the saved economy; 1 gives a fresh season two independent move-in seats and a two-seat after-eviction floor.</summary>
+        public int economyRulesVersion;
+        /// <summary>Schema 23: weekly extras spent on move-in night, retained through week one after its window counters reset.</summary>
+        public int moveInExtrasSpent;
         /// <summary>Schema 20: the week NPC agency begins (NPC-AGENCY-PLAN.md §2); 0 for a save that never reached it.</summary>
         public int agencyRulesStartWeek;
         /// <summary>Schema 21: the week the finale rules begin (ENDGAME-PLAN §3); 0 for a save that never reached them.</summary>
         public int finaleRulesStartWeek;
+        /// <summary>
+        /// Schema 22: the week the commitment rules begin (ACTIONS-DEALS-ALLIANCES-PLAN R0, C0, and every
+        /// later rule of that plan): study spends the window's action, a whisper reaches the person it
+        /// is told to, what a houseguest tells the player moves only what the player thinks, a breach
+        /// counts against whoever broke it and never fades. 0 for a season that plays without them:
+        /// every season saved before they existed, and every season a test builds directly.
+        /// </summary>
+        public int commitmentRulesStartWeek;
+        /// <summary>Schema 24 foundation only: zero retains the existing commitment writers. No production opt-in exists yet.</summary>
+        public int unifiedCommitmentRulesVersion;
+        /// <summary>Schema 24's separately owned canonical records. Must stay empty while the foundation gate is disabled.</summary>
+        public List<UnifiedCommitmentState> unifiedCommitments = new List<UnifiedCommitmentState>();
+        /// <summary>Schema 25: durable hearing coordination, separately disabled on historical and newly constructed states.</summary>
+        public int unifiedHearingRulesVersion;
+        /// <summary>Actual audible canonical facts retained independently of the story world's bounded fact list.</summary>
+        public List<UnifiedHearingEvidenceState> unifiedHearingEvidence = new List<UnifiedHearingEvidenceState>();
+        /// <summary>One actual initial/spread receipt per canonical incident and non-player listener; never FIFO-pruned.</summary>
+        public List<UnifiedHearingReceiptState> unifiedHearingReceipts = new List<UnifiedHearingReceiptState>();
+        /// <summary>Schema 26's inert private Vote proof storage. Must remain empty until Vote authority is separately integrated.</summary>
+        public List<UnifiedVoteRevealState> unifiedVoteReveals = new List<UnifiedVoteRevealState>();
         public List<CompetitionScore> competitionScores = new List<CompetitionScore>();
         public List<EpisodeEvent> events = new List<EpisodeEvent>();
         public List<string> acceptedCommandIds = new List<string>();
@@ -455,7 +497,15 @@ namespace Gamesim.Simulation
         public ContestantState Find(string id) => contestants.FirstOrDefault(c => c.id == id);
         public IEnumerable<ContestantState> Active => contestants.Where(c => c.status == ContestantStatus.Active);
         public double Score(string from, string to) => relationships.FirstOrDefault(r => r.fromId == from && r.toId == to)?.score ?? 0;
-        public bool Allied(string a, string b) => alliances.Any(x => x.active && x.members.Contains(a) && x.members.Contains(b));
+        /// <summary>
+        /// Whether two houseguests share a standing pact. Under the commitment rules
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN X5) somebody who has left the house has left every pact, though
+        /// a pact of three or more goes on without them and its record still names them.
+        /// </summary>
+        public bool Allied(string a, string b) => alliances.Any(x => x.active && x.members.Contains(a) && x.members.Contains(b))
+            && (!EpisodeEngine.CommitmentRulesOn(this) || (InHouse(a) && InHouse(b)));
+
+        private bool InHouse(string id) => contestants.Any(c => c.id == id && c.status == ContestantStatus.Active);
 
         public EpisodeState Clone()
         {
@@ -463,6 +513,10 @@ namespace Gamesim.Simulation
             copy.contestants = contestants.Select(x => x.Clone()).ToList();
             copy.relationships = relationships.Select(x => x.Clone()).ToList();
             copy.promises = promises.Select(x => x.Clone()).ToList();
+            copy.unifiedCommitments = unifiedCommitments?.Select(x => x?.Clone()).ToList();
+            copy.unifiedHearingEvidence = unifiedHearingEvidence?.Select(x => x?.Clone()).ToList();
+            copy.unifiedHearingReceipts = unifiedHearingReceipts?.Select(x => x?.Clone()).ToList();
+            copy.unifiedVoteReveals = unifiedVoteReveals?.Select(x => x?.Clone()).ToList();
             copy.alliances = alliances.Select(x => x.Clone()).ToList();
             copy.memories = memories.Select(x => x.Clone()).ToList();
             copy.nominees = new List<string>(nominees); copy.vetoPlayers = new List<string>(vetoPlayers);
@@ -581,7 +635,31 @@ namespace Gamesim.Simulation
         /// Schema 21 (ENDGAME-PLAN F4b): the player finalist locks their final argument, the theme's
         /// key in <c>secondTargetId</c> and the moments' references in <c>text</c>, one to a line.
         /// </summary>
-        LockFinalArgument
+        LockFinalArgument,
+        // Grow and manage alliances (ACTIONS-DEALS-ALLIANCES-PLAN C5), under the commitment rules only:
+        // without them both are refused before anything is spent. Appended, so no recorded ordinal moves.
+        /// <summary>
+        /// "Bring {name} into {pact}": <c>targetId</c> is the houseguest asked, <c>secondTargetId</c> the
+        /// pact's id. A social action, spent whatever the answer: the houseguest answers on the alliance
+        /// invitation's odds and every member in the house must welcome them (<see cref="NpcAlliances.WouldWelcome"/>).
+        /// </summary>
+        BringIntoAlliance,
+        /// <summary>
+        /// "Rename {pact}": <c>targetId</c> is the member the player says it to, <c>secondTargetId</c>
+        /// the pact's id and <c>text</c> one of the names on offer (<see cref="PactNames.For"/>). The
+        /// founder's to give, free, and once a pact a week.
+        /// </summary>
+        RenameAlliance,
+        /// <summary>
+        /// Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C7): one of the web's situation moves,
+        /// said to <c>targetId</c> and named by <c>text</c> (<see cref="Negotiation"/>) - calling in a
+        /// promise they owe the player (<c>call-in:remind</c>, <c>call-in:demand</c>, <c>call-in:threaten</c>,
+        /// the promise's id in <c>secondTargetId</c>), mending fences after a breach of the player's
+        /// (<c>mend-fences</c>), or naming a price for using the veto on a nominee
+        /// (<c>veto-price:vote_save</c>, <c>veto-price:final_two</c>). A social action; a season
+        /// without the rules refuses it.
+        /// </summary>
+        Negotiate
     }
 
     /// <summary>

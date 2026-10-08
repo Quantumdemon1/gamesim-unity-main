@@ -8,6 +8,8 @@ using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
 
@@ -20,16 +22,19 @@ namespace Gamesim.Episode
         private CreatorVerificationReport creatorReport;
         private double creatorDeadline;
         private const int CreatorWorkloadSeconds = 480;
+        private Keyboard creatorKeyboard;
+        private Gamepad creatorGamepad;
+        private Mouse creatorMouse;
 
         private IEnumerator RunCreatorVerification(EpisodeDirector director)
         {
             creatorReport = new CreatorVerificationReport
             {
-                startedUtc = DateTime.UtcNow.ToString("O"), unityVersion = Application.unityVersion,
+                startedUtc = DateTime.UtcNow.ToString("O"), unityVersion = Application.unityVersion, batchMode = Application.isBatchMode,
                 processor = SystemInfo.processorType, gpu = SystemInfo.graphicsDeviceName,
                 systemMemoryMB = SystemInfo.systemMemorySize, graphicsMemoryMB = SystemInfo.graphicsMemorySize,
                 visualStatus = "Pending inspection of captured frames",
-                workload = "Actual preset selection, both bodies at supported slider bounds in front/profile views, restored appearance, pointer slider input, six resolution/text combinations, isolated library save/load, repeated custom cast and NPC-only edit, new season, save/reload, isolated portrait. Automated checks do not establish visual quality or human usability.",
+                workload = "Fresh Quick entry, native InputSystem pointer preset selection, independent body choice with Undo/Redo and keyboard/controller mode navigation, unchanged draft across modes, six Quick resolution/text captures including 4:3; then the Detailed Customise route, both bodies at supported slider bounds in front/profile views, restored appearance, pointer-handler slider input, six Detailed resolution/text combinations, isolated library save/load, repeated custom cast and NPC-only edit, new season, save/reload, isolated portrait. Detailed route buttons use direct UI callbacks. Automated checks do not establish visual quality or human usability.",
             };
             creatorReport.workloadLimitSeconds = CreatorWorkloadSeconds;
             creatorDeadline = Time.realtimeSinceStartupAsDouble + CreatorWorkloadSeconds;
@@ -50,6 +55,9 @@ namespace Gamesim.Episode
                 yield return current.Current;
             }
             foreach (var unfinished in stack) (unfinished as IDisposable)?.Dispose();
+            if (creatorKeyboard != null && creatorKeyboard.added) InputSystem.RemoveDevice(creatorKeyboard);
+            if (creatorGamepad != null && creatorGamepad.added) InputSystem.RemoveDevice(creatorGamepad);
+            if (creatorMouse != null && creatorMouse.added) InputSystem.RemoveDevice(creatorMouse);
             creatorReport.errors.AddRange(errors);
             creatorReport.finishedUtc = DateTime.UtcNow.ToString("O");
             creatorReport.status = creatorReport.errors.Count == 0 && creatorReport.saveReloadAppearanceEqual
@@ -57,7 +65,11 @@ namespace Gamesim.Episode
                 && creatorReport.isolatedLibrary && creatorReport.librarySaveLoadEqual && creatorReport.customCastRepeatedAndEdited
                 && creatorReport.playerPreservedDuringNpcEdit && creatorReport.libraryUnaffectedByCastEdit && creatorReport.customCastSaveReloadEqual
                 && creatorReport.bodyBoundsCaptures == 8 && creatorReport.bodyBoundsAppearanceRestored
-                && creatorReport.resolutionCaptures == 6 ? "Automated checks passed; visual review required" : "Failed";
+                && creatorReport.resolutionCaptures == 6 && creatorReport.quickResolutionCaptures == 6
+                && creatorReport.quickDraftPreserved && creatorReport.keyboardModeSwitch && creatorReport.controllerModeSwitch
+                && creatorReport.controllerNavigation && creatorReport.quickPointerPresetChanged
+                && creatorReport.quickBodyChangedIndependently
+                ? "Automated checks passed; visual review required" : "Failed";
             File.WriteAllText(Path.Combine(outputDirectory, "creator-verification.json"), JsonUtility.ToJson(creatorReport, true));
             Debug.Log("Gamesim creator verification: " + creatorReport.status);
             Application.Quit(creatorReport.status == "Failed" ? 4 : 0);
@@ -69,17 +81,24 @@ namespace Gamesim.Episode
                 "Creator visual QA needs a graphical standalone window, without -batchmode/-nographics.");
             seasonDirector = director;
             yield return SkipOpening();
+            // Match Profile's allocation step for the hidden-launched graphical window. A single
+            // request for its existing 1600x900 size left the first eight baseline captures black.
+            Screen.SetResolution(1280, 720, FullScreenMode.Windowed);
+            for (int frame = 0; frame < 15; frame++) yield return null;
             Screen.SetResolution(1600, 900, FullScreenMode.Windowed);
+            for (int frame = 0; frame < 15; frame++) yield return null;
+            CreatorRequire(Screen.width == 1600 && Screen.height == 900, "Creator startup did not allocate its requested graphical viewport.");
             double splashDeadline = Time.realtimeSinceStartupAsDouble + 15;
             while (!SplashScreen.isFinished && Time.realtimeSinceStartupAsDouble < splashDeadline) yield return null;
             director.OpenMainMenu();
             yield return null;
             yield return CreatorClick(MainMenu.NewSeasonCaption);
+            yield return CreatorQuickRoute(director);
             yield return CreatorClick("Emma Brown");
             yield return CreatorClick(CharacterCreator.CustomiseCaption);
             var creator = director.GetComponentInChildren<CharacterCreator>(true);
             var castSelect = director.GetComponentInChildren<CastSelect>(true);
-            CreatorRequire(creator != null && creator.IsShowing && creator.Draft.SourceTemplateId == "emma-brown",
+            CreatorRequire(creator != null && creator.IsShowing && creator.Mode == CharacterCreator.EntryMode.Detailed && creator.Draft.SourceTemplateId == "emma-brown",
                 "The actual selected Emma card must reach the appearance-only creator.");
             var profiles = creator.ProfileStore;
             creatorReport.libraryDirectory = profiles.DirectoryPath;
@@ -145,10 +164,10 @@ namespace Gamesim.Episode
                     creator.FontScale = large ? 1.2f : 1f;
                     for (int frame = 0; frame < 20; frame++) yield return null;
                     var capture = new CreatorCapture { requestedWidth = size.x, requestedHeight = size.y,
-                        actualWidth = Screen.width, actualHeight = Screen.height, largerText = large };
+                        actualWidth = Screen.width, actualHeight = Screen.height, largerText = large, mode = "Detailed" };
                     CreatorRequire(Screen.width == size.x && Screen.height == size.y,
                         "The requested " + size.x + "x" + size.y + " capture actually rendered " + Screen.width + "x" + Screen.height + ".");
-                    foreach (string caption in new[] { "Appearance", "Identity", "Personality", "My Houseguests", "Review", CharacterCreator.StartCaption, CharacterCreator.BackCaption })
+                    foreach (string caption in new[] { "Appearance", "Identity", "Personality", "My Houseguests", "Review", CharacterCreator.QuickCaption, CharacterCreator.DetailedCaption, CharacterCreator.StartCaption, CharacterCreator.BackCaption })
                     {
                         var control = CreatorButton(caption);
                         CreatorRequire(control != null && CreatorRectVisible(control.GetComponent<RectTransform>()),
@@ -156,7 +175,7 @@ namespace Gamesim.Episode
                     }
                     capture.fixedControlsInsideViewport = true;
                     creatorReport.captures.Add(capture);
-                    yield return CaptureCreator("creator-" + size.x + "x" + size.y + (large ? "-large" : "-normal"), capture);
+                    yield return CaptureCreator("creator-" + size.x + "x" + size.y + (large ? "-large" : "-normal"), capture, creator);
                     creatorReport.resolutionCaptures++;
                 }
             creator.FontScale = 1f;
@@ -212,7 +231,8 @@ namespace Gamesim.Episode
                 && creator.Draft.Appearance.ContentKey() == authored.ContentKey();
             CreatorRequire(creatorReport.playerPreservedDuringNpcEdit, "The player must retain their own identity and look after editing a repeated NPC.");
             yield return CreatorClick("Review");
-            yield return CaptureCreator("creator-season-review", null);
+            yield return WaitCreatorPreview(creator, "reopened player for Review");
+            yield return CaptureCreator("creator-season-review", null, creator);
             string previousSession = director.Snapshot.sessionId;
             yield return CreatorClick(CharacterCreator.StartCaption);
             CreatorRequire(director.Snapshot.sessionId != previousSession && !creator.IsShowing, "Starting must install a new safely saved season.");
@@ -234,7 +254,7 @@ namespace Gamesim.Episode
             CharacterPresentation body = null;
             while (Time.realtimeSinceStartupAsDouble < bodyDeadline)
             {
-                body = FindObjectsByType<CharacterPresentation>(FindObjectsSortMode.None).FirstOrDefault(item => item.CharacterId == player.id);
+                body = FindObjectsByType<CharacterPresentation>().FirstOrDefault(item => item.CharacterId == player.id);
                 var progress = body == null ? null : body.GetComponentInChildren<CharacterBodyBuildState>();
                 if (body != null && progress != null && progress.Ready) break;
                 yield return null;
@@ -271,7 +291,7 @@ namespace Gamesim.Episode
             CharacterPresentation reloadedBody = null;
             while (Time.realtimeSinceStartupAsDouble < reloadDeadline)
             {
-                reloadedBody = FindObjectsByType<CharacterPresentation>(FindObjectsSortMode.None).FirstOrDefault(item => item.CharacterId == player.id);
+                reloadedBody = FindObjectsByType<CharacterPresentation>().FirstOrDefault(item => item.CharacterId == player.id);
                 if (reloadedBody != null && reloadedBody.GetComponentInChildren<CharacterBodyBuildState>()?.Ready == true) break;
                 yield return null;
             }
@@ -319,11 +339,11 @@ namespace Gamesim.Episode
                     sample.previewStatus = creator.StudioPreview.Status;
                     string prefix = "creator-body-" + (bodyIndex + 1) + "-" + sample.boundary;
                     yield return CreatorClick("Front");
-                    yield return CaptureCreator(prefix + "-front", null);
+                    yield return CaptureCreator(prefix + "-front", null, creator);
                     sample.frontPath = Path.Combine(outputDirectory, prefix + "-front.png");
                     creatorReport.bodyBoundsCaptures++;
                     yield return CreatorClick("Side");
-                    yield return CaptureCreator(prefix + "-profile", null);
+                    yield return CaptureCreator(prefix + "-profile", null, creator);
                     sample.profilePath = Path.Combine(outputDirectory, prefix + "-profile.png");
                     creatorReport.bodyBoundsCaptures++;
                     creatorReport.bodyBounds.Add(sample);
@@ -340,15 +360,26 @@ namespace Gamesim.Episode
         private IEnumerator WaitCreatorPreview(CharacterCreator creator, string label)
         {
             double started = Time.realtimeSinceStartupAsDouble;
+            bool alreadyReady = CreatorPreviewMatchesDraft(creator);
+            yield return WaitCreatorPreviewReady(creator, label);
+            var preview = creator.StudioPreview;
+            // This is the wait in this operation's context. A ready cached appearance can reuse
+            // LastBuildMilliseconds from an earlier edit; neither field claims a cold build.
+            creatorReport.builds.Add(new CreatorBuildTiming { operation = label,
+                observedWaitMilliseconds = (Time.realtimeSinceStartupAsDouble - started) * 1000,
+                editToCompletedBuildMilliseconds = preview.LastBuildMilliseconds, status = preview.Status,
+                reusedCompletedAppearance = alreadyReady });
+        }
+
+        private IEnumerator WaitCreatorPreviewReady(CharacterCreator creator, string label)
+        {
+            double started = Time.realtimeSinceStartupAsDouble;
             string key = creator.Draft.Appearance.ContentKey();
             while (Time.realtimeSinceStartupAsDouble - started < 50)
             {
                 var preview = creator.StudioPreview;
                 if (preview != null && !preview.IsBuilding && preview.CompletedKey == key)
                 {
-                    creatorReport.builds.Add(new CreatorBuildTiming { operation = label,
-                        observedWaitMilliseconds = (Time.realtimeSinceStartupAsDouble - started) * 1000,
-                        editToCompletedBuildMilliseconds = preview.LastBuildMilliseconds, status = preview.Status });
                     CreatorRequire(!preview.CanRetry, "UMA preview unexpectedly used a fallback for " + label + ": " + preview.Status);
                     yield break;
                 }
@@ -357,9 +388,123 @@ namespace Gamesim.Episode
             throw new TimeoutException("The preview did not finish " + label + " within 50 seconds.");
         }
 
-        private static Button CreatorButton(string caption) => FindObjectsByType<Button>(FindObjectsSortMode.None)
+        private static Button CreatorButton(string caption) => FindObjectsByType<Button>()
             .FirstOrDefault(button => button.IsActive() && button.IsInteractable() && (button.name == caption
                 || button.GetComponentsInChildren<TMP_Text>().Any(label => label.text == caption)));
+
+        private IEnumerator CreatorQuickRoute(EpisodeDirector director)
+        {
+            yield return CreatorNativeSubmit(CharacterCreator.CreateCaption);
+            var creator = director.GetComponentInChildren<CharacterCreator>(true);
+            CreatorRequire(creator != null && creator.IsShowing && creator.Mode == CharacterCreator.EntryMode.Quick,
+                "Fresh Create must enter Quick through the cast UI.");
+            creator.GetComponentsInChildren<TMP_InputField>().Single(field => field.name == "Name field").text = "Quick creator QA";
+            string originalLook = creator.Draft.Appearance.ContentKey();
+            yield return CreatorNativePointer("Next starting look");
+            creatorReport.quickPointerPresetChanged = creator.Draft.Appearance.ContentKey() != originalLook;
+            CreatorRequire(creatorReport.quickPointerPresetChanged, "Native pointer input did not apply a Quick starting look.");
+            yield return WaitCreatorPreview(creator, "Quick starting look");
+            var catalog = (CharacterBodySource.Provider as IModularCharacterBodyProvider)?.Catalog;
+            CreatorRequire(catalog != null && catalog.Bodies.Count >= 2, "Quick acceptance needs the installed body choices.");
+            var beforeBody = creator.Draft.Copy();
+            var otherBody = catalog.Bodies.First(body => body.Id != beforeBody.Appearance.bodyId);
+            yield return CreatorNativeSubmit(otherBody.Label);
+            yield return WaitCreatorPreview(creator, "Quick body choice");
+            creatorReport.quickBodyChangedIndependently = creator.Draft.Appearance.bodyId == otherBody.Id
+                && creator.Draft.Pronouns == beforeBody.Pronouns && creator.Draft.Name == beforeBody.Name
+                && WebTraits.StatNames.All(stat => WebTraits.Get(creator.Draft.Stats, stat) == WebTraits.Get(beforeBody.Stats, stat));
+            CreatorRequire(creatorReport.quickBodyChangedIndependently, "Quick body choice changed the person or did not change the body.");
+            string changedBody = creator.Draft.Appearance.ContentKey();
+            yield return CreatorNativeSubmit("Undo");
+            CreatorRequire(creator.Draft.Appearance.ContentKey() == beforeBody.Appearance.ContentKey(), "Quick Undo did not restore every outfit before the body change.");
+            yield return CreatorNativeSubmit("Redo");
+            CreatorRequire(creator.Draft.Appearance.ContentKey() == changedBody, "Quick Redo did not restore the changed body and outfits.");
+            yield return WaitCreatorPreview(creator, "Quick redone body choice");
+            string draftBefore = JsonUtility.ToJson(creator.Draft);
+            yield return CreatorNativeSubmit(CharacterCreator.DetailedCaption);
+            creatorReport.keyboardModeSwitch = creator.Mode == CharacterCreator.EntryMode.Detailed;
+            CreatorRequire(creatorReport.keyboardModeSwitch, "Keyboard Submit did not enter Detailed.");
+            yield return CreatorNativeSubmit(CharacterCreator.QuickCaption, controller: true);
+            creatorReport.controllerModeSwitch = creator.Mode == CharacterCreator.EntryMode.Quick;
+            CreatorRequire(creatorReport.controllerModeSwitch, "Controller Submit did not return to Quick.");
+            var beforeMove = EventSystem.current.currentSelectedGameObject;
+            yield return CreatorPadPress(GamepadButton.DpadDown);
+            var afterMove = EventSystem.current.currentSelectedGameObject;
+            creatorReport.controllerNavigation = afterMove != null && afterMove != beforeMove && afterMove.transform.IsChildOf(creator.transform);
+            CreatorRequire(creatorReport.controllerNavigation, "Controller navigation did not stay on and move through the creator.");
+            creatorReport.quickDraftPreserved = JsonUtility.ToJson(creator.Draft) == draftBefore;
+            CreatorRequire(creatorReport.quickDraftPreserved, "Changing creator mode changed the authored draft.");
+            foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1920, 1080), new Vector2Int(1200, 900) })
+                foreach (bool large in new[] { false, true })
+                {
+                    Screen.SetResolution(size.x, size.y, FullScreenMode.Windowed);
+                    creator.FontScale = large ? 1.2f : 1f;
+                    for (int frame = 0; frame < 20; frame++) yield return null;
+                    var capture = new CreatorCapture { requestedWidth = size.x, requestedHeight = size.y,
+                        actualWidth = Screen.width, actualHeight = Screen.height, largerText = large, mode = "Quick" };
+                    CreatorRequire(Screen.width == size.x && Screen.height == size.y, "Quick capture rendered at the wrong resolution.");
+                    foreach (string caption in new[] { CharacterCreator.QuickPageCaption, "My Houseguests", "Review", CharacterCreator.QuickCaption,
+                        CharacterCreator.DetailedCaption, CharacterCreator.StartCaption, CharacterCreator.BackCaption, "Undo" })
+                    {
+                        var control = CreatorButton(caption);
+                        CreatorRequire(control != null && CreatorRectVisible(control.GetComponent<RectTransform>()),
+                            "Quick " + caption + " is outside the viewport at " + size + (large ? " larger text" : " standard text"));
+                    }
+                    capture.fixedControlsInsideViewport = true;
+                    creatorReport.captures.Add(capture);
+                    yield return CaptureCreator("creator-quick-" + size.x + "x" + size.y + (large ? "-large" : "-normal"), capture, creator);
+                    creatorReport.quickResolutionCaptures++;
+                }
+            creator.FontScale = 1f;
+            Screen.SetResolution(1600, 900, FullScreenMode.Windowed);
+            yield return CreatorNativeSubmit(CharacterCreator.BackCaption);
+            CreatorRequire(!creator.IsShowing, "Quick Back did not return to the cast screen.");
+        }
+
+        private IEnumerator CreatorNativeSubmit(string caption, bool controller = false)
+        {
+            var button = CreatorButton(caption);
+            CreatorRequire(button != null, "No native-input creator action: " + caption);
+            button.Select(); yield return null;
+            button = CreatorButton(caption);
+            CreatorRequire(button != null, "The native-input action disappeared: " + caption);
+            button.Select();
+            if (controller) yield return CreatorPadPress(GamepadButton.South);
+            else
+            {
+                if (creatorKeyboard == null) creatorKeyboard = InputSystem.AddDevice<Keyboard>();
+                InputSystem.QueueStateEvent(creatorKeyboard, new KeyboardState(Key.Enter)); yield return null;
+                InputSystem.QueueStateEvent(creatorKeyboard, new KeyboardState()); yield return null;
+            }
+            yield return null; yield return null;
+        }
+
+        private IEnumerator CreatorPadPress(GamepadButton button)
+        {
+            if (creatorGamepad == null) creatorGamepad = InputSystem.AddDevice<Gamepad>();
+            InputSystem.QueueStateEvent(creatorGamepad, new GamepadState().WithButton(button)); yield return null;
+            InputSystem.QueueStateEvent(creatorGamepad, new GamepadState()); yield return null;
+        }
+
+        private IEnumerator CreatorNativePointer(string caption)
+        {
+            var button = CreatorButton(caption);
+            CreatorRequire(button != null, "No native pointer action: " + caption);
+            button.Select(); yield return null; yield return null;
+            button = CreatorButton(caption);
+            CreatorRequire(button != null, "The pointer action disappeared: " + caption);
+            var rect = button.GetComponent<RectTransform>();
+            Vector2 position = RectTransformUtility.WorldToScreenPoint(null, rect.TransformPoint(rect.rect.center));
+            var pointer = new PointerEventData(EventSystem.current) { position = position };
+            var hits = new List<RaycastResult>(); EventSystem.current.RaycastAll(pointer, hits);
+            CreatorRequire(hits.Any(hit => hit.gameObject == button.gameObject || hit.gameObject.transform.IsChildOf(button.transform)),
+                "Native pointer action is not raycast reachable: " + caption);
+            if (creatorMouse == null) creatorMouse = InputSystem.AddDevice<Mouse>();
+            InputSystem.QueueStateEvent(creatorMouse, new MouseState { position = position }); yield return null;
+            InputSystem.QueueStateEvent(creatorMouse, new MouseState { position = position, buttons = 1 }); yield return null;
+            InputSystem.QueueStateEvent(creatorMouse, new MouseState { position = position }); yield return null;
+            yield return null; yield return null;
+        }
 
         private IEnumerator CreatorClick(string caption)
         {
@@ -372,17 +517,79 @@ namespace Gamesim.Episode
             yield return null; yield return null;
         }
 
-        private IEnumerator CaptureCreator(string name, CreatorCapture capture)
+        private IEnumerator CaptureCreator(string name, CreatorCapture capture, CharacterCreator expectedPreview = null)
         {
             Canvas.ForceUpdateCanvases();
             for (int i = 0; i < 5; i++) yield return null;
+            if (expectedPreview != null)
+            {
+                yield return WaitCreatorPreviewReady(expectedPreview, "capture " + name);
+                // Complete updates its status during Update; give the normal UI its own next frame.
+                yield return null;
+            }
+            var evidence = new CreatorFrameEvidence { name = name };
+            creatorReport.frames.Add(evidence);
+            if (expectedPreview != null)
+                RequireCreatorPreviewPixels(expectedPreview, name, evidence);
             string path = Path.Combine(outputDirectory, name + ".png");
-            ScreenCapture.CaptureScreenshot(path);
-            double deadline = Time.realtimeSinceStartupAsDouble + 5;
-            while ((!File.Exists(path) || new FileInfo(path).Length == 0) && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
-            CreatorRequire(File.Exists(path) && new FileInfo(path).Length > 0, "Capture was not written: " + name);
-            if (capture != null) capture.path = path;
+            evidence.path = path;
+            VerificationFrameEvidence captured = null;
+            yield return CaptureVerifiedFrame(path, frame => { captured = frame; creatorReport.capturedFrames.Add(frame); },
+                reason => CreatorRequire(false, reason));
+            evidence.width = captured.width; evidence.height = captured.height;
+            evidence.sampledPixels = captured.sampledPixels; evidence.nonDarkSamples = captured.nonDarkSamples;
+            evidence.varyingSamples = captured.varyingSamples; evidence.rendered = captured.rendered;
             creatorReport.images.Add(path);
+            if (expectedPreview != null)
+            {
+                CreatorRequire(CreatorPreviewMatchesDraft(expectedPreview), "The draft or preview changed while capturing " + name + ".");
+            }
+            if (capture != null) capture.path = path;
+        }
+
+        private static bool CreatorPreviewMatchesDraft(CharacterCreator creator) => creator.IsShowing
+            && creator.StudioPreview != null && !creator.StudioPreview.IsBuilding && !creator.StudioPreview.CanRetry
+            && creator.StudioPreview.CompletedKey == creator.Draft.Appearance.ContentKey();
+
+        private static void RequireCreatorPreviewPixels(CharacterCreator creator, string name, CreatorFrameEvidence evidence)
+        {
+            CreatorRequire(CreatorPreviewMatchesDraft(creator), "The current creator draft is not ready for " + name + ".");
+            var image = creator.GetComponentsInChildren<RawImage>().SingleOrDefault(item => item.name == "Live character preview");
+            var texture = creator.StudioPreview.Texture as RenderTexture;
+            CreatorRequire(image != null && image.isActiveAndEnabled && !image.canvasRenderer.cull && image.color.a >= .5f && image.texture == texture
+                && texture != null && texture.IsCreated(), "No displayed studio texture for " + name + ".");
+            var previous = RenderTexture.active;
+            var resolved = RenderTexture.GetTemporary(texture.width, texture.height, 0, RenderTextureFormat.ARGB32);
+            var pixels = new Texture2D(texture.width, texture.height, TextureFormat.RGBA32, false);
+            try
+            {
+                // As for the isolated portrait export, resolve the studio's multisampled texture
+                // through an ordinary temporary before CPU readback; do not rerender the subject.
+                Graphics.Blit(texture, resolved); RenderTexture.active = resolved;
+                pixels.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0); pixels.Apply();
+                var colors = pixels.GetPixels32();
+                var background = colors[0];
+                int minX = texture.width, minY = texture.height, maxX = -1, maxY = -1;
+                for (int pixel = 0; pixel < colors.Length; pixel += 16)
+                {
+                    var color = colors[pixel];
+                    if (color.a < 128) continue;
+                    evidence.previewOpaqueSamples++;
+                    if (Math.Abs(color.r - background.r) < 8 && Math.Abs(color.g - background.g) < 8 && Math.Abs(color.b - background.b) < 8) continue;
+                    evidence.previewForegroundSamples++;
+                    int x = pixel % texture.width, y = pixel / texture.width;
+                    minX = Math.Min(minX, x); maxX = Math.Max(maxX, x);
+                    minY = Math.Min(minY, y); maxY = Math.Max(maxY, y);
+                }
+                evidence.previewForegroundWidth = maxX < minX ? 0 : maxX - minX + 1;
+                evidence.previewForegroundHeight = maxY < minY ? 0 : maxY - minY + 1;
+                // Creator requests a transparent backdrop, but alpha alone could accept an opaque
+                // clear from the pipeline. Demand a substantial foreground distinct from the actual
+                // corner backdrop in both axes, without rerendering or replacing captured pixels.
+                CreatorRequire(evidence.previewForegroundSamples >= 128 && evidence.previewForegroundWidth >= 8
+                    && evidence.previewForegroundHeight >= 16, "The ready studio texture contains no visible subject: " + name);
+            }
+            finally { RenderTexture.active = previous; RenderTexture.ReleaseTemporary(resolved); Destroy(pixels); }
         }
 
         private static bool CreatorRectVisible(RectTransform rect)
@@ -413,7 +620,11 @@ namespace Gamesim.Episode
         { if (!condition) throw new InvalidOperationException(message); }
 
         [Serializable] private sealed class CreatorBuildTiming
-        { public string operation, status; public double observedWaitMilliseconds, editToCompletedBuildMilliseconds; }
+        {
+            public string operation, status;
+            public double observedWaitMilliseconds, editToCompletedBuildMilliseconds;
+            public bool reusedCompletedAppearance;
+        }
         [Serializable] private sealed class CreatorControlBound
         { public string id; public float minimum, maximum, testedValue; }
         [Serializable] private sealed class CreatorBodyBoundsCapture
@@ -424,22 +635,32 @@ namespace Gamesim.Episode
         }
         [Serializable] private sealed class CreatorCapture
         {
-            public string path; public int requestedWidth, requestedHeight, actualWidth, actualHeight;
+            public string path, mode; public int requestedWidth, requestedHeight, actualWidth, actualHeight;
             public bool largerText, fixedControlsInsideViewport;
+        }
+        [Serializable] private sealed class CreatorFrameEvidence
+        {
+            public string name, path;
+            public int width, height, sampledPixels, nonDarkSamples, varyingSamples, previewOpaqueSamples;
+            public int previewForegroundSamples, previewForegroundWidth, previewForegroundHeight;
+            public bool rendered;
         }
         [Serializable] private sealed class CreatorVerificationReport
         {
             public string status, visualStatus, startedUtc, finishedUtc, workload, processor, gpu, unityVersion, sessionId;
             public string libraryDirectory, libraryProfileId;
-            public int systemMemoryMB, graphicsMemoryMB, bodyCount, wardrobeCount, controlCount, resolutionCaptures, bodyBoundsCaptures, workloadLimitSeconds;
+            public int systemMemoryMB, graphicsMemoryMB, bodyCount, wardrobeCount, controlCount, resolutionCaptures, quickResolutionCaptures, bodyBoundsCaptures, workloadLimitSeconds;
             public uint seed;
-            public bool pointerSliderChanged, cosmeticsPreservedGameplayAndRng, previewHouseAppearanceEqual, saveReloadAppearanceEqual;
+            public bool batchMode, pointerSliderChanged, cosmeticsPreservedGameplayAndRng, previewHouseAppearanceEqual, saveReloadAppearanceEqual;
+            public bool quickDraftPreserved, keyboardModeSwitch, controllerModeSwitch, controllerNavigation, quickPointerPresetChanged, quickBodyChangedIndependently;
             public bool isolatedLibrary, librarySaveLoadEqual, customCastRepeatedAndEdited, playerPreservedDuringNpcEdit,
                 libraryUnaffectedByCastEdit, customCastSaveReloadEqual, bodyBoundsAppearanceRestored;
             public double portraitBuildMilliseconds;
             public List<CreatorBuildTiming> builds = new List<CreatorBuildTiming>();
             public List<CreatorBodyBoundsCapture> bodyBounds = new List<CreatorBodyBoundsCapture>();
             public List<CreatorCapture> captures = new List<CreatorCapture>();
+            public List<CreatorFrameEvidence> frames = new List<CreatorFrameEvidence>();
+            public List<VerificationFrameEvidence> capturedFrames = new List<VerificationFrameEvidence>();
             public List<string> images = new List<string>(), errors = new List<string>();
         }
     }

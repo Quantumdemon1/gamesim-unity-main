@@ -61,11 +61,8 @@ namespace Gamesim.Episode
             if (graphical)
             {
                 string capture = Path.Combine(outputDirectory, "season-" + seasonReport.artifactId + "-npc-witnessed-conversation.png");
-                ScreenCapture.CaptureScreenshot(capture);
-                double captureDeadline = Time.realtimeSinceStartupAsDouble + 5;
-                do { yield return null; ObserveAutonomyStep(ref observed); }
-                while ((!File.Exists(capture) || new FileInfo(capture).Length == 0) && Time.realtimeSinceStartupAsDouble < captureDeadline);
-                RequireSeason(File.Exists(capture) && new FileInfo(capture).Length > 0, "Witnessed conversation capture was not written.");
+                yield return CaptureVerifiedFrame(capture, seasonReport.capturedFrames.Add,
+                    reason => RequireSeason(false, reason), () => ObserveAutonomyStep(ref observed));
                 seasonReport.screenshots.Add(capture);
             }
             ObserveAutonomyStep(ref observed);

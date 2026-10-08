@@ -575,8 +575,8 @@ namespace Gamesim.House
             {
                 var anchor=entry.lease.Anchor;
                 if(anchor==null)continue;
-                if(anchor.VenueId==venue.id)return true;
-                if(!venue.Home && Crowds(venue,anchor.Position,anchor.Approach))return true;
+                if(anchor.VenueId==venue.id && !HouseFurniture.IndependentRest(anchor))return true;
+                if((!venue.Home || HouseFurniture.IndependentRest(anchor)) && Crowds(venue,anchor.Position,anchor.Approach))return true;
             }
             if(talk!=null)
             {
@@ -606,7 +606,7 @@ namespace Gamesim.House
             if(anchor==null)return false;
             foreach(var venue in venues)
             {
-                if(venue.Home || !venue.Valid(rooms.Scene))continue;
+                if((venue.Home && !HouseFurniture.IndependentRest(anchor)) || !venue.Valid(rooms.Scene))continue;
                 bool held=talk!=null && talk.venue==venue;
                 if(!held)foreach(var lease in leases.Values)if(lease.SpotId==venue.id){held=true;break;}
                 if(held && Crowds(venue,anchor.Position,anchor.Approach))return true;

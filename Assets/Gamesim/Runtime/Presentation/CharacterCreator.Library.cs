@@ -122,10 +122,11 @@ namespace Gamesim.Presentation
                 draft.Appearance = draft.Appearance ?? new CharacterAppearance();
                 if (Catalog != null) draft.Appearance = Catalog.Materialize(draft.Appearance);
                 initialAppearance = draft.Appearance.Clone();
+                quickScrollY = 0f;
                 appearanceUndo.Clear(); appearanceRedo.Clear();
                 comparingOriginal = false; appearanceNotice = lastSlider = null;
                 libraryMessage = "A blank houseguest. Save it here when you are done.";
-                studioPage = "Appearance";
+                studioPage = DefaultAppearancePage;
                 Rebuild();
             });
         }
@@ -292,11 +293,12 @@ namespace Gamesim.Presentation
             draft.Appearance = draft.Appearance ?? new CharacterAppearance();
             if (Catalog != null) draft.Appearance = Catalog.Materialize(draft.Appearance);
             initialAppearance = draft.Appearance.Clone();
+            quickScrollY = 0f;
             appearanceUndo.Clear(); appearanceRedo.Clear();
             comparingOriginal = false;
             appearanceNotice = lastSlider = null;
             lastSliderEdit = 0f;
-            studioPage = page ?? (duplicate ? "Identity" : "Appearance");
+            SelectPage(page ?? (duplicate ? "Identity" : DefaultAppearancePage));
             if (!duplicate && page == "My Houseguests") libraryMessage = "Loaded " + profile.name + ".";
             Rebuild();
         }

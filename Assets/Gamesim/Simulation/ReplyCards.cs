@@ -20,8 +20,10 @@ namespace Gamesim.Simulation
     /// </summary>
     public static class ReplyCards
     {
-        public const string Confrontation = "confrontation", Gossip = "gossip", Plea = "plea";
-        public static readonly string[] All = { Confrontation, Gossip, Plea };
+        public const string Confrontation = "confrontation", Gossip = "gossip", Plea = "plea", Pitch = "pitch";
+        /// <summary>The three historical card families; their fixtures keep their original phase contracts.</summary>
+        public static readonly string[] LegacyKinds = { Confrontation, Gossip, Plea };
+        public static readonly string[] All = { Confrontation, Gossip, Plea, Pitch };
         public static bool IsKnown(string kind) => kind != null && Array.IndexOf(All, kind) >= 0;
 
         /// <summary>How often the player finds out a houseguest has been talking about them: the reference's roll.</summary>
@@ -65,9 +67,17 @@ namespace Gamesim.Simulation
             new Reply { Key = "refuse", Label = "Refuse", Description = "Tell them you can't help", ToThem = -5, Risk = HouseEventRisk.Medium },
         };
 
+        // Native E4 answers use the existing plea's warmth trade-offs, but safety is not a vote.
+        private static readonly Reply[] Pitching =
+        {
+            new Reply { Key = "promise-safety", Label = "Promise safety", Description = "Promise them safety; nominations can break your word", ToThem = 8, Risk = HouseEventRisk.Medium },
+            new Reply { Key = "hear", Label = "Hear them without committing", Description = "Hear the recommendation. No new promise; existing promises still bind", ToThem = 0 },
+            new Reply { Key = "turn-down", Label = "Turn them down", Description = "Decline and lose trust. Existing promises still bind", ToThem = -5, Risk = HouseEventRisk.Medium },
+        };
+
         /// <summary>The answers a card of this kind offers, in the reference's order.</summary>
         public static Reply[] Replies(string kind) =>
-            kind == Confrontation ? Confronting : kind == Gossip ? Gossiping : kind == Plea ? Pleading : new Reply[0];
+            kind == Confrontation ? Confronting : kind == Gossip ? Gossiping : kind == Plea ? Pleading : kind == Pitch ? Pitching : new Reply[0];
 
         /// <summary>An answer by its key, or null.</summary>
         public static Reply Find(string kind, string key) =>
@@ -79,6 +89,7 @@ namespace Gamesim.Simulation
         /// </summary>
         public static void Offer(EpisodeState s, string kind, string fromId, string aboutId)
         {
+            if (kind == Pitch) { HoHPitches.Offer(s, fromId); return; }
             if (!StrategyRules.Apply(s) || !IsKnown(kind) || s.replyCards.Count >= 24) return;
             if (s.Find(s.playerId)?.status != ContestantStatus.Active) return;
             if (s.replyCards.Any(r => r.kind == kind && r.fromId == fromId)) return;
@@ -98,6 +109,7 @@ namespace Gamesim.Simulation
             {
                 case Confrontation: return who + " is confronting you!";
                 case Gossip: return who + " has been talking about you";
+                case Pitch: return who + " has a nomination pitch";
                 default: return who + " wants your support!";
             }
         }
@@ -125,6 +137,10 @@ namespace Gamesim.Simulation
                 case Gossip:
                     return "You just found out that " + who + " has been talking behind your back to "
                         + (s.Find(card.aboutId)?.name ?? "somebody") + "! How do you want to handle this?";
+                case Pitch:
+                    return card.aboutId == null ? "“I'd like to stay off the block. Can you give me safety?”"
+                        : "“I'd put " + (s.Find(card.aboutId)?.name ?? "someone else") + " up. Can you keep me safe?”"
+                            + " This is their recommendation, not a decision you have made.";
                 default:
                     return ReadsAsClose(s, card.fromId)
                         ? "“Look, I know we've been close. I need you to vote to keep me. Don't let them break us apart.”"
@@ -145,11 +161,14 @@ namespace Gamesim.Simulation
 
         /// <summary>The note the relationship change carries.</summary>
         public static string Note(string kind, string label) =>
-            (kind == Confrontation ? "Answered a confrontation: " : kind == Gossip ? "Answered gossip: " : "Answered a plea: ") + label;
+            (kind == Confrontation ? "Answered a confrontation: " : kind == Gossip ? "Answered gossip: " : kind == Pitch ? "Answered a nomination pitch: " : "Answered a plea: ") + label;
 
         /// <summary>What the houseguest remembers of the player's answer.</summary>
         public static string Memory(string kind, string key, int week)
         {
+            if (kind == Pitch) return key == "promise-safety" ? "Promised me safety when I pitched in week " + week + "."
+                : key == "hear" ? "Heard my nomination pitch without promising anything in week " + week + "."
+                : "Turned down my nomination pitch in week " + week + ".";
             switch (key)
             {
                 case "apologize": return "Apologized to me in week " + week + ".";
@@ -170,6 +189,9 @@ namespace Gamesim.Simulation
             string who = s.Find(card.fromId)?.name ?? "them";
             switch (reply.Key)
             {
+                case "promise-safety": return "You promised " + who + " safety. Your nominations remain your choice, and can break that promise.";
+                case "hear": return "You heard " + who + "'s nomination pitch without making a promise.";
+                case "turn-down": return "You turned down " + who + "'s nomination pitch.";
                 case "apologize": return "You apologized to " + who + ".";
                 case "deflect": return "You deflected " + who + "'s confrontation.";
                 case "escalate": return "You pushed back hard at " + who + ".";
@@ -192,7 +214,7 @@ namespace Gamesim.Simulation
         public string kind;
         /// <summary>Who came to the player.</summary>
         public string fromId;
-        /// <summary>Who else it is about: the listener for gossip, the other nominee for a plea, else null.</summary>
+        /// <summary>The gossip listener, the plea's other nominee, or the pitch's proposed target; otherwise null.</summary>
         public string aboutId;
         public ReplyCardState Clone() => (ReplyCardState)MemberwiseClone();
     }

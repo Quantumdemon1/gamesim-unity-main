@@ -139,6 +139,13 @@ namespace Gamesim.Episode
         private Button OfferAccept(EpisodeState state, DealState offer)
         {
             string id = offer.id;
+            // An invitation that would bring the player into a fourth pact (ACTIONS-DEALS-ALLIANCES-PLAN
+            // C4, decision 10): the engine refuses the yes, so it is drawn locked under a line saying why.
+            if (offer.type == DealKind.AllianceInvite && EpisodeEngine.InvitationPastPactCap(state, offer.proposerId))
+            {
+                hud.Paragraph(PactCapOfferLine(state, offer.proposerId));
+                return hud.LockedAction(EpisodeHud.DealAcceptCaption);
+            }
             string promised = offer.type == DealKind.VetoUse ? VetoPromisedTo(state, offer.proposerId) : null;
             if (promised == null)
                 return hud.ActionFor(id, EpisodeHud.DealAcceptCaption,
@@ -148,15 +155,26 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
+        /// Above an alliance invitation's locked yes, once the player holds three pacts (C4): why it is
+        /// locked, and what is left to do with it. Turned down, it is the player's no; left alone, it
+        /// waits until it lapses, which is the engine's to say when.
+        /// </summary>
+        public static string PactCapOfferLine(EpisodeState state, string askingId) =>
+            EpisodeEngine.PactCapRefusal + " Turn " + FinalistRead.FirstName(state?.Find(askingId)?.name ?? "them")
+            + " down, or leave the offer unanswered.";
+
+        /// <summary>
         /// The nominee on this week's block the player has already given their word on the veto
-        /// to, other than <paramref name="askingId"/>, or null. Read from the player's own deals.
+        /// to, other than <paramref name="askingId"/>, or null. Read from the player's own deals,
+        /// either way round: a nominee's ask the player took, or - under the commitment rules (C7) - a
+        /// price the player named for the veto, which the player proposed.
         /// </summary>
         public static string VetoPromisedTo(EpisodeState state, string askingId) =>
             state == null ? null
-                : state.deals.Where(d => d.type == DealKind.VetoUse && d.recipientId == state.playerId && d.proposerId != askingId
-                        && d.week == state.week && (d.status == DealStatus.Active || d.status == DealStatus.Accepted)
-                        && state.nominees.Contains(d.proposerId))
-                    .Select(d => d.proposerId).FirstOrDefault();
+                : state.deals.Where(d => d.type == DealKind.VetoUse && d.week == state.week
+                        && (d.status == DealStatus.Active || d.status == DealStatus.Accepted))
+                    .Select(d => DealResolution.Partner(d, state.playerId))
+                    .FirstOrDefault(other => other != null && other != askingId && state.nominees.Contains(other));
 
         /// <summary>
         /// Above the other nominee's locked accept, once the player has said yes to one veto ask: why
@@ -177,18 +195,26 @@ namespace Gamesim.Episode
         /// A houseguest who came to the player, waiting on an answer. Drawn before the week's
         /// situation, one card at a time; true when there was one.
         /// </summary>
-        private bool PendingReplyCard(EpisodeState state)
+        private bool PendingReplyCard(EpisodeState state, bool privateRoom = false)
         {
             var card = ReplyCards.Pending(state);
             if (card == null) return false;
             string cardId = card.id;
-            hud.HouseEventHeader(ReplyCards.Title(state, card), ReplyCards.Message(state, card), EpisodeHud.ReplyCardEyebrow);
+            if (privateRoom) { hud.Heading("Houseguest pitch"); hud.Paragraph(ReplyCards.Title(state, card)); hud.Paragraph(ReplyCards.Message(state, card)); }
+            else hud.HouseEventHeader(ReplyCards.Title(state, card), ReplyCards.Message(state, card), EpisodeHud.ReplyCardEyebrow);
+            object replyView = BeginReplyChoices();
             hud.EventChoices(ReplyCards.Replies(card.kind).Select(reply =>
             {
                 string key = reply.Key;
-                return (EpisodeHud.ReplyCaption(reply.Label), reply.Description, EpisodeHud.RiskTag(reply.Risk),
-                    (Action)(() => Commit(state, EpisodeCommandKind.ReplyToHouseguest, cardId, text: key)));
+                return (EpisodeHud.ReplyCaption(reply.Label), ReplyCardPayoffs.Description(state, card, reply), EpisodeHud.RiskTag(reply.Risk),
+                    key == "promise-safety" && !HoHPitches.CanPromiseSafety(state, card.fromId) ? null : ReplyChoice(state, cardId, key, replyView));
             }).ToList());
+            if (card.kind == ReplyCards.Pitch)
+            {
+                hud.Paragraph(HoHPitches.Assessment(state, card) ?? "Ask why they are recommending this. Asking makes no new promise.");
+                if (HoHPitches.Assessed(state, card)) hud.LockedAction(EpisodeHud.FeelOutPitchCaption);
+                else hud.Action(EpisodeHud.FeelOutPitchCaption, ReplyChoice(state, cardId, HoHPitches.FeelOutKey, replyView));
+            }
             return true;
         }
     }

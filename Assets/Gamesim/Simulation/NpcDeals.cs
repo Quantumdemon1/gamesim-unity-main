@@ -41,6 +41,25 @@ namespace Gamesim.Simulation
         public const double UpgradeWarmth = 40;
         public const double FinalTwoWarmth = 55;
 
+        /// <summary>
+        /// The final three deal's rung (ACTIONS-DEALS-ALLIANCES-PLAN C9), this port's own: under the final
+        /// two's, since it asks less of the two - to reach the end together, not to sit there together.
+        /// </summary>
+        public const double FinalThreeWarmth = 45;
+
+        /// <summary>The final three: the house size at which a final three deal is kept, and past which none is put.</summary>
+        public const int FinalThreeSize = 3;
+
+        /// <summary>
+        /// Whether the final four's block is set (C9, the review's M4): four in the house, and this week's
+        /// veto meeting over while its eviction is still to come. From then a final three deal could never
+        /// be broken - nobody is left to nominate anybody - and would always be kept, so none is put, none
+        /// is taken and an offer of one lapses. The final four's own free time, after the final five's
+        /// eviction, is still open.
+        /// </summary>
+        public static bool FinalFourBlockSet(EpisodeState state) =>
+            state != null && state.Active.Count() == FinalThreeSize + 1 && state.vetoResolved && !state.evictionResolved;
+
         /// <summary>Trust a houseguest wants before trading information. The source's number.</summary>
         public const double InformationTrust = 40;
 
@@ -49,6 +68,14 @@ namespace Gamesim.Simulation
 
         /// <summary>What validation lets a season hold, so the pass stops short of it.</summary>
         public const int DealCeiling = 200;
+
+        /// <summary>
+        /// How the id of a question put to the player begins: a weekly offer (<see cref="Propose"/>)
+        /// or a nominee's veto ask (<see cref="AskForTheVeto"/>). Only the player's answer makes one
+        /// bind, so a deal with either that is or was binding is one the player accepted
+        /// (<see cref="DealResolution.AcceptedOffer"/>).
+        /// </summary>
+        public const string OfferPrefix = "deal-ask-", VetoAskPrefix = "deal-veto-";
 
         // ---------------------------------------------------------------- reading the room
 
@@ -63,13 +90,28 @@ namespace Gamesim.Simulation
         public static double Adjusted(EpisodeState state, string readerId, string aboutId) =>
             state.Score(readerId, aboutId) - BrokenDealPenalty * BrokenDeals(state, aboutId);
 
-        public static int BrokenDeals(EpisodeState state, string whoId) =>
-            state.deals.Count(d => d.status == DealStatus.Broken
-                                   && (d.proposerId == whoId || d.recipientId == whoId));
+        /// <summary>
+        /// The broken deals held against somebody: under the commitment rules the ones they broke
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN C0, X3), before them every broken deal they were either side
+        /// of (<see cref="Breaches.CountsAgainst(EpisodeState, DealState, string)"/>). The player's own
+        /// count is what the acceptance roll and its line read too.
+        /// </summary>
+        public static int BrokenDeals(EpisodeState state, string whoId)
+        {
+            int legacy = state.deals.Count(d => Breaches.CountsAgainst(state, d, whoId));
+            if (!UnifiedCommitments.RulesOn(state)) return legacy;
+            // This source term measures broken deals, not every kind of word. A promise-only
+            // incident stays outside it; any number of reciprocal Safety deal aliases counts
+            // once, against the actual actor and never against the person they wronged.
+            var deals = new HashSet<string>(UnifiedCommitmentHistory.Records(state)
+                .Where(row => row.sourcePolicy == UnifiedCommitments.DealPolicy).Select(row => row.id), StringComparer.Ordinal);
+            return legacy + UnifiedCommitmentHistory.Breaches(state)
+                .Count(incident => incident.ActorId == whoId && incident.EvidenceIds.Any(deals.Contains));
+        }
 
         /// <summary>Deals currently binding these two, in either direction.</summary>
         public static List<DealState> Between(EpisodeState state, string a, string b) =>
-            state.deals.Where(d => d.status == DealStatus.Active
+            (UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Deals(state) : state.deals).Where(d => d.status == DealStatus.Active
                                    && ((d.proposerId == a && d.recipientId == b)
                                        || (d.proposerId == b && d.recipientId == a)))
                 .ToList();
@@ -118,8 +160,11 @@ namespace Gamesim.Simulation
             bool partnership = Has(state, npcId, targetId, DealKind.Partnership);
             bool safety = Has(state, npcId, targetId, DealKind.SafetyAgreement);
 
-            // Already partners and already safe: make it an alliance.
-            if (partnership && safety && warmth > UpgradeWarmth && !allied)
+            // Already partners and already safe: make it an alliance - unless, under the commitment
+            // rules, the player it would be put to holds as many pacts as they may (C4, decision 10),
+            // and could only turn it down. The agency rung below counts them through WouldPropose.
+            if (partnership && safety && warmth > UpgradeWarmth && !allied
+                && !(target.isPlayer && EpisodeEngine.InvitationPastPactCap(state, npcId)))
                 return DealKind.AllianceInvite;
 
             // Under agency a houseguest looking for a partner asks the one they want, when that is
@@ -153,6 +198,14 @@ namespace Gamesim.Simulation
             if (warmth > FinalTwoWarmth && state.Active.Count() <= EndgameSize
                 && !Has(state, npcId, targetId, DealKind.FinalTwo))
                 return DealKind.FinalTwo;
+
+            // Under the commitment rules (C9) the endgame has a rung below the final two: from the final
+            // six to the final four, two warm enough take each other to the final three, unless a final
+            // two or a final three already binds them. Without the rules the ladder is the reference's.
+            if (EpisodeEngine.CommitmentRulesOn(state) && warmth > FinalThreeWarmth
+                && state.Active.Count() <= EndgameSize && state.Active.Count() > FinalThreeSize && !FinalFourBlockSet(state)
+                && !Has(state, npcId, targetId, DealKind.FinalTwo) && !Has(state, npcId, targetId, DealKind.FinalThree))
+                return DealKind.FinalThree;
 
             // The last rung is the only one personality decides.
             bool schemer = npc.traits.Any(t => string.Equals(t, "Sneaky", StringComparison.OrdinalIgnoreCase)
@@ -189,7 +242,7 @@ namespace Gamesim.Simulation
                          .Where(c => c.status == ContestantStatus.Active && !c.isPlayer)
                          .ToList())
             {
-                if (state.deals.Count >= DealCeiling) return;
+                if ((UnifiedCommitments.RulesOn(state) ? CommitmentReferences.DealCount(state) : state.deals.Count) >= DealCeiling) return;
 
                 var struck = state.contestants
                     .Where(other => other.status == ContestantStatus.Active && !other.isPlayer
@@ -235,8 +288,8 @@ namespace Gamesim.Simulation
             // One round of offers per week. The test is whether anything was PUT to the player this
             // week, not whether anything is still waiting — otherwise clearing the table would
             // refill it, and a player who answers promptly would be asked more than one who does not.
-            if (state.deals.Any(d => d.recipientId == state.playerId && d.week == state.week
-                                     && d.id.StartsWith("deal-ask-", StringComparison.Ordinal))) return;
+            if ((UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Deals(state) : state.deals).Any(d => d.recipientId == state.playerId && d.week == state.week
+                                     && d.id.StartsWith(OfferPrefix, StringComparison.Ordinal))) return;
 
             var offers = state.contestants
                 .Where(npc => npc.status == ContestantStatus.Active && !npc.isPlayer)
@@ -247,16 +300,17 @@ namespace Gamesim.Simulation
                 .ToList();
 
             var types = new HashSet<string>(StringComparer.Ordinal);
-            int room = Math.Min(ProposalsPerWeek, Math.Max(0, DealCeiling - state.deals.Count));
+            int room = Math.Min(ProposalsPerWeek, Math.Max(0, DealCeiling
+                - (UnifiedCommitments.RulesOn(state) ? CommitmentReferences.DealCount(state) : state.deals.Count)));
             foreach (var offer in offers)
             {
                 if (types.Count >= room) break;
                 // Variety, the reference's rule: the first offer always stands, and after that a
                 // repeat of a type already on the table is skipped in favour of something new.
                 if (!types.Add(offer.kind)) continue;
-                state.deals.Add(new DealState
+                var proposed = new DealState
                 {
-                    id = "deal-ask-" + state.nextSequence,
+                    id = OfferPrefix + state.nextSequence,
                     type = offer.kind,
                     proposerId = offer.npc.id,
                     recipientId = state.playerId,
@@ -274,7 +328,16 @@ namespace Gamesim.Simulation
                     // accepting recomputes the term from the deal's own rule.
                     expiresWeek = state.week,
                     trustImpact = DealKind.DefaultTrust(offer.kind),
-                });
+                };
+                if (UnifiedCommitments.RulesOn(state) && offer.kind == DealKind.SafetyAgreement)
+                {
+                    if (!UnifiedCommitmentStore.TryAddDeal(state, proposed, UnifiedCommitments.NpcOffer, out _))
+                    {
+                        types.Remove(offer.kind);
+                        continue;
+                    }
+                }
+                else state.deals.Add(proposed);
                 RelationshipLedger.Record(state, offer.npc.id, state.playerId, "deal_proposed", 0,
                     offer.npc.name + " put a " + DealKind.Title(offer.kind).ToLowerInvariant() + " to you.");
             }
@@ -305,10 +368,10 @@ namespace Gamesim.Simulation
                 .ToList();
             foreach (var npc in asking)
             {
-                if (state.deals.Count >= DealCeiling) return;
+                if ((UnifiedCommitments.RulesOn(state) ? CommitmentReferences.DealCount(state) : state.deals.Count) >= DealCeiling) return;
                 state.deals.Add(new DealState
                 {
-                    id = "deal-veto-" + state.nextSequence,
+                    id = VetoAskPrefix + state.nextSequence,
                     type = DealKind.VetoUse,
                     proposerId = npc.id,
                     recipientId = state.playerId,
@@ -344,8 +407,8 @@ namespace Gamesim.Simulation
 
         /// <summary>Offers still waiting on the player, newest first.</summary>
         public static List<DealState> Pending(EpisodeState state) =>
-            state?.deals
-                .Where(d => d.status == DealStatus.Proposed && d.recipientId == state.playerId)
+            (state == null ? null : UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Deals(state) : state.deals)
+                ?.Where(d => d.status == DealStatus.Proposed && d.recipientId == state.playerId)
                 .OrderByDescending(d => d.week)
                 .ThenByDescending(d => Urgency(d.type))
                 .ThenBy(d => d.id, StringComparer.Ordinal)
@@ -360,6 +423,8 @@ namespace Gamesim.Simulation
         /// </summary>
         private static void Expire(EpisodeState state)
         {
+            if (UnifiedCommitments.RulesOn(state))
+                EpisodeEngine.ResolveUnifiedSafetyExpiry(state, UnifiedCommitmentExpiry.DealPass);
             foreach (var deal in state.deals)
                 if (DealStatus.Binds(deal.status) && deal.expiresWeek > 0 && deal.expiresWeek < state.week)
                     deal.status = DealStatus.Expired;
@@ -369,7 +434,7 @@ namespace Gamesim.Simulation
         private static void Strike(EpisodeState state, string from, string to, string kind)
         {
             string target = DealKind.NamesATarget(kind) ? TargetFor(state, from, to, kind) : null;
-            state.deals.Add(new DealState
+            var deal = new DealState
             {
                 id = "deal-npc-" + state.nextSequence,
                 type = kind,
@@ -380,12 +445,19 @@ namespace Gamesim.Simulation
                 // there is no proposal for anybody to answer.
                 status = DealStatus.Active,
                 week = state.week,
-                // A final two and a partnership are open-ended; the rest are about this week.
+                // A final two and a partnership are open-ended, and so is a final three deal (C9), which
+                // runs until the house is down to three; the rest are about this week.
                 expiresWeek = kind == DealKind.FinalTwo || kind == DealKind.Partnership
                               || kind == DealKind.AllianceInvite || kind == DealKind.InformationSharing
+                              || kind == DealKind.FinalThree
                     ? 0 : state.week,
                 trustImpact = DealKind.DefaultTrust(kind),
-            });
+            };
+            if (UnifiedCommitments.RulesOn(state) && kind == DealKind.SafetyAgreement)
+            {
+                if (!UnifiedCommitmentStore.TryAddDeal(state, deal, UnifiedCommitments.NpcDeal, out _)) return;
+            }
+            else state.deals.Add(deal);
 
             RelationshipLedger.Record(state, from, to, "deal_accepted", 18,
                 state.Find(from).name + " and " + state.Find(to).name + " agreed a "

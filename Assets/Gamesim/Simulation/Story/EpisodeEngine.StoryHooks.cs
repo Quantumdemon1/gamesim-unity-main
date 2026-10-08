@@ -51,7 +51,7 @@ namespace Gamesim.Simulation
         private static void StoryAllianceLeft(EpisodeState s, string leftBehindId, string betrayerId)
         {
             if (!StoryAt(s, StoryRules.Grudges) || leftBehindId == s.playerId) return;
-            Grudges.Add(s, leftBehindId, betrayerId, 80, GrudgeCauses.AllianceBetrayed);
+            Grudges.Add(s, leftBehindId, betrayerId, AllianceLeftGrudge, GrudgeCauses.AllianceBetrayed);
         }
 
         /// <summary>
@@ -60,10 +60,15 @@ namespace Gamesim.Simulation
         /// becomes a reckoning: the next conversation between them is about what happened.
         /// </summary>
         private static void StoryWordBroken(EpisodeState s, string wrongedId, string breakerId, string cause, double severity)
+            => StoryWordBrokenBeforeSafetyEffects(s, wrongedId, breakerId, cause, severity, null);
+
+        private static void StoryWordBrokenBeforeSafetyEffects(EpisodeState s, string wrongedId, string breakerId,
+            string cause, double severity, IReadOnlyList<string> excludedSafetyEffects)
         {
             if (!StoryOn(s) || wrongedId == null || breakerId == null || wrongedId == breakerId) return;
             if (StoryAt(s, StoryRules.Grudges) && wrongedId != s.playerId)
-                Grudges.Add(s, wrongedId, breakerId, Grudges.ThreatScaled(s, severity, wrongedId, breakerId), cause);
+                Grudges.Add(s, wrongedId, breakerId,
+                    Grudges.ThreatScaledBeforeSafetyEffects(s, severity, wrongedId, breakerId, excludedSafetyEffects), cause);
             if (breakerId == s.playerId) AddReckoning(s, wrongedId, cause, true);
             else if (wrongedId == s.playerId) AddReckoning(s, breakerId, cause, false);
         }
@@ -147,9 +152,16 @@ namespace Gamesim.Simulation
 
             if (StoryAt(s, StoryRules.Lore))
             {
-                var fact = Lore.NextReveal(s, npcId, kind, FinishedPersonalBeat(s, npcId));
-                if (fact != null && Lore.Learn(s, fact.id))
+                // A fresh-season personal chat learns up to two distinct, currently reachable
+                // facts. Re-read after each learn, preserving depth/secret/catalogue/cap rules.
+                // This is still one conversation and one story trigger, not two social actions.
+                int reveals = ConversationIntentRules.RevealLimit(s, kind);
+                for (int i = 0; i < reveals; i++)
+                {
+                    var fact = Lore.NextReveal(s, npcId, kind, FinishedPersonalBeat(s, npcId));
+                    if (fact == null || !Lore.Learn(s, fact.id)) break;
                     Log(s, "story-lore", "You learned something about " + npc.name + ": " + fact.text, s.playerId, npcId);
+                }
             }
 
             // Only one thing opens per conversation, in this order: the reckoning, a waiting beat, a new thread.
@@ -197,8 +209,15 @@ namespace Gamesim.Simulation
             if (chance <= 0) return;
             double strength = Math.Abs(s.Score(s.playerId, npcId));
             chance *= strength >= 60 ? 1.8 : strength >= 40 ? 1.4 : strength >= 20 ? 1.1 : 0.6;
-            if (s.deals.Any(d => d.status == DealStatus.Broken && d.week == s.week
-                                 && ((d.proposerId == npcId && d.recipientId == s.playerId) || (d.proposerId == s.playerId && d.recipientId == npcId))))
+            bool unifiedSafety = UnifiedCommitments.RulesOn(s);
+            var deals = unifiedSafety ? CommitmentReferences.Deals(s) : s.deals;
+            // A broken canonical deal needs an actual decision receipt, not just a status label.
+            // Validate its history without turning unilateral promises into this source's deal trigger.
+            if (unifiedSafety && s.unifiedCommitments.Any(row => row.sourcePolicy == UnifiedCommitments.DealPolicy
+                && row.status == DealStatus.Broken)) UnifiedCommitmentHistory.Breaches(s);
+            if (deals.Any(d => d.status == DealStatus.Broken
+                && (unifiedSafety ? CommitmentReferences.ReceiptWeek(s, d.id, d.week) : d.week) == s.week
+                && ((d.proposerId == npcId && d.recipientId == s.playerId) || (d.proposerId == s.playerId && d.recipientId == npcId))))
                 chance += 0.25;
             if (s.alliances.Any(a => a.active && a.members.Contains(npcId) && a.members.Contains(s.playerId)
                                      && s.events.Any(e => e.kind == "alliance" && e.week == s.week && e.audienceIds.Contains(npcId))))
@@ -312,6 +331,7 @@ namespace Gamesim.Simulation
             NpcAlliances.EndBroken(s);
             s.oathOpportunities.Remove(id);
             s.loyaltyOaths.RemoveAll(o => o.playerId == id || o.targetId == id);
+            if (UnifiedCommitments.RulesOn(s)) ResolveUnifiedSafetyExpiry(s, UnifiedCommitmentExpiry.Expulsion, id);
             foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && (p.fromId == id || p.toId == id)))
                 promise.status = PromiseStatus.Expired;
             foreach (var deal in s.deals.Where(d => DealStatus.Binds(d.status) && (d.proposerId == id || d.recipientId == id || d.targetId == id)))
@@ -345,10 +365,16 @@ namespace Gamesim.Simulation
         /// <summary>The systems that run at particular anchors, before any cycle pulses.</summary>
         private static void StorySystemsAt(EpisodeState s, string anchor)
         {
+            if (UnifiedCommitmentHearings.RulesOn(s)) UnifiedCommitmentHearings.RequireValid(s);
             if (anchor == StoryAnchors.EvictionNight && StoryAt(s, StoryRules.Bonds)) NpcShowmancePass(s);
             if (StoryAt(s, StoryRules.Bonds) && anchor != StoryAnchors.Conversation)
                 foreach (var (fact, listener) in Knowledge.Spread(s, anchor))
+                {
                     if (listener == s.playerId) Log(s, StoryLog.Whisper, Whisper(s, fact), s.playerId);
+                    // Your word in the house (ACTIONS-DEALS-ALLIANCES-PLAN C8): a houseguest the gossip
+                    // tells of the player's broken word thinks less of them, and the player hears who.
+                    else if (YourWord.On(s) && YourWord.IsYours(s, fact)) HeardOfYourWord(s, fact, listener);
+                }
         }
 
         /// <summary>What the player hears when a fact reaches them through the house.</summary>
@@ -404,7 +430,9 @@ namespace Gamesim.Simulation
             };
             fact.knowers.Add(best.a.id);
             fact.knowers.Add(best.b.id);
-            if (s.story.facts.Count >= 128) s.story.facts.RemoveAt(0);
+            // A full list makes room as every writer's does: under the commitment rules never by dropping
+            // an alliance's fact or the player's broken word (X14).
+            Knowledge.MakeRoom(s);
             s.story.facts.Add(fact);
         }
 

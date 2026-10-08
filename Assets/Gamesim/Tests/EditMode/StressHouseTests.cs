@@ -91,23 +91,14 @@ namespace Gamesim.Tests.EditMode
         // ------------------------------------------------------------------ it plays
 
         /// <summary>
-        /// The sixteen-person house with every rule a season the director starts has (EpisodeDirector.StartSeason
-        /// at 2ea986df): competitions, have-nots and strategy from week one, the story, the read, the levers, the
-        /// week, the economy, NPC agency, the finale, the commitment rules, the leak rules, the war rooms and the
-        /// prospective unified versions.
-        /// A hand copy, held to the director's by <see cref="TheStressSeasonSwitchesOnEveryRuleADirectorSeasonDoes"/>:
-        /// a rule the director's start gains fails that test until it is added here.
+        /// The sixteen-person house with every rule a season the director starts has: the director's own
+        /// <see cref="ShippedRules.ApplyFresh"/>, which <see cref="TheDirectorTakesEveryRuleFromShippedRulesAndSetsNoneItself"/>
+        /// holds to be the only place the director's start gets a rule from.
         /// </summary>
         private static EpisodeState DirectorStressSeason(uint seed)
         {
             var s = SeasonBuilder.CreateVerificationStressHouse(16, seed);
-            s.competitionRulesVersion = CompetitionRules.Current;
-            s.haveNotRulesStartWeek = 1; s.strategyRulesStartWeek = 1;
-            EpisodeEngine.EnableStory(s); EpisodeEngine.EnableRead(s); EpisodeEngine.EnableLevers(s); EpisodeEngine.EnableWeek(s);
-            EpisodeEngine.EnableEconomy(s); EpisodeEngine.EnableAgency(s); EpisodeEngine.EnableFinale(s); EpisodeEngine.EnableCommitments(s);
-            EpisodeEngine.EnableAllianceLeaks(s); EpisodeEngine.EnablePactPlans(s);
-            s.unifiedCommitmentRulesVersion = UnifiedCommitments.ProspectiveVersion;
-            s.unifiedHearingRulesVersion = UnifiedCommitmentHearings.ProspectiveVersion;
+            ShippedRules.ApplyFresh(s);
             return s;
         }
 
@@ -270,13 +261,15 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The stress seasons claim the director's rules, and <see cref="DirectorStressSeason"/> is a hand copy of
-        /// them: every <c>EpisodeEngine.Enable*(fresh)</c> and every rule field the director's StartSeason sets on a
-        /// fresh season (its session id aside) must appear there too. A rule the director gains - a later wave's
-        /// enable line - fails here until the copy has it, rather than leaving the stress seasons on yesterday's rules.
+        /// The stress seasons claim the director's rules by calling what the director calls: the director's
+        /// StartSeason takes every rule a fresh season has from <see cref="ShippedRules.ApplyFresh"/>, once,
+        /// and sets none itself - no <c>EpisodeEngine.Enable*</c> and no field of the season but its session id.
+        /// So a rule a later wave adds to the shipped game can only go into ApplyFresh, where the stress
+        /// house, the balance harness and every season the director starts all get it. An enable line or a
+        /// rule field written beside the call fails here.
         /// </summary>
         [Test]
-        public void TheStressSeasonSwitchesOnEveryRuleADirectorSeasonDoes()
+        public void TheDirectorTakesEveryRuleFromShippedRulesAndSetsNoneItself()
         {
             string root = SourceRoot();
             string director = File.ReadAllText(Path.Combine(root, "Runtime", "Episode", "EpisodeDirector.Season.cs"));
@@ -285,18 +278,18 @@ namespace Gamesim.Tests.EditMode
             Assert.That(start, Is.GreaterThanOrEqualTo(0), "The director's StartSeason body was found.");
             Assert.That(end, Is.GreaterThan(start), "...up to where it stages the season.");
             string body = director.Substring(start, end - start);
-            var rules = System.Text.RegularExpressions.Regex.Matches(body,
-                    @"EpisodeEngine\.Enable\w+\(fresh\);|fresh\.(?!sessionId\b)\w+\s*=\s*[^;]+;")
-                .Cast<System.Text.RegularExpressions.Match>().Select(match => Normalise(match.Value.Replace("(fresh)", "(s)").Replace("fresh.", "s."))).ToList();
-            Assert.That(rules.Count(rule => rule.StartsWith("EpisodeEngine.Enable", StringComparison.Ordinal)), Is.GreaterThanOrEqualTo(8), "The director's enable lines were read.");
-
-            string tests = File.ReadAllText(Path.Combine(root, "Tests", "EditMode", "StressHouseTests.cs"));
-            int copyStart = tests.IndexOf("private static EpisodeState DirectorStressSeason(uint seed)", StringComparison.Ordinal);
-            int copyEnd = copyStart < 0 ? -1 : tests.IndexOf("return s;", copyStart, StringComparison.Ordinal);
-            Assert.That(copyEnd, Is.GreaterThan(copyStart).And.GreaterThan(0), "The stress season's rules were found.");
-            string copy = Normalise(tests.Substring(copyStart, copyEnd - copyStart));
-            var missing = rules.Where(rule => !copy.Contains(rule)).ToList();
-            Assert.That(missing, Is.Empty, "DirectorStressSeason lacks the director's: " + string.Join(" ", missing));
+            var apply = System.Text.RegularExpressions.Regex.Matches(body, @"ShippedRules\.ApplyFresh\(\s*fresh\s*\)\s*;");
+            Assert.That(apply.Count, Is.EqualTo(1), "StartSeason calls ShippedRules.ApplyFresh(fresh) once.");
+            Assert.That(body.IndexOf("var fresh = build(seed);", StringComparison.Ordinal), Is.LessThan(apply[0].Index), "...on the season it built...");
+            Assert.That(body.IndexOf("CharacterAppearanceSnapshots.Materialize(fresh)", StringComparison.Ordinal), Is.GreaterThan(apply[0].Index),
+                "...before anything else is done to it.");
+            var enables = System.Text.RegularExpressions.Regex.Matches(body, @"\.Enable\w+\(")
+                .Cast<System.Text.RegularExpressions.Match>().Select(match => match.Value).ToList();
+            Assert.That(enables, Is.Empty, "StartSeason switches no rule on itself; move it into ShippedRules.ApplyFresh.");
+            var fields = System.Text.RegularExpressions.Regex.Matches(body, @"\bfresh\s*\.\s*(\w+)(\s*\.\s*\w+)*\s*(=(?!=)|\+=|-=|\+\+|--)")
+                .Cast<System.Text.RegularExpressions.Match>().Select(match => Normalise(match.Value)).Where(field => field != "fresh.sessionId=").ToList();
+            Assert.That(fields, Is.Empty, "StartSeason sets no field of the season but its session id; a rule goes into ShippedRules.ApplyFresh.");
+            Assert.That(System.Text.RegularExpressions.Regex.IsMatch(body, @"\bfresh\s*\.\s*sessionId\s*="), Is.True, "The session id was read where it is set.");
         }
 
         private static string Normalise(string code) => System.Text.RegularExpressions.Regex.Replace(code, @"\s+", "");

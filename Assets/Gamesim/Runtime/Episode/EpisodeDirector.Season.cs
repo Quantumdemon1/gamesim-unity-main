@@ -284,36 +284,10 @@ namespace Gamesim.Episode
                 var seed = unchecked((uint)DateTime.UtcNow.Ticks);
                 var nextStore = new EpisodeSaveStore(Path.Combine(saveRoot, "episode-" + Guid.NewGuid().ToString("N") + ".json"));
                 var fresh = build(seed);
-                fresh.competitionRulesVersion = CompetitionRules.Current;
-                fresh.haveNotRulesStartWeek = 1;
-                fresh.strategyRulesStartWeek = 1;
-                // Every season the director starts plays under the story system from week one:
-                // arcs, grudges, lore, bonds and production. Seasons built directly by tests and
-                // the default scene engine stay off unless they switch it on themselves.
-                EpisodeEngine.EnableStory(fresh);
-                EpisodeEngine.EnableRead(fresh);
-                EpisodeEngine.EnableLevers(fresh);
-                EpisodeEngine.EnableWeek(fresh);
-                EpisodeEngine.EnableEconomy(fresh);
-                // NPC agency from week one, and with it the house's first impressions of each other
-                // and of the player's persona (NPC-AGENCY-PLAN.md §2).
-                EpisodeEngine.EnableAgency(fresh);
-                // The finale rules (ENDGAME-PLAN §3): history questions, the five responses, the argument.
-                EpisodeEngine.EnableFinale(fresh);
-                // The commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN R0, C0): study costs the window's
-                // action, a whisper reaches who it is told to, a breach counts against whoever broke it.
-                EpisodeEngine.EnableCommitments(fresh);
-                // Leaks and double-dealing (WAVE-D-NPC-PACTS-PLAN D4): secret pacts get out on a keyed coin,
-                // one pair is one pact, and an ally who finds out about another pact holds it against you.
-                EpisodeEngine.EnableAllianceLeaks(fresh);
-                // The war rooms (WAVE-D-NPC-PACTS-PLAN D3): a pact of three or more meets once the block is
-                // set, its members say who they want out, and the player goes with it, counters once or lies low.
-                EpisodeEngine.EnablePactPlans(fresh);
-                // Fresh playable seasons use canonical Safety and durable hearing authority from
-                // the start, with C0 and story knowledge already active. Do not infer this opt-in
-                // while loading, recovering, migrating or importing an existing legacy season.
-                fresh.unifiedCommitmentRulesVersion = UnifiedCommitments.ProspectiveVersion;
-                fresh.unifiedHearingRulesVersion = UnifiedCommitmentHearings.ProspectiveVersion;
+                // Every rule a fresh season plays under, from week one, in one place shared with the
+                // balance harness: a rule the shipped game gains goes into ShippedRules.ApplyFresh, never
+                // here (StressHouseTests reads this body and fails on a rule field set beside it).
+                ShippedRules.ApplyFresh(fresh);
                 CharacterAppearanceSnapshots.Materialize(fresh);
                 fresh.sessionId = Guid.NewGuid().ToString("N");
                 nextStore.Save(fresh); // Stage and validate on disk before replacing the current in-memory session.

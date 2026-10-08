@@ -9,11 +9,11 @@
 # Raise a floor in the same commit that adds tests; never lower one to make a red run green.
 #
 #   <assembly> <minimum tests>
-Gamesim.EditModeTests 7284
-Gamesim.PlayModeTests 1022
+Gamesim.EditModeTests 7305
+Gamesim.PlayModeTests 1023
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 Gamesim.Uma.PlayModeTests 77
 # Tools/SimulationTests: the Unity-free subset CI runs on every push (.github/workflows/ci.yml).
 # Most of it is cases generated from the web fixtures - a fixture that stops loading drops
 # hundreds of tests and would otherwise still read green.
-Gamesim.SimulationTests 4811
+Gamesim.SimulationTests 4843

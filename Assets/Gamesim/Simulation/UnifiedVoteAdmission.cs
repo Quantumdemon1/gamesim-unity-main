@@ -220,7 +220,11 @@ namespace Gamesim.Simulation
             plan = new UnifiedVoteAdmissionPlan(new[] { candidate }, Array.Empty<DealState>(), answered); return true;
         }
 
-        internal static UnifiedCommitmentState FromDeal(DealState draft, string origin, int bindingWeek, int firstWeek) =>
+        /// <summary>
+        /// The canonical row a raw Vote or Safety deal source draft becomes, with the given origin and
+        /// binding/first-reveal weeks. Pure: it validates nothing and reads only its arguments.
+        /// </summary>
+        public static UnifiedCommitmentState FromDeal(DealState draft, string origin, int bindingWeek, int firstWeek) =>
             new UnifiedCommitmentState { id = draft.id, kind = draft.type == DealKind.SafetyAgreement ? UnifiedCommitments.Safety : UnifiedVoteTogether.Vote,
                 sourcePolicy = UnifiedCommitments.DealPolicy, origin = origin, makerId = draft.proposerId, beneficiaryId = draft.recipientId,
                 reciprocal = true, createdWeek = draft.week, expiresWeek = draft.expiresWeek, status = draft.status,

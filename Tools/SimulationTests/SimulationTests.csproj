@@ -81,6 +81,11 @@
     <Compile Include="$(EditMode)UnifiedVoteCompletedRevealTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteRevealArchiveTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteObligationsTests.cs" />
+    <Compile Include="$(EditMode)ProspectiveVoteFacade.cs" />
+    <Compile Include="$(EditMode)PinnedVoteSeason.cs" />
+    <Compile Include="$(EditMode)UnifiedVoteProspectiveAdmissionTests.cs" />
+    <Compile Include="$(EditMode)UnifiedVoteProspectiveJuryTests.cs" />
+    <Compile Include="$(EditMode)UnifiedVoteProspectiveWholeStateTests.cs" />
     <Compile Include="$(EditMode)CommitmentReferencesTests.cs" />
     <Compile Include="$(EditMode)UnifiedCommitmentStoreTests.cs" />
     <Compile Include="$(EditMode)UnifiedSafetyCommandOwnerTests.cs" />

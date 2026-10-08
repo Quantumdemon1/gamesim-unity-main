@@ -50,7 +50,11 @@ namespace Gamesim.Simulation
         public static UnifiedVoteDecision FindDecision(EpisodeState s, string id) =>
             Decisions(s).FirstOrDefault(decision => decision.Record.id == id);
 
-        internal static string Key(UnifiedCommitmentState row, int week) =>
+        /// <summary>
+        /// The betrayal identity a Broken Vote row carries: policy, duty, target, parties and the
+        /// week it was decided. Pure: it reads only its arguments.
+        /// </summary>
+        public static string Key(UnifiedCommitmentState row, int week) =>
             "vote:" + week.ToString(CultureInfo.InvariantCulture) + ":" + Part(row.sourcePolicy)
                 + Part(row.sourcePolicy == UnifiedCommitments.PromisePolicy ? "promise" : row.subtype)
                 + Part(row.targetId ?? string.Empty) + Part(row.makerId) + Part(row.beneficiaryId);

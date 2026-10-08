@@ -25,6 +25,7 @@ namespace Gamesim.Tests.EditMode
         private static readonly Type JsonApi = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.SaveJson", true);
         private static readonly Type Frozen = JsonApi.Assembly.GetType("Gamesim.Persistence.FrozenEpisodeV25", true);
         private static readonly Type Frozen26 = JsonApi.Assembly.GetType("Gamesim.Persistence.FrozenEpisodeV26", true);
+        private static readonly Type Frozen27 = JsonApi.Assembly.GetType("Gamesim.Persistence.FrozenEpisodeV27", true);
         private static readonly Type Shape25 = JsonApi.Assembly.GetType("Gamesim.Persistence.FrozenV25Shape", true);
         private const string ManifestHash = "96e1fd4e26d82d3ceac0945df99a56b5396f8492774e98e5b36851ca39f94b38";
         private const string BindingHash = "984401d1cd2081bd2d0c3152f6689969acf332aa02b3a165103427ee40046501";
@@ -42,7 +43,7 @@ namespace Gamesim.Tests.EditMode
                 var formerDispatch = EpisodeSaveMigrations.PrepareV26Payload(old, out bool formerMigrated);
                 Assert.That(formerMigrated, Is.True); Assert.That(JToken.DeepEquals(formerDispatch, next), Is.True);
                 var dispatched = EpisodeSaveMigrations.PrepareCurrentPayload(old, out bool migrated);
-                Assert.That(migrated, Is.True); Assert.That(JToken.DeepEquals(dispatched, EpisodeSaveMigrations.UpgradeV26ToV27(next)), Is.True);
+                Assert.That(migrated, Is.True); Assert.That(JToken.DeepEquals(dispatched, EpisodeSaveMigrations.UpgradeV27ToV28(EpisodeSaveMigrations.UpgradeV26ToV27(next))), Is.True);
                 Current(dispatched);
                 Assert.That(Text(old), Is.EqualTo(before)); found++;
             }
@@ -95,7 +96,7 @@ namespace Gamesim.Tests.EditMode
             var next = EpisodeSaveMigrations.PrepareCurrentPayload(old, out bool migrated);
             var former26 = EpisodeSaveMigrations.PrepareV26Payload(old, out _);
             Assert.That(migrated, Is.True); OnlyNeutral(former25, former26); Current(next);
-            Assert.That(JToken.DeepEquals(next, EpisodeSaveMigrations.UpgradeV26ToV27(former26)), Is.True);
+            Assert.That(JToken.DeepEquals(next, EpisodeSaveMigrations.UpgradeV27ToV28(EpisodeSaveMigrations.UpgradeV26ToV27(former26))), Is.True);
             Assert.That(Text(old), Is.EqualTo(before));
             Assert.That((int)former25["schemaVersion"], Is.EqualTo(25));
             Assert.That((int)next["unifiedCommitmentRulesVersion"], Is.Zero); Assert.That((int)next["unifiedHearingRulesVersion"], Is.Zero);
@@ -109,6 +110,10 @@ namespace Gamesim.Tests.EditMode
             Assert.That(formerMigrated, Is.False); Assert.That(oldAgain, Is.Not.SameAs(current)); Assert.That(Text(oldAgain), Is.EqualTo(original26));
             oldAgain["contestants"][0]["name"] = "Detached former26 caller"; Assert.That(Text(current), Is.EqualTo(original26));
             current = EpisodeSaveMigrations.UpgradeV26ToV27(current); Current(current);
+            string original27 = Text(current); var former27Again = EpisodeSaveMigrations.PrepareV27Payload(current, out bool former27Migrated);
+            Assert.That(former27Migrated, Is.False); Assert.That(former27Again, Is.Not.SameAs(current)); Assert.That(Text(former27Again), Is.EqualTo(original27));
+            former27Again["contestants"][0]["name"] = "Detached former27 caller"; Assert.That(Text(current), Is.EqualTo(original27));
+            current = EpisodeSaveMigrations.UpgradeV27ToV28(current); Current(current);
             string before = Text(current); var again = EpisodeSaveMigrations.PrepareCurrentPayload(current, out bool migrated);
             Assert.That(migrated, Is.False); Assert.That(again, Is.Not.SameAs(current)); Assert.That(Text(again), Is.EqualTo(before));
             again["contestants"][0]["name"] = "Detached caller"; Assert.That(Text(current), Is.EqualTo(before));
@@ -177,14 +182,15 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Text(current), Is.EqualTo(before)); PackageUnchanged(package);
             if (defect == "future-header")
             {
-                // Keep the former26 unknown27 contract assertion, and separately prove
-                // unsupported CURRENT28 using otherwise complete, lawful current27 fields.
+                // Keep the former26 unknown27 contract assertion, and separately prove an
+                // unsupported CURRENT29 using otherwise complete, lawful current28 fields (W28).
                 Assert.Throws<InvalidDataException>(() => Invoke(Frozen26, "Validate", current));
-                legitimate27["schemaVersion"] = 28; string futureBefore = Text(legitimate27); ProjectionRefused(legitimate27);
-                files.Write(files.Store.SavePath, legitimate27); var futureImage = files.Image();
+                var legitimate28 = EpisodeSaveMigrations.UpgradeV27ToV28(legitimate27); Current(legitimate28);
+                legitimate28["schemaVersion"] = 29; string futureBefore = Text(legitimate28); ProjectionRefused(legitimate28);
+                files.Write(files.Store.SavePath, legitimate28); var futureImage = files.Image();
                 Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.False); Assert.That(loaded, Is.Null);
                 Assert.That(message, Does.Contain("Unsupported")); files.Unchanged(futureImage);
-                Assert.That(Text(legitimate27), Is.EqualTo(futureBefore));
+                Assert.That(Text(legitimate28), Is.EqualTo(futureBefore));
             }
         }
 
@@ -192,13 +198,13 @@ namespace Gamesim.Tests.EditMode
         public void Retained25LoadsReadOnlyAndOnlyAnExplicitSaveRotatesItsOriginalEnvelope(int mode)
         {
             var package = Package(); var old = Recorded(package, mode); var expected26 = EpisodeSaveMigrations.UpgradeV25ToV26(old);
-            OnlyNeutral(old, expected26); var expected = EpisodeSaveMigrations.UpgradeV26ToV27(expected26);
+            OnlyNeutral(old, expected26); var expected = EpisodeSaveMigrations.UpgradeV27ToV28(EpisodeSaveMigrations.UpgradeV26ToV27(expected26));
             using var files = new Files(); files.Write(files.Store.SavePath, old); var image = files.Image();
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 25").And.Contain("schema 27 in memory"));
+            Assert.That(message, Does.Contain("Schema 25").And.Contain("schema 28 in memory"));
             Assert.That(JToken.DeepEquals(Payload(loaded), expected), Is.True); files.Unchanged(image);
             files.Store.Save(loaded); Assert.That(File.ReadAllBytes(files.Store.BackupPath).SequenceEqual(image["episode.json"]), Is.True);
-            var saved = files.Image(); Assert.That((int)JObject.Parse(File.ReadAllText(files.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(27));
+            var saved = files.Image(); Assert.That((int)JObject.Parse(File.ReadAllText(files.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(28));
             Assert.That(files.Store.TryLoad(out var reloaded, out message), Is.True, message); Assert.That(JToken.DeepEquals(Payload(reloaded), expected), Is.True);
             files.Unchanged(saved); var progressed = PlayOne(reloaded); files.Store.Save(progressed);
             Assert.That(File.ReadAllBytes(files.Store.BackupPath).SequenceEqual(saved["episode.json"]), Is.True); PackageUnchanged(package);
@@ -245,6 +251,12 @@ namespace Gamesim.Tests.EditMode
         {
             Current(next); // Full current shape/core/storage must pass BEFORE any neutral projection.
             var supplied = next; string nextBefore = Text(supplied);
+            if ((int)next["schemaVersion"] == 28)
+            {
+                var former27 = (JObject)next.DeepClone(); PersistenceMigrationTests.StripSchema28(former27);
+                Assert.That(JToken.DeepEquals(EpisodeSaveMigrations.UpgradeV27ToV28(former27), next), Is.True);
+                next = former27;
+            }
             if ((int)next["schemaVersion"] == 27)
             {
                 var former26 = (JObject)next.DeepClone(); PersistenceMigrationTests.StripSchema27(former26);
@@ -263,7 +275,7 @@ namespace Gamesim.Tests.EditMode
             var guarded = (JObject)next.DeepClone(); PersistenceMigrationTests.StripSchema26(guarded);
             Assert.That(JToken.DeepEquals(guarded, old), Is.True, "The actual test-only bridge proves the same exact inverse after full current validation.");
             Assert.That(Text(old), Is.EqualTo(before)); Assert.That(next, Is.Not.SameAs(old));
-            Assert.That(Text(supplied), Is.EqualTo(nextBefore), "The current27 companion never rewrites the original former26 or current27 caller.");
+            Assert.That(Text(supplied), Is.EqualTo(nextBefore), "The current28 companion never rewrites the original former26, former27 or current28 caller.");
         }
         private static void Current(JObject payload)
         {
@@ -274,7 +286,14 @@ namespace Gamesim.Tests.EditMode
                 var inverse = (JObject)now.DeepClone(); PersistenceMigrationTests.StripSchema27(inverse);
                 Assert.That(JToken.DeepEquals(inverse, payload), Is.True); Assert.That(Text(payload), Is.EqualTo(original26)); return;
             }
-            Assert.That((int)payload["schemaVersion"], Is.EqualTo(27));
+            if ((int)payload["schemaVersion"] == 27)
+            {
+                string original27 = Text(payload); Invoke(Frozen27, "Validate", payload);
+                var now = EpisodeSaveMigrations.UpgradeV27ToV28(payload); Current(now);
+                var inverse = (JObject)now.DeepClone(); PersistenceMigrationTests.StripSchema28(inverse);
+                Assert.That(JToken.DeepEquals(inverse, payload), Is.True); Assert.That(Text(payload), Is.EqualTo(original27)); return;
+            }
+            Assert.That((int)payload["schemaVersion"], Is.EqualTo(28));
             string before = Text(payload); Invoke(JsonApi, "CheckDtoShape", payload, typeof(EpisodeState), "state");
             var state = payload.ToObject<EpisodeState>(Serializer()); string stateBefore = Text(Payload(state));
             Assert.That(EpisodeValidation.TryValidate(state, out string error), Is.True, error); Assert.DoesNotThrow(() => EpisodeSaveValidation.Validate(state));

@@ -631,7 +631,7 @@ Court and campaign visits are recorded as acts, with no draws.
 - **D2-L5:** under the rule, `StoryConfronted`, `StoryGossipedAbout` and `StoryCampaignedTo` (`Story/EpisodeEngine.StoryHooks.cs:565-591`) pass `CurrentAnchor(s)` instead of their hard-coded anchors. Where `StrategyRules.Apply` holds they stay no-ops.
 
 **Acts and rooms (D2-L3).**
-- **Only successful acts are stored**, never `none`. Each holds `id "{week}-{window}-{k}"`, kind, actor, partner, subject, room, week, window, `firedTick`, `sighted` and `overheard`.
+- **Only successful acts are stored**, never `none`. Each `NpcActState` holds `id "{week}-{window}-{k}"`, `kind`, `actorId`, `partnerId`, `subjectId`, `room`, `week`, `window`, `firedTick`, `sighted` and `overheard`. These are schema 28's saved names (W28, `Sim/NpcSocialState.cs`); renaming one costs a schema bump, so the D2 slices use them as written.
 - **The cap is derived from the cast:** `MostActs(s) = 4·npcs + 2·CampaignVisits`, which is 64 at 16. Beats are at most `3·npcs`, court at most `npcs`, campaign at most 4, so a 16-house cannot exceed it and the validation refusal can never stall an Advance.
 - **Rooms** are chosen by a keyed coin `"allweek:room:{id}"`:
   - talk, build, hold and campaign: Kitchen or Living;

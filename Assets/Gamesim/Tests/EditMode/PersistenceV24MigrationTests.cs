@@ -23,7 +23,7 @@ namespace Gamesim.Tests.EditMode
         private static JObject Payload(EpisodeState s) => JObject.FromObject(s, Serializer());
         private static void Off(EpisodeState s)
         {
-            Assert.That(s.schemaVersion, Is.EqualTo(27));
+            Assert.That(s.schemaVersion, Is.EqualTo(28));
             Assert.That(s.unifiedCommitmentRulesVersion, Is.Zero);
             Assert.That(s.unifiedCommitments, Is.Not.Null.And.Empty);
             Assert.That(s.unifiedHearingRulesVersion, Is.Zero);
@@ -162,7 +162,7 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(files.Store.SavePath, PersistenceMigrationTests.Envelope(old));
             byte[] bytes = File.ReadAllBytes(files.Store.SavePath);
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 23").And.Contain("schema 27 in memory"));
+            Assert.That(message, Does.Contain("Schema 23").And.Contain("schema 28 in memory"));
             Off(loaded); Equivalent(s, loaded);
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(bytes));
             Assert.That(File.Exists(files.Store.BackupPath), Is.False);
@@ -221,7 +221,14 @@ namespace Gamesim.Tests.EditMode
             var o = Payload(Fresh()); o["schemaVersion"] = version;
             string original = o.ToString(Formatting.None);
             Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareV26Payload(o, out _));
-            var currentFuture = (JObject)o.DeepClone(); if (version == 27) currentFuture["schemaVersion"] = 28;
+            // 27 was the former current and 28 is current now: the former27 dispatch refuses an unknown 28,
+            // and the actual current dispatch an unknown 29.
+            if (version == 27)
+            {
+                var former27Future = (JObject)o.DeepClone(); former27Future["schemaVersion"] = 28;
+                Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareV27Payload(former27Future, out _));
+            }
+            var currentFuture = (JObject)o.DeepClone(); if (version == 27) currentFuture["schemaVersion"] = 29;
             Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(currentFuture, out _));
             Assert.That(o.ToString(Formatting.None), Is.EqualTo(original));
         }

@@ -77,6 +77,10 @@
     <Compile Include="$(EditMode)UnifiedVoteInertSchema27Tests.cs" />
     <Compile Include="$(EditMode)LegacyDigestSchema27Observer.cs" />
     <Compile Include="$(EditMode)LegacyDigestSchema27ObserverTests.cs" />
+    <Compile Include="$(EditMode)WaveDInertSchema28Tests.cs" />
+    <Compile Include="$(EditMode)LegacyDigestSchema28Observer.cs" />
+    <Compile Include="$(EditMode)LegacyDigestSchema28ObserverTests.cs" />
+    <Compile Include="$(EditMode)FrozenEpisodeV27ContractTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteTogetherTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteCompletedRevealTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteRevealArchiveTests.cs" />
@@ -119,10 +123,11 @@
     <!--
       Independent fixed JSON contracts ONLY: a source-bound test observer validates a separate
       public-field view, while legacy digest traces retain their getters and original bytes.
-      These sixteen immutable BCL/Newtonsoft sources are not growing Persistence. This pure
+      These seventeen immutable BCL/Newtonsoft sources are not growing Persistence. This pure
       structural/historical inverse is distinct from actual native SaveJson/migration/disk tests.
       Never replace these explicit entries with a Persistence wildcard or add Unity stubs.
     -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenEpisodeV27.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenEpisodeV26.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenEpisodeV25.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Data.cs" />

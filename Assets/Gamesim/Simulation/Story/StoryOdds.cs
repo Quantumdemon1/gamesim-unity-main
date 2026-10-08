@@ -143,12 +143,17 @@ namespace Gamesim.Simulation
         public const string SecretKept = "story:secret-kept", SecretExposed = "story:secret-exposed";
         public const string Showmance = "story:showmance", ShowmanceBetrayed = "story:showmance-betrayed";
         public const string PublicBlowup = "story:public-blowup", MadePeace = "story:made-peace";
+        /// <summary>
+        /// Schema 28 vocabulary (WAVE-D-NPC-PACTS-PLAN D4): an ally found out about the player's other
+        /// pact. Nothing in this build writes it, and validation refuses it until D4's start week.
+        /// </summary>
+        public const string DoubleDealt = "story:double-dealt";
         // Fading: ordinary social weather.
         public const string HeardOut = "story:heard-out", Snubbed = "story:snubbed", Argued = "story:argued";
         public const string TooNosy = "story:too-nosy", TookIt = "story:took-it";
 
         public static readonly string[] Permanent =
-            { StoodUpFor, SoldOut, SecretKept, SecretExposed, Showmance, ShowmanceBetrayed, PublicBlowup, MadePeace };
+            { StoodUpFor, SoldOut, SecretKept, SecretExposed, Showmance, ShowmanceBetrayed, PublicBlowup, MadePeace, DoubleDealt };
         public static readonly string[] Fading = { HeardOut, Snubbed, Argued, TooNosy, TookIt };
 
         public static bool IsKnown(string type) => type != null
@@ -167,6 +172,7 @@ namespace Gamesim.Simulation
                 case ShowmanceBetrayed: return -30;
                 case PublicBlowup: return -20;
                 case MadePeace: return 10;
+                case DoubleDealt: return -10;
                 case HeardOut: return 5;
                 case Snubbed: return -4;
                 case Argued: return -6;
@@ -189,6 +195,7 @@ namespace Gamesim.Simulation
                 case ShowmanceBetrayed: return youDidIt ? "you left " + otherName + " on the block" : otherName + " left you on the block";
                 case PublicBlowup: return youDidIt ? "you blew up at " + otherName : otherName + " blew up at you";
                 case MadePeace: return "you and " + otherName + " made peace";
+                case DoubleDealt: return youDidIt ? "you kept another alliance from " + otherName : otherName + " kept another alliance from you";
                 case HeardOut: return youDidIt ? "you heard " + otherName + " out" : otherName + " heard you out";
                 case Snubbed: return youDidIt ? "you brushed " + otherName + " off" : otherName + " brushed you off";
                 case Argued: return "you and " + otherName + " argued";

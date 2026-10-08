@@ -13,6 +13,12 @@ namespace Gamesim.Tests.EditMode
     /// Test-only, source-bound observer of the default getter-bearing digest trace. This is
     /// NOT SaveJson or a production migration. Native companions separately compare the real APIs.
     /// Unknown members are retained for the independent fixed historical contract to refuse.
+    ///
+    /// <para>Split at schema 28 (WAVE-D-NPC-PACTS-PLAN §0.3) into its two halves: the field checks of a
+    /// literal-27 trace (<see cref="CheckFields"/>, <see cref="ProjectFields"/>), and the binding of a
+    /// trace to its own source state (<see cref="RequireValidSource"/>, <see cref="RequireOwnTrace"/>).
+    /// A live state is schema 28 now, so <see cref="LegacyDigestSchema28Observer"/> binds the live
+    /// trace and hands its literal-27 projection to the field checks here.</para>
     /// </summary>
     internal static class LegacyDigestSchema27Observer
     {
@@ -20,27 +26,24 @@ namespace Gamesim.Tests.EditMode
         private const BindingFlags PublicStatic = BindingFlags.Public | BindingFlags.Static;
         private const BindingFlags PublicInstance = BindingFlags.Public | BindingFlags.Instance;
 
-        internal static JObject CheckFieldObserver(EpisodeState state, JObject trace)
-        {
-            try { return Check(state, trace); }
-            catch (Exception error) when (error is JsonException || error is OverflowException
-                || error is ArgumentException || error is InvalidOperationException || error is FormatException)
-            { throw new InvalidDataException("The schema27 digest observer exceeds its fixed contract.", error); }
-        }
+        /// <summary>The field checks: a literal-27 default trace, returned as its detached getter-free field view.</summary>
+        internal static JObject CheckFields(JObject trace) => Guarded(() => Fields(trace));
 
-        internal static JObject ProjectTrace(EpisodeState state, JObject trace)
+        /// <summary>The field checks, then the detached trace26 with its getter values retained.</summary>
+        internal static JObject ProjectFields(JObject trace)
         {
-            CheckFieldObserver(state, trace);
+            CheckFields(trace);
             var detached = (JObject)trace.DeepClone();
             RemoveMarkers(detached);
             detached["schemaVersion"] = 26;
-            // Getter values remain in this trace. Only the separate field observer excludes them.
+            // Getter values remain in this trace. Only the separate field view excludes them.
             return detached;
         }
 
-        private static JObject Check(EpisodeState state, JObject trace)
+        /// <summary>The binding's first half: the real current public validator accepts the source state.</summary>
+        internal static void RequireValidSource(EpisodeState state) => Guarded(() =>
         {
-            Require(state != null && trace != null, "A source state and its default trace are required.");
+            Require(state != null, "A source state is required.");
             var validationType = typeof(EpisodeState).Assembly.GetType("Gamesim.Simulation.EpisodeValidation", true);
             var validation = validationType.GetMethod("TryValidate", PublicStatic, null,
                 new[] { typeof(EpisodeState), typeof(string).MakeByRefType() }, null);
@@ -48,8 +51,33 @@ namespace Gamesim.Tests.EditMode
                 && validation.ReturnType == typeof(bool), "The real current public validator is required.");
             var arguments = new object[] { state, null };
             Require((bool)Invoke(validation, arguments), "The current source state is invalid: " + arguments[1]);
+            return null;
+        });
+
+        /// <summary>
+        /// The binding's second half: the trace is this state's own default JSON, property and list
+        /// order included. A separately valid payload is not necessarily this state's observer.
+        /// </summary>
+        internal static void RequireOwnTrace(EpisodeState state, JObject trace) => Guarded(() =>
+        {
+            Require(state != null && trace != null, "A source state and its default trace are required.");
+            Require(Json(trace) == Json(JObject.FromObject(state)), "The trace is not the actual default JSON of this source state.");
+            return null;
+        });
+
+        private static JObject Guarded(Func<JObject> check)
+        {
+            try { return check(); }
+            catch (Exception error) when (error is JsonException || error is OverflowException
+                || error is ArgumentException || error is InvalidOperationException || error is FormatException)
+            { throw new InvalidDataException("The schema27 digest observer exceeds its fixed contract.", error); }
+        }
+
+        private static JObject Fields(JObject trace)
+        {
+            Require(trace != null, "A default trace is required.");
             Require(Integer(trace["schemaVersion"], 27), "Only literal schema27 is an observer input.");
-            string originalTrace = Json(trace), originalState = Json(JObject.FromObject(state));
+            string originalTrace = Json(trace);
 
             CheckGetter(typeof(EpisodeState), "Active", typeof(IEnumerable<ContestantState>));
             CheckGetter(typeof(HouseEventState), "IsStory", typeof(bool));
@@ -92,11 +120,7 @@ namespace Gamesim.Tests.EditMode
             field27.Remove("Active");
             foreach (JObject row in (JArray)field27["houseEvents"]) row.Remove("IsStory");
             CheckNeutralInverse(field27);
-            // A separately valid payload is not necessarily this source state's observer. Binding
-            // comes after fixed validation so unknown members are not erased or silently filtered.
-            Require(Json(trace) == originalState, "The trace is not the actual default JSON of this source state.");
-            Require(Json(trace) == originalTrace && Json(JObject.FromObject(state)) == originalState,
-                "The source state, trace, fields and property/list order must remain unchanged.");
+            Require(Json(trace) == originalTrace, "The trace, fields and property/list order must remain unchanged.");
             return field27;
         }
 

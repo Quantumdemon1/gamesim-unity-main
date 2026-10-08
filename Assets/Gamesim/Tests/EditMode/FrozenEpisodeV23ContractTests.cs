@@ -13,7 +13,7 @@ namespace Gamesim.Tests.EditMode
 {
     /// <summary>
     /// Native Edit tests for the frozen schema-23 contract. Synthetic payloads explicitly remove
-    /// only schema27's proven zero markers, schema26's proven inert extensions, schema25's disabled/empty hearing and schema24's disabled/empty foundation
+    /// only schema28's proven inert Wave D storage, schema27's proven zero markers, schema26's proven inert extensions, schema25's disabled/empty hearing and schema24's disabled/empty foundation
     /// from current reducer states before claiming23.
     /// No historical fixture bytes are changed; these are not captured shipping-save evidence.
     /// </summary>
@@ -26,7 +26,7 @@ namespace Gamesim.Tests.EditMode
         private static JObject Payload(EpisodeState s)
         {
             EpisodeSaveValidation.Validate(s);
-            Assert.That(s.schemaVersion, Is.EqualTo(27));
+            Assert.That(s.schemaVersion, Is.EqualTo(28));
             Assert.That(s.unifiedHearingRulesVersion, Is.Zero);
             Assert.That(s.unifiedHearingEvidence, Is.Empty);
             Assert.That(s.unifiedHearingReceipts, Is.Empty);

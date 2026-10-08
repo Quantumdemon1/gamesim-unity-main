@@ -58,6 +58,8 @@ namespace Gamesim.Simulation
             StoryReceipts.StoodUpFor, StoryReceipts.SoldOut, StoryReceipts.SecretKept,
             StoryReceipts.SecretExposed, StoryReceipts.Showmance, StoryReceipts.ShowmanceBetrayed,
             StoryReceipts.PublicBlowup, StoryReceipts.MadePeace,
+            // Schema 28 (D4): nothing writes it until D4's start week, and validation refuses it before.
+            StoryReceipts.DoubleDealt,
         };
 
         /// <summary>Whether an act of this type fades with time.</summary>

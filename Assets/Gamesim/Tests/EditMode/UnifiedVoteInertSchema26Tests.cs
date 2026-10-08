@@ -15,7 +15,7 @@ namespace Gamesim.Tests.EditMode
         public void ActualFactoriesCreateOnlyEmptyInertStorage(bool builder)
         {
             var s = builder ? SeasonBuilder.Create(new SeasonBuilder.Choice(), 2505) : ContentCatalog.Create(2505);
-            Accepted(s); Assert.That(s.schemaVersion, Is.EqualTo(27));
+            Accepted(s); Assert.That(s.schemaVersion, Is.EqualTo(28));
             Assert.That(s.unifiedCommitmentRulesVersion, Is.Zero); Assert.That(s.unifiedHearingRulesVersion, Is.Zero);
             Assert.That(s.unifiedCommitments, Is.Empty); Assert.That(s.unifiedVoteReveals, Is.Not.Null.And.Empty);
             var clone = s.Clone(); Assert.That(clone.unifiedVoteReveals, Is.Not.SameAs(s.unifiedVoteReveals));

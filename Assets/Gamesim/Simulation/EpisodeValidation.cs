@@ -64,7 +64,7 @@ namespace Gamesim.Simulation
             bool prospectiveVote = canonicalMode == UnifiedVoteFamilyValidation.Version;
             bool prospectiveSafety = canonicalMode == UnifiedCommitments.ProspectiveVersion || prospectiveVote;
             error = null;
-            if (s == null || s.schemaVersion != 27) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 28) return Fail(out error, "Unsupported episode schema.");
             if (prospectiveSafety)
             {
                 if (s.unifiedCommitmentRulesVersion != canonicalMode
@@ -425,7 +425,7 @@ namespace Gamesim.Simulation
             // The ordinary disabled entry keeps its existing validation order and behavior.
             if (prospectiveSafety && (!TryValidateStory(s, out error) || !TryValidateLedger(s, out error))) return false;
             return TryValidateV2(s, out error) && TryValidateV3(s, out error) && TryValidateNpcSocial(s, out error)
-                && TryValidateStory(s, out error) && TryValidateLedger(s, out error)
+                && TryValidateStory(s, out error) && TryValidateLedger(s, out error) && TryValidateWaveD(s, out error)
                 && (!prospectiveSafety || TryValidateUnifiedSafetyReferences(s, prospectiveVote, out error))
                 && (!prospectiveVote || TryValidateUnifiedVoteReferences(s, out error));
         }

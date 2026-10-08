@@ -14,7 +14,9 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// Actual retained26 JSON to inert27 migration and real test-owned SaveStore controls.
+    /// Actual retained26 JSON to inert27 migration and real test-owned SaveStore controls. Since
+    /// schema 28 the current dispatch takes the 27 result one further, inert step (UpgradeV27ToV28);
+    /// PrepareV27Payload keeps the former dispatch and its exact output.
     /// The original managed corpus is not a shipping/user save. Memory, authored disk cases,
     /// their actual native execution and ordinary Unity/Director acceptance remain separate.
     /// </summary>
@@ -23,6 +25,7 @@ namespace Gamesim.Tests.EditMode
         private const BindingFlags Static = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
         private static readonly Type JsonApi = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.SaveJson", true);
         private static readonly Type Frozen26 = JsonApi.Assembly.GetType("Gamesim.Persistence.FrozenEpisodeV26", true);
+        private static readonly Type Frozen27 = JsonApi.Assembly.GetType("Gamesim.Persistence.FrozenEpisodeV27", true);
         private const string ManifestHash = "9fe276f0a3cf761ad18b2b4c08444097589b2673283b63788eabe5724150e993";
         private const string BindingHash = "7efd225a127350503ff3028bf878e3d38fd469907ff47504d1137f2e31e9a757";
 
@@ -34,8 +37,10 @@ namespace Gamesim.Tests.EditMode
             {
                 var old = FrozenV26TestCorpus.Payload(alias); Fixed(old); string before = Text(old);
                 var next = EpisodeSaveMigrations.UpgradeV26ToV27(old); Exact(old, next);
+                var former = EpisodeSaveMigrations.PrepareV27Payload(old, out bool formerMigrated);
+                Assert.That(formerMigrated, Is.True); Assert.That(JToken.DeepEquals(former, next), Is.True);
                 var dispatch = EpisodeSaveMigrations.PrepareCurrentPayload(old, out bool migrated);
-                Assert.That(migrated, Is.True); Assert.That(JToken.DeepEquals(dispatch, next), Is.True);
+                Assert.That(migrated, Is.True); Assert.That(JToken.DeepEquals(dispatch, EpisodeSaveMigrations.UpgradeV27ToV28(next)), Is.True);
                 Assert.That(Text(old), Is.EqualTo(before)); found++;
             }
             Assert.That(found, Is.EqualTo(count)); FrozenV26TestCorpus.AssertPhysicalUnchanged();
@@ -75,16 +80,23 @@ namespace Gamesim.Tests.EditMode
             var v1 = PersistenceMigrationTests.V1Fixture();
             var old = version == 1 ? v1 : (JObject)Invoke(typeof(EpisodeSaveMigrations), "PrepareV" + version + "Payload", v1, false);
             string before = Text(old); var former = EpisodeSaveMigrations.PrepareV26Payload(old, out _); Fixed(former);
-            var next = EpisodeSaveMigrations.PrepareCurrentPayload(old, out bool migrated);
+            var next = EpisodeSaveMigrations.PrepareV27Payload(old, out bool migrated);
             Assert.That(migrated, Is.True); Exact(former, next); Assert.That(Text(old), Is.EqualTo(before));
             Assert.That((int)former["schemaVersion"], Is.EqualTo(26)); Assert.That((int)next["schemaVersion"], Is.EqualTo(27));
             Assert.That((int)next["unifiedCommitmentRulesVersion"], Is.Zero); Assert.That((int)next["unifiedHearingRulesVersion"], Is.Zero);
+            var current = EpisodeSaveMigrations.PrepareCurrentPayload(old, out bool currentMigrated);
+            Assert.That(currentMigrated, Is.True); Assert.That(JToken.DeepEquals(current, EpisodeSaveMigrations.UpgradeV27ToV28(next)), Is.True);
+            Assert.That(Text(old), Is.EqualTo(before));
         }
 
         [TestCase(0)] [TestCase(1)] [TestCase(2)]
         public void Current27DispatcherDetachesButCannotNormalizeCorruptNullStorage(int mode)
         {
-            var old = Recorded(mode); var now = EpisodeSaveMigrations.UpgradeV26ToV27(old); Exact(old, now);
+            var old = Recorded(mode); var former = EpisodeSaveMigrations.UpgradeV26ToV27(old); Exact(old, former);
+            string original27 = Text(former); var formerAgain = EpisodeSaveMigrations.PrepareV27Payload(former, out bool formerMigrated);
+            Assert.That(formerMigrated, Is.False); Assert.That(formerAgain, Is.Not.SameAs(former)); Assert.That(Text(formerAgain), Is.EqualTo(original27));
+            formerAgain["contestants"][0]["name"] = "A detached former27 caller"; Assert.That(Text(former), Is.EqualTo(original27));
+            var now = EpisodeSaveMigrations.UpgradeV27ToV28(former); Current(now);
             string before = Text(now); var again = EpisodeSaveMigrations.PrepareCurrentPayload(now, out bool migrated);
             Assert.That(migrated, Is.False); Assert.That(again, Is.Not.SameAs(now)); Assert.That(Text(again), Is.EqualTo(before));
             again["contestants"][0]["name"] = "A detached current caller"; Assert.That(Text(now), Is.EqualTo(before));
@@ -160,15 +172,19 @@ namespace Gamesim.Tests.EditMode
             var state = (EpisodeState)Invoke(typeof(FrozenEpisodeV25ContractTests), "Witness", mode, "promise");
             var rawTrace = JObject.FromObject(state); string traceBefore = Text(rawTrace), stateBefore = Text(Payload(state));
             Assert.That(rawTrace["Active"], Is.TypeOf<JArray>());
-            var observer = LegacyDigestSchema27Observer.CheckFieldObserver(state, rawTrace);
+            var observer = LegacyDigestSchema28Observer.CheckFieldObserver(state, rawTrace);
             var saved = Payload(state); Current(saved);
             Assert.That(JToken.DeepEquals(observer, saved), Is.True, "The shared observer is checked against the REAL public-fields serializer.");
             Assert.That(observer.Property("Active"), Is.Null);
             foreach (JObject row in (JArray)observer["houseEvents"]) Assert.That(row.Property("IsStory"), Is.Null);
+            // The schema-27 field checks see exactly the native payload's literal-27 projection.
+            var field27 = LegacyDigestSchema27Observer.CheckFields(LegacyDigestSchema27TestStates.Neutral27(rawTrace));
+            var saved27 = (JObject)saved.DeepClone(); PersistenceMigrationTests.StripSchema28(saved27);
+            Assert.That(JToken.DeepEquals(field27, saved27), Is.True);
             // Structural reconstruction is checked by the real native migration owner,
             // not presented as a migration invocation by the pure observer branch.
             var former = (JObject)saved.DeepClone(); PersistenceMigrationTests.StripSchema27(former); Fixed(former);
-            Assert.That(JToken.DeepEquals(EpisodeSaveMigrations.UpgradeV26ToV27(former), observer), Is.True);
+            Assert.That(JToken.DeepEquals(EpisodeSaveMigrations.UpgradeV27ToV28(EpisodeSaveMigrations.UpgradeV26ToV27(former)), observer), Is.True);
             Assert.That(Text(rawTrace), Is.EqualTo(traceBefore)); Assert.That(Text(Payload(state)), Is.EqualTo(stateBefore));
         }
 
@@ -177,12 +193,13 @@ namespace Gamesim.Tests.EditMode
         {
             PinCorpus(); using var slot = new Slot(); ImportPair(slot, mode); var image = slot.Image();
             var original = EnvelopeState(image["episode.json"]); Fixed(original);
-            var expected = EpisodeSaveMigrations.UpgradeV26ToV27(original); Exact(original, expected);
+            var expected27 = EpisodeSaveMigrations.UpgradeV26ToV27(original); Exact(original, expected27);
+            var expected = EpisodeSaveMigrations.UpgradeV27ToV28(expected27); Current(expected);
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 26").And.Contain("schema 27 in memory"));
+            Assert.That(message, Does.Contain("Schema 26").And.Contain("schema 28 in memory"));
             Assert.That(JToken.DeepEquals(Payload(loaded), expected), Is.True); slot.Unchanged(image);
             slot.Store.Save(loaded); Assert.That(slot.Read(slot.Store.BackupPath).SequenceEqual(image["episode.json"]), Is.True);
-            var saved = slot.Image(); Assert.That((int)EnvelopeState(saved["episode.json"])["schemaVersion"], Is.EqualTo(27));
+            var saved = slot.Image(); Assert.That((int)EnvelopeState(saved["episode.json"])["schemaVersion"], Is.EqualTo(28));
             Assert.That(slot.Store.TryLoad(out var resumed, out message), Is.True, message); slot.Unchanged(saved);
             Assert.That(JToken.DeepEquals(Payload(resumed), expected), Is.True);
             slot.Store.Save(PlayOne(resumed)); Assert.That(slot.Read(slot.Store.BackupPath).SequenceEqual(saved["episode.json"]), Is.True);
@@ -230,7 +247,7 @@ namespace Gamesim.Tests.EditMode
         public void SaveRefusalKeepsActual26PrimaryBackupBytesAndValidContinuation(int mode, string field, int value)
         {
             using var slot = new Slot(); ImportPair(slot, mode); var old = Recorded(mode); Fixed(old);
-            var valid = EpisodeSaveMigrations.UpgradeV26ToV27(old).ToObject<EpisodeState>(Serializer()); Current(Payload(valid));
+            var valid = EpisodeSaveMigrations.UpgradeV27ToV28(EpisodeSaveMigrations.UpgradeV26ToV27(old)).ToObject<EpisodeState>(Serializer()); Current(Payload(valid));
             var candidate = valid.Clone(); typeof(UnifiedCommitmentState).GetField(field).SetValue(candidate.unifiedCommitments[0], value);
             string candidateBefore = Text(Payload(candidate)); var image = slot.Image();
             for (int i = 0; i < 2; i++)
@@ -251,7 +268,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(slot.Store.TryRecoverBackup(out var loaded, out string message), Is.True, message);
             Assert.That(slot.Read(slot.Store.SavePath).SequenceEqual(image["episode.json.backup"]), Is.True);
             Assert.That(slot.Read(slot.Store.BackupPath).SequenceEqual(image["episode.json.backup"]), Is.True);
-            var expected = EpisodeSaveMigrations.UpgradeV26ToV27(EnvelopeState(image["episode.json.backup"]));
+            var expected = EpisodeSaveMigrations.UpgradeV27ToV28(EpisodeSaveMigrations.UpgradeV26ToV27(EnvelopeState(image["episode.json.backup"])));
             Assert.That(JToken.DeepEquals(Payload(loaded), expected), Is.True); Current(Payload(loaded));
             string retained = Directory.GetFiles(slot.Root, "episode.json.before-recovery-*.json").Single();
             Assert.That(slot.Read(retained).SequenceEqual(image["episode.json"]), Is.True);
@@ -335,11 +352,22 @@ namespace Gamesim.Tests.EditMode
             Assert.Throws<InvalidDataException>(() => Fixed(old)); Assert.That(old == null ? "null" : Text(old), Is.EqualTo(before));
         }
         private static void Fixed(JObject payload) => Invoke(Frozen26, "Validate", payload);
+        /// <summary>
+        /// A former-current27 payload satisfies the independent fixed27 contract and its actual inert
+        /// 27-to-28 step reaches current; a current28 payload satisfies the real shape and saved semantics.
+        /// </summary>
         private static void Current(JObject payload)
         {
-            string before = Text(payload); Invoke(JsonApi, "CheckDtoShape", payload, typeof(EpisodeState), "state");
+            string before = Text(payload);
+            if (payload["schemaVersion"]?.Type == JTokenType.Integer && (long)payload["schemaVersion"] == 27)
+            {
+                Invoke(Frozen27, "Validate", payload);
+                Current(EpisodeSaveMigrations.UpgradeV27ToV28(payload));
+                Assert.That(Text(payload), Is.EqualTo(before)); return;
+            }
+            Invoke(JsonApi, "CheckDtoShape", payload, typeof(EpisodeState), "state");
             var state = payload.ToObject<EpisodeState>(Serializer()); EpisodeSaveValidation.Validate(state);
-            Assert.That(state.schemaVersion, Is.EqualTo(27)); Assert.That(Text(payload), Is.EqualTo(before));
+            Assert.That(state.schemaVersion, Is.EqualTo(28)); Assert.That(Text(payload), Is.EqualTo(before));
         }
         private static EpisodeState PlayOne(EpisodeState s)
         {

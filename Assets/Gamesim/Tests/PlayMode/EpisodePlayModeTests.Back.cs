@@ -55,6 +55,10 @@ namespace Gamesim.Tests.PlayMode
                 new BackCase { Name = "main menu, with a season behind it", MayCommit = true,
                     Open = () => Step(() => director.OpenMainMenu()),
                     Settled = () => !Menu().IsShowing, Done = () => !Menu().IsShowing },
+                // With none - the slot's save unreadable, the house in recovery - the menu has
+                // nowhere to close to: Escape and B both leave it up, and nothing under it acts.
+                new BackCase { Name = "main menu, with no season to go back to", Open = OpenMainMenuWithNoSeasonForBack,
+                    Done = () => Menu().IsShowing && !director.SeasonInProgress },
                 new BackCase { Name = "cast select", Open = OpenCastScreen,
                     Done = () => !CastScreen().IsShowing && director.IsPanelOpen },
                 new BackCase { Name = "character creator", Open = () => OpenCreator(),
@@ -181,6 +185,24 @@ namespace Gamesim.Tests.PlayMode
         {
             act();
             yield return null;
+        }
+
+        /// <summary>
+        /// The front door with no season behind it. The director always holds a season in memory -
+        /// it builds the authored one before it looks for a save - so "no season" is what the menu
+        /// itself goes by (<see cref="EpisodeDirector.SeasonInProgress"/>): a slot whose save cannot
+        /// be read, which leaves the house in recovery until the player recovers it or starts again.
+        /// Written to this test's slot and loaded as a launch loads it.
+        /// </summary>
+        private IEnumerator OpenMainMenuWithNoSeasonForBack()
+        {
+            director.FreezeForReloadForDiagnostics();
+            File.WriteAllText(director.SavePath, "not a season");
+            yield return ReloadEpisode();
+            Assert.That(director.SeasonInProgress, Is.False, "An unreadable save leaves no season to go back to.");
+            director.OpenMainMenu();
+            yield return null;
+            Assert.That(Menu().IsShowing, Is.True, "The front door is up over the recovery.");
         }
 
         private IEnumerator OpenMayaForBack()

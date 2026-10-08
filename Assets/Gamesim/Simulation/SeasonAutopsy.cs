@@ -117,6 +117,8 @@ namespace Gamesim.Simulation
             public bool isPlayer;
             public double statSum;
             public int hohWins, vetoWins, timesNominated, placement;
+            /// <summary>The week they left the house, or 0 for a finalist.</summary>
+            public int outWeek;
             public string status;
         }
 
@@ -202,7 +204,6 @@ namespace Gamesim.Simulation
             r.playerTimesNominated = you?.timesNominated ?? 0;
 
             var closings = changes.Where(c => c?.before != null).Select(c => c.before).ToList();
-            var openings = changes.Where(c => c?.after != null).Select(c => c.after).ToList();
 
             Placements(r, final);
             Weeks(r, changes, final);
@@ -247,11 +248,16 @@ namespace Gamesim.Simulation
                 int index = departures.IndexOf(c.id);
                 return index < 0 ? 0 : n - index;
             }
+            // The week each houseguest left: a production removal's, else their eviction's; 0 for the final two.
+            int OutWeek(ContestantState c) =>
+                c.status == ContestantStatus.Expelled ? removals.Where(x => x.contestantId == c.id).Select(x => x.week).DefaultIfEmpty(0).First()
+                : c.status == ContestantStatus.Evicted || c.status == ContestantStatus.Jury ? evictions.Where(p => p.evicteeId == c.id).Select(p => p.week).DefaultIfEmpty(0).First()
+                : 0;
             foreach (var c in final.contestants)
                 r.houseguests.Add(new Houseguest
                 {
                     id = c.id, isPlayer = c.isPlayer, hohWins = c.hohWins, vetoWins = c.vetoWins, timesNominated = c.timesNominated,
-                    statSum = StatSum(c.stats), placement = Placement(c), status = c.status.ToString(),
+                    statSum = StatSum(c.stats), placement = Placement(c), outWeek = OutWeek(c), status = c.status.ToString(),
                 });
             var you = final.Find(final.playerId);
             if (you == null) { r.outcome = Outcomes.Unfinished; return; }
@@ -261,10 +267,7 @@ namespace Gamesim.Simulation
                 : you.status == ContestantStatus.Expelled ? Outcomes.Expelled
                 : you.status == ContestantStatus.Evicted || you.status == ContestantStatus.Jury ? Outcomes.Evicted
                 : Outcomes.Unfinished;
-            if (r.outcome == Outcomes.Expelled)
-                r.playerOutWeek = removals.Where(x => x.contestantId == you.id).Select(x => x.week).DefaultIfEmpty(0).First();
-            else if (r.outcome == Outcomes.Evicted)
-                r.playerOutWeek = evictions.Where(p => p.evicteeId == you.id).Select(p => p.week).DefaultIfEmpty(0).First();
+            r.playerOutWeek = OutWeek(you);
         }
 
         /// <summary>The statistics a competition reads: physical, mental, endurance, social, luck and competition.</summary>

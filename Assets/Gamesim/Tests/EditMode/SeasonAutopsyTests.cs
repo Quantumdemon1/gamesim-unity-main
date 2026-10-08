@@ -199,6 +199,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(r.houseguests.Single(h => h.id == npc[4]).placement, Is.EqualTo(6), "First out, last place.");
             Assert.That(r.houseguests.Single(h => h.id == npc[1]).placement, Is.EqualTo(3), "The final eviction.");
             Assert.That(r.houseguests.Single(h => h.id == npc[0]).placement, Is.EqualTo(1));
+            Assert.That(r.houseguests.Select(h => h.outWeek), Is.EquivalentTo(new[] { 0, 0, 1, 2, 3, 4 }), "Out in weeks one to four; the final two never.");
+            Assert.That(r.houseguests.Single(h => h.id == npc[4]).outWeek, Is.EqualTo(1));
             Assert.That(r.playerHohWins, Is.EqualTo(1));
 
             Assert.That(r.weeksPlayed.Select(w => w.evicteeId), Is.EqualTo(new[] { npc[4], npc[3], npc[2], npc[1] }));

@@ -79,6 +79,19 @@ namespace Gamesim.Tests.EditMode
                     typeof(string), typeof(string), typeof(int), typeof(bool))
                 .Invoke(null, new object[] { s, effect, null, null, "alliances-test", 0, false });
 
+        /// <summary>
+        /// One story effect as a beat or a play applies it under the leak rules: the pact an alliance
+        /// spread is about kept first (EpisodeEngine.RememberSpreadPact), then applied. Returns what was kept.
+        /// </summary>
+        private static Dictionary<StoryEffectState, AllianceState> ApplyRemembering(EpisodeState s, StoryEffectState effect)
+        {
+            var spread = new Dictionary<StoryEffectState, AllianceState>();
+            EngineMethod("RememberSpreadPact", typeof(EpisodeState), typeof(StoryEffectState), typeof(Dictionary<StoryEffectState, AllianceState>))
+                .Invoke(null, new object[] { s, effect, spread });
+            ApplyStoryEffect(s, effect);
+            return spread;
+        }
+
         /// <summary>What the engine tells the player when pacts of theirs have ended (EpisodeEngine.TellThePlayerWhichAlliancesEnded).</summary>
         private static void TellThePlayer(EpisodeState s, params AllianceState[] ended) =>
             EngineMethod("TellThePlayerWhichAlliancesEnded", typeof(EpisodeState), typeof(List<AllianceState>))
@@ -215,9 +228,11 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// The same leak under the leak rules (WAVE-D-NPC-PACTS-PLAN §2.3, the C8 defect fixed): one pair
         /// is one pact, so the spread grants the pact the player does not yet know of - here the first -
-        /// and the receipt names that pact. The bigger pact the same two open stays dark, and the page
-        /// shows one card, dated by the receipt. A second leak of the same two, the first now known,
-        /// grants the bigger one, and its receipt names it.
+        /// and the receipt names that pact, as the engine resolved it before the grant. The bigger pact
+        /// the same two open stays dark, and the page shows one card, dated by the receipt. A second leak
+        /// of the same two, the first now known, grants the bigger one, and its receipt names it; asked
+        /// after the grant without the engine's pact, the receipt would name the known first one, so
+        /// under the rules that form says nothing.
         /// </summary>
         [Test]
         public void UnderTheLeakRulesAStoryLeakLetsThePlayerKnowOnlyThePactItsReceiptNames()
@@ -235,10 +250,11 @@ namespace Gamesim.Tests.EditMode
             var leak = new StoryEffectState { kind = StoryEffects.Spread, fromId = n[0].id, toId = n[1].id, thirdId = s.playerId,
                 type = FactKinds.Alliance, text = FactVisibility.Whispered };
             uint random = s.randomState; int ids = s.nextSequence;
-            ApplyStoryEffect(s, leak);
+            var granted = ApplyRemembering(s, leak);
             Assert.That(s.randomState, Is.EqualTo(random), "The spread draws nothing,");
             Assert.That(s.nextSequence, Is.EqualTo(ids), "and writes no id.");
-            string receipt = PlayReceipts.For(s, new[] { leak }).Single();
+            Assert.That(granted[leak], Is.SameAs(pair), "The engine resolved the pact the player does not know of, before the grant.");
+            string receipt = PlayReceipts.For(s, new[] { leak }, granted).Single();
             Line(s, s.week, StoryLog.Receipt, receipt);
             Assert.That(receipt, Is.EqualTo(AllianceRead.LearnedLine(s, pair)), "The receipt names the pact the spread granted.");
             Assert.That(Knowledge.Knows(pairFact, s.playerId), Is.True);
@@ -253,10 +269,13 @@ namespace Gamesim.Tests.EditMode
             // Again, the pair now known: the resolver turns to the one the player does not know of.
             var again = new StoryEffectState { kind = StoryEffects.Spread, fromId = n[1].id, toId = n[0].id, thirdId = s.playerId,
                 type = FactKinds.Alliance, text = FactVisibility.Whispered };
-            ApplyStoryEffect(s, again);
+            var grantedAgain = ApplyRemembering(s, again);
             Assert.That(Knowledge.Knows(biggerFact, s.playerId), Is.True);
-            Assert.That(PlayReceipts.For(s, new[] { again }, new Dictionary<StoryEffectState, AllianceState> { [again] = bigger }).Single(),
+            Assert.That(grantedAgain[again], Is.SameAs(bigger), "Resolved before the grant: the one the player did not know of yet.");
+            Assert.That(PlayReceipts.For(s, new[] { again }, grantedAgain).Single(),
                 Is.EqualTo(AllianceRead.LearnedLine(s, bigger)), "The engine's receipt names the pact it resolved before the grant.");
+            Assert.That(PlayReceipts.For(s, new[] { again }), Is.Empty,
+                "Without the engine's pact the receipt would name the known pair, listed first: under the rules it names none.");
         }
 
         [Test]

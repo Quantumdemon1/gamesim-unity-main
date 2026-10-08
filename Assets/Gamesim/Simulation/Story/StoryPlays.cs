@@ -94,12 +94,17 @@ namespace Gamesim.Simulation
     /// </summary>
     public static class PlayReceipts
     {
+        /// <summary>
+        /// The receipts without the pacts the spreads granted. Under the leak rules an alliance spread
+        /// gets no line this way: asked after the grant, the pact of the two the player now knows of may
+        /// not be the one granted, so the engine passes what it resolved before (the overload below).
+        /// </summary>
         public static IEnumerable<string> For(EpisodeState s, IEnumerable<StoryEffectState> applied) => For(s, applied, null);
 
         /// <summary>
         /// The same, with the pact each alliance spread granted under the leak rules, resolved before it
         /// was applied (<see cref="Knowledge.PactOfPair"/>), so the receipt names the pact the player was
-        /// given and no other of the same two people.
+        /// given and no other of the same two people. A spread with no pact here gets no line.
         /// </summary>
         public static IEnumerable<string> For(EpisodeState s, IEnumerable<StoryEffectState> applied,
             IReadOnlyDictionary<StoryEffectState, AllianceState> spread)
@@ -146,7 +151,7 @@ namespace Gamesim.Simulation
                     bool toPlayer = e.thirdId == s.playerId || (e.thirdId == null && e.text == FactVisibility.Public);
                     if (!toPlayer) return null;
                     // Under the leak rules the receipt names the one pact the spread granted (one pair, one pact).
-                    var alliance = AllianceLeaks.On(s) ? Granted(s, e, spread)
+                    var alliance = AllianceLeaks.On(s) ? Granted(e, spread)
                         : s.alliances.FirstOrDefault(a => a.members.Contains(from.id) && a.members.Contains(to.id));
                     if (alliance == null || alliance.members.Contains(s.playerId)) return null;
                     return "You learned: " + Names(s, alliance.members) + " are working together.";
@@ -160,17 +165,12 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// The pact an alliance spread granted under the leak rules: the one resolved before it was
-        /// applied where the engine kept it; otherwise, asked after the fact, the first pact of the two
-        /// the player now knows of - a standing one first, then the house's order.
+        /// applied, where the engine kept it. Otherwise none: the engine keeps one for every spread that
+        /// granted anything, and asked after the fact, the pact of the two the player now knows of can be
+        /// another one of the same two people (a known pact listed before the one just granted).
         /// </summary>
-        private static AllianceState Granted(EpisodeState s, StoryEffectState e, IReadOnlyDictionary<StoryEffectState, AllianceState> spread)
-        {
-            if (spread != null && spread.TryGetValue(e, out var resolved)) return resolved;
-            return s.alliances.Where(a => a?.members != null && a.members.Contains(e.fromId) && a.members.Contains(e.toId))
-                .OrderBy(a => a.active ? 0 : 1)
-                .ThenBy(a => Knowledge.AllianceVisibleTo(s, a, s.playerId) ? 0 : 1)
-                .FirstOrDefault();
-        }
+        private static AllianceState Granted(StoryEffectState e, IReadOnlyDictionary<StoryEffectState, AllianceState> spread) =>
+            spread != null && spread.TryGetValue(e, out var resolved) ? resolved : null;
 
         /// <summary>"Riley, Jo and Sam": names in the alliance's own order.</summary>
         private static string Names(EpisodeState s, IList<string> ids)

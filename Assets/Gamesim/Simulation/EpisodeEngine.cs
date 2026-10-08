@@ -1543,7 +1543,7 @@ namespace Gamesim.Simulation
 
         private static void MakePromise(EpisodeState s, string to, PromiseKind kind, string target, string safetyOrigin = null)
         {
-            if (UnifiedCommitments.RulesOn(s) && kind == PromiseKind.Safety)
+            if (UnifiedCommitments.SafetyAuthorityOn(s) && kind == PromiseKind.Safety)
             {
                 var draft = new PromiseState { id = "promise-" + s.nextSequence, fromId = s.playerId, toId = to, targetId = target,
                     kind = kind, status = PromiseStatus.Active, week = s.week, expiresWeek = s.week + 1 };
@@ -2011,7 +2011,7 @@ namespace Gamesim.Simulation
             // keyed to it (C7), so every attempt has one of its own.
             int attempt = s.nextSequence;
             Require(PlayerDeals.CanPropose(s, target.id, type, about, out string refusal), refusal);
-            if (UnifiedCommitments.RulesOn(s) && type == DealKind.SafetyAgreement)
+            if (UnifiedCommitments.SafetyAuthorityOn(s) && type == DealKind.SafetyAgreement)
                 Require(UnifiedCommitmentStore.CanAddDeal(s, PlayerDeals.Draft(s, target.id, type, about, "deal-player-" + s.nextSequence),
                     UnifiedCommitments.PlayerDeal, out string preflightError), preflightError);
             // Mode 2 (vote family V3): a vote deal is reserved as a canonical row before the answer is drawn.
@@ -2031,7 +2031,7 @@ namespace Gamesim.Simulation
             {
                 var read = LeverRead(s, target.id);
                 var struck = PlayerDeals.Draft(s, target.id, type, about, "deal-player-" + s.nextSequence);
-                if (UnifiedCommitments.RulesOn(s) && type == DealKind.SafetyAgreement)
+                if (UnifiedCommitments.SafetyAuthorityOn(s) && type == DealKind.SafetyAgreement)
                     Require(UnifiedCommitmentStore.TryAddDeal(s, struck, UnifiedCommitments.PlayerDeal, out string storageError), storageError);
                 else if (UnifiedVoteStore.On(s) && UnifiedVoteStore.IsVote(type))
                     Require(UnifiedVoteStore.TryAddDeal(s, struck, UnifiedCommitments.PlayerDeal, out string voteError), voteError);
@@ -2073,11 +2073,13 @@ namespace Gamesim.Simulation
             Require(s.Find(s.playerId).status == ContestantStatus.Active,
                 "Evicted players can follow the season but cannot influence it.");
             var canonical = UnifiedCommitments.RulesOn(s) ? CommitmentReferences.FindCanonical(s, c.targetId) : null;
-            // Mode 2 (vote family V3): an offer the house put as a canonical row is answered on that row.
+            // Mode 2 (vote family V3): an offer the house put as a canonical row is answered on that row - a vote
+            // offer by the Vote store, and (V3b) a safety offer by the safety store, as mode 1 answers it.
             var modeTwo = UnifiedVoteStore.On(s) ? s.unifiedCommitments.FirstOrDefault(row => row.id == c.targetId
                 && row.sourcePolicy == UnifiedCommitments.DealPolicy) : null;
+            if (modeTwo != null && modeTwo.kind == UnifiedCommitments.Safety) { canonical = modeTwo.Clone(); modeTwo = null; }
             var deal = modeTwo != null ? UnifiedVoteReferences.ProjectDeal(modeTwo)
-                : canonical != null ? CommitmentReferences.FindDeal(s, c.targetId)
+                : canonical != null ? (UnifiedVoteStore.On(s) ? UnifiedVoteReferences.ProjectDeal(canonical) : CommitmentReferences.FindDeal(s, c.targetId))
                 : s.deals.FirstOrDefault(d => d.id == c.targetId && d.status == DealStatus.Proposed && d.recipientId == s.playerId);
             if ((canonical != null || modeTwo != null) && (deal == null || deal.status != DealStatus.Proposed || deal.recipientId != s.playerId)) deal = null;
             Require(deal != null, "That offer is no longer on the table.");
@@ -2111,7 +2113,8 @@ namespace Gamesim.Simulation
                 else if (canonical != null)
                 {
                     Require(UnifiedCommitmentStore.TryRespond(s, deal.id, true, out string responseError), responseError);
-                    deal = CommitmentReferences.FindDeal(s, deal.id);
+                    deal = UnifiedVoteStore.On(s) ? UnifiedVoteReferences.ProjectDeal(s.unifiedCommitments.First(row => row.id == deal.id))
+                        : CommitmentReferences.FindDeal(s, deal.id);
                 }
                 else
                 {

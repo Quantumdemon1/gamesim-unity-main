@@ -131,23 +131,27 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The output is the complete core's, not public validation's: a candidate the core refuses - here a
-        /// safety promise, which mode 2 has no canonical writer for yet and which the public mode-1 game
-        /// accepts - is rejected whole, its draws, ids and lines discarded with it.
+        /// The output is the complete core's: a candidate the core refuses is rejected whole, its draws, ids and
+        /// lines discarded with it. Here - constructed - the season's sequence stands at the save format's bound,
+        /// so the conversation's line carries the candidate past it: nothing in the command itself checks, only
+        /// the candidate's validation, which the public mode-1 game shares and refuses in the same words.
+        /// (Before vote family V3b this was a promise of safety, which mode 2 then wrote raw; it writes it
+        /// canonically now - UnifiedSafetyModeTwoTests.)
         /// </summary>
         [Test]
         public void ACandidateTheCoreRefusesIsRejectedWholeAndNothingIsInstalled()
         {
-            var s = Mode2();
-            var engine = ProspectiveVoteFacade.Engine(s);
-            var promise = ProspectiveVoteTwins.Command(s, EpisodeCommandKind.PromiseSafety, Npc(s));
-            var result = engine.Apply(promise);
+            var s = Mode2(); s.nextSequence = 1000000;
+            Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(s, out var valid), Is.True, "Fixture: the bound itself is lawful. " + valid);
+            var talk = ProspectiveVoteTwins.Command(s, EpisodeCommandKind.Talk, Npc(s));
+            var result = ProspectiveVoteFacade.Engine(s).Apply(talk);
             Assert.That(result.accepted, Is.False);
             Assert.That(result.reason, Does.StartWith("Candidate rejected: "));
-            Assert.That(result.reason, Does.Contain("cannot have writable raw mirrors"));
             ProspectiveVoteTwins.AssertUntouched(s, result, "A refused candidate");
-            var legacy = new EpisodeEngine(Mode1()).Apply(promise);
-            Assert.That(legacy.accepted, Is.True, "The public mode-1 game takes it: the refusal is the core's. " + legacy.reason);
+            var mode1 = Mode1(); mode1.nextSequence = 1000000;
+            var legacy = new EpisodeEngine(mode1).Apply(talk);
+            Assert.That(legacy.accepted, Is.False);
+            Assert.That(legacy.reason, Is.EqualTo(result.reason), "The public mode-1 game refuses the same candidate in the same words.");
         }
 
         /// <summary>No public path reaches the seam: it is one internal factory, and the public constructor is the one there was.</summary>

@@ -26,7 +26,7 @@ namespace Gamesim.Simulation
             Require(SocialActionsSpent(s) < SocialActionBudget(s), "You have no conversations left this week.");
 
             var decider = s.Find(c.targetId);
-            if (UnifiedCommitments.RulesOn(s) && approach == LobbyApproach.Deal
+            if (UnifiedCommitments.SafetyAuthorityOn(s) && approach == LobbyApproach.Deal
                 && (ask != LobbyAsk.Vote || NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.VoteSave))
                 && !NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.SafetyAgreement))
                 Require(UnifiedCommitmentStore.CanAddDeal(s, DraftLobbySafety(s, decider.id), UnifiedCommitments.Lobby,
@@ -73,7 +73,7 @@ namespace Gamesim.Simulation
                 && !NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.SafetyAgreement))
             {
                 var deal = DraftLobbySafety(s, decider.id);
-                if (UnifiedCommitments.RulesOn(s))
+                if (UnifiedCommitments.SafetyAuthorityOn(s))
                     Require(UnifiedCommitmentStore.TryAddDeal(s, deal, UnifiedCommitments.Lobby, out string error), error);
                 else s.deals.Add(deal);
                 Log(s, "deal", "You and " + decider.name + " have a safety agreement through next week.", s.playerId, decider.id);

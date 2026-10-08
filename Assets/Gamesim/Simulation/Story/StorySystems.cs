@@ -158,7 +158,7 @@ namespace Gamesim.Simulation
         {
             if (state?.story == null || deal?.id == null || string.IsNullOrEmpty(breakerId) || string.IsNullOrEmpty(wrongedId)
                 || breakerId == wrongedId) return null;
-            if (UnifiedCommitmentHearings.RulesOn(state) && state.unifiedCommitments.Any(row => row.id == deal.id))
+            if (UnifiedCommitmentHearings.WritesOn(state) && state.unifiedCommitments.Any(row => row.id == deal.id && row.kind == UnifiedCommitments.Safety))
             {
                 UnifiedCommitmentHearings.RequireValid(state);
                 var staged = state.Clone();
@@ -252,7 +252,7 @@ namespace Gamesim.Simulation
         public static void MakeKnown(EpisodeState state, HouseFactState fact, string visibility)
         {
             if (state?.story == null || fact == null) return;
-            if (UnifiedCommitmentHearings.RulesOn(state)) UnifiedCommitmentHearings.RequireValid(state);
+            if (UnifiedCommitmentHearings.WritesOn(state)) UnifiedCommitmentHearings.RequireValid(state);
             fact.visibility = Wider(fact.visibility, FactVisibility.IsKnown(visibility) ? visibility : FactVisibility.Public);
             if (fact.visibility == FactVisibility.Public)
                 foreach (var c in state.Active) AddKnower(state, fact, c.id);
@@ -265,7 +265,7 @@ namespace Gamesim.Simulation
             if (state?.story == null || cycle == null) return;
             var fact = ForCycle(state, cycle, kind);
             if (fact == null) return;
-            if (UnifiedCommitmentHearings.RulesOn(state)) UnifiedCommitmentHearings.RequireValid(state);
+            if (UnifiedCommitmentHearings.WritesOn(state)) UnifiedCommitmentHearings.RequireValid(state);
             fact.visibility = Wider(fact.visibility, FactVisibility.IsKnown(visibility) ? visibility : FactVisibility.Public);
             if (fact.visibility == FactVisibility.Public)
                 foreach (var c in state.Active) AddKnower(state, fact, c.id);
@@ -296,7 +296,7 @@ namespace Gamesim.Simulation
         /// </summary>
         public static List<(HouseFactState fact, string listener)> Spread(EpisodeState state, string anchor)
         {
-            if (UnifiedCommitmentHearings.RulesOn(state))
+            if (UnifiedCommitmentHearings.WritesOn(state))
             {
                 UnifiedCommitmentHearings.RequireValid(state);
                 var staged = state.Clone();

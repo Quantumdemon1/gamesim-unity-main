@@ -200,10 +200,14 @@ namespace Gamesim.Simulation
         /// <summary>Whether this deal is a price paid for another.</summary>
         public static bool IsPrice(DealState d) => d?.id != null && d.id.StartsWith(PricePrefix, StringComparison.Ordinal);
 
-        /// <summary>The deal linked to this one, or null.</summary>
+        /// <summary>
+        /// The deal linked to this one, or null. In the prospective mode 2 it is found among the canonical rows
+        /// too (vote family V3b): the safety gateways weigh a counter's safety member by what it is linked to.
+        /// </summary>
         public static DealState Linked(EpisodeState s, DealState d) =>
             s?.deals == null || d == null || string.IsNullOrEmpty(d.linkedDealId) ? null
                 : UnifiedCommitments.RulesOn(s) ? CommitmentReferences.FindDeal(s, d.linkedDealId)
+                : UnifiedVoteStore.On(s) ? UnifiedVoteStore.Deals(s).FirstOrDefault(x => x.id == d.linkedDealId)
                 : s.deals.FirstOrDefault(x => x.id == d.linkedDealId);
 
         /// <summary>The price paid for this deal, or null: the deal linked to it, when that is the price.</summary>

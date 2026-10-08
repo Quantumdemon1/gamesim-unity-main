@@ -43,12 +43,14 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Json(state), Is.EqualTo(before));
         }
 
-        [TestCase(0)] [TestCase(2)] [TestCase(-1)]
-        public void EveryProspectiveOperationIsInertWithoutExactlyVersionOne(int version)
+        // Mode 2 (vote family V3b) keeps canonical Safety too: UnifiedSafetyModeTwoTests holds it.
+        [TestCase(0)] [TestCase(3)] [TestCase(-1)]
+        public void EveryProspectiveOperationIsInertOutsideTheSafetyAuthority(int version)
         {
             var state = State(); state.unifiedCommitmentRulesVersion = version;
             var row = Row(state, "not-installed"); string before = Json(state);
             Assert.That(UnifiedCommitments.RulesOn(state), Is.False);
+            Assert.That(UnifiedCommitments.SafetyAuthorityOn(state), Is.False);
             Assert.That(UnifiedCommitments.Offer(state, row, false, out _), Is.Null);
             Assert.That(UnifiedCommitments.Find(state, row.id), Is.Null);
             Assert.That(UnifiedCommitments.Binding(state, state.playerId, A(state)), Is.Empty);

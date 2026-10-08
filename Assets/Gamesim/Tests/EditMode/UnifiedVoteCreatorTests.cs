@@ -24,7 +24,7 @@ namespace Gamesim.Tests.EditMode
     {
         // ------------------------------------------------------------ fixtures
 
-        private static EpisodeState voter, nominee, vetoHolder, hoh;
+        private static EpisodeState voter, nominee, vetoHolder, houseHoH;
 
         /// <summary>A first campaign in which the player is an ordinary voter, nothing of theirs spent.</summary>
         private static EpisodeState Voter() => (voter ??= ProspectiveVoteTwins.Find("a first campaign the player votes in",
@@ -39,10 +39,13 @@ namespace Gamesim.Tests.EditMode
             seed => ProspectiveVoteTwins.Walk(seed, s => s.phase == EpisodePhase.VetoMeeting && !s.vetoResolved && s.vetoHolderId == s.playerId
                 && s.nominees.Any(id => id != s.playerId), EpisodePhase.Veto))).Clone();
 
-        /// <summary>A first veto meeting, decided, with the player Head of Household: the house's campaign passes are next.</summary>
-        private static EpisodeState HoH() => (hoh ??= ProspectiveVoteTwins.Find("a first decided veto meeting with the player Head of Household",
-            seed => ProspectiveVoteTwins.Walk(seed, s => s.phase == EpisodePhase.VetoMeeting && s.vetoResolved && s.hohId == s.playerId,
-                EpisodePhase.HoH))).Clone();
+        /// <summary>
+        /// A first veto meeting, decided, with a houseguest Head of Household and the player an ordinary voter: the
+        /// house's campaign passes are next, and they court the Head of Household with safety too (vote family V3b).
+        /// </summary>
+        private static EpisodeState HouseHoH() => (houseHoH ??= ProspectiveVoteTwins.Find("a first decided veto meeting with a houseguest Head of Household",
+            seed => ProspectiveVoteTwins.Walk(seed, s => s.phase == EpisodePhase.VetoMeeting && s.vetoResolved && s.hohId != s.playerId
+                && !s.nominees.Contains(s.playerId)))).Clone();
 
         private static bool Votes(EpisodeState s) => EpisodeEngine.Voters(s).Any(v => v.isPlayer);
         private static List<string> NpcVoters(EpisodeState s) => EpisodeEngine.Voters(s).Where(v => !v.isPlayer).Select(v => v.id).ToList();
@@ -332,13 +335,16 @@ namespace Gamesim.Tests.EditMode
             ProspectiveVoteTwins.AssertUntouched(after, refused, "An answered offer answered again");
         }
 
-        /// <summary>The fixture behind the house's cases: the real Advance into the campaign, from the player's decided veto meeting.</summary>
+        /// <summary>
+        /// The fixture behind the house's cases: the real Advance into the campaign, from a decided veto meeting
+        /// with a houseguest Head of Household - whom the house's passes court with safety, canonical in mode 2
+        /// as in mode 1 (vote family V3b; UnifiedSafetyModeTwoTests holds those rows).
+        /// </summary>
         private static (CommandResult legacy, CommandResult prospective) CampaignPasses()
         {
-            var s = HoH();
-            // Constructed: every houseguest reads the player at 20 - warm enough for a nominee to bargain, not
-            // enough to court the Head of Household with a safety pact - and each nominee and one voter read
-            // each other at 45, so a nominee's vote bargain is one both want.
+            var s = HouseHoH();
+            // Constructed: every houseguest reads the player at 20 - warm enough for a nominee to bargain - and
+            // each nominee and one voter read each other at 45, so a nominee's vote bargain is one both want.
             foreach (var npc in s.contestants.Where(c => !c.isPlayer && c.status == ContestantStatus.Active))
                 ProspectiveVoteTwins.Set(s, npc.id, s.playerId, 20);
             var voters = NpcVoters(s);
@@ -350,10 +356,10 @@ namespace Gamesim.Tests.EditMode
             int safety = s.unifiedCommitments.Count(row => row.kind == UnifiedCommitments.Safety);
             var both = ProspectiveVoteTwins.Both(ProspectiveVoteTwins.Valid(s), ProspectiveVoteTwins.Command(s, EpisodeCommandKind.Advance));
             Assert.That(both.legacy.accepted, Is.True, both.legacy.reason);
-            Assert.That(both.legacy.state.unifiedCommitments.Count(row => row.kind == UnifiedCommitments.Safety), Is.EqualTo(safety),
-                "Fixture: this campaign's passes write no safety row, which mode 2 has no canonical writer for yet.");
             Assert.That(both.prospective.accepted, Is.True, both.prospective.reason);
             Assert.That(both.prospective.state.phase, Is.EqualTo(EpisodePhase.Campaign));
+            Assert.That(both.prospective.state.unifiedCommitments.Count(row => row.kind == UnifiedCommitments.Safety), Is.GreaterThan(safety),
+                "The passes court the house's Head of Household with safety too, and mode 2 writes it.");
             return both;
         }
 

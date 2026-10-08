@@ -76,7 +76,7 @@ namespace Gamesim.Simulation
                 return Refuse(out reason, "You already have more arrangements than you can keep track of.");
             // A price binds only what it names (C7, under the commitment rules, where prices are struck): an
             // open vote to keep the player, owed for the veto, is no vote deal about anybody else.
-            if (!(UnifiedCommitments.RulesOn(state) && type == DealKind.SafetyAgreement)
+            if (!(UnifiedCommitments.SafetyAuthorityOn(state) && type == DealKind.SafetyAgreement)
                 && NpcDeals.Between(state, state.playerId, toId).Any(d => d.type == type
                     && (!Negotiation.IsPrice(d) || d.targetId == (DealKind.NamesATarget(type) ? aboutId : null))))
                 return Refuse(out reason, "You already have that arrangement with " + target.name + ".");
@@ -131,7 +131,7 @@ namespace Gamesim.Simulation
                         return Refuse(out reason, FinalTwoBindsRefusal);
                     break;
             }
-            if (UnifiedCommitments.RulesOn(state) && type == DealKind.SafetyAgreement)
+            if (UnifiedCommitments.SafetyAuthorityOn(state) && type == DealKind.SafetyAgreement)
                 return UnifiedCommitmentStore.CanAddDeal(state,
                     Draft(state, toId, type, aboutId, "deal-player-" + state.nextSequence), UnifiedCommitments.PlayerDeal, out reason);
             return true;

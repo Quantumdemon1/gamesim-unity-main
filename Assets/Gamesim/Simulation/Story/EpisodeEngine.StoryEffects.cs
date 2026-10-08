@@ -330,7 +330,7 @@ namespace Gamesim.Simulation
                 id = "promise-" + s.nextSequence, fromId = from.id, toId = to.id, kind = kind, status = PromiseStatus.Active,
                 week = s.week, expiresWeek = kind == PromiseKind.FinalTwo ? 0 : kind == PromiseKind.Safety ? s.week + 1 : s.week,
             };
-            if (UnifiedCommitments.RulesOn(s) && kind == PromiseKind.Safety)
+            if (UnifiedCommitments.SafetyAuthorityOn(s) && kind == PromiseKind.Safety)
             {
                 if (!UnifiedCommitmentStore.TryAddPromise(s, promise, UnifiedCommitments.StoryPromise, out _)) return;
             }
@@ -367,7 +367,7 @@ namespace Gamesim.Simulation
             deal.proposerId = a.id;
             deal.recipientId = b.id;
             deal.status = DealStatus.Active;
-            if (UnifiedCommitments.RulesOn(s) && type == DealKind.SafetyAgreement)
+            if (UnifiedCommitments.SafetyAuthorityOn(s) && type == DealKind.SafetyAgreement)
             {
                 if (!UnifiedCommitmentStore.TryAddDeal(s, deal, UnifiedCommitments.StoryDeal, out _)) return;
             }

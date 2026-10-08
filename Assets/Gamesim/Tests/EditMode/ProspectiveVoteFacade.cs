@@ -126,12 +126,32 @@ namespace Gamesim.Tests.EditMode
         internal static bool StoreTryAddOwnVetoPrice(EpisodeState s, DealState veto, DealState price, out string error) =>
             Store("TryAddOwnVetoPrice", new[] { typeof(EpisodeState), typeof(DealState), typeof(DealState), OutString }, out error, s, veto, price);
 
-        private static bool Store(string name, Type[] parameters, out string error, params object[] arguments)
+        private static readonly Type SafetyStoreType = Simulation.GetType("Gamesim.Simulation.UnifiedCommitmentStore");
+
+        /// <summary>UnifiedCommitmentStore.TryRespond: the player's answer to a canonical safety offer.</summary>
+        internal static bool SafetyStoreTryRespond(EpisodeState s, string id, bool accept, out string error) =>
+            Store(SafetyStoreType, "TryRespond", new[] { typeof(EpisodeState), typeof(string), typeof(bool), OutString }, out error, s, id, accept);
+
+        /// <summary>UnifiedCommitmentStore.TryAddLinkedDeals: an accepted counter with a safety member, both or neither.</summary>
+        internal static bool SafetyStoreTryAddLinkedDeals(EpisodeState s, DealState bought, string boughtOrigin, DealState price, string priceOrigin,
+            out string error) =>
+            Store(SafetyStoreType, "TryAddLinkedDeals", new[] { typeof(EpisodeState), typeof(DealState), typeof(string), typeof(DealState),
+                typeof(string), OutString }, out error, s, bought, boughtOrigin, price, priceOrigin);
+
+        /// <summary>UnifiedCommitmentStore.TryExpireLinkedPrice: a canonical safety price voided by its payee's breach.</summary>
+        internal static bool SafetyStoreTryExpireLinkedPrice(EpisodeState s, string boughtId, string breakerId, out string error) =>
+            Store(SafetyStoreType, "TryExpireLinkedPrice", new[] { typeof(EpisodeState), typeof(string), typeof(string), OutString },
+                out error, s, boughtId, breakerId);
+
+        private static bool Store(string name, Type[] parameters, out string error, params object[] arguments) =>
+            Store(StoreType, name, parameters, out error, arguments);
+
+        private static bool Store(Type owner, string name, Type[] parameters, out string error, params object[] arguments)
         {
-            Assert.That(StoreType, Is.Not.Null, "UnifiedVoteStore is the mode-2 Vote writer's actual owner.");
+            Assert.That(owner, Is.Not.Null, "The store " + name + " belongs to is an actual owner in Gamesim.Simulation.");
             var args = new object[arguments.Length + 1];
             Array.Copy(arguments, args, arguments.Length);
-            bool accepted = (bool)Invoke(Method(StoreType, name, parameters), args);
+            bool accepted = (bool)Invoke(Method(owner, name, parameters), args);
             error = (string)args[arguments.Length];
             return accepted;
         }

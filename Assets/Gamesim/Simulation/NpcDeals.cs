@@ -328,7 +328,7 @@ namespace Gamesim.Simulation
                     expiresWeek = state.week,
                     trustImpact = DealKind.DefaultTrust(offer.kind),
                 };
-                if (UnifiedCommitments.RulesOn(state) && offer.kind == DealKind.SafetyAgreement)
+                if (UnifiedCommitments.SafetyAuthorityOn(state) && offer.kind == DealKind.SafetyAgreement)
                 {
                     if (!UnifiedCommitmentStore.TryAddDeal(state, proposed, UnifiedCommitments.NpcOffer, out _))
                     {
@@ -432,7 +432,7 @@ namespace Gamesim.Simulation
         /// </summary>
         private static void Expire(EpisodeState state)
         {
-            if (UnifiedCommitments.RulesOn(state))
+            if (UnifiedCommitments.SafetyAuthorityOn(state))
                 EpisodeEngine.ResolveUnifiedSafetyExpiry(state, UnifiedCommitmentExpiry.DealPass);
             foreach (var deal in state.deals)
                 if (DealStatus.Binds(deal.status) && deal.expiresWeek > 0 && deal.expiresWeek < state.week)
@@ -462,7 +462,7 @@ namespace Gamesim.Simulation
                     ? 0 : state.week,
                 trustImpact = DealKind.DefaultTrust(kind),
             };
-            if (UnifiedCommitments.RulesOn(state) && kind == DealKind.SafetyAgreement)
+            if (UnifiedCommitments.SafetyAuthorityOn(state) && kind == DealKind.SafetyAgreement)
             {
                 if (!UnifiedCommitmentStore.TryAddDeal(state, deal, UnifiedCommitments.NpcDeal, out _)) return;
             }

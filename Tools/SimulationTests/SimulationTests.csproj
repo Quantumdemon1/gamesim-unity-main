@@ -93,6 +93,7 @@
     <Compile Include="$(EditMode)ProspectiveVoteTwins.cs" />
     <Compile Include="$(EditMode)UnifiedVoteEngineSeamTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteCreatorTests.cs" />
+    <Compile Include="$(EditMode)UnifiedSafetyModeTwoTests.cs" />
     <Compile Include="$(EditMode)OrdinaryVoterRemovalTests.cs" />
     <Compile Include="$(EditMode)CommitmentReferencesTests.cs" />
     <Compile Include="$(EditMode)UnifiedCommitmentStoreTests.cs" />

@@ -123,9 +123,16 @@ namespace Gamesim.Tests.EditMode
         /// The mode-2 command's result is the mode-1 result with its Vote rows moved to their canonical owners:
         /// the same ids, sequence, draws, lines, scores, memories and ledger, field for field.
         /// </summary>
-        internal static void AssertParity(EpisodeState legacy, EpisodeState prospective, string what, params string[] readerGaps)
+        internal static void AssertParity(EpisodeState legacy, EpisodeState prospective, string what, params string[] readerGaps) =>
+            AssertProjection(PinnedVoteSeason.Project(legacy, Owners(legacy), Array.Empty<UnifiedVoteRevealState>()), prospective, what, readerGaps);
+
+        /// <summary>
+        /// As <see cref="AssertParity"/>, against an explicit projection of the mode-1 result: one carried past a
+        /// reveal with the owners and frames <see cref="PinnedVoteSeason"/> observed.
+        /// </summary>
+        internal static void AssertProjection(EpisodeState projection, EpisodeState prospective, string what, params string[] readerGaps)
         {
-            var expected = Normal(PinnedVoteSeason.Project(legacy, Owners(legacy), Array.Empty<UnifiedVoteRevealState>()));
+            var expected = Normal(projection);
             var actual = Normal(prospective);
             // A reader not yet moved to the canonical rows (vote family V5) may word a line differently. Each
             // gap is named by its event kind, must actually differ, and differs in that line's text only.

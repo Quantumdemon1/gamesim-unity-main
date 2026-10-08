@@ -149,7 +149,7 @@ namespace Gamesim.Simulation
                     : kind == PromiseKind.Safety ? state.week + 1
                     : state.week,
             };
-            if (UnifiedCommitments.RulesOn(state) && kind == PromiseKind.Safety)
+            if (UnifiedCommitments.SafetyAuthorityOn(state) && kind == PromiseKind.Safety)
             {
                 if (!UnifiedCommitmentStore.TryAddPromise(state, promise, UnifiedCommitments.NpcPromise, out _)) return false;
             }

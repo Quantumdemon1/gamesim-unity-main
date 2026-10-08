@@ -97,6 +97,12 @@ namespace Gamesim.Simulation
             // and safety members canonical, any other raw - before the yes moves anything, or not at all.
             else if (UnifiedVoteStore.On(s) && (UnifiedVoteStore.IsVote(bought.type) || UnifiedVoteStore.IsVote(price.type)))
                 Require(UnifiedVoteStore.TryAddCounter(s, bought, price, out string voteError), voteError);
+            // Mode 2 (vote family V3b): a counter whose safety member has no vote member beside it is the
+            // safety store's pair, written as mode 1 writes it.
+            else if (UnifiedCommitments.SafetyAuthorityOn(s)
+                && (bought.type == DealKind.SafetyAgreement || price.type == DealKind.SafetyAgreement))
+                Require(UnifiedCommitmentStore.TryAddLinkedDeals(s, bought, UnifiedCommitments.CounterDeal,
+                    price, UnifiedCommitments.CounterPrice, out string safetyError), safetyError);
             else
             {
                 s.deals.Add(bought);
@@ -162,9 +168,12 @@ namespace Gamesim.Simulation
             if (price == null || breakerId == null || !DealStatus.Binds(price.status) || price.recipientId != breakerId) return;
             if (KnownBallots.SettledByABallot(bought)) return;
             if (price.expiresWeek != 0 && s.week > price.expiresWeek) return;
-            if (UnifiedCommitments.RulesOn(s))
+            if (UnifiedCommitments.SafetyAuthorityOn(s))
             {
-                if (CommitmentReferences.FindCanonical(s, price.id) != null)
+                // Mode 2 (vote family V3b): the safety store voids a canonical safety price as in mode 1; a
+                // canonical vote price waits for the Vote family's endings (V4), its void neither written nor said.
+                if (UnifiedVoteStore.On(s) ? s.unifiedCommitments.Any(row => row.id == price.id)
+                    : CommitmentReferences.FindCanonical(s, price.id) != null)
                 {
                     if (!UnifiedCommitmentStore.TryExpireLinkedPrice(s, bought.id, breakerId, out _)) return;
                 }

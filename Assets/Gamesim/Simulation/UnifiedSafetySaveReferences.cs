@@ -15,13 +15,19 @@ namespace Gamesim.Simulation
     /// </summary>
     public static class UnifiedSafetySaveReferences
     {
-        public static bool TryValidate(EpisodeState s, out string error)
+        public static bool TryValidate(EpisodeState s, out string error) => TryValidateCore(s, false, out error);
+
+        internal static bool TryValidateProspectiveVote(EpisodeState s, out string error) => TryValidateCore(s, true, out error);
+
+        private static bool TryValidateCore(EpisodeState s, bool prospectiveVote, out string error)
         {
             error = null;
-            if (!UnifiedCommitments.RulesOn(s) || s.nextSequence < 1 || s.nextSequence > 1000000
+            if (s == null || (prospectiveVote ? s.unifiedCommitmentRulesVersion != UnifiedVoteFamilyValidation.Version : !UnifiedCommitments.RulesOn(s)) || s.nextSequence < 1 || s.nextSequence > 1000000
                 || s.commitmentRulesStartWeek < 0 || s.commitmentRulesStartWeek > s.week + 1)
                 return Refuse(out error, "Expected a prospective saved Safety context.");
-            if (!UnifiedCommitments.ValidateRecords(s, out error)) return false;
+            if (prospectiveVote
+                ? !UnifiedVoteFamilyValidation.TryValidate(s, s.unifiedVoteReveals, out error)
+                : !UnifiedCommitments.ValidateRecords(s, out error)) return false;
             // PowerThisWeek owns one durable row per week. Unlike capped event histories,
             // max100 saved weeks cannot exhaust the 512-row power cap. Ambiguity in any week
             // must not be resolved by whichever duplicate happens to be first or last.
@@ -35,7 +41,7 @@ namespace Gamesim.Simulation
                 if (!Token(id) || !ids.Add(id))
                     return Refuse(out error, "Stored commitments need globally unambiguous bounded identities.");
 
-            foreach (var row in s.unifiedCommitments)
+            foreach (var row in s.unifiedCommitments.Where(row => row.kind == UnifiedCommitments.Safety))
             {
                 if (!InstalledId(row.id, Prefix(row.origin), s.nextSequence, out _))
                     return Refuse(out error, "Safety identity does not belong to its installed source sequence.");
@@ -58,7 +64,7 @@ namespace Gamesim.Simulation
             // Authoring rejects the same currently binding duty and term. Different source policies,
             // directions and real extensions remain provenance, not duplicate agreements to erase.
             var duties = new HashSet<(string policy, string first, string second, int expiry)>();
-            foreach (var row in s.unifiedCommitments.Where(row => DealStatus.Binds(row.status)))
+            foreach (var row in s.unifiedCommitments.Where(row => row.kind == UnifiedCommitments.Safety && DealStatus.Binds(row.status)))
             {
                 string first = row.makerId, second = row.beneficiaryId;
                 if (row.reciprocal && string.CompareOrdinal(first, second) > 0)
@@ -67,13 +73,16 @@ namespace Gamesim.Simulation
                     return Refuse(out error, "The same binding Safety duty and term is stored twice.");
             }
 
-            if (!ValidateLinks(s, out error)) return false;
+            // Aggregate mode already proved ALL true-owner links with source-specific counter,
+            // accepted-ask and own-veto terms. Re-running this Safety-only same-week counter
+            // interpretation over a Vote veto-price would conflate two different creators.
+            if (!prospectiveVote && !ValidateLinks(s, out error)) return false;
             IReadOnlyList<UnifiedCommitmentIncident> incidents;
             try { incidents = UnifiedCommitmentHistory.Breaches(s); }
             catch (ArgumentException) { return Refuse(out error, "Invalid exact Safety breach identity."); }
             foreach (var incident in incidents)
                 if (!ValidateIncidentRole(s, incident, out error)) return false;
-            foreach (var row in s.unifiedCommitments.Where(row => row.status == DealStatus.Fulfilled))
+            foreach (var row in s.unifiedCommitments.Where(row => row.kind == UnifiedCommitments.Safety && row.status == DealStatus.Fulfilled))
                 if (!ValidateFulfillmentRole(s, row, out error)) return false;
             return true;
         }

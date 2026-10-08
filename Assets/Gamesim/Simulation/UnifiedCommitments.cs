@@ -95,6 +95,14 @@ namespace Gamesim.Simulation
         {
             error = null;
             if (!RulesOn(state)) return Refuse(out error, "Unified commitments are not enabled.");
+            return ValidateSafetyRowCore(state, row, out error);
+        }
+
+        // Prospective aggregate validator calls the identical Safety policy without relabeling
+        // a mixed state as version1. This is not a public authority or writer entry.
+        internal static bool ValidateSafetyRowCore(EpisodeState state, UnifiedCommitmentState row, out string error)
+        {
+            error = null;
             if (!IdentityContextValid(state) || row == null || !Token(row.id) || row.kind != Safety
                 || row.targetId != null || row.subtype != null
                 || row.voteBindingWeek != 0 || row.voteFirstRevealWeek != 0

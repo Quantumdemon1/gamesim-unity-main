@@ -12,10 +12,16 @@ namespace Gamesim.Simulation
         /// Read-only and internal: this neither activates rules nor normalizes, mirrors or repairs
         /// evidence. A saved projection may legitimately lag its source until reconciliation.
         /// </summary>
-        private static bool TryValidateUnifiedSafetyReferences(EpisodeState s, out string error)
+        private static bool TryValidateUnifiedSafetyReferences(EpisodeState s, out string error) =>
+            TryValidateUnifiedSafetyReferences(s, false, out error);
+
+        private static bool TryValidateUnifiedSafetyReferences(EpisodeState s, bool prospectiveVote, out string error)
         {
             error = null;
-            var canonical = s.unifiedCommitments.ToDictionary(row => row.id, StringComparer.Ordinal);
+            // Vote truth cannot become a Safety opportunity, BrokenWord source or hearing.
+            // Existing mode1 has already proved every row Safety, so its map is unchanged.
+            var canonical = s.unifiedCommitments.Where(row => row.kind == UnifiedCommitments.Safety)
+                .ToDictionary(row => row.id, StringComparer.Ordinal);
             var deals = CommitmentReferences.Deals(s).ToDictionary(row => row.id, StringComparer.Ordinal);
             foreach (var opportunity in s.ledger.opportunities)
             {
@@ -46,14 +52,17 @@ namespace Gamesim.Simulation
                     return Fail(out error, "A canonical fact must be its actual audible Deal-policy breach leaf.");
             if (canonicalFacts.GroupBy(fact => fact.refId, StringComparer.Ordinal).Any(group => group.Count() > 1))
                 return Fail(out error, "A Safety source cannot have two live BrokenWord identities.");
-            if (!UnifiedCommitmentHearings.ValidateStorage(s, out error)) return false;
+            if (!(prospectiveVote
+                    ? UnifiedCommitmentHearings.TryValidateProspectiveVoteStorage(s, out error)
+                    : UnifiedCommitmentHearings.ValidateStorage(s, out error))) return false;
             // A lawful live-fact pruning keeps the same permanent source leaf. Archived-only
             // facts need settlement-time knowledge eligibility too, not merely today's rules.
             foreach (var evidence in s.unifiedHearingEvidence)
                 if (!canonical.TryGetValue(evidence.fact.refId, out var archivedOwner)
                     || !ValidSavedSafetyFact(s, archivedOwner, evidence.fact, incidents))
                     return Fail(out error, "An archived Safety fact must retain its actual audible settlement provenance.");
-            if (UnifiedCommitmentHearings.RulesOn(s))
+            if (prospectiveVote ? s.unifiedHearingRulesVersion == UnifiedCommitmentHearings.ProspectiveVersion
+                : UnifiedCommitmentHearings.RulesOn(s))
             {
                 // Under the fresh hearing-1 writer contract, every selected player Deal breach
                 // audible at its recorded settlement installed permanent archive/Initial lineage.
@@ -117,7 +126,7 @@ namespace Gamesim.Simulation
         private static bool ValidSavedSafetyOpportunity(EpisodeState s, UnifiedCommitmentState record,
             DealState deal, OpportunityRow opportunity)
         {
-            if (record.sourcePolicy != UnifiedCommitments.DealPolicy || opportunity.anchor != null
+            if (record.kind != UnifiedCommitments.Safety || record.sourcePolicy != UnifiedCommitments.DealPolicy || opportunity.anchor != null
                 || opportunity.currency != null || opportunity.steps.Count != 0 || opportunity.payoff != 0) return false;
             bool taken = opportunity.response == OpportunityResponse.Taken;
             bool neutral = opportunity.outcome == OpportunityOutcome.NotApplicable;
@@ -156,7 +165,7 @@ namespace Gamesim.Simulation
         private static bool ValidSavedSafetyFact(EpisodeState s, UnifiedCommitmentState record, HouseFactState fact,
             IReadOnlyList<UnifiedCommitmentIncident> incidents)
         {
-            if (record.sourcePolicy != UnifiedCommitments.DealPolicy || record.status != DealStatus.Broken
+            if (record.kind != UnifiedCommitments.Safety || record.sourcePolicy != UnifiedCommitments.DealPolicy || record.status != DealStatus.Broken
                 || !SavedSafetyWordWasOn(s, record.settledWeek) || fact.kind != FactKinds.BrokenWord || fact.actorId != s.playerId
                 || fact.week != record.settledWeek || fact.visibility == FactVisibility.Private
                 || !SavedSafetySequence(fact.id, "fact-", s.nextSequence)

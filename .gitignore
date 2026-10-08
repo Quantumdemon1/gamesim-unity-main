@@ -44,6 +44,13 @@ Assets/UMAProjectData/Resources/*
 !Assets/UMAProjectData/Resources/AssetIndexerProject.asset
 !Assets/UMAProjectData/Resources/AssetIndexerProject.asset.meta
 
+# Unity's crash-recovery scenes and the test runner's bootstrap scene, which a run that is cut
+# short leaves behind. Neither is project source.
+[Aa]ssets/_Recovery/
+[Aa]ssets/_Recovery.meta
+[Aa]ssets/InitTestScene*.unity
+[Aa]ssets/InitTestScene*.unity.meta
+
 # OS files
 .DS_Store
 Thumbs.db

@@ -8,6 +8,12 @@ and binding; the project owns the new topology, UVs and procedural textile image
 The installed t-shirt supplies the shader/channel configuration, cloned into
 project-owned material assets. UMA remains an installed dependency.
 
+UMA (Unity Multipurpose Avatar) is MIT-licensed. The garments are bound to the skeleton and
+bind poses of its Human Female and Male 3.0 bodies, their material is cloned from an installed
+UMA clothing material, and `Assets/UMAProjectData/Resources/AssetIndexerProject.asset` lists
+installed UMA asset names and GUIDs. No UMA geometry, texture or source file is committed; the
+licence ships with the package (`Assets/UMA/LICENSE.md`, not tracked here).
+
 The C# source is the editable pattern. Dimensions are relative to the actual
 humanoid landmarks; lengths below are Unity metres on the reference body.
 

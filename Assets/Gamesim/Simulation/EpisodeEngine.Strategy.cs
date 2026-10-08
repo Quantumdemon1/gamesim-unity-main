@@ -26,11 +26,19 @@ namespace Gamesim.Simulation
             Require(SocialActionsSpent(s) < SocialActionBudget(s), "You have no conversations left this week.");
 
             var decider = s.Find(c.targetId);
-            if (UnifiedCommitments.RulesOn(s) && approach == LobbyApproach.Deal
+            if (UnifiedCommitments.SafetyAuthorityOn(s) && approach == LobbyApproach.Deal
                 && (ask != LobbyAsk.Vote || NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.VoteSave))
                 && !NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.SafetyAgreement))
                 Require(UnifiedCommitmentStore.CanAddDeal(s, DraftLobbySafety(s, decider.id), UnifiedCommitments.Lobby,
                     out string safetyRefusal), safetyRefusal);
+            // Mode 2 (vote family V3): the voter's word a landed plea would write is reserved as a canonical
+            // row before the plea draws anything. Whether it lands is still the roll's. Like the safety
+            // preflight above, a backstop: in valid play the plea's own count and pact checks refuse first.
+            if (UnifiedVoteStore.On(s) && ask == LobbyAsk.Vote && approach == LobbyApproach.Deal
+                && UnifiedVoteStore.DealCount(s) < NpcDeals.DealCeiling
+                && !NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.VoteSave))
+                Require(UnifiedVoteStore.CanAddDeal(s, DraftLobbyVote(s, decider.id), UnifiedVoteFamilyValidation.VoteLobby,
+                    out string voteRefusal), voteRefusal);
             var read = ask == LobbyAsk.Vote ? LeverRead(s, decider.id) : null;
             double chance = StrategyRules.Chance(s, decider.id, ask, c.secondTargetId, approach);
             var answer = StrategyRules.Respond(chance, Roll(s), () => Roll(s));
@@ -52,23 +60,21 @@ namespace Gamesim.Simulation
             // For the vote it is the voter's word on the vote itself: a vote to keep the player,
             // their obligation in the ballot and judged at the reveal like any vote deal.
             if (ask == LobbyAsk.Vote && approach == LobbyApproach.Deal && StrategyRules.Landed(answer.response)
-                && (UnifiedCommitments.RulesOn(s) ? CommitmentReferences.DealCount(s) : s.deals.Count) < NpcDeals.DealCeiling
+                && UnifiedVoteStore.DealCount(s) < NpcDeals.DealCeiling
                 && !NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.VoteSave))
             {
-                s.deals.Add(new DealState
-                {
-                    id = "deal-lobby-" + s.nextSequence, type = DealKind.VoteSave,
-                    proposerId = decider.id, recipientId = s.playerId, targetId = s.playerId, status = DealStatus.Active,
-                    week = s.week, expiresWeek = s.week, trustImpact = DealKind.DefaultTrust(DealKind.VoteSave),
-                });
+                var vote = DraftLobbyVote(s, decider.id);
+                if (UnifiedVoteStore.On(s))
+                    Require(UnifiedVoteStore.TryAddDeal(s, vote, UnifiedVoteFamilyValidation.VoteLobby, out string voteError), voteError);
+                else s.deals.Add(vote);
                 Log(s, "deal", decider.name + " has given you their vote: a vote to keep you, judged at the reveal.", s.playerId, decider.id);
             }
             else if (approach == LobbyApproach.Deal && StrategyRules.Landed(answer.response)
-                && (UnifiedCommitments.RulesOn(s) ? CommitmentReferences.DealCount(s) : s.deals.Count) < NpcDeals.DealCeiling
+                && UnifiedVoteStore.DealCount(s) < NpcDeals.DealCeiling
                 && !NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.SafetyAgreement))
             {
                 var deal = DraftLobbySafety(s, decider.id);
-                if (UnifiedCommitments.RulesOn(s))
+                if (UnifiedCommitments.SafetyAuthorityOn(s))
                     Require(UnifiedCommitmentStore.TryAddDeal(s, deal, UnifiedCommitments.Lobby, out string error), error);
                 else s.deals.Add(deal);
                 Log(s, "deal", "You and " + decider.name + " have a safety agreement through next week.", s.playerId, decider.id);
@@ -76,6 +82,14 @@ namespace Gamesim.Simulation
             if (ask == LobbyAsk.Vote) LeverLine(s, decider.id, read, s.nominees.FirstOrDefault(id => id != s.playerId), "your plea");
             SpendSocialAction(s);
         }
+
+        /// <summary>A voter's word to keep the player on the block, as a landed plea for their vote writes it.</summary>
+        private static DealState DraftLobbyVote(EpisodeState s, string deciderId) => new DealState
+        {
+            id = "deal-lobby-" + s.nextSequence, type = DealKind.VoteSave,
+            proposerId = deciderId, recipientId = s.playerId, targetId = s.playerId, status = DealStatus.Active,
+            week = s.week, expiresWeek = s.week, trustImpact = DealKind.DefaultTrust(DealKind.VoteSave),
+        };
 
         private static DealState DraftLobbySafety(EpisodeState s, string deciderId) => new DealState
         {
@@ -99,6 +113,15 @@ namespace Gamesim.Simulation
             if (card.kind == ReplyCards.Pitch) { AnswerHoHPitch(s, card, (c.text ?? string.Empty).Trim()); return; }
             var reply = ReplyCards.Find(card.kind, (c.text ?? string.Empty).Trim());
             Require(reply != null, "Choose one of the answers you were offered.");
+            // Mode 2 (vote family V3): the support this reply promises is reserved as a canonical row
+            // before the reply moves, draws or logs anything; the word itself is written where it always was.
+            // A backstop: in valid play the reply's own checks leave the admission nothing to refuse.
+            if (UnifiedVoteStore.On(s) && reply.Promises && s.phase == EpisodePhase.Campaign && Voters(s).Any(v => v.id == s.playerId)
+                && s.nominees.Contains(from.id) && s.nominees.Contains(card.aboutId ?? "")
+                && !UnifiedVoteStore.Promises(s).Any(p => p.status == PromiseStatus.Active && p.fromId == s.playerId && p.toId == from.id && p.kind == PromiseKind.Vote))
+                Require(UnifiedVoteStore.CanAddPromise(s, new PromiseState { id = "promise-" + s.nextSequence, fromId = s.playerId, toId = from.id,
+                    targetId = card.aboutId, kind = PromiseKind.Vote, status = PromiseStatus.Active, week = s.week, expiresWeek = s.week },
+                    UnifiedCommitments.PlayerPromise, out string reservation), reservation);
 
             s.replyCards.Remove(card);
             // Typed, for the story's plays and the verdict (STRATEGY-LOOP-PLAN.md §8): which card,
@@ -128,7 +151,7 @@ namespace Gamesim.Simulation
             // Promising support is a promise: kept or broken at the vote, like any other.
             if (reply.Promises && s.phase == EpisodePhase.Campaign && Voters(s).Any(v => v.id == s.playerId)
                 && s.nominees.Contains(from.id) && s.nominees.Contains(card.aboutId ?? "")
-                && !s.promises.Any(p => p.status == PromiseStatus.Active && p.fromId == s.playerId && p.toId == from.id && p.kind == PromiseKind.Vote))
+                && !UnifiedVoteStore.RawOrModeTwoPromises(s).Any(p => p.status == PromiseStatus.Active && p.fromId == s.playerId && p.toId == from.id && p.kind == PromiseKind.Vote))
                 MakePromise(s, from.id, PromiseKind.Vote, card.aboutId);
             ReplyPayoff(s, card, reply);
         }

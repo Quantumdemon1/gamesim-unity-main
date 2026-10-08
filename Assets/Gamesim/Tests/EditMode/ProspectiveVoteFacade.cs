@@ -104,6 +104,62 @@ namespace Gamesim.Tests.EditMode
         internal static IReadOnlyList<DealState> DealsUnchecked(EpisodeState s) =>
             (IReadOnlyList<DealState>)Call(ReferencesType, "DealsUnchecked", new[] { typeof(EpisodeState) }, s);
 
+        /// <summary>EpisodeEngine.ProspectiveVote: the internal exact-mode-2 engine seam (vote family V2).</summary>
+        internal static EpisodeEngine Engine(EpisodeState s) =>
+            (EpisodeEngine)Call(typeof(EpisodeEngine), "ProspectiveVote", new[] { typeof(EpisodeState) }, s);
+
+        private static readonly Type StoreType = Simulation.GetType("Gamesim.Simulation.UnifiedVoteStore");
+
+        /// <summary>UnifiedVoteStore.TryAddPromise: admits a promise draft and appends its canonical row, or writes nothing.</summary>
+        internal static bool StoreTryAddPromise(EpisodeState s, PromiseState draft, string origin, out string error) =>
+            Store("TryAddPromise", new[] { typeof(EpisodeState), typeof(PromiseState), typeof(string), OutString }, out error, s, draft, origin);
+
+        /// <summary>UnifiedVoteStore.TryAddDeal: admits a deal draft and appends its canonical row, or writes nothing.</summary>
+        internal static bool StoreTryAddDeal(EpisodeState s, DealState draft, string origin, out string error) =>
+            Store("TryAddDeal", new[] { typeof(EpisodeState), typeof(DealState), typeof(string), OutString }, out error, s, draft, origin);
+
+        /// <summary>UnifiedVoteStore.TryAddCounter: an accepted counter's two deals, both or neither.</summary>
+        internal static bool StoreTryAddCounter(EpisodeState s, DealState bought, DealState price, out string error) =>
+            Store("TryAddCounter", new[] { typeof(EpisodeState), typeof(DealState), typeof(DealState), OutString }, out error, s, bought, price);
+
+        /// <summary>UnifiedVoteStore.TryAddOwnVetoPrice: the player's veto and its Vote price, both or neither.</summary>
+        internal static bool StoreTryAddOwnVetoPrice(EpisodeState s, DealState veto, DealState price, out string error) =>
+            Store("TryAddOwnVetoPrice", new[] { typeof(EpisodeState), typeof(DealState), typeof(DealState), OutString }, out error, s, veto, price);
+
+        /// <summary>UnifiedVoteStore.TryInstallAskPrice: the accepted ask's Vote price, admitted as it is struck.</summary>
+        internal static bool StoreTryInstallAskPrice(EpisodeState s, DealState ask, DealState price, out string error) =>
+            Store("TryInstallAskPrice", new[] { typeof(EpisodeState), typeof(DealState), typeof(DealState), OutString }, out error, s, ask, price);
+
+        private static readonly Type SafetyStoreType = Simulation.GetType("Gamesim.Simulation.UnifiedCommitmentStore");
+
+        /// <summary>UnifiedCommitmentStore.TryRespond: the player's answer to a canonical safety offer.</summary>
+        internal static bool SafetyStoreTryRespond(EpisodeState s, string id, bool accept, out string error) =>
+            Store(SafetyStoreType, "TryRespond", new[] { typeof(EpisodeState), typeof(string), typeof(bool), OutString }, out error, s, id, accept);
+
+        /// <summary>UnifiedCommitmentStore.TryAddLinkedDeals: an accepted counter with a safety member, both or neither.</summary>
+        internal static bool SafetyStoreTryAddLinkedDeals(EpisodeState s, DealState bought, string boughtOrigin, DealState price, string priceOrigin,
+            out string error) =>
+            Store(SafetyStoreType, "TryAddLinkedDeals", new[] { typeof(EpisodeState), typeof(DealState), typeof(string), typeof(DealState),
+                typeof(string), OutString }, out error, s, bought, boughtOrigin, price, priceOrigin);
+
+        /// <summary>UnifiedCommitmentStore.TryExpireLinkedPrice: a canonical safety price voided by its payee's breach.</summary>
+        internal static bool SafetyStoreTryExpireLinkedPrice(EpisodeState s, string boughtId, string breakerId, out string error) =>
+            Store(SafetyStoreType, "TryExpireLinkedPrice", new[] { typeof(EpisodeState), typeof(string), typeof(string), OutString },
+                out error, s, boughtId, breakerId);
+
+        private static bool Store(string name, Type[] parameters, out string error, params object[] arguments) =>
+            Store(StoreType, name, parameters, out error, arguments);
+
+        private static bool Store(Type owner, string name, Type[] parameters, out string error, params object[] arguments)
+        {
+            Assert.That(owner, Is.Not.Null, "The store " + name + " belongs to is an actual owner in Gamesim.Simulation.");
+            var args = new object[arguments.Length + 1];
+            Array.Copy(arguments, args, arguments.Length);
+            bool accepted = (bool)Invoke(Method(owner, name, parameters), args);
+            error = (string)args[arguments.Length];
+            return accepted;
+        }
+
         private static bool Try(Type owner, string name, Type[] parameters, EpisodeState s, out string error)
         {
             var args = new object[] { s, null };

@@ -13,11 +13,37 @@ namespace Gamesim.Simulation
         private EpisodeState current;
         public EpisodeState Snapshot => current.Clone();
 
-        public EpisodeEngine(EpisodeState initial)
+        /// <summary>
+        /// Whether this engine runs the internal exact-mode-2 seam (<see cref="ProspectiveVote"/>): its
+        /// input and every candidate are held to the complete prospective Vote core instead of public
+        /// validation. Fixed at construction; only the internal factory sets it.
+        /// </summary>
+        private readonly bool prospectiveVote;
+
+        public EpisodeEngine(EpisodeState initial) : this(initial, false) { }
+
+        private EpisodeEngine(EpisodeState initial, bool prospectiveVote)
         {
-            if (!EpisodeValidation.TryValidate(initial, out var error)) throw new ArgumentException(error, nameof(initial));
+            this.prospectiveVote = prospectiveVote;
+            if (!Valid(initial, out var error)) throw new ArgumentException(error, nameof(initial));
             current = initial.Clone();
         }
+
+        /// <summary>
+        /// The internal exact-mode-2 engine seam (vote family V2). Public mode 2 stays refused: the public
+        /// constructor, load, migration and save validate publicly and never dispatch here. This engine
+        /// keeps every guard of the public path - command identity and duplicates, revision, phase, actor,
+        /// kind, text and performance - and the same Execute body, and selects the complete prospective
+        /// Vote core (<see cref="EpisodeValidation.TryValidateProspectiveUnifiedVote"/>) at its input and
+        /// for every candidate, which is a detached clone installed only once it passes. No callback, flag
+        /// or relabelling lets a caller skip that core. Tests reach it through their reflection facade.
+        /// </summary>
+        internal static EpisodeEngine ProspectiveVote(EpisodeState initial) => new EpisodeEngine(initial, true);
+
+        /// <summary>The engine's one validator: public, or under the seam the complete prospective Vote core.</summary>
+        private bool Valid(EpisodeState state, out string error) => prospectiveVote
+            ? EpisodeValidation.TryValidateProspectiveUnifiedVote(state, out error)
+            : EpisodeValidation.TryValidate(state, out error);
 
         public CommandResult Apply(EpisodeCommand command)
         {
@@ -42,7 +68,7 @@ namespace Gamesim.Simulation
                 next.revision = checked(current.revision + 1);
                 next.acceptedCommandIds.Add(command.id);
                 if (next.acceptedCommandIds.Count > 256) next.acceptedCommandIds.RemoveAt(0);
-                if (!EpisodeValidation.TryValidate(next, out var error)) throw new RuleException("Candidate rejected: " + error);
+                if (!Valid(next, out var error)) throw new RuleException("Candidate rejected: " + error);
                 current = next;
                 return new CommandResult { accepted = true, reason = "Committed", state = Snapshot };
             }
@@ -1519,11 +1545,22 @@ namespace Gamesim.Simulation
 
         private static void MakePromise(EpisodeState s, string to, PromiseKind kind, string target, string safetyOrigin = null)
         {
-            if (UnifiedCommitments.RulesOn(s) && kind == PromiseKind.Safety)
+            if (UnifiedCommitments.SafetyAuthorityOn(s) && kind == PromiseKind.Safety)
             {
                 var draft = new PromiseState { id = "promise-" + s.nextSequence, fromId = s.playerId, toId = to, targetId = target,
                     kind = kind, status = PromiseStatus.Active, week = s.week, expiresWeek = s.week + 1 };
                 Require(UnifiedCommitmentStore.TryAddPromise(s, draft, safetyOrigin ?? UnifiedCommitments.PlayerPromise, out string error), error);
+            }
+            else if (UnifiedVoteStore.On(s) && kind == PromiseKind.Vote)
+            {
+                // Mode 2 (vote family V3): the word is a canonical row, admitted - the source's own
+                // refusal first, then the duplicate, capacity and Campaign/voter/block prerequisites -
+                // before the memories and the line spend anything.
+                Require(!UnifiedVoteStore.Promises(s).Any(p => p.status == PromiseStatus.Active && p.fromId == s.playerId && p.toId == to && p.kind == kind),
+                    "This promise is already active.");
+                var draft = new PromiseState { id = "promise-" + s.nextSequence, fromId = s.playerId, toId = to, targetId = target,
+                    kind = kind, status = PromiseStatus.Active, week = s.week, expiresWeek = s.week };
+                Require(UnifiedVoteStore.TryAddPromise(s, draft, UnifiedCommitments.PlayerPromise, out string voteError), voteError);
             }
             else
             {
@@ -1976,9 +2013,15 @@ namespace Gamesim.Simulation
             // keyed to it (C7), so every attempt has one of its own.
             int attempt = s.nextSequence;
             Require(PlayerDeals.CanPropose(s, target.id, type, about, out string refusal), refusal);
-            if (UnifiedCommitments.RulesOn(s) && type == DealKind.SafetyAgreement)
+            if (UnifiedCommitments.SafetyAuthorityOn(s) && type == DealKind.SafetyAgreement)
                 Require(UnifiedCommitmentStore.CanAddDeal(s, PlayerDeals.Draft(s, target.id, type, about, "deal-player-" + s.nextSequence),
                     UnifiedCommitments.PlayerDeal, out string preflightError), preflightError);
+            // Mode 2 (vote family V3): a vote deal is reserved as a canonical row before the answer is drawn.
+            // Like the safety preflight above, a backstop: in valid play CanPropose's own checks, which read
+            // the canonical rows, refuse everything the admission would.
+            if (UnifiedVoteStore.On(s) && UnifiedVoteStore.IsVote(type))
+                Require(UnifiedVoteStore.CanAddDeal(s, PlayerDeals.Draft(s, target.id, type, about, "deal-player-" + s.nextSequence),
+                    UnifiedCommitments.PlayerDeal, out string voteReservation), voteReservation);
 
             double chance = PlayerDeals.AcceptanceChance(s, target.id, type, about);
             // An alliance invitation is the one way to a pact (ACTIONS-DEALS-ALLIANCES-PLAN C4): under
@@ -1992,8 +2035,10 @@ namespace Gamesim.Simulation
             {
                 var read = LeverRead(s, target.id);
                 var struck = PlayerDeals.Draft(s, target.id, type, about, "deal-player-" + s.nextSequence);
-                if (UnifiedCommitments.RulesOn(s) && type == DealKind.SafetyAgreement)
+                if (UnifiedCommitments.SafetyAuthorityOn(s) && type == DealKind.SafetyAgreement)
                     Require(UnifiedCommitmentStore.TryAddDeal(s, struck, UnifiedCommitments.PlayerDeal, out string storageError), storageError);
+                else if (UnifiedVoteStore.On(s) && UnifiedVoteStore.IsVote(type))
+                    Require(UnifiedVoteStore.TryAddDeal(s, struck, UnifiedCommitments.PlayerDeal, out string voteError), voteError);
                 else s.deals.Add(struck);
                 // Under the rules a deal struck is on the record as a chance taken now (C1), as an
                 // accepted offer is: one that lapses before any reveal reconciles it was still made.
@@ -2032,9 +2077,15 @@ namespace Gamesim.Simulation
             Require(s.Find(s.playerId).status == ContestantStatus.Active,
                 "Evicted players can follow the season but cannot influence it.");
             var canonical = UnifiedCommitments.RulesOn(s) ? CommitmentReferences.FindCanonical(s, c.targetId) : null;
-            var deal = canonical != null ? CommitmentReferences.FindDeal(s, c.targetId)
+            // Mode 2 (vote family V3): an offer the house put as a canonical row is answered on that row - a vote
+            // offer by the Vote store, and (V3b) a safety offer by the safety store, as mode 1 answers it.
+            var modeTwo = UnifiedVoteStore.On(s) ? s.unifiedCommitments.FirstOrDefault(row => row.id == c.targetId
+                && row.sourcePolicy == UnifiedCommitments.DealPolicy) : null;
+            if (modeTwo != null && modeTwo.kind == UnifiedCommitments.Safety) { canonical = modeTwo.Clone(); modeTwo = null; }
+            var deal = modeTwo != null ? UnifiedVoteReferences.ProjectDeal(modeTwo)
+                : canonical != null ? (UnifiedVoteStore.On(s) ? UnifiedVoteReferences.ProjectDeal(canonical) : CommitmentReferences.FindDeal(s, c.targetId))
                 : s.deals.FirstOrDefault(d => d.id == c.targetId && d.status == DealStatus.Proposed && d.recipientId == s.playerId);
-            if (canonical != null && (deal == null || deal.status != DealStatus.Proposed || deal.recipientId != s.playerId)) deal = null;
+            if ((canonical != null || modeTwo != null) && (deal == null || deal.status != DealStatus.Proposed || deal.recipientId != s.playerId)) deal = null;
             Require(deal != null, "That offer is no longer on the table.");
             var from = s.Find(deal.proposerId);
             Require(from != null && from.status == ContestantStatus.Active,
@@ -2050,12 +2101,26 @@ namespace Gamesim.Simulation
                 // final four's block is set, in the words the player's own proposal is refused in.
                 Require(!(deal.type == DealKind.FinalThree && s.Active.Count() <= NpcDeals.FinalThreeSize), PlayerDeals.FinalThreeHereRefusal);
                 Require(!(deal.type == DealKind.FinalThree && NpcDeals.FinalFourBlockSet(s)), PlayerDeals.FinalFourBlockSetRefusal);
+                // Mode 2 (vote family V3): the vote price a nominee's veto ask carries is reserved as a
+                // canonical row before the yes moves, draws or logs anything; it is struck where it always was,
+                // and admitted again as it is struck. A backstop: in valid play AskPrice, which reads the
+                // canonical rows, offers no vote price already owed and none past the house's deal ceiling.
+                if (UnifiedVoteStore.On(s) && modeTwo == null && CommitmentRulesOn(s)
+                    && Negotiation.AskPrice(s, deal) is Negotiation.Price askPrice && UnifiedVoteStore.IsVote(askPrice.kind))
+                    Require(UnifiedVoteStore.CanAddAskPrice(s, deal.id, Negotiation.DraftPrice(s, askPrice, deal.id, Negotiation.PricePrefix + s.nextSequence),
+                        out string priceReservation), priceReservation);
                 // The offer lapsed at the end of this week; the arrangement it becomes runs for as
                 // long as its own kind runs for, which for a final two or a partnership is no limit.
-                if (canonical != null)
+                if (modeTwo != null)
+                {
+                    Require(UnifiedVoteStore.TryAnswerOffer(s, deal.id, true, out string voteAnswerError), voteAnswerError);
+                    deal = UnifiedVoteReferences.ProjectDeal(s.unifiedCommitments.First(row => row.id == deal.id));
+                }
+                else if (canonical != null)
                 {
                     Require(UnifiedCommitmentStore.TryRespond(s, deal.id, true, out string responseError), responseError);
-                    deal = CommitmentReferences.FindDeal(s, deal.id);
+                    deal = UnifiedVoteStore.On(s) ? UnifiedVoteReferences.ProjectDeal(s.unifiedCommitments.First(row => row.id == deal.id))
+                        : CommitmentReferences.FindDeal(s, deal.id);
                 }
                 else
                 {
@@ -2078,7 +2143,9 @@ namespace Gamesim.Simulation
                 return;
             }
 
-            if (canonical != null)
+            if (modeTwo != null)
+                Require(UnifiedVoteStore.TryAnswerOffer(s, deal.id, false, out string voteDeclineError), voteDeclineError);
+            else if (canonical != null)
                 Require(UnifiedCommitmentStore.TryRespond(s, deal.id, false, out string declineError), declineError);
             else deal.status = DealStatus.Declined;
             Change(s, s.playerId, deal.proposerId, PlayerDeals.DeclineImpact,
@@ -2482,5 +2549,11 @@ namespace Gamesim.Simulation
         }
         private static void Require(bool condition, string message) { if (!condition) throw new RuleException(message); }
         private sealed class RuleException : Exception { public RuleException(string message) : base(message) { } }
+
+        /// <summary>
+        /// The whole command's refusal, for an owner outside this class: thrown inside a command, it refuses the
+        /// command - nothing installed, drawn or minted - as <see cref="Require"/> does.
+        /// </summary>
+        internal static Exception Refusal(string reason) => new RuleException(reason);
     }
 }

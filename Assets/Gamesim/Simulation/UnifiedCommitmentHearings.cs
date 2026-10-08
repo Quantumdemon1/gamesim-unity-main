@@ -41,7 +41,17 @@ namespace Gamesim.Simulation
         public static bool RulesOn(EpisodeState s) => s != null
             && s.unifiedHearingRulesVersion == ProspectiveVersion && UnifiedCommitments.RulesOn(s);
 
-        public static bool ValidateStorage(EpisodeState s, out string error) => ValidateStorageCore(s, false, out error);
+        /// <summary>
+        /// Whether the hearing lineage is written: hearings on wherever canonical Safety is the authority -
+        /// mode 1 (exactly <see cref="RulesOn"/>), and the prospective mode 2 (vote family V3b), whose complete
+        /// core asks the same lineage of a player's audible Safety deal breach. The writers and their guards
+        /// select it; a reader not yet moved stays on <see cref="RulesOn"/> (vote family V5).
+        /// </summary>
+        internal static bool WritesOn(EpisodeState s) => s != null
+            && s.unifiedHearingRulesVersion == ProspectiveVersion && UnifiedCommitments.SafetyAuthorityOn(s);
+
+        /// <summary>The hearing storage check for the season's own mode: the prospective mode 2 is judged by its own core.</summary>
+        public static bool ValidateStorage(EpisodeState s, out string error) => ValidateStorageCore(s, UnifiedVoteStore.On(s), out error);
 
         internal static bool TryValidateProspectiveVoteStorage(EpisodeState s, out string error) => ValidateStorageCore(s, true, out error);
 
@@ -180,7 +190,7 @@ namespace Gamesim.Simulation
         /// <summary>Refresh only already observed leaves before pruning or after genuine widening.</summary>
         internal static void RefreshObserved(EpisodeState s)
         {
-            if (!RulesOn(s)) return;
+            if (!WritesOn(s)) return;
             RequireValid(s);
             var staged = s.Clone();
             foreach (var evidence in staged.unifiedHearingEvidence)

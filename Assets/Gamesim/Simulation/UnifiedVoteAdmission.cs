@@ -221,6 +221,29 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
+        /// The accepted ask's Vote price where the source strikes it: after the yes, its warmth, memory and
+        /// line, at the sequence the season has reached by then. <see cref="TryAcceptedVetoAskPrice"/> reserved
+        /// it on the still-Proposed ask before the yes moved anything; this admits the struck row itself - the
+        /// owner's prerequisites again, then the answered ask linked to it and the row as a draft, judged by
+        /// the family's complete aggregate.
+        /// </summary>
+        internal static bool TryStruckAskPrice(EpisodeState s, DealState answeredAsk, DealState price,
+            out UnifiedCommitmentState row, out string error)
+        {
+            row = null; error = null;
+            if (!Ready(s, out error)) return false;
+            if (answeredAsk == null || price == null || answeredAsk.id == null
+                || !answeredAsk.id.StartsWith("deal-veto-", StringComparison.Ordinal) || !CurrentDealDraft(s, price)
+                || price.proposerId != answeredAsk.proposerId || price.recipientId != s.playerId || price.targetId != s.playerId
+                || price.type != DealKind.VoteSave || price.expiresWeek != 0 || price.linkedDealId != answeredAsk.id
+                || !EpisodeEngine.LeverRulesOn(s) || Between(s, answeredAsk.proposerId, s.playerId).Any(old => old.type == DealKind.VoteSave))
+                return Fail(out error, "Strike the real answered veto ask's eligible, unowed VoteSave price.");
+            var candidate = FromDeal(price, UnifiedVoteFamilyValidation.VetoAskPrice, s.week, Floor(s, UnifiedVoteFamilyValidation.VetoAskPrice));
+            if (!UnifiedVoteFamilyValidation.TryValidateStruckAskPrice(s, answeredAsk.id, candidate, out error)) return false;
+            row = candidate.Clone(); return true;
+        }
+
+        /// <summary>
         /// The canonical row a raw Vote or Safety deal source draft becomes, with the given origin and
         /// binding/first-reveal weeks. Pure: it validates nothing and reads only its arguments.
         /// </summary>
@@ -232,7 +255,11 @@ namespace Gamesim.Simulation
                 subtype = draft.type == DealKind.SafetyAgreement ? null : draft.type, targetId = draft.targetId,
                 voteBindingWeek = draft.type == DealKind.SafetyAgreement ? 0 : bindingWeek,
                 voteFirstRevealWeek = draft.type == DealKind.SafetyAgreement ? 0 : firstWeek };
-        private static int Floor(EpisodeState s, string origin)
+        /// <summary>
+        /// The first regular reveal a row binding now may meet: this week's, or next week's for an owner
+        /// that can lawfully bind after this week's reveal has been completed.
+        /// </summary>
+        internal static int Floor(EpisodeState s, string origin)
         {
             bool lateOwner = origin == UnifiedCommitments.NpcOffer || origin == UnifiedVoteFamilyValidation.VetoAskPrice
                 || origin == UnifiedCommitments.StoryPromise || origin == UnifiedCommitments.StoryDeal;

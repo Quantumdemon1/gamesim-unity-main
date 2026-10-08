@@ -111,7 +111,7 @@ namespace Gamesim.Simulation
 
         /// <summary>Deals currently binding these two, in either direction.</summary>
         public static List<DealState> Between(EpisodeState state, string a, string b) =>
-            (UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Deals(state) : state.deals).Where(d => d.status == DealStatus.Active
+            UnifiedVoteStore.Deals(state).Where(d => d.status == DealStatus.Active
                                    && ((d.proposerId == a && d.recipientId == b)
                                        || (d.proposerId == b && d.recipientId == a)))
                 .ToList();
@@ -242,7 +242,7 @@ namespace Gamesim.Simulation
                          .Where(c => c.status == ContestantStatus.Active && !c.isPlayer)
                          .ToList())
             {
-                if ((UnifiedCommitments.RulesOn(state) ? CommitmentReferences.DealCount(state) : state.deals.Count) >= DealCeiling) return;
+                if (UnifiedVoteStore.DealCount(state) >= DealCeiling) return;
 
                 var struck = state.contestants
                     .Where(other => other.status == ContestantStatus.Active && !other.isPlayer
@@ -288,7 +288,7 @@ namespace Gamesim.Simulation
             // One round of offers per week. The test is whether anything was PUT to the player this
             // week, not whether anything is still waiting — otherwise clearing the table would
             // refill it, and a player who answers promptly would be asked more than one who does not.
-            if ((UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Deals(state) : state.deals).Any(d => d.recipientId == state.playerId && d.week == state.week
+            if (UnifiedVoteStore.Deals(state).Any(d => d.recipientId == state.playerId && d.week == state.week
                                      && d.id.StartsWith(OfferPrefix, StringComparison.Ordinal))) return;
 
             var offers = state.contestants
@@ -300,8 +300,7 @@ namespace Gamesim.Simulation
                 .ToList();
 
             var types = new HashSet<string>(StringComparer.Ordinal);
-            int room = Math.Min(ProposalsPerWeek, Math.Max(0, DealCeiling
-                - (UnifiedCommitments.RulesOn(state) ? CommitmentReferences.DealCount(state) : state.deals.Count)));
+            int room = Math.Min(ProposalsPerWeek, Math.Max(0, DealCeiling - UnifiedVoteStore.DealCount(state)));
             foreach (var offer in offers)
             {
                 if (types.Count >= room) break;
@@ -329,9 +328,19 @@ namespace Gamesim.Simulation
                     expiresWeek = state.week,
                     trustImpact = DealKind.DefaultTrust(offer.kind),
                 };
-                if (UnifiedCommitments.RulesOn(state) && offer.kind == DealKind.SafetyAgreement)
+                if (UnifiedCommitments.SafetyAuthorityOn(state) && offer.kind == DealKind.SafetyAgreement)
                 {
                     if (!UnifiedCommitmentStore.TryAddDeal(state, proposed, UnifiedCommitments.NpcOffer, out _))
+                    {
+                        types.Remove(offer.kind);
+                        continue;
+                    }
+                }
+                // Mode 2 (vote family V3): a vote offer is a canonical Proposed row, refused - and skipped,
+                // as a refused safety offer is - before its ledger line spends the sequence.
+                else if (UnifiedVoteStore.On(state) && UnifiedVoteStore.IsVote(offer.kind))
+                {
+                    if (!UnifiedVoteStore.TryAddDeal(state, proposed, UnifiedCommitments.NpcOffer, out _))
                     {
                         types.Remove(offer.kind);
                         continue;
@@ -368,7 +377,7 @@ namespace Gamesim.Simulation
                 .ToList();
             foreach (var npc in asking)
             {
-                if ((UnifiedCommitments.RulesOn(state) ? CommitmentReferences.DealCount(state) : state.deals.Count) >= DealCeiling) return;
+                if (UnifiedVoteStore.DealCount(state) >= DealCeiling) return;
                 state.deals.Add(new DealState
                 {
                     id = VetoAskPrefix + state.nextSequence,
@@ -423,7 +432,7 @@ namespace Gamesim.Simulation
         /// </summary>
         private static void Expire(EpisodeState state)
         {
-            if (UnifiedCommitments.RulesOn(state))
+            if (UnifiedCommitments.SafetyAuthorityOn(state))
                 EpisodeEngine.ResolveUnifiedSafetyExpiry(state, UnifiedCommitmentExpiry.DealPass);
             foreach (var deal in state.deals)
                 if (DealStatus.Binds(deal.status) && deal.expiresWeek > 0 && deal.expiresWeek < state.week)
@@ -453,9 +462,15 @@ namespace Gamesim.Simulation
                     ? 0 : state.week,
                 trustImpact = DealKind.DefaultTrust(kind),
             };
-            if (UnifiedCommitments.RulesOn(state) && kind == DealKind.SafetyAgreement)
+            if (UnifiedCommitments.SafetyAuthorityOn(state) && kind == DealKind.SafetyAgreement)
             {
                 if (!UnifiedCommitmentStore.TryAddDeal(state, deal, UnifiedCommitments.NpcDeal, out _)) return;
+            }
+            // Mode 2 (vote family V3): a nominee's vote bargain is a canonical row; refused, nothing is
+            // written for it, as a refused safety bargain writes nothing.
+            else if (UnifiedVoteStore.On(state) && UnifiedVoteStore.IsVote(kind))
+            {
+                if (!UnifiedVoteStore.TryAddDeal(state, deal, UnifiedCommitments.NpcDeal, out _)) return;
             }
             else state.deals.Add(deal);
 

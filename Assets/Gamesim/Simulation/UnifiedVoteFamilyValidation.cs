@@ -80,6 +80,30 @@ namespace Gamesim.Simulation
             return TryValidateCore(candidate, candidate.unifiedVoteReveals, ids, out error);
         }
 
+        /// <summary>
+        /// The accepted veto ask's Vote price as the source strikes it: after the command's yes has answered
+        /// the ask (Active, this week's term, not yet linked), with the sequence the season has reached by then.
+        /// The detached candidate links the ask to the row and admits the row as a draft, judged by the same
+        /// complete aggregate a reservation's draft bundle is.
+        /// </summary>
+        internal static bool TryValidateStruckAskPrice(EpisodeState s, string askId, UnifiedCommitmentState row, out string error)
+        {
+            error = null;
+            if (!EpisodeValidation.TryValidateProspectiveUnifiedVote(s, out error)) return false;
+            int index = s.deals.FindIndex(item => item.id == askId);
+            var ask = index < 0 ? null : s.deals[index];
+            if (ask == null || ask.type != DealKind.VetoUse || ask.status != DealStatus.Active || ask.linkedDealId != null
+                || ask.expiresWeek != s.week || ask.recipientId != s.playerId
+                || row == null || row.origin != VetoAskPrice || row.linkedCommitmentId != askId || row.makerId != ask.proposerId
+                || row.createdWeek != s.week || row.status != DealStatus.Active || s.nextSequence >= 1000000
+                || !InstalledId(row.id, Prefix(row.origin), s.nextSequence + 1, out long sequence) || sequence != s.nextSequence)
+                return Fail(out error, "Strike only the price of the ask this command answered, at the sequence it has reached.");
+            var candidate = s.Clone();
+            candidate.deals[index].linkedDealId = row.id;
+            candidate.unifiedCommitments.Add(row.Clone());
+            return TryValidateCore(candidate, candidate.unifiedVoteReveals, new HashSet<string>(StringComparer.Ordinal) { row.id }, out error);
+        }
+
         internal static bool TryValidateAnswer(EpisodeState s, UnifiedCommitmentState answered, out string error)
         {
             error = null;

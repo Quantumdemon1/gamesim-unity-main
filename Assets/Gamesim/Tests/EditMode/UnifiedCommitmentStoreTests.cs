@@ -10,7 +10,8 @@ namespace Gamesim.Tests.EditMode
     /// <summary>Storage-only diagnostics; source writer preflight is not complete public saved-state validation.</summary>
     public sealed class UnifiedCommitmentStoreTests
     {
-        [TestCase(0)] [TestCase(2)] [TestCase(-1)]
+        // Mode 2 (vote family V3b) keeps canonical Safety too: UnifiedSafetyModeTwoTests holds its writes.
+        [TestCase(0)] [TestCase(3)] [TestCase(-1)]
         public void EveryWriterRefusesOtherVersionsWithoutChangingStorageOrCounters(int version)
         {
             var state = State(); state.unifiedCommitmentRulesVersion = version;

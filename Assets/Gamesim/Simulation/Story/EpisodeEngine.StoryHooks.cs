@@ -331,7 +331,7 @@ namespace Gamesim.Simulation
             NpcAlliances.EndBroken(s);
             s.oathOpportunities.Remove(id);
             s.loyaltyOaths.RemoveAll(o => o.playerId == id || o.targetId == id);
-            if (UnifiedCommitments.RulesOn(s)) ResolveUnifiedSafetyExpiry(s, UnifiedCommitmentExpiry.Expulsion, id);
+            if (UnifiedCommitments.SafetyAuthorityOn(s)) ResolveUnifiedSafetyExpiry(s, UnifiedCommitmentExpiry.Expulsion, id);
             foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && (p.fromId == id || p.toId == id)))
                 promise.status = PromiseStatus.Expired;
             foreach (var deal in s.deals.Where(d => DealStatus.Binds(d.status) && (d.proposerId == id || d.recipientId == id || d.targetId == id)))
@@ -365,7 +365,7 @@ namespace Gamesim.Simulation
         /// <summary>The systems that run at particular anchors, before any cycle pulses.</summary>
         private static void StorySystemsAt(EpisodeState s, string anchor)
         {
-            if (UnifiedCommitmentHearings.RulesOn(s)) UnifiedCommitmentHearings.RequireValid(s);
+            if (UnifiedCommitmentHearings.WritesOn(s)) UnifiedCommitmentHearings.RequireValid(s);
             if (anchor == StoryAnchors.EvictionNight && StoryAt(s, StoryRules.Bonds)) NpcShowmancePass(s);
             // The weekly leak (WAVE-D-NPC-PACTS-PLAN §2.3): after the showmances, before the gossip, so the
             // same anchor's gossip can carry a pact that has just got out.

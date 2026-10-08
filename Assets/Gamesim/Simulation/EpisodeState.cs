@@ -497,10 +497,10 @@ namespace Gamesim.Simulation
         // ---------------------------------------------------------------- schema 28
         //
         // Wave D's storage, three designs in one version (WAVE-D-NPC-PACTS-PLAN §0.3), as schema 11
-        // carried two. Storage only: nothing in this build writes or reads these, and while a start
-        // week is 0 its design's fields hold their inert values and none of its lines or receipts
-        // exist (EpisodeValidation.WaveD). Declared last, so the migration's appended literals are
-        // the serializer's own order.
+        // carried two. D4 plays from allianceLeakRulesStartWeek (AllianceLeaks); D3's and D2's
+        // fields are storage nobody writes yet. While a start week is 0 its design's fields hold
+        // their inert values and none of its lines or receipts exist (EpisodeValidation.WaveD).
+        // Declared last, so the migration's appended literals are the serializer's own order.
 
         /// <summary>Schema 28: the week D4's leaks and double-dealing begin; 0 for a season that never plays them.</summary>
         public int allianceLeakRulesStartWeek;

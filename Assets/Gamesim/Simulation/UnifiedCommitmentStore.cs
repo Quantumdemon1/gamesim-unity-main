@@ -9,6 +9,9 @@ namespace Gamesim.Simulation
     /// public mode or activate prerequisites. This does not spend, roll, mint IDs, publish effects,
     /// settle commitments, or bypass the command's save-before-publication transaction.
     /// New records and changed lists are detached; every refusal leaves the entire input unchanged.
+    /// It writes wherever canonical Safety is the authority (<see cref="UnifiedCommitments.SafetyAuthorityOn"/>):
+    /// in the prospective mode 2 (vote family V3b) it writes, answers and voids Safety rows only, beside
+    /// the Vote family's, whose writer is <see cref="UnifiedVoteStore"/>.
     /// </summary>
     internal static class UnifiedCommitmentStore
     {
@@ -53,11 +56,12 @@ namespace Gamesim.Simulation
         internal static bool TryExpireLinkedPrice(EpisodeState state, string boughtId, string breakerId, out string error)
         {
             if (!Ready(state, out error)) return false;
-            var bought = CommitmentReferences.FindDeal(state, boughtId);
+            var bought = boughtId == null ? null : Deals(state).FirstOrDefault(row => row?.id == boughtId);
             var price = bought?.linkedDealId == null ? null : state.unifiedCommitments.FirstOrDefault(row => row.id == bought.linkedDealId);
             if (bought == null || Negotiation.IsPrice(bought) || bought.status != DealStatus.Broken
                 || Breaches.DealBreaker(state, bought) != breakerId || KnownBallots.SettledByABallot(bought)
-                || price == null || price.origin != UnifiedCommitments.CounterPrice || price.sourcePolicy != UnifiedCommitments.DealPolicy
+                || price == null || price.kind != UnifiedCommitments.Safety
+                || price.origin != UnifiedCommitments.CounterPrice || price.sourcePolicy != UnifiedCommitments.DealPolicy
                 || price.linkedCommitmentId != bought.id || !DealStatus.Binds(price.status) || price.beneficiaryId != breakerId
                 || bought.week != price.createdWeek || bought.linkedDealId != price.id
                 || (price.expiresWeek != 0 && state.week > price.expiresWeek))
@@ -90,7 +94,10 @@ namespace Gamesim.Simulation
                 || bought.week != state.week || price.week != state.week
                 || !EpisodeEngine.CommitmentRulesOn(state))
                 return Refuse(out error, "Expected one source-shaped accepted counter and its reciprocal price link.");
-            int used = CommitmentReferences.DealCount(state);
+            // Mode 2 (vote family V3b): a counter with a Vote member is the Vote store's whole bundle.
+            if (UnifiedVoteStore.On(state) && (UnifiedVoteStore.IsVote(bought.type) || UnifiedVoteStore.IsVote(price.type)))
+                return Refuse(out error, "A counter with a Vote member is written by the Vote family's store.");
+            int used = UnifiedVoteStore.DealCount(state);
             if (used + 2 > PlayerDeals.PlayerDealCeiling || used + 2 > UnifiedCommitments.FamilyCapacity)
                 return Refuse(out error, "There is no room for both counter records.");
             if (!SourceCounterDraft(state, bought, false, out error) || !SourceCounterDraft(state, price, true, out error)) return false;
@@ -103,7 +110,8 @@ namespace Gamesim.Simulation
         {
             if (!Ready(state, out error)) return false;
             var pending = state.unifiedCommitments.FirstOrDefault(row => row.id == id);
-            if (pending == null || pending.sourcePolicy != UnifiedCommitments.DealPolicy || pending.origin != UnifiedCommitments.NpcOffer
+            if (pending == null || pending.kind != UnifiedCommitments.Safety
+                || pending.sourcePolicy != UnifiedCommitments.DealPolicy || pending.origin != UnifiedCommitments.NpcOffer
                 || pending.status != DealStatus.Proposed || pending.beneficiaryId != state.playerId
                 || !Active(state, state.playerId) || !ActiveOther(state, pending.makerId))
                 return Refuse(out error, "That safety offer is no longer on the table.");
@@ -115,8 +123,9 @@ namespace Gamesim.Simulation
                 // Check the newly binding term against other rows, not the pending record itself.
                 // The offer's original creation week survives, so CanOffer's new-creation gate is
                 // intentionally not used for an answer.
-                if (staged.unifiedCommitments.Any(row => row.id != id && DealStatus.Binds(row.status)
-                    && SameDealTerm(row, answered))) return Refuse(out error, "The same safety duty and term already stand.");
+                if (staged.unifiedCommitments.Any(row => row.id != id && row.kind == UnifiedCommitments.Safety
+                    && DealStatus.Binds(row.status) && SameDealTerm(row, answered)))
+                    return Refuse(out error, "The same safety duty and term already stand.");
             }
             int at = staged.unifiedCommitments.FindIndex(row => row.id == id);
             staged.unifiedCommitments[at] = answered;
@@ -166,7 +175,7 @@ namespace Gamesim.Simulation
             }
             if (AllIds(staged).Contains(draft.id)) return Refuse(out error, "Counter identity collides with another commitment.");
             // The other family stays legacy-owned, but is checked against all projected deals.
-            if (CommitmentReferences.Deals(staged).Any(row => DealStatus.Binds(row.status) && row.type == draft.type
+            if (Deals(staged).Any(row => DealStatus.Binds(row.status) && row.type == draft.type
                 && row.targetId == draft.targetId && row.expiresWeek == draft.expiresWeek
                 && ((row.proposerId == draft.proposerId && row.recipientId == draft.recipientId)
                     || (row.proposerId == draft.recipientId && row.recipientId == draft.proposerId))))
@@ -184,8 +193,8 @@ namespace Gamesim.Simulation
 
         private static bool Ready(EpisodeState state, out string error)
         {
-            if (!UnifiedCommitments.RulesOn(state)) return Refuse(out error, "Unified commitments are not enabled.");
-            if (!UnifiedCommitments.ValidateRecords(state, out error)) return false;
+            if (!UnifiedCommitments.SafetyAuthorityOn(state)) return Refuse(out error, "Unified commitments are not enabled.");
+            if (!UnifiedCommitments.ValidateSafetyAuthority(state, out error)) return false;
             var ids = AllIds(state);
             if (ids.Any(id => !Token(id)) || ids.Distinct(StringComparer.Ordinal).Count() != ids.Count)
                 return Refuse(out error, "Every source commitment needs a globally unique bounded identity.");
@@ -194,6 +203,12 @@ namespace Gamesim.Simulation
 
         private static List<string> AllIds(EpisodeState state) => state.promises.Select(row => row.id)
             .Concat(state.deals.Select(row => row.id)).Concat(state.unifiedCommitments.Select(row => row.id)).ToList();
+
+        // Every deal, raw and canonical, as detached source-shaped rows. Mode 1's view is the checked
+        // CommitmentReferences one it always was; in mode 2, after Ready's check, the unchecked projection
+        // of both families, so a write never re-validates the Vote family in the middle of a command.
+        private static IReadOnlyList<DealState> Deals(EpisodeState state) =>
+            UnifiedVoteStore.On(state) ? UnifiedVoteReferences.DealsUnchecked(state) : CommitmentReferences.Deals(state);
 
         // Only the three commitment lists are staged. All other source fields remain read-only;
         // unlike EpisodeState.Clone, this also does not traverse unrelated gameplay subsystems.
@@ -211,8 +226,13 @@ namespace Gamesim.Simulation
             var deals = staged.deals.Concat(staged.unifiedCommitments.Where(row => row.sourcePolicy == UnifiedCommitments.DealPolicy)
                 .Select(row => new DealState { id = row.id, proposerId = row.makerId, recipientId = row.beneficiaryId,
                     week = row.createdWeek, linkedDealId = row.linkedCommitmentId })).ToList();
+            // Mode 2's lists also hold the Vote family's linked rows - a veto price, a counter - under that
+            // family's own link rules (UnifiedVoteFamilyValidation); this writer judges the links it adds.
+            var added = UnifiedVoteStore.On(state)
+                ? new HashSet<string>(AllIds(staged).Except(AllIds(state), StringComparer.Ordinal), StringComparer.Ordinal) : null;
             foreach (var deal in deals)
             {
+                if (added != null && !added.Contains(deal.id)) continue;
                 bool price = Negotiation.IsPrice(deal);
                 if (deal.linkedDealId == null) { if (price) return Refuse(out error, "A price must resolve its bought commitment."); continue; }
                 var linked = deals.FirstOrDefault(row => row.id == deal.linkedDealId);

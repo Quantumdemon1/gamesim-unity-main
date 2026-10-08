@@ -23,10 +23,13 @@ namespace Gamesim.Tests.EditMode
     ///
     /// <para><b>On.</b> The same seasons with the leak rules from week one, played twice - by the busy
     /// player, and by one who keeps three pacts - every command legal, and every step checked: each leak
-    /// is recomputed from the eviction night's state and must be its coin; each double-dealing line has
-    /// its receipt or its grudge and each receipt its line; no receipt is between two houseguests; each
-    /// listen-in that taught the player a pact said so. Rates by house size are printed. The sixteen-person
-    /// house is the combined roster's, another lane's: not measured here.</para>
+    /// is recomputed from the eviction night's state and must be its coin, and nothing the coin did not
+    /// land on gets out that night; each double-dealing line has its receipt or its grudge and each
+    /// receipt its line; no receipt is between two houseguests; each listen-in that taught the player a
+    /// pact said so. A fourth set joins them here: the director's own fresh season (<see cref="Fresh"/>),
+    /// with the economy and the unified Safety and hearing rules, so the house's gossip runs on its staged
+    /// clone. The legacy set never plays the leak rules (no story), so rates are per season that played
+    /// them. The sixteen-person house is the combined roster's, another lane's: not measured here.</para>
     ///
     /// <para>Explicit: run with <c>dotnet test Tools/SimulationTests --filter "FullyQualifiedName~AllianceLeakSeasonDigests"</c>.</para>
     /// </summary>
@@ -101,25 +104,33 @@ namespace Gamesim.Tests.EditMode
             Assert.That(moved, Is.Empty, "A season under the commitment rules without the leak rules moved:\n" + string.Join("\n", moved));
         }
 
-        [Test, Explicit("Plays 54 seasons twice under the leak rules: every leak its coin, every reaction with its line, every command legal.")]
+        [Test, Explicit("Plays 72 seasons twice under the leak rules: every leak its coin, every reaction with its line, every command legal.")]
         public void UnderTheLeakRulesEveryLeakIsItsCoinAndEveryReactionHasItsLine()
         {
             var busy = Measure(false);
             var juggler = Measure(true);
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
             foreach (var (name, run) in new[] { ("busy player", busy), ("three-pact player", juggler) })
             {
                 TestContext.Out.WriteLine(name + ":");
-                foreach (int size in new[] { 6, 8, 12 })
+                foreach (int size in Sizes)
                 {
                     var c = run.bySize[size];
-                    double n = run.seasonsBySize[size];
-                    TestContext.Out.WriteLine("  n" + size + " (" + n + " seasons): " + string.Join(", ", Reported.Select(key =>
-                        key + "=" + Get(c, key) + " (" + (Get(c, key) / n).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "/season)")));
+                    double n = Get(run.playedBySize, size);
+                    TestContext.Out.WriteLine("  n" + size + " (" + n + " of " + Get(run.seasonsBySize, size) + " seasons played the rules): "
+                        + string.Join(", ", Reported.Select(key => key + "=" + Get(c, key) + " (" + (n > 0 ? Get(c, key) / n : 0).ToString("0.00", inv) + "/season)")));
                 }
+                foreach (var config in Configs)
+                    TestContext.Out.WriteLine("  " + config + " (" + Get(run.playedByConfig, config) + " played the rules, " + Get(run.hearingByConfig, config)
+                        + " under the hearing rules): " + string.Join(", ", Reported.Select(key => key + "=" + Get(run.byConfig[config], key))));
                 var all = Total(run);
                 TestContext.Out.WriteLine("  all: " + string.Join(", ", all.OrderBy(k => k.Key, StringComparer.Ordinal).Select(k => k.Key + "=" + k.Value)));
                 Assert.That(run.errors, Is.Empty, name + ": every command a season under the leak rules was given is legal:\n" + string.Join("\n", run.errors));
+                Assert.That(Get(run.playedByConfig, "legacy"), Is.Zero, name + ": the legacy set has no story, so it never plays the leak rules.");
+                Assert.That(Get(run.playedByConfig, Fresh), Is.EqualTo(Sizes.Length * 6), name + ": every fresh season played the leak rules,");
+                Assert.That(Get(run.hearingByConfig, Fresh), Is.EqualTo(Sizes.Length * 6), name + ": and the hearing rules with them.");
                 Assert.That(Get(all, "leak-coin-without-leak"), Is.Zero, name + ": every coin that landed leaked.");
+                Assert.That(Get(all, "widened-by-a-story"), Is.Zero, name + ": nothing a coin did not land on got out on eviction night.");
                 Assert.That(Get(all, "receipt-without-line"), Is.Zero, name + ": every receipt came with its line.");
                 Assert.That(Get(all, "line-without-reaction"), Is.Zero, name + ": every line came with its receipt or grudge.");
                 Assert.That(Get(all, "receipt-between-houseguests"), Is.Zero, name + ": nothing between two houseguests.");
@@ -130,9 +141,21 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Get(both, "leak"), Is.GreaterThan(0), "Pacts got out.");
             Assert.That(Get(both, "spread"), Is.GreaterThan(0), "The gossip carried them.");
             Assert.That(Get(both, "double-dealing"), Is.GreaterThan(0), "An ally found out about another of the player's pacts.");
+            Assert.That(Get(busy.byConfig[Fresh], "spread") + Get(juggler.byConfig[Fresh], "spread"), Is.GreaterThan(0),
+                "Under the hearing rules the staged gossip carried pacts too.");
         }
 
         // ------------------------------------------------------------ the run
+
+        /// <summary>
+        /// The director's own fresh season (EpisodeDirector.Season's StartSeason): the digests' director set,
+        /// plus the economy and the unified Safety and hearing rules a fresh season takes. Under the hearing
+        /// rules the house's gossip runs on a staged clone (WAVE-D-NPC-PACTS-PLAN D4-L2).
+        /// </summary>
+        private const string Fresh = "fresh";
+
+        private static readonly string[] Configs = { "director", "legacy", "harness", Fresh };
+        private static readonly int[] Sizes = { 6, 8, 12 };
 
         private static readonly string[] Reported =
             { "rolls", "leak", "spread", "spread-to-player", "double-dealing", "receipt", "grudge", "listen-in" };
@@ -140,15 +163,23 @@ namespace Gamesim.Tests.EditMode
         private sealed class RunCounts
         {
             public readonly Dictionary<int, Dictionary<string, int>> bySize = new Dictionary<int, Dictionary<string, int>>();
-            public readonly Dictionary<int, int> seasonsBySize = new Dictionary<int, int>();
+            public readonly Dictionary<string, Dictionary<string, int>> byConfig = new Dictionary<string, Dictionary<string, int>>();
+            public readonly Dictionary<int, int> seasonsBySize = new Dictionary<int, int>(), playedBySize = new Dictionary<int, int>();
+            public readonly Dictionary<string, int> playedByConfig = new Dictionary<string, int>(), hearingByConfig = new Dictionary<string, int>();
             public readonly List<string> errors = new List<string>();
         }
 
-        private static int Get(IDictionary<string, int> counts, string key) => counts.TryGetValue(key, out int n) ? n : 0;
+        private static int Get<TKey>(IDictionary<TKey, int> counts, TKey key) => counts.TryGetValue(key, out int n) ? n : 0;
 
-        private static void Count(Dictionary<string, int> counts, string key, int by = 1)
+        private static void Count<TKey>(Dictionary<TKey, int> counts, TKey key, int by = 1)
         {
             counts.TryGetValue(key, out int n); counts[key] = n + by;
+        }
+
+        private static void Merge<TKey>(Dictionary<TKey, Dictionary<string, int>> into, TKey key, Dictionary<string, int> counts)
+        {
+            if (!into.TryGetValue(key, out var total)) into[key] = total = new Dictionary<string, int>();
+            foreach (var k in counts) Count(total, k.Key, k.Value);
         }
 
         private static Dictionary<string, int> Total(RunCounts run) =>
@@ -166,27 +197,43 @@ namespace Gamesim.Tests.EditMode
         private static RunCounts Measure(bool juggler)
         {
             var run = new RunCounts();
-            foreach (var config in new[] { "director", "legacy", "harness" })
-            foreach (int size in new[] { 6, 8, 12 })
+            foreach (var config in Configs)
+            foreach (int size in Sizes)
             for (uint seed = 1; seed <= 6; seed++)
             {
-                if (!run.bySize.TryGetValue(size, out var counts)) run.bySize[size] = counts = new Dictionary<string, int>();
-                run.seasonsBySize.TryGetValue(size, out int n); run.seasonsBySize[size] = n + 1;
-                string error = Play(config, size, seed, juggler, counts);
+                var counts = new Dictionary<string, int>();
+                string error = Play(config, size, seed, juggler, counts, out bool played, out bool hearing);
                 if (error != null) run.errors.Add(config + " n" + size + " s" + seed + ": " + error);
+                Count(run.seasonsBySize, size);
+                if (played) { Count(run.playedBySize, size); Count(run.playedByConfig, config); }
+                if (played && hearing) Count(run.hearingByConfig, config);
+                Merge(run.bySize, size, counts);
+                Merge(run.byConfig, config, counts);
             }
             return run;
         }
 
-        /// <summary>One season under the commitment rules and the leak rules from week one, every step checked.</summary>
-        private static string Play(string config, int size, uint seed, bool juggler, Dictionary<string, int> counts)
+        /// <summary>
+        /// One season under the commitment rules and the leak rules from week one, every step checked.
+        /// <paramref name="played"/>: whether the leak rules were on at any step (the legacy set has no
+        /// story, so never); <paramref name="hearing"/>: whether the hearing rules were too.
+        /// </summary>
+        private static string Play(string config, int size, uint seed, bool juggler, Dictionary<string, int> counts, out bool played, out bool hearing)
         {
-            var start = (EpisodeState)SeasonOf.Invoke(null, new object[] { config, size, seed, true });
+            played = hearing = false;
+            var start = (EpisodeState)SeasonOf.Invoke(null, new object[] { config == Fresh ? "director" : config, size, seed, true });
+            if (config == Fresh)
+            {
+                EpisodeEngine.EnableEconomy(start);
+                start.unifiedCommitmentRulesVersion = UnifiedCommitments.ProspectiveVersion;
+                start.unifiedHearingRulesVersion = UnifiedCommitmentHearings.ProspectiveVersion;
+            }
             EpisodeEngine.EnableAllianceLeaks(start);
             var engine = new EpisodeEngine(start);
             for (int i = 0; i < 3000 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
             {
                 var s = engine.Snapshot;
+                if (AllianceLeaks.On(s)) { played = true; hearing |= UnifiedCommitmentHearings.RulesOn(s); }
                 CommandResult applied = null;
                 var third = juggler ? ThirdPact(s, seed) : null;
                 if (third != null)

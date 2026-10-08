@@ -43,17 +43,20 @@ namespace Gamesim.Tests.EditMode
             Assert.That(UnifiedVoteCompletedReveal.TryValidate(earlier, frame, out error), Is.False,
                 "A removal the week before would have left V out of the frame.");
 
+            // The leak comes first, so the NPC cases pin it on their own rather than behind the voter list.
+            if (!player)
+            {
+                Assert.That(KnownBallots.Knows(after, w.Week, w.Voter), Is.False, "V's ballot stays unknown to the player.");
+                var deal = after.deals.Single(row => row.id == w.DealId);
+                Assert.That(deal.status, Is.EqualTo(DealStatus.Broken)); Assert.That(deal.brokenById, Is.EqualTo(w.Voter));
+                Assert.That(KnownBallots.DealOutcomeKnown(after, deal), Is.EqualTo(KnownBallots.Knows(after, w.Week, w.Voter)),
+                    "The removal does not tell the player how V's deal ended.");
+                Assert.That(KnownBallots.DealOutcomeKnown(w.Pending, w.Pending.deals.Single(row => row.id == w.DealId)), Is.False,
+                    "Nor did the live box before it.");
+            }
             var sheet = KnownBallots.Read(after, w.Week);
             Assert.That(sheet.voters, Does.Contain(w.Voter), "The week's voters as the record says include the removed voter.");
             Assert.That(sheet.voters.Count, Is.EqualTo(sheet.tally.Sum()), "The voter list is exact again.");
-            if (player) return;
-            Assert.That(KnownBallots.Knows(after, w.Week, w.Voter), Is.False, "V's ballot stays unknown to the player.");
-            var deal = after.deals.Single(row => row.id == w.DealId);
-            Assert.That(deal.status, Is.EqualTo(DealStatus.Broken)); Assert.That(deal.brokenById, Is.EqualTo(w.Voter));
-            Assert.That(KnownBallots.DealOutcomeKnown(after, deal), Is.EqualTo(KnownBallots.Knows(after, w.Week, w.Voter)),
-                "The removal does not tell the player how V's deal ended.");
-            Assert.That(KnownBallots.DealOutcomeKnown(w.Pending, w.Pending.deals.Single(row => row.id == w.DealId)), Is.False,
-                "Nor did the live box before it.");
         }
 
         [TestCase(false)] [TestCase(true)]
@@ -68,12 +71,15 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(projected, out var error), Is.True,
                     "week " + point.week + " " + point.phase + ": " + error);
                 Assert.That(EpisodeValidation.TryValidate(projected, out _), Is.False, "Public mode 2 remains refused.");
+                if (!player)
+                {
+                    var deal = CommitmentReferences.FindDeal(projected, w.DealId);
+                    Assert.That(deal, Is.Not.Null); Assert.That(deal.status, Is.EqualTo(DealStatus.Broken));
+                    Assert.That(KnownBallots.DealOutcomeKnown(projected, deal), Is.EqualTo(KnownBallots.Knows(projected, w.Week, w.Voter)),
+                        "week " + point.week + " " + point.phase + ": the removal does not tell the player how V's deal ended.");
+                    Assert.That(KnownBallots.Knows(projected, w.Week, w.Voter), Is.False);
+                }
                 Assert.That(KnownBallots.Read(projected, w.Week).voters, Does.Contain(w.Voter));
-                if (player) continue;
-                var deal = CommitmentReferences.FindDeal(projected, w.DealId);
-                Assert.That(deal, Is.Not.Null); Assert.That(deal.status, Is.EqualTo(DealStatus.Broken));
-                Assert.That(KnownBallots.DealOutcomeKnown(projected, deal), Is.EqualTo(KnownBallots.Knows(projected, w.Week, w.Voter)));
-                Assert.That(KnownBallots.Knows(projected, w.Week, w.Voter), Is.False);
             }
         }
 
@@ -90,6 +96,27 @@ namespace Gamesim.Tests.EditMode
             Assert.That(sheet.voters, Does.Not.Contain(w.Voter));
             Assert.That(sheet.voters.Count, Is.EqualTo(sheet.tally.Sum() - 1));
             Assert.That(KnownBallots.DealOutcomeKnown(after, after.deals.Single(row => row.id == w.DealId)), Is.True);
+        }
+
+        /// <summary>
+        /// A season imported without the rules in the removal week, so its rules start the week after
+        /// (the importer's start), keeps reading that week as it did once the rules come on: the gate is
+        /// the vote week's own, like the deal week's in DealResolution.AcceptedOffer, so a ballot
+        /// outcome the player was already shown is not taken back.
+        /// </summary>
+        [Test]
+        public void ARemovalWeekBeforeTheRulesFirstWeekKeepsItsReadingOnceTheRulesComeOn()
+        {
+            var w = Witness(0, false, false);
+            var recorded = w.Expelled;
+            var imported = recorded.Clone();
+            EpisodeEngine.EnableCommitments(imported, w.Week + 1);
+            Assert.That(imported.commitmentRulesStartWeek, Is.EqualTo(w.Week + 1));
+            Assert.That(EpisodeEngine.CommitmentRulesOn(imported), Is.True, "The rules are on in the week after the removal.");
+            Assert.That(KnownBallots.Read(imported, w.Week).voters, Is.EqualTo(KnownBallots.Read(recorded, w.Week).voters));
+            Assert.That(KnownBallots.Read(imported, w.Week).voters, Does.Not.Contain(w.Voter));
+            Assert.That(KnownBallots.DealOutcomeKnown(imported, imported.deals.Single(row => row.id == w.DealId)), Is.True,
+                "What the player was shown before the rules stays shown.");
         }
 
         private sealed class RemovalWitness

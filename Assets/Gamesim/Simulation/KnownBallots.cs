@@ -663,14 +663,16 @@ namespace Gamesim.Simulation
             /// check does (D1 V1b): without it the list is short by one, the count stops proving the
             /// last ballot, and a vote deal with the removed voter reads as settled by the player's
             /// ballot alone - their ballot's outcome shown to the player. A season without the rules
-            /// keeps the list it always read.</para>
+            /// keeps the list it always read, and so does a vote week before the rules' first week
+            /// (as <see cref="DealResolution.AcceptedOffer"/> keys to the deal's week): an imported
+            /// season's earlier weeks read the same once its rules come on.</para>
             /// </summary>
             private static List<string> Reconstruct(EpisodeState s, int week, Frame frame)
             {
                 var voters = new List<string>();
                 var rows = s.ledger?.power ?? new List<PowerRow>();
                 var removals = s.story?.removals ?? new List<RemovalState>();
-                int removedFrom = EpisodeEngine.CommitmentRulesOn(s) ? week : week + 1;
+                int removedFrom = EpisodeEngine.CommitmentRulesOn(s) && week >= s.commitmentRulesStartWeek ? week : week + 1;
                 foreach (var c in s.contestants)
                 {
                     if (c == null || c.id == frame.hohId || frame.nominees.Contains(c.id)) continue;

@@ -200,6 +200,48 @@ namespace Gamesim.House
             return asset;
         }
 
+        /// <summary>
+        /// What an action is bound to in one control scheme, in the glossary's words: each binding
+        /// and each composite once, joined ("WASD / Arrows", "LT / RT"), empty when the scheme has
+        /// none. Read off the bindings as they stand, so the controls page says what the map does.
+        /// </summary>
+        public static string BindingWords(InputAction action, string scheme)
+        {
+            if (action == null) return "";
+            var words = new System.Collections.Generic.List<string>();
+            var bindings = action.bindings;
+            for (var index = 0; index < bindings.Count; index++)
+            {
+                var binding = bindings[index];
+                if (binding.isComposite)
+                {
+                    var parts = new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<string, string>>();
+                    bool inScheme = false;
+                    int part = index + 1;
+                    for (; part < bindings.Count && bindings[part].isPartOfComposite; part++)
+                    {
+                        parts.Add(new System.Collections.Generic.KeyValuePair<string, string>(bindings[part].name, bindings[part].effectivePath));
+                        if (InScheme(bindings[part], scheme)) inScheme = true;
+                    }
+                    string composite = binding.path ?? "";
+                    int parameters = composite.IndexOf('(');
+                    if (parameters >= 0) composite = composite.Substring(0, parameters);
+                    if (inScheme) words.Add(Gamesim.Presentation.InputGlossary.CompositeLabel(composite, parts));
+                    index = part - 1;
+                }
+                else if (!binding.isPartOfComposite && InScheme(binding, scheme))
+                    words.Add(Gamesim.Presentation.InputGlossary.BindingLabel(binding.effectivePath));
+            }
+            return Gamesim.Presentation.InputGlossary.Join(words);
+        }
+
+        private static bool InScheme(InputBinding binding, string scheme)
+        {
+            foreach (var group in (binding.groups ?? "").Split(';'))
+                if (group == scheme) return true;
+            return false;
+        }
+
         /// <summary>The shortcut names, in the map's order.</summary>
         public static readonly string[] ShortcutNames =
         {

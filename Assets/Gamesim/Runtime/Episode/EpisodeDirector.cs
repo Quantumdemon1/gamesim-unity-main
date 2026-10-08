@@ -1406,6 +1406,8 @@ namespace Gamesim.Episode
                 if (lastSocialAction.HasValue) hud.OutcomeChips(lastSocialDelta);
                 // A counter to the proposal just turned down (C7) is answered here or not at all: first.
                 CounterCard(state, npc);
+                // A war room's open plan (WAVE-D-NPC-PACTS-PLAN D3) stands until the campaign closes: after it (D3-L3).
+                PactPlanCard(state, npc);
                 // What the player came for, first (their screen's "Ask for information" or "Pitch a
                 // deal"): the rows it names are drawn here and not again below.
                 bool cameToAsk = conversationIntent == IntentAsk, cameToDeal = conversationIntent == IntentDeal;

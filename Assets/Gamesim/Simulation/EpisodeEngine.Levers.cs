@@ -111,6 +111,11 @@ namespace Gamesim.Simulation
             var alliance = s.alliances.FirstOrDefault(a => a.active && a.id == (c.text ?? "") && a.members.Contains(s.playerId) && a.members.Contains(ally.id))
                 ?? s.alliances.FirstOrDefault(a => a.active && a.members.Contains(s.playerId) && a.members.Contains(ally.id));
             Require(alliance != null, "Call the vote through somebody in your alliance.");
+            // Under the war rooms (WAVE-D-NPC-PACTS-PLAN §3, §6 Q2) a pact of three or more settles its call
+            // when it meets, and a pact that met so this week - down to a pair since - has had its call; a
+            // pair calls as it always did.
+            Require(!(PactPlanRulesOn(s) && (PactPlans.IsWarRoomPact(s, alliance) || PactPlans.ThisWeek(s, alliance.id) != null)),
+                PactPlans.CallRefusal(alliance.name));
             Require(s.nominees.Contains(c.secondTargetId ?? "") && c.secondTargetId != s.playerId, "Name somebody on the block.");
             Require(!s.ledger.calls.Any(k => k.week == s.week && k.allianceId == alliance.id), "You have already called this week's vote in " + alliance.name + ".");
             var members = alliance.members.Where(id => id != s.playerId).Select(id => s.Find(id))

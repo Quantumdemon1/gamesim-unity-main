@@ -47,6 +47,8 @@ namespace Gamesim.Simulation
             public const string WhipCount = "whip count", Claim = "claim", Deal = "deal", Promise = "promise", Call = "call", Member = "member";
             /// <summary>Under the leak rules (WAVE-D-NPC-PACTS-PLAN D4-6): somebody found out about another of the player's pacts.</summary>
             public const string FoundOut = "found out";
+            /// <summary>Under the war rooms (WAVE-D-NPC-PACTS-PLAN D3-S7): a pact's plan, as the player answered it; its voters follow as members.</summary>
+            public const string Plan = "plan";
         }
 
         /// <summary>What a call member's verdict rests on: the ballot as the player knows it, or what they said at the call.</summary>
@@ -103,7 +105,10 @@ namespace Gamesim.Simulation
             public List<Line> reads = new List<Line>();
             /// <summary>The deals, then the promises, that ended this week with the player as a party.</summary>
             public List<Line> word = new List<Line>();
-            /// <summary>Each call the player made: its own line, then who followed and who would not.</summary>
+            /// <summary>
+            /// Each call the player made: its own line, then who followed and who would not. Under the war rooms
+            /// (D3-S7) then each plan of their pacts, a call it made among them: its own line, then who of it voted.
+            /// </summary>
             public List<Line> calls = new List<Line>();
             /// <summary>Who found out about another of the player's pacts, under the leak rules (D4-6): each line the player read.</summary>
             public List<Line> exposed = new List<Line>();
@@ -408,13 +413,16 @@ namespace Gamesim.Simulation
         /// member whose ballot the player knows (<see cref="KnownBallots"/>) is judged by it: followed
         /// if they voted out who was called, defected if not, whatever they said at the call. A member
         /// whose ballot the player cannot place stands as they said at the call. Each line says which
-        /// it rests on. Never a ballot the reveal kept private.
+        /// it rests on. Never a ballot the reveal kept private. Under the war rooms (D3-S7) a call a
+        /// pact's plan made is said as that plan, after the calls (<see cref="Plans"/>).
         /// </summary>
         private static void Calls(EpisodeState s, int week, PowerRow power, bool revealed, List<Line> lines)
         {
             var sheet = KnownBallots.Read(s, week);
+            var plans = PactPlans.OfWeek(s, week);
             foreach (var call in s.ledger.calls.Where(c => c.week == week && c.callerId == s.playerId))
             {
+                if (plans.Any(p => p.allianceId == call.allianceId)) continue;
                 string pact = s.alliances.FirstOrDefault(a => a.id == call.allianceId)?.name ?? "your alliance";
                 string target = Whom(s, call.targetId);
                 string after = !revealed ? "."
@@ -443,6 +451,83 @@ namespace Gamesim.Simulation
                     }
                     lines.Add(line);
                 }
+            }
+            Plans(s, plans, power, revealed, sheet, lines);
+        }
+
+        /// <summary>
+        /// Under the war rooms (WAVE-D-NPC-PACTS-PLAN D3-S7): each plan of the week's, in the order the pacts
+        /// met - its own line, as the player answered it (<see cref="PlanLine"/>), then each member of it who
+        /// voted. A member whose ballot the player knows is judged by it: followed if they voted out the plan's
+        /// target; defected if not, where they were with it; and where they were not with it, no verdict - they
+        /// did as they said. A member whose ballot the player cannot place stands as the player was told
+        /// (<see cref="PactPlans.ToldWith"/>): followed where they were with it; where they were not, not known -
+        /// a dissenter is never flagged (§3.3), and one who went along on their own coin under a plan an NPC
+        /// leads was never said. A plan still open or void has no members.
+        /// </summary>
+        private static void Plans(EpisodeState s, List<PactPlanRow> plans, PowerRow power, bool revealed, KnownBallots.Sheet sheet, List<Line> lines)
+        {
+            foreach (var plan in plans)
+            {
+                lines.Add(new Line { kind = Kinds.Plan, text = PlanLine(s, plan, power, revealed) });
+                if (string.IsNullOrEmpty(plan.targetId)) continue;
+                bool called = PactPlans.PlayerCalled(s, plan);
+                var told = PactPlans.ToldWith(s, plan);
+                string Out(string id) => id == s.playerId ? "voted to evict you" : "voted out " + Whom(s, id);
+                foreach (string id in PactPlans.Voted(s, plan))
+                {
+                    bool with = told.Contains(id);
+                    string stood = with ? " was with the plan" : called ? " was not with the plan" : " did not back the plan";
+                    string known = sheet.TargetOf(id);
+                    var line = new Line { kind = Kinds.Member, aboutId = id };
+                    if (known != null)
+                    {
+                        bool voted = known == plan.targetId;
+                        // Only one the player was told is with it can defect: one not with it who voted the
+                        // other way did as they said, and carries no verdict (§3.3: a dissenter is never flagged).
+                        line.verdict = voted ? Verdicts.Followed : with ? Verdicts.Defected : null;
+                        line.basis = Bases.Ballot;
+                        string ballot = voted ? Out(plan.targetId) : "voted to evict " + Whom(s, known);
+                        line.text = Who(s, id) + stood + (with ? (voted ? ", and " : ", then ") + ballot + "." : voted ? ", then " + ballot + " anyway." : ", and " + ballot + ".");
+                    }
+                    else
+                    {
+                        line.verdict = with ? Verdicts.Followed : Verdicts.NotKnown;
+                        line.basis = Bases.Call;
+                        line.text = Who(s, id) + stood + ".";
+                    }
+                    lines.Add(line);
+                }
+            }
+        }
+
+        /// <summary>
+        /// A plan's own line, in the words the player answered it: "You went with The War Room's plan: evict
+        /// Maya Hassan, and Maya Hassan went home." / "The War Room went with your push: evict Alex Moore." /
+        /// "You pushed for Alex Moore, but The War Room held to its plan: evict Maya Hassan." / "You lay low on
+        /// The War Room's plan: evict Maya Hassan." / "You let The War Room's plan stand: evict Maya Hassan."
+        /// (the campaign's close) / "The War Room's plan came to nothing." / "You have not answered The War
+        /// Room's plan yet." The reveal's ending only once it is read.
+        /// </summary>
+        public static string PlanLine(EpisodeState s, PactPlanRow plan, PowerRow power, bool revealed)
+        {
+            if (s == null || plan == null) return string.Empty;
+            string pact = s.alliances.FirstOrDefault(a => a.id == plan.allianceId)?.name;
+            if (string.IsNullOrEmpty(pact)) pact = "your alliance";
+            string Pact() => char.ToUpperInvariant(pact[0]) + pact.Substring(1);
+            if (plan.stance == PactPlanStance.Open) return "You have not answered " + pact + "'s plan yet.";
+            if (string.IsNullOrEmpty(plan.targetId)) return Pact() + "'s plan came to nothing.";
+            string target = Whom(s, plan.targetId);
+            string evict = "evict " + target + (!revealed || power == null ? "."
+                : power.evicteeId == plan.targetId ? ", and " + target + " went home." : ", and " + target + " stayed.");
+            switch (plan.stance)
+            {
+                case PactPlanStance.Agreed: return "You went with " + pact + "'s plan: " + evict;
+                case PactPlanStance.Countered:
+                    return PactPlans.PlayerCalled(s, plan) ? Pact() + " went with your push: " + evict
+                        : "You pushed for " + Whom(s, plan.counterId) + ", but " + pact + " held to its plan: " + evict;
+                case PactPlanStance.Low: return "You lay low on " + pact + "'s plan: " + evict;
+                default: return "You let " + pact + "'s plan stand: " + evict;
             }
         }
 

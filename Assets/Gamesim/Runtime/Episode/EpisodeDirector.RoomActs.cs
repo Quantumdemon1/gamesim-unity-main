@@ -97,10 +97,12 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The pill on the meeting's row: warmth, and learn as well in a vote week when somebody at it
-        /// casts a ballot - by what the player can see; whether they say is theirs.
+        /// casts a ballot - by what the player can see; whether they say is theirs. Under the war rooms a
+        /// meeting that would be one says so instead (WAVE-D-NPC-PACTS-PLAN D3): warmth, and a plan.
         /// </summary>
         public static string AllianceMeetingTag(EpisodeState state, AllianceState pact) =>
-            EpisodeEngine.MeetingCouldTellAVote(state, pact) ? WarmthTag + " · " + LearnTag : WarmthTag;
+            PactPlans.CouldConvene(state, pact) ? WarmthTag + " · " + PlanTag
+                : EpisodeEngine.MeetingCouldTellAVote(state, pact) ? WarmthTag + " · " + LearnTag : WarmthTag;
 
         /// <summary>The houseguests other than the player standing in a room, by the house's own occupancy read.</summary>
         private List<string> PeopleIn(EpisodeState state, string room) =>

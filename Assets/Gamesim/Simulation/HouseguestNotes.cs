@@ -95,6 +95,28 @@ namespace Gamesim.Simulation
                         : "Says: evict " + FirstName(Name(claim.targetId)),
                 });
             }
+            // Under the war rooms (WAVE-D-NPC-PACTS-PLAN D3-S7) what they said at a meeting of a pact of yours,
+            // as the meeting's line told it - who they wanted out - and who they came round to on your push;
+            // then, once you can place their ballot, how they voted. A say is their own lean, not their word:
+            // a ballot the other way is a vote, never a lie.
+            foreach (var plan in (s.ledger.plans ?? new List<PactPlanRow>()).Where(p => p?.says != null))
+            {
+                var say = plan.says.FirstOrDefault(x => x != null && x.memberId == id && !string.IsNullOrEmpty(x.targetId));
+                if (say == null) continue;
+                string pactName = s.alliances.FirstOrDefault(a => a.id == plan.allianceId)?.name;
+                if (string.IsNullOrEmpty(pactName)) pactName = "your alliance";
+                string final = PactPlans.FinalSay(plan, id);
+                bool came = final != say.targetId;
+                var sheet = KnownBallots.Read(s, plan.week);
+                string ballot = sheet.Revealed ? sheet.TargetOf(id) : null;
+                notes.Add(new Note
+                {
+                    week = plan.week, kind = Kinds.Vote,
+                    text = "At " + pactName + "'s meeting: wanted " + Name(say.targetId) + " out" + (came ? " · came round to " + Name(final) : "")
+                        + (ballot == null ? "" : ballot == final ? " · and voted that way" : " · voted to evict " + Name(ballot)),
+                    brief = came ? "Came round to " + FirstName(Name(final)) : "Wanted " + FirstName(Name(say.targetId)) + " out",
+                });
+            }
             foreach (var standing in s.ledger.standings.Where(r => r.fromId == id && r.toId == s.playerId))
             {
                 if (standing.source == ClaimSource.Read)
@@ -143,12 +165,26 @@ namespace Gamesim.Simulation
             }
             foreach (var call in s.ledger.calls.Where(c => c.callerId == s.playerId && (c.followed.Contains(id) || c.defected.Contains(id))))
             {
+                // A call a war room's plan made is said as the plan you backed, below (D3-S7).
+                if (PactPlans.PlanOf(s, call) != null) continue;
                 bool followed = call.followed.Contains(id);
                 notes.Add(new Note
                 {
                     week = call.week, kind = Kinds.Word,
                     text = first + (followed ? " followed your call to evict " : " ignored your call to evict ") + Name(call.targetId),
                     brief = followed ? "Followed your call" : "Ignored your call",
+                });
+            }
+            // Under the war rooms (D3-S7): whether they were with a plan you backed, as its line told you who was
+            // with you and who wasn't. Never a word broken: a member not with a plan never gave it.
+            foreach (var plan in (s.ledger.plans ?? new List<PactPlanRow>()).Where(p => PactPlans.PlayerCalled(s, p) && PactPlans.Voted(s, p).Contains(id)))
+            {
+                bool with = plan.followed != null && plan.followed.Contains(id);
+                notes.Add(new Note
+                {
+                    week = plan.week, kind = Kinds.Word,
+                    text = first + (with ? " was with the plan you backed to evict " : " wasn't with the plan you backed to evict ") + Name(plan.targetId),
+                    brief = with ? "With your plan" : "Not with your plan",
                 });
             }
             bool rules = EpisodeEngine.CommitmentRulesOn(s);

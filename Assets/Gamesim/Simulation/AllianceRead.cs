@@ -93,8 +93,16 @@ namespace Gamesim.Simulation
             public int endedWeek;
             /// <summary>Why it ended, in the words the player was told; null while it stands.</summary>
             public string ended;
-            /// <summary>Every call the player made in it, oldest first.</summary>
+            /// <summary>Every call the player made in it, oldest first - but a war room's plan the player backed, which its plan says (<see cref="plans"/>).</summary>
             public List<Call> calls = new List<Call>();
+            /// <summary>
+            /// Its war rooms' plans under the war rooms (WAVE-D-NPC-PACTS-PLAN D3), oldest first: what each
+            /// member said, how the player answered, and - once the vote is read - who of those with it voted
+            /// with it, by the ballots the player can place (<see cref="PlanText"/>).
+            /// </summary>
+            public List<Plan> plans = new List<Plan>();
+            /// <summary>Whether it meets as a war room under the war rooms: a pact of three or more, which calls only when it meets.</summary>
+            public bool warRoom;
             /// <summary>The deals the player agreed with its members, oldest first.</summary>
             public List<Deal> deals = new List<Deal>();
             /// <summary>
@@ -129,6 +137,15 @@ namespace Gamesim.Simulation
             public int week;
             public string targetId;
             public List<string> followed = new List<string>(), defected = new List<string>();
+        }
+
+        /// <summary>A war room's plan (WAVE-D-NPC-PACTS-PLAN D3): its week, where it stands, its target, and the line the card shows.</summary>
+        public sealed class Plan
+        {
+            public int week;
+            public string stance, targetId;
+            /// <summary>"Plan: Riley and Sam wanted Maya out. You went with it: evict Maya. Riley voted with it; Sam didn't."</summary>
+            public string text;
         }
 
         /// <summary>A deal the player agreed with a member: the week, with whom, what kind and where it stands.</summary>
@@ -211,19 +228,80 @@ namespace Gamesim.Simulation
                     ignored = calls.Count(c => c.defected != null && c.defected.Contains(id)),
                 });
             }
-            foreach (var call in calls)
+            // A war room's plans (WAVE-D-NPC-PACTS-PLAN D3): a plan the player backed is that week's call row
+            // as well, and its plan line says it, so it is not said twice.
+            var plans = (s.ledger?.plans ?? new List<PactPlanRow>()).Where(p => p != null && p.allianceId == alliance.id)
+                .OrderBy(p => p.week).ToList();
+            foreach (var call in calls.Where(c => plans.All(p => p.week != c.week)))
                 pact.calls.Add(new Call
                 {
                     week = call.week, targetId = call.targetId,
                     followed = new List<string>(call.followed ?? new List<string>()),
                     defected = new List<string>(call.defected ?? new List<string>()),
                 });
+            foreach (var plan in plans)
+                pact.plans.Add(new Plan { week = plan.week, stance = plan.stance, targetId = plan.targetId, text = PlanText(s, plan) });
+            pact.warRoom = EpisodeEngine.PactPlanRulesOn(s) && PactPlans.IsWarRoomPact(s, alliance);
             Formed(s, alliance, row, pact);
             if (!alliance.active) Ended(s, alliance, row, pact);
             pact.deals = Deals(s, alliance);
             pact.exposures = Exposures(s, alliance);
             pact.risk = AllianceLeaks.RiskLine(AllianceLeaks.RiskWord(s, alliance));
             return pact;
+        }
+
+        /// <summary>
+        /// A war room's plan as the alliance card says it (WAVE-D-NPC-PACTS-PLAN D3-S5), in words and never a
+        /// number: what the members said at the meeting - "Plan: Riley and Sam wanted Maya out; Jo wanted Alex
+        /// out." - how the player answered, and, once that week's vote has been read, who of those the player
+        /// was told are with the plan (<see cref="PactPlans.ToldWith"/>) voted with it and who did not, by the
+        /// ballots the player can place (<see cref="KnownBallots.Read"/>): a ballot the player cannot place is
+        /// not mentioned, nor a dissenter who went along on their own coin. All of it the player was told: the
+        /// says at the meeting, the answer in its line.
+        /// </summary>
+        public static string PlanText(EpisodeState s, PactPlanRow row)
+        {
+            if (s == null || row == null) return string.Empty;
+            string Who(string id) => id == s.playerId ? "you" : FinalistRead.FirstName(s.Find(id)?.name ?? "somebody");
+            var parts = (row.says ?? new List<PlanSay>()).Where(say => say != null && !string.IsNullOrEmpty(say.targetId))
+                .GroupBy(say => say.targetId)
+                .Select(group => Join(group.Select(say => Who(say.memberId)).ToList()) + " wanted " + Who(group.Key) + " out").ToList();
+            string text = parts.Count == 0 ? "Plan: nobody said." : "Plan: " + string.Join("; ", parts) + ".";
+            string target = Who(row.targetId);
+            // The player on the block as the plan reads as such, never "evict you".
+            string evict = row.targetId == s.playerId ? "it named you" : "evict " + target;
+            switch (row.stance)
+            {
+                case PactPlanStance.Open: text += " You have not answered it yet."; break;
+                case PactPlanStance.Agreed: text += " You went with it: " + evict + "."; break;
+                case PactPlanStance.Countered:
+                    var came = (row.cameRound ?? new List<string>()).Select(Who).ToList();
+                    text += " You pushed for " + Who(row.counterId) + (came.Count > 0 ? ", and " + Join(came) + " came round" : "") + "."
+                        + (row.targetId == row.counterId ? " It carried." : row.targetId == s.playerId ? " The pact held to its plan for you." : " The pact held to " + target + ".");
+                    break;
+                case PactPlanStance.Low: text += " You lay low: " + evict + "."; break;
+                case PactPlanStance.Lapsed: text += " You let it stand: " + evict + "."; break;
+                default: text += " It came to nothing."; break;
+            }
+            if (string.IsNullOrEmpty(row.targetId) || row.followed == null || row.followed.Count == 0) return text;
+            // Only those the player was told are with it (PactPlans.ToldWith): under a plan an NPC leads, a
+            // dissenter who went along on their own coin was never said, so their ballot is no follow-through.
+            var told = PactPlans.ToldWith(s, row);
+            if (told.Count == 0) return text;
+            var sheet = KnownBallots.Read(s, row.week);
+            if (!sheet.Revealed) return text;
+            var with = new List<string>();
+            var not = new List<string>();
+            foreach (string id in told)
+            {
+                string voted = sheet.TargetOf(id);
+                if (voted == null) continue;
+                (voted == row.targetId ? with : not).Add(Who(id));
+            }
+            if (with.Count > 0 && not.Count > 0) return text + " " + Join(with) + " voted with it; " + Join(not) + " didn't.";
+            if (with.Count > 0) return text + " " + Join(with) + " voted with it.";
+            if (not.Count > 0) return text + " " + Join(not) + " didn't vote with it.";
+            return text;
         }
 
         /// <summary>

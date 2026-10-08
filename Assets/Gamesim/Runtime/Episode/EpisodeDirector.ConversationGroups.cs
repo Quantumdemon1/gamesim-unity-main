@@ -219,13 +219,19 @@ namespace Gamesim.Episode
             if (PickerOpen(npc.id, conversationPick)) hud.RevealAtTop(conversationPick);
         }
 
-        /// <summary>Every alliance the player shares with this houseguest that has not called this week's vote, and each nominee it could name.</summary>
+        /// <summary>
+        /// Every alliance the player shares with this houseguest that has not called this week's vote, and
+        /// each nominee it could name. Under the war rooms (WAVE-D-NPC-PACTS-PLAN D3, §6 Q2) not a pact of
+        /// three or more, which settles its call when it meets, nor one that planned this week.
+        /// </summary>
         private static List<(AllianceState pact, string nomineeId)> Calls(EpisodeState state, ContestantState npc)
         {
             var calls = new List<(AllianceState, string)>();
             if (!EpisodeEngine.LeverRulesOn(state) || state.phase != EpisodePhase.Campaign || !VoteRead.Available(state)) return calls;
+            bool warRooms = EpisodeEngine.PactPlanRulesOn(state);
             foreach (var pact in state.alliances.Where(a => a.active && a.members.Contains(state.playerId) && a.members.Contains(npc.id)
-                         && !state.ledger.calls.Any(k => k.week == state.week && k.allianceId == a.id)))
+                         && !state.ledger.calls.Any(k => k.week == state.week && k.allianceId == a.id)
+                         && !(warRooms && (PactPlans.IsWarRoomPact(state, a) || PactPlans.ThisWeek(state, a.id) != null))))
                 foreach (string nomineeId in state.nominees.Where(id => id != state.playerId))
                     calls.Add((pact, nomineeId));
             return calls;

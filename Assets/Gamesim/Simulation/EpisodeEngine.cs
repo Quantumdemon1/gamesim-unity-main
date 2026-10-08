@@ -216,15 +216,16 @@ namespace Gamesim.Simulation
                     RenameAlliance(s, c); break;
                 // Wave D's two kinds (schema 28) are refused before anything is spent, drawn or logged
                 // until their rule slices replace these refusals: without them they would fall to
-                // Social and be refused for the wrong reason.
-                case EpisodeCommandKind.AnswerPactPlan:
+                // Social and be refused for the wrong reason. D3's answer is free, as answering any
+                // offer is, and refused the same way without the war rooms.
+                case EpisodeCommandKind.AnswerPactPlan: AnswerPactPlan(s, c); break;
                 case EpisodeCommandKind.WitnessNpcAct:
                     Require(false, WaveDKindRefusal); break;
                 default: Social(s, c); break;
             }
         }
 
-        /// <summary>Why <see cref="EpisodeCommandKind.AnswerPactPlan"/> and <see cref="EpisodeCommandKind.WitnessNpcAct"/> are refused until their rules land.</summary>
+        /// <summary>Why <see cref="EpisodeCommandKind.WitnessNpcAct"/> is refused until its rules land, and <see cref="EpisodeCommandKind.AnswerPactPlan"/> without the war rooms.</summary>
         public const string WaveDKindRefusal = "Not available in this season.";
 
         public static bool IsCompetition(EpisodePhase phase) => phase == EpisodePhase.HoH || phase == EpisodePhase.Veto ||
@@ -387,6 +388,9 @@ namespace Gamesim.Simulation
                     // Under the commitment rules (C1) an information deal passes its reading: last in
                     // the step, as the house is about to vote and nothing more is campaigned.
                     if (CommitmentRulesOn(s)) PassTheReadings(s);
+                    // The war rooms' close (WAVE-D-NPC-PACTS-PLAN §1, §3): every plan still open settles
+                    // as the player lying low would. Plans exist only under their rules.
+                    if (s.ledger.plans.Any(p => p != null && p.stance == PactPlanStance.Open)) LapsePactPlans(s);
                     break;
                 case EpisodePhase.Eviction:
                     if (s.evictionResolved)

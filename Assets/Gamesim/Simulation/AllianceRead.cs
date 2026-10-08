@@ -33,7 +33,9 @@ namespace Gamesim.Simulation
     /// evidence never appears, not even as an unknown, and nothing the player cannot know of one is
     /// said either: not its name, not when it formed, not whether it still stands. One card is one
     /// set of people, however many records share it, so two pacts of the same people read as one and
-    /// say nothing more. No listen-in, read or claim names another houseguest's pact: an overheard
+    /// say nothing more. No read or claim names another houseguest's pact, and nor does a listen-in,
+    /// save one under the leak rules (WAVE-D-NPC-PACTS-PLAN D4-M2) on a pact whose people in the house
+    /// are exactly the two overheard, whose line names everyone the card shows: otherwise an overheard
     /// pair is a standing, and an ally's claim (<see cref="ClaimSource.Ally"/>, written since
     /// ACTIONS-DEALS-ALLIANCES-PLAN C6) is a member's own word at a meeting of a pact the player is
     /// in, so it is evidence of no other pact.</para>
@@ -470,6 +472,11 @@ namespace Gamesim.Simulation
                 // told to everyone left in it.
                 foreach (var e in seen.Where(e => e.kind == "alliance" && EpisodeEngine.IsLeftGoesOnLine(e.text, alliance.name)
                              && e.audienceIds != null && e.audienceIds.Where(id => id != s.playerId).All(alliance.members.Contains)))
+                    evidence.Add(new Evidence { week = e.week, text = e.text });
+                // A listen-in that heard them as a pact, under the leak rules (WAVE-D-NPC-PACTS-PLAN D4): its
+                // line ends naming everyone the card shows, so it is evidence as a receipt is.
+                string overheard = AllianceLeaks.ListenInSentence(s, alliance);
+                foreach (var e in seen.Where(e => e.kind == "eavesdrop" && e.text != null && e.text.EndsWith(overheard, StringComparison.Ordinal)))
                     evidence.Add(new Evidence { week = e.week, text = e.text });
                 if (certainty != null)
                 {

@@ -65,5 +65,40 @@ namespace Gamesim.Simulation
             var alliance = SpreadPact(s, e);
             if (alliance != null) spread[e] = alliance;
         }
+
+        // ---------------------------------------------------------------- the listen-in
+
+        /// <summary>
+        /// The one line a listen-in that was not caught logs (X5, owned by D4; the shared builder D2 adds
+        /// its act clause to), in its fixed clause order: what was overheard, "You overheard A and B. They
+        /// {reading}."; the vote clause (<c>OverheardVote</c>); D2's act clause; and D4's sentence
+        /// (<see cref="AllianceLeaks.ListenInSentence"/>). D2 passes no pact or meet clause where D4's
+        /// sentence fires. Every clause null - every rule off - is the line the season always said, byte
+        /// for byte. It adds no id and changes no audience: the caller logs it once, to the player.
+        /// </summary>
+        public static string EavesdropLine(string firstName, string secondName, string reading, string voteClause,
+            string actClause, string pactSentence) =>
+            "You overheard " + firstName + " and " + secondName + ". They " + reading + "." + voteClause + actClause + pactSentence;
+
+        /// <summary>
+        /// A listen-in that heard two people, under the leak rules (WAVE-D-NPC-PACTS-PLAN §2.3, D4-M2): the
+        /// one pact of the two (<see cref="Knowledge.PactOfPair"/>, asked for the player) makes the player
+        /// a knower of its fact only when it stands, has a fact, is not the player's own, is not known to
+        /// them already, and the people of it in the house are exactly the two overheard - two members of a
+        /// bigger pact give nothing away (§6 Q5). The fact stays private: overhearing starts no gossip, and
+        /// the player's memory says only what it always said, so the pact cannot be passed on. Returns the
+        /// sentence the line gains, or null when nothing was learned. No draw and no id.
+        /// </summary>
+        private static string ListenIn(EpisodeState s, ContestantState first, ContestantState second)
+        {
+            var pact = Knowledge.PactOfPair(s, first.id, second.id, s.playerId);
+            if (pact == null || !pact.active || pact.members.Contains(s.playerId)) return null;
+            var fact = Knowledge.Of(s, FactKinds.Alliance, pact.id);
+            if (fact == null || Knowledge.Knows(fact, s.playerId)) return null;
+            var here = pact.members.Where(id => s.Find(id)?.status == ContestantStatus.Active).Distinct().ToList();
+            if (here.Count != 2 || !here.Contains(first.id) || !here.Contains(second.id)) return null;
+            Knowledge.AddKnower(s, fact, s.playerId);
+            return fact.knowers.Contains(s.playerId) ? AllianceLeaks.ListenInSentence(s, pact) : null;
+        }
     }
 }

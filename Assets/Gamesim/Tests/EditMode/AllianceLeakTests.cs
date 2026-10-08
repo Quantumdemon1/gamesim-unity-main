@@ -360,5 +360,136 @@ namespace Gamesim.Tests.EditMode
             Assert.That(receipts, Has.Member(AllianceRead.LearnedLine(s, secretAfter)), "The receipt names the secret pair,");
             Assert.That(receipts, Has.No.Member(AllianceRead.LearnedLine(s, s.alliances.Single(a => a.id == known.id))), "never the pact of three.");
         }
+
+        // ------------------------------------------------------------ D4-2: the listen-in
+
+        /// <summary>A season stream whose next draw is a listen-in caught (0.7 or more) or not.</summary>
+        private static uint StreamWhereTheListenIn(bool caught)
+        {
+            for (uint x = 1; ; x++)
+                if ((new SeededRandom(x).NextDouble() >= EpisodeEngine.EavesdropSuccessChance) == caught) return x;
+        }
+
+        /// <summary>Listens in on two named houseguests the way the engine does (EpisodeEngine.Eavesdrop), caught or not.</summary>
+        private static void ListenIn(EpisodeState s, string first, string second, bool caught = false)
+        {
+            s.randomState = StreamWhereTheListenIn(caught);
+            var command = new EpisodeCommand { id = "listen-" + s.nextSequence, actorId = s.playerId, kind = EpisodeCommandKind.Eavesdrop,
+                targetId = first, secondTargetId = second };
+            EngineMethod("Eavesdrop", typeof(EpisodeState), typeof(EpisodeCommand)).Invoke(null, new object[] { s, command });
+        }
+
+        private static EpisodeEvent LastLine(EpisodeState s, string kind) => s.events.Last(e => e.kind == kind);
+
+        /// <summary>
+        /// The same listen-in on a pact of the two overheard, with the leak rules and without: the same
+        /// draws, the same ids, the same memory and the same audience. Under the rules the player is a
+        /// knower of the pact - still private, so the house's gossip has not started - and the line says so
+        /// in one sentence naming everyone the alliances page's card shows, which the page then dates.
+        /// </summary>
+        [Test]
+        public void AListenInOnAPactOfExactlyTheTwoMakesThePlayerASuspectedKnowerInTheLineAndNowhereElse()
+        {
+            EpisodeState Fixture(bool rules)
+            {
+                var s = House();
+                EpisodeEngine.EnableStory(s, s.week);
+                EpisodeEngine.EnableCommitments(s, s.week);
+                if (rules) EpisodeEngine.EnableAllianceLeaks(s, s.week);
+                var n = Others(s);
+                PrivateFact(s, Pact(s, "pair", true, n[1].id, n[0].id));
+                return s;
+            }
+            var off = Fixture(false);
+            var on = Fixture(true);
+            var o = Others(off);
+            ListenIn(off, o[0].id, o[1].id);
+            ListenIn(on, o[0].id, o[1].id);
+            Assert.That(on.randomState, Is.EqualTo(off.randomState), "The same draws,");
+            Assert.That(on.nextSequence, Is.EqualTo(off.nextSequence), "the same ids,");
+            Assert.That(on.memories.Last().text, Is.EqualTo(off.memories.Last().text), "the same memory, which names no pact,");
+            var offLine = LastLine(off, "eavesdrop");
+            var onLine = LastLine(on, "eavesdrop");
+            Assert.That(onLine.audienceIds, Is.EqualTo(new[] { on.playerId }), "and the player alone hears it.");
+            Assert.That(offLine.text, Does.StartWith("You overheard " + o[0].name + " and " + o[1].name + ". They "));
+            Assert.That(Knowledge.Knows(Knowledge.Of(off, FactKinds.Alliance, "pair"), off.playerId), Is.False, "Without the rules nothing is learned.");
+
+            var pact = on.alliances.Single(a => a.id == "pair");
+            var fact = Knowledge.Of(on, FactKinds.Alliance, pact.id);
+            string sentence = " From the way they talked, " + on.contestants.Where(c => pact.members.Contains(c.id)).Select(c => c.name)
+                .Aggregate((a, b) => a + " and " + b) + " are working together.";
+            Assert.That(AllianceLeaks.ListenInSentence(on, pact), Is.EqualTo(sentence), "Named in the card's order.");
+            Assert.That(onLine.text, Is.EqualTo(offLine.text + sentence), "The line, then the sentence.");
+            Assert.That(Knowledge.Knows(fact, on.playerId), Is.True);
+            Assert.That(fact.visibility, Is.EqualTo(FactVisibility.Private), "Overhearing starts no gossip.");
+            Assert.That(FinalistRead.AllianceCertainty(on, pact), Is.EqualTo(FinalistRead.Suspected));
+            var card = AllianceRead.Suspected(on).Single();
+            Assert.That(card.memberIds, Is.EqualTo(on.contestants.Where(c => pact.members.Contains(c.id)).Select(c => c.id)));
+            Assert.That(card.evidence.Select(e => e.week + ": " + e.text), Is.EqualTo(new[] { on.week + ": " + onLine.text }),
+                "The page dates it by the line that told the player.");
+        }
+
+        [Test]
+        public void AListenInGrantsNothingForTwoOfABiggerPactThePlayersOwnPactOrWhenCaught()
+        {
+            // Two of a pact of three, all in the house: the line is the line, and nothing is learned.
+            var s = Rules();
+            var n = Others(s);
+            var trio = Pact(s, "trio", true, n[0].id, n[1].id, n[2].id);
+            var trioFact = PrivateFact(s, trio);
+            ListenIn(s, n[0].id, n[1].id);
+            Assert.That(LastLine(s, "eavesdrop").text, Does.Not.Contain("From the way they talked"));
+            Assert.That(Knowledge.Knows(trioFact, s.playerId), Is.False, "Two members of a bigger pact give nothing away.");
+
+            // Its third member gone: the people of it in the house are exactly the two, and the sentence
+            // names all three, as the card does.
+            n[2].status = ContestantStatus.Evicted;
+            ListenIn(s, n[1].id, n[0].id);
+            Assert.That(Knowledge.Knows(trioFact, s.playerId), Is.True);
+            Assert.That(LastLine(s, "eavesdrop").text, Does.EndWith(AllianceLeaks.ListenInSentence(s, trio)));
+            Assert.That(AllianceLeaks.ListenInSentence(s, trio), Does.Contain(n[2].name));
+            // Heard again: known already, so nothing more is said.
+            ListenIn(s, n[0].id, n[1].id);
+            Assert.That(LastLine(s, "eavesdrop").text, Does.Not.Contain("From the way they talked"));
+
+            // The player's own pact.
+            var t = Rules();
+            var m = Others(t);
+            var ours = Pact(t, "ours", true, t.playerId, m[0].id, m[1].id);
+            PrivateFact(t, ours);
+            ListenIn(t, m[0].id, m[1].id);
+            Assert.That(LastLine(t, "eavesdrop").text, Does.Not.Contain("From the way they talked"), "Nothing to learn of one's own pact.");
+
+            // Caught: nothing is overheard at all.
+            var u = Rules();
+            var k = Others(u);
+            var pair = Pact(u, "pair", true, k[0].id, k[1].id);
+            var pairFact = PrivateFact(u, pair);
+            ListenIn(u, k[0].id, k[1].id, caught: true);
+            Assert.That(Knowledge.Knows(pairFact, u.playerId), Is.False, "A caught listen-in grants nothing.");
+            Assert.That(u.events.Any(e => e.kind == "eavesdrop" && e.text.Contains("From the way they talked")), Is.False);
+        }
+
+        /// <summary>The listen-in as the player presses it: one command, accepted, and the season legal after it.</summary>
+        [Test]
+        public void TheListenInIsOneLegalCommand()
+        {
+            var s = ContentCatalog.Create(4301);
+            EpisodeEngine.EnableStory(s); EpisodeEngine.EnableCommitments(s); EpisodeEngine.EnableAllianceLeaks(s);
+            var n = Others(s);
+            var pact = new AllianceState { id = "alliance-npc-" + s.nextSequence++, name = "The Overheard Pact", active = true,
+                members = new List<string> { n[0].id, n[1].id } };
+            s.alliances.Add(pact);
+            Knowledge.AllianceFormed(s, pact);
+            s.randomState = StreamWhereTheListenIn(false);
+            Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.True, error);
+            var command = EpisodeEngineTests.Command(s, EpisodeCommandKind.Eavesdrop);
+            command.targetId = n[0].id; command.secondTargetId = n[1].id;
+            var result = new EpisodeEngine(s).Apply(command);
+            Assert.That(result.accepted, Is.True, result.reason);
+            var after = result.state;
+            Assert.That(after.events.Last(e => e.kind == "eavesdrop").text, Does.EndWith(AllianceLeaks.ListenInSentence(after, pact)));
+            Assert.That(Knowledge.Knows(Knowledge.Of(after, FactKinds.Alliance, pact.id), after.playerId), Is.True);
+        }
     }
 }

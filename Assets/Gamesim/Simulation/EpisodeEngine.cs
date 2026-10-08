@@ -1358,8 +1358,10 @@ namespace Gamesim.Simulation
             string vote = OverheardVote(s, first, second);
             Remember(s, s.playerId, first.id, "I overheard " + first.name + " and " + second.name
                 + " in week " + s.week + ". They " + reading + "." + vote, true);
-            Log(s, "eavesdrop", "You overheard " + first.name + " and " + second.name + ". They " + reading + "." + vote,
-                s.playerId);
+            // Under the leak rules a pact of exactly these two is heard for what it is (WAVE-D-NPC-PACTS-PLAN
+            // D4-M2): the player a suspected knower, in the line and nowhere else. No draw, no id.
+            string pact = AllianceLeaks.On(s) ? ListenIn(s, first, second) : null;
+            Log(s, "eavesdrop", EavesdropLine(first.name, second.name, reading, vote, null, pact), s.playerId);
         }
 
         /// <summary>

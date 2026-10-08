@@ -2543,5 +2543,11 @@ namespace Gamesim.Simulation
         }
         private static void Require(bool condition, string message) { if (!condition) throw new RuleException(message); }
         private sealed class RuleException : Exception { public RuleException(string message) : base(message) { } }
+
+        /// <summary>
+        /// The whole command's refusal, for an owner outside this class: thrown inside a command, it refuses the
+        /// command - nothing installed, drawn or minted - as <see cref="Require"/> does.
+        /// </summary>
+        internal static Exception Refusal(string reason) => new RuleException(reason);
     }
 }

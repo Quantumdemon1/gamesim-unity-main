@@ -126,6 +126,10 @@ namespace Gamesim.Tests.EditMode
         internal static bool StoreTryAddOwnVetoPrice(EpisodeState s, DealState veto, DealState price, out string error) =>
             Store("TryAddOwnVetoPrice", new[] { typeof(EpisodeState), typeof(DealState), typeof(DealState), OutString }, out error, s, veto, price);
 
+        /// <summary>UnifiedVoteStore.TryInstallAskPrice: the accepted ask's Vote price, admitted as it is struck.</summary>
+        internal static bool StoreTryInstallAskPrice(EpisodeState s, DealState ask, DealState price, out string error) =>
+            Store("TryInstallAskPrice", new[] { typeof(EpisodeState), typeof(DealState), typeof(DealState), OutString }, out error, s, ask, price);
+
         private static readonly Type SafetyStoreType = Simulation.GetType("Gamesim.Simulation.UnifiedCommitmentStore");
 
         /// <summary>UnifiedCommitmentStore.TryRespond: the player's answer to a canonical safety offer.</summary>

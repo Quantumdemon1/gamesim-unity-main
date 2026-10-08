@@ -474,16 +474,8 @@ namespace Gamesim.Tests.EditMode
         public void ATakenVetoAskStrikesItsVotePriceAsACanonicalRow()
         {
             var s = VetoHolder();
-            string asker = s.nominees.First(id => id != s.playerId);
-            var ask = s.deals.FirstOrDefault(d => d.id.StartsWith(NpcDeals.VetoAskPrefix, StringComparison.Ordinal) && d.proposerId == asker
-                && d.status == DealStatus.Proposed);
-            if (ask == null)
-            {
-                // Filed as NpcDeals.AskForTheVeto files it.
-                ask = new DealState { id = NpcDeals.VetoAskPrefix + s.nextSequence++, type = DealKind.VetoUse, proposerId = asker, recipientId = s.playerId,
-                    status = DealStatus.Proposed, week = s.week, expiresWeek = s.week, trustImpact = DealKind.DefaultTrust(DealKind.VetoUse) };
-                s.deals.Add(ask);
-            }
+            var ask = VetoAsk(s);
+            string asker = ask.proposerId;
             Assert.That(Negotiation.AskPrice(ProspectiveVoteTwins.Valid(s), ask)?.kind, Is.EqualTo(DealKind.VoteSave), "Fixture: a vote price.");
             var (legacy, prospective) = ProspectiveVoteTwins.Both(s, ProspectiveVoteTwins.Command(s, EpisodeCommandKind.RespondToDeal, ask.id, text: EpisodeEngine.AcceptDeal));
             Assert.That(legacy.accepted, Is.True, legacy.reason);
@@ -498,6 +490,58 @@ namespace Gamesim.Tests.EditMode
             Assert.That((answered.status, answered.linkedDealId), Is.EqualTo((DealStatus.Active, price.id)), "The ask stays raw and names its price.");
             NoRawVoteRows(after);
             ProspectiveVoteTwins.AssertParity(legacy.state, after, "A taken veto ask");
+        }
+
+        /// <summary>A nominee's still-pending veto ask to the player: the house's own, or filed as NpcDeals.AskForTheVeto files it.</summary>
+        private static DealState VetoAsk(EpisodeState s)
+        {
+            string asker = s.nominees.First(id => id != s.playerId);
+            var ask = s.deals.FirstOrDefault(d => d.id.StartsWith(NpcDeals.VetoAskPrefix, StringComparison.Ordinal) && d.proposerId == asker
+                && d.status == DealStatus.Proposed);
+            if (ask != null) return ask;
+            ask = new DealState { id = NpcDeals.VetoAskPrefix + s.nextSequence++, type = DealKind.VetoUse, proposerId = asker, recipientId = s.playerId,
+                status = DealStatus.Proposed, week = s.week, expiresWeek = s.week, trustImpact = DealKind.DefaultTrust(DealKind.VetoUse) };
+            s.deals.Add(ask);
+            return ask;
+        }
+
+        /// <summary>
+        /// The ask's price is admitted as it is struck, not assumed from its reservation before the yes: struck at
+        /// the sequence the season has reached, it is written and the answered ask names it; at another sequence,
+        /// or with the vote it carries already owed to the player by then, nothing is written.
+        /// </summary>
+        [TestCase("struck")] [TestCase("another sequence")] [TestCase("already owed")]
+        public void AStruckAskPriceIsAdmittedAsItIsWritten(string defect)
+        {
+            var source = VetoHolder();
+            string askId = VetoAsk(source).id;
+            var s = ProspectiveVoteTwins.Twin(ProspectiveVoteTwins.Valid(source));
+            var ask = s.deals.Single(d => d.id == askId);
+            var terms = Negotiation.AskPrice(s, ask);
+            if (defect == "already owed")
+            {
+                // A story's vote to keep the player, from the asker, made before the yes.
+                var owed = PlayerDeals.Draft(s, ask.proposerId, DealKind.VoteSave, null, "deal-story-" + s.nextSequence);
+                owed.proposerId = ask.proposerId; owed.recipientId = s.playerId; owed.targetId = s.playerId;
+                Assert.That(ProspectiveVoteFacade.StoreTryAddDeal(s, owed, UnifiedCommitments.StoryDeal, out var owedError), Is.True, owedError);
+                s.nextSequence++;
+            }
+            // The command's yes, as RespondToDeal gives it: the ask answered for this week.
+            ask.status = DealStatus.Active; ask.expiresWeek = s.week;
+            var price = Negotiation.DraftPrice(s, terms, ask.id, Negotiation.PricePrefix + (s.nextSequence + (defect == "another sequence" ? 1 : 0)));
+            string before = PinnedVoteSeason.Json(s);
+            bool struck = ProspectiveVoteFacade.StoreTryInstallAskPrice(s, ask, price, out var error);
+            if (defect == "struck")
+            {
+                Assert.That(struck, Is.True, error);
+                var row = Rows(s, UnifiedVoteFamilyValidation.VetoAskPrice).Single();
+                Assert.That((row.id, row.linkedCommitmentId, ask.linkedDealId), Is.EqualTo((price.id, ask.id, price.id)));
+            }
+            else
+            {
+                Assert.That(struck, Is.False);
+                Assert.That(PinnedVoteSeason.Json(s), Is.EqualTo(before), "Nothing is struck: " + error);
+            }
         }
 
         /// <summary>
@@ -595,6 +639,36 @@ namespace Gamesim.Tests.EditMode
             ApplyStoryEffect(legacy, e); ApplyStoryEffect(prospective, e);
             Assert.That(Rows(prospective, origin).Count(), Is.EqualTo(1), "The same story effect again writes nothing more.");
             ProspectiveVoteTwins.AssertParity(legacy, prospective, "A story's " + effect + " again");
+        }
+
+        /// <summary>
+        /// A state the complete core already refuses is never silently a skipped row. The owners that skip a draft
+        /// the store refuses - a story's word on the vote, a house pass's bargain - meet a failing state as the whole
+        /// command's refusal, naming the core's reason, and write nothing. (A draft refused on its own is still
+        /// skipped: ADuplicateHouseBargainIsRefusedBeforeItsLedgerLine.)
+        /// </summary>
+        [TestCase(StoryEffects.Promise)] [TestCase("house bargain")]
+        public void AStateTheCoreRefusesIsTheCommandsRefusalNeverASkippedRow(string owner)
+        {
+            var s = ProspectiveVoteTwins.Twin(Voter());
+            var voters = NpcVoters(s);
+            // Constructed: a raw vote word the core refuses, as an inconsistency in the middle of a command would leave it.
+            s.promises.Add(new PromiseState { id = "promise-mirror", fromId = voters[1], toId = s.nominees[1], targetId = s.nominees[0],
+                kind = PromiseKind.Vote, status = PromiseStatus.Active, week = s.week, expiresWeek = s.week });
+            Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(s, out var invalid), Is.False, "Fixture: the core refuses the state.");
+            string before = PinnedVoteSeason.Json(s);
+            var thrown = Assert.Throws<TargetInvocationException>(() =>
+            {
+                if (owner == StoryEffects.Promise)
+                    ApplyStoryEffect(s, new StoryEffectState { kind = StoryEffects.Promise, fromId = voters[0], toId = s.nominees[0], type = PromiseKind.Vote.ToString() });
+                else
+                    typeof(NpcDeals).GetMethod("Strike", BindingFlags.Static | BindingFlags.NonPublic)
+                        .Invoke(null, new object[] { s, s.nominees[0], voters[0], DealKind.VoteSave });
+            });
+            Assert.That(thrown.InnerException?.GetType().Name, Is.EqualTo("RuleException"), "The whole command's refusal.");
+            Assert.That(thrown.InnerException.Message, Does.StartWith("The prospective Vote state fails its core in the middle of the command: "));
+            Assert.That(thrown.InnerException.Message, Does.EndWith(invalid));
+            Assert.That(PinnedVoteSeason.Json(s), Is.EqualTo(before), "Nothing is written.");
         }
 
         /// <summary>One story effect, applied the way a beat applies it (EpisodeEngine.ApplyStoryEffect).</summary>

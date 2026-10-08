@@ -16,6 +16,12 @@ namespace Gamesim.Simulation
     /// leaves the state as it was. Under modes 0 and 1 nothing here writes, and every view returns
     /// exactly what the expression it replaced returned, so recorded seasons read, draw and mint as before.</para>
     ///
+    /// <para>A write's refusal is the draft's - a duplicate, a full shelf, a prerequisite - which its owner
+    /// answers as its source does, by refusing the command or skipping the row; or it is the state's, one
+    /// the complete core already refuses in the middle of the command. That one is never the owner's to
+    /// skip past: it is thrown as the whole command's refusal (<see cref="Refused"/>), so a failing state
+    /// cannot silently drop a house pass's or a story's row.</para>
+    ///
     /// <para>Settlement, the reveal's archive, endings and the readers are not this writer's: under mode 2
     /// a written row stays as written until those slices land.</para>
     /// </summary>
@@ -63,7 +69,7 @@ namespace Gamesim.Simulation
         /// <summary>Admits the promise draft and appends its canonical row, or refuses and writes nothing.</summary>
         internal static bool TryAddPromise(EpisodeState s, PromiseState draft, string origin, out string error)
         {
-            if (!UnifiedVoteAdmission.TryPromise(s, draft, origin, out var row, out error)) return false;
+            if (!UnifiedVoteAdmission.TryPromise(s, draft, origin, out var row, out error)) return Refused(s);
             s.unifiedCommitments.Add(row);
             return true;
         }
@@ -75,7 +81,7 @@ namespace Gamesim.Simulation
         /// <summary>Admits the deal draft and appends its canonical row, or refuses and writes nothing.</summary>
         internal static bool TryAddDeal(EpisodeState s, DealState draft, string origin, out string error)
         {
-            if (!UnifiedVoteAdmission.TryDeal(s, draft, origin, out var row, out error)) return false;
+            if (!UnifiedVoteAdmission.TryDeal(s, draft, origin, out var row, out error)) return Refused(s);
             s.unifiedCommitments.Add(row);
             return true;
         }
@@ -90,11 +96,11 @@ namespace Gamesim.Simulation
             int index = s.unifiedCommitments.FindIndex(row => row.id == id);
             if (accept)
             {
-                if (!UnifiedVoteAdmission.TryAnswerOffer(s, id, out var answered, out error)) return false;
+                if (!UnifiedVoteAdmission.TryAnswerOffer(s, id, out var answered, out error)) return Refused(s);
                 s.unifiedCommitments[index] = answered;
                 return true;
             }
-            if (!EpisodeValidation.TryValidateProspectiveUnifiedVote(s, out error)) return false;
+            if (!EpisodeValidation.TryValidateProspectiveUnifiedVote(s, out error)) return Refused(s);
             var pending = index < 0 ? null : s.unifiedCommitments[index];
             if (pending == null || pending.kind != UnifiedVoteTogether.Vote || pending.origin != UnifiedCommitments.NpcOffer
                 || pending.status != DealStatus.Proposed || pending.beneficiaryId != s.playerId
@@ -104,7 +110,7 @@ namespace Gamesim.Simulation
             declined.status = DealStatus.Declined;
             var candidate = s.Clone();
             candidate.unifiedCommitments[index] = declined.Clone();
-            if (!EpisodeValidation.TryValidateProspectiveUnifiedVote(candidate, out error)) return false;
+            if (!EpisodeValidation.TryValidateProspectiveUnifiedVote(candidate, out error)) return Refused(s);
             s.unifiedCommitments[index] = declined;
             return true;
         }
@@ -116,7 +122,7 @@ namespace Gamesim.Simulation
         /// </summary>
         internal static bool TryAddCounter(EpisodeState s, DealState bought, DealState price, out string error)
         {
-            if (!UnifiedVoteAdmission.TryCounterBundle(s, bought, price, out var plan, out error)) return false;
+            if (!UnifiedVoteAdmission.TryCounterBundle(s, bought, price, out var plan, out error)) return Refused(s);
             Install(s, plan);
             return true;
         }
@@ -128,7 +134,7 @@ namespace Gamesim.Simulation
         /// <summary>The player's own veto (raw) and the nominee's Vote price for it (canonical), both or neither.</summary>
         internal static bool TryAddOwnVetoPrice(EpisodeState s, DealState veto, DealState price, out string error)
         {
-            if (!UnifiedVoteAdmission.TryOwnVetoPrice(s, veto, price, out var plan, out error)) return false;
+            if (!UnifiedVoteAdmission.TryOwnVetoPrice(s, veto, price, out var plan, out error)) return Refused(s);
             Install(s, plan);
             return true;
         }
@@ -142,20 +148,18 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// The accepted ask's Vote price, written where the source strikes it: after the yes, its warmth,
-        /// memory and line, with the sequence the season has reached by then. Its admission is the
-        /// reservation <see cref="CanAddAskPrice"/> made before the yes moved anything; the command's
-        /// complete prospective core then judges the whole candidate. The ask itself stays raw and names
-        /// its price, as the source links it.
+        /// memory and line, with the sequence the season has reached by then. <see cref="CanAddAskPrice"/>
+        /// reserved it before the yes moved anything; the struck row is admitted again as it is written
+        /// (<see cref="UnifiedVoteAdmission.TryStruckAskPrice"/>), its answered ask linked to it. The ask
+        /// itself stays raw and names its price, as the source links it.
         /// </summary>
         internal static bool TryInstallAskPrice(EpisodeState s, DealState ask, DealState price, out string error)
         {
             error = null;
-            if (!On(s) || ask == null || price == null || price.type != DealKind.VoteSave || price.linkedDealId != ask.id
-                || ask.type != DealKind.VetoUse || ask.status != DealStatus.Active || ask.linkedDealId != null
-                || !s.deals.Contains(ask) || !Negotiation.IsPrice(price) || price.week != s.week)
-                return Refuse(out error, "Strike only the reserved Vote price of the veto ask just accepted.");
-            s.unifiedCommitments.Add(UnifiedVoteAdmission.FromDeal(price, UnifiedVoteFamilyValidation.VetoAskPrice, s.week,
-                UnifiedVoteAdmission.Floor(s, UnifiedVoteFamilyValidation.VetoAskPrice)));
+            if (!On(s) || ask == null || !s.deals.Contains(ask))
+                return Refuse(out error, "Strike only the Vote price of the veto ask this command answered.");
+            if (!UnifiedVoteAdmission.TryStruckAskPrice(s, ask, price, out var row, out error)) return Refused(s);
+            s.unifiedCommitments.Add(row);
             ask.linkedDealId = price.id;
             return true;
         }
@@ -166,6 +170,18 @@ namespace Gamesim.Simulation
         {
             s.unifiedCommitments.AddRange(plan.CanonicalAdditions.Select(row => row.Clone()));
             s.deals.AddRange(plan.RawAdditions.Select(row => row.Clone()));
+        }
+
+        /// <summary>
+        /// A write's refusal, classified (vote family V3's review): the draft's is returned for its owner to
+        /// answer; the state's - the complete core already refuses the state the write was given - is thrown as
+        /// the whole command's refusal, naming the core's reason. Only a refusal pays for the second check.
+        /// </summary>
+        private static bool Refused(EpisodeState s)
+        {
+            if (!EpisodeValidation.TryValidateProspectiveUnifiedVote(s, out var stateError))
+                throw EpisodeEngine.Refusal("The prospective Vote state fails its core in the middle of the command: " + stateError);
+            return false;
         }
 
         private static bool Refuse(out string error, string reason) { error = reason; return false; }

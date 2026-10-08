@@ -57,6 +57,9 @@ namespace Gamesim.Episode
         /// <summary>How long the shot holds on the door shut behind them before their body goes.</summary>
         public const float DoorHoldSeconds = 1.2f;
 
+        /// <summary>How long, on the unscaled clock, a press after the walk begins is still the one that closed the last card.</summary>
+        public const float WalkOutPressGuardSeconds = 0.35f;
+
         /// <summary>How long a warm or dealt goodbye stops at the door, turned back to the house: the opening's own pose length.</summary>
         public const float LastLookSeconds = 1.6f;
 
@@ -222,7 +225,7 @@ namespace Gamesim.Episode
             walkOutLeg = 0;
             walkOutUntil = Time.unscaledTime + WalkOutSeconds;
             // A press already in flight - the one that closed the last card - does not skip the walk.
-            walkOutPressGuard = Time.unscaledTime + 0.35f;
+            walkOutPressGuard = Time.unscaledTime + WalkOutPressGuardSeconds;
             // Under a staged eviction it is the goodbye's second half: the stage keeps the house in
             // its seats to watch, and the camera, until the door is shut behind them.
             walkOutStaged = IsCeremonyStaged && CeremonyStageKind == CeremonySting.EvictionKind;

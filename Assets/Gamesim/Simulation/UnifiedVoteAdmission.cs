@@ -63,7 +63,7 @@ namespace Gamesim.Simulation
                 beneficiaryId = sourceDraft.toId, reciprocal = false, createdWeek = sourceDraft.week,
                 expiresWeek = sourceDraft.expiresWeek, status = DealStatus.Active, trustImpact = sourceDraft.impact,
                 targetId = sourceDraft.targetId, voteBindingWeek = s.week, voteFirstRevealWeek = Floor(s, origin) };
-            if (!UnifiedVoteFamilyValidation.TryValidateDraftBundle(s, new[] { candidate }, Array.Empty<DealState>(), null, out error)) return false;
+            if (!UnifiedVoteFamilyValidation.TryValidateAdmittedDraftBundle(s, new[] { candidate }, Array.Empty<DealState>(), null, out error)) return false;
             row = candidate.Clone(); return true;
         }
 
@@ -120,7 +120,7 @@ namespace Gamesim.Simulation
             else if (Between(s, sourceDraft.proposerId, sourceDraft.recipientId).Any(old => old.type == sourceDraft.type && old.targetId == sourceDraft.targetId))
                 return Fail(out error, "The generic Story deal preserves its actual existing-type refusal.");
             var candidate = FromDeal(sourceDraft, origin, proposed ? 0 : s.week, proposed ? 0 : Floor(s, origin));
-            if (!UnifiedVoteFamilyValidation.TryValidateDraftBundle(s, new[] { candidate }, Array.Empty<DealState>(), null, out error)) return false;
+            if (!UnifiedVoteFamilyValidation.TryValidateAdmittedDraftBundle(s, new[] { candidate }, Array.Empty<DealState>(), null, out error)) return false;
             row = candidate.Clone(); return true;
         }
 
@@ -135,7 +135,7 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Answer the genuine still-pending offer between its actual active parties.");
             var candidate = source.Clone(); candidate.status = DealStatus.Active; candidate.expiresWeek = s.week;
             candidate.voteBindingWeek = s.week; candidate.voteFirstRevealWeek = Floor(s, source.origin);
-            if (!UnifiedVoteFamilyValidation.TryValidateAnswer(s, candidate, out error)) return false;
+            if (!UnifiedVoteFamilyValidation.TryValidateAdmittedAnswer(s, candidate, out error)) return false;
             row = candidate.Clone(); return true;
         }
 
@@ -166,7 +166,7 @@ namespace Gamesim.Simulation
             AddDeal(bought, UnifiedCommitments.CounterDeal); AddDeal(price, UnifiedCommitments.CounterPrice);
             // A raw counter member is also a source draft; unlike own-veto, its ID prefix differs.
             // The aggregate's draft whitelist below handles that exact explicit source prefix.
-            if (!UnifiedVoteFamilyValidation.TryValidateCounterDraftBundle(s, canonical, raw, out error)) return false;
+            if (!UnifiedVoteFamilyValidation.TryValidateAdmittedCounterDraftBundle(s, canonical, raw, out error)) return false;
             plan = new UnifiedVoteAdmissionPlan(canonical, raw, null); return true;
             void AddDeal(DealState draft, string origin)
             {
@@ -195,7 +195,7 @@ namespace Gamesim.Simulation
                     && (old.proposerId == s.playerId || old.recipientId == s.playerId)))
                 return Fail(out error, "Use the actual undecided player's veto, nominee and unowed VoteSave price prerequisites.");
             var candidate = FromDeal(price, UnifiedVoteFamilyValidation.OwnVetoPrice, s.week, s.week);
-            if (!UnifiedVoteFamilyValidation.TryValidateDraftBundle(s, new[] { candidate }, new[] { bought }, null, out error)) return false;
+            if (!UnifiedVoteFamilyValidation.TryValidateAdmittedDraftBundle(s, new[] { candidate }, new[] { bought }, null, out error)) return false;
             plan = new UnifiedVoteAdmissionPlan(new[] { candidate }, new[] { bought }, null); return true;
         }
 
@@ -216,7 +216,7 @@ namespace Gamesim.Simulation
             var answered = ask.Clone(); answered.status = DealStatus.Active; answered.expiresWeek = s.week;
             answered.linkedDealId = price.id;
             var candidate = FromDeal(price, UnifiedVoteFamilyValidation.VetoAskPrice, s.week, Floor(s, UnifiedVoteFamilyValidation.VetoAskPrice));
-            if (!UnifiedVoteFamilyValidation.TryValidateDraftBundle(s, new[] { candidate }, Array.Empty<DealState>(), answered, out error)) return false;
+            if (!UnifiedVoteFamilyValidation.TryValidateAdmittedDraftBundle(s, new[] { candidate }, Array.Empty<DealState>(), answered, out error)) return false;
             plan = new UnifiedVoteAdmissionPlan(new[] { candidate }, Array.Empty<DealState>(), answered); return true;
         }
 
@@ -239,7 +239,7 @@ namespace Gamesim.Simulation
                 || !EpisodeEngine.LeverRulesOn(s) || Between(s, answeredAsk.proposerId, s.playerId).Any(old => old.type == DealKind.VoteSave))
                 return Fail(out error, "Strike the real answered veto ask's eligible, unowed VoteSave price.");
             var candidate = FromDeal(price, UnifiedVoteFamilyValidation.VetoAskPrice, s.week, Floor(s, UnifiedVoteFamilyValidation.VetoAskPrice));
-            if (!UnifiedVoteFamilyValidation.TryValidateStruckAskPrice(s, answeredAsk.id, candidate, out error)) return false;
+            if (!UnifiedVoteFamilyValidation.TryValidateAdmittedStruckAskPrice(s, answeredAsk.id, candidate, out error)) return false;
             row = candidate.Clone(); return true;
         }
 

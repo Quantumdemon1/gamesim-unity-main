@@ -32,9 +32,18 @@ namespace Gamesim.Simulation
         // explicit, bounded set of additions on a detached candidate, never a staging/save gate.
         internal static bool TryValidateDraftBundle(EpisodeState s, IReadOnlyList<UnifiedCommitmentState> additions,
             IReadOnlyList<DealState> rawAdditions, DealState rawReplacement, out string error)
+            => EpisodeValidation.TryValidateProspectiveUnifiedVote(s, out error)
+                && ValidateDraftBundle(s, additions, rawAdditions, rawReplacement, false, out error);
+
+        // The admission's own entries (UnifiedVoteAdmission, vote family V4). Each is called straight after the
+        // admission has held this very state to the complete prospective core (UnifiedVoteAdmission.Ready), with
+        // nothing changed between, so the state is not validated a second time: an admitted write paid for two
+        // whole-state validations. The candidate is still judged by the family's complete aggregate.
+        internal static bool TryValidateAdmittedDraftBundle(EpisodeState s, IReadOnlyList<UnifiedCommitmentState> additions,
+            IReadOnlyList<DealState> rawAdditions, DealState rawReplacement, out string error)
             => ValidateDraftBundle(s, additions, rawAdditions, rawReplacement, false, out error);
 
-        internal static bool TryValidateCounterDraftBundle(EpisodeState s, IReadOnlyList<UnifiedCommitmentState> additions,
+        internal static bool TryValidateAdmittedCounterDraftBundle(EpisodeState s, IReadOnlyList<UnifiedCommitmentState> additions,
             IReadOnlyList<DealState> rawAdditions, out string error)
             => ValidateDraftBundle(s, additions, rawAdditions, null, true, out error);
 
@@ -42,7 +51,6 @@ namespace Gamesim.Simulation
             IReadOnlyList<DealState> rawAdditions, DealState rawReplacement, bool counter, out string error)
         {
             error = null;
-            if (!EpisodeValidation.TryValidateProspectiveUnifiedVote(s, out error)) return false;
             if (additions == null || rawAdditions == null || additions.Count < 1 || additions.Count > 2
                 || rawAdditions.Count > 1 || additions.Count + rawAdditions.Count > 2 || s.nextSequence >= 1000000
                 || additions.Any(row => row == null) || rawAdditions.Any(row => row == null))
@@ -84,12 +92,12 @@ namespace Gamesim.Simulation
         /// The accepted veto ask's Vote price as the source strikes it: after the command's yes has answered
         /// the ask (Active, this week's term, not yet linked), with the sequence the season has reached by then.
         /// The detached candidate links the ask to the row and admits the row as a draft, judged by the same
-        /// complete aggregate a reservation's draft bundle is.
+        /// complete aggregate a reservation's draft bundle is. An admission entry: its caller has just held the
+        /// state to the complete core (UnifiedVoteAdmission.TryStruckAskPrice).
         /// </summary>
-        internal static bool TryValidateStruckAskPrice(EpisodeState s, string askId, UnifiedCommitmentState row, out string error)
+        internal static bool TryValidateAdmittedStruckAskPrice(EpisodeState s, string askId, UnifiedCommitmentState row, out string error)
         {
             error = null;
-            if (!EpisodeValidation.TryValidateProspectiveUnifiedVote(s, out error)) return false;
             int index = s.deals.FindIndex(item => item.id == askId);
             var ask = index < 0 ? null : s.deals[index];
             if (ask == null || ask.type != DealKind.VetoUse || ask.status != DealStatus.Active || ask.linkedDealId != null
@@ -105,9 +113,12 @@ namespace Gamesim.Simulation
         }
 
         internal static bool TryValidateAnswer(EpisodeState s, UnifiedCommitmentState answered, out string error)
+            => EpisodeValidation.TryValidateProspectiveUnifiedVote(s, out error) && TryValidateAdmittedAnswer(s, answered, out error);
+
+        /// <summary>An admission entry: its caller has just held the state to the complete core (UnifiedVoteAdmission.TryAnswerOffer).</summary>
+        internal static bool TryValidateAdmittedAnswer(EpisodeState s, UnifiedCommitmentState answered, out string error)
         {
             error = null;
-            if (!EpisodeValidation.TryValidateProspectiveUnifiedVote(s, out error)) return false;
             if (answered == null || answered.origin != UnifiedCommitments.NpcOffer || answered.status != DealStatus.Active)
                 return Fail(out error, "An answer requires its detached actual NPC offer.");
             var index = s.unifiedCommitments.FindIndex(row => row.id == answered.id);

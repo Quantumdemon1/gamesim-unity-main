@@ -279,18 +279,21 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void AnOpenPlanIsOnlyThisWeeksCampaigns()
         {
+            // Week 1's first Campaign cannot hold an earlier week's plan: the week turns only after an
+            // eviction, so play on to week 2's.
             var engine = new EpisodeEngine(Played(2814));
-            for (int step = 0; step < 200 && engine.Snapshot.phase != EpisodePhase.Campaign; step++)
+            for (int step = 0; step < 3000 && !(engine.Snapshot.phase == EpisodePhase.Campaign && engine.Snapshot.week >= 2); step++)
                 Assert.That(engine.Apply(Next(engine.Snapshot)).accepted, Is.True);
             var s = engine.Snapshot;
             Assert.That(s.phase, Is.EqualTo(EpisodePhase.Campaign));
+            Assert.That(s.week, Is.GreaterThan(1));
             s.pactPlanRulesStartWeek = s.week;
             s.ledger.plans.Add(Plan(s, PactPlanStance.Open)); Accepted(s);
-            if (s.week > 1)
-            {
-                var earlier = s.Clone(); earlier.pactPlanRulesStartWeek = 1; earlier.ledger.plans[0].week = s.week - 1;
-                Refused(earlier, "pact plan");
-            }
+            var earlier = s.Clone(); earlier.pactPlanRulesStartWeek = 1; earlier.ledger.plans[0].week = s.week - 1;
+            Refused(earlier, "Invalid pact plan data.");
+            // The same earlier row, settled, is lawful history: the refusal is the open plan's week.
+            var settled = earlier.Clone(); settled.ledger.plans[0].stance = PactPlanStance.Agreed;
+            Accepted(settled);
         }
 
         // ------------------------------------------------------------------ lines and the receipt

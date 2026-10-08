@@ -9,9 +9,10 @@ namespace Gamesim.Tests.EditMode
 {
     /// <summary>
     /// The raw-read guard (PLAN A, A0): every press in the game reaches it through the actions map,
-    /// so that a pad, a rebinding and a test all go the same way. A read straight off
-    /// <c>Keyboard.current</c>, <c>Gamepad.current</c> or <c>Mouse.current</c> in Runtime bypasses
-    /// every one of those, so each file that still has one is named here with how many and why.
+    /// so that a pad, a rebinding and a test all go the same way. A read straight off a device -
+    /// <c>Keyboard.current</c>, <c>Gamepad.all</c>, <c>InputSystem.GetDevice</c> and the rest - in
+    /// Runtime bypasses every one of those, so each file that still has one is named here with how
+    /// many and why.
     ///
     /// <para>Two reasons are for good: the pointer on the house itself (a click on the floor is a
     /// position, not a press any action can carry) and typing (a letter is whatever the keyboard's
@@ -51,7 +52,14 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Allowlist.Where(entry => entry.Why == Allowance.Pending).Select(entry => entry.File), Is.Empty);
         }
 
-        private static readonly Regex RawRead = new Regex(@"\b(Keyboard|Gamepad|Mouse)\.current\b", RegexOptions.CultureInvariant);
+        /// <summary>
+        /// Every way to a device rather than an action: a device class's current one or all of them,
+        /// for every class that presses (the pointer's own position, <c>Pointer.current</c>, is not
+        /// a press), and the input system's own device lookups.
+        /// </summary>
+        private static readonly Regex RawRead = new Regex(
+            @"\b(Keyboard|Gamepad|Mouse|Joystick|Touchscreen|Pen)\.(current|all)\b|\bInputSystem\.(GetDevice\w*|devices\b)",
+            RegexOptions.CultureInvariant);
 
         [Test]
         public void Runtime_ReadsDevicesDirectlyOnlyWhereTheAllowlistSays()
@@ -91,6 +99,18 @@ namespace Gamesim.Tests.EditMode
                 + "/// <see cref=\"Mouse.current\"/>\n"
                 + "var position = Pointer.current; var notIt = MyKeyboard.currentThing;\n";
             Assert.That(CountReads(source), Is.EqualTo(2), "Keyboard.current and Gamepad.current in code; nothing in comments, and Pointer is not a press.");
+        }
+
+        [Test]
+        public void TheScan_CountsEveryWayToADevice()
+        {
+            const string source = "foreach (var pad in Gamepad.all) {}\nvar keys = Keyboard.all;\n"
+                + "var touch = Touchscreen.current; var stick = Joystick.current; var pen = Pen.current;\n"
+                + "var first = InputSystem.GetDevice<Gamepad>(); var byId = InputSystem.GetDeviceById(3);\n"
+                + "foreach (var device in InputSystem.devices) {}\n"
+                + "InputSystem.onAnyButtonPress.Call(Note); var all = AllGamepads.allThings; InputSystem.AddDevice<Gamepad>();\n";
+            Assert.That(CountReads(source), Is.EqualTo(8),
+                "Each device class's current one and all of them, and the system's own lookups; listening for any press, or adding a device, is not a read.");
         }
 
         [Test]

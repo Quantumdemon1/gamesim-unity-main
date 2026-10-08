@@ -1549,6 +1549,17 @@ namespace Gamesim.Simulation
                     kind = kind, status = PromiseStatus.Active, week = s.week, expiresWeek = s.week + 1 };
                 Require(UnifiedCommitmentStore.TryAddPromise(s, draft, safetyOrigin ?? UnifiedCommitments.PlayerPromise, out string error), error);
             }
+            else if (UnifiedVoteStore.On(s) && kind == PromiseKind.Vote)
+            {
+                // Mode 2 (vote family V3): the word is a canonical row, admitted - the source's own
+                // refusal first, then the duplicate, capacity and Campaign/voter/block prerequisites -
+                // before the memories and the line spend anything.
+                Require(!UnifiedVoteStore.Promises(s).Any(p => p.status == PromiseStatus.Active && p.fromId == s.playerId && p.toId == to && p.kind == kind),
+                    "This promise is already active.");
+                var draft = new PromiseState { id = "promise-" + s.nextSequence, fromId = s.playerId, toId = to, targetId = target,
+                    kind = kind, status = PromiseStatus.Active, week = s.week, expiresWeek = s.week };
+                Require(UnifiedVoteStore.TryAddPromise(s, draft, UnifiedCommitments.PlayerPromise, out string voteError), voteError);
+            }
             else
             {
                 Require(!s.promises.Any(p => p.status == PromiseStatus.Active && p.fromId == s.playerId && p.toId == to && p.kind == kind), "This promise is already active.");
@@ -2003,6 +2014,10 @@ namespace Gamesim.Simulation
             if (UnifiedCommitments.RulesOn(s) && type == DealKind.SafetyAgreement)
                 Require(UnifiedCommitmentStore.CanAddDeal(s, PlayerDeals.Draft(s, target.id, type, about, "deal-player-" + s.nextSequence),
                     UnifiedCommitments.PlayerDeal, out string preflightError), preflightError);
+            // Mode 2 (vote family V3): a vote deal is reserved as a canonical row before the answer is drawn.
+            if (UnifiedVoteStore.On(s) && UnifiedVoteStore.IsVote(type))
+                Require(UnifiedVoteStore.CanAddDeal(s, PlayerDeals.Draft(s, target.id, type, about, "deal-player-" + s.nextSequence),
+                    UnifiedCommitments.PlayerDeal, out string voteReservation), voteReservation);
 
             double chance = PlayerDeals.AcceptanceChance(s, target.id, type, about);
             // An alliance invitation is the one way to a pact (ACTIONS-DEALS-ALLIANCES-PLAN C4): under
@@ -2018,6 +2033,8 @@ namespace Gamesim.Simulation
                 var struck = PlayerDeals.Draft(s, target.id, type, about, "deal-player-" + s.nextSequence);
                 if (UnifiedCommitments.RulesOn(s) && type == DealKind.SafetyAgreement)
                     Require(UnifiedCommitmentStore.TryAddDeal(s, struck, UnifiedCommitments.PlayerDeal, out string storageError), storageError);
+                else if (UnifiedVoteStore.On(s) && UnifiedVoteStore.IsVote(type))
+                    Require(UnifiedVoteStore.TryAddDeal(s, struck, UnifiedCommitments.PlayerDeal, out string voteError), voteError);
                 else s.deals.Add(struck);
                 // Under the rules a deal struck is on the record as a chance taken now (C1), as an
                 // accepted offer is: one that lapses before any reveal reconciles it was still made.
@@ -2056,9 +2073,13 @@ namespace Gamesim.Simulation
             Require(s.Find(s.playerId).status == ContestantStatus.Active,
                 "Evicted players can follow the season but cannot influence it.");
             var canonical = UnifiedCommitments.RulesOn(s) ? CommitmentReferences.FindCanonical(s, c.targetId) : null;
-            var deal = canonical != null ? CommitmentReferences.FindDeal(s, c.targetId)
+            // Mode 2 (vote family V3): an offer the house put as a canonical row is answered on that row.
+            var modeTwo = UnifiedVoteStore.On(s) ? s.unifiedCommitments.FirstOrDefault(row => row.id == c.targetId
+                && row.sourcePolicy == UnifiedCommitments.DealPolicy) : null;
+            var deal = modeTwo != null ? UnifiedVoteReferences.ProjectDeal(modeTwo)
+                : canonical != null ? CommitmentReferences.FindDeal(s, c.targetId)
                 : s.deals.FirstOrDefault(d => d.id == c.targetId && d.status == DealStatus.Proposed && d.recipientId == s.playerId);
-            if (canonical != null && (deal == null || deal.status != DealStatus.Proposed || deal.recipientId != s.playerId)) deal = null;
+            if ((canonical != null || modeTwo != null) && (deal == null || deal.status != DealStatus.Proposed || deal.recipientId != s.playerId)) deal = null;
             Require(deal != null, "That offer is no longer on the table.");
             var from = s.Find(deal.proposerId);
             Require(from != null && from.status == ContestantStatus.Active,
@@ -2074,9 +2095,20 @@ namespace Gamesim.Simulation
                 // final four's block is set, in the words the player's own proposal is refused in.
                 Require(!(deal.type == DealKind.FinalThree && s.Active.Count() <= NpcDeals.FinalThreeSize), PlayerDeals.FinalThreeHereRefusal);
                 Require(!(deal.type == DealKind.FinalThree && NpcDeals.FinalFourBlockSet(s)), PlayerDeals.FinalFourBlockSetRefusal);
+                // Mode 2 (vote family V3): the vote price a nominee's veto ask carries is reserved as a
+                // canonical row before the yes moves, draws or logs anything; it is struck where it always was.
+                if (UnifiedVoteStore.On(s) && modeTwo == null && CommitmentRulesOn(s)
+                    && Negotiation.AskPrice(s, deal) is Negotiation.Price askPrice && UnifiedVoteStore.IsVote(askPrice.kind))
+                    Require(UnifiedVoteStore.CanAddAskPrice(s, deal.id, Negotiation.DraftPrice(s, askPrice, deal.id, Negotiation.PricePrefix + s.nextSequence),
+                        out string priceReservation), priceReservation);
                 // The offer lapsed at the end of this week; the arrangement it becomes runs for as
                 // long as its own kind runs for, which for a final two or a partnership is no limit.
-                if (canonical != null)
+                if (modeTwo != null)
+                {
+                    Require(UnifiedVoteStore.TryAnswerOffer(s, deal.id, true, out string voteAnswerError), voteAnswerError);
+                    deal = UnifiedVoteReferences.ProjectDeal(s.unifiedCommitments.First(row => row.id == deal.id));
+                }
+                else if (canonical != null)
                 {
                     Require(UnifiedCommitmentStore.TryRespond(s, deal.id, true, out string responseError), responseError);
                     deal = CommitmentReferences.FindDeal(s, deal.id);
@@ -2102,7 +2134,9 @@ namespace Gamesim.Simulation
                 return;
             }
 
-            if (canonical != null)
+            if (modeTwo != null)
+                Require(UnifiedVoteStore.TryAnswerOffer(s, deal.id, false, out string voteDeclineError), voteDeclineError);
+            else if (canonical != null)
                 Require(UnifiedCommitmentStore.TryRespond(s, deal.id, false, out string declineError), declineError);
             else deal.status = DealStatus.Declined;
             Change(s, s.playerId, deal.proposerId, PlayerDeals.DeclineImpact,

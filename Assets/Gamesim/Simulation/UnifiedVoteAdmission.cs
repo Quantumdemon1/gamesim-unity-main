@@ -232,7 +232,11 @@ namespace Gamesim.Simulation
                 subtype = draft.type == DealKind.SafetyAgreement ? null : draft.type, targetId = draft.targetId,
                 voteBindingWeek = draft.type == DealKind.SafetyAgreement ? 0 : bindingWeek,
                 voteFirstRevealWeek = draft.type == DealKind.SafetyAgreement ? 0 : firstWeek };
-        private static int Floor(EpisodeState s, string origin)
+        /// <summary>
+        /// The first regular reveal a row binding now may meet: this week's, or next week's for an owner
+        /// that can lawfully bind after this week's reveal has been completed.
+        /// </summary>
+        internal static int Floor(EpisodeState s, string origin)
         {
             bool lateOwner = origin == UnifiedCommitments.NpcOffer || origin == UnifiedVoteFamilyValidation.VetoAskPrice
                 || origin == UnifiedCommitments.StoryPromise || origin == UnifiedCommitments.StoryDeal;

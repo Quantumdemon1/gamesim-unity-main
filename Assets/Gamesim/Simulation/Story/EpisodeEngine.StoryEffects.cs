@@ -322,9 +322,9 @@ namespace Gamesim.Simulation
         {
             if (from == null || to == null || from.id == to.id || !Alive(from) || !Alive(to)) return;
             if (!Enum.TryParse(kindName, out PromiseKind kind)) return;
-            if ((UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Promises(s) : s.promises)
+            if (UnifiedVoteStore.Promises(s)
                 .Any(p => p.status == PromiseStatus.Active && p.fromId == from.id && p.toId == to.id && p.kind == kind)) return;
-            if ((UnifiedCommitments.RulesOn(s) ? CommitmentReferences.PromiseCount(s) : s.promises.Count) >= 200) return;
+            if (UnifiedVoteStore.PromiseCount(s) >= 200) return;
             var promise = new PromiseState
             {
                 id = "promise-" + s.nextSequence, fromId = from.id, toId = to.id, kind = kind, status = PromiseStatus.Active,
@@ -333,6 +333,12 @@ namespace Gamesim.Simulation
             if (UnifiedCommitments.RulesOn(s) && kind == PromiseKind.Safety)
             {
                 if (!UnifiedCommitmentStore.TryAddPromise(s, promise, UnifiedCommitments.StoryPromise, out _)) return;
+            }
+            // Mode 2 (vote family V3): a story's word on the vote is a canonical row with no target, as the
+            // native story promise has none; refused, the story writes nothing for it and spends no id.
+            else if (UnifiedVoteStore.On(s) && kind == PromiseKind.Vote)
+            {
+                if (!UnifiedVoteStore.TryAddPromise(s, promise, UnifiedCommitments.StoryPromise, out _)) return;
             }
             else s.promises.Add(promise);
             s.nextSequence++;
@@ -353,10 +359,10 @@ namespace Gamesim.Simulation
             // A final three deal is the commitment rules' own (C9): a story strikes one only under them.
             if (DealKind.CommitmentRulesOnly(type) && !CommitmentRulesOn(s)) return;
             if (DealKind.NamesATarget(type) && (target == null || !Alive(target))) return;
-            if ((UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Deals(s) : s.deals).Any(d => DealStatus.Binds(d.status) && d.type == type
+            if (UnifiedVoteStore.Deals(s).Any(d => DealStatus.Binds(d.status) && d.type == type
                                  && ((d.proposerId == a.id && d.recipientId == b.id) || (d.proposerId == b.id && d.recipientId == a.id))
                                  && d.targetId == target?.id)) return;
-            if ((UnifiedCommitments.RulesOn(s) ? CommitmentReferences.DealCount(s) : s.deals.Count) >= 200) return;
+            if (UnifiedVoteStore.DealCount(s) >= 200) return;
             var deal = PlayerDeals.Draft(s, b.id, type, target?.id, "deal-story-" + s.nextSequence);
             deal.proposerId = a.id;
             deal.recipientId = b.id;
@@ -364,6 +370,12 @@ namespace Gamesim.Simulation
             if (UnifiedCommitments.RulesOn(s) && type == DealKind.SafetyAgreement)
             {
                 if (!UnifiedCommitmentStore.TryAddDeal(s, deal, UnifiedCommitments.StoryDeal, out _)) return;
+            }
+            // Mode 2 (vote family V3): a story's vote deal is a canonical row in the story's own party
+            // order; refused, the story writes nothing for it and spends no id.
+            else if (UnifiedVoteStore.On(s) && UnifiedVoteStore.IsVote(type))
+            {
+                if (!UnifiedVoteStore.TryAddDeal(s, deal, UnifiedCommitments.StoryDeal, out _)) return;
             }
             else s.deals.Add(deal);
             s.nextSequence++;

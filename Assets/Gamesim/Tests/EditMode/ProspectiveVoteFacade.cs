@@ -108,6 +108,34 @@ namespace Gamesim.Tests.EditMode
         internal static EpisodeEngine Engine(EpisodeState s) =>
             (EpisodeEngine)Call(typeof(EpisodeEngine), "ProspectiveVote", new[] { typeof(EpisodeState) }, s);
 
+        private static readonly Type StoreType = Simulation.GetType("Gamesim.Simulation.UnifiedVoteStore");
+
+        /// <summary>UnifiedVoteStore.TryAddPromise: admits a promise draft and appends its canonical row, or writes nothing.</summary>
+        internal static bool StoreTryAddPromise(EpisodeState s, PromiseState draft, string origin, out string error) =>
+            Store("TryAddPromise", new[] { typeof(EpisodeState), typeof(PromiseState), typeof(string), OutString }, out error, s, draft, origin);
+
+        /// <summary>UnifiedVoteStore.TryAddDeal: admits a deal draft and appends its canonical row, or writes nothing.</summary>
+        internal static bool StoreTryAddDeal(EpisodeState s, DealState draft, string origin, out string error) =>
+            Store("TryAddDeal", new[] { typeof(EpisodeState), typeof(DealState), typeof(string), OutString }, out error, s, draft, origin);
+
+        /// <summary>UnifiedVoteStore.TryAddCounter: an accepted counter's two deals, both or neither.</summary>
+        internal static bool StoreTryAddCounter(EpisodeState s, DealState bought, DealState price, out string error) =>
+            Store("TryAddCounter", new[] { typeof(EpisodeState), typeof(DealState), typeof(DealState), OutString }, out error, s, bought, price);
+
+        /// <summary>UnifiedVoteStore.TryAddOwnVetoPrice: the player's veto and its Vote price, both or neither.</summary>
+        internal static bool StoreTryAddOwnVetoPrice(EpisodeState s, DealState veto, DealState price, out string error) =>
+            Store("TryAddOwnVetoPrice", new[] { typeof(EpisodeState), typeof(DealState), typeof(DealState), OutString }, out error, s, veto, price);
+
+        private static bool Store(string name, Type[] parameters, out string error, params object[] arguments)
+        {
+            Assert.That(StoreType, Is.Not.Null, "UnifiedVoteStore is the mode-2 Vote writer's actual owner.");
+            var args = new object[arguments.Length + 1];
+            Array.Copy(arguments, args, arguments.Length);
+            bool accepted = (bool)Invoke(Method(StoreType, name, parameters), args);
+            error = (string)args[arguments.Length];
+            return accepted;
+        }
+
         private static bool Try(Type owner, string name, Type[] parameters, EpisodeState s, out string error)
         {
             var args = new object[] { s, null };

@@ -112,7 +112,7 @@ namespace Gamesim.Simulation
         /// </summary>
         public static bool TryGive(EpisodeState state, string npcId)
         {
-            if ((UnifiedCommitments.RulesOn(state) ? CommitmentReferences.PromiseCount(state) : state.promises.Count) >= PromiseCeiling) return false;
+            if (UnifiedVoteStore.PromiseCount(state) >= PromiseCeiling) return false;
 
             var chosen = state.contestants
                 .Where(other => other.status == ContestantStatus.Active && !other.isPlayer && other.id != npcId)
@@ -130,7 +130,7 @@ namespace Gamesim.Simulation
         public const int PromiseCeiling = 200;
 
         private static bool AlreadyPromised(EpisodeState state, string from, string to, PromiseKind kind) =>
-            (UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Promises(state) : state.promises).Any(p => p.fromId == from && p.toId == to && p.kind == kind
+            UnifiedVoteStore.Promises(state).Any(p => p.fromId == from && p.toId == to && p.kind == kind
                                     && p.status == PromiseStatus.Active);
 
         private static bool Give(EpisodeState state, string from, string to, PromiseKind kind)
@@ -152,6 +152,12 @@ namespace Gamesim.Simulation
             if (UnifiedCommitments.RulesOn(state) && kind == PromiseKind.Safety)
             {
                 if (!UnifiedCommitmentStore.TryAddPromise(state, promise, UnifiedCommitments.NpcPromise, out _)) return false;
+            }
+            // Mode 2 (vote family V3): a nominee's word on the vote is a canonical row; refused, it is not
+            // given, as a refused safety word is not, and its ledger line is never written.
+            else if (UnifiedVoteStore.On(state) && kind == PromiseKind.Vote)
+            {
+                if (!UnifiedVoteStore.TryAddPromise(state, promise, UnifiedCommitments.NpcPromise, out _)) return false;
             }
             else state.promises.Add(promise);
 

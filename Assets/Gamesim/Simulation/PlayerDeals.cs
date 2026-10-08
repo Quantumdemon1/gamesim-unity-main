@@ -72,7 +72,7 @@ namespace Gamesim.Simulation
                 return Refuse(out reason, "That is not a deal anybody in this house would recognise.");
             if (state.week < state.dealRulesStartWeek)
                 return Refuse(out reason, "The house is not making deals this week.");
-            if ((UnifiedCommitments.RulesOn(state) ? CommitmentReferences.DealCount(state) : state.deals.Count) >= PlayerDealCeiling)
+            if (UnifiedVoteStore.DealCount(state) >= PlayerDealCeiling)
                 return Refuse(out reason, "You already have more arrangements than you can keep track of.");
             // A price binds only what it names (C7, under the commitment rules, where prices are struck): an
             // open vote to keep the player, owed for the veto, is no vote deal about anybody else.

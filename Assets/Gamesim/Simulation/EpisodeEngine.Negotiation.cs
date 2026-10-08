@@ -93,6 +93,10 @@ namespace Gamesim.Simulation
                 && (bought.type == DealKind.SafetyAgreement || price.type == DealKind.SafetyAgreement))
                 Require(UnifiedCommitmentStore.TryAddLinkedDeals(s, bought, UnifiedCommitments.CounterDeal,
                     price, UnifiedCommitments.CounterPrice, out string error), error);
+            // Mode 2 (vote family V3): a counter with a vote member is reserved and written whole - its vote
+            // and safety members canonical, any other raw - before the yes moves anything, or not at all.
+            else if (UnifiedVoteStore.On(s) && (UnifiedVoteStore.IsVote(bought.type) || UnifiedVoteStore.IsVote(price.type)))
+                Require(UnifiedVoteStore.TryAddCounter(s, bought, price, out string voteError), voteError);
             else
             {
                 s.deals.Add(bought);
@@ -126,8 +130,14 @@ namespace Gamesim.Simulation
             if (price == null) return;
             string id = Negotiation.PricePrefix + s.nextSequence;
             var deal = Negotiation.DraftPrice(s, price, ask.id, id);
-            ask.linkedDealId = id;
-            s.deals.Add(deal);
+            // Mode 2 (vote family V3): a vote price is the canonical row reserved before the yes.
+            if (UnifiedVoteStore.On(s) && UnifiedVoteStore.IsVote(deal.type))
+                Require(UnifiedVoteStore.TryInstallAskPrice(s, ask, deal, out string priceError), priceError);
+            else
+            {
+                ask.linkedDealId = id;
+                s.deals.Add(deal);
+            }
             Opportunity(s, deal.id, OpportunityKinds.Deal, deal.week).response = OpportunityResponse.Taken;
             Remember(s, price.payerId, s.playerId, "I owe them " + (price.kind == DealKind.FinalTwo ? "a final two" : "my vote to keep them")
                 + " for their word on the veto, from week " + s.week + ".", true);
@@ -266,6 +276,12 @@ namespace Gamesim.Simulation
             string refusal = Negotiation.VetoPriceRefusal(s, nominee.id, kind);
             Require(refusal == null, refusal);
             var price = Negotiation.VetoPrice(s, nominee.id, kind);
+            // Mode 2 (vote family V3): the player's veto and a vote price for it are reserved together
+            // before the answer is drawn: both or neither.
+            bool modeTwoPrice = UnifiedVoteStore.On(s) && UnifiedVoteStore.IsVote(price.kind);
+            if (modeTwoPrice)
+                Require(UnifiedVoteStore.CanAddOwnVetoPrice(s, OwnVeto(s, nominee.id), OwnVetoPrice(s, nominee.id, price),
+                    out string reservation), reservation);
             bool taken = Roll(s) * 100 < Negotiation.Chance(s, nominee.id, Negotiation.VetoForAPrice, false);
             if (!taken)
             {
@@ -273,11 +289,15 @@ namespace Gamesim.Simulation
                 Log(s, "deal", Negotiation.VetoPriceLine(s, nominee.id, price, false), s.playerId, nominee.id);
                 return;
             }
-            string vetoId = "deal-player-" + s.nextSequence, priceId = Negotiation.PricePrefix + s.nextSequence;
-            var veto = PlayerDeals.Draft(s, nominee.id, DealKind.VetoUse, null, vetoId);
-            veto.linkedDealId = priceId;
-            s.deals.Add(veto);
-            s.deals.Add(Negotiation.DraftPrice(s, price, vetoId, priceId));
+            var veto = OwnVeto(s, nominee.id);
+            string vetoId = veto.id, priceId = veto.linkedDealId;
+            if (modeTwoPrice)
+                Require(UnifiedVoteStore.TryAddOwnVetoPrice(s, veto, OwnVetoPrice(s, nominee.id, price), out string priceError), priceError);
+            else
+            {
+                s.deals.Add(veto);
+                s.deals.Add(Negotiation.DraftPrice(s, price, vetoId, priceId));
+            }
             Opportunity(s, vetoId, OpportunityKinds.Deal, s.week).response = OpportunityResponse.Taken;
             Opportunity(s, priceId, OpportunityKinds.Deal, s.week).response = OpportunityResponse.Taken;
             // Their own question about the veto is answered: the player has given them their word, so the
@@ -292,6 +312,18 @@ namespace Gamesim.Simulation
             Remember(s, nominee.id, s.playerId, "Promised to use the veto on me, at a price, in week " + s.week + ".", true);
             Log(s, "deal", Negotiation.VetoPriceLine(s, nominee.id, price, true), s.playerId, nominee.id);
         }
+
+        /// <summary>The player's word that they will use the veto on the nominee, linked to its price: both with the sequence the season has reached.</summary>
+        private static DealState OwnVeto(EpisodeState s, string nomineeId)
+        {
+            var veto = PlayerDeals.Draft(s, nomineeId, DealKind.VetoUse, null, "deal-player-" + s.nextSequence);
+            veto.linkedDealId = Negotiation.PricePrefix + s.nextSequence;
+            return veto;
+        }
+
+        /// <summary>The price the nominee pays for <see cref="OwnVeto"/>, linked to it.</summary>
+        private static DealState OwnVetoPrice(EpisodeState s, string nomineeId, Negotiation.Price price) =>
+            Negotiation.DraftPrice(s, price, "deal-player-" + s.nextSequence, Negotiation.PricePrefix + s.nextSequence);
 
         /// <summary>The two of them were in touch this week: both sides of their record say so, as any conversation's does.</summary>
         private static void Touch(EpisodeState s, string npcId)

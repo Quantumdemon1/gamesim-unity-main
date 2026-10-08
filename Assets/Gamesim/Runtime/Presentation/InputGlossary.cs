@@ -82,6 +82,7 @@ namespace Gamesim.Presentation
             new Row(HouseContext, "Shortcuts", "Hit", "Space", "A", "Stop the marker in a house challenge"),
             new Row(HouseContext, "Shortcuts", "Overview", "M", "D-pad up", "The whole house from above, and back"),
             new Row(HouseContext, "Shortcuts", "Emote", "G", "D-pad right", "Your moves: cheer, dance, shrug"),
+            new Row(HouseContext, "Shortcuts", "Back", "", "B", "Close the top panel; with nothing open, nothing (Esc is the keyboard's)"),
 
             // The ceremony cards, and the opening's Space.
             new Row(CeremonyContext, "Ceremony", "Skip", "Enter / Num Enter / Esc / Left click", "A / B", "Skip a reveal to its result; again to close the card"),

@@ -44,13 +44,18 @@ namespace Gamesim.Tests.EditMode
                         name + " must have a keyboard-and-mouse binding.");
 
                 // The shortcuts: every one of the director's keys has a gamepad button beside it.
+                // Back is the pad's alone (PLAN A, A2): the keyboard's back is Escape, which is Menu.
                 var shortcuts = asset.FindActionMap(HouseCameraActions.ShortcutsMapName, throwIfNotFound: true);
                 Assert.That(shortcuts.actions.Select(a => a.name), Is.EquivalentTo(HouseCameraActions.ShortcutNames));
                 foreach (var action in shortcuts.actions)
                 {
-                    Assert.That(action.bindings.Any(b => (b.groups ?? "").Contains(HouseCameraActions.KeyboardMouseScheme)), action.name + ": a key.");
+                    bool key = action.bindings.Any(b => (b.groups ?? "").Contains(HouseCameraActions.KeyboardMouseScheme));
+                    Assert.That(key, Is.EqualTo(action.name != "Back"), action.name + (action.name == "Back" ? ": no key; Escape is Menu." : ": a key."));
                     Assert.That(action.bindings.Any(b => (b.groups ?? "").Contains(HouseCameraActions.GamepadScheme)), action.name + ": a gamepad button.");
                 }
+                Assert.That(shortcuts.FindAction("Back").bindings.Select(b => b.path), Is.EqualTo(new[] { "<Gamepad>/buttonEast" }),
+                    "Back is the pad's B and nothing else, separate from Menu's Start.");
+                Assert.That(shortcuts.FindAction("Menu").bindings.Select(b => b.path), Is.EquivalentTo(new[] { "<Keyboard>/escape", "<Gamepad>/start" }));
             }
             finally
             {
@@ -152,6 +157,7 @@ namespace Gamesim.Tests.EditMode
                 var properties = new[]
                 {
                     (actions.Emote, HouseCameraActions.ShortcutsMapName + "/Emote"),
+                    (actions.Back, HouseCameraActions.ShortcutsMapName + "/Back"),
                     (actions.Skip, HouseCameraActions.CeremonyMapName + "/Skip"),
                     (actions.Speed, HouseCameraActions.CeremonyMapName + "/Speed"),
                     (actions.Advance, HouseCameraActions.CeremonyMapName + "/Advance"),

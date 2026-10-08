@@ -39,20 +39,31 @@ namespace Gamesim.Episode
         /// clock held - from either device (PLAN A, A3, the owner's decision 1): the keyboard used
         /// to do nothing there, and a first-time player looking for "pause" found nothing.
         /// </summary>
-        private void MenuPressed()
+        private void MenuPressed() => BackOut(pauseWhenNothingIsOpen: true);
+
+        /// <summary>
+        /// The pad's B (PLAN A, A2): the same chain as Escape, overlay for overlay - a ceremony card
+        /// and a competition's board and results read B themselves, as they read Escape - and at its
+        /// foot it closes the top panel and does nothing at all when nothing is open. Whether the
+        /// press was taken.
+        /// </summary>
+        private bool BackPressed() => BackOut(pauseWhenNothingIsOpen: false);
+
+        /// <summary>The priority chain Escape, Start and B share. False only for B with nothing open: not taken.</summary>
+        private bool BackOut(bool pauseWhenNothingIsOpen)
         {
-            // The game surface consumes Escape / Start itself, including the dismissal frame.
-            if (competitionScreen != null && competitionScreen.OwnsMenuInput) return;
-            if (challengeActive) { CancelChallenge(); return; }
+            // The game surface consumes Escape / Start / B itself, including the dismissal frame.
+            if (competitionScreen != null && competitionScreen.OwnsMenuInput) return true;
+            if (challengeActive) { CancelChallenge(); return true; }
             // The opening before anything: it draws over every screen, and Escape underneath it
             // used to close panels and release the shot it was holding.
-            if (OpeningOwnsHouse) { OpeningMenuPressed(); return; }
-            // A ceremony card reads Escape itself - it skips the reveal - so the press does not
-            // also close the panels or open the settings underneath it.
-            if (CeremonyOverlays.OnScreen) return;
+            if (OpeningOwnsHouse) { OpeningMenuPressed(); return true; }
+            // A ceremony card reads Escape and B itself - it skips the reveal - so the press does
+            // not also close the panels or open the settings underneath it.
+            if (CeremonyOverlays.OnScreen) return true;
             // The tour offered outside the opening - an imported season - dims the house and
             // takes the pointer; Escape closes it, as the tour's own card says.
-            if (TourIsUp) { tutorial.Skip(); return; }
+            if (TourIsUp) { tutorial.Skip(); return true; }
             // Topmost first. The main menu sits above the cast screen, which sits above the
             // HUD; closing a panel underneath either of them would leave a screen on top of the
             // house with nothing behind it. The menu itself ignores Escape when there is no
@@ -66,13 +77,15 @@ namespace Gamesim.Episode
             else if (IsSeasonReportOpen) seasonReport.Close();
             else
             {
-                // A panel closes. With nothing open at all, the press is the pause menu - from the
-                // keyboard as from the pad; the overview, your moves or a chip's card close first
-                // and the press stops there.
+                // A panel closes. With nothing open at all, Escape and Start are the pause menu,
+                // and B is nothing - not even a redraw; the overview, your moves or a chip's card
+                // close first and the press stops there.
                 bool wasOpen = IsPanelOpen, chromeUp = ClosableChromeUp;
+                if (!wasOpen && !chromeUp && !pauseWhenNothingIsOpen) return false;
                 ClosePanels();
                 if (!wasOpen && !chromeUp) OpenSettings();
             }
+            return true;
         }
     }
 }

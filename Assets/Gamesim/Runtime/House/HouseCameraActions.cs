@@ -82,6 +82,12 @@ namespace Gamesim.House
         public InputAction Overview { get; }
         /// <summary>G, or the d-pad right: your moves, the card over your own chip.</summary>
         public InputAction Emote { get; }
+        /// <summary>
+        /// The pad's B: back out of the top panel, by the same chain as <see cref="Menu"/>, and
+        /// nothing at all with nothing open - where Start is the pause menu (PLAN A, A2). The
+        /// keyboard's back is Escape, which is <see cref="Menu"/>.
+        /// </summary>
+        public InputAction Back { get; }
 
         // The Ceremony map: what every ceremony card reads, never through the event system, so a
         // card cannot take a click or a Submit meant for the house (CeremonyTakeover's notes).
@@ -167,6 +173,7 @@ namespace Gamesim.House
             Hit = shortcuts.FindAction(nameof(Hit), throwIfNotFound: true);
             Overview = shortcuts.FindAction(nameof(Overview), throwIfNotFound: true);
             Emote = shortcuts.FindAction(nameof(Emote), throwIfNotFound: true);
+            Back = shortcuts.FindAction(nameof(Back), throwIfNotFound: true);
             var ceremony = Asset.FindActionMap(CeremonyMapName, throwIfNotFound: true);
             Skip = ceremony.FindAction(nameof(Skip), throwIfNotFound: true);
             Speed = ceremony.FindAction(nameof(Speed), throwIfNotFound: true);
@@ -302,6 +309,10 @@ namespace Gamesim.House
             var emote = shortcuts.AddAction(nameof(Emote), InputActionType.Button);
             emote.AddBinding("<Keyboard>/g", groups: km);
             emote.AddBinding("<Gamepad>/dpad/right", groups: pad);
+            // B, apart from Menu: the pad's way back out of a panel. No key - Escape is Menu, and a
+            // second action on it would be a second answer to one press.
+            var shortcutBack = shortcuts.AddAction(nameof(Back), InputActionType.Button);
+            shortcutBack.AddBinding("<Gamepad>/buttonEast", groups: pad);
 
             var ceremony = asset.AddActionMap(CeremonyMapName);
             var skip = ceremony.AddAction(nameof(Skip), InputActionType.Button);
@@ -436,7 +447,7 @@ namespace Gamesim.House
         public static readonly string[] ShortcutNames =
         {
             nameof(Menu), nameof(Notebook), nameof(Save), nameof(Diary), nameof(Interact), nameof(Hit), nameof(Overview),
-            nameof(Emote),
+            nameof(Emote), nameof(Back),
         };
 
         /// <summary>The ten action names, in the map's order, for the export and its test.</summary>

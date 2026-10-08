@@ -433,6 +433,8 @@ namespace Gamesim.Episode
             }
             // Escape or Start: the priority chain, topmost first (EpisodeDirector.Controls.cs).
             if (shortcuts != null && shortcuts.Menu.WasPressedThisFrame()) { MenuPressed(); return; }
+            // The pad's B: the same chain, and nothing at all with nothing open (PLAN A, A2).
+            if (shortcuts != null && shortcuts.Back.WasPressedThisFrame() && BackPressed()) return;
             // Not while a ceremony card is up either: it reads the pad's face buttons itself - X
             // speeds a reveal up, and X is also Interact - so a press meant for the card went on to
             // act in the house underneath it.

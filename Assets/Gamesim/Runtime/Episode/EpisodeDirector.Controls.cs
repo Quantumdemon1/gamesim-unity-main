@@ -131,6 +131,9 @@ namespace Gamesim.Episode
                 // and B is nothing - not even a redraw; the overview, your moves or a chip's card
                 // close first and the press stops there.
                 bool wasOpen = IsPanelOpen, chromeUp = ClosableChromeUp;
+                // An evicted houseguest walking out reads Escape and B as its skip, as a card
+                // does: with nothing else open the press is the walk's, by either device.
+                if (!wasOpen && !chromeUp && WalkOutHasThePress) return true;
                 if (!wasOpen && !chromeUp && !pauseWhenNothingIsOpen) return false;
                 ClosePanels();
                 if (!wasOpen && !chromeUp) OpenSettings();

@@ -123,6 +123,39 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsPanelOpen, Is.False, "and B closes it, as it closes any panel.");
         }
 
+        /// <summary>
+        /// An evicted houseguest walking out reads Escape and B as its skip, as a ceremony card
+        /// does, without being one. With nothing else open, the Escape that skips the walk stops
+        /// there - it used to go on to open the pause menu over the goodbye, where B, which is
+        /// nothing with nothing open, only skipped - and Start while they walk opens nothing either.
+        /// </summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator Back_TheEscapeThatSkipsAWalkOutStopsThere()
+        {
+            director.WalkOutsInBatchRuns = true;
+            yield return PlayUntilAHouseguestLeaves();
+            string leaving = director.DepartingId;
+            SceneComponents<VoteReveal>().Single().Cancel();
+            yield return Frames(3);
+            Assert.That(director.WalkingOutId, Is.EqualTo(leaving), "The evicted walks out,");
+            Assert.That(director.WalkOutIsStaged, Is.False, "on the HUD frame, unstaged,");
+            Assert.That(director.IsPanelOpen || director.IsOverview || director.EmoteMenuOpen, Is.False, "with nothing else open.");
+
+            yield return PressOnPad(GamepadButton.Start);
+            yield return Frames(2);
+            Assert.That(director.WalkingOutId, Is.EqualTo(leaving), "Start is not the walk's skip: they walk on,");
+            Assert.That(ButtonWithCaptionOrNull("Save now  [F5]"), Is.Null, "and it opens no pause menu over them.");
+
+            // Past the walk's guard on a press, a third of a second on the real clock.
+            float guard = Time.realtimeSinceStartup + .5f;
+            while (Time.realtimeSinceStartup < guard) yield return null;
+            Assert.That(director.WalkingOutId, Is.EqualTo(leaving), "Still walking.");
+            yield return PressKey(Key.Escape);
+            yield return Frames(2);
+            Assert.That(director.WalkingOutId, Is.Null, "Escape skips the walk out,");
+            Assert.That(ButtonWithCaptionOrNull("Save now  [F5]"), Is.Null, "and stops there: the pause menu is not opened under the goodbye.");
+        }
+
         private IEnumerator RunBackCase(BackCase item, bool pad, List<string> outcomes)
         {
             yield return FreshEpisode();

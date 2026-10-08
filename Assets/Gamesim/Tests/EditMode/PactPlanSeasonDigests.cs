@@ -454,8 +454,8 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// The war rooms' readers over a season's own plans (D3-S7): the week's review says each plan of the week
-        /// once, as a plan, and never its call as a call; a voter it judges by what the player was told is with it
-        /// or not known, never defected; the notes, the Your word page and Game Sense read every plan without
+        /// once, as a plan, and never its call as a call; a voter the player was not told is with it is never
+        /// defected, by a ballot or by what they said; the notes, the Your word page and Game Sense read every plan without
         /// flagging a member not with it.
         /// </summary>
         private static void Readers(EpisodeState s, Dictionary<string, int> counts)
@@ -464,14 +464,24 @@ namespace Gamesim.Tests.EditMode
             var plans = PactPlans.OfWeek(s, s.week);
             var calls = YourWeek.Build(s, s.week).calls;
             if (calls.Count(l => l.kind == YourWeek.Kinds.Plan) != plans.Count) Count(counts, "reader-plan-line");
-            foreach (var plan in plans)
+            // Each plan's voters are the member lines after its own line, the plans in the order they met.
+            var planVoters = new List<List<YourWeek.Line>>();
+            foreach (var line in calls)
             {
+                if (line.kind == YourWeek.Kinds.Plan) planVoters.Add(new List<YourWeek.Line>());
+                else if (line.kind == YourWeek.Kinds.Member && planVoters.Count > 0) planVoters[planVoters.Count - 1].Add(line);
+            }
+            for (int i = 0; i < plans.Count; i++)
+            {
+                var plan = plans[i];
                 string pact = s.alliances.FirstOrDefault(a => a.id == plan.allianceId)?.name ?? "";
                 if (calls.Any(l => l.kind == YourWeek.Kinds.Call && l.text.StartsWith("You called it in " + pact + ":", StringComparison.Ordinal)))
                     Count(counts, "reader-call-line");
                 var voted = PactPlans.Voted(s, plan);
-                if (PactPlans.ToldWith(s, plan).Any(id => !voted.Contains(id))) Count(counts, "reader-told");
-                if (calls.Any(l => l.kind == YourWeek.Kinds.Member && l.basis == YourWeek.Bases.Call && l.verdict == YourWeek.Verdicts.Defected && voted.Contains(l.aboutId)))
+                var told = PactPlans.ToldWith(s, plan);
+                if (told.Any(id => !voted.Contains(id))) Count(counts, "reader-told");
+                // Only a voter the player was told is with the plan can defect from it, by a ballot or by what they said.
+                if (i < planVoters.Count && planVoters[i].Any(l => l.verdict == YourWeek.Verdicts.Defected && !told.Contains(l.aboutId)))
                     Count(counts, "reader-flagged");
                 if (PactPlans.PlayerCalled(s, plan))
                     foreach (string id in voted)

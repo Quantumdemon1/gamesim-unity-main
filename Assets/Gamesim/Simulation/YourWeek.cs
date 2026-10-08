@@ -459,7 +459,8 @@ namespace Gamesim.Simulation
         /// Under the war rooms (WAVE-D-NPC-PACTS-PLAN D3-S7): each plan of the week's, in the order the pacts
         /// met - its own line, as the player answered it (<see cref="PlanLine"/>), then each member of it who
         /// voted. A member whose ballot the player knows is judged by it: followed if they voted out the plan's
-        /// target, defected if not. A member whose ballot the player cannot place stands as the player was told
+        /// target; defected if not, where they were with it; and where they were not with it, no verdict - they
+        /// did as they said. A member whose ballot the player cannot place stands as the player was told
         /// (<see cref="PactPlans.ToldWith"/>): followed where they were with it; where they were not, not known -
         /// a dissenter is never flagged (§3.3), and one who went along on their own coin under a plan an NPC
         /// leads was never said. A plan still open or void has no members.
@@ -482,7 +483,9 @@ namespace Gamesim.Simulation
                     if (known != null)
                     {
                         bool voted = known == plan.targetId;
-                        line.verdict = voted ? Verdicts.Followed : Verdicts.Defected;
+                        // Only one the player was told is with it can defect: one not with it who voted the
+                        // other way did as they said, and carries no verdict (§3.3: a dissenter is never flagged).
+                        line.verdict = voted ? Verdicts.Followed : with ? Verdicts.Defected : null;
                         line.basis = Bases.Ballot;
                         string ballot = voted ? Out(plan.targetId) : "voted to evict " + Whom(s, known);
                         line.text = Who(s, id) + stood + (with ? (voted ? ", and " : ", then ") + ballot + "." : voted ? ", then " + ballot + " anyway." : ", and " + ballot + ".");

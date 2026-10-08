@@ -253,10 +253,11 @@ namespace Gamesim.Simulation
         /// <summary>
         /// A war room's plan as the alliance card says it (WAVE-D-NPC-PACTS-PLAN D3-S5), in words and never a
         /// number: what the members said at the meeting - "Plan: Riley and Sam wanted Maya out; Jo wanted Alex
-        /// out." - how the player answered, and, once that week's vote has been read, who of those with the
-        /// plan voted with it and who did not, by the ballots the player can place
-        /// (<see cref="KnownBallots.Read"/>): a ballot the player cannot place is not mentioned. All of it the
-        /// player was told: the says at the meeting, the answer in its line.
+        /// out." - how the player answered, and, once that week's vote has been read, who of those the player
+        /// was told are with the plan (<see cref="PactPlans.ToldWith"/>) voted with it and who did not, by the
+        /// ballots the player can place (<see cref="KnownBallots.Read"/>): a ballot the player cannot place is
+        /// not mentioned, nor a dissenter who went along on their own coin. All of it the player was told: the
+        /// says at the meeting, the answer in its line.
         /// </summary>
         public static string PlanText(EpisodeState s, PactPlanRow row)
         {
@@ -283,11 +284,15 @@ namespace Gamesim.Simulation
                 default: text += " It came to nothing."; break;
             }
             if (string.IsNullOrEmpty(row.targetId) || row.followed == null || row.followed.Count == 0) return text;
+            // Only those the player was told are with it (PactPlans.ToldWith): under a plan an NPC leads, a
+            // dissenter who went along on their own coin was never said, so their ballot is no follow-through.
+            var told = PactPlans.ToldWith(s, row);
+            if (told.Count == 0) return text;
             var sheet = KnownBallots.Read(s, row.week);
             if (!sheet.Revealed) return text;
             var with = new List<string>();
             var not = new List<string>();
-            foreach (string id in row.followed)
+            foreach (string id in told)
             {
                 string voted = sheet.TargetOf(id);
                 if (voted == null) continue;

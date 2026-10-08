@@ -103,6 +103,44 @@ namespace Gamesim.Tests.EditMode
             Assert.That(lines[0], Is.EqualTo(lines[1]), "The page reads the same whichever way the coin fell.");
         }
 
+        /// <summary>
+        /// A dissenter whose ballot the player can place, under a plan an NPC leads: the alliances page's twin of
+        /// the test above (<see cref="AllianceRead.PlanText"/>) - the coin they went along on was never said, so
+        /// their ballot is no follow-through of the plan's and the page reads the same either way - and the week's
+        /// review judges the ballot without flagging them: they voted as they said, so no verdict, never defected.
+        /// </summary>
+        [Test]
+        public void ADissentersKnownBallotNeverTellsTheCoinNorFlagsThem()
+        {
+            var open = PactPlanTests.Opened(out _, split: true);
+            var npcs = NpcIds(open);
+            var revealed = Reveal(Answer(open, npcs[3], null), npcs[1]);
+            var row = revealed.ledger.plans.Single();
+            Assert.That((row.stance, row.targetId, row.callerId), Is.EqualTo((PactPlanStance.Low, npcs[1], npcs[3])), "Precondition: on a split, the first say; an NPC leads.");
+            // The dissenter told the player their vote and kept their word: a ballot the player can place.
+            string cast = revealed.votes.Single(v => v.voterId == npcs[4]).targetId;
+            Assert.That(cast, Is.Not.EqualTo(npcs[1]), "Precondition: the dissenter voted the other way, as they said.");
+            revealed.ledger.claims.Add(new ClaimRow { week = row.week, voterId = npcs[4], targetId = cast, source = ClaimSource.Told, status = ClaimStatus.Kept });
+            Assert.That(KnownBallots.Read(revealed, row.week).TargetOf(npcs[4]), Is.EqualTo(cast), "Precondition: the player can place the dissenter's ballot.");
+            var texts = new List<string>();
+            var reviews = new List<List<string>>();
+            foreach (bool along in new[] { true, false })
+            {
+                var copy = revealed.Clone();
+                copy.ledger.plans[0].followed = along ? new List<string> { npcs[3], npcs[4] } : new List<string> { npcs[3] };
+                texts.Add(AllianceRead.Read(copy).yours.Single(p => p.id == PactId).plans.Single().text);
+                var calls = YourWeek.Build(copy, row.week).calls;
+                var dissenter = calls.Single(l => l.aboutId == npcs[4]);
+                Assert.That((dissenter.verdict, dissenter.basis, dissenter.text), Is.EqualTo(((string)null, YourWeek.Bases.Ballot,
+                    Name(copy, npcs[4]) + " did not back the plan, and voted to evict " + Name(copy, cast) + ".")), "Judged by the ballot, never flagged.");
+                reviews.Add(calls.Select(l => l.ToString()).ToList());
+            }
+            Assert.That(texts[0], Is.EqualTo(texts[1]), "The page reads the same whichever way the coin fell,");
+            string answered = texts[0].Substring(texts[0].IndexOf(" You lay low: ", System.StringComparison.Ordinal));
+            Assert.That(answered, Does.Not.Contain(FinalistRead.FirstName(Name(revealed, npcs[4]))), "and never says the dissenter's ballot as the plan's;");
+            Assert.That(reviews[0], Is.EqualTo(reviews[1]), "nor does the week's review.");
+        }
+
         [Test]
         public void APlansLineSaysEveryStanceInWords()
         {

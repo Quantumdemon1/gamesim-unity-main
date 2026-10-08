@@ -415,6 +415,11 @@ namespace Gamesim.Simulation
         /// Whether an Expired row has an ending to have expired by: its term passed, or an ending that exists -
         /// including, at regular Results, this week's evictee's departure, which the following Advance writes
         /// first thing and so may already have written (vote family V4).
+        /// <para>That last is a tolerance for the middle of a command, not a state any command leaves: the Safety
+        /// gateway's context check (EpisodeEngine.CheckUnifiedSafetyContext) validates the Vote family inside that
+        /// Advance, after its departure ending and while the eviction still reads Results. No accepted command ends at
+        /// Results with an evictee's deal already Expired, yet a saved state that holds one passes this check - a
+        /// save gate (vote family V6) that must refuse it needs a check of its own.</para>
         /// </summary>
         private static bool CompatibleEnding(EpisodeState s, UnifiedCommitmentState row)
         {

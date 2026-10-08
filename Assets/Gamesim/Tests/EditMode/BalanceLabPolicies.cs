@@ -238,16 +238,19 @@ namespace Gamesim.Tests.EditMode
 
         public override string Name => BalancePolicies.Random;
 
-        protected override EpisodeCommand Nominate(PlayerView v) => NominateBy(v, id => v.Coin(id.Length * 31 + 7));
+        /// <summary>A salt of a name's own, so the coin differs person by person and option by option.</summary>
+        private static int Salt(string id, int purpose) => (int)(SeededRandom.HashSeed(id ?? "") % 100000u) * 7 + purpose;
+
+        protected override EpisodeCommand Nominate(PlayerView v) => NominateBy(v, id => v.Coin(Salt(id, 7)));
         protected override EpisodeCommand Vote(PlayerView v) => VoteAgainst(v, v.Pick(v.Nominees.Where(id => id != v.Me).ToList(), 3));
-        protected override EpisodeCommand Veto(PlayerView v) => VetoAs(v, v.Coin(4) < 0.5 ? v.Pick(v.Nominees, 5) : null, id => v.Coin(id.Length * 17 + 6));
-        protected override EpisodeCommand FinalEvict(PlayerView v) => FinalEvictBy(v, id => v.Coin(id.Length * 13 + 8));
+        protected override EpisodeCommand Veto(PlayerView v) => VetoAs(v, v.Coin(4) < 0.5 ? v.Pick(v.Nominees, 5) : null, id => v.Coin(Salt(id, 6)));
+        protected override EpisodeCommand FinalEvict(PlayerView v) => FinalEvictBy(v, id => v.Coin(Salt(id, 8)));
 
         protected override EpisodeCommand Answer(PlayerView v)
         {
             if (v.Coin(10) < 0.7)
             {
-                var beat = AnswerBeat(v, c => v.Coin(c.optionId.Length + 11), c => v.Pick(c.eligibleIds, 12));
+                var beat = AnswerBeat(v, c => v.Coin(Salt(c.optionId, 11)), c => v.Pick(c.eligibleIds, 12));
                 if (beat != null) return beat;
             }
             var offer = v.Offers.FirstOrDefault();

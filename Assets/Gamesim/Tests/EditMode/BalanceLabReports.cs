@@ -82,6 +82,7 @@ namespace Gamesim.Tests.EditMode
             Economy(md, runs);
             Sense(md, runs);
             Evictions(md, runs);
+            House(md, runs);
             Pacing(md, runs);
             Refusals(md, runs);
             return md.ToString();
@@ -288,6 +289,29 @@ namespace Gamesim.Tests.EditMode
                     + " | " + BalanceLab.Num(Mean(weeks.Where(w => w.evicteeCompetitionWins >= 0).Select(w => (double)w.evicteeCompetitionWins))) + " | "
                     + (noms == 0 ? "n/a" : BalanceLab.Pct((double)top / noms)) + " | " + BalanceLab.Num(Mean(list.Select(r => (double)r.autopsy.jury.margin))) + " | "
                     + (withEvictor == 0 ? "n/a" : BalanceLab.Pct((double)bitter / withEvictor) + " of jurors whose evictor reached the final two") + " |");
+            }
+            md.AppendLine();
+        }
+
+        /// <summary>The house itself: its agendas, its warmest and coldest pair, and the story's pace (all policies' seasons).</summary>
+        private static void House(StringBuilder md, IReadOnlyList<BalanceLab.SeasonRun> runs)
+        {
+            md.AppendLine("### The house: agendas, pairs and the story's pace (all policies' seasons)");
+            md.AppendLine();
+            md.AppendLine("| size | NPC agendas as each social week closed | warmest pair (mutual, mean / max) | coldest pair (mutual, mean / min) | story asks / season | weeks with a card | storylines finished | NPC removals | showmances | pile-ons | pariah weeks |");
+            md.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|");
+            foreach (int size in runs.Select(r => r.cell.size).Distinct().OrderBy(x => x))
+            {
+                var list = runs.Where(r => r.error == null && r.cell.size == size).Select(r => r.autopsy).ToList();
+                var agendas = list.SelectMany(a => a.agency.agendas).GroupBy(p => p.Key).Select(g => (kind: g.Key, total: g.Sum(p => p.Value))).OrderByDescending(x => x.total).ToList();
+                double all = Math.Max(1, agendas.Sum(x => x.total));
+                md.AppendLine("| " + size + " | " + string.Join(", ", agendas.Select(x => x.kind + " " + BalanceLab.Pct(x.total / all))) + " | "
+                    + BalanceLab.Num(list.Average(a => a.warmest.mutual), "0") + " / " + BalanceLab.Num(list.Max(a => a.warmest.mutual), "0") + " | "
+                    + BalanceLab.Num(list.Average(a => a.coldest.mutual), "0") + " / " + BalanceLab.Num(list.Min(a => a.coldest.mutual), "0") + " | "
+                    + BalanceLab.Num(list.Average(a => a.story.asks), "0.0") + " | " + BalanceLab.Num(list.Average(a => a.story.weeksWithACard), "0.0") + " | "
+                    + BalanceLab.Num(list.Average(a => a.story.completed), "0.0") + " | " + BalanceLab.Num(list.Average(a => a.story.npcRemovals), "0.00") + " | "
+                    + BalanceLab.Num(list.Average(a => a.story.showmances), "0.00") + " | " + BalanceLab.Num(list.Average(a => a.story.pileOns), "0.00") + " | "
+                    + BalanceLab.Num(list.Average(a => a.story.pariahWeeks), "0.00") + " |");
             }
             md.AppendLine();
         }

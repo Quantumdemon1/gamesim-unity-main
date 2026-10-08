@@ -118,6 +118,26 @@ try {
     $emptyJson = Join-Path $fixture 'empty.json'
     Write-ReviewJson @() $emptyJson
     Assert-Evidence (([IO.File]::ReadAllText($emptyJson)).Trim() -match '^\[\s*\]$') 'An empty drift report must remain valid JSON.'
+    # A profiled player is the build its evidence recorded, file by file: Gamesim.exe is Unity's
+    # player stub, the same for every build of one Unity and product version, so it proves nothing alone.
+    $build = Join-Path $fixture 'build'
+    Put-Fixture $build 'Gamesim.exe' 'player stub'
+    Put-Fixture $build 'UnityPlayer.dll' 'engine'
+    Put-Fixture $build 'Gamesim_Data/Managed/Gamesim.Runtime.dll' 'game code'
+    $recordedTree = @(Get-ChildItem -LiteralPath $build -File -Recurse -Force | ForEach-Object {
+        [pscustomobject]@{ path = $_.FullName.Substring($build.Length + 1).Replace('\', '/'); sha256 = (Get-ReviewHash $_.FullName) } })
+    Assert-Evidence (@(Compare-ReviewBuildTree $build $recordedTree).Count -eq 0) 'A build tree matches its own record.'
+    Put-Fixture $build 'Gamesim_Data/Managed/Gamesim.Runtime.dll' 'other game code'
+    $changedTree = @(Compare-ReviewBuildTree $build $recordedTree)
+    Assert-Evidence ($changedTree.Count -eq 1 -and $changedTree[0] -eq 'changed Gamesim_Data/Managed/Gamesim.Runtime.dll') 'Another build behind the same launcher is not the recorded build.'
+    Put-Fixture $build 'Gamesim_Data/Managed/Gamesim.Runtime.dll' 'game code'
+    Put-Fixture $build 'Gamesim_Data/stray.bin' 'stray'
+    $extraTree = @(Compare-ReviewBuildTree $build $recordedTree)
+    Assert-Evidence ($extraTree.Count -eq 1 -and $extraTree[0] -eq 'extra Gamesim_Data/stray.bin') 'A file the build did not record is a difference.'
+    Remove-Item -LiteralPath (Join-Path $build 'Gamesim_Data/stray.bin')
+    Remove-Item -LiteralPath (Join-Path $build 'UnityPlayer.dll')
+    $missingTree = @(Compare-ReviewBuildTree $build $recordedTree)
+    Assert-Evidence ($missingTree.Count -eq 1 -and $missingTree[0] -eq 'missing UnityPlayer.dll') 'A recorded file that is gone is a difference.'
     Write-Output "$checks evidence checks passed; no Unity or acceptance copy used."
 } finally {
     $resolved = [IO.Path]::GetFullPath($fixture)

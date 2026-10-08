@@ -228,6 +228,49 @@ namespace Gamesim.Tests.EditMode
             return command;
         }
 
+        // ------------------------------------------------------------------ nothing else reaches it
+
+        /// <summary>
+        /// The stress house is reachable from the verification profile alone: the builder is called by the
+        /// director's internal stress start only, that start by PortVerification only, and the flag's text
+        /// lives in the one rule that admits it. The cast screen, the creator, the importer and every other
+        /// runtime path name none of them.
+        /// </summary>
+        [Test]
+        public void OnlyTheVerificationProfileCanBuildTheStressHouse()
+        {
+            string root = SourceRoot();
+            var sources = Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories)
+                .Where(path => !path.Replace('\\', '/').Contains("/Assets/Gamesim/Tests/")).ToList();
+            Assert.That(sources.Count, Is.GreaterThan(100), "The production sources were found.");
+            List<string> Naming(string text) => sources.Where(path => File.ReadAllText(path).Contains(text))
+                .Select(Path.GetFileName).OrderBy(name => name, StringComparer.Ordinal).ToList();
+            Assert.That(Naming("CreateVerificationStressHouse("), Is.EqualTo(new[] { "EpisodeDirector.Season.cs", "SeasonBuilder.cs" }));
+            Assert.That(Naming("StartVerificationStressSeason("), Is.EqualTo(new[] { "EpisodeDirector.Season.cs", "PortVerification.cs" }));
+            Assert.That(Naming("\"--gamesim-stress-roster\""), Is.EqualTo(new[] { "VerificationPerformance.cs" }));
+            Assert.That(Naming("StressRosterArgument"), Is.EqualTo(new[] { "PortVerification.cs", "VerificationPerformance.cs" }));
+        }
+
+        /// <summary>Assets/Gamesim, found upward from the working directory (the Unity project) or the test binary (Tools/SimulationTests).</summary>
+        private static string SourceRoot()
+        {
+            var found = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string start in new[] { Directory.GetCurrentDirectory(), Path.GetDirectoryName(typeof(StressHouseTests).Assembly.Location) })
+            {
+                string at = start;
+                for (int depth = 0; depth < 12 && !string.IsNullOrEmpty(at); depth++)
+                {
+                    string candidate = Path.Combine(at, "Assets", "Gamesim");
+                    if (File.Exists(Path.Combine(candidate, "Simulation", "SeasonBuilder.cs"))) { found.Add(Path.GetFullPath(candidate)); break; }
+                    string next = Path.GetDirectoryName(at);
+                    if (next == at) break;
+                    at = next;
+                }
+            }
+            Assert.That(found, Has.Count.EqualTo(1), "Exactly one Assets/Gamesim source tree above the test: " + string.Join(", ", found));
+            return found.Single();
+        }
+
         // ------------------------------------------------------------------ helpers
 
         /// <summary>The season as the save store writes it: public fields, indented (EpisodeSaveStore's SaveJson). The envelope adds a few hundred bytes.</summary>

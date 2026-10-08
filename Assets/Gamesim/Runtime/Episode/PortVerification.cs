@@ -47,6 +47,13 @@ namespace Gamesim.Episode
             if ((args.Contains("--gamesim-verify-study") || args.Contains("--gamesim-verify-blocs") || args.Contains("--gamesim-verify-autonomy"))
                 && (!args.Contains("--gamesim-verify") || !args.Contains("--gamesim-verify-season")))
             { Debug.LogError("Study/bloc/autonomy verification requires both --gamesim-verify and --gamesim-verify-season, plus an isolated absolute save root."); Application.Quit(2); return; }
+            // The stress house is verification-only and asked for twice: a size no roster seats AND the flag.
+            int requestedHouseSize = 0;
+            int size = Array.IndexOf(args, "--gamesim-house-size");
+            if (size >= 0 && size + 1 < args.Length && int.TryParse(args[size + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedSize))
+                requestedHouseSize = Math.Clamp(parsedSize, 3, 16);
+            string stressRefusal = VerificationPerformance.StressRosterRefusal(args, requestedHouseSize);
+            if (stressRefusal != null) { Debug.LogError(stressRefusal); Application.Quit(2); return; }
             if (!args.Contains("--gamesim-verify")) return;
             int root = Array.IndexOf(args, "--gamesim-save-root");
             if (root < 0 || root + 1 >= args.Length || !Path.IsPathRooted(args[root + 1]))
@@ -65,9 +72,8 @@ namespace Gamesim.Episode
             int duration = Array.IndexOf(args, "--gamesim-profile-seconds");
             if (duration >= 0 && duration + 1 < args.Length && double.TryParse(args[duration + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
                 runner.seconds = Math.Clamp(parsed, 10, 1800);
-            int size = Array.IndexOf(args, "--gamesim-house-size");
-            if (size >= 0 && size + 1 < args.Length && int.TryParse(args[size + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedSize))
-                runner.houseSize = Math.Clamp(parsedSize, 3, 16);
+            runner.houseSize = requestedHouseSize;
+            runner.stressRoster = args.Contains(VerificationPerformance.StressRosterArgument);
         }
 
         private IEnumerator Start()
@@ -75,20 +81,38 @@ namespace Gamesim.Episode
             Application.logMessageReceived += CollectError;
             Application.runInBackground = true;
             Directory.CreateDirectory(outputDirectory);
+            // Every frame before the steady sample is the startup, reported stage by stage beside it.
+            BeginStartupStage("bootstrap");
             EpisodeDirector director = null;
             double deadline = Time.realtimeSinceStartupAsDouble + 35;
             while ((director == null || !director.IsReady) && Time.realtimeSinceStartupAsDouble < deadline)
             { director = FindAnyObjectByType<EpisodeDirector>(); yield return null; }
             if (director == null || !director.IsReady)
             { errors.Add("The bootstrap did not reach a ready episode."); Finish(0, false); yield break; }
+            readySeconds = Time.realtimeSinceStartupAsDouble;
+            if (verifyCreator || lookSheet) startupStage = -1;
             if (verifyCreator) { yield return RunCreatorVerification(director); yield break; }
             // The look sheet is its own mode: twelve captures and a report, no profile, no recorded walk.
             if (lookSheet) { yield return RunLookSheet(); FinishLookSheet(); yield break; }
+            // Uncapped from here, so the startup's frames are its cost and not the display's interval.
+            director.SetFrameCap(ProfileFrameCap);
+            BeginStartupStage("season");
             var player = FindAnyObjectByType<HousePlayerController>();
             var rooms = FindObjectsByType<HouseRoomMarker>().OrderBy(room => room.RoomName, StringComparer.Ordinal).ToArray();
             profileRoomCount = rooms.Length;
             if (player == null || rooms.Length < 5) errors.Add("Expected a navigable player and five room markers.");
-            if (houseSize > 0 && director.Snapshot.contestants.Count != houseSize)
+            if (houseSize > 0 && stressRoster)
+            {
+                // The sixteen-person stress run: a house no roster seats, from both rosters, and only
+                // here (VerificationPerformance.StressRosterRefusal admitted the size at launch).
+                houseSizeNote = "Verification-only stress house: " + houseSize + " houseguests from both rosters "
+                    + "(SeasonBuilder.CreateVerificationStressHouse); no roster seats more than " + SeasonBuilder.LargestRosterHouse + ".";
+                director.StartVerificationStressSeason(houseSize);
+                for (int i = 0; i < 30; i++) yield return null;
+                if (director.Snapshot.contestants.Count != houseSize)
+                    errors.Add("The stress house did not start: " + director.Snapshot.contestants.Count + " of " + houseSize + ".");
+            }
+            else if (houseSize > 0 && director.Snapshot.contestants.Count != houseSize)
             {
                 // A roster seats twelve, and the builder will not pad a season with the other
                 // roster to reach a number (SeasonBuilder.LargestHouse). Sixteen is what a save may
@@ -107,6 +131,9 @@ namespace Gamesim.Episode
                     errors.Add("The requested house size did not start: " + director.Snapshot.contestants.Count + " of " + seated + ".");
             }
             measuredHouseSize = director.Snapshot.contestants.Count;
+            // The opening put away and every body built before anything is measured or captured.
+            yield return SettleTheHouse();
+            BeginStartupStage("verification");
             // A benchmark, so uncapped: the display preference defaults to VSync, which would make
             // every windowed profile read as 16.7 ms and say nothing about the frame's cost. Set
             // as the director's own preference, because the workload toggles other preferences
@@ -157,6 +184,7 @@ namespace Gamesim.Episode
             director.ClosePanels();
             gc = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "GC Allocated In Frame", 1);
             double started = Time.realtimeSinceStartupAsDouble;
+            BeginSteadySample(started);
             double nextAction = started, nextSave = started + 60;
             int action = 0;
             while (Time.realtimeSinceStartupAsDouble - started < seconds)
@@ -165,6 +193,7 @@ namespace Gamesim.Episode
                 frames.Add(Time.unscaledDeltaTime * 1000);
                 if (gc.Valid) allocations.Add(gc.LastValue);
                 double now = Time.realtimeSinceStartupAsDouble;
+                SampleMemoryDuringSteadySample(now);
                 if (now >= nextAction)
                 {
                     director.ClosePanels();
@@ -196,6 +225,7 @@ namespace Gamesim.Episode
             if (seconds >= (profileRoomCount + 3) * 10d && !ProfileWorkloadCycleCompleted)
                 errors.Add("The timed profile did not request every room, notebook, settings and station action in its scheduled cycle.");
             gc.Dispose();
+            EndSteadySample();
             director.ClosePanels();
             for (int i = 0; i < 5; i++) yield return null;
             if (graphical) yield return CaptureVerifiedFrame(Path.Combine(outputDirectory, "house-after-workload.png"), capturedFrames.Add, errors.Add);
@@ -219,6 +249,7 @@ namespace Gamesim.Episode
 
         private void Finish(double measured, bool graphical)
         {
+            WriteRawFrameTimes();
             var report = CompleteProfileReport(measured, graphical, Application.isBatchMode);
             File.WriteAllText(Path.Combine(outputDirectory, "verification.json"), JsonUtility.ToJson(report, true));
             Debug.Log("Gamesim standalone profile " + report.status + "; functional season " + report.seasonStatus
@@ -245,7 +276,10 @@ namespace Gamesim.Episode
         // Kept separate from file output and Quit so native Edit tests can check the report contract.
         private VerificationReport CompleteProfileReport(double measured, bool graphical, bool batchMode)
         {
-            frames.Sort(); allocations.Sort();
+            // Sorted copies: the frames stay in the order measured, which is the raw distribution kept beside the report.
+            var steady = VerificationFrameSummary.Of("steady", frames);
+            var sortedAllocations = new List<long>(allocations);
+            sortedAllocations.Sort();
             var reportErrors = new List<string>(errors);
             if (profileDisplaySampleCount == 0 || profileDisplaySampleCount != frames.Count)
                 reportErrors.Add("Every measured frame requires actual resolution and frame-cap evidence.");
@@ -257,7 +291,7 @@ namespace Gamesim.Episode
                 reportErrors.Add("The actual sampled display mode did not remain Windowed.");
             bool passed = reportErrors.Count == 0 && measured >= seconds && frames.Count > 100
                 && !batchMode && graphical && capturedFrames.Count == 6 && capturedFrames.All(frame => frame.rendered);
-            return new VerificationReport
+            var report = new VerificationReport
             {
                 status = passed ? "Passed" : "Failed", finishedUtc = profileFinishedUtc ?? DateTime.UtcNow.ToString("O"),
                 overallFinishedUtc = DateTime.UtcNow.ToString("O"),
@@ -270,15 +304,15 @@ namespace Gamesim.Episode
                 blocsStatus = verifyBlocs ? this.blocReport == null ? "Not run" : this.blocReport.status : "Not requested",
                 autonomyRequested = verifyAutonomy,
                 autonomyStatus = verifyAutonomy ? this.autonomyReport == null ? "Not run" : this.autonomyReport.status : "Not requested",
-                workload = "Timed standalone room-navigation, notebook/settings and station requests, plus isolated local saves. Actual requests are counted; short smoke runs may not complete a cycle. Not a human playtest or full-season timing sample. A Passed status validates workload/evidence, not the 60 FPS performance target.",
+                workload = "Timed standalone room-navigation, notebook/settings and station requests, plus isolated local saves. Actual requests are counted; short smoke runs may not complete a cycle. Not a human playtest or full-season timing sample. A Passed status validates workload/evidence, not the 60 FPS performance target; that verdict is performanceAcceptance alone.",
                 profileRoomCount = profileRoomCount, profileRoomsRequested = profileVisitedRooms.OrderBy(name => name, StringComparer.Ordinal).ToArray(),
                 profileRoomRequests = profileRoomRequests, profileJournalRequests = profileJournalRequests,
                 profileSettingsRequests = profileSettingsRequests, profileStationRequests = profileStationRequests, profileSaveRequests = profileSaveRequests,
                 profileWorkloadCycleRequired = seconds >= (profileRoomCount + 3) * 10d,
                 profileWorkloadCycleCompleted = ProfileWorkloadCycleCompleted,
                 requestedSeconds = seconds, measuredSeconds = measured, frameCount = frames.Count,
-                frameMedianMs = Percentile(frames, .5), frameP95Ms = Percentile(frames, .95), frameP99Ms = Percentile(frames, .99),
-                gcCounterAvailable = allocations.Count > 0, gcMedianBytes = Percentile(allocations, .5), gcP95Bytes = Percentile(allocations, .95),
+                frameMedianMs = steady.medianMs, frameP95Ms = steady.p95Ms, frameP99Ms = steady.p99Ms,
+                gcCounterAvailable = sortedAllocations.Count > 0, gcMedianBytes = Percentile(sortedAllocations, .5), gcP95Bytes = Percentile(sortedAllocations, .95),
                 graphical = graphical, batchMode = batchMode, capturedFrames = capturedFrames,
                 resolution = Screen.width + "x" + Screen.height, houseSize = measuredHouseSize,
                 requestedResolution = ProfileWidth + "x" + ProfileHeight, sampledResolution = profileSampledResolution,
@@ -289,24 +323,53 @@ namespace Gamesim.Episode
                 requestedDisplayMode = FullScreenMode.Windowed.ToString(), sampledDisplayMode = profileSampledDisplayMode,
                 sampledDisplayModeMismatchCount = profileDisplayModeMismatchCount,
                 uncapped = profileDisplaySampleCount > 0 && profileFrameCapMismatchCount == 0,
-                performanceAcceptance = "Not assessed; uncapped diagnostic sample only.",
                 houseSizeRequested = houseSize, houseSizeNote = houseSizeNote,
                 unityVersion = Application.unityVersion, processor = SystemInfo.processorType, gpu = SystemInfo.graphicsDeviceName,
                 systemMemoryMB = SystemInfo.systemMemorySize, graphicsMemoryMB = SystemInfo.graphicsMemorySize,
                 developmentBuild = Debug.isDebugBuild, errors = reportErrors.ToArray(), saveDirectory = outputDirectory
             };
+            CompletePerformanceReport(report, steady, measured, graphical, batchMode);
+            return report;
         }
 
-        private static double Percentile(List<float> values, double p) => values.Count == 0 ? 0 : values[Math.Min(values.Count - 1, (int)Math.Ceiling(values.Count * p) - 1)];
         private bool ProfileWorkloadCycleCompleted => profileVisitedRooms.Count == profileRoomCount
             && profileJournalRequests > 0 && profileSettingsRequests > 0 && profileStationRequests > 0;
         private static double Percentile(List<long> values, double p) => values.Count == 0 ? 0 : values[Math.Min(values.Count - 1, (int)Math.Ceiling(values.Count * p) - 1)];
-        private void OnDestroy() { Application.logMessageReceived -= CollectError; gc.Dispose(); }
+        private void OnDestroy() { Application.logMessageReceived -= CollectError; gc.Dispose(); DisposeMemoryRecorders(); }
 
         [Serializable] private sealed class VerificationReport
         {
             public string status, finishedUtc, workload, resolution, unityVersion, processor, gpu, saveDirectory;
-            public string requestedResolution, sampledResolution, performanceAcceptance;
+            public string requestedResolution, sampledResolution;
+            // The verdict against the owner's target (VerificationPerformance.Verdict): "Met", "Not met",
+            // or "Not assessed: <reasons>". Never implied by status.
+            public string performanceAcceptance, performanceAcceptanceBasis;
+            public double performanceP95LimitMs, performanceP99LimitMs, performanceMinimumSeconds;
+            // The steady sample's distribution, beyond its median/p95/p99, and where the raw frames are.
+            public VerificationFrameSummary steady;
+            public double frameMeanMs, frameMinMs, frameMaxMs, frameP90Ms, frameP999Ms, averageFps;
+            public int slowFramesOver16_7Ms, slowFramesOver33_3Ms, slowFramesOver50Ms;
+            public float[] frameHistogramUpperMs;
+            public int[] frameHistogramCounts;
+            public string rawFrameTimesFile, rawStartupFrameTimesFile;
+            // Everything before the steady sample, stage by stage: bootstrap, season, bodies, verification.
+            public VerificationFrameSummary startup;
+            public List<VerificationFrameSummary> startupStages;
+            public double startupReadySeconds, startupSampleBeganSeconds, bodyAssemblySeconds;
+            public bool bodiesAssembled, openingSkipped;
+            public int bodiesAssemblingAtSampleStart;
+            // Memory through the steady sample, in bytes (-1 unavailable; the driver estimate is 0 in release players).
+            public VerificationMemorySample memoryAtSampleStart, memoryAtSampleEnd, memoryPeak;
+            public int memorySamples;
+            public bool gfxDriverMemoryAvailable;
+            // What was measured: the build, its quality and render scale, the display and the machine.
+            public string buildVersion, buildGuid, productName, qualityLevelName, renderPipeline;
+            public int qualityLevel;
+            public float renderScale;
+            public string displayResolution, graphicsDeviceType, graphicsDeviceVersion, graphicsDeviceVendor, operatingSystem;
+            public double displayRefreshHz;
+            public int processorCount, processorFrequencyMHz;
+            public bool stressRoster;
             public string requestedDisplayMode, sampledDisplayMode;
             public int sampledDisplayModeMismatchCount;
             public int sampledDisplayFrames, sampledResolutionMismatchCount, requestedFrameCap, requestedVSyncCount;

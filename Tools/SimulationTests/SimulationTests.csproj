@@ -238,6 +238,10 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Dice.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Words.cs" />
     <Compile Include="$(EditMode)ScrambleDealTests.cs" />
+    <!-- The standalone profile's performance verdict and arithmetic, and the verification-only stress house. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/VerificationPerformance.cs" />
+    <Compile Include="$(EditMode)VerificationPerformanceTests.cs" />
+    <Compile Include="$(EditMode)StressHouseTests.cs" />
 
     <!--
       Several parity tests already carry an #else branch for running outside the editor: without

@@ -259,6 +259,19 @@ namespace Gamesim.Episode
         /// that reason and everything they had set on it intact. Nothing is shown when it is null.
         /// </summary>
         public void StartSeason(SeasonBuilder.Choice choice, Action<string> failed)
+            => StartSeason(choice, failed, seed => choice == null ? ContentCatalog.Create(seed) : SeasonBuilder.Create(choice, seed));
+
+        /// <summary>
+        /// <b>Verification only:</b> the standalone profile's stress house, thirteen to sixteen
+        /// houseguests from both rosters (<see cref="SeasonBuilder.CreateVerificationStressHouse"/>),
+        /// started exactly as any season is. Internal, and called from nowhere but
+        /// <see cref="PortVerification"/> under <c>--gamesim-verify --gamesim-stress-roster</c>: the
+        /// cast screen, the creator and the importer cannot reach it.
+        /// </summary>
+        internal void StartVerificationStressSeason(int houseSize)
+            => StartSeason(null, null, seed => SeasonBuilder.CreateVerificationStressHouse(houseSize, seed));
+
+        private void StartSeason(SeasonBuilder.Choice choice, Action<string> failed, Func<uint, EpisodeState> build)
         {
             if (durableCommitInProgress) return;
             SuspendNpcWorldWithoutSaving();
@@ -267,7 +280,7 @@ namespace Gamesim.Episode
             {
                 var seed = unchecked((uint)DateTime.UtcNow.Ticks);
                 var nextStore = new EpisodeSaveStore(Path.Combine(saveRoot, "episode-" + Guid.NewGuid().ToString("N") + ".json"));
-                var fresh = choice == null ? ContentCatalog.Create(seed) : SeasonBuilder.Create(choice, seed);
+                var fresh = build(seed);
                 fresh.competitionRulesVersion = CompetitionRules.Current;
                 fresh.haveNotRulesStartWeek = 1;
                 fresh.strategyRulesStartWeek = 1;

@@ -12,7 +12,8 @@ namespace Gamesim.Tests.EditMode
     /// Schema 28 (WAVE-D-NPC-PACTS-PLAN §0.3): Wave D's joint storage, inert. Every new field is born at
     /// its inert value, clones deep, and validation keeps each design's fields, lines and receipt out of
     /// a season until its own start week; the two new kinds are refused before anything is spent,
-    /// drawn or logged; and nothing in this build writes any of it. Pure in-memory controls, run by
+    /// drawn or logged; and nothing in this build writes any of it but D4's leak rules, under their own
+    /// start week (AllianceLeakTests). Pure in-memory controls, run by
     /// the Unity-free subset; the save's half is PersistenceV28MigrationTests.
     /// </summary>
     public sealed class WaveDInertSchema28Tests
@@ -346,11 +347,15 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// Whole seasons, with every start week 0 and with every one set: nothing in this build plans a
-        /// beat, records an act, writes a plan, logs a Wave D line or gives the receipt.
+        /// beat, records an act, writes a plan or logs D2's or D3's lines. D4 has landed: with its start
+        /// week set, its double-dealing line and its receipt are its own to write (AllianceLeakTests), and
+        /// with every start week 0 neither ever appears.
         /// </summary>
         [TestCase(2817u, false)] [TestCase(2818u, true)]
         public void NothingInThisBuildWritesWaveDStorage(uint seed, bool started)
         {
+            // D4's kind, written only under its own start week; the other three are D2's and D3's.
+            var unwritten = started ? WaveDEventKinds.All.Where(kind => kind != WaveDEventKinds.DoubleDealing).ToArray() : WaveDEventKinds.All;
             var s = Played(seed);
             if (started) foreach (string name in StartWeeks) Set(s, name, 1);
             var engine = new EpisodeEngine(s);
@@ -364,8 +369,8 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(state.npcSocial.beatWeek + state.npcSocial.beatsFired + state.npcSocial.beatSeats, Is.Zero);
                 Assert.That(state.npcSocial.beatPlan, Is.Empty); Assert.That(state.npcSocial.acts, Is.Empty);
                 Assert.That(state.ledger.plans, Is.Empty);
-                Assert.That(state.events.Any(e => WaveDEventKinds.All.Contains(e.kind)), Is.False);
-                Assert.That(state.relationships.Any(r => r.events.Any(e => e.type == StoryReceipts.DoubleDealt)), Is.False);
+                Assert.That(state.events.Any(e => unwritten.Contains(e.kind)), Is.False);
+                if (!started) Assert.That(state.relationships.Any(r => r.events.Any(e => e.type == StoryReceipts.DoubleDealt)), Is.False);
                 foreach (string name in StartWeeks) Assert.That(Get(state, name), Is.EqualTo(started ? 1 : 0));
             }
             Assert.That(engine.Snapshot.phase, Is.EqualTo(EpisodePhase.Finished));

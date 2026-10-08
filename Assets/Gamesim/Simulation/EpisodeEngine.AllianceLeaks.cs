@@ -63,12 +63,48 @@ namespace Gamesim.Simulation
             if (Knowledge.Of(s, FactKinds.Alliance, alliance.id) == null) Knowledge.AllianceFormed(s, alliance);
             var fact = Knowledge.Of(s, FactKinds.Alliance, alliance.id);
             if (fact == null) return;
+            var knewBefore = new List<string>(fact.knowers);
             if (e.thirdId != null)
             {
                 Knowledge.AddKnower(s, fact, e.thirdId);
                 Knowledge.MakeKnown(s, fact, FactVisibility.Whispered);
             }
             else Knowledge.MakeKnown(s, fact, FactVisibility.IsKnown(e.text) ? e.text : FactVisibility.Public);
+            // Whoever the story told who did not know: an ally of the player's among them has caught the player out.
+            foreach (string knower in fact.knowers.Where(id => !knewBefore.Contains(id)).ToList())
+                CaughtDoubleDealing(s, fact, knower);
+        }
+
+        // ---------------------------------------------------------------- double-dealing
+
+        /// <summary>
+        /// Somebody has just come to know of a pact's fact - the house's gossip told them, or a story's
+        /// spread did - under the leak rules (WAVE-D-NPC-PACTS-PLAN §2.3): where they share a pact with the
+        /// player and this is another of the player's (<see cref="AllianceLeaks.IsCaughtOut"/>), they react.
+        /// Knowers only grow, so it happens at most once for them and this pact, with no record kept.
+        /// </summary>
+        private static void CaughtDoubleDealing(EpisodeState s, HouseFactState fact, string knowerId)
+        {
+            if (fact == null || fact.kind != FactKinds.Alliance || !AllianceLeaks.On(s)) return;
+            var pact = s.alliances.FirstOrDefault(a => a?.id == fact.refId);
+            if (AllianceLeaks.IsCaughtOut(s, knowerId, pact)) DoubleDealt(s, knowerId, pact);
+        }
+
+        /// <summary>
+        /// An ally who found out about the player's other pact. Deterministic, with no draw: one who has a
+        /// rival in it (<see cref="AllianceLeaks.HasRival"/>) holds the alliance-betrayed grudge against the
+        /// player - forty, the allied ×1.2 making it forty-eight, stacking at half - and anybody else keeps
+        /// the permanent receipt (<see cref="StoryReceipts.DoubleDealt"/>, −10) on their view of the player,
+        /// as talk about the player moves a listener (<see cref="HeardAbout"/>). Either way the same one
+        /// line, to the player and to them (D4-M1). Nothing moves between two houseguests, nothing goes
+        /// through <see cref="Change"/>, and the pact they share with the player is left alone.
+        /// </summary>
+        private static void DoubleDealt(EpisodeState s, string knowerId, AllianceState pact)
+        {
+            if (AllianceLeaks.HasRival(s, knowerId, pact))
+                Grudges.Add(s, knowerId, s.playerId, AllianceLeaks.BetrayedGrudge, GrudgeCauses.AllianceBetrayed, alliedMultiplier: true);
+            else HeardAbout(s, knowerId, AllianceLeaks.ReceiptImpact, AllianceLeaks.HeardNote(s, pact), StoryReceipts.DoubleDealt);
+            Log(s, WaveDEventKinds.DoubleDealing, AllianceLeaks.Line(s, knowerId, pact), s.playerId, knowerId);
         }
 
         /// <summary>

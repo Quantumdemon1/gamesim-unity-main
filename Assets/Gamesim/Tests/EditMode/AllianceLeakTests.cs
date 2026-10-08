@@ -570,6 +570,238 @@ namespace Gamesim.Tests.EditMode
             Assert.That(carried, Is.GreaterThan(0), "and the same night's gossip carried one.");
         }
 
+        // ------------------------------------------------------------ D4-4: double-dealing
+
+        /// <summary>
+        /// The player juggling two pacts: "first" with the ally, and "other" with two more, whose fact the
+        /// ally has not heard of and which is out as a whisper. Every view the ally holds of the other two
+        /// is neutral, so nobody in it is their rival.
+        /// </summary>
+        private static (EpisodeState s, ContestantState ally, AllianceState other) Juggling(uint seed = 4101, bool rules = true)
+        {
+            var s = House(seed);
+            EpisodeEngine.EnableStory(s, s.week);
+            EpisodeEngine.EnableCommitments(s, s.week);
+            if (rules) EpisodeEngine.EnableAllianceLeaks(s, s.week);
+            var n = Others(s);
+            PrivateFact(s, Pact(s, "first", true, s.playerId, n[0].id), s.week - 1);
+            var other = Pact(s, "other", true, s.playerId, n[1].id, n[2].id);
+            Knowledge.MakeKnown(s, PrivateFact(s, other, s.week - 1), FactVisibility.Whispered);
+            SetScore(s, n[0].id, n[1].id, 0);
+            SetScore(s, n[0].id, n[2].id, 0);
+            return (s, n[0], other);
+        }
+
+        /// <summary>A story telling somebody of the pact between two people (LeakAlliance), as a beat applies it.</summary>
+        private static void Tell(EpisodeState s, string a, string b, string listener) =>
+            ApplyStoryEffect(s, new StoryEffectState { kind = StoryEffects.Spread, fromId = a, toId = b, thirdId = listener,
+                type = FactKinds.Alliance, text = FactVisibility.Whispered });
+
+        private static List<EpisodeEvent> DoubleDealingLines(EpisodeState s) => s.events.Where(e => e.kind == WaveDEventKinds.DoubleDealing).ToList();
+
+        private static List<RelationshipEventState> Receipts(EpisodeState s, string from) =>
+            s.relationships.Where(r => r.fromId == from && r.toId == s.playerId).SelectMany(r => r.events)
+                .Where(e => e.type == StoryReceipts.DoubleDealt).ToList();
+
+        /// <summary>Every view and record between two houseguests, neither of them the player.</summary>
+        private static string BetweenOthers(EpisodeState s) => JsonConvert.SerializeObject(
+            s.relationships.Where(r => r.fromId != s.playerId && r.toId != s.playerId).OrderBy(r => r.fromId + ">" + r.toId, StringComparer.Ordinal));
+
+        [Test]
+        public void AnAllyAStoryTellsOfThePlayersOtherPactKeepsTheReceiptAndThePlayerHearsWhoInOneLine()
+        {
+            var (s, ally, other) = Juggling();
+            var n = Others(s);
+            string others = BetweenOthers(s), grudges = JsonConvert.SerializeObject(s.story.grudges);
+            uint random = s.randomState; int ids = s.nextSequence;
+            double view = s.Score(ally.id, s.playerId);
+            Tell(s, s.playerId, n[1].id, ally.id);
+
+            var line = DoubleDealingLines(s).Single();
+            Assert.That(line.text, Is.EqualTo(ally.name + " found out about The other Pact, your alliance with " + n[1].name + " and " + n[2].name
+                + ". They won't forget you kept it from them."), "One line, word for word.");
+            Assert.That(line.text, Is.EqualTo(AllianceLeaks.Line(s, ally.id, other)));
+            Assert.That(line.audienceIds, Is.EqualTo(new[] { s.playerId, ally.id }), "To the player and the one who found out.");
+            var receipt = Receipts(s, ally.id).Single();
+            Assert.That(receipt.impactScore, Is.EqualTo(-10), "The receipt on the ledger, at its own impact.");
+            Assert.That(receipt.decayable, Is.False, "and permanent.");
+            Assert.That(receipt.week, Is.EqualTo(s.week));
+            Assert.That(receipt.description, Is.EqualTo("Found out you are also working with " + n[1].name + " and " + n[2].name + "."));
+            Assert.That(s.Score(ally.id, s.playerId), Is.EqualTo(view - 10).Within(1e-9), "Their view of the player moves with it.");
+            Assert.That(BetweenOthers(s), Is.EqualTo(others), "Nothing moves between two houseguests,");
+            Assert.That(JsonConvert.SerializeObject(s.story.grudges), Is.EqualTo(grudges), "and nobody holds a grudge.");
+            Assert.That(s.randomState, Is.EqualTo(random), "No draw:");
+            Assert.That(s.nextSequence, Is.EqualTo(ids + 2), "the receipt's id and the line's, and nothing else.");
+            Assert.That(s.alliances.Single(a => a.id == "first").active && other.active, Is.True, "Both pacts stand.");
+
+            // Told again: they know already, so nothing more.
+            Tell(s, n[2].id, s.playerId, ally.id);
+            Assert.That(DoubleDealingLines(s), Has.Count.EqualTo(1), "Once per houseguest and pact.");
+            Assert.That(Receipts(s, ally.id), Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public void AnAllyWithARivalInThePactHoldsAGrudgeInsteadAndHearsTheSameLine()
+        {
+            var (plain, plainAlly, _) = Juggling();
+            var (grudge, grudgeAlly, _) = Juggling();
+            var (hostile, hostileAlly, _) = Juggling();
+            var n = Others(grudge);
+            Grudges.Add(grudge, grudgeAlly.id, n[1].id, AllianceLeaks.RivalGrudge, GrudgeCauses.Story);
+            SetScore(hostile, hostileAlly.id, n[2].id, AllianceLeaks.RivalScore);
+            Assert.That(AllianceLeaks.HasRival(plain, plainAlly.id, plain.alliances.Single(a => a.id == "other")), Is.False);
+            foreach (var s in new[] { plain, grudge, hostile }) Tell(s, s.playerId, n[1].id, Others(s)[0].id);
+
+            string said = DoubleDealingLines(plain).Single().text;
+            Assert.That(DoubleDealingLines(grudge).Single().text, Is.EqualTo(said), "Both reactions say the same line.");
+            Assert.That(DoubleDealingLines(hostile).Single().text, Is.EqualTo(said));
+            Assert.That(Grudges.Severity(plain, plainAlly.id, plain.playerId), Is.Zero);
+            foreach (var (s, ally) in new[] { (grudge, grudgeAlly), (hostile, hostileAlly) })
+            {
+                Assert.That(Receipts(s, ally.id), Is.Empty, "A rival in the pact: a grudge, not the receipt.");
+                var held = s.story.grudges.Single(g => g.holderId == ally.id && g.targetId == s.playerId);
+                Assert.That(held.severity, Is.EqualTo(48).Within(1e-9), "Forty, by the allied ×1.2: past the refusal line.");
+                Assert.That(held.cause, Is.EqualTo(GrudgeCauses.AllianceBetrayed));
+                Assert.That(EpisodeEngine.GrudgeRefusesAlliance(s, ally.id), Is.True, "Forty or more refuses a pact.");
+            }
+
+            // A grudge already held stacks at half.
+            var (stack, stackAlly, _) = Juggling();
+            var m = Others(stack);
+            Grudges.Add(stack, stackAlly.id, m[1].id, 30, GrudgeCauses.Story);
+            Grudges.Add(stack, stackAlly.id, stack.playerId, 10, GrudgeCauses.Story);
+            Tell(stack, stack.playerId, m[1].id, stackAlly.id);
+            Assert.That(Grudges.Severity(stack, stackAlly.id, stack.playerId), Is.EqualTo(10 + 48 * 0.5).Within(1e-9));
+        }
+
+        [Test]
+        public void ThePlayersCardSaysWhoFoundOutAndWhen()
+        {
+            var (s, ally, other) = Juggling();
+            var n = Others(s);
+            Tell(s, s.playerId, n[1].id, ally.id);
+            var cards = AllianceRead.Yours(s);
+            Assert.That(cards.Single(p => p.id == other.id).exposures.Select(e => e.week + ": " + e.text),
+                Is.EqualTo(new[] { s.week + ": " + FinalistRead.FirstName(ally.name) + " found out about it." }));
+            Assert.That(cards.Single(p => p.id == "first").exposures, Is.Empty, "The pact they share with the player is left alone.");
+            // Renamed since: the line names the old name, the gap a renamed pact's other lines have too.
+            other.name = "The Renamed Pact";
+            Assert.That(AllianceRead.Yours(s).Single(p => p.id == other.id).exposures, Is.Empty);
+        }
+
+        [Test]
+        public void TheHousesGossipCatchesThePlayerOutTooButOnlyOnce()
+        {
+            var (s, ally, other) = Juggling(4102);
+            var n = Others(s);
+            // The pact's two others would tell the ally first, and the ally is close to whom it is about.
+            foreach (var teller in new[] { n[1], n[2] })
+                foreach (var c in s.Active.Where(c => c.id != teller.id))
+                    SetScore(s, teller.id, c.id, c.id == ally.id ? 95 : 0);
+            SetScore(s, ally.id, n[2].id, 0); SetScore(s, ally.id, n[1].id, 0);
+            var fact = Knowledge.Of(s, FactKinds.Alliance, other.id);
+            string others = BetweenOthers(s);
+            int start = s.week;
+            for (int week = start; week < start + 60 && !fact.knowers.Contains(ally.id); week++)
+            {
+                s.week = week;
+                StorySystemsAt(s, StoryAnchors.HohCrowned);
+            }
+            Assert.That(fact.knowers, Has.Member(ally.id), "The gossip reached the ally within sixty weeks of anchors.");
+            Assert.That(DoubleDealingLines(s), Has.Count.EqualTo(1), "and they reacted, in one line.");
+            Assert.That(Receipts(s, ally.id), Has.Count.EqualTo(1));
+            Assert.That(BetweenOthers(s), Is.EqualTo(others), "Gossip and the reaction move nothing between two others.");
+            int known = s.week;
+            for (int week = known + 1; week < known + 6; week++) { s.week = week; StorySystemsAt(s, StoryAnchors.BlockSet); }
+            Assert.That(DoubleDealingLines(s), Has.Count.EqualTo(1), "Knowers only grow: never twice.");
+        }
+
+        [Test]
+        public void NobodyIsCaughtOutByAMemberAnEndedPactAnEvictedPlayerAnOutsiderOrOneWhoKnewBeforeAllying()
+        {
+            void Expect(string why, Action<EpisodeState, ContestantState, AllianceState> arrange, bool rules = true)
+            {
+                var (s, ally, other) = Juggling(4103, rules);
+                arrange(s, ally, other);
+                var n = Others(s);
+                Tell(s, s.playerId, n[1].id, ally.id);
+                Assert.That(DoubleDealingLines(s), Is.Empty, why + ": no line,");
+                Assert.That(Receipts(s, ally.id), Is.Empty, why + ": no receipt,");
+                Assert.That(Grudges.Severity(s, ally.id, s.playerId), Is.Zero, why + ": no grudge.");
+            }
+            Expect("Without the leak rules", (s, a, p) => { }, rules: false);
+            Expect("A member of the pact", (s, a, p) => p.members.Add(a.id));
+            Expect("An ended pact", (s, a, p) => p.active = false);
+            Expect("An evicted player", (s, a, p) => s.Find(s.playerId).status = ContestantStatus.Evicted);
+            Expect("Somebody the player shares no pact with", (s, a, p) => s.alliances.Single(x => x.id == "first").active = false);
+            Expect("Somebody who knew before they allied", (s, a, p) => Knowledge.AddKnower(s, Knowledge.Of(s, FactKinds.Alliance, p.id), a.id));
+            Expect("An evicted ally", (s, a, p) => a.status = ContestantStatus.Evicted);
+
+            // A pact between others: an NPC finding out about an NPC pact is never the player's business.
+            var t = Rules(4104);
+            var m = Others(t);
+            PrivateFact(t, Pact(t, "mine", true, t.playerId, m[0].id), t.week - 1);
+            PrivateFact(t, Pact(t, "theirs", true, m[1].id, m[2].id), t.week - 1);
+            Tell(t, m[1].id, m[2].id, m[0].id);
+            Assert.That(Knowledge.Knows(Knowledge.Of(t, FactKinds.Alliance, "theirs"), m[0].id), Is.True);
+            Assert.That(DoubleDealingLines(t), Is.Empty, "No reaction to a pact the player is not in.");
+        }
+
+        /// <summary>
+        /// The same story made public: everyone in the house hears of the pact at once, and of them only the
+        /// player's allies outside it react - one line each.
+        /// </summary>
+        [Test]
+        public void AStoryMakingThePactPublicCatchesThePlayerOutWithEveryAllyOutsideIt()
+        {
+            var (s, ally, other) = Juggling(4105);
+            var n = Others(s);
+            var second = Pact(s, "second", true, s.playerId, n[3].id);
+            PrivateFact(s, second, s.week - 1);
+            SetScore(s, n[3].id, n[1].id, 0); SetScore(s, n[3].id, n[2].id, 0);
+            ApplyStoryEffect(s, new StoryEffectState { kind = StoryEffects.Spread, fromId = n[1].id, toId = n[2].id,
+                type = FactKinds.Alliance, text = FactVisibility.Public });
+            Assert.That(DoubleDealingLines(s).Select(e => e.audienceIds[1]), Is.EquivalentTo(new[] { ally.id, n[3].id }),
+                "The two allies outside it, and nobody else in the house.");
+            Assert.That(Receipts(s, ally.id), Has.Count.EqualTo(1));
+            Assert.That(Receipts(s, n[3].id), Has.Count.EqualTo(1));
+        }
+
+        /// <summary>
+        /// A season under the hearing rules (D4-L2), as fresh seasons are: the gossip runs on its staged
+        /// clone and installs only the facts, and the leak, the gossip and the reaction all still land - the
+        /// coin is the plan's, the ally reacts once, and the hearing storage stays valid.
+        /// </summary>
+        [Test]
+        public void UnderTheHearingRulesTheLeakAndTheGossipStillCatchThePlayerOut()
+        {
+            var (s, ally, other) = Juggling(4106);
+            s.unifiedCommitmentRulesVersion = UnifiedCommitments.ProspectiveVersion;
+            s.unifiedHearingRulesVersion = UnifiedCommitmentHearings.ProspectiveVersion;
+            Assert.That(UnifiedCommitmentHearings.RulesOn(s), Is.True, "Precondition: the hearing rules are on.");
+            var n = Others(s);
+            var fact = Knowledge.Of(s, FactKinds.Alliance, other.id);
+            fact.visibility = FactVisibility.Private;
+            foreach (var teller in new[] { n[1], n[2] })
+                foreach (var c in s.Active.Where(c => c.id != teller.id))
+                    SetScore(s, teller.id, c.id, c.id == ally.id ? 95 : 0);
+            int leakWeek = Enumerable.Range(s.week, 80).First(week => { var w = s.Clone(); w.week = week; return CoinLands(w, w.alliances.Single(a => a.id == other.id)); });
+            s.week = leakWeek;
+            StorySystemsAt(s, StoryAnchors.EvictionNight);
+            fact = Knowledge.Of(s, FactKinds.Alliance, other.id);
+            Assert.That(fact.visibility, Is.EqualTo(FactVisibility.Whispered), "The coin landed and the pact got out, through the staged gossip.");
+            for (int week = leakWeek + 1; week < leakWeek + 60 && !fact.knowers.Contains(ally.id); week++)
+            {
+                s.week = week;
+                StorySystemsAt(s, StoryAnchors.HohCrowned);
+                fact = Knowledge.Of(s, FactKinds.Alliance, other.id);
+            }
+            Assert.That(fact.knowers, Has.Member(ally.id), "The staged gossip reached the ally.");
+            Assert.That(DoubleDealingLines(s), Has.Count.EqualTo(1));
+            Assert.That(Receipts(s, ally.id), Has.Count.EqualTo(1));
+            Assert.That(UnifiedCommitmentHearings.ValidateStorage(s, out string error), Is.True, error);
+        }
+
         /// <summary>The listen-in as the player presses it: one command, accepted, and the season legal after it.</summary>
         [Test]
         public void TheListenInIsOneLegalCommand()

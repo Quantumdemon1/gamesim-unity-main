@@ -211,6 +211,8 @@ namespace Gamesim.Persistence
             EpisodeEngine.EnableAgency(result, checked(week + 1));
             EpisodeEngine.EnableFinale(result, checked(week + 1));
             EpisodeEngine.EnableCommitments(result, checked(week + 1));
+            // Leaks and double-dealing (WAVE-D-NPC-PACTS-PLAN D4, §6 Q1) from the week after too.
+            EpisodeEngine.EnableAllianceLeaks(result, checked(week + 1));
             return result;
         }
 

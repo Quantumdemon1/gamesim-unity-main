@@ -284,6 +284,11 @@ namespace Gamesim.Tests.EditMode
             Assert.That(imported.contestants[0].stats.social, Is.EqualTo(6));
             Assert.That(imported.contestants[0].hohWins, Is.EqualTo(1));
             Assert.That(imported.phase, Is.EqualTo(EpisodePhase.Social));
+            // Wave D's leak rules (D4) from the week after the import, as the commitment rules; the war
+            // rooms' and the all-week rules' wait for their own slices.
+            Assert.That(imported.allianceLeakRulesStartWeek, Is.EqualTo(imported.week + 1));
+            Assert.That(imported.commitmentRulesStartWeek, Is.EqualTo(imported.week + 1));
+            Assert.That(imported.pactPlanRulesStartWeek + imported.allWeekRulesStartWeek, Is.Zero);
             var originals = Directory.GetFiles(archive);
             Assert.That(originals, Has.Length.EqualTo(1));
             Assert.That(File.ReadAllText(originals[0]), Is.EqualTo(json));

@@ -81,6 +81,9 @@ namespace Gamesim.Episode
                 && state.Find(state.playerId)?.status == ContestantStatus.Active)
                 lines.Add(NoCallsYetCopy);
             foreach (var deal in pact.deals) lines.Add(Dated(deal.week, deal.text));
+            // Who found out about it, under the leak rules (WAVE-D-NPC-PACTS-PLAN D4): after the calls - and
+            // D3's plan line, which slots before these - each in the week the player was told. Lines, not controls.
+            foreach (var exposure in pact.exposures) lines.Add(Dated(exposure.week, exposure.text));
             // Named for the pact's id as well as its name: two pacts can share a name, and a card's
             // name is how a test or a reader finds it. The card shows the name alone.
             hud.PactCard(EpisodeHud.AllianceCardName(pact.name, pact.id), eyebrow, pact.active ? UiTheme.Allied : UiTheme.Muted,

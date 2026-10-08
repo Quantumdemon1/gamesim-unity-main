@@ -377,6 +377,9 @@ namespace Gamesim.Simulation
                     // Your word in the house (ACTIONS-DEALS-ALLIANCES-PLAN C8): a houseguest the gossip
                     // tells of the player's broken word thinks less of them, and the player hears who.
                     else if (YourWord.On(s) && YourWord.IsYours(s, fact)) HeardOfYourWord(s, fact, listener);
+                    // Double-dealing (WAVE-D-NPC-PACTS-PLAN §2.3): an ally of the player's the gossip tells
+                    // of the player's other pact holds it against them, and the player hears who.
+                    else if (AllianceLeaks.On(s)) CaughtDoubleDealing(s, fact, listener);
                 }
         }
 

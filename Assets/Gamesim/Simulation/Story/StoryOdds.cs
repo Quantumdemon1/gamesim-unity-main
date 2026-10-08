@@ -145,7 +145,8 @@ namespace Gamesim.Simulation
         public const string PublicBlowup = "story:public-blowup", MadePeace = "story:made-peace";
         /// <summary>
         /// Schema 28 vocabulary (WAVE-D-NPC-PACTS-PLAN D4): an ally found out about the player's other
-        /// pact. Nothing in this build writes it, and validation refuses it until D4's start week.
+        /// pact. Written by the leak rules' double-dealing (EpisodeEngine.DoubleDealt) on the one who
+        /// found out's view of the player, and refused by validation before D4's start week.
         /// </summary>
         public const string DoubleDealt = "story:double-dealt";
         // Fading: ordinary social weather.

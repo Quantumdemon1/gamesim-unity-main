@@ -137,6 +137,9 @@ namespace Gamesim.Episode
             RequireSeason(fresh.finaleRulesStartWeek == 1,"The cast screen's season must play the finale rules from its first week.");
             // A lost EnableCommitments would leave study free and a breach held against its victim.
             RequireSeason(fresh.commitmentRulesStartWeek == 1,"The cast screen's season must play the commitment rules from its first week.");
+            // A lost EnableAllianceLeaks would keep every secret pact secret and the whisper's two names (WAVE-D D4).
+            // Only D4's: the war rooms' and the all-week rules' start weeks stay 0 until their own slices.
+            RequireSeason(fresh.allianceLeakRulesStartWeek == 1,"The cast screen's season must play the leak rules from its first week.");
             CheckSaveIsIsolated();
             seasonReport.sessionId = fresh.sessionId; seasonReport.seed = fresh.seed.ToString();
             seasonReport.profileSavePath = previousSlot; seasonReport.seasonSavePath = seasonDirector.SavePath;

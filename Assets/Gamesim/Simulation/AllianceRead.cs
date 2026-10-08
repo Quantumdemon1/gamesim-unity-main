@@ -97,6 +97,12 @@ namespace Gamesim.Simulation
             public List<Call> calls = new List<Call>();
             /// <summary>The deals the player agreed with its members, oldest first.</summary>
             public List<Deal> deals = new List<Deal>();
+            /// <summary>
+            /// Who found out about it under the leak rules (WAVE-D-NPC-PACTS-PLAN D4), oldest first: "Riley
+            /// found out about it.", by the double-dealing line that told the player, matched by the pact's
+            /// name while the log holds it.
+            /// </summary>
+            public List<Evidence> exposures = new List<Evidence>();
         }
 
         /// <summary>A member of one of the player's pacts, as the player reads them.</summary>
@@ -209,7 +215,28 @@ namespace Gamesim.Simulation
             Formed(s, alliance, row, pact);
             if (!alliance.active) Ended(s, alliance, row, pact);
             pact.deals = Deals(s, alliance);
+            pact.exposures = Exposures(s, alliance);
             return pact;
+        }
+
+        /// <summary>
+        /// Who found out about one of the player's pacts and holds it against them (WAVE-D-NPC-PACTS-PLAN
+        /// D4): each double-dealing line the player was shown that names this pact - "Riley Chen found out
+        /// about The Jo Pact, your alliance with ..." - as "Riley found out about it.", in its week. Only
+        /// what those lines said: never who else knows, nor how it got out. A pact renamed since its line
+        /// no longer matches it, the gap a renamed pact's other lines have too.
+        /// </summary>
+        private static List<Evidence> Exposures(EpisodeState s, AllianceState alliance)
+        {
+            var found = new List<Evidence>();
+            if (string.IsNullOrEmpty(alliance.name)) return found;
+            foreach (var e in Seen(s).Where(e => AllianceLeaks.IsDoubleDealingLine(e) && e.text != null))
+            {
+                var who = s.contestants.FirstOrDefault(c => c != null && !c.isPlayer && !string.IsNullOrEmpty(c.name)
+                    && e.text.StartsWith(AllianceLeaks.FoundOutPrefix(c.name, alliance.name), StringComparison.Ordinal));
+                if (who != null) found.Add(new Evidence { week = e.week, text = FinalistRead.FirstName(who.name) + " found out about it." });
+            }
+            return found;
         }
 
         /// <summary>

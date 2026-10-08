@@ -1407,6 +1407,12 @@ namespace Gamesim.Episode
                 case "alliance": return UiTheme.Allied;
                 case "conversation": case "eviction-speech": case "final-speech": return UiTheme.Glow;
                 case "competition": case "veto": case "winner": return UiTheme.Gold;
+                // Wave D's four kinds (WAVE-D-NPC-PACTS-PLAN X6, one edit for all four): an ally finding
+                // out about another pact in the conflict red, what the player saw or heard in the talk
+                // blue, a war room's plan in the alliances' green.
+                case WaveDEventKinds.DoubleDealing: return UiTheme.Conflict;
+                case WaveDEventKinds.Sighting: case WaveDEventKinds.Overheard: return UiTheme.Glow;
+                case WaveDEventKinds.PactPlan: return UiTheme.Allied;
                 default: return Accent;
             }
         }
@@ -1428,6 +1434,11 @@ namespace Gamesim.Episode
                 case "alliance": return "handshake";
                 case "arrival": return "house";
                 case "conversation": case "eviction-speech": case "final-speech": return "chat";
+                // Wave D's four kinds (X6): a pact found out, seen, heard, and planned.
+                case WaveDEventKinds.DoubleDealing: return "handshake";
+                case WaveDEventKinds.Sighting: return "eye";
+                case WaveDEventKinds.Overheard: return "ear";
+                case WaveDEventKinds.PactPlan: return "people";
                 default: return "journal";
             }
         }

@@ -66,6 +66,25 @@ namespace Gamesim.Simulation
                     || !Week(c.week) || c.followed == null || c.followed.Count > MaximumCast || c.followed.Any(id => !Id(id))
                     || c.defected == null || c.defected.Count > MaximumCast || c.defected.Any(id => !Id(id))))
                 return Fail(out error, "Invalid bloc call record data.");
+            // Schema 28: D3's war-room plans (WAVE-D-NPC-PACTS-PLAN §3.3), none while its start week is 0
+            // and none before it. These are the storage bounds; D3's engine slice adds the call links.
+            if (l.plans == null || l.plans.Any(p => p == null))
+                return Fail(out error, "Invalid pact plan data.");
+            if (s.pactPlanRulesStartWeek == 0 && l.plans.Count != 0)
+                return Fail(out error, "A season without the war rooms has none of their plans.");
+            bool Ids(System.Collections.Generic.List<string> ids) => ids != null && ids.Count <= MaximumCast
+                && ids.All(Id) && ids.Distinct(System.StringComparer.Ordinal).Count() == ids.Count;
+            if (l.plans.Count > most || l.plans.Any(p => !Week(p.week) || p.week < s.pactPlanRulesStartWeek
+                    || !Text(p.allianceId, 160) || !Id(p.throughId) || !PactPlanStance.IsKnown(p.stance)
+                    || !Ids(p.present) || !Ids(p.cameRound) || !Ids(p.followed)
+                    || p.cameRound.Any(id => !p.present.Contains(id)) || p.followed.Any(id => !p.present.Contains(id))
+                    || p.says == null || p.says.Count > MaximumCast || p.says.Any(say => say == null || !Id(say.memberId) || !Id(say.targetId))
+                    || p.says.Select(say => say.memberId).Distinct(System.StringComparer.Ordinal).Count() != p.says.Count
+                    || !OptionalId(p.counterId) || !OptionalId(p.targetId) || !OptionalId(p.callerId)
+                    // An open plan is this campaign's: Social is phase 0, so "at most Campaign" would admit the next week.
+                    || (p.stance == PactPlanStance.Open && (s.phase != EpisodePhase.Campaign || p.week != s.week)))
+                || l.plans.GroupBy(p => new { p.week, p.allianceId }).Any(g => g.Count() > 1))
+                return Fail(out error, "Invalid pact plan data.");
             return true;
         }
     }

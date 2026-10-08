@@ -15,7 +15,7 @@ namespace Gamesim.Tests.EditMode
         public void ActualFactoriesRetainDisabledEmptyStorageAtCurrent27(bool builder)
         {
             var s = builder ? SeasonBuilder.Create(new SeasonBuilder.Choice(), 2505) : ContentCatalog.Create(2505);
-            Accepted(s); Assert.That(s.schemaVersion, Is.EqualTo(27));
+            Accepted(s); Assert.That(s.schemaVersion, Is.EqualTo(28));
             Assert.That(s.unifiedCommitmentRulesVersion, Is.Zero); Assert.That(s.unifiedHearingRulesVersion, Is.Zero);
             Assert.That(s.unifiedCommitments, Is.Not.Null.And.Empty); Assert.That(s.unifiedVoteReveals, Is.Not.Null.And.Empty);
             Assert.That(s.unifiedHearingEvidence, Is.Empty); Assert.That(s.unifiedHearingReceipts, Is.Empty);
@@ -24,7 +24,7 @@ namespace Gamesim.Tests.EditMode
         [TestCase(false, false)] [TestCase(true, false)] [TestCase(false, true)] [TestCase(true, true)]
         public void ActualPublicSafetyOwnersNeverBindFutureVoteChronology(bool hearing, bool deal)
         {
-            var s = Write(hearing, deal); Accepted(s); Assert.That(s.schemaVersion, Is.EqualTo(27));
+            var s = Write(hearing, deal); Accepted(s); Assert.That(s.schemaVersion, Is.EqualTo(28));
             var row = s.unifiedCommitments.Single(r => r.origin == (deal ? UnifiedCommitments.PlayerDeal : UnifiedCommitments.PlayerPromise));
             Assert.That(row.kind, Is.EqualTo(UnifiedCommitments.Safety)); Assert.That(row.voteBindingWeek, Is.Zero);
             Assert.That(row.voteFirstRevealWeek, Is.Zero); Assert.That(row.targetId, Is.Null); Assert.That(row.subtype, Is.Null);

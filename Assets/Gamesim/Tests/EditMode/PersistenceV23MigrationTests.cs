@@ -57,7 +57,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(JToken.DeepEquals(frozen, old), Is.True);
             var current = EpisodeSaveMigrations.PrepareCurrentPayload(old, out migrated);
             Assert.That(migrated, Is.True);
-            Assert.That((int)current["schemaVersion"], Is.EqualTo(27));
+            Assert.That((int)current["schemaVersion"], Is.EqualTo(28));
             Assert.That((int)current["unifiedCommitmentRulesVersion"], Is.Zero);
             Assert.That((JArray)current["unifiedCommitments"], Is.Empty);
             var historical23 = PersistenceMigrationTests.StripSchema24((JObject)current.DeepClone());
@@ -158,7 +158,14 @@ namespace Gamesim.Tests.EditMode
             var old = AsV22(EconomyRulesTests.Fresh(enable: false)); old["schemaVersion"] = schema;
             string original = old.ToString(Formatting.None);
             Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareV26Payload(old, out _));
-            var currentFuture = (JObject)old.DeepClone(); if (schema == 27) currentFuture["schemaVersion"] = 28;
+            // 27 was the former current and 28 is current now: the former27 dispatch refuses an unknown 28,
+            // and the actual current dispatch an unknown 29.
+            if (schema == 27)
+            {
+                var former27Future = (JObject)old.DeepClone(); former27Future["schemaVersion"] = 28;
+                Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareV27Payload(former27Future, out _));
+            }
+            var currentFuture = (JObject)old.DeepClone(); if (schema == 27) currentFuture["schemaVersion"] = 29;
             Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(currentFuture, out _));
             Assert.That(old.ToString(Formatting.None), Is.EqualTo(original));
         }
@@ -209,7 +216,7 @@ namespace Gamesim.Tests.EditMode
             // fresh isolated test slot is writable; the retained original stays protected.
             File.WriteAllBytes(files.Store.SavePath, original);
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 22").And.Contain("schema 27 in memory"));
+            Assert.That(message, Does.Contain("Schema 22").And.Contain("schema 28 in memory"));
             Assert.That(loaded.economyRulesVersion, Is.Zero);
             Assert.That(loaded.moveInExtrasSpent, Is.Zero);
             Assert.That(loaded.unifiedCommitmentRulesVersion, Is.Zero);

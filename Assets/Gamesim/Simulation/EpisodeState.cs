@@ -244,7 +244,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 27;
+        public int schemaVersion = 28;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
@@ -494,6 +494,21 @@ namespace Gamesim.Simulation
         /// </summary>
         public StoryWorldState story = new StoryWorldState();
 
+        // ---------------------------------------------------------------- schema 28
+        //
+        // Wave D's storage, three designs in one version (WAVE-D-NPC-PACTS-PLAN §0.3), as schema 11
+        // carried two. Storage only: nothing in this build writes or reads these, and while a start
+        // week is 0 its design's fields hold their inert values and none of its lines or receipts
+        // exist (EpisodeValidation.WaveD). Declared last, so the migration's appended literals are
+        // the serializer's own order.
+
+        /// <summary>Schema 28: the week D4's leaks and double-dealing begin; 0 for a season that never plays them.</summary>
+        public int allianceLeakRulesStartWeek;
+        /// <summary>Schema 28: the week D3's war rooms (<see cref="SeasonLedger.plans"/>) begin; 0 for never.</summary>
+        public int pactPlanRulesStartWeek;
+        /// <summary>Schema 28: the week D2's all-week NPC beats (<see cref="NpcSocialState.beatPlan"/>) begin; 0 for never.</summary>
+        public int allWeekRulesStartWeek;
+
         public ContestantState Find(string id) => contestants.FirstOrDefault(c => c.id == id);
         public IEnumerable<ContestantState> Active => contestants.Where(c => c.status == ContestantStatus.Active);
         public double Score(string from, string to) => relationships.FirstOrDefault(r => r.fromId == from && r.toId == to)?.score ?? 0;
@@ -659,7 +674,19 @@ namespace Gamesim.Simulation
         /// (<c>veto-price:vote_save</c>, <c>veto-price:final_two</c>). A social action; a season
         /// without the rules refuses it.
         /// </summary>
-        Negotiate
+        Negotiate,
+        // Wave D (WAVE-D-NPC-PACTS-PLAN §0.3), appended after Negotiate so no recorded ordinal moves.
+        // Both are refused before anything is spent, drawn or logged until their rule slices land.
+        /// <summary>
+        /// D3: answering a pact's war-room plan - <c>targetId</c> a member in the house, <c>text</c> the
+        /// pact's id, <c>secondTargetId</c> the nominee pushed for, or empty to lie low. Free.
+        /// </summary>
+        AnswerPactPlan,
+        /// <summary>
+        /// D2: the house telling the engine the player saw an NPC act - <c>targetId</c> the actor,
+        /// <c>secondTargetId</c> the partner, <c>text</c> the act's id. Free, like <see cref="WitnessProximity"/>.
+        /// </summary>
+        WitnessNpcAct
     }
 
     /// <summary>

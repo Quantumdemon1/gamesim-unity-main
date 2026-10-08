@@ -10,10 +10,14 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// The pure digest's separate field observer, not a storage serializer. Lawful witnesses
-    /// select only fresh supported flags and use public Apply afterward. Altered JSON/state
-    /// controls are detached diagnostics after a proved valid baseline, never installed saves.
-    /// Real SaveJson, storage and migration have separate runtime companion cases.
+    /// The pure digest's schema-27 field checks, not a storage serializer. Lawful witnesses select
+    /// only fresh supported flags and use public Apply afterward. A live state is schema 28 now, so
+    /// each check reads its trace's test-owned literal-27 projection
+    /// (<see cref="LegacyDigestSchema27TestStates.Trace27"/>), and every defect is also shown refused
+    /// through the whole live chain, where <see cref="LegacyDigestSchema28Observer"/> binds the trace
+    /// to its state. Altered JSON/state controls are detached diagnostics after a proved valid
+    /// baseline, never installed saves. Real SaveJson, storage and migration have separate runtime
+    /// companion cases.
     /// </summary>
     public sealed class LegacyDigestSchema27ObserverTests
     {
@@ -21,7 +25,7 @@ namespace Gamesim.Tests.EditMode
         public void FreshSupportedModesKeepTheirDefaultTraceAndReturnDetachedFieldViews(int mode)
         {
             var state = LegacyDigestSchema27TestStates.Witness(mode, "fresh");
-            var trace = LegacyDigestSchema27TestStates.Trace(state);
+            var trace = LegacyDigestSchema27TestStates.Trace27(state);
             var field = Accept(state, trace);
             Assert.That(field["schemaVersion"].Value<int>(), Is.EqualTo(27));
             Assert.That(field.Property("Active"), Is.Null);
@@ -44,7 +48,7 @@ namespace Gamesim.Tests.EditMode
         public void ActualPublicCanonicalOwnersKeepZeroChronologyAndTheirRealSourcePolicy(int mode, string kind)
         {
             var state = LegacyDigestSchema27TestStates.Witness(mode, kind);
-            var trace = LegacyDigestSchema27TestStates.Trace(state);
+            var trace = LegacyDigestSchema27TestStates.Trace27(state);
             var field = Accept(state, trace);
             var rows = (JArray)field["unifiedCommitments"];
             Assert.That(rows.Count, Is.GreaterThan(0));
@@ -78,26 +82,26 @@ namespace Gamesim.Tests.EditMode
         public void OnlyTheTwoActualGetterValuesAndTypesMayBeExcluded(string defect)
         {
             var state = LegacyDigestSchema27TestStates.Witness(2, "events");
-            var trace = LegacyDigestSchema27TestStates.Trace(state);
-            Accept(state, trace);
-            var firstEvent = (JObject)trace["houseEvents"][0];
-            switch (defect)
+            RefusedBoth(state, trace =>
             {
-                case "active-missing": trace.Remove("Active"); break;
-                case "active-null": trace["Active"] = JValue.CreateNull(); break;
-                case "active-bool": trace["Active"] = true; break;
-                case "active-row": trace["Active"][0]["name"] = "Not its actual contestant row"; break;
-                case "active-order":
-                    var people = (JArray)trace["Active"];
-                    Assert.That(people.Count, Is.GreaterThan(1));
-                    var first = people[0]; first.Remove(); people.Add(first); break;
-                case "story-missing": firstEvent.Remove("IsStory"); break;
-                case "story-null": firstEvent["IsStory"] = JValue.CreateNull(); break;
-                case "story-string": firstEvent["IsStory"] = "story"; break;
-                case "story-opposite": firstEvent["IsStory"] = !firstEvent["IsStory"].Value<bool>(); break;
-                default: Assert.Fail("Unknown getter control."); break;
-            }
-            RefusedUnchanged(state, trace);
+                var firstEvent = (JObject)trace["houseEvents"][0];
+                switch (defect)
+                {
+                    case "active-missing": trace.Remove("Active"); break;
+                    case "active-null": trace["Active"] = JValue.CreateNull(); break;
+                    case "active-bool": trace["Active"] = true; break;
+                    case "active-row": trace["Active"][0]["name"] = "Not its actual contestant row"; break;
+                    case "active-order":
+                        var people = (JArray)trace["Active"];
+                        Assert.That(people.Count, Is.GreaterThan(1));
+                        var first = people[0]; first.Remove(); people.Add(first); break;
+                    case "story-missing": firstEvent.Remove("IsStory"); break;
+                    case "story-null": firstEvent["IsStory"] = JValue.CreateNull(); break;
+                    case "story-string": firstEvent["IsStory"] = "story"; break;
+                    case "story-opposite": firstEvent["IsStory"] = !firstEvent["IsStory"].Value<bool>(); break;
+                    default: Assert.Fail("Unknown getter control."); break;
+                }
+            });
         }
 
         [TestCase("Active-contestant")] [TestCase("IsStory-contestant")]
@@ -106,18 +110,19 @@ namespace Gamesim.Tests.EditMode
         public void GetterNamesAtOtherPathsAndUnknownMembersAreNeverPruned(string defect)
         {
             var state = LegacyDigestSchema27TestStates.Witness(2, "events");
-            var trace = LegacyDigestSchema27TestStates.Trace(state); Accept(state, trace);
-            switch (defect)
+            RefusedBoth(state, trace =>
             {
-                case "Active-contestant": trace["contestants"][0]["Active"] = new JArray(); break;
-                case "IsStory-contestant": trace["contestants"][0]["IsStory"] = false; break;
-                case "IsStory-root": trace["IsStory"] = false; break;
-                case "Active-event": trace["houseEvents"][0]["Active"] = new JArray(); break;
-                case "unknown-root": trace["futureObserverMember"] = JValue.CreateNull(); break;
-                case "unknown-event": trace["houseEvents"][0]["futureObserverMember"] = JValue.CreateNull(); break;
-                default: Assert.Fail("Unknown path control."); break;
-            }
-            RefusedUnchanged(state, trace);
+                switch (defect)
+                {
+                    case "Active-contestant": trace["contestants"][0]["Active"] = new JArray(); break;
+                    case "IsStory-contestant": trace["contestants"][0]["IsStory"] = false; break;
+                    case "IsStory-root": trace["IsStory"] = false; break;
+                    case "Active-event": trace["houseEvents"][0]["Active"] = new JArray(); break;
+                    case "unknown-root": trace["futureObserverMember"] = JValue.CreateNull(); break;
+                    case "unknown-event": trace["houseEvents"][0]["futureObserverMember"] = JValue.CreateNull(); break;
+                    default: Assert.Fail("Unknown path control."); break;
+                }
+            });
         }
 
         [TestCase("voteBindingWeek", "missing")] [TestCase("voteFirstRevealWeek", "missing")]
@@ -129,19 +134,20 @@ namespace Gamesim.Tests.EditMode
         public void ChronologyProjectionRequiresBothPresentLiteralIntegerZeros(string name, string defect)
         {
             var state = LegacyDigestSchema27TestStates.Witness(2, "promise");
-            var trace = LegacyDigestSchema27TestStates.Trace(state); Accept(state, trace);
-            var row = (JObject)trace["unifiedCommitments"][0];
-            switch (defect)
+            RefusedBoth(state, trace =>
             {
-                case "missing": row.Remove(name); break;
-                case "null": row[name] = JValue.CreateNull(); break;
-                case "string": row[name] = "0"; break;
-                case "bool": row[name] = false; break;
-                case "fractional": row[name] = 0.5; break;
-                case "nonzero": row[name] = 1; break;
-                default: Assert.Fail("Unknown marker control."); break;
-            }
-            RefusedUnchanged(state, trace);
+                var row = (JObject)trace["unifiedCommitments"][0];
+                switch (defect)
+                {
+                    case "missing": row.Remove(name); break;
+                    case "null": row[name] = JValue.CreateNull(); break;
+                    case "string": row[name] = "0"; break;
+                    case "bool": row[name] = false; break;
+                    case "fractional": row[name] = 0.5; break;
+                    case "nonzero": row[name] = 1; break;
+                    default: Assert.Fail("Unknown marker control."); break;
+                }
+            });
         }
 
         [TestCase("target-missing")] [TestCase("target-value")]
@@ -151,31 +157,35 @@ namespace Gamesim.Tests.EditMode
         public void EarlierNeutralExtensionsAndUnknownAuthoritiesCannotBeErased(string defect)
         {
             var state = LegacyDigestSchema27TestStates.Witness(2, "promise");
-            var trace = LegacyDigestSchema27TestStates.Trace(state); Accept(state, trace);
-            var row = (JObject)trace["unifiedCommitments"][0];
-            switch (defect)
+            RefusedBoth(state, trace =>
             {
-                case "target-missing": row.Remove("targetId"); break;
-                case "target-value": row["targetId"] = state.playerId; break;
-                case "subtype-missing": row.Remove("subtype"); break;
-                case "subtype-value": row["subtype"] = "vote_together"; break;
-                case "archive-missing": trace.Remove("unifiedVoteReveals"); break;
-                case "archive-null": trace["unifiedVoteReveals"] = JValue.CreateNull(); break;
-                case "archive-row": trace["unifiedVoteReveals"] = new JArray(new JObject()); break;
-                case "authority-two": trace["unifiedCommitmentRulesVersion"] = 2; break;
-                case "hearing-two": trace["unifiedHearingRulesVersion"] = 2; break;
-                case "future-header": trace["schemaVersion"] = 28; break;
-                default: Assert.Fail("Unknown neutral-state control."); break;
-            }
-            RefusedUnchanged(state, trace);
+                var row = (JObject)trace["unifiedCommitments"][0];
+                switch (defect)
+                {
+                    case "target-missing": row.Remove("targetId"); break;
+                    case "target-value": row["targetId"] = state.playerId; break;
+                    case "subtype-missing": row.Remove("subtype"); break;
+                    case "subtype-value": row["subtype"] = "vote_together"; break;
+                    case "archive-missing": trace.Remove("unifiedVoteReveals"); break;
+                    case "archive-null": trace["unifiedVoteReveals"] = JValue.CreateNull(); break;
+                    case "archive-row": trace["unifiedVoteReveals"] = new JArray(new JObject()); break;
+                    case "authority-two": trace["unifiedCommitmentRulesVersion"] = 2; break;
+                    case "hearing-two": trace["unifiedHearingRulesVersion"] = 2; break;
+                    // The header after the trace's own: 28 for the literal-27 view, 29 for the live trace.
+                    case "future-header": trace["schemaVersion"] = trace["schemaVersion"].Value<int>() + 1; break;
+                    default: Assert.Fail("Unknown neutral-state control."); break;
+                }
+            });
         }
 
+        /// <summary>The field checks read JSON only: the live chain's real validator is what refuses an invalid source.</summary>
         [TestCase("commitments-off")] [TestCase("knowledge-off")]
         [TestCase("broken-attribution")] [TestCase("missing-initial")]
         public void ActualCurrentValidationCannotBeReplacedByHistoricalJsonShape(string defect)
         {
             var state = LegacyDigestSchema27TestStates.Witness(2, "broken-deal");
-            Accept(state, LegacyDigestSchema27TestStates.Trace(state));
+            Accept(state, LegacyDigestSchema27TestStates.Trace27(state));
+            AcceptLive(state, LegacyDigestSchema27TestStates.Trace(state));
             var owner = LegacyDigestSchema27TestStates.Owner(state, 2, "broken-deal");
             switch (defect)
             {
@@ -189,31 +199,33 @@ namespace Gamesim.Tests.EditMode
             }
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.False, defect);
             Assert.That(reason, Is.Not.Empty);
-            RefusedUnchanged(state, LegacyDigestSchema27TestStates.Trace(state));
+            RefusedLive(state, LegacyDigestSchema27TestStates.Trace(state));
         }
 
+        /// <summary>The field checks bind no state; the live chain refuses another state's trace.</summary>
         [TestCase("session")] [TestCase("rng")]
         public void AValidTraceFromAnotherStateIsNotThisStatesObserver(string defect)
         {
             var state = LegacyDigestSchema27TestStates.Witness(2, "promise");
-            Accept(state, LegacyDigestSchema27TestStates.Trace(state));
+            Accept(state, LegacyDigestSchema27TestStates.Trace27(state));
             var alternative = state.Clone();
             if (defect == "session") alternative.sessionId += "-other-valid-session";
             else alternative.randomState = alternative.randomState == uint.MaxValue ? 0 : alternative.randomState + 1;
             LegacyDigestSchema27TestStates.Valid(alternative);
             var otherTrace = LegacyDigestSchema27TestStates.Trace(alternative);
-            Accept(alternative, otherTrace);
+            AcceptLive(alternative, otherTrace);
+            Assert.DoesNotThrow(() => LegacyDigestSchema27Observer.CheckFields(LegacyDigestSchema27TestStates.Trace27(alternative)));
             Assert.That(Text(otherTrace), Is.Not.EqualTo(LegacyDigestSchema27TestStates.Text(state)));
-            RefusedUnchanged(state, otherTrace);
+            RefusedLive(state, otherTrace);
         }
 
         [TestCase(1)] [TestCase(2)]
         public void ProjectTraceRetainsGettersAndChangesOnlyHeaderAndTwoZeros(int mode)
         {
             var state = LegacyDigestSchema27TestStates.Witness(mode, "broken-deal");
-            var trace = LegacyDigestSchema27TestStates.Trace(state); Accept(state, trace);
+            var trace = LegacyDigestSchema27TestStates.Trace27(state); Accept(state, trace);
             string stateBefore = LegacyDigestSchema27TestStates.Text(state), before = Text(trace);
-            var projected = LegacyDigestSchema27Observer.ProjectTrace(state, trace);
+            var projected = LegacyDigestSchema27Observer.ProjectFields(trace);
             var expected = LegacyDigestSchema27TestStates.Neutral26(trace);
             Assert.That(Text(projected), Is.EqualTo(Text(expected)), "Compact JSON also pins every retained property/list position.");
             Assert.That(projected["Active"], Is.InstanceOf<JArray>());
@@ -222,23 +234,31 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(JToken.DeepEquals(projected["houseEvents"][i]["IsStory"], trace["houseEvents"][i]["IsStory"]), Is.True);
             var inverse = LegacyDigestSchema27TestStates.Restore27(projected);
             Assert.That(Text(inverse), Is.EqualTo(before), "The neutral additions restore original compact property order too.");
+            var live = LegacyDigestSchema27Observer.ProjectFields(trace);
+            Assert.That(Text(LegacyDigestSchema28Observer.ProjectTrace(state, LegacyDigestSchema27TestStates.Trace(state))), Is.EqualTo(Text(live)),
+                "The live chain hands exactly this projection on.");
             projected["Active"][0]["name"] = "Detached getter trace";
             ((JArray)projected["unifiedCommitments"]).Clear();
             Assert.That(Text(trace), Is.EqualTo(before));
             Assert.That(LegacyDigestSchema27TestStates.Text(state), Is.EqualTo(stateBefore));
         }
 
+        /// <summary>
+        /// Token equality ignores object-property order; the live trace's binding to its own state does
+        /// not. The field checks read a reordered literal-27 view as the same tree, so the order is the
+        /// live chain's to refuse.
+        /// </summary>
         [TestCase("root-property")] [TestCase("event-property")] [TestCase("canonical-property")]
         public void TokenEqualityDoesNotWaiveDefaultTracePropertyOrder(string defect)
         {
             var state = LegacyDigestSchema27TestStates.Witness(2, defect == "event-property" ? "events" : "promise");
-            var trace = LegacyDigestSchema27TestStates.Trace(state); Accept(state, trace);
+            var trace = LegacyDigestSchema27TestStates.Trace(state); AcceptLive(state, trace);
             var original = (JObject)trace.DeepClone();
             JObject target = defect == "root-property" ? trace : (JObject)trace[defect == "event-property" ? "houseEvents" : "unifiedCommitments"][0];
             var first = target.Properties().First(); first.Remove(); target.Add(first);
             Assert.That(JToken.DeepEquals(trace, original), Is.True, "Only object-property order changed.");
             Assert.That(Text(trace), Is.Not.EqualTo(Text(original)));
-            RefusedUnchanged(state, trace);
+            RefusedLive(state, trace);
         }
 
         [TestCase(0)] [TestCase(1)] [TestCase(2)]
@@ -247,18 +267,20 @@ namespace Gamesim.Tests.EditMode
             var state = LegacyDigestSchema27TestStates.Witness(mode, "finished");
             Assert.That(state.phase, Is.EqualTo(EpisodePhase.Finished));
             Assert.That(state.contestants.Any(c => c.status == ContestantStatus.Winner), Is.True);
-            var trace = LegacyDigestSchema27TestStates.Trace(state); var field = Accept(state, trace);
+            var trace = LegacyDigestSchema27TestStates.Trace27(state); var field = Accept(state, trace);
             Assert.That(((JArray)trace["Active"]).Count, Is.EqualTo(state.Active.Count()));
             Assert.That(Text(field["contestants"]), Is.EqualTo(Text(trace["contestants"])));
-            var projected = LegacyDigestSchema27Observer.ProjectTrace(state, trace);
+            var projected = LegacyDigestSchema27Observer.ProjectFields(trace);
             Assert.That(Text(projected), Is.EqualTo(Text(LegacyDigestSchema27TestStates.Neutral26(trace))));
         }
 
+        /// <summary>The field checks accept this state's own literal-27 projection, unchanged, as its getter-free view.</summary>
         private static JObject Accept(EpisodeState state, JObject trace)
         {
             LegacyDigestSchema27TestStates.Valid(state);
+            Assert.That(Text(trace), Is.EqualTo(Text(LegacyDigestSchema27TestStates.Trace27(state))), "Only this state's own projection is a baseline.");
             string stateBefore = LegacyDigestSchema27TestStates.Text(state), traceBefore = Text(trace);
-            var field = LegacyDigestSchema27Observer.CheckFieldObserver(state, trace);
+            var field = LegacyDigestSchema27Observer.CheckFields(trace);
             Assert.That(Text(trace), Is.EqualTo(traceBefore));
             Assert.That(LegacyDigestSchema27TestStates.Text(state), Is.EqualTo(stateBefore), "Includes RNG, receipts and default getter/list order.");
             var expected = LegacyDigestSchema27TestStates.WithoutGetters(trace);
@@ -267,11 +289,40 @@ namespace Gamesim.Tests.EditMode
             return field;
         }
 
-        private static void RefusedUnchanged(EpisodeState state, JObject trace)
+        /// <summary>The whole live chain accepts this state's own schema-28 trace.</summary>
+        private static void AcceptLive(EpisodeState state, JObject trace)
+        {
+            LegacyDigestSchema27TestStates.Valid(state);
+            string stateBefore = LegacyDigestSchema27TestStates.Text(state), traceBefore = Text(trace);
+            var field = LegacyDigestSchema28Observer.CheckFieldObserver(state, trace);
+            Assert.That(Text(field), Is.EqualTo(Text(LegacyDigestSchema27TestStates.WithoutGetters(trace))));
+            Assert.That(Text(trace), Is.EqualTo(traceBefore));
+            Assert.That(LegacyDigestSchema27TestStates.Text(state), Is.EqualTo(stateBefore));
+        }
+
+        /// <summary>The same defect, refused by the field checks on the literal-27 view and by the whole live chain.</summary>
+        private static void RefusedBoth(EpisodeState state, Action<JObject> defect)
+        {
+            var trace27 = LegacyDigestSchema27TestStates.Trace27(state); Accept(state, trace27);
+            defect(trace27); Refused(state, trace27);
+            var live = LegacyDigestSchema27TestStates.Trace(state); AcceptLive(state, live);
+            defect(live); RefusedLive(state, live);
+        }
+
+        private static void Refused(EpisodeState state, JObject trace)
         {
             string stateBefore = LegacyDigestSchema27TestStates.Text(state), traceBefore = Text(trace);
-            Assert.Throws<InvalidDataException>(() => LegacyDigestSchema27Observer.CheckFieldObserver(state, trace));
-            Assert.Throws<InvalidDataException>(() => LegacyDigestSchema27Observer.ProjectTrace(state, trace));
+            Assert.Throws<InvalidDataException>(() => LegacyDigestSchema27Observer.CheckFields(trace));
+            Assert.Throws<InvalidDataException>(() => LegacyDigestSchema27Observer.ProjectFields(trace));
+            Assert.That(Text(trace), Is.EqualTo(traceBefore));
+            Assert.That(LegacyDigestSchema27TestStates.Text(state), Is.EqualTo(stateBefore));
+        }
+
+        private static void RefusedLive(EpisodeState state, JObject trace)
+        {
+            string stateBefore = LegacyDigestSchema27TestStates.Text(state), traceBefore = Text(trace);
+            Assert.Throws<InvalidDataException>(() => LegacyDigestSchema28Observer.CheckFieldObserver(state, trace));
+            Assert.Throws<InvalidDataException>(() => LegacyDigestSchema28Observer.ProjectTrace(state, trace));
             Assert.That(Text(trace), Is.EqualTo(traceBefore));
             Assert.That(LegacyDigestSchema27TestStates.Text(state), Is.EqualTo(stateBefore));
         }
@@ -279,7 +330,7 @@ namespace Gamesim.Tests.EditMode
         private static string Text(JToken value) => LegacyDigestSchema27TestStates.Text(value);
     }
 
-    /// <summary>Test-owned legal public witnesses shared only by the two new companion fixtures.</summary>
+    /// <summary>Test-owned legal public witnesses shared by the digest observer fixtures and their native companions.</summary>
     internal static class LegacyDigestSchema27TestStates
     {
         private sealed class WitnessRecord
@@ -392,7 +443,8 @@ namespace Gamesim.Tests.EditMode
         {
             Assert.That(mode, Is.InRange(0, 2));
             var state = ContentCatalog.Create(seed);
-            Assert.That(state.schemaVersion, Is.EqualTo(27));
+            Assert.That(state.schemaVersion, Is.EqualTo(28));
+            Assert.That(state.allianceLeakRulesStartWeek + state.pactPlanRulesStartWeek + state.allWeekRulesStartWeek, Is.Zero);
             Assert.That(state.unifiedCommitmentRulesVersion, Is.Zero);
             Assert.That(state.unifiedHearingRulesVersion, Is.Zero);
             Assert.That(state.unifiedCommitments, Is.Empty);
@@ -449,14 +501,59 @@ namespace Gamesim.Tests.EditMode
         internal static void Valid(EpisodeState state)
         {
             string before = Text(state);
-            Assert.That(state.schemaVersion, Is.EqualTo(27));
+            Assert.That(state.schemaVersion, Is.EqualTo(28));
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
+            // Schema 28's Wave D storage stays inert in every witness: nothing in this build enables it.
+            Assert.That(state.allianceLeakRulesStartWeek == 0 && state.pactPlanRulesStartWeek == 0 && state.allWeekRulesStartWeek == 0, Is.True);
+            Assert.That(state.npcSocial.beatWeek == 0 && state.npcSocial.beatWindow == -1 && state.npcSocial.beatsFired == 0
+                && state.npcSocial.beatSeats == 0 && state.npcSocial.beatPlan.Count == 0 && state.npcSocial.acts.Count == 0, Is.True);
+            Assert.That(state.ledger.plans, Is.Empty);
             Assert.That(state.unifiedVoteReveals, Is.Empty);
             Assert.That(state.unifiedCommitments.All(r => r.voteBindingWeek == 0 && r.voteFirstRevealWeek == 0 && r.targetId == null && r.subtype == null), Is.True);
             Assert.That(Text(state), Is.EqualTo(before));
         }
 
         internal static JObject Trace(EpisodeState state) => JObject.FromObject(state);
+
+        /// <summary>The live trace's test-owned literal-27 projection: schema 28's inert fields removed, header 27.</summary>
+        internal static JObject Trace27(EpisodeState state) => Neutral27(Trace(state));
+
+        /// <summary>
+        /// Test-owned inverse of schema 28's inert additions on a getter-bearing trace. Every field must
+        /// be present and inert before anything is removed; the source is never edited.
+        /// </summary>
+        internal static JObject Neutral27(JObject source)
+        {
+            Assert.That(source["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
+            Assert.That(source["schemaVersion"].Value<int>(), Is.EqualTo(28));
+            var result = (JObject)source.DeepClone();
+            foreach (string name in LegacyDigestSchema28Observer.RootFields)
+                Assert.That(Text(result[name]), Is.EqualTo("0"), name);
+            var social = (JObject)result["npcSocial"];
+            Assert.That(Text(social["beatWeek"]) + Text(social["beatWindow"]) + Text(social["beatsFired"]) + Text(social["beatSeats"])
+                + Text(social["beatPlan"]) + Text(social["acts"]), Is.EqualTo("0-100[][]"));
+            Assert.That(Text(result["ledger"]["plans"]), Is.EqualTo("[]"));
+            LegacyDigestSchema28Observer.Remove(result);
+            result["schemaVersion"] = 27;
+            return result;
+        }
+
+        /// <summary>The literals put back where the serializer declares them: last of each owner's fields, before any getter.</summary>
+        internal static JObject Restore28(JObject neutral)
+        {
+            var result = (JObject)neutral.DeepClone(); result["schemaVersion"] = 28;
+            var getter = result.Property("Active");
+            foreach (string name in LegacyDigestSchema28Observer.RootFields)
+            {
+                var value = new JProperty(name, 0);
+                if (getter == null) result.Add(value); else getter.AddBeforeSelf(value);
+            }
+            var social = (JObject)result["npcSocial"];
+            social.Add("beatWeek", 0); social.Add("beatWindow", -1); social.Add("beatsFired", 0); social.Add("beatSeats", 0);
+            social.Add("beatPlan", new JArray()); social.Add("acts", new JArray());
+            ((JObject)result["ledger"]).Add("plans", new JArray());
+            return result;
+        }
         internal static string Text(EpisodeState state) => Trace(state).ToString(Formatting.None);
         internal static string Text(JToken token) => token.ToString(Formatting.None);
 

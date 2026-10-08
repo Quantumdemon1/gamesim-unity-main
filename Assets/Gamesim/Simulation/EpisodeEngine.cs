@@ -188,9 +188,18 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.RenameAlliance:
                     Require(CommitmentRulesOn(s), CommitmentKindRefusal);
                     RenameAlliance(s, c); break;
+                // Wave D's two kinds (schema 28) are refused before anything is spent, drawn or logged
+                // until their rule slices replace these refusals: without them they would fall to
+                // Social and be refused for the wrong reason.
+                case EpisodeCommandKind.AnswerPactPlan:
+                case EpisodeCommandKind.WitnessNpcAct:
+                    Require(false, WaveDKindRefusal); break;
                 default: Social(s, c); break;
             }
         }
+
+        /// <summary>Why <see cref="EpisodeCommandKind.AnswerPactPlan"/> and <see cref="EpisodeCommandKind.WitnessNpcAct"/> are refused until their rules land.</summary>
+        public const string WaveDKindRefusal = "Not available in this season.";
 
         public static bool IsCompetition(EpisodePhase phase) => phase == EpisodePhase.HoH || phase == EpisodePhase.Veto ||
             phase == EpisodePhase.FinalHoHPart1 || phase == EpisodePhase.FinalHoHPart2 || phase == EpisodePhase.FinalHoHPart3;

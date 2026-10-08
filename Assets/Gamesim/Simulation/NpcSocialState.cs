@@ -16,6 +16,20 @@ namespace Gamesim.Simulation
         public List<NpcCooldownState> cooldowns = new List<NpcCooldownState>();
         public List<NpcPairMemoryState> pairMemory = new List<NpcPairMemoryState>();
 
+        // Schema 28: D2's all-week cadence (WAVE-D-NPC-PACTS-PLAN §4.3), storage only. While
+        // EpisodeState.allWeekRulesStartWeek is 0 these hold 0, -1, 0, 0, [] and []. Declared last,
+        // so the migration's appended literals are the serializer's own order.
+        /// <summary>The week of the saved beat plan; 0 with no plan.</summary>
+        public int beatWeek;
+        /// <summary>The window (0-3) the saved beat plan belongs to; -1 with no plan.</summary>
+        public int beatWindow = -1;
+        /// <summary>How many of the plan's beats have fired, and the window's seats when the plan was made.</summary>
+        public int beatsFired, beatSeats;
+        /// <summary>The plan: the window's acting NPC ids in their keyed order.</summary>
+        public List<string> beatPlan = new List<string>();
+        /// <summary>This week's successful acts, cleared as the week turns.</summary>
+        public List<NpcActState> acts = new List<NpcActState>();
+
         public static uint InitialRandomState(uint seed) => SeededRandom.HashSeed(
             "gamesim:npc-social:v1:" + seed.ToString("x8", CultureInfo.InvariantCulture));
 
@@ -60,8 +74,26 @@ namespace Gamesim.Simulation
             copy.pending = pending.Select(row => row.Clone()).ToList();
             copy.cooldowns = cooldowns.Select(row => row.Clone()).ToList();
             copy.pairMemory = pairMemory.Select(row => row.Clone()).ToList();
+            // Deep, like the rest: a rejected candidate must leave the saved plan and acts untouched.
+            copy.beatPlan = beatPlan == null ? null : new List<string>(beatPlan);
+            copy.acts = acts?.Select(row => row?.Clone()).ToList();
             return copy;
         }
+    }
+
+    /// <summary>
+    /// Schema 28: one NPC act D2's cadence fired this week (WAVE-D-NPC-PACTS-PLAN §4.3), kept so the
+    /// player can witness it while it is open. Scalars and strings only, so a memberwise copy is deep.
+    /// </summary>
+    [Serializable]
+    public sealed class NpcActState
+    {
+        /// <summary><c>"{week}-{window}-{k}"</c>.</summary>
+        public string id;
+        public string kind, actorId, partnerId, subjectId, room;
+        public int week, window, firedTick;
+        public bool sighted, overheard;
+        public NpcActState Clone() => (NpcActState)MemberwiseClone();
     }
 
     [Serializable]

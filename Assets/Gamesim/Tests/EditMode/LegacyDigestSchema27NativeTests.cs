@@ -11,9 +11,9 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// Runtime serializer, storage-validation and migration companions to the pure observer.
-    /// Witnesses use actual public Apply. Neutral26 projections are explicitly test-owned
-    /// diagnostics from current27, not retained historical bytes or disk-save acceptance.
+    /// Runtime serializer, storage-validation and migration companions to the pure observers.
+    /// Witnesses use actual public Apply. Neutral27 and Neutral26 projections are explicitly test-owned
+    /// diagnostics from current28 (W28), not retained historical bytes or disk-save acceptance.
     /// These cases never create files or replace native SaveStore lifecycle coverage.
     /// </summary>
     public sealed class LegacyDigestSchema27NativeTests
@@ -66,24 +66,33 @@ namespace Gamesim.Tests.EditMode
         public void ActualNativeUpgradeHasTheExactNeutralProjectionInverse(int mode, string kind)
         {
             var state = LegacyDigestSchema27TestStates.Witness(mode, kind);
-            var field27 = ActualField(state);
+            var field28 = ActualField(state);
+            var field27 = Neutral27AfterActualFixedValidation(field28);
             var field26 = Neutral26AfterActualFixedValidation(field27);
-            string stateBefore = LegacyDigestSchema27TestStates.Text(state), oldBefore = Text(field26), currentBefore = Text(field27);
-            var upgraded = EpisodeSaveMigrations.UpgradeV26ToV27(field26);
-            Assert.That(Text(upgraded), Is.EqualTo(currentBefore), "Actual migration preserves complete compact field/property/list order.");
+            string stateBefore = LegacyDigestSchema27TestStates.Text(state), oldBefore = Text(field26), formerBefore = Text(field27), currentBefore = Text(field28);
+            var upgraded27 = EpisodeSaveMigrations.UpgradeV26ToV27(field26);
+            Assert.That(Text(upgraded27), Is.EqualTo(formerBefore), "Actual migration preserves complete compact field/property/list order.");
+            var upgraded = EpisodeSaveMigrations.UpgradeV27ToV28(upgraded27);
+            Assert.That(Text(upgraded), Is.EqualTo(currentBefore), "The Wave D literals land where the serializer declares them.");
             Shape(upgraded); ValidateHydrated(upgraded);
             var dispatched = EpisodeSaveMigrations.PrepareCurrentPayload(field26, out bool migrated);
             Assert.That(migrated, Is.True);
             Assert.That(Text(dispatched), Is.EqualTo(currentBefore));
+            var dispatched27 = EpisodeSaveMigrations.PrepareCurrentPayload(field27, out bool migrated27);
+            Assert.That(migrated27, Is.True);
+            Assert.That(Text(dispatched27), Is.EqualTo(currentBefore));
+            Assert.That(Text(EpisodeSaveMigrations.PrepareV27Payload(field26, out _)), Is.EqualTo(formerBefore));
             Assert.That(Text(field26), Is.EqualTo(oldBefore));
-            Assert.That(Text(field27), Is.EqualTo(currentBefore));
+            Assert.That(Text(field27), Is.EqualTo(formerBefore));
+            Assert.That(Text(field28), Is.EqualTo(currentBefore));
             Assert.That(LegacyDigestSchema27TestStates.Text(state), Is.EqualTo(stateBefore));
             Assert.That(upgraded, Is.Not.SameAs(field26));
             Assert.That(upgraded["contestants"][0], Is.Not.SameAs(field26["contestants"][0]));
             upgraded["contestants"][0]["name"] = "Detached native upgrade";
             ((JArray)upgraded["unifiedCommitments"]).Clear();
             Assert.That(Text(field26), Is.EqualTo(oldBefore));
-            Assert.That(Text(field27), Is.EqualTo(currentBefore));
+            Assert.That(Text(field27), Is.EqualTo(formerBefore));
+            Assert.That(Text(field28), Is.EqualTo(currentBefore));
             Assert.That(LegacyDigestSchema27TestStates.Text(state), Is.EqualTo(stateBefore));
         }
 
@@ -93,16 +102,19 @@ namespace Gamesim.Tests.EditMode
             var state = LegacyDigestSchema27TestStates.Witness(mode, "finished");
             Assert.That(state.phase, Is.EqualTo(EpisodePhase.Finished));
             Assert.That(state.contestants.Count(c => c.status == ContestantStatus.Winner), Is.EqualTo(1));
-            var field27 = ActualField(state);
+            var field28 = ActualField(state);
+            var field27 = Neutral27AfterActualFixedValidation(field28);
             var field26 = Neutral26AfterActualFixedValidation(field27);
             Assert.That(Text(EpisodeSaveMigrations.UpgradeV26ToV27(field26)), Is.EqualTo(Text(field27)));
-            Assert.That(Text(LegacyDigestSchema27Observer.ProjectTrace(state, LegacyDigestSchema27TestStates.Trace(state))),
-                Is.EqualTo(Text(LegacyDigestSchema27TestStates.Neutral26(LegacyDigestSchema27TestStates.Trace(state)))));
+            Assert.That(Text(EpisodeSaveMigrations.UpgradeV27ToV28(field27)), Is.EqualTo(Text(field28)));
+            Assert.That(Text(LegacyDigestSchema28Observer.ProjectTrace(state, LegacyDigestSchema27TestStates.Trace(state))),
+                Is.EqualTo(Text(LegacyDigestSchema27TestStates.Neutral26(LegacyDigestSchema27TestStates.Trace27(state)))));
         }
 
         [TestCase("binding-nonzero")] [TestCase("first-reveal-nonzero")]
         [TestCase("authority-two")] [TestCase("hearing-two")]
         [TestCase("knowledge-off")] [TestCase("missing-initial")]
+        [TestCase("beats-without-their-rules")] [TestCase("plans-without-their-rules")]
         public void ActualStorageValidatorRejectsSemanticDefectsAfterAValidPublicSource(string defect)
         {
             var state = LegacyDigestSchema27TestStates.Witness(2, "broken-deal");
@@ -118,6 +130,10 @@ namespace Gamesim.Tests.EditMode
                 case "missing-initial":
                     Assert.That(state.unifiedHearingReceipts.RemoveAll(r => r.incidentKey == owner.settlementEffectKey
                         && r.kind == UnifiedCommitmentHearings.Initial), Is.EqualTo(1)); break;
+                case "beats-without-their-rules": state.npcSocial.beatPlan.Add(owner.beneficiaryId); break;
+                case "plans-without-their-rules":
+                    state.ledger.plans.Add(new PactPlanRow { week = state.week, allianceId = "pact-x", throughId = owner.beneficiaryId, stance = PactPlanStance.Agreed });
+                    break;
                 default: Assert.Fail("Unknown semantic control."); break;
             }
             string before = LegacyDigestSchema27TestStates.Text(state);
@@ -159,7 +175,7 @@ namespace Gamesim.Tests.EditMode
         {
             var state = LegacyDigestSchema27TestStates.Witness(2, "promise");
             var current = ActualField(state);
-            var old = Neutral26AfterActualFixedValidation(current);
+            var old = Neutral26AfterActualFixedValidation(Neutral27AfterActualFixedValidation(current));
             var row = (JObject)old["unifiedCommitments"][0];
             switch (defect)
             {
@@ -203,11 +219,21 @@ namespace Gamesim.Tests.EditMode
             var trace = LegacyDigestSchema27TestStates.Trace(state);
             var field = JObject.FromObject(state, Serializer());
             Shape(field); EpisodeSaveValidation.Validate(state); ValidateHydrated(field);
-            var observed = LegacyDigestSchema27Observer.CheckFieldObserver(state, trace);
+            var observed = LegacyDigestSchema28Observer.CheckFieldObserver(state, trace);
             Assert.That(Text(field), Is.EqualTo(Text(observed)), "Actual SaveJson field order must be proved, never assumed or normalized.");
             Assert.That(Text(field), Is.EqualTo(Text(LegacyDigestSchema27TestStates.WithoutGetters(trace))));
             Assert.That(LegacyDigestSchema27TestStates.Text(state), Is.EqualTo(before));
             return field;
+        }
+
+        private static JObject Neutral27AfterActualFixedValidation(JObject current)
+        {
+            string before = Text(current);
+            var old = LegacyDigestSchema27TestStates.Neutral27(current);
+            Fixed27(old);
+            Assert.That(Text(LegacyDigestSchema27TestStates.Restore28(old)), Is.EqualTo(before));
+            Assert.That(Text(current), Is.EqualTo(before));
+            return old;
         }
 
         private static JObject Neutral26AfterActualFixedValidation(JObject current)
@@ -239,6 +265,15 @@ namespace Gamesim.Tests.EditMode
             var method = type.GetMethod(name, BindingFlags.Public | BindingFlags.Static, null, arguments, null);
             Assert.That(method, Is.Not.Null); Assert.That(method.DeclaringType, Is.EqualTo(type));
             return method;
+        }
+
+        private static void Fixed27(JObject payload)
+        {
+            var type = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.FrozenEpisodeV27", true);
+            var method = type.GetMethod("Validate", BindingFlags.NonPublic | BindingFlags.Static, null, new[] { typeof(JObject) }, null);
+            Assert.That(method, Is.Not.Null); Assert.That(method.IsAssembly, Is.True);
+            Assert.That(method.DeclaringType, Is.EqualTo(type));
+            Invoke(method, new object[] { payload });
         }
 
         private static void Fixed26(JObject payload)

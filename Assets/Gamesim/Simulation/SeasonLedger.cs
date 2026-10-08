@@ -31,6 +31,12 @@ namespace Gamesim.Simulation
         public List<BlocCallRow> calls = new List<BlocCallRow>();
         /// <summary>Rows the caps dropped, oldest first, so a long season still says how much it forgot.</summary>
         public int dropped;
+        /// <summary>
+        /// Schema 28: D3's war-room plans (WAVE-D-NPC-PACTS-PLAN §3.3), one per pact a week. Storage
+        /// only; empty while <see cref="EpisodeState.pactPlanRulesStartWeek"/> is 0. Declared last, so
+        /// the migration's appended literal is the serializer's own order.
+        /// </summary>
+        public List<PactPlanRow> plans = new List<PactPlanRow>();
 
         public SeasonLedger Clone()
         {
@@ -44,6 +50,7 @@ namespace Gamesim.Simulation
             copy.standings = standings.Select(x => x.Clone()).ToList();
             copy.replies = replies.Select(x => x.Clone()).ToList();
             copy.calls = calls.Select(x => x.Clone()).ToList();
+            copy.plans = plans?.Select(x => x?.Clone()).ToList();
             return copy;
         }
 
@@ -187,6 +194,49 @@ namespace Gamesim.Simulation
             copy.defected = new List<string>(defected);
             return copy;
         }
+    }
+
+    /// <summary>
+    /// Schema 28: a pact's war-room plan for one week (WAVE-D-NPC-PACTS-PLAN §3.3): who was present,
+    /// what each said, how the player answered, who came round and who is bound to the call.
+    /// </summary>
+    [Serializable]
+    public sealed class PactPlanRow
+    {
+        public int week;
+        public string allianceId, throughId;
+        /// <summary>One of <see cref="PactPlanStance"/>.</summary>
+        public string stance = PactPlanStance.Open;
+        public List<string> present = new List<string>();
+        public List<string> cameRound = new List<string>();
+        public List<string> followed = new List<string>();
+        public List<PlanSay> says = new List<PlanSay>();
+        public string counterId, targetId, callerId;
+        public PactPlanRow Clone()
+        {
+            var copy = (PactPlanRow)MemberwiseClone();
+            copy.present = present == null ? null : new List<string>(present);
+            copy.cameRound = cameRound == null ? null : new List<string>(cameRound);
+            copy.followed = followed == null ? null : new List<string>(followed);
+            copy.says = says?.Select(x => x?.Clone()).ToList();
+            return copy;
+        }
+    }
+
+    /// <summary>Schema 28: one member's say at a war room: the nominee they want out.</summary>
+    [Serializable]
+    public sealed class PlanSay
+    {
+        public string memberId, targetId;
+        public PlanSay Clone() => (PlanSay)MemberwiseClone();
+    }
+
+    /// <summary>Where a war-room plan stands (schema 28).</summary>
+    public static class PactPlanStance
+    {
+        public const string Open = "open", Agreed = "agreed", Countered = "countered", Low = "low", Lapsed = "lapsed", Void = "void";
+        public static readonly string[] All = { Open, Agreed, Countered, Low, Lapsed, Void };
+        public static bool IsKnown(string stance) => stance != null && Array.IndexOf(All, stance) >= 0;
     }
 
     /// <summary>Where a claim or a standing came from.</summary>

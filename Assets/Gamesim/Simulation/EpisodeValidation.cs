@@ -45,7 +45,7 @@ namespace Gamesim.Simulation
         private static bool TryValidateCore(EpisodeState s, bool prospectiveSafety, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 27) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 28) return Fail(out error, "Unsupported episode schema.");
             if (prospectiveSafety)
             {
                 if (s.unifiedCommitmentRulesVersion != UnifiedCommitments.ProspectiveVersion
@@ -388,7 +388,7 @@ namespace Gamesim.Simulation
             // The ordinary disabled entry keeps its existing validation order and behavior.
             if (prospectiveSafety && (!TryValidateStory(s, out error) || !TryValidateLedger(s, out error))) return false;
             return TryValidateV2(s, out error) && TryValidateV3(s, out error) && TryValidateNpcSocial(s, out error)
-                && TryValidateStory(s, out error) && TryValidateLedger(s, out error)
+                && TryValidateStory(s, out error) && TryValidateLedger(s, out error) && TryValidateWaveD(s, out error)
                 && (!prospectiveSafety || TryValidateUnifiedSafetyReferences(s, out error));
         }
 

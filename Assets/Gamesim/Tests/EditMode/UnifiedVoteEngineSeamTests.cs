@@ -154,6 +154,33 @@ namespace Gamesim.Tests.EditMode
             Assert.That(legacy.reason, Is.EqualTo(result.reason), "The public mode-1 game refuses the same candidate in the same words.");
         }
 
+        /// <summary>
+        /// The seam's trusted NPC operation holds its candidate to the same core (EpisodeEngine.PrepareNpcOperation):
+        /// a clock second on a mode-2 season is prepared - never installed - as a core-valid, still-not-public
+        /// candidate, as the public mode-1 game prepares the same second.
+        /// </summary>
+        [Test]
+        public void TheSeamPreparesAnNpcOperationUnderTheCompleteCore()
+        {
+            var s = Mode2();
+            var engine = ProspectiveVoteFacade.Engine(s);
+            NpcOperationRequest Tick(EpisodeState state) => new NpcOperationRequest
+            {
+                kind = NpcOperationKind.Tick, sessionId = state.sessionId, expectedRevision = state.revision, expectedPhase = state.phase,
+                expectedClockTick = state.npcSocial.clockTick, targetClockTick = state.npcSocial.clockTick + 1, freeRoamReady = true,
+            };
+            string before = PinnedVoteSeason.Json(engine.Snapshot);
+            var result = engine.PrepareNpcOperation(Tick(s));
+            Assert.That(result.accepted, Is.True, result.reason);
+            Assert.That(PinnedVoteSeason.Json(engine.Snapshot), Is.EqualTo(before), "Prepared, never installed.");
+            Assert.That((result.candidate.npcSocial.clockTick, result.candidate.revision), Is.EqualTo((s.npcSocial.clockTick + 1, s.revision + 1)));
+            Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(result.candidate, out var error), Is.True, error);
+            Assert.That(EpisodeValidation.TryValidate(result.candidate, out _), Is.False, "Still not a public season.");
+            var legacy = new EpisodeEngine(Mode1()).PrepareNpcOperation(Tick(Mode1()));
+            Assert.That(legacy.accepted, Is.True, legacy.reason);
+            Assert.That(legacy.candidate.npcSocial.clockTick, Is.EqualTo(result.candidate.npcSocial.clockTick));
+        }
+
         /// <summary>No public path reaches the seam: it is one internal factory, and the public constructor is the one there was.</summary>
         [Test]
         public void TheSeamIsNotReachableFromPublicCode()

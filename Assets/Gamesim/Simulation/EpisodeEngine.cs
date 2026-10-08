@@ -2015,6 +2015,8 @@ namespace Gamesim.Simulation
                 Require(UnifiedCommitmentStore.CanAddDeal(s, PlayerDeals.Draft(s, target.id, type, about, "deal-player-" + s.nextSequence),
                     UnifiedCommitments.PlayerDeal, out string preflightError), preflightError);
             // Mode 2 (vote family V3): a vote deal is reserved as a canonical row before the answer is drawn.
+            // Like the safety preflight above, a backstop: in valid play CanPropose's own checks, which read
+            // the canonical rows, refuse everything the admission would.
             if (UnifiedVoteStore.On(s) && UnifiedVoteStore.IsVote(type))
                 Require(UnifiedVoteStore.CanAddDeal(s, PlayerDeals.Draft(s, target.id, type, about, "deal-player-" + s.nextSequence),
                     UnifiedCommitments.PlayerDeal, out string voteReservation), voteReservation);
@@ -2098,7 +2100,9 @@ namespace Gamesim.Simulation
                 Require(!(deal.type == DealKind.FinalThree && s.Active.Count() <= NpcDeals.FinalThreeSize), PlayerDeals.FinalThreeHereRefusal);
                 Require(!(deal.type == DealKind.FinalThree && NpcDeals.FinalFourBlockSet(s)), PlayerDeals.FinalFourBlockSetRefusal);
                 // Mode 2 (vote family V3): the vote price a nominee's veto ask carries is reserved as a
-                // canonical row before the yes moves, draws or logs anything; it is struck where it always was.
+                // canonical row before the yes moves, draws or logs anything; it is struck where it always was,
+                // and admitted again as it is struck. A backstop: in valid play AskPrice, which reads the
+                // canonical rows, offers no vote price already owed and none past the house's deal ceiling.
                 if (UnifiedVoteStore.On(s) && modeTwo == null && CommitmentRulesOn(s)
                     && Negotiation.AskPrice(s, deal) is Negotiation.Price askPrice && UnifiedVoteStore.IsVote(askPrice.kind))
                     Require(UnifiedVoteStore.CanAddAskPrice(s, deal.id, Negotiation.DraftPrice(s, askPrice, deal.id, Negotiation.PricePrefix + s.nextSequence),

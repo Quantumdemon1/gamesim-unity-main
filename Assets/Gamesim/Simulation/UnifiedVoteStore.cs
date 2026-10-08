@@ -46,10 +46,6 @@ namespace Gamesim.Simulation
         internal static IReadOnlyList<PromiseState> RawOrModeTwoPromises(EpisodeState s) =>
             On(s) ? UnifiedVoteReferences.PromisesUnchecked(s) : s.promises;
 
-        /// <summary>For a gate that read only the raw deals: in mode 2 the canonical ones too; otherwise the raw list itself.</summary>
-        internal static IReadOnlyList<DealState> RawOrModeTwoDeals(EpisodeState s) =>
-            On(s) ? UnifiedVoteReferences.DealsUnchecked(s) : s.deals;
-
         /// <summary>The promise-policy rows that count toward the 200: all history, raw and canonical.</summary>
         internal static int PromiseCount(EpisodeState s) => On(s)
             ? s.promises.Count + s.unifiedCommitments.Count(row => row.sourcePolicy == UnifiedCommitments.PromisePolicy)

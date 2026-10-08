@@ -136,7 +136,7 @@ namespace Gamesim.Simulation
             if (price == null) return;
             string id = Negotiation.PricePrefix + s.nextSequence;
             var deal = Negotiation.DraftPrice(s, price, ask.id, id);
-            // Mode 2 (vote family V3): a vote price is the canonical row reserved before the yes.
+            // Mode 2 (vote family V3): a vote price is the canonical row reserved before the yes, admitted again as it is struck.
             if (UnifiedVoteStore.On(s) && UnifiedVoteStore.IsVote(deal.type))
                 Require(UnifiedVoteStore.TryInstallAskPrice(s, ask, deal, out string priceError), priceError);
             else
@@ -286,7 +286,8 @@ namespace Gamesim.Simulation
             Require(refusal == null, refusal);
             var price = Negotiation.VetoPrice(s, nominee.id, kind);
             // Mode 2 (vote family V3): the player's veto and a vote price for it are reserved together
-            // before the answer is drawn: both or neither.
+            // before the answer is drawn: both or neither. A backstop: in valid play VetoPriceRefusal and
+            // VetoPrice, which read the canonical rows, refuse everything the admission would.
             bool modeTwoPrice = UnifiedVoteStore.On(s) && UnifiedVoteStore.IsVote(price.kind);
             if (modeTwoPrice)
                 Require(UnifiedVoteStore.CanAddOwnVetoPrice(s, OwnVeto(s, nominee.id), OwnVetoPrice(s, nominee.id, price),

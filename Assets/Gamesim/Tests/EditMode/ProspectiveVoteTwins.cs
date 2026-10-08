@@ -17,10 +17,15 @@ namespace Gamesim.Tests.EditMode
     /// <para>The constructed facts a fixture may add are the ones the negotiation fixtures add: a
     /// relationship score, the season's next draw (<see cref="Draw"/>), the sequence a keyed coin reads,
     /// and rows filed the way their owners file them. Each is applied to the mode-1 copy and rebuilt through
-    /// public validation before the twin is projected, so both copies hold the same facts.</para>
+    /// public validation before the twin is projected, so both copies hold the same facts. A case that needs
+    /// a fact no owner files - filler history that only fills a shelf (the deal-lapsed rows), a breach for an
+    /// owner to judge, a state the core refuses - says so where it constructs it.</para>
     ///
     /// <para>Before the first reveal only: until the reveal publishes its archive frame (vote family V4) a
-    /// mode-2 reveal is refused by the core, so the twin cannot be carried past one.</para>
+    /// mode-2 reveal cannot complete - the mode-2 readers in the middle of it throw on the missing frame -
+    /// so the twin cannot be carried past one. A season the public game carries past a reveal is projected
+    /// with the owners and frames <see cref="PinnedVoteSeason"/> observed, and compared through
+    /// <see cref="AssertProjection"/>.</para>
     /// </summary>
     internal static class ProspectiveVoteTwins
     {

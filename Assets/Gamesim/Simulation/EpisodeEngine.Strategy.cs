@@ -32,7 +32,8 @@ namespace Gamesim.Simulation
                 Require(UnifiedCommitmentStore.CanAddDeal(s, DraftLobbySafety(s, decider.id), UnifiedCommitments.Lobby,
                     out string safetyRefusal), safetyRefusal);
             // Mode 2 (vote family V3): the voter's word a landed plea would write is reserved as a canonical
-            // row before the plea draws anything. Whether it lands is still the roll's.
+            // row before the plea draws anything. Whether it lands is still the roll's. Like the safety
+            // preflight above, a backstop: in valid play the plea's own count and pact checks refuse first.
             if (UnifiedVoteStore.On(s) && ask == LobbyAsk.Vote && approach == LobbyApproach.Deal
                 && UnifiedVoteStore.DealCount(s) < NpcDeals.DealCeiling
                 && !NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.VoteSave))
@@ -114,6 +115,7 @@ namespace Gamesim.Simulation
             Require(reply != null, "Choose one of the answers you were offered.");
             // Mode 2 (vote family V3): the support this reply promises is reserved as a canonical row
             // before the reply moves, draws or logs anything; the word itself is written where it always was.
+            // A backstop: in valid play the reply's own checks leave the admission nothing to refuse.
             if (UnifiedVoteStore.On(s) && reply.Promises && s.phase == EpisodePhase.Campaign && Voters(s).Any(v => v.id == s.playerId)
                 && s.nominees.Contains(from.id) && s.nominees.Contains(card.aboutId ?? "")
                 && !UnifiedVoteStore.Promises(s).Any(p => p.status == PromiseStatus.Active && p.fromId == s.playerId && p.toId == from.id && p.kind == PromiseKind.Vote))

@@ -13,12 +13,18 @@ namespace Gamesim.Tests.EditMode
     /// effect and a second house pass, the real owner, called as the engine calls it - on a season's
     /// mode-1 copy and on its exact mode-2 twin, and requires the mode-2 result to be the mode-1 result
     /// with its Vote rows canonical: the same ids, sequence, draws, lines, scores, memories and ledger.
-    /// Duplicates and capacity are refused before anything is spent, drawn, minted or logged.
+    /// Duplicates and capacity are refused whole: nothing spent, drawn, minted or logged.
+    ///
+    /// <para>A command is atomic, so where in it a refusal falls is not observable here. The reservations a
+    /// creator makes before its draw are backstops behind the source's own gates, which in valid play refuse
+    /// everything the admission would; only the house's and the story's skips show an order, before the
+    /// ledger line (ADuplicateHouseBargainIsRefusedBeforeItsLedgerLine).</para>
     ///
     /// <para>Fixtures are seasons walked with real commands to a moment before the first reveal; the only
     /// constructed facts are a relationship score, the season's next draw, the sequence a keyed coin reads
-    /// and rows filed as their owners file them (<see cref="ProspectiveVoteTwins"/>). Settlement, the
-    /// reveal's archive, endings and readers are later slices: nothing here crosses a reveal.</para>
+    /// and rows filed as their owners file them (<see cref="ProspectiveVoteTwins"/>), with the exceptions
+    /// that fixture's summary names. Settlement, the reveal's archive, endings and readers are later slices:
+    /// nothing here crosses a reveal.</para>
     /// </summary>
     public sealed class UnifiedVoteCreatorTests
     {
@@ -70,10 +76,10 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// "Promise my vote": a canonical player promise - the promise's own id, the player to the houseguest,
-        /// the nominee named - and the source's own refusal, before anything moves, for a word already given.
+        /// the nominee named - and the source's own refusal of a word already given: refused whole, nothing written.
         /// </summary>
         [Test]
-        public void APlayerVotePromiseIsACanonicalRowAndADuplicateIsRefusedBeforeAnythingMoves()
+        public void APlayerVotePromiseIsACanonicalRowAndADuplicateIsRefusedWhole()
         {
             var s = Voter();
             string blocked = s.nominees[0], to = NpcVoters(s)[0];
@@ -135,12 +141,11 @@ namespace Gamesim.Tests.EditMode
         // ------------------------------------------------------------ the player's deals
 
         /// <summary>
-        /// A proposed vote deal the houseguest agrees to: reserved before the answer is drawn, written as a
-        /// canonical player deal with the subtype and nominee proposed; proposing it again is refused in the
-        /// deal table's words before anything is drawn.
+        /// A proposed vote deal the houseguest agrees to: written as a canonical player deal with the subtype and
+        /// nominee proposed; proposing it again is refused in the deal table's words, whole, nothing written.
         /// </summary>
         [TestCase(DealKind.VoteTogether)] [TestCase(DealKind.VoteSave)] [TestCase(DealKind.VoteEvict)]
-        public void AnAgreedVoteDealIsACanonicalPlayerDealAndTheSameDealAgainIsRefusedBeforeTheDraw(string type)
+        public void AnAgreedVoteDealIsACanonicalPlayerDealAndTheSameDealAgainIsRefusedWhole(string type)
         {
             var s = Voter();
             string npc = NpcVoters(s)[0], about = type == DealKind.VoteTogether ? null : s.nominees[0];
@@ -171,15 +176,17 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// The player's forty counts canonical rows: with one place left a vote deal takes it, and the next
-        /// proposal of any kind is refused in the deal table's words before anything is drawn - in both games.
+        /// proposal of any kind is refused in the deal table's words, whole - in both games.
         /// </summary>
         [Test]
-        public void ThePlayersFortyCountsCanonicalRowsAndIsRefusedBeforeTheDraw()
+        public void ThePlayersFortyCountsCanonicalRowsAndTheNextProposalIsRefusedWhole()
         {
             var s = Voter();
             string npc = NpcVoters(s)[0], other = NpcVoters(s)[1];
             var lapsed = s.contestants.Where(c => !c.isPlayer).Select(c => c.id).Take(2).ToArray();
             int used = s.deals.Count + s.unifiedCommitments.Count(row => row.sourcePolicy == UnifiedCommitments.DealPolicy);
+            // Constructed, and no owner files it: filler history that only fills the shelf - expired in its own
+            // week, which no expiry writes (Expire ends a deal a week later), under an id no owner mints.
             for (int n = used; n < PlayerDeals.PlayerDealCeiling - 1; n++)
                 s.deals.Add(new DealState { id = "deal-lapsed-" + n, type = DealKind.InformationSharing, proposerId = lapsed[0], recipientId = lapsed[1],
                     status = DealStatus.Expired, week = s.week, expiresWeek = s.week, trustImpact = DealKind.DefaultTrust(DealKind.InformationSharing) });
@@ -285,8 +292,10 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// A nominee's vote bargain with a voter it already has: the mode-2 store refuses it before its
-        /// ledger line spends the sequence, where the source's ladder would have written it twice.
+        /// A nominee's vote bargain with a voter it already has: the mode-2 store refuses it, in its own words,
+        /// and the house's strike (NpcDeals.Strike, as its pass calls it) writes nothing for it - not the row,
+        /// and not its ledger line, which would spend the sequence - where the source's ladder would have written
+        /// it twice. With another voter the strike writes both.
         /// </summary>
         [Test]
         public void ADuplicateHouseBargainIsRefusedBeforeItsLedgerLine()
@@ -301,10 +310,27 @@ namespace Gamesim.Tests.EditMode
             Assert.That(ProspectiveVoteFacade.StoreTryAddDeal(s, duplicate, UnifiedCommitments.NpcDeal, out var error), Is.False);
             Assert.That(error, Does.Contain("admits only its nominee's VoteSave"));
             Assert.That(PinnedVoteSeason.Json(s), Is.EqualTo(before), "Nothing written.");
-            duplicate.recipientId = s.contestants.First(c => !c.isPlayer && !s.nominees.Contains(c.id) && c.id != row.beneficiaryId
+            Strike(s, row.makerId, row.beneficiaryId);
+            Assert.That(PinnedVoteSeason.Json(s), Is.EqualTo(before), "The strike writes no row and no ledger line for it.");
+
+            string other = s.contestants.First(c => !c.isPlayer && !s.nominees.Contains(c.id) && c.id != row.beneficiaryId
                 && !Rows(s, UnifiedCommitments.NpcDeal).Any(d => d.makerId == row.makerId && d.beneficiaryId == c.id)).id;
-            Assert.That(ProspectiveVoteFacade.StoreTryAddDeal(s, duplicate, UnifiedCommitments.NpcDeal, out error), Is.True, "With another voter it is admitted: " + error);
+            int lines = Accepted(s, row.makerId, other);
+            Strike(s, row.makerId, other);
+            Assert.That(Rows(s, UnifiedCommitments.NpcDeal).Count(d => d.makerId == row.makerId && d.beneficiaryId == other), Is.EqualTo(1),
+                "With another voter the strike writes the canonical row,");
+            Assert.That(Accepted(s, row.makerId, other), Is.GreaterThan(lines), "and its ledger line.");
         }
+
+        /// <summary>The house's strike of a nominee's vote bargain, as its pass calls it (NpcDeals.Strike).</summary>
+        private static void Strike(EpisodeState s, string nominee, string voter) =>
+            typeof(NpcDeals).GetMethod("Strike", BindingFlags.Static | BindingFlags.NonPublic)
+                .Invoke(null, new object[] { s, nominee, voter, DealKind.VoteSave });
+
+        /// <summary>How many bargains the ledger records between the two of them.</summary>
+        private static int Accepted(EpisodeState s, string a, string b) => s.relationships
+            .Where(r => r.fromId == a && r.toId == b || r.fromId == b && r.toId == a)
+            .Sum(r => r.events.Count(e => e.type == "deal_accepted"));
 
         /// <summary>
         /// The player's answer to a house offer, on the canonical row: a yes binds it in the answering week and
@@ -546,11 +572,11 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// A veto for a price: the player's word on the veto (raw) and the nominee's vote to keep the player
-        /// (canonical, open) are reserved together before the answer is drawn and written together; with no
-        /// room for both under the forty it is refused before anything is drawn.
+        /// (canonical, open) are written together; with no room for both under the forty it is refused whole,
+        /// in the price's own words.
         /// </summary>
         [Test]
-        public void AVetoForAVotePriceWritesBothDealsOrIsRefusedBeforeTheDraw()
+        public void AVetoForAVotePriceWritesBothDealsOrIsRefusedWhole()
         {
             var s = VetoHolder();
             string target = s.nominees.First(id => id != s.playerId);
@@ -573,6 +599,7 @@ namespace Gamesim.Tests.EditMode
 
             var full = VetoHolder();
             var lapsed = full.contestants.Where(c => !c.isPlayer).Select(c => c.id).Take(2).ToArray();
+            // Constructed, as in the forty's own case: filler history no owner files, only filling the shelf.
             for (int n = full.deals.Count; n < PlayerDeals.PlayerDealCeiling - 1; n++)
                 full.deals.Add(new DealState { id = "deal-lapsed-" + n, type = DealKind.InformationSharing, proposerId = lapsed[0], recipientId = lapsed[1],
                     status = DealStatus.Expired, week = full.week, expiresWeek = full.week, trustImpact = DealKind.DefaultTrust(DealKind.InformationSharing) });
@@ -642,6 +669,31 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// The 200 a word counts against holds the canonical rows: with the season's raw and canonical promises
+        /// at 200, a story's word writes nothing, as in mode 1, where the same vote words are raw rows; one place
+        /// short, it is written in both.
+        /// </summary>
+        [TestCase(true)] [TestCase(false)]
+        public void AStorysWordCountsTheCanonicalPromisesAgainstTheTwoHundred(bool full)
+        {
+            var legacy = Voter();
+            var voters = NpcVoters(legacy);
+            int held = legacy.promises.Count + legacy.unifiedCommitments.Count(row => row.sourcePolicy == UnifiedCommitments.PromisePolicy);
+            // Constructed, and no owner files it: filler history that only fills the promise shelf, expired in its own week.
+            for (int n = held; n < NpcPromises.PromiseCeiling - (full ? 0 : 1); n++)
+                legacy.promises.Add(new PromiseState { id = "promise-lapsed-" + n, fromId = voters[0], toId = voters[1], kind = PromiseKind.Information,
+                    status = PromiseStatus.Expired, week = legacy.week, expiresWeek = legacy.week });
+            var prospective = ProspectiveVoteTwins.Twin(ProspectiveVoteTwins.Valid(legacy));
+            Assert.That(prospective.unifiedCommitments.Count(row => row.kind == UnifiedVoteTogether.Vote && row.sourcePolicy == UnifiedCommitments.PromisePolicy),
+                Is.GreaterThan(0), "Fixture: vote words the twin holds as canonical rows, not raw.");
+            var e = new StoryEffectState { kind = StoryEffects.Promise, fromId = voters[1], toId = voters[2], type = PromiseKind.AllianceLoyalty.ToString() };
+            ApplyStoryEffect(legacy, e); ApplyStoryEffect(prospective, e);
+            Assert.That(prospective.promises.Count(p => p.kind == PromiseKind.AllianceLoyalty && p.fromId == voters[1] && p.toId == voters[2]),
+                Is.EqualTo(full ? 0 : 1), full ? "The shelf is full: nothing is written." : "One place short, the word is written.");
+            ProspectiveVoteTwins.AssertParity(legacy, prospective, full ? "A story's word on a full shelf" : "A story's word with one place left");
+        }
+
+        /// <summary>
         /// A state the complete core already refuses is never silently a skipped row. The owners that skip a draft
         /// the store refuses - a story's word on the vote, a house pass's bargain - meet a failing state as the whole
         /// command's refusal, naming the core's reason, and write nothing. (A draft refused on its own is still
@@ -661,9 +713,7 @@ namespace Gamesim.Tests.EditMode
             {
                 if (owner == StoryEffects.Promise)
                     ApplyStoryEffect(s, new StoryEffectState { kind = StoryEffects.Promise, fromId = voters[0], toId = s.nominees[0], type = PromiseKind.Vote.ToString() });
-                else
-                    typeof(NpcDeals).GetMethod("Strike", BindingFlags.Static | BindingFlags.NonPublic)
-                        .Invoke(null, new object[] { s, s.nominees[0], voters[0], DealKind.VoteSave });
+                else Strike(s, s.nominees[0], voters[0]);
             });
             Assert.That(thrown.InnerException?.GetType().Name, Is.EqualTo("RuleException"), "The whole command's refusal.");
             Assert.That(thrown.InnerException.Message, Does.StartWith("The prospective Vote state fails its core in the middle of the command: "));

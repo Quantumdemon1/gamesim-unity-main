@@ -82,10 +82,13 @@ namespace Gamesim.Simulation
                 return new CommandResult { accepted = true, reason = "Committed", state = Snapshot, beatsFromSequence = beatsFrom };
             }
             catch (RuleException error) { return Rejected(error.Message); }
-            // Mode 2 only (vote family V5a, the lead's decision D3): a reader's refusal of the state it was given -
-            // its storage check, a malformed row - refuses the command, as an NPC operation's does
-            // (EpisodeNpcSocial), instead of escaping it. Modes 0 and 1 keep their error path exactly.
-            catch (ArgumentException error) when (UnifiedVoteStore.On(current)) { return Rejected(error.Message); }
+            // Mode 2 only (vote family V5a, the lead's decision D3): a commitment reader's refusal of the state it was given -
+            // its storage check, a malformed row (CommitmentReferences.StorageRefusal) - refuses the command, as an NPC
+            // operation's does (EpisodeNpcSocial), instead of escaping it. Only that refusal (narrowed at the pre-V6 review):
+            // an ArgumentNullException or ArgumentOutOfRangeException from a bug, or any other ArgumentException, still
+            // escapes, as every one does in modes 0 and 1, which keep their error path exactly.
+            catch (ArgumentException error) when (UnifiedVoteStore.On(current) && CommitmentReferences.IsStorageRefusal(error))
+            { return Rejected(error.Message); }
         }
 
         private CommandResult Rejected(string reason) => new CommandResult { reason = reason, state = Snapshot };

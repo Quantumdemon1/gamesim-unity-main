@@ -368,7 +368,7 @@ namespace Gamesim.Simulation
             row.makerId == actor && row.beneficiaryId == wronged || row.reciprocal && row.beneficiaryId == actor && row.makerId == wronged;
         private static List<UnifiedCommitmentState> CheckedRows(EpisodeState state)
         {
-            if (!ValidateSafetyAuthority(state, out string error)) throw new ArgumentException(error, nameof(state));
+            if (!ValidateSafetyAuthority(state, out string error)) throw CommitmentReferences.StorageRefusal(error, nameof(state));
             // Mode 2 keeps the Vote family's canonical rows beside Safety's: this policy reads only its own.
             return RulesOn(state) ? state.unifiedCommitments : state.unifiedCommitments.Where(row => row.kind == Safety).ToList();
         }

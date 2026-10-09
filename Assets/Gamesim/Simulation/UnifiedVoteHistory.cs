@@ -58,7 +58,7 @@ namespace Gamesim.Simulation
         public static IReadOnlyList<UnifiedVoteIncident> Breaches(EpisodeState s, IReadOnlyCollection<string> excludedEffects = null)
         {
             if (!UnifiedVoteStore.On(s)) return Array.Empty<UnifiedVoteIncident>();
-            if (!UnifiedVoteFamilyValidation.TryValidateStorage(s, out string error)) throw new ArgumentException(error, nameof(s));
+            if (!UnifiedVoteFamilyValidation.TryValidateStorage(s, out string error)) throw CommitmentReferences.StorageRefusal(error, nameof(s));
             var atoms = new List<(int week, string actor, string wronged, UnifiedCommitmentState row, double nominal)>();
             foreach (var row in s.unifiedCommitments)
             {
@@ -131,7 +131,7 @@ namespace Gamesim.Simulation
         public static IReadOnlyList<UnifiedCommitmentState> Records(EpisodeState s)
         {
             if (!UnifiedVoteFamilyValidation.TryValidateStorage(s, out string error))
-                throw new ArgumentException(error, nameof(s));
+                throw CommitmentReferences.StorageRefusal(error, nameof(s));
             return Array.AsReadOnly(s.unifiedCommitments.Where(row => row.kind == UnifiedVoteTogether.Vote)
                 .Select(row => row.Clone()).ToArray());
         }
@@ -144,14 +144,14 @@ namespace Gamesim.Simulation
         public static IReadOnlyList<UnifiedVoteDecision> Decisions(EpisodeState s)
         {
             if (!UnifiedVoteFamilyValidation.TryValidateStorage(s, out string error))
-                throw new ArgumentException(error, nameof(s));
+                throw CommitmentReferences.StorageRefusal(error, nameof(s));
             var result = new List<UnifiedVoteDecision>();
             foreach (var row in s.unifiedCommitments.Where(item => item.kind == UnifiedVoteTogether.Vote
                 && (item.status == DealStatus.Fulfilled || item.status == DealStatus.Broken)))
             {
                 if (!UnifiedVoteFamilyValidation.FirstDecision(s, s.unifiedVoteReveals, row,
                     out var frame, out string status, out string actor, out error) || frame == null)
-                    throw new ArgumentException(error ?? "Missing actual Vote decision.", nameof(s));
+                    throw CommitmentReferences.StorageRefusal(error ?? "Missing actual Vote decision.", nameof(s));
                 result.Add(new UnifiedVoteDecision(row, frame, status, actor));
             }
             return Array.AsReadOnly(result.ToArray());

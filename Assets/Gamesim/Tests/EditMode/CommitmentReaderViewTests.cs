@@ -91,6 +91,7 @@ namespace Gamesim.Tests.EditMode
         [TestCase("promise-subtype")] [TestCase("deal-subtype")] [TestCase("unknown-status")] [TestCase("accepted-status")]
         [TestCase("proposed-promise")] [TestCase("unknown-party")] [TestCase("same-parties")] [TestCase("unknown-target")]
         [TestCase("unresolved-link")] [TestCase("self-link")] [TestCase("promise-link")] [TestCase("capacity")]
+        [TestCase("promise-trust")] [TestCase("deal-trust")] [TestCase("unknown-trust")]
         public void TheStorageCheckRefusesEachDefectAndSoDoesEveryReader(string defect)
         {
             var s = Stored();
@@ -125,6 +126,10 @@ namespace Gamesim.Tests.EditMode
                 case "unresolved-link": deal.linkedCommitmentId = "deal-price-999999"; break;
                 case "self-link": deal.linkedCommitmentId = deal.id; break;
                 case "promise-link": promise.linkedCommitmentId = deal.id; break;
+                // The pre-V6 save-contract review: the weight a reader prices a row by is the source's, as the core holds it.
+                case "promise-trust": promise.trustImpact = DealTrust.Critical; break;
+                case "deal-trust": deal.trustImpact = deal.trustImpact == DealTrust.Low ? DealTrust.High : DealTrust.Low; break;
+                case "unknown-trust": deal.trustImpact = "enormous"; break;
                 case "capacity":
                     // Filler history that only fills a shelf: no owner files 200 rows in a test season.
                     int promises = s.promises.Count + s.unifiedCommitments.Count(r => r.sourcePolicy == UnifiedCommitments.PromisePolicy);
@@ -137,10 +142,15 @@ namespace Gamesim.Tests.EditMode
             Assert.That(UnifiedVoteFamilyValidation.TryValidateStorage(s, out var error), Is.False, defect + ": the storage check refuses it.");
             Assert.That(error, Is.Not.Empty);
             Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(s, out _), Is.False, defect + ": and the complete core does too.");
-            Assert.Throws<ArgumentException>(() => CommitmentReferences.Deals(s), defect + ": the deal view refuses it.");
-            Assert.Throws<ArgumentException>(() => CommitmentReferences.RawPromises(s), defect + ": the raw promise view refuses it.");
-            Assert.Throws<ArgumentException>(() => UnifiedCommitmentHistory.Breaches(s), defect + ": the Safety history refuses it.");
-            Assert.Throws<ArgumentException>(() => UnifiedVoteHistory.Records(s), defect + ": the Vote history refuses it.");
+            // Each a commitment reader's own refusal, which a mode-2 command takes as its refusal (D3, narrowed at the pre-V6 review).
+            foreach (var (reader, read) in new (string, TestDelegate)[] {
+                ("the deal view", () => CommitmentReferences.Deals(s)), ("the raw promise view", () => CommitmentReferences.RawPromises(s)),
+                ("the Safety history", () => UnifiedCommitmentHistory.Breaches(s)), ("the Vote history", () => UnifiedVoteHistory.Records(s)),
+                ("the Vote breaches", () => UnifiedVoteHistory.Breaches(s)), ("the Vote decisions", () => UnifiedVoteHistory.Decisions(s)) })
+            {
+                var refusal = Assert.Throws<ArgumentException>(read, defect + ": " + reader + " refuses it.");
+                Assert.That(ProspectiveVoteFacade.IsStorageRefusal(refusal), Is.True, defect + ": " + reader + "'s refusal is marked as a reader's.");
+            }
             Assert.That(UnifiedCommitmentHearings.ValidateStorage(s, out _), Is.False, defect + ": the hearing storage check refuses it.");
         }
 
@@ -255,6 +265,60 @@ namespace Gamesim.Tests.EditMode
             Assert.That(result.accepted, Is.False);
             Assert.That(result.reason, Does.Contain("raw mirrors"));
             Assert.That(Json(engine.Snapshot), Is.EqualTo(before), "A refusal installs nothing.");
+        }
+
+        /// <summary>
+        /// The refusal a mode-2 command takes as its own (the pre-V6 review narrowed D3's catch): exactly an ArgumentException a
+        /// commitment reader marked (CommitmentReferences.StorageRefusal) - never an ArgumentNullException or
+        /// ArgumentOutOfRangeException from a bug, and never an unmarked ArgumentException, which escape as in modes 0 and 1.
+        /// </summary>
+        [Test]
+        public void OnlyACommitmentReadersOwnRefusalIsTheCommandsRefusal()
+        {
+            var corrupt = Stored();
+            corrupt.deals.Add(new DealState { id = "mirror-deal", proposerId = corrupt.playerId, recipientId = corrupt.contestants.First(c => !c.isPlayer).id,
+                type = DealKind.VoteTogether, status = DealStatus.Active, week = corrupt.week, expiresWeek = corrupt.week,
+                trustImpact = DealKind.DefaultTrust(DealKind.VoteTogether) });
+            var refusal = Assert.Throws<ArgumentException>(() => CommitmentReferences.Deals(corrupt));
+            Assert.That(refusal.GetType(), Is.EqualTo(typeof(ArgumentException)), "The type the readers have always thrown.");
+            Assert.That(ProspectiveVoteFacade.IsStorageRefusal(refusal), Is.True);
+            Assert.That(ProspectiveVoteFacade.IsStorageRefusal(new ArgumentException(refusal.Message)), Is.False, "Unmarked.");
+            Assert.That(ProspectiveVoteFacade.IsStorageRefusal(new ArgumentNullException("s")), Is.False, "A bug's null.");
+            Assert.That(ProspectiveVoteFacade.IsStorageRefusal(new ArgumentOutOfRangeException("s")), Is.False, "A bug's range.");
+            var marked = new ArgumentNullException("s");
+            foreach (var key in refusal.Data.Keys) marked.Data[key] = refusal.Data[key];
+            Assert.That(ProspectiveVoteFacade.IsStorageRefusal(marked), Is.False, "Exactly an ArgumentException, whatever its data.");
+            Assert.That(ProspectiveVoteFacade.IsStorageRefusal(null), Is.False);
+        }
+
+        /// <summary>
+        /// The narrowed catch at a real command: a mode-2 diary reflection whose reader (WebDiaryRoom) refuses a malformed persona
+        /// with an unmarked ArgumentException. It escapes the command, as the same refusal does in mode 0 (below) - before the
+        /// pre-V6 review mode 2 turned it into a refusal.
+        /// </summary>
+        [Test]
+        public void InModeTwoAnyOtherArgumentExceptionStillEscapesTheCommand()
+        {
+            EpisodeEngine engine = null;
+            for (uint seed = 1; seed <= 32 && engine == null; seed++)
+            {
+                var fresh = PinnedVoteSeason.Project(PinnedVoteSeason.Fresh(seed), new Dictionary<string, ProspectiveVoteOwner>(), Array.Empty<UnifiedVoteRevealState>());
+                var walk = ProspectiveVoteFacade.Engine(fresh);
+                for (int step = 0; step < 600 && walk.Snapshot.pendingDiary == null && walk.Snapshot.phase != EpisodePhase.Finished; step++)
+                    Assert.That(walk.Apply(EpisodeEngineTests.NextCommand(walk.Snapshot)).accepted, Is.True);
+                if (walk.Snapshot.pendingDiary != null) engine = walk;
+            }
+            Assert.That(engine, Is.Not.Null, "Fixture: a mode-2 walk reaches a diary reflection.");
+            var s = engine.Snapshot;
+            Assert.That(s.unifiedCommitmentRulesVersion, Is.EqualTo(UnifiedVoteFamilyValidation.Version), "Fixture: mode 2.");
+            var reflect = ProspectiveVoteTwins.Command(s, EpisodeCommandKind.ReflectDiary, s.pendingDiary.id, EpisodeEngine.CurrentDiary(s).choices[0].id);
+            Assert.That(ProspectiveVoteFacade.Engine(s).Apply(reflect).accepted, Is.True, "Fixture: the reflection is one the season takes.");
+            var corrupt = s.Clone();
+            corrupt.playerPersona.scores[0].score = -1;
+            Holding(engine, corrupt);
+            var error = Assert.Throws<ArgumentException>(() => engine.Apply(reflect), "Not a commitment reader's refusal: it escapes, as in mode 0.");
+            Assert.That(error.Message, Does.Contain("malformed"));
+            Assert.That(ProspectiveVoteFacade.IsStorageRefusal(error), Is.False);
         }
 
         [Test]

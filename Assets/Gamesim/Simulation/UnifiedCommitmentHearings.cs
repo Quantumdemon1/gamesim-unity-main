@@ -127,7 +127,7 @@ namespace Gamesim.Simulation
 
         internal static void RequireValid(EpisodeState s)
         {
-            if (!ValidateStorage(s, out string error)) throw new ArgumentException(error, nameof(s));
+            if (!ValidateStorage(s, out string error)) throw CommitmentReferences.StorageRefusal(error, nameof(s));
         }
 
         internal static bool CanonicalLeaf(EpisodeState s, HouseFactState fact) =>

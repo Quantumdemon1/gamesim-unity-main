@@ -34,8 +34,8 @@ namespace Gamesim.Simulation
         /// storage check (<see cref="UnifiedCommitments.ValidateSafetyAuthority"/>: every Safety row under its policy,
         /// no raw Safety mirror, identities unique across all three lists, the two 200-row capacities); no raw Vote
         /// mirror; and each Vote row's shape - its family, policy and origin, a deal's Vote subtype, a known installed
-        /// status a promise can be read at, bounded identities, parties and a target that exist, and a link that
-        /// resolves to a deal the season holds.
+        /// status a promise can be read at, its source's trust weight (pre-V6 save-contract review), bounded
+        /// identities, parties and a target that exist, and a link that resolves to a deal the season holds.
         /// <para>Never frames, ballots, endings, chronology or terminal decisions: those are the complete core's
         /// (<see cref="TryValidate"/>), which judges a command's candidate, a save and the reveal, never a reader in
         /// the middle of a command. Reads only the commitment lists and the cast.</para>
@@ -57,6 +57,10 @@ namespace Gamesim.Simulation
                     || !DealStatus.IsKnown(row.status) || row.status == DealStatus.Accepted
                     || promise && (row.status == DealStatus.Proposed || row.status == DealStatus.Declined))
                     return Fail(out error, "A stored Vote row needs its family, policy, origin, subtype and an installed status.");
+                // The weight every reader of a broken or kept row prices it by (DealResolution.Impact, a promise's
+                // native impact): a promise's is medium and a deal's its subtype's default, as the core holds them.
+                if (row.trustImpact != (promise ? DealTrust.Medium : DealKind.DefaultTrust(row.subtype)))
+                    return Fail(out error, "A stored Vote row keeps its source's trust weight.");
                 if (!Token(row.makerId) || !Token(row.beneficiaryId) || row.makerId == row.beneficiaryId
                     || s.Find(row.makerId) == null || s.Find(row.beneficiaryId) == null
                     || row.targetId != null && (!Token(row.targetId) || s.Find(row.targetId) == null))

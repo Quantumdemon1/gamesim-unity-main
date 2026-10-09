@@ -30,7 +30,9 @@ namespace Gamesim.Simulation
             if (!UnifiedVoteFamilyValidation.TryValidate(s, s.unifiedVoteReveals, out string error))
                 throw new RuleException("The prospective Vote state fails its core as the reveal settles: " + error);
             try { return UnifiedVoteSettlement.Plan(s); }
-            catch (ArgumentException malformed) { throw new RuleException("The reveal cannot judge a Vote row: " + malformed.Message); }
+            // The plan's own refusal of a row its leaf cannot judge; a bug's exception escapes (the pre-V6 review).
+            catch (ArgumentException malformed) when (CommitmentReferences.IsStorageRefusal(malformed))
+            { throw new RuleException("The reveal cannot judge a Vote row: " + malformed.Message); }
         }
 
         /// <summary>

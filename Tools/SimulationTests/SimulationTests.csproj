@@ -163,6 +163,8 @@
     <Compile Include="$(EditMode)PactPlanReaderTests.cs" />
     <!-- Explicit, and compiled out of Unity: D3's recorded-season evidence over the digests' 54 seasons, run on demand. -->
     <Compile Include="$(EditMode)PactPlanSeasonDigests.cs" />
+    <!-- Explicit, and compiled out of Unity: D2's season evidence - the measure of the house's turns, then the all-week digests - run on demand. -->
+    <Compile Include="$(EditMode)AllWeekSeasonDigests.cs" />
     <Compile Include="$(EditMode)FinalBracketTests.cs" />
     <Compile Include="$(EditMode)JuryHouseReadTests.cs" />
     <Compile Include="$(EditMode)FinaleRulesTests.cs" />

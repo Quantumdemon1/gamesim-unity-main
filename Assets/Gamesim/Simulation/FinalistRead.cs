@@ -380,8 +380,12 @@ namespace Gamesim.Simulation
             // A voting block that fell apart says the finalist voted the other way: said once the
             // player knows their ballot (decision 4).
             bool block = broken.Any(d => d.type == DealKind.VoteTogether && KnownBallots.DealOutcomeKnown(s, d));
+            // In mode 2 a vote promise's breach is the player's to know only where the promiser's ballot is (the lead's decision at the
+            // pre-V6 review, KnownBallots.PromiseOutcomeKnown): which incident it falls in turns on the ballots, so counting it where its
+            // incident had no deal told how the promiser voted on a deal with the player.
             int promises = CommitmentReferences.RawPromises(s).Count(p => p.status == PromiseStatus.Broken && p.fromId == finalistId && p.toId == player
-                && (!UnifiedVoteHistory.ByIncident(s, p) || incidents.Any(incident => incident.OwnerId == p.id && incident.DealId == null)));
+                && (!UnifiedVoteHistory.ByIncident(s, p) || KnownBallots.PromiseOutcomeKnown(s, p)
+                    && incidents.Any(incident => incident.OwnerId == p.id && incident.DealId == null)));
             var parts = acts.OrderBy(a => a.week).Select(a => "Week " + a.week + ": " + a.text).ToList();
             if (deals > 0) parts.Add(deals == 1 ? "Broke a deal with you" : "Broke " + deals + " deals with you");
             if (block) parts.Add("Your voting bloc fell apart");

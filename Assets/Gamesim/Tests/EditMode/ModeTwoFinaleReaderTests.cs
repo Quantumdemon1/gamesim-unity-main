@@ -85,8 +85,8 @@ namespace Gamesim.Tests.EditMode
 
         // ------------------------------------------------------------ the flip pair (pattern P3)
 
-        /// <summary>The player-facing readers V5e moved, each as the player sees it of the flip pair's partner.</summary>
-        private static object Reader(string reader, EpisodeState s, string partner)
+        /// <summary>The player-facing readers V5e moved, each as the player sees it of the flip pair's partner (also read of the word's pair, <see cref="ModeTwoVotePromiseFlipTests"/>).</summary>
+        internal static object Reader(string reader, EpisodeState s, string partner)
         {
             switch (reader)
             {

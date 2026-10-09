@@ -192,7 +192,8 @@ namespace Gamesim.Tests.EditMode
             new Site(Sim + "FinalistRead.cs", null, 5, Why.Moved, "V5e: TowardYou (D1) and the kept deals"),
             new Site(Sim + "JuryHouseRead.cs", null, 8, Why.Moved, "V5e: a receipt's week, the reasons' views and raw deals"),
             new Site(Sim + "GameSense.cs", null, 6, Why.Moved, "V5e: the deal chances, scored once per group (D1), Vote rows dated as mode 1's"),
-            new Site(Sim + "YourWeek.cs", null, 6, Why.Moved, "V5e: the week's word, Safety's canonical lines, the keeping gate"),
+            new Site(Sim + "YourWeek.cs", null, 8, Why.Moved,
+                "V5e: the week's word, Safety's canonical lines, the keeping gate; pre-V6: a vote deal whose ending the player cannot know, a line of its own"),
 
             new Site(Sim + "CommitmentsRead.cs", null, 12, Why.Moved,
                 "V5f: the page's views (For, AtStake), Settled's raw views and Safety branch, the nominations' Safety rules, BallotRules' raw views; a gate's raw branch is mode 0's"),

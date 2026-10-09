@@ -272,9 +272,11 @@ namespace Gamesim.Simulation
 
             // Accountability: a promise the player broke to them, or a deal between them the player broke. A canonical row is
             // a receipt only as its incident's owner - a Safety one's, and in mode 2 a Vote one's (vote family V5e): a row
-            // that owned no consequence of its reveal is never asked about.
+            // that owned no consequence of its reveal is never asked about. A Vote row owns the player's breach of this juror
+            // (the pre-V6 save-contract review): a deal both of them broke may own only the juror's breach of the player.
             var brokenOwners = new HashSet<string>(UnifiedCommitmentHistory.Breaches(s).Select(incident => incident.EffectOwnerId)
-                .Concat(UnifiedVoteHistory.Incidents(s).Select(incident => incident.OwnerId)), StringComparer.Ordinal);
+                .Concat(UnifiedVoteHistory.Incidents(s).Where(incident => incident.ActorId == player && incident.WrongedId == jurorId)
+                    .Select(incident => incident.OwnerId)), StringComparer.Ordinal);
             bool IsOwner(string id) => CommitmentReferences.FindCanonical(s, id) == null || brokenOwners.Contains(id);
             int When(string id, int original) => CommitmentReferences.ReceiptWeek(s, id, original);
             var brokenWord = CommitmentReferences.Promises(s).Where(p => p.fromId == player && p.toId == jurorId

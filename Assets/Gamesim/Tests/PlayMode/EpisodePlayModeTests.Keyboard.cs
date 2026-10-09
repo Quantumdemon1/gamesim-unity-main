@@ -286,9 +286,11 @@ namespace Gamesim.Tests.PlayMode
             { yield return EpisodeHud.EventChoiceCaption(HouseEvents.Pending(state).choices[0].label); yield break; }
             if (EpisodeEngine.IsCompetition(state.phase))
             {
+                // The accessible alternative as the season's own competition rules word it: a
+                // fresh, rules-on season offers half marks (1.5 points), an older one 1 point.
                 yield return state.competitionResolved ? "Continue to the next ceremony"
                     : EpisodeEngine.CompetitionPlayers(state).Any(actor => actor.isPlayer)
-                        ? "Accessible alternative: steady 1-point bonus" : "Watch eligible housemates compete";
+                        ? EpisodeDirector.AccessibleCompetitionCaption(state.competitionRulesVersion) : "Watch eligible housemates compete";
                 yield break;
             }
             if (state.phase == EpisodePhase.Nomination && state.nominees.Count == 0 && state.hohId == state.playerId)

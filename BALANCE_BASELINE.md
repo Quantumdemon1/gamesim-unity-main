@@ -1,261 +1,279 @@
-# Balance baseline (first, partial)
+# Balance baseline (B6b)
 
-**Status: a first, partial baseline (BALANCE plan B2-B4's headline run), not B6's.** It is 100 seasons per
-policy and size, not the plan's 800 (see *Runtime*), the NPC world is not driven in any of these seasons
-(B5 is out of scope), and the per-policy performance distributions are assumptions until human data exists
-(B8). Every number here is reproducible from the commands below; treat differences under the Wilson
-intervals as noise.
+**Status: the B6 baseline, with the war rooms on and the NPC world measured.** The headline is 480 seasons per
+policy and size at NPC budget 0 - not the plan's 800, which would take about 2.3 hours on this machine; 480 is
+the largest count that fit in the 90 minutes the lead allowed (84 minutes in twelve parts). The NPC budget's
+sensitivity is measured on a cut grid (see *The NPC world*), because every NPC operation validates the whole
+season twice. The per-policy performance distributions are assumptions until human data exists (B8). Every
+number here is reproducible from the commands below; treat differences inside the intervals as noise.
 
-Measured on 2026-10-08 at `95e99bd2` (branch `claude/balance-lab`, on `claude/lead-integration` at
-`ca7f4da6`): schema 28, competition rules 4, story rules 9, the economy, agency, the finale, the commitment
-rules, D4's leaks and the unified commitment and hearing version 1 - exactly what the director starts,
-because every lab season is built by `SeasonBuilder.Create` and `ShippedRules.ApplyFresh` (B0).
+Measured on 2026-10-09 on `claude/balance-b5-b7` at `3f31fcd9` (base `claude/lead-integration` at `a74a261a`):
+schema 28, competition rules 4, story rules 9, the economy, agency, the finale, the commitment rules, the unified
+commitment and hearing version 1, D4's leaks and **D3's war rooms** - exactly what the director starts, because
+every lab season is built by `SeasonBuilder.Create` and `ShippedRules.ApplyFresh` (B0). The shipped rules' tuple
+is pinned in `BalanceLabGoldens.Rules`.
 
-## What changed since the first version (`a81ab572`)
+## What changed since the first baseline (`6b18d59e`, measured at `95e99bd2`)
 
-The first version of this page was measured with a lab defect that review found; its F1, F2, F4 and F7
-were wrong because of it, and they are restated below.
-
-- **A veto holder on the block now saves themselves.** The lab fell back on the engine tests' walker at
-  the veto meeting, and that walker uses the veto on the first nominee, whoever that is: a player who won
-  the veto from the block's second chair stayed up. The passive player, the novice and both oracles fell
-  back on it, and in the first run 16 to 42 seasons per cell of 100 ended with the player evicted in a week
-  they held the veto (at eight, every passive and every novice player who won the week-one veto while
-  nominated went home that week). The lab's walker and the oracles now save the player
-  (`BalanceLab.SavesThePlayer`), and the novice saves itself and nobody else. A test plays such a meeting
-  with every policy, and the smoke tier asserts it never happens. In this run no season has the player
-  evicted in a week they won the veto.
-- **No walk-ins.** The exploit hunter could test every pair of houseguests for a walk-in, but the director
-  offers one only for a pair the NPC world puts together, and the lab does not drive that world. The view
-  no longer offers walk-ins (until B5). The story sweep's skilled player, an oracle, still walks in as that
-  sweep does.
-- **The story's pace is counted as `StoryPacingTests.PacingReport` counts it** (the shared `Pace.Watch`).
-  The first version's "12 and 19.5 beats asked a season" were every story house event, which cannot be
-  read against the plan's 4-6 asks.
-- **What moved.** The rows of random, social, reader, schemer, loyalist, floater and the beast are the same
-  in every table: their seasons never reached the walker at a veto meeting they held. Only their McNemar
-  against the passive player moved. The passive player, the novice, the exploit hunter and both oracles
-  moved.
-- **Also changed:**
-  - The knowledge gate's test now hides the season's whole state: the type closure of `EpisodeState`,
-    with the vote read's claims allowed.
-  - The smoke tier covers 4, 6, 8, 10 and 12 and the All-Stars eight and twelve.
-  - The full tier exists, but has not been run.
-  - The state is validated after every Advance.
-  - The report itself now emits the pairs and the B-1 band below, so they are no longer worked out by hand.
+- **The war rooms are in play (B6a).** Since D3 went into `ApplyFresh` a pact of three or more calls only in its
+  war room, and before B6a nothing in the lab convened one: the reader's and loyalist's calls were refused.
+  Now the five engaged players (random, reader, schemer, loyalist, floater) convene a pact of three's war room
+  once the block is set and answer its plan as each would (`GatedPolicy.WarRoom`, `AnswerPlan`): the loyalist
+  goes with it, the schemer pushes against a plan that names an ally, the reader against a plan somebody who
+  said it is torn or leaning on, the floater lies low, the random player tosses a coin. Nobody is refused a call
+  in a smoke season any more.
+- **D3's counter was amended in place** (the lead's decision 6, no boundary since no saved season has played the
+  war rooms): its reach is twenty at a view of ten or more (Loyal thirty), not eight at fifty (Loyal twelve).
+  See *The war rooms*.
+- **The NPC world is driven (B5).** `NpcPairing` is the director's pairing loop, moved into the simulation (B5a);
+  `BalanceLabNpcWorld` drives the 1 Hz world through `PrepareNpcOperation` alone at a budget of ticks a week
+  (B5b). The headline stays at budget 0, byte for byte the seasons it played before the driver.
+- **Seeds pair across budgets**, so each budget plays budget 0's seasons, and the coins a policy draws never see
+  the NPC world's operations.
+- **New measurements:** the war rooms (autopsy and lab), the first commitment the player saw settle, the
+  competitions by week (B7), and the T0 diagnostics for the five tuning questions.
+- **Goldens:** the 48 headline cells at budgets 0 and 300 are pinned (`BalanceLabGoldens`), and budget 0's smoke
+  and 20-seed headline rows by `BalanceLabTests.BudgetNoughtRows`.
 
 ## How it was measured
 
-- **Seasons.** Regular roster, 8 and 12 houseguests. Each step the policy proposes a command (up to three
-  times, told each refusal). Otherwise the lab's walker takes the phase's own step: the engine tests'
-  walker, except that a veto holder on the block saves themselves. Every competition's performance comes
-  from the performance model. The state is validated after every Advance, at every phase change and at the
-  end. 0 of 2,400 headline seasons and 0 of 600 performance seasons had an error (walker refused, invalid
-  state or unfinished).
-- **Policies** (`BalanceLabPolicies.cs`) see only a `PlayerView` (`BalanceLabView.cs`): the screens'
-  readers and the controls they offer. The readers are KnownOdds, the vote read, AllianceRead, KnownBallots,
-  the player's own view, HouseguestNotes, WaitingOnYou, CampaignBrief, the story's shown odds, and the
-  player's commitments and breach warnings. Walk-ins are not offered.
-  - Ten policies are knowledge-gated: passive, random, social, reader, schemer, loyalist, floater,
-    competition beast, novice and exploit hunter.
-  - Two are labelled **oracles**, because they read the season itself: GameSense's reader
-    (`oracle-reader`) and the story sweep's skilled player (`oracle-skilled`).
-- **Performance** (`BalanceLabPerformance.cs`): a normal draw cut to [0, 1] about each policy's mean - beast
-  .8 (spread .12), novice .35 (.18), everyone else .5 (.15) - keyed by a hash of the season's seed, week and
-  phase, never the season's generator, so every policy meets the same luck. The performance tier holds it
-  fixed at 0, .25, .5, .75 and 1.
-- **Seeds** are a hash of the house and the index, never of the policy, so every policy plays the same 100
-  seasons at each size and McNemar's test pairs them.
-- **Metrics** come from three places:
-  - `SeasonAutopsy` (B1);
-  - the story's pace from `StoryPacingTests.Pace`;
-  - decisions a week and ceremony seconds a week from the lab (`CeremonyPacing`, suspenseful pace,
-    unskipped).
+- **Seasons.** Regular roster, 8 and 12. Each step the policy proposes up to three times, told each refusal;
+  otherwise the lab's walker takes the phase's own step (a veto holder on the block saves themselves). Every
+  competition's performance comes from the performance model. The state is validated after every Advance, at
+  every phase change and at the end. **0 of 11,520 headline seasons had an error**, and 0 of every other tier's.
+- **Policies** see only a `PlayerView`: the screens' readers and the controls they offer, now including a war
+  room's plan card (`OpenPlanCard`: who said whom, the player's whip word for each, the members' plan or a split).
+  Ten are knowledge-gated; two are labelled oracles (`oracle-reader`, `oracle-skilled`).
+- **Performance**: a draw about each policy's mean - beast .8, novice .35, everyone else .5 - keyed to the
+  season, week and phase, never the season's generator.
+- **The NPC world** (`BalanceLabNpcWorld`, the lead's decisions 1-4): the budget's ticks a week, half in each
+  free-time phase as it is played (the move-in night is a social phase of its own), spent in 60-tick slices
+  before each decision and the rest before the Advance that closes the phase; on a scan due, `NpcPairing.Plan`
+  with a lease cap of two; an approach arrives in five ticks and starts at the first free rendezvous. Ticks run
+  only while the house is eligible (the player in the house, free time, no diary). Walk-ins stay off.
+- **Metrics** from `SeasonAutopsy` (B1, with the war rooms and the first settle added), the story's pace from
+  `StoryPacingTests.Pace`, the ceremonies from `CeremonyPacing`, and the T0 records (Game Sense's notes by face
+  and row kind, each NPC nomination's weight in its terms, each season's first pariah, each member a counter
+  could reach).
 
-Reproduce (Unity-free, from the repository root):
+Reproduce (Unity-free, from the repository root; a tier longer than ten minutes is played in parts and merged):
 
 ```
-dotnet test Tools/SimulationTests --filter "FullyQualifiedName~BalanceLabTests"                                  # smoke tier
-BALANCE_SEEDS=100 dotnet test Tools/SimulationTests --filter "FullyQualifiedName~BalanceLabReports.HeadlineReport"
-BALANCE_PERFORMANCE_SEEDS=60 dotnet test Tools/SimulationTests --filter "FullyQualifiedName~BalanceLabReports.PerformanceReport"
-BALANCE_FULL_SEEDS=800 dotnet test Tools/SimulationTests --filter "FullyQualifiedName~BalanceLabReports.FullReport"   # overnight; not run
+dotnet test Tools/SimulationTests --filter "FullyQualifiedName~BalanceLabTests"                      # smoke and the lab's own tests
+BALANCE_TIER=headline BALANCE_FROM=0 BALANCE_COUNT=40 BALANCE_PARTS=<dir> dotnet test Tools/SimulationTests --filter "FullyQualifiedName~BalanceLabParts.PartReport"
+#   ... parts 40, 80, ... 440, then:
+BALANCE_TIER=headline BALANCE_PARTS=<dir> dotnet test Tools/SimulationTests --filter "FullyQualifiedName~BalanceLabParts.MergeReport"
+# the other tiers, the same way (BALANCE_TIER = npc, projection, competition, warrooms, performance, full):
+BALANCE_NPC_POLICIES=passive,novice,social,reader,beast BALANCE_NPC_BUDGETS=0,300   # npc, 100 seeds
+BALANCE_NPC_POLICIES=passive,reader BALANCE_NPC_BUDGETS=0,900                       # npc, 50 seeds
+BALANCE_NPC_POLICIES=reader BALANCE_NPC_BUDGETS=0,1800                              # npc, 15 seeds
+BALANCE_PROJECTION_BUDGETS=0 (400 seeds), =300 (200), =900 (50)                     # projection
+dotnet test Tools/SimulationTests --filter "FullyQualifiedName~BalanceLabGoldens.Budget300Size12First"   # one golden slice
+BALANCE_PROBE_TICKS=300 dotnet test Tools/SimulationTests --filter "FullyQualifiedName~NpcWorldCostProbe"
 ```
 
-Rows land as JSONL, and these tables as Markdown, in `Tools/SimulationTests/bin/Debug/net10.0/balance/`.
+Rows land as JSONL, and the tables as Markdown, in `Tools/SimulationTests/bin/Debug/net10.0/balance/`.
 
 ## Runtime
 
-| tier | seasons | wall time | note |
-|---|---|---|---|
-| smoke (not Explicit, in the subset) | 84 (12 policies x 4, 6, 8, 10, 12 and All-Stars 8, 12) | about 27 s on 6 threads | shared the machine with other lanes' test hosts |
-| headline | 2,400 (12 policies x 8, 12 x 100) | 16.9 min on 6 threads | shared the machine with other lanes' test hosts |
-| performance (B4) | 600 (passive x 5 levels x 8, 12 x 60) | 2.5 min | |
-| full (overnight) | not run (67,200 at 800 seeds) | | |
+Measured on six threads shared with three other lanes' test hosts.
 
-At the headline's rate, about 0.42 s of wall time a season on six threads, the plan's 800 seeds a cell would
-take about 2.3 hours for the headline grid and about eight hours for the full grid (estimates). The first
-version's 46.9 minutes for the same 2,400 seasons was measured while two Unity batch runs shared the machine.
+| tier | seasons | wall time |
+|---|---|---|
+| smoke (in the subset) | 91 (84 at budget 0, 7 at 300) | about 60 s |
+| headline, budget 0 | 11,520 (12 policies x 8, 12 x 480) | 84 min in 12 parts |
+| war rooms (B6a) | 1,000 (5 players x 8, 12 x 100) | 7-12 min |
+| NPC budget 0 and 300 | 2,000 (5 players x 8, 12 x 2 x 100) | 60 min in 10 parts |
+| NPC budget 0 and 900 | 400 (passive, reader x 8, 12 x 2 x 50) | 31 min in 5 parts |
+| NPC budget 0 and 1800 | 60 (reader x 8, 12 x 2 x 15) | 10 min in 2 parts |
+| projections (novice x 6 houses) | 2,400 at 0, 1,200 at 300, 300 at 900 | 10 + 39 + 28 min |
+| competition (T0 Q3) | 1,600 | 7.5 min |
+| goldens | 960 (48 cells x 20) | about 35 min in 8 tests |
+
+**The NPC world's cost (risk 1).** An operation costs about 7 ms of engine time (`PrepareNpcOperation` validates
+the candidate and installing it as a new engine validates it again, as the director does). A season at 300 a week
+is about 1,650 operations (12 s of engine), at 900 about 5,240 (36 s), at 1800 about 10,700 (72 s), against about
+2.5 thread-seconds for the whole season at budget 0. The brief's grid (five players, two sizes, four budgets, 200
+seeds) would have taken about 30 hours, so the grid was cut, never the engine: 100 seeds at 300, two players at 50
+seeds at 900, one player at 15 seeds at 1800.
 
 ## Findings F1-F7
 
-**F1. Strategy barely moves win rate - holds at eight; at twelve, playing matters but the style does not,
-within the noise.**
+**F1. Strategy moves win rate at 12, barely at 8.**
 
-- **At 8** (base rate 12.5%) the passive player wins 12% [7.0, 19.8], about the base rate, and no gated
-  style separates from it at 100 seeds:
-  - social and floater win 19% (McNemar against passive p = 0.23 and 0.27);
-  - loyalist 17% (p = 0.42), schemer 14%, reader 13% and the novice 11%;
-  - the random player wins 7% (p = 0.36) and the exploit hunter 2% (p = 0.013), worse than doing nothing.
-- **At 12** (base rate 8.3%) the passive player wins 7% [3.4, 13.7] and every engaged gated style beats it:
-  - random 20% (p = 0.021), social 23% (0.006), schemer 25% (0.003) and reader 26% (0.001);
-  - floater 29% and loyalist 32% (both p < 0.001);
-  - the novice 18% (p = 0.046);
-  - the exploit hunter's 10% does not (p = 0.63).
-- **Between styles** the differences stay inside the noise. Reader against random is p = 0.21 at 8 and
-  0.41 at 12; reader against social is 0.33 and 0.75. Social beats random at 8 (19% against 7%,
-  p = 0.017) but not at 12 (0.73).
-- The competition beast wins 81% and 58% (see F3).
-- The Game Sense gap, gated reader minus random, is 7.6 at 8 and 9.5 at 12, against the target of 20.
+- **At 8** (base rate 12.5%) the passive player wins 11.7% [9.1, 14.8]. Against it, on the same seasons:
+  - the floater wins 24.8% (McNemar p < 0.001) and social 17.1% (p = 0.021);
+  - loyalist 16.3% (p = 0.053), reader 15.2% (p = 0.12), schemer 10.8% and random 10.4% do not separate;
+  - the novice wins 8.1% (p = 0.072) and the exploit hunter 5.2% (p = 0.001), worse than doing nothing.
+- **At 12** (base rate 8.3%) the passive player wins 9.8% [7.4, 12.8] and every engaged gated style beats it
+  (p <= 0.01): reader 28.5%, floater 26.9%, schemer 25.2%, loyalist 22.7%, social 21.7%, random 15.6%; the novice
+  14.4% (p = 0.039); the exploit hunter's 9.8% does not (p = 0.91).
+- **Between styles**: reader beats random at both sizes (p = 0.035 and < 0.001) and social at 12 (p = 0.017);
+  social and loyalist beat random at both (p <= 0.019).
+- **The B-1 band** (a skilled gated policy wins at least 1.5x the base rate): at 12 all five skilled policies
+  clear it with their whole interval (21.7-28.5%, low ends 18.2-24.7%); **at 8 only the floater does** (24.8%
+  [21.1, 28.8]); social, loyalist, reader and schemer fall short of 18.75%.
 
-**F2. The skilled policies are oracles - confirmed that they read hidden state; not settled whether they
-bound skill.**
+**F2. The oracles read hidden state; they bound skill only weakly.**
 
-- **Reader against oracle reader.** The oracle reader wins 23% at 8 and 27% at 12. The gated reader, which
-  never sees a hidden view, wins 13% and 26% (McNemar 11/21, p = 0.11 at 8; 20/21, p = 1.0 at 12).
-  Reading the hidden state may be worth about ten points at 8, and nothing visible at 12. 100 seeds cannot
-  separate it.
-- **The skilled oracle.** The story sweep's skilled player wins 15% at both sizes, below the gated reader
-  at 12 (p = 0.091).
-- **Neither oracle is a strong bound.** The oracle reader spends about half its seats (14.4 of 27.2 at 8,
-  21.1 of 42.5 at 12), and the skilled player under a third (7.0 of 22.5, 11.0 of 34.9).
+- The oracle reader wins 19.8% at 8 and 25.6% at 12; the gated reader 15.2% and 28.5% (McNemar 53/75, p = 0.063
+  at 8; 110/96, p = 0.37 at 12). Reading the hidden state is worth perhaps five points at 8 and nothing at 12.
+- The skilled oracle wins 14.4% and 17.1%, below the gated reader at 12 (p < 0.001).
 
-**F3. Competitions run on the performance input - confirmed, and preparation matters more.**
+**F3. Competitions dominate, and preparation dominates competitions (T0 Q3).**
 
-- **The passive player's weekly competitions in real seasons** (at 8 / at 12), against a base rate of one
-  in the field (about 19% at 8 and 16% at 12):
-  - at no performance it wins 23% / 27%;
-  - at half marks, the accessible alternative's value, 49% / 53% - about half of all weekly competitions;
-  - at .75, 66% / 69%;
-  - at full marks, 80% / 79%.
-- **Whole seasons.** A passive player at full marks wins 37% and 40% of seasons, and at half marks 12% and
-  8%.
-- **The beast.** The competition beast has a performance of about .8 and studies the house in free time
-  until its preparation is 5. It wins 97.5% and 99.1% of the weekly competitions it plays, and 81% and 58% of
-  seasons.
-- **Preparation.** Preparation is permanent and caps at +5 competition points
-  (`WebStudyHouse.ApplyBonus`, set only by `StudyHouse`), more than full marks are worth (+3). With a
-  performance of about .8, five free-time seats bought near-certain competitions for the rest of the season.
-  The preparation's own share is not isolated here (a studying player at half marks would separate it), but
-  full marks alone reach only 79-80%.
-- **The houseguests.** Statistics decide a good deal:
-  - the field's strongest on paper (`ExpectedWin`, which weighs the competition's category) wins 45% of
-    weekly competitions at both sizes, against about 19% and 16% for a uniform draw;
-  - the top NPC takes 38% and 29% of the NPC wins;
-  - the Spearman correlation of an NPC's wins with its statistic sum is weak (0.121 at 8, 0.113 at 12), but
-    it is a poor measure here, because the sums span only 29-36 (sd 2.0) and ignore the category weights.
+- At a performance of .5 a passive player wins 51.9% and 52.3% of the weekly competitions it plays. The beast
+  (about .8, studying until prepared) wins 97.6% and 99.0% of them and **82.5% and 61.3% of seasons**.
+- **The studier** - the passive player who studies the house in each social week until its preparation is five,
+  and does nothing else - at the same fixed performance, on the same seasons:
 
-**F4. The newcomer has built-in penalties - confirmed for the passive newcomer, neutralised by play.**
+  | size | performance | passive: weekly wins / seasons | studier: weekly wins / seasons | studier vs passive (McNemar) |
+  |---|---|---|---|---|
+  | 8 | .5 | 50.8% / 9.5% | 95.2% / 64.0% | 115/6, p < 0.001 |
+  | 8 | .8 | 68.0% / 23.5% | 98.4% / 66.5% | 105/19, p < 0.001 |
+  | 12 | .5 | 52.9% / 9.0% | 95.3% / 45.5% | 85/12, p < 0.001 |
+  | 12 | .8 | 68.9% / 15.5% | 98.0% / 44.5% | 77/19, p < 0.001 |
 
-- **The passive player** is nominated more often than the houseguests per week in the house:
+  Five free-time seats of study (preparation +5, permanent) are worth far more than playing the minigames well:
+  they take an average player from about half the weekly competitions to 95%, and from a 9% season to 45-64%.
+  Full marks alone (B4, below) reach only 79-80%.
+- The field's strongest on paper wins 45% of weekly competitions at both sizes (a uniform draw is 19% and 16%).
 
-  | size | passive player | houseguests | ratio |
-  |---|---|---|---|
-  | 8 | 0.61 | 0.52 | 1.17 |
-  | 12 | 0.60 | 0.43 | 1.42 |
+**F4. The passive newcomer is nominated more; engaged play neutralises it (T0 Q4).**
 
-  It is on the block in week one 41% and 55% of the time, against 29% and 18% for a uniform draw over the
-  non-HoH house.
-- **The other policies' ratios:**
-  - the engaged gated policies other than the beast run from 0.73 (social at 8) to 1.11 (random at 12);
-  - the novice sits at 1.02 and 0.99, and the exploit hunter at 1.05 and 1.21;
-  - the beast sits at 0.42 and 0.67.
+- Nominations per week in the house, player against the houseguests: passive 1.13 at 8 and 1.43 at 12; the
+  novice 1.03 and 1.03; the engaged gated policies 0.82-1.06 (the exploit hunter 1.21 at 12); the beast 0.43
+  and 0.67.
+- **Why**, from every NPC Head of Household's nominations (the weight in its terms, the player against the mean
+  other candidate; lower is put up first): for the passive player at 8 the Head of Household's view of them is 21
+  points lower (-5.8 against +15.1), the strategy windows' terms 32 lower (-26.5 against +5.6: the Head of
+  Household's target deals and the pleas against the player outweigh any ally shield, deal or protection - the
+  diagnostic does not split this term further), the story's 9 lower (grudges),
+  the threat 3 lower. At 12 the same: view -22.5, strategy terms -36.0, story -6.5, threat -4.3. Every policy's
+  strategy terms are negative (-20 to -60): the house's own deals and pleas single the player out more than any
+  houseguest, and engaged play claws it back through the view and its own deals. The passive player is ranked
+  first or second for the block (mean rank 1.3 of 5.4 at 8) and goes up at 53% of NPC nominations.
+- Default (the lead's decision 7): no tuning; the engaged novice sits at 1.03.
 
-**F5. Sweeps never run the NPC world - confirmed, and true of this lab too.** Every lab season has 0 NPC ticks
-(the smoke tier asserts it). No number here includes NPC-to-NPC conversation or the D2 beats; B5 adds the driver.
+**F5. The NPC world, measured (B5).** At 300 ticks a week (the budget that stands for a human) the house deals
+and pairs off more, and the player's outcomes do not move detectably; at 900 the house of eight changes.
 
-**F6. Harness rules drift from what ships - resolved for the lab.**
+- **At 300** (five players, 8 and 12, 100 seeds, every metric paired with budget 0): no win rate, final-two rate
+  or early-eviction rate moves (every McNemar p >= 0.10). NPC-only deals rise by 3.8-8.0 a season (every interval
+  excludes 0), NPC-only pacts by 0.1-0.4 (significant for passive, social and novice at 8 and passive at 12); the
+  warmest pair warms by 14-27 at 8 (the beast's +6 aside); pairs within ten of the bound go from about 1% to 2%; NPC conversations: 61-86
+  a season at 8 and 108-147 at 12. Two nomination rates move: social at 8 (0.38 to 0.46 a week) and reader at 12
+  (0.37 to 0.42). Game Sense does not move.
+- **At 900** (passive and reader, 50 seeds): at 8 the player survives longer - out by week 3 drops from 56% to
+  34% for passive (p = 0.035) and from 38% to 12% for the reader (p = 0.004), the reader's final-two rate rises
+  from 34% to 62% (p = 0.007), nominations per week fall by a tenth, Game Sense rises (reader +6.3). NPC-only
+  deals +9-22 and pacts +0.5 a season. At 12 nothing in the player's outcomes moves detectably.
+- **Saturation (risk 8)**: the share of houseguest pairs within ten of ±200 is about 1% at budget 0, 2% at 300,
+  3-5% at 900 and 5.6-5.7% at 1800 (at ±200 itself: up to 5.4%); the warmest pair's mean reaches 191-198 at 900
+  and 1800. 1800 measures a house beginning to saturate; 300 and 900 do not.
+- **A finding for the lead, not the lab:** an NPC conversation's completion moves the pair through
+  `ChangeWithRoll`, which writes the player's relationship arc with each houseguest of the pair (and with a
+  gossip target) - arcs are meant to be the player's. The driver only calls `PrepareNpcOperation`; the director's
+  world does the same in every played season (64 of 1,738 operations of a watched season at 300).
+- The decision to normalise NPC activity per week (B-4) can now be read against this table: at the human budget
+  the NPC world adds dealing and warmth inside the house without moving the player's odds.
 
-- Every lab season starts through `ShippedRules.ApplyFresh`, the method the director now calls (B0).
-- That method is pinned field by field, and by the whole season's JSON, against the director's inline
-  lines at `ca7f4da6`.
-- A source scan fails if the director sets a rule itself.
-- The older harnesses (GameSense's default arm, the story sweeps) still build their own seasons.
+**F6. Harness rules drift from what ships - resolved for the lab.** Every lab season starts through
+`ShippedRules.ApplyFresh`; the 48 golden cells and the shipped rules' tuple are pinned, and a commit that changes a
+`Current` constant or `ApplyFresh` re-records them with its reason. The older harnesses (GameSense's default arm,
+the story sweeps) still build their own seasons.
 
-**F7. E4 may not be observable - depends on size; at eight a loss in the first sessions is likely, though
-not in week one.**
+**F7. E4 at 90% needs five or six weeks with three testers; E3 as worded is out of reach for a novice-like
+tester (B7).** See *The projections* and the proposed *Session length* in `PLAYTEST_PROTOCOL.md`.
 
-- **The novice** (the first-timer model) leaves early more often at 8 than at 12:
+## The tuning questions (BALANCE plan §4), with what T0 measured
 
-  | size | evicted in week one [Wilson] | out by week two | out by week three |
-  |---|---|---|---|
-  | 8 | 19% [12.5, 27.8] | 34% | 44% |
-  | 12 | 2% [0.6, 7.0] | 13% | 20% |
+| question | measured | what it decides | boundary |
+|---|---|---|---|
+| **Q1. D3's counter rarely moves anyone** (1 of 13 came round, mean odds 0.17) | Amended in place to twenty at a view of ten (Loyal thirty). Digests' war rooms: mean odds 0.49 (6.43/13), 3 of 13 came round, 7 of 9 counters carried. The lab's headline: mean odds 0.36 over the 854 members a counter could have faced at every plan answered, 0.28 at the 64 counters played, 20 members came round, 43 of 64 counters carried. The two samples straddle the band - the lab's members view the player less warmly (median 24) and lean harder (median margin 11) than the digests' constructed trio - and no reach constants put both inside 0.35-0.50 by more than 0.01. | Done (decision 6). If the owner wants more room, the shape (`ComeRoundOdds`) is the lever, not the constants. | none (in place) |
+| **Q2. Game Sense gap** (target re-set to at least 10 at both sizes, low end over 5) | Today 7.8 [6.5, 9.2] at 8 and 9.9 [9.1, 10.7] at 12: **not met** at either size. Replayed from each season's notes on the same seasons: weights 0.2/0.6/0.2 gives 11.1 [9.4, 12.8] and 13.9 [13.0, 14.9]; dropping the competitions face (0/0.7/0.3) 13.1 and 15.4; unbounded faces 11.4 and 38.0; strategy notes x1.5 alone lowers it (the clamp). The gap is strategy: unclaimed and claimed opportunities (+24.6 and +45.8 points a season), calls (+1.8 and +15.6), ballots (+1.4 and +9.5); the competitions face is at 88-97 for both and the clamp hides +31.5 at 12. | Re-weighting the faces meets the re-set target at both sizes; the weights are the cheapest lever. | B9 (`tuningRulesVersion`): any formula change moves the rules-off digests |
+| **Q3. Competitions dominate** (beast 82.5% and 61.3% of seasons) | Preparation, not performance: the studier at .5 wins 95% of weekly competitions and 64% / 45.5% of seasons against passive's 51% and 9.5% / 9.0%; at .8 the passive player wins only 68-69% weekly. | The v5 candidate (preparation spent on use, cap 3) is aimed at the right lever; prototype it against the studier cells. | competitionRulesVersion 5 (B9 per the decisions) |
+| **Q4. Passive newcomer nominated more** (1.13 and 1.43) | The strategy windows' terms (target deals and pleas against the player, against others' shields and deals: -32 and -36 against the mean candidate) and a lower view (-21, -23); the novice is at 1.03. At 300 ticks nothing changes for passive (0.61 to 0.59 a week at 8, 0.60 to 0.61 at 12). | Default: no tuning (decision 7). | B9 if tuned |
+| **Q5. Story pariah rate** (17.2% at 8, 43.6% at 12; target at most 20%) | Every pariah target had won a Head of Household (100% and 99.9%; two or more 14% and 29%). The holders' grudges: nominated 52-55%, the veto's replacement 26-29%, a replacement 10-12%, voted against 3%. At 12 the run comes at week 6.1 with 6.8 in the house. The NPC world does not change it (11.4% and 42.0% at 300). | The pariah is a past Head of Household's nomination grudges, not repeat HoHs alone; for the story session: the nomination grudge (70, x1.2 allied), the replacement grudges, and a definition scaled by house size. | story rules 10 (story session) |
 
-- **Three testers.** The chance of at least one natural loss among three testers (independence assumed):
+## The war rooms (D3)
 
-  | size | by week one | by week two | by week three |
-  |---|---|---|---|
-  | 8 | 47% | 71% | 82% |
-  | 12 | 6% | 34% | 49% |
+Over the headline's 11,520 seasons (only the five engaged players convene one):
 
-- **A 90% chance.** From the survival table, a 90% chance of at least one loss needs about five to six
-  weeks at 8 (90% by week five, 95% by week six) and six to seven at 12 (89% by week six, 94% by week seven).
-- The plan's rough 35% guess is low for an 8-house and high for week one of a 12-house (B7 to refine).
+| policy | size | seasons with a plan | plans | agreed / countered / low | members a counter faced (mean odds) | at counters: reachable, mean odds, came round | counters carried | target evicted |
+|---|---|---|---|---|---|---|---|---|
+| random | 8 | 8 of 480 | 13 | 3 / 4 / 6 | 17 (0.42) | 7, 0.54, 5 | 4 of 4 | 8 of 13 |
+| reader | 8 | 40 of 480 | 69 | 62 / 7 / 0 | 69 (0.40) | 5, 0.25, 1 | 6 of 7 | 53 of 69 |
+| schemer | 8 | 20 of 480 | 32 | 28 / 4 / 0 | 45 (0.32) | 5, 0.00, 0 | 1 of 4 | 27 of 32 |
+| loyalist | 8 | 23 of 480 | 37 | 33 / 4 / 0 | 34 (0.42) | 4, 0.24, 1 | 3 of 4 | 29 of 37 |
+| random | 12 | 8 of 480 | 16 | 5 / 8 / 3 | 15 (0.31) | 8, 0.24, 2 | 4 of 8 | 9 of 16 |
+| reader | 12 | 89 of 480 | 222 | 210 / 12 / 0 | 258 (0.36) | 11, 0.29, 3 | 9 of 12 | 166 of 222 |
+| schemer | 12 | 117 of 480 | 253 | 240 / 13 / 0 | 278 (0.34) | 15, 0.34, 6 | 9 of 13 | 156 of 253 |
+| loyalist | 12 | 54 of 480 | 135 | 123 / 12 / 0 | 138 (0.34) | 12, 0.23, 2 | 7 of 12 | 107 of 135 |
 
-**B-1, the lead's proposed band: a knowledge-gated skilled policy wins at least 1.5x the base rate.** The
-skilled policies are social, reader, schemer, loyalist and floater.
+No plan lapsed or came to nothing; the player called 747 of the 777 plans. The floater, in no pact, never
+convened one. Plans the player backs are the week's call; 71% of plans' targets went home that week.
 
-- **At 12** (bar 12.5%) all five clear it with their whole Wilson interval: 23-32%, low ends 15.8-23.7%.
-- **At 8** (bar 18.75%) only social and floater reach it (19%), and not surely (low ends 12.5%); reader
-  13%, schemer 14% and loyalist 17% fall short.
-- As measured, the band holds at 12 and fails at 8.
+## The projections (B7)
 
-## Other findings
+From the novice (the first-timer model) in every house, at budget 0 (400 seeds), 300 (200) and 900 (50).
+S(k) is the chance a tester is out by week k; C(k) the chance they saw a commitment of theirs settle (a deal or
+promise kept or broken whose ending they know, or a war-room plan they answered) while still in the house.
 
-- **Buying time does not pay.** The exploit hunter:
-  - buys 20 and 29 conversations a season, paying 160 and 230 goodwill;
-  - spends every seat and every free action it can find (60 and 116 a season);
-  - has the worst win rates of the engaged policies: 2% and 10% (against random p = 0.18 and 0.031,
-    against passive 0.013 and 0.63).
+| house | S(1) / S(3) / S(5) | C(2) / C(4) / C(plateau) | E4 (at least one of n out, 90%): n = 3 / 4 / 5 | E3 (all n saw one, 90%) | joint |
+|---|---|---|---|---|---|
+| 6 | 27% / 46% / - | 58% / 63% / 63% | week 4 / 3 / 2 | never | never |
+| 8 | 24% / 46% / 53% | 47% / 59% / 61% | week 6 / 3 / 3 | never | never |
+| 10 | 4% / 31% / 56% | 45% / 67% / 71% | week 5 / 4 / 4 | never | never |
+| 12 | 2% / 23% / 46% | 42% / 72% / 79% | week 6 / 5 / 5 | never | never |
+| All-Stars 8 | 11% / 32% / 42% | 45% / 69% / 72% | never / 6 / 5 | never | never |
+| 8 at 300 ticks | 25% / 45% / 55% | 46% / 60% / 62% | week 5 / 3 / 3 | never | never |
 
-  No repeated free action showed up as an exploit: its refusals stay under 0.7 a season, almost all a pact's
-  weekly rename. Walk-ins are no longer on offer to it.
-- **The house deals among itself far more than with the player.**
-  - NPC-only deals: about 11-18 a season at 8 and 47-59 at 12 (about a quarter kept, under 1 broken),
-    against 0.4-12 deals with the player.
-  - NPC-only pacts: 1.0-1.3 at 8, and 2.4-2.8 at 12.
-  - The player's deal ceiling binds only at 12, for 0.7-3.4 weeks a season depending on the policy.
-- **Pairs saturate.** The season's warmest pair ends at a mean mutual 154 and 191 (max 200, both views at
-  +100); the coldest at -84 and -128 (min -200).
-- **NPC Heads of Household** nominate their top threat 58% and 46% of the time. The evictee averages third
-  or fourth in the HoH's threat ranking (3.18 and 3.76) and is in a pact 17% and 28% of the time.
-- **Jury.** Mean margin 2.3 and 3.6 votes; among jurors whose evictor reached the final two, 56% and 53% vote
-  against that evictor.
-- **Story, in PacingReport's terms:**
+- The best three testers can do on E3 as worded is 22% at 8 and 48% at 12: about four in ten novices at 8 (two in
+  ten at 12) never see a commitment of theirs settle while they are in the house.
+- The lab's own minutes a week in the house - ceremonies, the competitions played, decisions at 30 s each, and
+  the NPC budget as free roam - are 8.7 at 8 (13.7 at 300 ticks, 23.6 at 900), well under E1's 30-45 minutes an
+  episode: the time a person takes over a decision is the unknown, and B8 measures it. At E1's own pace an E4
+  session of three testers at 8 (six episode-weeks) is three to four and a half hours.
 
-  | measure | at 8 | at 12 | target |
-  |---|---|---|---|
-  | budgeted asks a season | 4.8 (most in one season: 9, the eight's ceiling) | 8.3 (most: 17) | 4-6 |
-  | must-fires a season | 0.2 | 0.2 | |
-  | weeks with a card | 50% | 50% | 30-60% |
-  | stories finished | 4.5 | 7.6 | about 3 |
-  | seasons with a pariah | 14% | 45% | at most 20% |
-  | NPC showmances a season | about one | about one | |
-  | seasons with a pile-on | 0.2% | 0.6% | |
+## The NPC world: key metrics against the budget
 
-  - The pariah rate at 12 is more than twice its target: a candidate for the story session, measured
-    without the NPC world.
-  - There was no NPC removal at all in 2,400 seasons.
-  - The autopsy's own count of story house events is 12.7 and 20.6 a season. The first version called that
-    figure "beats asked".
-- **Pacing.**
-  - Decisions a week in the house: 3.8-3.9 for the passive player, 14-25 for the engaged gated policies
-    (9-10 for the skilled oracle), and 38-47 for the exploit hunter.
-  - Ceremonies: about 44 s a regular week at 8 and 50 s at 12; the finale's jury reveal takes 22 s and 25 s.
+Each budget's seasons paired with budget 0's (the same seeds). A flag: rate, McNemar b/c and p. A number: mean,
+and the mean difference with a bootstrap 95% interval (a star: the interval excludes 0).
 
-## The headline tables
+| metric | policy, size | 0 | 300 (vs 0) |
+|---|---|---|---|
+| win | reader 8 / 12 | 14% / 24% | 16% (13/11, p 0.84) / 22% (17/19, p 0.87) |
+| win | social 8 / 12 | 19% / 23% | 12% (7/14, p 0.19) / 24% (21/20, p 1.0) |
+| win | beast 8 / 12 | 81% / 58% | 84% (16/13, p 0.71) / 52% (16/22, p 0.42) |
+| out by week 3 | passive 8 / 12 | 55% / 47% | 55% (18/18) / 39% (11/19, p 0.20) |
+| out by week 3 | reader 8 / 12 | 36% / 11% | 27% (8/17, p 0.11) / 15% (11/7, p 0.48) |
+| nominations a week | social 8 | 0.379 | 0.458 (+0.079 [+0.028, +0.124] *) |
+| nominations a week | reader 12 | 0.367 | 0.417 (+0.050 [+0.012, +0.089] *) |
+| NPC-only deals | passive 8 / 12 | 14.8 / 59.2 | 21.2 (+6.4 *) / 63.0 (+3.9 *) |
+| NPC-only deals | reader 8 / 12 | 14.4 / 48.9 | 18.4 (+4.0 *) / 56.9 (+8.0 *) |
+| NPC-only pacts | passive 8 / 12 | 1.21 / 2.78 | 1.63 (+0.42 *) / 3.12 (+0.34 *) |
+| warmest pair | passive 8 / reader 8 | 134 / 151 | 161 (+27 *) / 175 (+23 *) |
+| pairs within ten of ±200 | reader 8 / 12 | 1.0% / 1.3% | 2.3% * / 1.9% * |
+| story: a pariah season | passive 8 / 12 | 16% / 58% | 27% (24/13, p 0.10) / 58% (25/25) |
+| NPC conversations | reader 8 / 12 | 0 | 75 / 146 |
 
-All 2,400 seasons: 100 per policy and size, the same 100 seasons for every policy.
+| metric | policy, size | 0 | 900 (vs 0) |
+|---|---|---|---|
+| final two | reader 8 | 34% | 62% (19/5, p 0.007) |
+| out by week 3 | passive 8 / reader 8 | 56% / 38% | 34% (6/17, p 0.035) / 12% (3/16, p 0.004) |
+| nominations a week | passive 8 / reader 8 | 0.627 / 0.506 | 0.532 (-0.095 *) / 0.407 (-0.100 *) |
+| Game Sense | reader 8 | 70.7 | 76.9 (+6.3 [+2.1, +10.6] *) |
+| NPC-only deals | reader 8 / 12 | 13.1 / 46.7 | 22.4 (+9.3 *) / 69.1 (+22.4 *) |
+| pairs within ten of ±200 | passive 8 / reader 8 | 0.4% / 0.8% | 4.8% * / 5.5% * |
+| win | reader 8 / 12 | 12% / 30% | 20% (8/4, p 0.39) / 26% (10/12, p 0.83) |
+
+At 1800 (reader, 15 seeds): pairs within ten of the bound 5.6-5.7% (at ±200: 3.9-5.4%), the warmest pair's
+mean 194-195, NPC-only deals +16 at 8 and +35 at 12.
+
+## The headline tables (budget 0, 480 seasons a cell)
+
+All 11,520 seasons: the same 480 seasons for every policy at each size.
 
 ### Win rate by policy and size
 
@@ -263,30 +281,30 @@ Base rate is 1/size. McNemar pairs each policy with the passive player on the sa
 
 | policy | size | n | wins | win rate | Wilson 95% | final two | mean placement | vs passive b/c | p |
 |---|---|---|---|---|---|---|---|---|---|
-| passive | 8 | 100 | 12 | 12.0% | [7.0%, 19.8%] | 22.0% | 5.19 | - | - |
-| random | 8 | 100 | 7 | 7.0% | [3.4%, 13.7%] | 40.0% | 4.11 | 7/12 | 0.359 |
-| social | 8 | 100 | 19 | 19.0% | [12.5%, 27.8%] | 42.0% | 3.53 | 16/9 | 0.230 |
-| reader | 8 | 100 | 13 | 13.0% | [7.8%, 21.0%] | 38.0% | 4.03 | 13/12 | 1.000 |
-| schemer | 8 | 100 | 14 | 14.0% | [8.5%, 22.1%] | 38.0% | 3.88 | 11/9 | 0.824 |
-| loyalist | 8 | 100 | 17 | 17.0% | [10.9%, 25.5%] | 33.0% | 4.69 | 15/10 | 0.424 |
-| floater | 8 | 100 | 19 | 19.0% | [12.5%, 27.8%] | 36.0% | 3.62 | 18/11 | 0.265 |
-| beast | 8 | 100 | 81 | 81.0% | [72.2%, 87.5%] | 95.0% | 1.45 | 75/6 | 0.000 |
-| novice | 8 | 100 | 11 | 11.0% | [6.3%, 18.6%] | 36.0% | 4.50 | 9/10 | 1.000 |
-| exploit | 8 | 100 | 2 | 2.0% | [0.6%, 7.0%] | 35.0% | 4.84 | 2/12 | 0.013 |
-| oracle-reader | 8 | 100 | 23 | 23.0% | [15.8%, 32.2%] | 35.0% | 3.98 | 22/11 | 0.082 |
-| oracle-skilled | 8 | 100 | 15 | 15.0% | [9.3%, 23.3%] | 32.0% | 4.93 | 12/9 | 0.664 |
-| passive | 12 | 100 | 7 | 7.0% | [3.4%, 13.7%] | 10.0% | 8.52 | - | - |
-| random | 12 | 100 | 20 | 20.0% | [13.3%, 28.9%] | 27.0% | 6.62 | 20/7 | 0.021 |
-| social | 12 | 100 | 23 | 23.0% | [15.8%, 32.2%] | 28.0% | 6.38 | 23/7 | 0.006 |
-| reader | 12 | 100 | 26 | 26.0% | [18.4%, 35.4%] | 34.0% | 5.42 | 24/5 | 0.001 |
-| schemer | 12 | 100 | 25 | 25.0% | [17.5%, 34.3%] | 35.0% | 5.42 | 25/7 | 0.003 |
-| loyalist | 12 | 100 | 32 | 32.0% | [23.7%, 41.7%] | 35.0% | 5.94 | 31/6 | 0.000 |
-| floater | 12 | 100 | 29 | 29.0% | [21.0%, 38.5%] | 31.0% | 5.41 | 29/7 | 0.000 |
-| beast | 12 | 100 | 58 | 58.0% | [48.2%, 67.2%] | 63.0% | 4.11 | 53/2 | 0.000 |
-| novice | 12 | 100 | 18 | 18.0% | [11.7%, 26.7%] | 28.0% | 6.04 | 18/7 | 0.046 |
-| exploit | 12 | 100 | 10 | 10.0% | [5.5%, 17.4%] | 21.0% | 7.69 | 10/7 | 0.629 |
-| oracle-reader | 12 | 100 | 27 | 27.0% | [19.3%, 36.4%] | 31.0% | 6.23 | 25/5 | 0.001 |
-| oracle-skilled | 12 | 100 | 15 | 15.0% | [9.3%, 23.3%] | 18.0% | 7.55 | 12/4 | 0.077 |
+| passive | 8 | 480 | 56 | 11.7% | [9.1%, 14.8%] | 23.8% | 5.14 | - | - |
+| random | 8 | 480 | 50 | 10.4% | [8.0%, 13.5%] | 35.4% | 4.24 | 43/49 | 0.602 |
+| social | 8 | 480 | 82 | 17.1% | [14.0%, 20.7%] | 42.7% | 3.82 | 72/46 | 0.021 |
+| reader | 8 | 480 | 73 | 15.2% | [12.3%, 18.7%] | 40.6% | 4.13 | 62/45 | 0.122 |
+| schemer | 8 | 480 | 52 | 10.8% | [8.4%, 13.9%] | 39.4% | 4.15 | 45/49 | 0.757 |
+| loyalist | 8 | 480 | 78 | 16.3% | [13.2%, 19.8%] | 33.8% | 4.60 | 70/48 | 0.053 |
+| floater | 8 | 480 | 119 | 24.8% | [21.1%, 28.8%] | 40.2% | 3.55 | 107/44 | 0.000 |
+| beast | 8 | 480 | 396 | 82.5% | [78.8%, 85.6%] | 92.3% | 1.56 | 354/14 | 0.000 |
+| novice | 8 | 480 | 39 | 8.1% | [6.0%, 10.9%] | 34.0% | 4.64 | 31/48 | 0.072 |
+| exploit | 8 | 480 | 25 | 5.2% | [3.6%, 7.6%] | 34.6% | 4.61 | 24/55 | 0.001 |
+| oracle-reader | 8 | 480 | 95 | 19.8% | [16.5%, 23.6%] | 32.3% | 4.29 | 82/43 | 0.001 |
+| oracle-skilled | 8 | 480 | 69 | 14.4% | [11.5%, 17.8%] | 32.9% | 4.59 | 57/44 | 0.232 |
+| passive | 12 | 480 | 47 | 9.8% | [7.4%, 12.8%] | 13.3% | 8.44 | - | - |
+| random | 12 | 480 | 75 | 15.6% | [12.7%, 19.1%] | 22.3% | 6.67 | 69/41 | 0.010 |
+| social | 12 | 480 | 104 | 21.7% | [18.2%, 25.6%] | 27.7% | 6.18 | 96/39 | 0.000 |
+| reader | 12 | 480 | 137 | 28.5% | [24.7%, 32.7%] | 38.1% | 5.25 | 119/29 | 0.000 |
+| schemer | 12 | 480 | 121 | 25.2% | [21.5%, 29.3%] | 32.3% | 5.76 | 112/38 | 0.000 |
+| loyalist | 12 | 480 | 109 | 22.7% | [19.2%, 26.7%] | 25.8% | 6.61 | 97/35 | 0.000 |
+| floater | 12 | 480 | 129 | 26.9% | [23.1%, 31.0%] | 29.0% | 5.35 | 115/33 | 0.000 |
+| beast | 12 | 480 | 294 | 61.3% | [56.8%, 65.5%] | 65.6% | 3.96 | 264/17 | 0.000 |
+| novice | 12 | 480 | 69 | 14.4% | [11.5%, 17.8%] | 24.6% | 6.42 | 63/41 | 0.039 |
+| exploit | 12 | 480 | 47 | 9.8% | [7.4%, 12.8%] | 21.9% | 7.21 | 42/42 | 0.913 |
+| oracle-reader | 12 | 480 | 123 | 25.6% | [21.9%, 29.7%] | 29.8% | 6.32 | 109/33 | 0.000 |
+| oracle-skilled | 12 | 480 | 82 | 17.1% | [14.0%, 20.7%] | 20.4% | 7.16 | 69/34 | 0.001 |
 
 ### Further pairs
 
@@ -294,22 +312,22 @@ McNemar on the same seasons: b where only the first won, c where only the second
 
 | first | second | size | first wins | second wins | b/c | p |
 |---|---|---|---|---|---|---|
-| reader | oracle-reader | 8 | 13 | 23 | 11/21 | 0.112 |
-| reader | oracle-skilled | 8 | 13 | 15 | 12/14 | 0.845 |
-| social | random | 8 | 19 | 7 | 17/5 | 0.017 |
-| reader | random | 8 | 13 | 7 | 11/5 | 0.210 |
-| loyalist | random | 8 | 17 | 7 | 15/5 | 0.041 |
-| reader | social | 8 | 13 | 19 | 10/16 | 0.327 |
-| novice | passive | 8 | 11 | 12 | 9/10 | 1.000 |
-| exploit | random | 8 | 2 | 7 | 2/7 | 0.180 |
-| reader | oracle-reader | 12 | 26 | 27 | 20/21 | 1.000 |
-| reader | oracle-skilled | 12 | 26 | 15 | 23/12 | 0.091 |
-| social | random | 12 | 23 | 20 | 18/15 | 0.728 |
-| reader | random | 12 | 26 | 20 | 21/15 | 0.405 |
-| loyalist | random | 12 | 32 | 20 | 26/14 | 0.082 |
-| reader | social | 12 | 26 | 23 | 21/18 | 0.749 |
-| novice | passive | 12 | 18 | 7 | 18/7 | 0.046 |
-| exploit | random | 12 | 10 | 20 | 4/14 | 0.031 |
+| reader | oracle-reader | 8 | 73 | 95 | 53/75 | 0.063 |
+| reader | oracle-skilled | 8 | 73 | 69 | 65/61 | 0.789 |
+| social | random | 8 | 82 | 50 | 71/39 | 0.003 |
+| reader | random | 8 | 73 | 50 | 66/43 | 0.035 |
+| loyalist | random | 8 | 78 | 50 | 68/40 | 0.009 |
+| reader | social | 8 | 73 | 82 | 58/67 | 0.474 |
+| novice | passive | 8 | 39 | 56 | 31/48 | 0.072 |
+| exploit | random | 8 | 25 | 50 | 22/47 | 0.004 |
+| reader | oracle-reader | 12 | 137 | 123 | 110/96 | 0.365 |
+| reader | oracle-skilled | 12 | 137 | 82 | 117/62 | 0.000 |
+| social | random | 12 | 104 | 75 | 86/57 | 0.019 |
+| reader | random | 12 | 137 | 75 | 117/55 | 0.000 |
+| loyalist | random | 12 | 109 | 75 | 96/62 | 0.009 |
+| reader | social | 12 | 137 | 104 | 107/74 | 0.017 |
+| novice | passive | 12 | 69 | 47 | 63/41 | 0.039 |
+| exploit | random | 12 | 47 | 75 | 37/65 | 0.008 |
 
 ### The proposed B-1 band: a knowledge-gated skilled policy wins at least 1.5x the base rate
 
@@ -317,137 +335,141 @@ The bar is 1.5 / size. Clears: the win rate is at or over the bar; surely: the W
 
 | policy | size | bar | win rate [Wilson] | clears | surely |
 |---|---|---|---|---|---|
-| social | 8 | 18.8% | 19.0% [12.5%, 27.8%] | yes | no |
-| reader | 8 | 18.8% | 13.0% [7.8%, 21.0%] | no | no |
-| schemer | 8 | 18.8% | 14.0% [8.5%, 22.1%] | no | no |
-| loyalist | 8 | 18.8% | 17.0% [10.9%, 25.5%] | no | no |
-| floater | 8 | 18.8% | 19.0% [12.5%, 27.8%] | yes | no |
-| social | 12 | 12.5% | 23.0% [15.8%, 32.2%] | yes | yes |
-| reader | 12 | 12.5% | 26.0% [18.4%, 35.4%] | yes | yes |
-| schemer | 12 | 12.5% | 25.0% [17.5%, 34.3%] | yes | yes |
-| loyalist | 12 | 12.5% | 32.0% [23.7%, 41.7%] | yes | yes |
-| floater | 12 | 12.5% | 29.0% [21.0%, 38.5%] | yes | yes |
+| social | 8 | 18.8% | 17.1% [14.0%, 20.7%] | no | no |
+| reader | 8 | 18.8% | 15.2% [12.3%, 18.7%] | no | no |
+| schemer | 8 | 18.8% | 10.8% [8.4%, 13.9%] | no | no |
+| loyalist | 8 | 18.8% | 16.3% [13.2%, 19.8%] | no | no |
+| floater | 8 | 18.8% | 24.8% [21.1%, 28.8%] | yes | yes |
+| social | 12 | 12.5% | 21.7% [18.2%, 25.6%] | yes | yes |
+| reader | 12 | 12.5% | 28.5% [24.7%, 32.7%] | yes | yes |
+| schemer | 12 | 12.5% | 25.2% [21.5%, 29.3%] | yes | yes |
+| loyalist | 12 | 12.5% | 22.7% [19.2%, 26.7%] | yes | yes |
+| floater | 12 | 12.5% | 26.9% [23.1%, 31.0%] | yes | yes |
 
 ### Survival by week: the player still in the house after week k
 
 | policy (8) | wk 1 | wk 2 | wk 3 | wk 4 | wk 5 | wk 6 |
 |---|---|---|---|---|---|---|
-| passive | 73.0% | 54.0% | 45.0% | 39.0% | 36.0% | 22.0% |
-| random | 85.0% | 72.0% | 67.0% | 61.0% | 57.0% | 40.0% |
-| social | 92.0% | 81.0% | 75.0% | 70.0% | 68.0% | 42.0% |
-| reader | 85.0% | 73.0% | 66.0% | 63.0% | 59.0% | 38.0% |
-| schemer | 91.0% | 83.0% | 68.0% | 63.0% | 55.0% | 38.0% |
-| loyalist | 76.0% | 61.0% | 51.0% | 48.0% | 45.0% | 33.0% |
-| floater | 94.0% | 81.0% | 74.0% | 72.0% | 62.0% | 36.0% |
-| beast | 99.0% | 95.0% | 95.0% | 95.0% | 95.0% | 95.0% |
-| novice | 81.0% | 66.0% | 56.0% | 53.0% | 47.0% | 36.0% |
-| exploit | 72.0% | 63.0% | 51.0% | 47.0% | 46.0% | 35.0% |
-| oracle-reader | 84.0% | 78.0% | 65.0% | 60.0% | 57.0% | 35.0% |
-| oracle-skilled | 74.0% | 59.0% | 45.0% | 42.0% | 40.0% | 32.0% |
+| passive | 77.3% | 51.9% | 42.7% | 40.4% | 38.5% | 23.8% |
+| random | 85.8% | 70.2% | 60.8% | 58.5% | 54.4% | 35.4% |
+| social | 89.0% | 76.3% | 68.3% | 64.4% | 60.6% | 42.7% |
+| reader | 84.0% | 70.4% | 61.7% | 59.4% | 55.8% | 40.6% |
+| schemer | 89.4% | 74.0% | 61.7% | 57.5% | 52.1% | 39.4% |
+| loyalist | 77.1% | 65.2% | 52.5% | 49.2% | 45.6% | 33.8% |
+| floater | 91.9% | 80.2% | 73.1% | 69.4% | 65.6% | 40.2% |
+| beast | 99.8% | 92.3% | 92.3% | 92.3% | 92.3% | 92.3% |
+| novice | 76.3% | 64.6% | 54.4% | 51.0% | 47.3% | 34.0% |
+| exploit | 78.3% | 63.8% | 54.4% | 52.1% | 50.2% | 34.6% |
+| oracle-reader | 85.2% | 69.2% | 59.2% | 54.4% | 51.0% | 32.3% |
+| oracle-skilled | 80.0% | 63.8% | 53.3% | 49.6% | 46.7% | 32.9% |
 
 | policy (12) | wk 1 | wk 2 | wk 3 | wk 4 | wk 5 | wk 6 | wk 7 | wk 8 | wk 9 | wk 10 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| passive | 88.0% | 74.0% | 53.0% | 34.0% | 26.0% | 19.0% | 13.0% | 12.0% | 12.0% | 10.0% |
-| random | 94.0% | 77.0% | 67.0% | 54.0% | 47.0% | 43.0% | 38.0% | 36.0% | 35.0% | 27.0% |
-| social | 94.0% | 85.0% | 74.0% | 64.0% | 54.0% | 42.0% | 34.0% | 32.0% | 32.0% | 28.0% |
-| reader | 100.0% | 93.0% | 88.0% | 74.0% | 67.0% | 53.0% | 42.0% | 41.0% | 40.0% | 34.0% |
-| schemer | 97.0% | 92.0% | 84.0% | 72.0% | 66.0% | 52.0% | 47.0% | 45.0% | 43.0% | 35.0% |
-| loyalist | 95.0% | 87.0% | 77.0% | 65.0% | 52.0% | 49.0% | 40.0% | 38.0% | 36.0% | 35.0% |
-| floater | 100.0% | 93.0% | 90.0% | 81.0% | 65.0% | 49.0% | 41.0% | 40.0% | 40.0% | 31.0% |
-| beast | 100.0% | 85.0% | 85.0% | 73.0% | 73.0% | 63.0% | 63.0% | 63.0% | 63.0% | 63.0% |
-| novice | 98.0% | 87.0% | 80.0% | 71.0% | 56.0% | 48.0% | 40.0% | 36.0% | 34.0% | 28.0% |
-| exploit | 88.0% | 77.0% | 63.0% | 45.0% | 36.0% | 25.0% | 23.0% | 22.0% | 21.0% | 21.0% |
-| oracle-reader | 96.0% | 84.0% | 76.0% | 61.0% | 50.0% | 43.0% | 37.0% | 37.0% | 35.0% | 31.0% |
-| oracle-skilled | 92.0% | 77.0% | 66.0% | 49.0% | 39.0% | 24.0% | 22.0% | 22.0% | 21.0% | 18.0% |
+| passive | 87.7% | 66.3% | 50.6% | 36.3% | 26.0% | 19.6% | 15.8% | 15.2% | 15.0% | 13.3% |
+| random | 93.3% | 82.7% | 74.2% | 61.9% | 50.0% | 39.4% | 32.7% | 31.3% | 30.0% | 22.3% |
+| social | 93.8% | 85.6% | 76.3% | 66.0% | 55.4% | 44.6% | 38.5% | 37.1% | 35.6% | 27.7% |
+| reader | 99.6% | 92.7% | 85.2% | 73.8% | 65.8% | 53.5% | 47.1% | 46.3% | 44.2% | 38.1% |
+| schemer | 97.3% | 89.2% | 80.0% | 68.8% | 58.5% | 48.3% | 42.9% | 41.5% | 39.8% | 32.3% |
+| loyalist | 90.2% | 84.4% | 74.8% | 63.3% | 49.6% | 37.7% | 31.9% | 30.8% | 27.9% | 25.8% |
+| floater | 99.6% | 95.0% | 88.3% | 78.3% | 66.0% | 53.8% | 44.2% | 42.1% | 41.5% | 29.0% |
+| beast | 100.0% | 85.0% | 84.6% | 72.7% | 72.5% | 65.6% | 65.6% | 65.6% | 65.6% | 65.6% |
+| novice | 98.5% | 85.8% | 77.7% | 66.9% | 54.2% | 41.9% | 33.1% | 31.7% | 29.2% | 24.6% |
+| exploit | 90.6% | 81.7% | 67.5% | 54.8% | 42.9% | 31.9% | 26.7% | 25.6% | 25.2% | 21.9% |
+| oracle-reader | 93.8% | 82.9% | 74.2% | 62.1% | 51.0% | 42.5% | 36.3% | 35.6% | 34.2% | 29.8% |
+| oracle-skilled | 92.1% | 78.5% | 67.7% | 53.8% | 42.5% | 32.1% | 26.9% | 26.7% | 25.8% | 20.4% |
 
-### Early risk (F7): nominated and evicted in week one, out by week k, and the chance at least one of three testers is out
+### Early risk: nominated and evicted in week one, out by week k, and the chance at least one of three testers is out
 
 | policy | size | nominated wk 1 | evicted wk 1 [Wilson] | out by wk 2 | out by wk 3 | P(≥1 of 3 out) wk 1 / 2 / 3 |
 |---|---|---|---|---|---|---|
-| passive | 8 | 41.0% | 27.0% [19.3%, 36.4%] | 46.0% | 55.0% | 61.1% / 84.3% / 90.9% |
-| random | 8 | 29.0% | 15.0% [9.3%, 23.3%] | 28.0% | 33.0% | 38.6% / 62.7% / 69.9% |
-| social | 8 | 30.0% | 8.0% [4.1%, 15.0%] | 19.0% | 25.0% | 22.1% / 46.9% / 57.8% |
-| reader | 8 | 38.0% | 15.0% [9.3%, 23.3%] | 27.0% | 34.0% | 38.6% / 61.1% / 71.3% |
-| schemer | 8 | 49.0% | 9.0% [4.8%, 16.2%] | 17.0% | 32.0% | 24.6% / 42.8% / 68.6% |
-| loyalist | 8 | 32.0% | 24.0% [16.7%, 33.2%] | 39.0% | 49.0% | 56.1% / 77.3% / 86.7% |
-| floater | 8 | 36.0% | 6.0% [2.8%, 12.5%] | 19.0% | 26.0% | 16.9% / 46.9% / 59.5% |
-| beast | 8 | 4.0% | 1.0% [0.2%, 5.4%] | 5.0% | 5.0% | 3.0% / 14.3% / 14.3% |
-| novice | 8 | 39.0% | 19.0% [12.5%, 27.8%] | 34.0% | 44.0% | 46.9% / 71.3% / 82.4% |
-| exploit | 8 | 37.0% | 28.0% [20.1%, 37.5%] | 37.0% | 49.0% | 62.7% / 75.0% / 86.7% |
-| oracle-reader | 8 | 43.0% | 16.0% [10.1%, 24.4%] | 22.0% | 35.0% | 40.7% / 52.5% / 72.5% |
-| oracle-skilled | 8 | 38.0% | 26.0% [18.4%, 35.4%] | 41.0% | 55.0% | 59.5% / 79.5% / 90.9% |
-| passive | 12 | 55.0% | 12.0% [7.0%, 19.8%] | 26.0% | 47.0% | 31.9% / 59.5% / 85.1% |
-| random | 12 | 39.0% | 6.0% [2.8%, 12.5%] | 23.0% | 33.0% | 16.9% / 54.3% / 69.9% |
-| social | 12 | 30.0% | 6.0% [2.8%, 12.5%] | 15.0% | 26.0% | 16.9% / 38.6% / 59.5% |
-| reader | 12 | 21.0% | 0.0% [0.0%, 3.7%] | 7.0% | 12.0% | 0.0% / 19.6% / 31.9% |
-| schemer | 12 | 37.0% | 3.0% [1.0%, 8.5%] | 8.0% | 16.0% | 8.7% / 22.1% / 40.7% |
-| loyalist | 12 | 33.0% | 5.0% [2.2%, 11.2%] | 13.0% | 23.0% | 14.3% / 34.1% / 54.3% |
-| floater | 12 | 25.0% | 0.0% [0.0%, 3.7%] | 7.0% | 10.0% | 0.0% / 19.6% / 27.1% |
-| beast | 12 | 1.0% | 0.0% [0.0%, 3.7%] | 15.0% | 15.0% | 0.0% / 38.6% / 38.6% |
-| novice | 12 | 42.0% | 2.0% [0.6%, 7.0%] | 13.0% | 20.0% | 5.9% / 34.1% / 48.8% |
-| exploit | 12 | 43.0% | 12.0% [7.0%, 19.8%] | 23.0% | 37.0% | 31.9% / 54.3% / 75.0% |
-| oracle-reader | 12 | 37.0% | 4.0% [1.6%, 9.8%] | 16.0% | 24.0% | 11.5% / 40.7% / 56.1% |
-| oracle-skilled | 12 | 53.0% | 8.0% [4.1%, 15.0%] | 23.0% | 34.0% | 22.1% / 54.3% / 71.3% |
+| passive | 8 | 38.3% | 22.7% [19.2%, 26.7%] | 48.1% | 57.3% | 53.8% / 86.0% / 92.2% |
+| random | 8 | 30.2% | 14.2% [11.3%, 17.6%] | 29.8% | 39.2% | 36.8% / 65.4% / 77.5% |
+| social | 8 | 35.2% | 11.0% [8.5%, 14.2%] | 23.8% | 31.7% | 29.6% / 55.7% / 68.1% |
+| reader | 8 | 36.0% | 16.0% [13.0%, 19.6%] | 29.6% | 38.3% | 40.8% / 65.1% / 76.5% |
+| schemer | 8 | 41.3% | 10.6% [8.2%, 13.7%] | 26.0% | 38.3% | 28.6% / 59.5% / 76.5% |
+| loyalist | 8 | 37.1% | 22.9% [19.4%, 26.9%] | 34.8% | 47.5% | 54.2% / 72.3% / 85.5% |
+| floater | 8 | 40.2% | 8.1% [6.0%, 10.9%] | 19.8% | 26.9% | 22.4% / 48.4% / 60.9% |
+| beast | 8 | 1.3% | 0.2% [0.0%, 1.2%] | 7.7% | 7.7% | 0.6% / 21.4% / 21.4% |
+| novice | 8 | 45.4% | 23.8% [20.2%, 27.8%] | 35.4% | 45.6% | 55.7% / 73.1% / 83.9% |
+| exploit | 8 | 33.8% | 21.7% [18.2%, 25.6%] | 36.3% | 45.6% | 51.9% / 74.1% / 83.9% |
+| oracle-reader | 8 | 39.4% | 14.8% [11.9%, 18.2%] | 30.8% | 40.8% | 38.1% / 66.9% / 79.3% |
+| oracle-skilled | 8 | 36.3% | 20.0% [16.7%, 23.8%] | 36.3% | 46.7% | 48.8% / 74.1% / 84.8% |
+| passive | 12 | 52.9% | 12.3% [9.7%, 15.5%] | 33.8% | 49.4% | 32.5% / 70.9% / 87.0% |
+| random | 12 | 34.4% | 6.7% [4.8%, 9.3%] | 17.3% | 25.8% | 18.7% / 43.4% / 59.2% |
+| social | 12 | 39.0% | 6.3% [4.4%, 8.8%] | 14.4% | 23.8% | 17.6% / 37.2% / 55.7% |
+| reader | 12 | 26.7% | 0.4% [0.1%, 1.5%] | 7.3% | 14.8% | 1.2% / 20.3% / 38.1% |
+| schemer | 12 | 37.1% | 2.7% [1.6%, 4.6%] | 10.8% | 20.0% | 7.9% / 29.1% / 48.8% |
+| loyalist | 12 | 44.8% | 9.8% [7.4%, 12.8%] | 15.6% | 25.2% | 26.6% / 39.9% / 58.2% |
+| floater | 12 | 27.1% | 0.4% [0.1%, 1.5%] | 5.0% | 11.7% | 1.2% / 14.3% / 31.1% |
+| beast | 12 | 1.0% | 0.0% [0.0%, 0.8%] | 15.0% | 15.4% | 0.0% / 38.6% / 39.5% |
+| novice | 12 | 40.6% | 1.5% [0.7%, 3.0%] | 14.2% | 22.3% | 4.3% / 36.8% / 53.1% |
+| exploit | 12 | 41.5% | 9.4% [7.1%, 12.3%] | 18.3% | 32.5% | 25.6% / 45.5% / 69.2% |
+| oracle-reader | 12 | 40.8% | 6.3% [4.4%, 8.8%] | 17.1% | 25.8% | 17.6% / 43.0% / 59.2% |
+| oracle-skilled | 12 | 51.5% | 7.9% [5.8%, 10.7%] | 21.5% | 32.3% | 21.9% / 51.5% / 69.0% |
 
 ### Nominations per week in the house (F4): the player against the houseguests of the same seasons
 
 | policy | size | player | houseguests | ratio |
 |---|---|---|---|---|
-| passive | 8 | 0.606 | 0.519 | 1.17 |
-| random | 8 | 0.450 | 0.530 | 0.85 |
-| social | 8 | 0.379 | 0.522 | 0.73 |
-| reader | 8 | 0.477 | 0.516 | 0.92 |
-| schemer | 8 | 0.428 | 0.517 | 0.83 |
+| passive | 8 | 0.587 | 0.522 | 1.13 |
+| random | 8 | 0.472 | 0.530 | 0.89 |
+| social | 8 | 0.429 | 0.523 | 0.82 |
+| reader | 8 | 0.482 | 0.518 | 0.93 |
+| schemer | 8 | 0.455 | 0.520 | 0.88 |
 | loyalist | 8 | 0.502 | 0.514 | 0.98 |
-| floater | 8 | 0.440 | 0.515 | 0.85 |
-| beast | 8 | 0.203 | 0.483 | 0.42 |
-| novice | 8 | 0.523 | 0.512 | 1.02 |
-| exploit | 8 | 0.539 | 0.513 | 1.05 |
-| oracle-reader | 8 | 0.491 | 0.541 | 0.91 |
-| oracle-skilled | 8 | 0.528 | 0.529 | 1.00 |
-| passive | 12 | 0.604 | 0.425 | 1.42 |
-| random | 12 | 0.472 | 0.427 | 1.11 |
-| social | 12 | 0.428 | 0.423 | 1.01 |
-| reader | 12 | 0.369 | 0.436 | 0.85 |
-| schemer | 12 | 0.368 | 0.431 | 0.85 |
-| loyalist | 12 | 0.421 | 0.421 | 1.00 |
-| floater | 12 | 0.405 | 0.420 | 0.96 |
-| beast | 12 | 0.260 | 0.388 | 0.67 |
-| novice | 12 | 0.427 | 0.430 | 0.99 |
-| exploit | 12 | 0.505 | 0.417 | 1.21 |
-| oracle-reader | 12 | 0.449 | 0.435 | 1.03 |
-| oracle-skilled | 12 | 0.499 | 0.430 | 1.16 |
+| floater | 8 | 0.451 | 0.519 | 0.87 |
+| beast | 8 | 0.205 | 0.480 | 0.43 |
+| novice | 8 | 0.531 | 0.514 | 1.03 |
+| exploit | 8 | 0.517 | 0.511 | 1.01 |
+| oracle-reader | 8 | 0.500 | 0.535 | 0.93 |
+| oracle-skilled | 8 | 0.500 | 0.533 | 0.94 |
+| passive | 12 | 0.605 | 0.422 | 1.43 |
+| random | 12 | 0.451 | 0.427 | 1.06 |
+| social | 12 | 0.430 | 0.422 | 1.02 |
+| reader | 12 | 0.366 | 0.434 | 0.84 |
+| schemer | 12 | 0.382 | 0.433 | 0.88 |
+| loyalist | 12 | 0.445 | 0.424 | 1.05 |
+| floater | 12 | 0.388 | 0.429 | 0.90 |
+| beast | 12 | 0.260 | 0.389 | 0.67 |
+| novice | 12 | 0.444 | 0.429 | 1.03 |
+| exploit | 12 | 0.508 | 0.421 | 1.21 |
+| oracle-reader | 12 | 0.455 | 0.435 | 1.05 |
+| oracle-skilled | 12 | 0.492 | 0.431 | 1.14 |
 
 ### The player's competitions by policy (weekly HoH and veto they played)
 
 | policy | size | played / season | won | win rate [Wilson] | mean performance | HoH wins / season | veto wins / season |
 |---|---|---|---|---|---|---|---|
-| passive | 8 | 5.05 | 258 | 51.1% [46.7%, 55.4%] | 0.51 | 1.28 | 1.52 |
-| random | 8 | 6.18 | 323 | 52.3% [48.3%, 56.2%] | 0.51 | 1.80 | 1.77 |
-| social | 8 | 6.76 | 345 | 51.0% [47.3%, 54.8%] | 0.51 | 1.93 | 1.88 |
-| reader | 8 | 6.28 | 324 | 51.6% [47.7%, 55.5%] | 0.51 | 1.80 | 1.75 |
-| schemer | 8 | 6.65 | 346 | 52.0% [48.2%, 55.8%] | 0.51 | 1.90 | 1.88 |
-| loyalist | 8 | 5.32 | 257 | 48.3% [44.1%, 52.6%] | 0.51 | 1.52 | 1.37 |
-| floater | 8 | 6.85 | 357 | 52.1% [48.4%, 55.8%] | 0.50 | 1.93 | 1.97 |
-| beast | 8 | 7.47 | 728 | 97.5% [96.1%, 98.4%] | 0.80 | 3.80 | 4.43 |
-| novice | 8 | 5.91 | 266 | 45.0% [41.0%, 49.0%] | 0.36 | 1.48 | 1.49 |
-| exploit | 8 | 5.37 | 262 | 48.8% [44.6%, 53.0%] | 0.51 | 1.50 | 1.47 |
-| oracle-reader | 8 | 6.26 | 319 | 51.0% [47.0%, 54.9%] | 0.52 | 1.76 | 1.76 |
-| oracle-skilled | 8 | 5.15 | 256 | 49.7% [45.4%, 54.0%] | 0.51 | 1.55 | 1.32 |
-| passive | 12 | 6.22 | 327 | 52.6% [48.6%, 56.5%] | 0.51 | 1.46 | 1.91 |
-| random | 12 | 8.27 | 431 | 52.1% [48.7%, 55.5%] | 0.51 | 2.19 | 2.39 |
-| social | 12 | 8.37 | 440 | 52.6% [49.2%, 55.9%] | 0.50 | 2.36 | 2.32 |
-| reader | 12 | 9.66 | 522 | 54.0% [50.9%, 57.2%] | 0.50 | 2.68 | 2.85 |
-| schemer | 12 | 9.51 | 527 | 55.4% [52.2%, 58.5%] | 0.51 | 2.68 | 2.92 |
-| loyalist | 12 | 8.89 | 487 | 54.8% [51.5%, 58.0%] | 0.51 | 2.52 | 2.70 |
-| floater | 12 | 9.71 | 518 | 53.3% [50.2%, 56.5%] | 0.51 | 2.62 | 2.87 |
-| beast | 12 | 9.90 | 981 | 99.1% [98.3%, 99.5%] | 0.80 | 4.44 | 6.00 |
-| novice | 12 | 9.19 | 382 | 41.6% [38.4%, 44.8%] | 0.37 | 1.90 | 2.16 |
-| exploit | 12 | 6.90 | 363 | 52.6% [48.9%, 56.3%] | 0.50 | 1.91 | 1.92 |
-| oracle-reader | 12 | 8.71 | 472 | 54.2% [50.9%, 57.5%] | 0.52 | 2.42 | 2.61 |
-| oracle-skilled | 12 | 7.14 | 363 | 50.8% [47.2%, 54.5%] | 0.51 | 1.86 | 1.95 |
+| passive | 8 | 5.09 | 1267 | 51.9% [49.9%, 53.9%] | 0.51 | 1.33 | 1.54 |
+| random | 8 | 6.07 | 1525 | 52.4% [50.5%, 54.2%] | 0.50 | 1.73 | 1.76 |
+| social | 8 | 6.43 | 1565 | 50.7% [48.9%, 52.5%] | 0.51 | 1.87 | 1.76 |
+| reader | 8 | 6.06 | 1498 | 51.5% [49.6%, 53.3%] | 0.51 | 1.73 | 1.73 |
+| schemer | 8 | 6.26 | 1533 | 51.0% [49.2%, 52.8%] | 0.51 | 1.76 | 1.76 |
+| loyalist | 8 | 5.53 | 1337 | 50.4% [48.5%, 52.3%] | 0.51 | 1.61 | 1.49 |
+| floater | 8 | 6.77 | 1701 | 52.4% [50.7%, 54.1%] | 0.51 | 1.93 | 2.00 |
+| beast | 8 | 7.39 | 3465 | 97.6% [97.1%, 98.1%] | 0.80 | 3.74 | 4.40 |
+| novice | 8 | 5.68 | 1235 | 45.3% [43.5%, 47.2%] | 0.36 | 1.46 | 1.40 |
+| exploit | 8 | 5.61 | 1372 | 51.0% [49.1%, 52.9%] | 0.51 | 1.59 | 1.59 |
+| oracle-reader | 8 | 5.95 | 1455 | 51.0% [49.1%, 52.8%] | 0.51 | 1.64 | 1.68 |
+| oracle-skilled | 8 | 5.63 | 1378 | 51.0% [49.1%, 52.9%] | 0.51 | 1.61 | 1.55 |
+| passive | 12 | 6.23 | 1564 | 52.3% [50.5%, 54.1%] | 0.51 | 1.50 | 1.89 |
+| random | 12 | 8.37 | 2050 | 51.0% [49.5%, 52.6%] | 0.51 | 2.16 | 2.33 |
+| social | 12 | 8.77 | 2183 | 51.9% [50.4%, 53.4%] | 0.51 | 2.38 | 2.45 |
+| reader | 12 | 9.77 | 2515 | 53.6% [52.2%, 55.1%] | 0.51 | 2.70 | 2.90 |
+| schemer | 12 | 9.15 | 2345 | 53.4% [51.9%, 54.8%] | 0.51 | 2.54 | 2.65 |
+| loyalist | 12 | 8.23 | 2074 | 52.5% [50.9%, 54.1%] | 0.51 | 2.25 | 2.33 |
+| floater | 12 | 9.77 | 2355 | 50.2% [48.8%, 51.6%] | 0.51 | 2.63 | 2.56 |
+| beast | 12 | 10.08 | 4794 | 99.0% [98.7%, 99.3%] | 0.80 | 4.52 | 6.12 |
+| novice | 12 | 8.84 | 1843 | 43.5% [42.0%, 45.0%] | 0.37 | 1.92 | 2.13 |
+| exploit | 12 | 7.69 | 1971 | 53.4% [51.8%, 55.0%] | 0.51 | 2.01 | 2.31 |
+| oracle-reader | 12 | 8.59 | 2144 | 52.0% [50.5%, 53.5%] | 0.51 | 2.33 | 2.43 |
+| oracle-skilled | 12 | 7.73 | 1934 | 52.2% [50.5%, 53.8%] | 0.51 | 1.99 | 2.24 |
 
 ### Competition by fixed performance (B4: the passive player, 60 seasons a level and size)
+
+Carried from the first baseline (measured at `95e99bd2`): the passive player never convenes a war room or calls a
+vote, so D3 does not change its seasons (its 480-season headline rates, 11.7% and 9.8%, sit on the first
+baseline's 12% and 7% within their intervals).
 
 | size | performance | played | won | win rate [Wilson] | field 3-5 | field 6-8 | field 9-11 | season win rate [Wilson] |
 |---|---|---|---|---|---|---|---|---|
@@ -462,209 +484,188 @@ The bar is 1.5 / size. Clears: the win rate is at or over the bar; surely: the W
 | 12 | 0.75 | 489 | 337 | 68.9% [64.7%, 72.9%] | 79.2% (77) | 68.2% (296) | 75.0% (56) | 16.7% [9.3%, 28.0%] |
 | 12 | 1.00 | 560 | 441 | 78.8% [75.2%, 81.9%] | 90.9% (110) | 74.4% (336) | 83.3% (54) | 40.0% [28.6%, 52.6%] |
 
-The field buckets count the competitions the player played at that field size (in brackets).
-
 ### Competition concentration (all policies' seasons; NPC rows from the passive player's)
 
 | size | Spearman NPC wins vs stat sum | top NPC's share of NPC wins | weekly comps won by the strongest on paper | mean winner rank on paper | field size |
 |---|---|---|---|---|---|
-| 8 | 0.121 | 37.7% | 45.3% | 2.16 | 5.3 |
-| 12 | 0.113 | 28.9% | 45.1% | 2.18 | 6.4 |
+| 8 | 0.126 | 37.8% | 45.4% | 2.13 | 5.3 |
+| 12 | 0.119 | 28.2% | 45.3% | 2.18 | 6.4 |
 
 ### Pacts and deals per season
 
-Player deals count every deal the player is party to, the house's offers to them included, in any status.
-
 | policy | size | player pacts | NPC-only pacts | player deals (kept/broken) | NPC-only deals (kept/broken) | player promises (kept/broken) | oaths | weeks at the deal ceiling |
 |---|---|---|---|---|---|---|---|---|
-| passive | 8 | 0.00 | 1.21 | 0.48 (0.00/0.00) | 14.83 (3.81/0.19) | 0.00 (0.00/0.00) | 0.00 | 0.00 |
-| random | 8 | 0.07 | 1.19 | 3.08 (0.29/0.41) | 15.38 (4.31/0.22) | 0.97 (0.38/0.39) | 0.02 | 0.00 |
-| social | 8 | 0.38 | 1.16 | 4.21 (0.57/1.09) | 15.03 (4.05/0.22) | 3.39 (1.17/1.10) | 0.20 | 0.00 |
-| reader | 8 | 0.23 | 1.12 | 5.42 (2.84/1.24) | 14.40 (4.03/0.13) | 0.44 (0.01/0.05) | 0.00 | 0.00 |
-| schemer | 8 | 0.53 | 0.97 | 7.13 (2.79/2.17) | 11.08 (3.05/0.20) | 2.33 (0.97/0.78) | 0.00 | 0.00 |
-| loyalist | 8 | 0.92 | 1.24 | 4.37 (0.81/0.07) | 14.28 (4.16/0.17) | 1.59 (0.20/0.01) | 0.83 | 0.00 |
-| floater | 8 | 0.00 | 1.13 | 2.53 (0.00/0.00) | 16.14 (4.15/0.27) | 0.00 (0.00/0.00) | 0.00 | 0.00 |
-| beast | 8 | 0.24 | 1.14 | 5.21 (0.00/0.12) | 18.31 (3.81/0.32) | 0.98 (0.01/0.03) | 0.00 | 0.00 |
-| novice | 8 | 0.37 | 1.15 | 2.68 (0.74/0.18) | 15.06 (4.53/0.32) | 2.93 (1.22/0.75) | 0.17 | 0.00 |
-| exploit | 8 | 0.15 | 1.20 | 1.11 (0.18/0.27) | 15.39 (4.39/0.19) | 2.36 (1.06/1.04) | 0.00 | 0.00 |
-| oracle-reader | 8 | 0.59 | 1.11 | 5.88 (2.21/0.75) | 13.62 (3.84/0.17) | 0.47 (0.01/0.01) | 0.00 | 0.00 |
-| oracle-skilled | 8 | 0.21 | 1.29 | 1.42 (0.28/0.37) | 15.79 (4.34/0.16) | 1.21 (0.02/0.18) | 0.01 | 0.00 |
-| passive | 12 | 0.00 | 2.78 | 0.41 (0.00/0.00) | 59.15 (13.40/0.70) | 0.00 (0.00/0.00) | 0.00 | 0.71 |
-| random | 12 | 0.10 | 2.69 | 4.05 (0.57/0.33) | 55.27 (12.49/0.69) | 1.02 (0.35/0.29) | 0.02 | 1.83 |
-| social | 12 | 0.68 | 2.70 | 5.69 (0.99/0.70) | 54.20 (12.24/0.81) | 4.70 (1.42/1.22) | 0.40 | 1.84 |
-| reader | 12 | 1.13 | 2.43 | 8.73 (3.96/2.00) | 49.25 (10.63/0.77) | 1.61 (0.03/0.05) | 0.00 | 2.14 |
-| schemer | 12 | 1.13 | 2.49 | 12.23 (5.28/2.44) | 46.71 (9.81/0.56) | 4.80 (1.38/1.08) | 0.00 | 2.46 |
-| loyalist | 12 | 1.25 | 2.76 | 4.96 (1.23/0.14) | 54.04 (11.48/0.79) | 3.40 (0.29/0.03) | 0.86 | 1.91 |
-| floater | 12 | 0.00 | 2.59 | 3.32 (0.00/0.00) | 57.63 (12.30/0.87) | 0.00 (0.00/0.00) | 0.00 | 2.07 |
-| beast | 12 | 0.28 | 2.60 | 7.85 (0.07/0.29) | 56.85 (10.76/0.72) | 1.38 (0.00/0.05) | 0.00 | 3.39 |
-| novice | 12 | 0.68 | 2.67 | 5.99 (1.70/0.31) | 54.98 (11.99/0.81) | 4.40 (1.36/0.83) | 0.44 | 2.01 |
-| exploit | 12 | 0.25 | 2.77 | 1.29 (0.23/0.24) | 56.22 (12.47/0.64) | 2.28 (0.79/0.90) | 0.07 | 1.14 |
-| oracle-reader | 12 | 0.70 | 2.62 | 8.82 (2.86/1.24) | 53.96 (11.91/0.65) | 0.87 (0.00/0.01) | 0.00 | 2.14 |
-| oracle-skilled | 12 | 0.38 | 2.82 | 3.15 (0.73/0.59) | 55.70 (12.89/0.62) | 1.89 (0.03/0.16) | 0.02 | 1.12 |
+| passive | 8 | 0.00 | 1.35 | 0.39 (0.00/0.00) | 16.18 (4.46/0.22) | 0.00 (0.00/0.00) | 0.00 | 0.00 |
+| random | 8 | 0.06 | 1.27 | 2.75 (0.25/0.33) | 16.24 (4.52/0.20) | 0.83 (0.29/0.33) | 0.01 | 0.00 |
+| social | 8 | 0.38 | 1.12 | 3.80 (0.51/0.97) | 14.95 (4.23/0.21) | 3.04 (1.00/0.98) | 0.19 | 0.00 |
+| reader | 8 | 0.25 | 1.16 | 4.96 (2.61/1.25) | 14.46 (4.10/0.20) | 0.46 (0.01/0.04) | 0.00 | 0.00 |
+| schemer | 8 | 0.48 | 1.01 | 6.83 (2.76/1.80) | 11.11 (3.06/0.18) | 2.52 (1.02/0.83) | 0.00 | 0.00 |
+| loyalist | 8 | 0.94 | 1.17 | 4.35 (0.80/0.08) | 14.59 (4.15/0.21) | 1.69 (0.18/0.01) | 0.86 | 0.00 |
+| floater | 8 | 0.00 | 1.18 | 2.57 (0.00/0.00) | 15.91 (4.25/0.22) | 0.00 (0.00/0.00) | 0.00 | 0.00 |
+| beast | 8 | 0.20 | 1.13 | 5.11 (0.03/0.12) | 18.54 (3.87/0.31) | 1.04 (0.02/0.04) | 0.00 | 0.00 |
+| novice | 8 | 0.30 | 1.19 | 2.57 (0.67/0.20) | 15.12 (4.48/0.28) | 2.76 (1.11/0.79) | 0.19 | 0.00 |
+| exploit | 8 | 0.13 | 1.19 | 1.05 (0.14/0.26) | 15.28 (4.46/0.19) | 2.40 (1.08/1.06) | 0.00 | 0.00 |
+| oracle-reader | 8 | 0.51 | 1.19 | 5.55 (2.14/0.75) | 13.78 (3.78/0.21) | 0.43 (0.01/0.02) | 0.00 | 0.00 |
+| oracle-skilled | 8 | 0.24 | 1.30 | 1.74 (0.30/0.40) | 15.94 (4.54/0.19) | 1.25 (0.03/0.16) | 0.02 | 0.00 |
+| passive | 12 | 0.00 | 2.80 | 0.42 (0.00/0.00) | 57.30 (12.88/0.73) | 0.00 (0.00/0.00) | 0.00 | 0.76 |
+| random | 12 | 0.13 | 2.65 | 4.01 (0.46/0.38) | 53.66 (12.20/0.70) | 1.04 (0.29/0.33) | 0.03 | 1.55 |
+| social | 12 | 0.66 | 2.66 | 5.90 (0.98/0.83) | 53.74 (11.79/0.73) | 5.09 (1.55/1.32) | 0.47 | 1.94 |
+| reader | 12 | 1.17 | 2.51 | 8.91 (4.02/1.98) | 47.83 (10.34/0.75) | 1.50 (0.02/0.08) | 0.00 | 2.22 |
+| schemer | 12 | 1.07 | 2.39 | 11.73 (4.96/2.30) | 46.18 (9.98/0.56) | 4.31 (1.28/1.00) | 0.00 | 2.20 |
+| loyalist | 12 | 1.19 | 2.65 | 4.92 (1.20/0.12) | 53.12 (11.53/0.87) | 3.15 (0.22/0.03) | 0.83 | 1.46 |
+| floater | 12 | 0.00 | 2.59 | 4.05 (0.00/0.00) | 55.12 (11.86/0.76) | 0.00 (0.00/0.00) | 0.00 | 2.07 |
+| beast | 12 | 0.24 | 2.64 | 7.79 (0.10/0.24) | 55.52 (9.96/0.77) | 1.29 (0.01/0.03) | 0.00 | 3.50 |
+| novice | 12 | 0.67 | 2.66 | 5.33 (1.45/0.29) | 54.48 (12.37/0.73) | 4.04 (1.22/0.72) | 0.44 | 1.66 |
+| exploit | 12 | 0.17 | 2.71 | 1.23 (0.23/0.23) | 56.81 (12.47/0.69) | 2.53 (0.87/1.01) | 0.04 | 1.33 |
+| oracle-reader | 12 | 0.75 | 2.49 | 8.57 (2.73/1.15) | 51.87 (10.87/0.70) | 1.03 (0.00/0.01) | 0.00 | 1.92 |
+| oracle-skilled | 12 | 0.42 | 2.76 | 3.19 (0.70/0.56) | 55.39 (12.40/0.72) | 2.03 (0.02/0.17) | 0.04 | 1.35 |
 
 ### Economy per season: window seats, bought time, Have-Nots, free actions
 
 | policy | size | seats offered | spent | wasted | purchases | goodwill paid | Have-Not weeks | free actions |
 |---|---|---|---|---|---|---|---|---|
-| passive | 8 | 21.3 | 0.0 | 21.3 | 0.00 | 0.0 | 0.18 | 0.0 |
-| random | 8 | 26.8 | 16.2 | 10.6 | 0.00 | 0.0 | 0.16 | 13.4 |
-| social | 8 | 28.9 | 28.9 | 0.0 | 0.00 | 0.0 | 0.22 | 15.3 |
-| reader | 8 | 27.5 | 14.5 | 13.0 | 0.00 | 0.0 | 0.25 | 30.0 |
-| schemer | 8 | 30.5 | 30.5 | 0.0 | 3.69 | 29.5 | 0.14 | 17.2 |
-| loyalist | 8 | 23.2 | 23.2 | 0.0 | 0.00 | 0.0 | 0.16 | 14.5 |
-| floater | 8 | 29.0 | 29.0 | 0.0 | 0.00 | 0.0 | 0.22 | 13.2 |
-| beast | 8 | 34.0 | 34.0 | 0.0 | 0.00 | 0.0 | 0.00 | 7.0 |
-| novice | 8 | 24.3 | 12.4 | 11.9 | 0.00 | 0.0 | 0.26 | 13.2 |
-| exploit | 8 | 38.5 | 38.5 | 0.0 | 19.98 | 159.8 | 0.12 | 59.7 |
-| oracle-reader | 8 | 27.2 | 14.4 | 12.8 | 0.00 | 0.0 | 0.18 | 21.5 |
-| oracle-skilled | 8 | 22.5 | 7.0 | 15.5 | 0.00 | 0.0 | 0.15 | 0.8 |
-| passive | 12 | 29.9 | 0.0 | 29.9 | 0.00 | 0.0 | 0.06 | 0.0 |
-| random | 12 | 39.5 | 23.1 | 16.4 | 0.00 | 0.0 | 0.09 | 21.7 |
-| social | 12 | 40.8 | 40.8 | 0.0 | 0.00 | 0.0 | 0.07 | 25.1 |
-| reader | 12 | 47.6 | 25.1 | 22.6 | 0.00 | 0.0 | 0.13 | 83.9 |
-| schemer | 12 | 51.0 | 51.0 | 0.0 | 6.01 | 48.1 | 0.09 | 31.1 |
-| loyalist | 12 | 42.3 | 42.3 | 0.0 | 0.00 | 0.0 | 0.08 | 24.5 |
-| floater | 12 | 46.3 | 46.3 | 0.0 | 0.00 | 0.0 | 0.13 | 22.7 |
-| beast | 12 | 49.7 | 49.7 | 0.0 | 0.00 | 0.0 | 0.00 | 11.0 |
-| novice | 12 | 43.5 | 22.0 | 21.5 | 0.00 | 0.0 | 0.31 | 23.3 |
-| exploit | 12 | 56.9 | 56.9 | 0.0 | 28.74 | 229.9 | 0.04 | 116.4 |
-| oracle-reader | 12 | 42.5 | 21.1 | 21.4 | 0.00 | 0.0 | 0.04 | 63.3 |
-| oracle-skilled | 12 | 34.9 | 11.0 | 24.0 | 0.00 | 0.0 | 0.07 | 2.0 |
-
-Seats offered depend on how long the player stays and on what they buy, so they differ by policy.
+| passive | 8 | 21.5 | 0.0 | 21.5 | 0.00 | 0.0 | 0.12 | 0.0 |
+| random | 8 | 26.1 | 15.8 | 10.3 | 0.00 | 0.0 | 0.14 | 13.3 |
+| social | 8 | 27.5 | 27.5 | 0.0 | 0.00 | 0.0 | 0.15 | 14.6 |
+| reader | 8 | 26.5 | 13.9 | 12.6 | 0.00 | 0.0 | 0.17 | 29.6 |
+| schemer | 8 | 28.6 | 28.6 | 0.0 | 3.45 | 27.6 | 0.13 | 16.8 |
+| loyalist | 8 | 23.6 | 23.6 | 0.0 | 0.00 | 0.0 | 0.15 | 14.6 |
+| floater | 8 | 28.7 | 28.7 | 0.0 | 0.00 | 0.0 | 0.18 | 13.4 |
+| beast | 8 | 33.3 | 33.3 | 0.0 | 0.00 | 0.0 | 0.00 | 7.0 |
+| novice | 8 | 23.8 | 12.2 | 11.6 | 0.00 | 0.0 | 0.23 | 13.1 |
+| exploit | 8 | 40.1 | 40.1 | 0.0 | 20.91 | 167.3 | 0.12 | 61.8 |
+| oracle-reader | 8 | 25.7 | 13.6 | 12.2 | 0.00 | 0.0 | 0.16 | 21.0 |
+| oracle-skilled | 8 | 24.4 | 7.8 | 16.6 | 0.00 | 0.0 | 0.14 | 1.1 |
+| passive | 12 | 29.8 | 0.0 | 29.8 | 0.00 | 0.0 | 0.06 | 0.0 |
+| random | 12 | 40.0 | 23.8 | 16.3 | 0.00 | 0.0 | 0.09 | 21.6 |
+| social | 12 | 42.1 | 42.1 | 0.0 | 0.00 | 0.0 | 0.11 | 25.5 |
+| reader | 12 | 47.9 | 25.3 | 22.6 | 0.00 | 0.0 | 0.14 | 84.2 |
+| schemer | 12 | 48.6 | 48.6 | 0.0 | 5.69 | 45.5 | 0.08 | 30.9 |
+| loyalist | 12 | 39.5 | 39.5 | 0.0 | 0.00 | 0.0 | 0.08 | 23.5 |
+| floater | 12 | 47.1 | 47.1 | 0.0 | 0.00 | 0.0 | 0.11 | 23.0 |
+| beast | 12 | 50.2 | 50.2 | 0.0 | 0.00 | 0.0 | 0.00 | 11.0 |
+| novice | 12 | 41.4 | 21.2 | 20.3 | 0.00 | 0.0 | 0.29 | 22.6 |
+| exploit | 12 | 62.3 | 62.3 | 0.0 | 31.30 | 250.4 | 0.07 | 123.7 |
+| oracle-reader | 12 | 42.1 | 21.3 | 20.8 | 0.00 | 0.0 | 0.08 | 62.7 |
+| oracle-skilled | 12 | 37.1 | 11.7 | 25.4 | 0.00 | 0.0 | 0.09 | 2.1 |
 
 ### Game Sense by policy (bootstrap 95% for the mean)
 
 | policy | size | Game Sense | competitions | strategy | social |
 |---|---|---|---|---|---|
-| passive | 8 | 56.2 [54.2, 58.0] | 81.3 | 52.8 | 35.4 |
-| random | 8 | 63.8 [61.7, 65.8] | 89.3 | 65.8 | 35.5 |
-| social | 8 | 69.6 [67.4, 71.8] | 91.5 | 74.9 | 40.5 |
-| reader | 8 | 71.3 [68.9, 73.5] | 88.7 | 83.5 | 37.8 |
-| schemer | 8 | 65.8 [63.8, 67.8] | 91.8 | 76.6 | 25.2 |
-| loyalist | 8 | 67.7 [64.7, 70.6] | 82.4 | 72.4 | 46.8 |
-| floater | 8 | 64.9 [63.5, 66.2] | 94.0 | 62.4 | 39.2 |
-| beast | 8 | 73.6 [72.6, 74.5] | 99.5 | 80.1 | 38.9 |
-| novice | 8 | 65.6 [62.8, 68.1] | 84.7 | 70.3 | 40.6 |
-| exploit | 8 | 63.7 [60.9, 66.4] | 82.5 | 71.5 | 34.7 |
-| oracle-reader | 8 | 72.0 [69.3, 74.4] | 90.3 | 83.7 | 37.9 |
-| oracle-skilled | 8 | 62.0 [59.2, 64.5] | 83.2 | 65.2 | 36.7 |
-| passive | 12 | 60.3 [59.1, 61.5] | 90.1 | 60.2 | 30.5 |
-| random | 12 | 66.9 [65.5, 68.4] | 92.3 | 75.7 | 29.7 |
-| social | 12 | 73.2 [71.5, 74.7] | 93.6 | 85.7 | 36.0 |
-| reader | 12 | 76.4 [75.5, 77.3] | 97.3 | 97.1 | 28.1 |
-| schemer | 12 | 71.1 [69.8, 72.3] | 96.1 | 92.6 | 17.1 |
-| loyalist | 12 | 77.3 [75.8, 78.6] | 94.6 | 92.6 | 39.6 |
-| floater | 12 | 66.9 [65.8, 68.0] | 97.5 | 71.1 | 30.8 |
-| beast | 12 | 73.7 [72.8, 74.5] | 100.0 | 87.0 | 29.5 |
-| novice | 12 | 72.5 [70.7, 74.3] | 91.4 | 86.6 | 34.8 |
-| exploit | 12 | 68.6 [66.9, 70.4] | 89.7 | 82.2 | 29.2 |
-| oracle-reader | 12 | 73.9 [72.6, 75.3] | 94.3 | 92.2 | 29.3 |
-| oracle-skilled | 12 | 70.1 [68.4, 71.6] | 92.3 | 80.6 | 33.7 |
-
-Size 8: gated reader minus random 7.6; oracle reader minus random 8.2 (target 20).
-
-Size 12: gated reader minus random 9.5; oracle reader minus random 7.0 (target 20).
+| passive | 8 | 56.1 [55.3, 56.9] | 82.2 | 52.7 | 34.4 |
+| random | 8 | 63.0 [62.0, 63.8] | 88.5 | 64.5 | 35.3 |
+| social | 8 | 68.7 [67.8, 69.6] | 90.5 | 72.7 | 41.5 |
+| reader | 8 | 70.8 [69.8, 71.8] | 88.4 | 82.0 | 38.3 |
+| schemer | 8 | 66.4 [65.4, 67.4] | 90.3 | 77.4 | 27.7 |
+| loyalist | 8 | 68.6 [67.3, 69.9] | 84.1 | 73.7 | 46.4 |
+| floater | 8 | 64.8 [64.1, 65.5] | 92.7 | 62.8 | 39.6 |
+| beast | 8 | 73.5 [73.1, 74.0] | 99.7 | 79.4 | 39.4 |
+| novice | 8 | 64.5 [63.3, 65.7] | 83.1 | 69.2 | 39.7 |
+| exploit | 8 | 64.9 [63.9, 66.1] | 85.3 | 73.4 | 33.3 |
+| oracle-reader | 8 | 70.5 [69.4, 71.6] | 88.6 | 81.2 | 38.2 |
+| oracle-skilled | 8 | 64.3 [63.2, 65.6] | 86.0 | 69.2 | 36.3 |
+| passive | 12 | 59.9 [59.4, 60.5] | 88.3 | 60.3 | 31.0 |
+| random | 12 | 66.5 [65.8, 67.1] | 93.1 | 74.6 | 29.0 |
+| social | 12 | 73.2 [72.5, 74.0] | 94.0 | 85.4 | 36.2 |
+| reader | 12 | 76.3 [75.8, 76.8] | 96.8 | 96.7 | 28.7 |
+| schemer | 12 | 70.9 [70.2, 71.5] | 95.2 | 91.3 | 19.3 |
+| loyalist | 12 | 76.3 [75.5, 77.2] | 92.3 | 90.7 | 41.3 |
+| floater | 12 | 67.2 [66.7, 67.7] | 97.6 | 71.1 | 31.7 |
+| beast | 12 | 73.9 [73.5, 74.3] | 100.0 | 88.2 | 28.8 |
+| novice | 12 | 72.0 [71.1, 72.7] | 91.9 | 84.6 | 35.1 |
+| exploit | 12 | 68.9 [68.2, 69.6] | 91.6 | 83.8 | 26.5 |
+| oracle-reader | 12 | 73.5 [72.8, 74.2] | 93.0 | 90.7 | 30.8 |
+| oracle-skilled | 12 | 69.7 [69.0, 70.5] | 92.2 | 81.1 | 32.0 |
 
 ### Who goes out, NPC Heads of Household, and the jury (all policies' seasons)
 
 | size | evictee's threat rank (HoH's view) | evictees in a pact | evictee's competition wins | NPC HoH nominated the top threat | jury margin | bitter jurors |
 |---|---|---|---|---|---|---|
-| 8 | 3.18 | 17.0% | 0.71 | 57.9% | 2.29 | 55.6% of jurors whose evictor reached the final two |
-| 12 | 3.76 | 27.8% | 1.10 | 46.3% | 3.59 | 52.8% of jurors whose evictor reached the final two |
+| 8 | 3.15 | 17.3% | 0.71 | 58.2% | 2.23 | 56.2% of jurors whose evictor reached the final two |
+| 12 | 3.76 | 27.5% | 1.10 | 46.3% | 3.57 | 53.8% of jurors whose evictor reached the final two |
 
-### The house: agendas and pairs (all policies' seasons)
+### The house: agendas and pairs, and the story's pace (all policies' seasons)
 
 | house | NPC agendas as each social week closed | warmest pair (mutual, mean / max) | coldest pair (mutual, mean / min) |
 |---|---|---|---|
-| 8 | build 77.2%, hunt 15.3%, hold 6.7%, drift 0.8% | 154 / 200 | -84 / -200 |
-| 12 | build 68.6%, hunt 25.3%, hold 5.6%, drift 0.5% | 191 / 200 | -128 / -200 |
+| 8 | build 77.1%, hunt 15.3%, hold 6.8%, drift 0.8% | 155 / 200 | -85 / -200 |
+| 12 | build 69.1%, hunt 24.8%, hold 5.6%, drift 0.5% | 191 / 200 | -129 / -200 |
 
-### The story's pace (all policies' seasons), counted as StoryPacingTests.PacingReport counts it
-
-Asks are the beats put to the player, a storyline's beats closing at one anchor one ask; the first night, summons and plays apart; budgeted asks leave out production's must-fires and urgent moments. A pariah season has some houseguest (not the reigning Head of Household) with three in the house at forty against them after two Advances running. The last column is the autopsy's own count, every story house event in the final state, which is not comparable with the plan's targets.
-
-| house | budgeted asks / season (target 4-6) | + must-fires | summons | play offers | weeks with a card (target 30-60%) | stories finished (target about 3) | moments | seasons with a pariah (target at most 20%) | NPC showmances | seasons with an NPC removal | seasons with a pile-on (target at most 25%) | story house events / season (autopsy) |
+| house | budgeted asks / season (target 4-6) | + must-fires | summons | play offers | weeks with a card (target 30-60%) | stories finished (target about 3) | moments | seasons with a pariah (target at most 20%) | NPC showmances | seasons with an NPC removal | seasons with a pile-on | story house events / season (autopsy) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 8 | 4.8 (max 9) | 0.2 | 0.5 | 3.2 | 50.3% | 4.5 | 8.2 | 14.3% | 1.02 | 0.0% | 0.2% | 12.7 |
-| 12 | 8.3 (max 17) | 0.2 | 0.8 | 5.2 | 49.8% | 7.6 | 12.0 | 44.8% | 1.16 | 0.0% | 0.6% | 20.6 |
+| 8 | 4.6 (max 9) | 0.2 | 0.5 | 3.2 | 48.9% | 4.4 | 8.1 | 17.2% | 1.02 | 0.0% | 0.1% | 12.5 |
+| 12 | 8.2 (max 17) | 0.2 | 0.8 | 5.2 | 49.4% | 7.6 | 11.9 | 43.6% | 1.17 | 0.0% | 0.6% | 20.5 |
 
 ### Pacing: decisions and ceremony seconds a week
 
-Decisions are the player's accepted commands other than Advance. Ceremony seconds are the key ceremony, veto meeting and live eviction at the suspenseful pace, fade to fade, unskipped (CeremonyPacing); the finale's jury reveal apart.
-
 | policy | size | decisions / week (weeks in the house) | ceremony s / regular week | finale reveal s |
 |---|---|---|---|---|
-| passive | 8 | 3.9 | 44.8 | 21.8 |
-| random | 8 | 14.3 | 44.6 | 21.8 |
-| social | 8 | 17.4 | 44.2 | 21.8 |
-| reader | 8 | 19.8 | 44.3 | 21.8 |
-| schemer | 8 | 19.0 | 44.4 | 21.8 |
+| passive | 8 | 4.0 | 44.8 | 21.8 |
+| random | 8 | 14.4 | 44.7 | 21.8 |
+| social | 8 | 17.6 | 44.4 | 21.8 |
+| reader | 8 | 20.0 | 44.4 | 21.8 |
+| schemer | 8 | 19.2 | 44.5 | 21.8 |
 | loyalist | 8 | 18.3 | 44.5 | 21.8 |
-| floater | 8 | 16.4 | 44.4 | 21.8 |
-| beast | 8 | 15.6 | 42.9 | 21.8 |
-| novice | 8 | 14.5 | 44.4 | 21.8 |
-| exploit | 8 | 37.7 | 44.5 | 21.8 |
-| oracle-reader | 8 | 16.4 | 44.9 | 21.8 |
-| oracle-skilled | 8 | 9.4 | 44.9 | 21.8 |
-| passive | 12 | 3.8 | 50.5 | 24.6 |
-| random | 12 | 15.5 | 50.2 | 24.6 |
-| social | 12 | 19.4 | 50.1 | 24.6 |
-| reader | 12 | 25.5 | 50.0 | 24.6 |
-| schemer | 12 | 20.5 | 49.9 | 24.6 |
-| loyalist | 12 | 19.3 | 49.9 | 24.6 |
-| floater | 12 | 17.3 | 50.0 | 24.6 |
-| beast | 12 | 16.8 | 48.9 | 24.6 |
-| novice | 12 | 15.2 | 50.1 | 24.6 |
-| exploit | 12 | 46.6 | 50.0 | 24.6 |
-| oracle-reader | 12 | 23.3 | 50.4 | 24.6 |
-| oracle-skilled | 12 | 10.1 | 50.4 | 24.6 |
+| floater | 8 | 16.5 | 44.4 | 21.8 |
+| beast | 8 | 15.7 | 42.9 | 21.8 |
+| novice | 8 | 14.6 | 44.5 | 21.8 |
+| exploit | 8 | 37.2 | 44.4 | 21.8 |
+| oracle-reader | 8 | 16.7 | 44.9 | 21.8 |
+| oracle-skilled | 8 | 9.6 | 44.9 | 21.8 |
+| passive | 12 | 3.8 | 50.4 | 24.5 |
+| random | 12 | 15.4 | 50.3 | 24.5 |
+| social | 12 | 19.4 | 50.1 | 24.5 |
+| reader | 12 | 25.5 | 49.9 | 24.5 |
+| schemer | 12 | 20.6 | 50.0 | 24.5 |
+| loyalist | 12 | 19.4 | 50.0 | 24.5 |
+| floater | 12 | 17.3 | 50.0 | 24.5 |
+| beast | 12 | 16.8 | 48.9 | 24.5 |
+| novice | 12 | 15.3 | 50.1 | 24.5 |
+| exploit | 12 | 45.8 | 50.1 | 24.5 |
+| oracle-reader | 12 | 23.2 | 50.4 | 24.5 |
+| oracle-skilled | 12 | 10.1 | 50.4 | 24.5 |
 
 ### Refusals and the walker
 
 | policy | size | own commands / season | walker steps / season | refusals / season | most common refusal |
 |---|---|---|---|---|---|
-| passive | 8 | 0.0 | 91.5 | 0.00 | - |
-| random | 8 | 47.9 | 87.8 | 0.00 | - |
-| social | 8 | 67.2 | 88.3 | 0.00 | - |
-| reader | 8 | 66.6 | 87.8 | 0.00 | - |
-| schemer | 8 | 71.7 | 87.6 | 0.00 | - |
-| loyalist | 8 | 55.5 | 87.5 | 0.01 | PromiseFinalTwo: This promise is already active. (1) |
-| floater | 8 | 62.7 | 87.6 | 0.00 | - |
-| beast | 8 | 69.4 | 89.1 | 0.00 | - |
-| novice | 8 | 44.5 | 88.0 | 0.00 | - |
-| exploit | 8 | 121.6 | 87.6 | 0.24 | RenameAlliance: The Outsiders has had its new name this week. (13) |
-| oracle-reader | 8 | 52.3 | 92.1 | 0.00 | - |
-| oracle-skilled | 8 | 110.3 | 2.0 | 1.95 | AnswerJury: Choose one of the responses offered. (192) |
-| passive | 12 | 0.0 | 148.9 | 0.00 | - |
-| random | 12 | 70.4 | 145.8 | 0.00 | - |
-| social | 12 | 98.1 | 145.9 | 0.00 | - |
-| reader | 12 | 146.0 | 146.7 | 0.00 | - |
-| schemer | 12 | 119.3 | 147.0 | 0.00 | - |
-| loyalist | 12 | 100.5 | 146.8 | 0.45 | PromiseFinalTwo: This promise is already active. (45) |
-| floater | 12 | 98.7 | 146.5 | 0.00 | - |
-| beast | 12 | 100.7 | 147.7 | 0.00 | - |
-| novice | 12 | 77.2 | 147.2 | 0.00 | - |
-| exploit | 12 | 204.6 | 144.8 | 0.63 | RenameAlliance: The Outsiders has had its new name this week. (26) |
-| oracle-reader | 12 | 109.6 | 152.0 | 0.00 | - |
-| oracle-skilled | 12 | 182.0 | 1.9 | 1.88 | AnswerJury: Choose one of the responses offered. (180) |
+| passive | 8 | 0.0 | 91.7 | 0.00 | - |
+| random | 8 | 47.1 | 87.4 | 0.00 | - |
+| social | 8 | 64.0 | 88.2 | 0.00 | - |
+| reader | 8 | 64.7 | 88.0 | 0.00 | - |
+| schemer | 8 | 68.2 | 87.7 | 0.00 | - |
+| loyalist | 8 | 56.8 | 87.4 | 0.01 | PromiseFinalTwo: This promise is already active. (6) |
+| floater | 8 | 62.3 | 87.8 | 0.00 | - |
+| beast | 8 | 68.3 | 88.9 | 0.00 | - |
+| novice | 8 | 43.7 | 87.8 | 0.00 | - |
+| exploit | 8 | 126.6 | 87.5 | 0.20 | RenameAlliance: The Outsiders has had its new name this week. (46) |
+| oracle-reader | 8 | 50.0 | 91.6 | 0.01 | CallTheVote: The You, Emma and Riley Pact settles its call when it meets. (2) |
+| oracle-skilled | 8 | 113.0 | 2.0 | 2.00 | AnswerJury: Choose one of the responses offered. (948) |
+| passive | 12 | 0.0 | 149.5 | 0.00 | - |
+| random | 12 | 71.0 | 145.1 | 0.00 | - |
+| social | 12 | 100.5 | 145.9 | 0.00 | - |
+| reader | 12 | 146.7 | 147.6 | 0.00 | - |
+| schemer | 12 | 114.8 | 146.6 | 0.00 | - |
+| loyalist | 12 | 94.0 | 145.6 | 0.33 | PromiseFinalTwo: This promise is already active. (157) |
+| floater | 12 | 99.9 | 146.4 | 0.00 | - |
+| beast | 12 | 101.6 | 148.0 | 0.00 | - |
+| novice | 12 | 74.3 | 146.3 | 0.00 | - |
+| exploit | 12 | 220.0 | 144.8 | 0.38 | RenameAlliance: The Outsiders has had its new name this week. (78) |
+| oracle-reader | 12 | 108.6 | 151.9 | 0.02 | CallTheVote: The You, Alex and Casey Pact settles its call when it meets. (3) |
+| oracle-skilled | 12 | 184.6 | 2.1 | 2.09 | AnswerJury: Choose one of the responses offered. (980) |
 
-Seasons with an error (walker refused, invalid state, unfinished): 0 of 2400. The oracle skilled player's
-refusals are its own walker answering the finale's questions with the old catalogue's "A"; the lab's walker then
-answers with an offered response.
+The oracles are the harnesses' own players and keep their own habits: the reader oracle still calls the vote in a
+pact of three now and then, and the skilled oracle's first jury answer is one the finale does not offer (the lab's
+walker answers with an offered one).
 
 ## What this baseline does not cover
 
-- **The NPC world (B5).** No NPC-to-NPC conversation, no all-week beats, no walk-ins; the plan's sensitivity
-  table against the tick budget comes with the driver.
-- **Seed counts (B6).** 100 a cell; the plan's 800 is about 2.3 hours of the headline grid on this machine.
-  Rows and goldens per cell are not recorded yet.
-- **Human performance (B8).** The per-policy distributions are assumptions; the fixed-level tier bounds them.
-- **Sizes and rosters.** The tables cover 8 and 12, regular roster only.
-  - The smoke tier proves every policy plays a legal season at 4, 6, 8, 10 and 12, and in the All-Stars
-    eight and twelve.
-  - The full tier measures them, but has not been run.
-  - 13-16 are verification-only houses.
-- **Policy strength.** Each policy is one plausible script of its style, not an optimum, and comparisons are
-  between these scripts on the same seasons. The oracles in particular are not strong bounds (F2), and the
-  skilled oracle still takes walk-ins that the view does not offer the gated players.
+- **Seed counts.** The headline is 480 a cell, not 800; the NPC budgets 100 (300), 50 (900, two players) and 15
+  (1800, one player); the projections 400, 200 and 50. The full tier (every size and the All-Stars) has not run.
+- **D2's all-week beats** are storage only (`allWeekRulesStartWeek` 0): the NPC world here is the 1 Hz
+  conversation world alone. Walk-ins stay off (decision 4).
+- **Human performance and time (B8).** The performance distributions and the 30 seconds a decision are
+  assumptions.
+- **Policy strength.** Each policy is one plausible script of its style; the oracles are not strong bounds.
+- **Tuning (T1+).** Nothing here is tuned but D3's counter; the bands are the owner's.

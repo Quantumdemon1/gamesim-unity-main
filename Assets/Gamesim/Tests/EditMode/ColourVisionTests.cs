@@ -36,7 +36,11 @@ namespace Gamesim.Tests.EditMode
             ("The vote reveal's two sides (VoteReveal.Side)", "a ballot stands in its nominee's column, under their name and face"),
         };
 
-        /// <summary>The notebook's ground under the web: the glass panel over the HUD's background.</summary>
+        /// <summary>
+        /// The ground the lines are composited over: the HUD's background (#0B1220), not the notebook's
+        /// glass fill over it - the review found the verdict the same either way. The numbers A9's
+        /// commits record (Friendship against Rivalry, 12.6 / 1.39:1 as drawn) are over this ground.
+        /// </summary>
         private static Color Ground => UiTheme.Background;
 
         private static ColourVision.Rgb Rgb(Color colour) => new ColourVision.Rgb(colour.r, colour.g, colour.b);

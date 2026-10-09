@@ -610,35 +610,66 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The ladder's pact rung is tried at every beat until it lands, and the word once a week: a houseguest
-        /// with nobody to pair with gives their word, then - a partner warm at last - forms a pact at their next
-        /// beat, and gives no second word that week.
+        /// The ladder's pact rung is tried at a houseguest's first beat of the week (D2's decision 8: tried at every
+        /// beat, the eight-house formed about a quarter more pacts than the weekly pass, which tried once), and the
+        /// word once a week: with nobody to pair with they give their word; warm with a partner, they form a pact at
+        /// their first beat and do not try at a later one; and no second word that week, however warm.
         /// </summary>
         [Test]
-        public void ThePactRungIsTriedAtEveryBeatAndTheWordOnceAWeek()
+        public void ThePactRungIsTriedAtTheFirstBeatOfTheWeekAndTheWordOnceAWeek()
         {
-            var s = InWindow(Fresh(8, 6120), Windows.AfterHoH);
-            s.npcSocial.acts.Clear();
-            s.agencyRulesStartWeek = 0;
-            var npcs = s.Active.Where(c => !c.isPlayer).ToList();
-            var a = npcs[0]; var b = npcs[1]; var c = npcs[2];
-            foreach (var x in npcs) foreach (var y in npcs.Where(y => y != x)) Score(s, x.id, y.id, 0);
-            foreach (var x in s.alliances) x.active = false;
-            // Warm enough for a word, not a pact: the word.
-            Score(s, a.id, c.id, 35); Score(s, c.id, a.id, 0);
-            var first = NpcSocialActions.Beat(s, a.id, StoryRandom.Stream(s, "test:1"), false, false);
-            Assert.That(first?.kind, Is.EqualTo(NpcActKinds.Promise), "No pact to be had: a word.");
-            first.id = s.week + "-0-50"; first.week = s.week; first.window = Windows.AfterHoH; s.npcSocial.acts.Add(first);
-            // Now warm both ways with b: the pact rung, tried again, lands.
-            Score(s, a.id, b.id, 90); Score(s, b.id, a.id, 90);
-            var second = NpcSocialActions.Beat(s, a.id, StoryRandom.Stream(s, "test:2"), false, false);
-            Assert.That(second?.kind, Is.EqualTo(NpcActKinds.Pact));
-            Assert.That(second.partnerId, Is.EqualTo(b.id));
-            second.id = s.week + "-0-51"; second.week = s.week; second.window = Windows.AfterHoH; s.npcSocial.acts.Add(second);
-            // Still warm enough for another word, but the week's word is given; and the pact is this week's.
-            Score(s, a.id, npcs[3].id, 60);
-            var third = NpcSocialActions.Beat(s, a.id, StoryRandom.Stream(s, "test:3"), false, false);
+            var basis = Fresh(8, 6120);
+            var npcs = basis.Active.Where(c => !c.isPlayer).ToList();
+            // Not a nominee InWindow names after the nominations.
+            var a = npcs.First(c => c.id != npcs[1].id && c.id != npcs.Last().id && EpisodeEngine.PactWindow(basis, c.id) == Windows.AfterHoH);
+            var b = npcs.First(c => c.id != a.id); var c2 = npcs.First(c => c.id != a.id && c.id != b.id);
+            EpisodeState Ready(int window, double warmth)
+            {
+                var s = InWindow(basis, window);
+                s.npcSocial.acts.Clear();
+                s.agencyRulesStartWeek = 0;
+                foreach (var x in npcs) foreach (var y in npcs.Where(y => y != x)) Score(s, x.id, y.id, 0);
+                foreach (var x in s.alliances) x.active = false;
+                Score(s, a.id, b.id, warmth); Score(s, b.id, a.id, warmth);
+                // Warm enough for a word, not a pact.
+                Score(s, a.id, c2.id, 35);
+                return s;
+            }
+            Assert.That(EpisodeEngine.PactWindow(basis, a.id), Is.Not.EqualTo(Windows.AfterNominations));
+            var cold = Ready(Windows.AfterHoH, 0);
+            Assert.That(NpcSocialActions.Beat(cold, a.id, StoryRandom.Stream(cold, "test:1"), false, false)?.kind, Is.EqualTo(NpcActKinds.Promise), "No pact to be had: a word.");
+            var first = Ready(Windows.AfterHoH, 90);
+            var pact = NpcSocialActions.Beat(first, a.id, StoryRandom.Stream(first, "test:2"), false, false);
+            Assert.That((pact?.kind, pact?.partnerId), Is.EqualTo((NpcActKinds.Pact, b.id)), "At their first beat the pact lands.");
+            var later = Ready(Windows.AfterNominations, 90);
+            int pacts = later.alliances.Count;
+            var notTried = NpcSocialActions.Beat(later.Clone(), a.id, StoryRandom.Stream(later, "test:3"), false, false);
+            Assert.That(notTried?.kind, Is.Not.EqualTo(NpcActKinds.Pact), "At a later beat it is not tried.");
+            // The week's word given: no second, however warm.
+            later.npcSocial.acts.Add(new NpcActState { id = later.week + "-0-50", kind = NpcActKinds.Promise, actorId = a.id, partnerId = c2.id, week = later.week, window = Windows.AfterHoH });
+            Score(later, a.id, c2.id, 60);
+            var third = NpcSocialActions.Beat(later, a.id, StoryRandom.Stream(later, "test:4"), false, false);
             Assert.That(third == null || (third.kind != NpcActKinds.Promise && third.kind != NpcActKinds.Pact), Is.True, third?.kind);
+            Assert.That(later.alliances.Count, Is.EqualTo(pacts), "No pact formed after the first beat.");
+        }
+
+        /// <summary>A houseguest's pact window is their first that is not a rest, turning with the week; a Have-Not's too.</summary>
+        [Test]
+        public void APactWindowIsTheFirstWindowAHousemateDoesNotRest()
+        {
+            var s = Fresh(8, 6121);
+            Assert.Throws<ArgumentNullException>(() => EpisodeEngine.PactWindow(null, "x"));
+            Assert.That(EpisodeEngine.PactWindow(s, "nobody"), Is.EqualTo(Windows.None));
+            for (int week = 1; week <= 4; week++)
+            {
+                s.week = week;
+                for (int i = 0; i < s.contestants.Count; i++)
+                {
+                    int expected = Enumerable.Range(0, Windows.Count).First(w => !EpisodeEngine.Rests(s, i, w));
+                    Assert.That(EpisodeEngine.PactWindow(s, s.contestants[i].id), Is.EqualTo(expected), "week " + week + " #" + i);
+                    Assert.That(expected, Is.EqualTo((i + week) % Windows.Count == Windows.AfterHoH ? Windows.AfterNominations : Windows.AfterHoH), "No Have-Not here.");
+                }
+            }
         }
 
         // ------------------------------------------------------------------ the week

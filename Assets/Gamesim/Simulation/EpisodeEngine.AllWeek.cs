@@ -79,6 +79,21 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
+        /// The window a houseguest tries for a new pact in this week (D2's decision 8): their first that is not a
+        /// rest - their first beat of the week - as the weekly pass tried once a week. Tried at every beat, the
+        /// eight-house formed about a quarter more pacts among houseguests than the weekly pass. None for a
+        /// houseguest who is not in the cast.
+        /// </summary>
+        public static int PactWindow(EpisodeState s, string npcId)
+        {
+            if (s == null) throw new ArgumentNullException(nameof(s));
+            int index = s.contestants.FindIndex(c => c.id == npcId);
+            for (int window = 0; index >= 0 && window < Windows.Count; window++)
+                if (!Rests(s, index, window)) return window;
+            return Windows.None;
+        }
+
+        /// <summary>
         /// How many of a window's <paramref name="beats"/> are due at a tick (the window's actions spent):
         /// in step with the seats, <c>ceil(beats·(tick+1)/(seats+1))</c>, and all of them once the seats are spent.
         /// </summary>

@@ -195,10 +195,11 @@ namespace Gamesim.Simulation
             // nominations that reaches the player says its line without one.
             var turn = new Turn { roll = roll, playerFree = playerFree, cards = state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign };
 
-            // A pact, at most one new one a houseguest a week, either side of it.
+            // A pact, at most one new one a houseguest a week, either side of it, tried at their first beat of the
+            // week (EpisodeEngine.PactWindow) as the weekly pass tried it once.
             var joined = new HashSet<string>(week.Where(a => a.kind == NpcActKinds.Pact)
                 .SelectMany(a => new[] { a.actorId, a.partnerId }).Where(id => id != null), StringComparer.Ordinal);
-            if (NpcAlliances.TryPropose(state, npcId, joined))
+            if (EpisodeEngine.Window(state) == EpisodeEngine.PactWindow(state, npcId) && NpcAlliances.TryPropose(state, npcId, joined))
             {
                 var formed = state.alliances[state.alliances.Count - 1];
                 return new NpcActState { kind = NpcActKinds.Pact, actorId = npcId, partnerId = formed.members.FirstOrDefault(id => id != npcId) };

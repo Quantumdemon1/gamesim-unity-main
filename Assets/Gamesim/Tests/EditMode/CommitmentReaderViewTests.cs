@@ -272,6 +272,31 @@ namespace Gamesim.Tests.EditMode
                 "Modes 0 and 1 keep their error path exactly (D3).");
         }
 
+        [Test]
+        public void InModeZeroAReadersRefusalStillEscapesTheCommand()
+        {
+            // A mode-0 season at its first diary reflection.
+            EpisodeEngine engine = null;
+            for (uint seed = 1; seed <= 32 && engine == null; seed++)
+            {
+                var walk = new EpisodeEngine(PinnedVoteSeason.Fresh(seed, mode: 0));
+                for (int step = 0; step < 600 && walk.Snapshot.pendingDiary == null && walk.Snapshot.phase != EpisodePhase.Finished; step++)
+                    Assert.That(walk.Apply(EpisodeEngineTests.NextCommand(walk.Snapshot)).accepted, Is.True);
+                if (walk.Snapshot.pendingDiary != null) engine = walk;
+            }
+            Assert.That(engine, Is.Not.Null, "Fixture: a mode-0 walk reaches a diary reflection.");
+            var s = engine.Snapshot;
+            Assert.That(UnifiedCommitments.SafetyAuthorityOn(s) || UnifiedVoteStore.On(s), Is.False, "Fixture: mode 0.");
+            var reflect = ProspectiveVoteTwins.Command(s, EpisodeCommandKind.ReflectDiary, s.pendingDiary.id, EpisodeEngine.CurrentDiary(s).choices[0].id);
+            Assert.That(new EpisodeEngine(s).Apply(reflect).accepted, Is.True, "Fixture: the reflection is one the season takes.");
+            // A malformed persona: the diary's reader (WebDiaryRoom) refuses the state it is given, inside the command.
+            var corrupt = s.Clone();
+            corrupt.playerPersona.scores[0].score = -1;
+            Holding(engine, corrupt);
+            var error = Assert.Throws<ArgumentException>(() => engine.Apply(reflect), "Modes 0 and 1 keep their error path exactly (D3).");
+            Assert.That(error.Message, Does.Contain("malformed"));
+        }
+
         // ------------------------------------------------------------ a hidden ballot (P3)
 
         [Test]

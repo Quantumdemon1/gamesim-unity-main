@@ -327,6 +327,30 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// D2's decision 2: the close after the HoH or the nominations may reach the player - with every close
+        /// player-free the house reached them about two thirds as often as the weekly pass did - saying its line,
+        /// with no card (none lives there); after the veto and the eviction the close leaves them out (D2-H3).
+        /// </summary>
+        [Test]
+        public void AfterTheHoHAndTheNominationsACloseMayReachThePlayer()
+        {
+            Assert.That(Enumerable.Range(0, Windows.Count).Where(EpisodeEngine.CloseLeavesThePlayerOut), Is.EqualTo(new[] { Windows.AfterVeto, Windows.AfterEviction }));
+            var s = Spoiling(EpisodePhase.Nomination);
+            var closed = s.Clone(); EpisodeEngine.Close(closed);
+            Assert.That(New(s, closed).Any(a => a.partnerId == s.playerId && a.kind == NpcActKinds.Confront), Is.True, "The close after the HoH confronted the player.");
+            Assert.That(closed.events.Any(e => e.sequence >= s.nextSequence && e.kind == "confrontation" && e.audienceIds.Contains(s.playerId)), Is.True, "They heard it.");
+            Assert.That(closed.replyCards.Count, Is.EqualTo(s.replyCards.Count), "No card after the HoH.");
+            Assert.That(closed.randomState, Is.EqualTo(s.randomState), "Nothing from the season's stream.");
+
+            var campaign = Spoiling(EpisodePhase.Campaign);
+            var over = campaign.Clone(); EpisodeEngine.Close(over);
+            var fired = New(campaign, over);
+            Assert.That(fired, Is.Not.Empty, "The campaign's close fired.");
+            Assert.That(fired.Any(a => a.partnerId == campaign.playerId || a.subjectId == campaign.playerId), Is.False, "After the veto the close leaves the player out.");
+            Assert.That(over.replyCards.Count, Is.EqualTo(campaign.replyCards.Count), "No card.");
+        }
+
+        /// <summary>
         /// The pursuit rung in a player-free beat: with the player at the head of the house, a houseguest's agenda is
         /// to court them; a close skips it and moves down the ladder, where a tick's beat courts the player.
         /// </summary>
@@ -385,8 +409,9 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// At every step of a season, every beat left in the open window - fired as its close would, and fired
-        /// at a tick as if the window's seats were spent - leaves the season's stream where it was; and a close's
-        /// player-free beats move none of the player's arcs.
+        /// at a tick as if the window's seats were spent - leaves the season's stream where it was; and a close
+        /// that leaves the player out (after the veto and the eviction), or reaches nobody of theirs, moves none of
+        /// the player's arcs.
         /// </summary>
         [TestCase(6, 6114u)] [TestCase(12, 6115u)]
         public void NoBeatDrawsFromTheSeasonsStream(int size, uint seed)
@@ -401,7 +426,9 @@ namespace Gamesim.Tests.EditMode
                 {
                     var closed = s.Clone(); EpisodeEngine.Close(closed);
                     Assert.That(closed.randomState, Is.EqualTo(s.randomState), "A close draws nothing.");
-                    Assert.That(Json(closed.relationshipArcs), Is.EqualTo(Json(s.relationshipArcs)), "and moves no arc.");
+                    bool reached = New(s, closed).Any(a => a.partnerId == s.playerId || a.subjectId == s.playerId);
+                    if (EpisodeEngine.CloseLeavesThePlayerOut(window)) Assert.That(reached, Is.False, "This close leaves the player out.");
+                    if (!reached) Assert.That(Json(closed.relationshipArcs), Is.EqualTo(Json(s.relationshipArcs)), "and moves no arc.");
                     var ticked = s.Clone();
                     while (ticked.windowActions.Count < Windows.Count) ticked.windowActions.Add(0);
                     ticked.windowActions[window] = 100;

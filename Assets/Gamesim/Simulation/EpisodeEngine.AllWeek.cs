@@ -17,8 +17,10 @@ namespace Gamesim.Simulation
     /// beat is one success on <see cref="NpcSocialActions.Settle"/>'s ladder (<see cref="NpcSocialActions.Beat"/>),
     /// three a houseguest a week, two on slop; it draws only from its own keyed stream, never the
     /// season's, and what it did is kept as this week's act (<see cref="NpcSocialState.acts"/>), in a room
-    /// where it can be seen. The beats the window's close fires never involve the player: their cards
-    /// would be cleared before the player could answer them, and the window is over.</para>
+    /// where it can be seen. The beats the close of the veto's and the eviction's windows fires never involve
+    /// the player: their cards would be cleared before the player could answer them, and the window is over;
+    /// the close after the HoH or the nominations may reach them with a line, and no card lives there
+    /// (<see cref="CloseLeavesThePlayerOut"/>).</para>
     ///
     /// <para><b>Standing business stays where it was:</b> pacts that sour fall apart as the social week opens
     /// (where the weekly pass ran, now <see cref="NpcAlliances.Dissolve"/> alone), the deals, the words given
@@ -117,14 +119,24 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// The open window's remaining beats, as it closes, before the step that ends it (§1): never involving
-        /// the player (D2-H3). Idempotent: a plan that has fired every beat fires nothing more.
+        /// The open window's remaining beats, as it closes, before the step that ends it (§1), leaving the player
+        /// out where <see cref="CloseLeavesThePlayerOut"/> says so. Idempotent: a plan that has fired every beat
+        /// fires nothing more.
         /// </summary>
         public static void Close(EpisodeState s)
         {
             if (s == null) throw new ArgumentNullException(nameof(s));
-            Beats(s, true, true);
+            Beats(s, true, CloseLeavesThePlayerOut(Window(s)));
         }
+
+        /// <summary>
+        /// Whether a window's close leaves the player out of its beats. After the veto and after the eviction it
+        /// does (D2-H3): a card those beats put would be cleared before the player could answer it, and the window
+        /// is over. After the HoH and the nominations it may reach them, saying its line - no card lives there -
+        /// D2's decision 2: with the closes all player-free the house reached the player about two thirds as often
+        /// as the weekly pass did.
+        /// </summary>
+        public static bool CloseLeavesThePlayerOut(int window) => window == Windows.AfterVeto || window == Windows.AfterEviction;
 
         private static void Beats(EpisodeState s, bool closing, bool playerFree)
         {
@@ -138,7 +150,7 @@ namespace Gamesim.Simulation
             while (social.beatsFired < due)
             {
                 int k = social.beatsFired++;
-                Beat(s, window, k, tick, closing || playerFree);
+                Beat(s, window, k, tick, playerFree);
             }
         }
 

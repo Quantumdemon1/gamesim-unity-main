@@ -34,7 +34,8 @@ namespace Gamesim.Tests.EditMode
     /// commitment, lever and week rules with them - at 6, 8, 12 and 16, by the walker, the busy player and a
     /// watcher who sees every act the house stages, up to the window's three; each against the same seasons
     /// with only the all-week rules off. Every command legal, and every step checked: a close and a full tick of
-    /// every state draw nothing from the season's stream, a close never reaches the player, an act between two
+    /// every state draw nothing from the season's stream, a close after the veto or the eviction never reaches the
+    /// player and no close puts a card to them, an act between two
     /// houseguests moves no arc of the player's, the week's acts stay within their bound and each houseguest
     /// within the week's beats, and every window's plan is spent before the window ends. Counted: beats a window
     /// and a week by house size, acts by kind, pacts formed all week against the weekly pass, words by kind,
@@ -465,8 +466,11 @@ namespace Gamesim.Tests.EditMode
                 var closed = after.Clone();
                 EpisodeEngine.Close(closed);
                 if (closed.randomState != after.randomState) Count(counts, "beat-drew");
-                if (New(after, closed).Any(Involves) || closed.replyCards.Count != after.replyCards.Count) Count(counts, "close-reached-the-player");
-                if (JsonConvert.SerializeObject(closed.relationshipArcs) != JsonConvert.SerializeObject(after.relationshipArcs)) Count(counts, "npc-act-moved-an-arc");
+                // After the veto and the eviction a close leaves the player out; after the HoH and the nominations it
+                // may reach them (D2's decision 2), with a line and never a card.
+                bool reached = New(after, closed).Any(Involves);
+                if ((reached && EpisodeEngine.CloseLeavesThePlayerOut(window)) || closed.replyCards.Count != after.replyCards.Count) Count(counts, "close-reached-the-player");
+                if (!reached && JsonConvert.SerializeObject(closed.relationshipArcs) != JsonConvert.SerializeObject(after.relationshipArcs)) Count(counts, "npc-act-moved-an-arc");
                 var ticked = after.Clone();
                 while (ticked.windowActions.Count < Windows.Count) ticked.windowActions.Add(0);
                 ticked.windowActions[window] = 100;
@@ -510,7 +514,7 @@ namespace Gamesim.Tests.EditMode
         {
             Assert.That(Get(counts, "probes"), Is.GreaterThan(0), what + ": the probes ran.");
             Assert.That(Get(counts, "beat-drew"), Is.Zero, what + ": no beat draws from the season's stream.");
-            Assert.That(Get(counts, "close-reached-the-player"), Is.Zero, what + ": a close never reaches the player.");
+            Assert.That(Get(counts, "close-reached-the-player"), Is.Zero, what + ": a close after the veto or the eviction never reaches the player, and no close puts a card.");
             Assert.That(Get(counts, "npc-act-moved-an-arc"), Is.Zero, what + ": an act between two houseguests moves no arc of the player's.");
             Assert.That(Get(counts, "acts-past-the-bound"), Is.Zero, what + ": the week's acts within their bound.");
             Assert.That(Get(counts, "beats-past-the-quota"), Is.Zero, what + ": three beats a houseguest a week at most.");

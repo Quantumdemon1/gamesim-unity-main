@@ -125,6 +125,8 @@
     <Compile Include="$(EditMode)EndgameCommitmentsTests.cs" />
     <!-- Explicit, and compiled out of Unity: the commitment rules' recorded-season evidence, run on demand. -->
     <Compile Include="$(EditMode)CommitmentRulesSeasonDigests.cs" />
+    <!-- Explicit, and compiled out of Unity: mode 1's recorded-season evidence over 36 seasons (vote family V5a, D6), run on demand. -->
+    <Compile Include="$(EditMode)ModeOneSeasonDigests.cs" />
     <!--
       Independent fixed JSON contracts ONLY: a source-bound test observer validates a separate
       public-field view, while legacy digest traces retain their getters and original bytes.

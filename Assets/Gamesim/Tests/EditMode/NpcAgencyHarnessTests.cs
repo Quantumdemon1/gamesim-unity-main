@@ -107,6 +107,27 @@ namespace Gamesim.Tests.EditMode
             Assert.That(runs.Count(r => r.coldPairsWeek3 > 0), Is.GreaterThanOrEqualTo(runs.Count / 2), "Cold pairs stand in most seasons: the story's blow-ups need them.");
         }
 
+        /// <summary>
+        /// The same house with its turns all week (WAVE-D-NPC-PACTS-PLAN D2): the pact rung is tried at every
+        /// beat until it lands, so the cap and one pact a houseguest are what hold the count - never breached,
+        /// nobody in two - and pacts among houseguests still form, near the 1.2 a season agency gave them.
+        /// </summary>
+        [Test]
+        public void UnderTheAllWeekRulesPactsStillFormWithinTheCap()
+        {
+            var runs = new List<Measure>();
+            for (uint seed = 1; seed <= 12; seed++)
+            {
+                var s = Season(seed * 13 + 5, 8, CastTemplates.Roster.Regular, true);
+                EpisodeEngine.EnableAllWeek(s);
+                runs.Add(Play(s, (int)seed));
+            }
+            Assert.That(runs.Sum(r => r.capBreaches), Is.Zero, "The house never holds more pacts than its share.");
+            Assert.That(runs.Sum(r => r.doubleBooked), Is.Zero, "Nobody is in two.");
+            Assert.That(runs.Sum(r => r.pactsFormed), Is.GreaterThan(0), "Houseguests still pair up on their own account.");
+            TestContext.WriteLine("NPC-only pacts a season under the all-week rules: " + runs.Average(r => r.pactsFormed).ToString("0.00"));
+        }
+
 #if !UNITY_5_3_OR_NEWER
         /// <summary>
         /// How the house runs with agency and without, for tuning: a report, not a check. The

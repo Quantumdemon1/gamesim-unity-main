@@ -9,8 +9,8 @@ namespace Gamesim.Simulation
     /// decides the canonical Vote rows, runs their source effects once under the Rule2 plan
     /// (<see cref="UnifiedVoteSettlement"/>) and publishes its archive frame; the week's turn, the house's deal
     /// pass, a departure, a production removal and a voided price end them. Only mode 2 reaches anything here -
-    /// every entry returns at once otherwise - and mode 2 is still reached only through the internal engine seam
-    /// (<see cref="ProspectiveVote"/>), so recorded seasons draw, mint and write exactly as before.
+    /// every entry returns at once otherwise - and only a fresh season is mode 2 (vote family V6), so seasons
+    /// recorded in modes 0 and 1 draw, mint and write exactly as before.
     ///
     /// <para>Everything here runs inside a command's detached candidate, sometimes at a moment the source leaves
     /// unfinished (the reveal between its verdicts and its record, the final eviction before its departure

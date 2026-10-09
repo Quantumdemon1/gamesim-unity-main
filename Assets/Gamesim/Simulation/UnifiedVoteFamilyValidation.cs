@@ -6,10 +6,12 @@ using System.Linq;
 namespace Gamesim.Simulation
 {
     /// <summary>
-    /// Aggregate read-only validation for the explicit, uninstalled Vote proposal. This is a leaf
-    /// of an internal whole-episode core, NOT public/save acceptance or historical command proof.
-    /// Its aggregate leaf never changes authority, installs an archive or calls whole validation.
-    /// Separate draft entries require the complete internal core before cloning unrelated state.
+    /// Aggregate read-only validation of the Vote family under mode 2, the unified vote rules. This is a leaf
+    /// of the whole-episode core, which public and save validation dispatch a mode-2 season to since vote family
+    /// V6; it is not historical command proof. Its aggregate leaf never changes authority, installs an archive or
+    /// calls whole validation. Separate draft entries require the complete core before cloning unrelated state.
+    /// <para>The save contract freezes here at schema 28 (the lead's decision D2): whoever bumps the schema to 29
+    /// must freeze this whole mode-2 core into FrozenEpisodeV28, as players' schema-28 saves hold mode 2.</para>
     /// </summary>
     public static class UnifiedVoteFamilyValidation
     {

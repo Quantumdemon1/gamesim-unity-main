@@ -49,7 +49,8 @@ namespace Gamesim.Tests.EditMode
             { "agencyRulesStartWeek", 1 },
             { "finaleRulesStartWeek", 1 },
             { "commitmentRulesStartWeek", 1 },
-            { "unifiedCommitmentRulesVersion", 1 },
+            // Mode 2, the unified vote rules, since vote family V6 (it was mode 1).
+            { "unifiedCommitmentRulesVersion", 2 },
             { "unifiedHearingRulesVersion", 1 },
             { "blocRulesStartWeek", 1 },
             { "socialBudgetRulesStartWeek", 1 },
@@ -77,9 +78,10 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(field.Value, Is.EqualTo(Shipped[field.Key]), builder + " " + size + ": " + field.Key);
             Assert.That(s.competitionRulesVersion, Is.EqualTo(CompetitionRules.Current));
             Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Current));
-            Assert.That(s.unifiedCommitmentRulesVersion, Is.EqualTo(UnifiedCommitments.ProspectiveVersion));
+            Assert.That(s.unifiedCommitmentRulesVersion, Is.EqualTo(UnifiedVoteFamilyValidation.Version), "The unified vote rules (V6).");
             Assert.That(s.unifiedHearingRulesVersion, Is.EqualTo(UnifiedCommitmentHearings.ProspectiveVersion));
             Assert.That(EpisodeValidation.TryValidate(s, out var error), Is.True, error);
+            Assert.DoesNotThrow(() => new EpisodeEngine(s), "The public engine takes it.");
         }
 
         /// <summary>
@@ -87,7 +89,8 @@ namespace Gamesim.Tests.EditMode
         /// setup gave at ca7f4da6 (EpisodeDirector.Season.cs StartSeason, copied below line for line), every
         /// public field of it, first impressions and lore included. A rule the shipped game gains later goes
         /// into ApplyFresh and is added to this copy in the same commit, so the two stay one list: D3's war
-        /// rooms are the first, added as the two lanes landed together, and D2's all-week beats the next.
+        /// rooms are the first, added as the two lanes landed together, D2's all-week beats the next, and the
+        /// unified vote rules (vote family V6: mode 2 in place of mode 1) the third.
         /// </summary>
         [TestCaseSource(nameof(Builders))]
         public void ApplyFreshGivesTheSeasonTheDirectorsInlineSetupGave(string builder, int size, CastTemplates.Roster roster)
@@ -119,7 +122,7 @@ namespace Gamesim.Tests.EditMode
             EpisodeEngine.EnableAllianceLeaks(fresh);
             EpisodeEngine.EnablePactPlans(fresh);
             EpisodeEngine.EnableAllWeek(fresh);
-            fresh.unifiedCommitmentRulesVersion = UnifiedCommitments.ProspectiveVersion;
+            fresh.unifiedCommitmentRulesVersion = UnifiedVoteFamilyValidation.Version;
             fresh.unifiedHearingRulesVersion = UnifiedCommitmentHearings.ProspectiveVersion;
         }
 

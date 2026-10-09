@@ -45,8 +45,9 @@ namespace Gamesim.Tests.EditMode
                 .Any(ballot => ballot.voterId == s.playerId), Is.True);
             if (scenario >= 2)
                 Assert.That(KnownBallots.DealOutcomeKnown(s, CommitmentReferences.FindDeal(s, row.id)), Is.True);
-            Assert.That(EpisodeValidation.TryValidate(s, out _), Is.False, "Public mode2 remains refused.");
-            Assert.Throws<ArgumentException>(() => new EpisodeEngine(s));
+            // Flipped at vote family V6: public validation takes mode 2 to the same complete core (it refused it until V6).
+            Assert.That(EpisodeValidation.TryValidate(s, out var publicError), Is.True, publicError);
+            Assert.DoesNotThrow(() => new EpisodeEngine(s));
             Assert.That(UnifiedCommitments.RulesOn(s), Is.False);
             Assert.That(UnifiedCommitmentHearings.RulesOn(s), Is.False);
             Assert.That(Trace(witness.State), Is.EqualTo(witness.SourceImage));

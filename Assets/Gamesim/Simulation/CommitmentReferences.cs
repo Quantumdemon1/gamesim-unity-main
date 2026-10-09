@@ -7,8 +7,9 @@ namespace Gamesim.Simulation
     /// <summary>
     /// Detached, source-shaped references for readers being moved to the single safety authority.
     /// These are NOT writable mirrors, settlement verdicts, or deduplicated mechanical scores.
-    /// All evidence remains visible; a future incident reader must group betrayal effects separately.
-    /// Version 1 still cannot be created, loaded or played by the production engine.
+    /// All evidence remains visible; the incident readers group betrayal effects separately
+    /// (<see cref="UnifiedCommitmentHistory"/>, <see cref="UnifiedVoteHistory"/>). A fresh season plays mode 2
+    /// since vote family V6; seasons recorded in mode 1 still load and play.
     /// </summary>
     public static class CommitmentReferences
     {

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Gamesim.Simulation;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -293,6 +294,191 @@ namespace Gamesim.Tests.EditMode
             // semantic flags without adding fabricated actor IDs to native inputs.
             input.gameContext.recentEvictees = new List<string> { "actual-source-involved-id" };
             Assert.That(WebNpcConversations.TopicWeights(input), Is.EqualTo(WebNpcConversations.TopicWeights(input, true)));
+        }
+
+        // ---------------------------------------------------------------- D2's rules: a completion through the ledger
+
+        /// <summary>A season as the director starts one (<see cref="ShippedRules.ApplyFresh"/>), with D2's all-week rules on or taken off.</summary>
+        private static EpisodeState Shipped(uint seed, bool allWeek)
+        {
+            var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, seed);
+            ShippedRules.ApplyFresh(s);
+            if (!allWeek) s.allWeekRulesStartWeek = 0;
+            Assert.That(EpisodeEngine.AllWeekOn(s), Is.EqualTo(allWeek));
+            return s;
+        }
+
+        /// <summary>
+        /// Starts the first pair's conversation and ticks to the second before it completes. A <paramref name="topic"/> is
+        /// written into the started conversation and both directions' memory of it, as a saved season could carry it.
+        /// </summary>
+        private static EpisodeEngine ToTheLastSecond(EpisodeState fresh, string topic = null)
+        {
+            var engine = Commit(new EpisodeEngine(fresh), Start(fresh));
+            if (topic != null)
+            {
+                var s = engine.Snapshot; var started = s.npcSocial.pending.Single(); started.topic = topic;
+                foreach (var memory in s.npcSocial.pairMemory.Where(m => (m.fromId == started.firstId && m.toId == started.secondId) || (m.fromId == started.secondId && m.toId == started.firstId)))
+                    memory.lastTopic = topic;
+                Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.True, error);
+                engine = new EpisodeEngine(s);
+            }
+            var row = engine.Snapshot.npcSocial.pending.Single();
+            long due = row.startedTick + (long)Math.Ceiling(row.durationMs / 1000);
+            while (engine.Snapshot.npcSocial.clockTick < due - 1) engine = Commit(engine, Tick(engine.Snapshot));
+            Assert.That(engine.Snapshot.npcSocial.pending, Has.Count.EqualTo(1), "Still talking, a second before the end.");
+            return engine;
+        }
+
+        /// <summary>The source completion the engine draws for a pending conversation, on <paramref name="rng"/>.</summary>
+        private static WebNpcConversationEnd ExpectedEnd(EpisodeState s, NpcConversationState row, SeededRandom rng)
+        {
+            var memory = s.npcSocial.pairMemory.Single(m => m.fromId == row.firstId && m.toId == row.secondId);
+            return WebNpcConversations.Complete(new WebNpcConversationCompletionInput
+            {
+                participants = new List<string> { row.firstId, row.secondId }, topic = row.topic, playerId = s.playerId,
+                traits1 = new List<string>(s.Find(row.firstId).traits), traits2 = new List<string>(s.Find(row.secondId).traits),
+                memory = new WebNpcConversationMemory { partnerId = memory.toId, count = memory.count, lastTopic = memory.lastTopic, lastTime = memory.lastStartTick * 1000d },
+                allNpcIds = s.Active.Where(c => !c.isPlayer).Select(c => c.id).ToList()
+            }, rng.NextDouble);
+        }
+
+        /// <summary>The ledger entries a step added on one direction of a pair, as "type impact week N fades".</summary>
+        private static string[] Added(EpisodeState before, EpisodeState after, string from, string to)
+        {
+            int had = before.relationships.Single(r => r.fromId == from && r.toId == to).events.Count;
+            return after.relationships.Single(r => r.fromId == from && r.toId == to).events.Skip(had)
+                .Select(e => Entry(e.type, e.impactScore, e.week) + (e.decayable ? "" : " (permanent)")).ToArray();
+        }
+
+        private static string Entry(string type, double impact, int week) =>
+            type + " " + impact.ToString(System.Globalization.CultureInfo.InvariantCulture) + " week " + week + " fades";
+
+        private static string Arc(EpisodeState s, string id) => Json(s.relationshipArcs.FirstOrDefault(a => a.npcId == id));
+
+        /// <summary>Everything but the NPC world, the relationship graph and the sequence counter, before and after.</summary>
+        private static void UnchangedOutsideTheLedger(EpisodeState before, EpisodeState after)
+        {
+            var left = JObject.FromObject(before); var right = JObject.FromObject(after);
+            foreach (string field in new[] { "revision", "npcSocial", "relationships", "nextSequence" }) { left.Remove(field); right.Remove(field); }
+            Assert.That(JToken.DeepEquals(left, right), Is.True, "A completed conversation changed game authority outside the ledger.");
+        }
+
+        /// <summary>
+        /// The balance review's finding 3, behind D2's rule: under the all-week rules a completed conversation moves the pair
+        /// as the ledger moves one - both directions by the same amount, one fading record each way - and writes no arc, which
+        /// is the player's own. The same season with the rules off still takes the engine's own path (both houseguests' arcs
+        /// move, the reverse direction by its reciprocal roll, no record), and the NPC world's stream ends the completion
+        /// where the rules-off season's does: the reciprocal's draw is drawn and set aside. The season's stream never moves.
+        /// </summary>
+        [Test]
+        public void UnderTheAllWeekRulesACompletedConversationMovesThePairThroughTheLedgerAndWritesNoArc()
+        {
+            for (uint seed = 1; seed <= 40; seed++)
+            {
+                var on = ToTheLastSecond(Shipped(seed, true)); var before = on.Snapshot; var row = before.npcSocial.pending.Single();
+                var rng = new SeededRandom(before.npcSocial.randomState); var end = ExpectedEnd(before, row, rng);
+                int delta = end.delta + EpisodeEngine.ConversationBias(before, row.firstId, row.secondId);
+                if (delta == 0 || end.gossipTarget != null) continue;
+                double reciprocal = WebRules.ReciprocalDelta(delta, rng.NextDouble());
+                var off = ToTheLastSecond(Shipped(seed, false)); var offBefore = off.Snapshot;
+                Assert.That(Json(offBefore.npcSocial), Is.EqualTo(Json(before.npcSocial)), "The two seasons' NPC worlds are the same up to the completion.");
+
+                on = Commit(on, Tick(before), out var result); var after = on.Snapshot;
+                Assert.That(result.completedSequences, Is.EqualTo(new[] { row.sequence }));
+                Assert.That(Json(after.relationshipArcs), Is.EqualTo(Json(before.relationshipArcs)), "No arc: arcs are the player's own.");
+                foreach (var (from, to) in new[] { (row.firstId, row.secondId), (row.secondId, row.firstId) })
+                {
+                    Assert.That(after.Score(from, to), Is.EqualTo(WebRules.ClampScore(before.Score(from, to) + delta)), from + " of " + to + ": the ledger's move is symmetric.");
+                    Assert.That(Added(before, after, from, to), Is.EqualTo(new[] { Entry(EpisodeEngine.NpcConversationEvent, delta, before.week) }), from + " of " + to);
+                    Assert.That(after.relationships.Single(r => r.fromId == from && r.toId == to).lastInteractionWeek, Is.EqualTo(before.week));
+                }
+                Assert.That(after.nextSequence, Is.EqualTo(before.nextSequence + 2), "Two records, one each way.");
+                Assert.That(after.randomState, Is.EqualTo(before.randomState), "The season's stream.");
+                Assert.That(after.npcSocial.randomState, Is.EqualTo(rng.State), "The completion's draws and the reciprocal's, set aside.");
+                UnchangedOutsideTheLedger(before, after);
+
+                off = Commit(off, Tick(offBefore)); var offAfter = off.Snapshot;
+                Assert.That(offAfter.npcSocial.randomState, Is.EqualTo(after.npcSocial.randomState), "The NPC world's stream is where the rules-off season's is.");
+                Assert.That(Arc(offAfter, row.firstId), Is.Not.EqualTo(Arc(offBefore, row.firstId)), "Without the rules the engine's path writes the first's arc...");
+                Assert.That(Arc(offAfter, row.secondId), Is.Not.EqualTo(Arc(offBefore, row.secondId)), "...and the second's.");
+                Assert.That(offAfter.Score(row.firstId, row.secondId), Is.EqualTo(WebRules.ClampScore(offBefore.Score(row.firstId, row.secondId) + delta)));
+                Assert.That(offAfter.Score(row.secondId, row.firstId), Is.EqualTo(WebRules.ClampScore(offBefore.Score(row.secondId, row.firstId) + reciprocal)));
+                Assert.That(Added(offBefore, offAfter, row.firstId, row.secondId), Is.Empty);
+                Assert.That(offAfter.nextSequence, Is.EqualTo(offBefore.nextSequence));
+                return;
+            }
+            Assert.Fail("No season in forty completed its first conversation with a move and no gossip.");
+        }
+
+        /// <summary>
+        /// Gossip under D2's rules: each speaker and the houseguest they talked about move through the ledger by the gossip's
+        /// amount, both ways, with a fading record each way; no arc moves; the NPC world's stream spends the completion's draws
+        /// and one set aside for each change the engine's path would have rolled a reciprocal for.
+        /// </summary>
+        [Test]
+        public void UnderTheAllWeekRulesGossipMovesEachSpeakerAndTheirSubjectThroughTheLedger()
+        {
+            for (uint seed = 1; seed <= 60; seed++)
+            {
+                var engine = ToTheLastSecond(Shipped(seed, true), "gossip"); var before = engine.Snapshot; var row = before.npcSocial.pending.Single();
+                var rng = new SeededRandom(before.npcSocial.randomState); var end = ExpectedEnd(before, row, rng);
+                if (end.gossipTarget == null) continue;
+                int delta = end.delta + EpisodeEngine.ConversationBias(before, row.firstId, row.secondId);
+                string subject = end.gossipTarget.id; int said = end.gossipTarget.delta;
+                Assert.That(subject, Is.Not.EqualTo(before.playerId), "Gossip leaves the player out.");
+
+                engine = Commit(engine, Tick(before)); var after = engine.Snapshot;
+                Assert.That(Json(after.relationshipArcs), Is.EqualTo(Json(before.relationshipArcs)), "No arc: arcs are the player's own.");
+                foreach (string speaker in new[] { row.firstId, row.secondId })
+                    foreach (var (from, to) in new[] { (speaker, subject), (subject, speaker) })
+                    {
+                        Assert.That(after.Score(from, to), Is.EqualTo(WebRules.ClampScore(before.Score(from, to) + said)), from + " of " + to);
+                        Assert.That(Added(before, after, from, to), Is.EqualTo(new[] { Entry(EpisodeEngine.NpcGossipEvent, said, before.week) }), from + " of " + to);
+                    }
+                var own = delta == 0 ? new string[0] : new[] { Entry(EpisodeEngine.NpcConversationEvent, delta, before.week) };
+                Assert.That(Added(before, after, row.firstId, row.secondId), Is.EqualTo(own));
+                Assert.That(Added(before, after, row.secondId, row.firstId), Is.EqualTo(own));
+                for (int change = 0; change < (delta == 0 ? 2 : 3); change++) rng.NextDouble();
+                Assert.That(after.npcSocial.randomState, Is.EqualTo(rng.State), "The completion's draws and a reciprocal's for each change, set aside.");
+                Assert.That(after.randomState, Is.EqualTo(before.randomState), "The season's stream.");
+                UnchangedOutsideTheLedger(before, after);
+                return;
+            }
+            Assert.Fail("No season in sixty completed a gossip with a subject.");
+        }
+
+        /// <summary>
+        /// The ledger path is for two houseguests only: a change with the player as one of the two still takes the engine's own
+        /// path under D2's rules and moves the player's arc (as an act of the house's on the player does, NpcSocialActions.Act).
+        /// A conversation never has the player in it today, so this reaches the completion's change by name
+        /// (EpisodeEngine.CompletionChange; the editor's tests cannot see the simulation's internals).
+        /// </summary>
+        [Test]
+        public void UnderTheAllWeekRulesAChangeWithThePlayerStillTakesTheEnginesPathAndMovesTheirArc()
+        {
+            var s = Shipped(61, true);
+            var npcs = s.Active.Where(c => !c.isPlayer).Take(2).ToArray();
+            var row = new NpcConversationState { sequence = 1, firstId = npcs[0].id, secondId = npcs[1].id, topic = "gossip", week = s.week, phase = s.phase };
+            var change = typeof(EpisodeEngine).GetMethod("CompletionChange", BindingFlags.NonPublic | BindingFlags.Static, null,
+                new[] { typeof(EpisodeState), typeof(NpcConversationState), typeof(string), typeof(string), typeof(double), typeof(string) }, null);
+            Assert.That(change, Is.Not.Null, "EpisodeEngine.CompletionChange(EpisodeState, NpcConversationState, string, string, double, string)");
+
+            var before = s.Clone(); var rng = new SeededRandom(s.npcSocial.randomState);
+            double reciprocal = WebRules.ReciprocalDelta(-3, rng.NextDouble());
+            change.Invoke(null, new object[] { s, row, npcs[0].id, s.playerId, -3d, EpisodeEngine.NpcGossipEvent });
+            Assert.That(Arc(s, npcs[0].id), Is.Not.EqualTo(Arc(before, npcs[0].id)), "The player's arc with the houseguest moves.");
+            Assert.That(s.relationshipArcs.Select(a => a.npcId).Where(id => Arc(s, id) != Arc(before, id)), Is.EqualTo(new[] { npcs[0].id }), "...and no other.");
+            Assert.That(s.Score(npcs[0].id, s.playerId), Is.EqualTo(WebRules.ClampScore(before.Score(npcs[0].id, s.playerId) - 3)));
+            Assert.That(s.Score(s.playerId, npcs[0].id), Is.EqualTo(WebRules.ClampScore(before.Score(s.playerId, npcs[0].id) + reciprocal)), "The reciprocal, rolled.");
+            Assert.That(Added(before, s, npcs[0].id, s.playerId), Is.Empty, "The engine's path, no ledger record.");
+            Assert.That(s.npcSocial.randomState, Is.EqualTo(rng.State));
+            Assert.That(s.randomState, Is.EqualTo(before.randomState), "The season's stream.");
+
+            var withPlayer = s.Clone();
+            change.Invoke(null, new object[] { s, row, npcs[0].id, npcs[1].id, 4d, EpisodeEngine.NpcConversationEvent });
+            Assert.That(Json(s.relationshipArcs), Is.EqualTo(Json(withPlayer.relationshipArcs)), "Between two houseguests, no arc.");
+            Assert.That(Added(withPlayer, s, npcs[1].id, npcs[0].id), Is.EqualTo(new[] { Entry(EpisodeEngine.NpcConversationEvent, 4, s.week) }));
         }
     }
 }

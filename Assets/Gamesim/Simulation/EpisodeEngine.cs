@@ -227,18 +227,17 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.RenameAlliance:
                     Require(CommitmentRulesOn(s), CommitmentKindRefusal);
                     RenameAlliance(s, c); break;
-                // Wave D's two kinds (schema 28) are refused before anything is spent, drawn or logged
-                // until their rule slices replace these refusals: without them they would fall to
-                // Social and be refused for the wrong reason. D3's answer is free, as answering any
-                // offer is, and refused the same way without the war rooms.
+                // Wave D's two kinds (schema 28), each refused before anything is spent, drawn or logged
+                // without its rules: without their own cases they would fall to Social and be refused for
+                // the wrong reason. D3's answer is free, as answering any offer is; so is D2's sighting,
+                // which the house detects as it does a walk-in.
                 case EpisodeCommandKind.AnswerPactPlan: AnswerPactPlan(s, c); break;
-                case EpisodeCommandKind.WitnessNpcAct:
-                    Require(false, WaveDKindRefusal); break;
+                case EpisodeCommandKind.WitnessNpcAct: WitnessNpcAct(s, c); break;
                 default: Social(s, c); break;
             }
         }
 
-        /// <summary>Why <see cref="EpisodeCommandKind.WitnessNpcAct"/> is refused until its rules land, and <see cref="EpisodeCommandKind.AnswerPactPlan"/> without the war rooms.</summary>
+        /// <summary>Why <see cref="EpisodeCommandKind.WitnessNpcAct"/> is refused without the all-week rules, and <see cref="EpisodeCommandKind.AnswerPactPlan"/> without the war rooms.</summary>
         public const string WaveDKindRefusal = "Not available in this season.";
 
         public static bool IsCompetition(EpisodePhase phase) => phase == EpisodePhase.HoH || phase == EpisodePhase.Veto ||
@@ -1434,7 +1433,11 @@ namespace Gamesim.Simulation
             // Under the leak rules a pact of exactly these two is heard for what it is (WAVE-D-NPC-PACTS-PLAN
             // D4-M2): the player a suspected knower, in the line and nowhere else. No draw, no id.
             string pact = AllianceLeaks.On(s) ? ListenIn(s, first, second) : null;
-            Log(s, "eavesdrop", EavesdropLine(first.name, second.name, reading, vote, null, pact), s.playerId);
+            // Under the all-week rules an open act of these two the player saw is heard for what it was
+            // (WAVE-D-NPC-PACTS-PLAN D2-M1), once: words in the line, no knowledge granted (D2-M4), before the spend.
+            var heard = AllWeekOn(s) ? OverheardAct(s, first.id, second.id, pact != null) : null;
+            if (heard != null) heard.overheard = true;
+            Log(s, "eavesdrop", EavesdropLine(first.name, second.name, reading, vote, heard == null ? null : ActClause(s, heard), pact), s.playerId);
         }
 
         /// <summary>

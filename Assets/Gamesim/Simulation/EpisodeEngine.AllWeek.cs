@@ -247,5 +247,76 @@ namespace Gamesim.Simulation
         /// </summary>
         internal static void ChangeOnStream(EpisodeState s, string from, string to, double delta, Func<double> roll,
             string note = null, string eventType = null) => ChangeWithRoll(s, from, to, delta, roll, note, eventType);
+
+        // ---------------------------------------------------------------- what the player sees (D2-S2)
+
+        /// <summary>How many acts the player can see in one window (§6 Q11): what reaches the feed.</summary>
+        public const int SightingsAWindow = 3;
+
+        /// <summary>
+        /// Why the player cannot be said to have seen this act now, or null where they can (§4.3): the rules on,
+        /// the player in the house, a window open, the act open, staged and not yet seen, the two named its two,
+        /// nothing in it of the player's, and fewer than three seen this window. Pure, for the house's watch.
+        /// </summary>
+        public static string WitnessRefusal(EpisodeState s, string actId, string actorId, string partnerId)
+        {
+            if (!AllWeekOn(s)) return WaveDKindRefusal;
+            if (s.Find(s.playerId)?.status != ContestantStatus.Active) return "Evicted players can follow the season but cannot influence it.";
+            if (Window(s) == Windows.None) return "Nobody is about the house right now.";
+            var act = s.npcSocial.acts.FirstOrDefault(a => a != null && a.id == (actId ?? "").Trim());
+            if (act == null || !ActOpen(s, act)) return "That moment has passed.";
+            if (act.room == null) return "That happened out of sight.";
+            if (act.sighted) return "You already saw that.";
+            if (act.actorId != actorId || act.partnerId != partnerId) return "That is not who was there.";
+            if (act.actorId == s.playerId || act.partnerId == s.playerId || act.subjectId == s.playerId) return "You were part of that.";
+            if (s.npcSocial.acts.Count(a => a != null && a.sighted && a.window == act.window) >= SightingsAWindow) return "You have seen enough for now.";
+            return null;
+        }
+
+        /// <summary>
+        /// The house telling the engine the player saw an act (<see cref="EpisodeCommandKind.WitnessNpcAct"/>): the
+        /// director detects it - the two together in a room, the player close - and the engine commits it, as
+        /// <see cref="WitnessProximity"/> does. Free: no tick, no draw, no change to anybody's view. The act is
+        /// seen (a loud one heard as well), and the player gets one line, to them alone, of who, where and how -
+        /// never what was said, a pact, a rumour's subject or a number (D2-M3).
+        /// </summary>
+        private static void WitnessNpcAct(EpisodeState s, EpisodeCommand c)
+        {
+            string refusal = WitnessRefusal(s, c.text, c.targetId, c.secondTargetId);
+            Require(refusal == null, refusal);
+            var act = s.npcSocial.acts.First(a => a != null && a.id == c.text.Trim());
+            act.sighted = true;
+            if (NpcActKinds.IsLoud(act.kind)) act.overheard = true;
+            Log(s, NpcActKinds.IsLoud(act.kind) ? WaveDEventKinds.Overheard : WaveDEventKinds.Sighting, SightingLine(s, act), s.playerId);
+        }
+
+        /// <summary>
+        /// The line a sighting says (§4.3): "You saw {A} and {B} talking in the {room}." for an ordinary word, "...
+        /// with their heads together in the {room}." for the strategy kinds, and for a fight, "You heard {A} have
+        /// words with {B} in the {room}."
+        /// </summary>
+        public static string SightingLine(EpisodeState s, NpcActState act)
+        {
+            string a = Name(s, act.actorId), b = Name(s, act.partnerId), room = RoomWords.InSentence(act.room);
+            if (NpcActKinds.IsLoud(act.kind)) return "You heard " + a + " have words with " + b + " in the " + room + ".";
+            return "You saw " + a + " and " + b + (NpcActKinds.IsPrivate(act.kind) ? " with their heads together" : " talking") + " in the " + room + ".";
+        }
+
+        /// <summary>
+        /// The act a paid listen-in on these two hears (§4.3, D2-M1), or null: an open act of theirs the player saw,
+        /// not yet overheard - each gives its clause once - with a clause to give; a pact formed or a pact's meeting
+        /// passed over where D4's sentence already says what they are (<paramref name="pactHeard"/>). The first
+        /// fired. Pure.
+        /// </summary>
+        public static NpcActState OverheardAct(EpisodeState s, string firstId, string secondId, bool pactHeard) =>
+            !AllWeekOn(s) ? null : s.npcSocial.acts.FirstOrDefault(a => a != null && a.sighted && !a.overheard && ActOpen(s, a)
+                && ((a.actorId == firstId && a.partnerId == secondId) || (a.actorId == secondId && a.partnerId == firstId))
+                && !(pactHeard && (a.kind == NpcActKinds.Pact || a.kind == NpcActKinds.Meet))
+                && ActClause(s, a) != null);
+
+        /// <summary>The act's clause in the listen-in's line (<see cref="NpcActKinds.Clause"/>), by name.</summary>
+        public static string ActClause(EpisodeState s, NpcActState act) =>
+            act == null ? null : NpcActKinds.Clause(act.kind, Name(s, act.actorId), Name(s, act.partnerId),
+                act.subjectId == null || s.Find(act.subjectId) == null ? null : Name(s, act.subjectId));
     }
 }

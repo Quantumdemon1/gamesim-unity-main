@@ -109,10 +109,11 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// Refused at every step of a played season, before anything is spent, drawn or logged: the
-        /// state is byte-identical after the refusal. A start week set changes nothing until the rule
-        /// slice replaces the refusal. D3's has (PactPlanTests): with the war rooms' start week set, a
-        /// season that holds no war room has no plan to answer, so the answer is still refused before
-        /// anything happens, for the war rooms' own reasons.
+        /// state is byte-identical after the refusal. Both rule slices have landed. D3's (PactPlanTests):
+        /// with the war rooms' start week set, a season that holds no war room has no plan to answer, so
+        /// the answer is refused for the war rooms' own reasons. D2's (WitnessNpcActTests): with the
+        /// all-week rules on, an act this sweep names is never one the house fired - its id is a week no
+        /// season has - so the witness is refused for its own reasons.
         /// </summary>
         [TestCase(EpisodeCommandKind.AnswerPactPlan, false)] [TestCase(EpisodeCommandKind.WitnessNpcAct, false)]
         [TestCase(EpisodeCommandKind.AnswerPactPlan, true)] [TestCase(EpisodeCommandKind.WitnessNpcAct, true)]
@@ -130,11 +131,14 @@ namespace Gamesim.Tests.EditMode
                 var command = EpisodeEngineTests.Command(state, kind);
                 command.id = "waved-" + kind + "-" + state.revision;
                 command.targetId = npcs[0].id; command.secondTargetId = npcs.Count > 1 ? npcs[1].id : null;
-                command.text = state.alliances.Select(a => a.id).FirstOrDefault() ?? "1-3-0";
+                // Week 0's act: no season has one (risk 12 - "1-3-0" became a real act id with the beats).
+                command.text = state.alliances.Select(a => a.id).FirstOrDefault() ?? "0-3-0";
                 var refused = engine.Apply(command);
                 Assert.That(refused.accepted, Is.False, state.phase + ": " + kind);
                 if (kind == EpisodeCommandKind.AnswerPactPlan && EpisodeEngine.PactPlanRulesOn(state))
                     Assert.That(refused.reason, Is.Not.EqualTo(EpisodeEngine.WaveDKindRefusal).And.Not.Empty, "The war rooms' own reason.");
+                else if (kind == EpisodeCommandKind.WitnessNpcAct && EpisodeEngine.AllWeekOn(state))
+                    Assert.That(refused.reason, Is.Not.EqualTo(EpisodeEngine.WaveDKindRefusal).And.Not.Empty, "The witness's own reason.");
                 else Assert.That(refused.reason, Is.EqualTo(EpisodeEngine.WaveDKindRefusal));
                 Assert.That(Json(engine.Snapshot), Is.EqualTo(before), "Nothing spent, drawn, logged or received.");
                 refusals++;

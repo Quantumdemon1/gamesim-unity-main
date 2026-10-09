@@ -33,6 +33,10 @@ namespace Gamesim.Presentation
         public const string ColumnName = "Relationship column";
         public const string LegendName = "Relationship legend";
         public const string EdgeName = "Edge";
+        /// <summary>A bar of an edge: one for a solid line, two side by side for a double, a run of them for a dashed one.</summary>
+        public const string SegmentName = "Segment";
+        /// <summary>A line's sample in the key.</summary>
+        public const string LegendSampleName = "Sample";
         public const string DetailsScrollName = "Relationship detail scroll";
         /// <summary>
         /// The dashed line between two houseguests whose pact the player has evidence of
@@ -336,8 +340,26 @@ namespace Gamesim.Presentation
         /// <summary>How a line is drawn beside its colour: the cue a player who cannot tell the colours apart reads (A9).</summary>
         public enum Stroke { Solid, Dashed, Double }
 
-        /// <summary>A kind's stroke: distrust is a broken connection, drawn dashed; the rest are solid.</summary>
-        public static Stroke StrokeOf(Kind kind) => kind == Kind.Distrust ? Stroke.Dashed : Stroke.Solid;
+        /// <summary>
+        /// A kind's stroke: distrust is a broken connection, drawn dashed; a rivalry is drawn double,
+        /// two lines where a friendship has one, because under deuteranopia rivalry's red and
+        /// friendship's green are 15.5 apart in CIE76 and 1.42:1 in luminance - one colour (A9, the
+        /// lead's decision 16). The rest are solid. The stroke says only what the tint already says,
+        /// the player's own reading of the houseguest.
+        /// </summary>
+        public static Stroke StrokeOf(Kind kind) =>
+            kind == Kind.Distrust ? Stroke.Dashed : kind == Kind.Rivalry ? Stroke.Double : Stroke.Solid;
+
+        /// <summary>
+        /// A double line's two bars for a line <paramref name="weight"/> thick: each bar's thickness and
+        /// its offset either side of the line's middle, so the pair reads as two lines at any strength.
+        /// </summary>
+        public static void DoubleBars(float weight, float scale, out float bar, out float offset)
+        {
+            bar = Mathf.Max(1.5f * scale, weight * .5f);
+            float gap = Mathf.Max(2f * scale, weight * .6f);
+            offset = (gap + bar) * .5f;
+        }
 
         /// <summary>A kind's line as drawn, its alpha included: a neutral line is faint, a felt one strong.</summary>
         public static Color EdgeTint(Kind kind)
@@ -561,6 +583,14 @@ namespace Gamesim.Presentation
                 for (float at = 0f; at < length; at += dash + gap)
                     Segment(edge, at, Mathf.Min(dash, length - at), weight, colour);
             }
+            else if (StrokeOf(kind) == Stroke.Double)
+            {
+                // A rivalry, two lines either side of the line's middle, inside the one Edge: a
+                // colour-blind player tells it from a friendship by its stroke (A9).
+                DoubleBars(weight, scale, out float bar, out float offset);
+                Segment(edge, 0f, length, bar, colour, offset);
+                Segment(edge, 0f, length, bar, colour, -offset);
+            }
             else
             {
                 Segment(edge, 0f, length, weight, colour);
@@ -592,12 +622,13 @@ namespace Gamesim.Presentation
                 Segment(marker, at, Mathf.Min(dash, length - at), weight, tint);
         }
 
-        private static void Segment(RectTransform edge, float at, float length, float weight, Color colour)
+        /// <summary>One bar of a line, <paramref name="offset"/> across it from its middle (a double line's two bars).</summary>
+        private static void Segment(RectTransform edge, float at, float length, float weight, Color colour, float offset = 0f)
         {
-            var bar = HudPrimitives.Fill("Segment", edge, colour, 1);
+            var bar = HudPrimitives.Fill(SegmentName, edge, colour, 1);
             bar.anchorMin = new Vector2(0f, .5f); bar.anchorMax = new Vector2(0f, .5f);
             bar.pivot = new Vector2(0f, .5f);
-            bar.anchoredPosition = new Vector2(at, 0f);
+            bar.anchoredPosition = new Vector2(at, offset);
             bar.sizeDelta = new Vector2(length, weight);
         }
 
@@ -777,17 +808,29 @@ namespace Gamesim.Presentation
                 var (caption, kind) = lines[i];
                 var tint = EdgeColour(kind);
                 float weight = (kind == Kind.Neutral ? 1.5f : 3f) * scale;
-                if (kind == Kind.Distrust)
+                // Each sample in its line's own stroke (StrokeOf), centred 10 units down its 19-unit row.
+                var stroke = StrokeOf(kind);
+                if (stroke == Stroke.Dashed)
                 {
                     for (float at = 0f; at < 22f; at += 8f)
                     {
-                        var dash = HudPrimitives.Fill("Sample", legend, tint, 1);
+                        var dash = HudPrimitives.Fill(LegendSampleName, legend, tint, 1);
                         Place(dash, x + at * scale, y - (10f * scale - weight * .5f), 5f * scale, weight);
+                    }
+                }
+                else if (stroke == Stroke.Double)
+                {
+                    // Rivalry's two lines, as the web draws them (A9).
+                    DoubleBars(weight, scale, out float bar, out float offset);
+                    foreach (float across in new[] { offset, -offset })
+                    {
+                        var sample = HudPrimitives.Fill(LegendSampleName, legend, tint, 1);
+                        Place(sample, x, y - (10f * scale - across - bar * .5f), 22f * scale, bar);
                     }
                 }
                 else
                 {
-                    var sample = HudPrimitives.Fill("Sample", legend, tint, 1);
+                    var sample = HudPrimitives.Fill(LegendSampleName, legend, tint, 1);
                     Place(sample, x, y - (10f * scale - weight * .5f), 22f * scale, weight);
                 }
                 var text = Text(legend, caption, 12, UiTheme.Muted, UiTheme.Weight.Regular, scale, font);

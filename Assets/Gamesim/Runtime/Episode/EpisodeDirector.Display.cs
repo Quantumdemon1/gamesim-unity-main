@@ -60,15 +60,17 @@ namespace Gamesim.Episode
 
         private void LoadDisplayPreferences()
         {
-            bool prefs = SaveRootOverride == null;
+            // Through the session's store (A13); the defaults store answers each fallback, which is
+            // what an isolated root has always read: the window as it is, VSync, edges panning.
+            var store = Preferences;
             int levels = Mathf.Max(1, QualitySettings.names.Length);
-            qualityTier = Mathf.Clamp(prefs ? PlayerPrefs.GetInt("Gamesim.Quality", QualitySettings.GetQualityLevel()) : QualitySettings.GetQualityLevel(), 0, levels - 1);
-            frameCap = prefs ? PlayerPrefs.GetInt("Gamesim.FrameCap", 0) : 0;
+            qualityTier = Mathf.Clamp(store.GetInt("Gamesim.Quality", QualitySettings.GetQualityLevel()), 0, levels - 1);
+            frameCap = store.GetInt("Gamesim.FrameCap", 0);
             if (System.Array.IndexOf(FrameCaps, frameCap) < 0) frameCap = 0;
-            fullscreen = prefs ? PlayerPrefs.GetInt("Gamesim.Fullscreen", Screen.fullScreen ? 1 : 0) == 1 : Screen.fullScreen;
-            edgePan = !prefs || PlayerPrefs.GetInt("Gamesim.EdgePan", 1) == 1;
-            compactHud = prefs && PlayerPrefs.GetInt("Gamesim.CompactHud", 0) == 1;
-            language = prefs ? PlayerPrefs.GetString("Gamesim.Language", Localisation.DefaultLanguage) : Localisation.DefaultLanguage;
+            fullscreen = store.GetInt("Gamesim.Fullscreen", Screen.fullScreen ? 1 : 0) == 1;
+            edgePan = store.GetInt("Gamesim.EdgePan", 1) == 1;
+            compactHud = store.GetInt("Gamesim.CompactHud", 0) == 1;
+            language = store.GetString("Gamesim.Language", Localisation.DefaultLanguage);
             Localisation.Load(language);
             language = Localisation.Language;
         }
@@ -86,15 +88,14 @@ namespace Gamesim.Episode
             if (cameraRig != null) cameraRig.EdgePan = edgePan;
             if (hud != null) hud.Compact = compactHud;
             if (Localisation.Language != language) { Localisation.Load(language); language = Localisation.Language; }
-            if (SaveRootOverride == null)
-            {
-                PlayerPrefs.SetString("Gamesim.Language", language);
-                PlayerPrefs.SetInt("Gamesim.Quality", qualityTier);
-                PlayerPrefs.SetInt("Gamesim.FrameCap", frameCap);
-                PlayerPrefs.SetInt("Gamesim.Fullscreen", fullscreen ? 1 : 0);
-                PlayerPrefs.SetInt("Gamesim.EdgePan", edgePan ? 1 : 0);
-                PlayerPrefs.SetInt("Gamesim.CompactHud", compactHud ? 1 : 0);
-            }
+            // Kept in the session's store; ApplyPreferences saves it.
+            var store = Preferences;
+            store.SetString("Gamesim.Language", language);
+            store.SetInt("Gamesim.Quality", qualityTier);
+            store.SetInt("Gamesim.FrameCap", frameCap);
+            store.SetInt("Gamesim.Fullscreen", fullscreen ? 1 : 0);
+            store.SetInt("Gamesim.EdgePan", edgePan ? 1 : 0);
+            store.SetInt("Gamesim.CompactHud", compactHud ? 1 : 0);
         }
 
         /// <summary>The display block of the settings panel; each control cycles or flips one preference.</summary>

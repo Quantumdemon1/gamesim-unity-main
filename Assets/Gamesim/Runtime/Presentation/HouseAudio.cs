@@ -152,7 +152,9 @@ namespace Gamesim.Presentation
         {
             // The scene's audio enables before the director's delayed Start. Honor the saved
             // mute choice before the first source can play; the director may override it later.
-            Muted = PlayerPrefs.GetInt("Gamesim.Muted", 0) == 1;
+            // The session's store, decided as the director will decide it (A13): an isolated root
+            // reads its own file or the defaults, never the machine's PlayerPrefs.
+            Muted = Gamesim.Episode.EpisodeDirector.LaunchPreferences().GetInt("Gamesim.Muted", 0) == 1;
         }
 
         public static HouseAudio Attach(GameObject root)

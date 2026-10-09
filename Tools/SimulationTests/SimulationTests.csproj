@@ -249,6 +249,14 @@
     <Compile Include="$(EditMode)InputRawReadScanTests.cs" />
     <!-- The ceremony cards' press guard (A4f), the Back matrix's representative rows rest on it. -->
     <Compile Include="$(EditMode)CeremonyCardInputScanTests.cs" />
+    <!--
+      Playtest-safe preferences (A13): an isolated root's own preferences file and the rule that
+      routes a session to it, PlayerPrefs or the defaults (BCL and Newtonsoft only, outside the frozen
+      contracts above), and the player log's settings lines.
+    -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/PreferenceFile.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/SettingsEvidence.cs" />
+    <Compile Include="$(EditMode)PreferenceFileTests.cs" />
     <!-- The standalone profile's performance verdict and arithmetic, and the verification-only stress house. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/VerificationPerformance.cs" />
     <Compile Include="$(EditMode)VerificationPerformanceTests.cs" />

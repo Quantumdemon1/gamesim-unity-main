@@ -1,6 +1,7 @@
 using System;
 using Gamesim.House;
 using Gamesim.Presentation;
+using UnityEngine;
 
 namespace Gamesim.Episode
 {
@@ -38,6 +39,8 @@ namespace Gamesim.Episode
             var pad = HouseInput.PadUsed();
             if (!pad.HasValue || pad.Value == padHints) return;
             padHints = pad.Value;
+            // The player log says which device the session is on, each time it changes (A13).
+            Debug.Log(SettingsEvidence.DeviceLine(padHints));
             // The talk prompt is kept for the houseguest it names; worded afresh for the device.
             promptNpc = null;
             if (hud != null) hud.SetPadHints(padHints);

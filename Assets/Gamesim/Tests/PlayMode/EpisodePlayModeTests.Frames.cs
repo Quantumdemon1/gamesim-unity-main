@@ -80,8 +80,9 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// The house's fixed chrome and the notebook's copy at 16:10, gated as at 16:9 and 4:3, and at
-        /// 21:9, photographed and measured: at both text sizes, with nothing open and with the notebook
-        /// open. The measurement is printed whatever it says, so the 21:9 verdict is in the run's log.
+        /// 21:9, photographed and measured: at both text sizes, with nothing open, with the controls box
+        /// open (the chrome alone, as the 16:9 chrome test holds it) and with the notebook open. The
+        /// measurement is printed whatever it says, so the 21:9 verdict is in the run's log.
         /// </summary>
         [UnityTest, Timeout(600000)]
         public IEnumerator Accessibility_TheHudHoldsAtSixteenTenAndIsMeasuredAtTwentyOneNine()
@@ -103,6 +104,14 @@ namespace Gamesim.Tests.PlayMode
                         var clipped = ClippedCopy();
                         Assert.That(clipped, Is.Empty, where + ": copy is clipped: " + string.Join(" | ", clipped));
                     });
+                // And with the controls box open, where the floor is tightest, as the 16:9 chrome
+                // test checks it (Accessibility_FixedChromeNeverOverlapsAtEitherTextSize).
+                ButtonWithCaption(ExpandControlsCaption).onClick.Invoke();
+                yield return null;
+                yield return OnFrames("frames-help" + size, "The house's chrome with the controls open at " + text + " text",
+                    where => AssertFixedChromeDoesNotOverlap(larger));
+                ButtonWithCaption(CollapseControlsCaption).onClick.Invoke();
+                yield return null;
                 yield return OpenNotebook();
                 yield return OnFrames("frames-notebook" + size, "The notebook at " + text + " text",
                     where =>
@@ -117,7 +126,8 @@ namespace Gamesim.Tests.PlayMode
             string report = "21:9 measurement (decision 14):\n  " + string.Join("\n  ", measuredFindings);
             TestContext.WriteLine(report);
             Debug.Log("[Gamesim] " + report);
-            Assert.That(measuredFindings, Has.Count.EqualTo(4), "The 21:9 frame was measured four times: two sizes, the house and the notebook.");
+            Assert.That(measuredFindings, Has.Count.EqualTo(6),
+                "The 21:9 frame was measured six times: two sizes, the house with the controls closed and open, and the notebook.");
         }
     }
 }

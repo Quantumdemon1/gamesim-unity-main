@@ -473,7 +473,11 @@ namespace Gamesim.Tests.EditMode
                 if (!reached && JsonConvert.SerializeObject(closed.relationshipArcs) != JsonConvert.SerializeObject(after.relationshipArcs)) Count(counts, "npc-act-moved-an-arc");
                 var ticked = after.Clone();
                 while (ticked.windowActions.Count < Windows.Count) ticked.windowActions.Add(0);
-                ticked.windowActions[window] = 100;
+                // Every seat spent (Due gives every beat once the tick reaches the seats). The window's seats rather than the
+                // 100 this once set: since vote family V6 a fresh season is mode 2, whose Vote writers hold the state to the
+                // complete core whenever a beat gives a word on the vote, and 100 is no count a window can hold.
+                int seats = Math.Max(EpisodeEngine.WindowSeats(ticked, window), ticked.npcSocial.beatWindow == window ? ticked.npcSocial.beatSeats : 0);
+                ticked.windowActions[window] = Math.Max(ticked.windowActions[window], seats);
                 EpisodeEngine.CatchUp(ticked);
                 if (ticked.randomState != after.randomState) Count(counts, "beat-drew");
                 if (!New(after, ticked).Any(Involves) && JsonConvert.SerializeObject(ticked.relationshipArcs) != JsonConvert.SerializeObject(after.relationshipArcs))

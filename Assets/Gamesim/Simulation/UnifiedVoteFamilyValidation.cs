@@ -67,6 +67,10 @@ namespace Gamesim.Simulation
                     || s.Find(row.makerId) == null || s.Find(row.beneficiaryId) == null
                     || row.targetId != null && (!Token(row.targetId) || s.Find(row.targetId) == null))
                     return Fail(out error, "A stored Vote row's parties and target must be houseguests of this season.");
+                // Whether it names a target at all, as the core holds it (the pre-V6 save-contract review): a story's word on the
+                // vote and a bloc name none, every other word and deal one - the target every reader compares a ballot with.
+                if ((row.targetId == null) != (promise ? row.origin == UnifiedCommitments.StoryPromise : row.subtype == DealKind.VoteTogether))
+                    return Fail(out error, "A stored Vote row names a target exactly where its source does.");
                 if (row.linkedCommitmentId == null) continue;
                 deals ??= new HashSet<string>(s.deals.Select(item => item.id)
                     .Concat(s.unifiedCommitments.Where(item => item.sourcePolicy == UnifiedCommitments.DealPolicy).Select(item => item.id)),

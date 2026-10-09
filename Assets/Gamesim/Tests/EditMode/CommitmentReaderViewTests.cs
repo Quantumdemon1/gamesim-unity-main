@@ -91,7 +91,7 @@ namespace Gamesim.Tests.EditMode
         [TestCase("promise-subtype")] [TestCase("deal-subtype")] [TestCase("unknown-status")] [TestCase("accepted-status")]
         [TestCase("proposed-promise")] [TestCase("unknown-party")] [TestCase("same-parties")] [TestCase("unknown-target")]
         [TestCase("unresolved-link")] [TestCase("self-link")] [TestCase("promise-link")] [TestCase("capacity")]
-        [TestCase("promise-trust")] [TestCase("deal-trust")] [TestCase("unknown-trust")]
+        [TestCase("promise-trust")] [TestCase("deal-trust")] [TestCase("unknown-trust")] [TestCase("missing-target")]
         public void TheStorageCheckRefusesEachDefectAndSoDoesEveryReader(string defect)
         {
             var s = Stored();
@@ -130,6 +130,9 @@ namespace Gamesim.Tests.EditMode
                 case "promise-trust": promise.trustImpact = DealTrust.Critical; break;
                 case "deal-trust": deal.trustImpact = deal.trustImpact == DealTrust.Low ? DealTrust.High : DealTrust.Low; break;
                 case "unknown-trust": deal.trustImpact = "enormous"; break;
+                // A word or deal its source gave a target, without one.
+                case "missing-target":
+                    s.unifiedCommitments.First(r => r.kind == UnifiedVoteTogether.Vote && r.targetId != null).targetId = null; break;
                 case "capacity":
                     // Filler history that only fills a shelf: no owner files 200 rows in a test season.
                     int promises = s.promises.Count + s.unifiedCommitments.Count(r => r.sourcePolicy == UnifiedCommitments.PromisePolicy);

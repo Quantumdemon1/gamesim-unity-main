@@ -45,6 +45,86 @@ namespace Gamesim.Tests.EditMode
         /// <summary>An option whose odds the player sees, about one houseguest.</summary>
         private static HouseEventChoice Choice(string subjectId) => new HouseEventChoice { subjectId = subjectId, checkBase = 50, approach = "charm" };
 
+        /// <summary>
+        /// The story catalogue's readers (V5c: the house remembers, plays, ported, spine) at one of a walk's moments
+        /// (<see cref="ModeTwoReaderParityTests"/>): every template's cast and weight - read directly, past the casting rules'
+        /// cooldowns and lanes, so the readers inside them run whatever the story state - and its castability, at each of its start
+        /// anchors and at a conversation with each houseguest. A cast that throws must throw alike.
+        /// </summary>
+        internal static void CheckCatalogue(EpisodeState mode1, EpisodeState mode2, string where)
+        {
+            var npcs = mode1.Active.Where(c => !c.isPlayer).Select(c => c.id).ToList();
+            // The chance a conversation starts a storyline: its broken-deal term reads the deal view (V5c).
+            foreach (var npc in npcs)
+                Assert.That(EpisodeEngine.ConversationStoryChance(mode2, npc, EpisodeCommandKind.SmallTalk),
+                    Is.EqualTo(EpisodeEngine.ConversationStoryChance(mode1, npc, EpisodeCommandKind.SmallTalk)), where + ": a conversation's story chance with " + npc);
+            foreach (var template in StoryCatalog.All)
+            {
+                var contexts = template.startAnchors.Select(anchor => (anchor, npc: (string)null, topic: (EpisodeCommandKind?)null)).ToList();
+                if (template.conversationTopics != null && template.conversationTopics.Length > 0)
+                    contexts.AddRange(npcs.Select(npc => (StoryAnchors.Conversation, npc, (EpisodeCommandKind?)template.conversationTopics[0])));
+                foreach (var (anchor, npc, topic) in contexts)
+                    Assert.That(Cast(mode2, template, anchor, npc, topic), Is.EqualTo(Cast(mode1, template, anchor, npc, topic)),
+                        where + ": the story " + template.id + " at " + anchor + (npc == null ? "" : " with " + npc));
+            }
+        }
+
+        /// <summary>
+        /// A conversation's story chance (V5c) with the houseguest whose safety pact the player broke this week counts the broken
+        /// pact - a canonical Safety deal, dated by its settlement - in mode 2 as in mode 1; the catalogue's casts read the season
+        /// alike, and a conversation with them plays as mode 1's. The nomination that broke it, and the conversation, through both.
+        /// </summary>
+        [Test]
+        public void AConversationsStoryChanceCountsAPactBrokenThisWeekAsModeOne()
+        {
+            var s = ModeTwoBargainReaderTests.Nominating();
+            var pool = EpisodeEngine.NominationCandidates(s).Where(c => !c.isPlayer).Select(c => c.id).ToList();
+            string pact = pool[0], other = pool[1];
+            s = ModeTwoBargainReaderTests.Proposed(s, pact, DealKind.SafetyAgreement);
+            double standing = EpisodeEngine.ConversationStoryChance(s, pact, EpisodeCommandKind.SmallTalk);
+            var nominated = ProspectiveVoteTwins.Both(s, ProspectiveVoteTwins.Command(s, EpisodeCommandKind.Nominate, pact, other));
+            Assert.That(nominated.legacy.accepted && nominated.prospective.accepted, Is.True, nominated.legacy.reason + " / " + nominated.prospective.reason);
+            var mode1 = nominated.legacy.state; var mode2 = nominated.prospective.state;
+            ProspectiveVoteTwins.AssertParity(mode1, mode2, "A nominated pact");
+            Assert.That(mode2.unifiedCommitments.Single(r => r.kind == UnifiedCommitments.Safety && r.beneficiaryId == pact).settledWeek, Is.EqualTo(s.week),
+                "Fixture: the pact broke this week.");
+            double broken = EpisodeEngine.ConversationStoryChance(mode1, pact, EpisodeCommandKind.SmallTalk);
+            Assert.That(broken - standing, Is.EqualTo(0.25).Within(1e-9), "Fixture: the pact broken this week adds its quarter.");
+            Assert.That(EpisodeEngine.ConversationStoryChance(mode2, pact, EpisodeCommandKind.SmallTalk), Is.EqualTo(broken), "Mode 2 counts it too.");
+            CheckCatalogue(mode1, mode2, "A nominated pact");
+            var talk = ProspectiveVoteTwins.Both(mode1, ProspectiveVoteTwins.Command(mode1, EpisodeCommandKind.SmallTalk, pact));
+            Assert.That(talk.legacy.accepted && talk.prospective.accepted, Is.True, talk.legacy.reason + " / " + talk.prospective.reason);
+            ProspectiveVoteTwins.AssertParity(talk.legacy.state, talk.prospective.state, "A word with the one whose pact the player broke");
+        }
+
+        /// <summary>
+        /// The story catalogue read alike at every command of a walk's opening, through the first moment the walks found each moved
+        /// reader deciding a cast (V5c): seed 29's Trust play (a word of safety to the player), seed 23's flip (the player's own
+        /// committed voters) and seed 16's eavesdropping (a deal between two houseguests). The other walks read it at every moment.
+        /// </summary>
+        [TestCase(29u, 12, 4)] [TestCase(23u, 6, 18)] [TestCase(16u, 8, 29)]
+        public void TheStoryCatalogueReadsAWalksOpeningAsModeOne(uint seed, int size, int commands)
+        {
+            int read = 0;
+            ModeTwoReaderSweep.Walk(seed, (mode1, mode2, where) => { CheckCatalogue(mode1, mode2, where); read++; }, size, true, () => read >= commands);
+            Assert.That(read, Is.EqualTo(commands), "The walk reached the moment.");
+        }
+
+        /// <summary>A template's cast and weight on a state, read directly, then whether the casting rules let it start.</summary>
+        private static string Cast(EpisodeState s, ArcTemplate template, string anchor, string npc, EpisodeCommandKind? topic)
+        {
+            var context = new StoryContext(s, anchor, npc, topic);
+            string read;
+            try
+            {
+                var binding = template.cast?.Invoke(context);
+                read = binding == null ? "no cast" : Json(binding) + " weighs " + (template.weight == null ? 10 : template.weight(context, binding));
+            }
+            catch (Exception error) { read = "throws " + error.GetType().Name; }
+            try { return read + "; castable " + Json(EpisodeEngine.Castable(s, context, template)); }
+            catch (Exception error) { return read + "; castable throws " + error.GetType().Name; }
+        }
+
         // ------------------------------------------------------------ the current-reveal exclusion, at a second reveal
 
         private sealed class TwoReveals

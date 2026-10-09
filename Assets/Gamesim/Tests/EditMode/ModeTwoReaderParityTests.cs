@@ -76,6 +76,8 @@ namespace Gamesim.Tests.EditMode
                 ModeTwoFinaleReaderTests.CheckFinale(mode1, mode2, where, groups);
                 // V5f: the pages - the commitments and their warnings, the pacts, what a houseguest says - at every moment.
                 ModeTwoPageReaderTests.CheckPages(mode1, mode2, where);
+                // V5c: the story catalogue's casts and weights, at every moment.
+                ModeTwoThreatStoryTests.CheckCatalogue(mode1, mode2, where);
                 // V5b: the house's decisions, where the house makes them - the nominations, the campaign and the open vote,
                 // the count, the final eviction and the jury.
                 if (!Decides(mode1)) return;

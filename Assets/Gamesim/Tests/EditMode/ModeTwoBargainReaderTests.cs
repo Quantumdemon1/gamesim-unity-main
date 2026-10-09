@@ -163,12 +163,12 @@ namespace Gamesim.Tests.EditMode
         private static EpisodeState nominating;
 
         /// <summary>A first nomination the player makes as Head of Household, the block still empty.</summary>
-        private static EpisodeState Nominating() => (nominating ??= ProspectiveVoteTwins.Find("a first nomination the player makes",
+        internal static EpisodeState Nominating() => (nominating ??= ProspectiveVoteTwins.Find("a first nomination the player makes",
             seed => ProspectiveVoteTwins.Walk(seed, s => s.phase == EpisodePhase.Nomination && s.hohId == s.playerId && s.nominees.Count == 0
                 && EpisodeEngine.NominationCandidates(s).Count(c => !c.isPlayer) >= 3, EpisodePhase.HoH))).Clone();
 
         /// <summary>The player's real proposal of a deal, with a draw that says yes.</summary>
-        private static EpisodeState Proposed(EpisodeState s, string with, string type, string about = null)
+        internal static EpisodeState Proposed(EpisodeState s, string with, string type, string about = null)
         {
             Assert.That(PlayerDeals.CanPropose(s, with, type, about, out var why), Is.True, why);
             s = s.Clone();

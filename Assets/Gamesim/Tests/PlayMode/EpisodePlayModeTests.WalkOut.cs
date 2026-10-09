@@ -159,14 +159,28 @@ namespace Gamesim.Tests.PlayMode
             // The card goes and presses land on the walk out's first frames: the press that closed the
             // card, as far as the walk can tell, whichever of the two reads the keyboard first.
             reveal.Cancel();
+            // The guard starts with the walk, on this frame or a later one, so a press read before the
+            // guard's length has passed since the card closed is inside it. The guard runs on the
+            // unscaled clock, which Time.captureDeltaTime does not pin, and a cold or loaded run takes
+            // up to 0.3 s a frame here: a press read after the guard is a fresh one, which the walk
+            // rightly takes as a skip, so the presses stop there.
+            float closed = Time.unscaledTime;
+            int inside = 0;
             for (int press = 0; press < 3; press++)
             {
                 InputSystem.QueueStateEvent(testKeyboard, new KeyboardState(Key.Enter));
                 yield return null;
+                if (Time.unscaledTime - closed >= EpisodeDirector.WalkOutPressGuardSeconds) break;
+                inside++;
+                Assert.That(director.WalkingOutId, Is.EqualTo(leaving), "The press that closed the card does not skip the walk out as well,");
                 InputSystem.QueueStateEvent(testKeyboard, new KeyboardState());
                 yield return null;
             }
-            Assert.That(director.WalkingOutId, Is.EqualTo(leaving), "The press that closed the card does not skip the walk out as well,");
+            InputSystem.QueueStateEvent(testKeyboard, new KeyboardState());
+            yield return null;
+            Assert.That(inside, Is.GreaterThanOrEqualTo(1), "The first press lands inside the guard.");
+            // A press after the guard may end the walk, as it should: nothing more to hold to.
+            if (inside < 3) yield break;
             float settle = Time.realtimeSinceStartup + 1f;
             while (Time.realtimeSinceStartup < settle) yield return null;
             Assert.That(director.WalkingOutId, Is.EqualTo(leaving), "and they are still walking.");

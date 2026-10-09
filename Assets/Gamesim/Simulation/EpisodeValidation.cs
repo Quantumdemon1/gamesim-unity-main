@@ -42,13 +42,32 @@ namespace Gamesim.Simulation
         internal static bool TryValidateProspectiveUnifiedSafety(EpisodeState s, out string error) =>
             TryValidateCore(s, true, out error);
 
-        private static bool TryValidateCore(EpisodeState s, bool prospectiveSafety, out string error)
+        /// <summary>
+        /// Complete detached candidate validation only. No public command, constructor, load,
+        /// migration or save path dispatches here or opts a recorded season into Vote authority.
+        /// Current prerequisites must be active; historical rows retain their own source weeks.
+        /// </summary>
+        internal static bool TryValidateProspectiveUnifiedVote(EpisodeState s, out string error)
         {
+            if (s == null || s.unifiedCommitmentRulesVersion != UnifiedVoteFamilyValidation.Version
+                || !YourWord.On(s))
+                return Fail(out error, "Prospective Vote requires its explicit version and active commitment/story rules.");
+            return TryValidateCore(s, UnifiedVoteFamilyValidation.Version, out error);
+        }
+
+        // Existing public/historical mode0/1 entries retain their exact selection and body.
+        private static bool TryValidateCore(EpisodeState s, bool prospectiveSafety, out string error) =>
+            TryValidateCore(s, prospectiveSafety ? UnifiedCommitments.ProspectiveVersion : 0, out error);
+
+        private static bool TryValidateCore(EpisodeState s, int canonicalMode, out string error)
+        {
+            bool prospectiveVote = canonicalMode == UnifiedVoteFamilyValidation.Version;
+            bool prospectiveSafety = canonicalMode == UnifiedCommitments.ProspectiveVersion || prospectiveVote;
             error = null;
-            if (s == null || s.schemaVersion != 26) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 28) return Fail(out error, "Unsupported episode schema.");
             if (prospectiveSafety)
             {
-                if (s.unifiedCommitmentRulesVersion != UnifiedCommitments.ProspectiveVersion
+                if (s.unifiedCommitmentRulesVersion != canonicalMode
                     || s.unifiedCommitments == null || s.unifiedCommitments.Count > UnifiedCommitments.FamilyCapacity * 2
                     || s.unifiedHearingRulesVersion < 0 || s.unifiedHearingRulesVersion > UnifiedCommitmentHearings.ProspectiveVersion
                     || s.unifiedHearingEvidence == null || s.unifiedHearingReceipts == null
@@ -69,9 +88,15 @@ namespace Gamesim.Simulation
                     || s.unifiedHearingReceipts == null || s.unifiedHearingReceipts.Count != 0)
                     return Fail(out error, "Unified hearing coordination is not enabled in this build.");
             }
-            // The schema adds storage only. Neither legacy nor canonical Safety mode owns a Vote
-            // reveal archive yet; do not clear a nonempty or null container into an accepted state.
-            if (s.unifiedVoteReveals == null || s.unifiedVoteReveals.Count != 0)
+            // Public0/1 storage remains inert, including its original refusal. Only the explicit
+            // internal Vote core admits an archive, which must pass complete frame validation.
+            // Missing evidence is never normalized or backfilled from the growing state.
+            if (prospectiveVote)
+            {
+                if (s.unifiedVoteReveals == null || s.unifiedVoteReveals.Count > UnifiedVoteRevealArchive.MaximumFrames)
+                    return Fail(out error, "Prospective Vote requires bounded complete reveal evidence.");
+            }
+            else if (s.unifiedVoteReveals == null || s.unifiedVoteReveals.Count != 0)
                 return Fail(out error, "Unified Vote evidence is not enabled in this build.");
             if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > CompetitionRules.Current)
                 return Fail(out error, "Unsupported competition rules version.");
@@ -222,7 +247,9 @@ namespace Gamesim.Simulation
             // and a price is never without what it bought.
             // Validate canonical identities/source shape before any mixed-link or finale reader
             // can project a row. No duplicate or malformed row may turn validation into a throw.
-            if (prospectiveSafety && !UnifiedSafetySaveReferences.TryValidate(s, out error)) return false;
+            // Vote's complete preflight follows the common Story container guards below.
+            // Neither prospective family uses the legacy raw-only link reader.
+            if (prospectiveSafety && !prospectiveVote && !UnifiedSafetySaveReferences.TryValidate(s, out error)) return false;
             foreach (var deal in prospectiveSafety ? Enumerable.Empty<DealState>() : s.deals)
             {
                 bool price = Negotiation.IsPrice(deal);
@@ -292,6 +319,16 @@ namespace Gamesim.Simulation
                                            || !Finite(m.competitionBonus) || Math.Abs(m.competitionBonus) > 20
                                            || !Finite(m.socialBonus) || Math.Abs(m.socialBonus) > 100))
                 return Fail(out error, "Invalid story modifier data.");
+            if (prospectiveVote)
+            {
+                // Story validation iterates houseEvents/storylines/modifiers: their common
+                // scalar/list-element guards must precede it, including malformed-save paths.
+                // The aggregate leaf uses detached unchecked projections, never this full core,
+                // and therefore cannot recursively validate or install a candidate.
+                if (!TryValidateStory(s, out error) || !TryValidateLedger(s, out error)
+                    || !UnifiedVoteFamilyValidation.TryValidate(s, s.unifiedVoteReveals, out error)
+                    || !UnifiedSafetySaveReferences.TryValidateProspectiveVote(s, out error)) return false;
+            }
             if (s.storyRulesStartWeek < 1 || s.storyRulesStartWeek > Math.Min(101, s.week + 1))
                 return Fail(out error, "A storyline rules boundary cannot be further off than next week.");
             // Schema 14: Have-Nots and the veto's prizes. 0 is a season that never plays them.
@@ -388,8 +425,9 @@ namespace Gamesim.Simulation
             // The ordinary disabled entry keeps its existing validation order and behavior.
             if (prospectiveSafety && (!TryValidateStory(s, out error) || !TryValidateLedger(s, out error))) return false;
             return TryValidateV2(s, out error) && TryValidateV3(s, out error) && TryValidateNpcSocial(s, out error)
-                && TryValidateStory(s, out error) && TryValidateLedger(s, out error)
-                && (!prospectiveSafety || TryValidateUnifiedSafetyReferences(s, out error));
+                && TryValidateStory(s, out error) && TryValidateLedger(s, out error) && TryValidateWaveD(s, out error)
+                && (!prospectiveSafety || TryValidateUnifiedSafetyReferences(s, prospectiveVote, out error))
+                && (!prospectiveVote || TryValidateUnifiedVoteReferences(s, out error));
         }
 
         /// <summary>

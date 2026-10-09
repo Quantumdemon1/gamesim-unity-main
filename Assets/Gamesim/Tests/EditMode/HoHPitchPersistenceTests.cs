@@ -68,7 +68,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(reader.TryLoad(out var loaded, out string message), Is.True, message);
             Equal(expected, loaded);
             Assert.That(File.ReadAllBytes(store.SavePath), Is.EqualTo(before), "Loading current data never rewrites its bytes.");
-            Assert.That(loaded.schemaVersion, Is.EqualTo(26));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(28));
             return loaded;
         }
 

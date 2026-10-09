@@ -8,19 +8,21 @@ namespace Gamesim.Simulation
     {
         // These gateways run only inside the command owner's detached transaction. They do not
         // activate rules, save, invent a decision, or turn read projections into writable mirrors.
+        // They settle wherever canonical Safety is the authority: mode 1, and the prospective mode 2
+        // (vote family V3b), where they settle the Safety rows only; the Vote rows settle and end by their own (V4).
         internal static void ResolveUnifiedSafetyNomination(EpisodeState s, string decisionId, string actorId,
             IReadOnlyList<string> actionNominees)
         {
-            if (!UnifiedCommitments.RulesOn(s)) return;
+            if (!UnifiedCommitments.SafetyAuthorityOn(s)) return;
             if (decisionId != "nomination" && decisionId != "replacement")
                 throw new ArgumentException("Use the actual nomination or replacement decision class.", nameof(decisionId));
             CheckUnifiedSafetyContext(s);
             var evaluation = UnifiedCommitments.EvaluateNomination(s, decisionId, actorId, actionNominees);
             if (evaluation.Changes.Count == 0) return;
             var before = s.unifiedCommitments.ToDictionary(row => row.id, row => row.Clone(), StringComparer.Ordinal);
-            var promises = CommitmentReferences.Promises(s).Where(row => before.ContainsKey(row.id))
+            var promises = SafetyPromises(s).Where(row => before.ContainsKey(row.id))
                 .ToDictionary(row => row.id, row => row, StringComparer.Ordinal);
-            var deals = CommitmentReferences.Deals(s).Where(row => before.ContainsKey(row.id))
+            var deals = SafetyDeals(s).Where(row => before.ContainsKey(row.id))
                 .ToDictionary(row => row.id, row => row, StringComparer.Ordinal);
             var staged = StageUnifiedSafety(s, evaluation);
             // Every owner and linked consideration must resolve before a row, score or RNG changes.
@@ -53,11 +55,11 @@ namespace Gamesim.Simulation
 
         internal static void ResolveUnifiedSafetySpared(EpisodeState s, string hohId, IReadOnlyList<string> finalBlock)
         {
-            if (!UnifiedCommitments.RulesOn(s)) return;
+            if (!UnifiedCommitments.SafetyAuthorityOn(s)) return;
             CheckUnifiedSafetyContext(s);
             var evaluation = UnifiedCommitments.EvaluateFinalVetoSpared(s, hohId, finalBlock);
             if (evaluation.Changes.Count == 0) return;
-            var deals = CommitmentReferences.Deals(s).ToDictionary(row => row.id, row => row, StringComparer.Ordinal);
+            var deals = SafetyDeals(s).ToDictionary(row => row.id, row => row, StringComparer.Ordinal);
             var owners = evaluation.Changes.Select(change => deals[change.Record.id])
                 .GroupBy(deal => DealResolution.Partner(deal, hohId), StringComparer.Ordinal)
                 .OrderBy(group => group.Key, StringComparer.Ordinal)
@@ -76,7 +78,7 @@ namespace Gamesim.Simulation
 
         internal static void ResolveUnifiedSafetyExpiry(EpisodeState s, UnifiedCommitmentExpiry boundary, string departedId = null)
         {
-            if (!UnifiedCommitments.RulesOn(s)) return;
+            if (!UnifiedCommitments.SafetyAuthorityOn(s)) return;
             CheckUnifiedSafetyContext(s);
             var evaluation = UnifiedCommitments.Expire(s, boundary, departedId);
             if (evaluation.Changes.Count == 0) return;
@@ -84,9 +86,18 @@ namespace Gamesim.Simulation
             // Expiry is not a broken or kept word: no score, witnesses, history, price verdict or roll.
         }
 
+        // The gateways' detached source-shaped views. Mode 1's are CommitmentReferences' as they always were;
+        // in mode 2, once CheckUnifiedSafetyContext has checked the Safety authority and the hearing storage
+        // (whose mode-2 check judges the Vote family's rows too), the unchecked projection of both families.
+        private static IReadOnlyList<PromiseState> SafetyPromises(EpisodeState s) =>
+            UnifiedVoteStore.On(s) ? UnifiedVoteReferences.PromisesUnchecked(s) : CommitmentReferences.Promises(s);
+
+        private static IReadOnlyList<DealState> SafetyDeals(EpisodeState s) =>
+            UnifiedVoteStore.On(s) ? UnifiedVoteReferences.DealsUnchecked(s) : CommitmentReferences.Deals(s);
+
         private static void CheckUnifiedSafetyContext(EpisodeState s)
         {
-            if (!CommitmentRulesOn(s) || !UnifiedCommitments.ValidateRecords(s, out _))
+            if (!CommitmentRulesOn(s) || !UnifiedCommitments.ValidateSafetyAuthority(s, out _))
                 throw new ArgumentException("A valid enabled commitment context is required for safety settlement.");
             if (!UnifiedCommitmentHearings.ValidateStorage(s, out string hearingError))
                 throw new ArgumentException(hearingError, nameof(s));
@@ -109,13 +120,13 @@ namespace Gamesim.Simulation
             var projection = new EpisodeState { week = s.week, playerId = s.playerId, contestants = s.contestants,
                 promises = s.promises, deals = s.deals, unifiedCommitmentRulesVersion = s.unifiedCommitmentRulesVersion,
                 unifiedCommitments = rows };
-            if (!UnifiedCommitments.ValidateRecords(projection, out string error)) throw new ArgumentException(error);
+            if (!UnifiedCommitments.ValidateSafetyAuthority(projection, out string error)) throw new ArgumentException(error);
             return rows;
         }
 
         private static void CheckUnifiedSafetyLinks(EpisodeState s, IEnumerable<UnifiedCommitmentState> rows)
         {
-            var deals = CommitmentReferences.Deals(s).ToDictionary(row => row.id, row => row, StringComparer.Ordinal);
+            var deals = SafetyDeals(s).ToDictionary(row => row.id, row => row, StringComparer.Ordinal);
             foreach (var row in rows.Where(row => row.linkedCommitmentId != null))
             {
                 if (!deals.TryGetValue(row.id, out var own) || !deals.TryGetValue(row.linkedCommitmentId, out var linked)

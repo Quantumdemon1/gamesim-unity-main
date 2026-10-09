@@ -66,7 +66,7 @@ namespace Gamesim.Tests.EditMode
             var freshReader = new EpisodeSaveStore(store.SavePath);
             Assert.That(freshReader.TryLoad(out var loaded, out string message), Is.True, message);
             Equal(expected, loaded);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(26));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(28));
             Assert.That(File.ReadAllBytes(store.SavePath), Is.EqualTo(original), "Loading never rewrites current save bytes.");
             return loaded;
         }

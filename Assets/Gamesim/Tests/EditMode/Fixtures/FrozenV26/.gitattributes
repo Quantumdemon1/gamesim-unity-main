@@ -1,0 +1,3 @@
+# Preserve byte-exact historical JSON witnesses.
+*.json -text -eol
+.gitattributes -text -eol

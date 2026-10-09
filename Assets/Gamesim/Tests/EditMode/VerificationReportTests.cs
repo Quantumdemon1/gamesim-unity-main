@@ -111,8 +111,202 @@ namespace Gamesim.Tests.EditMode
             Assert.That((int)report["sampledDisplayModeMismatchCount"], Is.Zero);
             Assert.That((bool)report["uncapped"], Is.True);
             Assert.That((double)report["frameMedianMs"], Is.EqualTo(100), "Deliberately slow synthetic evidence is not a 60 FPS result.");
-            Assert.That((string)report["performanceAcceptance"], Is.EqualTo("Not assessed; uncapped diagnostic sample only."));
+            Assert.That((string)report["performanceAcceptance"], Does.StartWith("Not assessed: ").And.Contain("ran 11.0 s of the 300 s required"),
+                "An eleven-second sample is no verdict either way, however slow.");
             Assert.That((string)report["workload"], Does.Contain("not the 60 FPS performance target"));
+        }
+
+        // ------------------------------------------------------------------ the performance verdict and its evidence
+
+        /// <summary>A five-minute 1920x1080 windowed uncapped run, every frame <paramref name="frameMs"/>, with its six captures.</summary>
+        private void InstallTargetRun(float frameMs, int frameCount = 400)
+        {
+            Field("seconds").SetValue(runner, 300d);
+            var samples = (List<float>)Field("frames").GetValue(runner);
+            for (int i = 0; i < frameCount; i++) { samples.Add(frameMs); RecordDisplay(1920, 1080, -1, 0); }
+            var captures = (List<VerificationFrameEvidence>)Field("capturedFrames").GetValue(runner);
+            for (int i = 0; i < 6; i++) captures.Add(new VerificationFrameEvidence { rendered = true });
+        }
+
+        [TestCase(10f, "Met")]
+        [TestCase(16.7f, "Met")]
+        [TestCase(20f, "Not met")]
+        public void AFullTargetRunIsJudgedOnItsPercentilesAndStatusStaysItsOwn(float frameMs, string verdict)
+        {
+            InstallTargetRun(frameMs);
+            var report = ProfileReport(measured: 300.5);
+            Assert.That((string)report["performanceAcceptance"], Is.EqualTo(verdict));
+            Assert.That((string)report["status"], Is.EqualTo("Passed"), "The execution checks pass either way: Passed is never the verdict.");
+            Assert.That((string)report["performanceAcceptanceBasis"], Does.Contain("p95 ").And.Contain("p99 ").And.Contain("300.5 s"));
+            Assert.That((double)report["performanceP95LimitMs"], Is.EqualTo(16.7).Within(1e-5));
+            Assert.That((double)report["performanceP99LimitMs"], Is.EqualTo(33.3).Within(1e-5));
+            Assert.That((double)report["performanceMinimumSeconds"], Is.EqualTo(300));
+        }
+
+        [TestCase("batch")]
+        [TestCase("nographics")]
+        [TestCase("short")]
+        [TestCase("resolution")]
+        [TestCase("window")]
+        [TestCase("cap")]
+        [TestCase("development")]
+        public void AFastRunThatMissedTheTargetIsNotAssessed(string condition)
+        {
+            InstallTargetRun(5f);
+            bool graphical = condition != "nographics", batch = condition == "batch", development = condition == "development";
+            double measured = condition == "short" ? 299.0 : 300.5;
+            if (condition == "resolution") ProfileFrame(1600, 900, -1, 0);
+            if (condition == "window") ProfileFrame(1920, 1080, -1, 0, FullScreenMode.FullScreenWindow);
+            if (condition == "cap") ProfileFrame(1920, 1080, 60, 1);
+            var report = ProfileReport(graphical, batch, measured, development);
+            Assert.That((string)report["performanceAcceptance"], Does.StartWith("Not assessed: "), condition);
+            Assert.That((bool)report["developmentBuild"], Is.EqualTo(development), "The report names the build it judged.");
+        }
+
+        [Test]
+        public void TheMeasuredSeasonIsNamedBySourceSeedAndSession()
+        {
+            InstallProfileEvidence();
+            Field("profileSeason").SetValue(runner, VerificationProfileSeason.Director);
+            Field("seasonSeed").SetValue(runner, 4000000000L);
+            Field("seasonSessionId").SetValue(runner, "0123abcd");
+            Field("seasonStartSeconds").SetValue(runner, 12.5);
+            var report = ProfileReport();
+            Assert.That((string)report["seasonSource"], Is.EqualTo("director"));
+            Assert.That((long)report["seasonSeed"], Is.EqualTo(4000000000L), "A uint seed survives whole.");
+            Assert.That((string)report["sessionId"], Is.EqualTo("0123abcd"));
+            Assert.That((double)report["seasonStartedSeconds"], Is.EqualTo(12.5));
+        }
+
+        [Test]
+        public void AMemoryCounterThatHasNotSampledReadsUnavailableNotZero()
+        {
+            // Read in the frame the counters start, as the steady sample once did: no frame has ended
+            // under them, so a reading is either a real one or -1 - never the 0 a fresh recorder holds.
+            typeof(PortVerification).GetMethod("StartMemoryRecorders", PrivateInstance).Invoke(runner, null);
+            try
+            {
+                var sample = (VerificationMemorySample)typeof(PortVerification).GetMethod("SampleMemory", PrivateInstance).Invoke(runner, null);
+                Assert.That(sample.systemUsedBytes, Is.EqualTo(-1L).Or.GreaterThan(0L));
+                Assert.That(sample.gfxUsedBytes, Is.EqualTo(-1L).Or.GreaterThan(0L));
+            }
+            finally { typeof(PortVerification).GetMethod("DisposeMemoryRecorders", PrivateInstance).Invoke(runner, null); }
+        }
+
+        [Test]
+        public void TheSteadySampleReportsItsDistributionSlowFramesAndWorstFrame()
+        {
+            InstallProfileEvidence(0);
+            var samples = (List<float>)Field("frames").GetValue(runner);
+            samples.Clear();
+            for (int i = 0; i < 95; i++) samples.Add(10f);
+            samples.AddRange(new[] { 20f, 20f, 20f, 40f, 60f, 10f });
+            var report = ProfileReport();
+            Assert.That((int)report["frameCount"], Is.EqualTo(101));
+            Assert.That((int)report["slowFramesOver16_7Ms"], Is.EqualTo(5));
+            Assert.That((int)report["slowFramesOver33_3Ms"], Is.EqualTo(2));
+            Assert.That((int)report["slowFramesOver50Ms"], Is.EqualTo(1));
+            Assert.That((double)report["frameMaxMs"], Is.EqualTo(60));
+            Assert.That((double)report["frameMinMs"], Is.EqualTo(10));
+            Assert.That((double)report["frameMeanMs"], Is.EqualTo((96 * 10 + 3 * 20 + 40 + 60) / 101d).Within(1e-6));
+            Assert.That(report["frameHistogramCounts"].Values<int>().Sum(), Is.EqualTo(101), "The histogram holds every steady frame.");
+            Assert.That(report["frameHistogramUpperMs"].Values<float>().Count(), Is.EqualTo(report["frameHistogramCounts"].Values<int>().Count() - 1));
+            Assert.That((int)report["steady"]["frames"], Is.EqualTo(101));
+            Assert.That((double)report["steady"]["p99Ms"], Is.EqualTo((double)report["frameP99Ms"]));
+        }
+
+        [Test]
+        public void StartupFramesAreReportedStageByStageApartFromTheSteadySample()
+        {
+            InstallProfileEvidence();
+            var begin = typeof(PortVerification).GetMethod("BeginStartupStage", PrivateInstance);
+            var stages = (List<List<float>>)Field("startupStageFrames").GetValue(runner);
+            begin.Invoke(runner, new object[] { "bootstrap" });
+            stages[0].AddRange(new[] { 400f, 30f });
+            begin.Invoke(runner, new object[] { "bodies" });
+            stages[1].AddRange(new[] { 2500f, 12f, 12f });
+            var report = ProfileReport();
+            var startup = (JArray)report["startupStages"];
+            Assert.That(startup.Select(stage => (string)stage["name"]), Is.EqualTo(new[] { "bootstrap", "bodies" }));
+            Assert.That((double)startup[1]["maxMs"], Is.EqualTo(2500), "The body-construction hitch is in its own stage.");
+            Assert.That((int)report["startup"]["frames"], Is.EqualTo(5));
+            Assert.That((double)report["startup"]["maxMs"], Is.EqualTo(2500));
+            Assert.That((int)report["startup"]["framesOver50Ms"], Is.EqualTo(2));
+            Assert.That((double)report["frameMaxMs"], Is.EqualTo(100), "...and never in the steady sample.");
+            Assert.That((int)report["frameCount"], Is.EqualTo(101));
+        }
+
+        [Test]
+        public void MemoryIsReportedAtTheSampleStartEndAndPeak()
+        {
+            InstallProfileEvidence();
+            var start = new VerificationMemorySample { atSeconds = 30, totalAllocatedBytes = 100, totalReservedBytes = 200, monoUsedBytes = 10, monoHeapBytes = 20, gfxDriverBytes = 0, systemUsedBytes = 1000, gfxUsedBytes = 50 };
+            var middle = new VerificationMemorySample { atSeconds = 31, totalAllocatedBytes = 180, totalReservedBytes = 260, monoUsedBytes = 15, monoHeapBytes = 20, gfxDriverBytes = 0, systemUsedBytes = 1400, gfxUsedBytes = 55 };
+            var end = new VerificationMemorySample { atSeconds = 330, totalAllocatedBytes = 150, totalReservedBytes = 260, monoUsedBytes = 12, monoHeapBytes = 24, gfxDriverBytes = 0, systemUsedBytes = 1200, gfxUsedBytes = 52 };
+            ((List<VerificationMemorySample>)Field("memorySamples").GetValue(runner)).AddRange(new[] { start, middle, end });
+            Field("memoryAtSampleStart").SetValue(runner, start);
+            Field("memoryAtSampleEnd").SetValue(runner, end);
+            var report = ProfileReport();
+            Assert.That((long)report["memoryAtSampleStart"]["totalAllocatedBytes"], Is.EqualTo(100));
+            Assert.That((long)report["memoryAtSampleEnd"]["monoHeapBytes"], Is.EqualTo(24));
+            Assert.That((long)report["memoryPeak"]["totalAllocatedBytes"], Is.EqualTo(180));
+            Assert.That((long)report["memoryPeak"]["systemUsedBytes"], Is.EqualTo(1400));
+            Assert.That((long)report["memoryPeak"]["monoHeapBytes"], Is.EqualTo(24));
+            Assert.That((int)report["memorySamples"], Is.EqualTo(3));
+            Assert.That((bool)report["gfxDriverMemoryAvailable"], Is.False, "A release player reports no driver estimate, and the report says so.");
+        }
+
+        [Test]
+        public void TheBuildItsQualityAndItsRenderScaleAreReported()
+        {
+            InstallProfileEvidence();
+            var report = ProfileReport();
+            Assert.That((string)report["buildVersion"], Is.EqualTo(Application.version));
+            Assert.That((string)report["buildGuid"] ?? "", Is.EqualTo(Application.buildGUID ?? ""));
+            Assert.That((string)report["unityVersion"], Is.EqualTo(Application.unityVersion));
+            Assert.That((int)report["qualityLevel"], Is.EqualTo(QualitySettings.GetQualityLevel()));
+            Assert.That((string)report["qualityLevelName"], Is.EqualTo(QualitySettings.names[QualitySettings.GetQualityLevel()]));
+            var pipeline = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline;
+            var scale = pipeline == null ? null : pipeline.GetType().GetProperty("renderScale");
+            Assert.That((float)report["renderScale"], Is.EqualTo(scale != null ? (float)scale.GetValue(pipeline) : -1f).Within(1e-5f));
+            Assert.That((string)report["renderPipeline"], Is.EqualTo(pipeline != null ? pipeline.name : "Built-in"));
+            Assert.That((string)report["graphicsDeviceVersion"], Is.EqualTo(SystemInfo.graphicsDeviceVersion));
+            Assert.That((string)report["displayResolution"], Does.Match(@"^\d+x\d+$"));
+        }
+
+        [Test]
+        public void TheRawFramesAreWrittenInTheOrderMeasuredAndNamedInTheReport()
+        {
+            InstallProfileEvidence();
+            Field("outputDirectory").SetValue(runner, temporary);
+            var samples = (List<float>)Field("frames").GetValue(runner);
+            samples[0] = 30f; samples[1] = 10f; samples[2] = 20f;
+            typeof(PortVerification).GetMethod("BeginStartupStage", PrivateInstance).Invoke(runner, new object[] { "bootstrap" });
+            ((List<List<float>>)Field("startupStageFrames").GetValue(runner))[0].Add(400f);
+            typeof(PortVerification).GetMethod("WriteRawFrameTimes", PrivateInstance).Invoke(runner, null);
+            var report = ProfileReport();
+            string steady = Path.Combine(temporary, PortVerification.RawFrameTimesName);
+            Assert.That((string)report["rawFrameTimesFile"], Is.EqualTo(steady));
+            var lines = File.ReadAllLines(steady);
+            Assert.That(lines.Take(4), Is.EqualTo(new[] { "ms", "30", "10", "20" }));
+            Assert.That(lines.Length, Is.EqualTo(102));
+            Assert.That(samples.Take(3), Is.EqualTo(new[] { 30f, 10f, 20f }), "The report sorts a copy; the measured order survives it.");
+            string startup = Path.Combine(temporary, PortVerification.RawStartupFrameTimesName);
+            Assert.That((string)report["rawStartupFrameTimesFile"], Is.EqualTo(startup));
+            Assert.That(File.ReadAllLines(startup), Is.EqualTo(new[] { "stage,ms", "bootstrap,400" }));
+        }
+
+        [Test]
+        public void AStressRunSaysSo()
+        {
+            InstallProfileEvidence();
+            Field("stressRoster").SetValue(runner, true);
+            Field("houseSize").SetValue(runner, 16);
+            Field("measuredHouseSize").SetValue(runner, 16);
+            var report = ProfileReport();
+            Assert.That((bool)report["stressRoster"], Is.True);
+            Assert.That((int)report["houseSizeRequested"], Is.EqualTo(16));
+            Assert.That((int)report["houseSize"], Is.EqualTo(16));
         }
 
         [TestCase(1600, 900)]
@@ -259,9 +453,9 @@ namespace Gamesim.Tests.EditMode
             => typeof(PortVerification).GetMethod("RecordProfileDisplaySample", PrivateInstance)
                 .Invoke(runner, new object[] { width, height, frameCap, vSync, mode });
 
-        private JObject ProfileReport(bool graphical = true, bool batchMode = false)
+        private JObject ProfileReport(bool graphical = true, bool batchMode = false, double measured = 11d, bool developmentBuild = false)
             => JObject.Parse(JsonUtility.ToJson(typeof(PortVerification).GetMethod("CompleteProfileReport", PrivateInstance)
-                .Invoke(runner, new object[] { 11d, graphical, batchMode })));
+                .Invoke(runner, new object[] { measured, graphical, batchMode, developmentBuild })));
 
         private object InstallCompleteRouteReport()
         {

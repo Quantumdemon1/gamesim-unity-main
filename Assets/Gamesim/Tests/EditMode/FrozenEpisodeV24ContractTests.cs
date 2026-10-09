@@ -41,7 +41,18 @@ namespace Gamesim.Tests.EditMode
             string original = payload.ToString(Formatting.None);
             Assert.Throws<InvalidDataException>(() => Validate(payload));
             Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.UpgradeV24ToV25(payload));
-            Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(payload, out _));
+            if (payload["schemaVersion"]?.Type == JTokenType.Integer && (long)payload["schemaVersion"] == 27)
+            {
+                // Keep literal former-current27 refusal, plus separate proofs that the former27 dispatch
+                // refuses an unknown 28 and the actual current28 dispatch an unknown 29 (W28).
+                Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareV26Payload(payload, out _));
+                Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(payload, out _));
+                var former27Future = (JObject)payload.DeepClone(); former27Future["schemaVersion"] = 28;
+                Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareV27Payload(former27Future, out _));
+                var future = (JObject)payload.DeepClone(); future["schemaVersion"] = 29;
+                Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(future, out _));
+            }
+            else Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(payload, out _));
             Assert.That(payload.ToString(Formatting.None), Is.EqualTo(original), "A bad historical payload is preserved, not repaired.");
         }
 

@@ -30,28 +30,21 @@ namespace Gamesim.Tests.EditMode
             public readonly Dictionary<int, int> playOffersByWeek = new Dictionary<int, int>();
             /// <summary>Each week's asks, as "arc/beat (lane, surface)", for a failure to say what asked.</summary>
             public readonly Dictionary<int, List<string>> askedByWeek = new Dictionary<int, List<string>>();
-        }
 
-        /// <summary>
-        /// Plays a season with the story tests' driver and watches it: every beat put to the player,
-        /// counted as the airtime counts it (a story's beats closing at one anchor are one ask), every
-        /// summons, and after every Advance whether some houseguest has three houseguests at forty
-        /// against them.
-        /// </summary>
-        internal static Pace Measure(EpisodeState initial, int salt)
-        {
-            var engine = new EpisodeEngine(initial);
-            var pace = new Pace { removalWindow = initial.contestants.Count >= 7 };
-            var seen = new HashSet<string>();
-            var asked = new HashSet<string>();
-            string pariahTarget = null; int pariahRun = 0;
-            for (int i = 0; i < 4000 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
+            // The watch's own notes: beats already seen, asks already counted, the pariah run.
+            private readonly HashSet<string> seen = new HashSet<string>();
+            private readonly HashSet<string> asked = new HashSet<string>();
+            private string pariahTarget;
+            private int pariahRun;
+
+            /// <summary>
+            /// Watches one accepted command: every beat it newly put to the player, counted as the airtime
+            /// counts it (a story's beats closing at one anchor are one ask), every summons and play offer,
+            /// and after an Advance whether some houseguest has three houseguests at forty against them.
+            /// The balance lab watches its seasons with this too, so its pace reads as this report's.
+            /// </summary>
+            internal void Watch(EpisodeCommand command, EpisodeState after)
             {
-                var s = engine.Snapshot;
-                var command = StorySeasonTests.StoryNext(s, salt);
-                var result = engine.Apply(command);
-                Assert.That(result.accepted, Is.True, "salt " + salt + ": " + command.kind + ": " + result.reason);
-                var after = result.state;
                 foreach (var beat in EpisodeEngine.OpenStoryBeats(after))
                 {
                     if (!seen.Add(beat.id)) continue;
@@ -60,8 +53,8 @@ namespace Gamesim.Tests.EditMode
                     if (arc?.id == "first-night") continue;
                     if (beat.surface == StorySurfaces.Summons)
                     {
-                        pace.summons++;
-                        pace.summonsByWeek[beat.week] = (pace.summonsByWeek.TryGetValue(beat.week, out var n) ? n : 0) + 1;
+                        summons++;
+                        summonsByWeek[beat.week] = (summonsByWeek.TryGetValue(beat.week, out var n) ? n : 0) + 1;
                         continue;
                     }
                     if (arc?.play != null)
@@ -70,44 +63,65 @@ namespace Gamesim.Tests.EditMode
                         // budget, and a step of a play taken on against nothing.
                         if (beat.contentId != null && beat.contentId.EndsWith(":offer", System.StringComparison.Ordinal))
                         {
-                            pace.playOffers++;
-                            pace.playOffersByWeek[beat.week] = (pace.playOffersByWeek.TryGetValue(beat.week, out var p) ? p : 0) + 1;
+                            playOffers++;
+                            playOffersByWeek[beat.week] = (playOffersByWeek.TryGetValue(beat.week, out var p) ? p : 0) + 1;
                         }
                         continue;
                     }
                     if (!asked.Add(beat.week + "|" + beat.cycleId + "|" + beat.closesAnchor)) continue;
-                    if (!pace.askedByWeek.TryGetValue(beat.week, out var list)) pace.askedByWeek[beat.week] = list = new List<string>();
+                    if (!askedByWeek.TryGetValue(beat.week, out var list)) askedByWeek[beat.week] = list = new List<string>();
                     list.Add((arc?.id ?? "?") + "/" + beat.contentId + " (" + arc?.lane + ", " + beat.surface + (arc?.urgent == true ? ", urgent" : "") + ")");
-                    pace.asks++;
-                    pace.asksByWeek[beat.week] = (pace.asksByWeek.TryGetValue(beat.week, out var m) ? m : 0) + 1;
+                    asks++;
+                    asksByWeek[beat.week] = (asksByWeek.TryGetValue(beat.week, out var m) ? m : 0) + 1;
                     if (arc != null && arc.lane != StoryLanes.Production && !arc.urgent)
                     {
-                        pace.budgetedAsks++;
-                        pace.budgetedByWeek[beat.week] = (pace.budgetedByWeek.TryGetValue(beat.week, out var b) ? b : 0) + 1;
+                        budgetedAsks++;
+                        budgetedByWeek[beat.week] = (budgetedByWeek.TryGetValue(beat.week, out var b) ? b : 0) + 1;
                     }
                 }
                 if (command.kind == EpisodeCommandKind.Advance)
                 {
                     // The reigning Head of Household is exempt, as the pile-on exempts them: every used
                     // veto leaves three nominees resenting the week's HoH by design (plan §5.2).
-                    var pariah = after.Active.Where(c => !c.isPlayer && c.id != after.hohId)
+                    var target = after.Active.Where(c => !c.isPlayer && c.id != after.hohId)
                         .Select(c => (c.id, holders: Grudges.HoldersAgainst(after, c.id, 40).Count(h => after.Find(h)?.status == ContestantStatus.Active)))
                         .Where(x => x.holders >= 3).Select(x => x.id).OrderBy(id => id, StringComparer.Ordinal).FirstOrDefault();
-                    if (pariah != null && pariah == pariahTarget) { if (++pariahRun >= 2) pace.pariah = true; }
-                    else { pariahTarget = pariah; pariahRun = pariah != null ? 1 : 0; }
+                    if (target != null && target == pariahTarget) { if (++pariahRun >= 2) pariah = true; }
+                    else { pariahTarget = target; pariahRun = target != null ? 1 : 0; }
                 }
+            }
+
+            /// <summary>The season's totals, from its final state.</summary>
+            internal void Close(EpisodeState final)
+            {
+                weeks = final.week;
+                weeksWithACard = asksByWeek.Count(x => x.Value > 0);
+                showmances = final.story.bonds.Count(b => b.kind == BondKinds.Showmance && b.aId != final.playerId && b.bId != final.playerId);
+                npcRemovals = final.story.removals.Count(r => r.contestantId != final.playerId);
+                pileOns = final.storylines.Count(x => x.templateId == "the-house-turns");
+                arcsFinished = final.storylines.Count(x => x.status == StorylineStatus.Completed);
+                // Stories, as against moments: the arcs with more than one beat, the plan's "about three".
+                storiesFinished = final.storylines.Count(x => x.status == StorylineStatus.Completed
+                    && (StoryCatalog.Find(x.templateId)?.beats.Length ?? 0) > 1);
+            }
+        }
+
+        /// <summary>Plays a season with the story tests' driver and watches it (<see cref="Pace.Watch"/>).</summary>
+        internal static Pace Measure(EpisodeState initial, int salt)
+        {
+            var engine = new EpisodeEngine(initial);
+            var pace = new Pace { removalWindow = initial.contestants.Count >= 7 };
+            for (int i = 0; i < 4000 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
+            {
+                var s = engine.Snapshot;
+                var command = StorySeasonTests.StoryNext(s, salt);
+                var result = engine.Apply(command);
+                Assert.That(result.accepted, Is.True, "salt " + salt + ": " + command.kind + ": " + result.reason);
+                pace.Watch(command, result.state);
             }
             var final = engine.Snapshot;
             Assert.That(final.phase, Is.EqualTo(EpisodePhase.Finished), "salt " + salt + " did not finish.");
-            pace.weeks = final.week;
-            pace.weeksWithACard = pace.asksByWeek.Count(x => x.Value > 0);
-            pace.showmances = final.story.bonds.Count(b => b.kind == BondKinds.Showmance && b.aId != final.playerId && b.bId != final.playerId);
-            pace.npcRemovals = final.story.removals.Count(r => r.contestantId != final.playerId);
-            pace.pileOns = final.storylines.Count(x => x.templateId == "the-house-turns");
-            pace.arcsFinished = final.storylines.Count(x => x.status == StorylineStatus.Completed);
-            // Stories, as against moments: the arcs with more than one beat, the plan's "about three".
-            pace.storiesFinished = final.storylines.Count(x => x.status == StorylineStatus.Completed
-                && (StoryCatalog.Find(x.templateId)?.beats.Length ?? 0) > 1);
+            pace.Close(final);
             return pace;
         }
 

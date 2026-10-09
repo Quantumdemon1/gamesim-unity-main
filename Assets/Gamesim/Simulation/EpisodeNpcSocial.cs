@@ -93,7 +93,7 @@ namespace Gamesim.Simulation
                     else TickNpcSocial(next, request, result);
                 }
                 next.revision = checked(current.revision + 1);
-                if (!EpisodeValidation.TryValidate(next, out var error)) throw new RuleException("NPC candidate rejected: " + error);
+                if (!Valid(next, out var error)) throw new RuleException("NPC candidate rejected: " + error);
                 result.accepted = true; result.reason = "Prepared; save before install."; result.candidate = next;
                 return result;
             }

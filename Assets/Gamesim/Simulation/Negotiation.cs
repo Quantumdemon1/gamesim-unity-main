@@ -84,7 +84,7 @@ namespace Gamesim.Simulation
             if (!EpisodeEngine.CommitmentRulesOn(s) || !DealKind.IsKnown(kind)) return null;
             var npc = s.Find(npcId);
             if (npc == null || npc.isPlayer || npc.status != ContestantStatus.Active || s.Find(s.playerId)?.status != ContestantStatus.Active) return null;
-            if ((UnifiedCommitments.RulesOn(s) ? CommitmentReferences.DealCount(s) : s.deals.Count) + 2 > PlayerDeals.PlayerDealCeiling) return null;
+            if (UnifiedVoteStore.DealCount(s) + 2 > PlayerDeals.PlayerDealCeiling) return null;
             string about = DealKind.NamesATarget(kind) ? aboutId : null;
             if (!PlayerDeals.CanPropose(s, npcId, kind, about, out _)) return null;
             var price = CounterPrice(s, npcId, kind, about);
@@ -200,10 +200,14 @@ namespace Gamesim.Simulation
         /// <summary>Whether this deal is a price paid for another.</summary>
         public static bool IsPrice(DealState d) => d?.id != null && d.id.StartsWith(PricePrefix, StringComparison.Ordinal);
 
-        /// <summary>The deal linked to this one, or null.</summary>
+        /// <summary>
+        /// The deal linked to this one, or null. In the prospective mode 2 it is found among the canonical rows
+        /// too (vote family V3b): the safety gateways weigh a counter's safety member by what it is linked to.
+        /// </summary>
         public static DealState Linked(EpisodeState s, DealState d) =>
             s?.deals == null || d == null || string.IsNullOrEmpty(d.linkedDealId) ? null
                 : UnifiedCommitments.RulesOn(s) ? CommitmentReferences.FindDeal(s, d.linkedDealId)
+                : UnifiedVoteStore.On(s) ? UnifiedVoteStore.Deals(s).FirstOrDefault(x => x.id == d.linkedDealId)
                 : s.deals.FirstOrDefault(x => x.id == d.linkedDealId);
 
         /// <summary>The price paid for this deal, or null: the deal linked to it, when that is the price.</summary>
@@ -258,7 +262,7 @@ namespace Gamesim.Simulation
         {
             if (!EpisodeEngine.CommitmentRulesOn(s) || ask == null || ask.type != DealKind.VetoUse || ask.recipientId != s.playerId
                 || ask.id == null || !ask.id.StartsWith(NpcDeals.VetoAskPrefix, StringComparison.Ordinal)) return null;
-            if ((UnifiedCommitments.RulesOn(s) ? CommitmentReferences.DealCount(s) : s.deals.Count) >= NpcDeals.DealCeiling) return null;
+            if (UnifiedVoteStore.DealCount(s) >= NpcDeals.DealCeiling) return null;
             return VetoPrice(s, ask.proposerId, null);
         }
 
@@ -694,7 +698,7 @@ namespace Gamesim.Simulation
         public static string VetoPriceRefusal(EpisodeState s, string nomineeId, string kind)
         {
             if (!EpisodeEngine.CommitmentRulesOn(s)) return NotThisSeason;
-            if ((UnifiedCommitments.RulesOn(s) ? CommitmentReferences.DealCount(s) : s.deals.Count) + 2 > PlayerDeals.PlayerDealCeiling) return TooManyArrangements;
+            if (UnifiedVoteStore.DealCount(s) + 2 > PlayerDeals.PlayerDealCeiling) return TooManyArrangements;
             if (s.phase != EpisodePhase.VetoMeeting || s.vetoResolved || s.vetoHolderId != s.playerId || !StrategyRules.VetoCanBeUsed(s))
                 return "Only the veto holder can name a price, before the veto meeting decides.";
             if (string.IsNullOrEmpty(nomineeId) || nomineeId == s.playerId || !s.nominees.Contains(nomineeId))
@@ -728,7 +732,7 @@ namespace Gamesim.Simulation
 
         /// <summary>Whether a deal of this kind - about this houseguest, where it names one - already binds the two of them, or waits on an answer.</summary>
         public static bool Binding(EpisodeState s, string a, string b, string kind, string aboutId) =>
-            (UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Deals(s) : s.deals)
+            UnifiedVoteStore.Deals(s)
                 .Any(d => DealStatus.Binds(d.status) && d.type == kind && Pair(d, a, b) && (aboutId == null || d.targetId == aboutId));
 
         private static bool Pair(DealState d, string a, string b) =>

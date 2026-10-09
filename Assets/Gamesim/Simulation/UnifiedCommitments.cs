@@ -21,6 +21,9 @@ namespace Gamesim.Simulation
         public string brokenById, trustImpact, linkedCommitmentId, settlementEffectKey;
         // Schema 26 storage only. Safety has neither a vote target nor a vote subtype.
         public string targetId, subtype;
+        // Schema 27 chronology storage only. Public Safety/legacy modes keep both zero;
+        // no owner infers either binding or disclosure from a migrated historical record.
+        public int voteBindingWeek, voteFirstRevealWeek;
 
         // All members are scalars or immutable strings. Deep-copy any collections added in a later family.
         public UnifiedCommitmentState Clone() => (UnifiedCommitmentState)MemberwiseClone();
@@ -69,6 +72,8 @@ namespace Gamesim.Simulation
     /// Pure Safety policy; the engine owns activated writers and settlement transactions. Every
     /// returned row is detached. No helper changes state, rolls, relationships, memories, facts or
     /// commands. Public enabled mode requires active C0 and story knowledge. Other families are refused.
+    /// The policy answers wherever canonical Safety is the authority (<see cref="SafetyAuthorityOn"/>):
+    /// in the prospective mode 2 it reads only the Safety rows beside the Vote family's.
     /// </summary>
     public static class UnifiedCommitments
     {
@@ -79,6 +84,17 @@ namespace Gamesim.Simulation
         public const string CounterDeal = "counter-deal", CounterPrice = "counter-price";
 
         public static bool RulesOn(EpisodeState state) => state != null && state.unifiedCommitmentRulesVersion == ProspectiveVersion;
+
+        /// <summary>
+        /// Whether canonical Safety rows are the season's one Safety authority: the public mode 1, and the
+        /// prospective mode 2 (vote family V3b), which keeps the Vote family's canonical rows beside them.
+        /// The Safety writers, the nomination, spared and expiry gateways and the hearing lineage they
+        /// install select it; a reader not yet moved stays on <see cref="RulesOn"/> (vote family V5). Mode 2
+        /// is still refused publicly, so no recorded season reaches it.
+        /// </summary>
+        public static bool SafetyAuthorityOn(EpisodeState state) => state != null
+            && (state.unifiedCommitmentRulesVersion == ProspectiveVersion
+                || state.unifiedCommitmentRulesVersion == UnifiedVoteFamilyValidation.Version);
 
         public static bool IsPromiseOrigin(string origin) => origin == PlayerPromise || origin == NpcPromise || origin == StoryPromise || origin == HoHPitch;
         public static bool IsDealOrigin(string origin) => origin == PlayerDeal || origin == NpcDeal || origin == NpcOffer
@@ -91,9 +107,18 @@ namespace Gamesim.Simulation
         public static bool ValidateRow(EpisodeState state, UnifiedCommitmentState row, out string error)
         {
             error = null;
-            if (!RulesOn(state)) return Refuse(out error, "Unified commitments are not enabled.");
+            if (!SafetyAuthorityOn(state)) return Refuse(out error, "Unified commitments are not enabled.");
+            return ValidateSafetyRowCore(state, row, out error);
+        }
+
+        // Prospective aggregate validator calls the identical Safety policy without relabeling
+        // a mixed state as version1. This is not a public authority or writer entry.
+        internal static bool ValidateSafetyRowCore(EpisodeState state, UnifiedCommitmentState row, out string error)
+        {
+            error = null;
             if (!IdentityContextValid(state) || row == null || !Token(row.id) || row.kind != Safety
                 || row.targetId != null || row.subtype != null
+                || row.voteBindingWeek != 0 || row.voteFirstRevealWeek != 0
                 || !Token(row.makerId) || !Token(row.beneficiaryId) || row.makerId == row.beneficiaryId
                 || state.Find(row.makerId) == null || state.Find(row.beneficiaryId) == null)
                 return Refuse(out error, "Invalid canonical safety identity.");
@@ -162,12 +187,44 @@ namespace Gamesim.Simulation
             return (promises <= FamilyCapacity && deals <= FamilyCapacity) || Refuse(out error, "Commitment family capacity exceeded.");
         }
 
+        /// <summary>
+        /// The Safety authority's own storage check, run before a Safety write or settlement reads the rows.
+        /// In mode 1 it is <see cref="ValidateRecords"/> exactly. In the prospective mode 2 it is what those
+        /// checks mean beside the Vote family: every Safety row under the unchanged Safety policy, no raw
+        /// Safety mirror, identities unique across all three lists, and the two 200-row source-policy
+        /// capacities counting every family's rows. The Vote rows are the Vote family's to judge
+        /// (<see cref="UnifiedVoteFamilyValidation"/>). Like mode 1's, it reads only the commitment lists and
+        /// the cast, never the rest of a state a command is still changing.
+        /// </summary>
+        internal static bool ValidateSafetyAuthority(EpisodeState state, out string error)
+        {
+            if (RulesOn(state)) return ValidateRecords(state, out error);
+            error = null;
+            if (state == null || state.unifiedCommitmentRulesVersion != UnifiedVoteFamilyValidation.Version
+                || state.unifiedCommitments == null || state.promises == null || state.deals == null
+                || state.unifiedCommitments.Any(row => row == null) || state.promises.Any(row => row == null)
+                || state.deals.Any(row => row == null) || !IdentityContextValid(state)
+                || state.unifiedCommitments.Count > FamilyCapacity * 2)
+                return Refuse(out error, "Invalid prospective commitment storage.");
+            if (state.promises.Any(row => row.kind == PromiseKind.Safety) || state.deals.Any(row => row.type == DealKind.SafetyAgreement))
+                return Refuse(out error, "Legacy safety rows must not mirror the prospective canonical authority.");
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            foreach (string id in state.promises.Select(row => row.id).Concat(state.deals.Select(row => row.id))
+                         .Concat(state.unifiedCommitments.Select(row => row.id)))
+                if (!Token(id) || !ids.Add(id)) return Refuse(out error, "Canonical identity collides with another commitment.");
+            foreach (var row in state.unifiedCommitments.Where(row => row.kind == Safety))
+                if (!ValidateSafetyRowCore(state, row, out error)) return false;
+            int promises = state.promises.Count + state.unifiedCommitments.Count(row => row.sourcePolicy == PromisePolicy);
+            int deals = state.deals.Count + state.unifiedCommitments.Count(row => row.sourcePolicy != PromisePolicy);
+            return (promises <= FamilyCapacity && deals <= FamilyCapacity) || Refuse(out error, "Commitment family capacity exceeded.");
+        }
+
         /// <summary>One-draft capacity/admissibility only; a linked counter bundle still requires atomic two-row reservation.</summary>
         public static bool CanOffer(EpisodeState state, UnifiedCommitmentState offer, bool playerProposal, out string error)
         {
             error = null;
-            if (!RulesOn(state)) return Refuse(out error, "Unified commitments are not enabled.");
-            if (!ValidateRecords(state, out error) || !ValidateRow(state, offer, out error)) return false;
+            if (!SafetyAuthorityOn(state)) return Refuse(out error, "Unified commitments are not enabled.");
+            if (!ValidateSafetyAuthority(state, out error) || !ValidateRow(state, offer, out error)) return false;
             if (offer.createdWeek != state.week || (offer.status != DealStatus.Active && offer.status != DealStatus.Proposed)
                 || !Active(state, offer.makerId) || !Active(state, offer.beneficiaryId)) return Refuse(out error, "Offer current safety between active houseguests.");
             if (playerProposal != (offer.origin == PlayerDeal))
@@ -179,7 +236,8 @@ namespace Gamesim.Simulation
                 : state.deals.Count + state.unifiedCommitments.Count(row => row.sourcePolicy == DealPolicy);
             int capacity = playerProposal || offer.origin == CounterDeal || offer.origin == CounterPrice ? PlayerDeals.PlayerDealCeiling : FamilyCapacity;
             if (used >= capacity) return Refuse(out error, "The source commitment record is full.");
-            if (state.unifiedCommitments.Any(row => DealStatus.Binds(row.status) && SameDutyAndTerm(row, offer)))
+            // Only a Safety row can stand for a Safety duty; mode 2's Vote rows have duties of their own.
+            if (state.unifiedCommitments.Any(row => row.kind == Safety && DealStatus.Binds(row.status) && SameDutyAndTerm(row, offer)))
                 return Refuse(out error, "The same safety duty and term already stand.");
             return true;
         }
@@ -189,7 +247,7 @@ namespace Gamesim.Simulation
             => CanOffer(state, offer, playerProposal, out error) ? offer.Clone() : null;
 
         public static UnifiedCommitmentState Find(EpisodeState state, string id)
-            => !RulesOn(state) ? null : CheckedRows(state).FirstOrDefault(row => row.id == id)?.Clone();
+            => !SafetyAuthorityOn(state) ? null : CheckedRows(state).FirstOrDefault(row => row.id == id)?.Clone();
 
         /// <summary>
         /// Like the source readers, reads stored Active status; it does not opportunistically lapse a
@@ -197,7 +255,7 @@ namespace Gamesim.Simulation
         /// </summary>
         public static IReadOnlyList<UnifiedCommitmentState> Binding(EpisodeState state, string makerId, string beneficiaryId)
         {
-            if (!RulesOn(state)) return Array.Empty<UnifiedCommitmentState>();
+            if (!SafetyAuthorityOn(state)) return Array.Empty<UnifiedCommitmentState>();
             var rows = CheckedRows(state);
             if (!Active(state, makerId) || !Active(state, beneficiaryId) || makerId == beneficiaryId) return Array.Empty<UnifiedCommitmentState>();
             return Array.AsReadOnly(rows.Where(row => row.status == DealStatus.Active && Protects(row, makerId, beneficiaryId))
@@ -210,7 +268,7 @@ namespace Gamesim.Simulation
         /// </summary>
         public static UnifiedCommitmentProtection StrongestProtection(EpisodeState state, string makerId, string beneficiaryId)
         {
-            if (!RulesOn(state) || !StrategyRules.Apply(state)) return new UnifiedCommitmentProtection(0, null, Array.Empty<string>());
+            if (!SafetyAuthorityOn(state) || !StrategyRules.Apply(state)) return new UnifiedCommitmentProtection(0, null, Array.Empty<string>());
             var rows = Binding(state, makerId, beneficiaryId);
             double strongest = 0; string owner = null;
             foreach (var row in rows)
@@ -226,7 +284,7 @@ namespace Gamesim.Simulation
 
         public static UnifiedCommitmentEvaluation EvaluateNomination(EpisodeState state, string decisionId, string actorId, IReadOnlyList<string> actionNominees)
         {
-            if (!RulesOn(state)) return Empty();
+            if (!SafetyAuthorityOn(state)) return Empty();
             var rows = CheckedRows(state);
             CheckDecision(state, decisionId, actorId, actionNominees);
             var changes = new List<UnifiedCommitmentChange>(); var incidents = new List<UnifiedCommitmentIncident>();
@@ -250,7 +308,7 @@ namespace Gamesim.Simulation
         /// <summary>Caller supplies the final post-veto block, not an intermediate save/replacement frame.</summary>
         public static UnifiedCommitmentEvaluation EvaluateFinalVetoSpared(EpisodeState state, string hohId, IReadOnlyList<string> finalBlock)
         {
-            if (!RulesOn(state)) return Empty();
+            if (!SafetyAuthorityOn(state)) return Empty();
             var rows = CheckedRows(state);
             CheckDecision(state, "final-veto", hohId, finalBlock);
             var changes = new List<UnifiedCommitmentChange>();
@@ -266,7 +324,7 @@ namespace Gamesim.Simulation
 
         public static UnifiedCommitmentEvaluation Expire(EpisodeState state, UnifiedCommitmentExpiry boundary, string departedId = null)
         {
-            if (!RulesOn(state)) return Empty();
+            if (!SafetyAuthorityOn(state)) return Empty();
             var rows = CheckedRows(state);
             if (!Enum.IsDefined(typeof(UnifiedCommitmentExpiry), boundary)) throw new ArgumentOutOfRangeException(nameof(boundary));
             if ((boundary == UnifiedCommitmentExpiry.Departure || boundary == UnifiedCommitmentExpiry.Expulsion)
@@ -310,8 +368,9 @@ namespace Gamesim.Simulation
             row.makerId == actor && row.beneficiaryId == wronged || row.reciprocal && row.beneficiaryId == actor && row.makerId == wronged;
         private static List<UnifiedCommitmentState> CheckedRows(EpisodeState state)
         {
-            if (!ValidateRecords(state, out string error)) throw new ArgumentException(error, nameof(state));
-            return state.unifiedCommitments;
+            if (!ValidateSafetyAuthority(state, out string error)) throw new ArgumentException(error, nameof(state));
+            // Mode 2 keeps the Vote family's canonical rows beside Safety's: this policy reads only its own.
+            return RulesOn(state) ? state.unifiedCommitments : state.unifiedCommitments.Where(row => row.kind == Safety).ToList();
         }
         private static void CheckDecision(EpisodeState state, string decisionId, string actor, IReadOnlyList<string> nominees)
         {

@@ -78,7 +78,7 @@ namespace Gamesim.Episode
             // A menu, not a beat of the week: its own tall panel and its own head (mockup
             // language: the glyph, the title, the eyebrow), with its rows under section labels.
             hud.SetActivityLayout(EpisodeHud.ActivityLayout.Settings);
-            hud.ScreenHeader(EpisodeHud.SettingsHeaderName, "OFFLINE \u00b7 NO ACCOUNT NEEDED",
+            hud.ScreenHeader(EpisodeHud.SettingsHeaderName, SettingsEyebrow(),
                 blockedRecovery ? "SAVE RECOVERY" : "SETTINGS & SAVES", UiTheme.Icon("settings"));
             hud.Aside("Offline play is available. No credentials or online connection are required.");
             hud.Section("YOUR SAVE");
@@ -117,6 +117,7 @@ namespace Gamesim.Episode
             hud.Paragraph("Supports receipt-free, six-active-cast social snapshots. Complex in-progress web saves are rejected and archived unchanged, never silently simplified.");
             hud.PathInput("Full path to exported JSON", ImportFile);
             hud.Paragraph("Optional cloud login and generated AI dialogue are not configured. The local episode never waits for those services.");
+            ControlsSettings();
         }
 
         public void SaveNow()
@@ -188,6 +189,8 @@ namespace Gamesim.Episode
         private void OpenSettingsFromMenu()
         {
             if (mainMenu != null) mainMenu.Hide();
+            // Not the pause menu: nothing the player was in is held behind these (A3).
+            settingsFromFrontDoor = true;
             OpenSettings();
         }
 
@@ -259,6 +262,19 @@ namespace Gamesim.Episode
         /// that reason and everything they had set on it intact. Nothing is shown when it is null.
         /// </summary>
         public void StartSeason(SeasonBuilder.Choice choice, Action<string> failed)
+            => StartSeason(choice, failed, seed => choice == null ? ContentCatalog.Create(seed) : SeasonBuilder.Create(choice, seed));
+
+        /// <summary>
+        /// <b>Verification only:</b> the standalone profile's stress house, thirteen to sixteen
+        /// houseguests from both rosters (<see cref="SeasonBuilder.CreateVerificationStressHouse"/>),
+        /// started exactly as any season is. Internal, and called from nowhere but
+        /// <see cref="PortVerification"/> under <c>--gamesim-verify --gamesim-stress-roster</c>: the
+        /// cast screen, the creator and the importer cannot reach it.
+        /// </summary>
+        internal void StartVerificationStressSeason(int houseSize)
+            => StartSeason(null, null, seed => SeasonBuilder.CreateVerificationStressHouse(houseSize, seed));
+
+        private void StartSeason(SeasonBuilder.Choice choice, Action<string> failed, Func<uint, EpisodeState> build)
         {
             if (durableCommitInProgress) return;
             SuspendNpcWorldWithoutSaving();
@@ -267,31 +283,11 @@ namespace Gamesim.Episode
             {
                 var seed = unchecked((uint)DateTime.UtcNow.Ticks);
                 var nextStore = new EpisodeSaveStore(Path.Combine(saveRoot, "episode-" + Guid.NewGuid().ToString("N") + ".json"));
-                var fresh = choice == null ? ContentCatalog.Create(seed) : SeasonBuilder.Create(choice, seed);
-                fresh.competitionRulesVersion = CompetitionRules.Current;
-                fresh.haveNotRulesStartWeek = 1;
-                fresh.strategyRulesStartWeek = 1;
-                // Every season the director starts plays under the story system from week one:
-                // arcs, grudges, lore, bonds and production. Seasons built directly by tests and
-                // the default scene engine stay off unless they switch it on themselves.
-                EpisodeEngine.EnableStory(fresh);
-                EpisodeEngine.EnableRead(fresh);
-                EpisodeEngine.EnableLevers(fresh);
-                EpisodeEngine.EnableWeek(fresh);
-                EpisodeEngine.EnableEconomy(fresh);
-                // NPC agency from week one, and with it the house's first impressions of each other
-                // and of the player's persona (NPC-AGENCY-PLAN.md §2).
-                EpisodeEngine.EnableAgency(fresh);
-                // The finale rules (ENDGAME-PLAN §3): history questions, the five responses, the argument.
-                EpisodeEngine.EnableFinale(fresh);
-                // The commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN R0, C0): study costs the window's
-                // action, a whisper reaches who it is told to, a breach counts against whoever broke it.
-                EpisodeEngine.EnableCommitments(fresh);
-                // Fresh playable seasons use canonical Safety and durable hearing authority from
-                // the start, with C0 and story knowledge already active. Do not infer this opt-in
-                // while loading, recovering, migrating or importing an existing legacy season.
-                fresh.unifiedCommitmentRulesVersion = UnifiedCommitments.ProspectiveVersion;
-                fresh.unifiedHearingRulesVersion = UnifiedCommitmentHearings.ProspectiveVersion;
+                var fresh = build(seed);
+                // Every rule a fresh season plays under, from week one, in one place shared with the
+                // balance harness: a rule the shipped game gains goes into ShippedRules.ApplyFresh, never
+                // here (StressHouseTests reads this body and fails on a rule field set beside it).
+                ShippedRules.ApplyFresh(fresh);
                 CharacterAppearanceSnapshots.Materialize(fresh);
                 fresh.sessionId = Guid.NewGuid().ToString("N");
                 nextStore.Save(fresh); // Stage and validate on disk before replacing the current in-memory session.

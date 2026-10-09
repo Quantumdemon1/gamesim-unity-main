@@ -99,9 +99,11 @@ namespace Gamesim.Simulation
             if (hoh == null || evicted == null || s.nominees.Count != 2) return;
             string target = s.nominees.OrderBy(id => s.Score(hoh.id, id)).ThenBy(id => id, StringComparer.Ordinal).First();
             if (target == evicted) return;
+            // Mode 2 (vote family V4): the vote deals are canonical rows; read them with the raw ones, as one list.
+            var deals = UnifiedVoteStore.On(s) ? UnifiedVoteReferences.DealsUnchecked(s) : (IReadOnlyList<DealState>)s.deals;
             foreach (var vote in s.votes.Where(v => v.voterId != hoh.id && v.targetId != target))
             {
-                bool meantToBeWithThem = s.Allied(hoh.id, vote.voterId) || s.deals.Any(d =>
+                bool meantToBeWithThem = s.Allied(hoh.id, vote.voterId) || deals.Any(d =>
                     (d.type == DealKind.VoteTogether || d.type == DealKind.VoteEvict || d.type == DealKind.TargetAgreement)
                     && (d.status == DealStatus.Active || d.status == DealStatus.Broken || d.status == DealStatus.Fulfilled) && d.week == s.week
                     && ((d.proposerId == hoh.id && d.recipientId == vote.voterId) || (d.proposerId == vote.voterId && d.recipientId == hoh.id)));
@@ -331,7 +333,8 @@ namespace Gamesim.Simulation
             NpcAlliances.EndBroken(s);
             s.oathOpportunities.Remove(id);
             s.loyaltyOaths.RemoveAll(o => o.playerId == id || o.targetId == id);
-            if (UnifiedCommitments.RulesOn(s)) ResolveUnifiedSafetyExpiry(s, UnifiedCommitmentExpiry.Expulsion, id);
+            ResolveUnifiedVoteExpiry(s, UnifiedCommitmentExpiry.Expulsion, id);
+            if (UnifiedCommitments.SafetyAuthorityOn(s)) ResolveUnifiedSafetyExpiry(s, UnifiedCommitmentExpiry.Expulsion, id);
             foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && (p.fromId == id || p.toId == id)))
                 promise.status = PromiseStatus.Expired;
             foreach (var deal in s.deals.Where(d => DealStatus.Binds(d.status) && (d.proposerId == id || d.recipientId == id || d.targetId == id)))
@@ -365,8 +368,11 @@ namespace Gamesim.Simulation
         /// <summary>The systems that run at particular anchors, before any cycle pulses.</summary>
         private static void StorySystemsAt(EpisodeState s, string anchor)
         {
-            if (UnifiedCommitmentHearings.RulesOn(s)) UnifiedCommitmentHearings.RequireValid(s);
+            if (UnifiedCommitmentHearings.WritesOn(s)) UnifiedCommitmentHearings.RequireValid(s);
             if (anchor == StoryAnchors.EvictionNight && StoryAt(s, StoryRules.Bonds)) NpcShowmancePass(s);
+            // The weekly leak (WAVE-D-NPC-PACTS-PLAN §2.3): after the showmances, before the gossip, so the
+            // same anchor's gossip can carry a pact that has just got out.
+            if (anchor == StoryAnchors.EvictionNight && AllianceLeaks.On(s)) LeakPass(s);
             if (StoryAt(s, StoryRules.Bonds) && anchor != StoryAnchors.Conversation)
                 foreach (var (fact, listener) in Knowledge.Spread(s, anchor))
                 {
@@ -374,6 +380,9 @@ namespace Gamesim.Simulation
                     // Your word in the house (ACTIONS-DEALS-ALLIANCES-PLAN C8): a houseguest the gossip
                     // tells of the player's broken word thinks less of them, and the player hears who.
                     else if (YourWord.On(s) && YourWord.IsYours(s, fact)) HeardOfYourWord(s, fact, listener);
+                    // Double-dealing (WAVE-D-NPC-PACTS-PLAN §2.3): an ally of the player's the gossip tells
+                    // of the player's other pact holds it against them, and the player hears who.
+                    else if (AllianceLeaks.On(s)) CaughtDoubleDealing(s, fact, listener);
                 }
         }
 
@@ -383,7 +392,14 @@ namespace Gamesim.Simulation
             string actor = s.Find(fact.actorId)?.name ?? "somebody", subject = s.Find(fact.subjectId)?.name ?? "somebody";
             switch (fact.kind)
             {
-                case FactKinds.Alliance: return "Word in the house: " + actor + " and " + subject + " are working together.";
+                case FactKinds.Alliance:
+                {
+                    // Under the leak rules the whisper names everyone in it (WAVE-D-NPC-PACTS-PLAN §2.3), so it
+                    // can only be about this pact; for a pair it is the two names it always said.
+                    var pact = AllianceLeaks.On(s) ? s.alliances.FirstOrDefault(a => a?.id == fact.refId) : null;
+                    if (pact != null) return AllianceLeaks.WhisperLine(s, pact);
+                    return "Word in the house: " + actor + " and " + subject + " are working together.";
+                }
                 case FactKinds.Couple: return "Word in the house: " + actor + " and " + subject + " are more than friends.";
                 case FactKinds.BrokenWord: return "Word in the house: " + actor + " went back on their word to " + subject + ".";
                 case FactKinds.Strike: return "Word in the house: " + actor + " was called to the Diary Room and came back quiet.";

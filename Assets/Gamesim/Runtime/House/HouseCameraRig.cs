@@ -193,9 +193,11 @@ namespace Gamesim.House
             if (isActiveAndEnabled) actions.Enable();
         }
 
-        private void OnEnable() { EnsureActions(); actions.Enable(); }
-        private void OnDisable() { actions?.Disable(); }
-        private void OnDestroy() { actions?.Dispose(); actions = null; }
+        // While enabled, the rig's actions are the ones the rest of the house reads (HouseInput):
+        // one asset, so a rebinding on the rig reaches the cards, the boards and the HUD's ring too.
+        private void OnEnable() { EnsureActions(); actions.Enable(); HouseInput.Register(actions); }
+        private void OnDisable() { HouseInput.Unregister(actions); actions?.Disable(); }
+        private void OnDestroy() { HouseInput.Unregister(actions); actions?.Dispose(); actions = null; }
 
         private void Awake()
         {

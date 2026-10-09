@@ -274,8 +274,8 @@ namespace Gamesim.Presentation
         public void SyncHoldKey()
         {
             if (!IsPlaying || run == null || run.Kind != CompetitionMiniGames.Kind.Endurance) return;
-            var keyboard = Keyboard.current; var pad = Gamepad.current;
-            bool down = (keyboard != null && keyboard.spaceKey.isPressed) || (pad != null && pad.rightTrigger.isPressed);
+            // The Competition map's Hold: Space or the right trigger, as a level.
+            bool down = Gamesim.House.HouseInput.Actions.CompetitionHold.IsPressed();
             if (down == holdKeyWasDown) return;
             run.SetHolding(down); holdKeyWasDown = down;
         }

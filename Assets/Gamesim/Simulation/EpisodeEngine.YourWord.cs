@@ -23,7 +23,7 @@ namespace Gamesim.Simulation
         {
             var listener = s.Find(listenerId);
             if (listener == null || listener.isPlayer) return;
-            if (UnifiedCommitmentHearings.RulesOn(s) && UnifiedCommitmentHearings.CanonicalLeaf(s, fact))
+            if (UnifiedCommitmentHearings.WritesOn(s) && UnifiedCommitmentHearings.CanonicalLeaf(s, fact))
             {
                 var staged = UnifiedCommitmentHearings.PrepareHearing(s, fact, listenerId, out bool added);
                 if (added)

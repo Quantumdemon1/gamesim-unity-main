@@ -21,6 +21,76 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 28) return (JObject)original.DeepClone();
+            if (version < 1 || version > 27) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV27ToV28(version == 27 ? original : PrepareV27Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds only Wave D's inert storage (WAVE-D-NPC-PACTS-PLAN §0.3) after the complete fixed27
+        /// public contract accepts the original payload: three zero start weeks, D2's empty beat
+        /// cadence on the NPC world and D3's empty plan list on the ledger. Literals only - no start
+        /// week, beat, act, plan, line or receipt is inferred, and no random stream moves.
+        /// </summary>
+        public static JObject UpgradeV27ToV28(JObject original)
+        {
+            FrozenEpisodeV27.Validate(original);
+            var result = (JObject)original.DeepClone();
+            result.Add("allianceLeakRulesStartWeek", 0);
+            result.Add("pactPlanRulesStartWeek", 0);
+            result.Add("allWeekRulesStartWeek", 0);
+            var social = (JObject)result["npcSocial"];
+            social.Add("beatWeek", 0);
+            social.Add("beatWindow", -1);
+            social.Add("beatsFired", 0);
+            social.Add("beatSeats", 0);
+            social.Add("beatPlan", new JArray());
+            social.Add("acts", new JArray());
+            ((JObject)result["ledger"]).Add("plans", new JArray());
+            result["schemaVersion"] = 28;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v26-to-v27 dispatch; every historical step retains its original output.</summary>
+        public static JObject PrepareV27Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
+            if (version == 27) return (JObject)original.DeepClone();
+            if (version < 1 || version > 26) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV26ToV27(version == 26 ? original : PrepareV26Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds only zero chronology markers after the complete fixed26 public contract accepts
+        /// the original payload. No binding, disclosure, Vote authority or historical ballot is inferred.
+        /// </summary>
+        public static JObject UpgradeV26ToV27(JObject original)
+        {
+            FrozenEpisodeV26.Validate(original);
+            var result = (JObject)original.DeepClone();
+            foreach (JObject row in (JArray)result["unifiedCommitments"])
+            {
+                row.Add("voteBindingWeek", 0);
+                row.Add("voteFirstRevealWeek", 0);
+            }
+            result["schemaVersion"] = 27;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v25-to-v26 dispatch; every historical step retains its original output.</summary>
+        public static JObject PrepareV26Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 26) return (JObject)original.DeepClone();
             if (version < 1 || version > 25) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV25ToV26(version == 25 ? original : PrepareV25Payload(original, out _));

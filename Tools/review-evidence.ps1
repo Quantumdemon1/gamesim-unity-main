@@ -76,6 +76,29 @@ function Get-ReviewProjectUmaOverrides {
     }
     return $paths
 }
+# A build tree against the tree its build evidence recorded (build-review-candidate.ps1's
+# <prefix>-build-tree.json files): every file by relative path and SHA-256, nothing missing,
+# changed or extra. Writes one line per difference; nothing means the trees are the same build.
+function Compare-ReviewBuildTree([string]$Root, $RecordedFiles) {
+    $recorded = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
+    foreach ($entry in @($RecordedFiles)) {
+        $path = [string]$entry.path
+        if ([string]::IsNullOrEmpty($path) -or $recorded.ContainsKey($path)) { throw "The recorded build tree lists '$path' twice or without a path." }
+        $recorded[$path] = ([string]$entry.sha256).ToLowerInvariant()
+    }
+    $base = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\', '/')
+    $actual = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
+    foreach ($file in @(Get-ChildItem -LiteralPath $base -File -Recurse -Force)) {
+        $actual[$file.FullName.Substring($base.Length + 1).Replace('\', '/')] = Get-ReviewHash $file.FullName
+    }
+    foreach ($path in @($recorded.Keys | Sort-Object)) {
+        if (-not $actual.ContainsKey($path)) { "missing $path" }
+        elseif ($actual[$path] -ne $recorded[$path]) { "changed $path" }
+    }
+    foreach ($path in @($actual.Keys | Sort-Object)) {
+        if (-not $recorded.ContainsKey($path)) { "extra $path" }
+    }
+}
 function Write-ReviewJson($Value, [string]$Path) {
     ConvertTo-Json -InputObject $Value -Depth 12 | Set-Content -LiteralPath $Path -Encoding utf8
 }

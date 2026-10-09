@@ -40,8 +40,9 @@
       Tests that touch nothing but System, NUnit, Newtonsoft and Gamesim.Simulation. Nothing of
       Unity's is stubbed: the web parity tests find their fixtures through Application.dataPath
       only under UNITY_EDITOR, and beside the binary otherwise. Tests that parse through
-      JsonUtility or reach Gamesim.Persistence are deliberately NOT here - standing Newtonsoft in
-      for JsonUtility would change what is being tested.
+      JsonUtility or growing Gamesim.Persistence owners are deliberately NOT here - standing
+      Newtonsoft in for JsonUtility would change what is being tested. The narrow fixed JSON
+      historical-contract exception below never includes a live serializer, save store or migration.
     -->
     <Compile Include="$(EditMode)CastSizeTests.cs" />
     <Compile Include="$(EditMode)CompetitionRulesV4Tests.cs" />
@@ -73,10 +74,28 @@
     <Compile Include="$(EditMode)CommitmentRulesTests.cs" />
     <Compile Include="$(EditMode)UnifiedCommitmentsTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteInertSchema26Tests.cs" />
+    <Compile Include="$(EditMode)UnifiedVoteInertSchema27Tests.cs" />
+    <Compile Include="$(EditMode)LegacyDigestSchema27Observer.cs" />
+    <Compile Include="$(EditMode)LegacyDigestSchema27ObserverTests.cs" />
+    <Compile Include="$(EditMode)WaveDInertSchema28Tests.cs" />
+    <Compile Include="$(EditMode)LegacyDigestSchema28Observer.cs" />
+    <Compile Include="$(EditMode)LegacyDigestSchema28ObserverTests.cs" />
+    <Compile Include="$(EditMode)FrozenEpisodeV27ContractTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteTogetherTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteCompletedRevealTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteRevealArchiveTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteObligationsTests.cs" />
+    <Compile Include="$(EditMode)ProspectiveVoteFacade.cs" />
+    <Compile Include="$(EditMode)PinnedVoteSeason.cs" />
+    <Compile Include="$(EditMode)UnifiedVoteProspectiveAdmissionTests.cs" />
+    <Compile Include="$(EditMode)UnifiedVoteProspectiveJuryTests.cs" />
+    <Compile Include="$(EditMode)UnifiedVoteProspectiveWholeStateTests.cs" />
+    <Compile Include="$(EditMode)ProspectiveVoteTwins.cs" />
+    <Compile Include="$(EditMode)UnifiedVoteEngineSeamTests.cs" />
+    <Compile Include="$(EditMode)UnifiedVoteCreatorTests.cs" />
+    <Compile Include="$(EditMode)UnifiedSafetyModeTwoTests.cs" />
+    <Compile Include="$(EditMode)UnifiedVoteSettlementTests.cs" />
+    <Compile Include="$(EditMode)OrdinaryVoterRemovalTests.cs" />
     <Compile Include="$(EditMode)CommitmentReferencesTests.cs" />
     <Compile Include="$(EditMode)UnifiedCommitmentStoreTests.cs" />
     <Compile Include="$(EditMode)UnifiedSafetyCommandOwnerTests.cs" />
@@ -106,6 +125,30 @@
     <Compile Include="$(EditMode)EndgameCommitmentsTests.cs" />
     <!-- Explicit, and compiled out of Unity: the commitment rules' recorded-season evidence, run on demand. -->
     <Compile Include="$(EditMode)CommitmentRulesSeasonDigests.cs" />
+    <!--
+      Independent fixed JSON contracts ONLY: a source-bound test observer validates a separate
+      public-field view, while legacy digest traces retain their getters and original bytes.
+      These seventeen immutable BCL/Newtonsoft sources are not growing Persistence. This pure
+      structural/historical inverse is distinct from actual native SaveJson/migration/disk tests.
+      Never replace these explicit entries with a Persistence wildcard or add Unity stubs.
+    -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenEpisodeV27.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenEpisodeV26.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenEpisodeV25.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Data.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Shape.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.Ballots.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.Finale.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.Leaves.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.Ledger.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.NpcSocial.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.SafetyLeaves.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.SafetyReferences.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.SocialHistory.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.Storage.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.Story.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.Vocabulary.cs" />
     <!-- Explicit, and compiled out of Unity: the final Head of Household's choice over sampled seasons (C9), run on demand. -->
     <Compile Include="$(EditMode)FinalChoiceSeasonHarness.cs" />
     <Compile Include="$(EditMode)CampaignBriefTests.cs" />
@@ -113,6 +156,13 @@
     <Compile Include="$(EditMode)FinalistReadTests.cs" />
     <Compile Include="$(EditMode)KnownOddsTests.cs" />
     <Compile Include="$(EditMode)AllianceReadTests.cs" />
+    <Compile Include="$(EditMode)AllianceLeakTests.cs" />
+    <!-- Explicit, and compiled out of Unity: D4's recorded-season evidence over the digests' 54 seasons, run on demand. -->
+    <Compile Include="$(EditMode)AllianceLeakSeasonDigests.cs" />
+    <Compile Include="$(EditMode)PactPlanTests.cs" />
+    <Compile Include="$(EditMode)PactPlanReaderTests.cs" />
+    <!-- Explicit, and compiled out of Unity: D3's recorded-season evidence over the digests' 54 seasons, run on demand. -->
+    <Compile Include="$(EditMode)PactPlanSeasonDigests.cs" />
     <Compile Include="$(EditMode)FinalBracketTests.cs" />
     <Compile Include="$(EditMode)JuryHouseReadTests.cs" />
     <Compile Include="$(EditMode)FinaleRulesTests.cs" />
@@ -193,6 +243,29 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Dice.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Words.cs" />
     <Compile Include="$(EditMode)ScrambleDealTests.cs" />
+    <!-- The input glossary (PLAN A, A0): every thing the player presses, and the raw-read guard over Runtime's scripts. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/InputGlossary.cs" />
+    <Compile Include="$(EditMode)InputGlossaryTests.cs" />
+    <Compile Include="$(EditMode)InputRawReadScanTests.cs" />
+    <!-- The standalone profile's performance verdict and arithmetic, and the verification-only stress house. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/VerificationPerformance.cs" />
+    <Compile Include="$(EditMode)VerificationPerformanceTests.cs" />
+    <Compile Include="$(EditMode)StressHouseTests.cs" />
+    <!-- The balance plan: the shipped rules (B0) and the season autopsy (B1). -->
+    <Compile Include="$(EditMode)ShippedRulesTests.cs" />
+    <Compile Include="$(EditMode)SeasonAutopsyTests.cs" />
+    <!--
+      The balance lab (B2-B4), compiled out of Unity: the player's view, the policies, the performance
+      model, the lab, its smoke tier (not Explicit) and its explicit report tiers. The ceremony timings
+      are Unity-free presentation arithmetic the lab reads for ceremony seconds a week.
+    -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyPacing.cs" />
+    <Compile Include="$(EditMode)BalanceLab.cs" />
+    <Compile Include="$(EditMode)BalanceLabView.cs" />
+    <Compile Include="$(EditMode)BalanceLabPolicies.cs" />
+    <Compile Include="$(EditMode)BalanceLabPerformance.cs" />
+    <Compile Include="$(EditMode)BalanceLabTests.cs" />
+    <Compile Include="$(EditMode)BalanceLabReports.cs" />
 
     <!--
       Several parity tests already carry an #else branch for running outside the editor: without

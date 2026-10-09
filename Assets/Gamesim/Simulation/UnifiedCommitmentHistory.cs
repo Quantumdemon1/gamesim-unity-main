@@ -47,10 +47,18 @@ namespace Gamesim.Simulation
 
         public static IReadOnlyList<UnifiedCommitmentState> Records(EpisodeState state)
         {
-            if (!UnifiedCommitments.RulesOn(state)) return Array.Empty<UnifiedCommitmentState>();
-            if (!UnifiedCommitments.ValidateRecords(state, out string error))
-                throw new ArgumentException(error, nameof(state));
-            return Array.AsReadOnly(state.unifiedCommitments.OrderBy(row => row.id, StringComparer.Ordinal)
+            if (state?.unifiedCommitmentRulesVersion == UnifiedVoteFamilyValidation.Version)
+            {
+                if (!UnifiedVoteFamilyValidation.TryValidate(state, state.unifiedVoteReveals, out string aggregateError))
+                    throw new ArgumentException(aggregateError, nameof(state));
+            }
+            else
+            {
+                if (!UnifiedCommitments.RulesOn(state)) return Array.Empty<UnifiedCommitmentState>();
+                if (!UnifiedCommitments.ValidateRecords(state, out string error))
+                    throw new ArgumentException(error, nameof(state));
+            }
+            return Array.AsReadOnly(state.unifiedCommitments.Where(row => row.kind == UnifiedCommitments.Safety).OrderBy(row => row.id, StringComparer.Ordinal)
                 .Select(row => row.Clone()).ToArray());
         }
 

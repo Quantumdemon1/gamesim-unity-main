@@ -96,32 +96,31 @@ namespace Gamesim.House
                 prompt.SetActive(available);
             }
 
-            Keyboard keyboard = Keyboard.current;
-            if (keyboard != null)
+            // Through the actions (PLAN A, A1): the Shortcuts map's Menu and Interact, and the
+            // Dialogue map's numbered replies.
+            var input = HouseInput.Actions;
+            if (IsDialogueOpen && input.Menu.WasPressedThisFrame())
             {
-                if (IsDialogueOpen && keyboard.escapeKey.wasPressedThisFrame)
+                EndDialogue();
+            }
+            else if (IsDialogueOpen)
+            {
+                if (input.Reply1.WasPressedThisFrame())
                 {
-                    EndDialogue();
+                    SelectResponse(0);
                 }
-                else if (IsDialogueOpen)
+                else if (input.Reply2.WasPressedThisFrame())
                 {
-                    if (keyboard.digit1Key.wasPressedThisFrame || keyboard.numpad1Key.wasPressedThisFrame)
-                    {
-                        SelectResponse(0);
-                    }
-                    else if (keyboard.digit2Key.wasPressedThisFrame || keyboard.numpad2Key.wasPressedThisFrame)
-                    {
-                        SelectResponse(1);
-                    }
-                    else if (keyboard.digit3Key.wasPressedThisFrame || keyboard.numpad3Key.wasPressedThisFrame)
-                    {
-                        SelectResponse(2);
-                    }
+                    SelectResponse(1);
                 }
-                else if (available && keyboard.eKey.wasPressedThisFrame)
+                else if (input.Reply3.WasPressedThisFrame())
                 {
-                    TryBeginDialogue();
+                    SelectResponse(2);
                 }
+            }
+            else if (available && input.Interact.WasPressedThisFrame())
+            {
+                TryBeginDialogue();
             }
 
             if (conversationRect != null && hud != null)

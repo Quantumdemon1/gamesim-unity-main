@@ -27,7 +27,7 @@ namespace Gamesim.Tests.EditMode
             if (defect == "all-missing" || defect == "future-all-missing")
                 foreach (string field in new[] { "unifiedHearingRulesVersion", "unifiedHearingEvidence", "unifiedHearingReceipts" }) payload.Remove(field);
             else PersistenceV25TestPayloads.CorruptHearing(payload, defect);
-            if (defect == "future-all-missing") payload["schemaVersion"] = 27;
+            if (defect == "future-all-missing") payload["schemaVersion"] = 29;
             string original = payload.ToString(Formatting.None);
             Assert.Throws<AssertionException>(() => PersistenceMigrationTests.StripSchema25(payload));
             Assert.That(payload.ToString(Formatting.None), Is.EqualTo(original), "A synthetic downgrade must not hide missing or enabled current fields.");
@@ -95,7 +95,7 @@ namespace Gamesim.Tests.EditMode
             files.Write(old);
             byte[] original = File.ReadAllBytes(files.Store.SavePath);
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 24").And.Contain("schema 26 in memory"));
+            Assert.That(message, Does.Contain("Schema 24").And.Contain("schema 28 in memory"));
             PersistenceV25TestPayloads.Off(loaded);
             PersistenceV25TestPayloads.Equivalent(expected, loaded);
             PersistenceV25TestPayloads.OnlyHearingDefaults(old, PersistenceV25TestPayloads.Payload(loaded));
@@ -107,7 +107,7 @@ namespace Gamesim.Tests.EditMode
             files.Store.Save(loaded);
             byte[] current = File.ReadAllBytes(files.Store.SavePath);
             Assert.That(File.ReadAllBytes(files.Store.BackupPath), Is.EqualTo(original));
-            Assert.That((int)JObject.Parse(File.ReadAllText(files.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(26));
+            Assert.That((int)JObject.Parse(File.ReadAllText(files.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(28));
             Assert.That(files.Store.TryLoad(out var reloaded, out message), Is.True, message);
             Assert.That(message, Does.Not.Contain("migrated"));
             PersistenceV25TestPayloads.Equivalent(expected, reloaded);
@@ -308,7 +308,7 @@ namespace Gamesim.Tests.EditMode
             File.Copy(fixture, files.Store.SavePath, false);
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
             PersistenceV25TestPayloads.Off(loaded);
-            Assert.That(message, Does.Contain("Schema 21").And.Contain("schema 26 in memory"));
+            Assert.That(message, Does.Contain("Schema 21").And.Contain("schema 28 in memory"));
             var projection = PersistenceMigrationTests.StripSchema22(PersistenceV25TestPayloads.Payload(loaded)); projection["schemaVersion"] = 21;
             Assert.That(JToken.DeepEquals(projection, old), Is.True);
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(original));
@@ -395,7 +395,7 @@ namespace Gamesim.Tests.EditMode
         }
         internal static void Off(EpisodeState state)
         {
-            Assert.That(state.schemaVersion, Is.EqualTo(26));
+            Assert.That(state.schemaVersion, Is.EqualTo(28));
             Assert.That(state.unifiedCommitmentRulesVersion, Is.Zero); Assert.That(state.unifiedCommitments, Is.Not.Null.And.Empty);
             Assert.That(state.unifiedHearingRulesVersion, Is.Zero);
             Assert.That(state.unifiedHearingEvidence, Is.Not.Null.And.Empty); Assert.That(state.unifiedHearingReceipts, Is.Not.Null.And.Empty);

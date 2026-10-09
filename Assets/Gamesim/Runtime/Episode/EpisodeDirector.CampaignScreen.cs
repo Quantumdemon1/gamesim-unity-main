@@ -116,7 +116,8 @@ namespace Gamesim.Episode
         /// What this week's rules let the player do in a conversation on the campaign, in plain words
         /// with where each stands: the question and the look, both free and once a week each; a vote
         /// promise; from the block, a plea to each voter; and a call in each of the player's pacts
-        /// that has somebody in it who votes. Never a conversation's caption: those are the
+        /// that has somebody in it who votes - under the war rooms, a pact of three or more's plan
+        /// instead (<see cref="CampaignBrief.PlanPoint"/>). Never a conversation's caption: those are the
         /// conversation's to show. None for a player who is out of the game, as the goals have none.
         /// </summary>
         private static List<string> CampaignTalkingPoints(EpisodeState state)
@@ -141,6 +142,12 @@ namespace Gamesim.Episode
                     points.Add(state.ledger.calls.Any(k => k.week == state.week && k.allianceId == pact.id)
                         ? "You have called the vote in " + pact.name + " this week."
                         : "Through one of " + pact.name + "'s members, name who the bloc evicts: once a week.");
+            // Under the war rooms (WAVE-D-NPC-PACTS-PLAN D3-S7) a pact of three or more calls when it meets.
+            foreach (var pact in state.alliances)
+            {
+                string plan = CampaignBrief.PlanPoint(state, pact);
+                if (plan != null) points.Add(plan);
+            }
             return points;
         }
 

@@ -209,12 +209,20 @@ namespace Gamesim.Simulation
                         break;
                 }
             }
-            // The player's calls: who said they were in at the call, and whether the target went.
+            // The player's calls: who said they were in at the call, and whether the target went. A call a war
+            // room's plan made (WAVE-D-NPC-PACTS-PLAN D3-L1) names nobody as defected - a dissenter is never
+            // flagged - so it counts every voter at the plan who is not with it instead, and says it as the plan
+            // the player went with, or pushed their way (D3-S7).
             foreach (var call in s.ledger.calls)
             {
                 var power = s.ledger.power.FirstOrDefault(p => p.week == call.week);
-                double points = call.followed.Count * 2 - call.defected.Count + (power != null && power.evicteeId == call.targetId ? 6 : 0);
-                Add(notes, Strategy, points, "Week " + call.week + ": you called the vote in your alliance; " + call.followed.Count + " followed, " + call.defected.Count + " did not"
+                var plan = s.ledger.plans?.FirstOrDefault(p => p != null && p.week == call.week && p.allianceId == call.allianceId);
+                int against = plan != null ? PactPlans.NotFollowing(s, plan).Count : call.defected.Count;
+                double points = call.followed.Count * 2 - against + (power != null && power.evicteeId == call.targetId ? 6 : 0);
+                string what = plan == null ? "you called the vote in your alliance; " + call.followed.Count + " followed, "
+                    : (plan.stance == PactPlanStance.Countered ? "your alliance went with your push; " : "you went with your alliance's plan; ")
+                      + call.followed.Count + " went with it, ";
+                Add(notes, Strategy, points, "Week " + call.week + ": " + what + against + " did not"
                     + (power != null && power.evicteeId == call.targetId ? ", and " + Name(s, call.targetId) + " went." : "."), "call", call.allianceId + ":" + call.week, call.week, known: true);
             }
         }

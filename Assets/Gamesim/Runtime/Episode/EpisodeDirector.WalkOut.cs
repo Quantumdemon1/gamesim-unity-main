@@ -57,6 +57,9 @@ namespace Gamesim.Episode
         /// <summary>How long the shot holds on the door shut behind them before their body goes.</summary>
         public const float DoorHoldSeconds = 1.2f;
 
+        /// <summary>How long, on the unscaled clock, a press after the walk begins is still the one that closed the last card.</summary>
+        public const float WalkOutPressGuardSeconds = 0.35f;
+
         /// <summary>How long a warm or dealt goodbye stops at the door, turned back to the house: the opening's own pose length.</summary>
         public const float LastLookSeconds = 1.6f;
 
@@ -76,6 +79,17 @@ namespace Gamesim.Episode
         private int walkOutLeg;
         private float walkOutUntil, walkOutPressGuard;
         private OpeningDoorSet walkOutDoor;
+
+        /// <summary>The frame a press skipped the walk out: the walk is over by the time Escape's chain runs in it.</summary>
+        private int walkOutSkippedFrame = -1;
+
+        /// <summary>
+        /// Whether the walk out has this frame's Escape, Start or B (PLAN A, A2): it reads the
+        /// Ceremony map's Skip as a card does, without being a card, so the press that skips it -
+        /// or any press while it walks - stops there, rather than going on to open the pause menu
+        /// over the goodbye (EpisodeDirector.Controls.cs).
+        /// </summary>
+        private bool WalkOutHasThePress => walkingOutId != null || walkOutSkippedFrame == Time.frameCount;
 
         /// <summary>Whether the walk out under way is a staged eviction's: watched, slow, through a door that shuts behind it.</summary>
         private bool walkOutStaged;
@@ -222,7 +236,7 @@ namespace Gamesim.Episode
             walkOutLeg = 0;
             walkOutUntil = Time.unscaledTime + WalkOutSeconds;
             // A press already in flight - the one that closed the last card - does not skip the walk.
-            walkOutPressGuard = Time.unscaledTime + 0.35f;
+            walkOutPressGuard = Time.unscaledTime + WalkOutPressGuardSeconds;
             // Under a staged eviction it is the goodbye's second half: the stage keeps the house in
             // its seats to watch, and the camera, until the door is shut behind them.
             walkOutStaged = IsCeremonyStaged && CeremonyStageKind == CeremonySting.EvictionKind;
@@ -258,7 +272,12 @@ namespace Gamesim.Episode
             if (walkingOutId == null) return;
             if (Time.unscaledTime > walkOutUntil || npcMeetings == null || npcWorldFailed)
             { AbortWalkOut(npcWorldFailure ?? "The walk out exceeded its budget or lost its coordinator."); return; }
-            if (Time.unscaledTime >= walkOutPressGuard && CeremonyTakeover.SkipPressed()) { SkipWalkOut(); return; }
+            if (Time.unscaledTime >= walkOutPressGuard && CeremonyTakeover.SkipPressed())
+            {
+                walkOutSkippedFrame = Time.frameCount;
+                SkipWalkOut();
+                return;
+            }
             if (walkOutStaged) { TickStagedWalkOut(); return; }
             switch (walkOutLeg)
             {

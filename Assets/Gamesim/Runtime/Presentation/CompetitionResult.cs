@@ -43,6 +43,12 @@ namespace Gamesim.Presentation
         public float FontScale { get; set; } = 1f;
         public bool IsPlaying => playing;
         public bool OwnsInput => playing || Time.frameCount <= dismissedFrame + 1;
+
+        /// <summary>How long, on the unscaled clock, the card lets a press go by: the one that brought it up.</summary>
+        public const float PressGuardSeconds = .25f;
+
+        /// <summary>Whether a press now dismisses the card: it is up, and past <see cref="PressGuardSeconds"/>.</summary>
+        public bool TakesAPress => playing && elapsed >= PressGuardSeconds;
         public event System.Action VisibilityChanged;
 
         public static CompetitionResult Attach(GameObject owner)
@@ -93,7 +99,7 @@ namespace Gamesim.Presentation
             if (wasPlaying) VisibilityChanged?.Invoke();
         }
 
-        private void Dismiss(){if(playing&&elapsed>=.25f)Cancel();}
+        private void Dismiss(){if(TakesAPress)Cancel();}
 
         /// <summary>
         /// A new frame shape - a resize, a resolution change, a review capture through a camera -
@@ -119,12 +125,13 @@ namespace Gamesim.Presentation
         {
             if(!playing)return;
             elapsed+=Time.unscaledDeltaTime;group.alpha=reduced?1:Mathf.Clamp01(elapsed/.3f);
-            var keyboard=Keyboard.current;var pad=Gamepad.current;
-            bool back=(keyboard!=null&&keyboard.escapeKey.wasPressedThisFrame)||(pad!=null&&pad.buttonEast.wasPressedThisFrame);
+            // The Competition map: Back is Escape or B, Confirm is Enter or A.
+            var input=Gamesim.House.HouseInput.Actions;
+            bool back=input.CompetitionBack.WasPressedThisFrame();
             if(back){if(showingDetails)ToggleDetails();else Dismiss();return;}
             var selected=EventSystem.current!=null?EventSystem.current.currentSelectedGameObject:null;
             if((selected==null||selected==continueButton.gameObject)
-                && ((keyboard!=null&&keyboard.enterKey.wasPressedThisFrame)||(pad!=null&&pad.buttonSouth.wasPressedThisFrame)))Dismiss();
+                && input.CompetitionConfirm.WasPressedThisFrame())Dismiss();
         }
 
         /// <summary>The card's width, and its rows', at the standard text size.</summary>

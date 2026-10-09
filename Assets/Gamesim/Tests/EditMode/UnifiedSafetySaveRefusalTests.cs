@@ -376,7 +376,7 @@ namespace Gamesim.Tests.EditMode
 
         private static void AssertOff(EpisodeState s)
         {
-            Assert.That(s.schemaVersion, Is.EqualTo(26));
+            Assert.That(s.schemaVersion, Is.EqualTo(28));
             Assert.That(s.unifiedCommitmentRulesVersion, Is.Zero);
             Assert.That(s.unifiedCommitments, Is.Not.Null.And.Empty);
             Assert.That(s.unifiedHearingRulesVersion, Is.Zero);

@@ -72,6 +72,48 @@ namespace Gamesim.Simulation
                 social.pending.Count != 0 || social.cooldowns.Count != 0 || social.pairMemory.Count != 0))
                 return Fail(out error, "Deferred NPC social rules cannot contain retroactive activity.");
             // Every uint state, including zero after generator wraparound, is legal once activated.
+            return TryValidateNpcBeats(state, out error);
+        }
+
+        /// <summary>
+        /// Schema 28: D2's all-week cadence (WAVE-D-NPC-PACTS-PLAN §4.3). With its start week 0 nothing
+        /// has planned or acted: 0, -1, 0, 0, [] and []. With it set these are the storage bounds only;
+        /// the rule slice that writes them tightens them to its own semantics.
+        /// </summary>
+        private static bool TryValidateNpcBeats(EpisodeState state, out string error)
+        {
+            error = null;
+            var social = state.npcSocial;
+            if (social.beatPlan == null || social.acts == null || social.acts.Any(act => act == null))
+                return Fail(out error, "Invalid NPC beat collections.");
+            if (state.allWeekRulesStartWeek == 0)
+            {
+                if (social.beatWeek != 0 || social.beatWindow != Windows.None || social.beatsFired != 0 || social.beatSeats != 0
+                    || social.beatPlan.Count != 0 || social.acts.Count != 0)
+                    return Fail(out error, "A season without the all-week rules has no NPC beats.");
+                return true;
+            }
+            bool Npc(string id) => state.contestants.Any(actor => actor.id == id && !actor.isPlayer);
+            bool Party(string id) => state.contestants.Any(actor => actor.id == id);
+            if (social.beatWindow < Windows.None || social.beatWindow >= Windows.Count
+                || social.beatsFired < 0 || social.beatSeats < 0 || social.beatSeats > MostActionsAWeekCanHold
+                || social.beatPlan.Count > MaximumCast - 1 || social.beatsFired > social.beatPlan.Count
+                || social.beatPlan.Any(id => !Npc(id)) || social.beatPlan.Distinct(StringComparer.Ordinal).Count() != social.beatPlan.Count
+                || (social.beatWindow == Windows.None
+                    ? social.beatWeek != 0 || social.beatsFired != 0 || social.beatSeats != 0 || social.beatPlan.Count != 0
+                    : social.beatWeek < state.allWeekRulesStartWeek || social.beatWeek > state.week))
+                return Fail(out error, "Invalid NPC beat plan.");
+            // This week's acts only: they are cleared as the week turns. A sighted act is one the
+            // player saw, at most three a window; an overheard one was seen too.
+            if (social.acts.Count > 4 * MaximumCast
+                || social.acts.Any(act => !Text(act.id, 160) || !Text(act.kind, 64) || !Party(act.actorId)
+                    || (act.partnerId != null && !Party(act.partnerId)) || (act.subjectId != null && !Party(act.subjectId))
+                    || !ShortOrAbsent(act.room, 64) || act.week != state.week || act.week < state.allWeekRulesStartWeek
+                    || act.window < 0 || act.window >= Windows.Count || act.firedTick < 0 || act.firedTick > MostActionsAWeekCanHold
+                    || (act.overheard && !act.sighted))
+                || social.acts.Select(act => act.id).Distinct(StringComparer.Ordinal).Count() != social.acts.Count
+                || social.acts.Where(act => act.sighted).GroupBy(act => act.window).Any(group => group.Count() > 3))
+                return Fail(out error, "Invalid NPC acts.");
             return true;
         }
     }

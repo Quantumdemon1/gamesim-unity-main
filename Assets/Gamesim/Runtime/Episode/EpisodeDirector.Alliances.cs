@@ -76,11 +76,21 @@ namespace Gamesim.Episode
             foreach (var join in pact.joined) lines.Add(Dated(join.week, join.text));
             if (!pact.active) lines.Add(Dated(pact.endedWeek, pact.ended));
             foreach (var call in pact.calls) lines.Add(Dated(call.week, CallLine(state, call)));
-            // Said only where a call could be made: a standing pact, the levers on, and the player still in the house.
-            if (pact.active && pact.calls.Count == 0 && EpisodeEngine.LeverRulesOn(state)
-                && state.Find(state.playerId)?.status == ContestantStatus.Active)
-                lines.Add(NoCallsYetCopy);
+            // Its war rooms' plans (WAVE-D-NPC-PACTS-PLAN D3), after the calls: what was said, how the player
+            // answered and who voted with it, by the ballots the player can place. Lines, not controls.
+            foreach (var plan in pact.plans) lines.Add(Dated(plan.week, plan.text));
+            // Said only where a call could be made: a standing pact, the levers on, and the player still in the
+            // house. A pact of three or more under the war rooms calls only when it meets, and says so until the
+            // block is set; from then its meeting is the conversation's to offer.
+            if (pact.active && pact.calls.Count == 0 && pact.plans.Count == 0 && EpisodeEngine.LeverRulesOn(state)
+                && state.Find(state.playerId)?.status == ContestantStatus.Active && !(pact.warRoom && PactPlans.BlockSet(state)))
+                lines.Add(pact.warRoom ? MeetsOnceTheBlockIsSetCopy : NoCallsYetCopy);
             foreach (var deal in pact.deals) lines.Add(Dated(deal.week, deal.text));
+            // Who found out about it, under the leak rules (WAVE-D-NPC-PACTS-PLAN D4): after the calls - and
+            // D3's plan line, which slots before these - each in the week the player was told. Lines, not controls.
+            foreach (var exposure in pact.exposures) lines.Add(Dated(exposure.week, exposure.text));
+            // Last, the risk of word getting out (D4-6), from what the player can reckon for themselves.
+            if (!string.IsNullOrEmpty(pact.risk)) lines.Add(pact.risk);
             // Named for the pact's id as well as its name: two pacts can share a name, and a card's
             // name is how a test or a reader finds it. The card shows the name alone.
             hud.PactCard(EpisodeHud.AllianceCardName(pact.name, pact.id), eyebrow, pact.active ? UiTheme.Allied : UiTheme.Muted,
@@ -89,6 +99,9 @@ namespace Gamesim.Episode
 
         /// <summary>A standing pact of the player's with no call in it yet, where calls can be made.</summary>
         public const string NoCallsYetCopy = "You have not called a vote in it yet.";
+
+        /// <summary>A standing pact of three or more under the war rooms with no plan yet, before the block is set (WAVE-D-NPC-PACTS-PLAN D3): it calls when it meets.</summary>
+        public const string MeetsOnceTheBlockIsSetCopy = "Meets once the block is set.";
 
         /// <summary>A pact between others the player has evidence of: who, how sure, and what they saw or heard.</summary>
         private void SuspectedPactCard(EpisodeState state, AllianceRead.SuspectedPact pact)

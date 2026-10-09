@@ -210,7 +210,9 @@ namespace Gamesim.Simulation
         /// bloc (<see cref="Allegiance.Following"/>). And (C5) the pact's founder is its first member,
         /// as the source's <c>founderId</c> is, invented by nothing: <see cref="Resolve"/> makes them the
         /// caller whenever they are among the members who vote, as the source does, and otherwise the
-        /// round picks one as it always did. Without the rules no founder, as before.
+        /// round picks one as it always did. Without the rules no founder, as before. Under the war rooms
+        /// (WAVE-D-NPC-PACTS-PLAN §3) a plan an NPC leads is the pact's call this week where the player made
+        /// none (<see cref="EpisodeEngine.PlanCallThisWeek"/>); a plan the player backs is their call row.
         /// No ballots, phase state, sequence, revision or persisted RNG are changed.
         /// </summary>
         public static WebBlocSnapshot FromNative(EpisodeState state)
@@ -225,7 +227,7 @@ namespace Gamesim.Simulation
                     isHoH = a.id == state.hohId, traits = new List<string>(a.traits) }).ToList(),
                 alliances = state.alliances.Select(a =>
                 {
-                    var call = EpisodeEngine.CallThisWeek(state, a.id);
+                    var call = EpisodeEngine.CallThisWeek(state, a.id) ?? EpisodeEngine.PlanCallThisWeek(state, a.id);
                     return new WebBlocAlliance
                     {
                         id = a.id, name = a.name, status = a.active ? "Active" : "Broken", members = Allegiance.Following(state, a),

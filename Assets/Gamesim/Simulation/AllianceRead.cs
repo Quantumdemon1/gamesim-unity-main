@@ -26,12 +26,16 @@ namespace Gamesim.Simulation
     /// <para><b>Another houseguest's pact</b> shows only on evidence the player holds: its own fact
     /// with the player among the knowers, or out in the open (<see cref="FinalistRead.AllianceCertainty"/>),
     /// or a line the player was shown that names everyone in it - a play's receipt, "You learned: ...
-    /// are working together." The whisper that told the player dates a pact they know of; it never
-    /// makes one known, because its two names could belong to more than one pact. A pact with no
+    /// are working together." The whisper that told the player dates a pact they know of - in either of
+    /// its forms: the two names it always said, or, under the leak rules (WAVE-D-NPC-PACTS-PLAN D4),
+    /// everyone in it - and never makes one known, because two names could belong to more than one
+    /// pact. A pact with no
     /// evidence never appears, not even as an unknown, and nothing the player cannot know of one is
     /// said either: not its name, not when it formed, not whether it still stands. One card is one
     /// set of people, however many records share it, so two pacts of the same people read as one and
-    /// say nothing more. No listen-in, read or claim names another houseguest's pact: an overheard
+    /// say nothing more. No read or claim names another houseguest's pact, and nor does a listen-in,
+    /// save one under the leak rules (WAVE-D-NPC-PACTS-PLAN D4-M2) on a pact whose people in the house
+    /// are exactly the two overheard, whose line names everyone the card shows: otherwise an overheard
     /// pair is a standing, and an ally's claim (<see cref="ClaimSource.Ally"/>, written since
     /// ACTIONS-DEALS-ALLIANCES-PLAN C6) is a member's own word at a meeting of a pact the player is
     /// in, so it is evidence of no other pact.</para>
@@ -89,10 +93,30 @@ namespace Gamesim.Simulation
             public int endedWeek;
             /// <summary>Why it ended, in the words the player was told; null while it stands.</summary>
             public string ended;
-            /// <summary>Every call the player made in it, oldest first.</summary>
+            /// <summary>Every call the player made in it, oldest first - but a war room's plan the player backed, which its plan says (<see cref="plans"/>).</summary>
             public List<Call> calls = new List<Call>();
+            /// <summary>
+            /// Its war rooms' plans under the war rooms (WAVE-D-NPC-PACTS-PLAN D3), oldest first: what each
+            /// member said, how the player answered, and - once the vote is read - who of those with it voted
+            /// with it, by the ballots the player can place (<see cref="PlanText"/>).
+            /// </summary>
+            public List<Plan> plans = new List<Plan>();
+            /// <summary>Whether it meets as a war room under the war rooms: a pact of three or more, which calls only when it meets.</summary>
+            public bool warRoom;
             /// <summary>The deals the player agreed with its members, oldest first.</summary>
             public List<Deal> deals = new List<Deal>();
+            /// <summary>
+            /// Who found out about it under the leak rules (WAVE-D-NPC-PACTS-PLAN D4), oldest first: "Riley
+            /// found out about it.", by the double-dealing line that told the player, matched by the pact's
+            /// name while the log holds it.
+            /// </summary>
+            public List<Evidence> exposures = new List<Evidence>();
+            /// <summary>
+            /// The risk of word of it getting out (D4-6), as the player can reckon it from who is in it and
+            /// how many pacts they hold - "Risk of word getting out: some." - or null where there is none
+            /// to read (<see cref="AllianceLeaks.RiskWord"/>).
+            /// </summary>
+            public string risk;
         }
 
         /// <summary>A member of one of the player's pacts, as the player reads them.</summary>
@@ -113,6 +137,15 @@ namespace Gamesim.Simulation
             public int week;
             public string targetId;
             public List<string> followed = new List<string>(), defected = new List<string>();
+        }
+
+        /// <summary>A war room's plan (WAVE-D-NPC-PACTS-PLAN D3): its week, where it stands, its target, and the line the card shows.</summary>
+        public sealed class Plan
+        {
+            public int week;
+            public string stance, targetId;
+            /// <summary>"Plan: Riley and Sam wanted Maya out. You went with it: evict Maya. Riley voted with it; Sam didn't."</summary>
+            public string text;
         }
 
         /// <summary>A deal the player agreed with a member: the week, with whom, what kind and where it stands.</summary>
@@ -195,17 +228,100 @@ namespace Gamesim.Simulation
                     ignored = calls.Count(c => c.defected != null && c.defected.Contains(id)),
                 });
             }
-            foreach (var call in calls)
+            // A war room's plans (WAVE-D-NPC-PACTS-PLAN D3): a plan the player backed is that week's call row
+            // as well, and its plan line says it, so it is not said twice.
+            var plans = (s.ledger?.plans ?? new List<PactPlanRow>()).Where(p => p != null && p.allianceId == alliance.id)
+                .OrderBy(p => p.week).ToList();
+            foreach (var call in calls.Where(c => plans.All(p => p.week != c.week)))
                 pact.calls.Add(new Call
                 {
                     week = call.week, targetId = call.targetId,
                     followed = new List<string>(call.followed ?? new List<string>()),
                     defected = new List<string>(call.defected ?? new List<string>()),
                 });
+            foreach (var plan in plans)
+                pact.plans.Add(new Plan { week = plan.week, stance = plan.stance, targetId = plan.targetId, text = PlanText(s, plan) });
+            pact.warRoom = EpisodeEngine.PactPlanRulesOn(s) && PactPlans.IsWarRoomPact(s, alliance);
             Formed(s, alliance, row, pact);
             if (!alliance.active) Ended(s, alliance, row, pact);
             pact.deals = Deals(s, alliance);
+            pact.exposures = Exposures(s, alliance);
+            pact.risk = AllianceLeaks.RiskLine(AllianceLeaks.RiskWord(s, alliance));
             return pact;
+        }
+
+        /// <summary>
+        /// A war room's plan as the alliance card says it (WAVE-D-NPC-PACTS-PLAN D3-S5), in words and never a
+        /// number: what the members said at the meeting - "Plan: Riley and Sam wanted Maya out; Jo wanted Alex
+        /// out." - how the player answered, and, once that week's vote has been read, who of those the player
+        /// was told are with the plan (<see cref="PactPlans.ToldWith"/>) voted with it and who did not, by the
+        /// ballots the player can place (<see cref="KnownBallots.Read"/>): a ballot the player cannot place is
+        /// not mentioned, nor a dissenter who went along on their own coin. All of it the player was told: the
+        /// says at the meeting, the answer in its line.
+        /// </summary>
+        public static string PlanText(EpisodeState s, PactPlanRow row)
+        {
+            if (s == null || row == null) return string.Empty;
+            string Who(string id) => id == s.playerId ? "you" : FinalistRead.FirstName(s.Find(id)?.name ?? "somebody");
+            var parts = (row.says ?? new List<PlanSay>()).Where(say => say != null && !string.IsNullOrEmpty(say.targetId))
+                .GroupBy(say => say.targetId)
+                .Select(group => Join(group.Select(say => Who(say.memberId)).ToList()) + " wanted " + Who(group.Key) + " out").ToList();
+            string text = parts.Count == 0 ? "Plan: nobody said." : "Plan: " + string.Join("; ", parts) + ".";
+            string target = Who(row.targetId);
+            // The player on the block as the plan reads as such, never "evict you".
+            string evict = row.targetId == s.playerId ? "it named you" : "evict " + target;
+            switch (row.stance)
+            {
+                case PactPlanStance.Open: text += " You have not answered it yet."; break;
+                case PactPlanStance.Agreed: text += " You went with it: " + evict + "."; break;
+                case PactPlanStance.Countered:
+                    var came = (row.cameRound ?? new List<string>()).Select(Who).ToList();
+                    text += " You pushed for " + Who(row.counterId) + (came.Count > 0 ? ", and " + Join(came) + " came round" : "") + "."
+                        + (row.targetId == row.counterId ? " It carried." : row.targetId == s.playerId ? " The pact held to its plan for you." : " The pact held to " + target + ".");
+                    break;
+                case PactPlanStance.Low: text += " You lay low: " + evict + "."; break;
+                case PactPlanStance.Lapsed: text += " You let it stand: " + evict + "."; break;
+                default: text += " It came to nothing."; break;
+            }
+            if (string.IsNullOrEmpty(row.targetId) || row.followed == null || row.followed.Count == 0) return text;
+            // Only those the player was told are with it (PactPlans.ToldWith): under a plan an NPC leads, a
+            // dissenter who went along on their own coin was never said, so their ballot is no follow-through.
+            var told = PactPlans.ToldWith(s, row);
+            if (told.Count == 0) return text;
+            var sheet = KnownBallots.Read(s, row.week);
+            if (!sheet.Revealed) return text;
+            var with = new List<string>();
+            var not = new List<string>();
+            foreach (string id in told)
+            {
+                string voted = sheet.TargetOf(id);
+                if (voted == null) continue;
+                (voted == row.targetId ? with : not).Add(Who(id));
+            }
+            if (with.Count > 0 && not.Count > 0) return text + " " + Join(with) + " voted with it; " + Join(not) + " didn't.";
+            if (with.Count > 0) return text + " " + Join(with) + " voted with it.";
+            if (not.Count > 0) return text + " " + Join(not) + " didn't vote with it.";
+            return text;
+        }
+
+        /// <summary>
+        /// Who found out about one of the player's pacts and holds it against them (WAVE-D-NPC-PACTS-PLAN
+        /// D4): each double-dealing line the player was shown that names this pact - "Riley Chen found out
+        /// about The Jo Pact, your alliance with ..." - as "Riley found out about it.", in its week. Only
+        /// what those lines said: never who else knows, nor how it got out. A pact renamed since its line
+        /// no longer matches it, the gap a renamed pact's other lines have too.
+        /// </summary>
+        private static List<Evidence> Exposures(EpisodeState s, AllianceState alliance)
+        {
+            var found = new List<Evidence>();
+            if (string.IsNullOrEmpty(alliance.name)) return found;
+            foreach (var e in Seen(s).Where(e => AllianceLeaks.IsDoubleDealingLine(e) && e.text != null))
+            {
+                var who = s.contestants.FirstOrDefault(c => c != null && !c.isPlayer && !string.IsNullOrEmpty(c.name)
+                    && e.text.StartsWith(AllianceLeaks.FoundOutPrefix(c.name, alliance.name), StringComparison.Ordinal));
+                if (who != null) found.Add(new Evidence { week = e.week, text = FinalistRead.FirstName(who.name) + " found out about it." });
+            }
+            return found;
         }
 
         /// <summary>
@@ -469,16 +585,18 @@ namespace Gamesim.Simulation
                 foreach (var e in seen.Where(e => e.kind == "alliance" && EpisodeEngine.IsLeftGoesOnLine(e.text, alliance.name)
                              && e.audienceIds != null && e.audienceIds.Where(id => id != s.playerId).All(alliance.members.Contains)))
                     evidence.Add(new Evidence { week = e.week, text = e.text });
+                // A listen-in that heard them as a pact, under the leak rules (WAVE-D-NPC-PACTS-PLAN D4): its
+                // line ends naming everyone the card shows, so it is evidence as a receipt is.
+                string overheard = AllianceLeaks.ListenInSentence(s, alliance);
+                foreach (var e in seen.Where(e => e.kind == "eavesdrop" && e.text != null && e.text.EndsWith(overheard, StringComparison.Ordinal)))
+                    evidence.Add(new Evidence { week = e.week, text = e.text });
                 if (certainty != null)
                 {
                     // The whisper that told them dates a pact they know of; on its own it proves nothing.
                     var fact = Knowledge.Of(s, FactKinds.Alliance, alliance.id);
                     if (fact != null)
-                    {
-                        string whisper = WhisperLine(s, fact);
-                        foreach (var e in seen.Where(e => e.kind == StoryLog.Whisper && e.text == whisper))
+                        foreach (var e in seen.Where(e => e.kind == StoryLog.Whisper && IsWhisperLine(s, fact, alliance, e.text)))
                             evidence.Add(new Evidence { week = e.week, text = e.text });
-                    }
                     if (certainty == FinalistRead.Confirmed) evidence.Add(new Evidence { text = OutInTheOpen });
                     else if (evidence.Count == 0) evidence.Add(new Evidence { text = HeardOfIt });
                 }
@@ -540,6 +658,16 @@ namespace Gamesim.Simulation
             string actor = s.Find(fact.actorId)?.name ?? "somebody", subject = s.Find(fact.subjectId)?.name ?? "somebody";
             return "Word in the house: " + actor + " and " + subject + " are working together.";
         }
+
+        /// <summary>
+        /// Whether a whisper is the one a pact's fact reached the player in: the two-name whisper the
+        /// season always said (<see cref="WhisperLine"/>), or, under the leak rules, the one naming
+        /// everyone in it (<see cref="AllianceLeaks.WhisperLine"/>) - both forms, so a line said before
+        /// the rules still dates its card.
+        /// </summary>
+        public static bool IsWhisperLine(EpisodeState s, HouseFactState fact, AllianceState alliance, string text) =>
+            text != null && ((fact != null && text == WhisperLine(s, fact))
+                || (alliance?.members != null && text == AllianceLeaks.WhisperLine(s, alliance)));
 
         // ------------------------------------------------------------ helpers
 

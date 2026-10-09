@@ -118,12 +118,16 @@ namespace Gamesim.Simulation
         /// The pact a meeting held through this houseguest is for, as the house offers it: under the
         /// commitment rules, the first standing pact of the player's they are in (the oldest, in the
         /// season's own order) that has not met this week. Null when there is none, or without the
-        /// rules, where the meeting is the old word with one ally.
+        /// rules, where the meeting is the old word with one ally. Under the war rooms
+        /// (<see cref="PactPlanRulesOn"/>) a pact of three or more is offered only once the block is set,
+        /// and not again the week it has a plan (WAVE-D-NPC-PACTS-PLAN D3-M1).
         /// </summary>
         public static AllianceState MeetingPact(EpisodeState s, string npcId)
         {
             if (!CommitmentRulesOn(s) || s.story == null || string.IsNullOrEmpty(npcId) || !s.Allied(s.playerId, npcId)) return null;
-            return s.alliances.FirstOrDefault(a => a.active && a.members.Contains(s.playerId) && a.members.Contains(npcId) && !MetThisWeek(s, a));
+            bool warRooms = PactPlanRulesOn(s);
+            return s.alliances.FirstOrDefault(a => a.active && a.members.Contains(s.playerId) && a.members.Contains(npcId) && !MetThisWeek(s, a)
+                && !(warRooms && PactPlans.IsWarRoomPact(s, a) && (!PactPlans.BlockSet(s) || PactPlans.ThisWeek(s, a.id) != null)));
         }
 
         /// <summary>Who is at a meeting of this pact besides the player: every member still in the house, in the pact's own order.</summary>
@@ -199,7 +203,12 @@ namespace Gamesim.Simulation
                   ?? s.alliances.FirstOrDefault(a => a.active && a.members.Contains(s.playerId) && a.members.Contains(through.id));
             Require(pact != null && pact.active && pact.members.Contains(s.playerId) && pact.members.Contains(through.id),
                 "Hold the meeting through somebody in that alliance.");
+            // Under the war rooms a pact of three or more meets once the block is set, once a week (D3-M1).
+            RequireWarRoomTiming(s, pact);
             Require(!MetThisWeek(s, pact), pact.name + " has already met this week.");
+            // Whether this is a war room, by what the player can see before it starts; whether anybody at it
+            // has a say is read after it, from the state the meeting leaves.
+            bool warRoom = PactPlans.CouldConvene(s, pact);
             var at = AtTheMeeting(s, pact);
 
             // Every pair at it: the player's own through the engine's path, a roll each, as any of their
@@ -213,6 +222,9 @@ namespace Gamesim.Simulation
                     RelationshipLedger.Record(s, at[i], at[j], PactMeetingType, AllianceMeetingWarmth, record);
                 }
             foreach (var id in at) Remember(s, id, s.playerId, MeetingMemory(s.week), true);
+
+            // The war room (WAVE-D-NPC-PACTS-PLAN §3): the says and an open plan in place of one ally's claim.
+            if (warRoom && HoldWarRoom(s, pact, through, at)) return;
 
             // In a vote week one member says where their vote is going: their ballot as it now stands,
             // decided, so nothing is drawn. Judged at the reveal like every claim (SettleVoteRead).

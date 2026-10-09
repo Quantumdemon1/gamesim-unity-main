@@ -174,6 +174,8 @@ namespace Gamesim.Episode
             tutorial.RememberCompletion = SaveRootOverride == null;
             // The reference build's rising blip on every step of the tour.
             tutorial.StepSound = () => { if (audioBed != null) audioBed.PlayCue(HouseAudio.Cue.TutorialStep); };
+            // The tour opens in the words of the device the house was last pressed on (A4).
+            tutorial.LastDeviceWasPad = () => padHints;
             opening = OpeningSequence.Attach(gameObject);
             // Both take the keyboard while they are up: the opening's Continue and skip, and the
             // tour's Next, rather than a HUD control hidden underneath them.
@@ -337,6 +339,8 @@ namespace Gamesim.Episode
 
         private void Update()
         {
+            // Which device the hints speak of, before anything this frame words one (A4).
+            NoteInputDevice();
             // First, and whatever else returns early: the dip is only a clock, and a frame that
             // skipped it would hold the house black for as long as a card or a load owned the frame.
             TickTravelDip();
@@ -371,16 +375,19 @@ namespace Gamesim.Episode
             // open. Tab does the same only when no HUD control is focused - a mouse player who
             // clicked the house - because with one focused, Tab is the keyboard ring's, and the HUD
             // keeps a control focused whenever it can.
-            if (IsReady && !IsPanelOpen && !challengeActive && cameraRig != null && !TourIsUp && !CeremonyOverlays.OnScreen)
+            if (IsReady && !IsPanelOpen && !challengeActive && cameraRig != null && !TourIsUp && !CeremonyOverlays.OnScreen && !FrontDoorUp)
             {
                 var actions = cameraRig.Actions;
                 bool nothingFocused = EventSystem.current == null || EventSystem.current.currentSelectedGameObject == null;
-                if (actions.Next.WasPressedThisFrame()) FollowNext(false);
-                else if (actions.Previous.WasPressedThisFrame()) FollowNext(true);
-                else if (nothingFocused && Keyboard.current != null && Keyboard.current.tabKey.wasPressedThisFrame)
-                    FollowNext(Keyboard.current.shiftKey.isPressed);
-                // G is your moves: the card over your own chip.
-                else if (Keyboard.current != null && Keyboard.current.gKey.wasPressedThisFrame && !OpeningOwnsHouse) ToggleEmoteMenu();
+                // Tab is a binding of Next and Previous (Shift+Tab), folded in behind the same
+                // guard it always had: the camera's only while nothing is focused.
+                bool nextByTab = HouseInput.PressedByKey(actions.Next, Key.Tab);
+                bool previousByTab = HouseInput.PressedByKey(actions.Previous, Key.Tab);
+                if (actions.Next.WasPressedThisFrame() && !nextByTab) FollowNext(false);
+                else if (actions.Previous.WasPressedThisFrame() && !previousByTab) FollowNext(true);
+                else if (nothingFocused && (nextByTab || previousByTab)) FollowNext(previousByTab);
+                // G, or the d-pad's right, is your moves: the card over your own chip.
+                else if (actions.Emote.WasPressedThisFrame() && !OpeningOwnsHouse) ToggleEmoteMenu();
             }
             if (IsReady) { TickEmote(); TickAnswers(); }
             // The chip follows the subject however it was chosen: a click on a body sets the
@@ -428,42 +435,10 @@ namespace Gamesim.Episode
                 hud.SetChallenge(challengeValue, challengeHits);
                 if (shortcuts != null && shortcuts.Hit.WasPressedThisFrame()) RecordChallengeHit();
             }
-            if (shortcuts != null && shortcuts.Menu.WasPressedThisFrame())
-            {
-                // The game surface consumes Escape / Start itself, including the dismissal frame.
-                if (competitionScreen != null && competitionScreen.OwnsMenuInput) return;
-                if (challengeActive) { CancelChallenge(); return; }
-                // The opening before anything: it draws over every screen, and Escape underneath it
-                // used to close panels and release the shot it was holding.
-                if (OpeningOwnsHouse) { OpeningMenuPressed(); return; }
-                // A ceremony card reads Escape itself - it skips the reveal - so the press does not
-                // also close the panels or open the settings underneath it.
-                if (CeremonyOverlays.OnScreen) return;
-                // The tour offered outside the opening - an imported season - dims the house and
-                // takes the pointer; Escape closes it, as the tour's own card says.
-                if (TourIsUp) { tutorial.Skip(); return; }
-                // Topmost first. The main menu sits above the cast screen, which sits above the
-                // HUD; closing a panel underneath either of them would leave a screen on top of the
-                // house with nothing behind it. The menu itself ignores Escape when there is no
-                // season to go back to, because there is nowhere for it to close to.
-                if (mainMenu != null && mainMenu.IsShowing) { if (SeasonInProgress) CloseMainMenu(); }
-                // The creator draws above the cast screen, so it takes Escape first — otherwise
-                // the screen underneath would close out from under the form on top of it.
-                else if (characterCreator != null && characterCreator.IsShowing) characterCreator.Dismiss();
-                else if (castSelect != null && castSelect.IsShowing) castSelect.Dismiss();
-                // The report draws over the finale panel; Escape closes it and leaves the panel.
-                else if (IsSeasonReportOpen) seasonReport.Close();
-                else
-                {
-                    // With nothing open, Escape does nothing - the keyboard has the HUD's own
-                    // buttons - but a pad has no other way to the settings, so Start opens them.
-                    bool wasOpen = IsPanelOpen;
-                    ClosePanels();
-                    var pressed = shortcuts.Menu.activeControl;
-                    if (!wasOpen && pressed != null && pressed.device is Gamepad) OpenSettings();
-                }
-                return;
-            }
+            // Escape or Start: the priority chain, topmost first (EpisodeDirector.Controls.cs).
+            if (shortcuts != null && shortcuts.Menu.WasPressedThisFrame()) { MenuPressed(); return; }
+            // The pad's B: the same chain, and nothing at all with nothing open (PLAN A, A2).
+            if (shortcuts != null && shortcuts.Back.WasPressedThisFrame() && BackPressed()) return;
             // Not while a ceremony card is up either: it reads the pad's face buttons itself - X
             // speeds a reveal up, and X is also Interact - so a press meant for the card went on to
             // act in the house underneath it.
@@ -473,7 +448,7 @@ namespace Gamesim.Episode
             {
                 if (shortcuts.Notebook.WasPressedThisFrame()) OpenJournal();
                 if (shortcuts.Save.WasPressedThisFrame()) SaveNow();
-                if (shortcuts.Overview.WasPressedThisFrame() && !IsPanelOpen) ToggleOverview();
+                if (shortcuts.Overview.WasPressedThisFrame() && !IsPanelOpen && !FrontDoorUp) ToggleOverview();
                 if (shortcuts.Diary.WasPressedThisFrame() && !IsPanelOpen) GoToDiary();
                 // Busy at a piece of furniture, E is getting up, before it is anything else.
                 if (shortcuts.Interact.WasPressedThisFrame()) Interact();
@@ -502,7 +477,7 @@ namespace Gamesim.Episode
                     if (EpisodeHud.IsFinalThree(projected)) hint = EpisodeHud.TalkHint;
                 }
                 else if (choice == InteractTarget.StepIn) prompt = "E  \u00b7  " + EpisodeHud.StepInCaption;
-                hud.SetPrompt(prompt, hint);
+                hud.SetPrompt(InputGlossary.PromptFor(prompt, padHints), hint);
             }
             else hud.SetPrompt("");
         }
@@ -675,6 +650,8 @@ namespace Gamesim.Episode
             ForgetFreeTimeView();
             ForgetActionPurchase();
             ForgetInformationShare();
+            // Settings the main menu opened say so until they close (EpisodeDirector.Controls.cs).
+            if (settingsOpen) settingsFromFrontDoor = false;
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             replyCardView = null;
             blockSpeechView = null;
@@ -1429,6 +1406,8 @@ namespace Gamesim.Episode
                 if (lastSocialAction.HasValue) hud.OutcomeChips(lastSocialDelta);
                 // A counter to the proposal just turned down (C7) is answered here or not at all: first.
                 CounterCard(state, npc);
+                // A war room's open plan (WAVE-D-NPC-PACTS-PLAN D3) stands until the campaign closes: after it (D3-L3).
+                PactPlanCard(state, npc);
                 // What the player came for, first (their screen's "Ask for information" or "Pitch a
                 // deal"): the rows it names are drawn here and not again below.
                 bool cameToAsk = conversationIntent == IntentAsk, cameToDeal = conversationIntent == IntentDeal;

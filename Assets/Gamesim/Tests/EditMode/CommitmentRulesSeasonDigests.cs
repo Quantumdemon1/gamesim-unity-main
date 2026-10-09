@@ -368,10 +368,53 @@ namespace Gamesim.Tests.EditMode
                 return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(text))).Replace("-", "").Substring(0, 16).ToLowerInvariant();
         }
 
+        /// <summary>Schema 28's root and NPC-world field names (WAVE-D-NPC-PACTS-PLAN §0.3), as JSON names.</summary>
+        private static readonly string[] LegacyWaveDFields = { "allianceLeakRulesStartWeek", "pactPlanRulesStartWeek", "allWeekRulesStartWeek" };
+        private static readonly string[] LegacyWaveDNpcFields = { "beatWeek", "beatWindow", "beatsFired", "beatSeats", "beatPlan", "acts" };
+
         /// <summary>The state without schema 22's additions, and every reader the commitment rules touch.</summary>
         private static void Checkpoint(EpisodeState s, StringBuilder trace)
         {
             var o = JObject.FromObject(s);
+            // Schema 28's Wave D storage, by its JSON names so the file still compiles against older
+            // recorded assemblies: only exact28 requires its observer, which checks every new field is
+            // present and inert, strips them, and hands the schema-27 projection on to the exact27
+            // observer's field checks. Its trace26 keeps the getters and feeds the unchanged suffix.
+            bool waveD = LegacyWaveDFields.Any(name => o.Property(name) != null)
+                || (o["npcSocial"] is JObject npcWorld && LegacyWaveDNpcFields.Any(name => npcWorld.Property(name) != null))
+                || (o["ledger"] is JObject seasonLedger && seasonLedger.Property("plans") != null);
+            Assert.That(o["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
+            if ((long)o["schemaVersion"] >= 28 || waveD)
+            {
+                Assert.That((long)o["schemaVersion"], Is.EqualTo(28), "Do not project future or wrongly grouped Wave D storage.");
+                var observer28 = typeof(CommitmentRulesSeasonDigests).Assembly
+                    .GetType("Gamesim.Tests.EditMode.LegacyDigestSchema28Observer", true);
+                var project28 = observer28.GetMethod("ProjectTrace", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
+                    null, new[] { typeof(EpisodeState), typeof(JObject) }, null);
+                Assert.That(project28, Is.Not.Null, "Exact28 requires its reviewed observer; it never skips an absent dependency.");
+                Assert.That(project28.ReturnType, Is.EqualTo(typeof(JObject)));
+                o = (JObject)project28.Invoke(null, new object[] { s, o });
+                Assert.That((long)o["schemaVersion"], Is.EqualTo(26), "The exact28 observer projects through exact27 to 26.");
+            }
+            // Preserve compatibility with recorded older assemblies: only exact27 requires
+            // the new test observer. It validates a separate field view; returned trace26
+            // retains the original computed getters and feeds the unchanged legacy suffix.
+            // Only an exact-27 build's own state reaches this branch: since schema 28 the observer
+            // above has already taken every state through exact27's field checks to 26.
+            bool chronology = o["unifiedCommitments"] is JArray canonical && canonical.OfType<JObject>()
+                .Any(row => row.Property("voteBindingWeek") != null || row.Property("voteFirstRevealWeek") != null);
+            Assert.That(o["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
+            if ((long)o["schemaVersion"] >= 27 || chronology)
+            {
+                Assert.That((long)o["schemaVersion"], Is.EqualTo(27), "Do not project future or wrongly grouped chronology.");
+                var observer = typeof(CommitmentRulesSeasonDigests).Assembly
+                    .GetType("Gamesim.Tests.EditMode.LegacyDigestSchema27Observer", true);
+                var method = observer.GetMethod("ProjectTrace", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
+                    null, new[] { typeof(EpisodeState), typeof(JObject) }, null);
+                Assert.That(method, Is.Not.Null, "Exact27 requires its reviewed observer; it never skips an absent dependency.");
+                Assert.That(method.ReturnType, Is.EqualTo(typeof(JObject)));
+                o = (JObject)method.Invoke(null, new object[] { s, o });
+            }
             // Only the literal inert26 archive is removable. This file must also compile
             // against old recorded assemblies, so inspect JSON rather than growing DTO fields.
             bool hasVoteArchive = o.TryGetValue("unifiedVoteReveals", out var voteArchive);

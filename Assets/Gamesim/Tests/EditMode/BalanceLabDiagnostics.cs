@@ -226,9 +226,11 @@ namespace Gamesim.Tests.EditMode
             var md = new StringBuilder();
             md.AppendLine("### Q4: an NPC Head of Household's nominations, the weight in its terms - the player against the mean other candidate (T0)");
             md.AppendLine();
-            md.AppendLine("Each term as it enters the weight (lower is put up first): the strategy windows' reluctance, the story's preference, minus the HoH's view, minus the overlapping protection, minus the threat. Player minus others; negative means the term pushes the player up.");
+            md.AppendLine("Each term as it enters the weight (lower is put up first). NominationReluctance and NominationPreference each start from the HoH's view and the weight takes it away once, "
+                + "so the view counts once: the HoH's view; the strategy windows' own terms (ally shield, deals, pleas, protection held); the story's own terms (grudges, their word, bonds); minus the overlapping protection; minus the threat. "
+                + "Player minus the mean other candidate; negative means the term pushes the player up.");
             md.AppendLine();
-            md.AppendLine("| policy | house | NPC nominations | player put up | mean rank (1 first) of candidates | reluctance | story | view | protection | threat | total |");
+            md.AppendLine("| policy | house | NPC nominations | player put up | mean rank (1 first) of candidates | view | strategy terms | story terms | protection | threat | total |");
             md.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|");
             foreach (var cell in BalanceLabReports.Cells(runs))
             {
@@ -236,9 +238,10 @@ namespace Gamesim.Tests.EditMode
                 if (records.Count == 0) continue;
                 string D(Func<BalanceLab.NominationTerms, double> term) => Num(records.Average(x => term(x.player)), "0.0") + " - " + Num(records.Average(x => term(x.others)), "0.0")
                     + " = " + Num(records.Average(x => term(x.player) - term(x.others)), "0.0");
+                // The recorded terms each carry the view (reluctance and story with it, view as its negative): take it out of the two and count it once.
                 md.AppendLine("| " + cell.Key.policy + " | " + cell.Key.size + " | " + records.Count + " | " + BalanceLab.Pct((double)records.Count(x => x.playerNominated) / records.Count)
-                    + " | " + Num(records.Average(x => x.playerRank), "0.0") + " of " + Num(records.Average(x => x.candidates), "0.0") + " | " + D(t => t.reluctance) + " | " + D(t => t.story)
-                    + " | " + D(t => t.view) + " | " + D(t => t.protection) + " | " + D(t => t.threat) + " | " + D(t => t.total) + " |");
+                    + " | " + Num(records.Average(x => x.playerRank), "0.0") + " of " + Num(records.Average(x => x.candidates), "0.0") + " | " + D(t => -t.view) + " | " + D(t => t.reluctance + t.view)
+                    + " | " + D(t => t.story + t.view) + " | " + D(t => t.protection) + " | " + D(t => t.threat) + " | " + D(t => t.total) + " |");
             }
             md.AppendLine();
             return md.ToString();

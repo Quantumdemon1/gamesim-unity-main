@@ -113,7 +113,11 @@ namespace Gamesim.Tests.EditMode
         /// <summary>Q4: one candidate's <see cref="EpisodeEngine.NominationWeight"/> in its terms (lower is put up first).</summary>
         internal sealed class NominationTerms
         {
-            /// <summary>The strategy windows' reluctance, the story's preference, minus the HoH's view, minus the overlapping protection, minus the threat.</summary>
+            /// <summary>
+            /// As the weight sums them: the strategy windows' reluctance and the story's preference (each of which starts
+            /// from the HoH's view), minus the HoH's view, minus the overlapping protection, minus the threat. The report
+            /// counts the view once (<see cref="BalanceLabDiagnostics.NominationDecomposition"/>).
+            /// </summary>
             public double reluctance, story, view, protection, threat, total;
 
             internal static NominationTerms Of(EpisodeState s, string hohId, string id) => new NominationTerms

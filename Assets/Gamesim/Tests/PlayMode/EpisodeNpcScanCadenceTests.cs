@@ -143,6 +143,16 @@ namespace Gamesim.Tests.PlayMode
             var state = director.Snapshot;
             var busy = NpcPairing.Busy(state);
             if (director.CurrentTalkSpot != null) busy.Add(director.CurrentTalkSpot.NpcId);
+            // The two of a staged all-week act stand where it happens, and the director leaves them out of the
+            // pairing as busy (the D2 lane's ActHoldsActor). Replay that too where the coordinator has acts, so the
+            // comparison holds with an act under way; read by name, since a build without acts has no such method.
+            var actHoldsActor = typeof(HouseMeetingCoordinator).GetMethod("ActHoldsActor", new[] { typeof(string) });
+            if (actHoldsActor != null)
+            {
+                var meetings = NpcRead<HouseMeetingCoordinator>("npcMeetings");
+                foreach (var actor in state.Active)
+                    if (!actor.isPlayer && (bool)actHoldsActor.Invoke(meetings, new object[] { actor.id })) busy.Add(actor.id);
+            }
             var reserved = new HashSet<string>(leases.Select(lease => lease.FirstId + ">" + lease.SecondId));
             int tries = 0;
             var held = NpcPairing.Plan(state, busy, (first, second) => { tries++; return reserved.Contains(first + ">" + second); });

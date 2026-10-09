@@ -43,6 +43,12 @@ namespace Gamesim.Presentation
         public float FontScale { get; set; } = 1f;
         public bool IsPlaying => playing;
         public bool OwnsInput => playing || Time.frameCount <= dismissedFrame + 1;
+
+        /// <summary>How long, on the unscaled clock, the card lets a press go by: the one that brought it up.</summary>
+        public const float PressGuardSeconds = .25f;
+
+        /// <summary>Whether a press now dismisses the card: it is up, and past <see cref="PressGuardSeconds"/>.</summary>
+        public bool TakesAPress => playing && elapsed >= PressGuardSeconds;
         public event System.Action VisibilityChanged;
 
         public static CompetitionResult Attach(GameObject owner)
@@ -93,7 +99,7 @@ namespace Gamesim.Presentation
             if (wasPlaying) VisibilityChanged?.Invoke();
         }
 
-        private void Dismiss(){if(playing&&elapsed>=.25f)Cancel();}
+        private void Dismiss(){if(TakesAPress)Cancel();}
 
         /// <summary>
         /// A new frame shape - a resize, a resolution change, a review capture through a camera -

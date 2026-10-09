@@ -313,6 +313,12 @@ namespace Gamesim.Tests.PlayMode
             found(card);
             yield return null;
             Assert.That(card.IsPlaying, Is.True, "The competition's results are up.");
+            // The card lets the press that brought it up go by, for a quarter second of the unscaled
+            // clock: on a warm run two frames are a few milliseconds, so the matrix's press would land
+            // inside that guard and be let go as the card means it to be. Press once it takes one.
+            float until = Time.realtimeSinceStartup + 5f;
+            while (!card.TakesAPress && Time.realtimeSinceStartup < until) yield return null;
+            Assert.That(card.TakesAPress, Is.True, "The results take a press once the one that brought them up has gone by.");
         }
 
         private IEnumerator OpenSeasonReportForBack()

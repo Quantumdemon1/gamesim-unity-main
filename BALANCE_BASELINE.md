@@ -348,6 +348,78 @@ them.
 - **Pacing** is unchanged: decisions a week within 0.7 for every policy but the exploit hunter (37.7 to 36.8 at
   8, 46.6 to 44.2 at 12), and the ceremonies within 0.2 s.
 
+## Vote family V6: the same 2,400 seasons under the unified vote rules (2026-10-09)
+
+*Measured on V6's lane at 100 seeds, as D2's enable was, not the 480-seed tables below. No constant was tuned
+(the lead's decision 9).*
+
+Before is the lead's integration tip `27b21b28` (fresh seasons in mode 1: canonical Safety, raw vote promises
+and deals); after is V6's `1c08f66d`, where `ShippedRules.ApplyFresh` sets `unifiedCommitmentRulesVersion` 2
+(canonical Vote and Safety rows, the Rule2 overlap policy, D1's counting, the knowledge gate). Both halves are the
+headline tier's first 100 seasons of every policy and house (indices 0-99), played in five parts of 20 and
+merged (`BALANCE_TIER=headline BALANCE_FROM BALANCE_COUNT BALANCE_PARTS`, then `MergeReport`), so they pair
+season for season; b counts the seasons only the mode-2 player won, c those only the mode-1 player won. No
+season had an error in either half (0 of 2,400 each); 22.4 and 21.6 minutes on six threads, on a machine other
+lanes shared, so the cost a season (2.9-3.9 s before, 3.1-3.4 s after, on one thread) shows no difference.
+
+**Two harness gaps came first.** The first mode-2 run moved the player's deals because the lab could not see
+them: `BalanceLabView.Offers` showed canonical offers only under `RulesOn` (mode 1), so in mode 2 a lab player
+never saw a vote or Safety offer to answer (player deals kept 0.94 to 0.68 a season at 8 and 1.51 to 1.19 at 12,
+broken 0.55 to 0.41 and 0.79 to 0.60, Game Sense's strategy -0.7 and -0.5, each beyond its interval), and the skilled oracle
+(`StorySeasonTests.SkilledNext`) looked for offers in the raw deal list, which holds no Vote offer in mode 2.
+The view now reads them wherever Safety is canonical (`SafetyAuthorityOn`), as the game's screens do, and the
+oracle reads `CommitmentReferences.RawDeals`; modes 0 and 1 read exactly as before. The numbers below are after
+both fixes.
+
+**Win rate, mode 1 to mode 2, on the same seasons** (wins of 100; b/c; McNemar p):
+
+| policy | at 8 | at 12 |
+|---|---|---|
+| passive | 15 to 15 (0/0, 1.000) | 17 to 17 (0/0, 1.000) |
+| random | 14 to 15 (1/0, 1.000) | 13 to 13 (0/0, 1.000) |
+| social | 14 to 16 (2/0, 0.500) | 18 to 21 (4/1, 0.375) |
+| reader | 19 to 19 (0/0, 1.000) | 23 to 23 (0/0, 1.000) |
+| schemer | 11 to 12 (1/0, 1.000) | 28 to 28 (3/3, 1.000) |
+| loyalist | 20 to 20 (0/0, 1.000) | 26 to 26 (0/0, 1.000) |
+| floater | 22 to 22 (0/0, 1.000) | 26 to 26 (0/0, 1.000) |
+| beast | 86 to 86 (0/0, 1.000) | 55 to 55 (0/0, 1.000) |
+| novice | 10 to 10 (0/0, 1.000) | 18 to 19 (3/2, 1.000) |
+| exploit | 12 to 12 (0/0, 1.000) | 12 to 11 (0/1, 1.000) |
+| oracle-reader | 16 to 16 (0/0, 1.000) | 30 to 30 (0/0, 1.000) |
+| oracle-skilled | 15 to 15 (0/0, 1.000) | 30 to 30 (0/0, 1.000) |
+| all twelve (of 1,200) | 254 to 258 (4/0, 0.125) | 296 to 299 (10/7, 0.629) |
+
+**What moved.** 2,233 of the 2,400 seasons are byte-identical rows; the other 167 are the social player's (31 at
+8, 30 at 12), the schemer's (20, 22), the novice's (22, 11), the exploit hunter's (13, 7) and the random
+player's (6, 5). Seven of the twelve players play every season as before. One metric moves beyond its interval:
+the player's broken deals, 0.55 to 0.54 a season at 8 (-0.006 [-0.012, -0.001]) and 0.79 to 0.78 at 12 (-0.009
+[-0.018, -0.001]) - D1 and the Rule2 overlap policy: where one of the player's ballots breaks a vote promise and a
+vote deal with the same houseguest, the group is one incident, so the seasons that met it count one breach
+fewer. Every other paired metric is within its interval at both sizes (bootstrap 95% of the paired mean): final
+two, placement, out by week 3, nominations a week, Game Sense and its strategy part (+0.002 and +0.009), the
+player's deals and promises and their kept and broken counts, NPC-only deals (13.16 to 13.17, 49.15 to 49.17),
+their kept and broken, NPC-only pacts (1.27, 2.66), the warmest and coldest pairs (within 0.1), the jury's
+margin, bitter jurors, storylines, pariah seasons, war-room plans and the NPCs' nominations of the player.
+
+**Why the seasons that differ differ.** A Rule2 group's non-owner rows write no line, memory or ledger record,
+so a reveal that decided the player's vote promise and vote deal with one houseguest by one ballot writes fewer
+records than mode 1 did. The season's `nextSequence` runs that many behind from then on, and the
+story and house-event ids drawn after it move with it, so a keyed story chance (`StoryRandom`, keyed by those
+ids, never the stream) can land the other way. Six of the 167 were traced command by command against the same
+season in mode 1 (at 8: social 1 and 5, schemer 1, novice 2, exploit 12, random 32). Social 1 and 5 and schemer
+1 part at such a reveal (their sequence three behind after it); in exploit 12 and random 32 the first different
+command is a storyline beat whose house-event id is three lower in mode 2, the same shift, not traced back to its
+reveal; novice 2 plays the same commands to the end and its row differs in the warmest pair (200 to 194.7) and
+Game Sense's social part (36 to 35), as one consequence per Rule2 group and D1's scoring would move them (not
+traced further). That is the designed overlap policy, not a stream leak; the other 161 were not traced one by
+one.
+
+**For the findings:** F1 holds (p = 0.13 and 0.63), and no finding's reading changes.
+
+**Goldens.** `BalanceLabGoldens` (the rules tuple and all 48 cells, budgets 0 and 300) and
+`BalanceLabTests.BudgetNoughtRows` are re-recorded at V6's tip with its harness fixes. They had not moved for D2's
+enable either (the tuple still read `allWeekRulesStartWeek=0`), so the recording covers both.
+
 ## The headline tables
 
 | metric | policy, size | 0 | 900 (vs 0) |

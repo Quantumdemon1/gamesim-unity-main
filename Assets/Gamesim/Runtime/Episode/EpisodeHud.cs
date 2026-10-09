@@ -1636,7 +1636,7 @@ namespace Gamesim.Episode
         public void PathInput(string placeholder,Action<string> submit)
         {
             var rect = Panel("Import path",content,Surface); var element = rect.gameObject.AddComponent<LayoutElement>(); element.minHeight = 58;
-            var input = rect.gameObject.AddComponent<TMP_InputField>(); var text = NewText(rect,"",19,Paper); Stretch(text.rectTransform,14,9,14,9);
+            var input = rect.gameObject.AddComponent<EpisodeTextField>(); var text = NewText(rect,"",19,Paper); Stretch(text.rectTransform,14,9,14,9);
             var hint = NewText(rect,placeholder,19,UiTheme.Muted); Stretch(hint.rectTransform,14,9,14,9);
             input.textComponent = text; input.placeholder = hint; input.characterLimit = 1024; input.lineType = TMP_InputField.LineType.SingleLine;
             input.text = retainedImportPath;
@@ -2472,10 +2472,37 @@ namespace Gamesim.Episode
     }
 
     /// <summary>
-    /// Runtime-created speech field. The director owns Escape and the HUD owns Tab; do not let
-    /// uGUI's default Escape rollback discard the retained draft or Tab insert a literal tab.
+    /// A runtime-created text field a pad can pass over (PLAN A, A6, Risk R7). TMP starts editing a
+    /// field the moment it is selected and drops every UI move while it edits, so a d-pad or a stick
+    /// that reached one could never leave it: the settings' import path held the pad's walk down the
+    /// settings, the block speech's draft its walk down the speech. A pad cannot type, so a move that
+    /// is not the keyboard's ends the edit and moves on. The keyboard's arrows stay the field's own -
+    /// TMP takes them as caret keys before any move is sent - and Tab is the HUD's.
     /// </summary>
-    public sealed class EpisodeSpeechInputField : TMP_InputField
+    public class EpisodeTextField : TMP_InputField
+    {
+        public override void OnMove(AxisEventData eventData)
+        {
+            if (isFocused && !MovedByKeyboard()) DeactivateInputField();
+            base.OnMove(eventData);
+        }
+
+        /// <summary>Whether this frame's UI move came from the keyboard, read off the UI module's own Move action.</summary>
+        private static bool MovedByKeyboard()
+        {
+            var module = EventSystem.current != null ? EventSystem.current.currentInputModule as UnityEngine.InputSystem.UI.InputSystemUIInputModule : null;
+            var move = module != null && module.move != null ? module.move.action : null;
+            var control = move != null ? move.activeControl : null;
+            return control != null && control.device is UnityEngine.InputSystem.Keyboard;
+        }
+    }
+
+    /// <summary>
+    /// Runtime-created speech field. The director owns Escape and the HUD owns Tab; do not let
+    /// uGUI's default Escape rollback discard the retained draft or Tab insert a literal tab. A pad's
+    /// d-pad passes over it, as over every HUD field (<see cref="EpisodeTextField"/>).
+    /// </summary>
+    public sealed class EpisodeSpeechInputField : EpisodeTextField
     {
         public override void OnUpdateSelected(BaseEventData eventData)
         {

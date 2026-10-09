@@ -39,7 +39,9 @@ namespace Gamesim.Tests.EditMode
                 foreach (var name in new[] { "OrbitRate", "Pan", "ZoomRate", "Recenter", "Next", "Previous" })
                     Assert.That(map.FindAction(name).bindings.Any(b => (b.groups ?? "").Contains(HouseCameraActions.GamepadScheme)),
                         name + " must have a gamepad binding.");
-                foreach (var name in new[] { "Orbit", "Pan", "Drag", "Zoom", "ZoomRate", "Recenter", "Point" })
+                // OrbitRate has keys since PLAN A, A7: Q turns the camera left and C right, as the stick does.
+                Assert.That(HouseCameraActions.BindingWords(map.FindAction("OrbitRate"), HouseCameraActions.KeyboardMouseScheme), Is.EqualTo("Q/C"));
+                foreach (var name in new[] { "Orbit", "OrbitRate", "Pan", "Drag", "Zoom", "ZoomRate", "Recenter", "Point" })
                     Assert.That(map.FindAction(name).bindings.Any(b => (b.groups ?? "").Contains(HouseCameraActions.KeyboardMouseScheme)),
                         name + " must have a keyboard-and-mouse binding.");
 

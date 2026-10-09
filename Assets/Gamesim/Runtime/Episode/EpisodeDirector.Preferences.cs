@@ -57,6 +57,8 @@ namespace Gamesim.Episode
                 Say("frames", FrameCapName(frameCap)),
                 Say("edges", edgePan ? "pan" : "still"),
                 Say("language", language),
+                Say("camera", CameraSpeedName(cameraSpeedPercent)),
+                Say("tilt", invertTilt ? "inverted" : "normal"),
             };
         }
 

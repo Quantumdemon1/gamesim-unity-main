@@ -52,6 +52,47 @@ namespace Gamesim.Tests.EditMode
                 Is.SubsetOf(new[] { InputGlossary.InterfaceMap, InputGlossary.PointerMap, InputGlossary.TypingMap }));
         }
 
+        /// <summary>The mouse's own words: a row pressed only these ways is the mouse's alone.</summary>
+        private static readonly string[] MouseWords = { "Right-drag", "Middle-drag", "Left-drag", "Wheel", "Pointer", "Left click", "Right button", "Middle button", "Move" };
+
+        /// <summary>
+        /// PLAN A, A7's acceptance: nothing is the mouse's alone without a way a keyboard player and a
+        /// pad player can do the same. Each mouse-only row names the row that is its equivalent, and
+        /// that row has a key that is not the mouse's and a pad button. The pointer's walk and the
+        /// beacons' trips are the notebook's room trips ("Go to the kitchen"), pressed as any panel's
+        /// control is.
+        /// </summary>
+        [Test]
+        public void NoActionIsTheMousesAlone_WithoutAnEquivalent()
+        {
+            var equivalents = new Dictionary<string, string>
+            {
+                { "Camera/Orbit", "Camera/OrbitRate" },     // Q/C, the right stick (A7)
+                { "Camera/Drag", "Camera/Pan" },            // WASD and the arrows, the left stick
+                { "Camera/Zoom", "Camera/ZoomRate" },       // - and =, the triggers
+                { "Camera/Point", "Camera/Pan" },           // the edges' pan is the keys' pan; zooming is ZoomRate
+                { InputGlossary.InterfaceMap + "/Click", InputGlossary.InterfaceMap + "/Submit" },
+                { InputGlossary.InterfaceMap + "/ScrollWheel", InputGlossary.InterfaceMap + "/Navigate" },
+                { InputGlossary.PointerMap + "/Walk", InputGlossary.InterfaceMap + "/Submit" },   // the notebook's room trips
+                { InputGlossary.PointerMap + "/Beacon", InputGlossary.InterfaceMap + "/Submit" }, // the same trips
+            };
+            bool MouseOnly(InputGlossary.Row row) => row.Pad.Length == 0 && row.Keyboard.Length > 0
+                && row.Keyboard.Split(new[] { " / " }, System.StringSplitOptions.None).All(word => MouseWords.Contains(word));
+            var mouseOnly = InputGlossary.Rows.Where(MouseOnly).Select(row => row.ToString()).ToList();
+            Assert.That(mouseOnly, Is.EquivalentTo(equivalents.Keys), "Every row the mouse alone presses, and nothing else.");
+            foreach (var pair in equivalents)
+            {
+                var parts = pair.Value.Split('/');
+                var equivalent = InputGlossary.Find(parts[0], parts[1]);
+                Assert.That(equivalent, Is.Not.Null, pair.Key + "'s equivalent " + pair.Value + " is a row.");
+                Assert.That(MouseOnly(equivalent), Is.False, pair.Key + "'s equivalent is not the mouse's too.");
+                Assert.That(equivalent.Keyboard.Split(new[] { " / " }, System.StringSplitOptions.None).Any(word => word.Length > 0 && !MouseWords.Contains(word)), Is.True,
+                    pair.Value + " has a key: " + equivalent.Keyboard);
+                Assert.That(equivalent.Pad, Is.Not.Empty, pair.Value + " has a pad button.");
+            }
+            Assert.That(InputGlossary.Find("Camera", "OrbitRate").Keyboard, Is.EqualTo("Q/C"), "The camera turns on Q and C (A7).");
+        }
+
         [TestCase("<Keyboard>/escape", "Esc")]
         [TestCase("<Keyboard>/f5", "F5")]
         [TestCase("<Keyboard>/j", "J")]

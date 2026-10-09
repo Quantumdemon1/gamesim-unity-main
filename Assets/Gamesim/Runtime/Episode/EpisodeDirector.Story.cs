@@ -603,6 +603,24 @@ namespace Gamesim.Episode
                 sceneFurniture, 1 << HouseLayers.Furniture, QueryTriggerInteraction.Ignore) > 0;
 
         /// <summary>
+        /// A seam for tests, never called by the game (PLAN A, A7): stages a walk-in as the proximity
+        /// watch finds one - this pair, in this room, this week - without walking two bodies into a
+        /// room beside the player, so a test can reach the Pull's Step in and press E on it. Offered
+        /// only, as the watch offers one: nothing is written until the player steps in, and the watch's
+        /// clock starts again so its next look does not withdraw the offer under the test. False, and
+        /// nothing staged, when the engine would not take the pair there (the story system off, or no
+        /// walk-in arc for them this week).
+        /// </summary>
+        public bool StageWalkInForDiagnostics(string first, string second, string room)
+        {
+            var state = projected;
+            if (!IsReady || state == null || !EpisodeEngine.StoryOn(state) || !EpisodeEngine.ProximityOpen(state, first, second, room)) return false;
+            walkInFirst = first; walkInSecond = second; walkInRoom = room; walkInWeek = state.week;
+            proximityWatch = 0f;
+            return true;
+        }
+
+        /// <summary>
         /// Step in on a walk-in: the engine's own walk-in, committed now with the pair the player
         /// found and the room they found them in, then its card, opened where they stand.
         /// </summary>

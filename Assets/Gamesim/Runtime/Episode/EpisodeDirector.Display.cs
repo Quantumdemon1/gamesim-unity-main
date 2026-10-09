@@ -73,6 +73,7 @@ namespace Gamesim.Episode
             language = store.GetString("Gamesim.Language", Localisation.DefaultLanguage);
             Localisation.Load(language);
             language = Localisation.Language;
+            LoadCameraPreferences();
         }
 
         private void ApplyDisplayPreferences()
@@ -96,6 +97,7 @@ namespace Gamesim.Episode
             store.SetInt("Gamesim.Fullscreen", fullscreen ? 1 : 0);
             store.SetInt("Gamesim.EdgePan", edgePan ? 1 : 0);
             store.SetInt("Gamesim.CompactHud", compactHud ? 1 : 0);
+            ApplyCameraPreferences();
         }
 
         /// <summary>The display block of the settings panel; each control cycles or flips one preference.</summary>
@@ -124,6 +126,8 @@ namespace Gamesim.Episode
                     int at = languages.IndexOf(language);
                     language = languages[(at + 1) % languages.Count]; ApplyPreferences(); Render();
                 });
+            // The camera's speed and tilt, after the display (A7).
+            CameraSettings();
         }
     }
 }

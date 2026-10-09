@@ -63,7 +63,7 @@ namespace Gamesim.Presentation
         {
             // The camera map.
             new Row(CameraContext, "Camera", "Orbit", "Right-drag", "", "Turn the camera around the house"),
-            new Row(CameraContext, "Camera", "OrbitRate", "", "Right stick", "Turn the camera"),
+            new Row(CameraContext, "Camera", "OrbitRate", "Q/C", "Right stick", "Turn the camera"),
             new Row(CameraContext, "Camera", "Pan", "WASD / Arrows", "Left stick", "Move the camera"),
             new Row(CameraContext, "Camera", "Drag", "Middle-drag", "", "Drag the ground under the cursor"),
             new Row(CameraContext, "Camera", "Zoom", "Wheel", "", "Zoom in and out"),

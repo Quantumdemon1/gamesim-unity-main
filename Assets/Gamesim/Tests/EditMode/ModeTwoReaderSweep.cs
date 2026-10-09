@@ -75,6 +75,43 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// One season played twice, command by command: the public mode-1 game through <see cref="PinnedVoteSeason"/>, and the
+        /// mode-2 game through the internal engine seam from the same fresh season, each given the command the mode-1 game's
+        /// player chose. Stops at the first command after which the mode-2 state is not the mode-1 state's projection, and
+        /// says where - "week W Phase Kind: the first differing fields" - or "finished" at the jury's verdict.
+        /// </summary>
+        internal static string Lockstep(uint seed, int size, bool busy)
+        {
+            var fresh = PinnedVoteSeason.Fresh(seed, size: size);
+            var season = new PinnedVoteSeason(seed, fresh);
+            var engine = ProspectiveVoteFacade.Engine(PinnedVoteSeason.Project(fresh, new Dictionary<string, ProspectiveVoteOwner>(),
+                Array.Empty<UnifiedVoteRevealState>()));
+            for (int step = 0; step < 3000; step++)
+            {
+                var s = season.State;
+                if (s.phase == EpisodePhase.Finished) return "finished";
+                EpisodeCommand command = null;
+                for (int attempt = 0; busy && attempt < 3 && command == null; attempt++)
+                {
+                    var own = Busy(s, seed, attempt);
+                    if (own == null) break;
+                    if (new EpisodeEngine(s).Apply(own).accepted) command = own;
+                }
+                command = command ?? Next(s);
+                var legacy = season.Apply(command);
+                var prospective = engine.Apply(command);
+                string where = "week " + s.week + " " + s.phase + " " + command.kind;
+                Assert.That(legacy.accepted, Is.True, "seed " + seed + " " + where + ": " + legacy.reason);
+                if (!prospective.accepted) return where + ": refused in mode 2: " + prospective.reason;
+                if (!season.Supported) return where + ": unsupported " + season.FirstUnsupported;
+                var differences = Differences(PinnedVoteSeason.Project(legacy.state, season.Owners, season.Frames), prospective.state);
+                if (differences.Count > 0)
+                    return where + ": " + string.Join(", ", differences.Select(d => d.Split('[', ':')[0]).Distinct());
+            }
+            return "unfinished";
+        }
+
+        /// <summary>
         /// The first mode-2 projection a walk of seeds 1..32 reaches that <paramref name="match"/> accepts, with the mode-1 state
         /// it projects - a fixture the real engine played, never a built one - or a failure naming the seeds tried.
         /// </summary>
@@ -222,6 +259,58 @@ namespace Gamesim.Tests.EditMode
             return pair;
         }
 
+        // ------------------------------------------------------------ a reveal played twice
+
+        /// <summary>One reveal from one moment: the public mode-1 game, its mode-2 twin through the seam, and the mode-1 result's projection.</summary>
+        internal sealed class Revealed
+        {
+            internal EpisodeState Mode1, Mode2, Projection, Cast, CastTwin;
+        }
+
+        /// <summary>
+        /// From a campaign the player votes in: the real Advances to the open vote and the real NPC batch, the named NPC ballots
+        /// pinned, and the player's ballot and the counting Advance played through both games.
+        /// </summary>
+        internal static Revealed Reveal(EpisodeState campaign, string playerVote, IReadOnlyDictionary<string, string> pins)
+        {
+            var engine = new EpisodeEngine(ProspectiveVoteTwins.Valid(campaign));
+            EpisodeEngineTests.OpenTheVote(engine);
+            var batch = engine.Apply(EpisodeEngineTests.Command(engine.Snapshot, EpisodeCommandKind.Advance));
+            Assert.That(batch.accepted && !batch.state.evictionResolved, Is.True, batch.reason);
+            var pinned = batch.state;
+            foreach (var pin in pins) pinned.votes.Single(v => v.voterId == pin.Key).targetId = pin.Value;
+            var owners = ProspectiveVoteTwins.Owners(pinned);
+            var legacy = new EpisodeEngine(ProspectiveVoteTwins.Valid(pinned));
+            var twin = ProspectiveVoteFacade.Engine(ProspectiveVoteTwins.Twin(pinned));
+            var cast = ProspectiveVoteTwins.Command(pinned, EpisodeCommandKind.CastVote, playerVote);
+            var revealed = new Revealed { Cast = legacy.Apply(cast).state, CastTwin = twin.Apply(cast).state };
+            var count = ProspectiveVoteTwins.Command(revealed.Cast, EpisodeCommandKind.Advance, tag: "reveal");
+            var mode1 = legacy.Apply(count);
+            var mode2 = twin.Apply(count);
+            Assert.That(mode1.accepted && mode2.accepted && mode1.state.evictionResolved && mode2.state.evictionResolved, Is.True,
+                mode1.reason + " / " + mode2.reason);
+            revealed.Mode1 = mode1.state; revealed.Mode2 = mode2.state;
+            var frame = new UnifiedVoteRevealState { week = mode1.state.week, ballots = mode1.state.votes
+                .Select(v => new UnifiedVoteBallotState { voterId = v.voterId, targetId = v.targetId }).ToList() };
+            revealed.Projection = PinnedVoteSeason.Project(mode1.state, owners, new[] { frame });
+            return revealed;
+        }
+
+        /// <summary>The player's deal, proposed in the real command and agreed by the season's next draw.</summary>
+        internal static EpisodeState Strike(EpisodeState s, string with, string type, string about = null)
+        {
+            Assert.That(PlayerDeals.CanPropose(s, with, type, about, out var why), Is.True, why);
+            s = s.Clone();
+            s.randomState = ProspectiveVoteTwins.Draw(true, PlayerDeals.AcceptanceChance(s, with, type, about));
+            var after = Accepted(s, ProspectiveVoteTwins.Command(s, EpisodeCommandKind.ProposeDeal, with, about, type));
+            Assert.That(after.deals.Count(d => d.type == type && d.status == DealStatus.Active && d.recipientId == with && d.targetId == about),
+                Is.EqualTo(1), "Fixture: the deal was struck.");
+            return after;
+        }
+
+        /// <summary>A first campaign the player votes in beside four houseguests (the flip pair's).</summary>
+        internal static EpisodeState Campaign() => FlipCampaign();
+
         /// <summary>The reveal through the mode-2 seam: every NPC ballot pinned after the real batch, the player's own real ballot.</summary>
         private static EpisodeState Reveal(EpisodeState batch, FlipPair pair, bool kept)
         {
@@ -266,6 +355,45 @@ namespace Gamesim.Tests.EditMode
         /// <summary>A coin that has nothing to do with the engine's stream.</summary>
         private static int Pick(EpisodeState s, uint seed, int salt, int n) =>
             n <= 0 ? 0 : (int)((((uint)s.revision * 2654435761u) ^ (seed * 40503u) ^ ((uint)salt * 2246822519u) ^ ((uint)s.week * 97u)) % 100003u) % n;
+
+        /// <summary>
+        /// Where a mode-2 state differs from the mode-1 state's projection, without asserting: each differing top-level field
+        /// and its first differing element. Empty when equal (the form <see cref="ProspectiveVoteTwins.AssertProjection"/> asserts).
+        /// </summary>
+        internal static List<string> Differences(EpisodeState projection, EpisodeState prospective)
+        {
+            var expected = Normal(projection);
+            var actual = Normal(prospective);
+            var found = new List<string>();
+            foreach (var name in expected.Properties().Select(p => p.Name))
+            {
+                var left = expected[name]; var right = actual[name];
+                if (Newtonsoft.Json.Linq.JToken.DeepEquals(left, right)) continue;
+                string where = name;
+                if (left is Newtonsoft.Json.Linq.JArray l && right is Newtonsoft.Json.Linq.JArray r)
+                    for (int i = 0; i < Math.Max(l.Count, r.Count); i++)
+                        if (i >= l.Count || i >= r.Count || !Newtonsoft.Json.Linq.JToken.DeepEquals(l[i], r[i]))
+                        {
+                            where = name + "[" + i + "]: mode 1 " + (i < l.Count ? Short(l[i]) : "none") + " / mode 2 " + (i < r.Count ? Short(r[i]) : "none");
+                            break;
+                        }
+                found.Add(where);
+            }
+            return found;
+        }
+
+        private static string Short(Newtonsoft.Json.Linq.JToken token)
+        {
+            string text = token.ToString(Newtonsoft.Json.Formatting.None);
+            return text.Length > 300 ? text.Substring(0, 300) + "..." : text;
+        }
+
+        private static Newtonsoft.Json.Linq.JObject Normal(EpisodeState s)
+        {
+            var copy = s.Clone();
+            copy.unifiedCommitments = copy.unifiedCommitments.OrderBy(row => row.id, StringComparer.Ordinal).ToList();
+            return Newtonsoft.Json.Linq.JObject.FromObject(copy);
+        }
 
         /// <summary>A list's JSON, element for element: the form two readers' answers are compared in.</summary>
         internal static string Json(object value) => PinnedVoteSeason.Json(value);

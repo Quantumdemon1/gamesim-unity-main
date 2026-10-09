@@ -98,8 +98,11 @@ namespace Gamesim.Simulation
         /// </summary>
         public static int BrokenDeals(EpisodeState state, string whoId)
         {
-            int legacy = state.deals.Count(d => Breaches.CountsAgainst(state, d, whoId));
-            if (!UnifiedCommitments.RulesOn(state)) return legacy;
+            // Mode 2 (vote family V5b): mode 1's raw list, its Vote deals counted once per Rule2 incident (D1).
+            var incidents = UnifiedVoteHistory.Breaches(state);
+            int legacy = CommitmentReferences.RawDeals(state).Count(d => Breaches.CountsAgainst(state, d, whoId)
+                && (!UnifiedVoteHistory.ByIncident(state, d) || incidents.Any(i => i.DealId == d.id && i.ActorId == whoId)));
+            if (!UnifiedCommitments.SafetyAuthorityOn(state)) return legacy;
             // This source term measures broken deals, not every kind of word. A promise-only
             // incident stays outside it; any number of reciprocal Safety deal aliases counts
             // once, against the actual actor and never against the person they wronged.

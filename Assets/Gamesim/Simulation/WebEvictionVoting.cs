@@ -30,6 +30,13 @@ namespace Gamesim.Simulation
     [Serializable] public sealed class WebVotePromise
     {
         public string fromId, toId, type, status;
+
+        /// <summary>
+        /// Native, the prospective mode 2 only (vote family V5b, the lead's decision D1): a broken vote promise is held as the
+        /// breach incidents it owns (<see cref="UnifiedVoteIncident.OwnerId"/>) - the breakers named here, at most its maker.
+        /// Null on an imported web round and in every other season, where a broken promise is held as itself.
+        /// </summary>
+        public List<string> ownerOf;
     }
 
     // Explicit context types: absent native systems are not inferred from unrelated fields.
@@ -56,6 +63,14 @@ namespace Gamesim.Simulation
         /// <see cref="Breaches.BrokenByBoth"/>) - so it is held against each. False otherwise.
         /// </summary>
         public bool brokenByBoth;
+
+        /// <summary>
+        /// Native, the prospective mode 2 only (vote family V5b, the lead's decision D1): a broken vote deal is held as the
+        /// breach incidents it stands for - in the deal term those it owns (<see cref="UnifiedVoteIncident.OwnerId"/>), in the
+        /// threat term those whose deal it is (<see cref="UnifiedVoteIncident.DealId"/>), each list naming the breakers. Null on
+        /// an imported web round and in every other season, where a broken deal is held as itself.
+        /// </summary>
+        public List<string> ownerOf, dealOf;
     }
 
     [Serializable] public sealed class WebVoteRelationshipArc
@@ -201,6 +216,10 @@ namespace Gamesim.Simulation
             // Under the commitment rules (C0, X3) a breach is held against whoever broke it, here as in
             // every other reader; who that was is read only where it is used.
             bool heldByBreaker = EpisodeEngine.CommitmentRulesOn(state);
+            // Mode 2 (vote family V5b): mode 1's raw lists, and each broken vote row held as the incidents it stands for (D1).
+            var incidents = UnifiedVoteHistory.Breaches(state);
+            List<string> OwnerOf(string id) => incidents.Where(i => i.OwnerId == id).Select(i => i.ActorId).ToList();
+            List<string> DealOf(string id) => incidents.Where(i => i.DealId == id).Select(i => i.ActorId).ToList();
             var options = new WebVoteOptions
             {
                 voter = NativeContestant(state.Find(voterId)),
@@ -223,21 +242,24 @@ namespace Gamesim.Simulation
                         members = Allegiance.Counted(state, a),
                         lapsedIds = Allegiance.LapsedMembers(state, a),
                     }).ToList(),
-                    promises = state.promises.Select(p => new WebVotePromise
+                    promises = CommitmentReferences.RawPromises(state).Select(p => new WebVotePromise
                     {
                         fromId = p.fromId, toId = p.toId, type = PromiseType(p.kind),
-                        status = p.status.ToString().ToLowerInvariant()
+                        status = p.status.ToString().ToLowerInvariant(),
+                        ownerOf = UnifiedVoteHistory.ByIncident(state, p) ? OwnerOf(p.id) : null,
                     }).ToList(),
                     // The line that was missing. DealObligation and PairDealValue below have read
                     // this list since they were written and it was never filled, so every deal
                     // weight in this evaluator has been multiplying zero.
-                    deals = state.deals.Select(d => new WebVoteDeal
+                    deals = CommitmentReferences.RawDeals(state).Select(d => new WebVoteDeal
                     {
                         id = d.id, proposerId = d.proposerId, recipientId = d.recipientId,
                         type = d.type, status = d.status, targetHouseguestId = d.targetId,
                         heldByBreaker = heldByBreaker,
                         brokenById = heldByBreaker ? Breaches.DealBreaker(state, d) : null,
                         brokenByBoth = heldByBreaker && Breaches.BrokenByBoth(d),
+                        ownerOf = UnifiedVoteHistory.ByIncident(state, d) ? OwnerOf(d.id) : null,
+                        dealOf = UnifiedVoteHistory.ByIncident(state, d) ? DealOf(d.id) : null,
                     }).ToList()
                 },
                 memories = state.memories.Where(m => m.ownerId == voterId).Reverse().Take(10).Select(m => m.text).ToList(),
@@ -250,7 +272,7 @@ namespace Gamesim.Simulation
                 }).Where(t => t.grudge != 0 || t.bond != 0).ToList(),
                 obligations = EpisodeEngine.LeverTerms(state, voterId),
             };
-            if (UnifiedCommitments.RulesOn(state)) options.safetyTerms = SafetyTerms(state, voterId);
+            if (UnifiedCommitments.SafetyAuthorityOn(state)) options.safetyTerms = SafetyTerms(state, voterId);
             BlockSpeeches.Configure(state, options);
             return options;
         }
@@ -389,7 +411,8 @@ namespace Gamesim.Simulation
             double alliance = Math.Min(20, state.alliances.Where(a => Active(a) && a.members.Contains(target.id)).Sum(a => a.members.Count * 4));
             double potential = (target.stats.competition / 10) * 3 + (target.stats.strategic / 10) * 2;
             if (target.stats.social >= 7 && target.stats.strategic >= 7) potential += 2;
-            double broken = Math.Min(8, (state.deals.Count(d => d.status == "broken" && HeldAgainst(d, target.id)) + safetyBreaches) * 3);
+            double broken = Math.Min(8, (state.deals.Count(d => d.status == "broken" && HeldAgainst(d, target.id)
+                && (d.dealOf == null || d.dealOf.Contains(target.id))) + safetyBreaches) * 3);
             var arc = target.isPlayer ? state.relationshipArcs.FirstOrDefault(a => a.npcId == evaluator.id) : null;
             double arcThreat = arc?.arcType == "rivalry" ? Math.Min(7, Math.Floor(arc.intensity / 15)) :
                 arc?.arcType == "friendship" ? -Math.Min(5, Math.Floor(arc.intensity / 20)) : 0;
@@ -440,7 +463,8 @@ namespace Gamesim.Simulation
                     result.value += promise.fromId == evaluatorId ? promise.type == "safety" ? 30 : promise.type == "vote" ? 20 : promise.type == "alliance_loyalty" ? 15 : 10 : 10;
                     result.evidenceIds.Add(evidence);
                 }
-                else if (promise.status == "broken" && promise.fromId == targetId) { result.value -= 25; result.evidenceIds.Add(evidence); }
+                else if (promise.status == "broken" && promise.fromId == targetId && (promise.ownerOf == null || promise.ownerOf.Contains(targetId)))
+                { result.value -= 25; result.evidenceIds.Add(evidence); }
             }
             foreach (var deal in state.deals)
             {
@@ -460,7 +484,11 @@ namespace Gamesim.Simulation
                 // rules only when the nominee broke it (or walked away from a voting bloc), as the web's own
                 // promise term reads a broken promise and as the threat term holds a breach (C0): a voter's
                 // own breach is no grievance of theirs against the one they wronged.
-                else if (deal.status == "broken" && pair && HeldAgainst(deal, targetId)) { result.value -= 35; result.evidenceIds.Add(deal.id); }
+                else if (deal.status == "broken" && pair && HeldAgainst(deal, targetId))
+                {
+                    if (deal.ownerOf != null && !deal.ownerOf.Contains(targetId)) continue;
+                    result.value -= 35; result.evidenceIds.Add(deal.id);
+                }
                 else if (deal.status == "fulfilled" && pair) { result.value += 5; result.evidenceIds.Add(deal.id); }
             }
             if (safety != null)

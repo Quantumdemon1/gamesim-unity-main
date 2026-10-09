@@ -100,6 +100,9 @@
     <Compile Include="$(EditMode)ModeTwoReaderSweep.cs" />
     <Compile Include="$(EditMode)CommitmentReaderViewTests.cs" />
     <Compile Include="$(EditMode)CommitmentReaderScanTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoSeasonSweepTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoHouseReaderTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoReaderParityTests.cs" />
     <Compile Include="$(EditMode)CommitmentReferencesTests.cs" />
     <Compile Include="$(EditMode)UnifiedCommitmentStoreTests.cs" />
     <Compile Include="$(EditMode)UnifiedSafetyCommandOwnerTests.cs" />

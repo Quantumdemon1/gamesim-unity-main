@@ -53,12 +53,12 @@ namespace Gamesim.Simulation
         /// </summary>
         /// <summary>Whether the Head of Household has promised this houseguest safety, and the promise stands.</summary>
         public static bool PromisedSafety(EpisodeState s, string hohId, string candidateId) =>
-            UnifiedCommitments.RulesOn(s)
+            UnifiedCommitments.SafetyAuthorityOn(s)
                 ? UnifiedCommitments.Binding(s, hohId, candidateId).Any(row => row.sourcePolicy == UnifiedCommitments.PromisePolicy)
                 : s.promises.Any(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.Safety && p.fromId == hohId && p.toId == candidateId);
 
         public static bool TheirWord(EpisodeState s, string hohId, string candidateId) =>
-            UnifiedCommitments.RulesOn(s) ? UnifiedCommitments.Binding(s, hohId, candidateId).Count > 0 :
+            UnifiedCommitments.SafetyAuthorityOn(s) ? UnifiedCommitments.Binding(s, hohId, candidateId).Count > 0 :
             s.promises.Any(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.Safety && p.fromId == hohId && p.toId == candidateId)
             || s.deals.Any(d => d.status == DealStatus.Active && d.type == DealKind.SafetyAgreement
                                 && ((d.proposerId == hohId && d.recipientId == candidateId) || (d.proposerId == candidateId && d.recipientId == hohId)));
@@ -67,7 +67,7 @@ namespace Gamesim.Simulation
         public static double SafetyPreference(EpisodeState s, string hohId, string candidateId)
         {
             if (!EpisodeEngine.StoryAt(s, StoryRules.Grudges)) return 0;
-            bool word = UnifiedCommitments.RulesOn(s) ? TheirWord(s, hohId, candidateId)
+            bool word = UnifiedCommitments.SafetyAuthorityOn(s) ? TheirWord(s, hohId, candidateId)
                 : StrategyRules.Apply(s) ? PromisedSafety(s, hohId, candidateId) : TheirWord(s, hohId, candidateId);
             return word ? 30 : 0;
         }

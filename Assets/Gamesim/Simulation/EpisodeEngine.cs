@@ -812,7 +812,7 @@ namespace Gamesim.Simulation
             StrategyRules.NominationReluctance(s, hohId, id) + StoryConsumers.NominationPreference(s, hohId, id) - s.Score(hohId, id)
             // Native unified rules: story's word and strategy's hold describe the same protection.
             // Subtract only their overlap; grudges, alliances, bonds, targets and pleas stay independent.
-            - (UnifiedCommitments.RulesOn(s) ? Math.Min(UnifiedCommitments.StrongestProtection(s, hohId, id).Strength,
+            - (UnifiedCommitments.SafetyAuthorityOn(s) ? Math.Min(UnifiedCommitments.StrongestProtection(s, hohId, id).Strength,
                 StoryConsumers.SafetyPreference(s, hohId, id)) : 0)
             // Under agency, how dangerous they are, as the Head of Household and their pact read it (NPC-AGENCY-PLAN.md §5.1).
             - ThreatTerm(s, hohId, id);

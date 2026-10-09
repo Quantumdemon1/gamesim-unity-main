@@ -28,7 +28,7 @@ namespace Gamesim.Tests.EditMode
         public enum Why { Authority, Writer, RawKind, NotCommitments, ModeAware, Moved, PendingV5a, PendingV5b, PendingV5c, PendingV5d, PendingV5e, PendingV5f }
 
         /// <summary>The slice the vote family has built through: no entry may still be pending it or an earlier one.</summary>
-        private const Why Built = Why.PendingV5a;
+        private const Why Built = Why.PendingV5b;
 
         private sealed class Site
         {
@@ -152,19 +152,19 @@ namespace Gamesim.Tests.EditMode
 
             // ---- moved by vote family V5
             new Site(Sim + "NpcDeals.cs", "UnifiedCommitments.SafetyAuthorityOn(state) ? CommitmentReferences.Deals(state)", 1, Why.Moved, "V5a: Pending"),
-
-            // ---- pending V5b: the house's decisions
-            new Site(Sim + "NpcDeals.cs", "int legacy = state.deals.Count", 1, Why.PendingV5b, "BrokenDeals"),
-            new Site(Sim + "NpcDeals.cs", "if (!UnifiedCommitments.RulesOn(state)) return legacy", 1, Why.PendingV5b, "BrokenDeals"),
-            new Site(Sim + "NpcDeals.cs", "UnifiedCommitmentHistory.", 2, Why.PendingV5b, "BrokenDeals"),
-            new Site(Sim + "WebEvictionVoting.cs", null, 6, Why.PendingV5b, "the NPC vote's promises, deals, safety terms and threat"),
-            new Site(Sim + "EpisodeEngine.Levers.cs", null, 1, Why.PendingV5b, "Obligations, the levers' terms"),
-            new Site(Sim + "StrategyRules.cs", null, 6, Why.PendingV5b, "NominationReluctance"),
-            new Site(Sim + "EpisodeEngine.cs", "UnifiedCommitments.RulesOn(s) ? Math.Min(UnifiedCommitments.StrongestProtection", 1, Why.PendingV5b, "NominationWeight"),
-            new Site(Sim + "Story/StoryConsumers.cs", null, 6, Why.PendingV5b, "PromisedSafety, TheirWord, SafetyPreference"),
-            new Site(Sim + "EpisodeEngine.Betrayal.cs", null, 1, Why.PendingV5b, "vote-deal betrayals"),
-            new Site(Sim + "WebJuryVoting.cs", null, 5, Why.PendingV5b, "the jury's obligations"),
-            new Site(Sim + "HouseEventSources.cs", null, 1, Why.PendingV5b, "the crisis cast"),
+            new Site(Sim + "NpcDeals.cs", "int legacy = CommitmentReferences.RawDeals(state)", 1, Why.Moved, "V5b: BrokenDeals, its vote breaches by incident (D1)"),
+            new Site(Sim + "NpcDeals.cs", "UnifiedCommitmentHistory.", 2, Why.Moved, "V5b: BrokenDeals' Safety incidents, gate flipped"),
+            new Site(Sim + "WebEvictionVoting.cs", "CommitmentReferences.Raw", 2, Why.Moved, "V5b: the NPC vote's promises and deals, breaches by incident (D1)"),
+            new Site(Sim + "WebEvictionVoting.cs", "UnifiedCommitmentHistory.", 2, Why.Moved, "V5b: the NPC vote's Safety terms, gate flipped"),
+            new Site(Sim + "EpisodeEngine.Levers.cs", null, 1, Why.Moved, "V5b: Obligations, the levers' terms"),
+            new Site(Sim + "StrategyRules.cs", null, 2, Why.Moved, "V5b: NominationReluctance's deals and Safety incidents"),
+            new Site(Sim + "EpisodeEngine.Betrayal.cs", null, 1, Why.Moved, "V5b: vote-deal betrayals"),
+            new Site(Sim + "WebJuryVoting.cs", null, 4, Why.Moved, "V5b: the jury's obligations, breaches by incident (D1)"),
+            new Site(Sim + "HouseEventSources.cs", null, 1, Why.Moved, "V5b: the crisis cast, gate flipped"),
+            new Site(Sim + "VoteRead.cs", null, 1, Why.Moved, "V5b (V5d's): PartyTo, which a ballot's reason reads"),
+            new Site(Sim + "WebEvictionVoting.cs", "state.deals.Count(d => d.status == \"broken\"", 1, Why.NotCommitments,
+                "the web evaluator's threat, over its own copy of the season's"),
+            new Site(Sim + "Story/StoryConsumers.cs", null, 3, Why.RawKind, "mode 0's raw Safety word; canonical Safety is read wherever it is the authority"),
 
             // ---- pending V5c: threat and Story
             new Site(Sim + "ThreatAssessment.cs", null, 3, Why.PendingV5c, "ReputationThreat"),
@@ -183,7 +183,6 @@ namespace Gamesim.Tests.EditMode
             new Site(Sim + "YourWord.cs", "CommitmentReferences.FindCanonical(s, fact.refId)", 1, Why.ModeAware, "a fact's row, by its id"),
             new Site(Sim + "YourWord.cs", null, 6, Why.PendingV5d, "Breaches, and a fact's words"),
             new Site(Sim + "KnownOdds.cs", null, 2, Why.PendingV5d, "History"),
-            new Site(Sim + "VoteRead.cs", null, 1, Why.PendingV5d, "PartyTo"),
 
             // ---- pending V5e: history, finale and jury readers
             new Site(Sim + "FinaleQuestions.cs", null, 11, Why.PendingV5e, "Receipts' owners, and a receipt's party"),

@@ -816,8 +816,7 @@ namespace Gamesim.Tests.EditMode
             string bloc = DealId(s, survivor, DealKind.VoteTogether);
             var pending = offers.Where(o => o.proposerId == survivor).Select(o => o.id).ToList();
             Assert.That(pending, Is.Not.Empty, "Fixture: the surviving nominee's offer waits unanswered.");
-            // Each bargain's voter keeps their nominee, the rest vote the evictee out: no vote deal is broken, so the
-            // house's next deal ladder reads nobody's breach (NpcDeals.BrokenDeals still reads raw deals: vote family V5).
+            // Each bargain's voter keeps their nominee, the rest vote the evictee out: no vote deal is broken.
             var bargains = s.deals.Where(d => d.id.StartsWith("deal-npc-", StringComparison.Ordinal) && d.type == DealKind.VoteSave).ToList();
             var pins = NpcVoters(s).ToDictionary(v => v, v => evictee, StringComparer.Ordinal);
             foreach (var b in bargains) pins[b.recipientId] = s.nominees.Single(id => id != b.proposerId);
@@ -1207,11 +1206,13 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// Two seasons whose walks meet no reader still to move (vote family V5) - every Vote row they hold is decided,
-        /// expired or ended without a breach a reader would weigh - equal mode 1's after projection at every one of
-        /// their commands, reveals, endings and the final eviction included, to the jury's verdict.
+        /// Seasons whose walks meet no reader still to move (vote family V5) equal mode 1's after projection at every one of
+        /// their commands, reveals, endings and the final eviction included, to the jury's verdict. Since V5b every seed of
+        /// 1..16 in a house of 8 but seed 4, whose threat reader V5c moves; ModeTwoSeasonSweepTests plays seeds 1..32 in every
+        /// house size, the busy player's too, and names where each that differs first does.
         /// </summary>
-        [TestCase(5u)] [TestCase(6u)]
+        [TestCase(1u)] [TestCase(2u)] [TestCase(3u)] [TestCase(5u)] [TestCase(6u)] [TestCase(7u)] [TestCase(8u)] [TestCase(9u)]
+        [TestCase(10u)] [TestCase(11u)] [TestCase(12u)] [TestCase(13u)] [TestCase(14u)] [TestCase(15u)] [TestCase(16u)]
         public void ASeasonWithoutReaderGapsEqualsModeOneToTheFinish(uint seed)
         {
             var fresh = PinnedVoteSeason.Fresh(seed);
@@ -1222,7 +1223,7 @@ namespace Gamesim.Tests.EditMode
             {
                 var s = season.State;
                 if (s.phase == EpisodePhase.Finished) return;
-                var command = EpisodeEngineTests.NextCommand(s);
+                var command = ModeTwoReaderSweep.Next(s);
                 var legacy = season.Apply(command);
                 var prospective = engine.Apply(command);
                 Assert.That(legacy.accepted && prospective.accepted, Is.True, command.kind + ": " + legacy.reason + " / " + prospective.reason);

@@ -111,20 +111,28 @@ namespace Gamesim.Simulation
             // (C0, X3): a juror who broke their word to a finalist does not hold it against them.
             // Before them every breach between the two counted, whoever broke it. And under them an
             // offer the player accepted weighs one step heavier broken (C1, decision 15).
-            foreach (var deal in state.deals.Where(d => Between(d.proposerId, d.recipientId, jurorId, finalistId)))
+            // Mode 2 (vote family V5b): mode 1's raw lists, a broken vote row held only as the Rule2 incident it owns (D1).
+            var incidents = UnifiedVoteHistory.Breaches(state);
+            bool Owns(string id) => incidents.Any(i => i.OwnerId == id && i.ActorId == finalistId && i.WrongedId == jurorId);
+            foreach (var deal in CommitmentReferences.RawDeals(state).Where(d => Between(d.proposerId, d.recipientId, jurorId, finalistId)))
             {
                 if (deal.status == DealStatus.Fulfilled) score += 20 * DealTrust.Weight(deal.trustImpact);
-                else if (deal.status == DealStatus.Broken) { if (Breaches.CountsAgainst(state, deal, finalistId)) score -= 25 * DealResolution.BreachWeight(state, deal); }
+                else if (deal.status == DealStatus.Broken)
+                {
+                    if (Breaches.CountsAgainst(state, deal, finalistId) && (!UnifiedVoteHistory.ByIncident(state, deal) || Owns(deal.id)))
+                        score -= 25 * DealResolution.BreachWeight(state, deal);
+                }
                 else if (deal.status == DealStatus.Active) score += 10;
             }
 
-            foreach (var promise in state.promises.Where(p => Between(p.fromId, p.toId, jurorId, finalistId)))
+            foreach (var promise in CommitmentReferences.RawPromises(state).Where(p => Between(p.fromId, p.toId, jurorId, finalistId)))
             {
                 if (promise.status == PromiseStatus.Fulfilled) score += 15;
-                else if (promise.status == PromiseStatus.Broken && Breaches.CountsAgainst(state, promise, finalistId)) score -= 20;
+                else if (promise.status == PromiseStatus.Broken && Breaches.CountsAgainst(state, promise, finalistId)
+                    && (!UnifiedVoteHistory.ByIncident(state, promise) || Owns(promise.id))) score -= 20;
             }
 
-            if (UnifiedCommitments.RulesOn(state))
+            if (UnifiedCommitments.SafetyAuthorityOn(state))
             {
                 var records = UnifiedCommitmentHistory.Records(state);
                 var pair = records.Where(row => Between(row.makerId, row.beneficiaryId, jurorId, finalistId)).ToArray();

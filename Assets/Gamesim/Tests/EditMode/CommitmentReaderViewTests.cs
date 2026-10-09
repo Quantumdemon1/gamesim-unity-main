@@ -28,29 +28,22 @@ namespace Gamesim.Tests.EditMode
     {
         // ------------------------------------------------------------ the views, element for element (P2)
 
-        /// <summary>Seeds 1 to 32: houses of 8, then 6, then 12.</summary>
-        private static IEnumerable<TestCaseData> Walks() => Enumerable.Range(1, 32).Select(seed =>
-            new TestCaseData((uint)seed, seed <= 16 ? 8 : seed <= 24 ? 6 : 12));
-
-        [TestCaseSource(nameof(Walks))]
-        public void TheViewsAndTheOffersWaitingAreModeOnesAtEveryCommandOfASeason(uint seed, int size)
+        /// <summary>
+        /// The views and the offers waiting, at one command of a walk (<see cref="ModeTwoReaderParityTests"/> runs it at every
+        /// command of seeds 1 to 32): mode 1's raw lists are the lists themselves; mode 2's are mode 1's, element for element;
+        /// the projection is a season the complete core accepts, and so does the storage check.
+        /// </summary>
+        internal static void CheckViews(EpisodeState mode1, EpisodeState mode2, string where)
         {
-            int compared = 0;
-            var walked = ModeTwoReaderSweep.Walk(seed, (mode1, mode2, where) =>
-            {
-                Assert.That(CommitmentReferences.RawPromises(mode1), Is.SameAs(mode1.promises), where + ": mode 1's raw promises are the list itself.");
-                Assert.That(CommitmentReferences.RawDeals(mode1), Is.SameAs(mode1.deals), where + ": mode 1's raw deals are the list itself.");
-                Assert.That(Json(CommitmentReferences.RawPromises(mode2)), Is.EqualTo(Json(mode1.promises)), where + ": mode 2's raw promises are mode 1's.");
-                Assert.That(Json(CommitmentReferences.RawDeals(mode2)), Is.EqualTo(Json(mode1.deals)), where + ": mode 2's raw deals are mode 1's.");
-                Assert.That(Json(CommitmentReferences.Promises(mode2)), Is.EqualTo(Json(CommitmentReferences.Promises(mode1))), where + ": the promise view.");
-                Assert.That(Json(CommitmentReferences.Deals(mode2)), Is.EqualTo(Json(CommitmentReferences.Deals(mode1))), where + ": the deal view.");
-                Assert.That(Json(NpcDeals.Pending(mode2)), Is.EqualTo(Json(NpcDeals.Pending(mode1))), where + ": the offers waiting on the player.");
-                Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(mode2, out var core), Is.True, where + ": the projection is a season the core accepts. " + core);
-                Assert.That(UnifiedVoteFamilyValidation.TryValidateStorage(mode2, out var storage), Is.True, where + ": the storage check accepts what the core accepts. " + storage);
-                compared++;
-            }, size);
-            Assert.That(compared, Is.GreaterThan(40), walked.ToString());
-            Assert.That(walked.Finished || walked.Unsupported != null, Is.True, walked.ToString());
+            Assert.That(CommitmentReferences.RawPromises(mode1), Is.SameAs(mode1.promises), where + ": mode 1's raw promises are the list itself.");
+            Assert.That(CommitmentReferences.RawDeals(mode1), Is.SameAs(mode1.deals), where + ": mode 1's raw deals are the list itself.");
+            Assert.That(Json(CommitmentReferences.RawPromises(mode2)), Is.EqualTo(Json(mode1.promises)), where + ": mode 2's raw promises are mode 1's.");
+            Assert.That(Json(CommitmentReferences.RawDeals(mode2)), Is.EqualTo(Json(mode1.deals)), where + ": mode 2's raw deals are mode 1's.");
+            Assert.That(Json(CommitmentReferences.Promises(mode2)), Is.EqualTo(Json(CommitmentReferences.Promises(mode1))), where + ": the promise view.");
+            Assert.That(Json(CommitmentReferences.Deals(mode2)), Is.EqualTo(Json(CommitmentReferences.Deals(mode1))), where + ": the deal view.");
+            Assert.That(Json(NpcDeals.Pending(mode2)), Is.EqualTo(Json(NpcDeals.Pending(mode1))), where + ": the offers waiting on the player.");
+            Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(mode2, out var core), Is.True, where + ": the projection is a season the core accepts. " + core);
+            Assert.That(UnifiedVoteFamilyValidation.TryValidateStorage(mode2, out var storage), Is.True, where + ": the storage check accepts what the core accepts. " + storage);
         }
 
         [Test]

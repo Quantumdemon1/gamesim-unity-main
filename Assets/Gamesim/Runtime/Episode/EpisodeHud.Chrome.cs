@@ -115,6 +115,14 @@ namespace Gamesim.Episode
         /// lay over the week card's last rows; the 16:10 frame's chrome check found it (PLAN A,
         /// A12). The card cannot move instead: the status band holds its left and the cast strip
         /// its foot.</para>
+        ///
+        /// <para>Two thresholds, on purpose. A column that already clears the open card - flush
+        /// included - stays exactly as it is: asking it for the fold's gap too would fold 4:3 at
+        /// the larger text, whose three rows end four units above the card (712 against 716). A
+        /// column that has to fold folds to a whole gap, so a folded column never sits touching
+        /// the card. The one state on the line between them is 16:9's one row at the standard text,
+        /// which meets the card flush at 596; a canvas that a 16:9 screen other than 1600x900 scales
+        /// to a float's hair under 900 folds that row to the heading instead. Clear either way.</para>
         /// </summary>
         private int RecentSlotsShown(int slots, float top, float weekHeight, bool controlsOpen)
         {

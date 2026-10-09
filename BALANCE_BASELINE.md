@@ -170,16 +170,27 @@ and pairs off more, and the player's outcomes do not move detectably; at 900 the
 - **At 900** (passive and reader, 50 seeds): at 8 the player survives longer - out by week 3 drops from 56% to
   34% for passive (p = 0.035) and from 38% to 12% for the reader (p = 0.004), the reader's final-two rate rises
   from 34% to 62% (p = 0.007), nominations per week fall by a tenth, Game Sense rises (reader +6.3). NPC-only
-  deals +9-22 and pacts +0.5 a season. At 12 nothing in the player's outcomes moves detectably.
+  deals +9-22 and pacts +0.5 a season. At 12 nothing in the player's outcomes moves detectably. **Caveat:** these
+  player outcomes may be the engine's arc artefact below, not NPC agency.
 - **Saturation (risk 8)**: the share of houseguest pairs within ten of ±200 is about 1% at budget 0, 2% at 300,
   3-5% at 900 and 5.6-5.7% at 1800 (at ±200 itself: up to 5.4%); the warmest pair's mean reaches 191-198 at 900
   and 1800. 1800 measures a house beginning to saturate; 300 and 900 do not.
-- **A finding for the lead, not the lab:** an NPC conversation's completion moves the pair through
-  `ChangeWithRoll`, which writes the player's relationship arc with each houseguest of the pair (and with a
-  gossip target) - arcs are meant to be the player's. The driver only calls `PrepareNpcOperation`; the director's
-  world does the same in every played season (64 of 1,738 operations of a watched season at 300).
-- The decision to normalise NPC activity per week (B-4) can now be read against this table: at the human budget
-  the NPC world adds dealing and warmth inside the house without moving the player's odds.
+- **A finding for the lead, not the lab, and a caveat on every player outcome above:** an NPC conversation's
+  completion (`EpisodeNpcSocial.cs`, the completion in `TickNpcSocial`) moves the pair through `ChangeWithRoll`,
+  which writes `relationshipArcs` - the player's arc with each houseguest of the pair (and with a gossip target).
+  Arcs are meant to be the player's own, and they feed how each houseguest votes on the player
+  (`WebEvictionVoting`) and the threat ranking (`ThreatAssessment`), so in every played season NPC chatter moves
+  how the house votes on the player. The driver only calls `PrepareNpcOperation`; the director's world does the
+  same in every played season (64 of 1,738 operations of a watched season at 300). So the 900 result above (out by
+  week 3 down from 56% to 34% and from 38% to 12%, the reader's final two up from 34% to 62%) may be this artefact
+  rather than NPC agency. The fix is a slice of its own behind an NPC-social rules boundary - a conversation
+  completed through `RelationshipLedger.Move` and `Record`, with no arc - and then the NPC tier played again; the
+  watched-season test (`EveryNpcOperationLeavesTheSeasonsStreamAndThePlayersRowsAloneAndTheSeasonValid`) only
+  bounds where arcs move, so it will not block that fix.
+- The decision to normalise NPC activity per week (B-4) can now be read against this table, with the caveat
+  above: at the human budget the NPC world adds dealing and warmth inside the house without moving the player's
+  odds detectably; but every player outcome measured above budget 0 includes the arc artefact, and the 900
+  changes may be the artefact rather than agency. Read B-4 again once the arcs are fixed and the tier replayed.
 
 **F6. Harness rules drift from what ships - resolved for the lab.** Every lab season starts through
 `ShippedRules.ApplyFresh`; the 48 golden cells and the shipped rules' tuple are pinned, and a commit that changes a

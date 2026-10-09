@@ -143,13 +143,19 @@ namespace Gamesim.Tests.EditMode
             var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = cell.size, Roster = cell.roster }, run.seed);
             ShippedRules.ApplyFresh(fresh);
             var engine = new EpisodeEngine(fresh);
+            // The NPC world (B5b): every operation installs a new engine, and every command goes to the world's.
+            var world = cell.npcTicks > 0 ? new BalanceLabNpcWorld(engine, cell.npcTicks, run) : null;
+            Func<EpisodeEngine> engineOf = world == null ? (Func<EpisodeEngine>)(() => engine) : world.Current;
             var agent = BalancePolicies.Create(cell.policy);
             var changes = new List<SeasonAutopsy.PhaseChange>();
             run.pace = new StoryPacingTests.Pace { removalWindow = fresh.contestants.Count >= 7 };
             var s = engine.Snapshot;
             while (s.phase != EpisodePhase.Finished && run.commands < CommandCap)
             {
-                var applied = Step(engine, agent, s, run, out var used);
+                // A slice of the phase's NPC time before the decision (decision 3).
+                if (world != null && world.SpendSlice()) s = world.Engine.Snapshot;
+                var applied = Step(engineOf, world == null ? (Func<bool>)null : world.SpendRest, agent, s, run, out var used, out var at);
+                s = at; // The state the command was applied to: the world may have spent the phase's rest before it.
                 if (!applied.accepted)
                 {
                     run.error = "week " + s.week + " " + s.phase + "/" + s.evictionStage + ": the walker's " + used.kind + " was refused: " + applied.reason;
@@ -225,7 +231,10 @@ namespace Gamesim.Tests.EditMode
         /// the accepted result, or the walker's refusal (an error the caller reports).
         /// </summary>
         internal static CommandResult Step(EpisodeEngine engine, object agent, EpisodeState s, SeasonRun run, out EpisodeCommand used) =>
-            Step(() => engine, null, agent, s, run, out used);
+            Step(() => engine, null, agent, s, run, out used, out _);
+
+        internal static CommandResult Step(Func<EpisodeEngine> engineOf, Func<bool> beforeAdvance, object agent, EpisodeState s, SeasonRun run, out EpisodeCommand used) =>
+            Step(engineOf, beforeAdvance, agent, s, run, out used, out _);
 
         /// <summary>
         /// <see cref="Step(EpisodeEngine, object, EpisodeState, SeasonRun, out EpisodeCommand)"/> with an NPC world
@@ -233,9 +242,11 @@ namespace Gamesim.Tests.EditMode
         /// <paramref name="beforeAdvance"/> spends the rest of the phase's ticks before the Advance that closes it - the
         /// walker's step, or an oracle's own Advance, which is then asked again of the state the world left - and says
         /// whether it spent any. The policies see the season's revision less the world's operations
-        /// (<see cref="PlayerView"/>), so their coins fall as they fall without the world.
+        /// (<see cref="PlayerView"/>), so their coins fall as they fall without the world. <paramref name="at"/> is
+        /// the state the accepted command was applied to: the world may have moved it since <paramref name="s"/>.
         /// </summary>
-        internal static CommandResult Step(Func<EpisodeEngine> engineOf, Func<bool> beforeAdvance, object agent, EpisodeState s, SeasonRun run, out EpisodeCommand used)
+        internal static CommandResult Step(Func<EpisodeEngine> engineOf, Func<bool> beforeAdvance, object agent, EpisodeState s, SeasonRun run,
+            out EpisodeCommand used, out EpisodeState at)
         {
             int attempts = agent is IBalancePolicy ? Attempts : 1;
             for (int attempt = 0; attempt < attempts; attempt++)
@@ -245,13 +256,14 @@ namespace Gamesim.Tests.EditMode
                 if (command.kind == EpisodeCommandKind.Advance && beforeAdvance != null && beforeAdvance()) { s = engineOf().Snapshot; attempt--; continue; }
                 Perform(command, s, run);
                 var result = engineOf().Apply(command);
-                if (result.accepted) { used = command; run.own++; return result; }
+                if (result.accepted) { used = command; at = s; run.own++; return result; }
                 run.refusals++;
                 Count(run.refusalsByKind, command.kind + ": " + result.reason);
                 (agent as IBalancePolicy)?.Refused(command, result.reason);
             }
             if (beforeAdvance != null && beforeAdvance()) s = engineOf().Snapshot;
             used = Walker(s);
+            at = s;
             Perform(used, s, run);
             var walked = engineOf().Apply(used);
             if (walked.accepted) run.fallbacks++;

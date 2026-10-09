@@ -270,6 +270,8 @@
     <Compile Include="$(EditMode)BalanceLabReports.cs" />
     <!-- B6b and T0: a long tier played in parts and merged; the diagnostics that decide each tuning question. -->
     <Compile Include="$(EditMode)BalanceLabParts.cs" />
+    <!-- B5b: the synthetic NPC world the lab drives at a budget of ticks a week. -->
+    <Compile Include="$(EditMode)BalanceLabNpcWorld.cs" />
     <Compile Include="$(EditMode)BalanceLabDiagnostics.cs" />
 
     <!--

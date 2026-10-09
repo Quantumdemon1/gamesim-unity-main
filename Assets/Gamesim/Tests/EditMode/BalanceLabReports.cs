@@ -50,7 +50,29 @@ namespace Gamesim.Tests.EditMode
                 tables = Performance },
             new TierSpec { name = "warrooms", title = "War-room tier", per = "policy and house", seedsVariable = "BALANCE_WARROOM_SEEDS", defaultSeeds = 100,
                 cells = () => BalanceLab.Grid(WarRoomPolicies, HeadlineSizes), tables = runs => { var md = new StringBuilder(); WarRooms(md, runs); md.Append(BalanceLabDiagnostics.CounterWhatIf(runs)); return md.ToString(); } },
+            new TierSpec { name = "npc", title = "NPC budget tier", per = "policy, house and budget", seedsVariable = "BALANCE_NPC_SEEDS", defaultSeeds = 200,
+                cells = NpcGrid, tables = NpcBudget },
         }.ToDictionary(t => t.name, StringComparer.Ordinal);
+
+        /// <summary>The NPC budget grid's players (BALANCE_NPC_POLICIES, by default the brief's five).</summary>
+        internal static string[] NpcPolicies => ListFromEnvironment("BALANCE_NPC_POLICIES", new[] { BalancePolicies.Passive, BalancePolicies.Novice, BalancePolicies.Social, BalancePolicies.Reader, BalancePolicies.Beast });
+
+        /// <summary>The NPC budget grid's ticks a week (BALANCE_NPC_BUDGETS, by default nought, 300, 900 and 1800); nought first, the pairs' base.</summary>
+        internal static int[] NpcBudgets => ListFromEnvironment("BALANCE_NPC_BUDGETS", new[] { "0", "300", "900", "1800" })
+            .Select(b => int.Parse(b, NumberStyles.Integer, CultureInfo.InvariantCulture)).Where(b => b >= 0).Distinct().OrderBy(b => b).ToArray();
+
+        private static string[] ListFromEnvironment(string name, string[] fallback)
+        {
+            string value = Environment.GetEnvironmentVariable(name);
+            return string.IsNullOrWhiteSpace(value) ? fallback : value.Split(',').Select(x => x.Trim()).Where(x => x.Length > 0).ToArray();
+        }
+
+        /// <summary>B5b's grid: each player at eight and twelve at each budget, every budget on the same seasons.</summary>
+        internal static List<BalanceLab.Cell> NpcGrid() =>
+            NpcBudgets.SelectMany(budget => BalanceLab.Grid(NpcPolicies, HeadlineSizes, npcTicks: budget)).ToList();
+
+        [Test, Explicit("B5b's NPC budget tier: BALANCE_NPC_POLICIES at eight and twelve at BALANCE_NPC_BUDGETS ticks a week on BALANCE_NPC_SEEDS seasons (200), every metric against budget nought on the same seasons. Run by name, or in parts.")]
+        public void NpcBudgetReport() => Tier(Tiers["npc"]);
 
         /// <summary>The players who convene a war room and answer its plan (B6a).</summary>
         internal static readonly string[] WarRoomPolicies = { BalancePolicies.Random, BalancePolicies.Reader, BalancePolicies.Schemer, BalancePolicies.Loyalist, BalancePolicies.Floater };
@@ -69,6 +91,44 @@ namespace Gamesim.Tests.EditMode
 
         [Test, Explicit("B6a's war-room grid: the players who convene a war room at eight and twelve on BALANCE_WARROOM_SEEDS seasons (100 by default), with the counter's what-if (T0, Q1). Run by name.")]
         public void WarRoomReport() => Tier(Tiers["warrooms"]);
+
+        /// <summary>The NPC world's cost (B5b, risk 1): seasons at a budget, their operations and the engine's milliseconds an operation.</summary>
+        internal static string NpcCost(IReadOnlyList<BalanceLab.SeasonRun> runs, double wallMinutes)
+        {
+            var md = new StringBuilder();
+            md.AppendLine("### The NPC world's cost");
+            md.AppendLine();
+            md.AppendLine("| budget (ticks a week) | seasons | operations / season | ticks / season | starts / season | rejected / season | engine ms / operation | engine s / season |");
+            md.AppendLine("|---|---|---|---|---|---|---|---|");
+            foreach (var g in runs.Where(r => r.error == null).GroupBy(r => r.cell.npcTicks).OrderBy(g => g.Key))
+            {
+                double ops = g.Sum(r => r.npcOps), ms = g.Sum(r => r.npcMilliseconds);
+                md.AppendLine("| " + g.Key + " | " + g.Count() + " | " + BalanceLab.Num(g.Average(r => r.npcOps), "0") + " | " + BalanceLab.Num(g.Average(r => r.npcTicks), "0") + " | "
+                    + BalanceLab.Num(g.Average(r => r.npcStarts), "0.0") + " | " + BalanceLab.Num(g.Average(r => r.npcRejected), "0.0") + " | "
+                    + (ops == 0 ? "-" : BalanceLab.Num(ms / ops, "0.000")) + " | " + BalanceLab.Num(ms / 1000 / g.Count(), "0.00") + " |");
+            }
+            md.AppendLine();
+            md.AppendLine("Engine milliseconds are PrepareNpcOperation and installing the candidate as a new engine, as the director does: each validates the whole season.");
+            md.AppendLine();
+            if (double.IsNaN(wallMinutes)) return md.ToString();
+            md.AppendLine(runs.Count + " seasons in " + BalanceLab.Num(wallMinutes, "0.0") + " min on " + Environment.ProcessorCount + " threads ("
+                + BalanceLab.Num(wallMinutes * 60 * Environment.ProcessorCount / Math.Max(1, runs.Count), "0.00") + " thread-seconds a season).");
+            md.AppendLine();
+            return md.ToString();
+        }
+
+        [Test, Explicit("B5b's cost probe (risk 1): BALANCE_PROBE_SEEDS seasons a house (5) at BALANCE_PROBE_TICKS a week (1800), the reader at eight and twelve; the engine's ms an operation. Run by name.")]
+        public void NpcWorldCostProbe()
+        {
+            int ticks = FromEnvironment("BALANCE_PROBE_TICKS", 1800);
+            var cells = HeadlineSizes.Select(size => new BalanceLab.Cell { policy = BalancePolicies.Reader, size = size, npcTicks = ticks }).ToList();
+            var clock = BalanceLab.Clock();
+            var runs = BalanceLab.Run(cells, FromEnvironment("BALANCE_PROBE_SEEDS", 5));
+            string md = NpcCost(runs, clock.Elapsed.TotalMinutes);
+            TestContext.WriteLine(md);
+            Assert.That(runs.Where(r => r.error != null).Select(r => r.cell.Key + " #" + r.index + ": " + r.error).Take(10), Is.Empty);
+            Assert.That(runs.All(r => r.npcTicks > 0), Is.True, "Every season ticked.");
+        }
 
         /// <summary>Plays a tier's cells, writes its rows and tables under balance/, and fails on any season with an error.</summary>
         private static void Tier(TierSpec tier)
@@ -108,8 +168,8 @@ namespace Gamesim.Tests.EditMode
         private static List<string> Houses(IEnumerable<BalanceLab.SeasonRun> runs) =>
             runs.GroupBy(r => HouseOf(r.cell)).OrderBy(g => HouseOrder(g.First().cell)).Select(g => g.Key).ToList();
 
-        /// <summary>The runs without an error by policy and house (the house in "size": a size, or "All-Stars" and a size).</summary>
-        private static IEnumerable<IGrouping<(string policy, string size), BalanceLab.SeasonRun>> Cells(IEnumerable<BalanceLab.SeasonRun> runs) =>
+        /// <summary>The runs without an error by policy and house (the house in "size": a size, or "All-Stars" and a size, with its NPC budget).</summary>
+        internal static IEnumerable<IGrouping<(string policy, string size), BalanceLab.SeasonRun>> Cells(IEnumerable<BalanceLab.SeasonRun> runs) =>
             runs.Where(r => r.error == null).GroupBy(r => (r.cell.policy, size: HouseOf(r.cell)))
                 .OrderBy(g => HouseOrder(g.First().cell)).ThenBy(g => Array.IndexOf(BalancePolicies.All, g.Key.policy));
 
@@ -366,6 +426,119 @@ namespace Gamesim.Tests.EditMode
             }
             md.AppendLine();
         }
+
+        // ---------------------------------------------------------------- the NPC budget tables (B5b)
+
+        /// <summary>A season's measure for the sensitivity table: binary (McNemar against budget nought) or a number (paired bootstrap of the difference).</summary>
+        internal sealed class Metric
+        {
+            public string name;
+            public Func<BalanceLab.SeasonRun, bool> flag;
+            public Func<BalanceLab.SeasonRun, double> value;
+            public string format = "0.00";
+        }
+
+        private static double InHouseWeeks(BalanceLab.SeasonRun r) => r.autopsy.playerOutWeek > 0 ? r.autopsy.playerOutWeek : r.autopsy.weeks;
+
+        /// <summary>Every metric of the sensitivity table, the headline's in short.</summary>
+        internal static readonly Metric[] NpcMetrics =
+        {
+            new Metric { name = "win", flag = r => r.Won },
+            new Metric { name = "final two", flag = r => r.FinalTwo },
+            new Metric { name = "evicted in week 1", flag = r => r.autopsy.playerOutWeek == 1 },
+            new Metric { name = "out by week 3", flag = r => r.autopsy.playerOutWeek > 0 && r.autopsy.playerOutWeek <= 3 },
+            new Metric { name = "mean placement", value = r => r.autopsy.placement },
+            new Metric { name = "weeks in the house", value = InHouseWeeks, format = "0.0" },
+            new Metric { name = "player nominations per week in the house", value = r => r.autopsy.playerTimesNominated / Math.Max(1.0, InHouseWeeks(r)), format = "0.000" },
+            new Metric { name = "player HoH and veto wins", value = r => r.autopsy.playerHohWins + r.autopsy.playerVetoWins },
+            new Metric { name = "Game Sense", value = r => r.autopsy.gameSense, format = "0.0" },
+            new Metric { name = "player pacts", value = r => r.autopsy.commitments.playerPacts },
+            new Metric { name = "player deals", value = r => r.autopsy.commitments.playerDeals },
+            new Metric { name = "NPC-only pacts", value = r => r.autopsy.commitments.npcPacts },
+            new Metric { name = "NPC-only deals", value = r => r.autopsy.commitments.npcDeals },
+            new Metric { name = "NPC-only deals broken", value = r => r.autopsy.commitments.npcDealsBroken },
+            new Metric { name = "window seats spent", value = r => r.autopsy.economy.seatsSpent, format = "0.0" },
+            new Metric { name = "war-room plans", value = r => r.autopsy.warRooms.plans },
+            new Metric { name = "NPC HoH nominated the top threat (share of NPC nominations)", value = r => r.autopsy.agency.npcNominations == 0 ? 0 : (double)r.autopsy.agency.topThreatNominated / r.autopsy.agency.npcNominations },
+            new Metric { name = "story: a pariah season", flag = r => r.pace != null && r.pace.pariah },
+            new Metric { name = "warmest pair (mutual)", value = r => r.autopsy.warmest?.mutual ?? 0, format = "0" },
+            new Metric { name = "coldest pair (mutual)", value = r => r.autopsy.coldest?.mutual ?? 0, format = "0" },
+            new Metric { name = "houseguest pairs within ten of the bound (share)", value = r => r.pairs == 0 ? 0 : (double)r.pairsNearBound / r.pairs, format = "0.000" },
+            new Metric { name = "NPC conversations started", value = r => r.npcStarts, format = "0" },
+        };
+
+        /// <summary>
+        /// B5b's tables: the world's cost; every metric against the budget, each budget's seasons paired with budget
+        /// nought's (the same seeds, decision 2) - McNemar's b/c and p for a flag, the mean difference and its
+        /// bootstrap 95% interval for a number; and the house's saturation (risk 8).
+        /// </summary>
+        internal static string NpcBudget(IReadOnlyList<BalanceLab.SeasonRun> runs)
+        {
+            var md = new StringBuilder();
+            md.Append(NpcCost(runs, double.NaN));
+            var ok = runs.Where(r => r.error == null).ToList();
+            var budgets = ok.Select(r => r.cell.npcTicks).Distinct().OrderBy(b => b).ToList();
+            var groups = ok.GroupBy(r => (r.cell.policy, size: HouseOf(new BalanceLab.Cell { size = r.cell.size, roster = r.cell.roster })))
+                .OrderBy(g => (int)g.First().cell.roster * 100 + g.First().cell.size).ThenBy(g => Array.IndexOf(BalancePolicies.All, g.Key.policy)).ToList();
+            md.AppendLine("### Every metric against the NPC budget (ticks a week), paired with budget 0 on the same seasons");
+            md.AppendLine();
+            md.AppendLine("A flag shows its rate and McNemar's b/c (b: only at this budget, c: only at 0) and p; a number its mean and the mean difference from budget 0 with a bootstrap 95% interval. Budget 0 plays no NPC world.");
+            md.AppendLine();
+            foreach (var metric in NpcMetrics)
+            {
+                md.AppendLine("#### " + metric.name);
+                md.AppendLine();
+                md.AppendLine("| policy | size | " + string.Join(" | ", budgets.Select(b => b == 0 ? "0" : b + " (vs 0)")) + " |");
+                md.AppendLine("|---|---|" + string.Concat(budgets.Select(_ => "---|")));
+                foreach (var g in groups)
+                {
+                    var byBudget = budgets.ToDictionary(b => b, b => g.Where(r => r.cell.npcTicks == b).ToDictionary(r => r.index));
+                    var cells = new List<string>();
+                    foreach (int b in budgets)
+                    {
+                        var at = byBudget[b];
+                        if (at.Count == 0) { cells.Add("-"); continue; }
+                        string shown = metric.flag != null ? BalanceLab.Pct((double)at.Values.Count(metric.flag) / at.Count) : BalanceLab.Num(at.Values.Average(metric.value), metric.format);
+                        if (b != 0 && byBudget.TryGetValue(0, out var nought) && nought.Count > 0)
+                        {
+                            var paired = at.Keys.Where(nought.ContainsKey).OrderBy(i => i).ToList();
+                            if (metric.flag != null)
+                            {
+                                var mc = BalanceLab.McNemar(paired.Select(i => metric.flag(at[i])).ToList(), paired.Select(i => metric.flag(nought[i])).ToList());
+                                shown += " (" + mc.b + "/" + mc.c + ", p " + BalanceLab.Num(mc.p, "0.000") + ")";
+                            }
+                            else
+                            {
+                                var diffs = paired.Select(i => metric.value(at[i]) - metric.value(nought[i])).ToList();
+                                var ci = BalanceLab.Bootstrap(diffs);
+                                shown += " (" + Signed(diffs.Count == 0 ? 0 : diffs.Average(), metric.format) + " [" + Signed(ci.low, metric.format) + ", " + Signed(ci.high, metric.format) + "]"
+                                    + (ci.low > 0 || ci.high < 0 ? " *" : "") + ")";
+                            }
+                        }
+                        cells.Add(shown);
+                    }
+                    md.AppendLine("| " + g.Key.policy + " | " + g.Key.size + " | " + string.Join(" | ", cells) + " |");
+                }
+                md.AppendLine();
+            }
+            md.AppendLine("A star marks an interval that excludes nought.");
+            md.AppendLine();
+            md.AppendLine("### Saturation (risk 8): the final house by size and budget");
+            md.AppendLine();
+            md.AppendLine("| size | budget | seasons | warmest pair, mean / max | coldest pair, mean / min | houseguest pairs within ten of ±200 | at ±200 |");
+            md.AppendLine("|---|---|---|---|---|---|---|");
+            foreach (var g in ok.GroupBy(r => (size: HouseOf(new BalanceLab.Cell { size = r.cell.size, roster = r.cell.roster }), r.cell.npcTicks)).OrderBy(g => g.Key.size, StringComparer.Ordinal).ThenBy(g => g.Key.npcTicks))
+            {
+                double pairs = Math.Max(1, g.Sum(r => r.pairs));
+                md.AppendLine("| " + g.Key.size + " | " + g.Key.npcTicks + " | " + g.Count() + " | " + BalanceLab.Num(g.Average(r => r.autopsy.warmest?.mutual ?? 0), "0") + " / " + BalanceLab.Num(g.Max(r => r.autopsy.warmest?.mutual ?? 0), "0")
+                    + " | " + BalanceLab.Num(g.Average(r => r.autopsy.coldest?.mutual ?? 0), "0") + " / " + BalanceLab.Num(g.Min(r => r.autopsy.coldest?.mutual ?? 0), "0")
+                    + " | " + BalanceLab.Pct(g.Sum(r => r.pairsNearBound) / pairs) + " | " + BalanceLab.Pct(g.Sum(r => r.pairsAtBound) / pairs) + " |");
+            }
+            md.AppendLine();
+            return md.ToString();
+        }
+
+        private static string Signed(double value, string format) => (value > 0 ? "+" : "") + BalanceLab.Num(value, format);
 
         private static void Economy(StringBuilder md, IReadOnlyList<BalanceLab.SeasonRun> runs)
         {

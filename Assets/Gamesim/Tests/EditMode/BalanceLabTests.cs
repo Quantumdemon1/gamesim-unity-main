@@ -24,8 +24,11 @@ namespace Gamesim.Tests.EditMode
         public void Smoke_EveryPolicyPlaysALegalSeasonAtEverySize()
         {
             var clock = BalanceLab.Clock();
-            // The full tier's grid, one season a cell: every house any tier plays is legal for every player.
-            var runs = BalanceLab.Run(BalanceLabReports.FullGrid(), 1);
+            // The full tier's grid, one season a cell: every house any tier plays is legal for every player; and in
+            // each house one season with the NPC world at the budget that stands for a human (B5b, decision 1).
+            var grid = BalanceLabReports.FullGrid();
+            grid.AddRange(grid.Where(c => c.policy == BalancePolicies.Reader).Select(c => new BalanceLab.Cell { policy = c.policy, size = c.size, roster = c.roster, npcTicks = HumanBudget }).ToList());
+            var runs = BalanceLab.Run(grid, 1);
             double seconds = clock.Elapsed.TotalSeconds;
             TestContext.WriteLine("Smoke tier: " + runs.Length + " seasons in " + BalanceLab.Num(seconds, "0.0") + " s on " + Environment.ProcessorCount + " threads.");
             TestContext.WriteLine("| policy | house | outcome | weeks | commands | own | walker | free | refused | top refusal |");
@@ -42,7 +45,11 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(r.error, Is.Null, at);
                 Assert.That(r.autopsy.finished, Is.True, at);
                 Assert.That(r.autopsy.houseSize, Is.EqualTo(r.cell.size), at);
-                Assert.That(r.autopsy.npcTicks, Is.Zero, at + ": the lab does not drive the NPC world yet (B5).");
+                // The NPC world's clock is the ticks the world spent, none at budget nought; at a budget, at least the first
+                // social week's half and never more than the budget a week.
+                Assert.That(r.autopsy.npcTicks, Is.EqualTo(r.npcTicks), at + ": the season's NPC clock is the world's ticks.");
+                if (r.cell.npcTicks == 0) Assert.That(r.npcOps, Is.Zero, at + ": budget nought plays no NPC world.");
+                else Assert.That(r.npcTicks, Is.InRange(r.cell.npcTicks / 2, r.cell.npcTicks * r.autopsy.weeks), at + ": the world spent its budget.");
                 Assert.That(r.pace.weeks, Is.EqualTo(r.autopsy.weeks), at + ": the story's pace was watched to the end.");
                 if (r.cell.policy == BalancePolicies.Passive) Assert.That(r.own, Is.Zero, at + ": the passive player leaves every step to the walker.");
                 else Assert.That(r.own, Is.GreaterThan(0), at + ": the player acted.");
@@ -276,6 +283,167 @@ namespace Gamesim.Tests.EditMode
                 if (s.phase == EpisodePhase.VetoMeeting && !s.vetoResolved && s.vetoHolderId == s.playerId && s.nominees.IndexOf(s.playerId) > 0) return s.Clone();
                 Assert.That(BalanceLab.Step(engine, agent, s, run, out _).accepted, Is.True);
             }
+            return null;
+        }
+
+        // ---------------------------------------------------------------- the NPC world (B5b)
+
+        /// <summary>The NPC ticks a week that stand for a human (the lead's decision 1).</summary>
+        internal const int HumanBudget = 300;
+
+        /// <summary>One season at eight with the world at the human budget, every operation watched.</summary>
+        private static BalanceLab.SeasonRun WatchedSeason(Action<EpisodeState, EpisodeState, NpcOperationKind> watch)
+        {
+            var cell = new BalanceLab.Cell { policy = BalancePolicies.Reader, size = 8, npcTicks = HumanBudget };
+            var run = new BalanceLab.SeasonRun { cell = cell, index = 3, seed = BalanceLab.Seed(cell, 3) };
+            var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, run.seed);
+            ShippedRules.ApplyFresh(fresh);
+            var world = new BalanceLabNpcWorld(new EpisodeEngine(fresh), HumanBudget, run) { Watch = watch };
+            var agent = BalancePolicies.Create(cell.policy);
+            for (int i = 0; i < BalanceLab.CommandCap && world.Engine.Snapshot.phase != EpisodePhase.Finished; i++)
+            {
+                world.SpendSlice();
+                var result = BalanceLab.Step(world.Current, world.SpendRest, agent, world.Engine.Snapshot, run, out var used);
+                Assert.That(result.accepted, Is.True, used.kind + ": " + result.reason);
+                if (used.kind == EpisodeCommandKind.Advance) Assert.That(EpisodeValidation.TryValidate(result.state, out string invalid), Is.True, "after an Advance: " + invalid);
+            }
+            Assert.That(world.Engine.Snapshot.phase, Is.EqualTo(EpisodePhase.Finished));
+            return run;
+        }
+
+        /// <summary>
+        /// B5b: the world moves only the houseguests' world. Every operation leaves the season's own stream and the
+        /// player's relationship rows (to and from them) as they were, and leaves a valid season; and the season played
+        /// through the world validates after every Advance.
+        ///
+        /// <para>The player's relationship arcs: the brief expected them untouched too, and they are not. The engine's
+        /// own completion of an NPC conversation (EpisodeNpcSocial's TickNpcSocial) moves the pair through ChangeWithRoll,
+        /// which writes an arc for each houseguest of the pair - as the director's world does in a played season. The
+        /// driver adds nothing of its own (it only calls PrepareNpcOperation); this test pins where it happens - only on a
+        /// Tick that completed a conversation, only the arcs of that conversation's pair or of the houseguest the pair
+        /// gossiped about - and the finding is the lead's, with the engine's NPC world.</para>
+        /// </summary>
+        [Test]
+        public void EveryNpcOperationLeavesTheSeasonsStreamAndThePlayersRowsAloneAndTheSeasonValid()
+        {
+            int ops = 0, moved = 0, arcsMoved = 0, phaseCount = 0;
+            string lastPhase = null;
+            var ticksByPhase = new SortedDictionary<string, int>(StringComparer.Ordinal);
+            string Rows(EpisodeState s) => Newtonsoft.Json.JsonConvert.SerializeObject(s.relationships.Where(r => r.fromId == s.playerId || r.toId == s.playerId)
+                .OrderBy(r => r.fromId, StringComparer.Ordinal).ThenBy(r => r.toId, StringComparer.Ordinal));
+            string Arc(EpisodeState s, string id) => Newtonsoft.Json.JsonConvert.SerializeObject(s.relationshipArcs.FirstOrDefault(a => a.npcId == id));
+            var run = WatchedSeason((before, after, kind) =>
+            {
+                ops++;
+                if (kind == NpcOperationKind.Tick)
+                {
+                    // One entry a phase as it is played: week one holds two free-time phases, the move-in night and the
+                    // social week after the first eviction (the week turns at the Head of Household).
+                    string at = before.week + " " + before.phase;
+                    if (at != lastPhase) { lastPhase = at; phaseCount++; }
+                    string phase = phaseCount.ToString("D2", CultureInfo.InvariantCulture) + ": week " + at;
+                    ticksByPhase[phase] = (ticksByPhase.TryGetValue(phase, out int n) ? n : 0) + 1;
+                }
+                Assert.That(after.randomState, Is.EqualTo(before.randomState), kind + ": the season's stream.");
+                Assert.That(Rows(after), Is.EqualTo(Rows(before)), kind + ": the player's relationship rows.");
+                Assert.That(EpisodeValidation.TryValidate(after, out string invalid), Is.True, kind + ": " + invalid);
+                if (after.npcSocial.randomState != before.npcSocial.randomState) moved++;
+                var changedArcs = after.contestants.Select(c => c.id).Concat(before.contestants.Select(c => c.id)).Distinct().Where(id => Arc(after, id) != Arc(before, id)).ToList();
+                if (changedArcs.Count == 0) return;
+                arcsMoved++;
+                var completed = before.npcSocial.pending.Where(p => after.npcSocial.pending.All(q => q.sequence != p.sequence)).ToList();
+                Assert.That(kind, Is.EqualTo(NpcOperationKind.Tick), "Only a completion moves an arc.");
+                Assert.That(completed, Is.Not.Empty, "Only a Tick that completed a conversation moves an arc.");
+                var pairs = completed.SelectMany(p => new[] { p.firstId, p.secondId }).ToList();
+                // The gossip target's arc moves by the gossip: anybody else's would be a new finding.
+                var others = changedArcs.Where(id => !pairs.Contains(id)).ToList();
+                foreach (string id in others)
+                    Assert.That(pairs.Any(p => after.Score(p, id) != before.Score(p, id)), Is.True, id + "'s arc moved with nothing said about them.");
+            });
+            TestContext.WriteLine("operations " + ops + ", conversations started " + run.npcStarts + ", NPC draws on " + moved + " operations, arcs moved on " + arcsMoved
+                + "; ticks by phase " + string.Join(", ", ticksByPhase.Select(p => p.Key + " " + p.Value)));
+            // Decision 3: half the week's ticks in the social week and half in the campaign, every one spent - in slices
+            // before the decisions and the rest before the Advance that closes the phase.
+            Assert.That(ticksByPhase.Values.Distinct(), Is.EqualTo(new[] { HumanBudget / 2 }), "Each phase the world ran spent its half of the week.");
+            Assert.That(ticksByPhase.Keys.Count(k => k.EndsWith("Social", StringComparison.Ordinal)), Is.GreaterThanOrEqualTo(2));
+            Assert.That(ticksByPhase.Keys.Count(k => k.EndsWith("Campaign", StringComparison.Ordinal)), Is.GreaterThanOrEqualTo(2));
+            Assert.That(ops, Is.EqualTo(run.npcOps));
+            Assert.That(run.npcStarts, Is.GreaterThan(5), "Conversations started.");
+            Assert.That(moved, Is.GreaterThan(5), "The world drew on its own stream.");
+            Assert.That(run.npcRejected, Is.Zero, "The engine took every operation the world put to it.");
+        }
+
+        /// <summary>B5b: the driver goes through the engine's door only - no relationship change, no command - read from its source with the comments taken out.</summary>
+        [Test]
+        public void TheNpcWorldDriverNeitherChangesNorApplies()
+        {
+            string source = System.IO.File.ReadAllText(System.IO.Path.Combine(SourceRoot(), "Tests", "EditMode", "BalanceLabNpcWorld.cs"));
+            string code = string.Join("\n", source.Split('\n').Select(line => { int at = line.IndexOf("//", StringComparison.Ordinal); return at < 0 ? line : line.Substring(0, at); }));
+            foreach (string forbidden in new[] { "Change(", "ChangeWithRoll(", "Apply(", "RelationshipLedger", ".score", "Move(" })
+                Assert.That(code, Does.Not.Contain(forbidden), "The driver calls " + forbidden);
+            Assert.That(code, Does.Contain("PrepareNpcOperation("), "...and does go through the engine's door.");
+            Assert.That(code, Does.Contain("NpcPairing.Plan("), "...and pairs as the house pairs.");
+        }
+
+        /// <summary>B5b: every budget plays the seasons budget nought plays, and at nought the seeds are those the lab always drew.</summary>
+        [Test]
+        public void SeedsPairAcrossBudgets()
+        {
+            foreach (int size in new[] { 6, 8, 12 })
+            {
+                var nought = new BalanceLab.Cell { policy = BalancePolicies.Novice, size = size };
+                for (int i = 0; i < 100; i++)
+                {
+                    uint seed = BalanceLab.Seed(nought, i);
+                    Assert.That(seed, Is.EqualTo(SeededRandom.HashSeed("balance-lab/v1/Regular/" + size + "/npc0/" + i)), "Budget nought draws the seeds it always drew.");
+                    foreach (int budget in new[] { 300, 900, 1800 })
+                        Assert.That(BalanceLab.Seed(new BalanceLab.Cell { policy = BalancePolicies.Reader, size = size, npcTicks = budget }, i), Is.EqualTo(seed), size + "/" + budget + "/" + i);
+                }
+            }
+        }
+
+        /// <summary>B5b: the tables keep each budget's seasons apart, a row each, and the sensitivity table pairs them.</summary>
+        [Test]
+        public void TheTablesKeepBudgetsApart()
+        {
+            var cells = new[] { 0, HumanBudget }.SelectMany(b => BalanceLab.Grid(new[] { BalancePolicies.Passive }, new[] { 6 }, npcTicks: b)).ToList();
+            var runs = BalanceLab.Run(cells, 2);
+            Assert.That(runs.Select(r => r.seed).Take(2), Is.EqualTo(runs.Select(r => r.seed).Skip(2)), "The budgets play the same seasons.");
+            var groups = BalanceLabReports.Cells(runs).Select(g => g.Key.size).ToList();
+            Assert.That(groups, Is.EqualTo(new[] { "6", "6 npc" + HumanBudget }), "One row a budget.");
+            Assert.That(BalanceLabReports.Cells(runs).All(g => g.Count() == 2), Is.True);
+            string md = BalanceLabReports.NpcBudget(runs);
+            Assert.That(md, Does.Contain("| passive | 6 | "), "The sensitivity table has the cell.");
+            Assert.That(md, Does.Contain(HumanBudget + " (vs 0)"));
+        }
+
+        /// <summary>B5b, risk 4: a policy's coins see the season's revision less the world's operations, so the world never reshuffles them.</summary>
+        [Test]
+        public void ThePlayersCoinsDoNotMoveWithTheNpcWorldsOperations()
+        {
+            var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 77u);
+            ShippedRules.ApplyFresh(s);
+            var moved = s.Clone();
+            moved.revision += 41;
+            var plain = new PlayerView(s, 9u);
+            var world = new PlayerView(moved, 9u, 41);
+            var other = new PlayerView(moved, 9u);
+            var coins = Enumerable.Range(0, 20).Select(plain.Coin).ToList();
+            Assert.That(Enumerable.Range(0, 20).Select(world.Coin), Is.EqualTo(coins), "Forty-one operations later, the same coins.");
+            Assert.That(Enumerable.Range(0, 20).Select(other.Coin), Is.Not.EqualTo(coins), "Precondition: the revision is in the coin.");
+        }
+
+        /// <summary>Assets/Gamesim, found upward from the test binary (Tools/SimulationTests).</summary>
+        private static string SourceRoot()
+        {
+            string at = System.IO.Path.GetDirectoryName(typeof(BalanceLabTests).Assembly.Location);
+            for (int depth = 0; depth < 12 && !string.IsNullOrEmpty(at); depth++)
+            {
+                string candidate = System.IO.Path.Combine(at, "Assets", "Gamesim");
+                if (System.IO.File.Exists(System.IO.Path.Combine(candidate, "Simulation", "SeasonBuilder.cs"))) return candidate;
+                at = System.IO.Path.GetDirectoryName(at);
+            }
+            Assert.Fail("No Assets/Gamesim above the test binary.");
             return null;
         }
 

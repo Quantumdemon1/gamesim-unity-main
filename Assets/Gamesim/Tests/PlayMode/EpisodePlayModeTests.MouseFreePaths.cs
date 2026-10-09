@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Episode;
 using Gamesim.Persistence;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
@@ -114,6 +115,39 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Mathf.Abs(Turned(before, cameraRig.Yaw)), Is.LessThan(.01f), "Q under a panel turns nothing.");
             director.ClosePanels();
             yield return null;
+        }
+
+        /// <summary>
+        /// A7's "check, don't assume": the word game spells with every letter key, Q and C among
+        /// them, and its board holds the camera (the render's ControlsEnabled, off while the episode
+        /// screen the game is played from is open), so Q held while the letters are up turns nothing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CameraInput_QHeldUnderTheWordGameNeverTurnsTheCamera()
+        {
+            yield return InstallRules4AtFirstHoH(SeedOpeningWith("Social"));
+            var found = new CompetitionGameScreen[1];
+            yield return EnterRanked(CompetitionMiniGames.Kind.Words, found);
+            Assert.That(ChallengeRun().Kind, Is.EqualTo(CompetitionMiniGames.Kind.Words), "The word game is up.");
+            // The game's own framing lands first, so nothing but a key could turn the view during the hold.
+            float settled = Time.realtimeSinceStartup + 5f;
+            while (cameraRig.IsTravelling && Time.realtimeSinceStartup < settled) yield return null;
+            Assert.That(cameraRig.ControlsEnabled, Is.False, "The word game holds the camera.");
+
+            float yaw = cameraRig.Yaw;
+            if (testKeyboard == null) testKeyboard = InputSystem.AddDevice<Keyboard>();
+            InputSystem.QueueStateEvent(testKeyboard, new KeyboardState(Key.Q));
+            float release = Time.realtimeSinceStartup + .25f;
+            while (Time.realtimeSinceStartup < release)
+            {
+                yield return null;
+                Assert.That(cameraRig.ControlsEnabled, Is.False, "The camera stays held while Q is down.");
+            }
+            InputSystem.QueueStateEvent(testKeyboard, new KeyboardState());
+            yield return null;
+            Assert.That(Mathf.Abs(Turned(yaw, cameraRig.Yaw)), Is.LessThan(.01f),
+                "Q held under the word game turns nothing (a shot holds the camera: " + cameraRig.HasShot + ").");
+            Assert.That(director.IsChallengeActive, Is.True, "and the game is still being played.");
         }
 
         /// <summary>One right-drag of <paramref name="delta"/> at the screen's middle: what it did to the turn and the tilt.</summary>

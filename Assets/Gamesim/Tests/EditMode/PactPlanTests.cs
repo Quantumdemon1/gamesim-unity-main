@@ -46,8 +46,11 @@ namespace Gamesim.Tests.EditMode
             Assert.Throws<ArgumentNullException>(() => EpisodeEngine.EnablePactPlans(null));
         }
 
-        [TestCase(0, "", 0)] [TestCase(-20, "", 0)] [TestCase(25, "", 4)] [TestCase(50, "", 8)] [TestCase(90, "", 8)]
-        [TestCase(50, "Loyal", 12)] [TestCase(100, "Loyal", 12)] [TestCase(25, "Loyal", 6)] [TestCase(100, "Sneaky", 0)]
+        // The reach amended in place for BALANCE plan §4 Q1 (eight at fifty, cap twelve, reached only toss-ups:
+        // mean come-round odds 0.17 in PactPlanSeasonDigests, 0.13 in the lab): eighteen at a view of ten or more,
+        // scaled down to nothing at zero, Loyal half as much again, cap twenty-seven.
+        [TestCase(0, "", 0)] [TestCase(-20, "", 0)] [TestCase(5, "", 9)] [TestCase(10, "", 18)] [TestCase(90, "", 18)]
+        [TestCase(10, "Loyal", 27)] [TestCase(100, "Loyal", 27)] [TestCase(5, "Loyal", 13.5)] [TestCase(100, "Sneaky", 0)]
         public void ACountersReachIsTheObligationsSizing(double view, string trait, double reach)
         {
             var traits = trait.Length == 0 ? new List<string> { "Social" } : new List<string> { trait };
@@ -265,14 +268,18 @@ namespace Gamesim.Tests.EditMode
                 var s = WarRoom(out var pact, seed: seed);
                 var npcs = NpcIds(s);
                 string member = npcs[(int)(seed % 2) + 3];
-                // A Loyal member who thinks the world of the player: the counter's furthest reach, twelve.
-                s.Find(member).traits = new List<string> { "Loyal" };
-                SetScore(s, member, s.playerId, 100);
+                // On odd seeds a Loyal member who thinks the world of the player: the counter's furthest reach,
+                // twenty-seven (twelve before the reach was amended for BALANCE plan §4 Q1, when every such member
+                // came round no more); on even seeds one barely warm to the player, a view of three: reach 5.4.
+                bool far = seed % 2 == 1;
+                double view = far ? 100 : 3, reach = far ? 27 : 18 * 0.3;
+                s.Find(member).traits = new List<string> { far ? "Loyal" : "Social" };
+                SetScore(s, member, s.playerId, view);
                 double odds = PactPlans.ComeRoundOdds(s, member);
                 var known = Allegiance.AsThePlayerKnows(s);
                 double margin = WebEvictionVoting.EvaluateNative(known, member).margin;
-                Assert.That(odds, Is.EqualTo(PactPlans.ComeRoundOdds(PactPlans.CounterReach(100, s.Find(member).traits), margin)).Within(1e-12));
-                Assert.That(odds, Is.EqualTo(Math.Max(0, Math.Min(1, (12 - margin) / 12))).Within(1e-12), "Seed " + seed + ": reach twelve, margin " + margin + ".");
+                Assert.That(odds, Is.EqualTo(PactPlans.ComeRoundOdds(PactPlans.CounterReach(view, s.Find(member).traits), margin)).Within(1e-12));
+                Assert.That(odds, Is.EqualTo(Math.Max(0, Math.Min(1, (reach - margin) / reach))).Within(1e-12), "Seed " + seed + ": reach " + reach + ", margin " + margin + ".");
                 bool coin = StoryRandom.Unit(s, PactPlans.CounterKey(s, PactId, member)) < odds;
                 bool round = PactPlans.ComesRound(s, PactId, member);
                 Assert.That(round, Is.EqualTo(odds > 0 && coin), "Seed " + seed + ": the coin under the odds.");

@@ -244,9 +244,17 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// A season with the story system on from its first week, at its start, and a pair of
-        /// houseguests some walk-in arc will take in some room this week: what the proximity watch
-        /// offers when the player walks in on them.
+        /// A season under the rules every season the game starts plays (<see cref="ShippedRules"/>),
+        /// played by the walks' own driver to the free time of a week after the first, and a pair of
+        /// houseguests some walk-in arc will take in some room there: what the proximity watch offers
+        /// when the player walks in on them.
+        ///
+        /// <para>Never the first week. Until the first eviction only the first night's story may be put
+        /// to the player (<see cref="EpisodeEngine.BeforeTheFirstAsk"/>), so a fresh season's opening
+        /// free time has no walk-in for anybody - which is why the first form of this fixture, a fresh
+        /// season's week one, never found one, already at the commit that wrote it (A7). And a week's
+        /// free time opens a walk-in only while the week's story airtime is unspent (two asks a week),
+        /// so the search walks the seeds until a season has one.</para>
         /// </summary>
         private IEnumerator InstallWalkInFixture(System.Action<string, string, string> found)
         {
@@ -254,17 +262,32 @@ namespace Gamesim.Tests.PlayMode
             string first = null, second = null, where = null;
             for (uint seed = 1; seed <= 60 && fixture == null; seed++)
             {
-                var state = ContentCatalog.Create(seed);
-                if (state.phase != EpisodePhase.Social) continue;
-                EpisodeEngine.EnableStory(state, state.week);
-                var pairs = state.Active.Where(actor => !actor.isPlayer).Select(actor => actor.id).OrderBy(id => id, System.StringComparer.Ordinal).ToList();
-                for (int a = 0; a < pairs.Count && fixture == null; a++)
-                    for (int b = a + 1; b < pairs.Count && fixture == null; b++)
-                        foreach (var room in RoomWords.Rooms)
-                            if (EpisodeEngine.ProximityOpen(state, pairs[a], pairs[b], room))
-                            { fixture = state; first = pairs[a]; second = pairs[b]; where = room; break; }
+                var start = ContentCatalog.Create(seed);
+                ShippedRules.ApplyFresh(start);
+                var engine = new EpisodeEngine(start);
+                int looked = 0;
+                for (int guard = 0; guard < 600 && fixture == null; guard++)
+                {
+                    var state = engine.Snapshot;
+                    if (state.week > 5 || state.phase == EpisodePhase.Finished) break;
+                    if (state.phase == EpisodePhase.Social && state.week >= 2 && state.week != looked)
+                    {
+                        looked = state.week;
+                        var pairs = state.Active.Where(actor => !actor.isPlayer).Select(actor => actor.id).OrderBy(id => id, System.StringComparer.Ordinal).ToList();
+                        for (int a = 0; a < pairs.Count && fixture == null; a++)
+                            for (int b = a + 1; b < pairs.Count && fixture == null; b++)
+                                foreach (var room in RoomWords.Rooms)
+                                    if (EpisodeEngine.ProximityOpen(state, pairs[a], pairs[b], room))
+                                    { fixture = state; first = pairs[a]; second = pairs[b]; where = room; break; }
+                        if (fixture != null) break;
+                    }
+                    // The driver plays the season as the walks do; where it has no answer (the endgame's
+                    // questions) the season is done with.
+                    if (!engine.Apply(NextCommand(state)).accepted) break;
+                }
             }
             Assert.That(fixture, Is.Not.Null, "No bounded fixture with a walk-in the engine would take was found.");
+            TestContext.WriteLine("Walk-in fixture: " + fixture.sessionId + " week " + fixture.week + ", " + first + " and " + second + " in the " + where + ".");
             director.SuspendNpcAutonomyForDiagnostics();
             new EpisodeSaveStore(director.SavePath).Save(fixture);
             yield return ReloadEpisode();

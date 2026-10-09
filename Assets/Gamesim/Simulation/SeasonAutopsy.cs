@@ -204,11 +204,19 @@ namespace Gamesim.Simulation
             r.playerTimesNominated = you?.timesNominated ?? 0;
 
             var closings = changes.Where(c => c?.before != null).Select(c => c.before).ToList();
+            // The player's pacts are every pact they were in at a state the autopsy saw - each phase
+            // change's before and after, and the end - not only those they are in at the end: a player
+            // who leaves a pact of three leaves it standing, and the end alone read it as the house's.
+            // A membership begun and ended between two phase changes is not seen.
+            var playerHeld = new HashSet<string>(changes.SelectMany(c => new[] { c?.before, c?.after }).Concat(new[] { final })
+                .Where(s => s?.alliances != null)
+                .SelectMany(s => s.alliances.Where(a => a?.members != null && a.members.Contains(s.playerId)).Select(a => a.id)),
+                StringComparer.Ordinal);
 
             Placements(r, final);
             Weeks(r, changes, final);
             Competitions(r, changes, final);
-            CommitmentsOf(r, closings, final);
+            CommitmentsOf(r, closings, playerHeld, final);
             EconomyOf(r, closings, final);
             AgencyOf(r, changes);
             Pairs(r, final);
@@ -382,13 +390,12 @@ namespace Gamesim.Simulation
 
         private static void Count(Dictionary<string, int> into, string key) => into[key] = (into.TryGetValue(key, out int n) ? n : 0) + 1;
 
-        private static void CommitmentsOf(Report r, IReadOnlyList<EpisodeState> closings, EpisodeState final)
+        private static void CommitmentsOf(Report r, IReadOnlyList<EpisodeState> closings, ISet<string> playerHeld, EpisodeState final)
         {
             var c = r.commitments;
             foreach (var row in final.ledger.alliances)
             {
-                var pact = final.alliances.FirstOrDefault(a => a.id == row.id);
-                string party = pact != null && pact.members.Contains(final.playerId) ? "player" : "npc";
+                string party = playerHeld.Contains(row.id) ? "player" : "npc";
                 string origin = (row.why ?? "").Split('/')[0];
                 if (party == "player") c.playerPacts++;
                 else if (origin == "story") c.storyPacts++;

@@ -235,6 +235,25 @@ namespace Gamesim.Tests.EditMode
             Assert.That(r.coldest.mutual, Is.EqualTo(-55));
         }
 
+        /// <summary>
+        /// A player who leaves a pact of three leaves it standing (EpisodeEngine.TakeOutOfPact): at the end the
+        /// pact holds only houseguests, but it was the player's, and a phase change the autopsy saw says so.
+        /// </summary>
+        [Test]
+        public void APactThePlayerLeftStandingIsStillThePlayers()
+        {
+            var final = FinishedByHand();
+            var npc = Npcs(final);
+            var held = final.Clone();
+            held.alliances.Add(new AllianceState { id = "alliance-left-standing", members = new List<string> { final.playerId, npc[0], npc[3] }, active = true });
+            final.alliances.Add(new AllianceState { id = "alliance-left-standing", members = new List<string> { npc[0], npc[3] }, active = true });
+            final.ledger.alliances.Add(new AllianceRow { id = "alliance-left-standing", startedWeek = 2, why = "player" });
+
+            var c = SeasonAutopsy.Of(new List<SeasonAutopsy.PhaseChange> { new SeasonAutopsy.PhaseChange(held, held) }, final).commitments;
+            Assert.That(c.playerPacts, Is.EqualTo(2), "The pact the player left still counts as theirs, beside alliance-1.");
+            Assert.That(c.npcPacts, Is.EqualTo(1), "The house's own pact is still the only house pact.");
+        }
+
         [Test]
         public void ACompetitionIsReadFromThePhaseChangeThatClosedIt()
         {

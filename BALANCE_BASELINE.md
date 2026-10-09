@@ -8,8 +8,16 @@ intervals as noise.
 
 Measured on 2026-10-08 at `95e99bd2` (branch `claude/balance-lab`, on `claude/lead-integration` at
 `ca7f4da6`): schema 28, competition rules 4, story rules 9, the economy, agency, the finale, the commitment
-rules, D4's leaks and the unified commitment and hearing version 1 - exactly what the director starts,
-because every lab season is built by `SeasonBuilder.Create` and `ShippedRules.ApplyFresh` (B0).
+rules, D4's leaks and the unified commitment and hearing version 1 - exactly what the director started
+then, because every lab season is built by `SeasonBuilder.Create` and `ShippedRules.ApplyFresh` (B0).
+
+**Not yet the shipped game: the war rooms.** D3 landed beside this lab, and `ShippedRules.ApplyFresh` now
+switches its war rooms on, but none of the lab's policies answers a war room's plan yet: a player in a
+pact of three falls through to Advance, and every open plan lapses as if they lay low. So these numbers
+leave out going with a plan and pushing back on one. B6a gives each policy a war-room answer and B6b
+reruns this page; until then read every row as measured before the war rooms. The pact counts in the
+first version also read a pact's party from the end alone, so a pact of three the player left standing
+counted as the house's; the autopsy now reads it from every phase change it saw.
 
 ## What changed since the first version (`a81ab572`)
 

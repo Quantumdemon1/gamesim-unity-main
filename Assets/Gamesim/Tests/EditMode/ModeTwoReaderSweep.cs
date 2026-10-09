@@ -192,9 +192,19 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The designed difference a reveal's states show, or null: the approved current-reveal exclusion (vote family V5c) -
-        /// nothing differs but the Story grudges a breaker of this reveal's own Vote rows drew, each the same grudge, at most one
-        /// lighter in mode 2, whose threat scaling left this reveal's breach out of the breaker's reputation.
+        /// What Rule2 writes once where mode 1 writes it for each row: the line (events, and the ids it mints), the memory, the
+        /// relationship and its record (relationships, ledger), the Story lanes, and the witness loop's draws (randomState). A
+        /// difference anywhere else - a row, a phase, a ballot - is no Rule2 overlap however the week's rows settled.
+        /// </summary>
+        private static readonly HashSet<string> Rule2Writes = new HashSet<string>(StringComparer.Ordinal)
+            { "events", "nextSequence", "memories", "relationships", "ledger", "story", "randomState" };
+
+        /// <summary>
+        /// The designed difference a reveal's states show, or null: a Rule2 overlap (vote family V4) - a pair's two rows decided
+        /// the same way this week, and nothing differs but what Rule2 writes (<see cref="Rule2Writes"/>) - or the approved
+        /// current-reveal exclusion (vote family V5c) - nothing differs but the Story grudges a breaker of this reveal's own Vote
+        /// rows drew, each the same grudge, at most one lighter in mode 2, whose threat scaling left this reveal's breach out of
+        /// the breaker's reputation.
         /// </summary>
         internal static string Designed(EpisodeState projection, EpisodeState prospective, List<string> differences)
         {
@@ -204,7 +214,7 @@ namespace Gamesim.Tests.EditMode
                     && (r.status == DealStatus.Fulfilled || r.status == DealStatus.Broken))
                 .GroupBy(r => r.status + "|" + string.Join("|", new[] { r.makerId, r.beneficiaryId }.OrderBy(id => id, StringComparer.Ordinal)))
                 .Any(group => group.Count() > 1))
-                return "a Rule2 overlap";
+                return differences.All(d => Rule2Writes.Contains(d.Split('[', ':')[0])) ? "a Rule2 overlap" : null;
             if (differences.Any(d => !d.StartsWith("story", StringComparison.Ordinal))) return null;
             var one = projection.story.Clone(); var two = prospective.story.Clone();
             var left = one.grudges; var right = two.grudges;

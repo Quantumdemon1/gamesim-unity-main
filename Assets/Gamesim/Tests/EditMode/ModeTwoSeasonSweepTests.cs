@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Gamesim.Simulation;
 using NUnit.Framework;
 
 namespace Gamesim.Tests.EditMode
@@ -33,8 +34,10 @@ namespace Gamesim.Tests.EditMode
     /// whole subset ten minutes) and longer still in the editor. Six run always - seeds 5, 11 and 18, plain and busy: houses of 8
     /// and 6, a Rule2 overlap (busy 11) and the current-reveal exclusion (busy 18). The other 58 are
     /// <c>TheRestOfTheSeasonsPlayAsModeOneOrDifferWhereTheTableSays</c>, explicit and compiled out of Unity as the
-    /// digests are: run the whole table with <c>dotnet test Tools/SimulationTests --filter "FullyQualifiedName~ModeTwoSeasonSweepTests"</c>
-    /// before landing a change to the vote family.</para>
+    /// digests are: run them before landing a change to the vote family with
+    /// <c>dotnet test Tools/SimulationTests --filter "FullyQualifiedName~TheRestOfTheSeasonsPlayAsModeOneOrDifferWhereTheTableSays"</c>.
+    /// Name them: the test adapter runs explicit tests only where the filter selects nothing else, so the class's name runs the
+    /// sample alone.</para>
     /// </summary>
     public sealed class ModeTwoSeasonSweepTests
     {
@@ -88,6 +91,26 @@ namespace Gamesim.Tests.EditMode
             if (Differs.TryGetValue(key, out var expected))
                 Assert.That(outcome, Is.EqualTo(expected.where), key + " differs where the table says (" + expected.owner + ").");
             else Assert.That(outcome, Is.EqualTo("finished"), key + " plays to the finish as mode 1 does.");
+        }
+
+        /// <summary>
+        /// The table's "a Rule2 overlap" excuses what Rule2 writes and nothing else: a reveal at which one houseguest's ballot broke
+        /// two of their vote deals with the player differs from mode 1 in the line, memory, record, Story lanes and draws Rule2 writes
+        /// once; the same reveal with one more difference beside them - a phase, a row - is no designed difference.
+        /// </summary>
+        [Test]
+        public void ARule2OverlapExcusesOnlyWhatRule2Writes()
+        {
+            var s = ModeTwoReaderSweep.Campaign();
+            string npc = PinnedVoteSeason.NpcVoters(s).First(), x = s.nominees[0], y = s.nominees[1];
+            s = ModeTwoReaderSweep.Strike(ModeTwoReaderSweep.Strike(s, npc, DealKind.VoteSave, x), npc, DealKind.VoteEvict, y);
+            var revealed = ModeTwoReaderSweep.Reveal(s, y, new Dictionary<string, string> { [npc] = x });
+            var differences = ModeTwoReaderSweep.Differences(revealed.Projection, revealed.Mode2);
+            Assert.That(differences, Is.Not.Empty, "Fixture: Rule2 wrote the breach once.");
+            Assert.That(ModeTwoReaderSweep.Designed(revealed.Projection, revealed.Mode2, differences), Is.EqualTo("a Rule2 overlap"));
+            foreach (string other in new[] { "phase: mode 1 7 / mode 2 8", "unifiedCommitments[0]: mode 1 {} / mode 2 {}", "votes[1]: mode 1 {} / mode 2 none" })
+                Assert.That(ModeTwoReaderSweep.Designed(revealed.Projection, revealed.Mode2, differences.Concat(new[] { other }).ToList()), Is.Null,
+                    "A Rule2 week's " + other.Split(':')[0] + " is no Rule2 write.");
         }
     }
 }

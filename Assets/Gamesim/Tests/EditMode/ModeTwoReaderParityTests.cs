@@ -25,9 +25,9 @@ namespace Gamesim.Tests.EditMode
     /// <para><b>A sample on every run, the rest on demand.</b> The 32 walks take minutes, too long for every push and longer still
     /// in the editor. Four run always - seeds 5, 11, 18 and 25: houses of 8, 6 and 12, and seed 11, the one walk whose moments
     /// meet a two-row incident and a two-row group (the D1 branches). The other 28 are
-    /// <c>TheRestOfTheWalksReadEveryMovedReaderAsModeOne</c>, explicit and compiled out of Unity: run them all with
-    /// <c>dotnet test Tools/SimulationTests --filter "FullyQualifiedName~ModeTwoReaderParityTests"</c> before landing a change to
-    /// a reader.</para>
+    /// <c>TheRestOfTheWalksReadEveryMovedReaderAsModeOne</c>, explicit and compiled out of Unity: run them before landing a change
+    /// to a reader with <c>dotnet test Tools/SimulationTests --filter "FullyQualifiedName~TheRestOfTheWalksReadEveryMovedReaderAsModeOne"</c>
+    /// (by name: the adapter runs explicit tests only where the filter selects nothing else).</para>
     /// </summary>
     public sealed class ModeTwoReaderParityTests
     {

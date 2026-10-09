@@ -123,7 +123,8 @@ namespace Gamesim.Tests.EditMode
             internal static NominationTerms Of(EpisodeState s, string hohId, string id) => new NominationTerms
             {
                 reluctance = StrategyRules.NominationReluctance(s, hohId, id), story = StoryConsumers.NominationPreference(s, hohId, id), view = -s.Score(hohId, id),
-                protection = -(UnifiedCommitments.RulesOn(s) ? Math.Min(UnifiedCommitments.StrongestProtection(s, hohId, id).Strength, StoryConsumers.SafetyPreference(s, hohId, id)) : 0),
+                // NominationWeight's own gate since vote family V5b: canonical Safety in modes 1 and 2.
+                protection = -(UnifiedCommitments.SafetyAuthorityOn(s) ? Math.Min(UnifiedCommitments.StrongestProtection(s, hohId, id).Strength, StoryConsumers.SafetyPreference(s, hohId, id)) : 0),
                 threat = -EpisodeEngine.ThreatTerm(s, hohId, id), total = EpisodeEngine.NominationWeight(s, hohId, id),
             };
 

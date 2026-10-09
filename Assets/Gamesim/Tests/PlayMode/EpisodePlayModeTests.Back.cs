@@ -42,6 +42,12 @@ namespace Gamesim.Tests.PlayMode
             public bool MayCommit;
             /// <summary>Whether the house's own clock is held for the fixture; the opening's people walk on it.</summary>
             public bool Hold = true;
+            /// <summary>
+            /// Whether the hold is taken again once the overlay is up. Not for the diary: holding the
+            /// house disposes its world, the player's diary seat with it, and the diary closes itself
+            /// when its seat goes - two frames before the press, which then found nothing open.
+            /// </summary>
+            public bool HoldAgain = true;
         }
 
         [UnityTest, Timeout(1500000)]
@@ -67,7 +73,7 @@ namespace Gamesim.Tests.PlayMode
                 new BackCase { Name = "notebook", Open = () => Step(() => director.OpenJournal()), Done = () => !director.IsPanelOpen },
                 new BackCase { Name = "conversation", Open = OpenMayaForBack, Done = () => !director.IsConversationOpen },
                 new BackCase { Name = "phase panel", Open = OpenStation, Done = () => !director.IsPhasePanelOpen },
-                new BackCase { Name = "diary", Open = OpenDiaryForBack, Done = () => !director.IsDiaryOpen },
+                new BackCase { Name = "diary", HoldAgain = false, Open = OpenDiaryForBack, Done = () => !director.IsDiaryOpen },
                 new BackCase { Name = "free-time board", Open = OpenFreeTimeBoardForBack, Done = () => !director.IsPanelOpen },
                 new BackCase { Name = "campaign board", Open = OpenCampaignBoardForBack, Done = () => !director.IsPanelOpen },
                 // Every ceremony card reads the Ceremony map's Skip, bound to Escape and to B alike;
@@ -165,7 +171,7 @@ namespace Gamesim.Tests.PlayMode
             yield return FreshEpisode();
             if (item.Hold) HoldTheHouseForTheFixture();
             yield return item.Open();
-            if (item.Hold) HoldTheHouseForTheFixture();
+            if (item.Hold && item.HoldAgain) HoldTheHouseForTheFixture();
             yield return Frames(2);
             string how = item.Name + (pad ? " by B" : " by Escape");
             for (int press = 0; press < item.Presses; press++)

@@ -42,34 +42,24 @@ namespace Gamesim.Tests.PlayMode
             EpisodeEngine.EnableCommitments(state);
             EpisodeEngine.EnablePactPlans(state);
             var voters = EpisodeEngine.Voters(state).Where(v => !v.isPlayer).Select(v => v.id).ToList();
-            // The one Listener picks first - in the house, voting, holding nothing. Each voter's view of
-            // the two on the block goes as far as a view goes; a houseguest's own traits can still outweigh
-            // it (the evaluator's personality term), so the second is whichever other voter the evaluator
-            // then puts most firmly on the first nominee, not simply the next in line.
+            // The one Listener picks first - in the house, voting, holding nothing.
             string first = voters.FirstOrDefault(id => id != state.vetoHolderId) ?? voters[0];
-            WarRoomSetOnTheFirstNominee(state, first);
-            string second = null; double firmest = double.MinValue;
-            foreach (string candidate in voters.Where(id => id != first))
-            {
-                var views = state.relationships.Where(r => r.fromId == candidate && state.nominees.Contains(r.toId))
-                    .Select(r => (edge: r, score: r.score)).ToList();
-                int rows = state.relationships.Count;
-                WarRoomSetOnTheFirstNominee(state, candidate);
-                var lean = WebEvictionVoting.EvaluateNative(state, candidate);
-                double firmness = lean.selectedNomineeId == state.nominees[0] ? lean.margin : -lean.margin;
-                if (firmness > firmest) { firmest = firmness; second = candidate; }
-                foreach (var view in views) view.edge.score = view.score;
-                state.relationships.RemoveRange(rows, state.relationships.Count - rows);
-            }
-            WarRoomSetOnTheFirstNominee(state, second);
-            state.alliances.RemoveAll(pact => pact.members.Contains(state.playerId));
-            var members = new List<string> { state.playerId, first, second };
-            state.alliances.Add(new AllianceState { id = WarRoomPactId, name = WarRoomPactName, active = true, members = members });
-            state.ledger.alliances.Add(new AllianceRow { id = WarRoomPactId, startedWeek = state.week, why = "player" });
-            foreach (string from in members)
-                foreach (string to in members.Where(id => id != from)) WarRoomScore(state, from, to, 40);
-            var named = new[] { first, second, state.nominees[0], state.nominees[1] };
-            for (int i = 0; i < named.Length; i++) state.Find(named[i]).name = WarRoomLongNames[i];
+            // The evaluator weighs more than a view: a houseguest's traits, the memories that name a
+            // nominee (so the long names below), the pact itself. Measured in Unity, a view pushed as far
+            // as it goes still lost to a voter's traits. So the house is arranged in full on a copy for
+            // each reading of the block and each other voter, and the arrangement in which both voters
+            // evict the first nominee most firmly is the one played.
+            (bool reversed, string second, double firmness)? best = null;
+            foreach (bool reversed in new[] { false, true })
+                foreach (string candidate in voters.Where(id => id != first))
+                {
+                    var trial = state.Clone();
+                    ArrangeWarRoom(trial, first, candidate, reversed);
+                    double firmness = System.Math.Min(WarRoomFirmness(trial, first), WarRoomFirmness(trial, candidate));
+                    if (best == null || firmness > best.Value.firmness) best = (reversed, candidate, firmness);
+                }
+            ArrangeWarRoom(state, first, best.Value.second, best.Value.reversed);
+            string second = best.Value.second;
             foreach (string voter in new[] { first, second })
             {
                 var lean = WebEvictionVoting.EvaluateNative(state, voter);
@@ -85,6 +75,33 @@ namespace Gamesim.Tests.PlayMode
                 present = new List<string> { state.playerId }.Concat(at).ToList(), says = PactPlans.Says(state, pact),
             });
         };
+
+        /// <summary>
+        /// The war room's house: the block read as it stands or the other way round, the player's pact
+        /// with the two voters, warm all round, both voters' views of the block as far as they go, and
+        /// the longest names on the four the card has to hold.
+        /// </summary>
+        private static void ArrangeWarRoom(EpisodeState state, string first, string second, bool reversed)
+        {
+            if (reversed) state.nominees.Reverse();
+            state.alliances.RemoveAll(pact => pact.members.Contains(state.playerId));
+            var members = new List<string> { state.playerId, first, second };
+            state.alliances.Add(new AllianceState { id = WarRoomPactId, name = WarRoomPactName, active = true, members = members });
+            state.ledger.alliances.Add(new AllianceRow { id = WarRoomPactId, startedWeek = state.week, why = "player" });
+            foreach (string from in members)
+                foreach (string to in members.Where(id => id != from)) WarRoomScore(state, from, to, 40);
+            WarRoomSetOnTheFirstNominee(state, first);
+            WarRoomSetOnTheFirstNominee(state, second);
+            var named = new[] { first, second, state.nominees[0], state.nominees[1] };
+            for (int i = 0; i < named.Length; i++) state.Find(named[i]).name = WarRoomLongNames[i];
+        }
+
+        /// <summary>How firmly a voter evicts the first nominee: their margin, negative when they evict the other.</summary>
+        private static double WarRoomFirmness(EpisodeState state, string voter)
+        {
+            var lean = WebEvictionVoting.EvaluateNative(state, voter);
+            return lean.selectedNomineeId == state.nominees[0] ? lean.margin : -lean.margin;
+        }
 
         /// <summary>A voter's views of the two on the block as far as a view goes: against the first, for the second.</summary>
         private static void WarRoomSetOnTheFirstNominee(EpisodeState state, string voter)

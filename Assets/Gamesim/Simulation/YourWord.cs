@@ -248,7 +248,8 @@ namespace Gamesim.Simulation
             return deal == null ? "word to " + with : CommitmentsRead.DealNoun(deal.type) + " with " + with;
         }
 
-        private static List<HouseFactState> AudibleFacts(EpisodeState s) => UnifiedCommitmentHearings.RulesOn(s)
+        // Wherever the hearing lineage is written - mode 2 too (vote family V5d) - its archived facts first, as mode 1 reads them.
+        private static List<HouseFactState> AudibleFacts(EpisodeState s) => UnifiedCommitmentHearings.WritesOn(s)
             ? UnifiedCommitmentHearings.AudibleFacts(s) : s.story.facts.Where(f => IsYours(s, f)).ToList();
 
         private static string Many(int n) => n == 1 ? "1 houseguest has" : n + " houseguests have";

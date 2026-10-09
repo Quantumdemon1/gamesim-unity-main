@@ -9,8 +9,9 @@ namespace Gamesim.Tests.EditMode
 {
     /// <summary>
     /// The reader inventory guard (vote family V5a): every place Simulation or Runtime reads the commitment lists - the raw
-    /// <c>.promises</c> and <c>.deals</c>, mode 1's gate <c>UnifiedCommitments.RulesOn(</c>, the views
-    /// (<c>CommitmentReferences.</c>) and the Safety history (<c>UnifiedCommitmentHistory.</c>) - is named here with why it may.
+    /// <c>.promises</c> and <c>.deals</c>, mode 1's gates <c>UnifiedCommitments.RulesOn(</c> and
+    /// <c>UnifiedCommitmentHearings.RulesOn(</c>, the views (<c>CommitmentReferences.</c>) and the Safety history
+    /// (<c>UnifiedCommitmentHistory.</c>) - is named here with why it may.
     /// The frozen historical validators are not scanned: they are the schemas they freeze.
     ///
     /// <para>Each entry is a file and a piece of the line's code with how many lines it names, and a reason: the authority itself
@@ -55,7 +56,7 @@ namespace Gamesim.Tests.EditMode
             new Site(Sim + "UnifiedVoteFamilyValidation.cs", null, 18, Why.Authority, "the Vote family's validation"),
             new Site(Sim + "UnifiedSafetySaveReferences.cs", null, 4, Why.Authority, "the saved Safety references"),
             new Site(Sim + "EpisodeValidation.cs", null, 12, Why.Authority, "whole-episode validation"),
-            new Site(Sim + "EpisodeValidation.UnifiedSafetyReferences.cs", null, 6, Why.Authority, "whole-episode validation"),
+            new Site(Sim + "EpisodeValidation.UnifiedSafetyReferences.cs", null, 7, Why.Authority, "whole-episode validation, mode 1's hearing gate among it"),
             new Site(Sim + "EpisodeValidation.UnifiedVoteReferences.cs", null, 1, Why.Authority, "whole-episode validation"),
             new Site(Sim + "EpisodeState.cs", null, 2, Why.Authority, "the state's own clone"),
             new Site(Sim + "EpisodeEngine.UnifiedSafety.cs", null, 4, Why.Authority, "the Safety gateways' storage context"),
@@ -180,7 +181,7 @@ namespace Gamesim.Tests.EditMode
             new Site(Sim + "PlayerDeals.cs", null, 3, Why.Moved, "V5d: HasBrokenPromise"),
             new Site(Sim + "YourWord.cs", "CommitmentReferences.FindDeal(s, fact.refId)", 1, Why.ModeAware, "a fact's deal, by its id"),
             new Site(Sim + "YourWord.cs", "CommitmentReferences.FindCanonical(s, fact.refId) is", 1, Why.ModeAware, "a fact's Safety row, by its id"),
-            new Site(Sim + "YourWord.cs", null, 4, Why.Moved, "V5d: Breaches, and a fact's words"),
+            new Site(Sim + "YourWord.cs", null, 4, Why.Moved, "V5d: Breaches, and a fact's words; its audible facts gate on the hearing lineage's WritesOn"),
             new Site(Sim + "KnownOdds.cs", null, 2, Why.Moved, "V5d: History"),
 
             new Site(Sim + "FinaleQuestions.cs", null, 11, Why.Moved,
@@ -202,9 +203,10 @@ namespace Gamesim.Tests.EditMode
             new Site(Run + "Episode/PortVerification.Season.Systems.cs", null, 3, Why.Moved, "V5f: the verification's deal lookups, through the views"),
         };
 
-        /// <summary>Every read of the commitment lists, their mode-1 gate, their views or the Safety history.</summary>
+        /// <summary>Every read of the commitment lists, their mode-1 gates, their views or the Safety history.</summary>
         private static readonly Regex Read = new Regex(
-            @"\.promises\b|\.deals\b|UnifiedCommitments\.RulesOn\(|CommitmentReferences\.|UnifiedCommitmentHistory\.", RegexOptions.CultureInvariant);
+            @"\.promises\b|\.deals\b|UnifiedCommitments\.RulesOn\(|UnifiedCommitmentHearings\.RulesOn\(|CommitmentReferences\.|UnifiedCommitmentHistory\.",
+            RegexOptions.CultureInvariant);
 
         [Test]
         public void EveryCommitmentReadIsMovedOrNamed()
@@ -252,9 +254,12 @@ namespace Gamesim.Tests.EditMode
             const string source = "var a = s.deals.Count; // s.promises in a comment\n"
                 + "/* CommitmentReferences.Deals(s) in a block\n UnifiedCommitments.RulesOn(s) still in it */ var b = s.promises;\n"
                 + "/// <see cref=\"CommitmentReferences.RawDeals\"/>\n"
-                + "var c = UnifiedCommitmentHistory.Breaches(s); var d = s.dealsByWeek; var e = UnifiedCommitments.SafetyAuthorityOn(s);\n";
+                + "var c = UnifiedCommitmentHistory.Breaches(s); var d = s.dealsByWeek; var e = UnifiedCommitments.SafetyAuthorityOn(s);\n"
+                + "var f = UnifiedCommitmentHearings.WritesOn(s);\n"
+                + "var g = UnifiedCommitmentHearings.RulesOn(s);\n";
             var lines = Lines(source).Where(line => Read.IsMatch(line.code)).Select(line => line.line).ToList();
-            Assert.That(lines, Is.EqualTo(new[] { 1, 3, 5 }), "Code reads only: the lists, the views and the histories; comments, other names and the new gate are not.");
+            Assert.That(lines, Is.EqualTo(new[] { 1, 3, 5, 7 }),
+                "Code reads only: the lists, the views, the histories and mode 1's gates; comments, other names and the new gates are not.");
         }
 
         // ------------------------------------------------------------ the scan

@@ -153,6 +153,53 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Negotiation.MendsTried(mend.Mode2, npc), Is.EqualTo(Negotiation.MendsTried(mend.Projection, npc)));
         }
 
+        // ------------------------------------------------------------ the word the house heard, in mode 1's order
+
+        private static EpisodeState nominating;
+
+        /// <summary>A first nomination the player makes as Head of Household, the block still empty.</summary>
+        private static EpisodeState Nominating() => (nominating ??= ProspectiveVoteTwins.Find("a first nomination the player makes",
+            seed => ProspectiveVoteTwins.Walk(seed, s => s.phase == EpisodePhase.Nomination && s.hohId == s.playerId && s.nominees.Count == 0
+                && EpisodeEngine.NominationCandidates(s).Count(c => !c.isPlayer) >= 3, EpisodePhase.HoH))).Clone();
+
+        /// <summary>The player's real proposal of a deal, with a draw that says yes.</summary>
+        private static EpisodeState Proposed(EpisodeState s, string with, string type, string about = null)
+        {
+            Assert.That(PlayerDeals.CanPropose(s, with, type, about, out var why), Is.True, why);
+            s = s.Clone();
+            s.randomState = ProspectiveVoteTwins.Draw(true, PlayerDeals.AcceptanceChance(s, with, type, about));
+            var result = new EpisodeEngine(ProspectiveVoteTwins.Valid(s)).Apply(ProspectiveVoteTwins.Command(s, EpisodeCommandKind.ProposeDeal, with, about, type));
+            Assert.That(result.accepted, Is.True, "Fixture: " + result.reason);
+            return result.state;
+        }
+
+        /// <summary>
+        /// The word the house heard is read in mode 1's order in mode 2 too: a Safety pact's archived fact first, as the hearing
+        /// lineage lists it wherever it is written (<see cref="UnifiedCommitmentHearings"/>'s audible facts), then the rest in the order
+        /// the season wrote them. One nomination breaks a target agreement with one houseguest - its fact written first - and a
+        /// safety pact with the other, so the order the season wrote them is not the order mode 1 reads them in.
+        /// </summary>
+        [Test]
+        public void TheWordTheHouseHeardIsReadInModeOnesOrder()
+        {
+            var s = Nominating();
+            var pool = EpisodeEngine.NominationCandidates(s).Where(c => !c.isPlayer).Select(c => c.id).ToList();
+            string partner = pool[0], pact = pool[1];
+            string target = PlayerDeals.Subjects(s, partner).First(id => id != pact);
+            s = Proposed(s, partner, DealKind.TargetAgreement, target);
+            s = Proposed(s, pact, DealKind.SafetyAgreement);
+            var both = ProspectiveVoteTwins.Both(s, ProspectiveVoteTwins.Command(s, EpisodeCommandKind.Nominate, partner, pact));
+            Assert.That(both.legacy.accepted && both.prospective.accepted, Is.True, both.legacy.reason + " / " + both.prospective.reason);
+            var mode1 = both.legacy.state; var mode2 = both.prospective.state;
+            ProspectiveVoteTwins.AssertParity(mode1, mode2, "A target agreement and a safety pact broken by one nomination");
+            var broken = mode1.story.facts.Where(f => YourWord.IsYours(mode1, f)).Select(f => f.subjectId).ToList();
+            Assert.That(broken, Is.EqualTo(new[] { partner, pact }), "Fixture: the target agreement's fact is written first.");
+            Assert.That(mode1.unifiedHearingEvidence.Select(e => e.fact.subjectId), Is.EqualTo(new[] { pact }), "Fixture: the pact's fact is archived.");
+            Assert.That(YourWord.Breaches(mode1).Select(f => f.subjectId), Is.EqualTo(new[] { pact, partner }), "Mode 1 reads the archived fact first.");
+            Assert.That(Json(YourWord.Breaches(mode2)), Is.EqualTo(Json(YourWord.Breaches(mode1))), "Mode 2 reads the word the house heard as mode 1.");
+            Assert.That(YourWord.Lines(mode2), Is.EqualTo(YourWord.Lines(mode1)));
+        }
+
         // ------------------------------------------------------------ a hidden ballot (P3)
 
         [Test]

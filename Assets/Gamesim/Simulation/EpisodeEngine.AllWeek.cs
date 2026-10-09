@@ -314,6 +314,33 @@ namespace Gamesim.Simulation
                 && !(pactHeard && (a.kind == NpcActKinds.Pact || a.kind == NpcActKinds.Meet))
                 && ActClause(s, a) != null);
 
+        /// <summary>How many acts the house stages at once (§6 Q11).</summary>
+        public const int MostStagedActs = 2;
+
+        /// <summary>
+        /// The acts the house stages now (D2-S3), for the director: open, staged in a room, not yet seen, nothing
+        /// of the player's in them, while the player is in the house and the window can still be seen in; oldest
+        /// first, nobody in two, at most <paramref name="most"/>. Pure.
+        /// </summary>
+        public static List<NpcActState> StageableActs(EpisodeState s, int most = MostStagedActs)
+        {
+            var chosen = new List<NpcActState>();
+            if (s == null || !AllWeekOn(s) || s.Find(s.playerId)?.status != ContestantStatus.Active) return chosen;
+            int window = Window(s);
+            if (window == Windows.None || s.npcSocial.acts.Count(a => a != null && a.sighted && a.window == window) >= SightingsAWindow) return chosen;
+            var busy = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var act in s.npcSocial.acts.Where(a => a != null && a.room != null && !a.sighted && ActOpen(s, a)
+                         && a.actorId != s.playerId && a.partnerId != s.playerId && a.subjectId != s.playerId)
+                         .OrderBy(a => a.firedTick))
+            {
+                if (chosen.Count >= most) break;
+                if (busy.Contains(act.actorId) || busy.Contains(act.partnerId)) continue;
+                chosen.Add(act);
+                busy.Add(act.actorId); busy.Add(act.partnerId);
+            }
+            return chosen;
+        }
+
         /// <summary>The act's clause in the listen-in's line (<see cref="NpcActKinds.Clause"/>), by name.</summary>
         public static string ActClause(EpisodeState s, NpcActState act) =>
             act == null ? null : NpcActKinds.Clause(act.kind, Name(s, act.actorId), Name(s, act.partnerId),

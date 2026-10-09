@@ -420,6 +420,7 @@ namespace Gamesim.Episode
             TickNpcSocialRuntime(Time.unscaledDeltaTime);
             TickHouseActivities();
             TickProximityWatch(Time.unscaledDeltaTime);
+            TickAllWeekActs(Time.unscaledDeltaTime);
             frameAverage = Mathf.Lerp(frameAverage, Time.unscaledDeltaTime, 0.03f);
             if (diaryOpen && (!CanUseDiary || diarySeat == null || !diarySeat.Active)) { ClosePanels(); return; }
             // The house's shortcuts come through the actions map's second page: each key has a
@@ -774,8 +775,11 @@ namespace Gamesim.Episode
             }
             // The one event the player is entitled to see drives both the status line and the
             // ceremony card, so a title card can never announce something the notebook withholds.
+            // Under the all-week rules it names the step, not the house's beats after it (D2's
+            // decision 10): the last line before the commit's catch-up began.
             var visible = result.accepted
-                ? result.state.events.LastOrDefault(e => e.audienceIds.Count == 0 || e.audienceIds.Contains(result.state.playerId))
+                ? result.state.events.LastOrDefault(e => (e.audienceIds.Count == 0 || e.audienceIds.Contains(result.state.playerId))
+                    && (result.beatsFromSequence <= 0 || e.sequence < result.beatsFromSequence))
                 : null;
             message = result.accepted ? StatusLine(result.state, visible) ?? "Decision committed." : result.reason;
             if (result.accepted)

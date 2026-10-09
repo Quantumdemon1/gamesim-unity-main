@@ -130,7 +130,7 @@ namespace Gamesim.Episode
             state.npcSocial != null && !NpcSocialState.IsEligiblePhase(state.phase) && !FinaleNight(state.phase)
             && NpcSocialState.AutonomyHasBegun(state) && state.Find(state.playerId)?.status == ContestantStatus.Active
             && state.Active.Count(actor => !actor.isPlayer) >= 2
-            && (!Application.isBatchMode || StagesInBatchRuns || WalkOutsInBatchRuns);
+            && (!Application.isBatchMode || StagesInBatchRuns || WalkOutsInBatchRuns || ActsInBatchRuns);
 
         /// <summary>
         /// Editor-only: builds the house's world now, as a season's first social phase does and a
@@ -270,7 +270,8 @@ namespace Gamesim.Episode
             // be paired: a pairing tried on them would only take their partner off their furniture.
             if (talkSpot != null) unavailable.Add(talkSpot.NpcId);
             foreach (var cooldown in state.npcSocial.cooldowns.Where(row => row.untilTick > state.npcSocial.clockTick)) unavailable.Add(cooldown.npcId);
-            var idle = state.Active.Where(actor => !actor.isPlayer && !unavailable.Contains(actor.id)).ToArray();
+            // The two of a staged act stand where it happens (EpisodeDirector.AllWeek): not free to be paired.
+            var idle = state.Active.Where(actor => !actor.isPlayer && !unavailable.Contains(actor.id) && !npcMeetings.ActHoldsActor(actor.id)).ToArray();
             for (int first = 0; first < idle.Length; first++)
             {
                 if (unavailable.Contains(idle[first].id)) continue;

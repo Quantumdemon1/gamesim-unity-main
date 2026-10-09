@@ -239,6 +239,42 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Line(plain, noPact), Does.EndWith(" agreed to work together."), "Without D4's sentence the clause is said.");
         }
 
+        // ------------------------------------------------------------------ what the house stages
+
+        /// <summary>
+        /// The director's selector (D2-S3): the oldest open acts staged in a room and not yet seen, nobody in two,
+        /// two at most; nothing once the window's sightings are spent, the player has gone, or without the rules.
+        /// </summary>
+        [Test]
+        public void TheHouseStagesTheOldestOpenUnseenActsNobodyInTwo()
+        {
+            var s = Open(EpisodePhase.Campaign);
+            var npcs = Npcs(s);
+            Assert.That(EpisodeEngine.StageableActs(s), Is.Empty, "Nothing staged before anything happened.");
+            var first = Staged(s, NpcActKinds.Talk, npcs[0], npcs[1]);
+            var unstaged = Staged(s, NpcActKinds.Eavesdrop, npcs[2], npcs[3], room: null);
+            var seen = Staged(s, NpcActKinds.Pact, npcs[2], npcs[3]); seen.sighted = true;
+            var sharing = Staged(s, NpcActKinds.Rumour, npcs[1], npcs[2]);
+            var second = Staged(s, NpcActKinds.Promise, npcs[2], npcs[3]);
+            var later = Staged(s, NpcActKinds.Talk, npcs[3], npcs[0]);
+            Assert.That(EpisodeEngine.StageableActs(s).Select(a => a.id), Is.EqualTo(new[] { first.id, second.id }),
+                "Oldest first, skipping the unstaged, the seen and one sharing a person; two at most.");
+            Assert.That(EpisodeEngine.StageableActs(s, 4).Select(a => a.id), Is.EqualTo(new[] { first.id, second.id }), "Nobody in two.");
+            // Later ticks come after earlier ones, and a closed act is never staged.
+            first.firedTick = EpisodeEngine.WindowTick(s, first.window) + 1;
+            Assert.That(EpisodeEngine.StageableActs(s, 1).Select(a => a.id), Is.EqualTo(new[] { sharing.id }));
+            var moved = s.Clone(); moved.windowActions[Windows.AfterVeto] += 2;
+            Assert.That(EpisodeEngine.StageableActs(moved).Select(a => a.id), Is.EqualTo(new[] { first.id }), "Only the one fired later is still open.");
+            var spent = s.Clone();
+            for (int k = 0; k < 2; k++) { var x = Staged(spent, NpcActKinds.Talk, npcs[0], npcs[3]); x.sighted = true; }
+            Assert.That(EpisodeEngine.StageableActs(spent), Is.Empty, "Three seen this window: nothing more to see.");
+            var gone = s.Clone(); gone.Find(gone.playerId).status = ContestantStatus.Evicted;
+            Assert.That(EpisodeEngine.StageableActs(gone), Is.Empty, "Nobody to see it.");
+            var off = s.Clone(); off.allWeekRulesStartWeek = 0;
+            Assert.That(EpisodeEngine.StageableActs(off), Is.Empty, "Without the rules nothing is staged.");
+            Assert.That(later.id, Is.Not.Null); Assert.That(unstaged.room, Is.Null);
+        }
+
         // ------------------------------------------------------------------ privacy
 
         /// <summary>No D2 line or clause names a pact, whatever the act and wherever it is.</summary>

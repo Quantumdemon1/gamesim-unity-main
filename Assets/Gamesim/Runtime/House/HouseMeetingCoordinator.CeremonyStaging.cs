@@ -54,6 +54,7 @@ namespace Gamesim.House
             { reason = "The house is not free for a ceremony."; return 0; }
             EndWandering();
             EndSceneStage();
+            EndActStaging();
             ReleaseActivities();
             var left = new List<string>();
             for (int i = 0; i < ids.Count; i++)
@@ -94,7 +95,7 @@ namespace Gamesim.House
             if (ceremonyLeases.ContainsKey(id)) return true;
             if (!actors.TryGetValue(id, out var actor) || !eligible.Contains(id) || actor.motion == null || !actor.motion.IsBound)
             { reason = id + " has no body to walk."; return false; }
-            YieldActivity(id); YieldWander(id);
+            YieldActivity(id); YieldWander(id); YieldAct(id);
             if (actor.motion.LeaseId != null) { reason = actor.npc.DisplayName + " is in a conversation."; return false; }
             string token = "ceremony:" + ceremonyLeases.Count + ":" + System.Guid.NewGuid().ToString("N");
             actor.motion.SetPaused(false);

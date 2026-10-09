@@ -142,6 +142,7 @@ namespace Gamesim.Simulation
             // Cast order throughout, so the same house always plays the same week.
             var joined = new HashSet<string>(StringComparer.Ordinal);
             var met = new HashSet<string>(StringComparer.Ordinal);
+            var turn = Turn.Season(state);
 
             foreach (var npc in state.contestants
                          .Where(c => c.status == ContestantStatus.Active && !c.isPlayer)
@@ -154,16 +155,111 @@ namespace Gamesim.Simulation
                 if (NpcAlliances.TryPropose(state, npc.id, joined)) taken++;
                 if (taken < turns && NpcPromises.TryGive(state, npc.id)) taken++;
                 // Under agency the first free turn goes to the agenda (NPC-AGENCY-PLAN.md §4).
-                if (taken < turns && Pursue(state, npc)) taken++;
+                if (taken < turns && PursueOn(state, npc, turn) != null) taken++;
 
                 foreach (var kind in Repertoire(LeadTrait(npc)))
                 {
                     if (taken >= turns) break;
                     // Both were already attempted above, at the priority the source gives them.
                     if (kind == NpcActionKind.AllianceProposal || kind == NpcActionKind.Promise) continue;
-                    if (Perform(state, npc, kind, met)) taken++;
+                    if (Perform(state, npc, kind, met, turn) != null) taken++;
                 }
             }
+        }
+
+        /// <summary>
+        /// One beat of the all-week cadence (WAVE-D-NPC-PACTS-PLAN §4.3, D2): one houseguest's next
+        /// success on <see cref="Settle"/>'s ladder, spread over the week, or null when nothing on it is left
+        /// for them to do. The ladder is Settle's order - a pact (one new pact a houseguest a week), a word
+        /// (once a week), the agenda's pursuit (once a week; a recorded court fills it), then the repertoire,
+        /// each kind once a week and a pact's meeting once - and this week's acts are its memory
+        /// (<see cref="NpcSocialState.acts"/>), so the week's limits hold across beats, windows and reloads.
+        ///
+        /// <para>Every draw comes from <paramref name="roll"/>, the beat's keyed stream, never the season's.
+        /// <paramref name="playerFree"/> leaves the player out of every target, listener and subject a verb
+        /// would choose - a rung that is about them is skipped, and no reply card or gossip discovery follows;
+        /// <paramref name="positional"/> lets a word on the vote or for safety be given, which belongs to
+        /// the window the block is set in. Returns the act, without the id, room, window or tick the engine
+        /// gives it; it moves what the verb moves and records nothing of its own.</para>
+        /// </summary>
+        public static NpcActState Beat(EpisodeState state, string npcId, Func<double> roll, bool playerFree, bool positional)
+        {
+            if (state == null) throw new ArgumentNullException(nameof(state));
+            if (roll == null) throw new ArgumentNullException(nameof(roll));
+            var npc = state.Find(npcId);
+            if (npc == null || npc.isPlayer || npc.status != ContestantStatus.Active) return null;
+            var week = state.npcSocial.acts.Where(a => a != null && a.week == state.week).ToList();
+            var mine = week.Where(a => a.actorId == npcId).ToList();
+            // A reply card lives in free time and the campaign (validation's rule): a beat after the HoH or the
+            // nominations that reaches the player says its line without one.
+            var turn = new Turn { roll = roll, playerFree = playerFree, cards = state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign };
+
+            // A pact, at most one new one a houseguest a week, either side of it.
+            var joined = new HashSet<string>(week.Where(a => a.kind == NpcActKinds.Pact)
+                .SelectMany(a => new[] { a.actorId, a.partnerId }).Where(id => id != null), StringComparer.Ordinal);
+            if (NpcAlliances.TryPropose(state, npcId, joined))
+            {
+                var formed = state.alliances[state.alliances.Count - 1];
+                return new NpcActState { kind = NpcActKinds.Pact, actorId = npcId, partnerId = formed.members.FirstOrDefault(id => id != npcId) };
+            }
+            // A word, once a week.
+            if (!mine.Any(a => a.kind == NpcActKinds.Promise) && NpcPromises.TryGive(state, npcId, positional, out string toId))
+                return new NpcActState { kind = NpcActKinds.Promise, actorId = npcId, partnerId = toId };
+            // The agenda's pursuit, once a week, so a fixed target cannot compound.
+            if (!mine.Any(a => NpcActKinds.IsPursuit(a.kind)))
+            {
+                var pursued = PursueOn(state, npc, turn);
+                if (pursued != null) return pursued;
+            }
+            // The repertoire: each kind once a week, a pact's meeting once.
+            var met = new HashSet<string>(week.Where(a => a.kind == NpcActKinds.Meet && a.subjectId != null).Select(a => a.subjectId), StringComparer.Ordinal);
+            foreach (var kind in Repertoire(LeadTrait(npc)))
+            {
+                if (kind == NpcActionKind.AllianceProposal || kind == NpcActionKind.Promise) continue;
+                if (mine.Any(a => a.kind == ActKind(kind))) continue;
+                var done = Perform(state, npc, kind, met, turn);
+                if (done != null) return done;
+            }
+            return null;
+        }
+
+        /// <summary>A repertoire verb's act kind.</summary>
+        private static string ActKind(NpcActionKind kind)
+        {
+            switch (kind)
+            {
+                case NpcActionKind.Talk: return NpcActKinds.Talk;
+                case NpcActionKind.AllianceProposal: return NpcActKinds.Pact;
+                case NpcActionKind.Promise: return NpcActKinds.Promise;
+                case NpcActionKind.AllianceMeeting: return NpcActKinds.Meet;
+                case NpcActionKind.SpreadInfo: return NpcActKinds.Rumour;
+                case NpcActionKind.Confront: return NpcActKinds.Confront;
+                case NpcActionKind.Eavesdrop: return NpcActKinds.Eavesdrop;
+                default: return NpcActKinds.Campaign;
+            }
+        }
+
+        /// <summary>
+        /// Where a pass's draws come from and whom it may reach: the season's own stream with the player in
+        /// reach for the weekly pass, a single verb and the campaign, as they always were; a beat's keyed
+        /// stream under D2, with the player left out where the beat is player-free.
+        /// </summary>
+        private sealed class Turn
+        {
+            public Func<double> roll;
+            public bool playerFree;
+            /// <summary>Whether a reply card can be put to the player: always for the season's passes, which run in free time and the campaign, the only windows a card lives in; for a beat, only there.</summary>
+            public bool cards = true;
+
+            public double Roll() => roll();
+
+            public static Turn Season(EpisodeState state) => new Turn { roll = () => EpisodeEngine.Roll(state) };
+        }
+
+        /// <summary>A reply card for the player where the pass can put one; a beat in a window no card lives in says its line without one.</summary>
+        private static void Offer(EpisodeState state, Turn turn, string kind, string fromId, string aboutId)
+        {
+            if (turn.cards) ReplyCards.Offer(state, kind, fromId, aboutId);
         }
 
         /// <summary>
@@ -178,6 +274,7 @@ namespace Gamesim.Simulation
         public static void Campaign(EpisodeState state)
         {
             if (!NpcSocialState.AutonomyHasBegun(state) || state.evictionResolved) return;
+            var turn = Turn.Season(state);
 
             foreach (var npc in state.contestants
                          .Where(c => c.status == ContestantStatus.Active && !c.isPlayer
@@ -204,7 +301,11 @@ namespace Gamesim.Simulation
                 foreach (var voter in visits)
                 {
                     Act(state, npc.id, voter.id, CampaignImpact,
-                        npc.name + " campaigned to stay", "campaign");
+                        npc.name + " campaigned to stay", "campaign", turn);
+                    // Under the all-week rules (D2) the visit is one of the week's acts, recorded with no draw.
+                    if (EpisodeEngine.AllWeekOn(state))
+                        EpisodeEngine.RecordAct(state, NpcActKinds.Campaign, state.week + "-" + Windows.AfterVeto + "-campaign-" + npc.id + "-" + voter.id,
+                            npc.id, voter.id, null);
                     if (!voter.isPlayer) continue;
                     EpisodeEngine.Log(state, "campaign",
                         npc.name + " came to you asking to stay this week.", state.playerId);
@@ -222,35 +323,41 @@ namespace Gamesim.Simulation
         /// to. Returns whether a turn was actually spent.
         /// </summary>
         public static bool Perform(EpisodeState state, string npcId, NpcActionKind kind) =>
-            Perform(state, state.Find(npcId), kind, new HashSet<string>(StringComparer.Ordinal));
+            Perform(state, state.Find(npcId), kind, new HashSet<string>(StringComparer.Ordinal), Turn.Season(state)) != null;
 
-        private static bool Perform(EpisodeState state, ContestantState npc, NpcActionKind kind, ISet<string> met)
+        /// <summary>One verb; the act it was, or null where it found nobody to do it to.</summary>
+        private static NpcActState Perform(EpisodeState state, ContestantState npc, NpcActionKind kind, ISet<string> met, Turn turn)
         {
-            if (npc == null || npc.status != ContestantStatus.Active) return false;
+            if (npc == null || npc.status != ContestantStatus.Active) return null;
             switch (kind)
             {
-                case NpcActionKind.Talk: return Talk(state, npc);
-                case NpcActionKind.AllianceProposal: return NpcAlliances.TryPropose(state, npc.id, null);
-                case NpcActionKind.Promise: return NpcPromises.TryGive(state, npc.id);
-                case NpcActionKind.AllianceMeeting: return Meet(state, npc, met);
-                case NpcActionKind.SpreadInfo: return SpreadInfo(state, npc);
-                case NpcActionKind.Confront: return Confront(state, npc);
-                case NpcActionKind.Eavesdrop: return Eavesdrop(state, npc);
+                case NpcActionKind.Talk: return Talk(state, npc, turn);
+                case NpcActionKind.AllianceProposal:
+                    return NpcAlliances.TryPropose(state, npc.id, null)
+                        ? new NpcActState { kind = NpcActKinds.Pact, actorId = npc.id, partnerId = state.alliances[state.alliances.Count - 1].members.FirstOrDefault(id => id != npc.id) }
+                        : null;
+                case NpcActionKind.Promise:
+                    return NpcPromises.TryGive(state, npc.id, true, out string toId)
+                        ? new NpcActState { kind = NpcActKinds.Promise, actorId = npc.id, partnerId = toId } : null;
+                case NpcActionKind.AllianceMeeting: return Meet(state, npc, met, turn);
+                case NpcActionKind.SpreadInfo: return SpreadInfo(state, npc, turn);
+                case NpcActionKind.Confront: return Confront(state, npc, turn);
+                case NpcActionKind.Eavesdrop: return Eavesdrop(state, npc, turn);
                 // Campaigning is not a social turn; it has its own pass, at its own moment.
-                default: return false;
+                default: return null;
             }
         }
 
-        private static bool Talk(EpisodeState state, ContestantState npc)
+        private static NpcActState Talk(EpisodeState state, ContestantState npc, Turn turn)
         {
-            var target = WeightedTarget(state, npc.id);
-            if (target == null) return false;
+            var target = WeightedTarget(state, npc.id, turn);
+            if (target == null) return null;
 
             Act(state, npc.id, target.id, EpisodeEngine.TalkWarmth(state, npc.id, target.id),
-                npc.name + " spent time with " + Named(state, target), "talk");
+                npc.name + " spent time with " + Named(state, target), "talk", turn);
             if (target.isPlayer)
                 EpisodeEngine.Log(state, "conversation", npc.name + " sought you out this week.", state.playerId);
-            return true;
+            return new NpcActState { kind = NpcActKinds.Talk, actorId = npc.id, partnerId = target.id };
         }
 
         /// <summary>
@@ -260,26 +367,35 @@ namespace Gamesim.Simulation
         /// nominations) and a drifter has nobody in mind, so neither spends a turn here. Nothing
         /// without agency, where there is no agenda.
         /// </summary>
-        private static bool Pursue(EpisodeState state, ContestantState npc)
+        private static bool Pursue(EpisodeState state, ContestantState npc) => PursueOn(state, npc, Turn.Season(state)) != null;
+
+        /// <summary>The same on a pass's stream; the act it was, or null.</summary>
+        private static NpcActState PursueOn(EpisodeState state, ContestantState npc, Turn turn)
         {
             var agenda = NpcAgendas.Of(state, npc.id);
             var partner = agenda?.partnerId == null ? null : state.Find(agenda.partnerId);
-            if (partner == null || partner.status != ContestantStatus.Active || !NpcAgendas.StillWorking(state, npc.id, agenda)) return false;
+            if (partner == null || partner.status != ContestantStatus.Active || !NpcAgendas.StillWorking(state, npc.id, agenda)) return null;
+            // A player-free beat skips a pursuit of the player, or about them, and moves down the ladder.
+            if (turn.playerFree && (partner.isPlayer || (agenda.kind == Agendas.Hunt && agenda.targetId == state.playerId))) return null;
             switch (agenda.kind)
             {
                 case Agendas.Build:
                 case Agendas.Court:
                 case Agendas.Hold:
                     Act(state, npc.id, partner.id, EpisodeEngine.TalkWarmth(state, npc.id, partner.id),
-                        npc.name + " spent time with " + Named(state, partner), "talk");
+                        npc.name + " spent time with " + Named(state, partner), "talk", turn);
                     if (partner.isPlayer)
                         EpisodeEngine.Log(state, "conversation", npc.name + " sought you out this week.", state.playerId);
-                    return true;
+                    return new NpcActState
+                    {
+                        kind = agenda.kind == Agendas.Build ? NpcActKinds.Build : agenda.kind == Agendas.Court ? NpcActKinds.Court : NpcActKinds.Hold,
+                        actorId = npc.id, partnerId = partner.id,
+                    };
                 case Agendas.Hunt:
                     var threat = state.Find(agenda.targetId);
-                    if (threat == null || threat.status != ContestantStatus.Active || threat.id == partner.id) return false;
+                    if (threat == null || threat.status != ContestantStatus.Active || threat.id == partner.id) return null;
                     Act(state, npc.id, partner.id, EpisodeEngine.TalkWarmth(state, npc.id, partner.id),
-                        npc.name + " and " + Named(state, partner) + " talked about " + Named(state, threat), "talk");
+                        npc.name + " and " + Named(state, partner) + " talked about " + Named(state, threat), "talk", turn);
                     // Under the commitment rules (R0, X6) the player's view of the threat is the player's
                     // own: told the threat has to go, they read it in the log and their view of the
                     // threat does not move. Before them it took the hunt's weight, which could end a pact
@@ -288,23 +404,23 @@ namespace Gamesim.Simulation
                     // the player was not there.
                     string heardHunt = "What " + Named(state, partner) + " heard from " + npc.name + " about " + Named(state, threat);
                     if (!EpisodeEngine.CommitmentRulesOn(state))
-                        Act(state, partner.id, threat.id, EpisodeEngine.HuntImpact, heardHunt, "rumor");
+                        Act(state, partner.id, threat.id, EpisodeEngine.HuntImpact, heardHunt, "rumor", turn);
                     else if (threat.isPlayer)
                         EpisodeEngine.HeardAbout(state, partner.id, EpisodeEngine.HuntImpact, heardHunt, "rumor");
                     else if (!partner.isPlayer)
-                        Act(state, partner.id, threat.id, EpisodeEngine.HuntImpact, heardHunt, "rumor");
+                        Act(state, partner.id, threat.id, EpisodeEngine.HuntImpact, heardHunt, "rumor", turn);
                     if (partner.isPlayer)
                         EpisodeEngine.Log(state, "information", npc.name + " told you " + threat.name + " has to go.", state.playerId);
                     // Talk about the player reaches them as a rumour does: the reference's roll, from the strategy windows.
-                    if (threat.isPlayer && StrategyRules.Apply(state) && EpisodeEngine.Roll(state) < ReplyCards.GossipDiscoveryChance)
+                    if (threat.isPlayer && StrategyRules.Apply(state) && turn.Roll() < ReplyCards.GossipDiscoveryChance)
                     {
                         EpisodeEngine.Log(state, "gossip", "You found out " + npc.name + " has been talking about you to "
                             + partner.name + ".", state.playerId);
-                        ReplyCards.Offer(state, ReplyCards.Gossip, npc.id, partner.id);
+                        Offer(state, turn, ReplyCards.Gossip, npc.id, partner.id);
                     }
-                    return true;
+                    return new NpcActState { kind = NpcActKinds.Hunt, actorId = npc.id, partnerId = partner.id, subjectId = threat.id };
             }
-            return false;
+            return null;
         }
 
         /// <summary>
@@ -316,7 +432,7 @@ namespace Gamesim.Simulation
         {
             if (npc == null || hoh == null || npc.id == hoh.id) return;
             Act(state, npc.id, hoh.id, EpisodeEngine.TalkWarmth(state, npc.id, hoh.id),
-                npc.name + " courted " + Named(state, hoh) + " before the nominations", "talk");
+                npc.name + " courted " + Named(state, hoh) + " before the nominations", "talk", Turn.Season(state));
             if (hoh.isPlayer)
                 EpisodeEngine.Log(state, "conversation", npc.name + " came to see you before the nominations.", state.playerId, npc.id);
             if (hoh.isPlayer) HoHPitches.Offer(state, npc.id);
@@ -333,7 +449,7 @@ namespace Gamesim.Simulation
         /// player is a member of and never hears about would move the player's standing for reasons
         /// they have no way to see.</para>
         /// </summary>
-        private static bool Meet(EpisodeState state, ContestantState npc, ISet<string> met)
+        private static NpcActState Meet(EpisodeState state, ContestantState npc, ISet<string> met, Turn turn)
         {
             var alliance = NpcAlliances.ActiveAlliancesFor(state, npc.id)
                 .Where(pact => !met.Contains(pact.id)
@@ -341,7 +457,7 @@ namespace Gamesim.Simulation
                                && pact.members.Count(id => state.Find(id)?.status == ContestantStatus.Active) >= 2)
                 .OrderBy(pact => pact.id, StringComparer.Ordinal)
                 .FirstOrDefault();
-            if (alliance == null) return false;
+            if (alliance == null) return null;
 
             met.Add(alliance.id);
             var present = alliance.members
@@ -351,8 +467,9 @@ namespace Gamesim.Simulation
             for (int i = 0; i < present.Count; i++)
                 for (int j = i + 1; j < present.Count; j++)
                     Act(state, present[i], present[j], AllianceMeetingImpact,
-                        alliance.name + " met in week " + state.week, "alliance-meeting");
-            return true;
+                        alliance.name + " met in week " + state.week, "alliance-meeting", turn);
+            // The act names the pact by its id (D2's decision 3), which nothing shows.
+            return new NpcActState { kind = NpcActKinds.Meet, actorId = npc.id, partnerId = present.FirstOrDefault(id => id != npc.id), subjectId = alliance.id };
         }
 
         /// <summary>
@@ -367,14 +484,14 @@ namespace Gamesim.Simulation
         /// and no entry is written for the storyteller at all. Nobody in the room knows where it came
         /// from; that is what makes it a rumour rather than an accusation.</para>
         /// </summary>
-        private static bool SpreadInfo(EpisodeState state, ContestantState npc)
+        private static NpcActState SpreadInfo(EpisodeState state, ContestantState npc, Turn turn)
         {
-            var listener = WeightedTarget(state, npc.id);
-            if (listener == null) return false;
+            var listener = WeightedTarget(state, npc.id, turn);
+            if (listener == null) return null;
 
             string subjectId = ThreatAssessment.RankedTargets(state, npc.id)
-                .FirstOrDefault(id => id != listener.id && id != npc.id);
-            if (subjectId == null) return false;
+                .FirstOrDefault(id => id != listener.id && id != npc.id && !(turn.playerFree && id == state.playerId));
+            if (subjectId == null) return null;
 
             var subject = state.Find(subjectId);
             // Under the commitment rules (R0, X8) a rumour told to the player says what was said, and
@@ -391,22 +508,22 @@ namespace Gamesim.Simulation
             else
             {
                 Act(state, listener.id, subjectId, RumorImpact,
-                    "Something " + Named(state, listener) + " heard about " + Named(state, subject), "rumor");
+                    "Something " + Named(state, listener) + " heard about " + Named(state, subject), "rumor", turn);
                 if (listener.isPlayer)
                     EpisodeEngine.Log(state, "information",
                         npc.name + " told you something about " + subject.name + ".", state.playerId);
             }
             // A rumour about the player reaches them three times in ten, from the strategy windows -
             // the reference's roll, drawn only when it could matter, so an older season spends nothing.
-            if (subject.isPlayer && StrategyRules.Apply(state) && EpisodeEngine.Roll(state) < ReplyCards.GossipDiscoveryChance)
+            if (subject.isPlayer && StrategyRules.Apply(state) && turn.Roll() < ReplyCards.GossipDiscoveryChance)
             {
                 EpisodeEngine.Log(state, "gossip", "You found out " + npc.name + " has been talking about you to "
                     + listener.name + ".", state.playerId);
-                ReplyCards.Offer(state, ReplyCards.Gossip, npc.id, listener.id);
+                Offer(state, turn, ReplyCards.Gossip, npc.id, listener.id);
             }
             // Where the reply cards do not play, talk about the player gets back to them as a story moment.
             if (subject.isPlayer) EpisodeEngine.StoryGossipedAbout(state, npc.id, listener.id);
-            return true;
+            return new NpcActState { kind = NpcActKinds.Rumour, actorId = npc.id, partnerId = listener.id, subjectId = subjectId };
         }
 
         /// <summary>
@@ -416,32 +533,34 @@ namespace Gamesim.Simulation
         /// nomination, a broken word or a betrayal is what people actually confront each other
         /// about. With no grudges held, this is exactly the old choice.
         /// </summary>
-        private static bool Confront(EpisodeState state, ContestantState npc)
+        private static NpcActState Confront(EpisodeState state, ContestantState npc, Turn turn)
         {
+            // A player-free beat picks its fight among the houseguests.
+            var house = state.Active.Where(other => other.id != npc.id && !(turn.playerFree && other.isPlayer)).ToList();
             var target = EpisodeEngine.StoryAt(state, StoryRules.Grudges)
-                ? state.Active.Where(other => other.id != npc.id && Grudges.Severity(state, npc.id, other.id) >= 40)
+                ? house.Where(other => Grudges.Severity(state, npc.id, other.id) >= 40)
                     .OrderByDescending(other => Grudges.Severity(state, npc.id, other.id))
                     .ThenBy(other => other.id, StringComparer.Ordinal)
                     .FirstOrDefault()
                 : null;
-            target = target ?? state.Active
-                .Where(other => other.id != npc.id && state.Score(npc.id, other.id) < ConfrontationLine)
+            target = target ?? house
+                .Where(other => state.Score(npc.id, other.id) < ConfrontationLine)
                 .OrderBy(other => state.Score(npc.id, other.id))
                 .ThenBy(other => other.id, StringComparer.Ordinal)
                 .FirstOrDefault();
-            if (target == null) return false;
+            if (target == null) return null;
 
             Act(state, npc.id, target.id, ConfrontationImpact,
-                npc.name + " had words with " + Named(state, target), "confrontation");
+                npc.name + " had words with " + Named(state, target), "confrontation", turn);
             if (target.isPlayer)
             {
                 EpisodeEngine.Log(state, "confrontation",
                     npc.name + " confronted you in front of the house.", state.playerId);
-                ReplyCards.Offer(state, ReplyCards.Confrontation, npc.id, null);
+                Offer(state, turn, ReplyCards.Confrontation, npc.id, null);
                 // Where the reply cards do not play, past the story boundary it is a story moment to answer.
                 EpisodeEngine.StoryConfronted(state, npc.id);
             }
-            return true;
+            return new NpcActState { kind = NpcActKinds.Confront, actorId = npc.id, partnerId = target.id };
         }
 
         /// <summary>
@@ -456,22 +575,23 @@ namespace Gamesim.Simulation
         /// knowledge the player has no way to learn they lost, and the player's own eavesdropping is a
         /// social action they choose to spend.</para>
         /// </summary>
-        private static bool Eavesdrop(EpisodeState state, ContestantState npc)
+        private static NpcActState Eavesdrop(EpisodeState state, ContestantState npc, Turn turn)
         {
             var others = state.Active.Where(c => !c.isPlayer && c.id != npc.id).ToList();
-            if (others.Count < 2) return false;
+            if (others.Count < 2) return null;
 
             // Drawn before the outcome roll, exactly as the player's own eavesdrop draws it: the
             // conversation was happening whether or not they got away with listening to it.
-            var first = Draw(state, others);
+            var first = Draw(others, turn);
             others.Remove(first);
-            var second = Draw(state, others);
+            var second = Draw(others, turn);
+            var act = new NpcActState { kind = NpcActKinds.Eavesdrop, actorId = npc.id, partnerId = first.id, subjectId = second.id };
 
-            if (EpisodeEngine.Roll(state) >= EpisodeEngine.EavesdropSuccessChance)
+            if (turn.Roll() >= EpisodeEngine.EavesdropSuccessChance)
             {
                 Act(state, first.id, npc.id, CaughtEavesdroppingImpact,
-                    first.name + " caught " + npc.name + " listening in", "eavesdrop");
-                return true;
+                    first.name + " caught " + npc.name + " listening in", "eavesdrop", turn);
+                return act;
             }
 
             double between = state.Score(first.id, second.id);
@@ -480,7 +600,7 @@ namespace Gamesim.Simulation
                 : "sounded careful with each other";
             EpisodeEngine.Remember(state, npc.id, first.id, "I overheard " + first.name + " and "
                 + second.name + " in week " + state.week + ". They " + reading + ".", true);
-            return true;
+            return act;
         }
 
         // ---------------------------------------------------------------- internals
@@ -493,17 +613,18 @@ namespace Gamesim.Simulation
         /// does, applied after the floor rather than before it — the source's order, and it matters
         /// for anyone the houseguest is already at the floor with.</para>
         /// </summary>
-        private static ContestantState WeightedTarget(EpisodeState state, string npcId)
+        private static ContestantState WeightedTarget(EpisodeState state, string npcId, Turn turn)
         {
             // Cast order, which is the order the source sweeps in. It decides where a cumulative
-            // sweep lands, so it is part of the result rather than presentation.
-            var pool = state.Active.Where(other => other.id != npcId).ToList();
+            // sweep lands, so it is part of the result rather than presentation. A player-free beat
+            // leaves the player out of the pool.
+            var pool = state.Active.Where(other => other.id != npcId && !(turn.playerFree && other.isPlayer)).ToList();
             if (pool.Count == 0) return null;
 
             var weights = pool
                 .Select(other => Math.Max(1, state.Score(npcId, other.id) + 60) * (other.isPlayer ? 0.6 : 1))
                 .ToList();
-            double remaining = EpisodeEngine.Roll(state) * weights.Sum();
+            double remaining = turn.Roll() * weights.Sum();
             for (int i = 0; i < pool.Count; i++)
             {
                 remaining -= weights[i];
@@ -512,8 +633,8 @@ namespace Gamesim.Simulation
             return pool[0];
         }
 
-        private static ContestantState Draw(EpisodeState state, IList<ContestantState> pool) =>
-            pool[Math.Min(pool.Count - 1, (int)Math.Floor(EpisodeEngine.Roll(state) * pool.Count))];
+        private static ContestantState Draw(IList<ContestantState> pool, Turn turn) =>
+            pool[Math.Min(pool.Count - 1, (int)Math.Floor(turn.Roll() * pool.Count))];
 
         /// <summary>
         /// One houseguest's act on another.
@@ -525,11 +646,12 @@ namespace Gamesim.Simulation
         /// player was never part of.</para>
         /// </summary>
         private static void Act(EpisodeState state, string from, string to, double delta,
-            string note, string type)
+            string note, string type, Turn turn)
         {
             if (from == state.playerId || to == state.playerId)
             {
-                EpisodeEngine.Change(state, from, to, delta, note, type);
+                // The pass's own stream: the season's for the weekly pass, a beat's keyed one under D2.
+                EpisodeEngine.ChangeOnStream(state, from, to, delta, turn.roll, note, type);
                 return;
             }
             RelationshipLedger.Move(state, from, to, delta);

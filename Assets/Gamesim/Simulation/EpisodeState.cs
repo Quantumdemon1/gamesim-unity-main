@@ -497,10 +497,10 @@ namespace Gamesim.Simulation
         // ---------------------------------------------------------------- schema 28
         //
         // Wave D's storage, three designs in one version (WAVE-D-NPC-PACTS-PLAN §0.3), as schema 11
-        // carried two. D4 plays from allianceLeakRulesStartWeek (AllianceLeaks) and D3 from
-        // pactPlanRulesStartWeek (PactPlans); D2's fields are storage nobody writes yet. While a
-        // start week is 0 its design's fields hold their inert values and none of its lines or
-        // receipts exist (EpisodeValidation.WaveD).
+        // carried two. D4 plays from allianceLeakRulesStartWeek (AllianceLeaks), D3 from
+        // pactPlanRulesStartWeek (PactPlans) and D2 from allWeekRulesStartWeek (EpisodeEngine.AllWeek,
+        // which writes NpcSocialState's beat plan and acts). While a start week is 0 its design's
+        // fields hold their inert values and none of its lines or receipts exist (EpisodeValidation.WaveD).
         // Declared last, so the migration's appended literals are the serializer's own order.
 
         /// <summary>Schema 28: the week D4's leaks and double-dealing begin; 0 for a season that never plays them.</summary>
@@ -730,5 +730,11 @@ namespace Gamesim.Simulation
         public bool accepted, duplicate;
         public string reason;
         public EpisodeState state;
+        /// <summary>
+        /// Transient, never saved: under the all-week rules (D2), the first event sequence the house's
+        /// catch-up could write in this commit, so a reader naming the step - the director's status line -
+        /// reads the events before it; 0 where no catch-up ran.
+        /// </summary>
+        public int beatsFromSequence;
     }
 }

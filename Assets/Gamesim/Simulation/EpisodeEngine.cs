@@ -63,6 +63,15 @@ namespace Gamesim.Simulation
             try
             {
                 Execute(next, command);
+                // Under the all-week rules (D2, WAVE-D-NPC-PACTS-PLAN §1) the house catches up after the
+                // command's own effects, inside the same candidate, so a pact a beat forms is reconciled and
+                // validated with it. Player-free where the command put a counter on the table (decision 6).
+                int beatsFrom = 0;
+                if (AllWeekOn(next))
+                {
+                    beatsFrom = next.nextSequence;
+                    CatchUp(next, CounterOnTheTable(next, current.nextSequence));
+                }
                 CancelInvalidNpcConversations(next);
                 ReconcileAllianceRows(next);
                 next.revision = checked(current.revision + 1);
@@ -70,7 +79,7 @@ namespace Gamesim.Simulation
                 if (next.acceptedCommandIds.Count > 256) next.acceptedCommandIds.RemoveAt(0);
                 if (!Valid(next, out var error)) throw new RuleException("Candidate rejected: " + error);
                 current = next;
-                return new CommandResult { accepted = true, reason = "Committed", state = Snapshot };
+                return new CommandResult { accepted = true, reason = "Committed", state = Snapshot, beatsFromSequence = beatsFrom };
             }
             catch (RuleException error) { return Rejected(error.Message); }
         }
@@ -88,6 +97,8 @@ namespace Gamesim.Simulation
                     ResolveCompetition(s, c.performance); break;
                 case EpisodeCommandKind.Nominate:
                     Require(s.phase == EpisodePhase.Nomination && s.hohId == s.playerId, "Only the reigning HoH chooses nominees.");
+                    // The house's last beats before the names are said (D2, §1).
+                    Close(s);
                     // A beat that closes at the nominations lapses first, so anything it moved has
                     // moved before the names are said.
                     if (StoryOn(s)) StoryLapse(s, StoryAnchors.NomsSet);
@@ -105,6 +116,8 @@ namespace Gamesim.Simulation
                         var saved = NpcVetoSave(s);
                         Require(saved != null && c.useVeto && c.targetId == saved, "The NPC veto decision must be preserved.");
                     }
+                    // The house's last beats before the veto is used (D2, §1).
+                    Close(s);
                     ResolveVeto(s, c.useVeto, c.targetId, c.secondTargetId); break;
                 case EpisodeCommandKind.CastVote:
                     if (s.phase == EpisodePhase.Jury)
@@ -259,6 +272,8 @@ namespace Gamesim.Simulation
             {
                 case EpisodePhase.Social:
                     Require(s.pendingDiary == null, "Visit the Diary Room or skip the pending reflection before beginning the next competition.");
+                    // The free time's last beats, before the window closes (D2, §1). They never spend.
+                    Close(s);
                     // Capture before story closure can expire a bonus or remove a contestant, but
                     // do not let the story's opening reads see a debit while these actions are
                     // still counted in its window. Publishing it belongs to the counter reset.
@@ -285,6 +300,8 @@ namespace Gamesim.Simulation
                         ResolveUnifiedSafetyExpiry(s, UnifiedCommitmentExpiry.PromiseWeekTurn);
                         if (StoryAt(s, StoryRules.Bonds)) MoodsSettle(s);
                         StoryWeekTurn(s);
+                        // The week's acts are the week's (D2): none outside the all-week rules.
+                        s.npcSocial?.acts?.Clear();
                     }
                     s.socialActions = 0; s.outOfPhaseSocialActions = 0; s.competitionResolved = false;
                     ResetWindows(s);
@@ -326,6 +343,8 @@ namespace Gamesim.Simulation
                     if (s.nominees.Count == 0)
                     {
                         Require(s.hohId != s.playerId, "Choose two nominees first.");
+                        // The house's last beats before the Head of Household names anybody (D2, §1).
+                        Close(s);
                         // A beat that closes at the nominations lapses first: a pitch the HoH heard
                         // has already moved their view by the time they rank the house.
                         if (StoryOn(s)) StoryLapse(s, StoryAnchors.NomsSet);
@@ -341,6 +360,8 @@ namespace Gamesim.Simulation
                         StoryAnchor(s, StoryAnchors.NomsSet);
                         return;
                     }
+                    // Idempotent: the window closed at the nominations (D2-L1).
+                    Close(s);
                     Phase(s, EpisodePhase.VetoSelection); break;
                 case EpisodePhase.VetoSelection:
                     s.vetoPlayers = DrawVetoPlayers(s);
@@ -354,6 +375,9 @@ namespace Gamesim.Simulation
                         Require(s.vetoHolderId != s.playerId, "Choose whether to use the veto first.");
                         var saved = NpcVetoSave(s);
                         Require(saved == null || s.hohId != s.playerId, "The veto will be used. As HoH, choose the replacement nominee.");
+                        // The house's last beats before the veto is used (D2, §1): the holder's decision stands
+                        // as the player saw it asked for.
+                        Close(s);
                         var replacement = saved == null ? null : NpcReplacement(s);
                         ResolveVeto(s, saved != null, saved, replacement); return;
                     }
@@ -373,6 +397,8 @@ namespace Gamesim.Simulation
                     NpcSocialActions.Campaign(s);
                     break;
                 case EpisodePhase.Campaign:
+                    // The campaign's last beats, before the house votes (D2, §1).
+                    Close(s);
                     if (StoryOn(s)) StoryLapse(s, StoryAnchors.EvictionEve);
                     // Campaigning IS the reference build's interaction stage — last conversations
                     // and vote-wrangling — so eviction night opens on the speeches rather than
@@ -420,7 +446,10 @@ namespace Gamesim.Simulation
                         // takes its turns, so a houseguest who confronts you fills a gap in the
                         // week rather than taking the only card the night had.
                         if (StoryOn(s)) StoryAnchor(s, StoryAnchors.EvictionNight);
-                        NpcSocialActions.Settle(s);
+                        // Under the all-week rules (D2) the house's turns are the week's beats, and this is
+                        // the moment only for what has soured: the beats begin after the step (§1).
+                        if (AllWeekOn(s)) NpcAlliances.Dissolve(s);
+                        else NpcSocialActions.Settle(s);
                         NpcDeals.Settle(s);
                         NpcDeals.Propose(s);
                         // The week has turned, so what the last one left behind gets a week older
@@ -2530,7 +2559,9 @@ namespace Gamesim.Simulation
         /// narrated itself, or the final eviction, after the first jury question - for two reasons. Every id minted in the step - the pacts, promises, deals and
         /// house events the settle writes - is what it was before this existed. And the director's
         /// status line is the last event the player may see, so this is what they read. It draws
-        /// no roll and saves no new field.</para>
+        /// no roll and saves no new field. Under the all-week rules (D2-L4) it is last before the
+        /// house's first beats, which the catch-up fires after the step: the status line still names
+        /// the step (<see cref="CommandResult.beatsFromSequence"/>).</para>
         ///
         /// <para>It carries no number and no direction. A partner leaving the house is public; an
         /// alliance that sours has fallen apart, in the same words however it soured. Nobody is

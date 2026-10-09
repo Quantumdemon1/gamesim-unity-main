@@ -570,7 +570,10 @@ namespace Gamesim.Episode
                     helpExpanded = !helpExpanded;
                     // Where the column has to give way to the card, or may take its rows back, the
                     // house lays the frame out again (the card with it); elsewhere the card alone.
-                    if (ColumnGivesWayToTheControls) director.RenderChrome();
+                    // Never with a panel open: Begin closes the card under one, so laying the frame
+                    // out again would close the card this press opened. The pill stays up over a
+                    // docked card, and there the card alone is built, over the column, as before.
+                    if (modal == null && ColumnGivesWayToTheControls) director.RenderChrome();
                     else BuildExplorationHelp();
                     preferredSelection = helpExpanded ? "Hide controls" : "Help · controls";
                     restoreSelection = true;

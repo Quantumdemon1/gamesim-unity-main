@@ -1238,8 +1238,9 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The HUD's own chrome asking to be laid out again: the controls card opening or closing on
-        /// a frame where the right column gives way to it (EpisodeHud.RecentSlotsShown). Only ever
-        /// with nothing open - the card is closed whenever anything is.
+        /// a frame where the right column gives way to it (EpisodeHud.RecentSlotsShown). Never while
+        /// a panel is open: Begin closes the card under one, so the card alone is rebuilt there, as
+        /// before.
         /// </summary>
         internal void RenderChrome() => Render();
 

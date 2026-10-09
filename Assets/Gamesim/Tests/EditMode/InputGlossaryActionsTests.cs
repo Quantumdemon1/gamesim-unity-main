@@ -43,11 +43,18 @@ namespace Gamesim.Tests.EditMode
                 Object.DestroyImmediate(asset);
             }
 
-            using (var module = new DefaultInputActions())
+            // Not a using: DefaultInputActions.Dispose calls Object.Destroy, which Unity refuses in edit
+            // mode with an error log that fails the test. The asset is destroyed the edit-mode way.
+            var module = new DefaultInputActions();
+            try
             {
                 var ui = module.asset.FindActionMap("UI", throwIfNotFound: true);
                 foreach (var row in InputGlossary.Rows.Where(row => row.Map == InputGlossary.InterfaceMap))
                     Assert.That(ui.FindAction(row.Action), Is.Not.Null, row + ": the event system's module has no such action.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(module.asset);
             }
         }
 

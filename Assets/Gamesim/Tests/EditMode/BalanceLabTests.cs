@@ -474,8 +474,10 @@ namespace Gamesim.Tests.EditMode
         /// operations, the npcWorld and pairs fields) and none of its behaviour.
         /// </summary>
         // f3b663c383491ce1 before and after the driver (2989e94f, 6a29f08d); re-recorded when D3's counter reach was
-        // re-amended to twenty at ten (the war rooms the policies play now settle differently).
-        internal const string BudgetNoughtRows = "bbae7f5d572fdb95";
+        // re-amended to twenty at ten (the war rooms the policies play now settle differently); bbae7f5d572fdb95 until D2's
+        // all-week rules went into ApplyFresh, re-recorded with them on (budget nought plays no NPC world, so the arcs fix
+        // in EpisodeNpcSocial does not reach these rows).
+        internal const string BudgetNoughtRows = "fa8d4d420fad8953";
 
         [Test, Explicit("B5b: budget nought plays, byte for byte, the seasons it played before the NPC world's driver (about 5 min). Run by name.")]
         public void BudgetNoughtPlaysTheSeasonsItPlayedBeforeTheDriver()

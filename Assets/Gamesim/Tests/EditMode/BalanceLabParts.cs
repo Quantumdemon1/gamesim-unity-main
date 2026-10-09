@@ -24,8 +24,11 @@ namespace Gamesim.Tests.EditMode
     /// </summary>
     public sealed class BalanceLabParts
     {
-        /// <summary>Changed whenever what a season records changes, so parts of two builds never merge.</summary>
-        internal const string Stamp = "balance-lab-parts/v3";
+        /// <summary>
+        /// Changed whenever what a season records changes, so parts of two builds never merge. v4: a completed NPC
+        /// conversation moves its pair through the ledger under D2's rules (the arcs fix), which the rules' tuple does not show.
+        /// </summary>
+        internal const string Stamp = "balance-lab-parts/v4";
 
         private static BalanceLabReports.TierSpec TierFromEnvironment()
         {

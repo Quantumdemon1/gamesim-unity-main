@@ -24,6 +24,15 @@ namespace Gamesim.Episode
         [SerializeField] private HouseNpc[] housemates;
         private readonly List<HouseNpc> spareHousemates = new List<HouseNpc>();
         public static string SaveRootOverride { get; set; }
+        /// <summary>
+        /// Whether an isolated <see cref="SaveRootOverride"/> keeps its own preferences in
+        /// <c>preferences.json</c> beside its saves (A13). Opted into, never inferred from the root:
+        /// set by the command line's <c>--gamesim-save-root</c> (not under <c>--gamesim-verify</c>)
+        /// and by the editor's Isolated Preview; a test sets it only to test it. Without it an
+        /// isolated root reads the defaults and writes nothing.
+        /// </summary>
+        public static bool PreferencesBesideSaves { get; set; }
+        private IPreferenceStore preferences;
         private EpisodeEngine engine;
         private EpisodeState projected;
         private EpisodeSaveStore saves;
@@ -124,8 +133,11 @@ namespace Gamesim.Episode
                 if (rootArgument + 1 >= launchArguments.Length || !Path.IsPathRooted(launchArguments[rootArgument + 1]))
                 { Debug.LogError("--gamesim-save-root requires an absolute directory path."); yield break; }
                 SaveRootOverride = Path.GetFullPath(launchArguments[rootArgument + 1]);
+                // A playtest's root keeps its own settings beside its saves (A13); the verifier's never does.
+                PreferencesBesideSaves = PreferenceRouting.BesideSavesForCommandLine(launchArguments);
             }
             saveRoot = SaveRootOverride ?? Path.Combine(Application.persistentDataPath, "Gamesim");
+            preferences = PreferenceStores.Open(PreferenceRouting.For(SaveRootOverride, PreferencesBesideSaves), saveRoot);
             var slot = SaveRootOverride == null ? PlayerPrefs.GetString("Gamesim.ActiveSave", "episode.json") : "episode.json";
             if (slot != Path.GetFileName(slot) || !slot.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) slot = "episode.json";
             saves = new EpisodeSaveStore(Path.Combine(saveRoot, slot));
@@ -145,14 +157,16 @@ namespace Gamesim.Episode
 
             audioBed = HouseAudio.Attach(gameObject);
             liveFeed = LiveFeed.Attach(gameObject);
-            reducedMotion = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.ReducedMotion", 0) == 1;
-            reducedAudio = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.ReducedAudio", 0) == 1;
-            muted = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.Muted", 0) == 1;
-            largeText = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.LargeText", 0) == 1;
-            volumePercent = SaveRootOverride == null ? Mathf.Clamp(PlayerPrefs.GetInt("Gamesim.Volume", 35), 0, 100) : 35;
-            musicOn = SaveRootOverride != null || PlayerPrefs.GetInt("Gamesim.Music", 1) == 1;
-            ceremonyPace = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.CeremonyPace", 0) == 1
-                ? CeremonyPace.Quick : CeremonyPace.Suspenseful;
+            // Through the session's store (A13): PlayerPrefs on an ordinary install, the root's own
+            // file for a playtest root that asked for one, and the defaults - every read its
+            // fallback, nothing written - for any other isolated root, as it has always been.
+            reducedMotion = preferences.GetInt("Gamesim.ReducedMotion", 0) == 1;
+            reducedAudio = preferences.GetInt("Gamesim.ReducedAudio", 0) == 1;
+            muted = preferences.GetInt("Gamesim.Muted", 0) == 1;
+            largeText = preferences.GetInt("Gamesim.LargeText", 0) == 1;
+            volumePercent = Mathf.Clamp(preferences.GetInt("Gamesim.Volume", 35), 0, 100);
+            musicOn = preferences.GetInt("Gamesim.Music", 1) == 1;
+            ceremonyPace = preferences.GetInt("Gamesim.CeremonyPace", 0) == 1 ? CeremonyPace.Quick : CeremonyPace.Suspenseful;
             LoadDisplayPreferences();
             hud = gameObject.AddComponent<EpisodeHud>(); hud.Initialize(this);
             sting = CeremonySting.Attach(gameObject);
@@ -197,6 +211,9 @@ namespace Gamesim.Episode
             hud.RegisterOverlay(characterCreator.GetComponent<CanvasGroup>());
             hud.RegisterOverlay(mainMenu.GetComponent<CanvasGroup>());
             ApplyPreferences(); Project(); Render(); IsReady = true;
+            // The settings the session starts with: the baseline every change is logged against,
+            // and the session's line in the player log when it keeps its own preferences (A13).
+            NoteSettingsAtStart();
             // A real launch opens at the front door. A run with an explicit save root is a test or
             // the standalone verification driving the house directly, and a menu it never asked for
             // would block every one of them — so those keep the previous behaviour and reach the
@@ -625,8 +642,9 @@ namespace Gamesim.Episode
                 // Shorter than it was, because it no longer has to narrate the camera. It used to
                 // read "Walk to the highlighted room, then press E to open the episode screen" - a
                 // full sentence of instructions for a walk you can now watch happen.
-                message = LastTravel == TravelKind.Warp ? "At the episode screen  ·  E to open"
-                    : "Heading to the episode screen  ·  E to open";
+                // In the words of the device that pressed (A4f): a pad's A on the rail's button
+                // reaches here through the UI module, before this frame's NoteInputDevice.
+                message = InputGlossary.StationLine(LastTravel == TravelKind.Warp, PressWasPad);
             }
             Render();
         }
@@ -691,7 +709,7 @@ namespace Gamesim.Episode
             if (render && hud != null) Render();
         }
 
-        public void OpenSettings() { PauseNpcSocialForPanel(); ClosePanels(); settingsOpen = true; player.SetInputEnabled(false); cameraRig.ControlsEnabled = false; Render(); }
+        public void OpenSettings() { PauseNpcSocialForPanel(); ClosePanels(); settingsOpen = true; player.SetInputEnabled(false); cameraRig.ControlsEnabled = false; RefreshDisplayRecordFromWindow(); Render(); }
         /// <summary>The notebook, on its own page: your notes on each houseguest. The rail's rows are the other pages.</summary>
         public void OpenJournal() => OpenNotebookAt(NotebookSection.Notes, scroll: false);
 

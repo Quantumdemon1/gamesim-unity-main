@@ -261,6 +261,26 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/InputGlossary.cs" />
     <Compile Include="$(EditMode)InputGlossaryTests.cs" />
     <Compile Include="$(EditMode)InputRawReadScanTests.cs" />
+    <!-- The ceremony cards' press guard (A4f), the Back matrix's representative rows rest on it. -->
+    <Compile Include="$(EditMode)CeremonyCardInputScanTests.cs" />
+    <!--
+      Playtest-safe preferences (A13): an isolated root's own preferences file and the rule that
+      routes a session to it, PlayerPrefs or the defaults (BCL and Newtonsoft only, outside the frozen
+      contracts above), and the player log's settings lines.
+    -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/PreferenceFile.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/SettingsEvidence.cs" />
+    <Compile Include="$(EditMode)PreferenceFileTests.cs" />
+    <!-- Colour-blind safety (A9): the colour-vision arithmetic the HUD's tints are held to in the editor. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ColourVision.cs" />
+    <Compile Include="$(EditMode)ColourVisionMathTests.cs" />
+    <!-- Display options (A12): the resolution list, the modes, VSync beside the limit, the old records and the first launch's decision. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/DisplayChoices.cs" />
+    <Compile Include="$(EditMode)DisplayChoicesTests.cs" />
+    <!-- And the window written only by the window's own controls, the first launch and the verifier (A12, Risk R3). -->
+    <Compile Include="$(EditMode)WindowWriteScanTests.cs" />
+    <!-- The prepared block speech a pad gives without typing (A6): every approach's line is a valid speech carrying it. -->
+    <Compile Include="$(EditMode)PreparedSpeechTests.cs" />
     <!-- The standalone profile's performance verdict and arithmetic, and the verification-only stress house. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/VerificationPerformance.cs" />
     <Compile Include="$(EditMode)VerificationPerformanceTests.cs" />

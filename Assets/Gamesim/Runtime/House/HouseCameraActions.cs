@@ -236,6 +236,11 @@ namespace Gamesim.House
 
             var orbitRate = map.AddAction(nameof(OrbitRate), InputActionType.Value, expectedControlLayout: "Vector2");
             orbitRate.AddBinding("<Gamepad>/rightStick", groups: pad);
+            // The keyboard's turn (PLAN A, A7; the lead's decision 6): Q left and C right, a rate like
+            // the stick, so a player without a mouse's right button can turn the camera. E is Interact.
+            orbitRate.AddCompositeBinding("2DVector")
+                .With("Left", "<Keyboard>/q", km)
+                .With("Right", "<Keyboard>/c", km);
 
             var pan = map.AddAction(nameof(Pan), InputActionType.Value, expectedControlLayout: "Vector2");
             pan.AddCompositeBinding("2DVector")

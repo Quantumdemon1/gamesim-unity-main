@@ -154,6 +154,39 @@
                 },
                 {
                     "name": "2DVector",
+                    "id": "029b86f8-ee07-412b-9cca-ccb1045b684d",
+                    "path": "2DVector",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "OrbitRate",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "Left",
+                    "id": "f4dbaa59-e4ed-491f-a6c4-9ce731fa390a",
+                    "path": "<Keyboard>/q",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "OrbitRate",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Right",
+                    "id": "cabed325-c6da-47f1-8c57-6eb60b420b34",
+                    "path": "<Keyboard>/c",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "OrbitRate",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "2DVector",
                     "id": "377fbea9-127f-4b76-85fa-38672bf4aff5",
                     "path": "2DVector",
                     "interactions": "",

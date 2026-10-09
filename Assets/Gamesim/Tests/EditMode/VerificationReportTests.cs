@@ -107,6 +107,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That((int)report["sampledVSyncCount"], Is.Zero);
             Assert.That((int)report["sampledFrameCapMismatchCount"], Is.Zero);
             Assert.That((string)report["requestedDisplayMode"], Is.EqualTo("Windowed"));
+            Assert.That((string)report["requestedDisplayRoute"], Is.EqualTo(EpisodeDirector.DisplayRoute),
+                "The profile's window is set through the settings' own call (A12).");
             Assert.That((string)report["sampledDisplayMode"], Is.EqualTo("Windowed"));
             Assert.That((int)report["sampledDisplayModeMismatchCount"], Is.Zero);
             Assert.That((bool)report["uncapped"], Is.True);
@@ -388,6 +390,16 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
+        public void TheDisplayRouteIsReportedOnlyOnceTheProfileHasTakenIt()
+        {
+            // A run with no graphical window to set never calls the settings' SetDisplay: its report
+            // names no route, rather than the constant every report used to carry (A12).
+            InstallProfileEvidence(windowSet: false);
+            var report = ProfileReport(graphical: false);
+            Assert.That((string)report["requestedDisplayRoute"], Is.Empty, "No window was set, so no route is reported.");
+        }
+
+        [Test]
         public void CorrectResolutionDoesNotDiscardSharedRuntimeErrors()
         {
             InstallProfileEvidence();
@@ -432,10 +444,12 @@ namespace Gamesim.Tests.EditMode
             return field;
         }
 
-        private void InstallProfileEvidence(int displaySamples = 101)
+        private void InstallProfileEvidence(int displaySamples = 101, bool windowSet = true)
         {
             Field("seconds").SetValue(runner, 10d);
             // Synthetic contract data only: no native frame, window, capture or performance claim.
+            // The window set as the graphical profile sets it, through the settings' own call (A12).
+            if (windowSet) Field("profileDisplayRoute").SetValue(runner, EpisodeDirector.DisplayRoute);
             var samples = (List<float>)Field("frames").GetValue(runner);
             for (int i = 0; i < 101; i++) samples.Add(100);
             for (int i = 0; i < displaySamples; i++) RecordDisplay(1920, 1080, -1, 0);

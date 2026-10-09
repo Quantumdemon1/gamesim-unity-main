@@ -193,6 +193,108 @@ namespace Gamesim.Tests.PlayMode
             yield return Frames(2);
         }
 
+        /// <summary>
+        /// The keyboard words the A0-A4 lane left on a pad (A4f): the way to the episode screen and
+        /// to the diary, the settings' CEREMONIES paragraph and the tour's episode-screen step. Each
+        /// names the pad's buttons once a pad is the device and the keyboard's again after a key.
+        ///
+        /// <para>The first pad press of the test is A on the rail's "Go to episode screen", through
+        /// the UI module: that press can reach the button's handler before the director's Update has
+        /// noted the device, so the line is worded at the press.</para>
+        /// </summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator Hints_TheStatusLinesTheCeremonyNoteAndTheTourFollowTheDevice()
+        {
+            HoldTheHouseForTheFixture();
+            director.ClosePanels();
+            yield return Frames(2);
+            Assert.That(director.HintsForPad, Is.False, "A house starts on the keyboard's words.");
+
+            // 1. The episode screen, by the pad's A on the rail's button.
+            yield return PadSubmitCaption("Go to episode screen");
+            bool warp = director.LastTravel == EpisodeDirector.TravelKind.Warp;
+            Assert.That(director.StatusMessage, Is.EqualTo(InputGlossary.StationLine(warp, true)),
+                "A pad's A on the rail: the line names the pad's button. It read: " + director.StatusMessage);
+            AssertNoKeyboardWords(director.StatusMessage, "the way to the episode screen");
+            yield return PressKey(Key.LeftCtrl);
+            yield return Frames(2);
+            Assert.That(director.StatusMessage, Is.EqualTo(InputGlossary.StationLine(warp, false)), "A key puts the keyboard's words back, byte for byte.");
+
+            // 2. The diary, the same way.
+            yield return PadSubmitCaption(EpisodeHud.DiaryTravelCaption);
+            warp = director.LastTravel == EpisodeDirector.TravelKind.Warp;
+            Assert.That(director.StatusMessage, Is.EqualTo(InputGlossary.DiaryWayLine(warp, true)),
+                "The diary's way in, in the pad's words. It read: " + director.StatusMessage);
+            AssertNoKeyboardWords(director.StatusMessage, "the way to the diary");
+            yield return PressKey(Key.LeftCtrl);
+            yield return Frames(2);
+            Assert.That(director.StatusMessage, Is.EqualTo(InputGlossary.DiaryWayLine(warp, false)));
+
+            // 3. The settings' CEREMONIES paragraph, worded again while the settings are open.
+            director.ClosePanels();
+            director.OpenSettings();
+            yield return Frames(2);
+            bool suspenseful = director.CeremonyPaceSetting == CeremonyPace.Suspenseful;
+            Assert.That(LabelShows(InputGlossary.CeremonyPaceLine(suspenseful, false)), Is.True, "The keyboard's paragraph first.");
+            yield return PressOnPad(GamepadButton.RightStick);
+            yield return Frames(2);
+            Assert.That(director.HintsForPad, Is.True);
+            Assert.That(LabelShows(InputGlossary.CeremonyPaceLine(suspenseful, true)), Is.True, "A pad press rewords the open settings.");
+            Assert.That(LabelShows(InputGlossary.CeremonyPaceLine(suspenseful, false)), Is.False, "and the keyboard's paragraph is gone.");
+            AssertNoKeyboardWords(InputGlossary.CeremonyPaceLine(suspenseful, true), "the CEREMONIES paragraph");
+            yield return PressKey(Key.LeftCtrl);
+            yield return Frames(2);
+            Assert.That(LabelShows(InputGlossary.CeremonyPaceLine(suspenseful, false)), Is.True, "A key puts it back.");
+            director.ClosePanels();
+            yield return Frames(2);
+
+            // 4. The tour's episode-screen step, shown after a pad press.
+            yield return PressOnPad(GamepadButton.RightStick);
+            yield return Frames(2);
+            var tour = DirectorTour();
+            tour.Show(TourChrome);
+            yield return Frames(2);
+            while (tour.IsShowing && tour.StepIndex < 3)
+            {
+                TourButton(tour, "Next").onClick.Invoke();
+                yield return null;
+            }
+            Assert.That(TourText(tour, "Title"), Is.EqualTo("The Episode Screen"));
+            string body = TourText(tour, "Body");
+            Assert.That(body, Does.Contain(InputGlossary.StationStepKeys(true)), "The step names the pad's buttons: " + body);
+            Assert.That(body, Does.Not.Contain(HouseTutorial.StationStepKeys));
+            AssertNoKeyboardWords(body, "the tour's episode-screen step");
+            yield return PressKey(Key.LeftCtrl);
+            yield return Frames(2);
+            Assert.That(TourText(tour, "Body"), Does.Contain(HouseTutorial.StationStepKeys), "A key puts the keyboard's keys back on the step.");
+            tour.Skip();
+            yield return Frames(2);
+        }
+
+        /// <summary>A line in the pad's words names none of the keyboard's keys.</summary>
+        private static void AssertNoKeyboardWords(string line, string where)
+        {
+            foreach (var key in new[] { "E ", "Esc", "Space", "Enter", "click" })
+                Assert.That(line, Does.Not.Contain(key), where + " names " + key + " on a pad: " + line);
+        }
+
+        /// <summary>Whether a live label on the HUD reads exactly these words.</summary>
+        private bool LabelShows(string words) =>
+            director.GetComponentsInChildren<TMP_Text>().Any(text => text.isActiveAndEnabled && text.text == words);
+
+        /// <summary>
+        /// The pad's A on a control, through the UI module: selected the way the ring selects it,
+        /// selected again after the frame a render may have rebuilt it in, then pressed.
+        /// </summary>
+        private IEnumerator PadSubmitCaption(string caption)
+        {
+            ButtonWithCaption(caption).Select();
+            yield return null;
+            ButtonWithCaption(caption).Select();
+            yield return PressOnPad(GamepadButton.South);
+            yield return Frames(2);
+        }
+
         private IEnumerator PressOnPad(GamepadButton button)
         {
             if (testGamepad == null) testGamepad = InputSystem.AddDevice<Gamepad>();

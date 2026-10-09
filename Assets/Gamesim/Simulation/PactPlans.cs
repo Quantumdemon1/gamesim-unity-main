@@ -34,11 +34,19 @@ namespace Gamesim.Simulation
         /// So a counter can bring round a toss-up or a lean, never a decided vote but a Loyal member's.
         ///
         /// <para>Amended in place (BALANCE plan §4 Q1, the lead's decision 6): at eight, fifty and twelve the
-        /// counter reached only toss-ups - mean come-round odds among the members it could reach 0.17 over
-        /// PactPlanSeasonDigests' war rooms (1 of 13 came round) and 0.10 over the lab's headline (854 members) -
-        /// against a band of 0.35 to 0.50. The lab's members view the player less warmly and lean harder than the
-        /// digests' constructed trio, so few constants put both inside the band: these give about 0.49 and 0.36.
-        /// No season outside the tests has played the war rooms, so the amendment needs no boundary.</para>
+        /// counter reached only toss-ups, against a band of 0.35 to 0.50 for the mean come-round odds. The two
+        /// measures count different members. PactPlanSeasonDigests counts those a counter actually played could
+        /// reach: 0.17 before (1 of 13 came round), about 0.49 after (3 of 13). The lab's headline counts every
+        /// member a counter could have faced at every plan answered: 0.10 before (854 members), 0.36 after; at the
+        /// counters the lab actually played, the digests' population, it is 0.28 after, under the band. The lab's
+        /// members view the player less warmly and lean harder than the digests' constructed trio, so no reach
+        /// constants put both measures inside the band; which population the band means is the lead's call.</para>
+        ///
+        /// <para>No season outside the tests played the war rooms before main took D3 with the old reach
+        /// (3f23e76b, PR #24, 2026-10-09). The odds are reckoned when the player answers and never saved, so a save
+        /// loads either way; but a season started from main before this amendment landed would change its rules
+        /// partway. The amendment stands in place only if no such season was saved (the owner confirms); if one
+        /// was, these constants belong behind B9's tuning boundary instead.</para>
         /// </summary>
         public const double ReachBase = 20, ReachFullView = 10, ReachLoyal = 1.5, ReachCap = 30;
 

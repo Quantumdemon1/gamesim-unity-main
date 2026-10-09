@@ -111,6 +111,31 @@ namespace Gamesim.Tests.EditMode
             Assert.That(played.OwnerId, Is.EqualTo(incident.OwnerId));
         }
 
+        /// <summary>
+        /// The NPC vote's incident marks are never serialized: their null means "held as itself", and a serializer that fills an
+        /// absent list - Unity's JsonUtility, which loads the web fixtures - would turn every imported round's broken promise and
+        /// deal into one that owns nothing. Marked so in the field's metadata, which both JsonUtility and Newtonsoft honour, and
+        /// every other list on the web vote types starts empty.
+        /// </summary>
+        [Test]
+        public void TheVoteIncidentMarksAreNeverSerialized()
+        {
+            var marks = new[] { typeof(WebVotePromise).GetField(nameof(WebVotePromise.ownerOf)),
+                typeof(WebVoteDeal).GetField(nameof(WebVoteDeal.ownerOf)), typeof(WebVoteDeal).GetField(nameof(WebVoteDeal.dealOf)) };
+            foreach (var field in marks)
+                Assert.That((field.Attributes & System.Reflection.FieldAttributes.NotSerialized) != 0, Is.True, field.DeclaringType.Name + "." + field.Name);
+            var deal = Newtonsoft.Json.JsonConvert.DeserializeObject<WebVoteDeal>("{\"id\":\"d\",\"ownerOf\":[],\"dealOf\":[]}");
+            Assert.That(deal.ownerOf == null && deal.dealOf == null, Is.True, "A round's JSON never sets them.");
+            Assert.That(Newtonsoft.Json.JsonConvert.SerializeObject(new WebVotePromise { ownerOf = new List<string> { "x" } }), Does.Not.Contain("ownerOf"));
+            foreach (var type in new[] { typeof(WebVoteContestant), typeof(WebVoteAlliance), typeof(WebVotePromise), typeof(WebVoteDeal), typeof(WebVoteState), typeof(WebVoteOptions) })
+            {
+                var fresh = Activator.CreateInstance(type);
+                foreach (var field in type.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                             .Where(f => typeof(System.Collections.IList).IsAssignableFrom(f.FieldType)))
+                    Assert.That(field.GetValue(fresh) != null || marks.Contains(field), Is.True, type.Name + "." + field.Name + " starts empty, or is a mark.");
+            }
+        }
+
         // ------------------------------------------------------------ a Head of Household's own word
 
         private static (EpisodeState mode1, EpisodeState mode2) safeword;

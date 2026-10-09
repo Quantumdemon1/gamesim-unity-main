@@ -34,9 +34,10 @@ namespace Gamesim.Simulation
         /// <summary>
         /// Native, the prospective mode 2 only (vote family V5b, the lead's decision D1): a broken vote promise is held as the
         /// breach incidents it owns (<see cref="UnifiedVoteIncident.OwnerId"/>) - the breakers named here, at most its maker.
-        /// Null on an imported web round and in every other season, where a broken promise is held as itself.
+        /// Null on an imported web round and in every other season, where a broken promise is held as itself. Never serialized:
+        /// null is its meaning, which a serializer that fills an absent list (Unity's JsonUtility) would lose.
         /// </summary>
-        public List<string> ownerOf;
+        [NonSerialized] public List<string> ownerOf;
     }
 
     // Explicit context types: absent native systems are not inferred from unrelated fields.
@@ -68,9 +69,10 @@ namespace Gamesim.Simulation
         /// Native, the prospective mode 2 only (vote family V5b, the lead's decision D1): a broken vote deal is held as the
         /// breach incidents it stands for - in the deal term those it owns (<see cref="UnifiedVoteIncident.OwnerId"/>), in the
         /// threat term those whose deal it is (<see cref="UnifiedVoteIncident.DealId"/>), each list naming the breakers. Null on
-        /// an imported web round and in every other season, where a broken deal is held as itself.
+        /// an imported web round and in every other season, where a broken deal is held as itself. Never serialized: null is
+        /// their meaning, which a serializer that fills an absent list (Unity's JsonUtility) would lose.
         /// </summary>
-        public List<string> ownerOf, dealOf;
+        [NonSerialized] public List<string> ownerOf, dealOf;
     }
 
     [Serializable] public sealed class WebVoteRelationshipArc

@@ -23,17 +23,23 @@ namespace Gamesim.Simulation
     /// </summary>
     public static class UnifiedVoteHistory
     {
+        /// <summary>The Vote rows, detached. Checks the storage only (vote family V5a): a reader may run in the middle of a command.</summary>
         public static IReadOnlyList<UnifiedCommitmentState> Records(EpisodeState s)
         {
-            if (!UnifiedVoteFamilyValidation.TryValidate(s, s?.unifiedVoteReveals, out string error))
+            if (!UnifiedVoteFamilyValidation.TryValidateStorage(s, out string error))
                 throw new ArgumentException(error, nameof(s));
             return Array.AsReadOnly(s.unifiedCommitments.Where(row => row.kind == UnifiedVoteTogether.Vote)
                 .Select(row => row.Clone()).ToArray());
         }
 
+        /// <summary>
+        /// Each terminal Vote row with the archived frame that first decided it. Checks the storage only (vote family
+        /// V5a); a row whose frame is not yet published - inside the reveal that decides it - has no decision to give,
+        /// and is refused, so it is read only between commands or outside a reveal.
+        /// </summary>
         public static IReadOnlyList<UnifiedVoteDecision> Decisions(EpisodeState s)
         {
-            if (!UnifiedVoteFamilyValidation.TryValidate(s, s?.unifiedVoteReveals, out string error))
+            if (!UnifiedVoteFamilyValidation.TryValidateStorage(s, out string error))
                 throw new ArgumentException(error, nameof(s));
             var result = new List<UnifiedVoteDecision>();
             foreach (var row in s.unifiedCommitments.Where(item => item.kind == UnifiedVoteTogether.Vote

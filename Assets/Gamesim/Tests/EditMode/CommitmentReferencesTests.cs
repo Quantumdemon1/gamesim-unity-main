@@ -131,7 +131,9 @@ namespace Gamesim.Tests.EditMode
                 case "deal-mirror": s.deals.Add(new DealState { id = "mirror", type = DealKind.SafetyAgreement }); break;
                 case "null-row": s.unifiedCommitments.Add(null); break;
                 case "collision": s.deals.Add(new DealState { id = row.id, type = DealKind.FinalTwo }); break;
-                case "unknown-version": s.unifiedCommitmentRulesVersion = 2; break;
+                // Version 2 is the prospective Vote mode, whose readers check its storage only (vote family V5a);
+                // the next number is one no build knows.
+                case "unknown-version": s.unifiedCommitmentRulesVersion = UnifiedVoteFamilyValidation.Version + 1; break;
             }
             Assert.Throws<ArgumentException>(() => CommitmentReferences.Promises(s));
             Assert.Throws<ArgumentException>(() => CommitmentReferences.Deals(s));

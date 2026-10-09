@@ -73,6 +73,10 @@ namespace Gamesim.Simulation
                 return new CommandResult { accepted = true, reason = "Committed", state = Snapshot };
             }
             catch (RuleException error) { return Rejected(error.Message); }
+            // Mode 2 only (vote family V5a, the lead's decision D3): a reader's refusal of the state it was given -
+            // its storage check, a malformed row - refuses the command, as an NPC operation's does
+            // (EpisodeNpcSocial), instead of escaping it. Modes 0 and 1 keep their error path exactly.
+            catch (ArgumentException error) when (UnifiedVoteStore.On(current)) { return Rejected(error.Message); }
         }
 
         private CommandResult Rejected(string reason) => new CommandResult { reason = reason, state = Snapshot };

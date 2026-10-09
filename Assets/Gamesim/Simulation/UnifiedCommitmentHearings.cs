@@ -69,8 +69,10 @@ namespace Gamesim.Simulation
             if (!enabled || !YourWord.On(s) || s.story?.facts == null || s.story.facts.Any(f => f == null)
                 || s.unifiedHearingEvidence.Count > EvidenceCapacity || s.unifiedHearingReceipts.Count > ReceiptCapacity)
                 return Refuse(out error, "Invalid prospective hearing storage.");
+            // Mode 2 checks the commitment storage only (vote family V5a), as mode 1 does: every Safety gateway
+            // calls this in the middle of its command, and the whole-episode core judges the Vote family itself.
             if (prospectiveVote
-                ? !UnifiedVoteFamilyValidation.TryValidate(s, s.unifiedVoteReveals, out error)
+                ? !UnifiedVoteFamilyValidation.TryValidateStorage(s, out error)
                 : !UnifiedCommitments.ValidateRecords(s, out error)) return false;
             IReadOnlyList<UnifiedCommitmentIncident> incidents;
             try { incidents = UnifiedCommitmentHistory.Breaches(s); }

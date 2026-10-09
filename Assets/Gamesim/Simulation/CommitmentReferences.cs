@@ -13,8 +13,10 @@ namespace Gamesim.Simulation
     public static class CommitmentReferences
     {
         /// <summary>
-        /// Preserves legacy list order and every legacy scalar. Canonical rows follow in their own
-        /// stored order. This does not establish chronological interleaving across authoring stores;
+        /// Preserves legacy list order and every legacy scalar. Canonical Safety rows follow in their own
+        /// stored order. In the prospective mode 2 the list is mode 1's, element for element: the raw rows
+        /// with the canonical Vote rows merged where mode 1's one list held them (<see cref="RawPromises"/>),
+        /// then the Safety rows. This does not establish chronological interleaving across authoring stores;
         /// callers selecting a latest outcome must use an explicit event/settlement ordering contract.
         /// Every returned record is detached, even in a legacy game.
         /// </summary>
@@ -22,7 +24,9 @@ namespace Gamesim.Simulation
         {
             CheckRules(state);
             if (state.unifiedCommitmentRulesVersion == UnifiedVoteFamilyValidation.Version)
-                return UnifiedVoteReferences.PromisesUnchecked(state);
+                return Array.AsReadOnly(MergedPromises(state, true).Concat(state.unifiedCommitments
+                    .Where(row => row.kind == UnifiedCommitments.Safety && row.sourcePolicy == UnifiedCommitments.PromisePolicy)
+                    .Select(UnifiedVoteReferences.ProjectPromise)).ToArray());
             var rows = state.promises.Select(row => row?.Clone()).ToList();
             if (UnifiedCommitments.RulesOn(state))
                 rows.AddRange(state.unifiedCommitments.Where(row => row.sourcePolicy == UnifiedCommitments.PromisePolicy)
@@ -30,17 +34,72 @@ namespace Gamesim.Simulation
             return rows.AsReadOnly();
         }
 
-        /// <summary>Full provenance view, not a strongest-protection or once-per-incident count.</summary>
+        /// <summary>Full provenance view, not a strongest-protection or once-per-incident count. Ordered as <see cref="Promises"/> is.</summary>
         public static IReadOnlyList<DealState> Deals(EpisodeState state)
         {
             CheckRules(state);
             if (state.unifiedCommitmentRulesVersion == UnifiedVoteFamilyValidation.Version)
-                return UnifiedVoteReferences.DealsUnchecked(state);
+                return Array.AsReadOnly(MergedDeals(state, true).Concat(state.unifiedCommitments
+                    .Where(row => row.kind == UnifiedCommitments.Safety && row.sourcePolicy == UnifiedCommitments.DealPolicy)
+                    .Select(UnifiedVoteReferences.ProjectDeal)).ToArray());
             var rows = state.deals.Select(row => row?.Clone()).ToList();
             if (UnifiedCommitments.RulesOn(state))
                 rows.AddRange(state.unifiedCommitments.Where(row => row.sourcePolicy == UnifiedCommitments.DealPolicy)
                     .Select(ProjectDeal));
             return rows.AsReadOnly();
+        }
+
+        /// <summary>
+        /// The promises a mode-1 reader of the raw list reads (vote family V5a): in modes 0 and 1 the raw list itself,
+        /// the very instance; in the prospective mode 2 the list mode 1's would have been - the raw rows, themselves,
+        /// with each canonical Vote promise projected where mode 1 appended it (<see cref="UnifiedVoteSettlement.Occurrence"/>:
+        /// by the sequence its id was minted at, raw rows keeping their own order). Safety rows are not here, as mode 1's
+        /// raw list holds none. A reader's view, never a writer's: nothing written to it reaches the season.
+        /// </summary>
+        public static IReadOnlyList<PromiseState> RawPromises(EpisodeState state)
+        {
+            if (state == null) throw new ArgumentNullException(nameof(state));
+            if (state.unifiedCommitmentRulesVersion != UnifiedVoteFamilyValidation.Version) return state.promises;
+            CheckRules(state);
+            return MergedPromises(state, false).AsReadOnly();
+        }
+
+        /// <summary>The deals a mode-1 reader of the raw list reads, as <see cref="RawPromises"/> gives the promises.</summary>
+        public static IReadOnlyList<DealState> RawDeals(EpisodeState state)
+        {
+            if (state == null) throw new ArgumentNullException(nameof(state));
+            if (state.unifiedCommitmentRulesVersion != UnifiedVoteFamilyValidation.Version) return state.deals;
+            CheckRules(state);
+            return MergedDeals(state, false).AsReadOnly();
+        }
+
+        private static List<PromiseState> MergedPromises(EpisodeState s, bool detached) => Merge(s.promises, row => row.id,
+            row => detached ? row.Clone() : row, s.unifiedCommitments.Where(row => row.kind == UnifiedVoteTogether.Vote
+                && row.sourcePolicy == UnifiedCommitments.PromisePolicy), UnifiedVoteReferences.ProjectPromise);
+
+        private static List<DealState> MergedDeals(EpisodeState s, bool detached) => Merge(s.deals, row => row.id,
+            row => detached ? row.Clone() : row, s.unifiedCommitments.Where(row => row.kind == UnifiedVoteTogether.Vote
+                && row.sourcePolicy == UnifiedCommitments.DealPolicy), UnifiedVoteReferences.ProjectDeal);
+
+        /// <summary>
+        /// Mode 1's one list from its two halves: each list keeps its own order, and a canonical row goes in before
+        /// the first raw row it occurred before - an earlier sequence, or the same one as the deal a price bought.
+        /// </summary>
+        private static List<T> Merge<T>(List<T> raw, Func<T, string> id, Func<T, T> own, IEnumerable<UnifiedCommitmentState> canonical,
+            Func<UnifiedCommitmentState, T> project)
+        {
+            var rows = canonical.ToList();
+            var merged = new List<T>(raw.Count + rows.Count);
+            int next = 0;
+            for (int index = 0; index < raw.Count; index++)
+            {
+                var key = UnifiedVoteSettlement.Occurrence(id(raw[index]), false, index);
+                while (next < rows.Count && UnifiedVoteSettlement.Occurrence(rows[next].id, true, next).CompareTo(key) < 0)
+                    merged.Add(project(rows[next++]));
+                merged.Add(own(raw[index]));
+            }
+            while (next < rows.Count) merged.Add(project(rows[next++]));
+            return merged;
         }
 
         /// <summary>Historical rows count too; moving safety authority cannot free an authoring slot.</summary>
@@ -120,8 +179,10 @@ namespace Gamesim.Simulation
             if (state.unifiedCommitmentRulesVersion == 0) return;
             if (state.unifiedCommitmentRulesVersion == UnifiedVoteFamilyValidation.Version)
             {
-                if (!UnifiedVoteFamilyValidation.TryValidate(state, state.unifiedVoteReveals, out string aggregateError))
-                    throw new ArgumentException(aggregateError, nameof(state));
+                // The storage only (vote family V5a): a reader may run in the middle of a command, before what
+                // the complete core asks of a finished one holds; the command's candidate is held to that core.
+                if (!UnifiedVoteFamilyValidation.TryValidateStorage(state, out string storageError))
+                    throw new ArgumentException(storageError, nameof(state));
                 return;
             }
             if (!UnifiedCommitments.ValidateRecords(state, out string error))

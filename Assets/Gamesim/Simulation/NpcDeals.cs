@@ -414,9 +414,12 @@ namespace Gamesim.Simulation
             }
         }
 
-        /// <summary>Offers still waiting on the player, newest first.</summary>
+        /// <summary>
+        /// Offers still waiting on the player, newest first: wherever canonical Safety is the authority, its offers
+        /// too, and in the prospective mode 2 the canonical Vote offers (vote family V5a).
+        /// </summary>
         public static List<DealState> Pending(EpisodeState state) =>
-            (state == null ? null : UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Deals(state) : state.deals)
+            (state == null ? null : UnifiedCommitments.SafetyAuthorityOn(state) ? CommitmentReferences.Deals(state) : state.deals)
                 ?.Where(d => d.status == DealStatus.Proposed && d.recipientId == state.playerId)
                 .OrderByDescending(d => d.week)
                 .ThenByDescending(d => Urgency(d.type))

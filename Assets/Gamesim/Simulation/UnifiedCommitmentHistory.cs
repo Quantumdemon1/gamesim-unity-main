@@ -49,8 +49,9 @@ namespace Gamesim.Simulation
         {
             if (state?.unifiedCommitmentRulesVersion == UnifiedVoteFamilyValidation.Version)
             {
-                if (!UnifiedVoteFamilyValidation.TryValidate(state, state.unifiedVoteReveals, out string aggregateError))
-                    throw new ArgumentException(aggregateError, nameof(state));
+                // The storage only (vote family V5a): a reader may run in the middle of a command.
+                if (!UnifiedVoteFamilyValidation.TryValidateStorage(state, out string storageError))
+                    throw new ArgumentException(storageError, nameof(state));
             }
             else
             {

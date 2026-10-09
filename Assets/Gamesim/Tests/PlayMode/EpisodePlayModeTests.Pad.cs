@@ -214,10 +214,43 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "Continuing commits nothing.");
         }
 
+        /// <summary>Whether a ceremony card is up: a vote reveal, a key ceremony, a takeover, the jury's reveal or the veto draw.</summary>
+        private bool CeremonyCardPlaying() =>
+            SceneComponents<VoteReveal>().Any(card => card.IsPlaying) || SceneComponents<KeyCeremony>().Any(card => card.IsPlaying)
+            || SceneComponents<CeremonyTakeover>().Any(card => card.IsPlaying) || SceneComponents<JuryReveal>().Any(card => card.IsPlaying)
+            || SceneComponents<VetoDrawReveal>().Any(card => card.IsPlaying);
+
+        /// <summary>
+        /// D7's ceremony cards by A (PLAN A, A6): each card a decision puts up is moved on by the pad's
+        /// A once it has been read a moment, and that A is the card's alone. The UI's Submit waits while
+        /// a card is up (the director's GuardUiSubmit), so the control focused in the panel under the
+        /// card is not pressed with it; the walk asserts the hold at every press. A card still up after
+        /// a few presses is waited out, as the D2 walk waits them all out.
+        /// </summary>
+        private IEnumerator PadThroughCards(string where)
+        {
+            for (int press = 0; press < 8 && CeremonyCardPlaying(); press++)
+            {
+                // Past a card's read-first delay - its fade and a third of a second, .65 s on the
+                // unscaled clock - with room to spare; a press a card still swallows is pressed again.
+                yield return RealSeconds(.8f);
+                if (!CeremonyCardPlaying()) break;
+                Assert.That(director.IsSubmitHeldForCeremony, Is.True,
+                    where + ": the UI's Submit waits while a card is up, so the pad's A is the card's alone.");
+                var underneath = Selected();
+                yield return PressOnPad(GamepadButton.South);
+                yield return Frames(2);
+                TestContext.WriteLine(where + ": A on a ceremony card, with the focus under it on '"
+                    + (underneath != null ? underneath.name : "nothing") + "'.");
+            }
+            yield return SettleReveal();
+        }
+
         /// <summary>
         /// D7: the D2 walk on the pad. The same season, the same decisions; every focus move a real
         /// d-pad press and every commit a real A through the UI module, never an event raised by the
-        /// test. Competitions go through the accessible alternative (the lead's decision A-6).
+        /// test; the ceremony cards each decision raises moved on by A too. Competitions go through
+        /// the accessible alternative (the lead's decision A-6).
         /// </summary>
         [UnityTest, Timeout(1500000)]
         public IEnumerator Accessibility_EveryPanelIsWalkableAndCommittableByPad()
@@ -278,7 +311,7 @@ namespace Gamesim.Tests.PlayMode
                 foreach (var caption in KeyboardCaptions(state)) yield return ReachAndPress(caption, pad: true);
                 Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision + 1),
                     "A must commit exactly one decision in " + state.phase + " (" + string.Join(", ", KeyboardCaptions(state)) + "); " + lastSubmit);
-                yield return SettleReveal();
+                yield return PadThroughCards("phase " + state.phase);
                 previous = state;
             }
 
@@ -369,7 +402,7 @@ namespace Gamesim.Tests.PlayMode
                     yield return ReachAndPress(caption, pad: true);
                 }
                 Assert.That(director.Snapshot.revision, Is.GreaterThan(state.revision), "A commits a decision in " + state.phase + "; " + lastSubmit);
-                yield return SettleReveal();
+                yield return PadThroughCards("first week, " + state.phase);
                 previous = state;
             }
             Assert.That(evicted, Is.True, "The pad reached week 1's eviction recap.");

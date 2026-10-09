@@ -358,7 +358,8 @@ namespace Gamesim.Episode
             if (!BeginCompetitionArena(state))
             { challengeActive = false; challengeOrigin = null; message = competitionArenaStatus; Render(); return; }
             FrameCompetition();
-            var kind = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
+            var kind = timingBarForDiagnostics ? CompetitionMiniGames.Kind.Precision
+                : CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
             challengeRun = kind == CompetitionMiniGames.Kind.Precision ? null : new MiniGameRun(kind,
                 CompetitionMiniGames.AttemptSeed(state.seed, state.week, (int)state.phase, state.competitionRulesVersion, practice),
                 state.competitionRulesVersion, CompetitionDefinitions.For(state), ScrambleWords(state));
@@ -627,6 +628,27 @@ namespace Gamesim.Episode
             hud.Paragraph(InputGlossary.ChallengeLine(PressWasPad));
             hud.ChallengeMeter(); hud.Action("STOP marker  [Space]", RecordChallengeHit);
         }
+
+        // While set, StartChallenge plays the timing bar whatever the category: the seam
+        // StartTimingBarForDiagnostics, the only way left onto it.
+        private bool timingBarForDiagnostics;
+
+        /// <summary>
+        /// A seam for tests, never called by the game: the timing bar - the fallback
+        /// <see cref="CompetitionMiniGames.Kind.Precision"/>, which no category a season deals plays
+        /// any more (<c>CompetitionMiniGameTests.EveryCompetitionASeasonCanReachRoutesToAGameWithRules</c>)
+        /// - started from the open competition's briefing, as Practice or an entry starts its game.
+        /// True when the bar is up. Its stops commit a Compete as they always did.
+        /// </summary>
+        public bool StartTimingBarForDiagnostics(bool practice)
+        {
+            if (projected == null) return false;
+            timingBarForDiagnostics = true;
+            try { StartChallenge(projected, practice); }
+            finally { timingBarForDiagnostics = false; }
+            return challengeActive && challengeRun == null;
+        }
+
         public void RecordChallengeHit()
         {
             if (!challengeActive || challengeRun != null) return;

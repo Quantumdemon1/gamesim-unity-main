@@ -419,5 +419,89 @@ namespace Gamesim.Tests.PlayMode
             ButtonWithCaption(EpisodeHud.PreparedSpeechCaption).onClick.Invoke();
             AssertBlockSpeechCommit(diaryBefore, EpisodeDirector.PreparedSpeech(LobbyApproach.Emotional), LobbyApproach.Emotional);
         }
+
+        // ---------------------------------------------------------------- one press, one stop (Risk R6)
+
+        /// <summary>The timing bar's count as its caption says it: "Attempt 2 of 3 · Aim for the center".</summary>
+        private string TimingBarAttemptLine()
+        {
+            var line = director.GetComponentsInChildren<TMP_Text>()
+                .LastOrDefault(text => text.isActiveAndEnabled && text.text.StartsWith("Attempt ") && text.text.Contains(" of 3"));
+            return line != null ? line.text : "(no attempt line)";
+        }
+
+        /// <summary>Puts the focus on the live STOP control, as the pad's A finds it: the last copy, since the HUD can rebuild.</summary>
+        private void FocusTheStop()
+        {
+            var stop = director.GetComponentsInChildren<Button>()
+                .LastOrDefault(button => button.IsActive() && button.IsInteractable()
+                    && button.GetComponentsInChildren<TMP_Text>(true).Any(text => text.text == InputGlossary.HouseChallengeStopCaption));
+            Assert.That(stop, Is.Not.Null, "The timing bar offers '" + InputGlossary.HouseChallengeStopCaption + "'.");
+            EventSystem.current.SetSelectedGameObject(stop.gameObject);
+        }
+
+        /// <summary>
+        /// Risk R6 (PLAN A, A6): on the timing bar the pad's A, with "STOP marker  [Space]" focused, is
+        /// both the shortcuts' Hit and the UI's Submit on the control, and each stopped the marker - two
+        /// of the three attempts in one press, and a ranked attempt's Compete committed on the second.
+        /// One press is one attempt: the pad's A, the keyboard's Space (the Hit alone) and Enter on the
+        /// control (the Submit alone); and a ranked attempt commits on its third A, once. No category a
+        /// season deals plays the bar any more, so it is started through its seam.
+        /// </summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator Challenge_OnePadPressIsOneAttempt()
+        {
+            WarpPlayer(director.StationPosition);
+            Assert.That(director.TryOpenPhasePanel(), Is.True);
+            ButtonWithCaption("Begin the next competition").onClick.Invoke();
+            yield return null;
+            // The pad is the device before the bar goes up, so the bar's paragraph is the pad's.
+            yield return PressOnPad(GamepadButton.RightStick);
+            yield return Frames(2);
+            Assert.That(director.HintsForPad, Is.True, "A pad press makes the pad the device.");
+            WarpPlayer(director.StationPosition);
+            Assert.That(director.TryOpenPhasePanel(), Is.True);
+            var before = director.Snapshot;
+
+            Assert.That(director.StartTimingBarForDiagnostics(practice: true), Is.True, "The timing bar starts from the competition's briefing.");
+            yield return Frames(2);
+            Assert.That(director.GetComponentsInChildren<TMP_Text>().Any(text => text.isActiveAndEnabled && text.text == InputGlossary.ChallengeLine(true)),
+                Is.True, "On a pad the bar's paragraph names the pad's buttons (A4f).");
+            FocusTheStop();
+            yield return null;
+            Assert.That(TimingBarAttemptLine(), Does.StartWith("Attempt 1 of 3"));
+
+            yield return PressOnPad(GamepadButton.South);
+            Assert.That(TimingBarAttemptLine(), Does.StartWith("Attempt 2 of 3"),
+                "One A on the focused STOP is one attempt, though it is the shortcuts' Hit and the UI's Submit at once.");
+            yield return PressKey(Key.Space);
+            Assert.That(TimingBarAttemptLine(), Does.StartWith("Attempt 3 of 3"), "Space, the Hit alone, is one attempt.");
+            FocusTheStop();
+            yield return null;
+            yield return PressKey(Key.Enter);
+            yield return Frames(2);
+            Assert.That(director.IsChallengeActive, Is.False, "Enter on the STOP, the Submit alone, is the third attempt: the practice is over.");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "A practice commits nothing.");
+
+            // Ranked: two presses leave the attempt open, and the third commits its Compete, once.
+            Assert.That(director.IsPhasePanelOpen, Is.True, "The briefing is back after the practice.");
+            Assert.That(director.StartTimingBarForDiagnostics(practice: false), Is.True, "A ranked bar starts from the briefing too.");
+            yield return Frames(2);
+            for (int press = 1; press <= 2; press++)
+            {
+                FocusTheStop();
+                yield return null;
+                yield return PressOnPad(GamepadButton.South);
+                Assert.That(director.IsChallengeActive, Is.True, "The ranked attempt is still open after A number " + press + ": " + TimingBarAttemptLine());
+                Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "and nothing is committed yet.");
+            }
+            FocusTheStop();
+            yield return null;
+            yield return PressOnPad(GamepadButton.South);
+            yield return Frames(2);
+            Assert.That(director.IsChallengeActive, Is.False, "The third A ends the ranked attempt");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1), "and commits its Compete, once.");
+            Assert.That(director.Snapshot.competitionResolved, Is.True, "The competition is decided.");
+        }
     }
 }

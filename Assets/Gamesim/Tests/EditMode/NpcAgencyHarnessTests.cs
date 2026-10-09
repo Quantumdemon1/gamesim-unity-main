@@ -108,9 +108,11 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The same house with its turns all week (WAVE-D-NPC-PACTS-PLAN D2): the pact rung is tried at every
-        /// beat until it lands, so the cap and one pact a houseguest are what hold the count - never breached,
-        /// nobody in two - and pacts among houseguests still form, near the 1.2 a season agency gave them.
+        /// The same house with its turns all week (WAVE-D-NPC-PACTS-PLAN D2): the pact rung is tried at a
+        /// houseguest's first beat of the week (<see cref="EpisodeEngine.PactWindow"/>), as the weekly pass tried
+        /// it once, so the cap and one pact a houseguest still hold the count - never breached, nobody in two - and
+        /// pacts among houseguests form inside D2's decision 8 band, 1.0 to 1.5 a season, around the 1.2 agency gave
+        /// them. Outside it, decision 8 says where the rung is tried.
         /// </summary>
         [Test]
         public void UnderTheAllWeekRulesPactsStillFormWithinTheCap()
@@ -124,8 +126,9 @@ namespace Gamesim.Tests.EditMode
             }
             Assert.That(runs.Sum(r => r.capBreaches), Is.Zero, "The house never holds more pacts than its share.");
             Assert.That(runs.Sum(r => r.doubleBooked), Is.Zero, "Nobody is in two.");
-            Assert.That(runs.Sum(r => r.pactsFormed), Is.GreaterThan(0), "Houseguests still pair up on their own account.");
-            TestContext.WriteLine("NPC-only pacts a season under the all-week rules: " + runs.Average(r => r.pactsFormed).ToString("0.00"));
+            double perSeason = runs.Average(r => r.pactsFormed);
+            TestContext.WriteLine("NPC-only pacts a season under the all-week rules: " + perSeason.ToString("0.00"));
+            Assert.That(perSeason, Is.InRange(1.0, 1.5), "Decision 8's band: NPC-only pacts a season at 8.");
         }
 
 #if !UNITY_5_3_OR_NEWER

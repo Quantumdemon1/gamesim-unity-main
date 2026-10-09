@@ -125,7 +125,10 @@ namespace Gamesim.Presentation
             // The pointer on the house itself, and typing: the two direct reads the scan allows.
             new Row(HouseContext, PointerMap, "Walk", "Left click", "", "Walk to the floor clicked"),
             new Row(HouseContext, PointerMap, "Beacon", "Left click", "", "Travel to the room a beacon marks"),
-            new Row(PanelsContext, TypingMap, "Fields", "Keyboard", "", "Type a name, a speech, a search or a file path"),
+            // A pad types nothing (PLAN A, A6, decision 9): it plays as a houseguest or customizes one
+            // rather than creating one from a blank name, and gives a block speech prepared.
+            new Row(PanelsContext, TypingMap, "Fields", "Keyboard", "",
+                "Type a name, a speech, a search or a file path; on a pad, play as or customize a houseguest and deliver a prepared speech"),
             new Row(CompetitionContext, TypingMap, "Letters", "A-Z", "", "Spell in the word game"),
         };
 

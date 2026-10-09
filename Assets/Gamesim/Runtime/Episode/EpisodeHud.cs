@@ -25,6 +25,8 @@ namespace Gamesim.Episode
         public const string SpeechSubmitCaption = "Submit final speech";
         public const string EvictionSpeechCaption = "Deliver your speech";
         public const string EvictionSpeechSkipCaption = "Say nothing";
+        /// <summary>The block speech a pad can give without typing (PLAN A, A6): the chosen approach's own authored line.</summary>
+        public const string PreparedSpeechCaption = "Deliver a prepared speech";
         public const string BlockSpeechDraftName = "Block speech draft";
         public const string BlockSpeechApproachesName = "Block speech approaches";
         public const string BlockSpeechReadbackHeading = "SPEECHES FROM THE BLOCK";
@@ -1178,14 +1180,19 @@ namespace Gamesim.Episode
             return input;
         }
 
-        /// <summary>A nominee's speech from the block, using the editor the finale uses.</summary>
-        public void EvictionSpeech(string draft, Action<string> changed, Action deliver, Action skip)
+        /// <summary>
+        /// A nominee's speech from the block, using the editor the finale uses. With
+        /// <paramref name="prepared"/>, a third way after "Say nothing": the prepared speech a pad
+        /// player gives without typing (PLAN A, A6).
+        /// </summary>
+        public void EvictionSpeech(string draft, Action<string> changed, Action deliver, Action skip, Action prepared = null)
         {
             Paragraph("Up to 2,000 characters. Enter adds a line; Tab or Shift+Tab moves to another control.");
             SpeechDraft(BlockSpeechDraftName,
                 "What do you want the house to have heard before it votes?","Block speech character count", draft, changed);
             Action(EvictionSpeechCaption, deliver);
             Action(EvictionSpeechSkipCaption, skip);
+            if (prepared != null) Action(PreparedSpeechCaption, prepared);
         }
 
         private TMP_Text FlowText(string value,int size,Color color)

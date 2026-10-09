@@ -32,14 +32,17 @@ namespace Gamesim.Tests.EditMode
     {
         private readonly EpisodeState s;
         private readonly uint coin;
+        private readonly int npcOperations;
         private int built;
         private VoteRead.Sheet voteRead;
         private WaitingOnYou.Reading waiting;
 
-        internal PlayerView(EpisodeState state, uint coinSeed)
+        /// <param name="npcOperations">The NPC world's operations so far (B5b): each moved the season's revision, and the coins never see them.</param>
+        internal PlayerView(EpisodeState state, uint coinSeed, int npcOperations = 0)
         {
             s = state ?? throw new ArgumentNullException(nameof(state));
             coin = coinSeed;
+            this.npcOperations = npcOperations;
         }
 
         // ---------------------------------------------------------------- what every screen shows
@@ -321,9 +324,13 @@ namespace Gamesim.Tests.EditMode
             expectedRevision = s.revision, expectedPhase = s.phase,
         };
 
-        /// <summary>A coin of the policy's own, in [0, 1): keyed to the lab's season seed, the moment and a salt; never the season's generator.</summary>
+        /// <summary>
+        /// A coin of the policy's own, in [0, 1): keyed to the lab's season seed, the moment and a salt; never the
+        /// season's generator. The moment is the season's revision less the NPC world's operations, so the world's
+        /// clock does not reshuffle the player's coins (nought without the world).
+        /// </summary>
         public double Coin(int salt) =>
-            SeededRandom.HashSeed(coin.ToString(CultureInfo.InvariantCulture) + ":" + s.revision.ToString(CultureInfo.InvariantCulture) + ":" + built.ToString(CultureInfo.InvariantCulture)
+            SeededRandom.HashSeed(coin.ToString(CultureInfo.InvariantCulture) + ":" + (s.revision - npcOperations).ToString(CultureInfo.InvariantCulture) + ":" + built.ToString(CultureInfo.InvariantCulture)
                 + ":" + salt.ToString(CultureInfo.InvariantCulture)) % 1000000u / 1000000.0;
 
         /// <summary>A coin's pick from a list, or null for an empty one.</summary>

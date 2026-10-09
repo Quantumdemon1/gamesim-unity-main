@@ -48,21 +48,27 @@ namespace Gamesim.Tests.EditMode
             public int size;
             public CastTemplates.Roster roster = CastTemplates.Roster.Regular;
             public string performance = PerformanceModel.ByPolicy;
-            /// <summary>NPC-world ticks a week; 0 until the B5 driver exists.</summary>
+            /// <summary>NPC-world ticks a week (B5b's budget, <see cref="BalanceLabNpcWorld"/>); 0 plays no NPC world.</summary>
             public int npcTicks;
 
             public string House => roster + "/" + size.ToString(CultureInfo.InvariantCulture) + "/npc" + npcTicks.ToString(CultureInfo.InvariantCulture);
+            /// <summary>The house the season's seed is drawn for: the roster and size at budget nought, whatever the cell's budget, so budgets pair.</summary>
+            public string SeedHouse => roster + "/" + size.ToString(CultureInfo.InvariantCulture) + "/npc0";
             public string Key => policy + "/" + House + "/" + performance;
             public override string ToString() => Key;
         }
 
         internal static List<Cell> Grid(IEnumerable<string> policies, IEnumerable<int> sizes, string performance = PerformanceModel.ByPolicy,
-            CastTemplates.Roster roster = CastTemplates.Roster.Regular) =>
-            (from size in sizes from policy in policies select new Cell { policy = policy, size = size, roster = roster, performance = performance }).ToList();
+            CastTemplates.Roster roster = CastTemplates.Roster.Regular, int npcTicks = 0) =>
+            (from size in sizes from policy in policies select new Cell { policy = policy, size = size, roster = roster, performance = performance, npcTicks = npcTicks }).ToList();
 
-        /// <summary>A season's seed: a hash of its house and its index, the same for every policy and performance model.</summary>
+        /// <summary>
+        /// A season's seed: a hash of its house and its index, the same for every policy, performance model and NPC
+        /// budget - each budget plays the seasons budget nought plays (decision 2), and at nought the seed is the one it
+        /// always was.
+        /// </summary>
         public static uint Seed(Cell cell, int index) =>
-            SeededRandom.HashSeed("balance-lab/v1/" + cell.House + "/" + index.ToString(CultureInfo.InvariantCulture));
+            SeededRandom.HashSeed("balance-lab/v1/" + cell.SeedHouse + "/" + index.ToString(CultureInfo.InvariantCulture));
 
         // ---------------------------------------------------------------- one season
 
@@ -82,6 +88,15 @@ namespace Gamesim.Tests.EditMode
             public double finaleSeconds;
             /// <summary>Every member a counter of the player's could reach, at every plan the player answered (B6a).</summary>
             public readonly List<CounterMember> counterMembers = new List<CounterMember>();
+            /// <summary>
+            /// The NPC world (B5b, <see cref="BalanceLabNpcWorld"/>): operations installed, of them ticks and conversation
+            /// starts; scans, the pairings they tried and held; operations the engine refused; and the milliseconds the
+            /// engine spent preparing them (timed: never in the rows).
+            /// </summary>
+            public int npcOps, npcTicks, npcStarts, npcScans, npcTries, npcHeld, npcRejected;
+            public double npcMilliseconds;
+            /// <summary>The final house's pairs of houseguests (the player aside), and those whose mutual view is within ten of the bound (±200) and at it.</summary>
+            public int pairs, pairsNearBound, pairsAtBound;
             public bool Won => autopsy != null && autopsy.outcome == SeasonAutopsy.Outcomes.Winner;
             public bool FinalTwo => autopsy != null && (autopsy.outcome == SeasonAutopsy.Outcomes.Winner || autopsy.outcome == SeasonAutopsy.Outcomes.RunnerUp);
         }
@@ -160,6 +175,21 @@ namespace Gamesim.Tests.EditMode
             run.autopsy = SeasonAutopsy.Of(changes, s);
             run.pace.Close(s);
             Ceremonies(run);
+            Saturation(run, s);
+        }
+
+        /// <summary>The final house's pairs of houseguests, the player aside, and those at or near the bound of a mutual view (±200): whether a budget saturates the house (B5b, risk 8).</summary>
+        private static void Saturation(SeasonRun run, EpisodeState final)
+        {
+            var npcs = final.contestants.Where(c => !c.isPlayer).Select(c => c.id).ToList();
+            for (int i = 0; i < npcs.Count; i++)
+                for (int j = i + 1; j < npcs.Count; j++)
+                {
+                    double mutual = Math.Abs(final.Score(npcs[i], npcs[j]) + final.Score(npcs[j], npcs[i]));
+                    run.pairs++;
+                    if (mutual >= 190) run.pairsNearBound++;
+                    if (mutual >= 199.5) run.pairsAtBound++;
+                }
         }
 
         /// <summary>
@@ -194,23 +224,36 @@ namespace Gamesim.Tests.EditMode
         /// proposes nothing, or nothing it proposes is accepted, the walker takes the phase's own step. Returns
         /// the accepted result, or the walker's refusal (an error the caller reports).
         /// </summary>
-        internal static CommandResult Step(EpisodeEngine engine, object agent, EpisodeState s, SeasonRun run, out EpisodeCommand used)
+        internal static CommandResult Step(EpisodeEngine engine, object agent, EpisodeState s, SeasonRun run, out EpisodeCommand used) =>
+            Step(() => engine, null, agent, s, run, out used);
+
+        /// <summary>
+        /// <see cref="Step(EpisodeEngine, object, EpisodeState, SeasonRun, out EpisodeCommand)"/> with an NPC world
+        /// (B5b): <paramref name="engineOf"/> is the engine as the world last installed it, and
+        /// <paramref name="beforeAdvance"/> spends the rest of the phase's ticks before the Advance that closes it - the
+        /// walker's step, or an oracle's own Advance, which is then asked again of the state the world left - and says
+        /// whether it spent any. The policies see the season's revision less the world's operations
+        /// (<see cref="PlayerView"/>), so their coins fall as they fall without the world.
+        /// </summary>
+        internal static CommandResult Step(Func<EpisodeEngine> engineOf, Func<bool> beforeAdvance, object agent, EpisodeState s, SeasonRun run, out EpisodeCommand used)
         {
             int attempts = agent is IBalancePolicy ? Attempts : 1;
             for (int attempt = 0; attempt < attempts; attempt++)
             {
-                var command = agent is IBalancePolicy policy ? policy.Next(new PlayerView(s, run.seed)) : ((IOraclePolicy)agent).Next(s, run.seed);
+                var command = agent is IBalancePolicy policy ? policy.Next(new PlayerView(s, run.seed, run.npcOps)) : ((IOraclePolicy)agent).Next(s, run.seed);
                 if (command == null) break;
+                if (command.kind == EpisodeCommandKind.Advance && beforeAdvance != null && beforeAdvance()) { s = engineOf().Snapshot; attempt--; continue; }
                 Perform(command, s, run);
-                var result = engine.Apply(command);
+                var result = engineOf().Apply(command);
                 if (result.accepted) { used = command; run.own++; return result; }
                 run.refusals++;
                 Count(run.refusalsByKind, command.kind + ": " + result.reason);
                 (agent as IBalancePolicy)?.Refused(command, result.reason);
             }
+            if (beforeAdvance != null && beforeAdvance()) s = engineOf().Snapshot;
             used = Walker(s);
             Perform(used, s, run);
-            var walked = engine.Apply(used);
+            var walked = engineOf().Apply(used);
             if (walked.accepted) run.fallbacks++;
             return walked;
         }
@@ -359,6 +402,9 @@ namespace Gamesim.Tests.EditMode
                 commands = r.commands, own = r.own, fallbacks = r.fallbacks, freeActions = r.freeActions, refusals = r.refusals, refusalsBy = r.refusalsByKind,
                 decisions = r.decisionsByWeek, ceremony = r.ceremonyByWeek, finaleSeconds = r.finaleSeconds,
                 npcTicksUsed = a?.npcTicks ?? 0,
+                // The NPC world (B5b): its operations, and the final house's pairs at or near the bound.
+                npcWorld = new { ops = r.npcOps, ticks = r.npcTicks, starts = r.npcStarts, scans = r.npcScans, tries = r.npcTries, held = r.npcHeld, rejected = r.npcRejected },
+                pairs = new { all = r.pairs, near = r.pairsNearBound, at = r.pairsAtBound },
             };
             return JsonConvert.SerializeObject(row, Formatting.None, new JsonSerializerSettings { Culture = CultureInfo.InvariantCulture });
         }

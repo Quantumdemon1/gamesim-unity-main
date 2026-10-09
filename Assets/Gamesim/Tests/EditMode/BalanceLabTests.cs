@@ -279,6 +279,34 @@ namespace Gamesim.Tests.EditMode
             return null;
         }
 
+        // ---------------------------------------------------------------- budget nought (B5b)
+
+        /// <summary>
+        /// The rows of budget nought's seasons as the lab played them before the NPC world's driver landed (B5b, test 1):
+        /// the smoke grid's one season a house and the headline grid's twenty, hashed as the digests hash a season
+        /// (16 hex of SHA-256). Recorded with the driver's plumbing (paired seeds, the coins' revision less the world's
+        /// operations, the npcWorld and pairs fields) and none of its behaviour.
+        /// </summary>
+        internal const string BudgetNoughtRows = "f3b663c383491ce1";
+
+        [Test, Explicit("B5b: budget nought plays, byte for byte, the seasons it played before the NPC world's driver (about 5 min). Run by name.")]
+        public void BudgetNoughtPlaysTheSeasonsItPlayedBeforeTheDriver()
+        {
+            var smoke = BalanceLab.Run(BalanceLabReports.FullGrid(), 1);
+            var headline = BalanceLab.Run(BalanceLab.Grid(BalancePolicies.All, BalanceLabReports.HeadlineSizes), 20);
+            string rows = BalanceLab.Jsonl(smoke) + BalanceLab.Jsonl(headline);
+            TestContext.WriteLine("Rows: " + BalanceLab.Write("budget0", rows) + "; hash " + Hash(rows));
+            Assert.That(smoke.Concat(headline).All(r => r.cell.npcTicks == 0 && r.npcOps == 0), Is.True);
+            Assert.That(Hash(rows), Is.EqualTo(BudgetNoughtRows));
+        }
+
+        /// <summary>The 16-hex SHA-256 the season digests use (CommitmentRulesSeasonDigests).</summary>
+        internal static string Hash(string text)
+        {
+            using (var sha = System.Security.Cryptography.SHA256.Create())
+                return BitConverter.ToString(sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(text))).Replace("-", "").Substring(0, 16).ToLowerInvariant();
+        }
+
         /// <summary>B6b: a tier played in parts - each part's seasons saved whole and read back - writes the rows one run writes.</summary>
         [Test]
         public void ATierPlayedInPartsWritesTheRowsOneRunWrites()

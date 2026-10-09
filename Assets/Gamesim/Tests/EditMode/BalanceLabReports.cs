@@ -94,11 +94,15 @@ namespace Gamesim.Tests.EditMode
 
         // ---------------------------------------------------------------- the headline tables
 
-        /// <summary>A house as the tables name it: its size, with the roster when it is not the regular cast.</summary>
+        /// <summary>
+        /// A house as the tables name it: its size, with the roster when it is not the regular cast, and the NPC world's
+        /// ticks a week when it plays one ("8 npc300"), so no table merges two budgets (B5b).
+        /// </summary>
         internal static string HouseOf(BalanceLab.Cell cell) =>
-            (cell.roster == CastTemplates.Roster.Regular ? "" : "All-Stars ") + cell.size.ToString(CultureInfo.InvariantCulture);
+            (cell.roster == CastTemplates.Roster.Regular ? "" : "All-Stars ") + cell.size.ToString(CultureInfo.InvariantCulture)
+            + (cell.npcTicks == 0 ? "" : " npc" + cell.npcTicks.ToString(CultureInfo.InvariantCulture));
 
-        private static int HouseOrder(BalanceLab.Cell cell) => (int)cell.roster * 100 + cell.size;
+        private static int HouseOrder(BalanceLab.Cell cell) => (int)cell.roster * 1000000 + cell.size * 10000 + cell.npcTicks;
 
         /// <summary>The houses in the runs, regular cast first, each by size.</summary>
         private static List<string> Houses(IEnumerable<BalanceLab.SeasonRun> runs) =>

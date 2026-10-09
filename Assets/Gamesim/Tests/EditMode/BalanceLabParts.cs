@@ -25,7 +25,7 @@ namespace Gamesim.Tests.EditMode
     public sealed class BalanceLabParts
     {
         /// <summary>Changed whenever what a season records changes, so parts of two builds never merge.</summary>
-        internal const string Stamp = "balance-lab-parts/v1";
+        internal const string Stamp = "balance-lab-parts/v2";
 
         private static BalanceLabReports.TierSpec TierFromEnvironment()
         {
@@ -122,6 +122,8 @@ namespace Gamesim.Tests.EditMode
             public SortedDictionary<int, double> ceremonyByWeek = new SortedDictionary<int, double>();
             public double finaleSeconds;
             public List<BalanceLab.CounterMember> counterMembers = new List<BalanceLab.CounterMember>();
+            public int npcOps, npcTicks, npcStarts, npcScans, npcTries, npcHeld, npcRejected, pairs, pairsNearBound, pairsAtBound;
+            public double npcMilliseconds;
 
             internal static Record Of(BalanceLab.SeasonRun r) => new Record
             {
@@ -130,6 +132,8 @@ namespace Gamesim.Tests.EditMode
                 refusalsByKind = new SortedDictionary<string, int>(r.refusalsByKind, StringComparer.Ordinal),
                 decisionsByWeek = new SortedDictionary<int, int>(r.decisionsByWeek), ceremonyByWeek = new SortedDictionary<int, double>(r.ceremonyByWeek),
                 finaleSeconds = r.finaleSeconds, counterMembers = r.counterMembers.ToList(),
+                npcOps = r.npcOps, npcTicks = r.npcTicks, npcStarts = r.npcStarts, npcScans = r.npcScans, npcTries = r.npcTries, npcHeld = r.npcHeld,
+                npcRejected = r.npcRejected, npcMilliseconds = r.npcMilliseconds, pairs = r.pairs, pairsNearBound = r.pairsNearBound, pairsAtBound = r.pairsAtBound,
             };
 
             internal BalanceLab.SeasonRun ToRun()
@@ -138,6 +142,8 @@ namespace Gamesim.Tests.EditMode
                 {
                     cell = cell, index = index, seed = seed, error = error, autopsy = autopsy, pace = pace?.ToPace(),
                     commands = commands, own = own, fallbacks = fallbacks, refusals = refusals, freeActions = freeActions, finaleSeconds = finaleSeconds,
+                    npcOps = npcOps, npcTicks = npcTicks, npcStarts = npcStarts, npcScans = npcScans, npcTries = npcTries, npcHeld = npcHeld,
+                    npcRejected = npcRejected, npcMilliseconds = npcMilliseconds, pairs = pairs, pairsNearBound = pairsNearBound, pairsAtBound = pairsAtBound,
                 };
                 foreach (var p in refusalsByKind) r.refusalsByKind[p.Key] = p.Value;
                 foreach (var p in decisionsByWeek) r.decisionsByWeek[p.Key] = p.Value;

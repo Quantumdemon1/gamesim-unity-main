@@ -111,8 +111,10 @@ namespace Gamesim.Tests.EditMode
                 Is.EqualTo(Text(LegacyDigestSchema27TestStates.Neutral26(LegacyDigestSchema27TestStates.Trace27(state)))));
         }
 
+        // "authority-three" was "authority-two" until vote family V6: 2 is now the unified vote rules, a known mode judged by its
+        // own complete core, and this witness - canonical Safety only, before any reveal - is a valid mode-2 season relabelled.
         [TestCase("binding-nonzero")] [TestCase("first-reveal-nonzero")]
-        [TestCase("authority-two")] [TestCase("hearing-two")]
+        [TestCase("authority-three")] [TestCase("hearing-two")]
         [TestCase("knowledge-off")] [TestCase("missing-initial")]
         [TestCase("beats-without-their-rules")] [TestCase("plans-without-their-rules")]
         public void ActualStorageValidatorRejectsSemanticDefectsAfterAValidPublicSource(string defect)
@@ -124,7 +126,7 @@ namespace Gamesim.Tests.EditMode
             {
                 case "binding-nonzero": owner.voteBindingWeek = 1; break;
                 case "first-reveal-nonzero": owner.voteFirstRevealWeek = 1; break;
-                case "authority-two": state.unifiedCommitmentRulesVersion = 2; break;
+                case "authority-three": state.unifiedCommitmentRulesVersion = 3; break;
                 case "hearing-two": state.unifiedHearingRulesVersion = 2; break;
                 case "knowledge-off": state.story.rulesStartWeek = 0; break;
                 case "missing-initial":

@@ -196,9 +196,9 @@ namespace Gamesim.Episode
                 store.GetInt(DisplayChoices.FrameCapKey, 0), out vSync, out frameLimit);
             // An older build's full-screen flag reads as borderless or windowed; with no record at
             // all, the window as it stands. Read, never applied: Unity restores the window itself.
-            displayMode = DisplayChoices.ModeFromRecords(store.GetString(DisplayChoices.DisplayModeKey, null),
+            displayMode = DisplayChoices.ModeFromRecords(store.GetString(DisplayChoices.DisplayModeKey, ""),
                 store.HasKey(DisplayChoices.LegacyFullscreenKey) ? store.GetInt(DisplayChoices.LegacyFullscreenKey, 0) : (int?)null, WindowModeNow());
-            string recorded = store.GetString(DisplayChoices.ResolutionKey, null);
+            string recorded = store.GetString(DisplayChoices.ResolutionKey, "");
             resolution = recorded == DisplayChoices.Desktop || DisplayChoices.TryParseSize(recorded, out _, out _) ? recorded : ResolutionNow();
             edgePan = store.GetInt("Gamesim.EdgePan", 1) == 1;
             compactHud = store.GetInt("Gamesim.CompactHud", 0) == 1;

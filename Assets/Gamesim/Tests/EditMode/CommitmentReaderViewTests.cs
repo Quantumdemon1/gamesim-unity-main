@@ -286,7 +286,7 @@ namespace Gamesim.Tests.EditMode
             }
             Assert.That(engine, Is.Not.Null, "Fixture: a mode-0 walk reaches a diary reflection.");
             var s = engine.Snapshot;
-            Assert.That(UnifiedCommitments.SafetyAuthorityOn(s) || UnifiedVoteStore.On(s), Is.False, "Fixture: mode 0.");
+            Assert.That((s.unifiedCommitmentRulesVersion, UnifiedCommitments.SafetyAuthorityOn(s)), Is.EqualTo((0, false)), "Fixture: mode 0.");
             var reflect = ProspectiveVoteTwins.Command(s, EpisodeCommandKind.ReflectDiary, s.pendingDiary.id, EpisodeEngine.CurrentDiary(s).choices[0].id);
             Assert.That(new EpisodeEngine(s).Apply(reflect).accepted, Is.True, "Fixture: the reflection is one the season takes.");
             // A malformed persona: the diary's reader (WebDiaryRoom) refuses the state it is given, inside the command.

@@ -272,6 +272,8 @@
     <Compile Include="$(EditMode)BalanceLabParts.cs" />
     <!-- B5b: the synthetic NPC world the lab drives at a budget of ticks a week. -->
     <Compile Include="$(EditMode)BalanceLabNpcWorld.cs" />
+    <!-- B6b: the headline's cells at budgets 0 and 300, pinned (explicit). -->
+    <Compile Include="$(EditMode)BalanceLabGoldens.cs" />
     <Compile Include="$(EditMode)BalanceLabDiagnostics.cs" />
 
     <!--

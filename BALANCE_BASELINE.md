@@ -36,7 +36,9 @@ is pinned in `BalanceLabGoldens.Rules`.
 - **New measurements:** the war rooms (autopsy and lab), the first commitment the player saw settle, the
   competitions by week (B7), and the T0 diagnostics for the five tuning questions.
 - **Goldens:** the 48 headline cells at budgets 0 and 300 are pinned (`BalanceLabGoldens`), and budget 0's smoke
-  and 20-seed headline rows by `BalanceLabTests.BudgetNoughtRows`.
+  and 20-seed headline rows by `BalanceLabTests.BudgetNoughtRows`. Both are `[Explicit]` (minutes each), so no CI
+  run checks them: the lead runs `BudgetNoughtPlaysTheSeasonsItPlayedBeforeTheDriver` and a golden slice by name
+  after each merge that can move a lab season (the lead's tip 40eb73b1, D2's all-week rules).
 
 ## How it was measured
 
@@ -72,6 +74,7 @@ BALANCE_NPC_POLICIES=passive,reader BALANCE_NPC_BUDGETS=0,900                   
 BALANCE_NPC_POLICIES=reader BALANCE_NPC_BUDGETS=0,1800                              # npc, 15 seeds
 BALANCE_PROJECTION_BUDGETS=0 (400 seeds), =300 (200), =900 (50)                     # projection
 dotnet test Tools/SimulationTests --filter "FullyQualifiedName~BalanceLabGoldens.Budget300Size12First"   # one golden slice
+dotnet test Tools/SimulationTests --filter "FullyQualifiedName~BudgetNoughtPlaysTheSeasonsItPlayedBeforeTheDriver"   # budget 0's rows, about 5 min
 BALANCE_PROBE_TICKS=300 dotnet test Tools/SimulationTests --filter "FullyQualifiedName~NpcWorldCostProbe"
 ```
 

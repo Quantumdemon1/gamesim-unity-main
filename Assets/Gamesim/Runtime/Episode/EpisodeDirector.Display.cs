@@ -156,9 +156,25 @@ namespace Gamesim.Episode
             return Screen.width == desktop.x && Screen.height == desktop.y ? DisplayChoices.Desktop : DisplayChoices.SizeKey(Screen.width, Screen.height);
         }
 
-        /// <summary>The size the recorded resolution means now.</summary>
-        private Vector2Int WindowSize() =>
-            DisplayChoices.TryParseSize(resolution, out int width, out int height) ? new Vector2Int(width, height) : DesktopSize();
+        /// <summary>
+        /// The size the recorded resolution means now: its own, or the desktop's - except for a window,
+        /// which at the desktop's size would sit under the taskbar with its title bar off the screen,
+        /// so it takes the largest size that leaves both on it (<see cref="DisplayChoices.WindowedDesktopSize"/>).
+        /// </summary>
+        private Vector2Int WindowSize()
+        {
+            if (DisplayChoices.TryParseSize(resolution, out int width, out int height)) return new Vector2Int(width, height);
+            var desktop = DesktopSize();
+            if (displayMode != DisplayMode.Windowed) return desktop;
+            var offered = Screen.resolutions.Select(size => new KeyValuePair<int, int>(size.width, size.height));
+            DisplayChoices.WindowedDesktopSize(offered, desktop.x, desktop.y, out width, out height);
+            return new Vector2Int(width, height);
+        }
+
+        /// <summary>How long a window this director applied has to land before the record trusts the window over the request.</summary>
+        private const float WindowSettleSeconds = 1f;
+        /// <summary>When this director last asked for a window or a monitor, on the real clock.</summary>
+        private float windowAppliedAt = float.NegativeInfinity;
 
         /// <summary>
         /// Applies the window - mode and size - and counts it. The editor's game view is not a window
@@ -167,19 +183,34 @@ namespace Gamesim.Episode
         private void ApplyWindow()
         {
             WindowApplications++;
+            windowAppliedAt = Time.realtimeSinceStartup;
             var size = WindowSize();
             if (!Application.isEditor) Screen.SetResolution(size.x, size.y, ToFullScreenMode(displayMode));
         }
 
         /// <summary>
         /// The record read again from the window as the settings open, so a window changed outside the
-        /// settings (Alt+Enter, a monitor unplugged) is what they show. Not in the editor or a batch
-        /// run, where the window is not the game's and the fields are the record.
+        /// settings (Alt+Enter, a monitor unplugged) is what they show; and the monitor read afresh.
         /// </summary>
         private void RefreshDisplayRecordFromWindow()
         {
             monitorChosen = -1;
+            ReadWindowIntoRecord();
+        }
+
+        /// <summary>
+        /// The window's mode and resolution read into the record: as the settings open, each time
+        /// they draw, and as a display control is pressed, so a control steps on from the window as
+        /// it stands - Alt+Enter with the settings open, then "Resolution", used to put the old mode
+        /// back. Not in the editor or a batch run, where the window is not the game's and the fields
+        /// are the record; and not while a window this director asked for may still be on its way
+        /// (Unity changes it at the end of the frame, and an exclusive switch can take longer), so a
+        /// press is not undone by the very redraw it caused.
+        /// </summary>
+        private void ReadWindowIntoRecord()
+        {
             if (Application.isEditor || Application.isBatchMode) return;
+            if (Time.realtimeSinceStartup - windowAppliedAt < WindowSettleSeconds) return;
             displayMode = WindowModeNow();
             resolution = ResolutionNow();
         }
@@ -254,6 +285,7 @@ namespace Gamesim.Episode
             var layout = Displays();
             if (index < 0 || index >= layout.Count) return;
             WindowApplications++;
+            windowAppliedAt = Time.realtimeSinceStartup;
             monitorChosen = index;
             var target = layout[index];
             var position = displayMode == DisplayMode.Windowed
@@ -265,6 +297,8 @@ namespace Gamesim.Episode
         /// <summary>The display block of the settings panel; each control cycles or flips one preference.</summary>
         private void DisplaySettings()
         {
+            // The record as the window stands, so the captions say what the window is (A12).
+            ReadWindowIntoRecord();
             hud.Heading("Display");
             hud.Action(compactHud ? "Show full HUD" : "Use compact HUD",()=>SetCompactHud(!compactHud));
             hud.Paragraph("Compact HUD keeps the cast, next objective and controls visible. House details stay in the notebook and Overview.");
@@ -285,19 +319,23 @@ namespace Gamesim.Episode
                 hud.FocusWhenWired(vSync ? VSyncOffCaption : VSyncOnCaption);
             });
             hud.Paragraph("With VSync on the display paces the frames; the frame rate's limit holds with VSync off.");
-            // The window: how it stands, its size and, with more than one, its monitor (A12).
+            // The window: how it stands, its size and, with more than one, its monitor (A12). Each
+            // press steps on from the window as it stands now, not as the panel was drawn.
             hud.Action(fullscreenToggleCaption, () =>
             {
+                ReadWindowIntoRecord();
                 SetDisplay(Fullscreen ? DisplayMode.Windowed : DisplayMode.Borderless, resolution); Render();
                 hud.FocusWhenWired(fullscreenToggleCaption);
             });
             hud.Action(DisplayModeCaption(displayMode), () =>
             {
+                ReadWindowIntoRecord();
                 SetDisplay(DisplayChoices.NextMode(displayMode), resolution); Render();
                 hud.FocusWhenWired(DisplayModeCaption(displayMode));
             });
             hud.Action(ResolutionCaption(resolution), () =>
             {
+                ReadWindowIntoRecord();
                 SetDisplay(displayMode, DisplayChoices.Next(ResolutionChoices(), resolution)); Render();
                 hud.FocusWhenWired(ResolutionCaption(resolution));
             });

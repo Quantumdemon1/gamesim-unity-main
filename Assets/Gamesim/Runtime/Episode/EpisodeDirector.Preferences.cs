@@ -64,8 +64,15 @@ namespace Gamesim.Episode
             };
         }
 
-        /// <summary>The window as chosen and as it stands: its mode in the settings' words, and its size now.</summary>
-        private string DisplayEvidence() => DisplayChoices.ModeName(displayMode) + "," + Screen.width + "x" + Screen.height;
+        /// <summary>
+        /// The window as it stands, in the settings' words: its mode and its size now. The mode is
+        /// read from the window, not the record - Unity restores a window from its own screen records,
+        /// which every root on the machine shares, and Alt+Enter changes it unasked, so the record can
+        /// say borderless over a window. In the editor and a batch run the window is not the game's,
+        /// and the record is the mode.
+        /// </summary>
+        private string DisplayEvidence() =>
+            DisplayChoices.ModeName(Application.isEditor || Application.isBatchMode ? displayMode : WindowModeNow()) + "," + Screen.width + "x" + Screen.height;
 
         /// <summary>At Start: the baseline for the change lines, and the session's line when the root keeps its own preferences.</summary>
         private void NoteSettingsAtStart()

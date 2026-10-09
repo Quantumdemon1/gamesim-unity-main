@@ -30,6 +30,27 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
+        public void AWindowAskedForTheDesktop_IsTheLargestSizeThatLeavesTheTitleBarAndTaskbarOnScreen()
+        {
+            // "Play in a window" from the first launch's borderless desktop: never a window the desktop's own size.
+            var offered = Sizes((1280, 720), (1366, 768), (1600, 900), (1680, 1050), (1920, 1080), (1920, 1200));
+            AssertWindowed(offered, 1920, 1080, 1600, 900, "1680x1050 and the desktop's own 1920x1080 run under the taskbar.");
+            AssertWindowed(Sizes((1280, 720), (1920, 1080), (2048, 1152), (2560, 1440)), 2560, 1440, 2048, 1152, "The largest offered size inside 90% each way.");
+            AssertWindowed(null, 1920, 1080, 1600, 900, "Nothing offered: the standard 16:9 sizes still are.");
+            AssertWindowed(null, 3840, 2160, 2560, 1440, "A 4K desktop: the largest standard size.");
+            AssertWindowed(Sizes((1366, 768), (1280, 720)), 1366, 768, 1280, 720, "Nothing fits a small laptop's desktop: the smallest the HUD holds.");
+            AssertWindowed(Sizes((1024, 768), (800, 600)), 1280, 800, 1280, 720, "Sizes under 1280x720 are never chosen, even when nothing else fits.");
+            AssertWindowed(Sizes((1680, 945), (1600, 900)), 1920, 1080, 1680, 945, "The larger area wins.");
+        }
+
+        private static void AssertWindowed(IEnumerable<KeyValuePair<int, int>> offered, int desktopWidth, int desktopHeight, int width, int height, string why)
+        {
+            DisplayChoices.WindowedDesktopSize(offered, desktopWidth, desktopHeight, out int readWidth, out int readHeight);
+            Assert.That(DisplayChoices.SizeKey(readWidth, readHeight), Is.EqualTo(DisplayChoices.SizeKey(width, height)),
+                "On a " + DisplayChoices.SizeKey(desktopWidth, desktopHeight) + " desktop: " + why);
+        }
+
+        [Test]
         public void ASize_ReadsAndWritesAsWidthByHeight()
         {
             Assert.That(DisplayChoices.SizeKey(2560, 1080), Is.EqualTo("2560x1080"));

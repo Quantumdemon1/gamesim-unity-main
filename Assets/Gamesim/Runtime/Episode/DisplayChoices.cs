@@ -71,6 +71,36 @@ namespace Gamesim.Episode
             return list;
         }
 
+        /// <summary>The sizes a window may always take, whatever the display reports: 16:9, as the HUD is laid out.</summary>
+        public static readonly KeyValuePair<int, int>[] StandardWindowSizes =
+        {
+            new KeyValuePair<int, int>(1280, 720), new KeyValuePair<int, int>(1600, 900),
+            new KeyValuePair<int, int>(1920, 1080), new KeyValuePair<int, int>(2560, 1440),
+        };
+
+        /// <summary>The share of the desktop a window asked for the desktop's size may cover each way, leaving room for its title bar and the taskbar.</summary>
+        public const double WindowShareOfDesktop = .9;
+
+        /// <summary>
+        /// The size a window takes when its resolution is "Desktop": a window the desktop's own size
+        /// puts its title bar and bottom edge under the taskbar or off the screen - what "Play in a
+        /// window" did from the first launch's borderless desktop. So the largest of the sizes the
+        /// display offers and the standard 16:9 ones, at least 1280x720, that fits within 90% of the
+        /// desktop each way (the larger area, then the wider); 1280x720, the smallest the HUD holds,
+        /// when none does.
+        /// </summary>
+        public static void WindowedDesktopSize(IEnumerable<KeyValuePair<int, int>> offered, int desktopWidth, int desktopHeight,
+            out int width, out int height)
+        {
+            double roomWidth = desktopWidth * WindowShareOfDesktop, roomHeight = desktopHeight * WindowShareOfDesktop;
+            var fits = (offered ?? Enumerable.Empty<KeyValuePair<int, int>>()).Concat(StandardWindowSizes)
+                .Where(size => size.Key >= MinimumWidth && size.Value >= MinimumHeight && size.Key <= roomWidth && size.Value <= roomHeight)
+                .OrderByDescending(size => (long)size.Key * size.Value).ThenByDescending(size => size.Key)
+                .ToList();
+            width = fits.Count > 0 ? fits[0].Key : MinimumWidth;
+            height = fits.Count > 0 ? fits[0].Value : MinimumHeight;
+        }
+
         /// <summary>The next of a cycle after <paramref name="current"/>, the first when it is not in it.</summary>
         public static string Next(IList<string> cycle, string current)
         {

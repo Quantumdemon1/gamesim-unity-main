@@ -1236,6 +1236,13 @@ namespace Gamesim.Episode
             return colors[i % colors.Length];
         }
 
+        /// <summary>
+        /// The HUD's own chrome asking to be laid out again: the controls card opening or closing on
+        /// a frame where the right column gives way to it (EpisodeHud.RecentSlotsShown). Only ever
+        /// with nothing open - the card is closed whenever anything is.
+        /// </summary>
+        internal void RenderChrome() => Render();
+
         private void Render()
         {
             pitchNavigationView = null;

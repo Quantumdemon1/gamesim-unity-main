@@ -369,6 +369,8 @@ namespace Gamesim.Episode
             LeftGutter(state, recovery);
             if (Compact) CompactObjective(state, recovery);
 
+            // Settled before the column, which gives way to an open controls card (RecentSlotsShown).
+            if (open || Compact) helpExpanded = false;
             RightColumn(state);
 
             // Five lines, not four, because click-to-follow had to be added without lengthening a
@@ -376,7 +378,6 @@ namespace Gamesim.Episode
             // clips at either text size. Thirty-five characters is the proven ceiling — a forty
             // character line is what broke it — so the panel grew downward instead. It stays in the
             // lower right, well clear of the ceremony banner that must not overlap the chrome.
-            if (open || Compact) helpExpanded = false;
             BuildExplorationHelp();
             // Spans the viewport with margins instead of assuming a 1200px width, so the caption
             // still fits when the window is narrower than the reference resolution.

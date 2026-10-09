@@ -107,6 +107,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That((int)report["sampledVSyncCount"], Is.Zero);
             Assert.That((int)report["sampledFrameCapMismatchCount"], Is.Zero);
             Assert.That((string)report["requestedDisplayMode"], Is.EqualTo("Windowed"));
+            Assert.That((string)report["requestedDisplayRoute"], Is.EqualTo(EpisodeDirector.DisplayRoute),
+                "The profile's window is set through the settings' own call (A12).");
             Assert.That((string)report["sampledDisplayMode"], Is.EqualTo("Windowed"));
             Assert.That((int)report["sampledDisplayModeMismatchCount"], Is.Zero);
             Assert.That((bool)report["uncapped"], Is.True);

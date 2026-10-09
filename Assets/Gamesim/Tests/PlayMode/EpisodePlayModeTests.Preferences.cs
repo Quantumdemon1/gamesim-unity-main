@@ -28,7 +28,7 @@ namespace Gamesim.Tests.PlayMode
         {
             "Gamesim.Muted", "Gamesim.ReducedMotion", "Gamesim.ReducedAudio", "Gamesim.LargeText", "Gamesim.Volume", "Gamesim.Music",
             "Gamesim.CeremonyPace", "Gamesim.Language", "Gamesim.Quality", "Gamesim.FrameCap", "Gamesim.Fullscreen", "Gamesim.EdgePan",
-            "Gamesim.CompactHud", "Gamesim.CameraSpeed", "Gamesim.InvertY",
+            "Gamesim.CompactHud", "Gamesim.CameraSpeed", "Gamesim.InvertY", "Gamesim.VSync", "Gamesim.DisplayMode", "Gamesim.Resolution",
         };
 
         /// <summary>The machine's PlayerPrefs for every settings key: present or not, and what each holds as text and as a number.</summary>

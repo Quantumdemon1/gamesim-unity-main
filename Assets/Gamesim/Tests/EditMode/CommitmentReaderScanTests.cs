@@ -28,7 +28,7 @@ namespace Gamesim.Tests.EditMode
         public enum Why { Authority, Writer, RawKind, NotCommitments, ModeAware, Moved, PendingV5a, PendingV5b, PendingV5c, PendingV5d, PendingV5e, PendingV5f }
 
         /// <summary>The slice the vote family has built through: no entry may still be pending it or an earlier one.</summary>
-        private const Why Built = Why.PendingV5c;
+        private const Why Built = Why.PendingV5d;
 
         private sealed class Site
         {
@@ -174,14 +174,14 @@ namespace Gamesim.Tests.EditMode
             new Site(Sim + "Story/StoryCatalog.Ported.cs", null, 1, Why.Moved, "V5c: ported"),
             new Site(Sim + "Story/StoryCatalog.Spine.cs", null, 1, Why.Moved, "V5c: spine"),
 
-            // ---- pending V5d: the player's bargaining and word
-            new Site(Sim + "Negotiation.cs", null, 16, Why.PendingV5d, "Chance, Owed, CallInRefusal, SafetyHeld, BreachesAgainst, CanonicalBreaches, BreachWords"),
-            new Site(Sim + "EpisodeEngine.Negotiation.cs", "promiseId", 2, Why.PendingV5d, "CallInAPromise"),
-            new Site(Sim + "PlayerDeals.cs", null, 4, Why.PendingV5d, "HasBrokenPromise"),
+            new Site(Sim + "Negotiation.cs", null, 13, Why.Moved,
+                "V5d: Chance, Owed, CallInRefusal, SafetyHeld, BreachesAgainst (D1), CanonicalBreaches, BreachWords; a gate's raw branch is mode 0's"),
+            new Site(Sim + "EpisodeEngine.Negotiation.cs", "promiseId", 2, Why.Moved, "V5d: CallInAPromise; the raw branch is mode 0's"),
+            new Site(Sim + "PlayerDeals.cs", null, 3, Why.Moved, "V5d: HasBrokenPromise"),
             new Site(Sim + "YourWord.cs", "CommitmentReferences.FindDeal(s, fact.refId)", 1, Why.ModeAware, "a fact's deal, by its id"),
-            new Site(Sim + "YourWord.cs", "CommitmentReferences.FindCanonical(s, fact.refId)", 1, Why.ModeAware, "a fact's row, by its id"),
-            new Site(Sim + "YourWord.cs", null, 6, Why.PendingV5d, "Breaches, and a fact's words"),
-            new Site(Sim + "KnownOdds.cs", null, 2, Why.PendingV5d, "History"),
+            new Site(Sim + "YourWord.cs", "CommitmentReferences.FindCanonical(s, fact.refId) is", 1, Why.ModeAware, "a fact's Safety row, by its id"),
+            new Site(Sim + "YourWord.cs", null, 4, Why.Moved, "V5d: Breaches, and a fact's words"),
+            new Site(Sim + "KnownOdds.cs", null, 2, Why.Moved, "V5d: History"),
 
             // ---- pending V5e: history, finale and jury readers
             new Site(Sim + "FinaleQuestions.cs", null, 11, Why.PendingV5e, "Receipts' owners, and a receipt's party"),

@@ -115,6 +115,49 @@ namespace Gamesim.Tests.EditMode
             return "unfinished";
         }
 
+        /// <summary>One command played through both games of a lockstep walk: the mode-1 result's projection and the mode-2 result.</summary>
+        internal sealed class Injected
+        {
+            internal EpisodeState Before, Projection, Mode2;
+            internal CommandResult Legacy, Prospective;
+            internal EpisodeCommand Command;
+        }
+
+        /// <summary>
+        /// A lockstep walk (<see cref="Lockstep"/>) that, at the first moment <paramref name="inject"/> names a command for the
+        /// mode-1 state, plays that command through both games and returns them; null where the walk parts from mode 1 first,
+        /// or finishes without one.
+        /// </summary>
+        internal static Injected LockstepUntil(uint seed, int size, bool busy, Func<EpisodeState, EpisodeCommand> inject)
+        {
+            var fresh = PinnedVoteSeason.Fresh(seed, size: size);
+            var season = new PinnedVoteSeason(seed, fresh);
+            var engine = ProspectiveVoteFacade.Engine(PinnedVoteSeason.Project(fresh, new Dictionary<string, ProspectiveVoteOwner>(),
+                Array.Empty<UnifiedVoteRevealState>()));
+            for (int step = 0; step < 3000; step++)
+            {
+                var s = season.State;
+                if (s.phase == EpisodePhase.Finished) return null;
+                var injected = inject(s);
+                EpisodeCommand command = injected;
+                for (int attempt = 0; command == null && busy && attempt < 3; attempt++)
+                {
+                    var own = Busy(s, seed, attempt);
+                    if (own == null) break;
+                    if (new EpisodeEngine(s).Apply(own).accepted) command = own;
+                }
+                command = command ?? Next(s);
+                var legacy = season.Apply(command);
+                var prospective = engine.Apply(command);
+                if (injected != null)
+                    return new Injected { Before = s, Command = command, Legacy = legacy, Prospective = prospective, Mode2 = prospective.state,
+                        Projection = legacy.accepted ? PinnedVoteSeason.Project(legacy.state, season.Owners, season.Frames) : null };
+                if (!legacy.accepted || !prospective.accepted || !season.Supported) return null;
+                if (Differences(PinnedVoteSeason.Project(legacy.state, season.Owners, season.Frames), prospective.state).Count > 0) return null;
+            }
+            return null;
+        }
+
         /// <summary>
         /// The designed difference a reveal's states show, or null: the approved current-reveal exclusion (vote family V5c) -
         /// nothing differs but the Story grudges a breaker of this reveal's own Vote rows drew, each the same grudge, at most one

@@ -40,6 +40,9 @@ namespace Gamesim.Tests.EditMode
                 moments++;
                 bool overlap = UnifiedVoteHistory.Breaches(mode2).Any(i => i.EvidenceIds.Count > 1);
                 if (overlap) overlapping++;
+                // V5d: the player's bargaining and word, in free time and the campaign.
+                if (mode1.phase == EpisodePhase.Social || mode1.phase == EpisodePhase.Campaign)
+                    ModeTwoBargainReaderTests.CheckBargain(mode1, mode2, where, overlap);
                 // V5b: the house's decisions, where the house makes them - the nominations, the campaign and the open vote,
                 // the count, the final eviction and the jury.
                 if (!Decides(mode1)) return;

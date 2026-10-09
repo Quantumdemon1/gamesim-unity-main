@@ -74,7 +74,8 @@ namespace Gamesim.Simulation
         public static List<HouseFactState> Breaches(EpisodeState s)
         {
             var facts = On(s) && s.story?.facts != null ? AudibleFacts(s) : new List<HouseFactState>();
-            if (!UnifiedCommitments.RulesOn(s)) return facts;
+            // Wherever canonical Safety is the authority - mode 2 too (vote family V5d) - a Safety incident's facts are one breach.
+            if (!UnifiedCommitments.SafetyAuthorityOn(s)) return facts;
             // Hearings count one actual betrayal, even if several agreement references retain
             // knowledge of it. Only combine knowers actually recorded on its audible facts.
             var incidents = UnifiedCommitmentHistory.Breaches(s);
@@ -231,7 +232,8 @@ namespace Gamesim.Simulation
         {
             var deal = s == null ? null : CommitmentReferences.FindDeal(s, fact.refId);
             string with = first ? First(s, fact.subjectId) : Name(s, fact.subjectId);
-            if (first && UnifiedCommitments.RulesOn(s))
+            // Wherever canonical Safety is the authority - mode 2 too (vote family V5d); a canonical Vote row is no word of safety.
+            if (first && UnifiedCommitments.SafetyAuthorityOn(s))
             {
                 var incident = UnifiedCommitmentHistory.Breaches(s).FirstOrDefault(item => item.ActorId == fact.actorId
                     && item.WrongedId == fact.subjectId && item.EvidenceIds.Contains(fact.refId));
@@ -240,7 +242,8 @@ namespace Gamesim.Simulation
                     .Select(item => CommitmentReferences.FindCanonical(s, item.refId)?.sourcePolicy).Distinct().Count() > 1)
                     return "word of safety to " + with;
             }
-            if (deal == null && s != null && CommitmentReferences.FindCanonical(s, fact.refId)?.sourcePolicy == UnifiedCommitments.PromisePolicy)
+            if (deal == null && s != null && CommitmentReferences.FindCanonical(s, fact.refId) is UnifiedCommitmentState row
+                && row.kind == UnifiedCommitments.Safety && row.sourcePolicy == UnifiedCommitments.PromisePolicy)
                 return "promise of safety to " + with;
             return deal == null ? "word to " + with : CommitmentsRead.DealNoun(deal.type) + " with " + with;
         }

@@ -117,10 +117,13 @@ namespace Gamesim.Episode
             if (actWatchHeld + .0001f < ActHoldSeconds) return;
             actWatched = null;
             actWatchHeld = 0f;
+            // Against the committed season, as the walk-in watch offers its event: the engine decides.
+            var current = Snapshot;
+            if (EpisodeEngine.WitnessRefusal(current, seen.id, seen.actorId, seen.partnerId) != null) return;
             Submit(new EpisodeCommand
             {
-                id = Guid.NewGuid().ToString("N"), actorId = state.playerId, kind = EpisodeCommandKind.WitnessNpcAct,
-                expectedPhase = state.phase, expectedRevision = state.revision,
+                id = Guid.NewGuid().ToString("N"), actorId = current.playerId, kind = EpisodeCommandKind.WitnessNpcAct,
+                expectedPhase = current.phase, expectedRevision = current.revision,
                 targetId = seen.actorId, secondTargetId = seen.partnerId, text = seen.id,
             });
         }

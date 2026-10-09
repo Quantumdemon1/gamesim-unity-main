@@ -60,8 +60,7 @@ namespace Gamesim.Tests.EditMode
             { "strategyRulesStartWeek", 1 },
             { "allianceLeakRulesStartWeek", 1 },
             { "pactPlanRulesStartWeek", 1 },
-            // Wave D's all-week beats are storage nobody switches on yet.
-            { "allWeekRulesStartWeek", 0 },
+            { "allWeekRulesStartWeek", 1 },
             { "npcSocial.rulesStartWeek", 1 },
             { "story.rulesStartWeek", 1 },
             { "story.rulesVersion", 9 },
@@ -88,7 +87,7 @@ namespace Gamesim.Tests.EditMode
         /// setup gave at ca7f4da6 (EpisodeDirector.Season.cs StartSeason, copied below line for line), every
         /// public field of it, first impressions and lore included. A rule the shipped game gains later goes
         /// into ApplyFresh and is added to this copy in the same commit, so the two stay one list: D3's war
-        /// rooms are the first, added as the two lanes landed together.
+        /// rooms are the first, added as the two lanes landed together, and D2's all-week beats the next.
         /// </summary>
         [TestCaseSource(nameof(Builders))]
         public void ApplyFreshGivesTheSeasonTheDirectorsInlineSetupGave(string builder, int size, CastTemplates.Roster roster)
@@ -119,6 +118,7 @@ namespace Gamesim.Tests.EditMode
             EpisodeEngine.EnableCommitments(fresh);
             EpisodeEngine.EnableAllianceLeaks(fresh);
             EpisodeEngine.EnablePactPlans(fresh);
+            EpisodeEngine.EnableAllWeek(fresh);
             fresh.unifiedCommitmentRulesVersion = UnifiedCommitments.ProspectiveVersion;
             fresh.unifiedHearingRulesVersion = UnifiedCommitmentHearings.ProspectiveVersion;
         }

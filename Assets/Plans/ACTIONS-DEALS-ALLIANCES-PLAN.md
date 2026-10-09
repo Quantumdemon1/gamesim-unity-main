@@ -1213,6 +1213,63 @@ Every fix applies under the commitment rules only; seasons without them digest b
 
 **Floors:** the Unity-free subset 4679 to 4729; EditMode 7137 to 7192 (the subset's 50, `PactPlanPresentationTests`' 5); PlayMode 1005 to 1009; UMA unchanged. After D3-S7: the subset 4729 to 4737 and EditMode 7192 to 7200 (`PactPlanReaderTests`' 8); PlayMode unchanged. After the review: the subset 4737 to 4738 and EditMode 7200 to 7201 (`PactPlanReaderTests`' ninth); PlayMode unchanged.
 
+**B2 as Wave D's D2, all-week NPC strategy, built 2026-10-08** on `claude/d2-all-week` from the lead's a74a261a (schema 28's storage: `allWeekRulesStartWeek`, `NpcSocialState`'s beat plan and `acts`, kind 63 refused). WAVE-D-NPC-PACTS-PLAN §4's slices in the brief's order, S0, S1, S2, S3, S5, then S4 with the enable as the last commit; S6 stays deferred. Everything is keyed to `allWeekRulesStartWeek` through `EpisodeEngine.AllWeekOn` - the start week reached, the week rules on and the house acting on its own account - so a season without it plays the weekly pass (`NpcSocialActions.Settle`) roll for roll and line for line. No schema bump, no saved field, no caption; kind 63 goes live. Every default of the brief's §5 taken as written (the lead's round-3 decisions).
+
+| Slice | Commit | What |
+|---|---|---|
+| D2-S0 | ec11f388 | The measure: `AllWeekSeasonDigests.SettleByHouseSize` (Explicit, out of Unity) reads each of the house's acts from what a step wrote, over `ApplyFresh` seasons at 6, 8, 12 and the 16-house, six seeds, walker and busy player. No product code. |
+| D2-S1 | c7ca4fae | The cadence: `EpisodeEngine.AllWeek` (`EnableAllWeek`, `AllWeekOn`, `Rests`, `Due`, `CatchUp`, `Close`, `MostActs`, `BeatQuota`, `RecordAct`, `ActOpen`), `NpcActKinds`, the single beat `NpcSocialActions.Beat` with the roll seam (`Turn`), `NpcPromises.Offer/TryGive(positional)`, the catch-up in `Apply` and the six closes, Dissolve alone as the social week opens, the acts cleared at the week's turn, courts and campaign visits recorded, `CommandResult.beatsFromSequence`, D2-L5's `ActAnchor`, validation tightened. |
+| D2-S2 | d1e42b61 | `WitnessNpcAct` (kind 63) and `WitnessRefusal`, `SightingLine`, the listen-in's act clause through D4's builder (`OverheardAct`, `ActClause`). |
+| D2-S3 | 85d960b1 | `EpisodeDirector.AllWeek` (stage two, watch at 2 Hz, submit), `HouseMeetingCoordinator.ActStaging` (its own leases, exempt from the pause, yielding to every other claim), `EpisodeEngine.StageableActs`, the status line before the marker, staged actors out of pairing, the stroll and the companion, `ActsInBatchRuns`. |
+| D2-S5 | 99153e6e | `EpisodePlayModeTests.AllWeek` (5), written and not run. |
+| D2-S4 | 8e568be4, this entry's commit | The digests (rules off, recorded seasons on, the combined Wave D digest), the agency harness's all-week variant, the enable lines, the pins, this entry, the floors. |
+
+**What the player sees:**
+- A sighting (kind `sighting`, to the player alone): "You saw Riley Chen and Sam Ortiz talking in the kitchen." for an ordinary word or a campaign visit; "You saw Riley Chen and Sam Ortiz with their heads together in the bedroom." for a pact, a word given, a meeting, a rumour, a hunt or a court (the HoH suite, the competition yard, the game room); a fight (kind `overheard`): "You heard Riley Chen have words with Sam Ortiz in the living room." Never what was said, a pact, a subject or a number.
+- A paid listen-in on the two of an open act the player saw, after today's line, once: " Riley Chen told Sam Ortiz that Maya Hassan has to go." / " ... that Maya Hassan is the biggest threat in this house." / " Riley Chen and Sam Ortiz agreed to work together." / " ... were going over a plan." / " Riley Chen gave Sam Ortiz their word." / " Riley Chen was making their case to Sam Ortiz." - the pact and meeting clauses giving way to D4's sentence. No knowledge granted.
+- The house's own lines to the player, now in any window: "X sought you out this week.", "X told you Y has to go.", "X told you Y is the biggest threat in this house.", "X confronted you in front of the house.", "You found out X has been talking about you to Y." A reply card lives only in free time and the campaign (validation's rule), so a beat after the HoH or the nominations that reaches the player says its line without one.
+- Kind 63's refusals (never shown by the house's watch, which asks first): "That moment has passed.", "That happened out of sight.", "You already saw that.", "That is not who was there.", "You were part of that.", "You have seen enough for now.", "Nobody is about the house right now."
+- The status line after a step names the step, not the beats after it.
+
+**Evidence:**
+- **The subset:** 4843 to 4909, green. `AllWeekCadenceTests` (39; 37 in Unity), `WitnessNpcActTests` (25), the D3-owed `PactPlanTests.TheHousesBeatsFallBetweenTheMeetingAndTheAnswer`, `NpcAgencyHarnessTests.UnderTheAllWeekRulesPactsStillFormWithinTheCap`, `WaveDInertSchema28Tests`' D2 fixtures moved off move-in night and its storage-written test.
+- **The roll seam:** 63 fixtures hashing the state after `Settle`, `Campaign` and every `Perform` were identical before and after the refactor.
+- **Mutations**, each failing its test and restored byte for byte (hashes compared): the gate (the week rules, autonomy), `Due`'s ceiling, each of the six closes and the nominations' close moved after the names, the player exclusion (the fight, the talk pool, the rumour's subject, the pursuit), the roll seam (the talk draw, the change on the season's stream), Dissolve alone, the week's clear, the quota, decision 6 (the counter), decision 7 (positional words), the word a week, the card gate, the plan's keyed order; the witness's gate, the loud flag, the cap, the clause once, D4's suppression, the clause only of a seen act.
+- **The rules-off digests:** `CommitmentRulesSeasonDigests` and `AllianceLeakSeasonDigests` (both halves each) and `PactPlanSeasonDigests` (both halves) green at the end; `AllWeekSeasonDigests`' own off half holds the 54 seasons under the commitment rules as 2ea986df played them.
+- **On, the recorded seasons:** the director set's 18 (the other 36 have no windows) with the beats, every command legal; 1,498 probes, none drawing, reaching the player at a close, or moving an arc.
+- **On, the combined Wave D digest** (all three designs, `ApplyFresh`, walker and busy player against the same seasons off; a watcher; D3's trio player): every command legal; every probe clean; 1,440 windows ended, every plan spent, none empty; no line for an unseen act, none naming a pact, at most three seen a window, no witness drawing.
+
+| House | Beats a week (after the HoH / nominations / veto / eviction) | Successes per NPC-week, weekly pass -> all week | Player-involving acts a week | NPC-only pacts a season | Mean abs score at week 3's / 4's HoH, NPC to NPC |
+|---|---|---|---|---|---|
+| 6 | 8.75 (2.81 / 2.72 / 2.33 / 0.89) | 2.31 -> 2.76 | 0.50 -> 0.97 | 0.75 -> 0.75 | 18.76 -> 17.82 (-5%) / no week 4 |
+| 8 | 11.52 (3.82 / 3.68 / 2.98 / 1.03) | 2.39 -> 2.66 | 0.50 -> 0.52 | 1.50 -> 1.25 | 13.71 -> 12.34 (-10%) / 19.90 -> 16.09 (-19%) |
+| 12 | 15.55 (5.08 / 4.87 / 4.02 / 1.57) | 2.42 -> 2.51 | 0.57 -> 0.63 | 2.75 -> 2.25 | 10.97 -> 9.98 (-9%) / 13.98 -> 11.75 (-16%) |
+| 16 | 19.10 (6.42 / 5.96 / 5.08 / 1.64) | 2.42 -> 2.45 | 1.21 -> 1.23 | 4.08 -> 3.33 | 8.41 -> 7.55 (-10%) / 10.91 -> 8.77 (-20%) |
+
+  Acts by kind over the paired seasons at 12 (12 of them): talk 556, court 697, campaign 335, rumour 394, eavesdrop 234, promise 199, confront 147, hunt 54, meet 36, build 34, pact 23, hold 2; 2,270 staged, 207 with the player. Words a season at 8, weekly pass -> all week: Vote 9.08 -> 14.17, Safety 11.00 -> 11.50, AllianceLoyalty 3.50 -> 1.25, FinalTwo 0.75 -> 0.50 (a nominee's beats in the campaign give the vote to more voters than the campaign's opening pass). The watcher (six seasons a size) saw 96, 109, 265 and 477 acts at 6, 8, 12 and 16, 0, 14, 22 and 26 of them fights heard; D2's lines are 4.1 to 6.5 a week. Busy listen-ins never landed on a seen act's pair (S6's re-aim stays deferred). The agency harness at 8: NPC-only pacts 1.40 -> 1.13 a season over 48 seasons, no cap breach, nobody in two - inside decision 8's 1.0-1.5, so the pact rung stays tried at every beat.
+
+**Where the build departs from the plan, and what the owner should decide:**
+- **Acceptance (b)'s drift is missed at week 4.** Mean |score| between houseguests at week 4's HoH is 16-20% under the weekly pass's at 8, 12 and 16 (week 3: 5-10%, inside ±15%). The house acts on the same ladder as often, but spreads it through the week, and rumours run higher (0.52-0.72 a houseguest-week against 0.36-0.49). Not tuned here: a decision for the owner (accept, or a lever such as rumours once a fortnight).
+- **D3's war rooms meet less with the house acting all week.** D3's trio player held 0.83, 0.50, 2.00 and 1.33 war rooms a season at 6, 8, 12 and 16 with the beats off, 0, 0, 1.00 and 1.00 with them on (six seasons a size): the house's word reaches the trio's members from week one's first window, and a member who turns on the player is out of a pact of three before its first campaign. D4's leaks move within these samples' noise, on fewer rolls (fewer NPC pacts): at 12, 5 of 80 rolls with the beats off and 5 of 40 on; at 16, 8 of 160 and 1 of 112.
+- **The log's reach.** Once the 256 lines are full the oldest is 2 weeks back at 12 and 16 with or without D2, and 1 week back at 16 for a player who sees every act (the story page reads three weeks). The cap of three sightings a window stays; §5 item 4's re-tune is the owner's call with these counts.
+- **A reply card lives only in free time and the campaign.** The plan's "a tick beat's card lives the whole window" holds there; after the HoH or the nominations a beat that reaches the player says its line and puts no card (validation refuses such a card).
+- **Player-involving acts did not drop** (102-194% of the weekly pass's), so decision 2's fallback is not needed.
+- **`BalanceLabTests.KnownOddsReadOnlyWhatThePlayerKnows`** now keeps a houseguest's view of the player where `Allegiance.CommitmentKnown` holds (in touch this week: the notes can say the ally has gone quiet). The house is in touch with the player in every window under D2, so seed 9100 reached an ally the test randomised although the engine's rule lets the player tell they had gone quiet.
+- **The balance baseline** predates the enable; a 30-seed headline rerun with the beats played 720 seasons with no error. The 100-seed rerun is the lead's.
+
+**PlayMode, written and not run** (`EpisodePlayModeTests.AllWeek`, 5): one witness one line; none from another room, under the notebook or during a ceremony card; a reload stages again and says nothing twice; "Listen in" at the final three hears a seen act's clause; the status line after the crowning names the step. `AllianceLeaks_ASeasonTheDirectorStartsPlaysThem` and the import test now pin D2 at 1 (week + 1).
+
+**Tell the story session:**
+- Kind 63, `WitnessNpcAct`, is live under `allWeekRulesStartWeek`: free, the house's watch submits it, no season draw, no `StoryConversation`.
+- The event kinds `sighting` and `overheard` are written, one line per act seen, to the player alone.
+- Under the rules the social week opens with `NpcAlliances.Dissolve` alone; the house's turns are beats through the week's four windows, so NPC pacts form all week (one a houseguest a week).
+- Beats fire `StoryConfronted`, `StoryGossipedAbout` and `StoryCampaignedTo` mid-window at `CurrentAnchor` (only where the strategy rules do not apply - never in a fresh season).
+- `TellThePlayerWhichAlliancesEnded` is last before the house's first beats, which the catch-up fires after the step; the status line still names the step (`CommandResult.beatsFromSequence`).
+- A pact meeting's act carries the pact's id in `subjectId`; nothing shows it.
+- The director starts every season under the rules; the importer from the week after; no new memory, no saved field.
+
+**Floors:** the subset 4843 to 4909; EditMode 7305 to 7369 (`AllWeekCadenceTests`' 37 in Unity, `WitnessNpcActTests`' 25, `PactPlanTests`' 1, `NpcAgencyHarnessTests`' 1); PlayMode 1023 to 1028; UMA unchanged.
+
 ## Wave C staged checkpoint — 2026-10-05
 
 These are isolated gameplay-branch implementations, not live integration or native

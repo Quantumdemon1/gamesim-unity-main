@@ -655,8 +655,12 @@ answers with an offered response.
 
 ## What this baseline does not cover
 
-- **The NPC world (B5).** No NPC-to-NPC conversation, no all-week beats, no walk-ins; the plan's sensitivity
-  table against the tick budget comes with the driver.
+- **The NPC world (B5).** No NPC-to-NPC conversation and no walk-ins; the plan's sensitivity table against
+  the tick budget comes with the driver.
+- **The house's turns all week (Wave D's D2).** These tables predate D2's enable. Its beats are the engine's,
+  so since then every lab season plays them (`ShippedRules.ApplyFresh`); the lab's knowledge gate already hides
+  `NpcActState`. A 30-seed rerun of the headline tier with them on played 720 seasons with no error (5.9 min),
+  within these tables' noise; the 100-seed rerun that would replace them (about 17 minutes) is still to do.
 - **Seed counts (B6).** 100 a cell; the plan's 800 is about 2.3 hours of the headline grid on this machine.
   Rows and goldens per cell are not recorded yet.
 - **Human performance (B8).** The per-policy distributions are assumptions; the fixed-level tier bounds them.

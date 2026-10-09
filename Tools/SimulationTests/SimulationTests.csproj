@@ -263,6 +263,8 @@
     <!-- Display options (A12): the resolution list, the modes, VSync beside the limit, the old records and the first launch's decision. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/DisplayChoices.cs" />
     <Compile Include="$(EditMode)DisplayChoicesTests.cs" />
+    <!-- And the window written only by the window's own controls, the first launch and the verifier (A12, Risk R3). -->
+    <Compile Include="$(EditMode)WindowWriteScanTests.cs" />
     <!-- The prepared block speech a pad gives without typing (A6): every approach's line is a valid speech carrying it. -->
     <Compile Include="$(EditMode)PreparedSpeechTests.cs" />
     <!-- The standalone profile's performance verdict and arithmetic, and the verification-only stress house. -->

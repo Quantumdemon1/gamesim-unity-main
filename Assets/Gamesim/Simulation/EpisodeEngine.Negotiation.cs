@@ -228,7 +228,8 @@ namespace Gamesim.Simulation
         {
             string refusal = Negotiation.CallInRefusal(s, target.id, promiseId, approach);
             Require(refusal == null, refusal);
-            var promise = UnifiedCommitments.RulesOn(s) ? CommitmentReferences.FindPromise(s, promiseId)
+            // Wherever canonical Safety is the authority - mode 2 too (vote family V5d) - a promise owed may be its canonical row.
+            var promise = UnifiedCommitments.SafetyAuthorityOn(s) ? CommitmentReferences.FindPromise(s, promiseId)
                 : s.promises.First(p => p.id == promiseId);
             bool landed = Roll(s) * 100 < Negotiation.Chance(s, target.id, approach, false);
             double cost = Negotiation.Cost(approach);

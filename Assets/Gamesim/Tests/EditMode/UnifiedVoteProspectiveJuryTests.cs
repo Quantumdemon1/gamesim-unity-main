@@ -139,6 +139,62 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Trace(witness.State), Is.EqualTo(witness.SourceImage));
         }
 
+        /// <summary>
+        /// Vote family V5e: a real mode-2 game's juror asks an Accountability question whose receipt is a canonical Vote row, as
+        /// mode 1's asks it of the raw row - the row its Rule2 incident's owner (UnifiedVoteHistory.Incidents). A duplicate in the
+        /// same incident, equal in grade and later by id, owns nothing: the juror never asks about it, and a saved question that
+        /// names it is refused (the lead's decision D7).
+        /// </summary>
+        [TestCase(1)] [TestCase(2)]
+        public void AJurorsReceiptIsTheCanonicalVoteOwnerNeverItsDuplicate(int scenario)
+        {
+            var witness = Source(scenario); var s = Candidate(witness); Check(s, true);
+            var row = Selected(s, witness); var q = s.juryExchanges[s.juryQuestionIndex];
+            Assert.That(FinaleQuestions.Receipts(s, q.questionerId).Single(item => item.category == FinaleQuestions.Accountability).id, Is.EqualTo(row.id),
+                "The juror's receipt is the canonical Vote row, as mode 1's is the raw one.");
+            Assert.That(Receipt(witness.State, q.questionerId), Is.EqualTo(Receipt(s, q.questionerId)), "Mode 2's receipt is mode 1's.");
+
+            // A duplicate: the same duty, decided by the same ballot, an id after the owner's.
+            var duplicate = row.Clone();
+            int next = s.nextSequence;
+            string prefix = row.id.Substring(0, row.id.LastIndexOf('-') + 1);
+            while (string.CompareOrdinal(prefix + next, row.id) <= 0 || s.unifiedCommitments.Any(item => item.id == prefix + next)) next++;
+            duplicate.id = prefix + next; s.nextSequence = next + 1;
+            if (duplicate.status == DealStatus.Broken) duplicate.settlementEffectKey = UnifiedVoteHistory.Key(duplicate, duplicate.settledWeek);
+            s.unifiedCommitments.Add(duplicate);
+            Assert.That(ProspectiveVoteFacade.TryValidateProspectiveVoteStorage(s, out var storage), Is.True, storage);
+            var incident = UnifiedVoteHistory.Incidents(s).Single(item => item.EvidenceIds.Contains(row.id));
+            Assert.That(incident.EvidenceIds, Is.EquivalentTo(new[] { row.id, duplicate.id }), "Fixture: one incident of two rows.");
+            Assert.That(incident.OwnerId, Is.EqualTo(row.id), "Fixture: equal in grade, the smaller id owns it.");
+            Assert.That(FinaleQuestions.Receipts(s, q.questionerId).Single(item => item.category == FinaleQuestions.Accountability).id, Is.EqualTo(row.id),
+                "The juror asks about the owner, never the duplicate met after it.");
+            Check(s, true);
+            q.receiptId = duplicate.id;
+            Check(s, false);
+            Assert.That(Trace(witness.State), Is.EqualTo(witness.SourceImage));
+        }
+
+        /// <summary>A question is prepared with exactly two draws in both modes (vote family V5e), and to the same receipt where no group holds two rows.</summary>
+        [TestCase(0)] [TestCase(1)] [TestCase(2)] [TestCase(3)]
+        public void PreparingAQuestionDrawsTwoRollsInBothModes(int scenario)
+        {
+            var witness = Source(scenario);
+            var prepared = new List<string>();
+            foreach (var s in new[] { witness.State.Clone(), Candidate(witness) })
+            {
+                var q = s.juryExchanges[s.juryQuestionIndex];
+                int draws = 0;
+                var entry = new JuryExchangeState { questionerId = q.questionerId, finalistId = q.finalistId };
+                FinaleQuestions.Prepare(s, s.Find(q.questionerId), s.juryQuestionIndex, entry, () => { draws++; return 0.25; });
+                Assert.That(draws, Is.EqualTo(2), "Two draws, the category and the wording.");
+                prepared.Add(JsonConvert.SerializeObject(entry));
+            }
+            Assert.That(prepared[1], Is.EqualTo(prepared[0]), "Mode 2 prepares mode 1's question.");
+        }
+
+        private static string Receipt(EpisodeState s, string juror) =>
+            JsonConvert.SerializeObject(FinaleQuestions.Receipts(s, juror));
+
         private sealed class Witness
         {
             internal EpisodeState State;

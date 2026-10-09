@@ -88,7 +88,7 @@ namespace Gamesim.Simulation
 
         // The gateways' detached source-shaped views. Mode 1's are CommitmentReferences' as they always were;
         // in mode 2, once CheckUnifiedSafetyContext has checked the Safety authority and the hearing storage
-        // (whose mode-2 check judges the Vote family's rows too), the unchecked projection of both families.
+        // (whose mode-2 check reads the Vote rows' storage too, vote family V5a), the unchecked projection of both families.
         private static IReadOnlyList<PromiseState> SafetyPromises(EpisodeState s) =>
             UnifiedVoteStore.On(s) ? UnifiedVoteReferences.PromisesUnchecked(s) : CommitmentReferences.Promises(s);
 

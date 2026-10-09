@@ -460,7 +460,8 @@ namespace Gamesim.Simulation
             if (NpcDeals.Between(s, npcId, s.playerId).Count > 0) chance += 10;
             string trait = TraitBonus(move);
             if (trait != null && me.traits != null && me.traits.Any(t => string.Equals(t, trait, StringComparison.OrdinalIgnoreCase))) chance += 15;
-            if (s.deals.Any(d => asKnown ? KnownBreach(s, d, npcId) : Pair(d, npcId, s.playerId) && Breaches.CountsAgainst(s, d, s.playerId))
+            // Mode 2 (vote family V5d): mode 1's raw list, its vote deals the canonical rows.
+            if (CommitmentReferences.RawDeals(s).Any(d => asKnown ? KnownBreach(s, d, npcId) : Pair(d, npcId, s.playerId) && Breaches.CountsAgainst(s, d, s.playerId))
                 || CanonicalBreaches(s, npcId, dealsOnly: true).Any())
                 chance -= 30;
             return Math.Max(PlayerDeals.MinimumChance, Math.Min(PlayerDeals.MaximumChance, Math.Floor(chance + 0.5)));
@@ -492,7 +493,7 @@ namespace Gamesim.Simulation
         {
             if (!EpisodeEngine.CommitmentRulesOn(s) || string.IsNullOrEmpty(npcId) || s.Find(s.playerId)?.status != ContestantStatus.Active
                 || s.Find(npcId)?.status != ContestantStatus.Active) return new List<PromiseState>();
-            return (UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Promises(s) : s.promises)
+            return (UnifiedCommitments.SafetyAuthorityOn(s) ? CommitmentReferences.Promises(s) : s.promises)
                 .Where(p => p.status == PromiseStatus.Active && p.fromId == npcId && p.toId == s.playerId
                     && Callable(p.kind) && !CalledThisWeek(s, p))
                 .ToList();
@@ -503,7 +504,7 @@ namespace Gamesim.Simulation
         {
             if (!EpisodeEngine.CommitmentRulesOn(s)) return NotThisSeason;
             if (Array.IndexOf(Approaches, approach) < 0) return "That is no way to call in a promise.";
-            var promise = UnifiedCommitments.RulesOn(s) ? CommitmentReferences.FindPromise(s, promiseId)
+            var promise = UnifiedCommitments.SafetyAuthorityOn(s) ? CommitmentReferences.FindPromise(s, promiseId)
                 : s.promises.FirstOrDefault(p => p.id == promiseId);
             if (promise == null || promise.fromId != npcId || promise.toId != s.playerId)
                 return "Name a promise " + Name(s, npcId) + " made you.";
@@ -551,7 +552,7 @@ namespace Gamesim.Simulation
             if (s == null || id != s.playerId || !EpisodeEngine.CommitmentRulesOn(s)) return 0;
             // The canonical nomination reader compares this promise protection with deal protection;
             // overlapping words never add multiple copies of the same restraint.
-            if (UnifiedCommitments.RulesOn(s))
+            if (UnifiedCommitments.SafetyAuthorityOn(s))
                 return CommitmentReferences.Promises(s)
                     .Where(p => p.fromId == hohId && p.toId == id && p.kind == PromiseKind.Safety && p.status == PromiseStatus.Active)
                     .Select(p => HeldTo(s, p)).DefaultIfEmpty(0).Max() * StrategyRules.DealWeight(DealKind.SafetyAgreement);
@@ -605,8 +606,14 @@ namespace Gamesim.Simulation
         {
             if (!EpisodeEngine.CommitmentRulesOn(s) || string.IsNullOrEmpty(npcId)) return 0;
             string me = s.playerId;
-            return s.deals.Count(d => KnownBreach(s, d, npcId))
-                   + s.promises.Count(p => p.fromId == me && p.toId == npcId && Breaches.CountsAgainst(s, p, me))
+            // Mode 2 (vote family V5d): mode 1's raw lists, and a vote breach once per Rule2 incident (D1) - one the player
+            // can know of: a promise of theirs is their own act, a deal waits on the knowledge mode 1's waits on.
+            var deals = CommitmentReferences.RawDeals(s);
+            var promises = CommitmentReferences.RawPromises(s);
+            return deals.Count(d => !UnifiedVoteHistory.ByIncident(s, d) && KnownBreach(s, d, npcId))
+                   + promises.Count(p => !UnifiedVoteHistory.ByIncident(s, p) && p.fromId == me && p.toId == npcId && Breaches.CountsAgainst(s, p, me))
+                   + UnifiedVoteHistory.Breaches(s).Count(incident => incident.ActorId == me && incident.WrongedId == npcId
+                       && incident.EvidenceIds.Any(id => promises.Any(p => p.id == id) || deals.Any(d => d.id == id && KnownBreach(s, d, npcId))))
                    + CanonicalBreaches(s, npcId, dealsOnly: false).Count();
         }
 
@@ -615,7 +622,7 @@ namespace Gamesim.Simulation
         // Never project each agreement into another refusal penalty or mend allowance.
         private static IEnumerable<UnifiedCommitmentIncident> CanonicalBreaches(EpisodeState s, string npcId, bool dealsOnly)
         {
-            if (!UnifiedCommitments.RulesOn(s)) return Array.Empty<UnifiedCommitmentIncident>();
+            if (!UnifiedCommitments.SafetyAuthorityOn(s)) return Array.Empty<UnifiedCommitmentIncident>();
             var incidents = UnifiedCommitmentHistory.Breaches(s)
                 .Where(incident => incident.ActorId == s.playerId && incident.WrongedId == npcId);
             if (!dealsOnly) return incidents;
@@ -655,11 +662,12 @@ namespace Gamesim.Simulation
         public static string BreachWords(EpisodeState s, string npcId)
         {
             string me = s.playerId;
-            var deal = s.deals.Where(d => KnownBreach(s, d, npcId))
+            // Mode 2 (vote family V5d): mode 1's raw lists, their vote rows the canonical ones.
+            var deal = CommitmentReferences.RawDeals(s).Where(d => KnownBreach(s, d, npcId))
                 .OrderByDescending(d => d.settledWeek).ThenByDescending(d => d.week).FirstOrDefault();
-            var promise = s.promises.Where(p => p.fromId == me && p.toId == npcId && Breaches.CountsAgainst(s, p, me))
+            var promise = CommitmentReferences.RawPromises(s).Where(p => p.fromId == me && p.toId == npcId && Breaches.CountsAgainst(s, p, me))
                 .OrderByDescending(p => p.settledWeek).ThenByDescending(p => p.week).FirstOrDefault();
-            if (UnifiedCommitments.RulesOn(s))
+            if (UnifiedCommitments.SafetyAuthorityOn(s))
             {
                 var rows = UnifiedCommitmentHistory.Records(s).ToDictionary(row => row.id, StringComparer.Ordinal);
                 var latest = CanonicalBreaches(s, npcId, dealsOnly: false)

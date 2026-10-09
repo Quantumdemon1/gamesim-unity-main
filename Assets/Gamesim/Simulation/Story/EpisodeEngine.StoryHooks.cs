@@ -64,11 +64,16 @@ namespace Gamesim.Simulation
 
         private static void StoryWordBrokenBeforeSafetyEffects(EpisodeState s, string wrongedId, string breakerId,
             string cause, double severity, IReadOnlyList<string> excludedSafetyEffects)
+            => StoryWordBrokenBeforeCommitmentEffects(s, wrongedId, breakerId, cause, severity, excludedSafetyEffects, null);
+
+        /// <summary>The same, a reveal's own Vote effects excluded from the breaker's reputation too (vote family V5c).</summary>
+        private static void StoryWordBrokenBeforeCommitmentEffects(EpisodeState s, string wrongedId, string breakerId,
+            string cause, double severity, IReadOnlyList<string> excludedSafetyEffects, IReadOnlyCollection<string> excludedVoteEffects)
         {
             if (!StoryOn(s) || wrongedId == null || breakerId == null || wrongedId == breakerId) return;
             if (StoryAt(s, StoryRules.Grudges) && wrongedId != s.playerId)
-                Grudges.Add(s, wrongedId, breakerId,
-                    Grudges.ThreatScaledBeforeSafetyEffects(s, severity, wrongedId, breakerId, excludedSafetyEffects), cause);
+                Grudges.Add(s, wrongedId, breakerId, Grudges.ThreatScaledBeforeCommitmentEffects(s, severity, wrongedId, breakerId,
+                    excludedSafetyEffects, excludedVoteEffects), cause);
             if (breakerId == s.playerId) AddReckoning(s, wrongedId, cause, true);
             else if (wrongedId == s.playerId) AddReckoning(s, breakerId, cause, false);
         }
@@ -203,28 +208,12 @@ namespace Gamesim.Simulation
         /// The web's conversation trigger (<c>storyline-trigger-utils.ts</c>): a chance by topic -
         /// small talk 10%, a personal chat 20%, game talk 30%, venting 35%, a secret 40% - scaled by
         /// how strong the relationship is either way, plus a broken deal or a new alliance with them
-        /// this week, capped at 65%. Keyed, never the season's stream.
+        /// this week, capped at 65% (<see cref="ConversationStoryChance"/>). Keyed, never the season's stream.
         /// </summary>
         private static void TryStartFromConversation(EpisodeState s, string npcId, EpisodeCommandKind kind, string aboutId)
         {
-            double chance = TopicChance(kind);
+            double chance = ConversationStoryChance(s, npcId, kind);
             if (chance <= 0) return;
-            double strength = Math.Abs(s.Score(s.playerId, npcId));
-            chance *= strength >= 60 ? 1.8 : strength >= 40 ? 1.4 : strength >= 20 ? 1.1 : 0.6;
-            bool unifiedSafety = UnifiedCommitments.RulesOn(s);
-            var deals = unifiedSafety ? CommitmentReferences.Deals(s) : s.deals;
-            // A broken canonical deal needs an actual decision receipt, not just a status label.
-            // Validate its history without turning unilateral promises into this source's deal trigger.
-            if (unifiedSafety && s.unifiedCommitments.Any(row => row.sourcePolicy == UnifiedCommitments.DealPolicy
-                && row.status == DealStatus.Broken)) UnifiedCommitmentHistory.Breaches(s);
-            if (deals.Any(d => d.status == DealStatus.Broken
-                && (unifiedSafety ? CommitmentReferences.ReceiptWeek(s, d.id, d.week) : d.week) == s.week
-                && ((d.proposerId == npcId && d.recipientId == s.playerId) || (d.proposerId == s.playerId && d.recipientId == npcId))))
-                chance += 0.25;
-            if (s.alliances.Any(a => a.active && a.members.Contains(npcId) && a.members.Contains(s.playerId)
-                                     && s.events.Any(e => e.kind == "alliance" && e.week == s.week && e.audienceIds.Contains(npcId))))
-                chance += 0.20;
-            chance = Math.Min(0.65, chance);
             if (!StoryRandom.Chance(s, "w" + s.week + ":talk:" + npcId + ":" + s.nextSequence, chance)) return;
 
             var ctx = new StoryContext(s, StoryAnchors.Conversation, npcId, kind, aboutId);
@@ -244,6 +233,35 @@ namespace Gamesim.Simulation
                 if (roll < candidate.weight) { StartCycle(s, candidate.template, candidate.binding, StoryAnchors.Conversation); return; }
                 roll -= candidate.weight;
             }
+        }
+
+        /// <summary>
+        /// The chance a conversation with <paramref name="npcId"/> on <paramref name="kind"/> starts a storyline, as
+        /// <see cref="TryStartFromConversation"/> draws on it with the state as it stands when the conversation has been had:
+        /// zero for a topic that starts none. Pure: it reads the state and draws nothing.
+        /// </summary>
+        public static double ConversationStoryChance(EpisodeState s, string npcId, EpisodeCommandKind kind)
+        {
+            double chance = TopicChance(kind);
+            if (chance <= 0) return 0;
+            double strength = Math.Abs(s.Score(s.playerId, npcId));
+            chance *= strength >= 60 ? 1.8 : strength >= 40 ? 1.4 : strength >= 20 ? 1.1 : 0.6;
+            // Mode 2 (vote family V5c) as mode 1: the deal view, a canonical Safety deal dated by its settlement and every
+            // other deal - a canonical vote deal among them - by the week it was struck, as mode 1's raw rows are.
+            bool unifiedSafety = UnifiedCommitments.SafetyAuthorityOn(s);
+            var deals = unifiedSafety ? CommitmentReferences.Deals(s) : s.deals;
+            // A broken canonical deal needs an actual decision receipt, not just a status label.
+            // Validate its history without turning unilateral promises into this source's deal trigger.
+            if (unifiedSafety && s.unifiedCommitments.Any(row => row.sourcePolicy == UnifiedCommitments.DealPolicy
+                && row.status == DealStatus.Broken)) UnifiedCommitmentHistory.Breaches(s);
+            if (deals.Any(d => d.status == DealStatus.Broken
+                && (unifiedSafety && d.type == DealKind.SafetyAgreement ? CommitmentReferences.ReceiptWeek(s, d.id, d.week) : d.week) == s.week
+                && ((d.proposerId == npcId && d.recipientId == s.playerId) || (d.proposerId == s.playerId && d.recipientId == npcId))))
+                chance += 0.25;
+            if (s.alliances.Any(a => a.active && a.members.Contains(npcId) && a.members.Contains(s.playerId)
+                                     && s.events.Any(e => e.kind == "alliance" && e.week == s.week && e.audienceIds.Contains(npcId))))
+                chance += 0.20;
+            return Math.Min(0.65, chance);
         }
 
         /// <summary>The web's base chance for a conversation to start a storyline, by topic.</summary>

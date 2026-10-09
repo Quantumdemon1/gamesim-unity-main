@@ -46,12 +46,17 @@ namespace Gamesim.Simulation
         /// Complete detached candidate validation only. No public command, constructor, load,
         /// migration or save path dispatches here or opts a recorded season into Vote authority.
         /// Current prerequisites must be active; historical rows retain their own source weeks.
+        /// <para>The house's deal pass runs from the first week (vote family V5a, the lead's decision D5): a finite
+        /// Vote deal past its week ends at that pass, which mode 1's settlement leaves to decide, so the two agree only
+        /// where the pass has run every week.</para>
         /// </summary>
         internal static bool TryValidateProspectiveUnifiedVote(EpisodeState s, out string error)
         {
             if (s == null || s.unifiedCommitmentRulesVersion != UnifiedVoteFamilyValidation.Version
                 || !YourWord.On(s))
                 return Fail(out error, "Prospective Vote requires its explicit version and active commitment/story rules.");
+            if (s.dealRulesStartWeek != 1)
+                return Fail(out error, "Prospective Vote requires the house's deal pass from the first week.");
             return TryValidateCore(s, UnifiedVoteFamilyValidation.Version, out error);
         }
 

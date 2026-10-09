@@ -371,17 +371,22 @@ namespace Gamesim.Simulation
                     else if (p.hohId == finalistId && (p.nominees.Contains(player) || p.savedId == player)) acts.Add((p.week, "nominated you"));
                     else if (p.vetoHolderId == finalistId && p.vetoUsed && p.replacementId == player) acts.Add((p.week, "used the veto to put you up"));
                 }
-            var broken = s.deals.Where(d => d.status == DealStatus.Broken && Between(d.proposerId, d.recipientId, player, finalistId)).ToList();
-            int deals = broken.Count(d => BrokeADealWithYou(s, d, finalistId));
+            // Mode 1's raw rows, and in mode 2 its Vote rows too (vote family V5e), a vote breach counted once per Rule2
+            // incident (the lead's decision D1): a deal where it is its incident's deal, a promise where its incident has none.
+            var broken = CommitmentReferences.RawDeals(s).Where(d => d.status == DealStatus.Broken && Between(d.proposerId, d.recipientId, player, finalistId)).ToList();
+            var incidents = UnifiedVoteHistory.Incidents(s);
+            int deals = broken.Count(d => BrokeADealWithYou(s, d, finalistId) && (!UnifiedVoteHistory.ByIncident(s, d)
+                || incidents.Any(incident => incident.DealId == d.id && incident.ActorId == finalistId && incident.WrongedId == player)));
             // A voting block that fell apart says the finalist voted the other way: said once the
             // player knows their ballot (decision 4).
             bool block = broken.Any(d => d.type == DealKind.VoteTogether && KnownBallots.DealOutcomeKnown(s, d));
-            int promises = s.promises.Count(p => p.status == PromiseStatus.Broken && p.fromId == finalistId && p.toId == player);
+            int promises = CommitmentReferences.RawPromises(s).Count(p => p.status == PromiseStatus.Broken && p.fromId == finalistId && p.toId == player
+                && (!UnifiedVoteHistory.ByIncident(s, p) || incidents.Any(incident => incident.OwnerId == p.id && incident.DealId == null)));
             var parts = acts.OrderBy(a => a.week).Select(a => "Week " + a.week + ": " + a.text).ToList();
             if (deals > 0) parts.Add(deals == 1 ? "Broke a deal with you" : "Broke " + deals + " deals with you");
             if (block) parts.Add("Your voting bloc fell apart");
             if (promises > 0) parts.Add(promises == 1 ? "Broke a promise to you" : "Broke " + promises + " promises to you");
-            if (UnifiedCommitments.RulesOn(s))
+            if (UnifiedCommitments.SafetyAuthorityOn(s))
             {
                 int safety = UnifiedCommitmentHistory.Breaches(s).Count(incident => incident.ActorId == finalistId && incident.WrongedId == player);
                 if (safety > 0) parts.Add(safety == 1 ? "Broke a safety commitment to you" : "Broke " + safety + " safety commitments to you");
@@ -517,10 +522,11 @@ namespace Gamesim.Simulation
             if (weeks.Count > 0) parts.Add("Allied since week " + weeks.Min());
             // Under the commitment rules a deal the vote settled - a partnership too (C1) - is told once
             // the player knows the ballot that kept it (KnownBallots).
+            // Mode 1's raw rows, one by one - in mode 2 its Vote rows too (vote family V5e) - and Safety's receipts wherever canonical.
             bool rules = EpisodeEngine.CommitmentRulesOn(s);
-            int kept = s.deals.Count(d => d.status == DealStatus.Fulfilled && Between(d.proposerId, d.recipientId, s.playerId, finalistId)
+            int kept = CommitmentReferences.RawDeals(s).Count(d => d.status == DealStatus.Fulfilled && Between(d.proposerId, d.recipientId, s.playerId, finalistId)
                 && (!rules || KnownBallots.DealOutcomeKnown(s, d)));
-            if (UnifiedCommitments.RulesOn(s))
+            if (UnifiedCommitments.SafetyAuthorityOn(s))
                 // A final-veto receipt belongs to the reciprocal pair/week, not to each alias
                 // and not to a made-up keeping actor. Promise expiry is never a fulfillment.
                 kept += UnifiedCommitmentHistory.Fulfillments(s)

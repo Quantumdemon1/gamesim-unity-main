@@ -89,8 +89,8 @@ namespace Gamesim.Simulation
         /// Whether canonical Safety rows are the season's one Safety authority: the public mode 1, and the
         /// prospective mode 2 (vote family V3b), which keeps the Vote family's canonical rows beside them.
         /// The Safety writers, the nomination, spared and expiry gateways and the hearing lineage they
-        /// install select it; a reader not yet moved stays on <see cref="RulesOn"/> (vote family V5). Mode 2
-        /// is still refused publicly, so no recorded season reaches it.
+        /// install select it, and so does every reader (vote family V5); <see cref="RulesOn"/> is mode 1
+        /// alone. Mode 2 is still refused publicly, so no recorded season reaches it.
         /// </summary>
         public static bool SafetyAuthorityOn(EpisodeState state) => state != null
             && (state.unifiedCommitmentRulesVersion == ProspectiveVersion

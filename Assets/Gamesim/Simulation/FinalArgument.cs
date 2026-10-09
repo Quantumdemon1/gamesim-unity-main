@@ -172,9 +172,10 @@ namespace Gamesim.Simulation
                     "In week " + promise.week + ", I gave " + Name(s, promise.toId) + " my word, and I kept it.");
             // Under the commitment rules a deal the vote settled - a partnership too (C1) - is one the
             // player can claim only once they know the ballot that kept it (KnownBallots).
+            // A canonical deal is a moment only as its group's owner: a Safety receipt's, and mode 2's Vote one's (vote family V5e).
             bool rules = EpisodeEngine.CommitmentRulesOn(s);
-            var canonicalKeptOwners = new HashSet<string>(UnifiedCommitmentHistory.Fulfillments(s)
-                .Select(receipt => receipt.EffectOwnerId), StringComparer.Ordinal);
+            var canonicalKeptOwners = new HashSet<string>(UnifiedCommitmentHistory.Fulfillments(s).Select(receipt => receipt.EffectOwnerId)
+                .Concat(UnifiedVoteHistory.Fulfillments(s).Select(receipt => receipt.OwnerId)), StringComparer.Ordinal);
             foreach (var deal in CommitmentReferences.Deals(s).Where(x => x.status == DealStatus.Fulfilled && (x.proposerId == player || x.recipientId == player)
                          && (!rules || KnownBallots.DealOutcomeKnown(s, x))
                          && (CommitmentReferences.FindCanonical(s, x.id) == null || canonicalKeptOwners.Contains(x.id))))
@@ -183,7 +184,7 @@ namespace Gamesim.Simulation
                 string title = DealKind.Title(deal.type).ToLowerInvariant();
                 int receiptWeek = CommitmentReferences.ReceiptWeek(s, deal.id, deal.week);
                 Add("deal:" + deal.id, Emotional, receiptWeek, "Week " + receiptWeek + ": you and " + Name(s, other) + " kept your " + title + ".",
-                    CommitmentReferences.FindCanonical(s, deal.id) == null
+                    CommitmentReferences.FindCanonicalSafety(s, deal.id) == null
                         ? "In week " + deal.week + ", " + Name(s, other) + " and I made a " + title + ", and I kept it."
                         : "In week " + receiptWeek + ", " + Name(s, other) + " and I kept our " + title + ".");
             }
@@ -445,10 +446,11 @@ namespace Gamesim.Simulation
         }
 
         // Every original reference still resolves as provenance. A locked alias is not another
-        // kept moment, and a canonical agreement that was never kept cannot back that claim.
+        // kept moment, and a canonical agreement that was never kept cannot back that claim. Wherever Safety is
+        // canonical (vote family V5e); a Vote reference, a moment only as its owner already, resolves as mode 1's does.
         private static IEnumerable<string> ArgumentReferences(EpisodeState s, IEnumerable<string> references)
         {
-            if (!UnifiedCommitments.RulesOn(s)) return references;
+            if (!UnifiedCommitments.SafetyAuthorityOn(s)) return references;
             var rows = UnifiedCommitmentHistory.Records(s).ToDictionary(row => row.id, StringComparer.Ordinal);
             var receipts = UnifiedCommitmentHistory.Fulfillments(s)
                 .Where(receipt => receipt.FirstId == s.playerId || receipt.SecondId == s.playerId)

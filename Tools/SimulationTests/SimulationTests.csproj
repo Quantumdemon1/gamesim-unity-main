@@ -96,6 +96,18 @@
     <Compile Include="$(EditMode)UnifiedSafetyModeTwoTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteSettlementTests.cs" />
     <Compile Include="$(EditMode)OrdinaryVoterRemovalTests.cs" />
+    <!-- Vote family V5: the readers moved to mode 2, each against mode 1 on the projected season (P2) and blind to hidden ballots (P3).
+         The whole-season sweeps run a sample always; the rest of their seeds are explicit and compiled out of Unity, run on demand. -->
+    <Compile Include="$(EditMode)ModeTwoReaderSweep.cs" />
+    <Compile Include="$(EditMode)CommitmentReaderViewTests.cs" />
+    <Compile Include="$(EditMode)CommitmentReaderScanTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoSeasonSweepTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoHouseReaderTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoReaderParityTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoThreatStoryTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoBargainReaderTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoFinaleReaderTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoPageReaderTests.cs" />
     <Compile Include="$(EditMode)CommitmentReferencesTests.cs" />
     <Compile Include="$(EditMode)UnifiedCommitmentStoreTests.cs" />
     <Compile Include="$(EditMode)UnifiedSafetyCommandOwnerTests.cs" />
@@ -125,6 +137,8 @@
     <Compile Include="$(EditMode)EndgameCommitmentsTests.cs" />
     <!-- Explicit, and compiled out of Unity: the commitment rules' recorded-season evidence, run on demand. -->
     <Compile Include="$(EditMode)CommitmentRulesSeasonDigests.cs" />
+    <!-- Explicit, and compiled out of Unity: mode 1's recorded-season evidence over 36 seasons (vote family V5a, D6), run on demand. -->
+    <Compile Include="$(EditMode)ModeOneSeasonDigests.cs" />
     <!--
       Independent fixed JSON contracts ONLY: a source-bound test observer validates a separate
       public-field view, while legacy digest traces retain their getters and original bytes.

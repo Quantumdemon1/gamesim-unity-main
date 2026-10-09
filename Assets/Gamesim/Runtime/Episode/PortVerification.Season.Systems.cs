@@ -311,7 +311,7 @@ namespace Gamesim.Episode
             {
                 yield return CaptureSeason("deal-offer", graphical);
                 yield return ClickSeasonButton(EpisodeHud.DealAcceptCaption);
-                var answered = seasonDirector.Snapshot.deals.FirstOrDefault(deal => deal.id == offer.id);
+                var answered = SeasonDeal(seasonDirector.Snapshot, offer.id);
                 RequireSeason(answered != null && answered.status != DealStatus.Proposed, "Accepting an offer must settle its status.");
                 seasonReport.dealsAnswered++;
                 before = seasonDirector.Snapshot;
@@ -328,7 +328,7 @@ namespace Gamesim.Episode
             {
                 yield return ClickSeasonButton(EpisodeHud.DealProposeCaption(DealKind.Title(chosenKind).ToLowerInvariant()));
                 var after = seasonDirector.Snapshot;
-                var deal = after.deals.FirstOrDefault(d => d.proposerId == after.playerId && d.recipientId == chosen.Id && d.type == chosenKind);
+                var deal = CommitmentReferences.Deals(after).FirstOrDefault(d => d.proposerId == after.playerId && d.recipientId == chosen.Id && d.type == chosenKind);
                 // A refusal records no deal - the engine adds one only when the housemate agrees - but
                 // the proposal is a committed command either way: one revision, and the house says
                 // something about it. The first standalone run to reach this branch failed here for
@@ -352,11 +352,17 @@ namespace Gamesim.Episode
         {
             seasonReport.storylinesBegun = finale.storylines.Count;
             seasonReport.houseEventsSeen = finale.houseEvents.Count;
-            seasonReport.dealsRecorded = finale.deals.Count;
+            seasonReport.dealsRecorded = CommitmentReferences.Deals(finale).Count;
             seasonReport.modifiersCarried = finale.activeModifiers.Count;
         }
 
         // ---------------------------------------------------------------- helpers
+
+        /// <summary>
+        /// A deal of the season by its id, wherever it is held: the raw list, or a canonical row through the view (vote family
+        /// V5f) - an accepted canonical Safety offer in mode 1, and in mode 2 every vote deal, which the raw list never holds.
+        /// </summary>
+        public static DealState SeasonDeal(EpisodeState state, string id) => CommitmentReferences.FindDeal(state, id);
 
         private bool HasSeasonButtonText(string caption) => VisibleSeasonButtons()
             .Any(button => button.IsActive() && button.IsInteractable()

@@ -73,6 +73,10 @@ namespace Gamesim.Simulation
                 return new CommandResult { accepted = true, reason = "Committed", state = Snapshot };
             }
             catch (RuleException error) { return Rejected(error.Message); }
+            // Mode 2 only (vote family V5a, the lead's decision D3): a reader's refusal of the state it was given -
+            // its storage check, a malformed row - refuses the command, as an NPC operation's does
+            // (EpisodeNpcSocial), instead of escaping it. Modes 0 and 1 keep their error path exactly.
+            catch (ArgumentException error) when (UnifiedVoteStore.On(current)) { return Rejected(error.Message); }
         }
 
         private CommandResult Rejected(string reason) => new CommandResult { reason = reason, state = Snapshot };
@@ -808,7 +812,7 @@ namespace Gamesim.Simulation
             StrategyRules.NominationReluctance(s, hohId, id) + StoryConsumers.NominationPreference(s, hohId, id) - s.Score(hohId, id)
             // Native unified rules: story's word and strategy's hold describe the same protection.
             // Subtract only their overlap; grudges, alliances, bonds, targets and pleas stay independent.
-            - (UnifiedCommitments.RulesOn(s) ? Math.Min(UnifiedCommitments.StrongestProtection(s, hohId, id).Strength,
+            - (UnifiedCommitments.SafetyAuthorityOn(s) ? Math.Min(UnifiedCommitments.StrongestProtection(s, hohId, id).Strength,
                 StoryConsumers.SafetyPreference(s, hohId, id)) : 0)
             // Under agency, how dangerous they are, as the Head of Household and their pact read it (NPC-AGENCY-PLAN.md §5.1).
             - ThreatTerm(s, hohId, id);

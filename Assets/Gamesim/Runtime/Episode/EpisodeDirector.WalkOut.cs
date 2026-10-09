@@ -741,7 +741,8 @@ namespace Gamesim.Episode
         {
             if (state == null || id == null || state.Find(id) == null) return GoodbyeKind.Neutral;
             string you = state.playerId;
-            bool dealt = state.deals != null && state.deals.Any(d => DealStatus.Binds(d.status) && d.status != DealStatus.Proposed
+            // Mode 1's raw deals - in mode 2 the view of them, its Vote rows included (vote family V5f).
+            bool dealt = state.deals != null && CommitmentReferences.RawDeals(state).Any(d => DealStatus.Binds(d.status) && d.status != DealStatus.Proposed
                 && ((d.proposerId == id && d.recipientId == you) || (d.proposerId == you && d.recipientId == id)));
             if (dealt) return GoodbyeKind.Dealt;
             bool nominated = state.hohId == you && state.nominees != null && state.nominees.Contains(id);

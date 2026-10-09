@@ -44,8 +44,9 @@ namespace Gamesim.Simulation
         /// <summary>
         /// Whether the hearing lineage is written: hearings on wherever canonical Safety is the authority -
         /// mode 1 (exactly <see cref="RulesOn"/>), and the prospective mode 2 (vote family V3b), whose complete
-        /// core asks the same lineage of a player's audible Safety deal breach. The writers and their guards
-        /// select it; a reader not yet moved stays on <see cref="RulesOn"/> (vote family V5).
+        /// core asks the same lineage of a player's audible Safety deal breach. The writers, their guards and
+        /// its reader (<see cref="YourWord"/>, vote family V5d) select it; <see cref="RulesOn"/> is mode 1's
+        /// hearings alone, which only validation reads (CommitmentReaderScanTests names every site).
         /// </summary>
         internal static bool WritesOn(EpisodeState s) => s != null
             && s.unifiedHearingRulesVersion == ProspectiveVersion && UnifiedCommitments.SafetyAuthorityOn(s);
@@ -69,8 +70,10 @@ namespace Gamesim.Simulation
             if (!enabled || !YourWord.On(s) || s.story?.facts == null || s.story.facts.Any(f => f == null)
                 || s.unifiedHearingEvidence.Count > EvidenceCapacity || s.unifiedHearingReceipts.Count > ReceiptCapacity)
                 return Refuse(out error, "Invalid prospective hearing storage.");
+            // Mode 2 checks the commitment storage only (vote family V5a), as mode 1 does: every Safety gateway
+            // calls this in the middle of its command, and the whole-episode core judges the Vote family itself.
             if (prospectiveVote
-                ? !UnifiedVoteFamilyValidation.TryValidate(s, s.unifiedVoteReveals, out error)
+                ? !UnifiedVoteFamilyValidation.TryValidateStorage(s, out error)
                 : !UnifiedCommitments.ValidateRecords(s, out error)) return false;
             IReadOnlyList<UnifiedCommitmentIncident> incidents;
             try { incidents = UnifiedCommitmentHistory.Breaches(s); }

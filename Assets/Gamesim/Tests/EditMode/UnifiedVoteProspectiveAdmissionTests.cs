@@ -213,7 +213,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(UnifiedCommitmentHistory.Breaches(s).All(incident => !incident.EvidenceIds.Contains(row.id)), Is.True);
             Assert.That(UnifiedCommitmentHistory.Fulfillments(s).All(incident => !incident.EvidenceIds.Contains(row.id)), Is.True);
             Assert.That(ProspectiveVoteFacade.CanonicalLeaf(s, new HouseFactState { refId = row.id }), Is.False);
-            Assert.That(CommitmentReferences.ReceiptWeek(s, row.id, row.createdWeek), Is.EqualTo(row.settledWeek));
+            // A Vote receipt keeps mode 1's legacy dating, the week it was made (vote family V5e); its decision has the reveal's.
+            Assert.That(CommitmentReferences.ReceiptWeek(s, row.id, row.createdWeek), Is.EqualTo(row.createdWeek));
             Assert.That(Fingerprint(s), Is.EqualTo(before));
             decision.Record.status = DealStatus.Expired; decision.Reveal.ballots.Clear();
             Assert.That(Fingerprint(s), Is.EqualTo(before));
@@ -315,7 +316,8 @@ namespace Gamesim.Tests.EditMode
             if (status == DealStatus.Broken) { price.brokenById = actor; price.settlementEffectKey = UnifiedVoteHistory.Key(price, selected.week); }
             Accepted(s);
             Assert.That(UnifiedVoteHistory.FindDecision(s, price.id).SettledWeek, Is.EqualTo(later.week));
-            Assert.That(CommitmentReferences.ReceiptWeek(s, price.id, price.createdWeek), Is.EqualTo(later.week));
+            // The receipt keeps mode 1's legacy dating (vote family V5e): the week the price was made, not its later decision's.
+            Assert.That(CommitmentReferences.ReceiptWeek(s, price.id, price.createdWeek), Is.EqualTo(first.week));
             // Both completed nominee frames/private ballots are ACTUAL public progression.
             // The changed historical Levers boundary and linked ask/price are detached local
             // compatibility controls, NOT actual ask commands, migration or historical saves.

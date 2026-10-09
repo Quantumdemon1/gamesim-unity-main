@@ -541,7 +541,8 @@ namespace Gamesim.Simulation
             bool rules = EpisodeEngine.CommitmentRulesOn(s);
             // This inventory retains every own agreement with a member; it is not a once-per-
             // breach mechanical score. Canonical promises never masquerade as reciprocal deals.
-            return (UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Deals(s) : s.deals).Where(d => d != null && d.type != DealKind.AllianceInvite
+            // The view wherever Safety is canonical - mode 2's is mode 1's list (vote family V5f).
+            return (UnifiedCommitments.SafetyAuthorityOn(s) ? CommitmentReferences.Deals(s) : s.deals).Where(d => d != null && d.type != DealKind.AllianceInvite
                     && (d.status == DealStatus.Accepted || d.status == DealStatus.Active || d.status == DealStatus.Fulfilled || d.status == DealStatus.Broken)
                     && ((d.proposerId == s.playerId && others.Contains(d.recipientId)) || (d.recipientId == s.playerId && others.Contains(d.proposerId))))
                 .OrderBy(d => d.week)

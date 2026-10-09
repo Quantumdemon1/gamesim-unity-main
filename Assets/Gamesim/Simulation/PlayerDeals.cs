@@ -386,8 +386,9 @@ namespace Gamesim.Simulation
 
         private static bool HasBrokenPromise(EpisodeState state)
         {
-            if (state.promises.Any(p => Breaches.CountsAgainst(state, p, state.playerId))) return true;
-            if (!UnifiedCommitments.RulesOn(state)) return false;
+            // Mode 2 (vote family V5d): mode 1's raw list, its vote promises the canonical rows.
+            if (CommitmentReferences.RawPromises(state).Any(p => Breaches.CountsAgainst(state, p, state.playerId))) return true;
+            if (!UnifiedCommitments.SafetyAuthorityOn(state)) return false;
             var promises = new HashSet<string>(UnifiedCommitmentHistory.Records(state)
                 .Where(row => row.sourcePolicy == UnifiedCommitments.PromisePolicy).Select(row => row.id), StringComparer.Ordinal);
             return UnifiedCommitmentHistory.Breaches(state)

@@ -98,8 +98,11 @@ namespace Gamesim.Simulation
         /// </summary>
         public static int BrokenDeals(EpisodeState state, string whoId)
         {
-            int legacy = state.deals.Count(d => Breaches.CountsAgainst(state, d, whoId));
-            if (!UnifiedCommitments.RulesOn(state)) return legacy;
+            // Mode 2 (vote family V5b): mode 1's raw list, its Vote deals counted once per Rule2 incident (D1).
+            var incidents = UnifiedVoteHistory.Breaches(state);
+            int legacy = CommitmentReferences.RawDeals(state).Count(d => Breaches.CountsAgainst(state, d, whoId)
+                && (!UnifiedVoteHistory.ByIncident(state, d) || incidents.Any(i => i.DealId == d.id && i.ActorId == whoId)));
+            if (!UnifiedCommitments.SafetyAuthorityOn(state)) return legacy;
             // This source term measures broken deals, not every kind of word. A promise-only
             // incident stays outside it; any number of reciprocal Safety deal aliases counts
             // once, against the actual actor and never against the person they wronged.
@@ -414,9 +417,12 @@ namespace Gamesim.Simulation
             }
         }
 
-        /// <summary>Offers still waiting on the player, newest first.</summary>
+        /// <summary>
+        /// Offers still waiting on the player, newest first: wherever canonical Safety is the authority, its offers
+        /// too, and in the prospective mode 2 the canonical Vote offers (vote family V5a).
+        /// </summary>
         public static List<DealState> Pending(EpisodeState state) =>
-            (state == null ? null : UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Deals(state) : state.deals)
+            (state == null ? null : UnifiedCommitments.SafetyAuthorityOn(state) ? CommitmentReferences.Deals(state) : state.deals)
                 ?.Where(d => d.status == DealStatus.Proposed && d.recipientId == state.playerId)
                 .OrderByDescending(d => d.week)
                 .ThenByDescending(d => Urgency(d.type))

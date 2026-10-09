@@ -390,6 +390,10 @@ namespace Gamesim.Tests.PlayMode
             player.Agent.speed = 25; player.Agent.acceleration = 100;
             director.SetCeremonyPace(CeremonyPace.Quick);
             Assert.That(director.Snapshot.week, Is.EqualTo(1));
+            // The season is new each run, seeded from the clock: named, so a panel the walk does not
+            // know can be played again from its seed.
+            string season = "seed " + director.Snapshot.seed + ", session " + director.Snapshot.sessionId;
+            TestContext.WriteLine("first week: " + season);
 
             var previous = director.Snapshot;
             bool evicted = false;
@@ -418,14 +422,14 @@ namespace Gamesim.Tests.PlayMode
                 foreach (var caption in captions)
                 {
                     Assert.That(ControlCarrying(caption), Is.Not.Null, "The rules-on week put up a panel the walk does not know in " + state.phase
-                        + ": it wanted '" + caption + "' and the panel offers " + PanelCaptions() + ".");
+                        + ": it wanted '" + caption + "' and the panel offers " + PanelCaptions() + " (" + season + ").");
                     yield return ReachAndPress(caption, pad: true);
                 }
                 Assert.That(director.Snapshot.revision, Is.GreaterThan(state.revision), "A commits a decision in " + state.phase + "; " + lastSubmit);
                 yield return PadThroughCards("first week, " + state.phase);
                 previous = state;
             }
-            Assert.That(evicted, Is.True, "The pad reached week 1's eviction recap.");
+            Assert.That(evicted, Is.True, "The pad reached week 1's eviction recap (" + season + ").");
             Assert.That(director.Snapshot.contestants.Count(actor => actor.status != ContestantStatus.Active), Is.GreaterThanOrEqualTo(1),
                 "Somebody left the house in week 1.");
         }

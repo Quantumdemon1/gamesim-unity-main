@@ -257,6 +257,9 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/PreferenceFile.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/SettingsEvidence.cs" />
     <Compile Include="$(EditMode)PreferenceFileTests.cs" />
+    <!-- Colour-blind safety (A9): the colour-vision arithmetic the HUD's tints are held to in the editor. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ColourVision.cs" />
+    <Compile Include="$(EditMode)ColourVisionMathTests.cs" />
     <!-- The standalone profile's performance verdict and arithmetic, and the verification-only stress house. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/VerificationPerformance.cs" />
     <Compile Include="$(EditMode)VerificationPerformanceTests.cs" />

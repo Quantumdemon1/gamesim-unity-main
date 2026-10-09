@@ -333,6 +333,19 @@ namespace Gamesim.Presentation
             }
         }
 
+        /// <summary>How a line is drawn beside its colour: the cue a player who cannot tell the colours apart reads (A9).</summary>
+        public enum Stroke { Solid, Dashed, Double }
+
+        /// <summary>A kind's stroke: distrust is a broken connection, drawn dashed; the rest are solid.</summary>
+        public static Stroke StrokeOf(Kind kind) => kind == Kind.Distrust ? Stroke.Dashed : Stroke.Solid;
+
+        /// <summary>A kind's line as drawn, its alpha included: a neutral line is faint, a felt one strong.</summary>
+        public static Color EdgeTint(Kind kind)
+        {
+            var tint = EdgeColour(kind);
+            return new Color(tint.r, tint.g, tint.b, kind == Kind.Neutral ? .35f : .8f);
+        }
+
         private static Color EdgeColour(Kind kind)
         {
             switch (kind)
@@ -521,7 +534,7 @@ namespace Gamesim.Presentation
                 ? 1.5f * scale
                 : Mathf.Lerp(2f, 5f, Mathf.Clamp01((float)(Math.Abs(score) / 60d))) * scale;
             var tint = EdgeColour(kind);
-            var colour = new Color(tint.r, tint.g, tint.b, kind == Kind.Neutral ? .35f : .8f);
+            var colour = EdgeTint(kind);
 
             var edge = new GameObject(EdgeName, typeof(RectTransform)).GetComponent<RectTransform>();
             edge.SetParent(hub, false);
@@ -541,7 +554,7 @@ namespace Gamesim.Presentation
                 var image = glow.GetComponent<Image>();
                 image.sprite = UiTheme.SoftLine(); image.color = new Color(tint.r, tint.g, tint.b, .3f); image.raycastTarget = false;
             }
-            if (kind == Kind.Distrust)
+            if (StrokeOf(kind) == Stroke.Dashed)
             {
                 // The mockup's dashed line: distrust is a broken connection, drawn as one.
                 float dash = 9f * scale, gap = 6f * scale;

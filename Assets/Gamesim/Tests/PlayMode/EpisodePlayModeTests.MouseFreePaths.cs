@@ -159,6 +159,10 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             float yaw = cameraRig.Yaw, tilt = cameraRig.PitchOffset;
             InputSystem.QueueStateEvent(mouse, new MouseState { position = at, delta = delta }.WithButton(MouseButton.Right));
+            // The rig reads its input in LateUpdate, after this coroutine's turn in the frame the
+            // delta arrives in, so the turn is there a frame on - when the delta has gone back to
+            // nothing and the held button turns no further.
+            yield return null;
             yield return null;
             moved.Add(new Vector2(Turned(yaw, cameraRig.Yaw), cameraRig.PitchOffset - tilt));
             InputSystem.QueueStateEvent(mouse, new MouseState { position = at });

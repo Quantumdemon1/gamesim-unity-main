@@ -1248,7 +1248,7 @@ Every fix applies under the commitment rules only; seasons without them digest b
 
   Acts by kind over the paired seasons at 12 (12 of them): talk 556, court 697, campaign 335, rumour 394, eavesdrop 234, promise 199, confront 147, hunt 54, meet 36, build 34, pact 23, hold 2; 2,270 staged, 207 with the player. Words a season at 8, weekly pass -> all week: Vote 9.08 -> 14.17, Safety 11.00 -> 11.50, AllianceLoyalty 3.50 -> 1.25, FinalTwo 0.75 -> 0.50 (a nominee's beats in the campaign give the vote to more voters than the campaign's opening pass). The watcher (six seasons a size) saw 96, 109, 265 and 477 acts at 6, 8, 12 and 16, 0, 14, 22 and 26 of them fights heard; D2's lines are 4.1 to 6.5 a week. Busy listen-ins never landed on a seen act's pair (S6's re-aim stays deferred). The agency harness at 8: NPC-only pacts 1.40 -> 1.13 a season over 48 seasons, no cap breach, nobody in two - inside decision 8's 1.0-1.5, so the pact rung stays tried at every beat.
 
-**Where the build departs from the plan, and what the owner should decide:**
+**Where the build departs from the plan, and what the owner should decide** (the first build's; the continuation below supersedes the drift, the war rooms, the player's share and the baseline):
 - **Acceptance (b)'s drift is missed at week 4.** Mean |score| between houseguests at week 4's HoH is 16-20% under the weekly pass's at 8, 12 and 16 (week 3: 5-10%, inside ±15%). The house acts on the same ladder as often, but spreads it through the week, and rumours run higher (0.52-0.72 a houseguest-week against 0.36-0.49). Not tuned here: a decision for the owner (accept, or a lever such as rumours once a fortnight).
 - **D3's war rooms meet less with the house acting all week.** D3's trio player held 0.83, 0.50, 2.00 and 1.33 war rooms a season at 6, 8, 12 and 16 with the beats off, 0, 0, 1.00 and 1.00 with them on (six seasons a size): the house's word reaches the trio's members from week one's first window, and a member who turns on the player is out of a pact of three before its first campaign. D4's leaks move within these samples' noise, on fewer rolls (fewer NPC pacts): at 12, 5 of 80 rolls with the beats off and 5 of 40 on; at 16, 8 of 160 and 1 of 112.
 - **The log's reach.** Once the 256 lines are full the oldest is 2 weeks back at 12 and 16 with or without D2, and 1 week back at 16 for a player who sees every act (the story page reads three weeks). The cap of three sightings a window stays; §5 item 4's re-tune is the owner's call with these counts.
@@ -1269,6 +1269,44 @@ Every fix applies under the commitment rules only; seasons without them digest b
 - The director starts every season under the rules; the importer from the week after; no new memory, no saved field.
 
 **Floors:** the subset 4843 to 4909; EditMode 7305 to 7369 (`AllWeekCadenceTests`' 37 in Unity, `WitnessNpcActTests`' 25, `PactPlanTests`' 1, `NpcAgencyHarnessTests`' 1); PlayMode 1023 to 1028; UMA unchanged.
+
+**Continued 2026-10-09: acceptance (b) met, three corrections, the 100-seed headline.** The same branch, after c0090f07; the enable is no longer the lane's last commit, the three corrections follow it (each keyed to `AllWeekOn`, so a season without the rules is unchanged). Each takes a decision the lead adopted or meets an acceptance target; none adds a saved field, a caption or new words to any line.
+
+| Commit | What |
+|---|---|
+| 8a291544 | **A court no longer spends the week's building.** The drift's cause: the court every houseguest not allied with the HoH records as the nominations open filled the ladder's once-a-week pursuit, so most of the house never built, held or hunted that week; the weekly pass courted then and still pursued its agenda on its own turn. `NpcSocialActions.PursuitSpent` (public): by the agenda the houseguest holds now, a court spends courting, and building, holding or hunting spends the rest. |
+| bb600a9e | **Decision 2's fallback.** With the first correction the house reached the player 74 / 65 / 72 / 66% as often a week in the house as the weekly pass did (6 / 8 / 12 / 16). `EpisodeEngine.CloseLeavesThePlayerOut(window)` (public): after the veto and the eviction a close leaves the player out (D2-H3); after the HoH and the nominations it may reach them, saying its line, with no card (none lives there). Close's lines come before the step's own, so the status line still names the step. |
+| f047db13 | **Decision 8's fallback.** With the first correction the agency harness read 1.58 NPC-only pacts a season at 8, outside 1.0-1.5. `EpisodeEngine.PactWindow(s, npcId)` (public): the first window the houseguest does not rest in, their first beat of the week; the pact rung is tried there only, as the weekly pass tried once a week. |
+| this entry's commit | BALANCE_BASELINE.md's *D2's enable*; this entry. |
+
+**Measured at f047db13** (30 seeds a size, the walker and the busy player, `ApplyFresh` seasons; the weekly pass against all week):
+
+| House | Mean abs score NPC to NPC at week 3 / 4 / 5's HoH | NPC-only pacts a season | Player-involving acts a week the player is in | NPC-only deals a season |
+|---|---|---|---|---|
+| 6 | 20.64 -> 20.73 (+0%) | 0.78 -> 1.00 | 1.68 -> 1.82 (108%) | 6.40 -> 6.17 |
+| 8 | 14.51 / 20.80 / 28.82 -> 14.19 / 19.12 / 26.88 (-2% / -8% / -7%) | 1.32 -> 1.42 | 2.21 -> 2.24 (101%) | 15.15 -> 13.85 |
+| 12 | 11.08 / 14.16 / 17.44 -> 10.80 / 13.49 / 16.48 (-3% / -5% / -6%) | 2.90 -> 2.65 | 2.49 -> 2.55 (102%) | 53.45 -> 50.33 |
+| 16 | 8.35 / 10.84 / 13.12 -> 8.17 / 10.29 / 12.54 (-2% / -5% / -4%) | 4.58 -> 4.55 | 2.93 -> 3.40 (116%) | 120.90 -> 117.12 |
+
+As first built, on the same seeds, week 4 was -23% / -17% / -17% at 8 / 12 / 16 (week 3 -16% / -12% / -10%, and -20% at 6) and NPC-only deals about half.
+
+The combined Wave D digest at f047db13 (12 seasons a size, as the S4 table above; played in three parts - pair, watcher, trio - with the whole test's assertions, to fit the tool's ten-minute limit): every command legal and every probe clean; beats a week 9.53 / 12.43 / 17.07 / 20.94 at 6 / 8 / 12 / 16 (at 12, after the HoH / nominations / veto / eviction 5.03 / 4.99 / 4.94 / 2.11); successes per NPC-week 2.98 / 2.90 / 2.83 / 2.75; mean abs score at week 4's HoH -5% / -2% / -7% at 8 / 12 / 16; 1 window of 1,440 with an empty plan, none left unspent. Acts by kind at 12: court 687, talk 396, campaign 340, rumour 296, promise 294, build 215, eavesdrop 209, hunt 164, confront 142, meet 67, pact 33, hold 28; 2,385 staged, 277 with the player. Words a season at 8: Vote 9.08 -> 13.50, Safety 11.00 -> 11.08, AllianceLoyalty 3.50 -> 5.33, FinalTwo 0.75 -> 1.42. The watcher saw 98 / 121 / 219 / 410 acts, heard 0 / 13 / 17 / 24 fights; D2's lines 4.4-5.6 a week. The agency harness at 8: 1.42 NPC-only pacts a season, no cap breach, nobody in two.
+
+**The owner's three questions, with the corrections in:**
+- **Acceptance (b)'s drift is met:** week 4 within -8% at every size, week 3 within 3%.
+- **D3's war rooms do not drop:** the trio player on 24 seeds a size held 1.46 / 1.42 / 2.00 / 1.46 war rooms a season at 6 / 8 / 12 / 16 with D2 off and 1.25 / 1.71 / 1.58 / 1.63 on (-3% over 96 seasons each). Off and on, the trio ends mostly when a member leaves the house; its members think 2-3 points less of the player at the first eviction with D2 on. The first build's six-season drop does not hold at this sample.
+- **The log's reach** is the owner's call still, and the corrections do not move it: once full, the oldest line is 3 weeks back at 8 and 2 at 12 and 16 with or without D2, and 1 week back at 16 for a watcher who sees every staged act up to the cap (the story page reads three). D2 adds 4.4-5.6 lines a week for such a player; without D2 the log already reaches only 2 weeks at 12 and 16, so no sighting cap restores three.
+- D4's leaks: at 12, 5 of 80 rolls with D2 off and 4 of 73 on; at 16, 8 of 160 and 10 of 161.
+
+**The balance headline at 100 seeds** (BALANCE_BASELINE.md, *D2's enable*): the same 2,400 seasons with D2 on at f047db13 and off (the enable line taken out; with it off every later change is inert), paired season for season. The player's win rate over all policies does not move (236 -> 253 of 1,200 at 8, p = 0.35; 288 -> 296 at 12, p = 0.73); as first built it rose (285, p = 0.006; 348, p = 0.005). F4's newcomer penalty is weaker at 12 (the passive player on the block in week one 10% of the time instead of 55%), F7's week-one loss lower at 8 (the novice 11% instead of 19%); the house's pacts, deals and pairs are the weekly pass's within about a tenth; 0 errors in either half.
+
+**Tests:** `AllWeekCadenceTests` 39 to 42 (37 to 40 in Unity): `ACourtLeavesTheWeeksBuildingToItsOwnBeat`, `AfterTheHoHAndTheNominationsACloseMayReachThePlayer`, `APactWindowIsTheFirstWindowAHousemateDoesNotRest`; `ThePactRungIsTriedAtEveryBeat...` is now `...AtTheFirstBeatOfTheWeek...`; the ladder's limits hold one court and one other pursuit a week and see both in one week; `NoBeatDrawsFromTheSeasonsStream` holds the player-out closes; the `Spoiling` fixture spends both pursuits and clears grudges between houseguests for its fight. `AllWeekSeasonDigests`' probe counts a close reaching the player only after the veto or the eviction, and any close's card. `StressHouseTests`' busy-player guard is "more than 10" (seed 1602's busy player now leaves in week 2 after 19 actions). Seven mutations (a court spends all, a court spends nothing, the agenda inverted; every close player-free, none; the pact window gate removed, the last window for the first), each failing a test, each file restored byte for byte.
+
+**Evidence:** the subset 4912 green; the six tests of `CommitmentRulesSeasonDigests`, `AllianceLeakSeasonDigests` and `PactPlanSeasonDigests` green at f047db13; `AllWeekSeasonDigests`' recorded seasons under the rules green, its combined digest green in three parts; its own rules-off half not re-run (the corrections sit behind `AllWeekOn`, and the three harnesses' rules-off halves played the same 54 seasons green); the offline compile without UMA, 5 of 5 assemblies.
+
+**Tell the story session (in addition to the list above):** a close after the HoH or the nominations can now say a line to the player (a fight, a word, a rumour told them), never a card; a houseguest tries for a new pact once a week, at their first beat (`EpisodeEngine.PactWindow`); courting the HoH as the nominations open no longer takes the place of the week's building, holding or hunting.
+
+**Floors:** the subset 4909 to 4912; EditMode 7369 to 7372 (`AllWeekCadenceTests`' three); PlayMode 1028 and UMA unchanged.
 
 ## Wave C staged checkpoint — 2026-10-05
 

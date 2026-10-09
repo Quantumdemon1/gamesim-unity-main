@@ -28,15 +28,12 @@ namespace Gamesim.Tests.EditMode
             void Same(string reader, Func<EpisodeState, object> read) =>
                 Assert.That(Read(mode2, read), Is.EqualTo(Read(mode1, read)), where + ": " + reader + " reads mode 2 as mode 1.");
             // Designed (V5e, the knowledge gate): mode 2 does not say the player kept a vote deal whose keeping tells a ballot they
-            // cannot know (YourWeek.KeepingTellsTheirBallot); mode 1 says it. Compared with mode 2's not-known line in its place.
+            // cannot know (YourWeek.KeepingTellsTheirBallot); mode 1 says it. Compared with mode 2's not-known line in its place, only
+            // where the gate holds on the season's facts (KeepingTellsAHiddenBallot).
             var one = Weeks(mode1); var two = Weeks(mode2);
             for (int w = 0; w < Math.Min(one.Count, two.Count); w++)
                 for (int i = 0; i < Math.Min(one[w].word.Count, two[w].word.Count); i++)
-                {
-                    var left = one[w].word[i]; var right = two[w].word[i];
-                    if (left.kind == YourWeek.Kinds.Deal && left.verdict == YourWeek.Verdicts.Kept && left.byId == mode1.playerId
-                        && right.verdict == YourWeek.Verdicts.NotKnown) one[w].word[i] = right;
-                }
+                    if (KeepingTellsAHiddenBallot(mode1, one[w].week, one[w].word[i], two[w].word[i])) one[w].word[i] = two[w].word[i];
             // Its lines always; its Game Sense, which scores a Rule2 group once (D1), where no group holds two rows.
             if (overlap) foreach (var week in one.Concat(two)) week.sense = null;
             Assert.That(Json(two), Is.EqualTo(Json(one)), where + ": YourWeek reads mode 2 as mode 1, the knowledge gate aside.");
@@ -52,6 +49,27 @@ namespace Gamesim.Tests.EditMode
             Same("FinalistRead's facts", s => others.Select(id => new object[] { FinalistRead.TowardYou(s, id), FinalistRead.RelationshipLine(s, id) }).ToList());
             Same("FinalCaseResume", s => FinalCaseResume.Read(s));
             Same("JuryHouseRead", s => JuryHouseRead.Read(s));
+        }
+
+        /// <summary>
+        /// Whether mode 2's not-known line in place of mode 1's "You kept the ..." is the knowledge gate's, read on the season's facts:
+        /// the same deal's words with the same houseguest; a ballot the player does not know that week; and no vote deal of that
+        /// kind between them, kept that week, whose ending the player can know (<see cref="KnownBallots.DealOutcomeKnown"/>).
+        /// </summary>
+        internal static bool KeepingTellsAHiddenBallot(EpisodeState s, int week, YourWeek.Line kept, YourWeek.Line notKnown)
+        {
+            if (kept.kind != YourWeek.Kinds.Deal || kept.verdict != YourWeek.Verdicts.Kept || kept.byId != s.playerId
+                || notKnown.kind != YourWeek.Kinds.Deal || notKnown.verdict != YourWeek.Verdicts.NotKnown || notKnown.aboutId != kept.aboutId
+                || KnownBallots.Knows(s, week, kept.aboutId)) return false;
+            string partner = kept.aboutId, whom = " with " + s.Find(partner)?.name;
+            // YourWeek's own words: "You kept the {deal} with {name}." and "The {deal} with {name} is unresolved: ...".
+            var type = new[] { DealKind.VoteTogether, DealKind.VoteSave, DealKind.VoteEvict, DealKind.Partnership }.SingleOrDefault(kind =>
+                kept.text == "You kept the " + YourWeek.DealWords(kind) + whom + "."
+                && notKnown.text == "The " + YourWeek.DealWords(kind) + whom + " is " + KnownBallots.Unresolved + ".");
+            if (type == null) return false;
+            var keptThatWeek = CommitmentReferences.Deals(s).Where(d => d.type == type && d.status == DealStatus.Fulfilled && d.settledWeek == week
+                && ((d.proposerId == s.playerId && d.recipientId == partner) || (d.proposerId == partner && d.recipientId == s.playerId))).ToList();
+            return keptThatWeek.Count > 0 && !keptThatWeek.Any(d => KnownBallots.DealOutcomeKnown(s, d));
         }
 
         /// <summary>The week a moment stands in and the one before it, as the recap builds them.</summary>
@@ -126,6 +144,14 @@ namespace Gamesim.Tests.EditMode
             Assert.That(two.byId, Is.Null);
             Assert.That(Json(YourWeek.Build(reveal.Projection, week)), Is.EqualTo(Json(YourWeek.Build(reveal.Mode2, week))),
                 "The projection of mode 1's season reads as mode 2's.");
+            // The walks' comparison (CheckFinale) puts mode 2's line in mode 1's place only where the gate holds on the season's facts.
+            Assert.That(KeepingTellsAHiddenBallot(reveal.Mode1, week, one, two), Is.True, "The gate holds here.");
+            Assert.That(KeepingTellsAHiddenBallot(reveal.Mode1, week + 1, one, two), Is.False, "Not in a week the deal was not kept in.");
+            var otherDeal = new YourWeek.Line { kind = two.kind, verdict = two.verdict, aboutId = partner,
+                text = two.text.Replace(YourWeek.DealWords(DealKind.VoteEvict), YourWeek.DealWords(DealKind.VoteTogether)) };
+            Assert.That(KeepingTellsAHiddenBallot(reveal.Mode1, week, one, otherDeal), Is.False, "Not for another deal's line.");
+            var aboutOther = new YourWeek.Line { kind = two.kind, verdict = two.verdict, aboutId = other, text = two.text };
+            Assert.That(KeepingTellsAHiddenBallot(reveal.Mode1, week, one, aboutOther), Is.False, "Not for another houseguest's line.");
         }
 
         /// <summary>

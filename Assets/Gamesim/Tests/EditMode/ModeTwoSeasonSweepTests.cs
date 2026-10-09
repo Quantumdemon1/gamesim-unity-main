@@ -13,9 +13,21 @@ namespace Gamesim.Tests.EditMode
     /// mode-2 command runs under the walk observer (vote family V5e): past each reveal, the owners the archive rebuilds are
     /// the ones its plan selected (<see cref="ModeTwoReaderSweep.AssertOwnersRebuilt"/>).
     ///
-    /// <para>Every slice shrinks the table: a reader it moves takes a season further, often to the finish. What remains after
-    /// V5f is only the designed differences (the class doc of the sweep lists them). A season that newly differs, or differs
-    /// later or earlier than the table says, fails here and is looked at.</para>
+    /// <para>Every slice shrank the table: a reader it moved took a season further, often to the finish. After V5f all 64 seasons
+    /// play mode 2 to the jury's verdict: 60 equal mode 1 at every command, and four meet a designed difference first and play
+    /// on to the finish. A season that newly differs, or differs later or earlier than the table says, fails here and is looked
+    /// at.</para>
+    ///
+    /// <para><b>The designed differences</b>, each pinned by a case of its own:
+    /// - Rule2 effects (V4, the approved overlap policy): one reveal deciding two of a pair's rows the same way settles their
+    ///   consequences once, for the owner (UnifiedVoteSettlementTests; "a Rule2 overlap" below).
+    /// - The current-reveal exclusion (V5c): a reveal's own Vote breach is left out of the breaker's reputation in the grudge its
+    ///   recipes scale (ModeTwoThreatStoryTests; "the current-reveal exclusion" below).
+    /// - D1 counting (V5b, V5d, V5e): a breach term counts a Rule2 incident once, and a receipt, a kept moment or a scored chance
+    ///   is its group's owner (ModeTwoHouseReaderTests, ModeTwoBargainReaderTests, ModeTwoFinaleReaderTests). A reader's count;
+    ///   the state moves only where a decision reads it, which no season here reaches before its Rule2 overlap.
+    /// - The knowledge gate (V5d, V5e): mode 2's history counts no memory that tells a hidden ballot, and its week does not say
+    ///   the player kept a vote deal whose keeping tells one (ModeTwoBargainReaderTests, ModeTwoFinaleReaderTests). Readers only.</para>
     /// </summary>
     public sealed class ModeTwoSeasonSweepTests
     {

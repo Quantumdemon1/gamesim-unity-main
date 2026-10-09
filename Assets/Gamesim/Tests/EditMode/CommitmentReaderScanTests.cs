@@ -28,7 +28,7 @@ namespace Gamesim.Tests.EditMode
         public enum Why { Authority, Writer, RawKind, NotCommitments, ModeAware, Moved, PendingV5a, PendingV5b, PendingV5c, PendingV5d, PendingV5e, PendingV5f }
 
         /// <summary>The slice the vote family has built through: no entry may still be pending it or an earlier one.</summary>
-        private const Why Built = Why.PendingV5e;
+        private const Why Built = Why.PendingV5f;
 
         private sealed class Site
         {
@@ -193,13 +193,13 @@ namespace Gamesim.Tests.EditMode
             new Site(Sim + "GameSense.cs", null, 6, Why.Moved, "V5e: the deal chances, scored once per group (D1), Vote rows dated as mode 1's"),
             new Site(Sim + "YourWeek.cs", null, 6, Why.Moved, "V5e: the week's word, Safety's canonical lines, the keeping gate"),
 
-            // ---- pending V5f: player-facing pages
-            new Site(Sim + "CommitmentsRead.cs", null, 16, Why.PendingV5f, "For, Warning, AtStake, Settled, ByTheRules, BallotRules"),
-            new Site(Sim + "AllianceRead.cs", null, 1, Why.PendingV5f, "a pact's deals"),
-            new Site(Sim + "HouseDialogue.cs", null, 5, Why.PendingV5f, "the promise a line remembers"),
-            new Site(Run + "Episode/EpisodeDirector.WalkOut.cs", null, 1, Why.PendingV5f, "GoodbyeTone"),
-            new Site(Run + "Presentation/WeeklyRecap.Ledger.cs", null, 2, Why.PendingV5f, "the ledger's word count"),
-            new Site(Run + "Episode/PortVerification.Season.Systems.cs", null, 3, Why.PendingV5f, "the verification's deal lookups"),
+            new Site(Sim + "CommitmentsRead.cs", null, 12, Why.Moved,
+                "V5f: the page's views (For, AtStake), Settled's raw views and Safety branch, the nominations' Safety rules, BallotRules' raw views; a gate's raw branch is mode 0's"),
+            new Site(Sim + "AllianceRead.cs", null, 1, Why.Moved, "V5f: a pact's deals; the raw branch is mode 0's"),
+            new Site(Sim + "HouseDialogue.cs", null, 4, Why.Moved, "V5f: the promise a line remembers; the raw branch is mode 0's"),
+            new Site(Run + "Episode/EpisodeDirector.WalkOut.cs", null, 1, Why.Moved, "V5f: GoodbyeTone"),
+            new Site(Run + "Presentation/WeeklyRecap.Ledger.cs", null, 2, Why.Moved, "V5f: the ledger's word count; the raw branch is mode 0's"),
+            new Site(Run + "Episode/PortVerification.Season.Systems.cs", null, 3, Why.Moved, "V5f: the verification's deal lookups, through the views"),
         };
 
         /// <summary>Every read of the commitment lists, their mode-1 gate, their views or the Safety history.</summary>

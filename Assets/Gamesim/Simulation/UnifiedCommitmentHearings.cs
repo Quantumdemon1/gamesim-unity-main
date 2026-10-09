@@ -45,7 +45,7 @@ namespace Gamesim.Simulation
         /// Whether the hearing lineage is written: hearings on wherever canonical Safety is the authority -
         /// mode 1 (exactly <see cref="RulesOn"/>), and the prospective mode 2 (vote family V3b), whose complete
         /// core asks the same lineage of a player's audible Safety deal breach. The writers and their guards
-        /// select it; a reader not yet moved stays on <see cref="RulesOn"/> (vote family V5).
+        /// select it; <see cref="RulesOn"/> is mode 1's hearings alone.
         /// </summary>
         internal static bool WritesOn(EpisodeState s) => s != null
             && s.unifiedHearingRulesVersion == ProspectiveVersion && UnifiedCommitments.SafetyAuthorityOn(s);

@@ -24,7 +24,8 @@ namespace Gamesim.Simulation
     ///
     /// <para>Settlement, the reveal's archive and the endings are not this writer's: the reveal stamps and
     /// publishes them, and the week's turn, deal pass, departures, removals and voided prices end them
-    /// (<see cref="UnifiedVoteSettlement"/>, EpisodeEngine.UnifiedVote, vote family V4). The readers move in V5.</para>
+    /// (<see cref="UnifiedVoteSettlement"/>, EpisodeEngine.UnifiedVote, vote family V4). The readers read them through
+    /// the mode-1-shaped views and the histories (vote family V5).</para>
     /// </summary>
     internal static class UnifiedVoteStore
     {

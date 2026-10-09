@@ -138,8 +138,9 @@ namespace Gamesim.Tests.EditMode
         {
             var expected = Normal(projection);
             var actual = Normal(prospective);
-            // A reader not yet moved to the canonical rows (vote family V5) may word a line differently. Each
-            // gap is named by its event kind, must actually differ, and differs in that line's text only.
+            // Kept for a later wave: a reader that words a line from rows mode 2 does not hold yet. Vote family V5
+            // moved every reader, and no case names one now. Each gap is named by its event kind, must actually
+            // differ, and differs in that line's text only.
             foreach (string kind in readerGaps)
             {
                 var left = ((JArray)expected["events"]).Where(e => (string)e["kind"] == kind).ToList();

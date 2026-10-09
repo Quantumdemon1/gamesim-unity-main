@@ -19,7 +19,8 @@ namespace Gamesim.Tests.EditMode
     /// receipt, a moment or a scored chance only as its group's owner, so those readers are compared where no group holds two
     /// rows (<see cref="ModeTwoFinaleReaderTests"/>). The knowledge gate: mode 2's week does not say the player kept a vote deal
     /// whose keeping tells a hidden ballot, and its history counts no memory that tells one (V5d) - each compared with mode 2's
-    /// reading put in place.</para>
+    /// reading put in place. The pages (V5f, <see cref="ModeTwoPageReaderTests"/>) are inventories, read row by row as mode 1
+    /// reads them, at every moment.</para>
     /// </summary>
     public sealed class ModeTwoReaderParityTests
     {
@@ -52,6 +53,8 @@ namespace Gamesim.Tests.EditMode
                 bool groups = overlap || UnifiedVoteHistory.Fulfillments(mode2).Any(g => g.EvidenceIds.Count > 1);
                 if (groups) grouped++;
                 ModeTwoFinaleReaderTests.CheckFinale(mode1, mode2, where, groups);
+                // V5f: the pages - the commitments and their warnings, the pacts, what a houseguest says - at every moment.
+                ModeTwoPageReaderTests.CheckPages(mode1, mode2, where);
                 // V5b: the house's decisions, where the house makes them - the nominations, the campaign and the open vote,
                 // the count, the final eviction and the jury.
                 if (!Decides(mode1)) return;

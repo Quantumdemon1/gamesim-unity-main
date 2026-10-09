@@ -117,7 +117,9 @@ namespace Gamesim.Simulation
     /// candidates: a broken entry follows its own consequence (a breach's zero context follows its row); a kept
     /// directed edge is won by the largest source delta among the owners' entries, primary or mirror alike, then
     /// by ordinal id. An owner runs its memory, line, Story and witness lanes once; a row that owns nothing is a
-    /// terminal receipt only. Execution keeps the source's occurrence order: ids rank winners, never the run.</para>
+    /// terminal receipt only. Execution keeps the source's occurrence order: ids rank winners, never the run. After
+    /// the reveal the readers rebuild every group and its owner from the archive (<see cref="UnifiedVoteHistory.Incidents"/>,
+    /// <see cref="UnifiedVoteHistory.Fulfillments"/>, vote family V5e) - no reader stays on mode 1's gate.</para>
     ///
     /// <para>This is a deliberate new overlap rule, not byte-identical execution of overlapping legacy effects.
     /// A reveal with no overlap writes exactly what mode 1 writes. Modes 0 and 1 never reach this class.</para>

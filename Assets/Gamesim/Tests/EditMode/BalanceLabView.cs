@@ -129,6 +129,54 @@ namespace Gamesim.Tests.EditMode
         /// <summary>Whether the player is in a standing pact with this houseguest, as the alliances page says.</summary>
         public bool AlliedWith(string id) => MyPacts.Any(p => p.active && p.members.Any(m => m.id == id));
 
+        // ---------------------------------------------------------------- the war rooms (D3)
+
+        /// <summary>The pact a meeting held through this houseguest is for, as the house offers it (<see cref="EpisodeEngine.MeetingPact"/>), or null.</summary>
+        public string MeetingOffered(string npcId) => EpisodeEngine.MeetingPact(s, npcId)?.id;
+
+        /// <summary>Whether a meeting of this pact of the player's now would be a war room, by what the player can see (<see cref="PactPlans.CouldConvene"/>): the pill on its meeting row.</summary>
+        public bool WarRoomCouldConvene(string pactId)
+        {
+            var pact = MyPact(pactId);
+            return pact != null && PactPlans.CouldConvene(s, pact);
+        }
+
+        /// <summary>One line of a war room's plan card: a member still here, the nominee they said (null for one who kept quiet), and the player's word for their vote.</summary>
+        public sealed class PlanLine
+        {
+            public string memberId, saidId;
+            /// <summary><see cref="Gamesim.Simulation.VoteRead.Firm"/> and its kin, or null for one who does not vote.</summary>
+            public string whip;
+        }
+
+        /// <summary>A plan waiting on the player's answer, as its card shows it (<see cref="PactPlans.CardFacts"/>).</summary>
+        public sealed class PlanCard
+        {
+            public string pactId;
+            /// <summary>The nominee more of the standing says name, or null on a split or with nobody saying.</summary>
+            public string membersPlanId;
+            public bool split;
+            /// <summary>The members still here, in the order they met: the answer goes through one of them.</summary>
+            public IReadOnlyList<PlanLine> lines;
+        }
+
+        /// <summary>This week's plan of a pact of the player's while it waits on their answer, as its card shows it; null with none.</summary>
+        public PlanCard OpenPlanCard(string pactId)
+        {
+            var pact = MyPact(pactId);
+            var row = pact == null ? null : PactPlans.OpenPlan(s, pact.id);
+            if (row == null) return null;
+            var standing = PactPlans.StandingSays(s, pact, row);
+            return new PlanCard
+            {
+                pactId = pact.id, membersPlanId = PactPlans.MembersPlan(standing), split = PactPlans.IsSplit(standing),
+                lines = PactPlans.CardFacts(s, pact, row).Select(line => new PlanLine
+                    { memberId = line.memberId, saidId = standing.FirstOrDefault(say => say.memberId == line.memberId)?.targetId, whip = line.whip }).ToList(),
+            };
+        }
+
+        private AllianceState MyPact(string pactId) => s.alliances.FirstOrDefault(a => a.id == pactId && a.active && a.members.Contains(s.playerId));
+
         public sealed class PowerRow
         {
             public int week;

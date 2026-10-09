@@ -80,8 +80,26 @@ namespace Gamesim.Tests.EditMode
             public readonly SortedDictionary<int, int> decisionsByWeek = new SortedDictionary<int, int>();
             public readonly SortedDictionary<int, double> ceremonyByWeek = new SortedDictionary<int, double>();
             public double finaleSeconds;
+            /// <summary>Every member a counter of the player's could reach, as each counter was answered (B6a).</summary>
+            public readonly List<CounterMember> counterMembers = new List<CounterMember>();
             public bool Won => autopsy != null && autopsy.outcome == SeasonAutopsy.Outcomes.Winner;
             public bool FinalTwo => autopsy != null && (autopsy.outcome == SeasonAutopsy.Outcomes.Winner || autopsy.outcome == SeasonAutopsy.Outcomes.RunnerUp);
+        }
+
+        /// <summary>
+        /// One member a counter could reach (D3's re-measure as PactPlanSeasonDigests takes it): somebody who said the
+        /// members' plan, off the block, with their odds as the answer read them - and what the odds were made of, their
+        /// view of the player and the margin of their own lean as the player knows the season, and their traits - so the
+        /// counter's constants can be replayed offline (BALANCE plan §4 Q1). An analyst's record: no policy sees it.
+        /// </summary>
+        internal sealed class CounterMember
+        {
+            public int week;
+            public double odds, view, margin;
+            public List<string> traits = new List<string>();
+            /// <summary>Whether the player knew them to have turned: then they never come round, whatever the odds.</summary>
+            public bool lapsed;
+            public bool cameRound, carried;
         }
 
         /// <summary>The kinds the player does for nothing: no seat is spent on them.</summary>
@@ -89,7 +107,7 @@ namespace Gamesim.Tests.EditMode
         {
             EpisodeCommandKind.AskVote, EpisodeCommandKind.ReadPerson, EpisodeCommandKind.WitnessProximity, EpisodeCommandKind.ReplyToHouseguest,
             EpisodeCommandKind.RespondToDeal, EpisodeCommandKind.SwearLoyalty, EpisodeCommandKind.DeclineLoyalty, EpisodeCommandKind.RenameAlliance,
-            EpisodeCommandKind.Introduce, EpisodeCommandKind.BuyActionPoint, EpisodeCommandKind.ResolveHouseEvent,
+            EpisodeCommandKind.Introduce, EpisodeCommandKind.BuyActionPoint, EpisodeCommandKind.ResolveHouseEvent, EpisodeCommandKind.AnswerPactPlan,
         };
 
         internal static SeasonRun Play(Cell cell, int index)
@@ -122,6 +140,7 @@ namespace Gamesim.Tests.EditMode
                 if (used.kind != EpisodeCommandKind.Advance) Count(run.decisionsByWeek, s.week);
                 if (Free.Contains(used.kind)) run.freeActions++;
                 var after = applied.state;
+                if (used.kind == EpisodeCommandKind.AnswerPactPlan) Counters(s, after, run);
                 run.pace.Watch(used, after);
                 bool phaseChange = SeasonAutopsy.IsPhaseChange(s, after);
                 if (phaseChange) changes.Add(new SeasonAutopsy.PhaseChange(s, after));
@@ -137,6 +156,31 @@ namespace Gamesim.Tests.EditMode
             run.autopsy = SeasonAutopsy.Of(changes, s);
             run.pace.Close(s);
             Ceremonies(run);
+        }
+
+        /// <summary>
+        /// The counters an answer settled (PactPlanSeasonDigests' re-measure, copied): every member who said the
+        /// members' plan and is off the block, with their odds as the answer read them.
+        /// </summary>
+        private static void Counters(EpisodeState before, EpisodeState after, SeasonRun run)
+        {
+            foreach (var row in after.ledger.plans)
+            {
+                var was = before.ledger.plans.FirstOrDefault(b => b.week == row.week && b.allianceId == row.allianceId);
+                if (was == null || was.stance != PactPlanStance.Open || row.stance != PactPlanStance.Countered) continue;
+                var pact = before.alliances.FirstOrDefault(a => a.id == row.allianceId);
+                var standing = PactPlans.StandingSays(before, pact, was);
+                string plan = PactPlans.MembersPlan(standing);
+                var known = Allegiance.AsThePlayerKnows(before);
+                foreach (var say in standing.Where(x => x.targetId == plan && !before.nominees.Contains(x.memberId)))
+                    run.counterMembers.Add(new CounterMember
+                    {
+                        week = row.week, odds = PactPlans.ComeRoundOdds(before, say.memberId),
+                        view = known.Score(say.memberId, known.playerId), margin = WebEvictionVoting.EvaluateNative(known, say.memberId).margin,
+                        traits = (known.Find(say.memberId)?.traits ?? new List<string>()).ToList(), lapsed = Allegiance.Lapsed(known, say.memberId),
+                        cameRound = row.cameRound != null && row.cameRound.Contains(say.memberId), carried = row.targetId == row.counterId,
+                    });
+            }
         }
 
         /// <summary>
@@ -293,6 +337,17 @@ namespace Gamesim.Tests.EditMode
                     asks = r.pace.asks, budgeted = r.pace.budgetedAsks, summons = r.pace.summons, playOffers = r.pace.playOffers, weeksWithACard = r.pace.weeksWithACard,
                     stories = r.pace.storiesFinished, moments = r.pace.arcsFinished - r.pace.storiesFinished, pariah = r.pace.pariah,
                 },
+                // The war rooms (D3): the autopsy's plans, and every member a counter of the player's could reach.
+                warRooms = a == null ? null : new
+                {
+                    a.warRooms.plans, stances = new SortedDictionary<string, int>(a.warRooms.stances, StringComparer.Ordinal), a.warRooms.counters,
+                    carried = a.warRooms.countersCarried, a.warRooms.cameRound, a.warRooms.playerCalls, a.warRooms.targetEvicted,
+                },
+                counterMembers = r.counterMembers.Select(m => new
+                {
+                    w = m.week, odds = Math.Round(m.odds, 4), view = Math.Round(m.view, 2), margin = Math.Round(m.margin, 4), traits = m.traits,
+                    m.lapsed, came = m.cameRound, m.carried,
+                }),
                 commands = r.commands, own = r.own, fallbacks = r.fallbacks, freeActions = r.freeActions, refusals = r.refusals, refusalsBy = r.refusalsByKind,
                 decisions = r.decisionsByWeek, ceremony = r.ceremonyByWeek, finaleSeconds = r.finaleSeconds,
                 npcTicksUsed = a?.npcTicks ?? 0,

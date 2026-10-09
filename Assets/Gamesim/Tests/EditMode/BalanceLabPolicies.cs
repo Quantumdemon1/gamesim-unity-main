@@ -222,6 +222,66 @@ namespace Gamesim.Tests.EditMode
             var g = v.Find(id);
             return g == null ? 0 : g.hohWins * 1.2 + g.vetoWins;
         }
+
+        // ---------------------------------------------------------------- the war rooms (D3)
+
+        /// <summary>
+        /// How this player answers a war room's plan, from its card: the nominee to go with or push for, or null to
+        /// lie low. By default going with it.
+        /// </summary>
+        internal virtual string AnswerPlan(PlayerView v, PlayerView.PlanCard card) => GoWith(v, card, id => -v.MyView(id));
+
+        /// <summary>
+        /// The war rooms (WAVE-D-NPC-PACTS-PLAN D3, BALANCE plan B6a). Once the block is set, a plan waiting on the
+        /// player is answered through the first member still here (<see cref="AnswerPlan"/>; free, as the house
+        /// makes it), and otherwise a pact of three or more that could meet as a war room is convened, with a seat,
+        /// through the first member the house offers the meeting through. Null when neither is open. A pact of
+        /// three takes no call outside its war room, so the policies that call the vote leave such pacts to this.
+        /// </summary>
+        protected EpisodeCommand WarRoom(PlayerView v)
+        {
+            if (v.Phase != EpisodePhase.Campaign || !v.InTheHouse) return null;
+            foreach (var pact in v.MyPacts.Where(p => p.active && p.warRoom))
+            {
+                var card = v.OpenPlanCard(pact.id);
+                if (card != null)
+                {
+                    string through = card.lines.Select(line => line.memberId).FirstOrDefault();
+                    var reply = through == null ? null : Make(v, EpisodeCommandKind.AnswerPactPlan, through, AnswerPlan(v, card), pact.id);
+                    if (reply != null) return reply;
+                    continue;
+                }
+                if (!v.ActionsLeft || !v.WarRoomCouldConvene(pact.id)) continue;
+                string host = pact.members.Where(m => m.inHouse).Select(m => m.id)
+                    .FirstOrDefault(id => v.MeetingOffered(id) == pact.id && v.CanConverse(id, EpisodeCommandKind.AllianceMeet));
+                var meet = host == null ? null : Make(v, EpisodeCommandKind.AllianceMeet, host, null, pact.id);
+                if (meet != null) return meet;
+            }
+            return null;
+        }
+
+        /// <summary>The nominee on the block other than this one.</summary>
+        protected static string OtherNominee(PlayerView v, string id) => v.Nominees.FirstOrDefault(n => n != id);
+
+        /// <summary>
+        /// Going with a plan: the members' plan, or on a split the nominee <paramref name="worst"/> rates highest -
+        /// never the player: a plan to evict the player is pushed against, for the other nominee. Null (lying low)
+        /// where no say stands.
+        /// </summary>
+        protected static string GoWith(PlayerView v, PlayerView.PlanCard card, Func<string, double> worst)
+        {
+            if (card.membersPlanId == v.Me) return OtherNominee(v, v.Me);
+            if (card.membersPlanId != null) return card.membersPlanId;
+            if (!card.split) return null;
+            return v.Nominees.Where(id => id != v.Me).OrderByDescending(worst).ThenBy(id => id, StringComparer.Ordinal).FirstOrDefault();
+        }
+
+        /// <summary>Pushing for the nominee the members' plan spares (a counter) where that is not the player; else going with it.</summary>
+        protected static string PushAgainst(PlayerView v, PlayerView.PlanCard card, Func<string, double> worst)
+        {
+            string other = card.membersPlanId == null ? null : OtherNominee(v, card.membersPlanId);
+            return other != null && other != v.Me ? other : GoWith(v, card, worst);
+        }
     }
 
     // -------------------------------------------------------------------- the ten
@@ -267,9 +327,18 @@ namespace Gamesim.Tests.EditMode
             return null;
         }
 
+        /// <summary>A war room's plan answered on a coin: go with it, push against it, or lie low.</summary>
+        internal override string AnswerPlan(PlayerView v, PlayerView.PlanCard card)
+        {
+            double coin = v.Coin(31);
+            return coin < 1.0 / 3 ? GoWith(v, card, id => v.Coin(Salt(id, 32))) : coin < 2.0 / 3 ? PushAgainst(v, card, id => v.Coin(Salt(id, 33))) : null;
+        }
+
         protected override EpisodeCommand Act(PlayerView v)
         {
             if (v.FirstNight) return MeetTheHouse(v, v.Pick(new[] { WebIntroductions.Warm, WebIntroductions.Calculated, WebIntroductions.Bold }, 16));
+            var room = WarRoom(v);
+            if (room != null) return room;
             if (!v.ActionsLeft || v.Coin(1) >= 0.6) return null;
             var verb = Verbs[(int)(v.Coin(2) * Verbs.Length) % Verbs.Length];
             string target = v.Pick(v.Others, 17);
@@ -321,6 +390,8 @@ namespace Gamesim.Tests.EditMode
     /// Reader, under the knowledge gate: the GameSense reader's plan (ask every voter, read every voter, plead
     /// from the block, call the vote through a pact, deal with the torn, vote with the whip count), worked from
     /// the vote read, the shown odds and the player's own view - never how a houseguest privately sees them.
+    /// A pact of three it convenes as a war room instead of calling, and pushes against a plan somebody who said it
+    /// is not firm on.
     /// </summary>
     internal sealed class ReaderPolicy : GatedPolicy
     {
@@ -350,6 +421,15 @@ namespace Gamesim.Tests.EditMode
             return null;
         }
 
+        /// <summary>A war room: push against a plan somebody who said it is not firm on (torn or leaning), else go with it.</summary>
+        internal override string AnswerPlan(PlayerView v, PlayerView.PlanCard card)
+        {
+            Func<string, double> worst = id => (v.AlliedWith(id) ? -1000 : 0) - v.PresumedView(id);
+            bool unsure = card.membersPlanId != null && card.lines.Any(line => line.saidId == card.membersPlanId
+                && (line.whip == Gamesim.Simulation.VoteRead.Torn || line.whip == Gamesim.Simulation.VoteRead.Leaning));
+            return card.membersPlanId == v.Me || unsure ? PushAgainst(v, card, worst) : GoWith(v, card, worst);
+        }
+
         protected override EpisodeCommand Act(PlayerView v)
         {
             if (v.FirstNight) return MeetTheHouse(v, WebIntroductions.Calculated);
@@ -360,6 +440,8 @@ namespace Gamesim.Tests.EditMode
                 if (unasked != null) return Make(v, EpisodeCommandKind.AskVote, unasked);
                 var unread = voters.FirstOrDefault(id => !v.ReadThisWeek(id) && !WasRefused(EpisodeCommandKind.ReadPerson, id));
                 if (unread != null) return Make(v, EpisodeCommandKind.ReadPerson, unread);
+                var room = WarRoom(v);
+                if (room != null) return room;
                 if (!v.ActionsLeft) return null;
                 var sheet = v.VoteSheet;
                 string wantsOut = v.Nominees.Contains(v.Me) ? v.Nominees.FirstOrDefault(id => id != v.Me) : sheet.predictedEvicteeId ?? v.Nominees.FirstOrDefault(id => id != v.Me && !v.AlliedWith(id));
@@ -374,7 +456,7 @@ namespace Gamesim.Tests.EditMode
                 }
                 if (wantsOut != null && wantsOut != v.Me)
                 {
-                    foreach (var pact in v.MyPacts.Where(p => p.active && !v.CalledThisWeek(p.id)))
+                    foreach (var pact in v.MyPacts.Where(p => p.active && !p.warRoom && !v.CalledThisWeek(p.id)))
                     {
                         var ally = pact.members.Select(m => m.id).FirstOrDefault(id => voters.Contains(id));
                         if (ally != null && !WasRefused(EpisodeCommandKind.CallTheVote, ally, wantsOut)) return Say(v, EpisodeCommandKind.CallTheVote, ally, wantsOut, pact.id);
@@ -428,10 +510,17 @@ namespace Gamesim.Tests.EditMode
             return null;
         }
 
+        /// <summary>A war room: push against a plan that names an ally (or the schemer), else go with it.</summary>
+        internal override string AnswerPlan(PlayerView v, PlayerView.PlanCard card) =>
+            card.membersPlanId != null && (card.membersPlanId == v.Me || v.AlliedWith(card.membersPlanId))
+                ? PushAgainst(v, card, id => Record(v, id)) : GoWith(v, card, id => Record(v, id));
+
         protected override EpisodeCommand Act(PlayerView v)
         {
             if (v.FirstNight) return MeetTheHouse(v, WebIntroductions.Bold);
             if (!v.InTheHouse) return null;
+            var room = WarRoom(v);
+            if (room != null) return room;
             if (v.Phase == EpisodePhase.Social && v.CanBuyAction && v.BoughtThisWeek == 0 && !WasRefused(EpisodeCommandKind.BuyActionPoint, null))
                 return Make(v, EpisodeCommandKind.BuyActionPoint, Best(v.Others, id => -v.MyView(id)), null, WebSocialVocabulary.BurnOne);
             if (!v.ActionsLeft) return null;
@@ -461,7 +550,7 @@ namespace Gamesim.Tests.EditMode
     /// <summary>
     /// Loyalist: one pact early with whoever the shown odds favour, a final two with them when the house is
     /// small, every ally's offer and oath taken, and never a decision that breaks its word (the screen's
-    /// breach warning decides between candidates).
+    /// breach warning decides between candidates). A pact of three it convenes as a war room and goes with the plan.
     /// </summary>
     internal sealed class LoyalistPolicy : GatedPolicy
     {
@@ -507,9 +596,14 @@ namespace Gamesim.Tests.EditMode
             return null;
         }
 
+        /// <summary>A war room: go with the plan, whatever it is (but never against itself).</summary>
+        internal override string AnswerPlan(PlayerView v, PlayerView.PlanCard card) => GoWith(v, card, id => (v.AlliedWith(id) ? -1000 : 0) - v.MyView(id));
+
         protected override EpisodeCommand Act(PlayerView v)
         {
             if (v.FirstNight) return MeetTheHouse(v, WebIntroductions.Warm);
+            var room = WarRoom(v);
+            if (room != null) return room;
             if (!v.ActionsLeft) return null;
             var allies = v.MyPacts.Where(p => p.active).SelectMany(p => p.members).Select(m => m.id).Where(id => id != v.Me && v.Others.Contains(id)).Distinct().ToList();
             if (v.Phase == EpisodePhase.Social && !v.MyPacts.Any(p => p.active))
@@ -526,7 +620,7 @@ namespace Gamesim.Tests.EditMode
             if (v.Phase == EpisodePhase.Campaign && v.VoteReadAvailable)
             {
                 string wantsOut = v.Nominees.Where(id => id != v.Me && !v.AlliedWith(id)).OrderBy(id => v.MyView(id)).FirstOrDefault();
-                foreach (var pact in v.MyPacts.Where(p => p.active && !v.CalledThisWeek(p.id)))
+                foreach (var pact in v.MyPacts.Where(p => p.active && !p.warRoom && !v.CalledThisWeek(p.id)))
                 {
                     var ally = pact.members.Select(m => m.id).FirstOrDefault(id => v.Voters.Contains(id));
                     if (ally != null && wantsOut != null && !WasRefused(EpisodeCommandKind.CallTheVote, ally, wantsOut)) return Say(v, EpisodeCommandKind.CallTheVote, ally, wantsOut, pact.id);
@@ -565,9 +659,14 @@ namespace Gamesim.Tests.EditMode
             return null;
         }
 
+        /// <summary>A war room: the floater lies low.</summary>
+        internal override string AnswerPlan(PlayerView v, PlayerView.PlanCard card) => null;
+
         protected override EpisodeCommand Act(PlayerView v)
         {
             if (v.FirstNight) return MeetTheHouse(v, WebIntroductions.Warm);
+            var room = WarRoom(v);
+            if (room != null) return room;
             if (!v.ActionsLeft || v.Others.Count == 0) return null;
             var everyone = v.Others.OrderBy(id => id, StringComparer.Ordinal).ToList();
             return Say(v, EpisodeCommandKind.SmallTalk, everyone[turn++ % everyone.Count]);

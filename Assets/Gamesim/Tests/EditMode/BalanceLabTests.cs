@@ -56,7 +56,172 @@ namespace Gamesim.Tests.EditMode
                 // eviction has no veto.)
                 Assert.That(r.autopsy.weeksPlayed.Where(w => w.playerEvicted && w.playerVetoHolder && !w.finalEviction).Select(w => w.week), Is.Empty,
                     at + ": the player was evicted in a week they held the veto.");
+                // A pact of three calls only in its war room (B6a): no gated player asks it to call outside one.
+                if (!BalancePolicies.IsOracle(r.cell.policy))
+                    Assert.That(r.refusalsByKind.Keys.Where(k => k.Contains("settles its call when it meets")), Is.Empty, at + ": a call refused a pact of three.");
             }
+        }
+
+        /// <summary>
+        /// B6a: every engaged player (the loyalist, the schemer, the reader, the floater and the random player) in a pact
+        /// of three, once the block is set, convenes its war room with a seat and answers the plan for free, as each
+        /// answers: the loyalist goes with it, the floater lies low, the others as their card reads. The fixture is a
+        /// season at eight with the player and the first two houseguests in a warm pact made in week one (as
+        /// PactPlanSeasonDigests' trio player), walked to the first campaign where it could meet and somebody at it
+        /// has a say, the player off the block; each player plays that campaign on through the lab's own step.
+        /// </summary>
+        [Test]
+        public void EveryEngagedPlayerConvenesItsWarRoomAndAnswersThePlan()
+        {
+            EpisodeState campaign = null;
+            for (uint seed = 5100; seed < 5140 && campaign == null; seed++) campaign = TheFirstWarRoomCampaign(seed, card => true);
+            Assert.That(campaign, Is.Not.Null, "A campaign where the trio could meet as a war room.");
+            foreach (string name in new[] { BalancePolicies.Loyalist, BalancePolicies.Schemer, BalancePolicies.Reader, BalancePolicies.Floater, BalancePolicies.Random })
+                ConveneAndAnswer(campaign, name);
+        }
+
+        /// <summary>
+        /// B6a: how each engaged player answers a plan, read off its card (the fixture's campaign, cards made by hand):
+        /// the loyalist goes with it; the reader pushes against a plan somebody who said it is torn or leaning on; the
+        /// schemer pushes against a plan that names an ally; the floater lies low; on a split each goes with a nominee
+        /// of its own choosing, never itself; with nobody saying, everybody lies low.
+        /// </summary>
+        [Test]
+        public void EachEngagedPlayerAnswersAPlanAsItsCardReads()
+        {
+            EpisodeState campaign = null;
+            for (uint seed = 5100; seed < 5140 && campaign == null; seed++) campaign = TheFirstWarRoomCampaign(seed, card => true);
+            Assert.That(campaign, Is.Not.Null);
+            var view = new PlayerView(campaign, campaign.seed);
+            var members = campaign.alliances.Single(a => a.id == TrioId).members.Where(id => id != campaign.playerId).ToList();
+            string m1 = members[0], m2 = members[1];
+            // n0: a nominee outside the pact, the plan's target; n1 the other.
+            string n0 = campaign.nominees.FirstOrDefault(id => !members.Contains(id)), n1 = campaign.nominees.FirstOrDefault(id => id != n0);
+            Assert.That(n0, Is.Not.Null, "Precondition: somebody on the block is outside the pact.");
+            PlayerView.PlanCard Card(string plan, bool split, params (string member, string said, string whip)[] lines) => new PlayerView.PlanCard
+            {
+                pactId = TrioId, membersPlanId = plan, split = split,
+                lines = lines.Select(l => new PlayerView.PlanLine { memberId = l.member, saidId = l.said, whip = l.whip }).ToList(),
+            };
+            const string firm = Gamesim.Simulation.VoteRead.Firm, leaning = Gamesim.Simulation.VoteRead.Leaning, torn = Gamesim.Simulation.VoteRead.Torn;
+            var sure = Card(n0, false, (m1, n0, firm), (m2, n0, firm));
+            var lean = Card(n0, false, (m1, n0, firm), (m2, n0, leaning));
+            var torned = Card(n0, false, (m1, n0, torn), (m2, n0, firm));
+            var split = Card(null, true, (m1, n0, firm), (m2, n1, firm));
+            var quiet = Card(null, false, (m1, null, null), (m2, null, null));
+            var ally = Card(m1, false, (m2, m1, firm));
+            string Answer(string name, PlayerView.PlanCard card) => ((GatedPolicy)BalancePolicies.Create(name)).AnswerPlan(view, card);
+
+            Assert.That(Answer(BalancePolicies.Loyalist, sure), Is.EqualTo(n0));
+            Assert.That(Answer(BalancePolicies.Loyalist, lean), Is.EqualTo(n0), "The loyalist goes with the plan however its sayers lean.");
+            Assert.That(Answer(BalancePolicies.Reader, sure), Is.EqualTo(n0), "The reader goes with a plan everybody who said it is firm on...");
+            Assert.That(Answer(BalancePolicies.Reader, lean), Is.EqualTo(n1), "...and pushes against one somebody is leaning on...");
+            Assert.That(Answer(BalancePolicies.Reader, torned), Is.EqualTo(n1), "...or torn on.");
+            Assert.That(Answer(BalancePolicies.Schemer, sure), Is.EqualTo(n0));
+            Assert.That(Answer(BalancePolicies.Schemer, ally), Is.Not.EqualTo(m1).And.Not.Null, "The schemer pushes against a plan that names an ally.");
+            foreach (var card in new[] { sure, lean, split, quiet }) Assert.That(Answer(BalancePolicies.Floater, card), Is.Null, "The floater lies low.");
+            foreach (string name in new[] { BalancePolicies.Loyalist, BalancePolicies.Reader, BalancePolicies.Schemer })
+            {
+                Assert.That(new[] { n0, n1 }, Does.Contain(Answer(name, split)), name + " goes with a nominee on a split.");
+                Assert.That(Answer(name, quiet), Is.Null, name + " lies low with nobody saying.");
+            }
+            Assert.That(new[] { n0, n1, null }, Does.Contain(Answer(BalancePolicies.Random, sure)));
+        }
+
+        /// <summary>One player plays the fixture's campaign on through the lab's own step until its war room's plan settles; returns the stance.</summary>
+        private static string ConveneAndAnswer(EpisodeState campaign, string name)
+        {
+            {
+                var engine = new EpisodeEngine(campaign.Clone());
+                var agent = BalancePolicies.Create(name);
+                var run = new BalanceLab.SeasonRun { cell = new BalanceLab.Cell { policy = name, size = 8 }, seed = campaign.seed };
+                var mine = new List<EpisodeCommandKind>();
+                string expected = null;
+                for (int step = 0; step < 40 && engine.Snapshot.phase == EpisodePhase.Campaign; step++)
+                {
+                    var s = engine.Snapshot;
+                    var row = PactPlans.ThisWeek(s, TrioId);
+                    if (row != null && row.stance != PactPlanStance.Open) break;
+                    if (row != null && expected == null)
+                    {
+                        // What the card shows: the members' plan, and the player's read of who said it.
+                        var view = new PlayerView(s, run.seed);
+                        var card = view.OpenPlanCard(TrioId);
+                        Assert.That(card, Is.Not.Null, name + ": the plan waits on the player.");
+                        bool unsure = card.lines.Any(l => l.saidId == card.membersPlanId
+                            && (l.whip == Gamesim.Simulation.VoteRead.Torn || l.whip == Gamesim.Simulation.VoteRead.Leaning));
+                        bool ally = card.membersPlanId != null && view.AlliedWith(card.membersPlanId);
+                        expected = name == BalancePolicies.Loyalist ? PactPlanStance.Agreed : name == BalancePolicies.Floater ? PactPlanStance.Low
+                            : name == BalancePolicies.Schemer ? (ally ? PactPlanStance.Countered : PactPlanStance.Agreed)
+                            : name == BalancePolicies.Reader ? (unsure && card.membersPlanId != null ? PactPlanStance.Countered : PactPlanStance.Agreed) : null;
+                    }
+                    var result = BalanceLab.Step(engine, agent, s, run, out var used);
+                    Assert.That(result.accepted, Is.True, name + ": " + used.kind + ": " + result.reason);
+                    if (used.id.StartsWith("lab-", StringComparison.Ordinal)) mine.Add(used.kind);
+                }
+                var settled = PactPlans.ThisWeek(engine.Snapshot, TrioId);
+                TestContext.Out.WriteLine(name + ": " + string.Join(", ", mine) + " -> " + settled?.stance + " (expected " + (expected ?? "any") + ")");
+                Assert.That(mine, Does.Contain(EpisodeCommandKind.AllianceMeet), name + ": convened the war room.");
+                Assert.That(mine, Does.Contain(EpisodeCommandKind.AnswerPactPlan), name + ": answered the plan.");
+                Assert.That(mine.IndexOf(EpisodeCommandKind.AllianceMeet), Is.LessThan(mine.IndexOf(EpisodeCommandKind.AnswerPactPlan)), name + ": met, then answered.");
+                Assert.That(mine, Does.Not.Contain(EpisodeCommandKind.CallTheVote), name + ": no call outside the war room.");
+                Assert.That(settled, Is.Not.Null, name);
+                if (expected != null) Assert.That(settled.stance, Is.EqualTo(expected), name + ": answered as it answers.");
+                else Assert.That(new[] { PactPlanStance.Agreed, PactPlanStance.Countered, PactPlanStance.Low }, Does.Contain(settled.stance), name);
+                Assert.That(run.refusalsByKind.Keys.Where(k => k.StartsWith("AllianceMeet", StringComparison.Ordinal) || k.StartsWith("AnswerPactPlan", StringComparison.Ordinal)),
+                    Is.Empty, name + ": the house took the meeting and the answer.");
+                return settled.stance;
+            }
+        }
+
+        private const string TrioId = "alliance-lab-war-room-trio";
+
+        /// <summary>
+        /// Whether a war room held now (on a copy) leaves a members' plan - not a split, so going with it and pushing
+        /// against it differ - whose card is as <paramref name="wanted"/> asks.
+        /// </summary>
+        private static bool HasAMajority(EpisodeState s, AllianceState pact, Func<PlayerView.PlanCard, bool> wanted)
+        {
+            string through = pact.members.FirstOrDefault(id => id != s.playerId && Allegiance.InHouse(s, id));
+            if (through == null) return false;
+            var meet = EpisodeEngineTests.Command(s, EpisodeCommandKind.AllianceMeet);
+            meet.id = "lab-fixture-meet"; meet.targetId = through; meet.text = pact.id;
+            var held = new EpisodeEngine(s.Clone()).Apply(meet);
+            var card = held.accepted ? new PlayerView(held.state, s.seed).OpenPlanCard(pact.id) : null;
+            return card != null && card.membersPlanId != null && wanted(card);
+        }
+
+        /// <summary>A season at eight with the player and the first two houseguests in a warm pact from week one, walked to the first campaign where it could meet as a war room with a say, the player off the block; or null.</summary>
+        private static EpisodeState TheFirstWarRoomCampaign(uint seed, Func<PlayerView.PlanCard, bool> wanted)
+        {
+            var s0 = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, seed);
+            ShippedRules.ApplyFresh(s0);
+            var npcs = s0.Active.Where(c => !c.isPlayer).Take(2).Select(c => c.id).ToList();
+            var trio = new AllianceState { id = TrioId, name = "The Lab Trio", active = true, members = new List<string> { s0.playerId }.Concat(npcs).ToList() };
+            s0.alliances.Add(trio);
+            s0.ledger.alliances.Add(new AllianceRow { id = trio.id, startedWeek = s0.week, why = "player" });
+            EpisodeEngine.AllianceFormedUnderRead(s0, trio);
+            foreach (string from in trio.members)
+                foreach (string to in trio.members.Where(id => id != from))
+                {
+                    var edge = s0.relationships.FirstOrDefault(r => r.fromId == from && r.toId == to);
+                    if (edge == null) s0.relationships.Add(edge = new RelationshipState { fromId = from, toId = to });
+                    edge.score = 30;
+                }
+            var engine = new EpisodeEngine(s0);
+            for (int i = 0; i < 2000; i++)
+            {
+                var s = engine.Snapshot;
+                if (s.phase == EpisodePhase.Finished || s.Find(s.playerId).status != ContestantStatus.Active) return null;
+                var pact = s.alliances.FirstOrDefault(a => a.id == TrioId);
+                if (pact == null || !pact.active) return null;
+                if (s.phase == EpisodePhase.Campaign && PactPlans.BlockSet(s) && !s.nominees.Contains(s.playerId) && PactPlans.Convenes(s, pact)
+                    && EpisodeEngine.SocialActionsSpent(s) < EpisodeEngine.SocialActionBudget(s) && HasAMajority(s, pact, wanted))
+                    return s.Clone();
+                var result = engine.Apply(BalanceLab.Walker(s));
+                if (!result.accepted) return null;
+            }
+            return null;
         }
 
         /// <summary>

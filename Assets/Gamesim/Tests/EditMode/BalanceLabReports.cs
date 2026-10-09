@@ -92,6 +92,7 @@ namespace Gamesim.Tests.EditMode
             Competitions(md, runs);
             Concentration(md, runs);
             Commitments(md, runs);
+            WarRooms(md, runs);
             Economy(md, runs);
             Sense(md, runs);
             Evictions(md, runs);
@@ -297,6 +298,33 @@ namespace Gamesim.Tests.EditMode
                     + BalanceLab.Num(c.Average(x => x.npcDeals)) + " (" + BalanceLab.Num(c.Average(x => x.npcDealsKept)) + "/" + BalanceLab.Num(c.Average(x => x.npcDealsBroken)) + ") | "
                     + BalanceLab.Num(c.Average(x => x.playerPromises)) + " (" + BalanceLab.Num(c.Average(x => x.playerPromisesKept)) + "/" + BalanceLab.Num(c.Average(x => x.playerPromisesBroken)) + ") | "
                     + BalanceLab.Num(c.Average(x => x.oathsSworn)) + " | " + BalanceLab.Num(c.Average(x => x.ceilingWeeks)) + " |");
+            }
+            md.AppendLine();
+        }
+
+        /// <summary>
+        /// The war rooms (D3, B6a): the plans the player's pacts of three made, how they settled, and the counter -
+        /// those it could reach (who said the plan, off the block), their mean odds as the answer read them, who came
+        /// round and the counters that carried; and the plans whose target that week's eviction took.
+        /// </summary>
+        internal static void WarRooms(StringBuilder md, IReadOnlyList<BalanceLab.SeasonRun> runs)
+        {
+            md.AppendLine("### War rooms (D3): plans, answers and the counter");
+            md.AppendLine();
+            md.AppendLine("Per policy and house, over all its seasons: seasons with a plan; plans; how they settled (agreed / countered / low / lapsed / void); the counter's reach - members who said the plan, off the block - with their mean come-round odds and how many came round; counters that carried; plans whose target was evicted that week; plans the player called.");
+            md.AppendLine();
+            md.AppendLine("| policy | size | seasons with a plan | plans | agreed / countered / low / lapsed / void | reachable | mean odds | came round | counters carried | target evicted | player called |");
+            md.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|");
+            foreach (var cell in Cells(runs))
+            {
+                var w = cell.Select(r => r.autopsy.warRooms).ToList();
+                int Stance(string stance) => w.Sum(x => x.stances.TryGetValue(stance, out int n) ? n : 0);
+                var reach = cell.SelectMany(r => r.counterMembers).ToList();
+                int plans = w.Sum(x => x.plans), counters = w.Sum(x => x.counters);
+                md.AppendLine("| " + cell.Key.policy + " | " + cell.Key.size + " | " + w.Count(x => x.plans > 0) + " of " + w.Count + " | " + plans + " | "
+                    + Stance(PactPlanStance.Agreed) + " / " + Stance(PactPlanStance.Countered) + " / " + Stance(PactPlanStance.Low) + " / " + Stance(PactPlanStance.Lapsed) + " / " + Stance(PactPlanStance.Void)
+                    + " | " + reach.Count + " | " + (reach.Count == 0 ? "-" : BalanceLab.Num(reach.Average(m => m.odds), "0.00")) + " | " + reach.Count(m => m.cameRound)
+                    + " | " + w.Sum(x => x.countersCarried) + " of " + counters + " | " + w.Sum(x => x.targetEvicted) + " of " + plans + " | " + w.Sum(x => x.playerCalls) + " |");
             }
             md.AppendLine();
         }

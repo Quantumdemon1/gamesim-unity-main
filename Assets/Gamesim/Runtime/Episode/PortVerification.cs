@@ -35,6 +35,8 @@ namespace Gamesim.Episode
         private int profileDisplayModeMismatchCount;
         private int profileSampledFrameCap, profileSampledVSyncCount;
         private string profileSampledResolution, profileSampledDisplayMode;
+        /// <summary>How the profile's window was set, once it was (A12): the settings' own call, or empty when no window was set.</summary>
+        private string profileDisplayRoute = "";
         private ProfilerRecorder gc;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -166,8 +168,10 @@ namespace Gamesim.Episode
                 Screen.SetResolution(1280, 720, FullScreenMode.Windowed);
                 for (int i = 0; i < 15; i++) yield return null;
                 // The profile's window through the settings' own call (A12, the lead's decision 13):
-                // what the in-game option sets is what is measured.
+                // what the in-game option sets is what is measured, and the report names the route
+                // only once it has been taken - a run with no window to set reports none.
                 director.SetDisplay(DisplayMode.Windowed, ProfileWidth, ProfileHeight);
+                profileDisplayRoute = EpisodeDirector.DisplayRoute;
             }
             // A ready simulation can precede the first presentable frame / Unity splash completion.
             double captureDeadline = Time.realtimeSinceStartupAsDouble + 15;
@@ -337,7 +341,7 @@ namespace Gamesim.Episode
                 requestedFrameCap = ProfileFrameCap, requestedVSyncCount = ProfileVSyncCount,
                 sampledFrameCap = profileSampledFrameCap, sampledVSyncCount = profileSampledVSyncCount,
                 sampledFrameCapMismatchCount = profileFrameCapMismatchCount,
-                requestedDisplayMode = FullScreenMode.Windowed.ToString(), requestedDisplayRoute = EpisodeDirector.DisplayRoute,
+                requestedDisplayMode = FullScreenMode.Windowed.ToString(), requestedDisplayRoute = profileDisplayRoute,
                 sampledDisplayMode = profileSampledDisplayMode,
                 sampledDisplayModeMismatchCount = profileDisplayModeMismatchCount,
                 uncapped = profileDisplaySampleCount > 0 && profileFrameCapMismatchCount == 0,
@@ -395,7 +399,8 @@ namespace Gamesim.Episode
             public long seasonSeed;
             public double seasonStartedSeconds;
             public string requestedDisplayMode, sampledDisplayMode;
-            // How the profile's window was set (A12): through the settings' own call, EpisodeDirector.SetDisplay.
+            // How the profile's window was set (A12): through the settings' own call, EpisodeDirector.SetDisplay;
+            // empty when the run set no window (one without a graphical window to set).
             public string requestedDisplayRoute;
             public int sampledDisplayModeMismatchCount;
             public int sampledDisplayFrames, sampledResolutionMismatchCount, requestedFrameCap, requestedVSyncCount;

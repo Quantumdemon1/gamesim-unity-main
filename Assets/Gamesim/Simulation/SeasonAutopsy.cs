@@ -66,6 +66,16 @@ namespace Gamesim.Simulation
             public long npcTicks;
             /// <summary>The rule boundaries the season played under (<see cref="ShippedRules.Fields"/>), "name=value".</summary>
             public List<string> rules = new List<string>();
+            /// <summary>
+            /// BALANCE plan B7: the first week the player saw a commitment of theirs settle - a deal or a promise of
+            /// theirs kept or broken whose ending they know (<see cref="KnownBallots.DealOutcomeKnown"/>,
+            /// <see cref="KnownBallots.PromiseOutcomeKnown"/>, as Game Sense filters them), or a war room's plan they
+            /// answered settling - or 0 for none. Whether they were still in the house to see it is the reader's to
+            /// ask (<see cref="playerOutWeek"/>).
+            /// </summary>
+            public int firstSettledWeek;
+            /// <summary>B7: the competitions the player played, by week, each by its phase ("HoH", "Veto", "FinalHoHPart1"...).</summary>
+            public Dictionary<int, List<string>> competitionsPlayedByWeek = new Dictionary<int, List<string>>();
         }
 
         public static class Outcomes
@@ -232,6 +242,12 @@ namespace Gamesim.Simulation
             JuryOf(r, final);
             StoryOf(r, closings, final);
             WarRoomsOf(r, final);
+            FirstSettled(r, final);
+            foreach (var c in r.competitions.Where(c => c.playerInField))
+            {
+                if (!r.competitionsPlayedByWeek.TryGetValue(c.week, out var phases)) r.competitionsPlayedByWeek[c.week] = phases = new List<string>();
+                phases.Add(c.phase);
+            }
             var sense = GameSense.Evaluate(final);
             r.gameSense = sense.score; r.gameSenseCompetitions = sense.competitions; r.gameSenseStrategy = sense.strategy; r.gameSenseSocial = sense.social;
             return r;
@@ -573,6 +589,27 @@ namespace Gamesim.Simulation
                         && Grudges.HoldersAgainst(s, c.id, 40).Count(h => s.Find(h)?.status == ContestantStatus.Active) >= 3))
                     pariahWeeks.Add(s.week);
             st.pariahWeeks = pariahWeeks.Count;
+        }
+
+        // ---------------------------------------------------------------- the first commitment settled (B7)
+
+        private static void FirstSettled(Report r, EpisodeState final)
+        {
+            string me = final.playerId;
+            var weeks = new List<int>();
+            var deals = UsesReferences(final) ? CommitmentReferences.Deals(final) : (IReadOnlyList<DealState>)final.deals;
+            foreach (var d in deals.Where(d => d != null && (d.proposerId == me || d.recipientId == me)
+                         && (d.status == DealStatus.Fulfilled || d.status == DealStatus.Broken) && d.settledWeek > 0))
+                if (KnownBallots.DealOutcomeKnown(final, d)) weeks.Add(d.settledWeek);
+            var promises = UsesReferences(final) ? CommitmentReferences.Promises(final) : (IReadOnlyList<PromiseState>)final.promises;
+            foreach (var p in promises.Where(p => p != null && (p.fromId == me || p.toId == me)
+                         && (p.status == PromiseStatus.Fulfilled || p.status == PromiseStatus.Broken) && p.settledWeek > 0))
+                if (KnownBallots.PromiseOutcomeKnown(final, p)) weeks.Add(p.settledWeek);
+            // A war room's plan the player answered settles as they answer it, in that week's campaign.
+            foreach (var plan in (final.ledger?.plans ?? new List<PactPlanRow>()).Where(p => p != null
+                         && (p.stance == PactPlanStance.Agreed || p.stance == PactPlanStance.Countered || p.stance == PactPlanStance.Low)))
+                weeks.Add(plan.week);
+            r.firstSettledWeek = weeks.Count == 0 ? 0 : weeks.Min();
         }
 
         // ---------------------------------------------------------------- the war rooms

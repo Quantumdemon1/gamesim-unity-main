@@ -97,8 +97,57 @@ namespace Gamesim.Tests.EditMode
             public double npcMilliseconds;
             /// <summary>The final house's pairs of houseguests (the player aside), and those whose mutual view is within ten of the bound (±200) and at it.</summary>
             public int pairs, pairsNearBound, pairsAtBound;
+            // T0, the diagnostics' own records (BALANCE plan §4): never in the rows, which the goldens hash.
+            /// <summary>Q2: Game Sense's notes at the season's end, their points summed by face and ledger row kind ("strategy/power").</summary>
+            public readonly SortedDictionary<string, double> gameSenseRows = new SortedDictionary<string, double>(StringComparer.Ordinal);
+            /// <summary>Q4: every NPC Head of Household's nominations while the player was in the house, each candidate's weight in its terms.</summary>
+            public readonly List<NominationRecord> nominations = new List<NominationRecord>();
+            /// <summary>Q5: the season's first pariah run, as the story pacing report counts one; null for none.</summary>
+            public PariahRecord pariah;
+            /// <summary>Q3: the player's competition preparation at the season's end (out of five).</summary>
+            public int preparation;
             public bool Won => autopsy != null && autopsy.outcome == SeasonAutopsy.Outcomes.Winner;
             public bool FinalTwo => autopsy != null && (autopsy.outcome == SeasonAutopsy.Outcomes.Winner || autopsy.outcome == SeasonAutopsy.Outcomes.RunnerUp);
+        }
+
+        /// <summary>Q4: one candidate's <see cref="EpisodeEngine.NominationWeight"/> in its terms (lower is put up first).</summary>
+        internal sealed class NominationTerms
+        {
+            /// <summary>The strategy windows' reluctance, the story's preference, minus the HoH's view, minus the overlapping protection, minus the threat.</summary>
+            public double reluctance, story, view, protection, threat, total;
+
+            internal static NominationTerms Of(EpisodeState s, string hohId, string id) => new NominationTerms
+            {
+                reluctance = StrategyRules.NominationReluctance(s, hohId, id), story = StoryConsumers.NominationPreference(s, hohId, id), view = -s.Score(hohId, id),
+                protection = -(UnifiedCommitments.RulesOn(s) ? Math.Min(UnifiedCommitments.StrongestProtection(s, hohId, id).Strength, StoryConsumers.SafetyPreference(s, hohId, id)) : 0),
+                threat = -EpisodeEngine.ThreatTerm(s, hohId, id), total = EpisodeEngine.NominationWeight(s, hohId, id),
+            };
+
+            internal static NominationTerms Mean(IReadOnlyList<NominationTerms> terms) => terms.Count == 0 ? new NominationTerms() : new NominationTerms
+            {
+                reluctance = terms.Average(t => t.reluctance), story = terms.Average(t => t.story), view = terms.Average(t => t.view),
+                protection = terms.Average(t => t.protection), threat = terms.Average(t => t.threat), total = terms.Average(t => t.total),
+            };
+        }
+
+        /// <summary>Q4: an NPC Head of Household's nominations: the player's terms, the other candidates' mean, the player's rank (1 put up first) and whether they went up.</summary>
+        internal sealed class NominationRecord
+        {
+            public int week, candidates, playerRank;
+            public bool playerNominated;
+            public NominationTerms player, others;
+        }
+
+        /// <summary>Q5: a pariah run - a houseguest three in the house hold forty against, two Advances running - and what made it.</summary>
+        internal sealed class PariahRecord
+        {
+            /// <summary>The week, those in the house, the holders at forty or more, the target's competition wins, and the most HoH wins of any houseguest then.</summary>
+            public int week, houseCount, holders, targetHohWins, targetVetoWins, npcHohWinsMax;
+            /// <summary>Each holder's grudge against the target: its cause, as the grudge first came.</summary>
+            public List<string> causes = new List<string>();
+            public double meanSeverity;
+            /// <summary>How many times the holders' grudges were stacked, summed.</summary>
+            public int stacks;
         }
 
         /// <summary>
@@ -149,6 +198,8 @@ namespace Gamesim.Tests.EditMode
             var agent = BalancePolicies.Create(cell.policy);
             var changes = new List<SeasonAutopsy.PhaseChange>();
             run.pace = new StoryPacingTests.Pace { removalWindow = fresh.contestants.Count >= 7 };
+            string pariahTarget = null;
+            int pariahRun = 0;
             var s = engine.Snapshot;
             while (s.phase != EpisodePhase.Finished && run.commands < CommandCap)
             {
@@ -166,6 +217,11 @@ namespace Gamesim.Tests.EditMode
                 if (Free.Contains(used.kind)) run.freeActions++;
                 var after = applied.state;
                 if (used.kind == EpisodeCommandKind.AnswerPactPlan) Counters(s, after, run);
+                // T0 Q4: an NPC Head of Household puts two up on an Advance, ranking the house as it stands.
+                if (used.kind == EpisodeCommandKind.Advance && s.phase == EpisodePhase.Nomination && s.nominees.Count == 0 && after.nominees.Count == 2
+                    && s.hohId != s.playerId && s.Find(s.playerId).status == ContestantStatus.Active)
+                    run.nominations.Add(Nominations(s, after));
+                if (used.kind == EpisodeCommandKind.Advance) PariahWatch(after, run, ref pariahTarget, ref pariahRun);
                 run.pace.Watch(used, after);
                 bool phaseChange = SeasonAutopsy.IsPhaseChange(s, after);
                 if (phaseChange) changes.Add(new SeasonAutopsy.PhaseChange(s, after));
@@ -182,6 +238,44 @@ namespace Gamesim.Tests.EditMode
             run.pace.Close(s);
             Ceremonies(run);
             Saturation(run, s);
+            // T0 Q2 and Q3: Game Sense's notes by face and row kind; the player's preparation.
+            foreach (var g in GameSense.Evaluate(s).notes.GroupBy(n => n.face + "/" + n.rowKind))
+                run.gameSenseRows[g.Key] = Math.Round(g.Sum(n => n.points), 4);
+            run.preparation = s.playerStudyBonus;
+        }
+
+        /// <summary>T0 Q4: the NPC Head of Household's ranking at the nominations, the player's terms against the other candidates' mean.</summary>
+        private static NominationRecord Nominations(EpisodeState s, EpisodeState after)
+        {
+            var ranked = EpisodeEngine.NominationCandidates(s).Select(c => (c.id, terms: NominationTerms.Of(s, s.hohId, c.id)))
+                .OrderBy(x => x.terms.total).ToList();
+            var others = ranked.Where(x => x.id != s.playerId).Select(x => x.terms).ToList();
+            return new NominationRecord
+            {
+                week = s.week, candidates = ranked.Count, playerRank = ranked.FindIndex(x => x.id == s.playerId) + 1,
+                playerNominated = after.nominees.Contains(s.playerId),
+                player = ranked.FirstOrDefault(x => x.id == s.playerId).terms ?? new NominationTerms(), others = NominationTerms.Mean(others),
+            };
+        }
+
+        /// <summary>T0 Q5: the story pacing report's pariah rule, after every Advance (StoryPacingTests.Pace.Watch, copied), and the season's first run recorded.</summary>
+        private static void PariahWatch(EpisodeState after, SeasonRun run, ref string pariahTarget, ref int pariahRun)
+        {
+            var target = after.Active.Where(c => !c.isPlayer && c.id != after.hohId)
+                .Select(c => (c.id, holders: Grudges.HoldersAgainst(after, c.id, 40).Count(h => after.Find(h)?.status == ContestantStatus.Active)))
+                .Where(x => x.holders >= 3).Select(x => x.id).OrderBy(id => id, StringComparer.Ordinal).FirstOrDefault();
+            if (target != null && target == pariahTarget) { pariahRun++; }
+            else { pariahTarget = target; pariahRun = target != null ? 1 : 0; }
+            if (pariahRun < 2 || run.pariah != null) return;
+            var holders = Grudges.HoldersAgainst(after, target, 40).Where(h => after.Find(h)?.status == ContestantStatus.Active).ToList();
+            var grudges = after.story.grudges.Where(g => g.targetId == target && holders.Contains(g.holderId)).ToList();
+            var victim = after.Find(target);
+            run.pariah = new PariahRecord
+            {
+                week = after.week, houseCount = after.Active.Count(), holders = holders.Count, targetHohWins = victim.hohWins, targetVetoWins = victim.vetoWins,
+                npcHohWinsMax = after.contestants.Where(c => !c.isPlayer).Max(c => c.hohWins),
+                causes = grudges.Select(g => g.cause ?? "").ToList(), meanSeverity = grudges.Count == 0 ? 0 : grudges.Average(g => g.severity), stacks = grudges.Sum(g => g.count),
+            };
         }
 
         /// <summary>The final house's pairs of houseguests, the player aside, and those at or near the bound of a mutual view (±200): whether a budget saturates the house (B5b, risk 8).</summary>

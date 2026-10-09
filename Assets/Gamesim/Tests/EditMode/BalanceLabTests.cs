@@ -286,6 +286,30 @@ namespace Gamesim.Tests.EditMode
             return null;
         }
 
+        // ---------------------------------------------------------------- the projections (B7)
+
+        /// <summary>B7: the projection's arithmetic on four hand-made testers.</summary>
+        [Test]
+        public void TheProjectionArithmeticIsTheBriefs()
+        {
+            // (out week, first commitment settled): out in week 1 having seen none; never out, saw one in week 2;
+            // out in week 3, saw one in week 1; out in week 2, "saw" one in week 3 - after they left, so never.
+            var t = new List<Projection.Tester> { new Projection.Tester(1, 0), new Projection.Tester(0, 2), new Projection.Tester(3, 1), new Projection.Tester(2, 3) };
+            Assert.That(Projection.S(t, 1), Is.EqualTo(0.25)); Assert.That(Projection.S(t, 2), Is.EqualTo(0.5)); Assert.That(Projection.S(t, 3), Is.EqualTo(0.75));
+            Assert.That(Projection.C(t, 1), Is.EqualTo(0.25)); Assert.That(Projection.C(t, 2), Is.EqualTo(0.5)); Assert.That(Projection.C(t, 3), Is.EqualTo(0.5), "A settle after the tester left is not seen.");
+            Assert.That(Projection.AnyOut(t, 1, 3), Is.EqualTo(1 - Math.Pow(0.75, 3)).Within(1e-12));
+            Assert.That(Projection.AllSaw(t, 2, 3), Is.EqualTo(0.125).Within(1e-12));
+            // Joint at week 3: P(A) = 1/2 (the second and third); P(A and not B) = 1/4 (the second: the third went out in week 3).
+            Assert.That(Projection.Joint(t, 3, 3), Is.EqualTo(0.125 - 0.015625).Within(1e-12));
+            Assert.That(Projection.Joint(t, 1, 3), Is.EqualTo(0).Within(1e-12), "Week 1: the only one who saw is the third, still in, so nobody who saw is out.");
+            Assert.That(Projection.LowestWeek(k => Projection.AnyOut(t, k, 3), 0.9, 5), Is.EqualTo(3), ".578, .875, .984");
+            Assert.That(Projection.LowestWeek(k => Projection.AllSaw(t, k, 3), 0.9, 5), Is.Zero, "Never: half never see one.");
+            Assert.That(Projection.WeekMinutes(120, 60, 300, 4), Is.EqualTo(10).Within(1e-12));
+            Assert.That(Projection.CompetitionSeconds(1u, 9, new[] { "FinalHoHPart3" }), Is.EqualTo(CompetitionDefinitions.FirstImpressions.Duration + 3));
+            Assert.That(Projection.CompetitionSeconds(1u, 9, new[] { "FinalHoHPart1", "FinalHoHPart2" }),
+                Is.EqualTo(CompetitionDefinitions.PressureCooker.Duration + CompetitionDefinitions.SwitchbackSignals.Duration));
+        }
+
         // ---------------------------------------------------------------- the NPC world (B5b)
 
         /// <summary>The NPC ticks a week that stand for a human (the lead's decision 1).</summary>
@@ -480,11 +504,16 @@ namespace Gamesim.Tests.EditMode
         public void ATierPlayedInPartsWritesTheRowsOneRunWrites()
         {
             var cells = BalanceLab.Grid(new[] { BalancePolicies.Reader, BalancePolicies.Loyalist }, new[] { 6 });
-            string whole = BalanceLab.Jsonl(BalanceLab.Run(cells, 3));
+            var one = BalanceLab.Run(cells, 3);
+            string whole = BalanceLab.Jsonl(one);
             var parts = BalanceLab.RunPart(cells, 0, 2).Concat(BalanceLab.RunPart(cells, 2, 1)).Select(BalanceLabParts.RoundTrip)
                 .OrderBy(r => cells.FindIndex(c => c.Key == r.cell.Key)).ThenBy(r => r.index).ToList();
             Assert.That(BalanceLab.Jsonl(parts), Is.EqualTo(whole));
             Assert.That(parts.Select(r => r.index), Is.EqualTo(new[] { 0, 1, 2, 0, 1, 2 }));
+            // What the rows leave out survives too: the autopsy whole, and the diagnostics' own records.
+            string Rest(BalanceLab.SeasonRun r) => Newtonsoft.Json.JsonConvert.SerializeObject(new { r.autopsy, r.gameSenseRows, r.nominations, r.pariah, r.preparation, r.counterMembers });
+            Assert.That(parts.Select(Rest), Is.EqualTo(one.Select(Rest)));
+            Assert.That(one.Sum(r => r.gameSenseRows.Count), Is.GreaterThan(0), "Game Sense's rows were kept.");
         }
 
         [Test]

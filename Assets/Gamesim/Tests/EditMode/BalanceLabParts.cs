@@ -25,7 +25,7 @@ namespace Gamesim.Tests.EditMode
     public sealed class BalanceLabParts
     {
         /// <summary>Changed whenever what a season records changes, so parts of two builds never merge.</summary>
-        internal const string Stamp = "balance-lab-parts/v2";
+        internal const string Stamp = "balance-lab-parts/v3";
 
         private static BalanceLabReports.TierSpec TierFromEnvironment()
         {
@@ -124,6 +124,10 @@ namespace Gamesim.Tests.EditMode
             public List<BalanceLab.CounterMember> counterMembers = new List<BalanceLab.CounterMember>();
             public int npcOps, npcTicks, npcStarts, npcScans, npcTries, npcHeld, npcRejected, pairs, pairsNearBound, pairsAtBound;
             public double npcMilliseconds;
+            public SortedDictionary<string, double> gameSenseRows = new SortedDictionary<string, double>(StringComparer.Ordinal);
+            public List<BalanceLab.NominationRecord> nominations = new List<BalanceLab.NominationRecord>();
+            public BalanceLab.PariahRecord pariah;
+            public int preparation;
 
             internal static Record Of(BalanceLab.SeasonRun r) => new Record
             {
@@ -134,6 +138,8 @@ namespace Gamesim.Tests.EditMode
                 finaleSeconds = r.finaleSeconds, counterMembers = r.counterMembers.ToList(),
                 npcOps = r.npcOps, npcTicks = r.npcTicks, npcStarts = r.npcStarts, npcScans = r.npcScans, npcTries = r.npcTries, npcHeld = r.npcHeld,
                 npcRejected = r.npcRejected, npcMilliseconds = r.npcMilliseconds, pairs = r.pairs, pairsNearBound = r.pairsNearBound, pairsAtBound = r.pairsAtBound,
+                gameSenseRows = new SortedDictionary<string, double>(r.gameSenseRows, StringComparer.Ordinal), nominations = r.nominations.ToList(), pariah = r.pariah,
+                preparation = r.preparation,
             };
 
             internal BalanceLab.SeasonRun ToRun()
@@ -144,7 +150,10 @@ namespace Gamesim.Tests.EditMode
                     commands = commands, own = own, fallbacks = fallbacks, refusals = refusals, freeActions = freeActions, finaleSeconds = finaleSeconds,
                     npcOps = npcOps, npcTicks = npcTicks, npcStarts = npcStarts, npcScans = npcScans, npcTries = npcTries, npcHeld = npcHeld,
                     npcRejected = npcRejected, npcMilliseconds = npcMilliseconds, pairs = pairs, pairsNearBound = pairsNearBound, pairsAtBound = pairsAtBound,
+                    pariah = pariah, preparation = preparation,
                 };
+                foreach (var p in gameSenseRows ?? new SortedDictionary<string, double>()) r.gameSenseRows[p.Key] = p.Value;
+                r.nominations.AddRange(nominations ?? new List<BalanceLab.NominationRecord>());
                 foreach (var p in refusalsByKind) r.refusalsByKind[p.Key] = p.Value;
                 foreach (var p in decisionsByWeek) r.decisionsByWeek[p.Key] = p.Value;
                 foreach (var p in ceremonyByWeek) r.ceremonyByWeek[p.Key] = p.Value;

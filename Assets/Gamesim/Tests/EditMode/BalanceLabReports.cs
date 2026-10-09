@@ -51,8 +51,25 @@ namespace Gamesim.Tests.EditMode
             new TierSpec { name = "warrooms", title = "War-room tier", per = "policy and house", seedsVariable = "BALANCE_WARROOM_SEEDS", defaultSeeds = 100,
                 cells = () => BalanceLab.Grid(WarRoomPolicies, HeadlineSizes), tables = runs => { var md = new StringBuilder(); WarRooms(md, runs); md.Append(BalanceLabDiagnostics.CounterWhatIf(runs)); return md.ToString(); } },
             new TierSpec { name = "npc", title = "NPC budget tier", per = "policy, house and budget", seedsVariable = "BALANCE_NPC_SEEDS", defaultSeeds = 200,
-                cells = NpcGrid, tables = NpcBudget },
+                cells = NpcGrid, tables = runs => NpcBudget(runs) + BalanceLabDiagnostics.NominationDecomposition(runs) + BalanceLabDiagnostics.PariahDecomposition(runs) },
+            new TierSpec { name = "projection", title = "Projection tier", per = "house and budget", seedsVariable = "BALANCE_PROJECTION_SEEDS", defaultSeeds = 400,
+                cells = ProjectionGrid, tables = Projections },
+            new TierSpec { name = "competition", title = "Competition tier", per = "player, performance and size", seedsVariable = "BALANCE_COMPETITION_SEEDS", defaultSeeds = 200,
+                cells = () => new[] { 0.5, 0.8 }.SelectMany(level => BalanceLab.Grid(new[] { BalancePolicies.Passive, BalancePolicies.Studier }, HeadlineSizes, PerformanceModel.Fixed(level))).ToList(),
+                tables = BalanceLabDiagnostics.Preparation },
         }.ToDictionary(t => t.name, StringComparer.Ordinal);
+
+        /// <summary>B7's grid: the novice in every house the full tier plays, at BALANCE_PROJECTION_BUDGETS (nought, 300 and 900).</summary>
+        internal static List<BalanceLab.Cell> ProjectionGrid() =>
+            ListFromEnvironment("BALANCE_PROJECTION_BUDGETS", new[] { "0", "300", "900" }).Select(b => int.Parse(b, NumberStyles.Integer, CultureInfo.InvariantCulture))
+                .SelectMany(budget => BalanceLab.Grid(new[] { BalancePolicies.Novice }, FullSizes, npcTicks: budget)
+                    .Concat(BalanceLab.Grid(new[] { BalancePolicies.Novice }, new[] { 8 }, roster: CastTemplates.Roster.AllStars, npcTicks: budget))).ToList();
+
+        [Test, Explicit("B7's projections: the novice at 4-12 and the All-Stars eight at BALANCE_PROJECTION_BUDGETS on BALANCE_PROJECTION_SEEDS seasons (400). Run by name, or in parts.")]
+        public void ProjectionReport() => Tier(Tiers["projection"]);
+
+        [Test, Explicit("T0 Q3: the studier against passive at fixed performance .5 and .8, eight and twelve, BALANCE_COMPETITION_SEEDS seasons (200). Run by name, or in parts.")]
+        public void CompetitionReport() => Tier(Tiers["competition"]);
 
         /// <summary>The NPC budget grid's players (BALANCE_NPC_POLICIES, by default the brief's five).</summary>
         internal static string[] NpcPolicies => ListFromEnvironment("BALANCE_NPC_POLICIES", new[] { BalancePolicies.Passive, BalancePolicies.Novice, BalancePolicies.Social, BalancePolicies.Reader, BalancePolicies.Beast });
@@ -194,8 +211,106 @@ namespace Gamesim.Tests.EditMode
             House(md, runs);
             Pacing(md, runs);
             Refusals(md, runs);
+            // T0: the diagnostics that decide the tuning questions (BALANCE plan §4).
+            md.Append(BalanceLabDiagnostics.GameSenseWhatIf(runs));
+            md.Append(BalanceLabDiagnostics.NominationDecomposition(runs));
+            md.Append(BalanceLabDiagnostics.PariahDecomposition(runs));
+            if (runs.Any(r => r.counterMembers.Count > 0)) md.Append(BalanceLabDiagnostics.CounterWhatIf(runs));
             return md.ToString();
         }
+
+        // ---------------------------------------------------------------- the projections (B7)
+
+        /// <summary>
+        /// B7: for each house and budget, the novice's S(k), C(k) and the session criteria by week for three, four and
+        /// five testers; the lowest week each reaches 90%; and the minutes a week in the house costs, with the session
+        /// length each lowest week implies, against E1's 30-45 minutes an episode.
+        /// </summary>
+        internal static string Projections(IReadOnlyList<BalanceLab.SeasonRun> runs)
+        {
+            var md = new StringBuilder();
+            var houses = runs.Where(r => r.error == null).GroupBy(r => HouseOf(r.cell)).OrderBy(g => HouseOrder(g.First().cell)).ToList();
+            md.AppendLine("### B7: the projections for a playtest session (the novice)");
+            md.AppendLine();
+            md.AppendLine("S(k): out by week k. C(k): saw a commitment of theirs settle (a deal or promise kept or broken whose ending they know, or a war-room plan they answered) while still in the house, by week k. "
+                + "Any out (n): 1 - (1 - S)^n, E4 alone. All saw (n): C^n, E3 alone. Joint (n): every tester saw one and at least one is out, P(A)^n - P(A and not B)^n from each season's joint indicators.");
+            md.AppendLine();
+            var summary = new List<string>();
+            foreach (var house in houses)
+            {
+                var list = house.ToList();
+                var testers = list.Select(r => new Projection.Tester(r.autopsy.playerOutWeek, r.autopsy.firstSettledWeek)).ToList();
+                int max = list.Max(r => r.autopsy.weeks);
+                md.AppendLine("#### " + house.Key + " (" + list.Count + " seasons)");
+                md.AppendLine();
+                md.AppendLine("| k | S(k) | C(k) | any out (3) | all saw (3) | joint (3) | joint (4) | joint (5) | session minutes to week k |");
+                md.AppendLine("|---|---|---|---|---|---|---|---|---|");
+                var minutes = WeekMinutes(list);
+                for (int k = 1; k <= max; k++)
+                    md.AppendLine("| " + k + " | " + Pct(Projection.S(testers, k)) + " | " + Pct(Projection.C(testers, k)) + " | " + Pct(Projection.AnyOut(testers, k, 3)) + " | "
+                        + Pct(Projection.AllSaw(testers, k, 3)) + " | " + Pct(Projection.Joint(testers, k, 3)) + " | " + Pct(Projection.Joint(testers, k, 4)) + " | "
+                        + Pct(Projection.Joint(testers, k, 5)) + " | " + BalanceLab.Num(SessionMinutes(minutes, k), "0") + " |");
+                md.AppendLine();
+                string Lowest(Func<int, double> p) { int k = Projection.LowestWeek(p, 0.9, max); return k == 0 ? "never" : k + " (" + BalanceLab.Num(SessionMinutes(minutes, k), "0") + " min)"; }
+                double perWeek = minutes.Count == 0 ? 0 : minutes.Values.Sum(m => m.total) / Math.Max(1, minutes.Values.Sum(m => m.n));
+                summary.Add("| " + house.Key + " | " + list.Count + " | " + BalanceLab.Num(perWeek, "0.0") + " | "
+                    + string.Join(" | ", new[] { 3, 4, 5 }.Select(n => Lowest(k => Projection.AnyOut(testers, k, n)))) + " | "
+                    + string.Join(" | ", new[] { 3, 4, 5 }.Select(n => Lowest(k => Projection.AllSaw(testers, k, n)))) + " | "
+                    + string.Join(" | ", new[] { 3, 4, 5 }.Select(n => Lowest(k => Projection.Joint(testers, k, n)))) + " |");
+            }
+            md.AppendLine("#### The lowest week each criterion reaches 90%, with the session it implies");
+            md.AppendLine();
+            md.AppendLine("Minutes a week in the house: ceremonies at the suspenseful pace + the competitions played (duration and preview) + the NPC budget's free roam (a tick a second) + decisions at "
+                + Projection.DecisionSeconds + " s each (until B8 measures them). E1's band is 30-45 minutes an episode.");
+            md.AppendLine();
+            md.AppendLine("| house | seasons | minutes a week | E4 any out, 3 | 4 | 5 | E3 all saw, 3 | 4 | 5 | joint, 3 | 4 | 5 |");
+            md.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|");
+            foreach (string line in summary) md.AppendLine(line);
+            md.AppendLine();
+            md.AppendLine("#### Where a week's minutes go");
+            md.AppendLine();
+            md.AppendLine("| house | ceremony s | competition s | free roam s | decisions | decision s | minutes |");
+            md.AppendLine("|---|---|---|---|---|---|---|");
+            foreach (var house in houses)
+            {
+                var parts = house.SelectMany(r => WeeksInTheHouse(r).Select(w => WeekParts(r, w))).ToList();
+                if (parts.Count == 0) continue;
+                md.AppendLine("| " + house.Key + " | " + BalanceLab.Num(parts.Average(p => p.ceremony), "0") + " | " + BalanceLab.Num(parts.Average(p => p.competition), "0") + " | "
+                    + BalanceLab.Num(parts.Average(p => p.freeRoam), "0") + " | " + BalanceLab.Num(parts.Average(p => p.decisions), "0.0") + " | "
+                    + BalanceLab.Num(parts.Average(p => p.decisions * Projection.DecisionSeconds), "0") + " | "
+                    + BalanceLab.Num(parts.Average(p => Projection.WeekMinutes(p.ceremony, p.competition, p.freeRoam, p.decisions)), "0.0") + " |");
+            }
+            md.AppendLine();
+            return md.ToString();
+        }
+
+        private static string Pct(double rate) => BalanceLab.Pct(rate);
+
+        /// <summary>The weeks a season's player spent in the house: up to the week they went out, or every week.</summary>
+        private static IEnumerable<int> WeeksInTheHouse(BalanceLab.SeasonRun r) => Enumerable.Range(1, Math.Max(0, r.autopsy.playerOutWeek > 0 ? r.autopsy.playerOutWeek : r.autopsy.weeks));
+
+        private static (double ceremony, double competition, double freeRoam, int decisions) WeekParts(BalanceLab.SeasonRun r, int week) =>
+            (r.ceremonyByWeek.TryGetValue(week, out double c) ? c : 0,
+             Projection.CompetitionSeconds(r.seed, week, r.autopsy.competitionsPlayedByWeek.TryGetValue(week, out var phases) ? phases : null),
+             r.cell.npcTicks, r.decisionsByWeek.TryGetValue(week, out int d) ? d : 0);
+
+        /// <summary>Each week's mean minutes over the seasons whose player was in the house that week: (sum, count) by week.</summary>
+        private static Dictionary<int, (double total, int n)> WeekMinutes(IEnumerable<BalanceLab.SeasonRun> runs)
+        {
+            var byWeek = new Dictionary<int, (double total, int n)>();
+            foreach (var r in runs)
+                foreach (int w in WeeksInTheHouse(r))
+                {
+                    var p = WeekParts(r, w);
+                    var (total, n) = byWeek.TryGetValue(w, out var x) ? x : (0, 0);
+                    byWeek[w] = (total + Projection.WeekMinutes(p.ceremony, p.competition, p.freeRoam, p.decisions), n + 1);
+                }
+            return byWeek;
+        }
+
+        /// <summary>A session's minutes to the end of week k: each week's mean over the testers still in it.</summary>
+        private static double SessionMinutes(Dictionary<int, (double total, int n)> byWeek, int k) =>
+            Enumerable.Range(1, k).Sum(w => byWeek.TryGetValue(w, out var x) && x.n > 0 ? x.total / x.n : 0);
 
         private static void WinRates(StringBuilder md, IReadOnlyList<BalanceLab.SeasonRun> runs)
         {

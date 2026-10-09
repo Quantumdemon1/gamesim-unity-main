@@ -270,6 +270,48 @@ namespace Gamesim.Tests.EditMode
             Assert.That(w.targetEvicted, Is.EqualTo(3), "Weeks one, two and four; week three's target stayed.");
         }
 
+        /// <summary>
+        /// B7: the first week the player saw a commitment of theirs settle - a deal or promise of theirs kept or broken
+        /// whose ending they know, or a plan of theirs answered - from a hand-built season.
+        /// </summary>
+        [Test]
+        public void TheFirstCommitmentSettledIsTheEarliestThePlayerCouldKnow()
+        {
+            var s = FinishedByHand();
+            var npc = Npcs(s);
+            string me = s.playerId;
+            Assert.That(SeasonAutopsy.Of(new List<SeasonAutopsy.PhaseChange>(), s).firstSettledWeek, Is.Zero, "Nothing settled on the record: none.");
+            s.deals.Single(d => d.id == "d2").settledWeek = 3;   // A final two broken against the player: theirs to know.
+            s.deals.Single(d => d.id == "d3").settledWeek = 1;   // Between two houseguests: not the player's.
+            s.promises.Single(p => p.id == "p1").settledWeek = 2; // The player's own safety promise, kept.
+            s.promises.Single(p => p.id == "p2").settledWeek = 4; // The player's own vote promise, broken: they cast that ballot.
+            // A houseguest's vote promise to the player, broken in week one by a ballot the player never learned.
+            s.promises.Add(new PromiseState { id = "p3", fromId = npc[3], toId = me, kind = PromiseKind.Vote, status = PromiseStatus.Broken, week = 1, settledWeek = 1 });
+            Assert.That(KnownBallots.PromiseOutcomeKnown(s, s.promises.Single(p => p.id == "p3")), Is.False, "Precondition: an ending the player cannot know.");
+            Assert.That(SeasonAutopsy.Of(new List<SeasonAutopsy.PhaseChange>(), s).firstSettledWeek, Is.EqualTo(2), "The kept safety promise, week two; never the ballot the player did not see.");
+            // A war room's plan the player answered in week one settles that week; one that lapsed or came to nothing does not count.
+            s.ledger.plans = new List<PactPlanRow>
+            {
+                new PactPlanRow { week = 1, allianceId = "alliance-1", stance = PactPlanStance.Lapsed, targetId = npc[4] },
+                new PactPlanRow { week = 1, allianceId = "alliance-x", stance = PactPlanStance.Void },
+            };
+            Assert.That(SeasonAutopsy.Of(new List<SeasonAutopsy.PhaseChange>(), s).firstSettledWeek, Is.EqualTo(2), "A lapse and a void plan are not the player's answer.");
+            s.ledger.plans.Add(new PactPlanRow { week = 1, allianceId = "alliance-1", stance = PactPlanStance.Low, targetId = npc[4] });
+            Assert.That(SeasonAutopsy.Of(new List<SeasonAutopsy.PhaseChange>(), s).firstSettledWeek, Is.EqualTo(1), "Lying low is an answer.");
+        }
+
+        /// <summary>B7: the competitions the player played, by week, from a played season.</summary>
+        [Test]
+        public void TheCompetitionsThePlayerPlayedAreListedByWeek()
+        {
+            var (changes, final) = Walk(6, 3302u);
+            var r = SeasonAutopsy.Of(changes, final);
+            Assert.That(r.competitionsPlayedByWeek.Values.Sum(v => v.Count), Is.EqualTo(r.competitions.Count(c => c.playerInField)));
+            foreach (var c in r.competitions.Where(c => c.playerInField))
+                Assert.That(r.competitionsPlayedByWeek[c.week], Does.Contain(c.phase), "week " + c.week);
+            Assert.That(r.competitionsPlayedByWeek, Is.Not.Empty);
+        }
+
         [Test]
         public void ACompetitionIsReadFromThePhaseChangeThatClosedIt()
         {

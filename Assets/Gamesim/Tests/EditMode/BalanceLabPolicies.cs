@@ -35,6 +35,9 @@ namespace Gamesim.Tests.EditMode
             Loyalist = "loyalist", Floater = "floater", Beast = "beast", Novice = "novice", Exploit = "exploit",
             OracleReader = "oracle-reader", OracleSkilled = "oracle-skilled";
 
+        /// <summary>T0's studier (§4 Q3): the passive player who studies the house until prepared. Not in the headline's grid.</summary>
+        public const string Studier = "studier";
+
         /// <summary>The ten knowledge-gated players.</summary>
         public static readonly string[] Gated = { Passive, Random, Social, Reader, Schemer, Loyalist, Floater, Beast, Novice, Exploit };
 
@@ -51,6 +54,7 @@ namespace Gamesim.Tests.EditMode
             switch (name)
             {
                 case Passive: return new PassivePolicy();
+                case Studier: return new PassivePolicy(studies: true);
                 case Random: return new RandomPolicy();
                 case Social: return new SocialPolicy();
                 case Reader: return new ReaderPolicy();
@@ -286,10 +290,23 @@ namespace Gamesim.Tests.EditMode
 
     // -------------------------------------------------------------------- the ten
 
-    /// <summary>Passive: does only what each phase asks, as the lab's walker does (a veto it holds on the block saves itself).</summary>
+    /// <summary>
+    /// Passive: does only what each phase asks, as the lab's walker does (a veto it holds on the block saves itself).
+    /// As the studier (T0, BALANCE plan §4 Q3) it also studies the house in every social week until its preparation is
+    /// full, and nothing else: the passive player with the beast's preparation, to measure what preparation is worth.
+    /// Not one of the headline's players.
+    /// </summary>
     internal sealed class PassivePolicy : GatedPolicy
     {
-        public override string Name => BalancePolicies.Passive;
+        private readonly bool studies;
+        public PassivePolicy(bool studies = false) { this.studies = studies; }
+        public override string Name => studies ? BalancePolicies.Studier : BalancePolicies.Passive;
+
+        protected override EpisodeCommand Act(PlayerView v)
+        {
+            if (!studies || !v.ActionsLeft || v.Phase != EpisodePhase.Social || v.Preparation >= 5 || WasRefused(EpisodeCommandKind.StudyHouse, "memorize-layout")) return null;
+            return Make(v, EpisodeCommandKind.StudyHouse, "memorize-layout");
+        }
     }
 
     /// <summary>Random: a coin for every choice - who to talk to and how, what to answer, who to put up and vote out.</summary>

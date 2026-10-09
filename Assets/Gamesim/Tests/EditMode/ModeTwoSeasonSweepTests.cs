@@ -28,6 +28,13 @@ namespace Gamesim.Tests.EditMode
     ///   the state moves only where a decision reads it, which no season here reaches before its Rule2 overlap.
     /// - The knowledge gate (V5d, V5e): mode 2's history counts no memory that tells a hidden ballot, and its week does not say
     ///   the player kept a vote deal whose keeping tells one (ModeTwoBargainReaderTests, ModeTwoFinaleReaderTests). Readers only.</para>
+    ///
+    /// <para><b>A sample on every run, the rest on demand.</b> The 64 seasons take minutes, too long for every push (CI gives the
+    /// whole subset ten minutes) and longer still in the editor. Six run always - seeds 5, 11 and 18, plain and busy: houses of 8
+    /// and 6, a Rule2 overlap (busy 11) and the current-reveal exclusion (busy 18). The other 58 are
+    /// <c>TheRestOfTheSeasonsPlayAsModeOneOrDifferWhereTheTableSays</c>, explicit and compiled out of Unity as the
+    /// digests are: run the whole table with <c>dotnet test Tools/SimulationTests --filter "FullyQualifiedName~ModeTwoSeasonSweepTests"</c>
+    /// before landing a change to the vote family.</para>
     /// </summary>
     public sealed class ModeTwoSeasonSweepTests
     {
@@ -44,12 +51,36 @@ namespace Gamesim.Tests.EditMode
             ["busy 22"] = ("designed at week 2 Eviction Advance: the current-reveal exclusion; mode 2 then finished", "designed"),
         };
 
-        private static IEnumerable<TestCaseData> Seasons() =>
-            new[] { false, true }.SelectMany(busy => Enumerable.Range(1, 32).Select(seed =>
+        /// <summary>The seeds every run plays, plain and busy.</summary>
+        private static readonly int[] Sampled = { 5, 11, 18 };
+
+        private static IEnumerable<TestCaseData> Seasons(bool sampled) =>
+            new[] { false, true }.SelectMany(busy => Enumerable.Range(1, 32).Where(seed => Sampled.Contains(seed) == sampled).Select(seed =>
                 new TestCaseData(busy, (uint)seed, seed <= 16 ? 8 : seed <= 24 ? 6 : 12)));
 
-        [TestCaseSource(nameof(Seasons))]
-        public void ASeasonPlaysAsModeOneOrDiffersWhereTheTableSays(bool busy, uint seed, int size)
+        private static IEnumerable<TestCaseData> Sample() => Seasons(true);
+
+        [TestCaseSource(nameof(Sample))]
+        public void ASeasonPlaysAsModeOneOrDiffersWhereTheTableSays(bool busy, uint seed, int size) => Play(busy, seed, size);
+
+#if !UNITY_5_3_OR_NEWER
+        private static IEnumerable<TestCaseData> Rest() => Seasons(false);
+
+        [TestCaseSource(nameof(Rest)), Explicit("The other 58 seasons of the sweep, a few minutes: run before landing a change to the vote family.")]
+        public void TheRestOfTheSeasonsPlayAsModeOneOrDifferWhereTheTableSays(bool busy, uint seed, int size) => Play(busy, seed, size);
+
+        [Test]
+        public void TheSampleAndTheRestAreTheWholeTable()
+        {
+            var all = Seasons(true).Concat(Seasons(false)).Select(c => (busy: (bool)c.Arguments[0], seed: (uint)c.Arguments[1])).ToList();
+            Assert.That(all.Count, Is.EqualTo(64));
+            Assert.That(all.Distinct().Count(), Is.EqualTo(64), "Each season once.");
+            Assert.That(Differs.Keys.Count(key => Sample().Any(c => ((bool)c.Arguments[0] ? "busy " : "plain ") + c.Arguments[1] == key)), Is.EqualTo(2),
+                "The sample meets both kinds of designed difference: a Rule2 overlap and the current-reveal exclusion.");
+        }
+#endif
+
+        private static void Play(bool busy, uint seed, int size)
         {
             string key = (busy ? "busy" : "plain") + " " + seed;
             string outcome = ModeTwoReaderSweep.Lockstep(seed, size, busy);

@@ -1239,11 +1239,20 @@ namespace Gamesim.Tests.EditMode
         /// Seasons whose walks meet no reader still to move (vote family V5) equal mode 1's after projection at every one of
         /// their commands, reveals, endings and the final eviction included, to the jury's verdict: since V5c every seed of
         /// 1..16 in a house of 8. ModeTwoSeasonSweepTests plays seeds 1..32 in every house size, the busy player's too, and
-        /// names where each that differs first does.
+        /// names where each that differs first does. Seeds 5 and 6 on every run; the other fourteen on demand
+        /// (<c>TheOtherSeasonsWithoutReaderGapsEqualModeOneToTheFinish</c>, explicit and compiled out of Unity).
         /// </summary>
-        [TestCase(1u)] [TestCase(2u)] [TestCase(3u)] [TestCase(4u)] [TestCase(5u)] [TestCase(6u)] [TestCase(7u)] [TestCase(8u)] [TestCase(9u)]
+        [TestCase(5u)] [TestCase(6u)]
+        public void ASeasonWithoutReaderGapsEqualsModeOneToTheFinish(uint seed) => PlayWithoutReaderGaps(seed);
+
+#if !UNITY_5_3_OR_NEWER
+        [TestCase(1u)] [TestCase(2u)] [TestCase(3u)] [TestCase(4u)] [TestCase(7u)] [TestCase(8u)] [TestCase(9u)]
         [TestCase(10u)] [TestCase(11u)] [TestCase(12u)] [TestCase(13u)] [TestCase(14u)] [TestCase(15u)] [TestCase(16u)]
-        public void ASeasonWithoutReaderGapsEqualsModeOneToTheFinish(uint seed)
+        [Explicit("The other fourteen seeds of 1..16, whole seasons: run before landing a change to the vote family.")]
+        public void TheOtherSeasonsWithoutReaderGapsEqualModeOneToTheFinish(uint seed) => PlayWithoutReaderGaps(seed);
+#endif
+
+        private static void PlayWithoutReaderGaps(uint seed)
         {
             var fresh = PinnedVoteSeason.Fresh(seed);
             var season = new PinnedVoteSeason(seed, fresh);

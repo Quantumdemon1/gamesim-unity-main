@@ -21,15 +21,36 @@ namespace Gamesim.Tests.EditMode
     /// whose keeping tells a hidden ballot, and its history counts no memory that tells one (V5d) - each compared with mode 2's
     /// reading put in place. The pages (V5f, <see cref="ModeTwoPageReaderTests"/>) are inventories, read row by row as mode 1
     /// reads them, at every moment.</para>
+    ///
+    /// <para><b>A sample on every run, the rest on demand.</b> The 32 walks take minutes, too long for every push and longer still
+    /// in the editor. Four run always - seeds 5, 11, 18 and 25: houses of 8, 6 and 12, and seed 11, the one walk whose moments
+    /// meet a two-row incident and a two-row group (the D1 branches). The other 28 are
+    /// <c>TheRestOfTheWalksReadEveryMovedReaderAsModeOne</c>, explicit and compiled out of Unity: run them all with
+    /// <c>dotnet test Tools/SimulationTests --filter "FullyQualifiedName~ModeTwoReaderParityTests"</c> before landing a change to
+    /// a reader.</para>
     /// </summary>
     public sealed class ModeTwoReaderParityTests
     {
-        /// <summary>Seeds 1 to 32: houses of 8, then 6, then 12.</summary>
-        private static IEnumerable<TestCaseData> Walks() => Enumerable.Range(1, 32).Select(seed =>
-            new TestCaseData((uint)seed, seed <= 16 ? 8 : seed <= 24 ? 6 : 12));
+        /// <summary>The seeds every run walks.</summary>
+        private static readonly int[] Sampled = { 5, 11, 18, 25 };
 
-        [TestCaseSource(nameof(Walks))]
-        public void EveryMovedReaderIsModeOnesThroughASeason(uint seed, int size)
+        /// <summary>Seeds 1 to 32: houses of 8, then 6, then 12.</summary>
+        private static IEnumerable<TestCaseData> Walks(bool sampled) => Enumerable.Range(1, 32).Where(seed => Sampled.Contains(seed) == sampled)
+            .Select(seed => new TestCaseData((uint)seed, seed <= 16 ? 8 : seed <= 24 ? 6 : 12));
+
+        private static IEnumerable<TestCaseData> Sample() => Walks(true);
+
+        [TestCaseSource(nameof(Sample))]
+        public void EveryMovedReaderIsModeOnesThroughASeason(uint seed, int size) => Check(seed, size);
+
+#if !UNITY_5_3_OR_NEWER
+        private static IEnumerable<TestCaseData> Rest() => Walks(false);
+
+        [TestCaseSource(nameof(Rest)), Explicit("The other 28 walks of the reader sweep, a few minutes: run before landing a change to a reader.")]
+        public void TheRestOfTheWalksReadEveryMovedReaderAsModeOne(uint seed, int size) => Check(seed, size);
+#endif
+
+        private static void Check(uint seed, int size)
         {
             int commands = 0, moments = 0, overlapping = 0, grouped = 0;
             var lastPhase = (EpisodePhase)(-1);

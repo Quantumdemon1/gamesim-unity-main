@@ -134,7 +134,10 @@ namespace Gamesim.Tests.EditMode
         public void TheFenceAPlayerBrokeByACanonicalVoteBreachIsMendedAsInModeOne()
         {
             ModeTwoReaderSweep.Injected mend = null;
-            for (uint seed = 1; seed <= 32 && mend == null; seed++)
+            // Seed 19 first, the first walk of 1..32 that reaches one (each of 1..18 plays a whole season for none); the rest after it.
+            foreach (uint seed in new uint[] { 19 }.Concat(Enumerable.Range(1, 32).Select(n => (uint)n).Where(n => n != 19)))
+            {
+                if (mend != null) break;
                 mend = ModeTwoReaderSweep.LockstepUntil(seed, 8, true, s =>
                 {
                     if (s.phase != EpisodePhase.Social && s.phase != EpisodePhase.Campaign) return null;
@@ -145,6 +148,8 @@ namespace Gamesim.Tests.EditMode
                         .FirstOrDefault(id => s.Find(id)?.status == ContestantStatus.Active && Negotiation.MendRefusal(s, id) == null);
                     return wronged == null ? null : ProspectiveVoteTwins.Command(s, EpisodeCommandKind.Negotiate, wronged, text: Negotiation.MendFences);
                 });
+                if (mend != null) TestContext.Out.WriteLine("A fence to mend: seed " + seed + ", week " + mend.Before.week + ".");
+            }
             Assert.That(mend, Is.Not.Null, "A walk reaches a fence the player broke by a vote breach, still to mend.");
             Assert.That(mend.Legacy.accepted, Is.True, mend.Legacy.reason);
             Assert.That(mend.Prospective.accepted, Is.True, "Mode 2 mends it: " + mend.Prospective.reason);

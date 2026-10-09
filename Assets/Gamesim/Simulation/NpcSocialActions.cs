@@ -171,8 +171,9 @@ namespace Gamesim.Simulation
         /// One beat of the all-week cadence (WAVE-D-NPC-PACTS-PLAN §4.3, D2): one houseguest's next
         /// success on <see cref="Settle"/>'s ladder, spread over the week, or null when nothing on it is left
         /// for them to do. The ladder is Settle's order - a pact (one new pact a houseguest a week), a word
-        /// (once a week), the agenda's pursuit (once a week; a recorded court fills it), then the repertoire,
-        /// each kind once a week and a pact's meeting once - and this week's acts are its memory
+        /// (once a week), the agenda's pursuit (once a week; courting the Head of Household is a pursuit of its
+        /// own, see <see cref="PursuitSpent"/>), then the repertoire, each kind once a week and a pact's meeting
+        /// once - and this week's acts are its memory
         /// (<see cref="NpcSocialState.acts"/>), so the week's limits hold across beats, windows and reloads.
         ///
         /// <para>Every draw comes from <paramref name="roll"/>, the beat's keyed stream, never the season's.
@@ -206,7 +207,7 @@ namespace Gamesim.Simulation
             if (!mine.Any(a => a.kind == NpcActKinds.Promise) && NpcPromises.TryGive(state, npcId, positional, out string toId))
                 return new NpcActState { kind = NpcActKinds.Promise, actorId = npcId, partnerId = toId };
             // The agenda's pursuit, once a week, so a fixed target cannot compound.
-            if (!mine.Any(a => NpcActKinds.IsPursuit(a.kind)))
+            if (!PursuitSpent(state, npcId, mine))
             {
                 var pursued = PursueOn(state, npc, turn);
                 if (pursued != null) return pursued;
@@ -221,6 +222,25 @@ namespace Gamesim.Simulation
                 if (done != null) return done;
             }
             return null;
+        }
+
+        /// <summary>
+        /// Whether a houseguest's pursuit for the week is spent (D2's ladder): by the agenda they hold now, a
+        /// court spends courting the Head of Household, and building, holding or hunting spends the rest. The
+        /// weekly pass courted as the nominations opened and still built, held or hunted on its own turn; a court
+        /// that spent the whole rung took the week's building from most of the house, which cooled about a
+        /// fifth by week four (acceptance (b)'s drift).
+        /// </summary>
+        public static bool PursuitSpent(EpisodeState state, string npcId)
+        {
+            if (state == null) throw new ArgumentNullException(nameof(state));
+            return PursuitSpent(state, npcId, state.npcSocial.acts.Where(a => a != null && a.week == state.week && a.actorId == npcId));
+        }
+
+        private static bool PursuitSpent(EpisodeState state, string npcId, IEnumerable<NpcActState> mine)
+        {
+            bool courting = NpcAgendas.Of(state, npcId)?.kind == Agendas.Court;
+            return mine.Any(a => NpcActKinds.IsPursuit(a.kind) && (a.kind == NpcActKinds.Court) == courting);
         }
 
         /// <summary>A repertoire verb's act kind.</summary>

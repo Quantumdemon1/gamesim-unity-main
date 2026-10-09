@@ -25,7 +25,7 @@ namespace Gamesim.Simulation
 
         public static bool IsKnown(string kind) => kind != null && Array.IndexOf(All, kind) >= 0;
 
-        /// <summary>The agenda's pursuit (the ladder's once-a-week rung); a recorded court fills it.</summary>
+        /// <summary>The agenda's pursuit (the ladder's once-a-week rung): a court spends the court's, the others the rest's (<c>NpcSocialActions.PursuitSpent</c>).</summary>
         public static bool IsPursuit(string kind) => kind == Build || kind == Hold || kind == Court || kind == Hunt;
 
         /// <summary>A fight: staged loud, and witnessed as overheard as well as seen.</summary>

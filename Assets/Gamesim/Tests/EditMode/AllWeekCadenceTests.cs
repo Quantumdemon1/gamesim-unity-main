@@ -419,14 +419,15 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// Every week of whole seasons at eight and twelve: no houseguest past three beats (two on slop), one new
-        /// pact for anybody, one word given, one pursuit (a court counts), each repertoire kind once, each pact
-        /// met once; the week's acts within its bound; and NPC-only pacts within the house's share.
+        /// pact for anybody, one word given, one court and one building, holding or hunting (a court as the
+        /// nominations open leaves the week's building its own beat, as the weekly pass did), each repertoire kind
+        /// once, each pact met once; the week's acts within its bound; and NPC-only pacts within the house's share.
         /// </summary>
         [TestCase(8, 6116u)] [TestCase(12, 6117u)]
         public void TheLaddersWeeklyLimitsHoldAllWeek(int size, uint seed)
         {
             var engine = new EpisodeEngine(Fresh(size, seed));
-            int weeks = 0, beats = 0, pacts = 0;
+            int weeks = 0, beats = 0, pacts = 0, courtedAndPursued = 0;
             for (int i = 0; i < 4000 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
             {
                 var s = engine.Snapshot;
@@ -454,7 +455,10 @@ namespace Gamesim.Tests.EditMode
                     Assert.That(mine.Count(EpisodeEngine.IsBeat), Is.LessThanOrEqualTo(EpisodeEngine.BeatsAWeek), npc.id);
                     Assert.That(acts.Count(a => a.kind == NpcActKinds.Pact && (a.actorId == npc.id || a.partnerId == npc.id)), Is.LessThanOrEqualTo(1), "one new pact");
                     Assert.That(mine.Count(a => a.kind == NpcActKinds.Promise), Is.LessThanOrEqualTo(1), "one word");
-                    Assert.That(mine.Count(a => NpcActKinds.IsPursuit(a.kind)), Is.LessThanOrEqualTo(1), "one pursuit, a court included");
+                    Assert.That(mine.Count(a => a.kind == NpcActKinds.Court), Is.LessThanOrEqualTo(1), "one court");
+                    Assert.That(mine.Count(a => NpcActKinds.IsPursuit(a.kind) && a.kind != NpcActKinds.Court), Is.LessThanOrEqualTo(1), "one building, holding or hunting");
+                    if (after.week != s.week && mine.Any(a => a.kind == NpcActKinds.Court) && mine.Any(a => NpcActKinds.IsPursuit(a.kind) && a.kind != NpcActKinds.Court))
+                        courtedAndPursued++;
                     foreach (string kind in new[] { NpcActKinds.Talk, NpcActKinds.Meet, NpcActKinds.Rumour, NpcActKinds.Confront, NpcActKinds.Eavesdrop })
                         Assert.That(mine.Count(a => a.kind == kind), Is.LessThanOrEqualTo(1), kind);
                 }
@@ -462,6 +466,63 @@ namespace Gamesim.Tests.EditMode
             }
             Assert.That(weeks, Is.GreaterThan(2));
             Assert.That(beats, Is.GreaterThan(weeks * 3), "The house played its beats.");
+            Assert.That(courtedAndPursued, Is.GreaterThan(0), "Somebody courted a Head of Household and still built, held or hunted that week.");
+        }
+
+        /// <summary>
+        /// Courting the Head of Household is a pursuit of its own (acceptance (b)'s drift): the weekly pass courted
+        /// as the nominations opened and still built, held or hunted on its own turn. A court leaves the week's
+        /// building, holding or hunting to a beat, which spends it; and a houseguest still courting does not court twice.
+        /// </summary>
+        [Test]
+        public void ACourtLeavesTheWeeksBuildingToItsOwnBeat()
+        {
+            // After the veto the power is spent and the agendas are the house's own again.
+            var s = InWindow(Fresh(8, 6146), Windows.AfterVeto);
+            s.npcSocial.acts.Clear();
+            var npc = s.Active.FirstOrDefault(c => !c.isPlayer && c.id != s.hohId && !s.nominees.Contains(c.id) && Pursues(s, c.id));
+            Assert.That(npc, Is.Not.Null, "Precondition: a houseguest building, holding or hunting.");
+            var agenda = NpcAgendas.Of(s, npc.id);
+            string pursuit = agenda.kind == Agendas.Build ? NpcActKinds.Build : agenda.kind == Agendas.Hold ? NpcActKinds.Hold : NpcActKinds.Hunt;
+            // This week's new pact and word already had, so the pursuit is the ladder's next rung; and the court.
+            string other = s.Active.First(c => !c.isPlayer && c.id != npc.id).id;
+            Spent(s, npc.id, other);
+            s.npcSocial.acts.Add(new NpcActState { id = s.week + "-0-court-" + npc.id, kind = NpcActKinds.Court, actorId = npc.id, partnerId = s.hohId, week = s.week, window = Windows.AfterHoH });
+            Assert.That(NpcSocialActions.PursuitSpent(s, npc.id), Is.False, "A court is not the week's building.");
+            var beat = NpcSocialActions.Beat(s.Clone(), npc.id, StoryRandom.Stream(s, "test:court"), true, false);
+            Assert.That((beat?.kind, beat?.partnerId), Is.EqualTo((pursuit, agenda.partnerId)), "The beat pursues the agenda.");
+            s.npcSocial.acts.Add(new NpcActState { id = s.week + "-2-62", kind = pursuit, actorId = npc.id, partnerId = agenda.partnerId, week = s.week, window = Windows.AfterVeto });
+            Assert.That(NpcSocialActions.PursuitSpent(s, npc.id), Is.True, "Once a week.");
+            var next = NpcSocialActions.Beat(s.Clone(), npc.id, StoryRandom.Stream(s, "test:court"), true, false);
+            Assert.That(next == null || !NpcActKinds.IsPursuit(next.kind), Is.True, "No second pursuit: " + next?.kind);
+
+            // While the power is live, a houseguest who courted as the nominations opened does not court again.
+            var live = InWindow(Fresh(8, 6146), Windows.AfterHoH);
+            live.npcSocial.acts.Clear();
+            var suitor = live.Active.FirstOrDefault(c => !c.isPlayer && c.id != live.hohId && NpcAgendas.Of(live, c.id)?.kind == Agendas.Court);
+            Assert.That(suitor, Is.Not.Null, "Precondition: somebody courting the Head of Household.");
+            Assert.That(NpcSocialActions.PursuitSpent(live, suitor.id), Is.False, "Not yet.");
+            Spent(live, suitor.id, live.Active.First(c => !c.isPlayer && c.id != suitor.id && c.id != live.hohId).id);
+            live.npcSocial.acts.Add(new NpcActState { id = live.week + "-0-court-" + suitor.id, kind = NpcActKinds.Court, actorId = suitor.id, partnerId = live.hohId, week = live.week, window = Windows.AfterHoH });
+            Assert.That(NpcSocialActions.PursuitSpent(live, suitor.id), Is.True, "The court was the week's.");
+            var again = NpcSocialActions.Beat(live.Clone(), suitor.id, StoryRandom.Stream(live, "test:court"), true, false);
+            Assert.That(again == null || !NpcActKinds.IsPursuit(again.kind), Is.True, "No second court: " + again?.kind);
+        }
+
+        /// <summary>A houseguest building, holding or hunting toward somebody in the house other than the player, with work left in it.</summary>
+        private static bool Pursues(EpisodeState s, string npcId)
+        {
+            var agenda = NpcAgendas.Of(s, npcId);
+            return agenda != null && (agenda.kind == Agendas.Build || agenda.kind == Agendas.Hold || agenda.kind == Agendas.Hunt)
+                && agenda.partnerId != null && agenda.partnerId != s.playerId && NpcAgendas.StillWorking(s, npcId, agenda)
+                && (agenda.kind != Agendas.Hunt || (agenda.targetId != s.playerId && s.Find(agenda.targetId)?.status == ContestantStatus.Active));
+        }
+
+        /// <summary>This week's new pact and word already had by a houseguest: the ladder's first two rungs spent.</summary>
+        private static void Spent(EpisodeState s, string npcId, string otherId)
+        {
+            s.npcSocial.acts.Add(new NpcActState { id = s.week + "-0-60", kind = NpcActKinds.Pact, actorId = npcId, partnerId = otherId, week = s.week, window = Windows.AfterHoH });
+            s.npcSocial.acts.Add(new NpcActState { id = s.week + "-1-61", kind = NpcActKinds.Promise, actorId = npcId, partnerId = otherId, week = s.week, window = Windows.AfterNominations });
         }
 
         /// <summary>A houseguest named a Have-Not mid-week, with two beats already, has no third (the quota).</summary>
@@ -863,16 +924,25 @@ namespace Gamesim.Tests.EditMode
             // A fresh ladder: none of the week's beats spent yet (its courts and visits stand).
             s.npcSocial.acts.RemoveAll(a => a.window == window || EpisodeEngine.IsBeat(a));
             if (temperament == Gossip) { s.Find(s.playerId).hohWins = 5; s.Find(s.playerId).vetoWins = 5; }
+            // Indifferent to each other: no grudge between houseguests, which a fight would pick before the player.
+            if (temperament == Fight) s.story?.grudges?.RemoveAll(g => g.targetId != s.playerId);
             foreach (var c in s.contestants.Where(c => !c.isPlayer))
             {
                 c.traits = new List<string> { temperament == Fight ? "Confrontational" : temperament == Adore ? "Social" : "Sneaky" };
                 Score(s, c.id, s.playerId, temperament == Fight ? -60 : temperament == Adore ? 100 : 0);
                 foreach (var o in s.contestants.Where(o => !o.isPlayer && o.id != c.id)) Score(s, c.id, o.id, temperament == Adore ? -60 : 5);
-                // The week's pursuit already spent - a court as the nominations opened - so no agenda takes a beat,
-                // except where the house adores the player and its agendas may point at them.
-                if (temperament != Adore && c.status == ContestantStatus.Active && !s.npcSocial.acts.Any(a => a.actorId == c.id && NpcActKinds.IsPursuit(a.kind)))
-                    s.npcSocial.acts.Add(new NpcActState { id = s.week + "-0-court-" + c.id, kind = NpcActKinds.Court, actorId = c.id,
-                        partnerId = s.contestants.First(o => !o.isPlayer && o.id != c.id).id, week = s.week, window = Windows.AfterHoH });
+                // The week's pursuits already spent - a court as the nominations opened, and the week's building -
+                // so no agenda takes a beat, except where the house adores the player and its agendas may point at them.
+                if (temperament != Adore && c.status == ContestantStatus.Active)
+                {
+                    string partner = s.contestants.First(o => !o.isPlayer && o.id != c.id).id;
+                    if (!s.npcSocial.acts.Any(a => a.actorId == c.id && a.kind == NpcActKinds.Court))
+                        s.npcSocial.acts.Add(new NpcActState { id = s.week + "-0-court-" + c.id, kind = NpcActKinds.Court, actorId = c.id,
+                            partnerId = partner, week = s.week, window = Windows.AfterHoH });
+                    if (!s.npcSocial.acts.Any(a => a.actorId == c.id && NpcActKinds.IsPursuit(a.kind) && a.kind != NpcActKinds.Court))
+                        s.npcSocial.acts.Add(new NpcActState { id = s.week + "-0-build-" + c.id, kind = NpcActKinds.Build, actorId = c.id,
+                            partnerId = partner, week = s.week, window = Windows.AfterHoH });
+                }
             }
             s.replyCards.Clear();
             s.npcSocial.beatsFired = 0;

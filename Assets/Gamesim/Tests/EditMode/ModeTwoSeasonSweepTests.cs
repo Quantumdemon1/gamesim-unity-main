@@ -9,7 +9,9 @@ namespace Gamesim.Tests.EditMode
     /// Vote family V5's whole-season sweep: seeds 1 to 32 (houses of 8, then 6, then 12) played twice, command by command - the
     /// public mode-1 game and its mode-2 twin through the internal engine seam - by the plain walk and by the busy scripted
     /// player (<see cref="ModeTwoReaderSweep.Lockstep"/>). A season either equals mode 1 after projection at every command to
-    /// the jury's verdict, or meets its first difference where this table says, which names the slice that owns it.
+    /// the jury's verdict, or meets its first difference where this table says, which names the slice that owns it. Every
+    /// mode-2 command runs under the walk observer (vote family V5e): past each reveal, the owners the archive rebuilds are
+    /// the ones its plan selected (<see cref="ModeTwoReaderSweep.AssertOwnersRebuilt"/>).
     ///
     /// <para>Every slice shrinks the table: a reader it moves takes a season further, often to the finish. What remains after
     /// V5f is only the designed differences (the class doc of the sweep lists them). A season that newly differs, or differs
@@ -28,8 +30,6 @@ namespace Gamesim.Tests.EditMode
             ["busy 18"] = ("designed at week 1 Eviction Advance: the current-reveal exclusion; mode 2 then finished", "designed"),
             ["busy 19"] = ("designed at week 2 Eviction Advance: the current-reveal exclusion; mode 2 then finished", "designed"),
             ["busy 22"] = ("designed at week 2 Eviction Advance: the current-reveal exclusion; mode 2 then finished", "designed"),
-            // V5e: a juror's question reads no canonical Vote receipt.
-            ["busy 24"] = ("week 4 JuryQuestioning Advance: juryExchanges", "V5e, FinaleQuestions"),
         };
 
         private static IEnumerable<TestCaseData> Seasons() =>

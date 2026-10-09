@@ -117,6 +117,36 @@ namespace Gamesim.Tests.EditMode
         internal static EpisodeEngine Engine(EpisodeState s) =>
             (EpisodeEngine)Call(typeof(EpisodeEngine), "ProspectiveVote", new[] { typeof(EpisodeState) }, s);
 
+        private static readonly Type SettlementType = Simulation.GetType("Gamesim.Simulation.UnifiedVoteSettlement");
+
+        /// <summary>
+        /// The walk observer (vote family V5e): while the returned scope is open, every reveal plan
+        /// UnifiedVoteSettlement.Plan returns on this thread adds its Rule2 groups (UnifiedVoteRevealPlan.Groups) to
+        /// <paramref name="into"/> - the owners the reveal's effects ran for, as it selected them. Disposing restores the hook.
+        /// </summary>
+        internal static IDisposable ObservePlans(List<UnifiedVoteIncident> into)
+        {
+            Assert.That(SettlementType, Is.Not.Null, "UnifiedVoteSettlement is the plan's actual owner.");
+            var hook = SettlementType.GetField("Observed", BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.That(hook, Is.Not.Null, "UnifiedVoteSettlement.Observed is the plan's test-only observer.");
+            var previous = hook.GetValue(null);
+            Action<object> observer = plan =>
+            {
+                var groups = plan.GetType().GetMethod("Groups", BindingFlags.Instance | BindingFlags.NonPublic, null, Type.EmptyTypes, null);
+                Assert.That(groups, Is.Not.Null, "UnifiedVoteRevealPlan.Groups is the plan's own grouping.");
+                into.AddRange((IReadOnlyList<UnifiedVoteIncident>)Invoke(groups, plan, Array.Empty<object>()));
+            };
+            hook.SetValue(null, observer);
+            return new Restore(() => hook.SetValue(null, previous));
+        }
+
+        private sealed class Restore : IDisposable
+        {
+            private Action undo;
+            internal Restore(Action undo) { this.undo = undo; }
+            public void Dispose() { undo?.Invoke(); undo = null; }
+        }
+
         private static readonly Type StoreType = Simulation.GetType("Gamesim.Simulation.UnifiedVoteStore");
 
         /// <summary>UnifiedVoteStore.TryAddPromise: admits a promise draft and appends its canonical row, or writes nothing.</summary>
@@ -189,9 +219,11 @@ namespace Gamesim.Tests.EditMode
             return method;
         }
 
-        private static object Invoke(MethodInfo method, object[] args)
+        private static object Invoke(MethodInfo method, object[] args) => Invoke(method, null, args);
+
+        private static object Invoke(MethodInfo method, object target, object[] args)
         {
-            try { return method.Invoke(null, args); }
+            try { return method.Invoke(target, args); }
             catch (TargetInvocationException wrapped) when (wrapped.InnerException != null)
             {
                 ExceptionDispatchInfo.Capture(wrapped.InnerException).Throw();

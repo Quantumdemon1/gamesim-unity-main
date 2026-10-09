@@ -28,7 +28,7 @@ namespace Gamesim.Tests.EditMode
         public enum Why { Authority, Writer, RawKind, NotCommitments, ModeAware, Moved, PendingV5a, PendingV5b, PendingV5c, PendingV5d, PendingV5e, PendingV5f }
 
         /// <summary>The slice the vote family has built through: no entry may still be pending it or an earlier one.</summary>
-        private const Why Built = Why.PendingV5d;
+        private const Why Built = Why.PendingV5e;
 
         private sealed class Site
         {
@@ -183,14 +183,15 @@ namespace Gamesim.Tests.EditMode
             new Site(Sim + "YourWord.cs", null, 4, Why.Moved, "V5d: Breaches, and a fact's words"),
             new Site(Sim + "KnownOdds.cs", null, 2, Why.Moved, "V5d: History"),
 
-            // ---- pending V5e: history, finale and jury readers
-            new Site(Sim + "FinaleQuestions.cs", null, 11, Why.PendingV5e, "Receipts' owners, and a receipt's party"),
-            new Site(Sim + "FinalArgument.cs", null, 9, Why.PendingV5e, "the kept moments and receipts"),
-            new Site(Sim + "FinalCaseResume.cs", null, 5, Why.PendingV5e, "the case's breaches"),
-            new Site(Sim + "FinalistRead.cs", null, 8, Why.PendingV5e, "the finalist's facts and kept deals"),
-            new Site(Sim + "JuryHouseRead.cs", null, 9, Why.PendingV5e, "a juror's receipts and reasons"),
-            new Site(Sim + "GameSense.cs", null, 7, Why.PendingV5e, "the deal chances and owners"),
-            new Site(Sim + "YourWeek.cs", null, 8, Why.PendingV5e, "the week's word"),
+            new Site(Sim + "FinaleQuestions.cs", null, 11, Why.Moved,
+                "V5e: Receipts take the Vote owners, a receipt's party is checked wherever rows are canonical, a Vote receipt keeps mode 1's week"),
+            new Site(Sim + "FinalArgument.cs", null, 8, Why.Moved, "V5e: the kept moments take the Vote owners; the argument's references wherever Safety is canonical"),
+            new Site(Sim + "FinalCaseResume.cs", null, 4, Why.Moved, "V5e: the case's breaches - mode 1's raw rows, Safety by incident"),
+            new Site(Sim + "FinalistRead.cs", "UnifiedCommitments.RulesOn(s)", 1, Why.ModeAware, "DealBreaker's mode-1 Safety branch; mode 2 has its own"),
+            new Site(Sim + "FinalistRead.cs", null, 5, Why.Moved, "V5e: TowardYou (D1) and the kept deals"),
+            new Site(Sim + "JuryHouseRead.cs", null, 8, Why.Moved, "V5e: a receipt's week, the reasons' views and raw deals"),
+            new Site(Sim + "GameSense.cs", null, 6, Why.Moved, "V5e: the deal chances, scored once per group (D1), Vote rows dated as mode 1's"),
+            new Site(Sim + "YourWeek.cs", null, 6, Why.Moved, "V5e: the week's word, Safety's canonical lines, the keeping gate"),
 
             // ---- pending V5f: player-facing pages
             new Site(Sim + "CommitmentsRead.cs", null, 16, Why.PendingV5f, "For, Warning, AtStake, Settled, ByTheRules, BallotRules"),

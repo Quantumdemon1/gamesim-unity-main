@@ -203,9 +203,10 @@ namespace Gamesim.Simulation
         {
             if (exchange?.receiptKind == null || exchange.receiptId == null) return null;
             string id = exchange.receiptId;
-            if (UnifiedCommitments.RulesOn(s)
+            // A canonical Safety receipt wherever Safety is canonical; mode 2's Vote rows read as mode 1's legacy ones (vote family V5e).
+            if (UnifiedCommitments.SafetyAuthorityOn(s)
                 && (exchange.receiptKind == FinaleQuestions.PromiseReceipt || exchange.receiptKind == FinaleQuestions.DealReceipt)
-                && CommitmentReferences.FindCanonical(s, id) != null)
+                && CommitmentReferences.FindCanonicalSafety(s, id) != null)
                 return FinaleQuestions.ReceiptWeek(s, exchange);
             var ledger = s.ledger ?? new SeasonLedger();
             int Parse(string text) => int.TryParse(text, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int value) ? value : 0;
@@ -334,7 +335,7 @@ namespace Gamesim.Simulation
                         && KnownBallots.DealOutcomeKnown(s, d)))
                     return "you broke a deal with them since";
             }
-            else if (s.deals.Any(d => d.status == DealStatus.Broken && (d.week > week || d.type == DealKind.FinalTwo) && Between(d)))
+            else if (CommitmentReferences.RawDeals(s).Any(d => d.status == DealStatus.Broken && (d.week > week || d.type == DealKind.FinalTwo) && Between(d)))
                 return "a deal between you broke since";
             return null;
         }

@@ -85,6 +85,10 @@ namespace Gamesim.Simulation
         {
             var decision = UnifiedVoteHistory.FindDecision(s, row.id);
             if (decision == null || decision.SettledWeek != row.settledWeek || decision.Status != row.status) return false;
+            // The lead's decision D7 (vote family V5e): a receipt is its Rule2 group's owner, as the questions choose one
+            // (FinaleQuestions.Receipts) - never a row that owned no consequence of its reveal.
+            var groups = row.status == DealStatus.Broken ? UnifiedVoteHistory.Incidents(s) : UnifiedVoteHistory.Fulfillments(s);
+            if (!groups.Any(group => group.OwnerId == row.id)) return false;
             string player = s.playerId, juror = question.questionerId;
             if (question.receiptKind == FinaleQuestions.PromiseReceipt)
             {

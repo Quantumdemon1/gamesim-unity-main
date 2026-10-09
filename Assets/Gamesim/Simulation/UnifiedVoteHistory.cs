@@ -17,29 +17,34 @@ namespace Gamesim.Simulation
     }
 
     /// <summary>
-    /// One Vote breach incident as the Rule2 plan grouped it (vote family V5b, the lead's decision D1): a reveal's week, the
-    /// one who broke their word and the one it wronged, every row that broke it, and the row whose consequence won - the
-    /// most severe, then the ordinal id - with the most severe deal row among them. Detached; no knowledge grant.
+    /// One Vote consequence group as the Rule2 plan grouped it (vote family V5b, the lead's decision D1; V5e for the kept): a
+    /// reveal's week, the one whose word it was (<see cref="ActorId"/>) and the one it was given to (<see cref="WrongedId"/> -
+    /// wronged by a breach, kept faith with by a fulfillment), every row in the group, and the row whose consequence won - for
+    /// a breach the most severe, for a fulfillment the largest, then the ordinal id - with the first deal row by the same
+    /// ranking. Detached; no knowledge grant.
     /// </summary>
     public sealed class UnifiedVoteIncident
     {
         public readonly int Week;
         public readonly string ActorId, WrongedId, OwnerId, DealId;
         public readonly bool OwnerIsPromise;
-        /// <summary>The owner's native source consequence: a broken vote promise's, or the deal's breach weight times the broken base.</summary>
+        /// <summary>Whether this is a fulfillment's group (<see cref="UnifiedVoteHistory.Fulfillments"/>) rather than a breach's.</summary>
+        public readonly bool Kept;
+        /// <summary>The owner's native source consequence: a vote promise's, or the deal's weight times the kept or broken base.</summary>
         public readonly double SourceConsequence;
         public readonly IReadOnlyList<string> EvidenceIds;
         internal UnifiedVoteIncident(int week, string actor, string wronged, string owner, string deal, bool ownerIsPromise, double consequence,
-            IEnumerable<string> ids)
+            IEnumerable<string> ids, bool kept = false)
         {
-            Week = week; ActorId = actor; WrongedId = wronged; OwnerId = owner; DealId = deal; OwnerIsPromise = ownerIsPromise;
+            Week = week; ActorId = actor; WrongedId = wronged; OwnerId = owner; DealId = deal; OwnerIsPromise = ownerIsPromise; Kept = kept;
             SourceConsequence = consequence; EvidenceIds = Array.AsReadOnly(ids.OrderBy(id => id, StringComparer.Ordinal).ToArray());
         }
     }
 
     /// <summary>
     /// Prospective Vote evidence, separate from Safety nomination/spared history. Rows remain
-    /// agreement provenance; <see cref="Breaches"/> groups the broken ones as the reveal's Rule2 plan did.
+    /// agreement provenance; <see cref="Breaches"/> groups the broken ones as the reveal's Rule2 plan did, from the rows alone, and
+    /// <see cref="Incidents"/> / <see cref="Fulfillments"/> rebuild every group with its owner from the archive.
     /// </summary>
     public static class UnifiedVoteHistory
     {
@@ -84,6 +89,30 @@ namespace Gamesim.Simulation
                     return new UnifiedVoteIncident(group.Key.week, group.Key.actor, group.Key.wronged, owner.row.id, deal.row?.id,
                         owner.row.sourcePolicy == UnifiedCommitments.PromisePolicy, owner.nominal, group.Select(atom => atom.row.id).Distinct());
                 }).ToArray());
+        }
+
+        /// <summary>
+        /// The Vote breaches, one per Rule2 incident, rebuilt from the archive (vote family V5e): for each archived reveal, the
+        /// rows it first decided (<see cref="Decisions"/>), their verdicts and native consequences as its plan met them, and the
+        /// plan's own selection run on them - so each owner is the one the reveal's effects ran for. Needs every decided row's
+        /// frame, which a reveal publishes only as it ends: read it between commands or outside a reveal, and inside one the
+        /// row-level <see cref="Breaches"/>. Ordered by week, actor and the one wronged. Empty outside mode 2.
+        /// </summary>
+        public static IReadOnlyList<UnifiedVoteIncident> Incidents(EpisodeState s) => Rebuilt(s, false);
+
+        /// <summary>
+        /// The Vote fulfillments, one per Rule2 group, rebuilt from the archive as <see cref="Incidents"/> rebuilds the breaches:
+        /// a kept promise's group is its beneficiary's view of its maker, a kept named deal's its partner's view of the keeper,
+        /// a bloc's both views - so a bloc kept by two is two groups. Read outside a reveal. Empty outside mode 2.
+        /// </summary>
+        public static IReadOnlyList<UnifiedVoteIncident> Fulfillments(EpisodeState s) => Rebuilt(s, true);
+
+        private static IReadOnlyList<UnifiedVoteIncident> Rebuilt(EpisodeState s, bool kept)
+        {
+            if (!UnifiedVoteStore.On(s)) return Array.Empty<UnifiedVoteIncident>();
+            return Array.AsReadOnly(Decisions(s).GroupBy(decision => decision.SettledWeek).OrderBy(week => week.Key)
+                .SelectMany(week => UnifiedVoteSettlement.Groups(week.Key, UnifiedVoteSettlement.Rebuild(s, week)))
+                .Where(group => group.Kept == kept).ToArray());
         }
 
         /// <summary>

@@ -93,6 +93,9 @@ namespace Gamesim.Simulation
 
         /// <summary>The decided deals, in the canonical list's order; the reveal merges them with the raw verdicts by occurrence.</summary>
         internal IEnumerable<UnifiedVoteVerdict> Deals => Verdicts.Where(verdict => !verdict.Promise);
+
+        /// <summary>Every directed consequence group this reveal decided, with the owner Rule2 selected (<see cref="UnifiedVoteSettlement.Groups"/>).</summary>
+        internal IReadOnlyList<UnifiedVoteIncident> Groups() => UnifiedVoteSettlement.Groups(Week, Verdicts);
     }
 
     /// <summary>
@@ -127,6 +130,12 @@ namespace Gamesim.Simulation
     internal static class UnifiedVoteSettlement
     {
         /// <summary>
+        /// Test-only, and null in play: sees each plan as <see cref="Plan"/> returns it, the Rule2 selection made (vote family
+        /// V5e's walk observer, set through the tests' facade on the thread that walks). It reads; it never changes a plan.
+        /// </summary>
+        [ThreadStatic] internal static Action<object> Observed;
+
+        /// <summary>
         /// The plan for the reveal the state stands at: the box complete, the eviction decided, nothing settled.
         /// Throws if a decided row cannot be judged by its own leaf (malformed evidence), which the caller turns
         /// into the whole command's refusal.
@@ -156,7 +165,47 @@ namespace Gamesim.Simulation
                 verdicts.Add(Verdict(s, row, status, actor));
             }
             Select(verdicts);
-            return new UnifiedVoteRevealPlan(s.week, verdicts.AsReadOnly());
+            var plan = new UnifiedVoteRevealPlan(s.week, verdicts.AsReadOnly());
+            Observed?.Invoke(plan);
+            return plan;
+        }
+
+        /// <summary>
+        /// Each directed consequence group of one reveal's verdicts - polarity, the one the view is of and the one whose view
+        /// it is - as the Rule2 selection left it (<see cref="Select"/> run first): the reveal's week, the owner (the row whose
+        /// consequence won), every row in the group as evidence, and the group's first deal row by the same ranking. Ordered by
+        /// polarity (breaches first), actor and holder.
+        /// </summary>
+        internal static IReadOnlyList<UnifiedVoteIncident> Groups(int week, IReadOnlyList<UnifiedVoteVerdict> verdicts) =>
+            Array.AsReadOnly(verdicts.SelectMany(verdict => verdict.Scores.Select(atom => (verdict, atom)))
+                .GroupBy(item => (item.verdict.Kept, item.atom.AboutId, item.atom.HolderId))
+                .OrderBy(group => group.Key.Kept).ThenBy(group => group.Key.AboutId, StringComparer.Ordinal)
+                .ThenBy(group => group.Key.HolderId, StringComparer.Ordinal)
+                .Select(group =>
+                {
+                    var owner = group.Single(item => item.atom.Selected).verdict;
+                    var ranked = (group.Key.Kept ? group.OrderByDescending(item => item.verdict.Nominal) : group.OrderBy(item => item.verdict.Nominal))
+                        .ThenBy(item => item.verdict.Row.id, StringComparer.Ordinal).ToList();
+                    var deal = ranked.FirstOrDefault(item => !item.verdict.Promise).verdict;
+                    return new UnifiedVoteIncident(week, group.Key.AboutId, group.Key.HolderId, owner.Row.id, deal?.Row.id, owner.Promise,
+                        owner.Nominal, group.Select(item => item.verdict.Row.id).Distinct(), group.Key.Kept);
+                }).ToArray());
+
+        /// <summary>
+        /// The verdicts an archived reveal decided, rebuilt after it from the rows it first decided (vote family V5e): each row
+        /// as the plan met it, its status and actor the frame's own (<see cref="UnifiedVoteHistory.Decisions"/>), its native
+        /// consequence from the row, its link and the static rule weeks; then the Rule2 selection, as the plan made it.
+        /// </summary>
+        internal static IReadOnlyList<UnifiedVoteVerdict> Rebuild(EpisodeState s, IEnumerable<UnifiedVoteDecision> decided)
+        {
+            var verdicts = decided.Select(decision =>
+            {
+                var row = decision.Record.Clone();
+                row.status = DealStatus.Active; row.settledWeek = 0; row.brokenById = null; row.settlementEffectKey = null;
+                return Verdict(s, row, decision.Status, decision.ActorId);
+            }).ToList();
+            Select(verdicts);
+            return verdicts.AsReadOnly();
         }
 
         /// <summary>
@@ -203,8 +252,11 @@ namespace Gamesim.Simulation
                          : new UnifiedVoteAtom(actor, partner, 0, UnifiedVoteAtomRole.Context) });
         }
 
-        /// <summary>The Rule2 selection, in place on the plan's atoms. See the class summary.</summary>
-        private static void Select(IReadOnlyList<UnifiedVoteVerdict> verdicts)
+        /// <summary>
+        /// The Rule2 selection, in place on the verdicts' atoms - a reveal's plan, or a frame's verdicts rebuilt after it
+        /// (<see cref="Rebuild"/>). See the class summary.
+        /// </summary>
+        internal static void Select(IReadOnlyList<UnifiedVoteVerdict> verdicts)
         {
             // Directed consequences: one winner per polarity, actor (the one the view is of) and partner (whose view).
             foreach (var group in verdicts.SelectMany(verdict => verdict.Scores.Select(atom => (verdict, atom)))

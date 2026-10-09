@@ -105,6 +105,7 @@
     <Compile Include="$(EditMode)ModeTwoReaderParityTests.cs" />
     <Compile Include="$(EditMode)ModeTwoThreatStoryTests.cs" />
     <Compile Include="$(EditMode)ModeTwoBargainReaderTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoFinaleReaderTests.cs" />
     <Compile Include="$(EditMode)CommitmentReferencesTests.cs" />
     <Compile Include="$(EditMode)UnifiedCommitmentStoreTests.cs" />
     <Compile Include="$(EditMode)UnifiedSafetyCommandOwnerTests.cs" />

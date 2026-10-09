@@ -128,11 +128,24 @@ namespace Gamesim.Simulation
         public static DealState FindDeal(EpisodeState state, string id) =>
             id == null ? null : Deals(state).FirstOrDefault(row => row?.id == id);
 
-        /// <summary>Canonical outcomes name their actual settlement week; legacy references retain their original meaning.</summary>
+        /// <summary>
+        /// Canonical Safety outcomes name their actual settlement week; legacy references retain their original meaning - and
+        /// so does a canonical Vote row (vote family V5e), which mode 1 holds as a legacy row dated by the week it was made.
+        /// </summary>
         public static int ReceiptWeek(EpisodeState state, string id, int legacyWeek)
         {
-            var row = FindCanonical(state, id);
+            var row = FindCanonicalSafety(state, id);
             return row != null && row.settledWeek > 0 ? row.settledWeek : legacyWeek;
+        }
+
+        /// <summary>
+        /// The canonical Safety row of this id, or null: every canonical row in modes 0 and 1, and in mode 2 the rows mode 1
+        /// keeps canonical - its Vote rows are mode 1's legacy rows (vote family V5e), for a reader that keeps mode 1's meaning.
+        /// </summary>
+        public static UnifiedCommitmentState FindCanonicalSafety(EpisodeState state, string id)
+        {
+            var row = FindCanonical(state, id);
+            return row != null && row.kind == UnifiedCommitments.Safety ? row : null;
         }
 
         /// <summary>Includes the canonical effect identity, which a legacy-shaped DTO cannot carry.</summary>

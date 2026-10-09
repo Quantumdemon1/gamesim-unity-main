@@ -15,7 +15,11 @@ namespace Gamesim.Tests.EditMode
     /// <para>The designed differences, each skipped only where it can arise and pinned by a case of its own: D1, a breach term
     /// counting a Rule2 incident once where one ballot broke two of a pair's rows (<see cref="ModeTwoHouseReaderTests"/>). The
     /// current-reveal exclusion (<see cref="ModeTwoThreatStoryTests"/>) arises only inside a reveal's own recipes, never at a
-    /// walk's moment, where the threat reader counts every breach mode 1 counts.</para>
+    /// walk's moment, where the threat reader counts every breach mode 1 counts. In the finale (V5e) a canonical Vote row is a
+    /// receipt, a moment or a scored chance only as its group's owner, so those readers are compared where no group holds two
+    /// rows (<see cref="ModeTwoFinaleReaderTests"/>). The knowledge gate: mode 2's week does not say the player kept a vote deal
+    /// whose keeping tells a hidden ballot, and its history counts no memory that tells one (V5d) - each compared with mode 2's
+    /// reading put in place.</para>
     /// </summary>
     public sealed class ModeTwoReaderParityTests
     {
@@ -26,7 +30,7 @@ namespace Gamesim.Tests.EditMode
         [TestCaseSource(nameof(Walks))]
         public void EveryMovedReaderIsModeOnesThroughASeason(uint seed, int size)
         {
-            int commands = 0, moments = 0, overlapping = 0;
+            int commands = 0, moments = 0, overlapping = 0, grouped = 0;
             var lastPhase = (EpisodePhase)(-1);
             bool lastResolved = false;
             var walked = ModeTwoReaderSweep.Walk(seed, (mode1, mode2, where) =>
@@ -43,6 +47,11 @@ namespace Gamesim.Tests.EditMode
                 // V5d: the player's bargaining and word, in free time and the campaign.
                 if (mode1.phase == EpisodePhase.Social || mode1.phase == EpisodePhase.Campaign)
                     ModeTwoBargainReaderTests.CheckBargain(mode1, mode2, where, overlap);
+                // V5e: the finale and jury readers, the week and the verdict, at every moment to the jury's verdict - a kept group
+                // of two rows as much an overlap of owners as a breach's.
+                bool groups = overlap || UnifiedVoteHistory.Fulfillments(mode2).Any(g => g.EvidenceIds.Count > 1);
+                if (groups) grouped++;
+                ModeTwoFinaleReaderTests.CheckFinale(mode1, mode2, where, groups);
                 // V5b: the house's decisions, where the house makes them - the nominations, the campaign and the open vote,
                 // the count, the final eviction and the jury.
                 if (!Decides(mode1)) return;
@@ -50,10 +59,12 @@ namespace Gamesim.Tests.EditMode
                 // V5c: threat and the Story readers.
                 ModeTwoThreatStoryTests.CheckThreatStory(mode1, mode2, where, ModeTwoHouseReaderTests.Pairs(mode1, mode2), overlap);
             }, size);
-            TestContext.Out.WriteLine(commands + " commands, " + moments + " moments, " + overlapping + " with a two-row incident.");
+            TestContext.Out.WriteLine(commands + " commands, " + moments + " moments, " + overlapping + " with a two-row incident, "
+                + grouped + " with a two-row group.");
             Assert.That(commands, Is.GreaterThan(40), walked.ToString());
             Assert.That(walked.Finished || walked.Unsupported != null, Is.True, walked.ToString());
             Assert.That(overlapping, Is.LessThan(moments), "The D1 difference is the exception, not the walk.");
+            Assert.That(grouped, Is.LessThan(moments), "So is a group of two rows.");
         }
 
         /// <summary>A moment the house decides at: the nominations, the campaign, eviction night, the final eviction and the jury.</summary>

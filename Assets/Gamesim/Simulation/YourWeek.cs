@@ -214,7 +214,8 @@ namespace Gamesim.Simulation
             foreach (var (partner, record) in settled)
             {
                 bool kept = record.type == DealKept;
-                if (UnifiedCommitments.RulesOn(s) && ReadDeal(s, record.description, partner, out _, out string canonicalType, out _)
+                // A canonical Safety outcome is CanonicalWord's line wherever Safety is canonical (vote family V5e).
+                if (UnifiedCommitments.SafetyAuthorityOn(s) && ReadDeal(s, record.description, partner, out _, out string canonicalType, out _)
                     && canonicalType == DealKind.SafetyAgreement && HasCanonicalOutcome(s, week, partner, kept)) continue;
                 var line = new Line { kind = Kinds.Deal, verdict = kept ? Verdicts.Kept : Verdicts.Broken, aboutId = partner };
                 if (ReadDeal(s, record.description, partner, out string actorId, out string type, out bool said) && said == kept)
@@ -223,7 +224,8 @@ namespace Gamesim.Simulation
                     // A vote deal the other party settled by their ballot - or that the two of them
                     // settled together - is told once the player knows that ballot (decision 4). So
                     // is a partnership, which under the commitment rules only the vote settles (C1).
-                    if (KnownBallots.IsBallotKind(type) && actorId != s.playerId && !KnownBallots.Knows(s, week, partner))
+                    if (KnownBallots.IsBallotKind(type) && !KnownBallots.Knows(s, week, partner)
+                        && (actorId != s.playerId || KeepingTellsTheirBallot(s, week, partner, type, kept)))
                     {
                         line.verdict = Verdicts.NotKnown;
                         line.text = "The " + what + " with " + Whom(s, partner) + " is " + KnownBallots.Unresolved + ".";
@@ -242,6 +244,17 @@ namespace Gamesim.Simulation
                 lines.Add(line);
             }
         }
+
+        /// <summary>
+        /// The knowledge gate for a deal the player is said to have kept, under mode 2 only (vote family V5e): a vote deal is kept
+        /// only where the other party's ballot kept it too, so "you kept it" tells that ballot - unless the player can know how the
+        /// deal ended (<see cref="KnownBallots.DealOutcomeKnown"/>: the other cast none, or the player knows it). Mode 1 tells it,
+        /// as its recorded seasons did; closing it there needs a rule. A deal the player broke is theirs to know.
+        /// </summary>
+        private static bool KeepingTellsTheirBallot(EpisodeState s, int week, string partner, string type, bool kept) =>
+            kept && UnifiedVoteStore.On(s) && !CommitmentReferences.Deals(s).Any(d => d.type == type && d.status == DealStatus.Fulfilled
+                && d.settledWeek == week && ((d.proposerId == s.playerId && d.recipientId == partner) || (d.proposerId == partner && d.recipientId == s.playerId))
+                && KnownBallots.DealOutcomeKnown(s, d));
 
         /// <summary>The record types a deal's end writes on both parties' records (EpisodeEngine.SettleDeals).</summary>
         public const string DealKept = "deal_fulfilled", DealBroken = "deal_broken";
@@ -306,7 +319,7 @@ namespace Gamesim.Simulation
                 .Where(x => ReadPromise(s, x.text, x.partner, out _, out _, out _)).ToList();
             foreach (var outcome in told.Concat(remembered).Distinct().ToList())
             {
-                if (UnifiedCommitments.RulesOn(s) && ReadPromise(s, outcome.text, outcome.partner, out _, out PromiseKind canonicalKind, out bool canonicalKept)
+                if (UnifiedCommitments.SafetyAuthorityOn(s) && ReadPromise(s, outcome.text, outcome.partner, out _, out PromiseKind canonicalKind, out bool canonicalKept)
                     && canonicalKind == PromiseKind.Safety && HasCanonicalOutcome(s, week, outcome.partner, canonicalKept)) continue;
                 int heard = told.Count(x => x == outcome);
                 int recalled = Math.Min(remembered.Count(x => x == outcome), PromisesItCouldBe(s, week, outcome.text, outcome.partner));
@@ -333,9 +346,13 @@ namespace Gamesim.Simulation
                 && row.status == (kept ? DealStatus.Fulfilled : DealStatus.Broken)
                 && ((row.makerId == s.playerId && row.beneficiaryId == partner) || (row.makerId == partner && row.beneficiaryId == s.playerId)));
 
+        /// <summary>
+        /// The week's canonical Safety word, by incident and receipt, wherever Safety is canonical (vote family V5e). Mode 2's
+        /// Vote outcomes are told as mode 1's are, by the lines their owners wrote (<see cref="Deals"/>, <see cref="Promises"/>).
+        /// </summary>
         private static void CanonicalWord(EpisodeState s, int week, List<Line> lines)
         {
-            if (!UnifiedCommitments.RulesOn(s)) return;
+            if (!UnifiedCommitments.SafetyAuthorityOn(s)) return;
             var rows = UnifiedCommitmentHistory.Records(s).ToDictionary(row => row.id, StringComparer.Ordinal);
             foreach (var incident in UnifiedCommitmentHistory.Breaches(s).Where(incident =>
                 rows[incident.EffectOwnerId].settledWeek == week && (incident.ActorId == s.playerId || incident.WrongedId == s.playerId)))

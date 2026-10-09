@@ -45,6 +45,8 @@ namespace Gamesim.Tests.EditMode
             internal CommandResult Legacy, Prospective;
             internal EpisodeCommand Command;
             internal UnifiedVoteRevealState Frame;
+            /// <summary>The Rule2 groups the mode-2 reveal's plan selected, as the walk observer saw them (vote family V5e).</summary>
+            internal List<UnifiedVoteIncident> Plans = new List<UnifiedVoteIncident>();
             internal EpisodeState Projection => PinnedVoteSeason.Project(Legacy.state, Owners, new[] { Frame });
             internal EpisodeState After => Prospective.state;
         }
@@ -155,9 +157,11 @@ namespace Gamesim.Tests.EditMode
             reveal.Cast = castLegacy.state; reveal.CastTwin = castProspective.state;
             reveal.Command = ProspectiveVoteTwins.Command(castLegacy.state, EpisodeCommandKind.Advance, tag: "reveal");
             reveal.Legacy = legacy.Apply(reveal.Command);
-            reveal.Prospective = prospective.Apply(reveal.Command);
+            using (ProspectiveVoteFacade.ObservePlans(reveal.Plans)) reveal.Prospective = prospective.Apply(reveal.Command);
             Assert.That(reveal.Legacy.accepted, Is.True, reveal.Legacy.reason);
             Assert.That(reveal.Prospective.accepted, Is.True, "The mode-2 reveal settles: " + reveal.Prospective.reason);
+            // The walk observer (vote family V5e): past the reveal, the archive rebuilds the owners its plan selected.
+            ModeTwoReaderSweep.AssertOwnersRebuilt(reveal.After, reveal.Plans, "the reveal");
             Assert.That(reveal.Legacy.state.evictionResolved && reveal.After.evictionResolved, Is.True, "Both counted the box.");
             reveal.Frame = new UnifiedVoteRevealState { week = reveal.Legacy.state.week, ballots = reveal.Legacy.state.votes
                 .Select(v => new UnifiedVoteBallotState { voterId = v.voterId, targetId = v.targetId }).ToList() };
@@ -294,6 +298,18 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Moved(reveal.CastTwin, reveal.After, s.playerId, npc), Is.Zero, "The player's own view never moves on a ballot's verdict.");
             Assert.That(Moved(reveal.CastTwin, reveal.After, npc, s.playerId), Is.EqualTo(kept ? 12 : -22.5));
             ProspectiveVoteTwins.AssertProjection(reveal.Projection, reveal.After, "A voting bloc, " + (kept ? "kept" : "broken"));
+            // A collective row: both views, each a group it owns alone, as the archive rebuilds them (vote family V5e).
+            Assert.That(Owner(reveal, kept, s.playerId, npc), Is.EqualTo(new[] { id, id }));
+            Assert.That(Owner(reveal, kept, npc, s.playerId), Is.EqualTo(new[] { id, id }));
+        }
+
+        private static string Ids(params string[] ids) => string.Join(",", ids.OrderBy(id => id, StringComparer.Ordinal));
+
+        /// <summary>The plan's group of one polarity, actor and holder: its owner, then its evidence joined (vote family V5e's walk observer).</summary>
+        private static string[] Owner(Reveal reveal, bool kept, string actor, string holder)
+        {
+            var group = reveal.Plans.Single(item => item.Kept == kept && item.ActorId == actor && item.WrongedId == holder);
+            return new[] { group.OwnerId, string.Join(",", group.EvidenceIds) };
         }
 
         /// <summary>
@@ -503,6 +519,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(tape.Lines[1], Does.StartWith("deal-outcome [" + npc + "] "));
             Assert.That(Moved(reveal.CastTwin, reveal.After, npc, p), Is.EqualTo(-31), "One breach, the more severe.");
             Assert.That(reveal.After.story.grudges.Count(g => g.holderId == npc && g.targetId == p), Is.EqualTo(1));
+            // The plan's groups (vote family V5e): the houseguest's view one incident the promise owns; the bloc's other edge its own.
+            Assert.That(Owner(reveal, false, p, npc), Is.EqualTo(new[] { promise, Ids(promise, bloc) }));
+            Assert.That(Owner(reveal, false, npc, p), Is.EqualTo(new[] { bloc, bloc }));
             Assert.That(tape.Draw, Is.EqualTo(reveal.Legacy.state.randomState), "The witness loop draws as mode 1's; the bloc draws nothing in either.");
             Assert.That(Moved(reveal.Cast, reveal.Legacy.state, npc, p), Is.EqualTo(-53.5), "Mode 1 moves the one view twice.");
         }
@@ -547,6 +566,9 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(tape.Memories, Is.Empty);
             }
             Assert.That(Moved(reveal.Cast, reveal.Legacy.state, npc, p), Is.EqualTo(24), "Mode 1 moves the one view twice.");
+            // A tie, both orders (vote family V5e): the smaller id owns the houseguest's view; the bloc alone the player's.
+            Assert.That(Owner(reveal, true, p, npc), Is.EqualTo(new[] { evictFirst ? evict : bloc, Ids(evict, bloc) }));
+            Assert.That(Owner(reveal, true, npc, p), Is.EqualTo(new[] { bloc, bloc }));
         }
 
         /// <summary>
@@ -567,6 +589,9 @@ namespace Gamesim.Tests.EditMode
             Stamped(reveal.After, save, DealStatus.Broken, s.playerId);
             Assert.That(Moved(reveal.CastTwin, reveal.After, npc, s.playerId), Is.EqualTo(15 - 22.5));
             ProspectiveVoteTwins.AssertProjection(reveal.Projection, reveal.After, "A keep and a breach of one pair");
+            // Two groups of one pair, a keep and a breach, each its own owner (vote family V5e).
+            Assert.That(Owner(reveal, true, s.playerId, npc), Is.EqualTo(new[] { promise, promise }));
+            Assert.That(Owner(reveal, false, s.playerId, npc), Is.EqualTo(new[] { save, save }));
         }
 
         /// <summary>
@@ -576,14 +601,16 @@ namespace Gamesim.Tests.EditMode
         /// stacks two grudges). Broken by the houseguest, against the player: the player's view is masked, the record
         /// kept once, and the betrayal spread is drawn once - mode 1 draws it twice.
         /// </summary>
-        [TestCase(true)] [TestCase(false)]
-        public void TwoDealsBrokenByOneBallotAreOneBreach(bool playerBreaks)
+        [TestCase(true, true)] [TestCase(false, true)] [TestCase(true, false)] [TestCase(false, false)]
+        public void TwoDealsBrokenByOneBallotAreOneBreach(bool playerBreaks, bool saveFirst)
         {
             var s = Campaign();
             string npc = NpcVoters(s)[0], x = s.nominees[0], y = s.nominees[1];
-            // Keep x and evict y: one duty, to vote y out. Its breaker votes x out.
-            s = Deal(Deal(s, npc, DealKind.VoteSave, x), npc, DealKind.VoteEvict, y);
+            // Keep x and evict y: one duty, to vote y out. Its breaker votes x out. Struck in either order.
+            s = saveFirst ? Deal(Deal(s, npc, DealKind.VoteSave, x), npc, DealKind.VoteEvict, y)
+                : Deal(Deal(s, npc, DealKind.VoteEvict, y), npc, DealKind.VoteSave, x);
             string save = DealId(s, npc, DealKind.VoteSave), evict = DealId(s, npc, DealKind.VoteEvict);
+            Assert.That(string.CompareOrdinal(save, evict) < 0, Is.EqualTo(saveFirst), "Fixture: the first struck has the smaller id.");
             string p = s.playerId, breaker = playerBreaks ? p : npc, wronged = playerBreaks ? npc : p;
             var reveal = Play(s, playerBreaks ? x : y, Pins((npc, playerBreaks ? y : x)));
             Stamped(reveal.After, save, DealStatus.Broken, breaker);
@@ -615,6 +642,10 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(tape.Draw, Is.EqualTo(Advance(reveal.CastTwin.randomState, witnesses + heard)), "One spread drawn.");
                 Assert.That(reveal.Legacy.state.randomState, Is.EqualTo(Advance(reveal.Cast.randomState, 2 * witnesses + heard1)), "Mode 1 draws two.");
             }
+            // One incident, both rows its evidence, the smaller id its owner and its deal - in either order (vote family V5e).
+            string owner = saveFirst ? save : evict;
+            Assert.That(Owner(reveal, false, breaker, wronged), Is.EqualTo(new[] { owner, Ids(save, evict) }));
+            Assert.That(reveal.Plans.Single(group => !group.Kept).DealId, Is.EqualTo(owner));
         }
 
         // ------------------------------------------------------------ once, across duplicates and reloads

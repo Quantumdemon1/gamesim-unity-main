@@ -99,7 +99,7 @@ namespace Gamesim.Tests.EditMode
                 }
                 command = command ?? Next(s);
                 var legacy = season.Apply(command);
-                var prospective = engine.Apply(command);
+                var prospective = Observed(engine, command, "seed " + seed + " week " + s.week + " " + s.phase + " " + command.kind);
                 string where = "week " + s.week + " " + s.phase + " " + command.kind;
                 Assert.That(legacy.accepted, Is.True, "seed " + seed + " " + where + ": " + legacy.reason);
                 if (!prospective.accepted) return where + ": refused in mode 2: " + prospective.reason;
@@ -113,6 +113,39 @@ namespace Gamesim.Tests.EditMode
                 return "designed at " + where + ": " + designed + "; mode 2 then " + PlayOn(engine, seed, busy);
             }
             return "unfinished";
+        }
+
+        /// <summary>
+        /// A mode-2 command with the walk observer on (vote family V5e): every reveal plan it ran is recorded, and once the command
+        /// is through, the owners the archive rebuilds (<see cref="AssertOwnersRebuilt"/>) must be the plan's.
+        /// </summary>
+        internal static CommandResult Observed(EpisodeEngine engine, EpisodeCommand command, string where)
+        {
+            var plans = new List<UnifiedVoteIncident>();
+            CommandResult result;
+            using (ProspectiveVoteFacade.ObservePlans(plans)) result = engine.Apply(command);
+            if (result.accepted && plans.Count > 0) AssertOwnersRebuilt(result.state, plans, where);
+            return result;
+        }
+
+        /// <summary>
+        /// The walk observer's check (vote family V5e): past a reveal, <see cref="UnifiedVoteHistory.Incidents"/> and
+        /// <see cref="UnifiedVoteHistory.Fulfillments"/> of its week are the groups its plan selected - owner, actor, the one
+        /// it was given to, evidence, deal and consequence, in the plan's order - and the row-level <see cref="UnifiedVoteHistory.Breaches"/>
+        /// are the archive's incidents, every week.
+        /// </summary>
+        internal static void AssertOwnersRebuilt(EpisodeState after, IReadOnlyList<UnifiedVoteIncident> plans, string where)
+        {
+            foreach (int week in plans.Select(group => group.Week).Distinct())
+            {
+                var plan = plans.Where(group => group.Week == week).ToList();
+                Assert.That(Json(UnifiedVoteHistory.Incidents(after).Where(group => group.Week == week)), Is.EqualTo(Json(plan.Where(group => !group.Kept))),
+                    where + ": the week's rebuilt breaches are its plan's.");
+                Assert.That(Json(UnifiedVoteHistory.Fulfillments(after).Where(group => group.Week == week)), Is.EqualTo(Json(plan.Where(group => group.Kept))),
+                    where + ": the week's rebuilt fulfillments are its plan's.");
+            }
+            Assert.That(Json(UnifiedVoteHistory.Breaches(after)), Is.EqualTo(Json(UnifiedVoteHistory.Incidents(after))),
+                where + ": the rows' incidents are the archive's.");
         }
 
         /// <summary>One command played through both games of a lockstep walk: the mode-1 result's projection and the mode-2 result.</summary>
@@ -148,7 +181,7 @@ namespace Gamesim.Tests.EditMode
                 }
                 command = command ?? Next(s);
                 var legacy = season.Apply(command);
-                var prospective = engine.Apply(command);
+                var prospective = Observed(engine, command, "seed " + seed + " week " + s.week + " " + s.phase + " " + command.kind);
                 if (injected != null)
                     return new Injected { Before = s, Command = command, Legacy = legacy, Prospective = prospective, Mode2 = prospective.state,
                         Projection = legacy.accepted ? PinnedVoteSeason.Project(legacy.state, season.Owners, season.Frames) : null };
@@ -203,12 +236,12 @@ namespace Gamesim.Tests.EditMode
                 {
                     var own = Busy(s, seed, attempt);
                     if (own == null) break;
-                    var tried = engine.Apply(own);
+                    var tried = Observed(engine, own, "seed " + seed + " week " + s.week + " " + s.phase + " " + own.kind);
                     if (tried.accepted) applied = tried;
                 }
                 if (applied != null) continue;
                 var next = Next(s);
-                var result = engine.Apply(next);
+                var result = Observed(engine, next, "seed " + seed + " week " + s.week + " " + s.phase + " " + next.kind);
                 if (!result.accepted) return "refused week " + s.week + " " + s.phase + " " + next.kind + ": " + result.reason;
             }
             return "unfinished";

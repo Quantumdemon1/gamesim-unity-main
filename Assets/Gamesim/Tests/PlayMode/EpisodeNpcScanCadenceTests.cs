@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Gamesim.House;
 using Gamesim.Persistence;
 using Gamesim.Simulation;
@@ -120,6 +122,33 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.Snapshot.npcSocial.clockTick, Is.EqualTo(checkpoint.npcSocial.nextScanTick));
                 AssertNpcScanCreatedRealApproaches();
             }
+        }
+
+        /// <summary>
+        /// BALANCE plan B5a: the scan pairs through <see cref="NpcPairing"/>. Replaying NpcPairing.Plan on the
+        /// saved state the scan read, with the coordinator's answers (held exactly where an approach now stands),
+        /// gives the scan's approaches in their order - its first held try is the first approach - and the lease
+        /// counter moved once for every try it made.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator NpcScan_ApproachesAreNpcPairingsHeldTriesInOrder()
+        {
+            yield return BindNpcScanWorld();
+            CommitNpcScanSecond(); CommitNpcScanSecond();
+            long counterBefore = NpcRead<long>("npcLeaseCounter");
+            CommitNpcScanSecond();
+            AssertNpcScanCreatedRealApproaches();
+            var leases = new List<HouseMeetingLease>();
+            foreach (var approach in NpcRead<IList>("npcApproaches")) leases.Add((HouseMeetingLease)NpcObjectField(approach, "lease"));
+            var state = director.Snapshot;
+            var busy = NpcPairing.Busy(state);
+            if (director.CurrentTalkSpot != null) busy.Add(director.CurrentTalkSpot.NpcId);
+            var reserved = new HashSet<string>(leases.Select(lease => lease.FirstId + ">" + lease.SecondId));
+            int tries = 0;
+            var held = NpcPairing.Plan(state, busy, (first, second) => { tries++; return reserved.Contains(first + ">" + second); });
+            Assert.That(held.Select(pair => pair.first + ">" + pair.second).ToList(), Is.EqualTo(leases.Select(lease => lease.FirstId + ">" + lease.SecondId).ToList()),
+                "The scan's approaches are NpcPairing's held tries in order, the first approach its first.");
+            Assert.That(NpcRead<long>("npcLeaseCounter") - counterBefore, Is.EqualTo((long)tries), "One lease token a try, as NpcPairing tries.");
         }
 
         [UnityTest]

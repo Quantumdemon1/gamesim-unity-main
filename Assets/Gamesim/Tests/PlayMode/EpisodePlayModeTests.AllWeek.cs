@@ -151,6 +151,26 @@ namespace Gamesim.Tests.PlayMode
             Assert.Fail("No floor beside " + act.actorId + " in the " + act.room + ".");
         }
 
+        /// <summary>
+        /// Puts the player in a room, on its floor near its marker: where an act staged there would stand, without
+        /// needing the act's two to be there.
+        /// </summary>
+        private void WarpInto(string room)
+        {
+            foreach (var marker in ActiveRoomMarkers().Where(m => m.RoomName == room))
+                for (int direction = 0; direction < 17; direction++)
+                {
+                    float angle = direction * Mathf.PI / 8f, reach = direction == 0 ? 0f : direction <= 8 ? 1f : 2f;
+                    var candidate = marker.transform.position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * reach;
+                    if (!NavMesh.SamplePosition(candidate, out var hit, 1.5f, player.Agent.areaMask) || RoomAt(hit.position, player.Agent.radius) != room) continue;
+                    if (!player.Agent.Warp(hit.position)) continue;
+                    player.Agent.ResetPath();
+                    Physics.SyncTransforms();
+                    return;
+                }
+            Assert.Fail("No floor in the " + room + ".");
+        }
+
         /// <summary>Puts the player in a room that is not the act's.</summary>
         private void WarpElsewhere(NpcActState act)
         {
@@ -277,7 +297,9 @@ namespace Gamesim.Tests.PlayMode
                 director.LoadNow();
                 yield return null;
                 director.BuildNpcWorldForDiagnostics();
-                WarpBeside(act);
+                // The load puts everyone back at their starting places and a seen act is never staged again, so the
+                // player stands in its room by the room's marker, not beside a body that is no longer there for it.
+                WarpInto(act.room);
                 yield return Linger(4f);
                 Assert.That(director.StagedActs, Has.No.Member(act.id), "A seen act is not staged again.");
                 Assert.That(Sightings(director.Snapshot), Is.EqualTo(lines), "and nothing is said twice.");
@@ -288,7 +310,7 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The house's Listen in, found by its caption on the Nearby card, at the final three's free time - two
         /// houseguests left, so the pair it overhears is theirs - hears the act the player saw them at: today's line
-        /// and the act's clause after it, once.
+        /// and the act's clause after it, once, with only D4's sentence after the clause (seed 1's two share a pact).
         /// </summary>
         [UnityTest, Timeout(300000)]
         public IEnumerator AllWeek_ListenInHearsAnActThePlayerSaw()
@@ -333,7 +355,15 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(after.revision, Is.EqualTo(before.revision + 1), "Listening in commits the house's Eavesdrop.");
             var line = after.events.Last(e => e.kind == "eavesdrop").text;
             Assert.That(line, Does.StartWith("You overheard "));
-            Assert.That(line, Does.EndWith(clause), "The act's clause, after today's line.");
+            // The builder's clause order (EpisodeEngine.EavesdropLine): today's line, the act's clause, then D4's
+            // sentence where the listen-in made the player a knower of the two's pact - as in this final three,
+            // whose two share one - and nothing else.
+            int at = line.IndexOf(clause, System.StringComparison.Ordinal);
+            Assert.That(at, Is.GreaterThan(0), "The act's clause, after today's line: " + line);
+            Assert.That(line.IndexOf(clause, at + 1, System.StringComparison.Ordinal), Is.EqualTo(-1), "Said once: " + line);
+            var pact = Knowledge.PactOfPair(before, act.actorId, act.partnerId, before.playerId);
+            string sentence = pact == null ? "" : AllianceLeaks.ListenInSentence(after, pact);
+            Assert.That(line.Substring(at + clause.Length), Is.EqualTo("").Or.EqualTo(sentence), "Nothing after the clause but D4's sentence: " + line);
             Assert.That(ActNow(act.id).overheard, Is.True, "Heard once.");
         }
 

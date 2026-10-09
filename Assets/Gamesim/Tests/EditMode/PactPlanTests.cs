@@ -47,10 +47,10 @@ namespace Gamesim.Tests.EditMode
         }
 
         // The reach amended in place for BALANCE plan §4 Q1 (eight at fifty, cap twelve, reached only toss-ups:
-        // mean come-round odds 0.17 in PactPlanSeasonDigests, 0.13 in the lab): eighteen at a view of ten or more,
-        // scaled down to nothing at zero, Loyal half as much again, cap twenty-seven.
-        [TestCase(0, "", 0)] [TestCase(-20, "", 0)] [TestCase(5, "", 9)] [TestCase(10, "", 18)] [TestCase(90, "", 18)]
-        [TestCase(10, "Loyal", 27)] [TestCase(100, "Loyal", 27)] [TestCase(5, "Loyal", 13.5)] [TestCase(100, "Sneaky", 0)]
+        // mean come-round odds 0.17 in PactPlanSeasonDigests, 0.10 in the lab): twenty at a view of ten or more,
+        // scaled down to nothing at zero, Loyal half as much again, cap thirty.
+        [TestCase(0, "", 0)] [TestCase(-20, "", 0)] [TestCase(5, "", 10)] [TestCase(10, "", 20)] [TestCase(90, "", 20)]
+        [TestCase(10, "Loyal", 30)] [TestCase(100, "Loyal", 30)] [TestCase(5, "Loyal", 15)] [TestCase(100, "Sneaky", 0)]
         public void ACountersReachIsTheObligationsSizing(double view, string trait, double reach)
         {
             var traits = trait.Length == 0 ? new List<string> { "Social" } : new List<string> { trait };
@@ -269,10 +269,10 @@ namespace Gamesim.Tests.EditMode
                 var npcs = NpcIds(s);
                 string member = npcs[(int)(seed % 2) + 3];
                 // On odd seeds a Loyal member who thinks the world of the player: the counter's furthest reach,
-                // twenty-seven (twelve before the reach was amended for BALANCE plan §4 Q1, when every such member
-                // came round no more); on even seeds one barely warm to the player, a view of three: reach 5.4.
+                // thirty (twelve before the reach was amended for BALANCE plan §4 Q1, since when nearly every such
+                // member comes round); on even seeds one barely warm to the player, a view of three: reach six.
                 bool far = seed % 2 == 1;
-                double view = far ? 100 : 3, reach = far ? 27 : 18 * 0.3;
+                double view = far ? 100 : 3, reach = far ? 30 : 20 * 0.3;
                 s.Find(member).traits = new List<string> { far ? "Loyal" : "Social" };
                 SetScore(s, member, s.playerId, view);
                 double odds = PactPlans.ComeRoundOdds(s, member);

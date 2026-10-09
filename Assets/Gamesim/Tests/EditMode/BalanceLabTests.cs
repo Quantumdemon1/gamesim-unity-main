@@ -479,7 +479,9 @@ namespace Gamesim.Tests.EditMode
         /// (16 hex of SHA-256). Recorded with the driver's plumbing (paired seeds, the coins' revision less the world's
         /// operations, the npcWorld and pairs fields) and none of its behaviour.
         /// </summary>
-        internal const string BudgetNoughtRows = "f3b663c383491ce1";
+        // f3b663c383491ce1 before and after the driver (2989e94f, 6a29f08d); re-recorded when D3's counter reach was
+        // re-amended to twenty at ten (the war rooms the policies play now settle differently).
+        internal const string BudgetNoughtRows = "bbae7f5d572fdb95";
 
         [Test, Explicit("B5b: budget nought plays, byte for byte, the seasons it played before the NPC world's driver (about 5 min). Run by name.")]
         public void BudgetNoughtPlaysTheSeasonsItPlayedBeforeTheDriver()

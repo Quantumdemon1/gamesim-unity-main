@@ -29,17 +29,18 @@ namespace Gamesim.Simulation
         public const int WarRoomSize = 3;
 
         /// <summary>
-        /// How far a counter can reach a member: eighteen at a view of the player of ten or more, scaled down
-        /// to nothing at zero; half as much again for the Loyal, nothing for the Sneaky; never past twenty-seven.
+        /// How far a counter can reach a member: twenty at a view of the player of ten or more, scaled down
+        /// to nothing at zero; half as much again for the Loyal, nothing for the Sneaky; never past thirty.
         /// So a counter can bring round a toss-up or a lean, never a decided vote but a Loyal member's.
         ///
         /// <para>Amended in place (BALANCE plan §4 Q1, the lead's decision 6): at eight, fifty and twelve the
         /// counter reached only toss-ups - mean come-round odds among the members it could reach 0.17 over
-        /// PactPlanSeasonDigests' war rooms (1 of 13 came round) and 0.13 over the lab's war-room tier - against a
-        /// band of 0.35 to 0.50; these give 0.46 (3 of 13) and about 0.38. No season outside the tests has played
-        /// the war rooms, so the amendment needs no boundary.</para>
+        /// PactPlanSeasonDigests' war rooms (1 of 13 came round) and 0.10 over the lab's headline (854 members) -
+        /// against a band of 0.35 to 0.50. The lab's members view the player less warmly and lean harder than the
+        /// digests' constructed trio, so few constants put both inside the band: these give about 0.49 and 0.36.
+        /// No season outside the tests has played the war rooms, so the amendment needs no boundary.</para>
         /// </summary>
-        public const double ReachBase = 18, ReachFullView = 10, ReachLoyal = 1.5, ReachCap = 27;
+        public const double ReachBase = 20, ReachFullView = 10, ReachLoyal = 1.5, ReachCap = 30;
 
         /// <summary>How a plan is answered: the player goes with it, counters it, or lies low; or nobody answers by the campaign's close.</summary>
         public const string Agree = "agree", Counter = "counter", LieLow = "low", Lapse = "lapse";

@@ -72,11 +72,12 @@ namespace Gamesim.Tests.EditMode
             md.AppendLine();
             md.AppendLine("| base | full view | cap | mean odds (every answer) | mean odds (counters) | reachable at all | expected to come round (not turned) |");
             md.AppendLine("|---|---|---|---|---|---|---|");
-            foreach (var (reachBase, fullView) in Candidates)
+            foreach (var (reachBase, fullView) in new[] { (PactPlans.ReachBase, PactPlans.ReachFullView) }.Concat(Candidates))
             {
                 double cap = reachBase * PactPlans.ReachLoyal;
+                bool today = reachBase == PactPlans.ReachBase && fullView == PactPlans.ReachFullView;
                 double Mean(List<BalanceLab.CounterMember> list) => list.Count == 0 ? double.NaN : list.Average(m => Odds(m, reachBase, fullView, PactPlans.ReachLoyal, cap));
-                md.AppendLine("| " + Num(reachBase) + " | " + Num(fullView) + " | " + Num(cap) + " | " + Num(Mean(all), "0.00") + " | " + Num(Mean(countered), "0.00") + " | "
+                md.AppendLine("| " + Num(reachBase) + (today ? " (today)" : "") + " | " + Num(fullView) + " | " + Num(cap) + " | " + Num(Mean(all), "0.00") + " | " + Num(Mean(countered), "0.00") + " | "
                     + BalanceLab.Pct((double)all.Count(m => Odds(m, reachBase, fullView, PactPlans.ReachLoyal, cap) > 0) / all.Count) + " | "
                     + Num(all.Where(m => !m.lapsed).Sum(m => Odds(m, reachBase, fullView, PactPlans.ReachLoyal, cap)) / all.Count, "0.00") + " |");
             }

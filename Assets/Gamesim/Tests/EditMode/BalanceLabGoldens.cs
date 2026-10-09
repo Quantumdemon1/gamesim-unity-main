@@ -36,15 +36,18 @@ namespace Gamesim.Tests.EditMode
             + "strategyRulesStartWeek=1,allianceLeakRulesStartWeek=1,pactPlanRulesStartWeek=1,allWeekRulesStartWeek=0,npcSocial.rulesStartWeek=1,"
             + "story.rulesStartWeek=1,story.rulesVersion=9";
 
-        /// <summary>Each cell's digest: "policy/roster/size/npcN hash". Recorded with D3's counter as amended (575d9420) and the war rooms played.</summary>
+        /// <summary>
+        /// Each cell's digest: "policy/roster/size/npcN hash". Recorded with the war rooms played and D3's counter reach
+        /// at twenty from a view of ten (re-recorded when it moved from eighteen: the war-room players' eleven cells).
+        /// </summary>
         internal static readonly string[] Recorded =
         {
             "passive/Regular/8/npc0 1b405c79c3b6a14d",
-            "random/Regular/8/npc0 81e671346e82acb1",
+            "random/Regular/8/npc0 b1c3e93c4fbe4c9c",
             "social/Regular/8/npc0 14e170517bd0918f",
-            "reader/Regular/8/npc0 e2e4135ff18a9ea8",
-            "schemer/Regular/8/npc0 c19877a53923125f",
-            "loyalist/Regular/8/npc0 d69096461d5907e1",
+            "reader/Regular/8/npc0 9f946759c9610e2f",
+            "schemer/Regular/8/npc0 29471da96aee7816",
+            "loyalist/Regular/8/npc0 fc5481ee5a1c0313",
             "floater/Regular/8/npc0 d562cf534b294edd",
             "beast/Regular/8/npc0 202a96a3eedf734b",
             "novice/Regular/8/npc0 a87d44ce47dfa83d",
@@ -54,9 +57,9 @@ namespace Gamesim.Tests.EditMode
             "passive/Regular/12/npc0 75bcb38b179324e4",
             "random/Regular/12/npc0 0f25c43618c05f25",
             "social/Regular/12/npc0 9fb35ff6a1d3b804",
-            "reader/Regular/12/npc0 cec6a9b649ba09e2",
-            "schemer/Regular/12/npc0 ba6c490299468876",
-            "loyalist/Regular/12/npc0 b1e5d002b673963c",
+            "reader/Regular/12/npc0 2954a0e8c6bf0933",
+            "schemer/Regular/12/npc0 aa4b8ec864dc35b8",
+            "loyalist/Regular/12/npc0 1ce9a2b47cb39a45",
             "floater/Regular/12/npc0 575cca0fda23b400",
             "beast/Regular/12/npc0 f98caecb6d7f7c86",
             "novice/Regular/12/npc0 386fbb9197dba1e8",
@@ -64,10 +67,10 @@ namespace Gamesim.Tests.EditMode
             "oracle-reader/Regular/12/npc0 c2a3967e8315494b",
             "oracle-skilled/Regular/12/npc0 59f1fb5910add447",
             "passive/Regular/8/npc300 62ca6d58ab8961f5",
-            "random/Regular/8/npc300 8f1bae48a6ed0fca",
+            "random/Regular/8/npc300 1a041ee403734cec",
             "social/Regular/8/npc300 2fb493792a79c79b",
             "reader/Regular/8/npc300 63d93c2e7b1c4e84",
-            "schemer/Regular/8/npc300 c88638017ff87b4c",
+            "schemer/Regular/8/npc300 0daf8af2dabc013a",
             "loyalist/Regular/8/npc300 aecd6226fba347cf",
             "floater/Regular/8/npc300 9a866cd689c176fd",
             "beast/Regular/8/npc300 58bc055eb37ec865",
@@ -78,8 +81,8 @@ namespace Gamesim.Tests.EditMode
             "passive/Regular/12/npc300 6f3f4ee3bd6bdbf4",
             "random/Regular/12/npc300 5c37e238f5884923",
             "social/Regular/12/npc300 1cada3efd96c8f16",
-            "reader/Regular/12/npc300 bcd9cf02ac3c4726",
-            "schemer/Regular/12/npc300 6eae26c44aca8da5",
+            "reader/Regular/12/npc300 b00adbef2ac7b7ab",
+            "schemer/Regular/12/npc300 9c12d5245ffda077",
             "loyalist/Regular/12/npc300 d6a6f6fcdceb1852",
             "floater/Regular/12/npc300 4f9b96381641b7b5",
             "beast/Regular/12/npc300 6273019122a02c53",
@@ -98,8 +101,8 @@ namespace Gamesim.Tests.EditMode
         }
 
         private const string Why = "B6b's goldens: one budget, size and four of the twelve players, 20 seasons a cell (budget 0 about a minute, 300 up to 8 min). Run by name.";
-        [Test, Explicit(Why)] public void Budget0Size8() { Golden(0, 8, 0); Golden(0, 8, 1); Golden(0, 8, 2); }
-        [Test, Explicit(Why)] public void Budget0Size12() { Golden(0, 12, 0); Golden(0, 12, 1); Golden(0, 12, 2); }
+        [Test, Explicit(Why)] public void Budget0Size8() => Golden(0, 8, 0, 1, 2);
+        [Test, Explicit(Why)] public void Budget0Size12() => Golden(0, 12, 0, 1, 2);
         [Test, Explicit(Why)] public void Budget300Size8First() => Golden(300, 8, 0);
         [Test, Explicit(Why)] public void Budget300Size8Second() => Golden(300, 8, 1);
         [Test, Explicit(Why)] public void Budget300Size8Third() => Golden(300, 8, 2);
@@ -107,12 +110,12 @@ namespace Gamesim.Tests.EditMode
         [Test, Explicit(Why)] public void Budget300Size12Second() => Golden(300, 12, 1);
         [Test, Explicit(Why)] public void Budget300Size12Third() => Golden(300, 12, 2);
 
-        /// <summary>Plays a third of the headline's players at a budget and size and checks every cell's digest against its recording.</summary>
-        private static void Golden(int budget, int size, int third)
+        /// <summary>Plays thirds of the headline's players at a budget and size and checks every cell's digest against its recording.</summary>
+        private static void Golden(int budget, int size, params int[] thirds)
         {
             string rules = RulesNow();
             TestContext.WriteLine("Rules: " + rules);
-            var players = BalancePolicies.All.Where((_, i) => i * 3 / BalancePolicies.All.Length == third).ToArray();
+            var players = BalancePolicies.All.Where((_, i) => thirds.Contains(i * 3 / BalancePolicies.All.Length)).ToArray();
             var cells = BalanceLab.Grid(players, new[] { size }, npcTicks: budget);
             var runs = BalanceLab.Run(cells, Seeds);
             Assert.That(runs.Where(r => r.error != null).Select(r => r.cell.Key + " #" + r.index + ": " + r.error).Take(10), Is.Empty);

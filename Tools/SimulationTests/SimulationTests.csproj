@@ -247,6 +247,8 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/InputGlossary.cs" />
     <Compile Include="$(EditMode)InputGlossaryTests.cs" />
     <Compile Include="$(EditMode)InputRawReadScanTests.cs" />
+    <!-- The ceremony cards' press guard (A4f), the Back matrix's representative rows rest on it. -->
+    <Compile Include="$(EditMode)CeremonyCardInputScanTests.cs" />
     <!-- The standalone profile's performance verdict and arithmetic, and the verification-only stress house. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/VerificationPerformance.cs" />
     <Compile Include="$(EditMode)VerificationPerformanceTests.cs" />

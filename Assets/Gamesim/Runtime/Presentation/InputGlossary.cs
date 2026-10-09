@@ -208,6 +208,100 @@ namespace Gamesim.Presentation
             return null;
         }
 
+        // ---------------------------------------------------------------- status lines that follow the device (A4f)
+
+        /// <summary>The episode screen's line after a warp put the player at it, on the keyboard, as it has always read.</summary>
+        public const string KeyboardStationArrived = "At the episode screen  ·  E to open";
+        /// <summary>The episode screen's line while the player walks there, on the keyboard.</summary>
+        public const string KeyboardStationHeading = "Heading to the episode screen  ·  E to open";
+        /// <summary>The diary's way in after a warp put the player at the private room, on the keyboard.</summary>
+        public const string KeyboardDiaryArrived = "At the private room: press E to open your diary. No choice is committed by entering.";
+        /// <summary>The diary's way in while the player walks there, on the keyboard.</summary>
+        public const string KeyboardDiaryWalk = "Walk to the private room, then press E to open your diary. No choice is committed by entering.";
+        /// <summary>The settings' CEREMONIES paragraph at the suspenseful pace, on the keyboard.</summary>
+        public const string KeyboardCeremonySuspenseful =
+            "Keys and votes are revealed one at a time, with a pause before the last. Press Space to speed a reveal up, or Enter to skip to the result.";
+        /// <summary>The settings' CEREMONIES paragraph at the quick pace, on the keyboard.</summary>
+        public const string KeyboardCeremonyQuick = "Keys and votes are revealed quickly. Press Space to speed a reveal up, or Enter to skip to the result.";
+        /// <summary>The tour's episode-screen step: the keys that open and close it, on the keyboard.</summary>
+        public const string KeyboardStationStepKeys = "press E to open it and Esc to close it.";
+        /// <summary>The house challenge's paragraph, on the keyboard.</summary>
+        public const string KeyboardChallenge =
+            "Press Space or STOP when the marker is near the center. Three attempts; no time limit. Escape cancels without committing.";
+
+        /// <summary>
+        /// The status line after "Go to episode screen": at the screen after a warp, or on the way.
+        /// On a pad the key is the Interact row's button, which opens the screen as E does.
+        /// </summary>
+        public static string StationLine(bool warp, bool pad)
+        {
+            if (!pad) return warp ? KeyboardStationArrived : KeyboardStationHeading;
+            return (warp ? "At the episode screen" : "Heading to the episode screen") + "  ·  " + PadKey("Shortcuts", "Interact") + " to open";
+        }
+
+        /// <summary>The status line after "Go to diary room": at the private room after a warp, or on the way.</summary>
+        public static string DiaryWayLine(bool warp, bool pad)
+        {
+            if (!pad) return warp ? KeyboardDiaryArrived : KeyboardDiaryWalk;
+            string key = PadKey("Shortcuts", "Interact");
+            return (warp ? "At the private room: press " : "Walk to the private room, then press ") + key
+                + " to open your diary. No choice is committed by entering.";
+        }
+
+        /// <summary>
+        /// The settings' CEREMONIES paragraph for the pace chosen. On a pad the speed-up is the
+        /// ceremony map's Speed button and the skip its Skip button's first (A; B skips as well).
+        /// </summary>
+        public static string CeremonyPaceLine(bool suspenseful, bool pad)
+        {
+            if (!pad) return suspenseful ? KeyboardCeremonySuspenseful : KeyboardCeremonyQuick;
+            return (suspenseful ? "Keys and votes are revealed one at a time, with a pause before the last." : "Keys and votes are revealed quickly.")
+                + " Press " + PadKey("Ceremony", "Speed") + " to speed a reveal up, or " + PadKey("Ceremony", "Skip") + " to skip to the result.";
+        }
+
+        /// <summary>The tour's episode-screen step, the part naming the keys: Interact opens the screen and Back closes it on a pad.</summary>
+        public static string StationStepKeys(bool pad) => !pad ? KeyboardStationStepKeys
+            : "press " + PadKey("Shortcuts", "Interact") + " to open it and " + PadKey("Shortcuts", "Back") + " to close it.";
+
+        /// <summary>
+        /// The house challenge's paragraph. On a pad the shortcuts' Hit stops the marker and Back
+        /// cancels; the paragraph does not name STOP there, because the pad's A on the focused STOP
+        /// control is the same press.
+        /// </summary>
+        public static string ChallengeLine(bool pad) => !pad ? KeyboardChallenge
+            : "Press " + PadKey("Shortcuts", "Hit") + " when the marker is near the center. Three attempts; no time limit. "
+                + PadKey("Shortcuts", "Back") + " cancels without committing.";
+
+        /// <summary>
+        /// The furniture's status line while the player is at it, by the activity's name (the
+        /// House assembly's <c>HouseFurnitureActivity</c> member, which this Unity-free table cannot
+        /// name as a type). On the keyboard "E or a click" gets them up; on a pad, the Interact row's button.
+        /// </summary>
+        public static string ActivityLine(string activity, bool pad)
+        {
+            string doing, undo;
+            bool click = true;
+            switch (activity)
+            {
+                case "Sleep": doing = "Off to bed"; undo = "get up"; break;
+                case "Swim": doing = "Going for a swim"; undo = "get out"; break;
+                case "Soak": doing = "Into the hot tub"; undo = "get out"; break;
+                case "Cook": doing = "Cooking a meal"; undo = "stop"; break;
+                case "Dance": doing = "Dancing"; undo = "stop"; break;
+                default: doing = "At the furniture"; undo = "finish"; click = false; break;
+            }
+            string key = pad ? PadKey("Shortcuts", "Interact") : click ? "E or a click" : "E";
+            return doing + "  ·  " + key + " to " + undo;
+        }
+
+        /// <summary>The first of a row's pad buttons: "A" of the ceremony Skip's "A / B".</summary>
+        private static string PadKey(string map, string action)
+        {
+            string pad = Find(map, action).Pad;
+            int slash = pad.IndexOf(" / ", StringComparison.Ordinal);
+            return slash > 0 ? pad.Substring(0, slash) : pad;
+        }
+
         /// <summary>A row's pad words with the slashes closed up, for the help card's narrow box.</summary>
         private static string PadOf(string map, string action) => Find(map, action).Pad.Replace(" / ", "/");
 

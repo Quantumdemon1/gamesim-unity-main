@@ -104,10 +104,9 @@ namespace Gamesim.Episode
             hud.Action(largeText ? "Use standard text" : "Use larger text", () => SetLargeText(!largeText));
             hud.Section("CEREMONIES");
             // The key ceremony and the live eviction reveal one name at a time; suspenseful holds a
-            // beat on each, quick keeps them brisk. Either can be sped up or skipped while it plays.
-            hud.Paragraph(ceremonyPace == CeremonyPace.Suspenseful
-                ? "Keys and votes are revealed one at a time, with a pause before the last. Press Space to speed a reveal up, or Enter to skip to the result."
-                : "Keys and votes are revealed quickly. Press Space to speed a reveal up, or Enter to skip to the result.");
+            // beat on each, quick keeps them brisk. Either can be sped up or skipped while it plays,
+            // by the keys or the pad's buttons as the device last pressed names them (A4f).
+            hud.Paragraph(InputGlossary.CeremonyPaceLine(ceremonyPace == CeremonyPace.Suspenseful, PressWasPad));
             hud.Action(ceremonyPace == CeremonyPace.Suspenseful ? QuickCeremoniesCaption : SuspensefulCeremoniesCaption,
                 () => { SetCeremonyPace(ceremonyPace == CeremonyPace.Suspenseful ? CeremonyPace.Quick : CeremonyPace.Suspenseful); Render(); });
             DisplaySettings();

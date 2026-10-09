@@ -625,8 +625,9 @@ namespace Gamesim.Episode
                 // Shorter than it was, because it no longer has to narrate the camera. It used to
                 // read "Walk to the highlighted room, then press E to open the episode screen" - a
                 // full sentence of instructions for a walk you can now watch happen.
-                message = LastTravel == TravelKind.Warp ? "At the episode screen  ·  E to open"
-                    : "Heading to the episode screen  ·  E to open";
+                // In the words of the device that pressed (A4f): a pad's A on the rail's button
+                // reaches here through the UI module, before this frame's NoteInputDevice.
+                message = InputGlossary.StationLine(LastTravel == TravelKind.Warp, PressWasPad);
             }
             Render();
         }

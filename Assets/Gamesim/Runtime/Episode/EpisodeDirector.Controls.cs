@@ -1,3 +1,4 @@
+using System;
 using Gamesim.House;
 using Gamesim.Presentation;
 
@@ -23,6 +24,14 @@ namespace Gamesim.Episode
         /// </summary>
         public bool HintsForPad => padHints;
 
+        /// <summary>
+        /// Whether a line worded now names the pad's buttons (A4f): the device of this frame's press,
+        /// or the hints' device when nothing was pressed. Read at the press, not from the hints alone:
+        /// a pad's A on a HUD control reaches its handler through the UI module, which can run before
+        /// this frame's <see cref="NoteInputDevice"/>.
+        /// </summary>
+        private bool PressWasPad => HouseInput.PadUsed() ?? padHints;
+
         /// <summary>A press on the other kind of device rewords the hints: the prompt on its next line, the HUD at once.</summary>
         private void NoteInputDevice()
         {
@@ -32,6 +41,33 @@ namespace Gamesim.Episode
             // The talk prompt is kept for the houseguest it names; worded afresh for the device.
             promptNpc = null;
             if (hud != null) hud.SetPadHints(padHints);
+            // The status line, the settings' CEREMONIES paragraph and the house challenge's are
+            // worded for a device too (A4f): a line in the other device's words is worded again, and
+            // a panel showing one of those paragraphs is drawn again, its focus kept as a render keeps it.
+            bool reworded = RewordStatusForDevice(padHints);
+            if (!IsReady || hud == null) return;
+            if (reworded || settingsOpen || (challengeActive && challengeRun == null)) Render();
+        }
+
+        /// <summary>
+        /// The status line in the other device's words, worded again for <paramref name="pad"/>: the
+        /// way to the episode screen or the diary, or a piece of furniture's line. Whether it changed.
+        /// </summary>
+        private bool RewordStatusForDevice(bool pad)
+        {
+            if (string.IsNullOrEmpty(message)) return false;
+            string reworded = null;
+            foreach (bool warp in new[] { true, false })
+            {
+                if (message == InputGlossary.StationLine(warp, !pad)) reworded = InputGlossary.StationLine(warp, pad);
+                else if (message == InputGlossary.DiaryWayLine(warp, !pad)) reworded = InputGlossary.DiaryWayLine(warp, pad);
+            }
+            if (reworded == null)
+                foreach (HouseFurnitureActivity kind in Enum.GetValues(typeof(HouseFurnitureActivity)))
+                    if (message == ActivityStatus(kind, !pad)) { reworded = ActivityStatus(kind, pad); break; }
+            if (reworded == null || reworded == message) return false;
+            message = reworded;
+            return true;
         }
 
         /// <summary>The settings' disclosure that shows every control, and hides them again.</summary>

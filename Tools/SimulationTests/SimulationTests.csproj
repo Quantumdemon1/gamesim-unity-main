@@ -254,6 +254,8 @@
     <!-- The balance plan: the shipped rules (B0) and the season autopsy (B1). -->
     <Compile Include="$(EditMode)ShippedRulesTests.cs" />
     <Compile Include="$(EditMode)SeasonAutopsyTests.cs" />
+    <!-- B5a: the NPC world's pairing, out of the director's route planner. -->
+    <Compile Include="$(EditMode)NpcPairingTests.cs" />
     <!--
       The balance lab (B2-B4), compiled out of Unity: the player's view, the policies, the performance
       model, the lab, its smoke tier (not Explicit) and its explicit report tiers. The ceremony timings
@@ -266,6 +268,13 @@
     <Compile Include="$(EditMode)BalanceLabPerformance.cs" />
     <Compile Include="$(EditMode)BalanceLabTests.cs" />
     <Compile Include="$(EditMode)BalanceLabReports.cs" />
+    <!-- B6b and T0: a long tier played in parts and merged; the diagnostics that decide each tuning question. -->
+    <Compile Include="$(EditMode)BalanceLabParts.cs" />
+    <!-- B5b: the synthetic NPC world the lab drives at a budget of ticks a week. -->
+    <Compile Include="$(EditMode)BalanceLabNpcWorld.cs" />
+    <!-- B6b: the headline's cells at budgets 0 and 300, pinned (explicit). -->
+    <Compile Include="$(EditMode)BalanceLabGoldens.cs" />
+    <Compile Include="$(EditMode)BalanceLabDiagnostics.cs" />
 
     <!--
       Several parity tests already carry an #else branch for running outside the editor: without

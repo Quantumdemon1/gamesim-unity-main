@@ -60,10 +60,22 @@ namespace Gamesim.Simulation
             public Pair warmest, coldest;
             public Jury jury = new Jury();
             public Story story = new Story();
+            /// <summary>The war rooms' plans (WAVE-D-NPC-PACTS-PLAN D3), from the ledger.</summary>
+            public WarRooms warRooms = new WarRooms();
             public int gameSense, gameSenseCompetitions, gameSenseStrategy, gameSenseSocial;
             public long npcTicks;
             /// <summary>The rule boundaries the season played under (<see cref="ShippedRules.Fields"/>), "name=value".</summary>
             public List<string> rules = new List<string>();
+            /// <summary>
+            /// BALANCE plan B7: the first week the player saw a commitment of theirs settle - a deal or a promise of
+            /// theirs kept or broken whose ending they know (<see cref="KnownBallots.DealOutcomeKnown"/>,
+            /// <see cref="KnownBallots.PromiseOutcomeKnown"/>, as Game Sense filters them), or a war room's plan they
+            /// answered settling - or 0 for none. Whether they were still in the house to see it is the reader's to
+            /// ask (<see cref="playerOutWeek"/>).
+            /// </summary>
+            public int firstSettledWeek;
+            /// <summary>B7: the competitions the player played, by week, each by its phase ("HoH", "Veto", "FinalHoHPart1"...).</summary>
+            public Dictionary<int, List<string>> competitionsPlayedByWeek = new Dictionary<int, List<string>>();
         }
 
         public static class Outcomes
@@ -182,6 +194,21 @@ namespace Gamesim.Simulation
             public int storylines, completed, asks, weeksWithACard, npcRemovals, showmances, pileOns, pariahWeeks;
         }
 
+        /// <summary>
+        /// The war rooms, from the ledger's plans: how many met, how each settled (<see cref="PactPlanStance"/>),
+        /// the counters and those that carried, the members who came round, the plans the player called, and
+        /// the plans whose target the week's eviction took.
+        /// </summary>
+        public sealed class WarRooms
+        {
+            public int plans;
+            /// <summary>Plans by stance, counted.</summary>
+            public Dictionary<string, int> stances = new Dictionary<string, int>(StringComparer.Ordinal);
+            public int counters, countersCarried, cameRound, playerCalls;
+            /// <summary>Plans with a target whom that week's eviction took.</summary>
+            public int targetEvicted;
+        }
+
         // ---------------------------------------------------------------- the autopsy
 
         /// <summary>The season measured, from its phase changes (in order) and its final state.</summary>
@@ -222,6 +249,13 @@ namespace Gamesim.Simulation
             Pairs(r, final);
             JuryOf(r, final);
             StoryOf(r, closings, final);
+            WarRoomsOf(r, final);
+            FirstSettled(r, final);
+            foreach (var c in r.competitions.Where(c => c.playerInField))
+            {
+                if (!r.competitionsPlayedByWeek.TryGetValue(c.week, out var phases)) r.competitionsPlayedByWeek[c.week] = phases = new List<string>();
+                phases.Add(c.phase);
+            }
             var sense = GameSense.Evaluate(final);
             r.gameSense = sense.score; r.gameSenseCompetitions = sense.competitions; r.gameSenseStrategy = sense.strategy; r.gameSenseSocial = sense.social;
             return r;
@@ -562,6 +596,48 @@ namespace Gamesim.Simulation
                         && Grudges.HoldersAgainst(s, c.id, 40).Count(h => s.Find(h)?.status == ContestantStatus.Active) >= 3))
                     pariahWeeks.Add(s.week);
             st.pariahWeeks = pariahWeeks.Count;
+        }
+
+        // ---------------------------------------------------------------- the first commitment settled (B7)
+
+        private static void FirstSettled(Report r, EpisodeState final)
+        {
+            string me = final.playerId;
+            var weeks = new List<int>();
+            var deals = UsesReferences(final) ? CommitmentReferences.Deals(final) : (IReadOnlyList<DealState>)final.deals;
+            foreach (var d in deals.Where(d => d != null && (d.proposerId == me || d.recipientId == me)
+                         && (d.status == DealStatus.Fulfilled || d.status == DealStatus.Broken) && d.settledWeek > 0))
+                if (KnownBallots.DealOutcomeKnown(final, d)) weeks.Add(d.settledWeek);
+            var promises = UsesReferences(final) ? CommitmentReferences.Promises(final) : (IReadOnlyList<PromiseState>)final.promises;
+            foreach (var p in promises.Where(p => p != null && (p.fromId == me || p.toId == me)
+                         && (p.status == PromiseStatus.Fulfilled || p.status == PromiseStatus.Broken) && p.settledWeek > 0))
+                if (KnownBallots.PromiseOutcomeKnown(final, p)) weeks.Add(p.settledWeek);
+            // A war room's plan the player answered settles as they answer it, in that week's campaign.
+            foreach (var plan in (final.ledger?.plans ?? new List<PactPlanRow>()).Where(p => p != null
+                         && (p.stance == PactPlanStance.Agreed || p.stance == PactPlanStance.Countered || p.stance == PactPlanStance.Low)))
+                weeks.Add(plan.week);
+            r.firstSettledWeek = weeks.Count == 0 ? 0 : weeks.Min();
+        }
+
+        // ---------------------------------------------------------------- the war rooms
+
+        private static void WarRoomsOf(Report r, EpisodeState final)
+        {
+            var w = r.warRooms;
+            foreach (var row in (final.ledger?.plans ?? new List<PactPlanRow>()).Where(p => p != null))
+            {
+                w.plans++;
+                Count(w.stances, row.stance ?? "");
+                if (row.stance == PactPlanStance.Countered)
+                {
+                    w.counters++;
+                    if (!string.IsNullOrEmpty(row.counterId) && row.targetId == row.counterId) w.countersCarried++;
+                }
+                w.cameRound += row.cameRound?.Count ?? 0;
+                if (!string.IsNullOrEmpty(row.callerId) && row.callerId == final.playerId) w.playerCalls++;
+                if (!string.IsNullOrEmpty(row.targetId) && final.ledger.power.Any(p => p != null && p.week == row.week && p.evicteeId == row.targetId))
+                    w.targetEvicted++;
+            }
         }
     }
 }

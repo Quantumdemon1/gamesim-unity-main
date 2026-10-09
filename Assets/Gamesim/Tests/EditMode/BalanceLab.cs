@@ -48,21 +48,27 @@ namespace Gamesim.Tests.EditMode
             public int size;
             public CastTemplates.Roster roster = CastTemplates.Roster.Regular;
             public string performance = PerformanceModel.ByPolicy;
-            /// <summary>NPC-world ticks a week; 0 until the B5 driver exists.</summary>
+            /// <summary>NPC-world ticks a week (B5b's budget, <see cref="BalanceLabNpcWorld"/>); 0 plays no NPC world.</summary>
             public int npcTicks;
 
             public string House => roster + "/" + size.ToString(CultureInfo.InvariantCulture) + "/npc" + npcTicks.ToString(CultureInfo.InvariantCulture);
+            /// <summary>The house the season's seed is drawn for: the roster and size at budget nought, whatever the cell's budget, so budgets pair.</summary>
+            public string SeedHouse => roster + "/" + size.ToString(CultureInfo.InvariantCulture) + "/npc0";
             public string Key => policy + "/" + House + "/" + performance;
             public override string ToString() => Key;
         }
 
         internal static List<Cell> Grid(IEnumerable<string> policies, IEnumerable<int> sizes, string performance = PerformanceModel.ByPolicy,
-            CastTemplates.Roster roster = CastTemplates.Roster.Regular) =>
-            (from size in sizes from policy in policies select new Cell { policy = policy, size = size, roster = roster, performance = performance }).ToList();
+            CastTemplates.Roster roster = CastTemplates.Roster.Regular, int npcTicks = 0) =>
+            (from size in sizes from policy in policies select new Cell { policy = policy, size = size, roster = roster, performance = performance, npcTicks = npcTicks }).ToList();
 
-        /// <summary>A season's seed: a hash of its house and its index, the same for every policy and performance model.</summary>
+        /// <summary>
+        /// A season's seed: a hash of its house and its index, the same for every policy, performance model and NPC
+        /// budget - each budget plays the seasons budget nought plays (decision 2), and at nought the seed is the one it
+        /// always was.
+        /// </summary>
         public static uint Seed(Cell cell, int index) =>
-            SeededRandom.HashSeed("balance-lab/v1/" + cell.House + "/" + index.ToString(CultureInfo.InvariantCulture));
+            SeededRandom.HashSeed("balance-lab/v1/" + cell.SeedHouse + "/" + index.ToString(CultureInfo.InvariantCulture));
 
         // ---------------------------------------------------------------- one season
 
@@ -80,8 +86,92 @@ namespace Gamesim.Tests.EditMode
             public readonly SortedDictionary<int, int> decisionsByWeek = new SortedDictionary<int, int>();
             public readonly SortedDictionary<int, double> ceremonyByWeek = new SortedDictionary<int, double>();
             public double finaleSeconds;
+            /// <summary>Every member a counter of the player's could reach, at every plan the player answered (B6a).</summary>
+            public readonly List<CounterMember> counterMembers = new List<CounterMember>();
+            /// <summary>
+            /// The NPC world (B5b, <see cref="BalanceLabNpcWorld"/>): operations installed, of them ticks and conversation
+            /// starts; scans, the pairings they tried and held; operations the engine refused; and the milliseconds the
+            /// engine spent preparing them (timed: never in the rows).
+            /// </summary>
+            public int npcOps, npcTicks, npcStarts, npcScans, npcTries, npcHeld, npcRejected;
+            public double npcMilliseconds;
+            /// <summary>The final house's pairs of houseguests (the player aside), and those whose mutual view is within ten of the bound (±200) and at it.</summary>
+            public int pairs, pairsNearBound, pairsAtBound;
+            // T0, the diagnostics' own records (BALANCE plan §4): never in the rows, which the goldens hash.
+            /// <summary>Q2: Game Sense's notes at the season's end, their points summed by face and ledger row kind ("strategy/power").</summary>
+            public readonly SortedDictionary<string, double> gameSenseRows = new SortedDictionary<string, double>(StringComparer.Ordinal);
+            /// <summary>Q4: every NPC Head of Household's nominations while the player was in the house, each candidate's weight in its terms.</summary>
+            public readonly List<NominationRecord> nominations = new List<NominationRecord>();
+            /// <summary>Q5: the season's first pariah run, as the story pacing report counts one; null for none.</summary>
+            public PariahRecord pariah;
+            /// <summary>Q3: the player's competition preparation at the season's end (out of five).</summary>
+            public int preparation;
             public bool Won => autopsy != null && autopsy.outcome == SeasonAutopsy.Outcomes.Winner;
             public bool FinalTwo => autopsy != null && (autopsy.outcome == SeasonAutopsy.Outcomes.Winner || autopsy.outcome == SeasonAutopsy.Outcomes.RunnerUp);
+        }
+
+        /// <summary>Q4: one candidate's <see cref="EpisodeEngine.NominationWeight"/> in its terms (lower is put up first).</summary>
+        internal sealed class NominationTerms
+        {
+            /// <summary>
+            /// As the weight sums them: the strategy windows' reluctance and the story's preference (each of which starts
+            /// from the HoH's view), minus the HoH's view, minus the overlapping protection, minus the threat. The report
+            /// counts the view once (<see cref="BalanceLabDiagnostics.NominationDecomposition"/>).
+            /// </summary>
+            public double reluctance, story, view, protection, threat, total;
+
+            internal static NominationTerms Of(EpisodeState s, string hohId, string id) => new NominationTerms
+            {
+                reluctance = StrategyRules.NominationReluctance(s, hohId, id), story = StoryConsumers.NominationPreference(s, hohId, id), view = -s.Score(hohId, id),
+                protection = -(UnifiedCommitments.RulesOn(s) ? Math.Min(UnifiedCommitments.StrongestProtection(s, hohId, id).Strength, StoryConsumers.SafetyPreference(s, hohId, id)) : 0),
+                threat = -EpisodeEngine.ThreatTerm(s, hohId, id), total = EpisodeEngine.NominationWeight(s, hohId, id),
+            };
+
+            internal static NominationTerms Mean(IReadOnlyList<NominationTerms> terms) => terms.Count == 0 ? new NominationTerms() : new NominationTerms
+            {
+                reluctance = terms.Average(t => t.reluctance), story = terms.Average(t => t.story), view = terms.Average(t => t.view),
+                protection = terms.Average(t => t.protection), threat = terms.Average(t => t.threat), total = terms.Average(t => t.total),
+            };
+        }
+
+        /// <summary>Q4: an NPC Head of Household's nominations: the player's terms, the other candidates' mean, the player's rank (1 put up first) and whether they went up.</summary>
+        internal sealed class NominationRecord
+        {
+            public int week, candidates, playerRank;
+            public bool playerNominated;
+            public NominationTerms player, others;
+        }
+
+        /// <summary>Q5: a pariah run - a houseguest three in the house hold forty against, two Advances running - and what made it.</summary>
+        internal sealed class PariahRecord
+        {
+            /// <summary>The week, those in the house, the holders at forty or more, the target's competition wins, and the most HoH wins of any houseguest then.</summary>
+            public int week, houseCount, holders, targetHohWins, targetVetoWins, npcHohWinsMax;
+            /// <summary>Each holder's grudge against the target: its cause, as the grudge first came.</summary>
+            public List<string> causes = new List<string>();
+            public double meanSeverity;
+            /// <summary>How many times the holders' grudges were stacked, summed.</summary>
+            public int stacks;
+        }
+
+        /// <summary>
+        /// One member a counter could reach (D3's re-measure as PactPlanSeasonDigests takes it): somebody who said the
+        /// members' plan, off the block, with their odds as the answer read them - and what the odds were made of, their
+        /// view of the player and the margin of their own lean as the player knows the season, and their traits - so the
+        /// counter's constants can be replayed offline (BALANCE plan §4 Q1). Kept for every plan the player answered,
+        /// with how they answered it: the members a counter would have faced where the player went with the plan or
+        /// lay low. An analyst's record: no policy sees it.
+        /// </summary>
+        internal sealed class CounterMember
+        {
+            public int week;
+            /// <summary>How the player answered the plan (<see cref="PactPlanStance"/>): only a countered plan's members were put to the coin.</summary>
+            public string stance;
+            public double odds, view, margin;
+            public List<string> traits = new List<string>();
+            /// <summary>Whether the player knew them to have turned: then they never come round, whatever the odds.</summary>
+            public bool lapsed;
+            public bool cameRound, carried;
         }
 
         /// <summary>The kinds the player does for nothing: no seat is spent on them.</summary>
@@ -89,7 +179,7 @@ namespace Gamesim.Tests.EditMode
         {
             EpisodeCommandKind.AskVote, EpisodeCommandKind.ReadPerson, EpisodeCommandKind.WitnessProximity, EpisodeCommandKind.ReplyToHouseguest,
             EpisodeCommandKind.RespondToDeal, EpisodeCommandKind.SwearLoyalty, EpisodeCommandKind.DeclineLoyalty, EpisodeCommandKind.RenameAlliance,
-            EpisodeCommandKind.Introduce, EpisodeCommandKind.BuyActionPoint, EpisodeCommandKind.ResolveHouseEvent,
+            EpisodeCommandKind.Introduce, EpisodeCommandKind.BuyActionPoint, EpisodeCommandKind.ResolveHouseEvent, EpisodeCommandKind.AnswerPactPlan,
         };
 
         internal static SeasonRun Play(Cell cell, int index)
@@ -106,13 +196,21 @@ namespace Gamesim.Tests.EditMode
             var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = cell.size, Roster = cell.roster }, run.seed);
             ShippedRules.ApplyFresh(fresh);
             var engine = new EpisodeEngine(fresh);
+            // The NPC world (B5b): every operation installs a new engine, and every command goes to the world's.
+            var world = cell.npcTicks > 0 ? new BalanceLabNpcWorld(engine, cell.npcTicks, run) : null;
+            Func<EpisodeEngine> engineOf = world == null ? (Func<EpisodeEngine>)(() => engine) : world.Current;
             var agent = BalancePolicies.Create(cell.policy);
             var changes = new List<SeasonAutopsy.PhaseChange>();
             run.pace = new StoryPacingTests.Pace { removalWindow = fresh.contestants.Count >= 7 };
+            string pariahTarget = null;
+            int pariahRun = 0;
             var s = engine.Snapshot;
             while (s.phase != EpisodePhase.Finished && run.commands < CommandCap)
             {
-                var applied = Step(engine, agent, s, run, out var used);
+                // A slice of the phase's NPC time before the decision (decision 3).
+                if (world != null && world.SpendSlice()) s = world.Engine.Snapshot;
+                var applied = Step(engineOf, world == null ? (Func<bool>)null : world.SpendRest, agent, s, run, out var used, out var at);
+                s = at; // The state the command was applied to: the world may have spent the phase's rest before it.
                 if (!applied.accepted)
                 {
                     run.error = "week " + s.week + " " + s.phase + "/" + s.evictionStage + ": the walker's " + used.kind + " was refused: " + applied.reason;
@@ -122,6 +220,12 @@ namespace Gamesim.Tests.EditMode
                 if (used.kind != EpisodeCommandKind.Advance) Count(run.decisionsByWeek, s.week);
                 if (Free.Contains(used.kind)) run.freeActions++;
                 var after = applied.state;
+                if (used.kind == EpisodeCommandKind.AnswerPactPlan) Counters(s, after, run);
+                // T0 Q4: an NPC Head of Household puts two up on an Advance, ranking the house as it stands.
+                if (used.kind == EpisodeCommandKind.Advance && s.phase == EpisodePhase.Nomination && s.nominees.Count == 0 && after.nominees.Count == 2
+                    && s.hohId != s.playerId && s.Find(s.playerId).status == ContestantStatus.Active)
+                    run.nominations.Add(Nominations(s, after));
+                if (used.kind == EpisodeCommandKind.Advance) PariahWatch(after, run, ref pariahTarget, ref pariahRun);
                 run.pace.Watch(used, after);
                 bool phaseChange = SeasonAutopsy.IsPhaseChange(s, after);
                 if (phaseChange) changes.Add(new SeasonAutopsy.PhaseChange(s, after));
@@ -137,6 +241,85 @@ namespace Gamesim.Tests.EditMode
             run.autopsy = SeasonAutopsy.Of(changes, s);
             run.pace.Close(s);
             Ceremonies(run);
+            Saturation(run, s);
+            // T0 Q2 and Q3: Game Sense's notes by face and row kind; the player's preparation.
+            foreach (var g in GameSense.Evaluate(s).notes.GroupBy(n => n.face + "/" + n.rowKind))
+                run.gameSenseRows[g.Key] = Math.Round(g.Sum(n => n.points), 4);
+            run.preparation = s.playerStudyBonus;
+        }
+
+        /// <summary>T0 Q4: the NPC Head of Household's ranking at the nominations, the player's terms against the other candidates' mean.</summary>
+        private static NominationRecord Nominations(EpisodeState s, EpisodeState after)
+        {
+            var ranked = EpisodeEngine.NominationCandidates(s).Select(c => (c.id, terms: NominationTerms.Of(s, s.hohId, c.id)))
+                .OrderBy(x => x.terms.total).ToList();
+            var others = ranked.Where(x => x.id != s.playerId).Select(x => x.terms).ToList();
+            return new NominationRecord
+            {
+                week = s.week, candidates = ranked.Count, playerRank = ranked.FindIndex(x => x.id == s.playerId) + 1,
+                playerNominated = after.nominees.Contains(s.playerId),
+                player = ranked.FirstOrDefault(x => x.id == s.playerId).terms ?? new NominationTerms(), others = NominationTerms.Mean(others),
+            };
+        }
+
+        /// <summary>T0 Q5: the story pacing report's pariah rule, after every Advance (StoryPacingTests.Pace.Watch, copied), and the season's first run recorded.</summary>
+        private static void PariahWatch(EpisodeState after, SeasonRun run, ref string pariahTarget, ref int pariahRun)
+        {
+            var target = after.Active.Where(c => !c.isPlayer && c.id != after.hohId)
+                .Select(c => (c.id, holders: Grudges.HoldersAgainst(after, c.id, 40).Count(h => after.Find(h)?.status == ContestantStatus.Active)))
+                .Where(x => x.holders >= 3).Select(x => x.id).OrderBy(id => id, StringComparer.Ordinal).FirstOrDefault();
+            if (target != null && target == pariahTarget) { pariahRun++; }
+            else { pariahTarget = target; pariahRun = target != null ? 1 : 0; }
+            if (pariahRun < 2 || run.pariah != null) return;
+            var holders = Grudges.HoldersAgainst(after, target, 40).Where(h => after.Find(h)?.status == ContestantStatus.Active).ToList();
+            var grudges = after.story.grudges.Where(g => g.targetId == target && holders.Contains(g.holderId)).ToList();
+            var victim = after.Find(target);
+            run.pariah = new PariahRecord
+            {
+                week = after.week, houseCount = after.Active.Count(), holders = holders.Count, targetHohWins = victim.hohWins, targetVetoWins = victim.vetoWins,
+                npcHohWinsMax = after.contestants.Where(c => !c.isPlayer).Max(c => c.hohWins),
+                causes = grudges.Select(g => g.cause ?? "").ToList(), meanSeverity = grudges.Count == 0 ? 0 : grudges.Average(g => g.severity), stacks = grudges.Sum(g => g.count),
+            };
+        }
+
+        /// <summary>The final house's pairs of houseguests, the player aside, and those at or near the bound of a mutual view (±200): whether a budget saturates the house (B5b, risk 8).</summary>
+        private static void Saturation(SeasonRun run, EpisodeState final)
+        {
+            var npcs = final.contestants.Where(c => !c.isPlayer).Select(c => c.id).ToList();
+            for (int i = 0; i < npcs.Count; i++)
+                for (int j = i + 1; j < npcs.Count; j++)
+                {
+                    double mutual = Math.Abs(final.Score(npcs[i], npcs[j]) + final.Score(npcs[j], npcs[i]));
+                    run.pairs++;
+                    if (mutual >= 190) run.pairsNearBound++;
+                    if (mutual >= 199.5) run.pairsAtBound++;
+                }
+        }
+
+        /// <summary>
+        /// The counters an answer settled (PactPlanSeasonDigests' re-measure, copied): every member who said the
+        /// members' plan and is off the block, with their odds as the answer read them.
+        /// </summary>
+        private static void Counters(EpisodeState before, EpisodeState after, SeasonRun run)
+        {
+            foreach (var row in after.ledger.plans)
+            {
+                var was = before.ledger.plans.FirstOrDefault(b => b.week == row.week && b.allianceId == row.allianceId);
+                if (was == null || was.stance != PactPlanStance.Open || row.stance == PactPlanStance.Open || row.stance == PactPlanStance.Void) continue;
+                var pact = before.alliances.FirstOrDefault(a => a.id == row.allianceId);
+                var standing = PactPlans.StandingSays(before, pact, was);
+                string plan = PactPlans.MembersPlan(standing);
+                var known = Allegiance.AsThePlayerKnows(before);
+                foreach (var say in standing.Where(x => x.targetId == plan && !before.nominees.Contains(x.memberId)))
+                    run.counterMembers.Add(new CounterMember
+                    {
+                        week = row.week, stance = row.stance, odds = PactPlans.ComeRoundOdds(before, say.memberId),
+                        view = known.Score(say.memberId, known.playerId), margin = WebEvictionVoting.EvaluateNative(known, say.memberId).margin,
+                        traits = (known.Find(say.memberId)?.traits ?? new List<string>()).ToList(), lapsed = Allegiance.Lapsed(known, say.memberId),
+                        cameRound = row.cameRound != null && row.cameRound.Contains(say.memberId),
+                        carried = row.stance == PactPlanStance.Countered && row.targetId == row.counterId,
+                    });
+            }
         }
 
         /// <summary>
@@ -145,23 +328,42 @@ namespace Gamesim.Tests.EditMode
         /// proposes nothing, or nothing it proposes is accepted, the walker takes the phase's own step. Returns
         /// the accepted result, or the walker's refusal (an error the caller reports).
         /// </summary>
-        internal static CommandResult Step(EpisodeEngine engine, object agent, EpisodeState s, SeasonRun run, out EpisodeCommand used)
+        internal static CommandResult Step(EpisodeEngine engine, object agent, EpisodeState s, SeasonRun run, out EpisodeCommand used) =>
+            Step(() => engine, null, agent, s, run, out used, out _);
+
+        internal static CommandResult Step(Func<EpisodeEngine> engineOf, Func<bool> beforeAdvance, object agent, EpisodeState s, SeasonRun run, out EpisodeCommand used) =>
+            Step(engineOf, beforeAdvance, agent, s, run, out used, out _);
+
+        /// <summary>
+        /// <see cref="Step(EpisodeEngine, object, EpisodeState, SeasonRun, out EpisodeCommand)"/> with an NPC world
+        /// (B5b): <paramref name="engineOf"/> is the engine as the world last installed it, and
+        /// <paramref name="beforeAdvance"/> spends the rest of the phase's ticks before the Advance that closes it - the
+        /// walker's step, or an oracle's own Advance, which is then asked again of the state the world left - and says
+        /// whether it spent any. The policies see the season's revision less the world's operations
+        /// (<see cref="PlayerView"/>), so their coins fall as they fall without the world. <paramref name="at"/> is
+        /// the state the accepted command was applied to: the world may have moved it since <paramref name="s"/>.
+        /// </summary>
+        internal static CommandResult Step(Func<EpisodeEngine> engineOf, Func<bool> beforeAdvance, object agent, EpisodeState s, SeasonRun run,
+            out EpisodeCommand used, out EpisodeState at)
         {
             int attempts = agent is IBalancePolicy ? Attempts : 1;
             for (int attempt = 0; attempt < attempts; attempt++)
             {
-                var command = agent is IBalancePolicy policy ? policy.Next(new PlayerView(s, run.seed)) : ((IOraclePolicy)agent).Next(s, run.seed);
+                var command = agent is IBalancePolicy policy ? policy.Next(new PlayerView(s, run.seed, run.npcOps)) : ((IOraclePolicy)agent).Next(s, run.seed);
                 if (command == null) break;
+                if (command.kind == EpisodeCommandKind.Advance && beforeAdvance != null && beforeAdvance()) { s = engineOf().Snapshot; attempt--; continue; }
                 Perform(command, s, run);
-                var result = engine.Apply(command);
-                if (result.accepted) { used = command; run.own++; return result; }
+                var result = engineOf().Apply(command);
+                if (result.accepted) { used = command; at = s; run.own++; return result; }
                 run.refusals++;
                 Count(run.refusalsByKind, command.kind + ": " + result.reason);
                 (agent as IBalancePolicy)?.Refused(command, result.reason);
             }
+            if (beforeAdvance != null && beforeAdvance()) s = engineOf().Snapshot;
             used = Walker(s);
+            at = s;
             Perform(used, s, run);
-            var walked = engine.Apply(used);
+            var walked = engineOf().Apply(used);
             if (walked.accepted) run.fallbacks++;
             return walked;
         }
@@ -238,11 +440,14 @@ namespace Gamesim.Tests.EditMode
         // ---------------------------------------------------------------- many seasons
 
         /// <summary>Every cell's seasons 0..n-1, in parallel, into an array ordered by cell then index.</summary>
-        internal static SeasonRun[] Run(IReadOnlyList<Cell> cells, int seasonsPerCell, int parallelism = 0)
+        internal static SeasonRun[] Run(IReadOnlyList<Cell> cells, int seasonsPerCell, int parallelism = 0) => RunPart(cells, 0, seasonsPerCell, parallelism);
+
+        /// <summary>Every cell's seasons from..from+count-1, in parallel, into an array ordered by cell then index: one part of a tier.</summary>
+        internal static SeasonRun[] RunPart(IReadOnlyList<Cell> cells, int from, int count, int parallelism = 0)
         {
-            var runs = new SeasonRun[cells.Count * seasonsPerCell];
+            var runs = new SeasonRun[cells.Count * count];
             var options = new ParallelOptions { MaxDegreeOfParallelism = parallelism > 0 ? parallelism : Environment.ProcessorCount };
-            Parallel.For(0, runs.Length, options, i => runs[i] = Play(cells[i / seasonsPerCell], i % seasonsPerCell));
+            Parallel.For(0, runs.Length, options, i => runs[i] = Play(cells[i / count], from + i % count));
             return runs;
         }
 
@@ -293,9 +498,23 @@ namespace Gamesim.Tests.EditMode
                     asks = r.pace.asks, budgeted = r.pace.budgetedAsks, summons = r.pace.summons, playOffers = r.pace.playOffers, weeksWithACard = r.pace.weeksWithACard,
                     stories = r.pace.storiesFinished, moments = r.pace.arcsFinished - r.pace.storiesFinished, pariah = r.pace.pariah,
                 },
+                // The war rooms (D3): the autopsy's plans, and every member a counter of the player's could reach.
+                warRooms = a == null ? null : new
+                {
+                    a.warRooms.plans, stances = new SortedDictionary<string, int>(a.warRooms.stances, StringComparer.Ordinal), a.warRooms.counters,
+                    carried = a.warRooms.countersCarried, a.warRooms.cameRound, a.warRooms.playerCalls, a.warRooms.targetEvicted,
+                },
+                counterMembers = r.counterMembers.Select(m => new
+                {
+                    w = m.week, m.stance, odds = Math.Round(m.odds, 4), view = Math.Round(m.view, 2), margin = Math.Round(m.margin, 4), traits = m.traits,
+                    m.lapsed, came = m.cameRound, m.carried,
+                }),
                 commands = r.commands, own = r.own, fallbacks = r.fallbacks, freeActions = r.freeActions, refusals = r.refusals, refusalsBy = r.refusalsByKind,
                 decisions = r.decisionsByWeek, ceremony = r.ceremonyByWeek, finaleSeconds = r.finaleSeconds,
                 npcTicksUsed = a?.npcTicks ?? 0,
+                // The NPC world (B5b): its operations, and the final house's pairs at or near the bound.
+                npcWorld = new { ops = r.npcOps, ticks = r.npcTicks, starts = r.npcStarts, scans = r.npcScans, tries = r.npcTries, held = r.npcHeld, rejected = r.npcRejected },
+                pairs = new { all = r.pairs, near = r.pairsNearBound, at = r.pairsAtBound },
             };
             return JsonConvert.SerializeObject(row, Formatting.None, new JsonSerializerSettings { Culture = CultureInfo.InvariantCulture });
         }

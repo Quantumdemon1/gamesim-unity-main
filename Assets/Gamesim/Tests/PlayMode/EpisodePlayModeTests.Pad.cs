@@ -453,6 +453,48 @@ namespace Gamesim.Tests.PlayMode
             AssertBlockSpeechCommit(diaryBefore, EpisodeDirector.PreparedSpeech(LobbyApproach.Emotional), LobbyApproach.Emotional);
         }
 
+        // ---------------------------------------------------------------- a pad on a text field (Risk R7)
+
+        /// <summary>
+        /// Risk R7 (PLAN A, A6): a pad on a text field. TMP starts editing a field the moment it is
+        /// selected and holds every UI move while it edits (TMP_InputField.OnMove), so a d-pad that
+        /// reached the block speech's draft - or the settings' import path, which the pad walk's
+        /// settings ring passes - could never leave it. The probe before the walks: the d-pad onto
+        /// the draft, the d-pad off it while it is being edited, A on it, then B; nothing committed.
+        /// </summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator BlockSpeeches_APadPassesOverTheDraftAndLeavesIt()
+        {
+            yield return InstallBlockSpeechHouse();
+            yield return OpenBlockSpeech(privateRoom: false);
+            var before = director.Snapshot;
+            for (int step = 0; step < 40 && SelectedName() != EpisodeHud.BlockSpeechDraftName; step++) yield return PressOnPad(GamepadButton.DpadDown);
+            Assert.That(SelectedName(), Is.EqualTo(EpisodeHud.BlockSpeechDraftName), "The d-pad reaches the draft.");
+            yield return Frames(2);
+            // TMP starts the edit as the field is selected; make sure it has, so the step off is the trapping case.
+            if (!BlockSpeechInput().isFocused) { BlockSpeechInput().ActivateInputField(); yield return Frames(2); }
+            Assert.That(BlockSpeechInput().isFocused, Is.True, "The draft is being edited.");
+
+            yield return PressOnPad(GamepadButton.DpadDown);
+            yield return null;
+            Assert.That(SelectedName(), Is.Not.EqualTo(EpisodeHud.BlockSpeechDraftName), "The d-pad leaves a draft it is editing.");
+            Assert.That(SelectedCarries(EpisodeHud.EvictionSpeechCaption), Is.True, "Down from the draft is Deliver your speech, not " + SelectedName() + ".");
+            Assert.That(BlockSpeechInput().isFocused, Is.False, "and the edit ended as it left.");
+
+            yield return PressOnPad(GamepadButton.DpadUp);
+            yield return Frames(2);
+            Assert.That(SelectedName(), Is.EqualTo(EpisodeHud.BlockSpeechDraftName), "Up from Deliver your speech is the draft again.");
+            yield return PressOnPad(GamepadButton.South);
+            yield return Frames(2);
+            Assert.That(SelectedName(), Is.EqualTo(EpisodeHud.BlockSpeechDraftName), "A on the draft stays on it, pressing nothing else.");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "A on the draft commits nothing.");
+
+            yield return PressOnPad(GamepadButton.East);
+            yield return Frames(2);
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "B commits nothing.");
+            Assert.That(!director.IsPanelOpen || !BlockSpeechInput().isFocused, Is.True, "B leaves the draft: the panel closed, or the edit ended.");
+        }
+
         // ---------------------------------------------------------------- one press, one stop (Risk R6)
 
         /// <summary>The timing bar's count as its caption says it: "Attempt 2 of 3 · Aim for the center".</summary>

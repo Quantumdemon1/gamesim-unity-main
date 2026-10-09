@@ -293,6 +293,10 @@ namespace Gamesim.Tests.PlayMode
                         ? EpisodeDirector.AccessibleCompetitionCaption(state.competitionRulesVersion) : "Watch eligible housemates compete";
                 yield break;
             }
+            // A houseguest's pitch to the player as Head of Household (E4, under the economy's rules)
+            // comes up before the nominees: heard, with no new promise - one decision of its own.
+            if (HoHPitches.Available(state) && ReplyCards.Pending(state)?.kind == ReplyCards.Pitch)
+            { yield return EpisodeHud.ReplyCaption(ReplyCards.Find(ReplyCards.Pitch, "hear").Label); yield break; }
             if (state.phase == EpisodePhase.Nomination && state.nominees.Count == 0 && state.hohId == state.playerId)
             {
                 foreach (var candidate in EpisodeEngine.NominationCandidates(state).Take(2)) yield return candidate.name;

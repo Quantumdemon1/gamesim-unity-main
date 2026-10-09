@@ -601,7 +601,7 @@ namespace Gamesim.Simulation
             // The strategy windows' reply cards own the house's approaches wherever they play.
             if (StrategyRules.Apply(s)) return;
             if (StoryOn(s) && StoryRandom.Chance(s, "w" + s.week + ":confronted:" + npcId, 0.5))
-                StartAimed(s, "confronted", npcId, StoryAnchors.EvictionNight);
+                StartAimed(s, "confronted", npcId, ActAnchor(s, StoryAnchors.EvictionNight));
         }
 
         /// <summary>A nominee campaigned to the player: half the time, the web's campaign menu as a beat to answer.</summary>
@@ -609,8 +609,14 @@ namespace Gamesim.Simulation
         {
             if (StrategyRules.Apply(s)) return;
             if (StoryOn(s) && StoryRandom.Chance(s, "w" + s.week + ":campaign:" + npcId, 0.5))
-                StartAimed(s, "campaign-pitch", npcId, StoryAnchors.BlockSet);
+                StartAimed(s, "campaign-pitch", npcId, ActAnchor(s, StoryAnchors.BlockSet));
         }
+
+        /// <summary>
+        /// The anchor a house's act on the player starts its moment at: the one it always named, or under the
+        /// all-week rules (D2-L5), whose beats fire mid-window, the anchor the week has just passed.
+        /// </summary>
+        private static string ActAnchor(EpisodeState s, string always) => AllWeekOn(s) ? CurrentAnchor(s) ?? always : always;
 
         /// <summary>
         /// A houseguest spread something about the player to somebody else, and some of the time it
@@ -622,7 +628,7 @@ namespace Gamesim.Simulation
             string teller = listenerId != null && s.Score(listenerId, s.playerId) >= 20 ? listenerId : null;
             double chance = teller != null ? 0.5 : 0.25;
             if (StoryRandom.Chance(s, "w" + s.week + ":gossip:" + gossipId + ":" + listenerId, chance))
-                StartAimed(s, "caught-talking", gossipId, StoryAnchors.EvictionNight, teller);
+                StartAimed(s, "caught-talking", gossipId, ActAnchor(s, StoryAnchors.EvictionNight), teller);
         }
 
         /// <summary>

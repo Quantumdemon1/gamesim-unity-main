@@ -761,7 +761,10 @@ namespace Gamesim.Tests.EditMode
             {
                 bool aboutMe = r.toId == me, mine = r.fromId == me;
                 if (mine) continue;
-                if (aboutMe ? KnownOdds.HasRead(s, r.fromId) : KnownOdds.Band(s, r.fromId, r.toId) != null) continue;
+                // An ally the player was in touch with this week can be told to have gone quiet (C3,
+                // Allegiance.CommitmentKnown): the notes say so in words, so that much of their view is known.
+                // Under the all-week rules (D2) the house is in touch with the player in every window.
+                if (aboutMe ? KnownOdds.HasRead(s, r.fromId) || Allegiance.CommitmentKnown(s, r.fromId) : KnownOdds.Band(s, r.fromId, r.toId) != null) continue;
                 r.score = Math.Round(random.NextDouble() * 200 - 100);
             }
             foreach (var c in hidden.contestants.Where(c => !c.isPlayer))

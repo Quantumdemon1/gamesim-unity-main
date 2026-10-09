@@ -276,6 +276,79 @@ and the mean difference with a bootstrap 95% interval (a star: the interval excl
 | pairs within ten of ±200 | reader 8 / 12 | 1.0% / 1.3% | 2.3% * / 1.9% * |
 | story: a pariah season | passive 8 / 12 | 16% / 58% | 27% (24/13, p 0.10) / 58% (25/25) |
 | NPC conversations | reader 8 / 12 | 0 | 75 / 146 |
+## D2's enable: the same 2,400 seasons with the house's turns all week (2026-10-09)
+
+*Measured on D2's lane, before it merged with the balance lane: at D3's old counter reach (8 at a view of 50) and before the lab's policies answered war rooms (B6a). Its D2-off half is that lane's own 100-seed baseline, not the 480-seed tables above.*
+
+Measured at `f047db13` (branch `claude/d2-all-week`, on `claude/lead-integration` at `a74a261a`): the
+headline tier at 100 seeds with D2 on, as `ShippedRules.ApplyFresh` ships it, and with D2's enable line taken
+out (played at `c0090f07`; every change after it sits behind `EpisodeEngine.AllWeekOn`, so a season without
+the rules plays the same at both). A lab season is a function of its house and index alone, so the halves pair
+season for season: McNemar's b counts the seasons only the D2 player won, c those only the D2-off player won.
+No season had an error in either half (0 of 2,400 each). Both halves were played in shards that each fit a
+ten-minute tool limit, merged in the single run's order; on 96 seasons the merged rows and tables were
+byte-identical to one run's, so `BALANCE_SEEDS=100 ... HeadlineReport` reproduces the D2-on half and writes its
+full tables.
+
+**As first built, D2 moved the balance; it was corrected before this measurement.** The first build let a
+court of the Head of Household spend the week's building, holding or hunting, and kept every window's close
+away from the player. On these seasons the house cooled (warmest pair 154 to 121 at 8, 191 to 156 at 12),
+NPC-only deals halved, and the player won more: 236 to 285 of 1,200 at 8 (p = 0.006) and 288 to 348 at 12
+(p = 0.005), the passive player at 12 from 7 to 21. The three corrections (a court no longer spends the week's
+building; the close after the HoH or the nominations may reach the player; the pact rung is tried at a
+houseguest's first beat of the week) are in ACTIONS-DEALS-ALLIANCES-PLAN's build log; the numbers below include
+them.
+
+**Win rate, D2 off to on, on the same seasons** (wins of 100; b/c; McNemar p):
+
+| policy | at 8 | at 12 |
+|---|---|---|
+| passive | 12 to 15 (15/12, 0.700) | 7 to 17 (17/7, 0.064) |
+| random | 7 to 13 (11/5, 0.210) | 20 to 13 (8/15, 0.210) |
+| social | 19 to 14 (11/16, 0.441) | 23 to 18 (14/19, 0.486) |
+| reader | 17 to 17 (16/16, 0.860) | 25 to 28 (16/13, 0.710) |
+| schemer | 14 to 12 (9/11, 0.824) | 25 to 23 (18/20, 0.871) |
+| loyalist | 17 to 21 (17/13, 0.584) | 31 to 26 (24/29, 0.583) |
+| floater | 19 to 22 (20/17, 0.742) | 29 to 26 (21/24, 0.766) |
+| beast | 81 to 86 (17/12, 0.458) | 58 to 55 (25/28, 0.784) |
+| novice | 11 to 10 (8/9, 1.000) | 18 to 18 (15/15, 0.855) |
+| exploit | 2 to 12 (12/2, 0.013) | 10 to 12 (10/8, 0.815) |
+| oracle-reader | 22 to 16 (11/17, 0.345) | 27 to 30 (22/19, 0.755) |
+| oracle-skilled | 15 to 15 (10/10, 1.000) | 15 to 30 (26/11, 0.021) |
+| all twelve (of 1,200) | 236 to 253 (157/140, 0.353) | 288 to 296 (216/208, 0.734) |
+
+**What moved, finding by finding:**
+- **F1 holds.** The player's win rate over all policies does not move (p = 0.35 and 0.73). Two of the 24 cells
+  move at p < 0.05, about what chance gives: the exploit hunter at 8, 2% to 12% (p = 0.013), no longer worse
+  than doing nothing - it buys and spends more (seats 38.5 to 42.1 a season at 8 and 56.9 to 72.0 at 12,
+  purchases 20 to 22 and 29 to 36) - and the skilled oracle at 12, 15% to 30% (p = 0.021). The passive player
+  at 12 leans up, 7% to 17% (p = 0.064).
+- **F2 and F3.** The oracle reader wins 16% and 30% against the gated reader's 17% and 28%: reading the hidden
+  state shows no edge at either size (off, 22% against 17% at 8). Competitions are unchanged: the strongest on
+  paper wins 46% and 45% of weekly competitions, the top NPC takes 40% and 28% of the NPC wins.
+- **F4 is weaker at 12.** The passive player is on the block in week one 10% of the time instead of 55%, its
+  nominations ratio is 1.05 instead of 1.42, and it is still in the house after week four 55% of the time
+  against 34%. A close after the HoH can now reach the player (D2's decision 2), so the house seeks the
+  newcomer out before the first nominations. At 8 it is unchanged (1.20 against 1.17).
+- **F5.** The NPC world is still not driven, but D2's beats are the engine's, so every lab season plays them.
+- **F7 is lower at 8.** The novice is evicted in week one 11% [6.3, 18.6] of the time instead of 19%; out by
+  week three 43% against 44%; the chance that one of three testers is out by week one is 30% instead of 47%.
+  At 12, 0% against 2%.
+- **B-1.** At 12 four of the five skilled policies still clear 12.5% surely (23-28%) and the social player
+  clears it at 18%, not surely. At 8 the loyalist (21%) and the floater (22%) clear 18.75%, not surely; the
+  social player (14%), the reader (17%) and the schemer (12%) fall short: the band still fails at 8.
+- **The house.** NPC-only pacts 1.11-1.49 a season at 8 (0.97-1.29 off) and 2.42-2.81 at 12 (2.46-2.82);
+  NPC-only deals 9.3-15.9 at 8 (11.1-18.3) and 42.4-52.0 at 12 (46.7-59.2); warmest pair 152 and 189 (154,
+  191), coldest -86 and -129 (-84, -128); evictees in a pact 19% and 28% (17%, 28%); the player's weeks at the
+  deal ceiling at 12, 0.8-2.8 (0.7-3.4).
+- **Game Sense.** Gated reader minus random 7.5 and 7.9 (7.7 and 9.8 off), against the target of 20.
+- **The story's pace.** Budgeted asks 4.9 and 8.8 a season (4.8, 8.3); weeks with a card 52% and 53% (50%,
+  50%); seasons with a pariah 17.7% and 44.5% (14.4%, 44.9%), so the twelve's rate is still more than twice its
+  target; pile-ons 0.1% and 1.2% (0.2%, 0.5%).
+- **Pacing** is unchanged: decisions a week within 0.7 for every policy but the exploit hunter (37.7 to 36.8 at
+  8, 46.6 to 44.2 at 12), and the ceremonies within 0.2 s.
+
+## The headline tables
 
 | metric | policy, size | 0 | 900 (vs 0) |
 |---|---|---|---|
@@ -682,8 +755,10 @@ walker answers with an offered one).
 
 - **Seed counts.** The headline is 480 a cell, not 800; the NPC budgets 100 (300), 50 (900, two players) and 15
   (1800, one player); the projections 400, 200 and 50. The full tier (every size and the All-Stars) has not run.
-- **D2's all-week beats** are storage only (`allWeekRulesStartWeek` 0): the NPC world here is the 1 Hz
-  conversation world alone. Walk-ins stay off (decision 4).
+- **D2's all-week beats** were storage only when these tables were measured: the NPC world here
+  is the 1 Hz conversation world alone, and walk-ins stay off (decision 4). D2 is now switched on in
+  `ShippedRules.ApplyFresh`; *D2's enable* above compares the two, measured at D3's old counter reach
+  and before the lab's policies answered war rooms. A rerun with everything on is the next B6.
 - **Human performance and time (B8).** The performance distributions and the 30 seconds a decision are
   assumptions.
 - **Policy strength.** Each policy is one plausible script of its style; the oracles are not strong bounds.

@@ -612,6 +612,59 @@ namespace Gamesim.Tests.EditMode
             Assert.That(text, Does.Contain(PactName + " goes with " + Name(open, after.targetId) + "."));
         }
 
+        /// <summary>
+        /// D2's beats between the meeting and the answer (§3.6), with the all-week rules on: the meeting's commit
+        /// catches the house up at the campaign's first tick - as many beats as are due, each an act of the
+        /// window fired at tick one - and draws what the same meeting draws without them; the answer, free,
+        /// fires none, and reads the state after them: its counter is settled by that snapshot's coins and odds;
+        /// and the same two commands replay to the same state.
+        /// </summary>
+        [Test]
+        public void TheHousesBeatsFallBetweenTheMeetingAndTheAnswer()
+        {
+            var decided = Decided(out _);
+            EpisodeEngine.EnableWeek(decided);
+            EpisodeEngine.EnableAllWeek(decided);
+            Valid(decided);
+            var npcs = NpcIds(decided);
+            var meeting = Command(decided, EpisodeCommandKind.AllianceMeet, npcs[3], null, PactId);
+            var engine = new EpisodeEngine(decided);
+            var opened = engine.Apply(meeting);
+            Assert.That(opened.accepted, Is.True, opened.reason);
+            var s = opened.state;
+            var row = PactPlans.OpenPlan(s, PactId);
+            Assert.That(row, Is.Not.Null, "The war room met.");
+            var social = s.npcSocial;
+            Assert.That(social.beatWindow, Is.EqualTo(Windows.AfterVeto));
+            Assert.That(EpisodeEngine.WindowTick(s, Windows.AfterVeto), Is.EqualTo(1), "The meeting spent the campaign's first seat.");
+            Assert.That(social.beatsFired, Is.EqualTo(EpisodeEngine.Due(social.beatPlan.Count, social.beatSeats, 1)));
+            var beats = social.acts.Where(EpisodeEngine.IsBeat).ToList();
+            Assert.That(beats, Is.Not.Empty, "The house acted after the meeting.");
+            Assert.That(beats.All(a => a.window == Windows.AfterVeto && a.firedTick == 1), Is.True);
+
+            var off = Decided(out _);
+            EpisodeEngine.EnableWeek(off);
+            var without = new EpisodeEngine(off).Apply(meeting);
+            Assert.That(without.accepted, Is.True, without.reason);
+            Assert.That(s.randomState, Is.EqualTo(without.state.randomState), "The beats drew nothing from the season's stream.");
+
+            var pact = s.alliances.Single(a => a.id == PactId);
+            var expected = PactPlans.Settle(s, pact, row, PactPlans.Counter, npcs[2]);
+            var answer = Command(s, EpisodeCommandKind.AnswerPactPlan, npcs[3], npcs[2], PactId);
+            var answered = engine.Apply(answer);
+            Assert.That(answered.accepted, Is.True, answered.reason);
+            var settled = answered.state.ledger.plans.Single();
+            Assert.That(settled.cameRound, Is.EqualTo(expected.cameRound), "Each came round by the post-beat snapshot's coin and odds.");
+            Assert.That(settled.targetId, Is.EqualTo(expected.targetId));
+            Assert.That(answered.state.randomState, Is.EqualTo(s.randomState), "The answer draws nothing,");
+            Assert.That(answered.state.npcSocial.beatsFired, Is.EqualTo(social.beatsFired), "and, free, fires no beat.");
+            Assert.That(answered.state.npcSocial.acts.Count, Is.EqualTo(social.acts.Count));
+
+            var replay = new EpisodeEngine(decided);
+            Assert.That(Json(replay.Apply(meeting).state), Is.EqualTo(Json(s)));
+            Assert.That(Json(replay.Apply(answer).state), Is.EqualTo(Json(answered.state)), "The same commands, the same season.");
+        }
+
         [Test]
         public void LyingLowLeavesAPlanAnNpcLeadsThatTheBlocRoundReads()
         {

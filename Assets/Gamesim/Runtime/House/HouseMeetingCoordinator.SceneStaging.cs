@@ -47,7 +47,7 @@ namespace Gamesim.House
             {
                 if (ids[i] == null || sceneLeases.ContainsKey(ids[i]) || !actors.TryGetValue(ids[i], out var actor) || !eligible.Contains(ids[i])
                     || actor.motion == null || !actor.motion.IsBound) continue;
-                YieldActivity(ids[i]);YieldWander(ids[i]);
+                YieldActivity(ids[i]);YieldWander(ids[i]);YieldAct(ids[i]);
                 if (actor.motion.LeaseId != null) continue;
                 string token = "scene:" + key + ":" + i;
                 if (token.Length > 128) token = "scene:" + i + ":" + key.GetHashCode();

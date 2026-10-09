@@ -109,10 +109,11 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// Refused at every step of a played season, before anything is spent, drawn or logged: the
-        /// state is byte-identical after the refusal. A start week set changes nothing until the rule
-        /// slice replaces the refusal. D3's has (PactPlanTests): with the war rooms' start week set, a
-        /// season that holds no war room has no plan to answer, so the answer is still refused before
-        /// anything happens, for the war rooms' own reasons.
+        /// state is byte-identical after the refusal. Both rule slices have landed. D3's (PactPlanTests):
+        /// with the war rooms' start week set, a season that holds no war room has no plan to answer, so
+        /// the answer is refused for the war rooms' own reasons. D2's (WitnessNpcActTests): with the
+        /// all-week rules on, an act this sweep names is never one the house fired - its id is a week no
+        /// season has - so the witness is refused for its own reasons.
         /// </summary>
         [TestCase(EpisodeCommandKind.AnswerPactPlan, false)] [TestCase(EpisodeCommandKind.WitnessNpcAct, false)]
         [TestCase(EpisodeCommandKind.AnswerPactPlan, true)] [TestCase(EpisodeCommandKind.WitnessNpcAct, true)]
@@ -130,11 +131,14 @@ namespace Gamesim.Tests.EditMode
                 var command = EpisodeEngineTests.Command(state, kind);
                 command.id = "waved-" + kind + "-" + state.revision;
                 command.targetId = npcs[0].id; command.secondTargetId = npcs.Count > 1 ? npcs[1].id : null;
-                command.text = state.alliances.Select(a => a.id).FirstOrDefault() ?? "1-3-0";
+                // Week 0's act: no season has one (risk 12 - "1-3-0" became a real act id with the beats).
+                command.text = state.alliances.Select(a => a.id).FirstOrDefault() ?? "0-3-0";
                 var refused = engine.Apply(command);
                 Assert.That(refused.accepted, Is.False, state.phase + ": " + kind);
                 if (kind == EpisodeCommandKind.AnswerPactPlan && EpisodeEngine.PactPlanRulesOn(state))
                     Assert.That(refused.reason, Is.Not.EqualTo(EpisodeEngine.WaveDKindRefusal).And.Not.Empty, "The war rooms' own reason.");
+                else if (kind == EpisodeCommandKind.WitnessNpcAct && EpisodeEngine.AllWeekOn(state))
+                    Assert.That(refused.reason, Is.Not.EqualTo(EpisodeEngine.WaveDKindRefusal).And.Not.Empty, "The witness's own reason.");
                 else Assert.That(refused.reason, Is.EqualTo(EpisodeEngine.WaveDKindRefusal));
                 Assert.That(Json(engine.Snapshot), Is.EqualTo(before), "Nothing spent, drawn, logged or received.");
                 refusals++;
@@ -218,7 +222,29 @@ namespace Gamesim.Tests.EditMode
                 ["overheard-unseen"] = x => x.npcSocial.acts[0].overheard = true,
                 ["four-sighted-in-a-window"] = x =>
                 {
-                    for (int k = 0; k < 4; k++) { var act = Act(x, "1-3-" + (k + 10), npc); act.sighted = true; x.npcSocial.acts.Add(act); }
+                    for (int k = 0; k < 4; k++) { var act = Act(x, "1-2-" + (k + 10), npc); act.sighted = true; x.npcSocial.acts.Add(act); }
+                },
+                // D2's semantics (AllWeekCadenceTests): known kinds and rooms, seen only where staged, a
+                // meeting naming its pact, none on move-in night, and the week's bound.
+                ["act-unknown-kind"] = x => x.npcSocial.acts[0].kind = "dance",
+                ["act-unknown-room"] = x => x.npcSocial.acts[0].room = "Attic",
+                ["sighted-unstaged"] = x => { x.npcSocial.acts[0].room = null; x.npcSocial.acts[0].sighted = true; },
+                ["meet-naming-a-person"] = x => { x.npcSocial.acts[0].kind = NpcActKinds.Meet; x.npcSocial.acts[0].subjectId = npc; },
+                ["meet-naming-no-pact"] = x => { x.npcSocial.acts[0].kind = NpcActKinds.Meet; x.npcSocial.acts[0].subjectId = "alliance-nowhere"; },
+                ["rumour-about-a-pact"] = x =>
+                {
+                    x.alliances.Add(new AllianceState { id = "alliance-x", name = "X", members = x.Active.Where(c => !c.isPlayer).Take(2).Select(c => c.id).ToList(), active = true });
+                    x.npcSocial.acts[0].kind = NpcActKinds.Rumour; x.npcSocial.acts[0].subjectId = "alliance-x";
+                },
+                ["past-the-week's-bound"] = x =>
+                {
+                    for (int k = x.npcSocial.acts.Count; k <= EpisodeEngine.MostActs(x); k++) x.npcSocial.acts.Add(Act(x, "1-2-" + (k + 100), npc));
+                },
+                ["acts-on-move-in-night"] = x =>
+                {
+                    x.phase = EpisodePhase.Social; x.hohId = null; x.nominees.Clear(); x.vetoHolderId = null; x.vetoResolved = false; x.vetoPlayers.Clear();
+                    x.npcSocial.beatWindow = Windows.None; x.npcSocial.beatWeek = 0; x.npcSocial.beatSeats = 0; x.npcSocial.beatsFired = 0; x.npcSocial.beatPlan.Clear();
+                    Assert.That(EpisodeEngine.IsFirstNight(x), Is.True);
                 },
             };
             foreach (var defect in defects)
@@ -228,8 +254,17 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(error.Contains("NPC beat plan") || error.Contains("NPC acts"), Is.True, defect.Key + ": " + error);
             }
             var three = s.Clone();
-            for (int k = 0; k < 3; k++) { var act = Act(three, "1-3-" + (k + 10), npc); act.sighted = true; act.overheard = k == 0; three.npcSocial.acts.Add(act); }
+            for (int k = 0; k < 3; k++) { var act = Act(three, "1-2-" + (k + 10), npc); act.sighted = true; act.overheard = k == 0; three.npcSocial.acts.Add(act); }
             Accepted(three);
+            // A pact's meeting names the pact (D2's decision 3); an unstaged act is never seen, and lawful.
+            var meeting = s.Clone();
+            meeting.alliances.Add(new AllianceState { id = "alliance-npc-9", name = "The Pact", members = meeting.Active.Where(c => !c.isPlayer).Take(2).Select(c => c.id).ToList(), active = true });
+            var meet = Act(meeting, "1-2-1", npc); meet.kind = NpcActKinds.Meet; meet.subjectId = "alliance-npc-9"; meet.room = null;
+            meeting.npcSocial.acts.Add(meet);
+            Accepted(meeting);
+            var bound = s.Clone();
+            for (int k = bound.npcSocial.acts.Count; k < EpisodeEngine.MostActs(bound); k++) bound.npcSocial.acts.Add(Act(bound, "1-2-" + (k + 100), npc));
+            Accepted(bound);
         }
 
         // ------------------------------------------------------------------ D3
@@ -352,20 +387,13 @@ namespace Gamesim.Tests.EditMode
         // ------------------------------------------------------------------ nothing writes it
 
         /// <summary>
-        /// Whole seasons, with every start week 0 and with every one set: nothing in this build plans a
-        /// beat, records an act, writes a plan or logs D2's or D3's lines. D4 has landed: with its start
-        /// week set, its double-dealing line and its receipt are its own to write (AllianceLeakTests), and
-        /// with every start week 0 neither ever appears. D3 has landed too, and only a war room the player
-        /// holds writes a plan or a plan's line (PactPlanTests): this player only ever does what each phase
-        /// asks, so with its start week set its storage stays empty as well.
+        /// A whole season with every start week 0: nothing plans a beat, records an act, writes a plan or
+        /// logs any of Wave D's lines, and no receipt of D4's appears.
         /// </summary>
-        [TestCase(2817u, false)] [TestCase(2818u, true)]
-        public void NothingInThisBuildWritesWaveDStorage(uint seed, bool started)
+        [TestCase(2817u)]
+        public void NothingInThisBuildWritesWaveDStorage(uint seed)
         {
-            // D4's kind, written only under its own start week; the other three are D2's and D3's.
-            var unwritten = started ? WaveDEventKinds.All.Where(kind => kind != WaveDEventKinds.DoubleDealing).ToArray() : WaveDEventKinds.All;
             var s = Played(seed);
-            if (started) foreach (string name in StartWeeks) Set(s, name, 1);
             var engine = new EpisodeEngine(s);
             int steps = 0;
             while (engine.Snapshot.phase != EpisodePhase.Finished && steps < 600)
@@ -377,11 +405,43 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(state.npcSocial.beatWeek + state.npcSocial.beatsFired + state.npcSocial.beatSeats, Is.Zero);
                 Assert.That(state.npcSocial.beatPlan, Is.Empty); Assert.That(state.npcSocial.acts, Is.Empty);
                 Assert.That(state.ledger.plans, Is.Empty);
-                Assert.That(state.events.Any(e => unwritten.Contains(e.kind)), Is.False);
-                if (!started) Assert.That(state.relationships.Any(r => r.events.Any(e => e.type == StoryReceipts.DoubleDealt)), Is.False);
-                foreach (string name in StartWeeks) Assert.That(Get(state, name), Is.EqualTo(started ? 1 : 0));
+                Assert.That(state.events.Any(e => WaveDEventKinds.All.Contains(e.kind)), Is.False);
+                Assert.That(state.relationships.Any(r => r.events.Any(e => e.type == StoryReceipts.DoubleDealt)), Is.False);
+                foreach (string name in StartWeeks) Assert.That(Get(state, name), Is.Zero);
             }
             Assert.That(engine.Snapshot.phase, Is.EqualTo(EpisodePhase.Finished));
+        }
+
+        /// <summary>
+        /// The same season with every start week set. D4 writes its own line and receipt (AllianceLeakTests);
+        /// only a war room the player holds writes D3's plan or line (PactPlanTests), and this player only does
+        /// what each phase asks. D2's beats now write their storage, lawful at every step (the engine validates
+        /// every candidate); but nobody witnessed anything, so no act was seen and no sighting or overheard line
+        /// was ever logged.
+        /// </summary>
+        [TestCase(2818u)]
+        public void UnderTheStartWeeksTheBeatsWriteLawfulStorageAndNothingUnwitnessedIsSaid(uint seed)
+        {
+            var s = Played(seed);
+            foreach (string name in StartWeeks) Set(s, name, 1);
+            var engine = new EpisodeEngine(s);
+            int steps = 0, planned = 0, acted = 0;
+            while (engine.Snapshot.phase != EpisodePhase.Finished && steps < 600)
+            {
+                var result = engine.Apply(Next(engine.Snapshot));
+                Assert.That(result.accepted, Is.True, result.reason);
+                var state = engine.Snapshot; steps++;
+                if (state.npcSocial.beatWindow != Windows.None) planned++;
+                acted = Math.Max(acted, state.npcSocial.acts.Count);
+                Assert.That(state.npcSocial.acts.Count, Is.LessThanOrEqualTo(EpisodeEngine.MostActs(state)));
+                Assert.That(state.npcSocial.acts.Any(a => a.sighted || a.overheard), Is.False, "Nobody saw anything.");
+                Assert.That(state.ledger.plans, Is.Empty);
+                Assert.That(state.events.Any(e => e.kind == WaveDEventKinds.Sighting || e.kind == WaveDEventKinds.Overheard || e.kind == WaveDEventKinds.PactPlan), Is.False);
+                foreach (string name in StartWeeks) Assert.That(Get(state, name), Is.EqualTo(1));
+            }
+            Assert.That(engine.Snapshot.phase, Is.EqualTo(EpisodePhase.Finished));
+            Assert.That(planned, Is.GreaterThan(0), "The house planned its beats.");
+            Assert.That(acted, Is.GreaterThan(0), "and acted on them.");
         }
 
         // ------------------------------------------------------------------ helpers
@@ -397,14 +457,22 @@ namespace Gamesim.Tests.EditMode
             return s;
         }
 
-        /// <summary>Week 1's free time with the all-week rules on and a lawful plan with one act.</summary>
+        /// <summary>
+        /// Week 1's campaign - off move-in night, where the house has no acts - with the all-week rules on and
+        /// a lawful plan for its window with one act fired (D2's beats write these; AllWeekCadenceTests).
+        /// </summary>
         private static EpisodeState AllWeek()
         {
-            var s = ContentCatalog.Create(2819); s.allWeekRulesStartWeek = 1;
+            var s = ContentCatalog.Create(2819);
             var npcs = s.contestants.Where(c => !c.isPlayer).Select(c => c.id).ToList();
-            s.npcSocial.beatWeek = 1; s.npcSocial.beatWindow = Windows.AfterEviction; s.npcSocial.beatSeats = 2;
+            s.phase = EpisodePhase.Campaign; s.hohId = npcs[0]; s.nominees = new List<string> { npcs[1], npcs[2] };
+            s.vetoHolderId = npcs[3]; s.vetoResolved = true;
+            s.vetoPlayers = s.Active.Select(c => c.id).Take(EpisodeEngine.VetoPlayerCount(s.Active.Count())).ToList();
+            if (!s.vetoPlayers.Contains(s.vetoHolderId)) s.vetoPlayers[s.vetoPlayers.Count - 1] = s.vetoHolderId;
+            s.allWeekRulesStartWeek = 1;
+            s.npcSocial.beatWeek = 1; s.npcSocial.beatWindow = Windows.AfterVeto; s.npcSocial.beatSeats = 2;
             s.npcSocial.beatPlan.AddRange(npcs.Take(3)); s.npcSocial.beatsFired = 1;
-            s.npcSocial.acts.Add(Act(s, "1-3-0", npcs[0]));
+            s.npcSocial.acts.Add(Act(s, "1-2-0", npcs[0]));
             return s;
         }
 
@@ -424,7 +492,7 @@ namespace Gamesim.Tests.EditMode
         private static NpcActState Act(EpisodeState s, string id, string actor) => new NpcActState
         {
             id = id, kind = "talk", actorId = actor, partnerId = s.contestants.Last(c => !c.isPlayer && c.id != actor).id,
-            room = "Kitchen", week = s.week, window = Windows.AfterEviction, firedTick = 0,
+            room = "Kitchen", week = s.week, window = s.phase == EpisodePhase.Campaign ? Windows.AfterVeto : Windows.AfterEviction, firedTick = 0,
         };
 
         /// <summary>

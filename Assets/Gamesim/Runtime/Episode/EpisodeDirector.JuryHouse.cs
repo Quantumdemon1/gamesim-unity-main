@@ -57,8 +57,15 @@ namespace Gamesim.Episode
             JuryHouseAvailable(state)
             || (EpisodeHud.IsFinalThree(state) && state.Active.Any(actor => actor.id == state.playerId) && FinalistRead.Jurors(state).Count > 0);
 
-        /// <summary>Whether the strip is a door right now: the house is the view, with nothing open over it.</summary>
-        public bool JuryStripIsADoor(EpisodeState state) => IsReady && !blockedRecovery && !IsPanelOpen && JuryStripDoorAvailable(state);
+        /// <summary>
+        /// Whether the strip is a door right now: the house is the view, with nothing open over it.
+        ///
+        /// <para>Not asked whether the director is ready. Start's one render comes the line before
+        /// IsReady is set, so a load into the Final 3 drew its strip with no door and kept it so until
+        /// something else rendered - a body finishing its assembly did, which hid it wherever UMA
+        /// builds the cast. The press still waits on IsReady (OpenJuryHouseFromStrip).</para>
+        /// </summary>
+        public bool JuryStripIsADoor(EpisodeState state) => !blockedRecovery && !IsPanelOpen && JuryStripDoorAvailable(state);
 
         /// <summary>Opens the jury house over the house, from the jury strip. Public for tests.</summary>
         public void OpenJuryHouseFromStrip()

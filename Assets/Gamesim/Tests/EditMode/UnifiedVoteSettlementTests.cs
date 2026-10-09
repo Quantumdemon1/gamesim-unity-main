@@ -20,11 +20,10 @@ namespace Gamesim.Tests.EditMode
     /// owner runs its memory, line, Story and witness lanes). Every reveal is seen as tapes - the views, the
     /// record, the memories, the lines and the draws.</para>
     ///
-    /// <para>One difference is no rule but a reader still to move (vote family V5): the Story grudge's threat
-    /// scaling (ThreatAssessment.ReputationThreat) counts raw promises, and canonical breaches only under mode 1,
-    /// so in mode 2 it counts no canonical Vote or Safety breach at all - not the reveal's own, which the approved
-    /// Rule2 policy excludes, and not an earlier one, which it does not exclude. A first reveal cannot tell the two
-    /// apart; V5 moves the reader and passes the reveal's own exclusions to it.</para>
+    /// <para>One more difference is the approved policy's too (vote family V5c): the Story grudge's threat scaling
+    /// (ThreatAssessment.ReputationThreat) leaves the reveal's own Vote breaches out of the breaker's reputation, where
+    /// mode 1 counts the promise it has just broken; an earlier reveal's breach counts in both
+    /// (ModeTwoThreatStoryTests holds a second reveal).</para>
     ///
     /// <para>Fixtures are seasons walked with real public commands; the constructed facts are the ones
     /// <see cref="ProspectiveVoteTwins"/> and <see cref="PinnedVoteSeason"/> allow - a relationship score, the
@@ -252,12 +251,12 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// The player's vote promise, broken: stamped Broken by its maker with its breach identity; the view, record,
-        /// memories, line and the witness loop's draws as mode 1 writes them. The one value apart is the Story
-        /// grudge's threat scaling, a reader still to move (vote family V5): mode 1's raw store counts the promise it
-        /// has just broken, mode 2's reader counts no canonical breach, so mode 1's grudge can only be the heavier.
+        /// memories, line and the witness loop's draws as mode 1 writes them. The one value apart is designed: the Story
+        /// grudge's threat scaling leaves the reveal's own breach out of the breaker's reputation (the approved policy's
+        /// current-reveal exclusion, vote family V5c), where mode 1's raw store counts the promise it has just broken.
         /// </summary>
         [Test]
-        public void ABrokenVotePromiseSettlesAsModeOneSettlesItSaveTheThreatReadersGap()
+        public void ABrokenVotePromiseSettlesAsModeOneSettlesItSaveTheCurrentRevealExclusion()
         {
             var s = Campaign();
             string to = NpcVoters(s)[0], promised = s.nominees[0], other = s.nominees[1];
@@ -270,7 +269,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(tape.Lines, Is.EqualTo(new[] { "promise-outcome [" + s.playerId + "] You broke a Vote promise." }));
             Assert.That(tape.Draw, Is.EqualTo(reveal.Legacy.state.randomState), "The witness loop draws as mode 1 draws it.");
             Assert.That(tape.Draw, Is.Not.EqualTo(reveal.CastTwin.randomState), "Fixture: the witness loop drew.");
-            AssertParityButTheThreatReadersGap(reveal, "A broken vote promise", to, s.playerId);
+            AssertParityButTheCurrentRevealExclusion(reveal, "A broken vote promise", to, s.playerId);
         }
 
         /// <summary>
@@ -1207,11 +1206,11 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// Seasons whose walks meet no reader still to move (vote family V5) equal mode 1's after projection at every one of
-        /// their commands, reveals, endings and the final eviction included, to the jury's verdict. Since V5b every seed of
-        /// 1..16 in a house of 8 but seed 4, whose threat reader V5c moves; ModeTwoSeasonSweepTests plays seeds 1..32 in every
-        /// house size, the busy player's too, and names where each that differs first does.
+        /// their commands, reveals, endings and the final eviction included, to the jury's verdict: since V5c every seed of
+        /// 1..16 in a house of 8. ModeTwoSeasonSweepTests plays seeds 1..32 in every house size, the busy player's too, and
+        /// names where each that differs first does.
         /// </summary>
-        [TestCase(1u)] [TestCase(2u)] [TestCase(3u)] [TestCase(5u)] [TestCase(6u)] [TestCase(7u)] [TestCase(8u)] [TestCase(9u)]
+        [TestCase(1u)] [TestCase(2u)] [TestCase(3u)] [TestCase(4u)] [TestCase(5u)] [TestCase(6u)] [TestCase(7u)] [TestCase(8u)] [TestCase(9u)]
         [TestCase(10u)] [TestCase(11u)] [TestCase(12u)] [TestCase(13u)] [TestCase(14u)] [TestCase(15u)] [TestCase(16u)]
         public void ASeasonWithoutReaderGapsEqualsModeOneToTheFinish(uint seed)
         {
@@ -1241,24 +1240,28 @@ namespace Gamesim.Tests.EditMode
             return state;
         }
 
-        // ------------------------------------------------------------ helpers for the reader still to move (V5)
+        // ------------------------------------------------------------ the designed difference of the threat reader (V5c)
 
         /// <summary>
-        /// The reveal equals mode 1's but for the wronged party's grudge against the breaker. Its threat scaling
-        /// (ThreatAssessment.ReputationThreat) is a reader vote family V5 moves: it counts raw promises, and canonical
-        /// breaches only under mode 1, so in mode 2 it counts none - neither this reveal's breach (which the approved
-        /// Rule2 policy excludes) nor an earlier one (which it does not). At a first reveal, as here, the two coincide:
-        /// mode 1 counts the promise it has just broken. The same holder, target, cause, week and count; a severity
-        /// lighter by what one broken promise adds to the breaker's reputation - three threat points, scaled by 60/200
-        /// and rounded: never more than one. Not a Rule2 difference: V5 replaces it with the exclusion itself.
+        /// The reveal equals mode 1's but for the wronged party's grudge against the breaker, by design: the approved Rule2
+        /// policy's current-reveal exclusion (vote family V5c). The grudge's threat scaling (ThreatAssessment.ReputationThreat)
+        /// counts every canonical breach mode 1 counts - an earlier reveal's included - and leaves out the breaches this reveal
+        /// decides, where mode 1 counts the promise it has just broken. The same holder, target, cause, week and count; a
+        /// severity lighter by what that one broken promise adds to the breaker's reputation - three threat points, scaled by
+        /// 60/200 and rounded: never more than one - and only for a breaker of this reveal's own Vote row.
         /// </summary>
-        private static void AssertParityButTheThreatReadersGap(Reveal reveal, string what, string holder, string breaker)
+        private static void AssertParityButTheCurrentRevealExclusion(Reveal reveal, string what, string holder, string breaker)
         {
             var expected = reveal.Projection;
             var mode1 = expected.story.grudges.Single(g => g.holderId == holder && g.targetId == breaker);
             var mode2 = reveal.After.story.grudges.Single(g => g.holderId == holder && g.targetId == breaker);
             Assert.That((mode2.cause, mode2.originWeek, mode2.count), Is.EqualTo((mode1.cause, mode1.originWeek, mode1.count)), what + ": the same grudge.");
-            Assert.That(mode1.severity - mode2.severity, Is.InRange(0, 1), what + ": mode 2's threat reader counts no canonical breach (V5).");
+            Assert.That(reveal.After.unifiedCommitments.Any(r => r.kind == UnifiedVoteTogether.Vote && r.status == DealStatus.Broken
+                && r.settledWeek == reveal.After.week && r.brokenById == breaker), Is.True, what + ": the breaker broke a Vote row at this reveal.");
+            Assert.That(mode1.severity - mode2.severity, Is.InRange(0, 1), what + ": this reveal's own breach is left out of the breaker's reputation (V5c).");
+            if (mode1.severity != mode2.severity)
+                Assert.That(ModeTwoReaderSweep.Designed(expected, reveal.After, ModeTwoReaderSweep.Differences(expected, reveal.After)),
+                    Is.EqualTo("the current-reveal exclusion"), what + ": nothing else differs.");
             mode1.severity = mode2.severity;
             ProspectiveVoteTwins.AssertProjection(expected, reveal.After, what);
         }

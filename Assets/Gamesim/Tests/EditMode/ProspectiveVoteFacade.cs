@@ -104,6 +104,15 @@ namespace Gamesim.Tests.EditMode
         internal static IReadOnlyList<DealState> DealsUnchecked(EpisodeState s) =>
             (IReadOnlyList<DealState>)Call(ReferencesType, "DealsUnchecked", new[] { typeof(EpisodeState) }, s);
 
+        /// <summary>
+        /// ThreatAssessment.TotalBeforeCommitmentEffects: the threat a reveal's recipes scale a grudge by, a command's own
+        /// Safety and Vote effects left out of the breaker's reputation (vote family V5c).
+        /// </summary>
+        internal static double ThreatBeforeCommitmentEffects(EpisodeState s, string evaluatorId, string targetId,
+            IReadOnlyList<string> excludedSafetyEffects, IReadOnlyCollection<string> excludedVoteEffects) =>
+            (double)Call(typeof(ThreatAssessment), "TotalBeforeCommitmentEffects", new[] { typeof(EpisodeState), typeof(string), typeof(string),
+                typeof(IReadOnlyList<string>), typeof(IReadOnlyCollection<string>) }, s, evaluatorId, targetId, excludedSafetyEffects, excludedVoteEffects);
+
         /// <summary>EpisodeEngine.ProspectiveVote: the internal exact-mode-2 engine seam (vote family V2).</summary>
         internal static EpisodeEngine Engine(EpisodeState s) =>
             (EpisodeEngine)Call(typeof(EpisodeEngine), "ProspectiveVote", new[] { typeof(EpisodeState) }, s);

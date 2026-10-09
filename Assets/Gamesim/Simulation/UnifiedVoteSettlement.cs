@@ -74,8 +74,18 @@ namespace Gamesim.Simulation
         internal readonly int Week;
         internal readonly IReadOnlyList<UnifiedVoteVerdict> Verdicts;
         internal readonly HashSet<string> Stamped = new HashSet<string>(StringComparer.Ordinal);
+        /// <summary>
+        /// The betrayal identity of every row this reveal decides - kept or broken, stamped already or later in it - which
+        /// the Story threat its recipes scale a grudge by leaves out of the breaker's reputation (vote family V5c, the approved
+        /// policy's current-reveal exclusion). A breach of an earlier reveal is no part of it, and still counts.
+        /// </summary>
+        internal readonly IReadOnlyCollection<string> VoteEffects;
 
-        internal UnifiedVoteRevealPlan(int week, IReadOnlyList<UnifiedVoteVerdict> verdicts) { Week = week; Verdicts = verdicts; }
+        internal UnifiedVoteRevealPlan(int week, IReadOnlyList<UnifiedVoteVerdict> verdicts)
+        {
+            Week = week; Verdicts = verdicts;
+            VoteEffects = new HashSet<string>(verdicts.Select(verdict => UnifiedVoteHistory.Key(verdict.Row, week)), StringComparer.Ordinal);
+        }
 
         /// <summary>A voter's decided promises, in the canonical list's order - the order the source settled them in.</summary>
         internal IEnumerable<UnifiedVoteVerdict> PromisesOf(string voterId) =>
@@ -109,10 +119,10 @@ namespace Gamesim.Simulation
     /// <para>This is a deliberate new overlap rule, not byte-identical execution of overlapping legacy effects.
     /// A reveal with no overlap writes exactly what mode 1 writes. Modes 0 and 1 never reach this class.</para>
     ///
-    /// <para>Not built here: the policy's typed command-local exclusions of this reveal's Vote incidents (later
-    /// selected winners included) from the Story threat assessment the recipes' StoryWordBroken reads. That reader
-    /// (ThreatAssessment.ReputationThreat) counts no canonical breach under mode 2 yet - not this reveal's, nor an
-    /// earlier one - so there is nothing for an exclusion to remove; vote family V5 moves it and passes them.</para>
+    /// <para>The policy's typed command-local exclusions of this reveal's Vote incidents (later selected winners
+    /// included) from the Story threat assessment the recipes' StoryWordBroken reads are the plan's
+    /// <see cref="UnifiedVoteRevealPlan.VoteEffects"/> (vote family V5c): ThreatAssessment.ReputationThreat counts an
+    /// earlier reveal's canonical breach as mode 1 counts it, and leaves out this one's.</para>
     /// </summary>
     internal static class UnifiedVoteSettlement
     {

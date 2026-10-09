@@ -104,9 +104,69 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(legacy.accepted, Is.True, "seed " + seed + " " + where + ": " + legacy.reason);
                 if (!prospective.accepted) return where + ": refused in mode 2: " + prospective.reason;
                 if (!season.Supported) return where + ": unsupported " + season.FirstUnsupported;
-                var differences = Differences(PinnedVoteSeason.Project(legacy.state, season.Owners, season.Frames), prospective.state);
-                if (differences.Count > 0)
-                    return where + ": " + string.Join(", ", differences.Select(d => d.Split('[', ':')[0]).Distinct());
+                var projection = PinnedVoteSeason.Project(legacy.state, season.Owners, season.Frames);
+                var differences = Differences(projection, prospective.state);
+                if (differences.Count == 0) continue;
+                string designed = Designed(projection, prospective.state, differences);
+                if (designed == null) return where + ": " + string.Join(", ", differences.Select(d => d.Split('[', ':')[0]).Distinct());
+                // A designed difference: from here the two seasons may part, so mode 2 plays on by itself, to the finish.
+                return "designed at " + where + ": " + designed + "; mode 2 then " + PlayOn(engine, seed, busy);
+            }
+            return "unfinished";
+        }
+
+        /// <summary>
+        /// The designed difference a reveal's states show, or null: the approved current-reveal exclusion (vote family V5c) -
+        /// nothing differs but the Story grudges a breaker of this reveal's own Vote rows drew, each the same grudge, at most one
+        /// lighter in mode 2, whose threat scaling left this reveal's breach out of the breaker's reputation.
+        /// </summary>
+        internal static string Designed(EpisodeState projection, EpisodeState prospective, List<string> differences)
+        {
+            // Rule2 (vote family V4, the approved overlap policy): the reveal decided two rows of one pair the same way, and
+            // settles their consequences once - its line, memory, record and Story lanes run for the owner alone.
+            if (prospective.unifiedCommitments.Where(r => r.kind == UnifiedVoteTogether.Vote && r.settledWeek == prospective.week
+                    && (r.status == DealStatus.Fulfilled || r.status == DealStatus.Broken))
+                .GroupBy(r => r.status + "|" + string.Join("|", new[] { r.makerId, r.beneficiaryId }.OrderBy(id => id, StringComparer.Ordinal)))
+                .Any(group => group.Count() > 1))
+                return "a Rule2 overlap";
+            if (differences.Any(d => !d.StartsWith("story", StringComparison.Ordinal))) return null;
+            var one = projection.story.Clone(); var two = prospective.story.Clone();
+            var left = one.grudges; var right = two.grudges;
+            if (left.Count != right.Count) return null;
+            var breakers = new HashSet<string>(prospective.unifiedCommitments.Where(r => r.kind == UnifiedVoteTogether.Vote && r.status == DealStatus.Broken
+                && r.settledWeek == prospective.week && r.brokenById != null).Select(r => r.brokenById), StringComparer.Ordinal);
+            for (int i = 0; i < left.Count; i++)
+            {
+                if (Json(left[i]) == Json(right[i])) continue;
+                double lighter = left[i].severity - right[i].severity;
+                if (left[i].holderId != right[i].holderId || left[i].targetId != right[i].targetId || left[i].cause != right[i].cause
+                    || left[i].originWeek != right[i].originWeek || left[i].count != right[i].count || lighter <= 0 || lighter > 1
+                    || !breakers.Contains(right[i].targetId)) return null;
+                right[i].severity = left[i].severity;
+            }
+            one.grudges.Clear(); two.grudges.Clear();
+            return Json(left) == Json(right) && Json(one) == Json(two) ? "the current-reveal exclusion" : null;
+        }
+
+        /// <summary>The mode-2 game alone from here, the same player, to the jury's verdict: "finished", or where it was refused.</summary>
+        private static string PlayOn(EpisodeEngine engine, uint seed, bool busy)
+        {
+            for (int step = 0; step < 3000; step++)
+            {
+                var s = engine.Snapshot;
+                if (s.phase == EpisodePhase.Finished) return "finished";
+                CommandResult applied = null;
+                for (int attempt = 0; busy && attempt < 3 && applied == null; attempt++)
+                {
+                    var own = Busy(s, seed, attempt);
+                    if (own == null) break;
+                    var tried = engine.Apply(own);
+                    if (tried.accepted) applied = tried;
+                }
+                if (applied != null) continue;
+                var next = Next(s);
+                var result = engine.Apply(next);
+                if (!result.accepted) return "refused week " + s.week + " " + s.phase + " " + next.kind + ": " + result.reason;
             }
             return "unfinished";
         }
@@ -115,7 +175,7 @@ namespace Gamesim.Tests.EditMode
         /// The first mode-2 projection a walk of seeds 1..32 reaches that <paramref name="match"/> accepts, with the mode-1 state
         /// it projects - a fixture the real engine played, never a built one - or a failure naming the seeds tried.
         /// </summary>
-        internal static (EpisodeState mode1, EpisodeState mode2) Find(string what, Func<EpisodeState, EpisodeState, bool> match, int size = 8)
+        internal static (EpisodeState mode1, EpisodeState mode2) Find(string what, Func<EpisodeState, EpisodeState, bool> match, int size = 8, bool busy = true)
         {
             for (uint seed = 1; seed <= 32; seed++)
             {
@@ -123,7 +183,7 @@ namespace Gamesim.Tests.EditMode
                 Walk(seed, (mode1, mode2, where) =>
                 {
                     if (foundMode2 == null && match(mode1, mode2)) { foundMode1 = mode1; foundMode2 = mode2; }
-                }, size, true, () => foundMode2 != null);
+                }, size, busy, () => foundMode2 != null);
                 if (foundMode2 != null)
                 {
                     TestContext.Out.WriteLine(what + ": seed " + seed + ", week " + foundMode2.week + ".");
@@ -156,7 +216,7 @@ namespace Gamesim.Tests.EditMode
             if (npcs.Count == 0) return null;
             var a = npcs[Pick(s, seed, 2 + attempt * 5, npcs.Count)];
             bool voter = EpisodeEngine.Voters(s).Any(v => v.id == s.playerId);
-            switch (Pick(s, seed, 3 + attempt * 5, 9))
+            switch (Pick(s, seed, 3 + attempt * 5, 11))
             {
                 case 0:
                 case 1:
@@ -183,6 +243,9 @@ namespace Gamesim.Tests.EditMode
                     var unasked = EpisodeEngine.Voters(s).FirstOrDefault(v => !v.isPlayer && !EpisodeEngine.AskedThisWeek(s, v.id));
                     return unasked == null ? null : Command(s, EpisodeCommandKind.AskVote, unasked.id);
                 case 7: return Command(s, EpisodeCommandKind.PromiseFinalTwo, a.id);
+                // A conversation, which may start a story with them (EpisodeEngine.TryStartFromConversation).
+                case 8: return Command(s, EpisodeCommandKind.SmallTalk, a.id);
+                case 9: return Command(s, EpisodeCommandKind.DiscussGame, a.id);
                 default: return null;
             }
         }

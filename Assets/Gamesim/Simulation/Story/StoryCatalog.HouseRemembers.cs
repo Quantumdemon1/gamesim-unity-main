@@ -360,12 +360,15 @@ namespace Gamesim.Simulation
 
         // ---------------------------------------------------------------- the-flip (A6)
 
-        /// <summary>The player's own vote commitments this week, counted the way the player would count them.</summary>
+        /// <summary>
+        /// The player's own vote commitments this week, counted the way the player would count them. Mode 2 (vote family V5c):
+        /// mode 1's raw lists, their vote rows the canonical ones.
+        /// </summary>
         private static int CommittedVoters(StoryContext c) =>
             EpisodeEngine.Voters(c.state).Count(v => !v.isPlayer && (
-                c.state.deals.Any(d => DealStatus.Binds(d.status) && (d.type == DealKind.VoteSave || d.type == DealKind.VoteEvict || d.type == DealKind.VoteTogether)
+                CommitmentReferences.RawDeals(c.state).Any(d => DealStatus.Binds(d.status) && (d.type == DealKind.VoteSave || d.type == DealKind.VoteEvict || d.type == DealKind.VoteTogether)
                                        && ((d.proposerId == v.id && d.recipientId == P(c)) || (d.proposerId == P(c) && d.recipientId == v.id)))
-                || c.state.promises.Any(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.Vote && p.fromId == v.id && p.toId == P(c))));
+                || CommitmentReferences.RawPromises(c.state).Any(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.Vote && p.fromId == v.id && p.toId == P(c))));
 
         private static ArcTemplate TheFlip() => new ArcTemplate
         {
@@ -380,7 +383,7 @@ namespace Gamesim.Simulation
                 if (!PlayerVotes(c) && !PlayerNominated(c)) return null;
                 var voters = EpisodeEngine.Voters(c.state).Where(v => !v.isPlayer).ToList();
                 if (voters.Count == 0 || CommittedVoters(c) * 2 >= voters.Count) return null;
-                var swing = voters.Where(v => !c.state.deals.Any(d => DealStatus.Binds(d.status)
+                var swing = voters.Where(v => !CommitmentReferences.RawDeals(c.state).Any(d => DealStatus.Binds(d.status)
                                                    && ((d.proposerId == v.id && d.recipientId == P(c)) || (d.proposerId == P(c) && d.recipientId == v.id))))
                     .OrderBy(v => Math.Abs(c.Score(v.id, P(c)))).ThenBy(v => v.id, StringComparer.Ordinal).FirstOrDefault();
                 return swing == null ? null : Bind().With("SWING", swing.id).With("HOH", NpcHoh(c)).Headlining(swing.id);

@@ -52,8 +52,8 @@ namespace Gamesim.Tests.EditMode
             // The sweep above means something only if its seasons hold what the views interleave: Vote rows between raw
             // ones, in both lists, and offers waiting on the player.
             bool interleavedPromise = false, interleavedDeal = false, offer = false;
-            // Seed 14's house puts a vote bargain to the player; the first three interleave both lists.
-            foreach (uint seed in new uint[] { 1, 2, 3, 14 })
+            // Seed 5's house puts a vote bargain to the player; the first three interleave both lists.
+            foreach (uint seed in new uint[] { 1, 2, 3, 5 })
                 ModeTwoReaderSweep.Walk(seed, (mode1, mode2, where) =>
                 {
                     interleavedPromise |= Interleaved(mode1.promises.Select(p => p.kind == PromiseKind.Vote).ToList());

@@ -20,24 +20,16 @@ namespace Gamesim.Tests.EditMode
         /// <summary>Each season that does not play to the finish equal to mode 1: where it first differs, and the slice that owns it.</summary>
         private static readonly Dictionary<string, (string where, string owner)> Differs = new Dictionary<string, (string, string)>
         {
-            // V5c: the threat reader counts no canonical breach in mode 2 - a Safety incident or the player's broken vote
-            // promise - so the house's rumours, nominations and grudges read another threat from that command on.
-            ["plain 4"] = ("week 4 Eviction Advance: relationships", "V5c, ThreatAssessment"),
-            ["plain 17"] = ("week 3 Nomination Advance: randomState, nextSequence, contestants, relationships, memories, nominees, unifiedCommitments, events, story, Active", "V5c, ThreatAssessment"),
-            ["plain 27"] = ("week 4 Eviction Advance: relationships", "V5c, ThreatAssessment"),
-            ["plain 29"] = ("week 5 Eviction Advance: relationships", "V5c, ThreatAssessment"),
-            ["busy 1"] = ("week 2 Eviction Advance: randomState, nextSequence, relationships, memories, events, relationshipArcs, deals, houseEvents, replyCards", "V5c, ThreatAssessment"),
-            ["busy 9"] = ("week 2 Eviction Advance: randomState, relationships, events, relationshipArcs, replyCards", "V5c, ThreatAssessment"),
-            ["busy 13"] = ("week 2 Eviction Advance: story", "V5c, the grudge's threat"),
-            ["busy 17"] = ("week 3 Nomination Advance: randomState, nextSequence, contestants, relationships, memories, nominees, unifiedCommitments, events, story, Active", "V5c, ThreatAssessment"),
-            ["busy 25"] = ("week 8 Eviction Advance: relationships", "V5c, ThreatAssessment"),
-            ["busy 26"] = ("week 8 Eviction Advance: randomState, relationships, promises", "V5c, ThreatAssessment"),
-            ["busy 27"] = ("week 5 Eviction Advance: story", "V5c, the grudge's threat"),
-            ["busy 29"] = ("week 2 Eviction Advance: story", "V5c, the grudge's threat"),
-            // V5d: a houseguest turning the player down reads the player's broken promises from the raw list.
-            ["busy 14"] = ("week 2 Social ProposeDeal: events", "V5d, PlayerDeals.HasBrokenPromise"),
+            // Designed (V4, the approved Rule2 policy): one reveal decided two of a pair's rows the same way, and settled their
+            // consequences once - one line, memory and record for the owner; mode 2 then plays on to the finish.
+            ["busy 11"] = ("designed at week 4 Eviction Advance: a Rule2 overlap; mode 2 then finished", "designed"),
+            // Designed (V5c, the same policy): a reveal's own Vote breach is left out of its breaker's reputation, so the grudge
+            // the wronged party draws at that reveal is at most one lighter; mode 2 then plays on to the finish.
+            ["busy 18"] = ("designed at week 1 Eviction Advance: the current-reveal exclusion; mode 2 then finished", "designed"),
+            ["busy 19"] = ("designed at week 2 Eviction Advance: the current-reveal exclusion; mode 2 then finished", "designed"),
+            ["busy 22"] = ("designed at week 2 Eviction Advance: the current-reveal exclusion; mode 2 then finished", "designed"),
             // V5e: a juror's question reads no canonical Vote receipt.
-            ["busy 18"] = ("week 4 JuryQuestioning Advance: juryExchanges", "V5e, FinaleQuestions"),
+            ["busy 24"] = ("week 4 JuryQuestioning Advance: juryExchanges", "V5e, FinaleQuestions"),
         };
 
         private static IEnumerable<TestCaseData> Seasons() =>

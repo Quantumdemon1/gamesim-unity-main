@@ -27,14 +27,20 @@ namespace Gamesim.Tests.EditMode
         /// open vote, every NPC voter's levers and ballot; and a crisis's cast. The breach terms only where no incident has two
         /// rows (<paramref name="overlap"/>): there they differ by design (D1).
         /// </summary>
-        internal static void CheckHouse(EpisodeState mode1, EpisodeState mode2, string where, bool overlap)
-        {
-            // A pair no canonical word joins reads the same raw rows in either mode; an ended word reads as it did when it ended.
-            var pairs = mode2.unifiedCommitments.Where(r => r.status != DealStatus.Expired && r.status != DealStatus.Declined)
+        /// <summary>
+        /// The pairs a sweep reads a pair reader for: every pair a standing, kept or broken canonical word joins, both ways, and
+        /// every pair with the player. A pair no canonical word joins reads the same raw rows in either mode.
+        /// </summary>
+        internal static List<(string, string)> Pairs(EpisodeState mode1, EpisodeState mode2) =>
+            mode2.unifiedCommitments.Where(r => r.status != DealStatus.Expired && r.status != DealStatus.Declined)
                 .Select(r => (r.makerId, r.beneficiaryId))
                 .Concat(mode1.contestants.Where(c => !c.isPlayer).Select(c => (c.id, mode1.playerId)))
                 .SelectMany(pair => new[] { pair, (pair.Item2, pair.Item1) }).Distinct()
                 .OrderBy(pair => pair.Item1 + "|" + pair.Item2, StringComparer.Ordinal).ToList();
+
+        internal static void CheckHouse(EpisodeState mode1, EpisodeState mode2, string where, bool overlap)
+        {
+            var pairs = Pairs(mode1, mode2);
             if (!overlap)
                 foreach (string a in pairs.Select(pair => pair.Item1).Distinct())
                     Assert.That(NpcDeals.BrokenDeals(mode2, a), Is.EqualTo(NpcDeals.BrokenDeals(mode1, a)), where + ": BrokenDeals " + a);
@@ -115,9 +121,12 @@ namespace Gamesim.Tests.EditMode
                 mode2.phase == EpisodePhase.Nomination && mode2.nominees.Count == 0 && mode2.hohId != null && mode2.hohId != mode2.playerId
                 && Word(mode2) != null);
 
-        /// <summary>The Head of Household's standing safety pact with a houseguest still in the house: a deal's protection holds whole.</summary>
+        /// <summary>
+        /// The Head of Household's standing word of safety to a houseguest still in the house: a promise they made, or a safety
+        /// pact either side of.
+        /// </summary>
         private static UnifiedCommitmentState Word(EpisodeState s) => s.unifiedCommitments.FirstOrDefault(r => r.kind == UnifiedCommitments.Safety
-            && r.sourcePolicy == UnifiedCommitments.DealPolicy && r.status == DealStatus.Active && (r.makerId == s.hohId || r.beneficiaryId == s.hohId)
+            && r.status == DealStatus.Active && (r.makerId == s.hohId || r.sourcePolicy == UnifiedCommitments.DealPolicy && r.beneficiaryId == s.hohId)
             && s.Find(r.makerId == s.hohId ? r.beneficiaryId : r.makerId)?.status == ContestantStatus.Active);
 
         [Test]
@@ -127,16 +136,19 @@ namespace Gamesim.Tests.EditMode
             string hoh = mode2.hohId;
             var word = Word(mode2);
             string promised = word.makerId == hoh ? word.beneficiaryId : word.makerId;
-            double strength = UnifiedCommitments.StrongestProtection(mode2, hoh, promised).Strength;
-            Assert.That(strength, Is.GreaterThan(0), "Their word protects " + promised + ".");
+            Assert.That(StoryConsumers.TheirWord(mode2, hoh, promised), Is.True, "Their word stands to " + promised + ".");
             Assert.That(StrategyRules.NominationReluctance(mode2, hoh, promised), Is.EqualTo(StrategyRules.NominationReluctance(mode1, hoh, promised)));
             Assert.That(EpisodeEngine.NominationWeight(mode2, hoh, promised), Is.EqualTo(EpisodeEngine.NominationWeight(mode1, hoh, promised)));
-            Assert.That(StoryConsumers.PromisedSafety(mode2, hoh, promised) || StoryConsumers.TheirWord(mode2, hoh, promised), Is.True);
-            // Without the word the weight falls by its protection, less the story's own overlap with it.
-            var unpromised = mode2.Clone();
-            unpromised.unifiedCommitments.Single(r => r.id == word.id).status = DealStatus.Expired;
-            Assert.That(StrategyRules.NominationReluctance(mode2, hoh, promised) - StrategyRules.NominationReluctance(unpromised, hoh, promised),
-                Is.EqualTo(strength).Within(1e-9), "The canonical Safety word is the Head of Household's reluctance.");
+            // Without the word the weight moves by what the word was worth, as mode 1's does: the strategy's protection and the
+            // story's own Safety preference, their overlap counted once.
+            var unpromised2 = mode2.Clone();
+            unpromised2.unifiedCommitments.Single(r => r.id == word.id).status = DealStatus.Expired;
+            var unpromised1 = mode1.Clone();
+            unpromised1.unifiedCommitments.Single(r => r.id == word.id).status = DealStatus.Expired;
+            double worth = EpisodeEngine.NominationWeight(mode2, hoh, promised) - EpisodeEngine.NominationWeight(unpromised2, hoh, promised);
+            Assert.That(worth, Is.EqualTo(EpisodeEngine.NominationWeight(mode1, hoh, promised) - EpisodeEngine.NominationWeight(unpromised1, hoh, promised))
+                .Within(1e-9), "The canonical Safety word weighs in mode 2 as in mode 1.");
+            Assert.That(worth, Is.GreaterThan(0), "The Head of Household is more reluctant to name somebody they gave their word.");
             // And the real nomination, through the seam, is mode 1's.
             var command = ProspectiveVoteTwins.Command(mode2, EpisodeCommandKind.Advance);
             var one = new EpisodeEngine(mode1).Apply(command);

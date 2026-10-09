@@ -28,7 +28,7 @@ namespace Gamesim.Tests.EditMode
         public enum Why { Authority, Writer, RawKind, NotCommitments, ModeAware, Moved, PendingV5a, PendingV5b, PendingV5c, PendingV5d, PendingV5e, PendingV5f }
 
         /// <summary>The slice the vote family has built through: no entry may still be pending it or an earlier one.</summary>
-        private const Why Built = Why.PendingV5b;
+        private const Why Built = Why.PendingV5c;
 
         private sealed class Site
         {
@@ -166,14 +166,13 @@ namespace Gamesim.Tests.EditMode
                 "the web evaluator's threat, over its own copy of the season's"),
             new Site(Sim + "Story/StoryConsumers.cs", null, 3, Why.RawKind, "mode 0's raw Safety word; canonical Safety is read wherever it is the authority"),
 
-            // ---- pending V5c: threat and Story
-            new Site(Sim + "ThreatAssessment.cs", null, 3, Why.PendingV5c, "ReputationThreat"),
-            new Site(Sim + "Story/StoryOdds.cs", null, 5, Why.PendingV5c, "the story's odds"),
-            new Site(Sim + "Story/EpisodeEngine.StoryHooks.cs", null, 4, Why.PendingV5c, "TryStartFromConversation"),
-            new Site(Sim + "Story/StoryCatalog.HouseRemembers.cs", null, 3, Why.PendingV5c, "the house remembers"),
-            new Site(Sim + "Story/StoryCatalog.Plays.cs", null, 2, Why.PendingV5c, "plays"),
-            new Site(Sim + "Story/StoryCatalog.Ported.cs", null, 1, Why.PendingV5c, "ported"),
-            new Site(Sim + "Story/StoryCatalog.Spine.cs", null, 1, Why.PendingV5c, "spine"),
+            new Site(Sim + "ThreatAssessment.cs", null, 2, Why.Moved, "V5c: ReputationThreat - mode 1's raw promises, its vote promises counted beside, a reveal's own left out"),
+            new Site(Sim + "Story/StoryOdds.cs", null, 4, Why.Moved, "V5c: the story's odds"),
+            new Site(Sim + "Story/EpisodeEngine.StoryHooks.cs", null, 3, Why.Moved, "V5c: TryStartFromConversation"),
+            new Site(Sim + "Story/StoryCatalog.HouseRemembers.cs", null, 3, Why.Moved, "V5c: the house remembers"),
+            new Site(Sim + "Story/StoryCatalog.Plays.cs", null, 2, Why.Moved, "V5c: plays"),
+            new Site(Sim + "Story/StoryCatalog.Ported.cs", null, 1, Why.Moved, "V5c: ported"),
+            new Site(Sim + "Story/StoryCatalog.Spine.cs", null, 1, Why.Moved, "V5c: spine"),
 
             // ---- pending V5d: the player's bargaining and word
             new Site(Sim + "Negotiation.cs", null, 16, Why.PendingV5d, "Chance, Owed, CallInRefusal, SafetyHeld, BreachesAgainst, CanonicalBreaches, BreachWords"),

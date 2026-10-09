@@ -93,18 +93,26 @@ namespace Gamesim.Tests.PlayMode
         private static Transform ActBody(string id) =>
             SceneComponents<HouseNpc>().FirstOrDefault(npc => npc.Id == id && npc.gameObject.activeInHierarchy)?.transform;
 
-        /// <summary>The room a point is in, as the house reads it: the nearest room marker's.</summary>
-        private static string RoomAt(Vector3 point)
+        /// <summary>
+        /// The room a body standing at a point is in, as the house's watch reads it: the floor under it
+        /// (<see cref="HouseRoomQuery.TryLocate"/>), null off every floor's safe interior.
+        /// </summary>
+        private static string RoomAt(Vector3 point, float radius)
         {
-            HouseRoomMarker nearest = null;
-            float best = float.MaxValue;
-            foreach (var marker in SceneComponents<HouseRoomMarker>().Where(m => !string.IsNullOrEmpty(m.RoomName)))
-            {
-                float distance = (marker.transform.position - point).sqrMagnitude;
-                if (distance < best) { best = distance; nearest = marker; }
-            }
-            return nearest != null ? nearest.RoomName : null;
+            Assert.That(HouseRoomQuery.TryCreate(UnityEngine.SceneManagement.SceneManager.GetSceneByName(EpisodeScene), out var rooms, out var reason), Is.True, reason);
+            return rooms.TryLocate(point, radius, out var room) ? room : null;
         }
+
+        /// <summary>The room a body is in, read with its own capsule, as the watch reads a houseguest.</summary>
+        private static string RoomAt(Transform body)
+        {
+            var capsule = body.GetComponent<CapsuleCollider>();
+            return RoomAt(body.position, capsule != null ? capsule.radius : .35f);
+        }
+
+        /// <summary>The house's active room markers.</summary>
+        private static IEnumerable<HouseRoomMarker> ActiveRoomMarkers() =>
+            SceneComponents<HouseRoomMarker>().Where(m => m.isActiveAndEnabled && !string.IsNullOrEmpty(m.RoomName));
 
         private static float Apart(Vector3 a, Vector3 b) { a.y = b.y = 0f; return Vector3.Distance(a, b); }
 
@@ -121,7 +129,7 @@ namespace Gamesim.Tests.PlayMode
         {
             if (!director.StagedActs.Contains(act.id)) return false;
             var one = ActBody(act.actorId); var two = ActBody(act.partnerId);
-            return one != null && two != null && RoomAt(one.position) == act.room && RoomAt(two.position) == act.room
+            return one != null && two != null && RoomAt(one) == act.room && RoomAt(two) == act.room
                 && Apart(one.position, two.position) <= EpisodeDirector.WalkInPairMetres;
         }
 
@@ -134,7 +142,7 @@ namespace Gamesim.Tests.PlayMode
             {
                 float angle = direction * Mathf.PI / 8f, reach = direction < 8 ? 2f : 3.5f;
                 var candidate = one.position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * reach;
-                if (!NavMesh.SamplePosition(candidate, out var hit, .5f, player.Agent.areaMask) || RoomAt(hit.position) != act.room) continue;
+                if (!NavMesh.SamplePosition(candidate, out var hit, .5f, player.Agent.areaMask) || RoomAt(hit.position, player.Agent.radius) != act.room) continue;
                 if (!player.Agent.Warp(hit.position)) continue;
                 player.Agent.ResetPath();
                 Physics.SyncTransforms();
@@ -146,10 +154,11 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>Puts the player in a room that is not the act's.</summary>
         private void WarpElsewhere(NpcActState act)
         {
-            foreach (var marker in SceneComponents<HouseRoomMarker>().Where(m => !string.IsNullOrEmpty(m.RoomName) && m.RoomName != act.room
-                         && m.RoomName != "HoH" && m.RoomName != "Private"))
+            foreach (var marker in ActiveRoomMarkers().Where(m => m.RoomName != act.room && m.RoomName != "HoH" && m.RoomName != "Private"))
             {
-                if (!NavMesh.SamplePosition(marker.transform.position, out var hit, 1.5f, player.Agent.areaMask) || RoomAt(hit.position) == act.room) continue;
+                if (!NavMesh.SamplePosition(marker.transform.position, out var hit, 1.5f, player.Agent.areaMask)) continue;
+                string there = RoomAt(hit.position, player.Agent.radius);
+                if (there == null || there == act.room) continue;
                 if (!player.Agent.Warp(hit.position)) continue;
                 player.Agent.ResetPath();
                 Physics.SyncTransforms();

@@ -38,6 +38,14 @@ namespace Gamesim.Episode
         private HouseRoomMarker[] actMarkers;
         private HouseRoomQuery actFloors;
 
+        /// <summary>
+        /// The stage's looks so far, and when each act the house could not stage may be tried again: two looks
+        /// after its first miss (a second), then four, eight, and every sixteen (eight seconds) after that. An act
+        /// whose room has no free floor is not searched for twice a second for the whole window.
+        /// </summary>
+        private int actLooks;
+        private readonly Dictionary<string, (int at, int misses)> actRetry = new Dictionary<string, (int at, int misses)>(StringComparer.Ordinal);
+
         /// <summary>The acts the house has staged right now. A read for tests.</summary>
         public IReadOnlyList<string> StagedActs => npcMeetings == null ? new string[0] : npcMeetings.StagedActIds.ToArray();
 
@@ -54,10 +62,13 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The watch's guards (§4.5): the stroll's own (<see cref="WanderAllowed"/>) but its phase, and no overview,
-        /// no save under way, no blocked recovery, no diary, and a window open. The overview's map gives no sightings.
+        /// no save under way, no blocked recovery, no diary, no front door, and a window open. The overview's map
+        /// gives no sightings, and nor does the house behind the main menu, the cast screen or the creator: the
+        /// staged two may keep their places there, as the house keeps living, but the player is not looking.
         /// </summary>
         private bool ActWatchAllowed => ActsStageable && !IsPanelOpen && !challengeActive && !CeremonyOverlays.OnScreen && !TourIsUp
-            && playerIsActive && !overviewOpen && !durableCommitInProgress && !diaryOpen && EpisodeEngine.Window(projected) != Windows.None;
+            && !FrontDoorUp && playerIsActive && !overviewOpen && !durableCommitInProgress && !diaryOpen
+            && EpisodeEngine.Window(projected) != Windows.None;
 
         private void TickAllWeekActs(float delta)
         {
@@ -80,14 +91,24 @@ namespace Gamesim.Episode
             var wanted = EpisodeEngine.StageableActs(state);
             var ids = new HashSet<string>(wanted.Select(act => act.id), StringComparer.Ordinal);
             foreach (string id in npcMeetings.StagedActIds.ToArray()) if (!ids.Contains(id)) npcMeetings.ReleaseAct(id);
+            foreach (string id in actRetry.Keys.ToArray()) if (!ids.Contains(id)) actRetry.Remove(id);
+            actLooks++;
             // A saved conversation's two and the player's talk are never borrowed.
             var busy = new HashSet<string>(state.npcSocial.pending.SelectMany(row => new[] { row.firstId, row.secondId }), StringComparer.Ordinal);
             if (talkSpot != null) busy.Add(talkSpot.NpcId);
             foreach (var act in wanted)
             {
                 if (npcMeetings.IsActStaged(act.id) || busy.Contains(act.actorId) || busy.Contains(act.partnerId)) continue;
-                if (TryActPlaces(act, out var first, out var second))
-                    npcMeetings.TryStageAct(act.id, act.actorId, act.partnerId, first, second);
+                bool waiting = actRetry.TryGetValue(act.id, out var retry);
+                if (waiting && actLooks < retry.at) continue;
+                if (TryActPlaces(act, out var first, out var second)
+                    && npcMeetings.TryStageAct(act.id, act.actorId, act.partnerId, first, second))
+                {
+                    actRetry.Remove(act.id);
+                    continue;
+                }
+                int misses = (waiting ? retry.misses : 0) + 1;
+                actRetry[act.id] = (actLooks + (1 << Math.Min(misses, 4)), misses);
             }
         }
 
@@ -133,27 +154,29 @@ namespace Gamesim.Episode
         {
             var one = BodyFor(act.actorId);
             var two = BodyFor(act.partnerId);
-            if (one == null || two == null || player == null) return false;
+            if (one == null || two == null || player == null || player.Agent == null) return false;
             var at = player.transform.position;
-            if (RoomOf(one.position) != act.room || RoomOf(two.position) != act.room || RoomOf(at) != act.room) return false;
+            if (RoomOf(one.position, ActBodyRadius(one)) != act.room || RoomOf(two.position, ActBodyRadius(two)) != act.room
+                || RoomOf(at, player.Agent.radius) != act.room) return false;
             if (Across(one.position, two.position) > WalkInPairMetres) return false;
             return Mathf.Min(Across(at, one.position), Across(at, two.position)) <= WalkInReachMetres;
         }
 
-        /// <summary>Which room a point is in: its nearest room marker's, as the house's occupancy reads it.</summary>
-        private string RoomOf(Vector3 position)
+        /// <summary>
+        /// Which room a body standing here is in, as the house's floors read it (<see cref="HouseRoomQuery.TryLocate"/>,
+        /// the meeting's witness check and the room icons' own reading), or null off every floor's safe interior -
+        /// a doorway, a wall's edge. Never the nearest marker: across a cutaway wall that names the next room.
+        /// </summary>
+        private string RoomOf(Vector3 feet, float radius) =>
+            ActFloors() && actFloors.TryLocate(feet, radius, out var room) ? room : null;
+
+        private bool ActFloors() => actFloors != null || HouseRoomQuery.TryCreate(gameObject.scene, out actFloors, out _);
+
+        /// <summary>A body's capsule radius, as the meeting's checks read it, or the house's usual 0.35 m.</summary>
+        private static float ActBodyRadius(Transform body)
         {
-            var markers = ActMarkers();
-            HouseRoomMarker nearest = null;
-            float best = float.MaxValue;
-            foreach (var marker in markers)
-            {
-                if (marker == null) continue;
-                float distance = (marker.transform.position - position).sqrMagnitude;
-                if (distance >= best) continue;
-                best = distance; nearest = marker;
-            }
-            return nearest != null ? nearest.RoomName : null;
+            var capsule = body != null ? body.GetComponent<CapsuleCollider>() : null;
+            return capsule != null ? capsule.radius : .35f;
         }
 
         private HouseRoomMarker[] ActMarkers() => actMarkers ?? (actMarkers = gameObject.scene.GetRootGameObjects()
@@ -161,24 +184,26 @@ namespace Gamesim.Episode
             .Where(marker => !string.IsNullOrEmpty(marker.RoomName)).ToArray());
 
         /// <summary>
-        /// Two places to stand in the act's room, near its marker, a little over a metre apart, each on floor the
-        /// house can bind with room for a body; false when the room has none to give.
+        /// Two places to stand in the act's room, near its active marker, a little over a metre apart, each on the
+        /// room's own floor (the floor's room, not the nearest marker's) where the house can bind a body, with
+        /// room for that body and clear of furniture - which the capsule check, reading the sight layers, does not
+        /// see; false when the room has none to give.
         /// </summary>
         private bool TryActPlaces(NpcActState act, out Vector3 first, out Vector3 second)
         {
             first = second = default;
-            var marker = ActMarkers().FirstOrDefault(m => m != null && m.RoomName == act.room);
-            if (marker == null) return false;
-            if (actFloors == null && !HouseRoomQuery.TryCreate(gameObject.scene, out actFloors, out _)) return false;
+            var marker = ActMarkers().FirstOrDefault(m => m != null && m.isActiveAndEnabled && m.RoomName == act.room);
+            if (marker == null || !ActFloors()) return false;
             var one = BodyFor(act.actorId);
-            var body = one != null ? one.GetComponent<CapsuleCollider>() : null;
-            float radius = body != null ? body.radius : .35f, height = body != null ? body.height : 1.9f;
+            var two = BodyFor(act.partnerId);
+            if (one == null || two == null) return false;
             var agent = player != null ? player.Agent : null;
             var filter = new NavMeshQueryFilter
             {
                 agentTypeID = agent != null ? agent.agentTypeID : 0,
                 areaMask = agent != null ? agent.areaMask : NavMesh.AllAreas,
             };
+            float closest = ActBodyRadius(one) + ActBodyRadius(two) + .2f;
             for (int attempt = 0; attempt < 8; attempt++)
             {
                 var offset = UnityEngine.Random.insideUnitCircle * 1.5f;
@@ -186,25 +211,28 @@ namespace Gamesim.Episode
                 var turn = UnityEngine.Random.insideUnitCircle.normalized;
                 if (turn.sqrMagnitude < .5f) turn = Vector2.right;
                 var apart = new Vector3(turn.x, 0f, turn.y) * ActStandApart;
-                if (!Place(centre + apart, out first) || !Place(centre - apart, out second)) continue;
-                if (Across(first, second) < radius * 2f + .2f || Across(first, second) > WalkInPairMetres - .5f) continue;
-                if (RoomOf(first) != act.room || RoomOf(second) != act.room) continue;
+                if (!Place(centre + apart, one, out first) || !Place(centre - apart, two, out second)) continue;
+                if (Across(first, second) < closest || Across(first, second) > WalkInPairMetres - .5f) continue;
                 return true;
             }
             return false;
 
-            bool Place(Vector3 wanted, out Vector3 place)
+            bool Place(Vector3 wanted, Transform body, out Vector3 place)
             {
                 place = default;
+                var capsule = body.GetComponent<CapsuleCollider>();
+                float radius = capsule != null ? capsule.radius : .35f, height = capsule != null ? capsule.height : 1.9f;
                 if (!NavMesh.SamplePosition(wanted, out var hit, 1.5f, filter)) return false;
-                if (!actFloors.TrySampleFloor(hit.position, radius, filter, .25f, out place, out _)) return false;
-                return actFloors.HasCapsuleClearance(place, radius, height, one);
+                if (!actFloors.TrySampleFloor(hit.position, radius, filter, .25f, out place, out var room) || room != act.room) return false;
+                // The clearance check reads the sight layers, which leave the furniture out: a juror's place asks the layer itself.
+                return actFloors.HasCapsuleClearance(place, radius, height, body) && !InFurniture(place);
             }
         }
 
         private void ReleaseStagedActs()
         {
             if (npcMeetings != null && npcMeetings.StagedActCount > 0) npcMeetings.EndActStaging();
+            if (actRetry.Count > 0) actRetry.Clear();
             actWatched = null;
             actWatchHeld = 0f;
             actWatchElapsed = 0f;

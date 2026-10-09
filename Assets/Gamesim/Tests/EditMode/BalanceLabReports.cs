@@ -25,38 +25,69 @@ namespace Gamesim.Tests.EditMode
         internal static readonly int[] FullSizes = { 4, 6, 8, 10, 12 };
         internal static readonly int[] FullAllStarsSizes = { 8, 12 };
 
-        private static int FromEnvironment(string name, int fallback) =>
+        internal static int FromEnvironment(string name, int fallback) =>
             int.TryParse(Environment.GetEnvironmentVariable(name), NumberStyles.Integer, CultureInfo.InvariantCulture, out int value) && value > 0 ? value : fallback;
 
+        /// <summary>A tier: its cells, the seed count's variable and default, and its tables.</summary>
+        internal sealed class TierSpec
+        {
+            public string name, title, per, seedsVariable;
+            public int defaultSeeds;
+            public Func<List<BalanceLab.Cell>> cells;
+            public Func<IReadOnlyList<BalanceLab.SeasonRun>, string> tables;
+            public int Seeds => FromEnvironment(seedsVariable, defaultSeeds);
+        }
+
+        /// <summary>Every tier by name, for the reports below and for a tier played in parts (<see cref="BalanceLabParts"/>).</summary>
+        internal static readonly Dictionary<string, TierSpec> Tiers = new[]
+        {
+            new TierSpec { name = "headline", title = "Headline tier", per = "policy and house", seedsVariable = "BALANCE_SEEDS", defaultSeeds = 800,
+                cells = () => BalanceLab.Grid(BalancePolicies.All, HeadlineSizes), tables = Headline },
+            new TierSpec { name = "full", title = "Full tier", per = "policy and house", seedsVariable = "BALANCE_FULL_SEEDS", defaultSeeds = 800,
+                cells = FullGrid, tables = Headline },
+            new TierSpec { name = "performance", title = "Performance tier", per = "level and size", seedsVariable = "BALANCE_PERFORMANCE_SEEDS", defaultSeeds = 200,
+                cells = () => PerformanceModel.Levels.SelectMany(level => BalanceLab.Grid(new[] { BalancePolicies.Passive }, HeadlineSizes, PerformanceModel.Fixed(level))).ToList(),
+                tables = Performance },
+            new TierSpec { name = "warrooms", title = "War-room tier", per = "policy and house", seedsVariable = "BALANCE_WARROOM_SEEDS", defaultSeeds = 100,
+                cells = () => BalanceLab.Grid(WarRoomPolicies, HeadlineSizes), tables = runs => { var md = new StringBuilder(); WarRooms(md, runs); md.Append(BalanceLabDiagnostics.CounterWhatIf(runs)); return md.ToString(); } },
+        }.ToDictionary(t => t.name, StringComparer.Ordinal);
+
+        /// <summary>The players who convene a war room and answer its plan (B6a).</summary>
+        internal static readonly string[] WarRoomPolicies = { BalancePolicies.Random, BalancePolicies.Reader, BalancePolicies.Schemer, BalancePolicies.Loyalist, BalancePolicies.Floater };
+
         [Test, Explicit("The headline tier: every policy at eight and twelve on BALANCE_SEEDS seasons each (800 by default). Run by name.")]
-        public void HeadlineReport() =>
-            Tier("headline", "Headline tier", BalanceLab.Grid(BalancePolicies.All, HeadlineSizes), FromEnvironment("BALANCE_SEEDS", 800), "policy and house", Headline);
+        public void HeadlineReport() => Tier(Tiers["headline"]);
 
         [Test, Explicit("The full tier (overnight): every policy at 4, 6, 8, 10 and 12 and the All-Stars eight and twelve, on BALANCE_FULL_SEEDS seasons each (800 by default). Run by name.")]
-        public void FullReport() =>
-            Tier("full", "Full tier", FullGrid(), FromEnvironment("BALANCE_FULL_SEEDS", 800), "policy and house", Headline);
+        public void FullReport() => Tier(Tiers["full"]);
 
         internal static List<BalanceLab.Cell> FullGrid() =>
             BalanceLab.Grid(BalancePolicies.All, FullSizes).Concat(BalanceLab.Grid(BalancePolicies.All, FullAllStarsSizes, roster: CastTemplates.Roster.AllStars)).ToList();
 
         [Test, Explicit("B4's performance grid: the passive player at each fixed performance level, at eight and twelve, on BALANCE_PERFORMANCE_SEEDS seasons (200 by default). Run by name.")]
-        public void PerformanceReport() =>
-            Tier("performance", "Performance tier", PerformanceModel.Levels.SelectMany(level => BalanceLab.Grid(new[] { BalancePolicies.Passive }, HeadlineSizes, PerformanceModel.Fixed(level))).ToList(),
-                FromEnvironment("BALANCE_PERFORMANCE_SEEDS", 200), "level and size", Performance);
+        public void PerformanceReport() => Tier(Tiers["performance"]);
+
+        [Test, Explicit("B6a's war-room grid: the players who convene a war room at eight and twelve on BALANCE_WARROOM_SEEDS seasons (100 by default), with the counter's what-if (T0, Q1). Run by name.")]
+        public void WarRoomReport() => Tier(Tiers["warrooms"]);
 
         /// <summary>Plays a tier's cells, writes its rows and tables under balance/, and fails on any season with an error.</summary>
-        private static void Tier(string name, string title, List<BalanceLab.Cell> cells, int seeds, string per, Func<IReadOnlyList<BalanceLab.SeasonRun>, string> tables)
+        private static void Tier(TierSpec tier)
         {
             var clock = BalanceLab.Clock();
-            var runs = BalanceLab.Run(cells, seeds);
-            double minutes = clock.Elapsed.TotalMinutes;
-            string rows = BalanceLab.Write(name, BalanceLab.Jsonl(runs));
+            var runs = BalanceLab.Run(tier.cells(), tier.Seeds);
+            Write(tier, runs, tier.Seeds, clock.Elapsed.TotalMinutes);
+        }
+
+        /// <summary>A tier's rows and tables, written under balance/ and to the test's output; fails on any season with an error.</summary>
+        internal static void Write(TierSpec tier, IReadOnlyList<BalanceLab.SeasonRun> runs, int seeds, double minutes)
+        {
+            string rows = BalanceLab.Write(tier.name, BalanceLab.Jsonl(runs));
             var md = new StringBuilder();
-            md.AppendLine(title + ": " + runs.Length + " seasons (" + seeds + " per " + per + ") in " + BalanceLab.Num(minutes, "0.0") + " min on "
+            md.AppendLine(tier.title + ": " + runs.Count + " seasons (" + seeds + " per " + tier.per + ") in " + BalanceLab.Num(minutes, "0.0") + " min on "
                 + Environment.ProcessorCount + " threads; rows in " + rows + ".");
             md.AppendLine();
-            md.Append(tables(runs));
-            File.WriteAllText(Path.Combine(TestContext.CurrentContext.WorkDirectory, "balance", name + ".md"), md.ToString(), new UTF8Encoding(false));
+            md.Append(tier.tables(runs));
+            File.WriteAllText(Path.Combine(TestContext.CurrentContext.WorkDirectory, "balance", tier.name + ".md"), md.ToString(), new UTF8Encoding(false));
             TestContext.WriteLine(md.ToString());
             Assert.That(runs.Where(r => r.error != null).Select(r => r.cell.Key + " #" + r.index + ": " + r.error).Take(10), Is.Empty);
         }
@@ -311,20 +342,23 @@ namespace Gamesim.Tests.EditMode
         {
             md.AppendLine("### War rooms (D3): plans, answers and the counter");
             md.AppendLine();
-            md.AppendLine("Per policy and house, over all its seasons: seasons with a plan; plans; how they settled (agreed / countered / low / lapsed / void); the counter's reach - members who said the plan, off the block - with their mean come-round odds and how many came round; counters that carried; plans whose target was evicted that week; plans the player called.");
+            md.AppendLine("Per policy and house, over all its seasons: seasons with a plan; plans; how they settled (agreed / countered / low / lapsed / void); the counter's reach - members who said the plan, off the block - with their mean come-round odds and how many came round; counters that carried; plans whose target was evicted that week; plans the player called. "
+                + "The last column is the reach at every plan the player answered, a counter or not: the members a counter would have faced, and their mean odds.");
             md.AppendLine();
-            md.AppendLine("| policy | size | seasons with a plan | plans | agreed / countered / low / lapsed / void | reachable | mean odds | came round | counters carried | target evicted | player called |");
-            md.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|");
+            md.AppendLine("| policy | size | seasons with a plan | plans | agreed / countered / low / lapsed / void | reachable | mean odds | came round | counters carried | target evicted | player called | would-be reach (mean odds) |");
+            md.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|");
             foreach (var cell in Cells(runs))
             {
                 var w = cell.Select(r => r.autopsy.warRooms).ToList();
                 int Stance(string stance) => w.Sum(x => x.stances.TryGetValue(stance, out int n) ? n : 0);
-                var reach = cell.SelectMany(r => r.counterMembers).ToList();
+                var all = cell.SelectMany(r => r.counterMembers).ToList();
+                var reach = all.Where(m => m.stance == PactPlanStance.Countered).ToList();
                 int plans = w.Sum(x => x.plans), counters = w.Sum(x => x.counters);
                 md.AppendLine("| " + cell.Key.policy + " | " + cell.Key.size + " | " + w.Count(x => x.plans > 0) + " of " + w.Count + " | " + plans + " | "
                     + Stance(PactPlanStance.Agreed) + " / " + Stance(PactPlanStance.Countered) + " / " + Stance(PactPlanStance.Low) + " / " + Stance(PactPlanStance.Lapsed) + " / " + Stance(PactPlanStance.Void)
                     + " | " + reach.Count + " | " + (reach.Count == 0 ? "-" : BalanceLab.Num(reach.Average(m => m.odds), "0.00")) + " | " + reach.Count(m => m.cameRound)
-                    + " | " + w.Sum(x => x.countersCarried) + " of " + counters + " | " + w.Sum(x => x.targetEvicted) + " of " + plans + " | " + w.Sum(x => x.playerCalls) + " |");
+                    + " | " + w.Sum(x => x.countersCarried) + " of " + counters + " | " + w.Sum(x => x.targetEvicted) + " of " + plans + " | " + w.Sum(x => x.playerCalls)
+                    + " | " + all.Count + (all.Count == 0 ? "" : " (" + BalanceLab.Num(all.Average(m => m.odds), "0.00") + ")") + " |");
             }
             md.AppendLine();
         }

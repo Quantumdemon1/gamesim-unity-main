@@ -279,6 +279,18 @@ namespace Gamesim.Tests.EditMode
             return null;
         }
 
+        /// <summary>B6b: a tier played in parts - each part's seasons saved whole and read back - writes the rows one run writes.</summary>
+        [Test]
+        public void ATierPlayedInPartsWritesTheRowsOneRunWrites()
+        {
+            var cells = BalanceLab.Grid(new[] { BalancePolicies.Reader, BalancePolicies.Loyalist }, new[] { 6 });
+            string whole = BalanceLab.Jsonl(BalanceLab.Run(cells, 3));
+            var parts = BalanceLab.RunPart(cells, 0, 2).Concat(BalanceLab.RunPart(cells, 2, 1)).Select(BalanceLabParts.RoundTrip)
+                .OrderBy(r => cells.FindIndex(c => c.Key == r.cell.Key)).ThenBy(r => r.index).ToList();
+            Assert.That(BalanceLab.Jsonl(parts), Is.EqualTo(whole));
+            Assert.That(parts.Select(r => r.index), Is.EqualTo(new[] { 0, 1, 2, 0, 1, 2 }));
+        }
+
         [Test]
         public void TwoRunsWriteTheSameRowsWhateverTheParallelism()
         {

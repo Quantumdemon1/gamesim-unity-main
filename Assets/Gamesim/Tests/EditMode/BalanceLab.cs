@@ -80,7 +80,7 @@ namespace Gamesim.Tests.EditMode
             public readonly SortedDictionary<int, int> decisionsByWeek = new SortedDictionary<int, int>();
             public readonly SortedDictionary<int, double> ceremonyByWeek = new SortedDictionary<int, double>();
             public double finaleSeconds;
-            /// <summary>Every member a counter of the player's could reach, as each counter was answered (B6a).</summary>
+            /// <summary>Every member a counter of the player's could reach, at every plan the player answered (B6a).</summary>
             public readonly List<CounterMember> counterMembers = new List<CounterMember>();
             public bool Won => autopsy != null && autopsy.outcome == SeasonAutopsy.Outcomes.Winner;
             public bool FinalTwo => autopsy != null && (autopsy.outcome == SeasonAutopsy.Outcomes.Winner || autopsy.outcome == SeasonAutopsy.Outcomes.RunnerUp);
@@ -90,11 +90,15 @@ namespace Gamesim.Tests.EditMode
         /// One member a counter could reach (D3's re-measure as PactPlanSeasonDigests takes it): somebody who said the
         /// members' plan, off the block, with their odds as the answer read them - and what the odds were made of, their
         /// view of the player and the margin of their own lean as the player knows the season, and their traits - so the
-        /// counter's constants can be replayed offline (BALANCE plan §4 Q1). An analyst's record: no policy sees it.
+        /// counter's constants can be replayed offline (BALANCE plan §4 Q1). Kept for every plan the player answered,
+        /// with how they answered it: the members a counter would have faced where the player went with the plan or
+        /// lay low. An analyst's record: no policy sees it.
         /// </summary>
         internal sealed class CounterMember
         {
             public int week;
+            /// <summary>How the player answered the plan (<see cref="PactPlanStance"/>): only a countered plan's members were put to the coin.</summary>
+            public string stance;
             public double odds, view, margin;
             public List<string> traits = new List<string>();
             /// <summary>Whether the player knew them to have turned: then they never come round, whatever the odds.</summary>
@@ -167,7 +171,7 @@ namespace Gamesim.Tests.EditMode
             foreach (var row in after.ledger.plans)
             {
                 var was = before.ledger.plans.FirstOrDefault(b => b.week == row.week && b.allianceId == row.allianceId);
-                if (was == null || was.stance != PactPlanStance.Open || row.stance != PactPlanStance.Countered) continue;
+                if (was == null || was.stance != PactPlanStance.Open || row.stance == PactPlanStance.Open || row.stance == PactPlanStance.Void) continue;
                 var pact = before.alliances.FirstOrDefault(a => a.id == row.allianceId);
                 var standing = PactPlans.StandingSays(before, pact, was);
                 string plan = PactPlans.MembersPlan(standing);
@@ -175,10 +179,11 @@ namespace Gamesim.Tests.EditMode
                 foreach (var say in standing.Where(x => x.targetId == plan && !before.nominees.Contains(x.memberId)))
                     run.counterMembers.Add(new CounterMember
                     {
-                        week = row.week, odds = PactPlans.ComeRoundOdds(before, say.memberId),
+                        week = row.week, stance = row.stance, odds = PactPlans.ComeRoundOdds(before, say.memberId),
                         view = known.Score(say.memberId, known.playerId), margin = WebEvictionVoting.EvaluateNative(known, say.memberId).margin,
                         traits = (known.Find(say.memberId)?.traits ?? new List<string>()).ToList(), lapsed = Allegiance.Lapsed(known, say.memberId),
-                        cameRound = row.cameRound != null && row.cameRound.Contains(say.memberId), carried = row.targetId == row.counterId,
+                        cameRound = row.cameRound != null && row.cameRound.Contains(say.memberId),
+                        carried = row.stance == PactPlanStance.Countered && row.targetId == row.counterId,
                     });
             }
         }
@@ -282,11 +287,14 @@ namespace Gamesim.Tests.EditMode
         // ---------------------------------------------------------------- many seasons
 
         /// <summary>Every cell's seasons 0..n-1, in parallel, into an array ordered by cell then index.</summary>
-        internal static SeasonRun[] Run(IReadOnlyList<Cell> cells, int seasonsPerCell, int parallelism = 0)
+        internal static SeasonRun[] Run(IReadOnlyList<Cell> cells, int seasonsPerCell, int parallelism = 0) => RunPart(cells, 0, seasonsPerCell, parallelism);
+
+        /// <summary>Every cell's seasons from..from+count-1, in parallel, into an array ordered by cell then index: one part of a tier.</summary>
+        internal static SeasonRun[] RunPart(IReadOnlyList<Cell> cells, int from, int count, int parallelism = 0)
         {
-            var runs = new SeasonRun[cells.Count * seasonsPerCell];
+            var runs = new SeasonRun[cells.Count * count];
             var options = new ParallelOptions { MaxDegreeOfParallelism = parallelism > 0 ? parallelism : Environment.ProcessorCount };
-            Parallel.For(0, runs.Length, options, i => runs[i] = Play(cells[i / seasonsPerCell], i % seasonsPerCell));
+            Parallel.For(0, runs.Length, options, i => runs[i] = Play(cells[i / count], from + i % count));
             return runs;
         }
 
@@ -345,7 +353,7 @@ namespace Gamesim.Tests.EditMode
                 },
                 counterMembers = r.counterMembers.Select(m => new
                 {
-                    w = m.week, odds = Math.Round(m.odds, 4), view = Math.Round(m.view, 2), margin = Math.Round(m.margin, 4), traits = m.traits,
+                    w = m.week, m.stance, odds = Math.Round(m.odds, 4), view = Math.Round(m.view, 2), margin = Math.Round(m.margin, 4), traits = m.traits,
                     m.lapsed, came = m.cameRound, m.carried,
                 }),
                 commands = r.commands, own = r.own, fallbacks = r.fallbacks, freeActions = r.freeActions, refusals = r.refusals, refusalsBy = r.refusalsByKind,

@@ -268,6 +268,9 @@
     <Compile Include="$(EditMode)BalanceLabPerformance.cs" />
     <Compile Include="$(EditMode)BalanceLabTests.cs" />
     <Compile Include="$(EditMode)BalanceLabReports.cs" />
+    <!-- B6b and T0: a long tier played in parts and merged; the diagnostics that decide each tuning question. -->
+    <Compile Include="$(EditMode)BalanceLabParts.cs" />
+    <Compile Include="$(EditMode)BalanceLabDiagnostics.cs" />
 
     <!--
       Several parity tests already carry an #else branch for running outside the editor: without

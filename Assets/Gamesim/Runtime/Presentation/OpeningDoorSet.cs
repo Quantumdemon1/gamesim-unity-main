@@ -450,6 +450,15 @@ namespace Gamesim.Presentation
                     new Vector3(depth, height, toZ - jambRight), facade, true);
             Box("Top panel", group, new Vector3(FacadeX, (head + height) / 2f, DoorCentre.z),
                 new Vector3(depth, height - head, jambRight - jambLeft), facade, true);
+            // The authored frame (the art brief's A4): jambs, lintel and crown in one, stepped Deco
+            // fashion, on the facade's centre plane at the doorway's middle.
+            var kit = OpeningDoorKit.Current;
+            if (kit != null && kit.frame != null)
+            {
+                MeshPiece("Frame", group, new Vector3(FacadeX, 0f, DoorCentre.z), kit.frame,
+                    OpeningDoorKit.Wear(kit.frameSlots, kit.frame, slot => slot.Contains("gold") ? gold : facade), true);
+                return;
+            }
             // The crown sits at 2.7-2.8 and the leaves stop at 2.6; without this the closed door had a
             // 10 cm slot over it.
             Box("Lintel", group, new Vector3(FacadeX, ApertureHeight + 0.05f, DoorCentre.z),
@@ -477,6 +486,18 @@ namespace Gamesim.Presentation
             var hinge = Group(name, parent);
             hinge.localPosition = new Vector3(FacadeFrontX, 0f, hingeZ);
             float across = side * LeafWidth / 2f;
+            // The authored leaf (the art brief's A4): its panels and rail folded into one mesh, still
+            // named "Leaf" (the opening's leaf watch reads it), with the handle a child of the hinge.
+            var kit = OpeningDoorKit.Current;
+            if (kit != null && kit.leaf != null)
+            {
+                MeshPiece("Leaf", hinge, new Vector3(-LeafThickness / 2f, 0f, across), kit.leaf,
+                    OpeningDoorKit.Wear(kit.leafSlots, kit.leaf, slot => slot.Contains("gold") ? gold : slot.Contains("panel") ? panel : leaf), true);
+                if (kit.handle != null)
+                    MeshPiece("Handle", hinge, new Vector3(-LeafThickness / 2f, 1.05f - HandleRose, side * (LeafWidth - 0.15f)), kit.handle,
+                        OpeningDoorKit.Wear(kit.handleSlots, kit.handle, slot => gold), true);
+                return hinge;
+            }
             Box("Leaf", hinge, new Vector3(-LeafThickness / 2f, LeafHeight / 2f, across),
                 new Vector3(LeafThickness, LeafHeight, LeafWidth), leaf, true);
             Box("Upper panel", hinge, new Vector3(0.005f, 1.875f, across), new Vector3(0.02f, 0.95f, 0.7f), panel, true);
@@ -651,6 +672,24 @@ namespace Gamesim.Presentation
             group.layer = 0;
             group.transform.SetParent(parent, false);
             return group.transform;
+        }
+
+        /// <summary>The authored handle's rose radius: its mesh stands on its roses' bottom edge.</summary>
+        private const float HandleRose = 0.025f;
+
+        /// <summary>An authored mesh, placed like <see cref="Piece"/>: no collider, the default layer, no shadow cast.</summary>
+        private GameObject MeshPiece(string name, Transform parent, Vector3 position, Mesh mesh, Material[] materials, bool solid)
+        {
+            var piece = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
+            piece.layer = 0;
+            piece.transform.SetParent(parent, false);
+            piece.transform.localPosition = position;
+            piece.GetComponent<MeshFilter>().sharedMesh = mesh;
+            var renderer = piece.GetComponent<MeshRenderer>();
+            if (System.Array.TrueForAll(materials, material => material != null)) renderer.sharedMaterials = materials;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = solid;
+            return piece;
         }
 
         private GameObject Box(string name, Transform parent, Vector3 position, Vector3 size, Material material, bool solid) =>

@@ -140,6 +140,19 @@ namespace Gamesim.Tests.EditMode
             Assert.That(s.acceptedCommandIds, Is.Empty);
         }
 
+        /// <summary>
+        /// The schema-29 tripwire (vote family V6's review). Since V6 every fresh season plays mode 2, so players'
+        /// schema-28 saves hold the whole mode-2 Vote core, which no frozen contract holds yet: the save contract
+        /// freezes at 28 (the lead's decision D2). Whoever bumps the live schema must freeze that core into
+        /// FrozenEpisodeV28 and load a mode-2 schema-28 save through it, then move this pin with them.
+        /// </summary>
+        [Test]
+        public void TheLiveSchemaStaysAt28UntilFrozenEpisodeV28FreezesTheModeTwoCore()
+        {
+            Assert.That(new EpisodeState().schemaVersion, Is.EqualTo(28),
+                "Bumping past 28: FrozenEpisodeV28 must freeze the whole mode-2 core (vote family V6, D2) and load a mode-2 schema-28 save.");
+        }
+
         /// <summary>Fresh seasons only: the economy refuses a season that has been played, so ApplyFresh does too.</summary>
         [Test]
         public void ApplyFreshRefusesASeasonThatHasBeenPlayed()

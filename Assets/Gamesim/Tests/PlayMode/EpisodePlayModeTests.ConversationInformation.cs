@@ -2,6 +2,7 @@ using System.Collections;
 using System.IO;
 using System.Linq;
 using Gamesim.Episode;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
@@ -146,14 +147,14 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator ConversationInformation_InformationControlsRemainKeyboardReachableAtBothTextSizes()
         {
             yield return InstallInformationHouse(size: 16);
-            foreach (bool large in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(large); yield return TalkTo(informationListenerId);
+                yield return ApplyTextSize(textSize); yield return TalkTo(informationListenerId);
                 Assert.That(TagOn(ButtonWithCaption(EpisodeHud.DiscussGameCaption)), Is.EqualTo(EpisodeDirector.LearnTag + " · " + EpisodeDirector.RiskTag));
-                yield return AssertKeyboardRing("Information conversation " + large, ModalRoot);
+                yield return AssertKeyboardRing("Information conversation " + TextSizes.Name(textSize), ModalRoot);
                 director.ClosePanels(); yield return OpenStation();
                 Assert.That(ButtonWithCaption(EpisodeHud.AirLaundryCaption).IsInteractable(), Is.True);
-                yield return AssertKeyboardRing("Information house moves " + large, ModalRoot);
+                yield return AssertKeyboardRing("Information house moves " + TextSizes.Name(textSize), ModalRoot);
             }
         }
 

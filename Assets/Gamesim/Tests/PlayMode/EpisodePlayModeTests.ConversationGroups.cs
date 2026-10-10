@@ -520,17 +520,17 @@ namespace Gamesim.Tests.PlayMode
                 });
                 // A body that finishes assembling renders the HUD again; measure in a house that has.
                 yield return SettleCast();
-                foreach (bool larger in new[] { false, true })
+                foreach (var (textSize, larger) in TextScales.Steps)
                 {
-                    yield return ApplyTextSize(larger);
+                    yield return ApplyTextSize(textSize);
                     var listener = Listener(director.Snapshot);
                     yield return TalkTo(listener.id);
                     var state = director.Snapshot;
-                    string where = "Free time in a house of " + houseguests + (larger ? " at the larger text" : "");
-                    AssertConversationFits(larger, where);
+                    string where = "Free time in a house of " + houseguests + (larger ? " " + TextScales.At(textSize) : "");
+                    AssertConversationFits(textSize, where);
                     AssertTagsHaveRoom(where);
                     if (houseguests == 16)
-                        yield return CaptureConversation(larger ? "conversation-grouped-large" : "conversation-grouped", where, null);
+                        yield return CaptureConversation("conversation-grouped" + TextScales.Suffix(textSize), where, null);
                     Assert.That(PlayerDeals.Subjects(state, listener.id), Is.Not.Empty, where + ": the deal table has target agreements to fold.");
                     foreach (var (verb, frame) in new[]
                     {
@@ -542,7 +542,7 @@ namespace Gamesim.Tests.PlayMode
                         string open = where + " with '" + verb + "' open";
                         // Before anything else scrolls the column.
                         AssertVerbAtTop(verb, open);
-                        AssertConversationFits(larger, open);
+                        AssertConversationFits(textSize, open);
                         AssertTagsHaveRoom(open);
                         AssertPickerFits(verb, open);
                         if (AllyIn(state) != listener.id)
@@ -551,7 +551,7 @@ namespace Gamesim.Tests.PlayMode
                             Assert.That(PickerCells(verb, open).All(cell => cell.Find(EpisodeHud.PickerTagName) != null && ChanceOn(cell.GetComponent<Button>()) != null), Is.True,
                                 open + ": every target agreement carries the table's stakes on a chip and the player's read of the odds beside it.");
                         if (houseguests == 16)
-                            yield return CaptureConversation(frame + (larger ? "-large" : ""), open, verb);
+                            yield return CaptureConversation(frame + TextScales.Suffix(textSize), open, verb);
                     }
                     director.ClosePanels();
                     yield return null;
@@ -571,13 +571,13 @@ namespace Gamesim.Tests.PlayMode
         {
             yield return InstallTalkingHouse(16, true, AlliedWith(season => season.nominees[1]));
             yield return SettleCast();
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 var listener = Listener(director.Snapshot);
                 yield return TalkTo(listener.id);
-                string where = "The campaign in a house of 16" + (larger ? " at the larger text" : "");
-                AssertConversationFits(larger, where);
+                string where = "The campaign in a house of 16" + (larger ? " " + TextScales.At(textSize) : "");
+                AssertConversationFits(textSize, where);
                 AssertTagsHaveRoom(where);
                 // The vote deals' rows ("Propose a vote to keep ...") carry the player's own reading,
                 // said so, clear of the chevron (UI-UX-PASS-PLAN T0).
@@ -587,13 +587,13 @@ namespace Gamesim.Tests.PlayMode
                     yield return PressRow(verb);
                     string open = where + " with '" + verb + "' open";
                     AssertVerbAtTop(verb, open);
-                    AssertConversationFits(larger, open);
+                    AssertConversationFits(textSize, open);
                     AssertTagsHaveRoom(open);
                     AssertPickerFits(verb, open);
                     AssertReadingsClearOfChevrons(open, true);
                     Assert.That(PickerShows(verb, EpisodeHud.PickerAllyName), Is.True, open + ": the nominee in a pact with the player shows it on their foot.");
                     if (verb == EpisodeDirector.PromiseToEvictPickerCaption)
-                        yield return CaptureConversation(larger ? "conversation-grouped-promise-large" : "conversation-grouped-promise", open, verb);
+                        yield return CaptureConversation("conversation-grouped-promise" + TextScales.Suffix(textSize), open, verb);
                 }
                 director.ClosePanels();
                 yield return null;
@@ -670,7 +670,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(ChanceOn(card), Is.EqualTo(KnownOdds.CardWord(KnownOdds.Deal(state, listener.id, DealKind.TargetAgreement, id))),
                     "and the player's read of the odds beside it, 'no read' where it has nothing behind it.");
             }
-            AssertConversationFits(false, where + " with its target agreements open");
+            AssertConversationFits(TextSize.Standard, where + " with its target agreements open");
             AssertTagsHaveRoom(where);
             AssertPickerFits(EpisodeDirector.TargetDealPickerCaption, where);
 
@@ -751,15 +751,15 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(PickerCells(EpisodeDirector.VentPickerCaption, where).Select(cell => cell.name),
                 Is.EquivalentTo(state.Active.Where(c => !c.isPlayer && c.id != hoh).Select(c => EpisodeDirector.VentCaption(c.name))),
                 where + ": venting opens everybody else, each under the caption their row had.");
-            AssertConversationFits(false, where + " with venting open");
+            AssertConversationFits(TextSize.Standard, where + " with venting open");
             AssertPickerFits(EpisodeDirector.VentPickerCaption, where);
             director.ClosePanels();
             yield return null;
         }
 
-        private void AssertConversationFits(bool larger, string where)
+        private void AssertConversationFits(TextSize textSize, string where)
         {
-            AssertRowsHaveRoom(larger, where);
+            AssertRowsHaveRoom(textSize, where);
             AssertCopyHolds(where);
         }
 

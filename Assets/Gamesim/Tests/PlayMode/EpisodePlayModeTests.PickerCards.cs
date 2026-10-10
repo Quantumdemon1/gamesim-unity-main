@@ -343,12 +343,12 @@ namespace Gamesim.Tests.PlayMode
                 var verbs = campaign
                     ? new[] { EpisodeDirector.PromiseToEvictPickerCaption, EpisodeDirector.TargetDealPickerCaption }
                     : new[] { EpisodeDirector.VentPickerCaption, EpisodeDirector.LiePickerCaption, EpisodeDirector.CalloutPickerCaption, EpisodeDirector.TargetDealPickerCaption };
-                foreach (bool larger in new[] { false, true })
+                foreach (var (textSize, larger) in TextScales.Steps)
                 {
-                    yield return ApplyTextSize(larger);
+                    yield return ApplyTextSize(textSize);
                     var listener = Listener(director.Snapshot);
                     yield return TalkTo(listener.id);
-                    string where = (campaign ? "The campaign" : "Free time") + " in a house of 16" + (larger ? " at the larger text" : "");
+                    string where = (campaign ? "The campaign" : "Free time") + " in a house of 16" + (larger ? " " + TextScales.At(textSize) : "");
                     foreach (string verb in verbs)
                     {
                         yield return PressRow(verb);
@@ -357,7 +357,7 @@ namespace Gamesim.Tests.PlayMode
                         yield return AtBothFrames(frame =>
                         {
                             string at = open + " on the " + frame + " frame";
-                            AssertRowsHaveRoom(larger, at);
+                            AssertRowsHaveRoom(textSize, at);
                             AssertCopyHolds(at);
                             AssertPickerFits(verb, at);
                             // The promise's people are the nominees; every other picker holds the long name.

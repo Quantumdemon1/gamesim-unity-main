@@ -154,10 +154,10 @@ namespace Gamesim.Tests.PlayMode
                 string unheardCard = EpisodeHud.SuspectedCardPrefix
                     + string.Join(" & ", state.contestants.Where(c => unheard.members.Contains(c.id)).Select(c => c.name));
 
-                foreach (bool larger in new[] { false, true })
+                foreach (var (textSize, larger) in TextScales.Steps)
                 {
-                    yield return ApplyTextSize(larger);
-                    string where = pacts + " pacts at " + (larger ? "larger" : "standard") + " text";
+                    yield return ApplyTextSize(textSize);
+                    string where = pacts + " pacts " + TextScales.At(textSize);
                     director.ShowNotebookSection(EpisodeDirector.NotebookSection.Alliances);
                     yield return null; yield return null;
                     // Taken with the page open: opening a panel may bank the house's clock as a commit
@@ -300,10 +300,10 @@ namespace Gamesim.Tests.PlayMode
                 var page = AllianceRead.Read(state);
                 Assert.That(page.yours.Count, Is.EqualTo(size == largest ? 2 : 1));
                 Assert.That(page.suspected.Count, Is.EqualTo(size == largest ? 2 : 1));
-                foreach (bool larger in new[] { false, true })
+                foreach (var (textSize, larger) in TextScales.Steps)
                 {
-                    yield return ApplyTextSize(larger);
-                    string where = "a house of " + size + " at " + (larger ? "larger" : "standard") + " text";
+                    yield return ApplyTextSize(textSize);
+                    string where = "a house of " + size + " " + TextScales.At(textSize);
                     director.ShowNotebookSection(EpisodeDirector.NotebookSection.Alliances);
                     yield return null; yield return null;
                     Canvas.ForceUpdateCanvases();

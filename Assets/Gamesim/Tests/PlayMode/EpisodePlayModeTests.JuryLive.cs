@@ -35,9 +35,9 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(exchange.finalistId, Is.EqualTo(state.playerId), "The player answers.");
             var juror = state.Find(exchange.questionerId);
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenFinalePanel();
                 yield return Frames(2);
                 Canvas.ForceUpdateCanvases();
@@ -92,7 +92,7 @@ namespace Gamesim.Tests.PlayMode
                         "The ways on, abreast.");
                     if (Application.isBatchMode) yield return CaptureFraming("endgame-jury-live", settle: false);
                 }
-                else Assert.That(c.yMax, Is.LessThanOrEqualTo(a.yMin + 1f), "One under another at the larger text.");
+                else Assert.That(c.yMax, Is.LessThanOrEqualTo(a.yMin + 1f), "One under another " + TextScales.At(textSize) + ".");
                 director.ClosePanels();
                 yield return null;
             }

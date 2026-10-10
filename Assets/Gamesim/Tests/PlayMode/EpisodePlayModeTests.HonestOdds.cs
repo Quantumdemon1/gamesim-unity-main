@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Episode;
 using Gamesim.House;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
@@ -229,7 +230,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator HonestOdds_TheReadAndItsChipFitAtBothTextSizes()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
                 string hoh = null;
                 yield return InstallStrategySeason(41, state =>
@@ -237,13 +238,13 @@ namespace Gamesim.Tests.PlayMode
                     state.phase = EpisodePhase.Nomination;
                     hoh = state.hohId = state.Active.First(actor => !actor.isPlayer).id;
                 });
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return TalkTo(hoh);
                 var state = director.Snapshot;
                 ButtonWithCaption(EpisodeHud.LobbyAskCaption(state, state.Find(hoh).name, LobbyAsk.Spare, state.playerId)).onClick.Invoke();
                 yield return null;
                 Canvas.ForceUpdateCanvases();
-                string at = larger ? "the larger text" : "the standard text";
+                string at = "the " + TextSizes.Name(textSize) + " text";
 
                 var column = ActiveRect(EpisodeHud.ConversationColumnName);
                 Assert.That(column != null, Is.True, "A conversation is open at " + at + ".");

@@ -245,16 +245,16 @@ namespace Gamesim.Tests.PlayMode
             foreach (var text in chip.GetComponentsInChildren<TMP_Text>())
                 Assert.That(ShowsAllOf(text), Is.True, "The week chip loses the end of \"" + text.text + "\".");
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenFinalePanel();
                 yield return Frames(3);
-                string where = "The final choice" + (larger ? " at the larger text" : "");
+                string where = "The final choice" + (larger ? " " + TextScales.At(textSize) : "");
                 AssertTheFinalChoicePage(state, where + " on the batch canvas");
                 yield return AtBothFrames(frame => AssertTheFinalChoicePage(state, where + " on the " + frame + " frame"));
                 if (Application.isBatchMode)
-                    yield return CaptureFraming(larger ? "endgame-final-choice-large" : "endgame-final-choice", settle: false,
+                    yield return CaptureFraming("endgame-final-choice" + TextScales.Suffix(textSize), settle: false,
                         inspect: frame => AssertTheFinalChoicePage(state, where + " in the capture's 16:9 frame"));
 
                 if (!larger)
@@ -448,12 +448,12 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(leans.Count(lean => lean.lean == FinalistRead.Support && lean.certainty == FinalistRead.Confirmed), Is.EqualTo(1), "one they were part of,");
             Assert.That(leans.Count(lean => lean.lean == FinalistRead.Uncertain), Is.EqualTo(9), "and no read on the rest.");
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenFinalePanel();
                 yield return Frames(3);
-                string where = "A jury of thirteen" + (larger ? " at the larger text" : "");
+                string where = "A jury of thirteen" + (larger ? " " + TextScales.At(textSize) : "");
                 AssertTheFinalChoicePage(state, where + " on the batch canvas");
                 yield return AtBothFrames(frame => AssertTheFinalChoicePage(state, where + " on the " + frame + " frame"));
                 // Every kind of chip on the first finalist's card, as the read says it.
@@ -465,7 +465,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(grounds.Count(colour => SameHue(colour, UiTheme.Allied) && colour.a < .3f), Is.EqualTo(1), where + ": one outlined green,");
                 Assert.That(grounds.Count(colour => SameHue(colour, UiTheme.Allied) && colour.a > .9f), Is.EqualTo(1), where + ": one filled green,");
                 Assert.That(grounds.Count(colour => SameHue(colour, UiTheme.Muted) && colour.a < .3f), Is.EqualTo(9), where + ": nine outlined grey.");
-                if (Application.isBatchMode && larger)
+                if (Application.isBatchMode && textSize == TextSize.Larger)
                     yield return CaptureFraming("endgame-final-choice-13", settle: false,
                         inspect: frame => AssertTheFinalChoicePage(state, where + " in the capture's 16:9 frame"));
                 director.ClosePanels();
@@ -511,12 +511,12 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(FinalistRead.IfYouTake(state, take.id, others.Single(other => other.id != take.id).id), Has.Count.GreaterThanOrEqualTo(5),
                     take.name + "'s column carries the deals' bullets beside the jury's.");
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenFinalePanel();
                 yield return Frames(3);
-                string where = "Every deal and a jury of thirteen" + (larger ? " at the larger text" : "");
+                string where = "Every deal and a jury of thirteen" + (larger ? " " + TextScales.At(textSize) : "");
                 AssertTheFinalChoicePage(state, where + " on the batch canvas", consequenceMayGo: true);
                 yield return AtBothFrames(frame => AssertTheFinalChoicePage(state, where + " on the " + frame + " frame", consequenceMayGo: true));
                 foreach (var take in others)
@@ -524,7 +524,7 @@ namespace Gamesim.Tests.PlayMode
                         Is.EqualTo(1), where + ": " + take.name + "'s column warns of the deal its control alone breaks.");
                 Assert.That(LastActive(EpisodeHud.FinalChoicePageName).GetComponentsInChildren<TMP_Text>().Count(label => label.name == EpisodeHud.EitherWayName),
                     Is.EqualTo(1), where + ": the either-way line, once, over both cards.");
-                if (Application.isBatchMode && larger)
+                if (Application.isBatchMode && textSize == TextSize.Larger)
                     yield return CaptureFraming("endgame-final-choice-every-deal", settle: false,
                         inspect: frame => AssertTheFinalChoicePage(state, where + " in the capture's 16:9 frame", consequenceMayGo: true));
                 director.ClosePanels();

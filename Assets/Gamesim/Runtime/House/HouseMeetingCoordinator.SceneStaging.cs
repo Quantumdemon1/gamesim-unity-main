@@ -117,6 +117,22 @@ namespace Gamesim.House
 
         public void HoldSceneForEmbrace(bool hold) => SceneHeldForEmbrace = hold && sceneLeases.Count > 0;
 
+        /// <summary>
+        /// Lets one of the scene's people go - a storm-off takes them out of it - and keeps the rest;
+        /// the scene ends with its last.
+        /// </summary>
+        public void ReleaseFromSceneStage(string id)
+        {
+            if (id == null || !sceneLeases.TryGetValue(id, out var lease)) return;
+            if (lease.actor.motion != null)
+            {
+                lease.actor.motion.Release(lease.token);
+                lease.actor.motion.SetPaused(paused);
+            }
+            sceneLeases.Remove(id);
+            if (sceneLeases.Count == 0) EndSceneStage();
+        }
+
         /// <summary>Lets everybody the scene borrowed go back to their own day.</summary>
         public void EndSceneStage()
         {

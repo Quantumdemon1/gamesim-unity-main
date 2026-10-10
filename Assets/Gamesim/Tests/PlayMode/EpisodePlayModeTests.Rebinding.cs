@@ -6,6 +6,7 @@ using Gamesim.Episode;
 using Gamesim.House;
 using Gamesim.Persistence;
 using Gamesim.Presentation;
+using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
@@ -181,6 +182,53 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
         }
 
+        /// <summary>
+        /// While a rebinding listens, a press on the other device is not one it can take, and the
+        /// rebinding lets it through to the game's actions - only the press it takes is kept from them.
+        /// The house leaves those presses alone too (<see cref="HouseBindings.Busy"/>): listening for a
+        /// key, the pad's Start and B close no settings; listening for a pad button, J opens no notebook
+        /// over them. Esc still cancels either.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Rebinding_WhileItListensTheOtherDevicesPressesDoNothingInTheHouse()
+        {
+            var pad = TestGamepad();
+            yield return OpenTheControlsSection();
+            FindButton("Rebind Notebook").onClick.Invoke();
+            yield return null;
+            Assert.That(HouseBindings.Listening, Is.True, "Pressed by the keyboard, the rebinding listens for a key.");
+            Assert.That(RebindLineShown(), Does.StartWith("Press the new key or button for Notebook"));
+            foreach (var button in new[] { GamepadButton.Start, GamepadButton.East })
+            {
+                yield return PressPad(pad, button);
+                Assert.That(director.IsPanelOpen && ShowsControl("Rebind Notebook"), Is.True,
+                    "The pad's " + button + " closed nothing while the rebinding listened for a key.");
+                Assert.That(HouseBindings.Listening, Is.True, "The pad's " + button + " is not a key: the rebinding still listens.");
+            }
+            yield return PressKey(Key.Escape);
+            Assert.That(HouseBindings.Listening, Is.False, "Esc cancels it,");
+            Assert.That(RebindLineShown(), Is.EqualTo("Notebook keeps its key."));
+            Assert.That(director.IsPanelOpen, Is.True, "and the settings stay open.");
+            yield return null; yield return null;
+
+            // The pad pressed last: the rebinding listens to the pad, and the keyboard's J passes it by.
+            yield return PressPad(pad, GamepadButton.RightStick);
+            yield return null;
+            FindButton("Rebind Diary").onClick.Invoke();
+            yield return null;
+            Assert.That(HouseBindings.Listening, Is.True, "Pressed by the pad, the rebinding listens for a pad button.");
+            yield return PressKey(Key.J);
+            Assert.That(ShowsControl("Rebind Diary"), Is.True, "J opened no notebook over the settings while the rebinding listened for a pad button.");
+            Assert.That(HouseBindings.Listening, Is.True, "J is not a pad button: the rebinding still listens.");
+            yield return PressKey(Key.Escape);
+            Assert.That(HouseBindings.Listening, Is.False, "Esc cancels a pad rebinding too,");
+            Assert.That(RebindLineShown(), Is.EqualTo("Diary keeps its button."));
+            Assert.That(director.IsPanelOpen, Is.True, "and closes nothing.");
+            Assert.That(HouseBindings.Current.Count, Is.Zero, "Nothing was rebound.");
+            director.ClosePanels();
+            yield return null;
+        }
+
         [UnityTest]
         public IEnumerator Rebinding_APadButtonRebindsThePadsWay_AndTheHintsNameIt()
         {
@@ -211,6 +259,134 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(RebindLineShown(), Does.Contain("stays as it is").And.Contain("Diary keeps its button"));
             Assert.That(director.IsPanelOpen, Is.True, "and the B that was refused closed nothing.");
             director.ClosePanels();
+            yield return null;
+        }
+
+        /// <summary>
+        /// The camera's own keys rebind too, on the keyboard alone (A5): the pad turns and pans with
+        /// its sticks, so "Rebind Orbit left" pressed by the pad still listens for a key, and a pad
+        /// button pressed then is not one. Orbit left given Z turns the camera as Q did, and Q no
+        /// longer does; the pan's up given I, the help card says "IASD/arrows: pan"; and "Reset all
+        /// controls" puts Q and W back.
+        /// </summary>
+        [UnityTest, Timeout(240000)]
+        public IEnumerator Rebinding_TheCamerasKeysAreTheKeyboardsToChoose()
+        {
+            HoldTheHouseForTheFixture();
+            var pad = TestGamepad();
+            yield return OpenTheControlsSection();
+            yield return PressPad(pad, GamepadButton.RightStick);
+            yield return null;
+            FindButton("Rebind Orbit left").onClick.Invoke();
+            yield return null;
+            Assert.That(HouseBindings.Listening, Is.True, "Pressed by the pad, a camera key still listens,");
+            Assert.That(RebindLineShown(), Is.EqualTo("Press the new key for Orbit left. Esc cancels."), "for a key.");
+            yield return PressPad(pad, GamepadButton.North);
+            Assert.That(HouseBindings.Listening, Is.True, "Y is not a key: it is still listening.");
+            yield return PressKey(Key.Z);
+            Assert.That(RebindLineShown(), Is.EqualTo("Orbit left is now Z."));
+            Assert.That(HouseBindings.Current.Get(KeyBindings.FindTarget("Camera", "OrbitRate", "Left"), KeyBindings.KeyboardScheme), Is.EqualTo("<Keyboard>/z"));
+            yield return null; yield return null;
+            FindButton("Rebind Pan up").onClick.Invoke();
+            yield return null;
+            yield return PressKey(Key.A);
+            Assert.That(RebindLineShown(), Is.EqualTo("A is already Pan left's. Pan up keeps its key."), "One part of the pan is refused another's key.");
+            yield return null; yield return null;
+            FindButton("Rebind Pan up").onClick.Invoke();
+            yield return null;
+            yield return PressKey(Key.I);
+            Assert.That(RebindLineShown(), Is.EqualTo("Pan up is now I."));
+            director.ClosePanels();
+            yield return null; yield return null;
+
+            // Z turns the camera as Q did, and Q no longer does.
+            SetCameraDistance(20f);
+            yield return SettleCamera();
+            cameraRig.ControlsEnabled = true;
+            float before = cameraRig.Yaw;
+            yield return HoldKey(Key.Z);
+            Assert.That(Turned(before, cameraRig.Yaw), Is.LessThan(-1f), "Z turns the camera as Q did.");
+            before = cameraRig.Yaw;
+            yield return HoldKey(Key.Q);
+            Assert.That(Mathf.Abs(Turned(before, cameraRig.Yaw)), Is.LessThan(.01f), "Q no longer turns it.");
+
+            // The help card names the pan's keys as they are.
+            yield return PressKey(Key.LeftCtrl);
+            ButtonWithCaption("Help · controls").onClick.Invoke();
+            yield return Frames(2);
+            string card = InputGlossary.KeyboardHelpCard.Replace("WASD/arrows: pan", "IASD/arrows: pan");
+            Assert.That(HelpCardShows(card), Is.True, "The help card says the pan's keys as they are: " + string.Join(" | ",
+                director.GetComponentsInChildren<TMP_Text>().Where(text => text.isActiveAndEnabled && text.text.Contains("arrows: pan")).Select(text => text.text)));
+            ButtonWithCaption("Hide controls").onClick.Invoke();
+            yield return Frames(2);
+
+            // Reset all: Q and W are the camera's again, and the help card is as it was written.
+            yield return OpenTheControlsSection();
+            FindButton(KeyBindings.ResetCaption).onClick.Invoke();
+            yield return null; yield return null;
+            Assert.That(HouseBindings.Current.Count, Is.Zero);
+            Assert.That(cameraRig.Actions.OrbitRate.bindings.Any(binding => binding.effectivePath == "<Keyboard>/q"), Is.True, "Q is the orbit's left again,");
+            Assert.That(cameraRig.Actions.Pan.bindings.Any(binding => binding.effectivePath == "<Keyboard>/w"), Is.True, "and W the pan's up.");
+            director.ClosePanels();
+            yield return null;
+            Assert.That(KeyBindings.Substitute(InputGlossary.KeyboardHelpCard), Is.SameAs(InputGlossary.KeyboardHelpCard), "The words are the very strings again.");
+        }
+
+        /// <summary>
+        /// A competition's board rebinds too (A5): the endurance game's grip given Left Shift holds on
+        /// Left Shift and no longer on Space, and the board says so - its legend and its rules name the
+        /// key the player chose. A letter is refused: the word board spells with every one.
+        /// </summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator Rebinding_ABoardsGripIsTheKeyTheSettingsGaveIt()
+        {
+            yield return InstallRules4AtFirstHoH(SeedOpeningWithBoard(CompetitionDefinitions.HoldYourGround));
+            yield return OpenTheControlsSection();
+            FindButton("Rebind Hold grip").onClick.Invoke();
+            yield return null;
+            Assert.That(HouseBindings.Listening, Is.True);
+            yield return PressKey(Key.K);
+            Assert.That(RebindLineShown(), Is.EqualTo("K spells on the word board, so it stays a letter. Hold grip keeps its key."));
+            yield return null; yield return null;
+            FindButton("Rebind Hold grip").onClick.Invoke();
+            yield return null;
+            yield return PressKey(Key.LeftShift);
+            string shift = InputGlossary.BindingLabel("<Keyboard>/leftShift");
+            Assert.That(RebindLineShown(), Is.EqualTo("Hold grip is now " + shift + "."));
+            director.ClosePanels();
+            yield return null; yield return null;
+
+            WarpPlayer(director.StationPosition);
+            Assert.That(director.TryOpenPhasePanel(), Is.True);
+            yield return null; yield return null;
+            ButtonWithCaption("Practice this competition").onClick.Invoke();
+            yield return null;
+            var screen = SceneComponents<CompetitionGameScreen>().Single();
+            if (screen.IsAssembling)
+                screen.GetComponentsInChildren<Button>().First(button => button.name == "Continue to competition").onClick.Invoke();
+            for (int frame = 0; frame < 120 && !screen.IsPlaying; frame++) { screen.AdvanceReady(.2f); yield return null; }
+            Assert.That(screen.IsPlaying, Is.True, "The practice is under way.");
+            var run = ChallengeRun();
+            Assert.That(run.Kind, Is.EqualTo(CompetitionMiniGames.Kind.Endurance));
+            yield return null;
+
+            var labels = screen.GetComponentsInChildren<TMP_Text>().Where(text => text.isActiveAndEnabled).ToList();
+            Assert.That(labels.Single(text => text.name == "Rules").text, Does.Contain(shift + " / right trigger hold"), "The rules name the grip's key.");
+            Assert.That(labels.Any(text => text.name == "Key" && text.text == shift), Is.True,
+                "The legend's key is the grip's: " + string.Join(" | ", labels.Where(text => text.name == "Key").Select(text => text.text)));
+            Assert.That(labels.Any(text => text.name == "Key" && text.text == "Space"), Is.False, "and Space is nobody's on it now.");
+
+            if (testKeyboard == null) testKeyboard = InputSystem.AddDevice<Keyboard>();
+            InputSystem.QueueStateEvent(testKeyboard, new KeyboardState(Key.LeftShift));
+            yield return null; yield return null;
+            Assert.That(run.Holding, Is.True, shift + " holds the grip.");
+            InputSystem.QueueStateEvent(testKeyboard, new KeyboardState());
+            yield return null; yield return null;
+            Assert.That(run.Holding, Is.False, "and letting go lets go.");
+            InputSystem.QueueStateEvent(testKeyboard, new KeyboardState(Key.Space));
+            yield return null; yield return null;
+            Assert.That(run.Holding, Is.False, "Space no longer holds.");
+            InputSystem.QueueStateEvent(testKeyboard, new KeyboardState());
             yield return null;
         }
     }

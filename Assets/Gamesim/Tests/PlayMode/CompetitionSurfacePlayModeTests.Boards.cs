@@ -99,7 +99,7 @@ namespace Gamesim.Tests.PlayMode
         {
             CreateInput();
             float side = 0f;
-            foreach (float scale in new[] { 1f, 1.2f })
+            foreach (float scale in TextScales.All)
             {
                 screen.FontScale = scale;
                 var run = new MiniGameRun(CompetitionMiniGames.Kind.Reaction, 17, 3, CompetitionDefinitions.SwitchbackSignals);
@@ -273,7 +273,7 @@ namespace Gamesim.Tests.PlayMode
         {
             CreateInput(); screen.Hide();
             float winnerAtOne = 0f;
-            foreach (float scale in new[] { 1f, 1.2f })
+            foreach (float scale in TextScales.All)
             {
                 var result = CompetitionResult.Attach(owner); result.FontScale = scale;
                 try

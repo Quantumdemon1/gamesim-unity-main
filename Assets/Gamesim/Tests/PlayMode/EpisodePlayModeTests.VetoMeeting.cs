@@ -93,7 +93,7 @@ namespace Gamesim.Tests.PlayMode
                 other = state.nominees[1];
             });
             var before = director.Snapshot;
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
                 string where = "The meeting with a houseguest holding the veto" + (larger ? " at the larger text" : "");
                 AssertOnTheStrategyStage("Continue episode", where);
@@ -143,7 +143,7 @@ namespace Gamesim.Tests.PlayMode
         {
             yield return InstallStrategySeason(49, state => AtVetoMeeting(state, true));
             var before = director.Snapshot;
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
                 string where = "The player's veto decision" + (larger ? " at the larger text" : "");
                 Canvas.ForceUpdateCanvases();
@@ -210,7 +210,7 @@ namespace Gamesim.Tests.PlayMode
             string first = before.nominees[0], second = before.nominees[1];
             var candidates = EpisodeEngine.ReplacementCandidates(before).ToList();
             Assert.That(candidates, Has.Count.GreaterThanOrEqualTo(2), "The fixture has a choice of replacement.");
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
                 string where = "The Head of Household's veto decision" + (larger ? " at the larger text" : "");
                 AssertTheMeetingFits(where);
@@ -261,7 +261,7 @@ namespace Gamesim.Tests.PlayMode
             var before = director.Snapshot;
             var candidates = EpisodeEngine.ReplacementCandidates(before).ToList();
             Assert.That(candidates, Has.Count.EqualTo(EpisodeValidation.MaximumCast - 3), "Everybody but the player and the block can go up.");
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
                 string where = "The Head of Household's veto decision in a house of " + EpisodeValidation.MaximumCast + (larger ? " at the larger text" : "");
                 Canvas.ForceUpdateCanvases();
@@ -315,7 +315,7 @@ namespace Gamesim.Tests.PlayMode
             string other = before.nominees.Single(id => id != before.playerId);
             Assert.That(EpisodeDirector.VetoSaveCaption(before, before.playerId), Is.EqualTo("Save yourself (HoH chooses replacement)"));
             Assert.That(EpisodeDirector.VetoSaveCaption(before, other), Is.EqualTo("Save " + before.Find(other).name + " (HoH chooses replacement)"));
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
                 string where = "The holder's own save" + (larger ? " at the larger text" : "");
                 AssertTheMeetingFits(where);
@@ -351,7 +351,7 @@ namespace Gamesim.Tests.PlayMode
             var before = director.Snapshot;
             Assert.That(EpisodeEngine.NpcVetoSave(before), Is.EqualTo(holder), "A holder on the block saves herself.");
             string line = before.Find(holder).name + " is using the veto on herself. Name the replacement nominee.";
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
                 string where = "Naming the replacement" + (larger ? " at the larger text" : "");
                 AssertTheMeetingFits(where);
@@ -400,7 +400,7 @@ namespace Gamesim.Tests.PlayMode
             var before = director.Snapshot;
             string replacement = before.nominees.Single(id => id != kept);
             string reflexive = StoryPeople.Pronouns(before.Find(holder)).themselves;
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
                 string where = "After the meeting" + (larger ? " at the larger text" : "");
                 AssertOnTheStrategyStage("Continue episode", where);

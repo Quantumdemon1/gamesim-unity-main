@@ -14,21 +14,28 @@ namespace Gamesim.Presentation
     /// preferences, and the words on screen that follow them.
     ///
     /// <list type="bullet">
-    /// <item><b>What rebinds.</b> The house's shortcuts and the camera's recentre
-    /// (<see cref="Targets"/>), one binding each on the keyboard and one on the pad. The ways out -
-    /// Menu (Esc, Start), Back (B) and the event system's Submit and Cancel (Enter, Esc) - are never
-    /// offered, and their keys are never taken: nothing a player does leaves the game without a way
-    /// to close a panel or press a control (<see cref="ReservedPaths"/>).</item>
+    /// <item><b>What rebinds.</b> The house's shortcuts and the camera's recentre, one binding each on
+    /// the keyboard and one on the pad; the camera's own keys - the orbit's Q and C, the zoom's -
+    /// and =, the pan's W, A, S and D - each a part of its action's keyboard composite, on the
+    /// keyboard only: the pad turns, zooms and pans with its sticks and triggers; and a competition
+    /// board's grip (Space, RT) and take-back (Backspace, X), never on a letter, which the word board
+    /// spells with (<see cref="Targets"/>). The ways out - Menu (Esc, Start), Back (B) and the event system's
+    /// Submit and Cancel (Enter, Esc) - are never offered, and their keys are never taken: nothing a
+    /// player does leaves the game without a way to close a panel or press a control
+    /// (<see cref="ReservedPaths"/>).</item>
     /// <item><b>Conflicts.</b> A key one action of a context already answers to is refused for
     /// another of the same context: the camera and the shortcuts are both live in the house, so they
-    /// are one context (<see cref="Check"/>).</item>
-    /// <item><b>Kept.</b> As one JSON object, "Map/Action@Scheme" to the control's path, under
-    /// <see cref="PreferenceKey"/>: PlayerPrefs, or a playtest root's own file (A13).</item>
+    /// are one context (<see cref="Check(IEnumerable{Binding}, Target, string, string)"/>). A
+    /// composite's parts are bindings too: the pan's up is refused the pan's left.</item>
+    /// <item><b>Kept.</b> As one JSON object, "Map/Action@Scheme" - "Map/Action#Part@Scheme" for a
+    /// composite's part - to the control's path, under <see cref="PreferenceKey"/>: PlayerPrefs, or a
+    /// playtest root's own file (A13).</item>
     /// <item><b>Shown.</b> A caption keeps its English words as the control's name - the tests and a
     /// screen reader find it by them - and the words a player sees are substituted as they are drawn
     /// (<see cref="Substitute"/>, at the HUD's text sink): "Notebook [J]" reads "Notebook [K]" once
-    /// the notebook answers to K. With every binding as shipped, every word on screen is byte for
-    /// byte what it was. The pad's words in the hints come from <see cref="PadLabel"/>.</item>
+    /// the notebook answers to K, and the help card's "WASD/arrows: pan" names the pan's keys as they
+    /// are. With every binding as shipped, every word on screen is byte for byte what it was. The
+    /// pad's words in the hints come from <see cref="PadLabel"/>.</item>
     /// </list>
     ///
     /// <para>Unity-free, so the subset holds the rules, the format and the words; the editor's side
@@ -42,17 +49,26 @@ namespace Gamesim.Presentation
         /// <summary>The settings' control that sets every binding back as shipped.</summary>
         public const string ResetCaption = "Reset all controls";
 
-        /// <summary>An action a player may rebind: its map and name, and the word its control and messages use.</summary>
+        /// <summary>An action a player may rebind - or one part of its keyboard composite - and the word its control and messages use.</summary>
         public sealed class Target
         {
             public string Map { get; }
             public string Action { get; }
+            /// <summary>The composite part this target rebinds ("Up", "Negative"), or null for the action's own binding.</summary>
+            public string Part { get; }
             public string Name { get; }
-            public Target(string map, string action, string name) { Map = map; Action = action; Name = name; }
-            /// <summary>"Shortcuts/Notebook".</summary>
+            /// <summary>Whether the pad has a binding of its own to rebind here: the camera's keys are the keyboard's alone.</summary>
+            public bool OnPad { get; }
+            public Target(string map, string action, string name, string part = null, bool onPad = true)
+            {
+                Map = map; Action = action; Name = name; Part = part; OnPad = onPad;
+            }
+            /// <summary>"Shortcuts/Notebook": the action, as the actions asset finds it.</summary>
             public string Path => Map + "/" + Action;
             /// <summary>The settings' control: "Rebind Notebook".</summary>
             public string Caption => "Rebind " + Name;
+            /// <summary>Whether this target takes a binding on <paramref name="scheme"/>.</summary>
+            public bool Takes(string scheme) => scheme == KeyboardScheme || scheme == GamepadScheme && OnPad;
         }
 
         /// <summary>The actions a player may rebind, in the order the settings list them.</summary>
@@ -66,6 +82,20 @@ namespace Gamesim.Presentation
             new Target("Shortcuts", "Overview", "Overview"),
             new Target("Shortcuts", "Emote", "Emote"),
             new Target("Camera", "Recenter", "Recenter"),
+            // The camera's keys: parts of the keyboard's composites (HouseCameraActions). The pan's
+            // are WASD's; the arrows beside them stay as shipped.
+            new Target("Camera", "OrbitRate", "Orbit left", "Left", onPad: false),
+            new Target("Camera", "OrbitRate", "Orbit right", "Right", onPad: false),
+            new Target("Camera", "ZoomRate", "Zoom out", "Negative", onPad: false),
+            new Target("Camera", "ZoomRate", "Zoom in", "Positive", onPad: false),
+            new Target("Camera", "Pan", "Pan up", "Up", onPad: false),
+            new Target("Camera", "Pan", "Pan left", "Left", onPad: false),
+            new Target("Camera", "Pan", "Pan down", "Down", onPad: false),
+            new Target("Camera", "Pan", "Pan right", "Right", onPad: false),
+            // A competition's board: the endurance game's grip, held, and the word game's take-back.
+            // Never a letter: the word board spells with every one (CompetitionLetterRefusal).
+            new Target("Competition", "Hold", "Hold grip"),
+            new Target("Competition", "Undo", "Take back letter"),
         };
 
         /// <summary>The actions never offered: the ways out of every panel and the press of a control.</summary>
@@ -78,45 +108,66 @@ namespace Gamesim.Presentation
         public static readonly string[] ReservedPaths =
             { "<Keyboard>/escape", "<Keyboard>/enter", "<Keyboard>/numpadEnter", "<Gamepad>/start", "<Gamepad>/buttonEast" };
 
-        /// <summary>The target for an action, or null when it is not one a player may rebind.</summary>
-        public static Target FindTarget(string map, string action)
+        /// <summary>The target for an action's own binding, or null when it is not one a player may rebind.</summary>
+        public static Target FindTarget(string map, string action) => FindTarget(map, action, null);
+
+        /// <summary>The target for an action's binding or one part of its composite, or null.</summary>
+        public static Target FindTarget(string map, string action, string part)
         {
             foreach (var target in Targets)
-                if (target.Map == map && target.Action == action) return target;
+                if (target.Map == map && target.Action == action && target.Part == part) return target;
             return null;
         }
 
         /// <summary>The context an action's map belongs to: the camera and the shortcuts are both the house.</summary>
         public static string ContextOf(string map) => map == "Camera" || map == "Shortcuts" ? "House" : map;
 
-        /// <summary>One binding as the actions hold it now, for the conflict check.</summary>
+        /// <summary>One binding as the actions hold it now, for the conflict check; <see cref="Part"/> names a composite's part.</summary>
         public readonly struct Binding
         {
-            public readonly string Map, Action, Scheme, Path;
-            public Binding(string map, string action, string scheme, string path) { Map = map; Action = action; Scheme = scheme; Path = path; }
+            public readonly string Map, Action, Scheme, Path, Part;
+            public Binding(string map, string action, string scheme, string path, string part = null)
+            { Map = map; Action = action; Scheme = scheme; Path = path; Part = part; }
         }
 
         // ---------------------------------------------------------------- the choices
 
         private readonly SortedDictionary<string, string> overrides = new SortedDictionary<string, string>(StringComparer.Ordinal);
 
-        private static string Key(string map, string action, string scheme) => map + "/" + action + "@" + scheme;
+        private static string Key(Target target, string scheme) =>
+            target.Map + "/" + target.Action + (target.Part != null ? "#" + target.Part : "") + "@" + scheme;
 
-        /// <summary>Every choice, "Map/Action@Scheme" to the control's path, in ordinal order.</summary>
+        /// <summary>Every choice, "Map/Action@Scheme" (or "Map/Action#Part@Scheme") to the control's path, in ordinal order.</summary>
         public IReadOnlyDictionary<string, string> Overrides => overrides;
 
         public int Count => overrides.Count;
 
         /// <summary>The path a player gave this action on this scheme, or null when it is as shipped.</summary>
-        public string Get(string map, string action, string scheme) =>
-            overrides.TryGetValue(Key(map, action, scheme), out var path) ? path : null;
+        public string Get(string map, string action, string scheme)
+        {
+            var target = FindTarget(map, action);
+            return target == null ? null : Get(target, scheme);
+        }
+
+        /// <summary>The path a player gave this target on this scheme, or null when it is as shipped.</summary>
+        public string Get(Target target, string scheme) =>
+            target != null && overrides.TryGetValue(Key(target, scheme), out var path) ? path : null;
 
         /// <summary>Gives an action a path of the player's on a scheme; null sets it back as shipped.</summary>
         public void Set(string map, string action, string scheme, string path)
         {
-            if (FindTarget(map, action) == null) throw new ArgumentException(map + "/" + action + " is not an action a player may rebind.");
-            if (string.IsNullOrEmpty(path)) overrides.Remove(Key(map, action, scheme));
-            else overrides[Key(map, action, scheme)] = path;
+            var target = FindTarget(map, action);
+            if (target == null) throw new ArgumentException(map + "/" + action + " is not an action a player may rebind.");
+            Set(target, scheme, path);
+        }
+
+        /// <summary>Gives a target a path of the player's on a scheme; null sets it back as shipped.</summary>
+        public void Set(Target target, string scheme, string path)
+        {
+            if (target == null || !target.Takes(scheme))
+                throw new ArgumentException((target != null ? target.Name : "That") + " is not rebound on " + scheme + ".");
+            if (string.IsNullOrEmpty(path)) overrides.Remove(Key(target, scheme));
+            else overrides[Key(target, scheme)] = path;
         }
 
         /// <summary>Every binding as shipped.</summary>
@@ -132,31 +183,47 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
-        /// Why <paramref name="path"/> cannot be <paramref name="map"/>/<paramref name="action"/>'s on
-        /// <paramref name="scheme"/>, in the player's words, or null when it can: the action is not one
-        /// a player may rebind, the path is another device's, it is a way out the game keeps, or
-        /// another action of the same context already answers to it (<paramref name="live"/>, every
-        /// binding as the actions hold it now - composites' parts included).
+        /// Why <paramref name="path"/> cannot be <paramref name="map"/>/<paramref name="action"/>'s own
+        /// binding on <paramref name="scheme"/>, in the player's words, or null when it can
+        /// (<see cref="Check(IEnumerable{Binding}, Target, string, string)"/>).
         /// </summary>
         public static string Check(IEnumerable<Binding> live, string map, string action, string scheme, string path)
         {
             var target = FindTarget(map, action);
             if (target == null) return map + "/" + action + " cannot be rebound.";
+            return Check(live, target, scheme, path);
+        }
+
+        /// <summary>
+        /// Why <paramref name="path"/> cannot be <paramref name="target"/>'s on <paramref name="scheme"/>,
+        /// in the player's words, or null when it can: the target takes nothing on that device, the
+        /// path is another device's, it is a way out the game keeps, or another binding of the same
+        /// context already answers to it (<paramref name="live"/>, every binding as the actions hold it
+        /// now - composites' parts included). An action's own binding, or the same part of its
+        /// composite, is never a conflict with itself.
+        /// </summary>
+        public static string Check(IEnumerable<Binding> live, Target target, string scheme, string path)
+        {
+            if (target == null) return "That cannot be rebound.";
+            if (!target.Takes(scheme)) return target.Name + " is a key: press the new one on the keyboard.";
             if (SchemeOf(path) != scheme) return "That is not a " + (scheme == GamepadScheme ? "pad button" : "key") + ".";
             string words = InputGlossary.BindingLabel(path);
+            string keeps = target.Name + " keeps its " + (scheme == GamepadScheme ? "button" : "key") + ".";
             foreach (var reserved in ReservedPaths)
                 if (string.Equals(reserved, path, StringComparison.OrdinalIgnoreCase))
-                    return words + " closes panels and presses controls, so it stays as it is. " + target.Name + " keeps its " + (scheme == GamepadScheme ? "button" : "key") + ".";
-            string context = ContextOf(map);
+                    return words + " closes panels and presses controls, so it stays as it is. " + keeps;
+            if (IsBoardLetter(target, path)) return words + " spells on the word board, so it stays a letter. " + keeps;
+            string context = ContextOf(target.Map);
             if (live != null)
                 foreach (var binding in live)
                 {
                     if (binding.Scheme != scheme || ContextOf(binding.Map) != context) continue;
-                    if (binding.Map == map && binding.Action == action) continue;
+                    if (binding.Map == target.Map && binding.Action == target.Action && (target.Part == null || binding.Part == target.Part)) continue;
                     if (!string.Equals(binding.Path, path, StringComparison.OrdinalIgnoreCase)) continue;
-                    var other = FindTarget(binding.Map, binding.Action);
-                    string otherName = other != null ? other.Name : binding.Action;
-                    return words + " is already " + otherName + "'s. " + target.Name + " keeps its " + (scheme == GamepadScheme ? "button" : "key") + ".";
+                    var other = FindTarget(binding.Map, binding.Action, binding.Part) ?? FindTarget(binding.Map, binding.Action);
+                    if (other != null) return words + " is already " + other.Name + "'s. " + keeps;
+                    // An action nobody rebinds - the camera's follow, a board's next control - by where it is.
+                    return words + " already does something else " + (context == "House" ? "in the house" : "on a competition's board") + ". " + keeps;
                 }
             return null;
         }
@@ -199,11 +266,14 @@ namespace Gamesim.Presentation
                 string key = property.Name;
                 int at = key.LastIndexOf('@'), slash = key.IndexOf('/');
                 if (at < 0 || slash < 0 || slash > at || property.Value.Type != JTokenType.String) { reason = "a kept control (" + key + ") is not one the game reads"; continue; }
-                string map = key.Substring(0, slash), action = key.Substring(slash + 1, at - slash - 1), scheme = key.Substring(at + 1);
+                string map = key.Substring(0, slash), named = key.Substring(slash + 1, at - slash - 1), scheme = key.Substring(at + 1);
+                int hash = named.IndexOf('#');
+                string action = hash < 0 ? named : named.Substring(0, hash), part = hash < 0 ? null : named.Substring(hash + 1);
                 string path = (string)property.Value;
-                if (FindTarget(map, action) == null || SchemeOf(path) != scheme || IsReserved(path))
+                var target = FindTarget(map, action, part);
+                if (target == null || !target.Takes(scheme) || SchemeOf(path) != scheme || IsReserved(path) || IsBoardLetter(target, path))
                 { reason = "a kept control (" + key + ") is not one a player may choose"; continue; }
-                bindings.overrides[Key(map, action, scheme)] = path;
+                bindings.overrides[Key(target, scheme)] = path;
             }
             return bindings;
         }
@@ -215,14 +285,28 @@ namespace Gamesim.Presentation
             return false;
         }
 
-        /// <summary>The choices in the player log's words: "default", or "Notebook:K,Diary:Y(pad)".</summary>
+        /// <summary>
+        /// Whether <paramref name="path"/> is a letter key given to a competition's action: the word
+        /// board reads every letter as one it spells, so a board's key that was a letter would spell
+        /// and act at once.
+        /// </summary>
+        private static bool IsBoardLetter(Target target, string path)
+        {
+            if (target == null || ContextOf(target.Map) != "Competition" || path == null) return false;
+            const string prefix = "<Keyboard>/";
+            if (!path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) || path.Length != prefix.Length + 1) return false;
+            char key = char.ToLowerInvariant(path[prefix.Length]);
+            return key >= 'a' && key <= 'z';
+        }
+
+        /// <summary>The choices in the player log's words: "default", or "Notebook:K,Diary:Y(pad),Pan up:I".</summary>
         public string Summary()
         {
             if (overrides.Count == 0) return "default";
             var words = new List<string>();
             foreach (var target in Targets)
             {
-                string key = Get(target.Map, target.Action, KeyboardScheme), pad = Get(target.Map, target.Action, GamepadScheme);
+                string key = Get(target, KeyboardScheme), pad = target.OnPad ? Get(target, GamepadScheme) : null;
                 if (key != null) words.Add(target.Name + ":" + InputGlossary.BindingLabel(key));
                 if (pad != null) words.Add(target.Name + ":" + InputGlossary.BindingLabel(pad) + "(pad)");
             }
@@ -237,19 +321,35 @@ namespace Gamesim.Presentation
         /// <summary>Makes <paramref name="bindings"/> the choices the words on screen follow; null is every binding as shipped.</summary>
         public static void Show(KeyBindings bindings) => shown = bindings;
 
+        /// <summary>Whether the words on screen follow any choice at all: false while every binding is as shipped.</summary>
+        public static bool AnyChosen => shown != null && shown.overrides.Count > 0;
+
         /// <summary>A rebound action's key in the hints' words ("K"), or null while it is as shipped.</summary>
-        public static string KeyLabel(string map, string action)
+        public static string KeyLabel(string map, string action) => KeyLabel(FindTarget(map, action));
+
+        /// <summary>A rebound target's key in the hints' words, or null while it is as shipped.</summary>
+        public static string KeyLabel(Target target)
         {
-            string path = shown?.Get(map, action, KeyboardScheme);
+            string path = target != null ? shown?.Get(target, KeyboardScheme) : null;
             return path == null ? null : InputGlossary.BindingLabel(path);
         }
 
         /// <summary>A rebound action's pad button in the hints' words ("Y"), or null while it is as shipped.</summary>
         public static string PadLabel(string map, string action)
         {
-            string path = shown?.Get(map, action, GamepadScheme);
+            var target = FindTarget(map, action);
+            string path = target != null && target.OnPad ? shown?.Get(target, GamepadScheme) : null;
             return path == null ? null : InputGlossary.BindingLabel(path);
         }
+
+        /// <summary>
+        /// The words a competition's board says for one of its rebindable keys (the Competition map's
+        /// Hold or Undo): the key or button the player chose, or <paramref name="shipped"/>, the board's
+        /// own words as it was written - so with every binding as shipped the board reads as it did.
+        /// A board's copy is not on the HUD's text sink; it asks here where it names those keys.
+        /// </summary>
+        public static string BoardKey(string action, bool pad, string shipped) =>
+            (pad ? PadLabel("Competition", action) : KeyLabel("Competition", action)) ?? shipped;
 
         /// <summary>
         /// A key's place in the words on screen: the text before the key, the key as shipped, the text
@@ -286,6 +386,35 @@ namespace Gamesim.Presentation
         };
 
         /// <summary>
+        /// A phrase that names several keys at once - the help card's WASD, the camera settings' Q and
+        /// C - as shipped, and how to say it with the keys as they are now.
+        /// </summary>
+        private readonly struct KeyPhrase
+        {
+            public readonly string Shipped;
+            public readonly Target[] Keys;
+            public readonly Func<string[], string> Say;
+            public KeyPhrase(string shipped, Func<string[], string> say, params Target[] keys) { Shipped = shipped; Say = say; Keys = keys; }
+        }
+
+        /// <summary>Keys run together as WASD is, when each is one character; spaced when any is longer ("Num 8 A S D").</summary>
+        private static string RunTogether(string[] keys)
+        {
+            foreach (var key in keys) if (key.Length != 1) return string.Join(" ", keys);
+            return string.Concat(keys);
+        }
+
+        private static readonly KeyPhrase[] phrases =
+        {
+            // The help card: "WASD/arrows: pan", the pan's up, left, down and right in WASD's order.
+            new KeyPhrase("WASD/arrows: pan", keys => RunTogether(keys) + "/arrows: pan",
+                FindTarget("Camera", "Pan", "Up"), FindTarget("Camera", "Pan", "Left"), FindTarget("Camera", "Pan", "Down"), FindTarget("Camera", "Pan", "Right")),
+            // The camera settings' paragraph: "the right stick and Q and C alike".
+            new KeyPhrase("the right stick and Q and C alike", keys => "the right stick and " + keys[0] + " and " + keys[1] + " alike",
+                FindTarget("Camera", "OrbitRate", "Left"), FindTarget("Camera", "OrbitRate", "Right")),
+        };
+
+        /// <summary>
         /// The words a player sees for <paramref name="text"/>: every place a rebound key is named,
         /// in the key the player chose; the house prompt's leading key ("E  ·  Talk to Maya") too.
         /// With every key as shipped the text itself comes back, the same string.
@@ -301,6 +430,20 @@ namespace Gamesim.Presentation
                 if (label == null || label == place.Key) continue;
                 changed.Add((place.Before + place.Key + place.After, place.Before + label + place.After));
             }
+            foreach (var phrase in phrases)
+            {
+                bool any = false;
+                var keys = new string[phrase.Keys.Length];
+                for (int i = 0; i < keys.Length; i++)
+                {
+                    string label = KeyLabel(phrase.Keys[i]);
+                    any |= label != null;
+                    keys[i] = label ?? InputGlossary.BindingLabel(ShippedPath(phrase.Keys[i]));
+                }
+                if (!any) continue;
+                string said = phrase.Say(keys);
+                if (said != phrase.Shipped) changed.Add((phrase.Shipped, said));
+            }
             string interact = KeyLabel("Shortcuts", "Interact");
             if (changed.Count == 0 && interact == null) return text;
             // One pass over the text as written, so a key given to one action and another's given to
@@ -314,7 +457,7 @@ namespace Gamesim.Presentation
                 bool replaced = false;
                 foreach (var (from, to) in changed)
                 {
-                    if (string.CompareOrdinal(text, at, from, 0, from.Length) != 0 || at + from.Length > text.Length) continue;
+                    if (at + from.Length > text.Length || string.CompareOrdinal(text, at, from, 0, from.Length) != 0) continue;
                     result.Append(to);
                     at += from.Length;
                     replaced = true;
@@ -324,6 +467,27 @@ namespace Gamesim.Presentation
             }
             string substituted = result.ToString();
             return substituted == text ? text : substituted;
+        }
+
+        /// <summary>
+        /// The key a camera key's target answers to as shipped, for the keys of a phrase the player
+        /// left alone; null for the rest. The editor's suite holds it to the actions asset
+        /// (HouseCameraActions), part by part.
+        /// </summary>
+        public static string ShippedPath(Target target)
+        {
+            switch (target.Action + "#" + target.Part)
+            {
+                case "Pan#Up": return "<Keyboard>/w";
+                case "Pan#Left": return "<Keyboard>/a";
+                case "Pan#Down": return "<Keyboard>/s";
+                case "Pan#Right": return "<Keyboard>/d";
+                case "OrbitRate#Left": return "<Keyboard>/q";
+                case "OrbitRate#Right": return "<Keyboard>/c";
+                case "ZoomRate#Negative": return "<Keyboard>/minus";
+                case "ZoomRate#Positive": return "<Keyboard>/equals";
+                default: return null;
+            }
         }
     }
 }

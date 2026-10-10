@@ -30,6 +30,7 @@ namespace Gamesim.House
         {
             reason = null;
             EndWandering();
+            EndStorm();
             EndActStaging();
             if (!IsReady || HasCompetitionStage || HasOpeningStage || leases.Count != 0 || ids == null || ids.Count == 0)
             { reason = "Houseguests are not available for the opening."; return false; }

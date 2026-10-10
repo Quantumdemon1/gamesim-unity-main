@@ -27,9 +27,14 @@ namespace Gamesim.Tests.PlayMode
         /// A season in the campaign (the block set) where the house has turned on one of its own: a legal history
         /// with the story system switched on, three houseguests holding grudges past forty against a
         /// fourth, and the arc started by the engine's own seam - its opener is the meeting that
-        /// writes the blow-up's fallout.
+        /// writes the blow-up's fallout. Week two at the earliest: in the first week only the
+        /// first-night arc casts (EpisodeEngine.BeforeTheFirstAsk). Nothing waits on the week's house
+        /// event: in the campaign one is always ready, and the probe of this search found no season
+        /// otherwise. With <paramref name="suspend"/> off the house's world stays
+        /// live (a storm-off walks in it), and the snapshot is not compared, because the world may
+        /// commit a tick of its own as the season loads.
         /// </summary>
-        private IEnumerator InstallTheHouseTurnsFixture()
+        private IEnumerator InstallTheHouseTurnsFixture(bool suspend = true)
         {
             EpisodeState fixture = null;
             for (uint seed = 1; seed <= 60 && fixture == null; seed++)
@@ -38,8 +43,8 @@ namespace Gamesim.Tests.PlayMode
                 for (int guard = 0; guard < 120; guard++)
                 {
                     var current = engine.Snapshot;
-                    if (current.phase == EpisodePhase.Campaign && current.Active.Count() >= 5 && current.pendingDiary == null
-                        && !HouseEvents.Ready(current) && current.Find(current.playerId).status == ContestantStatus.Active)
+                    if (current.phase == EpisodePhase.Campaign && current.week >= 2 && current.Active.Count() >= 5 && current.pendingDiary == null
+                        && current.Find(current.playerId).status == ContestantStatus.Active)
                     {
                         EpisodeEngine.EnableStory(current, current.week);
                         var npcs = current.Active.Where(actor => !actor.isPlayer).OrderBy(actor => actor.id, System.StringComparer.Ordinal).ToList();
@@ -56,11 +61,14 @@ namespace Gamesim.Tests.PlayMode
                 }
             }
             Assert.That(fixture, Is.Not.Null, "No bounded legal fixture where the house turns on somebody found.");
-            director.SuspendNpcAutonomyForDiagnostics();
+            if (suspend) director.SuspendNpcAutonomyForDiagnostics();
             new EpisodeSaveStore(director.SavePath).Save(fixture);
             yield return ReloadEpisode();
-            director.SuspendNpcAutonomyForDiagnostics();
-            AssertEquivalent(fixture, director.Snapshot);
+            if (suspend)
+            {
+                director.SuspendNpcAutonomyForDiagnostics();
+                AssertEquivalent(fixture, director.Snapshot);
+            }
             yield return null; yield return null;
         }
 
@@ -209,8 +217,9 @@ namespace Gamesim.Tests.PlayMode
                 for (int guard = 0; guard < 120 && fixture == null; guard++)
                 {
                     var current = engine.Snapshot;
+                    // Nothing waits on the week's house event: in the campaign one is always ready.
                     if (current.phase == EpisodePhase.Campaign && current.week >= 2 && current.Active.Count() >= 4 && current.pendingDiary == null
-                        && !HouseEvents.Ready(current) && current.Find(current.playerId).status == ContestantStatus.Active)
+                        && current.Find(current.playerId).status == ContestantStatus.Active)
                     {
                         foreach (var arc in new[] { "kitchen-blowup", "cold-shoulder" })
                         {

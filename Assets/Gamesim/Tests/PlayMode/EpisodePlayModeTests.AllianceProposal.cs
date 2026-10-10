@@ -74,14 +74,14 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest, Timeout(600000)]
         public IEnumerator AllianceProposal_UnderTheRulesTheRowShowsItsOddsAndThreePactsLockIt()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                string size = larger ? " at the larger text" : "";
+                string size = larger ? " " + TextScales.At(textSize) : "";
 
                 // The rules on and nothing held: the row carries the player's read of its chance.
                 yield return InstallTalkingHouse(8, false, state => EpisodeEngine.EnableCommitments(state));
                 yield return SettleCast();
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 var listener = Listener(director.Snapshot);
                 yield return TalkTo(listener.id);
                 string where = "A conversation under the commitment rules" + size;
@@ -95,16 +95,16 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(notes, Has.Count.EqualTo(1), where + ": one note says whose read the conversation's chances are.");
                 Assert.That(notes[0].parent, Is.SameAs(row.transform.parent), where + ": the note is in the row's column,");
                 Assert.That(notes[0].GetSiblingIndex(), Is.LessThan(row.transform.GetSiblingIndex()), where + ": above the first chance it shows.");
-                AssertConversationFits(larger, where);
+                AssertConversationFits(textSize, where);
                 AssertTagsHaveRoom(where);
-                yield return CaptureConversation("conversation-alliance-odds" + (larger ? "-large" : ""), where, null);
+                yield return CaptureConversation("conversation-alliance-odds" + TextScales.Suffix(textSize), where, null);
                 director.ClosePanels();
                 yield return null;
 
                 // Three pacts held, and an invitation from the one the player talks to.
                 yield return InstallTalkingHouse(8, false, AtThreePacts);
                 yield return SettleCast();
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 listener = Listener(director.Snapshot);
                 yield return TalkTo(listener.id);
                 where = "A conversation at three pacts" + size;
@@ -133,9 +133,9 @@ namespace Gamesim.Tests.PlayMode
                 accept.onClick.Invoke();
                 yield return null;
                 Assert.That(director.Snapshot.revision, Is.EqualTo(revision), where + ": the locked yes commits nothing.");
-                AssertConversationFits(larger, where);
+                AssertConversationFits(textSize, where);
                 AssertTagsHaveRoom(where);
-                yield return CaptureConversation("conversation-alliance-cap" + (larger ? "-large" : ""), where, null);
+                yield return CaptureConversation("conversation-alliance-cap" + TextScales.Suffix(textSize), where, null);
 
                 ButtonWithCaption(EpisodeHud.DealDeclineCaption).onClick.Invoke();
                 yield return null;

@@ -339,11 +339,11 @@ namespace Gamesim.Tests.PlayMode
         {
             yield return InstallFinishedSeason();
             director.SuspendNpcAutonomyForDiagnostics();
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                if (larger) { director.ClosePanels(); yield return ApplyTextSize(true); }
+                if (larger) { director.ClosePanels(); yield return ApplyTextSize(textSize); }
                 yield return OpenFinalePanel();
-                string where = "The finale page" + (larger ? " at the larger text" : "");
+                string where = "The finale page" + (larger ? " " + TextScales.At(textSize) : "");
                 AssertFinalePage(where);
 
                 // A face the keyboard is on is seen: its edge steps up from the others' (HudEmphasis).
@@ -358,7 +358,7 @@ namespace Gamesim.Tests.PlayMode
 
                 yield return AssertKeyboardRing(where, ModalRoot);
                 if (!Application.isBatchMode) continue;
-                yield return CaptureFraming(larger ? "finale-page-large" : "finale-page", inspect: frame => AssertTheFinalePageOnTheFrame(where + " at 16:9", 16f / 9f));
+                yield return CaptureFraming("finale-page" + TextScales.Suffix(textSize), inspect: frame => AssertTheFinalePageOnTheFrame(where + " at 16:9", 16f / 9f));
                 if (!larger)
                     yield return CaptureFraming("finale-page-43", inspect: frame => AssertTheFinalePageOnTheFrame(where + " at 4:3", 4f / 3f), width: 1200, height: 900);
             }
@@ -427,11 +427,11 @@ namespace Gamesim.Tests.PlayMode
             var sixteen = Finished(16);
             Assert.That(SeasonReport.JuryBallots(sixteen), Has.Count.EqualTo(14), "A jury of fourteen.");
             yield return InstallBuiltFinale(sixteen);
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                if (larger) { director.ClosePanels(); yield return ApplyTextSize(true); }
+                if (larger) { director.ClosePanels(); yield return ApplyTextSize(textSize); }
                 yield return OpenFinalePanel();
-                string where = "A jury of fourteen" + (larger ? " at the larger text" : "");
+                string where = "A jury of fourteen" + (larger ? " " + TextScales.At(textSize) : "");
                 AssertFinalePage(where);
                 var jury = FinalePart(EpisodeHud.FinaleJuryCardName);
                 var faces = jury.GetComponentsInChildren<Button>().Where(button => button.IsActive()).ToList();

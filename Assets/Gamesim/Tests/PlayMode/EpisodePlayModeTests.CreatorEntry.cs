@@ -279,11 +279,11 @@ namespace Gamesim.Tests.PlayMode
             yield return OpenCreator(detailed: false);
             CreatorEntryName("Frame Robin");
             foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1920, 1080), new Vector2Int(1200, 900) })
-                foreach (float scale in new[] { 1f, 1.2f })
+                foreach (float scale in TextScales.All)
                 {
                     Creator().FontScale = scale;
                     yield return null; yield return null;
-                    yield return CaptureCreatorFraming("creator-quick-" + size.x + "x" + size.y + (scale > 1f ? "-large" : "-normal"),
+                    yield return CaptureCreatorFraming("creator-quick-" + size.x + "x" + size.y + (scale > 1.3f ? "-largest" : scale > 1f ? "-large" : "-normal"),
                         width: size.x, height: size.y, arrange: () => AssertCreatorFits(Creator(), "Quick " + size + " at " + scale));
                 }
             Creator().FontScale = 1f;
@@ -296,7 +296,7 @@ namespace Gamesim.Tests.PlayMode
             var creator=Creator();
             foreach(var size in new[]{new Vector2Int(1280,720),new Vector2Int(1920,1080),new Vector2Int(1200,900)})
                 using(var lens=new CaptureLens(cameraRig.ViewCamera,size.x,size.y))
-                    foreach(float scale in new[]{1f,1.2f})
+                    foreach(float scale in TextScales.All)
                         foreach(string mode in new[]{CharacterCreator.QuickCaption,CharacterCreator.DetailedCaption})
                         {
                             creator.FontScale=scale;yield return null;yield return null;

@@ -90,6 +90,8 @@ namespace Gamesim.Episode
                 var wanted = StoryReactions.For(StoryReactions.Moment.OnFallout, contentId, part.role, kind) ?? DefaultFallout(kind);
                 string toward = part.id == first ? ids.Skip(1).FirstOrDefault() : first;
                 ReactStory(part.id, wanted, toward);
+                // The one the house turned on goes, once the card has (EpisodeDirector.StormOff).
+                if (wanted == CharacterPresentation.Reaction.StormOff) StormAfterTheCard(state, part.id, contentId);
             }
             if (kind == StoryLog.Expulsion && !string.IsNullOrEmpty(first))
             {

@@ -297,7 +297,7 @@ namespace Gamesim.Tests.PlayMode
             foreach (int house in new[] { 4, 8, 16 })
             {
                 yield return InstallFreeTime(house, FreeTimeWaiting.Nothing);
-                yield return AtBothTextSizes(larger =>
+                yield return AtEveryTextSize(larger =>
                 {
                     string where = "Free time in a house of " + house + (larger ? " at the larger text" : "");
                     AssertFreeTimeBoard(where);
@@ -346,7 +346,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return InstallFreeTime(house, FreeTimeWaiting.Beat, 2);
                 var beats = EpisodeEngine.OpenStoryBeats(director.Snapshot);
                 Assert.That(beats, Has.Count.EqualTo(2), "The fixture has two beats waiting.");
-                yield return AtBothTextSizes(larger =>
+                yield return AtEveryTextSize(larger =>
                 {
                     string where = "Free time with two beats waiting in a house of " + house + (larger ? " at the larger text" : "");
                     AssertFreeTimeBoard(where);
@@ -389,7 +389,7 @@ namespace Gamesim.Tests.PlayMode
             foreach (int house in new[] { 8, 16 })
             {
                 yield return InstallFreeTime(house, FreeTimeWaiting.Reply);
-                yield return AtBothTextSizes(larger =>
+                yield return AtEveryTextSize(larger =>
                 {
                     string where = "Free time with somebody come to the player in a house of " + house + (larger ? " at the larger text" : "");
                     AssertFreeTimeBoard(where);
@@ -420,7 +420,7 @@ namespace Gamesim.Tests.PlayMode
             foreach (int house in new[] { 8, 16 })
             {
                 yield return InstallFreeTime(house, FreeTimeWaiting.HaveNot);
-                yield return AtBothTextSizes(larger =>
+                yield return AtEveryTextSize(larger =>
                 {
                     string where = "A Have-Not's free time in a house of " + house + (larger ? " at the larger text" : "");
                     AssertFreeTimeBoard(where);
@@ -442,17 +442,17 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator FreeTimeBoard_TheCardsPageToEverybodyInAHouseOfSixteen()
         {
             yield return InstallFreeTime(16, FreeTimeWaiting.Nothing);
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
                 if (larger)
                 {
                     director.ClosePanels();
-                    yield return ApplyTextSize(true);
+                    yield return ApplyTextSize(textSize);
                 }
                 yield return OpenStation();
                 yield return null;
                 var state = director.Snapshot;
-                string where = "A house of sixteen's free time" + (larger ? " at the larger text" : "");
+                string where = "A house of sixteen's free time" + (larger ? " " + TextScales.At(textSize) : "");
                 var everybody = state.Active.Where(actor => !actor.isPlayer).Select(actor => "Houseguest · " + actor.name).ToList();
                 var first = FreeTimeCards();
                 Assert.That(first.Length, Is.GreaterThan(0).And.LessThan(everybody.Count), where + " runs past one page.");
@@ -554,16 +554,16 @@ namespace Gamesim.Tests.PlayMode
             yield return InstallFreeTime(8, FreeTimeWaiting.Beat, 2);
             var beats = EpisodeEngine.OpenStoryBeats(director.Snapshot);
             Assert.That(beats, Has.Count.EqualTo(2), "The fixture has two beats waiting.");
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
                 if (larger)
                 {
                     director.ClosePanels();
-                    yield return ApplyTextSize(true);
+                    yield return ApplyTextSize(textSize);
                 }
                 yield return OpenStation();
                 yield return null; yield return null;
-                string where = "Free time" + (larger ? " at the larger text" : "");
+                string where = "Free time" + (larger ? " " + TextScales.At(textSize) : "");
 
                 // Answer, then the chip: each pressed where it stands, then pressed again there.
                 foreach (var (caption, beat) in new[] { (EpisodeDirector.AnswerBeatCaption, beats[0]), (beats[1].title, beats[1]) })
@@ -637,7 +637,7 @@ namespace Gamesim.Tests.PlayMode
             yield return InstallFreeTime(8, FreeTimeWaiting.Beat, 5);
             var beats = EpisodeEngine.OpenStoryBeats(director.Snapshot);
             Assert.That(beats, Has.Count.EqualTo(5), "The fixture has five beats waiting.");
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
                 string where = "Free time with five beats waiting" + (larger ? " at the larger text" : "");
                 AssertFreeTimeBoard(where);
@@ -674,16 +674,16 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator FreeTimeBoard_ABoardThatReplacesAStepTakesNoPressForAMoment()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
                 yield return InstallFreeTime(8, FreeTimeWaiting.Beat, 3);
-                if (larger) yield return ApplyTextSize(true);
+                if (larger) yield return ApplyTextSize(textSize);
                 var beats = EpisodeEngine.OpenStoryBeats(director.Snapshot);
                 Assert.That(beats, Has.Count.EqualTo(3), "The fixture has three beats waiting.");
                 yield return OpenStation();
                 yield return null; yield return null;
                 var hud = director.GetComponentInChildren<EpisodeHud>();
-                string where = "Free time" + (larger ? " at the larger text" : "");
+                string where = "Free time" + (larger ? " " + TextScales.At(textSize) : "");
 
                 // A double click on "Back to free time": the board comes back and takes no second press.
                 ButtonWithCaption(EpisodeDirector.AnswerBeatCaption).onClick.Invoke();

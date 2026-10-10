@@ -331,7 +331,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator Conversation_EveryRowKeepsRoomForItsWords()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
                 string hoh = null;
                 yield return InstallStrategySeason(41, state =>
@@ -339,22 +339,22 @@ namespace Gamesim.Tests.PlayMode
                     state.phase = EpisodePhase.Nomination;
                     hoh = state.hohId = state.Active.First(actor => !actor.isPlayer).id;
                 });
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return TalkTo(hoh);
-                AssertRowsHaveRoom(larger, "the conversation with the Head of Household");
+                AssertRowsHaveRoom(textSize, "the conversation with the Head of Household");
                 var state = director.Snapshot;
                 ButtonWithCaption(EpisodeHud.LobbyAskCaption(state, state.Find(hoh).name, LobbyAsk.Spare, state.playerId)).onClick.Invoke();
                 yield return null;
-                AssertRowsHaveRoom(larger, "the plea's approaches");
+                AssertRowsHaveRoom(textSize, "the plea's approaches");
                 director.ClosePanels();
                 yield return null;
             }
         }
 
-        private void AssertRowsHaveRoom(bool larger, string where)
+        private void AssertRowsHaveRoom(TextSize textSize, string where)
         {
             Canvas.ForceUpdateCanvases();
-            float scale = larger ? 1.2f : 1f;
+            float scale = TextSizes.Scale(textSize);
             var column = ActiveRect(EpisodeHud.ConversationColumnName);
             Assert.That(column, Is.Not.Null, "A conversation is open: " + where + ".");
             var dial = ActiveRect(EpisodeHud.DialName);
@@ -368,7 +368,7 @@ namespace Gamesim.Tests.PlayMode
                 if (caption == null || button.GetComponent<LayoutElement>() == null) continue;
                 rows++;
                 var row = (RectTransform)button.transform;
-                string about = "'" + button.name + "' in " + where + " at " + (larger ? "larger" : "standard") + " text";
+                string about = "'" + button.name + "' in " + where + " " + TextScales.At(textSize);
                 Assert.That(caption.rectTransform.rect.width, Is.GreaterThanOrEqualTo(EpisodeHud.MinCaptionWidth * scale - .5f),
                     about + " was left " + caption.rectTransform.rect.width.ToString("0") + " units for its words in a row "
                     + row.rect.width.ToString("0") + " wide.");

@@ -227,11 +227,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(gone.audienceIds, Is.Empty, "The count is the house's,");
             Assert.That(gone.text, Does.Contain(" the jury. By a vote of ").Or.Contain(" the jury. By a single vote."), "on the eviction line.");
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                director.SetLargeText(larger);
+                director.SetTextSize(textSize);
                 yield return null;
-                string size = larger ? " at the large text" : "";
+                string size = larger ? " " + TextScales.At(textSize) : "";
 
                 // The notebook: the vote page, the Known ballots tab, the story so far, the notes.
                 director.ShowNotebookSection(EpisodeDirector.NotebookSection.Votes);
@@ -257,7 +257,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(lines, Has.Some.Contains("remain private"));
                 Assert.That(lines, Has.None.Contains("made public"));
                 AssertDecisionCopyFits(ActiveRect(EpisodeHud.NotebookHeaderName).parent as RectTransform);
-                if (Application.isBatchMode) yield return CaptureFraming(larger ? "notebook-known-ballots-large" : "notebook-known-ballots");
+                if (Application.isBatchMode) yield return CaptureFraming("notebook-known-ballots" + TextScales.Suffix(textSize));
 
                 director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
                 yield return Frames(2);
@@ -270,7 +270,7 @@ namespace Gamesim.Tests.PlayMode
 
                 // The weekly recap, every tab; the vote breakdown captured.
                 var screen = director.GetComponentInChildren<WeeklyRecapScreen>(true);
-                screen.FontScale = larger ? 1.2f : 1f;
+                screen.FontScale = TextSizes.Scale(textSize);
                 yield return null;
                 screen.Show(shown, () => { });
                 yield return Frames(2);
@@ -286,7 +286,7 @@ namespace Gamesim.Tests.PlayMode
                         Assert.That(words.Any(line => line.Contains("By a vote of ") || line.Contains("By a single vote")), Is.True, "The count.");
                         Assert.That(words.Count(line => line.Contains(" ballots you do not know") || line.Contains("1 ballot you do not know")), Is.GreaterThan(0), "and how many are unknown.");
                         AssertDecisionCopyFits(LastActive(WeeklyRecapScreen.TabBodyName));
-                        if (Application.isBatchMode) yield return CaptureFraming(larger ? "recap-vote-breakdown-large" : "recap-vote-breakdown");
+                        if (Application.isBatchMode) yield return CaptureFraming("recap-vote-breakdown" + TextScales.Suffix(textSize));
                     }
                 }
                 ButtonWithCaption("Week overview").onClick.Invoke();

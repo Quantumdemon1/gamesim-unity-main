@@ -66,36 +66,71 @@ namespace Gamesim.House
             foreach (var actions in HouseInput.Live()) Apply(actions);
         }
 
-        /// <summary>The choices on one copy of the actions: every binding as shipped, then each choice over its own.</summary>
+        /// <summary>
+        /// The choices on one copy of the actions: every binding of a rebindable action as shipped,
+        /// then each choice over its own - an action's own binding, or one part of its composite (the
+        /// pan's four keys share one action, so its overrides go once and its four choices after).
+        /// </summary>
         public static void Apply(HouseCameraActions actions)
         {
             if (actions?.Asset == null) return;
+            var cleared = new HashSet<InputAction>();
             foreach (var target in KeyBindings.Targets)
             {
                 var action = actions.Asset.FindAction(target.Path);
                 if (action == null) continue;
-                action.RemoveAllBindingOverrides();
+                if (cleared.Add(action)) action.RemoveAllBindingOverrides();
                 foreach (var scheme in new[] { KeyBindings.KeyboardScheme, KeyBindings.GamepadScheme })
                 {
-                    string path = current.Get(target.Map, target.Action, scheme);
-                    int index = BindingIndex(action, scheme);
+                    if (!target.Takes(scheme)) continue;
+                    string path = current.Get(target, scheme);
+                    int index = BindingIndex(action, scheme, target.Part);
                     if (path != null && index >= 0) action.ApplyBindingOverride(index, path);
                 }
             }
         }
 
         /// <summary>The action's own binding on a scheme: its first that is not a composite or a part of one.</summary>
-        public static int BindingIndex(InputAction action, string scheme)
+        public static int BindingIndex(InputAction action, string scheme) => BindingIndex(action, scheme, null);
+
+        /// <summary>
+        /// The binding a target rebinds on a scheme: with no <paramref name="part"/>, the action's first
+        /// own binding of the scheme; with one, that part of the action's first composite on the scheme
+        /// (the pan's WASD, not the arrows after it; the zoom's - and =, not the pad's triggers before them).
+        /// </summary>
+        public static int BindingIndex(InputAction action, string scheme, string part)
         {
             var bindings = action.bindings;
-            for (int index = 0; index < bindings.Count; index++)
+            if (part == null)
             {
-                var binding = bindings[index];
-                if (binding.isComposite || binding.isPartOfComposite) continue;
-                foreach (var group in (binding.groups ?? "").Split(';'))
-                    if (group == scheme) return index;
+                for (int index = 0; index < bindings.Count; index++)
+                {
+                    var binding = bindings[index];
+                    if (binding.isComposite || binding.isPartOfComposite) continue;
+                    if (InGroup(binding, scheme)) return index;
+                }
+                return -1;
+            }
+            for (int composite = 0; composite < bindings.Count; composite++)
+            {
+                if (!bindings[composite].isComposite) continue;
+                int found = -1;
+                bool ofScheme = false;
+                for (int index = composite + 1; index < bindings.Count && bindings[index].isPartOfComposite; index++)
+                {
+                    if (InGroup(bindings[index], scheme)) ofScheme = true;
+                    if (string.Equals(bindings[index].name, part, StringComparison.OrdinalIgnoreCase)) found = index;
+                }
+                if (ofScheme && found >= 0) return found;
             }
             return -1;
+        }
+
+        private static bool InGroup(InputBinding binding, string scheme)
+        {
+            foreach (var group in (binding.groups ?? "").Split(';'))
+                if (group == scheme) return true;
+            return false;
         }
 
         /// <summary>Every binding of the actions as they stand, composites' parts included, for the conflict check.</summary>
@@ -110,21 +145,24 @@ namespace Gamesim.House
                         if (binding.isComposite) continue;
                         foreach (var group in (binding.groups ?? "").Split(';'))
                             if (group == KeyBindings.KeyboardScheme || group == KeyBindings.GamepadScheme)
-                                live.Add(new KeyBindings.Binding(map.name, action.name, group, binding.effectivePath));
+                                live.Add(new KeyBindings.Binding(map.name, action.name, group, binding.effectivePath,
+                                    binding.isPartOfComposite ? binding.name : null));
                     }
             return live;
         }
 
         /// <summary>
-        /// Listens for the next press on the keyboard (or the pad, <paramref name="pad"/>) and gives it
-        /// to <paramref name="target"/>, if the rules allow; Esc cancels. <paramref name="done"/> is told
-        /// the outcome in the player's words, and whether anything changed. One rebinding at a time:
-        /// asking for another while one listens cancels the first.
+        /// Listens for the next press on the keyboard (or the pad, <paramref name="pad"/>, for a target
+        /// the pad has a binding of its own for: the camera's keys always listen to the keyboard) and
+        /// gives it to <paramref name="target"/>, if the rules allow; Esc cancels. <paramref name="done"/>
+        /// is told the outcome in the player's words, and whether anything changed. One rebinding at a
+        /// time: asking for another while one listens cancels the first.
         /// </summary>
         public static void Listen(KeyBindings.Target target, bool pad, IPreferenceStore store, Action<string, bool> done)
         {
             Cancel();
             if (target == null) return;
+            pad = pad && target.OnPad;
             string scheme = pad ? KeyBindings.GamepadScheme : KeyBindings.KeyboardScheme;
             ListeningFor = target;
             // A probe of its own, never one of the game's actions: nothing the house reads is
@@ -141,9 +179,9 @@ namespace Gamesim.House
                 {
                     string path = probe.bindings[0].effectivePath;
                     End();
-                    string refusal = KeyBindings.Check(LiveBindings(HouseInput.Actions), target.Map, target.Action, scheme, path);
+                    string refusal = KeyBindings.Check(LiveBindings(HouseInput.Actions), target, scheme, path);
                     if (refusal != null) { done?.Invoke(refusal, false); return; }
-                    current.Set(target.Map, target.Action, scheme, path);
+                    current.Set(target, scheme, path);
                     ApplyEverywhere();
                     Save(store);
                     done?.Invoke(target.Name + " is now " + InputGlossary.BindingLabel(path) + (pad ? " on the pad." : "."), true);

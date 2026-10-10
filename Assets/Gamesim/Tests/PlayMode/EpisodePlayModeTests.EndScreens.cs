@@ -79,9 +79,9 @@ namespace Gamesim.Tests.PlayMode
             var runnerUp = state.Find(state.runnerUpId);
             var record = new CareerRecord();
             record.seasons.Add(new CareerSeason { sessionId = "a", outcome = "Runner-up", placement = 2, hohWins = 1, vetoWins = 1 });
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                Report().FontScale = larger ? 1.2f : 1f;
+                Report().FontScale = TextSizes.Scale(textSize);
                 yield return null;
                 Report().Show(state, _ => null, null, CareerSummary.Of(record));
                 yield return null;
@@ -166,7 +166,7 @@ namespace Gamesim.Tests.PlayMode
 
                 foreach (var part in new[] { SeasonReport.StandingsName, SeasonReport.JuryColumnName, SeasonReport.TimelineName, SeasonReport.CareerStripName })
                     AssertDecisionCopyFits(ReportPart(part));
-                if (Application.isBatchMode) yield return CaptureFraming(larger ? "season-complete-large" : "season-complete");
+                if (Application.isBatchMode) yield return CaptureFraming("season-complete" + TextScales.Suffix(textSize));
                 Report().Hide();
             }
             Report().FontScale = 1f;
@@ -245,10 +245,10 @@ namespace Gamesim.Tests.PlayMode
         {
             var state = FinishedWithWeeks();
             var hud = director.GetComponentsInChildren<Canvas>(true).First(canvas => canvas.name == "Gamesim Episode HUD");
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                string size = larger ? "At the larger text, " : "At resting text, ";
-                Report().FontScale = larger ? 1.2f : 1f;
+                string size = "At the " + TextSizes.Name(textSize) + " text, ";
+                Report().FontScale = TextSizes.Scale(textSize);
                 yield return null;
                 Report().Show(state, _ => null, () => { }, null, () => { }, () => { }, () => { }, 3);
                 yield return null;
@@ -290,7 +290,7 @@ namespace Gamesim.Tests.PlayMode
                 // top is where the HUD draws it at the report's text size; the HUD here may be at
                 // resting text, and a strip at resting text only stands lower.
                 var stripDim = ReportPart("Strip dim").GetComponent<Image>();
-                float stripTop = CastRail.GroundTop(larger ? 1.2f : 1f) * hud.scaleFactor;
+                float stripTop = CastRail.GroundTop(TextSizes.Scale(textSize)) * hud.scaleFactor;
                 Assert.That(stripDim.color.a, Is.EqualTo(houseDim.color.a), size + "the strip under the rail is dimmed as the house is.");
                 Assert.That(stripDim.raycastTarget, Is.False, "The clear scrim under it takes the clicks.");
                 Assert.That(ScreenRect(stripDim.rectTransform).yMax, Is.GreaterThanOrEqualTo(stripTop - .5f), size + "the corner's dim covers the strip.");
@@ -298,7 +298,7 @@ namespace Gamesim.Tests.PlayMode
                 var brandRect = ScreenRect(brand.rectTransform);
                 Assert.That(brandRect.yMax, Is.LessThanOrEqualTo(ScreenRect(stripDim.rectTransform).yMax + .5f), size + "the brand line stands in the dark corner.");
                 Assert.That(brandRect.xMax, Is.LessThanOrEqualTo(ScreenRect(stripDim.rectTransform).xMax + .5f), size + "the brand line stands in the dark corner.");
-                if (Application.isBatchMode) yield return CaptureFraming(larger ? "season-complete-head-large" : "season-complete-head");
+                if (Application.isBatchMode) yield return CaptureFraming("season-complete-head" + TextScales.Suffix(textSize));
                 Report().Hide();
             }
             Report().FontScale = 1f;
@@ -329,10 +329,10 @@ namespace Gamesim.Tests.PlayMode
                 var ballots = SeasonReport.JuryBallots(state);
                 Assert.That(ballots.Count, Is.EqualTo(house - 2), "A jury of " + (house - 2) + ".");
                 int forChampion = ballots.Count(b => b.FinalistId == champion.id), forRunnerUp = ballots.Count(b => b.FinalistId == runnerUp.id);
-                foreach (bool larger in new[] { false, true })
+                foreach (var (textSize, larger) in TextScales.Steps)
                 {
-                    string where = ballots.Count + " jurors" + (larger ? " at the larger text" : "") + ": ";
-                    Report().FontScale = larger ? 1.2f : 1f;
+                    string where = ballots.Count + " jurors" + (larger ? " " + TextScales.At(textSize) : "") + ": ";
+                    Report().FontScale = TextSizes.Scale(textSize);
                     yield return null;
                     Report().Show(state, _ => null, null, null, null, null, null, 2);
                     yield return null;
@@ -389,7 +389,7 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(LabelsUnder(tally), Does.Contain(forChampion.ToString()).And.Contain(forRunnerUp.ToString())
                         .And.Contain(champion.name).And.Contain(runnerUp.name), where + "the count at the bar's ends, and whose it is.");
                     foreach (var part in new[] { strip, stats, tally }) AssertDecisionCopyFits(part);
-                    if (Application.isBatchMode && house == 16) yield return CaptureFraming(larger ? "season-complete-hero-14-large" : "season-complete-hero-14");
+                    if (Application.isBatchMode && house == 16) yield return CaptureFraming("season-complete-hero-14" + TextScales.Suffix(textSize));
                     Report().Hide();
                 }
             }
@@ -433,9 +433,9 @@ namespace Gamesim.Tests.PlayMode
             var gone = state.Find(recap.evictedId);
             Assert.That(gone, Is.Not.Null, "The week closed with an eviction.");
             string before = JsonUtility.ToJson(state);
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                screen.FontScale = larger ? 1.2f : 1f;
+                screen.FontScale = TextSizes.Scale(textSize);
                 yield return null;
                 screen.Show(state, () => { });
                 yield return Frames(2);
@@ -462,9 +462,9 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(LastActive(WeeklyRecapScreen.TabBodyName), Is.Not.Null);
                     if (tab == 0)
                         Assert.That(LabelsUnder(LastActive(WeeklyRecapScreen.TabBodyName)), Does.Contain(changedTag),
-                            (larger ? "Larger text" : "Resting text") + ": the ally's face on THE VOTE card says the vote changed, never a lie.");
+                            TextScales.At(textSize) + ": the ally's face on THE VOTE card says the vote changed, never a lie.");
                     AssertDecisionCopyFits(LastActive(WeeklyRecapScreen.TabBodyName));
-                    if (tab == 0 && Application.isBatchMode) yield return CaptureFraming(larger ? "weekly-recap-overview-large" : "weekly-recap-overview");
+                    if (tab == 0 && Application.isBatchMode) yield return CaptureFraming("weekly-recap-overview" + TextScales.Suffix(textSize));
                 }
                 screen.Hide();
                 yield return null;

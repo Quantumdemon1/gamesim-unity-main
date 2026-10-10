@@ -175,16 +175,16 @@ namespace Gamesim.Tests.PlayMode
                     "A member who voted is judged by the ballot the reveal read; one who did not, by what they said at the call.");
             string before = JsonUtility.ToJson(state);
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                screen.FontScale = larger ? 1.2f : 1f;
+                screen.FontScale = TextSizes.Scale(textSize);
                 yield return null;
                 screen.Show(state, () => { });
                 yield return null;
                 ButtonWithCaption(WeeklyRecapScreen.YourWeekCaption).onClick.Invoke();
                 yield return null; yield return null;
                 Canvas.ForceUpdateCanvases();
-                string where = (larger ? "Larger text" : "Resting text") + ": ";
+                string where = TextScales.At(textSize) + ": ";
                 Assert.That(screen.OpenTab, Is.EqualTo(System.Array.IndexOf(WeeklyRecapScreen.TabCaptions, WeeklyRecapScreen.YourWeekCaption)), where + "the tab opened.");
                 Assert.That(ButtonWithCaption(WeeklyRecapScreen.ContinueCaption), Is.Not.Null, where + "Continue is still the one way on.");
 
@@ -221,7 +221,7 @@ namespace Gamesim.Tests.PlayMode
                     // The tab is the foot of the card's scroll: bring it into view, as a player reading it would.
                     var scroll = screen.GetComponentsInChildren<ScrollRect>().LastOrDefault(item => item.isActiveAndEnabled);
                     if (scroll != null) { scroll.verticalNormalizedPosition = 0f; Canvas.ForceUpdateCanvases(); }
-                    string name = larger ? "weekly-recap-your-week-large" : "weekly-recap-your-week";
+                    string name = "weekly-recap-your-week" + TextScales.Suffix(textSize);
                     yield return CaptureFraming(name);
                     // The batch canvas is 4:3, and the recap is laid out for the canvas it opened on:
                     // the 4:3 frame shows that layout whole, where the 16:9 one crops what overflows it.

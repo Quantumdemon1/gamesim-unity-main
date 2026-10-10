@@ -282,7 +282,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator Play_DrawsTheHeadlineAtEveryTextSize()
         {
-            foreach (float scale in new[] { 1f, 1.2f })
+            foreach (float scale in TextScales.All)
             {
                 sting.FontScale = scale;
                 sting.Play(CeremonySting.NominationKind, "Maya Hassan nominated Taylor Kim.", true);
@@ -311,7 +311,7 @@ namespace Gamesim.Tests.PlayMode
         {
             var canvas = (RectTransform)sting.transform;
 
-            foreach (float scale in new[] { 1f, 1.2f })
+            foreach (float scale in TextScales.All)
             {
                 sting.FontScale = scale;
                 sting.Play(CeremonySting.NominationKind, "Maya Hassan nominated Taylor Kim.", false);
@@ -413,22 +413,28 @@ namespace Gamesim.Tests.PlayMode
             float baseHeight = CardRect().rect.height;
             float baseFont = Headline().fontSize;
 
-            sting.FontScale = 1.2f;
-            sting.Play(CeremonySting.EvictionKind, "Casey Wilson has been evicted.", false);
-            yield return null;
+            // Each size up from the last: the larger text over the standard, the largest over the larger.
+            foreach (float scale in TextScales.All.Skip(1))
+            {
+                sting.FontScale = scale;
+                sting.Play(CeremonySting.EvictionKind, "Casey Wilson has been evicted.", false);
+                yield return null;
 
-            Assert.That(Headline().fontSize, Is.GreaterThan(baseFont), "Large text should enlarge the headline.");
-            Assert.That(CardRect().rect.height, Is.GreaterThan(baseHeight), "The card should grow with it.");
-            Assert.That(Headline().rectTransform.rect.height,
-                Is.GreaterThanOrEqualTo(Headline().fontSize * 1.2f),
-                "The headline needs a full line box or it renders truncated.");
+                Assert.That(Headline().fontSize, Is.GreaterThan(baseFont), "Text at " + scale + " should enlarge the headline.");
+                Assert.That(CardRect().rect.height, Is.GreaterThan(baseHeight), "The card should grow with it at " + scale + ".");
+                Assert.That(Headline().rectTransform.rect.height,
+                    Is.GreaterThanOrEqualTo(Headline().fontSize * 1.2f),
+                    "The headline needs a full line box or it renders truncated, at " + scale + ".");
+                baseHeight = CardRect().rect.height;
+                baseFont = Headline().fontSize;
+            }
         }
 
         /// <summary>
         /// The strip on the kit (UI-UX-PASS-PLAN V0, decision 14): every beat leads with its
         /// medallion where the accent bar stood - the veto meeting with its own mark, drawn as
         /// authored, every other beat with a ring of its colour round its glyph - and its name beside
-        /// it, every letter drawn and ending inside the card, at both text sizes on the 4:3 batch
+        /// it, every letter drawn and ending inside the card, at every text size on the 4:3 batch
         /// canvas, which narrows the strip to about 525, and on the 16:9 frame. The old bar is gone.
         /// </summary>
         [UnityTest]
@@ -440,7 +446,7 @@ namespace Gamesim.Tests.PlayMode
                 CeremonySting.NominationKind, CeremonySting.VetoKind, CeremonySting.EvictionKind,
                 CeremonySting.WinnerKind, CeremonySting.FinalEvictionKind, CeremonySting.WalkOutKind,
             };
-            foreach (float scale in new[] { 1f, 1.2f })
+            foreach (float scale in TextScales.All)
             foreach (var kind in kinds)
             {
                 sting.FontScale = scale;
@@ -486,7 +492,7 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The longest sentence a veto meeting's strip says, from the cast's three longest names -
         /// "{holder} saves {saved}; {replacement} is the replacement nominee.", the engine's own
-        /// shape - said whole at both text sizes on the 4:3 batch canvas and the 16:9 frame: on two
+        /// shape - said whole at every text size on the 4:3 batch canvas and the 16:9 frame: on two
         /// lines where one will not hold it, in a box 1.3 times its type a line, every letter drawn
         /// (UI-UX-PASS-PLAN V0 review: at 4:3 and the larger text it was cut after "is the" while the
         /// status line that used to carry it stood down). A short sentence keeps the one line.
@@ -497,7 +503,7 @@ namespace Gamesim.Tests.PlayMode
             yield return OnAFrame(frameWidth, 900);
             var names = CastTemplates.Everyone.Select(template => template.Name).OrderByDescending(name => name.Length).Take(3).ToArray();
             string longest = names[0] + " saves " + names[1] + "; " + names[2] + " is the replacement nominee.";
-            foreach (float scale in new[] { 1f, 1.2f })
+            foreach (float scale in TextScales.All)
             {
                 string where = "At font scale " + scale + " on the " + frameWidth + " by 900 frame";
                 sting.FontScale = scale;

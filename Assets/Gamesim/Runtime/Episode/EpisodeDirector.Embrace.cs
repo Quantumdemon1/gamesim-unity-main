@@ -36,6 +36,18 @@ namespace Gamesim.Episode
         /// <summary>The two a peace is waiting to embrace, or null; for the tests.</summary>
         public string PendingEmbraceFirst => peaceFirst;
 
+        /// <summary>The goodbye's embrace (the art brief's R7), the evicted and the one who stays.</summary>
+        private EmbracePair goodbyeEmbrace;
+
+        /// <summary>The goodbye's embrace under way or letting go, or null; for the tests.</summary>
+        public EmbracePair GoodbyeEmbrace => goodbyeEmbrace != null && goodbyeEmbrace.Stage != EmbracePair.Phase.Done ? goodbyeEmbrace : null;
+
+        /// <summary>Lets the goodbye's embrace go: the walk out is taking the evicted.</summary>
+        private void ReleaseGoodbyeEmbrace(string reason)
+        {
+            if (goodbyeEmbrace != null && !goodbyeEmbrace.Released) goodbyeEmbrace.Release(reason);
+        }
+
         private void TickEmbrace()
         {
             var state = projected;

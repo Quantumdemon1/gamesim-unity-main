@@ -104,14 +104,14 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(WaitingOnYou.AdvanceNote(before), Is.EqualTo(costs), "The offer and the window's seat go as the campaign opens.");
             Assert.That(EpisodeEngine.LapsingOnAdvance(before), Is.Empty, "The fixture lets no storyline pass.");
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
                 if (larger)
                 {
                     director.ClosePanels();
-                    yield return ApplyTextSize(true);
+                    yield return ApplyTextSize(textSize);
                 }
-                string where = "The meeting's end" + (larger ? " at the larger text" : "");
+                string where = "The meeting's end" + (larger ? " " + TextScales.At(textSize) : "");
                 yield return OpenStation();
                 yield return null;
                 AssertOnTheStrategyStage("Continue episode", where);
@@ -277,14 +277,14 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(WaitingOnYou.AdvanceNote(before), Is.EqualTo(costs), "The plea and the window's seats go when campaigning closes.");
             Assert.That(EpisodeEngine.LapsingOnAdvance(before), Is.Empty, "The fixture lets no storyline pass.");
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
                 if (larger)
                 {
                     director.ClosePanels();
-                    yield return ApplyTextSize(true);
+                    yield return ApplyTextSize(textSize);
                 }
-                string where = "The campaign" + (larger ? " at the larger text" : "");
+                string where = "The campaign" + (larger ? " " + TextScales.At(textSize) : "");
                 yield return OpenStation();
                 yield return null;
                 AssertOnTheStrategyStage(CloseCampaigning, where);
@@ -328,14 +328,14 @@ namespace Gamesim.Tests.PlayMode
                 "The longest Up next the strip carries over a cost.");
             string costs = EpisodeEngine.AfterHoHSeats + " unused actions will be lost.";
             Assert.That(WaitingOnYou.AdvanceNote(state), Is.EqualTo(costs));
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
                 if (larger)
                 {
                     director.ClosePanels();
-                    yield return ApplyTextSize(true);
+                    yield return ApplyTextSize(textSize);
                 }
-                string where = "The outcome in a house of sixteen" + (larger ? " at the larger text" : "");
+                string where = "The outcome in a house of sixteen" + (larger ? " " + TextScales.At(textSize) : "");
                 yield return OpenStation();
                 yield return null;
                 yield return AtBothFrames(frame => AssertFooterSays("Continue episode", where + " on the " + frame + " frame",
@@ -405,7 +405,7 @@ namespace Gamesim.Tests.PlayMode
                 {
                     var waiting = BadgedHouse(house, true);
                     var quiet = BadgedHouse(house, false);
-                    foreach (float text in new[] { 1f, 1.2f })
+                    foreach (float text in TextScales.All)
                     for (float width = 760f; width <= 1700f; width += 31f)
                     {
                         probe.sizeDelta = new Vector2(width, 200f);

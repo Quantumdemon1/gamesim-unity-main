@@ -89,14 +89,14 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(read.Select(c => c.id), Is.EquivalentTo(new[] { "promise-your-word", "deal-your-word", "deal-kept-word" }),
                 "The reader holds the player's own word and nothing between two houseguests.");
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
                 if (larger)
                 {
                     director.ClosePanels();
-                    yield return ApplyTextSize(true);
+                    yield return ApplyTextSize(textSize);
                 }
-                string size = larger ? " at the larger text" : "";
+                string size = larger ? " " + TextScales.At(textSize) : "";
 
                 // The door is in the notes page's head, where "Notebook [J]" opens.
                 yield return OpenNotebook();
@@ -278,13 +278,13 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator YourWord_ThePickerSaysTheBreachThenWhatCommittingLetsPassInTheOneWarningLine()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
                 yield return InstallYourWordNomination("deal-lapse", 3);
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenStation();
                 yield return null;
-                string where = "The picker with a story waiting" + (larger ? " at the larger text" : "");
+                string where = "The picker with a story waiting" + (larger ? " " + TextScales.At(textSize) : "");
                 var state = director.Snapshot;
                 var beat = EpisodeEngine.OpenStoryBeats(state).Single();
                 string lapse = "Committing lets 1 storyline pass: " + beat.title + " (Not now).";
@@ -417,7 +417,7 @@ namespace Gamesim.Tests.PlayMode
             string expected = CommitmentsRead.Warning(seeded, choices.SelectMany(choice => CommitmentsRead.WouldBreak(seeded, choice)));
             Assert.That(expected, Is.EqualTo("Saving " + WordFirst(seeded, other) + " or not using the veto breaks your veto deal with "
                 + WordFirst(seeded, partner) + "."));
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
                 string where = "The veto decision with a deal at stake" + (larger ? " at the larger text" : "");
                 AssertTheMeetingFits(where);
@@ -476,7 +476,7 @@ namespace Gamesim.Tests.PlayMode
             string expected = CommitmentsRead.Warning(before,
                 candidates.SelectMany(id => CommitmentsRead.WouldBreak(before, CommitmentsRead.Decision.Veto(true, holder, id))));
             Assert.That(expected, Is.EqualTo("Naming " + WordFirst(before, named) + " as the replacement breaks your safety deal with " + WordThem(before, named) + "."));
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
                 string where = "Naming the replacement with a deal at stake" + (larger ? " at the larger text" : "");
                 AssertTheMeetingFits(where);
@@ -539,7 +539,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(expected, Is.EqualTo(
                 "Naming " + WordFirst(before, dealWith) + " as the replacement breaks your safety deal with " + WordThem(before, dealWith) + ". "
                 + "Naming " + WordFirst(before, promisedTo) + " as the replacement breaks your promise of safety to " + WordThem(before, promisedTo) + "."));
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
                 string where = "The Head of Household's veto decision with a word at stake" + (larger ? " at the larger text" : "");
                 AssertTheMeetingFits(where);
@@ -605,7 +605,7 @@ namespace Gamesim.Tests.PlayMode
                 ids.SelectMany(id => CommitmentsRead.WouldBreak(before, CommitmentsRead.Decision.Veto(true, before.nominees[0], id))));
             Assert.That(ids.Take(3).All(id => expected.Contains("Naming " + WordFirst(before, id) + " as the replacement breaks ")), Is.True,
                 "Three names, a sentence each: " + expected);
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
                 string where = "The strip in a house of " + EpisodeValidation.MaximumCast + (larger ? " at the larger text" : "");
                 var content = ActiveRect("Episode content");
@@ -824,7 +824,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ScreenRect(warning.rectTransform).yMin, Is.GreaterThanOrEqualTo(cards.yMax - .5f), "over the cards it is about,");
             // and the decision in view with its warning: the cards whole at scroll 0, Confirm and
             // the way back pinned under them (UI-UX-PASS-PLAN T0).
-            AssertTheDecisionFitsAtScrollZero("The ballot under review", true, false);
+            AssertTheDecisionFitsAtScrollZero("The ballot under review", true, TextSize.Standard);
             if (Application.isBatchMode) yield return CaptureFraming("breach-warning-diary-ballot");
             ButtonWithCaption(EpisodeHud.DiaryCancelCaption).onClick.Invoke();
             yield return null; yield return null;

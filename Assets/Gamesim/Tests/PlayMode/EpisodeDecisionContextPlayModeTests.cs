@@ -87,9 +87,9 @@ namespace Gamesim.Tests.PlayMode
         {
             yield return InstallDiaryFixture(state=>state.phase==EpisodePhase.Nomination && state.hohId==state.playerId
                 && state.nominees.Count==0,"player nominations with candidate context");
-            foreach(bool larger in new[]{false,true})
+            foreach(var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenDiaryFixturePanel();
                 var before=director.Snapshot;
                 var bytes=File.ReadAllBytes(director.SavePath);

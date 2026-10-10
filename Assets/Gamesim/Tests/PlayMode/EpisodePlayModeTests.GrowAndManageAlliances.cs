@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Episode;
 using Gamesim.House;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using UnityEngine.TestTools;
@@ -121,12 +122,12 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest, Timeout(600000)]
         public IEnumerator GrowAndManage_UnderTheRulesABringInRowAsksSomebodyIntoAPact()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                string size = larger ? " at the larger text" : "";
+                string size = larger ? " " + TextScales.At(textSize) : "";
                 yield return InstallTalkingHouse(8, false, PactToGrow);
                 yield return SettleCast();
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 var asked = HouseNpcs(director.Snapshot)[0];
                 Assert.That(HasBody(asked.id), Is.True, "The one asked has a body to talk to.");
                 yield return TalkTo(asked.id);
@@ -143,9 +144,9 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(notes, Has.Count.EqualTo(1), where + ": one note says whose read the chances are,");
                 Assert.That(notes[0].parent, Is.SameAs(row.transform.parent), where + ": in the row's column,");
                 Assert.That(notes[0].GetSiblingIndex(), Is.LessThan(row.transform.GetSiblingIndex()), where + ": above it.");
-                AssertConversationFits(larger, where);
+                AssertConversationFits(textSize, where);
                 AssertTagsHaveRoom(where);
-                yield return CaptureConversation("conversation-pact-bring-in" + (larger ? "-large" : ""), where, null);
+                yield return CaptureConversation("conversation-pact-bring-in" + TextScales.Suffix(textSize), where, null);
 
                 if (!larger)
                 {
@@ -212,7 +213,7 @@ namespace Gamesim.Tests.PlayMode
             var trio = ButtonWithCaption(EpisodeDirector.LeavePactCaption(TrioPactName));
             Assert.That(TagOn(pair), Is.EqualTo(EpisodeDirector.VerbTag(EpisodeCommandKind.LeaveAlliance)), where + ": leaving the pair costs what a leave costs;");
             Assert.That(TagOn(trio), Is.EqualTo(EpisodeDirector.LeaveGoesOnTag), where + ": leaving the trio too, and it goes on without the player.");
-            AssertConversationFits(false, where);
+            AssertConversationFits(TextSize.Standard, where);
             AssertTagsHaveRoom(where);
             yield return CaptureConversation("conversation-pact-leave", where, null);
 
@@ -241,7 +242,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest, Timeout(600000)]
         public IEnumerator GrowAndManage_UnderTheRulesTheFounderRenamesAPactFromTheNamesOnOffer()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
                 yield return InstallTalkingHouse(8, false, state =>
                 {
@@ -252,11 +253,11 @@ namespace Gamesim.Tests.PlayMode
                     });
                 });
                 yield return SettleCast();
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 var partner = HouseNpcs(director.Snapshot)[0];
                 Assert.That(HasBody(partner.id), Is.True);
                 yield return TalkTo(partner.id);
-                string where = "A conversation with a partner in a pact the player founded" + (larger ? " at the larger text" : "");
+                string where = "A conversation with a partner in a pact the player founded" + (larger ? " " + TextScales.At(textSize) : "");
                 Assert.That(director.IsConversationOpen, Is.True, where + ": the conversation opens.");
                 var open = director.Snapshot;
                 var pact = open.alliances.Single(a => a.id == GrowPactId);
@@ -270,9 +271,9 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.ConversationPicker, Is.EqualTo(verb), where + ": the row opens the names on offer.");
                 foreach (string name in names)
                     Assert.That(ButtonWithCaption(EpisodeDirector.RenameCaption(pact.name, name)), Is.Not.Null, where + ": '" + name + "' is on offer.");
-                AssertConversationFits(larger, where + " with its names open");
+                AssertConversationFits(textSize, where + " with its names open");
                 AssertTagsHaveRoom(where);
-                yield return CaptureConversation("conversation-pact-rename" + (larger ? "-large" : ""), where, null);
+                yield return CaptureConversation("conversation-pact-rename" + TextScales.Suffix(textSize), where, null);
 
                 if (!larger)
                 {
@@ -327,7 +328,7 @@ namespace Gamesim.Tests.PlayMode
                 .Select(pact => FindButton(EpisodeDirector.BringInCaption(npcs[4].name, pact))).ToList();
             foreach (var row in rows) Assert.That(row.interactable, Is.False, soured + ": every row is drawn locked.");
             AssertDirectlyOver(LiveLabel(EpisodeEngine.CannotVouchRefusal(npcs[4].name)), rows[0], soured + ": under one line, over the first row");
-            AssertConversationFits(false, soured);
+            AssertConversationFits(TextSize.Standard, soured);
             int revision = director.Snapshot.revision;
             rows[0].onClick.Invoke();
             yield return null;
@@ -339,12 +340,12 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest, Timeout(600000)]
         public IEnumerator GrowAndManage_UnderTheRulesTheLongestPactCaptionsFit()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                string size = larger ? " at the larger text" : "";
+                string size = larger ? " " + TextScales.At(textSize) : "";
                 yield return InstallTalkingHouse(8, false, LongestPacts);
                 yield return SettleCast();
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 var open = director.Snapshot;
                 var four = open.alliances.Single(a => a.id == GrowPactId);
                 var partner = open.Find(four.members[1]);
@@ -364,9 +365,9 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.ConversationPicker, Is.EqualTo(verb), where + ": the four's names are open.");
                 string longest = EpisodeDirector.RenameCaption(four.name, "The Hidden Council");
                 Assert.That(ButtonWithCaption(longest), Is.Not.Null, where + ": '" + longest + "' is on offer.");
-                AssertConversationFits(larger, where + " with its names open");
+                AssertConversationFits(textSize, where + " with its names open");
                 AssertTagsHaveRoom(where);
-                yield return CaptureConversation("conversation-pact-longest" + (larger ? "-large" : ""), where, null);
+                yield return CaptureConversation("conversation-pact-longest" + TextScales.Suffix(textSize), where, null);
                 director.ClosePanels();
                 yield return null;
 
@@ -384,9 +385,9 @@ namespace Gamesim.Tests.PlayMode
                 AssertDirectlyOver(LiveLabel(EpisodeEngine.BringInRefusal(held, outsider.id, held.alliances.Single(a => a.id == GrowPactId))), locked,
                     asking + ": under the reason");
                 Assert.That(ButtonWithCaption(EpisodeDirector.BringInCaption(outsider.name, PairPactName)), Is.Not.Null, asking + ": and the pair's is open.");
-                AssertConversationFits(larger, asking);
+                AssertConversationFits(textSize, asking);
                 AssertTagsHaveRoom(asking);
-                yield return CaptureConversation("conversation-pact-longest-ask" + (larger ? "-large" : ""), asking, null);
+                yield return CaptureConversation("conversation-pact-longest-ask" + TextScales.Suffix(textSize), asking, null);
                 director.ClosePanels();
                 yield return null;
             }

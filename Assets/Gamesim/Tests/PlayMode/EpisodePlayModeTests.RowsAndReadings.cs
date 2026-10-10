@@ -87,7 +87,7 @@ namespace Gamesim.Tests.PlayMode
         /// one, the voters' row follows the cards and the record and the reflections follow it, a
         /// scroll away. Measured in the HUD's own units, so it holds on either frame.
         /// </summary>
-        private void AssertTheDecisionFitsAtScrollZero(string where, bool reviewing, bool larger)
+        private void AssertTheDecisionFitsAtScrollZero(string where, bool reviewing, TextSize textSize)
         {
             Canvas.ForceUpdateCanvases();
             var panel = LastActive("Episode panel");
@@ -111,7 +111,7 @@ namespace Gamesim.Tests.PlayMode
             InTheWindow(Part(EpisodeHud.BallotLineName), "the line");
             var row = Part(EpisodeHud.BallotRowName);
             InTheWindow(row, "the cards' row");
-            float floor = EpisodeHud.BallotCardHeight * EpisodeHud.BallotCardFloor * (larger ? 1.2f : 1f);
+            float floor = EpisodeHud.BallotCardHeight * EpisodeHud.BallotCardFloor * TextSizes.Scale(textSize);
             var cards = row.GetComponentsInChildren<Button>().Where(button => button.transform.parent == row).ToList();
             Assert.That(cards.Count, Is.GreaterThanOrEqualTo(2), where + ": a card per nominee.");
             foreach (var card in cards)
@@ -285,22 +285,22 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(before.contestants.Count, Is.EqualTo(houseguests), "A house of " + houseguests + ".");
                 string caption = "Vote to evict " + before.Find(before.nominees[0]).name;
                 var voters = EpisodeEngine.Voters(before).Where(voter => !voter.isPlayer).ToList();
-                foreach (bool larger in new[] { false, true })
+                foreach (var (textSize, larger) in TextScales.Steps)
                 {
-                    yield return ApplyTextSize(larger);
+                    yield return ApplyTextSize(textSize);
                     yield return OpenDiaryFixturePanel();
-                    string where = "The ballot in a house of " + houseguests + (larger ? " at the larger text" : "");
+                    string where = "The ballot in a house of " + houseguests + (larger ? " " + TextScales.At(textSize) : "");
                     var roster = LastActive(EpisodeDirector.VotersRowName);
                     Assert.That(roster, Is.Not.Null, where + ": the voters are a row of chips.");
                     Assert.That(roster.GetComponentsInChildren<Button>().Select(chip => chip.name),
                         Is.EquivalentTo(voters.Select(voter => "Thoughts · " + voter.name)), where + ": a chip a voter who is not the player.");
                     AssertEveryLabelDraws(roster, where + "'s voters");
-                    yield return AtBothFrames(frame => AssertTheDecisionFitsAtScrollZero(where + " on the " + frame + " frame", false, larger));
+                    yield return AtBothFrames(frame => AssertTheDecisionFitsAtScrollZero(where + " on the " + frame + " frame", false, textSize));
 
                     ButtonWithCaption(caption).onClick.Invoke();
                     yield return null; yield return null;
                     Assert.That(director.HasDiaryDecisionDraft, Is.True, where + ": the choice waits.");
-                    yield return AtBothFrames(frame => AssertTheDecisionFitsAtScrollZero(where + " with a choice waiting on the " + frame + " frame", true, larger));
+                    yield return AtBothFrames(frame => AssertTheDecisionFitsAtScrollZero(where + " with a choice waiting on the " + frame + " frame", true, textSize));
                     Assert.That(ActiveDiaryText(), Does.Contain(EpisodeDirector.DraftBarLine), where + ": the bar says what a draft is.");
                     AssertEquivalent(before, director.Snapshot);
                     ButtonWithCaption(EpisodeHud.DiaryCancelCaption).onClick.Invoke();
@@ -326,13 +326,13 @@ namespace Gamesim.Tests.PlayMode
         {
             var screen = director.GetComponentInChildren<WeeklyRecapScreen>(true);
             var state = FirstWeekClosed();
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                screen.FontScale = larger ? 1.2f : 1f;
+                screen.FontScale = TextSizes.Scale(textSize);
                 yield return null;
                 screen.Show(state, () => { });
                 yield return Frames(3);
-                string where = "The recap" + (larger ? " at the larger text" : "");
+                string where = "The recap" + (larger ? " " + TextScales.At(textSize) : "");
                 AssertRecapOnItsScreen(screen, where);
                 yield return AtBothFrames(frame => AssertRecapOnItsScreen(screen, where + " on the " + frame + " frame"));
                 yield return Frames(2);
@@ -378,8 +378,10 @@ namespace Gamesim.Tests.PlayMode
                 {
                     (wide: 1600, high: 900, text: 1f, shape: "16:9"),
                     (wide: 1600, high: 900, text: 1.2f, shape: "16:9 at the larger text"),
+                    (wide: 1600, high: 900, text: 1.4f, shape: "16:9 at the largest text"),
                     (wide: 1024, high: 768, text: 1f, shape: "4:3"),
                     (wide: 1024, high: 768, text: 1.2f, shape: "4:3 at the larger text"),
+                    (wide: 1024, high: 768, text: 1.4f, shape: "4:3 at the largest text"),
                 })
                 {
                     yield return LayCastScreenOutAt(frame.wide, frame.high, frame.text);

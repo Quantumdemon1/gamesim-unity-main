@@ -145,8 +145,6 @@ namespace Gamesim.Tests.PlayMode
             try
             {
                 for (int frame = 0; frame < 40; frame++) yield return null;
-                Assert.That(firstAnimator.humanScale, Is.EqualTo(EmbracePair.SkeletonHumanScale).Within(.002f),
-                    "The pair distance is scaled from the skeleton's own humanScale.");
                 // The head's own forward, read while it faces the way the body does.
                 var firstHead = firstAnimator.GetBoneTransform(HumanBodyBones.Head);
                 var secondHead = secondAnimator.GetBoneTransform(HumanBodyBones.Head);
@@ -155,6 +153,12 @@ namespace Gamesim.Tests.PlayMode
 
                 var pair = EmbracePair.TryBegin(first, second);
                 Assert.That(pair, Is.Not.Null, EmbracePair.Refusal(first, second, null));
+                // The distance and the step are the take's, scaled by these bodies' size over the size of
+                // the skeleton the take was authored on (Gate 0's export, 1.0419588; this older mocap
+                // body measures 1.029).
+                float scale = (firstAnimator.humanScale + secondAnimator.humanScale) * .5f / EmbracePair.SkeletonHumanScale;
+                Assert.That(pair.Distance, Is.EqualTo(EmbracePair.PairDistance * scale).Within(1e-4f), "The pair distance scales with the bodies,");
+                Assert.That(pair.Step, Is.EqualTo(EmbracePair.SideStep * scale).Within(1e-4f), "and so does the side step.");
                 int firstIn = -1, secondIn = -1;
                 for (int frame = 0; frame < 120 && (firstIn < 0 || secondIn < 0); frame++)
                 {
@@ -167,8 +171,13 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(firstAnimator.GetCurrentAnimatorStateInfo(0).IsName("ReactEmbrace")
                     || firstAnimator.GetNextAnimatorStateInfo(0).IsName("ReactEmbrace"), Is.True);
 
-                // The hold: frame 40 of 114.
-                for (int frame = 0; frame < 120 && firstAnimator.GetCurrentAnimatorStateInfo(0).normalizedTime < 40f / 114f; frame++) yield return null;
+                // The hold: frame 40 of 114 - of the embrace itself, not of the idle it is fading from.
+                bool InTheHold()
+                {
+                    var now = firstAnimator.GetCurrentAnimatorStateInfo(0);
+                    return now.IsName("ReactEmbrace") && !firstAnimator.IsInTransition(0) && now.normalizedTime >= 40f / 114f;
+                }
+                for (int frame = 0; frame < 240 && !InTheHold(); frame++) yield return null;
                 Assert.That(firstAnimator.GetCurrentAnimatorStateInfo(0).IsName("ReactEmbrace"), Is.True, "Measured in the hold.");
                 foreach (var (animator, root, face, head) in new[] { (firstAnimator, firstActor.transform, firstFace, firstHead), (secondAnimator, actor.transform, secondFace, secondHead) })
                 {

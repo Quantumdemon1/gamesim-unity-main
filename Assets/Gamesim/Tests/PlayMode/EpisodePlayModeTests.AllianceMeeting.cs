@@ -108,12 +108,12 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest, Timeout(900000)]
         public IEnumerator AllianceMeeting_UnderTheRulesAPactMeetsInAnyPrivateRoomOnceAWeek()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                string size = larger ? " at the larger text" : "";
+                string size = larger ? " " + TextScales.At(textSize) : "";
                 yield return InstallTalkingHouse(8, true, PactOfEveryVoter(true));
                 yield return SettleCast();
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 var listener = Listener(director.Snapshot);
                 Assert.That(director.Snapshot.Allied(director.Snapshot.playerId, listener.id), Is.True, "Precondition: the one the player talks to is in the pact.");
 
@@ -144,9 +144,9 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(TagOn(row), Is.EqualTo(EpisodeDirector.WarmthTag + " · " + EpisodeDirector.LearnTag),
                     where + ": warmth, and in a vote week with voters at it, learning where a vote is going.");
                 Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.AllianceMeetCaption), Is.Null, where + ": and the old word is the backyard's alone, and only without the rules.");
-                AssertConversationFits(larger, where);
+                AssertConversationFits(textSize, where);
                 AssertTagsHaveRoom(where);
-                yield return CaptureConversation("conversation-alliance-meeting" + (larger ? "-large" : ""), where, null);
+                yield return CaptureConversation("conversation-alliance-meeting" + TextScales.Suffix(textSize), where, null);
                 if (larger)
                 {
                     director.ClosePanels();

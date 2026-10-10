@@ -124,11 +124,11 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator FreeTime_AHouseguestsScreenOpensFromTheirCardWithThreeWaysToSpendTheActionAndReturns()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenFreeTime();
-                string where = "A houseguest's screen" + (larger ? " at the larger text" : "");
+                string where = "A houseguest's screen" + (larger ? " " + TextScales.At(textSize) : "");
                 var state = director.Snapshot;
                 Assert.That(state.phase, Is.EqualTo(EpisodePhase.Social), "The fixture opens in free time.");
                 var who = state.Active.First(c => !c.isPlayer);
@@ -189,7 +189,7 @@ namespace Gamesim.Tests.PlayMode
                 AssertNoRowUnderThePinnedBar(where + " on the batch canvas", assert: false);
                 AssertEveryLabelDraws(panel, where);
                 if (Application.isBatchMode)
-                    yield return CaptureFraming(larger ? "houseguest-screen-large" : "houseguest-screen", settle: false,
+                    yield return CaptureFraming("houseguest-screen" + TextScales.Suffix(textSize), settle: false,
                         inspect: frame => AssertNoRowUnderThePinnedBar(where + " on the 16:9 frame", assert: !larger));
 
                 // Another face on the strip is another screen, its strip where it stood: no hold.

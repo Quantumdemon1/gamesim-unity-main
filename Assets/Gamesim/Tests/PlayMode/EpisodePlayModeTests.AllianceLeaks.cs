@@ -155,10 +155,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(WaveDEventKinds.All.Select(kind => (string)glyph.Invoke(null, new object[] { kind })),
                 Is.EqualTo(new[] { "eye", "ear", "people", "handshake" }), "Each of Wave D's kinds has its own glyph from the set.");
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
-                string where = "the alliances page at " + (larger ? "the larger text" : "the standard text");
+                yield return ApplyTextSize(textSize);
+                string where = "the alliances page " + TextScales.At(textSize);
                 director.ShowNotebookSection(EpisodeDirector.NotebookSection.Alliances);
                 yield return null; yield return null;
                 int revision = director.Snapshot.revision;
@@ -187,7 +187,7 @@ namespace Gamesim.Tests.PlayMode
 
                 if (Application.isBatchMode)
                 {
-                    string size = larger ? "-large" : "";
+                    string size = TextScales.Suffix(textSize);
                     ScrollNotebookTo(juggledCard);
                     yield return CaptureFraming("alliances-double-dealt" + size, arrange: () => ScrollNotebookTo(juggledCard));
                     yield return CaptureFraming("alliances-double-dealt" + size + "-4x3", arrange: () => ScrollNotebookTo(juggledCard), width: 1200, height: 900);

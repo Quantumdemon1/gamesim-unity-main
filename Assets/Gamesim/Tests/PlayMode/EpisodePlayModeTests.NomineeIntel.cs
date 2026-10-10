@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using Gamesim.Episode;
 using Gamesim.Persistence;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using UnityEngine;
@@ -105,9 +106,9 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator NomineeIntel_KeyboardCanOpenReachBothNomineesAndCancelAtBothTextSizes()
         {
             yield return InstallNomineeQuestion(16);
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return TalkTo(Listener(director.Snapshot).id);
                 var before = director.Snapshot;
                 yield return KeyboardSubmit(EpisodeDirector.NomineeIntelPickerCaption);
@@ -122,7 +123,7 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(control.IsInteractable(), Is.True);
                     Assert.That(control.navigation.mode, Is.Not.EqualTo(Navigation.Mode.None));
                 }
-                yield return AssertKeyboardRing("Targeted nominee question at " + (larger ? "large" : "standard") + " text", ModalRoot);
+                yield return AssertKeyboardRing("Targeted nominee question " + TextScales.At(textSize), ModalRoot);
                 yield return KeyboardSubmit(EpisodeDirector.NomineeIntelPickerCaption);
                 Assert.That(director.ConversationPicker, Is.Null);
                 AssertIntelUnchanged(before);

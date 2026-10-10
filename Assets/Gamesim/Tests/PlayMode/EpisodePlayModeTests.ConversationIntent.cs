@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using Gamesim.Episode;
 using Gamesim.Persistence;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
@@ -53,9 +54,9 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator ConversationIntent_FreshDialHasSixNonoverlappingPetalsAndThePlainTalkRowAtBothTextSizes()
         {
             yield return InstallIntentHouse(size: 16);
-            foreach (bool large in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(large);
+                yield return ApplyTextSize(textSize);
                 yield return TalkTo(intentListenerId);
                 var before = director.Snapshot;
                 var dial = ActiveRect(EpisodeHud.DialName);
@@ -73,7 +74,7 @@ namespace Gamesim.Tests.PlayMode
                 for (int a = 0; a < petals.Length; a++)
                 for (int b = a + 1; b < petals.Length; b++)
                     Assert.That(ScreenRect((RectTransform)petals[a].transform).Overlaps(ScreenRect((RectTransform)petals[b].transform)), Is.False);
-                yield return AssertKeyboardRing("Fresh six-petal conversation " + (large ? "large" : "standard"), ModalRoot);
+                yield return AssertKeyboardRing("Fresh six-petal conversation " + TextSizes.Name(textSize), ModalRoot);
                 ButtonWithCaption(EpisodeHud.MorePetalCaption).onClick.Invoke(); yield return null;
                 Assert.That(EventSystem.current.currentSelectedGameObject, Is.EqualTo(ButtonWithCaption(EpisodeHud.DiscussGameCaption).gameObject),
                     "Moving plain Talk does not change More's first-row destination.");

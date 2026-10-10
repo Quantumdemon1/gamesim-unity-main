@@ -843,6 +843,8 @@ namespace Gamesim.Episode
                 // house reacts to them, and they go when the card does (TickCeremonies).
                 var evictedNow = EvictedThisCommit(result.state, wasActive);
                 departingId = evictedNow != null && evictedNow != result.state.playerId ? evictedNow : null;
+                // So does whoever production removed, while the removal's card plays (TickRemoval).
+                removingId = RemovedThisCommit(result.state, wasActive);
                 message += "  ·  Saved locally."; Project();
                 // A finale joins the career record the moment it is durable, and not before.
                 RecordCareer(result.state);
@@ -1201,11 +1203,12 @@ namespace Gamesim.Episode
         public static bool RoutedByTheHouse(ContestantStatus status, bool departing, bool walkingOut, bool onJuryBench, bool stageHolds) =>
             KeepsBody(status, departing, walkingOut, onJuryBench) && (status == ContestantStatus.Active || walkingOut || stageHolds);
 
+        // Somebody production removed counts as departing while the removal's card plays: shown, never routed.
         private bool KeepsBody(EpisodeState state, ContestantState model) =>
-            KeepsBody(model.status, model.id == departingId, model.id == walkingOutId, OnJuryBench(state, model));
+            KeepsBody(model.status, model.id == departingId || model.id == removingId, model.id == walkingOutId, OnJuryBench(state, model));
 
         private bool RoutedByTheHouse(EpisodeState state, ContestantState model) =>
-            RoutedByTheHouse(model.status, model.id == departingId, model.id == walkingOutId, OnJuryBench(state, model),
+            RoutedByTheHouse(model.status, model.id == departingId || model.id == removingId, model.id == walkingOutId, OnJuryBench(state, model),
                 CeremonyStageHolds(model.id));
 
 

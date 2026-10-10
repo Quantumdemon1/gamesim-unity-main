@@ -36,11 +36,11 @@ namespace Gamesim.Tests.PlayMode
         {
             HoldTheHouseForTheFixture();
             yield return SettleCast();
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
-                string size = larger ? "-large" : "";
-                string at = larger ? " at the larger text" : " at the standard text";
+                yield return ApplyTextSize(textSize);
+                string size = TextScales.Suffix(textSize);
+                string at = " " + TextScales.At(textSize);
 
                 // The pause menu by Escape, on the keyboard: PAUSED at its head, and no chip anywhere.
                 yield return PressKey(Key.LeftCtrl);

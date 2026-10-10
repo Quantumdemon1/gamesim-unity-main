@@ -53,7 +53,7 @@ namespace Gamesim.Tests.PlayMode
                 }), "The fixture's readings give every kind.");
                 RelationshipWeb.SetFilter(state, RelationshipWeb.Filter.All);
 
-                foreach (float scale in new[] { 1f, 1.2f })
+                foreach (float scale in TextScales.All)
                 {
                     string at = " at text scale " + scale;
                     var root = RelationshipWeb.Build(viewport, state, scale, TMP_Settings.defaultFontAsset, _ => null, _ => { }, 490f);
@@ -97,15 +97,15 @@ namespace Gamesim.Tests.PlayMode
             new EpisodeSaveStore(director.SavePath).Save(seeded);
             yield return ReloadEpisode();
             HoldTheHouseForTheFixture();
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 RelationshipWeb.ClearSelection();
                 RelationshipWeb.SetFilter(director.Snapshot, RelationshipWeb.Filter.All);
                 director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network);
                 yield return Frames(2);
-                string size = larger ? "-large" : "";
-                yield return OnBothFrames("web-strokes" + size, "The relationship web" + (larger ? " at larger text" : ""), where =>
+                string size = TextScales.Suffix(textSize);
+                yield return OnBothFrames("web-strokes" + size, "The relationship web" + (larger ? " " + TextScales.At(textSize) : ""), where =>
                 {
                     var graph = Under(Section(), RelationshipWeb.GraphName);
                     Assert.That(graph, Is.Not.Null, where + ": the web is up.");

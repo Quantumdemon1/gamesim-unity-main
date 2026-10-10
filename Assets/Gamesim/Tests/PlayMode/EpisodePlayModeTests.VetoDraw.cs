@@ -135,9 +135,10 @@ namespace Gamesim.Tests.PlayMode
             foreach (int houseguests in new[] { 7, 16 })
             {
                 yield return InstallVetoDraw(49, houseguests);
-                yield return AtBothTextSizes(larger =>
+                yield return AtEachTextSize(textSize =>
                 {
-                    string where = "The veto's draw in a house of " + houseguests + (larger ? " at the larger text" : "");
+                    bool larger = textSize != TextSize.Standard;
+                    string where = "The veto's draw in a house of " + houseguests + (larger ? " " + TextScales.At(textSize) : "");
                     AssertOnTheStrategyStage("Continue episode", where);
                     var content = ActiveRect("Episode content");
                     var viewport = (RectTransform)content.parent;
@@ -147,7 +148,7 @@ namespace Gamesim.Tests.PlayMode
                     var row = ActiveRect(EpisodeHud.VetoDrawBoardName);
                     var cards = row.GetComponentsInChildren<RectTransform>().Where(rect => rect.name.StartsWith("Face · ")).ToList();
                     Assert.That(cards, Has.Count.EqualTo(houseguests), where + " shows the whole house.");
-                    float scale = larger ? 1.2f : 1f;
+                    float scale = TextSizes.Scale(textSize);
                     foreach (var card in cards)
                     {
                         AssertInside(window, card, where + "'s '" + card.name + "'");
@@ -165,12 +166,12 @@ namespace Gamesim.Tests.PlayMode
                 // and the panel (UI-UX-PASS-PLAN T0; the capture read it as cut, and its pixels
                 // put it 46 units short of the shell's edge).
                 if (houseguests != 16) continue;
-                foreach (bool larger in new[] { false, true })
+                foreach (var (textSize, larger) in TextScales.Steps)
                 {
-                    yield return ApplyTextSize(larger);
+                    yield return ApplyTextSize(textSize);
                     yield return OpenStation();
                     yield return null;
-                    string size = larger ? " at the larger text" : "";
+                    string size = larger ? " " + TextScales.At(textSize) : "";
                     yield return AtBothFrames(frame =>
                     {
                         string where = "The draw of sixteen" + size + " on the " + frame + " frame";

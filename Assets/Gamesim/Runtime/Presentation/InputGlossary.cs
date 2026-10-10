@@ -375,6 +375,28 @@ namespace Gamesim.Presentation
                 case "rightBracket": return "]";
                 case "minus": return "-";
                 case "equals": return "=";
+                // Keys a player may give an action of their own (A5), named as the keyboard prints them.
+                case "leftShift": return "Left Shift";
+                case "rightShift": return "Right Shift";
+                case "leftCtrl": return "Left Ctrl";
+                case "rightCtrl": return "Right Ctrl";
+                case "leftAlt": return "Left Alt";
+                case "rightAlt": return "Right Alt";
+                case "capsLock": return "Caps Lock";
+                case "delete": return "Delete";
+                case "insert": return "Insert";
+                case "backquote": return "`";
+                case "semicolon": return ";";
+                case "quote": return "'";
+                case "comma": return ",";
+                case "period": return ".";
+                case "slash": return "/";
+                case "backslash": return "\\";
+                case "numpadPlus": return "Num +";
+                case "numpadMinus": return "Num -";
+                case "numpadMultiply": return "Num *";
+                case "numpadDivide": return "Num /";
+                case "numpadPeriod": return "Num .";
             }
             if (key.StartsWith("numpad", StringComparison.Ordinal) && key.Length == 7 && char.IsDigit(key[6])) return "Num " + key[6];
             if (key.Length == 1) return key.ToUpperInvariant();

@@ -121,9 +121,9 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(cameraRig.HasShot, Is.False, "Closing the briefing lets its shot go.");
 
             // Nothing on the sheet is cut off or runs past its card, at either text size.
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 WarpPlayer(director.StationPosition);
                 Assert.That(director.TryOpenPhasePanel(), Is.True);
                 yield return null; yield return null;
@@ -132,14 +132,14 @@ namespace Gamesim.Tests.PlayMode
                 foreach (var label in sheetNow.GetComponentsInChildren<TMP_Text>())
                 {
                     label.ForceMeshUpdate();
-                    Assert.That(label.isTextOverflowing, Is.False, "At " + (larger ? "larger" : "standard") + " text '" + label.text + "' is cut off.");
+                    Assert.That(label.isTextOverflowing, Is.False, "At " + TextSizes.Name(textSize) + " text '" + label.text + "' is cut off.");
                 }
                 foreach (var control in sheetNow.GetComponentsInChildren<Button>())
                 {
                     var edge = ScreenRect((RectTransform)control.transform).xMax;
                     foreach (var words in control.GetComponentsInChildren<TMP_Text>())
                         Assert.That(ScreenRect(words.rectTransform).xMax, Is.LessThanOrEqualTo(edge + 1f),
-                            "At " + (larger ? "larger" : "standard") + " text '" + words.text + "' runs past its control.");
+                            "At " + TextSizes.Name(textSize) + " text '" + words.text + "' runs past its control.");
                 }
                 director.ClosePanels();
                 yield return null;

@@ -208,7 +208,7 @@ namespace Gamesim.Tests.PlayMode
                 var hoh = state.Find(state.hohId);
                 string pointer = EpisodeDirector.WindowLine(state);
                 Assert.That(pointer, Does.EndWith("left in this window."), "Under the week's windows the count is the window's, and says so.");
-                yield return AtBothTextSizes(larger =>
+                yield return AtEveryTextSize(larger =>
                 {
                     string where = "The ceremony in a house of " + houseguests + (larger ? " at the larger text" : "");
                     AssertNominationScreen(where, "Continue episode");
@@ -255,7 +255,7 @@ namespace Gamesim.Tests.PlayMode
             {
                 yield return InstallNomination(houseguests, false, NominationBlock.Open, options);
                 var beat = EpisodeEngine.OpenStoryBeats(director.Snapshot).Single();
-                yield return AtBothTextSizes(larger =>
+                yield return AtEveryTextSize(larger =>
                 {
                     string where = "A beat of " + options + " options in a house of " + houseguests + (larger ? " at the larger text" : "");
                     AssertNominationScreen(where, "Continue episode");
@@ -354,7 +354,7 @@ namespace Gamesim.Tests.PlayMode
                 candidates = EpisodeEngine.NominationCandidates(state).Select(c => new EpisodeHud.Option(c.id, c.name)).ToArray();
                 var you = state.Find(state.playerId);
                 var names = candidates.Select(c => c.Label).ToArray();
-                yield return AtBothTextSizes(larger =>
+                yield return AtEveryTextSize(larger =>
                 {
                     string where = "The picker in a house of " + houseguests + (larger ? " at the larger text" : "");
                     AssertNominationScreen(where, "Commit nominations", EpisodeHud.ShowCandidateContextCaption);
@@ -458,13 +458,13 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator NominationScreen_TheViewsBehindAPressHoldWithoutAScroll()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                string size = larger ? " at the larger text" : "";
+                string size = larger ? " " + TextScales.At(textSize) : "";
 
                 // The Head of Household's picker: the backdoor plan behind its door, and the way back.
                 yield return InstallNomination(16, true, NominationBlock.Open);
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenStation();
                 yield return null;
                 var candidates = EpisodeEngine.NominationCandidates(director.Snapshot).ToList();
@@ -495,7 +495,7 @@ namespace Gamesim.Tests.PlayMode
 
                 // A story's WHO? and its rule break's confirm, under a houseguest at the head of the house.
                 yield return InstallNomination(16, false, NominationBlock.Open, house => new[] { NominationAsk(house) });
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenStation();
                 yield return null;
                 var state = director.Snapshot;
@@ -555,7 +555,7 @@ namespace Gamesim.Tests.PlayMode
                 var nominees = state.nominees.Select(state.Find).ToList();
                 string line = hoh.name + " has made " + StoryPeople.Pronouns(hoh).their + " decision. "
                     + string.Join(" and ", nominees.Select(c => HudPrimitives.WithYou(c.name, c.isPlayer))) + " are on the block.";
-                yield return AtBothTextSizes(larger =>
+                yield return AtEveryTextSize(larger =>
                 {
                     string where = "The outcome" + (block == NominationBlock.Player ? " with the player on the block" : "")
                         + " in a house of " + houseguests + (larger ? " at the larger text" : "");

@@ -142,9 +142,9 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator RelationshipWeb_WholeGraphAndLegendFitTheDedicatedViewportAtBothTextSizes()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network);
                 yield return null; yield return null;
                 Canvas.ForceUpdateCanvases();

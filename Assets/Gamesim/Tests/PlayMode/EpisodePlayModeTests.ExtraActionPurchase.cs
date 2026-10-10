@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Gamesim.Episode;
 using Gamesim.Persistence;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using UnityEngine;
@@ -174,9 +175,9 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator ExtraActionPurchase_FullCastKeyboardDefaultsToCancelAndReachesEveryTargetAtBothTextSizes()
         {
             yield return InstallFreeTime(16, FreeTimeWaiting.Nothing);
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenStation();
                 var before = director.Snapshot;
                 yield return KeyboardSubmit(EpisodeHud.BuyBurnOneCaption);
@@ -186,7 +187,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return WaitOutThePointerHold();
                 foreach (var npc in before.Active.Where(c => !c.isPlayer))
                     Assert.That(ButtonWithCaption(EpisodeDirector.BurnBridgeTargetCaption(npc.name)).IsInteractable(), Is.True);
-                yield return AssertKeyboardRing("Extra action purchase at " + (larger ? "large" : "standard") + " text", ModalRoot);
+                yield return AssertKeyboardRing("Extra action purchase " + TextScales.At(textSize), ModalRoot);
                 AssertPurchaseUnchanged(before, "Keyboard traversal does not buy anything.");
                 yield return KeyboardSubmit(EpisodeDirector.BurnBridgeCancelCaption);
                 AssertPurchaseUnchanged(before, "Keyboard cancel does not buy anything.");

@@ -255,7 +255,10 @@ namespace Gamesim.Presentation
             // Version 1 inverts the meter: letting go drains it, so its caption says so.
             actionLabel.text = run.Holding ? (legacy ? "Let go (grip drains)" : "Release to recover") : "Hold to earn effort";
             holdStateEdge.gameObject.SetActive(run.Holding && playing && !Paused);
-            holdHint.text = usingPad ? "RT / A" : "Space / Enter";
+            // The grip's key or button as the player has it (A5); as shipped, the constant words, with
+            // nothing built a frame.
+            holdHint.text = !KeyBindings.AnyChosen ? (usingPad ? "RT / A" : "Space / Enter")
+                : KeyBindings.BoardKey("Hold", usingPad, usingPad ? "RT" : "Space") + (usingPad ? " / A" : " / Enter");
         }
 
         private void AdvanceEnduranceBeats(float delta)

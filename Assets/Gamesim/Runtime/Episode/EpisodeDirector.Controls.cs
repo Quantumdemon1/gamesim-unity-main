@@ -126,7 +126,8 @@ namespace Gamesim.Episode
         private string RebindLine()
         {
             var listening = HouseBindings.ListeningFor;
-            if (listening != null) return "Press the new key or button for " + listening.Name + ". Esc cancels.";
+            // The camera's keys are the keyboard's alone: the pad turns, zooms and pans with its sticks.
+            if (listening != null) return "Press the new " + (listening.OnPad ? "key or button" : "key") + " for " + listening.Name + ". Esc cancels.";
             return rebindMessage ?? "Choose an action below, then press the key - or the pad button - it should answer to. Esc cancels.";
         }
 

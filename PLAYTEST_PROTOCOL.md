@@ -74,7 +74,7 @@ their numbers, not quietly made. Record, for each participant:
 | Caption time | `captions=` | `standard`, `longer` (half as long again) |
 | Sound | `volume=`, `muted=`, `music=`, `sound=`, `music-volume=`, `effects-volume=`, `interface-volume=` | master 0-100, each share of it 0-100 |
 | Window | `display=` (mode and size as the window stands), `resolution=`, `vsync=`, `frames=` | e.g. `borderless,1920x1080` |
-| Controls | `keys=` | `default`, or each rebound action, e.g. `Notebook:K,Diary:D-pad left(pad)` |
+| Controls | `keys=` | `default`, or each rebound action, e.g. `Notebook:K,Diary:D-pad left(pad),Pan up:I,Hold grip:Left Shift` (the house's shortcuts, the camera's keys, a competition board's grip and take-back) |
 | First launch | `first-run=` | what the first launch's window rule decided |
 
 Fill the table from the log, not from memory: the session's first line is

@@ -167,9 +167,9 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator Words_TheLongestNameFitsItsTilesAtLargeText()
+        public IEnumerator Words_TheLongestNameFitsItsTilesAtLargeText([Values(1.2f, 1.4f)] float scale)
         {
-            owner = new GameObject("Words fit"); screen = CompetitionGameScreen.Attach(owner); screen.FontScale = 1.2f;
+            owner = new GameObject("Words fit"); screen = CompetitionGameScreen.Attach(owner); screen.FontScale = scale;
             var run = new MiniGameRun(CompetitionMiniGames.Kind.Words, 3, Widened, Gamesim.Simulation.CompetitionDefinitions.HouseguestScramble,
                 new[] { "Christabelle Moon", "Maya Hassan", "Taylor Kim", "Casey Wilson", "Jordan Taylor", "Emma Brown" });
             while (run.Word.Length < CompetitionMiniGames.LongestScrambleWord) run.SkipWord();
@@ -197,7 +197,7 @@ namespace Gamesim.Tests.PlayMode
         /// the longer line still fits its header: the rules shrink to their floor before they cut.
         /// </summary>
         [UnityTest]
-        public IEnumerator Words_TheRulesSayWhenHouseWordsFollowTheNames([Values(1f, 1.2f)] float scale)
+        public IEnumerator Words_TheRulesSayWhenHouseWordsFollowTheNames([Values(1f, 1.2f, 1.4f)] float scale)
         {
             owner = new GameObject("Words rules"); screen = CompetitionGameScreen.Attach(owner); screen.FontScale = scale;
             var filled = new MiniGameRun(CompetitionMiniGames.Kind.Words, 3, Widened, Gamesim.Simulation.CompetitionDefinitions.HouseguestScramble,

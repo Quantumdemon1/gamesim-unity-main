@@ -419,8 +419,9 @@ namespace Gamesim.Tests.PlayMode
         /// frame let it be seen.
         /// </summary>
         [UnityTest]
-        public IEnumerator VetoOnce_TheScreenNamesTheReplacementOnceTheyAreNamed([Values(false, true)] bool larger)
+        public IEnumerator VetoOnce_TheScreenNamesTheReplacementOnceTheyAreNamed([Values(1f, 1.2f, 1.4f)] float scale)
         {
+            bool larger = scale > 1f;
             // The house held still, so nobody walks into the screen's frame between its pages.
             HoldTheHouseForTheFixture();
             yield return null;
@@ -440,7 +441,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(script.Meeting.replacementId, Is.EqualTo(npcs[4]));
 
             var takeover = SceneComponents<CeremonyTakeover>().Single();
-            takeover.FontScale = larger ? 1.2f : 1f;
+            takeover.FontScale = scale;
             // The decision and the naming hold the card on their pages as they turn to them.
             void HoldOnTheBeat(CeremonyBeat beat)
             {
@@ -473,7 +474,7 @@ namespace Gamesim.Tests.PlayMode
                     if (read.Add(page.Value))
                     {
                         var badges = MeetingBadgesByName(takeover);
-                        string where = page.Value + " page" + (larger ? " at the larger text" : "");
+                        string where = page.Value + " page" + (larger ? " at text scale " + scale : "");
                         switch (page.Value)
                         {
                             case CeremonyTakeover.MeetingPage.Replacement:

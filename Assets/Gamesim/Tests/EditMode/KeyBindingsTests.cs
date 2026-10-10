@@ -30,20 +30,49 @@ namespace Gamesim.Tests.EditMode
             new KeyBindings.Binding("Shortcuts", "Hit", KeyBindings.KeyboardScheme, "<Keyboard>/space"),
             new KeyBindings.Binding("Shortcuts", "Back", KeyBindings.GamepadScheme, "<Gamepad>/buttonEast"),
             new KeyBindings.Binding("Camera", "Recenter", KeyBindings.KeyboardScheme, "<Keyboard>/f"),
-            // A composite's part: the camera's pan answers to W.
-            new KeyBindings.Binding("Camera", "Pan", KeyBindings.KeyboardScheme, "<Keyboard>/w"),
+            // Composites' parts: the camera's pan answers to WASD and the arrows, its orbit to Q and
+            // C, its zoom to - and =.
+            new KeyBindings.Binding("Camera", "Pan", KeyBindings.KeyboardScheme, "<Keyboard>/w", "Up"),
+            new KeyBindings.Binding("Camera", "Pan", KeyBindings.KeyboardScheme, "<Keyboard>/s", "Down"),
+            new KeyBindings.Binding("Camera", "Pan", KeyBindings.KeyboardScheme, "<Keyboard>/a", "Left"),
+            new KeyBindings.Binding("Camera", "Pan", KeyBindings.KeyboardScheme, "<Keyboard>/d", "Right"),
+            new KeyBindings.Binding("Camera", "Pan", KeyBindings.KeyboardScheme, "<Keyboard>/upArrow", "Up"),
+            new KeyBindings.Binding("Camera", "Pan", KeyBindings.KeyboardScheme, "<Keyboard>/leftArrow", "Left"),
+            new KeyBindings.Binding("Camera", "OrbitRate", KeyBindings.KeyboardScheme, "<Keyboard>/q", "Left"),
+            new KeyBindings.Binding("Camera", "OrbitRate", KeyBindings.KeyboardScheme, "<Keyboard>/c", "Right"),
+            new KeyBindings.Binding("Camera", "ZoomRate", KeyBindings.KeyboardScheme, "<Keyboard>/minus", "Negative"),
+            new KeyBindings.Binding("Camera", "ZoomRate", KeyBindings.KeyboardScheme, "<Keyboard>/equals", "Positive"),
             new KeyBindings.Binding("Competition", "Pause", KeyBindings.KeyboardScheme, "<Keyboard>/p"),
+            new KeyBindings.Binding("Competition", "Hit", KeyBindings.KeyboardScheme, "<Keyboard>/space"),
+            new KeyBindings.Binding("Competition", "Hold", KeyBindings.KeyboardScheme, "<Keyboard>/space"),
+            new KeyBindings.Binding("Competition", "Hold", KeyBindings.GamepadScheme, "<Gamepad>/rightTrigger"),
+            new KeyBindings.Binding("Competition", "Undo", KeyBindings.KeyboardScheme, "<Keyboard>/backspace"),
+            new KeyBindings.Binding("Competition", "Undo", KeyBindings.GamepadScheme, "<Gamepad>/buttonWest"),
+            new KeyBindings.Binding("Competition", "FocusNext", KeyBindings.KeyboardScheme, "<Keyboard>/tab"),
         };
 
         [Test]
-        public void TheHousesShortcutsAndTheRecentreRebind_AndTheWaysOutNever()
+        public void TheHousesShortcutsAndTheCamerasKeysRebind_AndTheWaysOutNever()
         {
-            Assert.That(KeyBindings.Targets.Select(target => target.Path), Is.EqualTo(new[]
+            Assert.That(KeyBindings.Targets.Select(target => target.Path + (target.Part != null ? "#" + target.Part : "")), Is.EqualTo(new[]
             {
                 "Shortcuts/Notebook", "Shortcuts/Save", "Shortcuts/Diary", "Shortcuts/Interact", "Shortcuts/Hit",
                 "Shortcuts/Overview", "Shortcuts/Emote", "Camera/Recenter",
+                "Camera/OrbitRate#Left", "Camera/OrbitRate#Right", "Camera/ZoomRate#Negative", "Camera/ZoomRate#Positive",
+                "Camera/Pan#Up", "Camera/Pan#Left", "Camera/Pan#Down", "Camera/Pan#Right",
+                "Competition/Hold", "Competition/Undo",
             }));
+            Assert.That(KeyBindings.FindTarget("Competition", "Hold").Caption, Is.EqualTo("Rebind Hold grip"));
+            Assert.That(KeyBindings.FindTarget("Competition", "Undo").Caption, Is.EqualTo("Rebind Take back letter"));
+            Assert.That(KeyBindings.FindTarget("Competition", "Pause"), Is.Null, "P's pause stays: the word board treats it as a letter, and the pad's is Start.");
             Assert.That(KeyBindings.Targets.Select(target => target.Caption), Is.Unique);
+            Assert.That(KeyBindings.Targets.Where(target => target.Part != null).Select(target => target.Caption), Is.EqualTo(new[]
+            {
+                "Rebind Orbit left", "Rebind Orbit right", "Rebind Zoom out", "Rebind Zoom in", "Rebind Pan up", "Rebind Pan left", "Rebind Pan down", "Rebind Pan right",
+            }));
+            Assert.That(KeyBindings.Targets.Where(target => target.Part != null).All(target => !target.OnPad && !target.Takes(KeyBindings.GamepadScheme)), Is.True,
+                "The camera's keys are the keyboard's: the pad turns, zooms and pans with its sticks and triggers.");
+            Assert.That(KeyBindings.Targets.Where(target => target.Part == null).All(target => target.OnPad), Is.True, "Every shortcut has a pad button to rebind.");
             Assert.That(KeyBindings.FindTarget("Shortcuts", "Notebook").Caption, Is.EqualTo("Rebind Notebook"));
             foreach (var path in KeyBindings.ProtectedActions)
             {
@@ -76,7 +105,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(KeyBindings.Check(Shipped(), "Shortcuts", "Notebook", KeyBindings.KeyboardScheme, "<Keyboard>/f"),
                 Is.EqualTo("F is already Recenter's. Notebook keeps its key."), "The camera and the shortcuts are one context: both are live in the house.");
             Assert.That(KeyBindings.Check(Shipped(), "Camera", "Recenter", KeyBindings.KeyboardScheme, "<Keyboard>/w"),
-                Does.StartWith("W is already Pan's."), "A composite's part is a binding too.");
+                Does.StartWith("W is already Pan up's."), "A composite's part is a binding too.");
             Assert.That(KeyBindings.Check(Shipped(), "Shortcuts", "Diary", KeyBindings.GamepadScheme, "<Gamepad>/select"),
                 Is.EqualTo("Select is already Notebook's. Diary keeps its button."));
         }
@@ -229,6 +258,132 @@ namespace Gamesim.Tests.EditMode
             Assert.That(InputGlossary.HelpCard(false), Is.SameAs(InputGlossary.KeyboardHelpCard), "The keyboard's words are the constant; the sink substitutes them.");
             KeyBindings.Show(null);
             Assert.That(InputGlossary.HelpCard(true), Is.EqualTo(before), "and back as shipped.");
+        }
+
+        // ---------------------------------------------------------------- the camera's keys
+
+        private static KeyBindings.Target Camera(string action, string part) => KeyBindings.FindTarget("Camera", action, part);
+
+        [Test]
+        public void ACameraKey_IsAKeyboardKey_AndItsPartsAreRefusedOneAnothersKeys()
+        {
+            var up = Camera("Pan", "Up");
+            Assert.That(up.Name, Is.EqualTo("Pan up"));
+            Assert.That(KeyBindings.Check(Shipped(), up, KeyBindings.GamepadScheme, "<Gamepad>/dpad/up"),
+                Is.EqualTo("Pan up is a key: press the new one on the keyboard."), "The pad pans with its stick.");
+            Assert.That(KeyBindings.Check(Shipped(), up, KeyBindings.KeyboardScheme, "<Keyboard>/a"), Is.EqualTo("A is already Pan left's. Pan up keeps its key."),
+                "The pan's up is refused its left.");
+            Assert.That(KeyBindings.Check(Shipped(), up, KeyBindings.KeyboardScheme, "<Keyboard>/leftArrow"), Is.EqualTo("Left is already Pan left's. Pan up keeps its key."),
+                "and the arrows' left: a part of the other composite is a binding of the house too.");
+            Assert.That(KeyBindings.Check(Shipped(), up, KeyBindings.KeyboardScheme, "<Keyboard>/upArrow"), Is.Null, "Up is up already: the same part of the pan.");
+            Assert.That(KeyBindings.Check(Shipped(), up, KeyBindings.KeyboardScheme, "<Keyboard>/w"), Is.Null, "Its own key again.");
+            Assert.That(KeyBindings.Check(Shipped(), up, KeyBindings.KeyboardScheme, "<Keyboard>/i"), Is.Null);
+            Assert.That(KeyBindings.Check(Shipped(), up, KeyBindings.KeyboardScheme, "<Keyboard>/j"), Is.EqualTo("J is already Notebook's. Pan up keeps its key."),
+                "The camera's keys and the shortcuts are one house.");
+            Assert.That(KeyBindings.Check(Shipped(), "Shortcuts", "Notebook", KeyBindings.KeyboardScheme, "<Keyboard>/q"), Is.EqualTo("Q is already Orbit left's. Notebook keeps its key."));
+            Assert.That(KeyBindings.Check(Shipped(), Camera("ZoomRate", "Positive"), KeyBindings.KeyboardScheme, "<Keyboard>/minus"),
+                Is.EqualTo("- is already Zoom out's. Zoom in keeps its key."));
+            Assert.That(KeyBindings.Check(Shipped(), Camera("OrbitRate", "Left"), KeyBindings.KeyboardScheme, "<Keyboard>/escape"),
+                Does.Contain("stays as it is").And.Contain("Orbit left keeps its key"), "A way out is never a camera key either.");
+            Assert.That(() => new KeyBindings().Set(up, KeyBindings.GamepadScheme, "<Gamepad>/dpad/up"), Throws.ArgumentException);
+        }
+
+        [Test]
+        public void ACameraKeysChoice_IsKeptByItsPart_AndReadBack()
+        {
+            var bindings = new KeyBindings();
+            bindings.Set(Camera("Pan", "Up"), KeyBindings.KeyboardScheme, "<Keyboard>/i");
+            bindings.Set(Camera("ZoomRate", "Negative"), KeyBindings.KeyboardScheme, "<Keyboard>/z");
+            string json = bindings.ToJson();
+            Assert.That(json, Is.EqualTo("{\"Camera/Pan#Up@Keyboard&Mouse\":\"<Keyboard>/i\",\"Camera/ZoomRate#Negative@Keyboard&Mouse\":\"<Keyboard>/z\"}"));
+            var read = KeyBindings.Parse(json, out var reason);
+            Assert.That(reason, Is.Null);
+            Assert.That(read.Get(Camera("Pan", "Up"), KeyBindings.KeyboardScheme), Is.EqualTo("<Keyboard>/i"));
+            Assert.That(read.Get(Camera("Pan", "Down"), KeyBindings.KeyboardScheme), Is.Null, "One part's choice is that part's alone.");
+            Assert.That(read.Get("Camera", "Pan", KeyBindings.KeyboardScheme), Is.Null, "and the pan has no own binding to choose.");
+            Assert.That(read.Summary(), Is.EqualTo("Zoom out:Z,Pan up:I"), "In the settings' order.");
+
+            foreach (string kept in new[]
+            {
+                "{\"Camera/Pan#Up@Gamepad\":\"<Gamepad>/dpad/up\"}",
+                "{\"Camera/Pan#Sideways@Keyboard&Mouse\":\"<Keyboard>/i\"}",
+                "{\"Camera/Pan@Keyboard&Mouse\":\"<Keyboard>/i\"}",
+                "{\"Camera/Pan#Up@Keyboard&Mouse\":\"<Keyboard>/enter\"}",
+            })
+            {
+                var dropped = KeyBindings.Parse(kept, out var why);
+                Assert.That(dropped.Count, Is.Zero, kept + " is not a choice a player could make.");
+                Assert.That(why, Does.Contain("not one a player may choose"), kept);
+            }
+        }
+
+        [Test]
+        public void TheCamerasKeys_AreSaidAsTheyAre_InTheHelpCardAndTheCameraSettings()
+        {
+            const string settings = "The speed is the mouse's drag, the right stick and Q and C alike; the tilt is up and down on each.";
+            KeyBindings.Show(new KeyBindings());
+            Assert.That(KeyBindings.Substitute(settings), Is.SameAs(settings), "As shipped, the very string.");
+
+            var bindings = new KeyBindings();
+            bindings.Set(Camera("Pan", "Up"), KeyBindings.KeyboardScheme, "<Keyboard>/i");
+            bindings.Set(Camera("Pan", "Left"), KeyBindings.KeyboardScheme, "<Keyboard>/j");
+            bindings.Set(Camera("OrbitRate", "Right"), KeyBindings.KeyboardScheme, "<Keyboard>/v");
+            KeyBindings.Show(bindings);
+            Assert.That(KeyBindings.Substitute(InputGlossary.KeyboardHelpCard), Is.EqualTo(
+                "Click a houseguest: talk\nClick floor: walk  ·  F: recenter\nIJSD/arrows: pan  ·  Wheel: zoom\nRight-drag: orbit · Mid-drag: pan\nR: diary · E: interact · Esc: close"),
+                "The pan's keys in WASD's order, the two left as shipped among them.");
+            Assert.That(KeyBindings.Substitute(settings), Is.EqualTo(
+                "The speed is the mouse's drag, the right stick and Q and V alike; the tilt is up and down on each."));
+            Assert.That(KeyBindings.Substitute("Notebook [J]"), Is.EqualTo("Notebook [J]"), "J is the pan's left now, but the notebook's [J] is the notebook's.");
+
+            bindings.Set(Camera("Pan", "Down"), KeyBindings.KeyboardScheme, "<Keyboard>/numpad2");
+            Assert.That(KeyBindings.Substitute(InputGlossary.KeyboardHelpCard), Does.Contain("\nI J " + InputGlossary.BindingLabel("<Keyboard>/numpad2") + " D/arrows: pan  ·  "),
+                "A key of more than one letter spaces the four.");
+        }
+
+        // ---------------------------------------------------------------- a competition's board
+
+        [Test]
+        public void ABoardsKey_IsNeverALetter_AndTheBoardIsAContextOfItsOwn()
+        {
+            var hold = KeyBindings.FindTarget("Competition", "Hold");
+            Assert.That(KeyBindings.Check(Shipped(), hold, KeyBindings.KeyboardScheme, "<Keyboard>/k"),
+                Is.EqualTo("K spells on the word board, so it stays a letter. Hold grip keeps its key."), "The word board spells with every letter.");
+            Assert.That(KeyBindings.Check(Shipped(), hold, KeyBindings.KeyboardScheme, "<Keyboard>/leftShift"), Is.Null, "Left Shift is nobody's on the board.");
+            Assert.That(KeyBindings.Check(Shipped(), hold, KeyBindings.KeyboardScheme, "<Keyboard>/j"), Does.Contain("spells on the word board"),
+                "J is the notebook's in the house, but on the board it is a letter.");
+            Assert.That(KeyBindings.Check(Shipped(), hold, KeyBindings.KeyboardScheme, "<Keyboard>/f"), Does.Contain("spells on the word board"));
+            Assert.That(KeyBindings.Check(Shipped(), hold, KeyBindings.KeyboardScheme, "<Keyboard>/backspace"),
+                Is.EqualTo("Backspace is already Take back letter's. Hold grip keeps its key."), "The board's own keys are its context.");
+            Assert.That(KeyBindings.Check(Shipped(), hold, KeyBindings.KeyboardScheme, "<Keyboard>/tab"),
+                Is.EqualTo("Tab already does something else on a competition's board. Hold grip keeps its key."), "An action nobody rebinds is said by where it is.");
+            Assert.That(KeyBindings.Check(Shipped(), hold, KeyBindings.KeyboardScheme, "<Keyboard>/f5"), Is.Null, "F5 is the house's save, and the board is not the house.");
+            Assert.That(KeyBindings.Check(Shipped(), "Shortcuts", "Save", KeyBindings.KeyboardScheme, "<Keyboard>/backspace"), Is.Null, "and the other way about.");
+            Assert.That(KeyBindings.Check(Shipped(), hold, KeyBindings.GamepadScheme, "<Gamepad>/leftTrigger"), Is.Null, "The grip's pad button rebinds too.");
+            Assert.That(KeyBindings.Check(Shipped(), KeyBindings.FindTarget("Competition", "Undo"), KeyBindings.GamepadScheme, "<Gamepad>/rightTrigger"),
+                Is.EqualTo("RT is already Hold grip's. Take back letter keeps its button."));
+            Assert.That(KeyBindings.Parse("{\"Competition/Hold@Keyboard&Mouse\":\"<Keyboard>/k\"}", out var why).Count, Is.Zero, "A letter kept for the board is dropped,");
+            Assert.That(why, Does.Contain("not one a player may choose"));
+            Assert.That(KeyBindings.Parse("{\"Competition/Hold@Keyboard&Mouse\":\"<Keyboard>/leftShift\"}", out why).Count, Is.EqualTo(1), "and a key that is not one is kept.");
+        }
+
+        [Test]
+        public void ABoardSaysItsKeysAsTheyAre_AndAsWrittenWhileTheyAreAsShipped()
+        {
+            KeyBindings.Show(null);
+            Assert.That(KeyBindings.AnyChosen, Is.False);
+            Assert.That(KeyBindings.BoardKey("Hold", false, "Space"), Is.EqualTo("Space"));
+            Assert.That(KeyBindings.BoardKey("Hold", true, "right trigger"), Is.EqualTo("right trigger"), "As shipped, the board's own words.");
+            var bindings = new KeyBindings();
+            bindings.Set(KeyBindings.FindTarget("Competition", "Hold"), KeyBindings.KeyboardScheme, "<Keyboard>/leftShift");
+            bindings.Set(KeyBindings.FindTarget("Competition", "Undo"), KeyBindings.GamepadScheme, "<Gamepad>/buttonNorth");
+            KeyBindings.Show(bindings);
+            Assert.That(KeyBindings.AnyChosen, Is.True);
+            Assert.That(KeyBindings.BoardKey("Hold", false, "Space"), Is.EqualTo("Left Shift"), "A key a player may choose is named as the keyboard prints it.");
+            Assert.That(KeyBindings.BoardKey("Hold", true, "RT"), Is.EqualTo("RT"), "The pad's grip is as shipped.");
+            Assert.That(KeyBindings.BoardKey("Undo", true, "X"), Is.EqualTo("Y"));
+            Assert.That(KeyBindings.BoardKey("Undo", false, "Backspace"), Is.EqualTo("Backspace"));
+            Assert.That(KeyBindings.Substitute("Hit the target  [Space]"), Is.EqualTo("Hit the target  [Space]"), "The board's words are not the HUD's: nothing of the house moved.");
         }
     }
 }

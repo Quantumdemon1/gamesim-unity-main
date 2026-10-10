@@ -108,9 +108,9 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
 
             // The HUD's own card at both text sizes: no board, and a single vote names nobody.
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                card.FontScale = larger ? 1.2f : 1f;
+                card.FontScale = TextSizes.Scale(textSize);
                 Assert.That(card.Play(1, block, new[] { Ballot("a") }, "a", true, CeremonyPace.Suspenseful, hoh), Is.True);
                 card.SkipToResult();
                 yield return Frames(2);
@@ -118,7 +118,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(card.GetComponentsInChildren<RectTransform>(true).Any(rect => rect.name == "Tally card" || rect.name == "Ballot"), Is.False,
                     "The HUD's card has no board.");
                 AssertBoardNamesNobody(card, hoh);
-                if (Application.isBatchMode) yield return CaptureFraming(larger ? "vote-card-hud-large" : "vote-card-hud");
+                if (Application.isBatchMode) yield return CaptureFraming("vote-card-hud" + TextScales.Suffix(textSize));
                 card.Cancel();
                 yield return null;
             }

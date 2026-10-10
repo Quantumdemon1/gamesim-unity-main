@@ -331,6 +331,9 @@ namespace Gamesim.Episode
             /// <summary>The eviction's evicted and its survivor, once the result is read.</summary>
             private string leavingId, survivorId;
             private float goodbyeUntil;
+            /// <summary>Whether the goodbye still waits for its two to be on their feet to embrace, and until when.</summary>
+            private bool embraceAtGoodbye;
+            private float embraceAtGoodbyeBy;
             /// <summary>The warm spot over the hot seats, from the vote's card to the end of the goodbye.</summary>
             private Light keyLight;
             /// <summary>
@@ -711,6 +714,7 @@ namespace Gamesim.Episode
                         // A press is one step: from the goodbye straight to the door shut behind
                         // them, as a press on the walk is. The press that closed the card is not one.
                         if (now >= pressGuardUntil && CeremonyTakeover.SkipPressed()) { director.SkipWalkOut(); break; }
+                        if (embraceAtGoodbye) TryTheGoodbyeEmbrace(now);
                         if (now >= goodbyeUntil) Release();
                         break;
                     case CeremonyStageStep.Release:
@@ -1293,6 +1297,16 @@ namespace Gamesim.Episode
                 goodbyeUntil = now + GoodbyeSeconds;
                 pressGuardUntil = now + PressGuard;
                 StandUp(id);
+                // The goodbye embrace (the art brief's R7, decision D3): the one who stays gets up
+                // too, and once both are on their feet the two hold each other until the walk out
+                // takes the evicted - unless either is the player, whose body is the player's.
+                embraceAtGoodbye = survivorId != null && survivorId != id && id != state.playerId && survivorId != state.playerId
+                    && !LetGo(survivorId);
+                if (embraceAtGoodbye)
+                {
+                    StandUp(survivorId);
+                    embraceAtGoodbyeBy = now + GoodbyeEmbraceWait;
+                }
                 var body = director.BodyFor(id);
                 var visual = Visual(id);
                 // Turned to the middle of the house: everybody still in their places.
@@ -1319,6 +1333,8 @@ namespace Gamesim.Episode
                         var other = Visual(pair.Key);
                         if (other == null) continue;
                         other.LookAt(body, 2f);
+                        // The one getting up to embrace them does not clap them out from the chair.
+                        if (embraceAtGoodbye && pair.Key == survivorId) continue;
                         if (pair.Key != state.playerId && other.IsSeated && other.SupportsSeated(CharacterPresentation.Reaction.Cheered))
                             other.React(CharacterPresentation.Reaction.Cheered);
                     }
@@ -1342,6 +1358,36 @@ namespace Gamesim.Episode
                 // The exit's door, chosen now: the living room's goes up closed at the end of the
                 // room for the walk to come (MOCKUP-PASS-PLAN M23), the yard's at the dip later.
                 director.OnStagedGoodbye(id);
+            }
+
+            /// <summary>How long the goodbye waits for its two to be standing still before it lets the embrace go.</summary>
+            private const float GoodbyeEmbraceWait = 1.5f;
+
+            /// <summary>
+            /// Once the evicted and the one who stays are both on their feet and still, the two
+            /// embrace (<see cref="EmbracePair"/>, the hot seats 1.1 m apart). The primitive rig plays
+            /// nothing, so it is only told the beat it would have played. Not standing within
+            /// <see cref="GoodbyeEmbraceWait"/>, or refused, they only look at each other.
+            /// </summary>
+            private void TryTheGoodbyeEmbrace(float now)
+            {
+                var leaving = Visual(leavingId);
+                var staying = Visual(survivorId);
+                if (leaving == null || staying == null) { embraceAtGoodbye = false; return; }
+                bool up = !leaving.IsSeated && !staying.IsSeated;
+                if (!up || (!leaving.IsPrimitiveBody && !staying.IsPrimitiveBody && (!leaving.IsStill || !staying.IsStill)))
+                {
+                    if (now > embraceAtGoodbyeBy) embraceAtGoodbye = false;
+                    return;
+                }
+                embraceAtGoodbye = false;
+                if (leaving.IsPrimitiveBody || staying.IsPrimitiveBody)
+                {
+                    leaving.React(CharacterPresentation.Reaction.Embrace);
+                    staying.React(CharacterPresentation.Reaction.Embrace);
+                    return;
+                }
+                director.goodbyeEmbrace = EmbracePair.TryBegin(leaving, staying, state.playerId);
             }
 
             /// <summary>The goodbye over, from the director's side: a press that went straight to the shut door.</summary>
@@ -1373,7 +1419,8 @@ namespace Gamesim.Episode
                 Cut(Wide(CutSeconds));
                 string staying = survivorId;
                 if (staying == null || !placeOf.ContainsKey(staying)) return;
-                Schedule(watchSeconds, () => Cut(SeatShot(staying)));
+                // Up for the goodbye's embrace, the survivor is framed on their feet, not in the chair.
+                Schedule(watchSeconds, () => Cut(stoodUp.Contains(staying) ? StandingShot(staying) : SeatShot(staying)));
                 Schedule(watchSeconds + 2f, () => Cut(Wide(CutSeconds)));
             }
 
@@ -1470,6 +1517,19 @@ namespace Gamesim.Episode
                 {
                     Focus = focus, Distance = Reach(focus, place.Facing, 1.9f), Pitch = 12f, Yaw = place.Facing + 180f,
                     FieldOfView = Lens, Seconds = CutSeconds, DepthOfFieldWeight = 0.6f,
+                };
+            }
+
+            /// <summary>Somebody on their feet, framed on their face from where they look: the survivor after the goodbye's embrace.</summary>
+            private HouseCameraRig.Shot StandingShot(string id)
+            {
+                var visual = Visual(id);
+                var body = visual != null && visual.VisualRoot != null ? visual.VisualRoot : director.BodyFor(id);
+                if (body == null) return SeatShot(id);
+                return new HouseCameraRig.Shot
+                {
+                    Focus = body.position + Vector3.up * StandingFace, Distance = 2.6f, Pitch = 10f, Yaw = body.eulerAngles.y + 180f,
+                    FieldOfView = Lens, Seconds = CutSeconds, DepthOfFieldWeight = 0.5f,
                 };
             }
 

@@ -118,7 +118,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.CeremonySkipShowing, Is.True, "the chip names the press that moves it on,");
             Assert.That(director.EvictionKeyLightShowing, Is.True, "and the key light is still on.");
             Assert.That(Presentation(leaving).IsSeated, Is.False, "They are up out of the chair.");
-            foreach (var npc in SceneComponents<HouseNpc>().Where(each => each.gameObject.activeInHierarchy && each.Id != evicted))
+            // The one who stays gets up to embrace them (the art brief's R7), unless either is the player.
+            bool embraces = survivor != director.Snapshot.playerId && evicted != director.Snapshot.playerId;
+            foreach (var npc in SceneComponents<HouseNpc>().Where(each => each.gameObject.activeInHierarchy && each.Id != evicted
+                && !(embraces && each.Id == survivor)))
             {
                 var visual = Presentation(npc);
                 if (!visual.IsSeated) continue;
@@ -130,7 +133,13 @@ namespace Gamesim.Tests.PlayMode
                 if (!Presentation(npc).IsSeated)
                     Assert.That(Presentation(npc).LastReaction, Is.Not.EqualTo(CharacterPresentation.Reaction.Cheered), npc.Id + " stands, and only looks.");
             Assert.That(Presentation(player).LastReaction, Is.Not.EqualTo(CharacterPresentation.Reaction.Cheered), "The player's body is the player's.");
-            Assert.That(survivorSeat.Active, Is.True, "The survivor is still in red.");
+            if (embraces)
+                // On the primitive rig, the beat each would have played; on a body with the take, the pair.
+                yield return WaitFor(() => !survivorSeat.Active && (director.GoodbyeEmbrace != null
+                    || Presentation(staying).LastReaction == CharacterPresentation.Reaction.Embrace
+                    && Presentation(leaving).LastReaction == CharacterPresentation.Reaction.Embrace),
+                    2f, "the one who stays stands and embraces them");
+            else Assert.That(survivorSeat.Active, Is.True, "The survivor, the player's body, is still in red.");
             var face = leaving.transform.position + Vector3.up * 1.55f;
             Assert.That(cameraRig.HasShot, Is.True, "The camera is the goodbye's,");
             Assert.That(Vector3.Distance(cameraRig.DesiredFocus, face), Is.LessThan(0.3f), "on the evicted's face.");
@@ -142,6 +151,12 @@ namespace Gamesim.Tests.PlayMode
 
             // Then the walk, and not before the goodbye is over.
             yield return WaitFor(() => director.WalkingOutId != null, EpisodeDirector.GoodbyeSeconds + 1f, "the goodbye gives way to the walk out");
+            Assert.That(director.GoodbyeEmbrace == null || director.GoodbyeEmbrace.Released, Is.True, "The embrace let go before the walk began,");
+            foreach (var id in new[] { evicted, survivor })
+            {
+                var agent = HouseguestBody(id).GetComponent<HouseNpcMotion>();
+                Assert.That(agent == null || !agent.IsParked, Is.True, "and " + id + "'s agent is unparked.");
+            }
             float goodbye = Time.unscaledTime - closedAt;
             Assert.That(goodbye, Is.InRange(EpisodeDirector.GoodbyeSeconds - 0.1f, EpisodeDirector.GoodbyeSeconds + 0.5f),
                 "The goodbye holds about four seconds.");

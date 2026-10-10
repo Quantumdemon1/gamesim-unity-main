@@ -22,7 +22,7 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator Result_SaysTheOrderAndThePlayersOwnMeasureAndNobodysScore()
         {
             CreateInput(); screen.Hide();
-            foreach (float scale in new[] { 1f, 1.2f })
+            foreach (float scale in TextScales.All)
             {
                 var result = CompetitionResult.Attach(owner); result.FontScale = scale;
                 string at = " at " + scale;

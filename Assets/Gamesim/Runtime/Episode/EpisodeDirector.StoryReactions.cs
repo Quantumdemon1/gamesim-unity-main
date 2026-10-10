@@ -121,6 +121,31 @@ namespace Gamesim.Episode
             TurnHeads(state, juror, null);
         }
 
+        // ------------------------------------------------------------------ a removal (R4)
+
+        /// <summary>
+        /// Whoever production removed in the last commit, the player never: kept in the room while
+        /// the removal's card plays, so they take it in tears and the nearest see them go (the art
+        /// brief's R4), as an unstaged eviction's evicted is kept while its card narrates them -
+        /// shown, never routed. Let go when the card is.
+        /// </summary>
+        private string removingId;
+
+        private static string RemovedThisCommit(EpisodeState state, HashSet<string> wasActive)
+        {
+            if (state?.contestants == null || wasActive == null) return null;
+            foreach (var actor in state.contestants)
+                if (actor.status == ContestantStatus.Expelled && !actor.isPlayer && wasActive.Contains(actor.id)) return actor.id;
+            return null;
+        }
+
+        private void TickRemoval()
+        {
+            if (removingId == null || (takeover != null && takeover.IsPlaying)) return;
+            removingId = null;
+            if (IsReady) Project();
+        }
+
         /// <summary>The body a ceremony beat is played on, the player's included, as React(id) finds it.</summary>
         private CharacterPresentation CeremonyVisual(string id)
         {
@@ -135,25 +160,41 @@ namespace Gamesim.Episode
         // ------------------------------------------------------------------ a scene's arrivals (R6, D5)
 
         /// <summary>The beat and the people in it who have already acted their arrival.</summary>
-        private string arrivalsBeat;
+        private string arrivalsBeat, arrivalsContent, arrivalsRoom;
+        private long arrivalsGeneration;
         private readonly HashSet<string> arrivalsActed = new HashSet<string>();
+        private readonly Dictionary<string, string> arrivalsRoles = new Dictionary<string, string>();
 
         /// <summary>
         /// A staged scene's people act out their arrival where the table asks (decision D5): the
-        /// veto meeting's nominee storms in as they reach the living room. The walk out is the
-        /// scene's end (not built yet: the storm's own lease is listed as remaining).
+        /// veto meeting's nominee storms in as they reach the living room - and, when the scene
+        /// ends, storms out of it (<see cref="ActSceneEnd"/>).
         /// </summary>
         private void TickSceneArrivals()
         {
-            if (npcMeetings == null || !npcMeetings.HasSceneStage || projected == null)
+            bool up = npcMeetings != null && npcMeetings.HasSceneStage && projected != null;
+            string key = up ? npcMeetings.SceneStageKey : null;
+            if (arrivalsBeat != null && key != arrivalsBeat) ActSceneEnd();
+            if (!up)
             {
                 arrivalsBeat = null; arrivalsActed.Clear();
                 return;
             }
-            string key = npcMeetings.SceneStageKey;
-            if (key != arrivalsBeat) { arrivalsBeat = key; arrivalsActed.Clear(); }
+            if (key != arrivalsBeat)
+            {
+                arrivalsBeat = key; arrivalsActed.Clear();
+                arrivalsContent = null; arrivalsRoles.Clear();
+                arrivalsGeneration = loadGeneration;
+            }
             var beat = projected.houseEvents.FirstOrDefault(item => item.id == key);
             if (beat == null || !beat.IsStory) return;
+            if (arrivalsContent == null)
+            {
+                arrivalsContent = beat.contentId;
+                arrivalsRoom = VenueRoom(beat.venue);
+                foreach (var part in beat.cast)
+                    if (!string.IsNullOrEmpty(part.contestantId) && !arrivalsRoles.ContainsKey(part.contestantId)) arrivalsRoles[part.contestantId] = part.role;
+            }
             foreach (var part in beat.cast)
             {
                 if (string.IsNullOrEmpty(part.contestantId) || arrivalsActed.Contains(part.contestantId)
@@ -164,11 +205,32 @@ namespace Gamesim.Episode
             }
         }
 
+        /// <summary>
+        /// The scene that staged a beat has ended: whoever the table has storm out at its end, and
+        /// who reached the scene, goes (one storm at a time). Not after a reload, which ends the
+        /// scene too: a beat meant for one season never plays in the next.
+        /// </summary>
+        private void ActSceneEnd()
+        {
+            if (arrivalsContent != null && arrivalsGeneration == loadGeneration)
+                foreach (var id in arrivalsActed.OrderBy(value => value, StringComparer.Ordinal))
+                    if (arrivalsRoles.TryGetValue(id, out var role)
+                        && StoryReactions.For(StoryReactions.Moment.OnSceneEnd, arrivalsContent, role) == CharacterPresentation.Reaction.StormOff)
+                    {
+                        BeginStorm(id, arrivalsRoom, false);
+                        break;
+                    }
+            arrivalsBeat = null; arrivalsContent = null; arrivalsRoom = null;
+            arrivalsRoles.Clear(); arrivalsActed.Clear();
+        }
+
         private void TickStoryReactions()
         {
+            TickRemoval();
             TickWinnerAtResult();
             TickSceneArrivals();
             TickEmbrace();
+            TickStorm();
             if (storyBeats.Count == 0) return;
             float now = Time.unscaledTime;
             for (int i = 0; i < storyBeats.Count;)

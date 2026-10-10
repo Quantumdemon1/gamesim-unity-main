@@ -66,12 +66,12 @@ namespace Gamesim.Tests.PlayMode
             var jurors = state.contestants.Where(EpisodeHud.IsJuror).ToList();
             Assume.That(jurors, Is.Not.Empty, "A jury is seated by the Final 3.");
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return PutAwayTheCards();
-                float scale = larger ? 1.2f : 1f;
-                string where = larger ? " at the larger text" : " at the resting text";
+                float scale = TextSizes.Scale(textSize);
+                string where = " " + TextScales.At(textSize);
 
                 // The pins the frame at three already had: one rail child per actor, each with its parts.
                 var rail = TheRail();

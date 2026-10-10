@@ -32,12 +32,12 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(rooms, Is.Not.Empty, "The house has rooms to go to.");
 
             // The page itself, photographed at both text sizes on both frames, every trip on it in words that fit.
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 director.ShowNotebookSection(EpisodeDirector.NotebookSection.Rooms);
                 yield return Frames(2);
-                yield return OnBothFrames("notebook-rooms" + (larger ? "-large" : ""), "The Who is where page" + (larger ? " at larger text" : ""), where =>
+                yield return OnBothFrames("notebook-rooms" + TextScales.Suffix(textSize), "The Who is where page" + (larger ? " " + TextScales.At(textSize) : ""), where =>
                 {
                     foreach (var room in rooms)
                     {

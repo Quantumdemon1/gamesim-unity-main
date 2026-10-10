@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using Gamesim.Episode;
 using Gamesim.Persistence;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
@@ -130,9 +131,9 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator InformationShare_AllThirtyMemoriesAreKeyboardReachableAcrossPagesAtBothTextSizes()
         {
             yield return InstallSharingHouse(30, 16);
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return TalkTo(Listener(director.Snapshot).id);
                 var before = director.Snapshot;
                 yield return KeyboardSubmit(EpisodeDirector.ShareInformationCaption);
@@ -142,7 +143,7 @@ namespace Gamesim.Tests.PlayMode
                     yield return WaitOutThePointerHold();
                     for (int i = 1; i <= EpisodeDirector.ShareInformationPageSize; i++)
                         Assert.That(ButtonWithCaption(SharingReviewCaption(page * EpisodeDirector.ShareInformationPageSize + i)).IsInteractable(), Is.True);
-                    yield return AssertKeyboardRing("Information memories page " + page + " / large " + larger, ModalRoot);
+                    yield return AssertKeyboardRing("Information memories page " + page + " / text " + TextSizes.Name(textSize), ModalRoot);
                     AssertSharingUnchanged(before);
                     if (page < 4) yield return KeyboardSubmit(EpisodeDirector.ShareInformationNextCaption);
                     else Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.ShareInformationNextCaption), Is.Null);

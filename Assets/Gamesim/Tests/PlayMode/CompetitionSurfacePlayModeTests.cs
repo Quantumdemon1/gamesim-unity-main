@@ -23,9 +23,9 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator BoardHasFourFixedRowsAndSpatialNavigationAtLargeText()
+        public IEnumerator BoardHasFourFixedRowsAndSpatialNavigationAtLargeText([Values(1.2f, 1.4f)] float scale)
         {
-            owner=new GameObject("Competition test");screen=CompetitionGameScreen.Attach(owner);screen.FontScale=1.2f;
+            owner=new GameObject("Competition test");screen=CompetitionGameScreen.Attach(owner);screen.FontScale=scale;
             var run=new MiniGameRun(CompetitionMiniGames.Kind.Memory,12,2);
             screen.Show(run,"Head of Household","One\nTwo\nThree",false,i=>run.Flip(i),()=>{},d=>{},()=>{},()=>{});
             yield return null;

@@ -19,9 +19,9 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator Display_CompactHudPreservesTheObjectiveCastAndLargeTextWithoutSecondaryChrome()
         {
-            foreach(bool larger in new[]{false,true})
+            foreach(var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 director.OpenSettings();
                 ButtonWithCaption("Use compact HUD").onClick.Invoke();
                 Assert.That(director.CompactHud,Is.True);
@@ -36,7 +36,7 @@ namespace Gamesim.Tests.PlayMode
                 foreach(var label in objective.GetComponentsInChildren<TMPro.TMP_Text>())
                 {label.ForceMeshUpdate();Assert.That(label.isTextOverflowing,Is.False,label.text);}
                 var destination=objective.GetComponentsInChildren<TMPro.TMP_Text>().Single(label=>label.text.StartsWith("Next stop:"));
-                Assert.That(destination.fontSize,Is.EqualTo(Mathf.RoundToInt(18*(larger ? 1.2f : 1))));
+                Assert.That(destination.fontSize,Is.EqualTo(Mathf.RoundToInt(18*TextSizes.Scale(textSize))),"at the "+TextSizes.Name(textSize)+" text");
                 director.OpenSettings();ButtonWithCaption("Show full HUD").onClick.Invoke();
                 Assert.That(director.CompactHud,Is.False);director.ClosePanels();yield return null;
                 Assert.That(ActiveRect(EpisodeDirector.LiveFeedCardName),Is.Not.Null);

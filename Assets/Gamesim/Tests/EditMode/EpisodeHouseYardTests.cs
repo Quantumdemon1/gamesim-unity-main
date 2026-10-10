@@ -54,6 +54,40 @@ namespace Gamesim.Tests.EditMode
             }
         }
 
+        /// <summary>
+        /// The yard's entrance is the authored set (the art brief's A3): one gold arch on the box
+        /// arch's centre line, six brass stanchions and four red velvet ropes - and, being set
+        /// dressing, no collider and no static flag anywhere in it, so placing it asks for no
+        /// NavMesh or lightmap bake (a pole this thin is "TooSmall" for the house's collision).
+        /// </summary>
+        [Test]
+        public void TheEntranceIsAuthoredAndCollisionFree()
+        {
+            var scene = EditorSceneManager.OpenPreviewScene(EpisodeScene);
+            try
+            {
+                var entrance = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<Transform>(true))
+                    .Single(t => t.name == "Entrance" && t.parent != null && t.parent.name == "Set Pieces");
+                var pieces = Enumerable.Range(0, entrance.childCount).Select(i => entrance.GetChild(i)).ToArray();
+                Assert.That(pieces.Count(p => p.name == "bb_set_entrancearch"), Is.EqualTo(1), "one authored arch");
+                Assert.That(pieces.Count(p => p.name == "bb_set_stanchion"), Is.EqualTo(6), "six authored stanchions");
+                Assert.That(pieces.Count(p => p.name == "bb_set_velvetrope"), Is.EqualTo(4), "four velvet ropes");
+                Assert.That(pieces, Has.Length.EqualTo(11), "and nothing else - no primitive left over");
+                Assert.That(entrance.GetComponentsInChildren<Collider>(true), Is.Empty, "no collider anywhere in the entrance");
+                foreach (var node in entrance.GetComponentsInChildren<Transform>(true))
+                    Assert.That(UnityEditor.GameObjectUtility.GetStaticEditorFlags(node.gameObject), Is.EqualTo((UnityEditor.StaticEditorFlags)0),
+                        node.name + " carries no static flag");
+                var arch = pieces.Single(p => p.name == "bb_set_entrancearch");
+                var bounds = arch.GetComponentsInChildren<Renderer>(true).Select(r => r.bounds).Aggregate((x, y) => { x.Encapsulate(y); return x; });
+                Assert.That(bounds.center.x, Is.EqualTo(0f).Within(.05f), "the arch stands on the yard's centre line");
+                Assert.That(bounds.size.x, Is.EqualTo(5.04f).Within(.02f), "as wide as the box arch's lintel");
+            }
+            finally
+            {
+                EditorSceneManager.ClosePreviewScene(scene);
+            }
+        }
+
         [Test]
         public void TheWaterStandsClearOfThePodiumsAndOfItself()
         {

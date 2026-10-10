@@ -111,6 +111,8 @@
     <Compile Include="$(EditMode)ModeTwoVotePromiseFlipTests.cs" />
     <!-- Vote family V6: a fresh season is mode 2, played through the public engine alone. -->
     <Compile Include="$(EditMode)UnifiedVotePublicCommandTests.cs" />
+    <!-- Vote family V7: the vote family's pages under mode 2, against their mode-1 twins. -->
+    <Compile Include="$(EditMode)UnifiedVotePagesTests.cs" />
     <Compile Include="$(EditMode)CommitmentReferencesTests.cs" />
     <Compile Include="$(EditMode)UnifiedCommitmentStoreTests.cs" />
     <Compile Include="$(EditMode)UnifiedSafetyCommandOwnerTests.cs" />

@@ -345,7 +345,9 @@ namespace Gamesim.Tests.EditMode
         /// wrote an arc for each houseguest of the pair - the player's arcs, which feed how the house votes on the player
         /// (the balance review's finding 3; this test pinned where it happened). Under them, as every season the director
         /// starts plays, a completed conversation moves the pair through the ledger and writes no arc
-        /// (EpisodeNpcSocialTests); here the season the world drove shows it, conversations recorded and no arc moved.</para>
+        /// (EpisodeNpcSocialTests); here the season the world drove shows it, conversations recorded and no arc moved.
+        /// Those records take the season's sequence ids, and nothing else the world does takes one: every operation moves
+        /// <c>nextSequence</c> by exactly EpisodeEngine.HouseTalkRecords, which the autonomy QA allows.</para>
         /// </summary>
         [Test]
         public void EveryNpcOperationLeavesTheSeasonsStreamAndThePlayersRowsAloneAndTheSeasonValid()
@@ -375,6 +377,9 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(EpisodeValidation.TryValidate(after, out string invalid), Is.True, kind + ": " + invalid);
                 if (after.npcSocial.randomState != before.npcSocial.randomState) moved++;
                 Assert.That(Arcs(after), Is.EqualTo(Arcs(before)), kind + ": the player's arcs (the balance review's finding 3).");
+                // The season's sequence ids: only the house's talk records take one (what the autonomy QA allows).
+                Assert.That(after.nextSequence, Is.EqualTo(before.nextSequence + EpisodeEngine.HouseTalkRecords(after, before.nextSequence)),
+                    kind + ": the season's sequence ids, the house's talk records alone.");
                 recorded += Math.Max(0, Talks(after) - Talks(before));
             });
             TestContext.WriteLine("operations " + ops + ", conversations started " + run.npcStarts + ", NPC draws on " + moved + " operations, ledger records of a conversation "

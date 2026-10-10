@@ -190,6 +190,18 @@ namespace Gamesim.Simulation
         public const string NpcConversationEvent = "npc-conversation", NpcGossipEvent = "npc-gossip";
 
         /// <summary>
+        /// How many of the season's sequence ids the house's talk has taken from <paramref name="fromSequence"/> on: the
+        /// <see cref="NpcConversationEvent"/> and <see cref="NpcGossipEvent"/> records between two houseguests, one id each
+        /// (<see cref="RelationshipLedger.Record"/> writes both directions, so two for a pair's talk that moved them and four
+        /// for a gossip). None with D2's rules off. These are the only ids free roam takes, so a check that the house left
+        /// the season's own counter alone allows exactly this many (PortVerification's autonomy QA).
+        /// </summary>
+        public static int HouseTalkRecords(EpisodeState state, int fromSequence) =>
+            state == null ? 0 : state.relationships
+                .Where(r => r.fromId != state.playerId && r.toId != state.playerId)
+                .Sum(r => r.events.Count(e => e.sequence >= fromSequence && (e.type == NpcConversationEvent || e.type == NpcGossipEvent)));
+
+        /// <summary>
         /// What a completed conversation does to two houseguests' standing with each other.
         ///
         /// <para><b>Before D2's rules</b> (<see cref="AllWeekOn"/> false: every season saved before them) the engine's own
@@ -204,7 +216,10 @@ namespace Gamesim.Simulation
         /// the engine's own path would stay, as it does for an act of the house's on the player. The ledger's move is
         /// symmetric, so it has no reciprocal to roll; the draw <c>ChangeWithRoll</c> spent on one is drawn and set aside,
         /// so the NPC world's stream advances exactly as it did and every later conversation draws what it would have.
-        /// The season's own stream is untouched either way.</para>
+        /// The season's own stream is untouched either way. Its sequence counter is not: each record takes an id
+        /// (<see cref="HouseTalkRecords"/>), so what is keyed to <c>nextSequence</c> - the talk story hooks, a refused
+        /// deal's counter coin, the ids of house events, deals and promises - lands differently in a season the house
+        /// talked through, as it may under a new rule.</para>
         /// </summary>
         private static void CompletionChange(EpisodeState state, NpcConversationState row, string from, string to, double delta, string type)
         {

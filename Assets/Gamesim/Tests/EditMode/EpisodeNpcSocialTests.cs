@@ -394,6 +394,7 @@ namespace Gamesim.Tests.EditMode
                     Assert.That(after.relationships.Single(r => r.fromId == from && r.toId == to).lastInteractionWeek, Is.EqualTo(before.week));
                 }
                 Assert.That(after.nextSequence, Is.EqualTo(before.nextSequence + 2), "Two records, one each way.");
+                Assert.That(EpisodeEngine.HouseTalkRecords(after, before.nextSequence), Is.EqualTo(2), "The ids the house's talk took, as the autonomy QA allows them.");
                 Assert.That(after.randomState, Is.EqualTo(before.randomState), "The season's stream.");
                 Assert.That(after.npcSocial.randomState, Is.EqualTo(rng.State), "The completion's draws and the reciprocal's, set aside.");
                 UnchangedOutsideTheLedger(before, after);
@@ -406,6 +407,7 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(offAfter.Score(row.secondId, row.firstId), Is.EqualTo(WebRules.ClampScore(offBefore.Score(row.secondId, row.firstId) + reciprocal)));
                 Assert.That(Added(offBefore, offAfter, row.firstId, row.secondId), Is.Empty);
                 Assert.That(offAfter.nextSequence, Is.EqualTo(offBefore.nextSequence));
+                Assert.That(EpisodeEngine.HouseTalkRecords(offAfter, offBefore.nextSequence), Is.Zero, "Without the rules the house's talk takes no id.");
                 return;
             }
             Assert.Fail("No season in forty completed its first conversation with a move and no gossip.");
@@ -442,6 +444,9 @@ namespace Gamesim.Tests.EditMode
                 for (int change = 0; change < (delta == 0 ? 2 : 3); change++) rng.NextDouble();
                 Assert.That(after.npcSocial.randomState, Is.EqualTo(rng.State), "The completion's draws and a reciprocal's for each change, set aside.");
                 Assert.That(after.randomState, Is.EqualTo(before.randomState), "The season's stream.");
+                Assert.That(after.nextSequence, Is.EqualTo(before.nextSequence + (delta == 0 ? 0 : 2) + 4), "A record each way for each change.");
+                Assert.That(EpisodeEngine.HouseTalkRecords(after, before.nextSequence), Is.EqualTo(after.nextSequence - before.nextSequence),
+                    "The ids the house's talk took, as the autonomy QA allows them.");
                 UnchangedOutsideTheLedger(before, after);
                 return;
             }
@@ -479,6 +484,29 @@ namespace Gamesim.Tests.EditMode
             change.Invoke(null, new object[] { s, row, npcs[0].id, npcs[1].id, 4d, EpisodeEngine.NpcConversationEvent });
             Assert.That(Json(s.relationshipArcs), Is.EqualTo(Json(withPlayer.relationshipArcs)), "Between two houseguests, no arc.");
             Assert.That(Added(withPlayer, s, npcs[1].id, npcs[0].id), Is.EqualTo(new[] { Entry(EpisodeEngine.NpcConversationEvent, 4, s.week) }));
+        }
+
+        /// <summary>
+        /// What the autonomy QA (PortVerification's autonomy workload) lets free roam take of the season's sequence ids under
+        /// D2's rules: the house's talk records between two houseguests from a given id on, one id each - not the same types on
+        /// an edge of the player's, not another of the house's types, not a record before that id.
+        /// </summary>
+        [Test]
+        public void TheHousesTalkRecordsCountOnlyTalkBetweenTwoHouseguestsFromAnId()
+        {
+            var s = Shipped(62, true);
+            var npcs = s.Active.Where(c => !c.isPlayer).Take(3).ToArray();
+            RelationshipLedger.Record(s, npcs[0].id, npcs[1].id, EpisodeEngine.NpcConversationEvent, 2, "Earlier talk");
+            int from = s.nextSequence;
+            Assert.That(EpisodeEngine.HouseTalkRecords(s, from), Is.Zero, "Nothing from the id on yet.");
+            RelationshipLedger.Record(s, npcs[0].id, npcs[1].id, EpisodeEngine.NpcConversationEvent, 2, "Talk");
+            RelationshipLedger.Record(s, npcs[0].id, npcs[2].id, EpisodeEngine.NpcGossipEvent, -1, "Gossip");
+            RelationshipLedger.Record(s, npcs[0].id, s.playerId, EpisodeEngine.NpcGossipEvent, -1, "On the player's edges");
+            RelationshipLedger.Record(s, npcs[1].id, npcs[2].id, "rumor", -1, "Another type");
+            Assert.That(s.nextSequence - from, Is.EqualTo(8), "Every record took an id.");
+            Assert.That(EpisodeEngine.HouseTalkRecords(s, from), Is.EqualTo(4), "The talk and the gossip between houseguests, both ways.");
+            Assert.That(EpisodeEngine.HouseTalkRecords(s, from - 2), Is.EqualTo(6), "From the earlier talk's ids, it too.");
+            Assert.That(EpisodeEngine.HouseTalkRecords(null, from), Is.Zero);
         }
     }
 }

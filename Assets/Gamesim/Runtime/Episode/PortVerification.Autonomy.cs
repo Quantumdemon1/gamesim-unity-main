@@ -130,8 +130,11 @@ namespace Gamesim.Episode
             RequireSeason(reunited.Count == pendingSequences.Length && autonomyReport.unreadyReunionFrames > 0,
                 "Each loaded pair must first wait for and then demonstrate real physical reunion.");
             var after = seasonDirector.Snapshot;
+            // Under D2's all-week rules (on from week one in every fresh season) a completed conversation moves its pair
+            // through the ledger, whose records take the season's sequence ids; those, and nothing else, may move it.
+            int houseTalk = EpisodeEngine.HouseTalkRecords(after, baseline.nextSequence);
             RequireSeason(after.randomState == baseline.randomState && after.socialActions == baseline.socialActions
-                && after.nextSequence == baseline.nextSequence && after.acceptedCommandIds.SequenceEqual(baseline.acceptedCommandIds)
+                && after.nextSequence == baseline.nextSequence + houseTalk && after.acceptedCommandIds.SequenceEqual(baseline.acceptedCommandIds)
                 && after.events.Select(JsonUtility.ToJson).SequenceEqual(baseline.events.Select(JsonUtility.ToJson))
                 && after.memories.Select(JsonUtility.ToJson).SequenceEqual(baseline.memories.Select(JsonUtility.ToJson)),
                 "Autonomous conversations must not charge player actions/RNG/receipts or invent public/private player events.");

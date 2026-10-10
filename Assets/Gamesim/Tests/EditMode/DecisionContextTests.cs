@@ -47,7 +47,9 @@ namespace Gamesim.Tests.EditMode
             var context=DecisionContext.ForCandidate(state,actor.id);
             Assert.That(context.Record,Is.EqualTo("HoH 2 · Veto 1 · Nominated 3"));
             Assert.That(context.Relationship,Does.StartWith("Your trust: +31").And.Not.Contain("86"));
-            Assert.That(context.Promises,Does.Contain("Promised to you: a vote · fulfilled"));
+            // Since vote family V6's review (finding 2) a vote promise's ending reads as the houseguest's notes read it:
+            // no ballot of theirs is on this record, so how it ended is not the player's to know (decision 4).
+            Assert.That(context.Promises,Does.Contain("Promised to you: a vote · "+KnownBallots.Unresolved));
             Assert.That(context.Character,Is.Not.SameAs(actor));
             context.Character.name="Changed preview copy";
             Assert.That(actor.name,Is.Not.EqualTo("Changed preview copy"));
@@ -92,6 +94,50 @@ namespace Gamesim.Tests.EditMode
             state.deals.Add(new DealState { id = "deal-keep-you", type = DealKind.VoteSave, proposerId = guests[2].id, recipientId = state.playerId,
                 targetId = state.playerId, status = DealStatus.Active, week = state.week, expiresWeek = state.week, trustImpact = DealKind.DefaultTrust(DealKind.VoteSave) });
             Assert.That(DecisionContext.ForCandidate(state, guests[2].id).Deals, Is.EqualTo("Deal: Vote-to-save deal they offered (you) · this week · agreed"));
+        }
+
+        /// <summary>
+        /// The comparison tells a houseguest's vote promise's ending as their notes tell it (vote family V6's review, finding 2;
+        /// <see cref="KnownBallots.PromiseOutcomeKnown"/>, decision 4): "unresolved" while the ballot that ended it is hidden from
+        /// the player, the ending once they know that ballot. Before mode 2 (<see cref="LegacyVoteWord"/>) and in mode 2's flip
+        /// pair (<see cref="ModeTwoReaderSweep.Flip"/>): the partner's word, broken by their one ballot, hidden in the blind pair
+        /// and told and judged in the control.
+        /// </summary>
+        [Test]
+        public void TheComparisonTellsAVotePromisesEndingOnlyWhereItsBallotIsKnown()
+        {
+            var legacy = LegacyVoteWord();
+            Assert.That(DecisionContext.ForCandidate(legacy.blind, legacy.promiser).Promises, Is.EqualTo("Promised to you: a vote · " + KnownBallots.Unresolved));
+            Assert.That(DecisionContext.ForCandidate(legacy.told, legacy.promiser).Promises, Is.EqualTo("Promised to you: a vote · broken"));
+
+            var blind = ModeTwoReaderSweep.Flip(false, word: true);
+            foreach (var s in new[] { blind.Kept, blind.Broken })
+                Assert.That(DecisionContext.ForCandidate(s, blind.PartnerId).Promises,
+                    Does.Contain("Promised to you: a vote · " + KnownBallots.Unresolved).And.Not.Contain("a vote · broken"), "Mode 2, the ballot hidden.");
+            var told = ModeTwoReaderSweep.Flip(true, word: true);
+            foreach (var s in new[] { told.Kept, told.Broken })
+                Assert.That(DecisionContext.ForCandidate(s, told.PartnerId).Promises,
+                    Does.Contain("Promised to you: a vote · broken").And.Not.Contain("a vote · " + KnownBallots.Unresolved), "Mode 2, the ballot told and judged.");
+        }
+
+        /// <summary>
+        /// A season before mode 2 the week after a reveal: a houseguest's vote promise to the player, broken, with their ballot
+        /// hidden (<c>blind</c>) and, in a copy, told and caught at the reveal (<c>told</c>) - BallotPrivacyTests' verdict fixture.
+        /// </summary>
+        internal static (EpisodeState blind, EpisodeState told, string promiser) LegacyVoteWord()
+        {
+            var s = ContentCatalog.Create(31);
+            s.week = 2;
+            var npcs = s.contestants.Where(c => !c.isPlayer).ToArray();
+            s.ledger.power.Add(new PowerRow { week = 1, hohId = npcs[0].id, evicteeId = npcs[1].id, nominees = new List<string> { npcs[1].id, npcs[2].id }, tally = new List<int> { 2, 1 } });
+            s.ledger.ballots.Add(new BallotRow { week = 1, voterId = s.playerId, targetId = npcs[1].id });
+            s.promises.Add(new PromiseState { id = "legacy-vote-word", fromId = npcs[3].id, toId = s.playerId, targetId = npcs[1].id,
+                kind = PromiseKind.Vote, status = PromiseStatus.Broken, week = 1, expiresWeek = 1 });
+            var told = s.Clone();
+            told.ledger.claims.Add(new ClaimRow { week = 1, voterId = npcs[3].id, targetId = npcs[1].id, source = ClaimSource.Told, status = ClaimStatus.Lied });
+            Assert.That(KnownBallots.Knows(s, 1, npcs[3].id), Is.False, "Fixture: the ballot is hidden.");
+            Assert.That(KnownBallots.Knows(told, 1, npcs[3].id), Is.True, "Fixture: the copy's ballot is known.");
+            return (s, told, npcs[3].id);
         }
     }
 }

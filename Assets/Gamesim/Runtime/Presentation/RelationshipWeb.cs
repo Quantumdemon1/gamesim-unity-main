@@ -982,12 +982,14 @@ namespace Gamesim.Presentation
                 var between = new List<string>();
                 foreach (var alliance in state.alliances.Where(a => a.active && a.members.Contains(state.playerId) && a.members.Contains(focus.id)))
                     between.Add(alliance.name + " · " + Localisation.Text("alliance"));
+                // Their vote promise, ended by their ballot, is told once the player knows that ballot
+                // (KnownBallots.PromiseOutcomeKnown; decision 4), as the houseguest's notes tell it.
                 foreach (var promise in CommitmentReferences.Promises(state).Where(p =>
                              (p.fromId == state.playerId && p.toId == focus.id) || (p.fromId == focus.id && p.toId == state.playerId)))
                     between.Add((promise.fromId == state.playerId
                                     ? Localisation.Text("You promised") + " " + PromiseWord(promise.kind)
                                     : GivenName(focus.name) + " " + Localisation.Text("promised you") + " " + PromiseWord(promise.kind))
-                                + " · " + promise.status);
+                                + " · " + (KnownBallots.PromiseOutcomeKnown(state, promise) ? promise.status.ToString() : KnownBallots.Unresolved));
                 // Deals, which this block has never listed. A player can stake their word on not
                 // nominating somebody, or on using the veto for them, and the only place that
                 // commitment appeared was the panel where it was made - so it was forgotten until

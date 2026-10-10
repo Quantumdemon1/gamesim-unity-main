@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Episode;
+using Gamesim.Presentation;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
@@ -95,18 +96,22 @@ namespace Gamesim.Tests.PlayMode
         {
             if (!Application.isBatchMode) yield break;
             measuredFindings.Clear();
+            // Nothing in the house moves: a conversation witnessed on the way through three sizes and
+            // four frames swapped the vibe card and the status line for the Nearby card and its bar.
+            HoldTheHouseForTheFixture();
             yield return SettleCast();
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                string size = larger ? "-large" : "";
-                string text = larger ? "larger" : "standard";
-                yield return ApplyTextSize(larger);
+                string size = SizeSuffix(textSize);
+                string text = TextSizes.Name(textSize);
+                yield return ApplyTextSize(textSize);
+                Assert.That(director.TextSize, Is.EqualTo(textSize));
                 director.ClosePanels();
                 yield return null;
                 yield return OnFrames("frames-house" + size, "The house's chrome at " + text + " text",
                     where =>
                     {
-                        AssertFixedChromeDoesNotOverlap(larger);
+                        AssertFixedChromeDoesNotOverlap(textSize);
                         var clipped = ClippedCopy();
                         Assert.That(clipped, Is.Empty, where + ": copy is clipped: " + string.Join(" | ", clipped));
                     });
@@ -115,7 +120,7 @@ namespace Gamesim.Tests.PlayMode
                 ButtonWithCaption(ExpandControlsCaption).onClick.Invoke();
                 yield return null;
                 yield return OnFrames("frames-help" + size, "The house's chrome with the controls open at " + text + " text",
-                    where => AssertFixedChromeDoesNotOverlap(larger));
+                    where => AssertFixedChromeDoesNotOverlap(textSize));
                 ButtonWithCaption(CollapseControlsCaption).onClick.Invoke();
                 yield return null;
                 yield return OpenNotebook();
@@ -166,6 +171,9 @@ namespace Gamesim.Tests.PlayMode
             }
             yield return null;
         }
+
+        /// <summary>A frame's file-name suffix for a text size: none at the standard size, as the frames have always been named.</summary>
+        private static string SizeSuffix(TextSize size) => size == TextSize.Largest ? "-largest" : size == TextSize.Larger ? "-large" : "";
 
         /// <summary>Whether a live control carries these words: a check that says no, where <see cref="FindButton"/> throws.</summary>
         private bool ShowsControl(string caption) => director.GetComponentsInChildren<Button>(true).Any(item => item.IsActive()

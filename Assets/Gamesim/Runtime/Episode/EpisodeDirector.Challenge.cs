@@ -372,7 +372,7 @@ namespace Gamesim.Episode
                     // The screen's own beats - the count, GO, the last seconds, a wave - on the house's audio.
                     competitionScreen.CueRequested += cue => audioBed.PlayCue(cue);
                 }
-                competitionScreen.FontScale = largeText ? 1.2f : 1f;
+                competitionScreen.FontScale = TextScale;
                 competitionScreen.ReducedMotion = reducedMotion;
                 var field = EpisodeEngine.CompetitionPlayers(state).ToList();
                 competitionScreen.Show(challengeRun, CompetitionTitle(state),

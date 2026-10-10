@@ -143,7 +143,8 @@ namespace Gamesim.Episode
         {
             if (root == null) Create();
             label.text = Describe(firstName, secondName, topic);
-            label.fontSize = Mathf.RoundToInt(19 * Mathf.Clamp(fontScale, 1, 1.2f));
+            // Every text size the settings offer, the largest's 1.4 among them (A8).
+            label.fontSize = Mathf.RoundToInt(19 * Mathf.Clamp(fontScale, 1, Gamesim.Presentation.TextSizes.Scale(Gamesim.Presentation.TextSize.Largest)));
             root.SetActive(true);
         }
 

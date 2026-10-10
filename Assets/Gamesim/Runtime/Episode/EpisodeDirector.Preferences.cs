@@ -44,7 +44,7 @@ namespace Gamesim.Episode
             KeyValuePair<string, string> Say(string key, string value) => new KeyValuePair<string, string>(key, value);
             return new List<KeyValuePair<string, string>>
             {
-                Say("text", largeText ? "larger" : "standard"),
+                Say("text", TextSizes.Name(textSize)),
                 Say("motion", reducedMotion ? "reduced" : "full"),
                 Say("pace", ceremonyPace == CeremonyPace.Quick ? "quick" : "suspenseful"),
                 Say("volume", volumePercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),

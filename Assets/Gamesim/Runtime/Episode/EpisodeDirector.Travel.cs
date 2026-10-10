@@ -278,7 +278,7 @@ namespace Gamesim.Episode
             // icon's square and the room's name under it as one rect each.
             if (chromeCovers == null) chromeCovers = hud.Covers;
             if (chromeCoversBox == null) chromeCoversBox = box => hud.CoversAny(box);
-            travelBeacons.Request(true, cameraRig, largeText ? 1.2f : 1f, StationRoomId(),
+            travelBeacons.Request(true, cameraRig, TextScale, StationRoomId(),
                 EpisodeEngine.IsCompetition(projected?.phase ?? EpisodePhase.Social), playerIsActive ? beaconPlayerRoom : null,
                 BeaconAnchor, chromeCovers, chromeCoversBox);
         }

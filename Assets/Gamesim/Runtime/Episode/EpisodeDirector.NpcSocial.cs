@@ -444,7 +444,7 @@ namespace Gamesim.Episode
                     // approaches stay reserved; they are not where seated faces are rendered.
                     var between = visibleMidpoint+Vector3.up*(lease.Seated ? .35f : CaptionHeadHeight-1.15f);
                     npcCaption.Show(projected.Find(pending.firstId).name, projected.Find(pending.secondId).name,
-                        pending.topic, largeText ? 1.2f : 1, between);
+                        pending.topic, TextScale, between);
                     npcShownLease = lease;
                     witnessed = true;
                 }

@@ -571,6 +571,7 @@ namespace Gamesim.Episode
         /// </summary>
         private void LeftGutter(EpisodeState state, bool recovery)
         {
+            railScale = RailFit();
             var ground = Chrome("Rail ground", canvas.transform);
             IconRail.Build(canvas.transform, new[]
             {
@@ -580,8 +581,8 @@ namespace Gamesim.Episode
                 new IconRail.Entry(IconRail.Mark.Rooms,    EpisodeDirector.NotebookSection.Rooms,   "Who is where"),
                 new IconRail.Entry(IconRail.Mark.Votes,    EpisodeDirector.NotebookSection.Votes,   "The vote"),
                 new IconRail.Entry(IconRail.Mark.Story,    EpisodeDirector.NotebookSection.Story,   "The story so far"),
-            }, FontScale, director.ShowNotebookSection, director.ActiveSection);
-            float y = IconRail.Top + IconRail.Height(6, FontScale);
+            }, railScale, director.ShowNotebookSection, director.ActiveSection);
+            float y = IconRail.Top + IconRail.Height(6, railScale);
 
             if (!Compact)
             {
@@ -610,12 +611,37 @@ namespace Gamesim.Episode
             var group = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
             group.SetParent(canvas.transform, false);
             Anchor(group, new Vector2(0, 1), new Vector2(0, 1), new Vector2(14f, -top),
-                new Vector2(IconRail.Width, IconRail.Height(rows, FontScale)));
+                new Vector2(IconRail.Width, IconRail.Height(rows, railScale)));
             return group;
         }
 
         /// <summary>A rail label's band, at the resting text size.</summary>
         private const float RailLabelBand = 16f;
+
+        /// <summary>The scale the left gutter was last laid out at (<see cref="RailFit"/>).</summary>
+        private float railScale = 1f;
+
+        /// <summary>
+        /// The scale the left gutter is laid out at: the text size's, unless its rows would come down
+        /// onto the cast strip, and then the largest that leaves them clear of it (PLAN A, A8). The
+        /// gutter's eleven rows - the notebook's pages, the two ways on, the notebook, save and
+        /// settings - and its two labels grow with the text, and so does the strip under them: at the
+        /// largest size (1.4) on a 900-tall canvas (16:9, and 21:9 laid out by height) the rows would
+        /// have ended 101 units into the strip, so there they stop growing at about the larger size
+        /// (1.19). On every frame at the standard and the larger size, and on a 4:3 frame at the
+        /// largest, they fit, and the scale is the text size's exactly as it always was.
+        /// </summary>
+        private float RailFit()
+        {
+            var bounds = ((RectTransform)canvas.transform).rect;
+            float height = bounds.height > 0f ? bounds.height : 900f;
+            // Every row and label band in the gutter, at a scale of one; the ground reaches 6 past
+            // the last row, and 6 more keep it off the strip.
+            float rows = IconRail.Height(6, 1f) + RailLabelBand + IconRail.Height(3, 1f)
+                + (Compact ? 0f : RailLabelBand + IconRail.Height(2, 1f));
+            float room = height - (CastRail.Bottom + CastRail.Height * FontScale) - IconRail.Top - 12f;
+            return Mathf.Max(1f, Mathf.Min(FontScale, room / rows));
+        }
 
         /// <summary>
         /// A group's name over its rows, in place of the hairline that used to divide the lists -
@@ -624,7 +650,7 @@ namespace Gamesim.Episode
         /// </summary>
         private float RailLabel(string words, float y)
         {
-            float band = RailLabelBand * FontScale;
+            float band = RailLabelBand * railScale;
             var label = FixedText((RectTransform)canvas.transform, words, 10, UiTheme.Muted, new Vector2(30f, -(y + 1f)), new Vector2(IconRail.Width - 30f, band));
             label.gameObject.name = "Rail label";
             label.characterSpacing = 6f;
@@ -638,7 +664,7 @@ namespace Gamesim.Episode
         private Button RailButton(RectTransform group, string caption, Sprite icon, int index, System.Action action,
             bool primary = false, bool on = false) =>
             IconRail.Row(group, caption, icon, null, on,
-                (IconRail.Pad + index * (IconRail.RowHeight + IconRail.Gap)) * FontScale, FontScale,
+                (IconRail.Pad + index * (IconRail.RowHeight + IconRail.Gap)) * railScale, railScale,
                 () => action(), primary);
 
         /// <summary>

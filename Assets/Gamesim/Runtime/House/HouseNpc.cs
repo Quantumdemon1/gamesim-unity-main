@@ -58,6 +58,18 @@ namespace Gamesim.House
         public const string PlateName = "Name plate";
         /// <summary>Canvas units to metres: a 48-unit plate stands about a quarter of a metre tall.</summary>
         private const float PlateScale = 0.0055f;
+
+        /// <summary>
+        /// How much the names over the house's heads grow with the player's text size (PLAN A, A8): 1,
+        /// 1.2 or 1.4, set by the director with every other surface's. The plates were the one text
+        /// in the house fixed at one size. Every plate follows it the frame it changes.
+        /// </summary>
+        public static float NameScale { get; set; } = 1f;
+
+        /// <summary>Domain reload is off at play start: a session starts at the resting size until its director says otherwise.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ForgetTheNameScale() => NameScale = 1f;
+
         private RectTransform plate;
         private CanvasGroup plateGroup;
         private TMP_Text plateWord;
@@ -149,7 +161,7 @@ namespace Gamesim.House
                 plate.SetParent(nameLabel.transform, false);
                 plate.localPosition = Vector3.zero;
                 plate.localRotation = Quaternion.identity;
-                plate.localScale = Vector3.one * PlateScale;
+                plate.localScale = Vector3.one * PlateScale * NameScale;
                 holder.GetComponent<Canvas>().renderMode = RenderMode.WorldSpace;
                 plateGroup = holder.GetComponent<CanvasGroup>();
                 plateGroup.interactable = false; plateGroup.blocksRaycasts = false;
@@ -229,6 +241,9 @@ namespace Gamesim.House
                 // covered - the director does not ask (mockup-12).
                 ApplyPlateAlpha();
             }
+            // The plate at the player's text size (A8), the frame the size changes.
+            if (plate != null && !Mathf.Approximately(plate.localScale.x, PlateScale * NameScale))
+                plate.localScale = Vector3.one * PlateScale * NameScale;
         }
 
         /// <summary>Inside this distance the name tag is fully shown; beyond <see cref="NameTagFar"/> it is gone.</summary>

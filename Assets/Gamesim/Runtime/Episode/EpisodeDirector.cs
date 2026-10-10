@@ -797,6 +797,7 @@ namespace Gamesim.Episode
             // decision 10): the last line before the commit's catch-up began.
             var visible = result.accepted
                 ? result.state.events.LastOrDefault(e => (e.audienceIds.Count == 0 || e.audienceIds.Contains(result.state.playerId))
+                    && !KnownBallots.TellsAnUnknownBallot(result.state, e)
                     && (result.beatsFromSequence <= 0 || e.sequence < result.beatsFromSequence))
                 : null;
             message = result.accepted ? StatusLine(result.state, visible) ?? "Decision committed." : result.reason;

@@ -20,7 +20,12 @@ namespace Gamesim.Simulation
     /// their last 30. A vote deal or a vote promise the other party settled by their ballot reads
     /// unresolved until the player knows that ballot (decision 4). A promise from a week both have
     /// rolled past is not on the list, so a review of an early week in a long season can show fewer
-    /// promises than that week ended. A call's members are judged by their ballots where the player
+    /// promises than that week ended. Under the unified vote rules (mode 2, vote family V7) a vote
+    /// deal or a vote promise is read from its own row instead, one line each as mode 1 lists them
+    /// (the list is an inventory, not a count of breaches: the lead's decision D1 counts a Rule2
+    /// incident once where a consequence is counted, and Game Sense does), behind the same gate - so
+    /// one is never missing because another row owned its Rule2 group, and never falls off the
+    /// list with the player's memories. A call's members are judged by their ballots where the player
     /// knows them, and otherwise by what each member said at the call. Game Sense is the verdict's
     /// own notes, the known ones only (<see cref="GameSense.Note.known"/>): its strategy face is made
     /// of public and player-owned rows, while its competitions face rests on odds and its social face
@@ -207,6 +212,10 @@ namespace Gamesim.Simulation
         /// </summary>
         private static void Deals(EpisodeState s, int week, List<Line> lines)
         {
+            // Mode 2 (vote family V7): the reveal's lane - the partnerships the vote settled and every Vote deal it decided - goes
+            // after the week's other deals, in the one order mode 1's single list met them in (UnifiedVoteSettlement.Occurrence).
+            bool byRow = UnifiedVoteStore.On(s);
+            var lane = new List<((long, int, int, int) at, Line line)>();
             var settled = s.relationships
                 .Where(r => r.fromId == s.playerId && r.toId != s.playerId && s.Find(r.toId) != null)
                 .SelectMany(r => r.events.Where(e => e.week == week && (e.type == DealKept || e.type == DealBroken)).Select(e => (partner: r.toId, record: e)))
@@ -217,8 +226,12 @@ namespace Gamesim.Simulation
                 // A canonical Safety outcome is CanonicalWord's line wherever Safety is canonical (vote family V5e).
                 if (UnifiedCommitments.SafetyAuthorityOn(s) && ReadDeal(s, record.description, partner, out _, out string canonicalType, out _)
                     && canonicalType == DealKind.SafetyAgreement && HasCanonicalOutcome(s, week, partner, kept)) continue;
+                bool read = ReadDeal(s, record.description, partner, out string actorId, out string type, out bool said);
+                // Mode 2 (V7): a Vote deal's ending is its row's line (VoteRowDeals), never the record its Rule2 group's owner
+                // alone wrote - so a deal is a line whether or not it owned its group, as each is in mode 1.
+                if (byRow && read && KnownBallots.IsVoteDeal(type)) continue;
                 var line = new Line { kind = Kinds.Deal, verdict = kept ? Verdicts.Kept : Verdicts.Broken, aboutId = partner };
-                if (ReadDeal(s, record.description, partner, out string actorId, out string type, out bool said) && said == kept)
+                if (read && said == kept)
                 {
                     string what = DealWords(type);
                     // A vote deal the other party settled by their ballot - or that the two of them
@@ -229,45 +242,103 @@ namespace Gamesim.Simulation
                     {
                         line.verdict = Verdicts.NotKnown;
                         line.text = "The " + what + " with " + Whom(s, partner) + " is " + KnownBallots.Unresolved + ".";
-                        lines.Add(line);
-                        continue;
                     }
-                    line.byId = actorId;
-                    line.text = actorId == null
-                        ? "You and " + Whom(s, partner) + (kept ? " held to your " : " fell out over your ") + what + "."
-                        : actorId == s.playerId
-                            ? "You " + (kept ? "kept" : "broke") + " the " + what + " with " + Whom(s, partner) + "."
-                            : Who(s, partner) + " " + (kept ? "kept" : "broke") + " the " + what + " with you.";
+                    else
+                    {
+                        line.byId = actorId;
+                        line.text = DealLine(s, partner, actorId, what, kept);
+                    }
                 }
                 // A line in words this reader does not know still says what it says.
                 else line.text = record.description ?? (kept ? "A deal with " + Whom(s, partner) + " was kept." : "A deal with " + Whom(s, partner) + " was broken.");
-                lines.Add(line);
+                var at = byRow && read && said == kept && type == DealKind.Partnership ? PartnershipAt(s, week, partner) : null;
+                if (at != null) lane.Add((at.Value, line));
+                else lines.Add(line);
             }
-            if (UnifiedVoteStore.On(s)) UntoldVoteDeals(s, week, lines);
+            if (!byRow) return;
+            lane.AddRange(VoteRowDeals(s, week));
+            lines.AddRange(lane.OrderBy(item => item.at).Select(item => item.line));
+        }
+
+        /// <summary>"You and Maya held to your voting bloc.", "You kept the vote-to-evict deal with Maya.", "Maya broke the vote-to-save deal with you."</summary>
+        private static string DealLine(EpisodeState s, string partner, string actorId, string what, bool kept) =>
+            actorId == null
+                ? "You and " + Whom(s, partner) + (kept ? " held to your " : " fell out over your ") + what + "."
+                : actorId == s.playerId
+                    ? "You " + (kept ? "kept" : "broke") + " the " + what + " with " + Whom(s, partner) + "."
+                    : Who(s, partner) + " " + (kept ? "kept" : "broke") + " the " + what + " with you.";
+
+        /// <summary>
+        /// Mode 2 (vote family V7): where in the reveal's lane the player's partnership with <paramref name="partner"/> stood -
+        /// its place in mode 1's one list (<see cref="UnifiedVoteSettlement.Occurrence"/>) - or null where the record names no
+        /// single partnership binding that week.
+        /// </summary>
+        private static (long, int, int, int)? PartnershipAt(EpisodeState s, int week, string partner)
+        {
+            int found = -1;
+            for (int index = 0; index < s.deals.Count; index++)
+            {
+                var d = s.deals[index];
+                if (d == null || d.type != DealKind.Partnership || d.week > week || (d.settledWeek > 0 && d.settledWeek < week)
+                    || !((d.proposerId == s.playerId && d.recipientId == partner) || (d.proposerId == partner && d.recipientId == s.playerId))) continue;
+                if (found >= 0) return null;
+                found = index;
+            }
+            return found < 0 ? ((long, int, int, int)?)null : UnifiedVoteSettlement.Occurrence(s.deals[found].id, false, found);
         }
 
         /// <summary>
-        /// Mode 2 only (the pre-V6 review; the lead's decision that what a ballot settled is the player's to know only where that
-        /// ballot is): a vote deal of the player's whose ending they cannot know (<see cref="KnownBallots.DealOutcomeKnown"/>) is a
-        /// not-known line of its own, as the record's line for it says. Under Rule2 a row that owned no consequence of its reveal
-        /// wrote no record, and which row owns turns on how the others voted - the partner's word broken by the same hidden ballot
-        /// owns their breach of the player where the deal broke with it, and not where it held - so each such row the record did not
-        /// tell is told here, after the record's lines. Mode 1 writes every row's record, and never reaches this.
+        /// Mode 2 only (vote family V7, the lead's decision D1 and the review's note on its two counting rules): Your week is an
+        /// inventory of what ended, so - as the case's résumé is (D1's inventories) - it is read row by row, as mode 1 reads it:
+        /// every Vote deal of the player's the week's reveal decided is a line of its own, whether or not its row owned its Rule2
+        /// group. Under Rule2 only an owner writes the record mode 1's line is read from, and which row owns turns on how the others
+        /// voted, so neither a line's presence nor its place may rest on the record: each is built from its row, in the one order
+        /// mode 1's list met them. A line tells the ending as mode 1's record does, behind the same gate (decision 4): not known
+        /// while the player cannot know the other's ballot - unless the player's own ballot broke it - and a deal the player kept
+        /// not known where keeping it tells the other's ballot (<see cref="KeepingTellsTheirBallot"/>). Who kept a deal is the
+        /// reveal's own verdict (<see cref="UnifiedVoteHistory.Decisions"/>), who broke it the row's.
         /// </summary>
-        private static void UntoldVoteDeals(EpisodeState s, int week, List<Line> lines)
+        private static List<((long, int, int, int) at, Line line)> VoteRowDeals(EpisodeState s, int week)
         {
-            var untold = CommitmentReferences.Deals(s).Where(d => KnownBallots.IsVoteDeal(d.type) && d.settledWeek == week
-                    && (d.status == DealStatus.Fulfilled || d.status == DealStatus.Broken) && (d.proposerId == s.playerId) != (d.recipientId == s.playerId)
-                    && CommitmentReferences.FindCanonical(s, d.id)?.kind == UnifiedVoteTogether.Vote && !KnownBallots.DealOutcomeKnown(s, d))
-                .GroupBy(d => (partner: d.proposerId == s.playerId ? d.recipientId : d.proposerId, d.type)).ToList();
-            foreach (var group in untold)
+            var found = new List<((long, int, int, int), Line)>();
+            Dictionary<string, string> keepers = null;
+            for (int index = 0; index < s.unifiedCommitments.Count; index++)
             {
-                if (s.Find(group.Key.partner) == null) continue;
-                string text = "The " + DealWords(group.Key.type) + " with " + Whom(s, group.Key.partner) + " is " + KnownBallots.Unresolved + ".";
-                int told = lines.Count(line => line.kind == Kinds.Deal && line.verdict == Verdicts.NotKnown && line.aboutId == group.Key.partner && line.text == text);
-                for (int i = told; i < group.Count(); i++)
-                    lines.Add(new Line { kind = Kinds.Deal, verdict = Verdicts.NotKnown, aboutId = group.Key.partner, text = text });
+                var row = s.unifiedCommitments[index];
+                if (!DecidedVoteRow(s, row, week, UnifiedCommitments.DealPolicy, out string partner)) continue;
+                var deal = UnifiedVoteReferences.ProjectDeal(row);
+                bool kept = row.status == DealStatus.Fulfilled;
+                if (kept && keepers == null)
+                    keepers = UnifiedVoteHistory.Decisions(s).Where(decision => decision.Status == DealStatus.Fulfilled)
+                        .ToDictionary(decision => decision.Record.id, decision => decision.ActorId, StringComparer.Ordinal);
+                string actorId = kept ? (keepers.TryGetValue(row.id, out string keeper) ? keeper : null) : row.brokenById;
+                string what = DealWords(deal.type);
+                var line = new Line { kind = Kinds.Deal, verdict = kept ? Verdicts.Kept : Verdicts.Broken, aboutId = partner };
+                if (!KnownBallots.Knows(s, week, partner) && (actorId != s.playerId || kept && !KnownBallots.DealOutcomeKnown(s, deal)))
+                {
+                    line.verdict = Verdicts.NotKnown;
+                    line.text = "The " + what + " with " + Whom(s, partner) + " is " + KnownBallots.Unresolved + ".";
+                }
+                else
+                {
+                    line.byId = actorId;
+                    line.text = DealLine(s, partner, actorId, what, kept);
+                }
+                found.Add((UnifiedVoteSettlement.Occurrence(row.id, true, index), line));
             }
+            return found;
+        }
+
+        /// <summary>A canonical Vote row of <paramref name="policy"/> the reveal of <paramref name="week"/> decided, with the player one of its two parties and the other in the cast.</summary>
+        private static bool DecidedVoteRow(EpisodeState s, UnifiedCommitmentState row, int week, string policy, out string partner)
+        {
+            partner = null;
+            if (row == null || row.kind != UnifiedVoteTogether.Vote || row.sourcePolicy != policy || row.settledWeek != week
+                || (row.status != DealStatus.Fulfilled && row.status != DealStatus.Broken)) return false;
+            bool mine = row.makerId == s.playerId, theirs = row.beneficiaryId == s.playerId;
+            if (mine == theirs) return false;
+            partner = mine ? row.beneficiaryId : row.makerId;
+            return s.Find(partner) != null;
         }
 
         /// <summary>
@@ -342,13 +413,76 @@ namespace Gamesim.Simulation
                 .Where(m => m.ownerId == s.playerId && m.week == week && m.subjectId != null && m.subjectId != s.playerId && m.text != null)
                 .Select(m => (text: m.text, partner: m.subjectId))
                 .Where(x => ReadPromise(s, x.text, x.partner, out _, out _, out _)).ToList();
-            foreach (var outcome in told.Concat(remembered).Distinct().ToList())
+            // Mode 2 (vote family V7): a vote promise's ending is its row's line (VoteRowPromises), never the line or the memory
+            // its Rule2 group's owner alone wrote; the player's own go where their own lines were told, the others' to them
+            // after what they remember, as mode 1's lines fall.
+            bool byRow = UnifiedVoteStore.On(s);
+            var outcomes = told.Concat(remembered).Distinct().ToList();
+            int toldFirst = told.Distinct().Count();
+            for (int at = 0; at < outcomes.Count; at++)
             {
+                if (byRow && at == toldFirst) lines.AddRange(VoteRowPromises(s, week, true));
+                var outcome = outcomes[at];
                 if (UnifiedCommitments.SafetyAuthorityOn(s) && ReadPromise(s, outcome.text, outcome.partner, out _, out PromiseKind canonicalKind, out bool canonicalKept)
                     && canonicalKind == PromiseKind.Safety && HasCanonicalOutcome(s, week, outcome.partner, canonicalKept)) continue;
+                if (byRow && ReadPromise(s, outcome.text, outcome.partner, out _, out PromiseKind voteKind, out _) && voteKind == PromiseKind.Vote) continue;
                 int heard = told.Count(x => x == outcome);
                 int recalled = Math.Min(remembered.Count(x => x == outcome), PromisesItCouldBe(s, week, outcome.text, outcome.partner));
                 for (int i = 0; i < Math.Max(heard, recalled); i++) lines.Add(PromiseLine(s, week, outcome.text, outcome.partner));
+            }
+            if (!byRow) return;
+            if (outcomes.Count <= toldFirst) lines.AddRange(VoteRowPromises(s, week, true));
+            lines.AddRange(VoteRowPromises(s, week, false));
+        }
+
+        /// <summary>
+        /// Mode 2 only (vote family V7, as <see cref="VoteRowDeals"/> reads the deals): every vote promise the week's reveal decided
+        /// with the player a party - their own (<paramref name="own"/>) or one made to them - is a line of its own, built from its
+        /// row whether or not it owned its Rule2 group, in the order mode 1's lines fall: by the promiser's place in the week's
+        /// ballots, then the rows' own order, an ending's like lines together. One made to the player is not known until they know
+        /// that ballot (decision 4, <see cref="KnownBallots.PromiseOutcomeKnown"/>).
+        /// </summary>
+        private static IEnumerable<Line> VoteRowPromises(EpisodeState s, int week, bool own)
+        {
+            var ballots = s.unifiedVoteReveals?.LastOrDefault(frame => frame != null && frame.week == week)?.ballots ?? new List<UnifiedVoteBallotState>();
+            int Place(string voterId)
+            {
+                int place = ballots.FindIndex(ballot => ballot != null && ballot.voterId == voterId);
+                return place < 0 ? int.MaxValue : place;
+            }
+            var rows = new List<(UnifiedCommitmentState row, string partner, int index)>();
+            for (int index = 0; index < s.unifiedCommitments.Count; index++)
+            {
+                var row = s.unifiedCommitments[index];
+                if (DecidedVoteRow(s, row, week, UnifiedCommitments.PromisePolicy, out string partner) && (row.makerId == s.playerId) == own)
+                    rows.Add((row, partner, index));
+            }
+            var ordered = rows.OrderBy(item => Place(item.row.makerId)).ThenBy(item => item.index).ToList();
+            // Mode 1 tells each ending once and repeats it as often as it happened, at its first place.
+            var first = new Dictionary<(string, string), int>();
+            for (int i = 0; i < ordered.Count; i++)
+            {
+                var key = (ordered[i].partner, ordered[i].row.status);
+                if (!first.ContainsKey(key)) first[key] = i;
+            }
+            string what = PromiseWords(PromiseKind.Vote);
+            foreach (var (row, partner, _) in ordered.Select((item, i) => (item, i)).OrderBy(x => first[(x.item.partner, x.item.row.status)]).ThenBy(x => x.i).Select(x => x.item))
+            {
+                bool kept = row.status == DealStatus.Fulfilled;
+                var line = new Line { kind = Kinds.Promise, aboutId = partner };
+                if (!own && !KnownBallots.Knows(s, week, partner))
+                {
+                    line.verdict = Verdicts.NotKnown;
+                    line.text = "Their " + what + " to you is " + KnownBallots.Unresolved + ".";
+                }
+                else
+                {
+                    line.verdict = kept ? Verdicts.Kept : Verdicts.Broken;
+                    line.byId = row.makerId;
+                    line.text = own ? "You " + (kept ? "kept" : "broke") + " your " + what + " to " + Whom(s, partner) + "."
+                        : Who(s, partner) + " " + (kept ? "kept" : "broke") + " their " + what + " to you.";
+                }
+                yield return line;
             }
         }
 
@@ -373,7 +507,7 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// The week's canonical Safety word, by incident and receipt, wherever Safety is canonical (vote family V5e). Mode 2's
-        /// Vote outcomes are told as mode 1's are, by the lines their owners wrote (<see cref="Deals"/>, <see cref="Promises"/>).
+        /// Vote outcomes are told row by row, as mode 1 tells them (<see cref="VoteRowDeals"/>, <see cref="VoteRowPromises"/>).
         /// </summary>
         private static void CanonicalWord(EpisodeState s, int week, List<Line> lines)
         {

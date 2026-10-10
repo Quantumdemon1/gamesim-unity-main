@@ -1382,6 +1382,8 @@ namespace Gamesim.Episode
             if (state == null) return 0f;
             var entries = state.events
                 .Where(entry => entry.audienceIds.Count == 0 || entry.audienceIds.Contains(state.playerId))
+                // Nor a line telling a ballot the player cannot know (KnownBallots; vote family V7).
+                .Where(entry => !KnownBallots.TellsAnUnknownBallot(state, entry))
                 // Phase markers are the engine's scaffolding, not something that happened - the
                 // story page leaves them out for the same reason. They filled the card with
                 // "Week 1 · Nomination" where the nomination itself should have been. So are the

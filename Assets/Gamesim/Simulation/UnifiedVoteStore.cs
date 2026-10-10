@@ -178,7 +178,7 @@ namespace Gamesim.Simulation
         private static bool Refused(EpisodeState s)
         {
             if (!EpisodeValidation.TryValidateProspectiveUnifiedVote(s, out var stateError))
-                throw EpisodeEngine.Refusal("The prospective Vote state fails its core in the middle of the command: " + stateError);
+                throw EpisodeEngine.Refusal("The unified vote state fails its core in the middle of the command: " + stateError);
             return false;
         }
 

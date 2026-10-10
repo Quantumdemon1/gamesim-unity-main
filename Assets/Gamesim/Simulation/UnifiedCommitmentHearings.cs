@@ -62,7 +62,7 @@ namespace Gamesim.Simulation
             if (s == null || s.unifiedHearingEvidence == null || s.unifiedHearingReceipts == null)
                 return Refuse(out error, "Missing durable hearing storage.");
             if (prospectiveVote && s.unifiedCommitmentRulesVersion != UnifiedVoteFamilyValidation.Version)
-                return Refuse(out error, "Expected explicit prospective Vote hearing storage.");
+                return Refuse(out error, "Expected explicit unified vote hearing storage.");
             if (s.unifiedHearingRulesVersion == 0)
                 return (s.unifiedHearingEvidence.Count == 0 && s.unifiedHearingReceipts.Count == 0)
                     || Refuse(out error, "Disabled hearing authority must remain empty.");

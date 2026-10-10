@@ -48,7 +48,7 @@ namespace Gamesim.Tests.EditMode
                 var other = Mode1(); other.unifiedCommitmentRulesVersion = mode;
                 if (mode == 0) { other.unifiedHearingRulesVersion = 0; other.unifiedHearingEvidence.Clear(); other.unifiedHearingReceipts.Clear(); }
                 var thrown = Assert.Throws<ArgumentException>(() => ProspectiveVoteFacade.Engine(other));
-                Assert.That(thrown.Message, Does.Contain("Prospective Vote requires its explicit version"), "Mode " + mode + " is not the seam's.");
+                Assert.That(thrown.Message, Does.Contain("The unified vote rules require their explicit version"), "Mode " + mode + " is not the seam's.");
             }
             Assert.Throws<ArgumentException>(() => ProspectiveVoteFacade.Engine(null));
         }

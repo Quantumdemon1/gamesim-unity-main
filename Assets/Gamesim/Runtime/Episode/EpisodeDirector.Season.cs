@@ -98,6 +98,14 @@ namespace Gamesim.Episode
             hud.Action("Volume up", () => { volumePercent = Mathf.Min(100, volumePercent + 10); ApplyPreferences(); Render(); });
             hud.Action(muted ? "Turn sound on" : "Mute sound", () => { muted = !muted; ApplyPreferences(); Render(); });
             hud.Action(musicOn ? "Turn music off" : "Turn music on", () => { musicOn = !musicOn; ApplyPreferences(); Render(); });
+            // The music, the effects and the interface, each a share of the master (A11).
+            foreach (var channel in new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface })
+            {
+                var each = channel;
+                hud.Meter(SoundPictures.MeterCaption(each), ChannelVolumePercent(each), 100, muted ? UiTheme.Muted : UiTheme.Accent);
+                hud.Action(SoundPictures.DownCaption(each), () => { SetChannelVolume(each, SoundPictures.Stepped(ChannelVolumePercent(each), false)); hud.FocusWhenWired(SoundPictures.DownCaption(each)); });
+                hud.Action(SoundPictures.UpCaption(each), () => { SetChannelVolume(each, SoundPictures.Stepped(ChannelVolumePercent(each), true)); hud.FocusWhenWired(SoundPictures.UpCaption(each)); });
+            }
             hud.Section("ACCESSIBILITY");
             hud.Action(reducedMotion ? "Enable character motion" : "Reduce character motion", () => { reducedMotion = !reducedMotion; ApplyPreferences(); Render(); });
             hud.Action(reducedAudio ? "Full sound" : "Reduce sound", () => { reducedAudio = !reducedAudio; ApplyPreferences(); Render(); });
@@ -433,6 +441,21 @@ namespace Gamesim.Episode
             Render();
         }
 
+        /// <summary>A channel's share of the master, as a percentage (A11).</summary>
+        public int ChannelVolumePercent(SoundChannel channel) =>
+            channel == SoundChannel.Music ? musicVolumePercent : channel == SoundChannel.Interface ? interfaceVolumePercent : effectsVolumePercent;
+
+        /// <summary>Sets a channel's share of the master, 0 to 100, applies it and keeps it.</summary>
+        public void SetChannelVolume(SoundChannel channel, int percent)
+        {
+            percent = SoundPictures.Clamp(percent);
+            if (channel == SoundChannel.Music) musicVolumePercent = percent;
+            else if (channel == SoundChannel.Interface) interfaceVolumePercent = percent;
+            else effectsVolumePercent = percent;
+            ApplyPreferences();
+            Render();
+        }
+
         /// <summary>The caption reading time in use (A10).</summary>
         public CaptionTime CaptionTimeSetting => captionTime;
 
@@ -449,6 +472,7 @@ namespace Gamesim.Episode
             audioBed?.SetVolume(volumePercent / 100f);
             audioBed?.SetAmbienceEnabled(musicOn);
             audioBed?.SetReducedAudio(reducedAudio);
+            audioBed?.SetChannelVolumes(musicVolumePercent / 100f, effectsVolumePercent / 100f, interfaceVolumePercent / 100f);
             ApplyMusic();
             cameraRig?.SetReducedMotion(reducedMotion);
             // Every surface that grows with the text, at the size chosen (A8): 1, 1.2 or 1.4.
@@ -478,6 +502,8 @@ namespace Gamesim.Episode
             // The size as 0 to 2, and the boolean an earlier build reads beside it.
             store.SetInt(TextSizes.SizeKey, (int)textSize); store.SetInt(TextSizes.LegacyKey, TextSizes.LegacyRecord(textSize));
             store.SetInt(CaptionTiming.Key, (int)captionTime);
+            store.SetInt(SoundPictures.MusicVolumeKey, musicVolumePercent); store.SetInt(SoundPictures.EffectsVolumeKey, effectsVolumePercent);
+            store.SetInt(SoundPictures.InterfaceVolumeKey, interfaceVolumePercent);
             store.Save();
             // And a line in the player log for each value that changed since the last one logged.
             LogSettingChanges();

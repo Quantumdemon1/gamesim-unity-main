@@ -81,6 +81,8 @@ namespace Gamesim.Episode
         /// reachable in HouseAudio but only mute was ever exposed, so a player could silence the
         /// game or leave it alone and nothing in between.</summary>
         private int volumePercent = 35;
+        /// <summary>The music's, the effects' and the interface's shares of the master, as percentages (A11).</summary>
+        private int musicVolumePercent = SoundPictures.DefaultVolume, effectsVolumePercent = SoundPictures.DefaultVolume, interfaceVolumePercent = SoundPictures.DefaultVolume;
         private bool musicOn = true;
         private HouseNpc promptNpc;
         private string npcPrompt;
@@ -171,6 +173,9 @@ namespace Gamesim.Episode
             textSize = TextSizes.FromRecord(preferences.HasKey(TextSizes.SizeKey) ? preferences.GetInt(TextSizes.SizeKey, 0) : (int?)null,
                 preferences.HasKey(TextSizes.LegacyKey) ? preferences.GetInt(TextSizes.LegacyKey, 0) : (int?)null);
             captionTime = CaptionTiming.FromRecord(preferences.GetInt(CaptionTiming.Key, 0));
+            musicVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.MusicVolumeKey, SoundPictures.DefaultVolume));
+            effectsVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.EffectsVolumeKey, SoundPictures.DefaultVolume));
+            interfaceVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.InterfaceVolumeKey, SoundPictures.DefaultVolume));
             volumePercent = Mathf.Clamp(preferences.GetInt("Gamesim.Volume", 35), 0, 100);
             musicOn = preferences.GetInt("Gamesim.Music", 1) == 1;
             ceremonyPace = preferences.GetInt("Gamesim.CeremonyPace", 0) == 1 ? CeremonyPace.Quick : CeremonyPace.Suspenseful;

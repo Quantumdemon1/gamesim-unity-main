@@ -62,6 +62,9 @@ namespace Gamesim.Episode
                 Say("camera", CameraSpeedName(cameraSpeedPercent)),
                 Say("tilt", invertTilt ? "inverted" : "normal"),
                 Say("captions", CaptionTiming.Name(captionTime)),
+                Say(SoundPictures.LogKey(SoundChannel.Music), musicVolumePercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                Say(SoundPictures.LogKey(SoundChannel.Effects), effectsVolumePercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                Say(SoundPictures.LogKey(SoundChannel.Interface), interfaceVolumePercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),
             };
         }
 

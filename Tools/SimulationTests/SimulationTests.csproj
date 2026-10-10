@@ -294,6 +294,9 @@
     <Compile Include="$(EditMode)TextSizesTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CaptionTiming.cs" />
     <Compile Include="$(EditMode)CaptionTimingTests.cs" />
+    <!-- Every sound has a picture, and the three volumes beside the master (A11). -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/SoundPictures.cs" />
+    <Compile Include="$(EditMode)SoundPicturesTests.cs" />
     <!-- The prepared block speech a pad gives without typing (A6): every approach's line is a valid speech carrying it. -->
     <Compile Include="$(EditMode)PreparedSpeechTests.cs" />
     <!-- The standalone profile's performance verdict and arithmetic, and the verification-only stress house. -->

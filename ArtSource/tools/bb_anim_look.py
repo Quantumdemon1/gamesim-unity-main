@@ -7,10 +7,11 @@ one row per file and view, one column per frame, into one PNG.
 
     blender --background --factory-startup --python ArtSource/tools/bb_anim_look.py -- \
         <out.png> <take.fbx> [<take2.fbx> ...] [--frames 0,59,118] [--views front,side] \
-        [--pair 0.46] [--size 300]
+        [--pair 0.46] [--step 0.035] [--size 300]
 
 --pair d stands a second copy of each take d metres in front of the first, turned to face it, so
-a two-body take (the embrace) is seen as it plays.
+a two-body take (the embrace) is seen as it plays; --step s moves each body s metres to its own
+right as well, as EmbracePair does.
 """
 import math
 import os
@@ -26,7 +27,7 @@ import bb_anim  # noqa: E402
 
 argv = sys.argv[sys.argv.index("--") + 1:]
 out = argv[0]
-files, frames, views, pair, size, zoom = [], [0], ["front", "side"], None, 300, None
+files, frames, views, pair, size, zoom, step = [], [0], ["front", "side"], None, 300, None, 0.0
 i = 1
 while i < len(argv):
     a = argv[i]
@@ -38,6 +39,10 @@ while i < len(argv):
         i += 2
     elif a == "--pair":
         pair = float(argv[i + 1])
+        i += 2
+    elif a == "--step":
+        # with --pair: each body also stands this far to its own right (EmbracePair.SideStep)
+        step = float(argv[i + 1])
         i += 2
     elif a == "--size":
         size = int(argv[i + 1])
@@ -183,10 +188,12 @@ for path in files:
     skin(arm)
     bodies = [arm]
     if pair:
+        # The first body faces -Y with its right at -X; the second, turned round, has its right at +X.
+        arm.location.x -= step
         arm2, act2 = bb_anim.import_fbx(path)
         holder = bpy.data.objects.new("pair_holder", None)
         scene.collection.objects.link(holder)
-        holder.location = (0.0, -pair, 0.0)
+        holder.location = (step, -pair, 0.0)
         holder.rotation_euler = (0.0, 0.0, math.pi)
         arm2.parent = holder
         skin(arm2, second=True)

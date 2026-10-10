@@ -71,9 +71,56 @@ namespace Gamesim.House
 
         public bool SceneHoldsActor(string id) => sceneLeases.ContainsKey(id);
 
+        /// <summary>
+        /// Walks two of the scene's people to stand <paramref name="apart"/> metres apart about
+        /// <paramref name="centre"/>, along the line between where they stand now - the "come
+        /// together" step before an embrace (the art brief's R5). Both must be held by this scene,
+        /// and both re-path or neither does. Returns whether both are on their way.
+        /// </summary>
+        public bool TryBringTogether(string key, string first, string second, Vector3 centre, float apart)
+        {
+            if (string.IsNullOrEmpty(key) || SceneStageKey != key || first == second
+                || !sceneLeases.TryGetValue(first ?? "", out var a) || !sceneLeases.TryGetValue(second ?? "", out var b)
+                || a.actor.motion == null || b.actor.motion == null) return false;
+            var line = b.actor.motion.transform.position - a.actor.motion.transform.position;
+            line.y = 0f;
+            if (line.sqrMagnitude < 1e-4f) line = Vector3.right;
+            line.Normalize();
+            var aAt = centre - line * (apart * .5f);
+            var bAt = centre + line * (apart * .5f);
+            string aToken = a.token + ":together", bToken = b.token + ":together";
+            if (aToken.Length > 128 || bToken.Length > 128) return false;
+            a.actor.motion.Release(a.token);
+            b.actor.motion.Release(b.token);
+            bool aOk = a.actor.motion.TryReserveAndPath(aToken, aAt);
+            bool bOk = aOk && b.actor.motion.TryReserveAndPath(bToken, bAt);
+            if (!bOk)
+            {
+                // Neither, then: each goes back to holding where it stands under its own token.
+                if (aOk) a.actor.motion.Release(aToken);
+                a.actor.motion.TryReserveAndPath(a.token, a.actor.motion.transform.position);
+                b.actor.motion.TryReserveAndPath(b.token, b.actor.motion.transform.position);
+                return false;
+            }
+            a.token = aToken; b.token = bToken;
+            return true;
+        }
+
+        /// <summary>Whether both of two people the scene holds stand on the places it last walked them to.</summary>
+        public bool SceneActorsArrived(string first, string second) => SceneActorArrived(first) && SceneActorArrived(second);
+
+        /// <summary>
+        /// Holds the scene's people while two of them embrace: the director's stale check leaves a
+        /// held scene up, so nobody is walked off mid-embrace, until the hold is let go.
+        /// </summary>
+        public bool SceneHeldForEmbrace { get; private set; }
+
+        public void HoldSceneForEmbrace(bool hold) => SceneHeldForEmbrace = hold && sceneLeases.Count > 0;
+
         /// <summary>Lets everybody the scene borrowed go back to their own day.</summary>
         public void EndSceneStage()
         {
+            SceneHeldForEmbrace = false;
             foreach (var lease in sceneLeases.Values)
                 if (lease.actor.motion != null)
                 {

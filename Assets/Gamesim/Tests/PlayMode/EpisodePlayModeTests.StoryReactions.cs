@@ -192,6 +192,93 @@ namespace Gamesim.Tests.PlayMode
             yield return Frames(3);
         }
 
+        /// <summary>
+        /// A feud the player can end: two houseguests with a grudge past forty, and whichever of the
+        /// row's two arcs casts them (the kitchen blow-up for a volatile pair, the silent treatment
+        /// otherwise) started by the engine's own seam. Kept only where the player's peace holds -
+        /// the option is a check, and the season's own dice decide it - tried on a copy first.
+        /// </summary>
+        private string peaceEventId, peaceOptionId, peaceFirstId, peaceSecondId;
+
+        private IEnumerator InstallPeaceFixture()
+        {
+            EpisodeState fixture = null;
+            for (uint seed = 1; seed <= 80 && fixture == null; seed++)
+            {
+                var engine = new EpisodeEngine(ContentCatalog.Create(seed));
+                for (int guard = 0; guard < 120 && fixture == null; guard++)
+                {
+                    var current = engine.Snapshot;
+                    if (current.phase == EpisodePhase.Campaign && current.week >= 2 && current.Active.Count() >= 4 && current.pendingDiary == null
+                        && !HouseEvents.Ready(current) && current.Find(current.playerId).status == ContestantStatus.Active)
+                    {
+                        foreach (var arc in new[] { "kitchen-blowup", "cold-shoulder" })
+                        {
+                            var trial = new EpisodeEngine(current).Snapshot;
+                            EpisodeEngine.EnableStory(trial, trial.week);
+                            var npcs = trial.Active.Where(actor => !actor.isPlayer).OrderBy(actor => actor.id, System.StringComparer.Ordinal).ToList();
+                            Grudges.Add(trial, npcs[0].id, npcs[1].id, 50, GrudgeCauses.Story);
+                            Grudges.Add(trial, npcs[1].id, npcs[0].id, 50, GrudgeCauses.Story);
+                            if (!EpisodeEngine.StartStory(trial, arc, StoryAnchors.BlockSet)) continue;
+                            var beat = EpisodeEngine.OpenStoryBeats(trial).FirstOrDefault(item => item.contentId == arc + (arc == "kitchen-blowup" ? ":words" : ":silent"));
+                            var option = beat?.choices.FirstOrDefault(c => c.optionId == (arc == "kitchen-blowup" ? "calm" : "truce") && !c.locked);
+                            if (option == null) continue;
+                            var tried = new EpisodeEngine(trial).Apply(new EpisodeCommand
+                            {
+                                id = "peace-trial", actorId = trial.playerId, kind = EpisodeCommandKind.ProgressStoryline, expectedPhase = trial.phase,
+                                expectedRevision = trial.revision, targetId = beat.id, secondTargetId = option.optionId,
+                            });
+                            var line = tried.accepted ? tried.state.storylines.FirstOrDefault(x => x.id == beat.cycleId) : null;
+                            if (line == null || line.endingId != StoryReactions.Peace) continue;
+                            fixture = trial;
+                            peaceEventId = beat.id; peaceOptionId = option.optionId;
+                            peaceFirstId = beat.cast.First(part => part.role == "HOTHEAD").contestantId;
+                            peaceSecondId = beat.cast.First(part => part.role == "TARGET").contestantId;
+                            break;
+                        }
+                        break;
+                    }
+                    if (current.phase == EpisodePhase.Finished) break;
+                    Assert.That(engine.Apply(NextCommand(current)).accepted, Is.True);
+                }
+            }
+            Assert.That(fixture, Is.Not.Null, "No bounded legal fixture where the player's peace holds found.");
+            director.SuspendNpcAutonomyForDiagnostics();
+            new EpisodeSaveStore(director.SavePath).Save(fixture);
+            yield return ReloadEpisode();
+            director.SuspendNpcAutonomyForDiagnostics();
+            AssertEquivalent(fixture, director.Snapshot);
+            yield return null; yield return null;
+        }
+
+        /// <summary>
+        /// The player brings a feud to an end, and once the scene's card closes the two who made up
+        /// embrace - the parts the beat names, at the ending the player saw. The embrace commits
+        /// nothing: with the house's own clock held, the revision does not move.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StoryReactions_TwoWhoMakePeaceEmbraceOnceTheCardCloses()
+        {
+            yield return InstallPeaceFixture();
+            var beat = EpisodeEngine.OpenStoryBeats(director.Snapshot).Single(item => item.id == peaceEventId);
+            var option = beat.choices.Single(c => c.optionId == peaceOptionId);
+            Assert.That(director.OpenSceneCard(beat.id), Is.True);
+            yield return null;
+            ButtonWithCaption(EpisodeHud.EventChoiceCaption(option.label)).onClick.Invoke();
+            yield return Frames(2);
+            var line = director.Snapshot.storylines.Single(x => x.id == beat.cycleId);
+            Assert.That(line.endingId, Is.EqualTo(StoryReactions.Peace), "The player made peace between them.");
+            Assert.That(StoryBody(peaceFirstId).LastReaction, Is.Not.EqualTo(CharacterPresentation.Reaction.Embrace),
+                "Nothing while the card still says what came of it.");
+            int revision = director.Snapshot.revision;
+            ButtonWithCaption(EpisodeDirector.SceneCardDoneCaption).onClick.Invoke();
+            yield return Frames(3);
+            Assert.That(StoryBody(peaceFirstId).LastReaction, Is.EqualTo(CharacterPresentation.Reaction.Embrace), "The one who started it embraces,");
+            Assert.That(StoryBody(peaceSecondId).LastReaction, Is.EqualTo(CharacterPresentation.Reaction.Embrace), "and so does the other.");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "The embrace commits nothing.");
+            Assert.That(director.PendingEmbraceFirst, Is.Null, "and nothing is left waiting.");
+        }
+
         /// <summary>A walkable point about <paramref name="distance"/> from a body, on the floor.</summary>
         private static Vector3 PointBeside(Vector3 from, float distance)
         {

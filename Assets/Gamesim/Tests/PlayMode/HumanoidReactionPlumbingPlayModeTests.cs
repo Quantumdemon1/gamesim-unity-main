@@ -127,6 +127,92 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(walking, Is.True, "The beat gave way to the walk within 0.5 s of the body moving at 2 m/s.");
         }
 
+        /// <summary>
+        /// Two mocap skeletons 0.9 m apart embrace: both beats begin on the same frame, and at the
+        /// hold the left hand is above the right, each head turned to its right, the chests apart
+        /// and no hand near the partner's. Released at the end, each visual body is home.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TheEmbraceInterlocksOnTheMocapSkeleton()
+        {
+            Time.captureDeltaTime = FrameTime;
+            var first = Attach("First");
+            var firstAnimator = provider.Animator;
+            actor.transform.SetPositionAndRotation(new Vector3(1000f, 0f, 1000f), Quaternion.identity);
+            var firstActor = actor;
+            var second = AttachAnother("Second", new Vector3(1000f, 0f, 1000.9f), Quaternion.Euler(0f, 180f, 0f));
+            var secondAnimator = provider.Animator;
+            try
+            {
+                for (int frame = 0; frame < 40; frame++) yield return null;
+                Assert.That(firstAnimator.humanScale, Is.EqualTo(EmbracePair.SkeletonHumanScale).Within(.002f),
+                    "The pair distance is scaled from the skeleton's own humanScale.");
+                // The head's own forward, read while it faces the way the body does.
+                var firstHead = firstAnimator.GetBoneTransform(HumanBodyBones.Head);
+                var secondHead = secondAnimator.GetBoneTransform(HumanBodyBones.Head);
+                var firstFace = Quaternion.Inverse(firstHead.rotation) * firstActor.transform.forward;
+                var secondFace = Quaternion.Inverse(secondHead.rotation) * actor.transform.forward;
+
+                var pair = EmbracePair.TryBegin(first, second);
+                Assert.That(pair, Is.Not.Null, EmbracePair.Refusal(first, second, null));
+                int firstIn = -1, secondIn = -1;
+                for (int frame = 0; frame < 120 && (firstIn < 0 || secondIn < 0); frame++)
+                {
+                    yield return null;
+                    if (firstIn < 0 && first.IsReacting) firstIn = frame;
+                    if (secondIn < 0 && second.IsReacting) secondIn = frame;
+                }
+                Assert.That(firstIn, Is.GreaterThanOrEqualTo(0), "The embrace began.");
+                Assert.That(secondIn, Is.EqualTo(firstIn), "Both bodies began it on the same frame.");
+                Assert.That(firstAnimator.GetCurrentAnimatorStateInfo(0).IsName("ReactEmbrace")
+                    || firstAnimator.GetNextAnimatorStateInfo(0).IsName("ReactEmbrace"), Is.True);
+
+                // The hold: frame 40 of 114.
+                for (int frame = 0; frame < 120 && firstAnimator.GetCurrentAnimatorStateInfo(0).normalizedTime < 40f / 114f; frame++) yield return null;
+                Assert.That(firstAnimator.GetCurrentAnimatorStateInfo(0).IsName("ReactEmbrace"), Is.True, "Measured in the hold.");
+                foreach (var (animator, root, face, head) in new[] { (firstAnimator, firstActor.transform, firstFace, firstHead), (secondAnimator, actor.transform, secondFace, secondHead) })
+                {
+                    float lift = animator.GetBoneTransform(HumanBodyBones.LeftHand).position.y - animator.GetBoneTransform(HumanBodyBones.RightHand).position.y;
+                    Assert.That(lift, Is.GreaterThanOrEqualTo(.15f), "The left hand goes over the partner's shoulder, the right under: " + lift.ToString("0.000"));
+                    var turned = head.rotation * face; turned.y = 0f;
+                    var ahead = root.forward; ahead.y = 0f;
+                    float yaw = Vector3.SignedAngle(ahead, turned, Vector3.up);
+                    Assert.That(yaw, Is.GreaterThanOrEqualTo(20f), "Each head turns to its own right: " + yaw.ToString("0.0"));
+                }
+                var chestA = firstAnimator.GetBoneTransform(HumanBodyBones.UpperChest);
+                if (chestA == null) chestA = firstAnimator.GetBoneTransform(HumanBodyBones.Chest);
+                var chestB = secondAnimator.GetBoneTransform(HumanBodyBones.UpperChest);
+                if (chestB == null) chestB = secondAnimator.GetBoneTransform(HumanBodyBones.Chest);
+                Assert.That(Vector3.Distance(chestA.position, chestB.position), Is.GreaterThanOrEqualTo(.15f), "The chests are not inside each other.");
+                foreach (var a in new[] { HumanBodyBones.LeftHand, HumanBodyBones.RightHand })
+                    foreach (var b in new[] { HumanBodyBones.LeftHand, HumanBodyBones.RightHand })
+                        Assert.That(Vector3.Distance(firstAnimator.GetBoneTransform(a).position, secondAnimator.GetBoneTransform(b).position),
+                            Is.GreaterThanOrEqualTo(.05f), a + " and the partner's " + b + " stay apart");
+
+                for (int frame = 0; frame < 400 && pair != null && !pair.Released; frame++) yield return null;
+                Assert.That(pair == null || pair.Released, Is.True, "It lets go when the take is done.");
+                for (int frame = 0; frame < 40 && pair != null; frame++) yield return null;
+                Assert.That(first.VisualRoot.localPosition.magnitude, Is.LessThan(.001f), "The first body is home over its root.");
+                Assert.That(second.VisualRoot.localPosition.magnitude, Is.LessThan(.001f), "and so is the second.");
+            }
+            finally
+            {
+                if (firstActor != null) Object.Destroy(firstActor);
+            }
+        }
+
+        private CharacterPresentation AttachAnother(string name, Vector3 at, Quaternion facing)
+        {
+            actor = new GameObject(name);
+            actor.transform.SetPositionAndRotation(at, facing);
+            var person = ContentCatalog.Create(92).Find(ContentCatalog.PlayerId);
+            person.appearance = CharacterAppearance.Preset("player");
+            var visual = CharacterPresentation.Attach(actor, person, Color.white);
+            visual.SetReducedMotion(false);
+            visual.SetFacing(facing.eulerAngles.y);
+            return visual;
+        }
+
         private IEnumerator Settle()
         {
             for (int frame = 0; frame < 40; frame++) yield return null;

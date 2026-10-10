@@ -168,6 +168,7 @@ namespace Gamesim.Episode
         {
             TickWinnerAtResult();
             TickSceneArrivals();
+            TickEmbrace();
             if (storyBeats.Count == 0) return;
             float now = Time.unscaledTime;
             for (int i = 0; i < storyBeats.Count;)

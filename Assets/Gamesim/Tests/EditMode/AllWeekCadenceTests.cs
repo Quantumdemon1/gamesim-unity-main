@@ -1018,7 +1018,6 @@ namespace Gamesim.Tests.EditMode
             return s;
         }
 
-        /// <summary>A copy of a season in a window's phase - a plan to be made - for a direct call; no command, no validation.</summary>
         /// <summary>
         /// <see cref="Fresh"/> in mode 1, the commitment mode seasons recorded before vote family V6 keep (the lead's decision D6), for
         /// a case that builds a window no command leaves - a house emptied by hand, a week jumped to, a plan forced - in which a beat
@@ -1035,6 +1034,7 @@ namespace Gamesim.Tests.EditMode
             return s;
         }
 
+        /// <summary>A copy of a season in a window's phase - a plan to be made - for a direct call; no command, no validation.</summary>
         private static EpisodeState InWindow(EpisodeState basis, int window)
         {
             var s = basis.Clone();

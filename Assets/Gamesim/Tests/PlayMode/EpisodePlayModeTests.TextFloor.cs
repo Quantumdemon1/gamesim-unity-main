@@ -167,6 +167,64 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// The front door at every text size (A8): the main menu and the cast screen scale their whole
+        /// canvas with the text rather than each label, so the largest size magnifies their layout by
+        /// 1.4 - and no label there may run out of its box at the larger or the largest size that does
+        /// not already at the standard one (a card's long name ends in an ellipsis by design, at any
+        /// size). Measured on the batch's 4:3 canvas and through a 16:9 lens.
+        /// </summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator Accessibility_TheFrontDoorHoldsItsCopyAtEveryTextSize()
+        {
+            HoldTheHouseForTheFixture();
+            string[] ClippedUnder(Component screen) => screen.GetComponentsInChildren<TMP_Text>(true)
+                .Where(label => label.isActiveAndEnabled && !string.IsNullOrEmpty(label.text))
+                .Where(label => { label.ForceMeshUpdate(); return label.isTextOverflowing; })
+                .Select(label => "'" + Excerpt(label.text) + "' in " + HierarchyPath(label.transform))
+                .ToArray();
+            var atStandard = new HashSet<string>();
+            var grown = new List<string>();
+            foreach (var frame in new[] { new Vector2Int(0, 0), new Vector2Int(1600, 900) })
+            {
+                CaptureLens lens = frame.x > 0 ? new CaptureLens(cameraRig.ViewCamera, frame.x, frame.y) : null;
+                string where = frame.x > 0 ? "the 16:9 frame" : "the batch's canvas";
+                try
+                {
+                    foreach (var size in TextSizes.All)
+                    {
+                        director.SetTextSize(size);
+                        director.OpenMainMenu();
+                        float settle = Time.realtimeSinceStartup + 1f;
+                        while (Time.realtimeSinceStartup < settle) yield return null;
+                        Canvas.ForceUpdateCanvases();
+                        var menu = SceneComponents<MainMenu>().Single();
+                        Assert.That(menu.IsShowing, Is.True, "The main menu is up at " + TextSizes.Name(size) + " text.");
+                        foreach (var clipped in ClippedUnder(menu))
+                            if (size == TextSize.Standard) atStandard.Add(clipped); else if (!atStandard.Contains(clipped)) grown.Add(where + ", the main menu at " + TextSizes.Name(size) + ": " + clipped);
+                        director.CloseMainMenu();
+                        yield return null;
+
+                        yield return OpenCastScreen();
+                        settle = Time.realtimeSinceStartup + 1f;
+                        while (Time.realtimeSinceStartup < settle) yield return null;
+                        Canvas.ForceUpdateCanvases();
+                        Assert.That(CastScreen().IsShowing, Is.True, "The cast screen is up at " + TextSizes.Name(size) + " text.");
+                        foreach (var clipped in ClippedUnder(CastScreen()))
+                            if (size == TextSize.Standard) atStandard.Add(clipped); else if (!atStandard.Contains(clipped)) grown.Add(where + ", the cast screen at " + TextSizes.Name(size) + ": " + clipped);
+                        CastScreen().Dismiss();
+                        director.ClosePanels();
+                        yield return null;
+                    }
+                }
+                finally { lens?.Dispose(); }
+                yield return null;
+            }
+            director.SetTextSize(TextSize.Standard);
+            TestContext.WriteLine("Clipped at the standard size, by design or before A8: " + string.Join(" | ", atStandard));
+            Assert.That(grown, Is.Empty, "Copy the larger sizes cut off that the standard size did not: " + string.Join(" | ", grown));
+        }
+
+        /// <summary>
         /// Every label up on a screen canvas - not a world-space one: a name over a head scales with
         /// the camera's distance - with words in it that are drawn at all, smaller than the floor, as
         /// "'words' 10.8 px in path".

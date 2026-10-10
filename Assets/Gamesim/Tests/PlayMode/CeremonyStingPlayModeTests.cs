@@ -97,9 +97,11 @@ namespace Gamesim.Tests.PlayMode
             var group = sting.GetComponent<CanvasGroup>();
             sting.Play(CeremonySting.EvictionKind, "Jamie Roberts has been evicted.", false);
 
-            // The entrance and the hold are 2.22 s; 2.40 s is about halfway down the fade-out.
-            yield return new WaitForSecondsRealtime(2.40f);
-            Assert.That(sting.IsPlaying, Is.True, "The card should still be fading out at 2.40 s.");
+            // The entrance and the hold - as long as the strip's words take to read (A10), 3 s for
+            // these six - and 0.18 s more is about halfway down the fade-out.
+            float midFade = CeremonySting.FadeIn + sting.HoldSeconds + .18f;
+            yield return new WaitForSecondsRealtime(midFade);
+            Assert.That(sting.IsPlaying, Is.True, "The card should still be fading out at " + midFade.ToString("0.00") + " s.");
             Assert.That(group.alpha, Is.GreaterThan(0.02f).And.LessThan(0.99f),
                 "The card should be mid-fade here; that is the state this test strands it from.");
 
@@ -215,9 +217,43 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(VisibleText(), Does.Contain("VETO MEETING"));
 
-            // Fade in, hold and fade out total 2.6s; allow a margin for frame granularity.
-            yield return new WaitForSecondsRealtime(3.1f);
+            // Fade in, the hold its seven words take to read (A10, 3.3 s) and fade out; allow a
+            // margin for frame granularity.
+            yield return new WaitForSecondsRealtime(CeremonySting.FadeIn + sting.HoldSeconds + CeremonySting.FadeOut + .5f);
             Assert.That(VisibleText(), Is.Empty, "The card should take itself down without being told.");
+        }
+
+        /// <summary>
+        /// The strip holds long enough to read (PLAN A, A10): its authored two seconds, or 1.2 seconds
+        /// and 0.3 a word of its headline and its sentence when that is longer, and half as long again
+        /// under the "Longer" caption time. Near the end of its hold it is still up, still takes no
+        /// input, and under reduced motion still has not moved; then it goes by itself.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Sting_HoldsForItsReadingTime_AndHalfAsLongAgainWhenLonger()
+        {
+            const string sentence = "Maya Hassan nominated Taylor Kim and Jamie Roberts.";
+            sting.Play(CeremonySting.NominationKind, sentence, false);
+            // "NOMINATION CEREMONY" and eight words: ten, read in 4.2 s, past the authored 2.
+            Assert.That(sting.HoldSeconds, Is.EqualTo(1.2f + 0.3f * 10).Within(1e-4f));
+            sting.Play(CeremonySting.VetoKind, "", false);
+            Assert.That(sting.HoldSeconds, Is.EqualTo(CeremonySting.AuthoredHold).Within(1e-4f),
+                "The headline alone reads in 1.8 s: the authored 2 s stands.");
+            yield return null;
+
+            sting.CaptionTime = CaptionTime.Longer;
+            sting.Play(CeremonySting.NominationKind, sentence, true);
+            Assert.That(sting.HoldSeconds, Is.EqualTo((1.2f + 0.3f * 10) * 1.5f).Within(1e-4f), "Longer: half as long again.");
+            yield return null;
+            var card = CardRect();
+            var settled = card.anchoredPosition;
+            yield return new WaitForSecondsRealtime(sting.HoldSeconds - .6f);
+            Assert.That(sting.IsPlaying, Is.True, "Still up near the end of its reading time.");
+            Assert.That(VisibleText(), Does.Contain(sentence));
+            Assert.That(card.anchoredPosition, Is.EqualTo(settled), "Reduced motion: it holds where it landed.");
+            Assert.That(sting.GetComponent<CanvasGroup>().blocksRaycasts, Is.False, "and it takes no input however long it holds.");
+            yield return new WaitForSecondsRealtime(CeremonySting.FadeIn + CeremonySting.FadeOut + 1f);
+            Assert.That(sting.IsPlaying, Is.False, "and then it goes by itself.");
         }
 
         [UnityTest]

@@ -61,6 +61,7 @@ namespace Gamesim.Episode
                 Say("language", language),
                 Say("camera", CameraSpeedName(cameraSpeedPercent)),
                 Say("tilt", invertTilt ? "inverted" : "normal"),
+                Say("captions", CaptionTiming.Name(captionTime)),
             };
         }
 

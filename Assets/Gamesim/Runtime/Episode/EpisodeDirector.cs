@@ -59,6 +59,8 @@ namespace Gamesim.Episode
         private bool blockedRecovery, reducedMotion, muted, phaseOpen, settingsOpen, journalOpen;
         /// <summary>The text size the settings chose (A8): standard, larger or largest.</summary>
         private TextSize textSize;
+        /// <summary>How long the captions the game takes down by itself stay up (A10): standard, or half as long again.</summary>
+        private CaptionTime captionTime;
         /// <summary>Which page of the notebook is showing. The rail picks it; Render obeys it.</summary>
         private string journalSection = NotebookSection.Network;
         private bool challengeActive;
@@ -168,6 +170,7 @@ namespace Gamesim.Episode
             // The size kept as 0 to 2 since the third size (A8), or the larger text an earlier build kept as a boolean.
             textSize = TextSizes.FromRecord(preferences.HasKey(TextSizes.SizeKey) ? preferences.GetInt(TextSizes.SizeKey, 0) : (int?)null,
                 preferences.HasKey(TextSizes.LegacyKey) ? preferences.GetInt(TextSizes.LegacyKey, 0) : (int?)null);
+            captionTime = CaptionTiming.FromRecord(preferences.GetInt(CaptionTiming.Key, 0));
             volumePercent = Mathf.Clamp(preferences.GetInt("Gamesim.Volume", 35), 0, 100);
             musicOn = preferences.GetInt("Gamesim.Music", 1) == 1;
             ceremonyPace = preferences.GetInt("Gamesim.CeremonyPace", 0) == 1 ? CeremonyPace.Quick : CeremonyPace.Suspenseful;

@@ -45,10 +45,22 @@ namespace Gamesim.Presentation
         /// <summary>The evicted walking out through the front door: not a logged ceremony, the house's goodbye.</summary>
         public const string WalkOutKind = "walk-out";
 
-        private const float FadeIn = 0.22f;
-        private const float Hold = 2.0f;
-        private const float FadeOut = 0.38f;
+        /// <summary>The entrance and the exit, in seconds, either side of the hold.</summary>
+        public const float FadeIn = 0.22f, FadeOut = 0.38f;
+        /// <summary>The hold the strip was authored with; a longer one reads it (<see cref="HoldSeconds"/>).</summary>
+        public const float AuthoredHold = 2.0f;
         private const float Rise = 18f;
+
+        /// <summary>
+        /// The player's caption reading time (PLAN A, A10): the strip holds for its authored two
+        /// seconds or for the time its words take to read, whichever is longer, half as long again
+        /// under "Longer" (<see cref="CaptionTiming"/>). Read as each strip plays.
+        /// </summary>
+        public CaptionTime CaptionTime { get; set; }
+
+        /// <summary>How long the strip on screen holds between its entrance and its exit, in seconds.</summary>
+        public float HoldSeconds => hold;
+        private float hold = AuthoredHold;
 
         /// <summary>
         /// The card is inset from the chrome rather than given a fixed width and centre.
@@ -174,6 +186,8 @@ namespace Gamesim.Presentation
             headline.text = HeadlineFor(kind);
             headline.color = tint;
             detail.text = body ?? string.Empty;
+            // Long enough to read the headline and the sentence under it (A10).
+            hold = (float)CaptionTiming.Hold(AuthoredHold, headline.text + " " + detail.text, CaptionTime);
             // Up before it is laid out: the detail is measured for its lines, and a label is
             // measured as it is drawn only while it is awake. The group is at nothing until Apply.
             group.alpha = 0f;
@@ -455,15 +469,15 @@ namespace Gamesim.Presentation
             {
                 // Reduced motion drops the movement, not the information: the card still holds
                 // long enough to read, it simply does not travel or fade on the way.
-                if (elapsed < FadeIn + Hold + FadeOut) return;
+                if (elapsed < FadeIn + hold + FadeOut) return;
                 Cancel();
                 return;
             }
 
             if (elapsed < FadeIn) { Apply(elapsed / FadeIn); return; }
-            if (elapsed < FadeIn + Hold) { Apply(1f); return; }
+            if (elapsed < FadeIn + hold) { Apply(1f); return; }
 
-            float exit = (elapsed - FadeIn - Hold) / FadeOut;
+            float exit = (elapsed - FadeIn - hold) / FadeOut;
             if (exit >= 1f) { Cancel(); return; }
             Apply(1f - exit);
         }

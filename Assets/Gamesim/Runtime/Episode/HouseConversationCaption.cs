@@ -43,6 +43,25 @@ namespace Gamesim.Episode
 
         public string CurrentText => root != null && root.activeSelf ? label.text : "";
 
+        /// <summary>
+        /// The player's caption reading time (PLAN A, A10): once shown, the line stays up for the
+        /// time its words take to read - 1.2 seconds and 0.3 a word, half as long again under
+        /// "Longer" - even when the pair walks out of sight first (<see cref="Release"/>). A panel
+        /// opening, a load or the world pausing still takes it down at once (<see cref="Hide"/>).
+        /// </summary>
+        public Gamesim.Presentation.CaptionTime CaptionTime { get; set; }
+
+        /// <summary>When the line on screen was first shown, and how long it holds, in unscaled seconds.</summary>
+        private float shownAt, holdFor;
+        /// <summary>Whether the line is only waiting out its reading time: let go, and down once it has had it.</summary>
+        private bool releasing;
+
+        /// <summary>How long the line on screen holds once shown, in seconds. A read for tests.</summary>
+        public float HoldSeconds => holdFor;
+
+        /// <summary>Whether the line stays up only to be read: the pair is out of sight, and it goes once its time is up.</summary>
+        public bool IsReleasing => releasing && root != null && root.activeSelf;
+
         /// <summary>The banner: centred at the top, where it has always been.</summary>
         public void Show(string firstName, string secondName, string topic, float fontScale)
         {
@@ -67,11 +86,23 @@ namespace Gamesim.Episode
             Place();
         }
 
-        public void Hide() { if (root != null) root.SetActive(false); }
+        public void Hide() { releasing = false; if (root != null) root.SetActive(false); }
+
+        /// <summary>
+        /// The pair is out of sight: the line goes once it has been up for its reading time, at once
+        /// if it already has (A10).
+        /// </summary>
+        public void Release()
+        {
+            if (root == null || !root.activeSelf) { releasing = false; return; }
+            if (Time.unscaledTime - shownAt >= holdFor) { Hide(); return; }
+            releasing = true;
+        }
 
         private void LateUpdate()
         {
             if(root==null || !root.activeSelf)return;
+            if(releasing && Time.unscaledTime - shownAt >= holdFor){Hide();return;}
             if(anchored)Place();else PlaceBanner();
         }
 
@@ -142,7 +173,15 @@ namespace Gamesim.Episode
         private void Fill(string firstName, string secondName, string topic, float fontScale)
         {
             if (root == null) Create();
-            label.text = Describe(firstName, secondName, topic);
+            string words = Describe(firstName, secondName, topic);
+            // A line newly up - or a different pair, or another topic - starts its reading time (A10).
+            if (!root.activeSelf || label.text != words)
+            {
+                shownAt = Time.unscaledTime;
+                holdFor = (float)Gamesim.Presentation.CaptionTiming.Hold(0.0, words, CaptionTime);
+            }
+            releasing = false;
+            label.text = words;
             // Every text size the settings offer, the largest's 1.4 among them (A8).
             label.fontSize = Mathf.RoundToInt(19 * Mathf.Clamp(fontScale, 1, Gamesim.Presentation.TextSizes.Scale(Gamesim.Presentation.TextSize.Largest)));
             root.SetActive(true);

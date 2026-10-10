@@ -29,8 +29,8 @@ namespace Gamesim.Tests.PlayMode
             "Gamesim.Muted", "Gamesim.ReducedMotion", "Gamesim.ReducedAudio", "Gamesim.LargeText", "Gamesim.Volume", "Gamesim.Music",
             "Gamesim.CeremonyPace", "Gamesim.Language", "Gamesim.Quality", "Gamesim.FrameCap", "Gamesim.Fullscreen", "Gamesim.EdgePan",
             "Gamesim.CompactHud", "Gamesim.CameraSpeed", "Gamesim.InvertY", "Gamesim.VSync", "Gamesim.DisplayMode", "Gamesim.Resolution",
-            // The text size as 0 to 2 (A8).
-            TextSizes.SizeKey,
+            // The text size as 0 to 2 (A8) and the caption reading time (A10).
+            TextSizes.SizeKey, CaptionTiming.Key,
         };
 
         /// <summary>The machine's PlayerPrefs for every settings key: present or not, and what each holds as text and as a number.</summary>
@@ -80,16 +80,19 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.TextSize, Is.EqualTo(TextSize.Larger));
                 Assert.That(director.CeremonyPaceSetting, Is.EqualTo(CeremonyPace.Quick), "and so does the quick pace.");
 
-                // And the largest text (A8): said as it changes, kept, and back after a load.
+                // And the largest text and the longer caption time (A8, A10): said as they change, kept, and back after a load.
                 log.Clear();
                 director.SetTextSize(TextSize.Largest);
+                director.SetCaptionTime(CaptionTime.Longer);
                 yield return null;
                 Assert.That(log.Where(line => line.StartsWith(SettingsEvidence.ChangePrefix)).ToArray(),
-                    Is.EqualTo(new[] { SettingsEvidence.ChangePrefix + "text=largest" }), "One line: " + string.Join(" | ", log));
-                Assert.That(File.ReadAllText(file), Does.Contain("\"Gamesim.TextSize\": \"2\""));
+                    Is.EqualTo(new[] { SettingsEvidence.ChangePrefix + "text=largest", SettingsEvidence.ChangePrefix + "captions=longer" }),
+                    "One line for each: " + string.Join(" | ", log));
+                Assert.That(File.ReadAllText(file), Does.Contain("\"Gamesim.TextSize\": \"2\"").And.Contain("\"Gamesim.CaptionTime\": \"1\""));
                 director.FreezeForReloadForDiagnostics();
                 yield return ReloadEpisode();
                 Assert.That(director.TextSize, Is.EqualTo(TextSize.Largest), "The largest text survives the reload.");
+                Assert.That(director.CaptionTimeSetting, Is.EqualTo(CaptionTime.Longer), "and so does the longer caption time.");
             }
             finally
             {

@@ -113,6 +113,12 @@ namespace Gamesim.Episode
                     hud.FocusWhenWired(TextSizes.Caption(TextSizes.Others(chosen)[0]));
                 });
             }
+            // How long the ceremony's strip and a witnessed conversation's line stay up (A10).
+            hud.Action(CaptionTiming.Caption(captionTime), () =>
+            {
+                SetCaptionTime(captionTime == CaptionTime.Longer ? CaptionTime.Standard : CaptionTime.Longer);
+                hud.FocusWhenWired(CaptionTiming.Caption(captionTime));
+            });
             hud.Section("CEREMONIES");
             // The key ceremony and the live eviction reveal one name at a time; suspenseful holds a
             // beat on each, quick keeps them brisk. Either can be sped up or skipped while it plays,
@@ -427,6 +433,16 @@ namespace Gamesim.Episode
             Render();
         }
 
+        /// <summary>The caption reading time in use (A10).</summary>
+        public CaptionTime CaptionTimeSetting => captionTime;
+
+        public void SetCaptionTime(CaptionTime time)
+        {
+            captionTime = time;
+            ApplyPreferences();
+            Render();
+        }
+
         private void ApplyPreferences()
         {
             audioBed?.SetMuted(muted);
@@ -438,7 +454,7 @@ namespace Gamesim.Episode
             // Every surface that grows with the text, at the size chosen (A8): 1, 1.2 or 1.4.
             float scale = TextScale;
             if (hud != null) { hud.FontScale = scale; hud.ReducedMotion = reducedMotion; }
-            if (sting != null) sting.FontScale = scale;
+            if (sting != null) { sting.FontScale = scale; sting.CaptionTime = captionTime; }
             if (takeover != null) takeover.FontScale = scale;
             if (voteReveal != null) voteReveal.FontScale = scale;
             if (juryReveal != null) juryReveal.FontScale = scale;
@@ -461,6 +477,7 @@ namespace Gamesim.Episode
             store.SetInt("Gamesim.Muted", muted ? 1 : 0); store.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); store.SetInt("Gamesim.ReducedAudio", reducedAudio ? 1 : 0); store.SetInt("Gamesim.Volume", volumePercent); store.SetInt("Gamesim.Music", musicOn ? 1 : 0); store.SetInt("Gamesim.CeremonyPace", ceremonyPace == CeremonyPace.Quick ? 1 : 0);
             // The size as 0 to 2, and the boolean an earlier build reads beside it.
             store.SetInt(TextSizes.SizeKey, (int)textSize); store.SetInt(TextSizes.LegacyKey, TextSizes.LegacyRecord(textSize));
+            store.SetInt(CaptionTiming.Key, (int)captionTime);
             store.Save();
             // And a line in the player log for each value that changed since the last one logged.
             LogSettingChanges();

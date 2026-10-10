@@ -58,40 +58,46 @@ the notes.
 How many episode-weeks a session must cover for E3 and E4 to be likely to be observable at all, projected from
 the balance lab's first-timer model (the novice: plays about half its seats on plain talk, takes every offer,
 pulls no lever, performs at .35) over 400 seasons a house, NPC budget 0, and 200 at the 300 ticks a week that stand
-for a human's free roam. Full tables: `BALANCE_BASELINE.md`, *The projections*. Testers are taken as
-independent; a human tester is not the novice, so treat these as the order of magnitude.
+for a human's free roam. Re-projected on 2026-10-09 with every shipped rule on - D2's all-week NPC strategy, the war
+rooms, the leaks - and the NPC world's arc fault fixed (B6c); the earlier projection (B6b) predated D2 and the fix.
+Full tables: `BALANCE_BASELINE.md`, *The projections*. Testers are taken as independent; a human tester is not the
+novice, so treat these as the order of magnitude.
 
 **The week, not the minute, is the unit.** The lab's mechanical minutes a week in the house - ceremonies at the
-suspenseful pace, the competitions played, the NPC free roam, and 30 seconds a decision - are about 9 at eight
-(14 with five minutes of free roam), far below E1's own 30–45 minutes an episode. What a person spends over a
+suspenseful pace, the competitions played, the NPC free roam, and 30 seconds a decision - are about 8.5 at eight
+(13.6 with five minutes of free roam), far below E1's own 30–45 minutes an episode. What a person spends over a
 decision is the unknown (B8 measures it), so plan a session as a number of episode-weeks, at E1's 30–45 minutes
 each until B8 says otherwise.
 
-**E4 (a loss that reads as an ending) needs five or six weeks with three testers, three with four.** The
+**E4 (a loss that reads as an ending) needs six weeks with three testers, four with four, three with five.** The
 chance at least one tester is out by week k, in the shipped eight-house:
 
 | testers | week 1 | week 2 | week 3 | week 4 | week 5 | week 6 |
 |---|---|---|---|---|---|---|
-| 3 | 55% | 73% | 84% | 87% | 89.8% (300 ticks: 90.6%) | 96% |
-| 4 | 66% | 82% | 91% | 94% | 95% | 99% |
-| 5 | 74% | 89% | 95% | 97% | 98% | 100% |
+| 3 | 29.5% | 63% | 79% | 84% | 87.7% (300 ticks: 88.9%) | 95.5% |
+| 4 | 37% | 74% | 87.5% | 91.4% | 94% | 98% |
+| 5 | 44% | 81% | 92.5% | 95% | 97% | 99% |
+
+Under D2 fewer first-timers go out in week one (11% against B6b's 24%: the house comes to the newcomer before the
+first nominations), so the first week rarely ends anyone's game; by week three the rates are close to B6b's.
 
 Proposed, following the lead's decision for E4: a multi-session protocol on each tester's isolated save
 (`Gamesim > Port > Start Isolated Preview`, resumed, never restarted), two episode-weeks a session (60–90
-minutes at E1's pace), until one tester is out - expect it by the end of the second session (87% with three
-testers) and near-certainly by the third. With four testers a single session of three weeks (90–135 minutes)
-reaches 91%. A twelve-house is slower: 90% with three testers at week 6, with four or five at week 5.
+minutes at E1's pace), until one tester is out - with three testers expect it by the end of the third session
+(95.5% by week six; 84% after the second). With four testers two sessions (four weeks, 120–180 minutes) reach 91%;
+with five, a single session of three weeks (90–135 minutes) reaches 92.5%. A twelve-house is slower: 90% with three
+testers at week 7, with four at week 6, with five at week 5.
 
 **E3 as worded - each tester names a promise or betrayal that changed a later outcome - is out of reach by
 chance for a first-timer.** The chance a novice saw a commitment of theirs settle while still in the house
-(a deal or promise kept or broken whose ending they know, or an alliance plan they answered) rises from 18% in
-week one to 47% by week two and 54% by week three, and stops near 61% at eight (79% at twelve): the rest leave,
-or never make one that settles. So every one of three testers seeing one never passes 22% at eight (48% at
+(a deal or promise kept or broken whose ending they know, or an alliance plan they answered) rises from 22.5% in
+week one to 50% by week two and 63.5% by week three, and stops near 69% at eight (85% at twelve): the rest leave,
+or never make one that settles. So every one of three testers seeing one never passes 33% at eight (61% at
 twelve), whatever the session's length. Proposed, for the owner to choose:
 
 - **Judge E3 over the testers who saw one**, record the week each first did (or none), and run at least three
-  weeks; with five testers at least three of them have seen one by week three about 58% of the time, by week
-  four 67% (twelve-house: 70% and 86%).
+  weeks; with five testers at least three of them have seen one by week three about 74% of the time, by week
+  four 81% (twelve-house: 89% and 95%).
 - **Or keep "each tester" and accept that E3 will usually be unobserved** for some of them, recorded as such,
   not as a failure.
 

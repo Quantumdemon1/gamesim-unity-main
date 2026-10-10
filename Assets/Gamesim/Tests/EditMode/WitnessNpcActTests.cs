@@ -27,6 +27,7 @@ namespace Gamesim.Tests.EditMode
             off.allWeekRulesStartWeek = 0;
             off.npcSocial.acts.Clear(); off.npcSocial.beatPlan.Clear(); off.npcSocial.beatWindow = Windows.None;
             off.npcSocial.beatWeek = off.npcSocial.beatsFired = off.npcSocial.beatSeats = 0;
+            foreach (var edge in off.relationships) edge.events.RemoveAll(e => EpisodeEngine.AllWeekRecord(e.type));
             string before = Json(off);
             var refused = Witness(off, act);
             Assert.That(refused.accepted, Is.False);
@@ -385,13 +386,14 @@ namespace Gamesim.Tests.EditMode
             targetId = act.actorId, secondTargetId = act.partnerId, expectedRevision = s.revision, expectedPhase = s.phase,
         };
 
-        /// <summary>The same season with the all-week rules never on: no plan, no acts.</summary>
+        /// <summary>The same season with the all-week rules never on: no plan, no acts, none of the rules' records (a veto's between two houseguests).</summary>
         private static EpisodeState Without(EpisodeState s)
         {
             var off = s.Clone();
             off.allWeekRulesStartWeek = 0;
             off.npcSocial.acts.Clear(); off.npcSocial.beatPlan.Clear(); off.npcSocial.beatWindow = Windows.None;
             off.npcSocial.beatWeek = off.npcSocial.beatsFired = off.npcSocial.beatSeats = 0;
+            foreach (var edge in off.relationships) edge.events.RemoveAll(e => EpisodeEngine.AllWeekRecord(e.type));
             return off;
         }
 

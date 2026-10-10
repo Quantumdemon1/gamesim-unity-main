@@ -28,8 +28,10 @@ namespace Gamesim.Simulation
             if (s.relationships.Any(r => r.events.Any(e => e.type == StoryReceipts.DoubleDealt
                     && (s.allianceLeakRulesStartWeek == 0 || e.week < s.allianceLeakRulesStartWeek))))
                 return Fail(out error, "A season without the leak rules has none of their receipts.");
-            // D2's records of the house's talk (EpisodeEngine.CompletionChange), which feed trust between houseguests.
-            if (s.relationships.Any(r => r.events.Any(e => (e.type == EpisodeEngine.NpcConversationEvent || e.type == EpisodeEngine.NpcGossipEvent)
+            // D2's records of the house's talk (EpisodeEngine.CompletionChange) and of a veto's moves between two houseguests
+            // (EpisodeEngine.ChangeBetween), which feed trust between houseguests. A lie's and a scheme's records keep the types
+            // the engine's own path always wrote.
+            if (s.relationships.Any(r => r.events.Any(e => EpisodeEngine.AllWeekRecord(e.type)
                     && (s.allWeekRulesStartWeek == 0 || e.week < s.allWeekRulesStartWeek))))
                 return Fail(out error, "A season without the all-week rules has none of their records.");
             return true;

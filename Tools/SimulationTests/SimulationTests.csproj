@@ -195,6 +195,7 @@
     <Compile Include="$(EditMode)EpisodeEngineTests.cs" />
     <Compile Include="$(EditMode)EpisodeFinaleTests.cs" />
     <Compile Include="$(EditMode)EpisodeNpcSocialTests.cs" />
+    <Compile Include="$(EditMode)BetweenHouseguestsTests.cs" />
     <Compile Include="$(EditMode)EpisodeRecoveryBoundaryTests.cs" />
     <Compile Include="$(EditMode)EpisodeSocialHistoryTests.cs" />
     <Compile Include="$(EditMode)HouseDialogueTests.cs" />

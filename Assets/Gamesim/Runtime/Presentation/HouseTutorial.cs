@@ -237,7 +237,7 @@ namespace Gamesim.Presentation
         public static HouseTutorial Attach(GameObject owner)
         {
             var root = new GameObject("Gamesim Tutorial",
-                typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
+                typeof(RectTransform), typeof(Canvas), typeof(FrameScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
             if (owner != null && owner.scene.IsValid()) SceneManager.MoveGameObjectToScene(root, owner.scene);
 
             var canvas = root.GetComponent<Canvas>();

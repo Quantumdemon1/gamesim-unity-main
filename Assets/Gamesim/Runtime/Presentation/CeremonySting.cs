@@ -136,7 +136,7 @@ namespace Gamesim.Presentation
         public static CeremonySting Attach(GameObject owner)
         {
             var root = new GameObject("Gamesim Ceremony Sting",
-                typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(CanvasGroup));
+                typeof(RectTransform), typeof(Canvas), typeof(FrameScaler), typeof(CanvasGroup));
             if (owner != null && owner.scene.IsValid()) SceneManager.MoveGameObjectToScene(root, owner.scene);
 
             var canvas = root.GetComponent<Canvas>();
@@ -415,17 +415,17 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// The canvas's width in its own units, reckoned as its scaler lays it out - the 1600x900
-        /// reference, width and height matched equally (at 4:3 that is 1385 wide) - from the size it
-        /// is drawn at: the screen, or a capture's camera. Reckoned rather than read, because the
-        /// scaler sets its factor on its own update, and a strip played in the frame it was attached
-        /// in would read the canvas at the screen's raw pixels.
+        /// reference, width and height matched equally (at 4:3 that is 1385 wide), or the height alone
+        /// on a frame wider than 16:9 (A12b) - from the size it is drawn at: the screen, or a capture's
+        /// camera. Reckoned rather than read, because the scaler sets its factor on its own update, and
+        /// a strip played in the frame it was attached in would read the canvas at the screen's raw pixels.
         /// </summary>
         private float CanvasWidth()
         {
             var canvas = GetComponent<Canvas>();
             var display = canvas != null ? canvas.renderingDisplaySize : new Vector2(Screen.width, Screen.height);
             float width = Mathf.Max(1f, display.x), height = Mathf.Max(1f, display.y);
-            float scale = Mathf.Pow(2f, Mathf.Lerp(Mathf.Log(width / 1600f, 2f), Mathf.Log(height / 900f, 2f), 0.5f));
+            float scale = Mathf.Pow(2f, Mathf.Lerp(Mathf.Log(width / 1600f, 2f), Mathf.Log(height / 900f, 2f), FrameMatch.For(width, height, 0.5f)));
             return width / scale;
         }
 

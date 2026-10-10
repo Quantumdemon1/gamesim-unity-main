@@ -131,7 +131,7 @@ namespace Gamesim.Presentation
         public static WeeklyRecapScreen Attach(GameObject owner)
         {
             var root = new GameObject("Gamesim Weekly Recap",
-                typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler),
+                typeof(RectTransform), typeof(Canvas), typeof(FrameScaler),
                 typeof(GraphicRaycaster), typeof(CanvasGroup));
             root.transform.SetParent(owner.transform, false);
 

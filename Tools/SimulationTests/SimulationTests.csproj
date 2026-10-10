@@ -286,6 +286,9 @@
     <Compile Include="$(EditMode)DisplayChoicesTests.cs" />
     <!-- And the window written only by the window's own controls, the first launch and the verifier (A12, Risk R3). -->
     <Compile Include="$(EditMode)WindowWriteScanTests.cs" />
+    <!-- A frame wider than 16:9 lays its canvases out by height (A12b); 16:9 and narrower keep their own match. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FrameMatch.cs" />
+    <Compile Include="$(EditMode)FrameMatchTests.cs" />
     <!-- The prepared block speech a pad gives without typing (A6): every approach's line is a valid speech carrying it. -->
     <Compile Include="$(EditMode)PreparedSpeechTests.cs" />
     <!-- The standalone profile's performance verdict and arithmetic, and the verification-only stress house. -->

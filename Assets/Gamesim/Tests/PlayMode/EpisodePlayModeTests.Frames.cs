@@ -13,11 +13,11 @@ namespace Gamesim.Tests.PlayMode
 {
     /// <summary>
     /// The frames beyond 16:9 and 4:3 (PLAN A, A12): 16:10 (1280x800, the canvas 1518x949) is held to
-    /// the same clip and overlap checks as the two before it; 21:9 (2560x1080, the canvas 1848x779,
-    /// the shortest ever drawn) is photographed and measured, and what it finds is written to the log
-    /// rather than failed - the lead's decision 14: measure first, and only if chrome collides take
-    /// the separate slice (A12b) that switches the 1600x900 canvases to match height when wider than
-    /// 16:9.
+    /// the same clip and overlap checks as the two before it, and so is 21:9 (2560x1080). Measured
+    /// first, as the lead's decision 14 asked, 21:9 collided - its canvas was 1848x779, the shortest
+    /// ever drawn, and the controls card came down on the vibe card and the left column on the cast
+    /// strip - so A12b lays every canvas out by height on a frame wider than 16:9 (FrameScaler): the
+    /// canvas is 2133x900 there, and 21:9 is gated like the rest.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
@@ -31,13 +31,17 @@ namespace Gamesim.Tests.PlayMode
             { Width = width; Height = height; Suffix = suffix; Shape = shape; Gated = gated; }
         }
 
-        /// <summary>16:9 and 4:3, as <see cref="OnBothFrames"/> has always taken them; then 16:10, gated; then 21:9, measured.</summary>
+        /// <summary>
+        /// 16:9 and 4:3, as <see cref="OnBothFrames"/> has always taken them; then 16:10 and 21:9, both
+        /// gated (21:9 since A12b laid the wide frame's canvases out by height). A frame that is only
+        /// measured - its findings written to the log, not failed - is still a frame this list can hold.
+        /// </summary>
         private static readonly ReviewFrame[] ReviewFrames =
         {
             new ReviewFrame(1600, 900, "", "16:9", true),
             new ReviewFrame(1200, 900, "-4x3", "4:3", true),
             new ReviewFrame(1280, 800, "-16x10", "16:10", true),
-            new ReviewFrame(2560, 1080, "-21x9", "21:9", false),
+            new ReviewFrame(2560, 1080, "-21x9", "21:9", true),
         };
 
         /// <summary>What the measured frames found, one line each: written to the log, not failed.</summary>
@@ -81,13 +85,13 @@ namespace Gamesim.Tests.PlayMode
             .ToArray();
 
         /// <summary>
-        /// The house's fixed chrome and the notebook's copy at 16:10, gated as at 16:9 and 4:3, and at
-        /// 21:9, photographed and measured: at both text sizes, with nothing open, with the controls box
-        /// open (the chrome alone, as the 16:9 chrome test holds it) and with the notebook open. The
-        /// measurement is printed whatever it says, so the 21:9 verdict is in the run's log.
+        /// The house's fixed chrome and the notebook's copy at 16:10 and 21:9, gated as at 16:9 and
+        /// 4:3: at both text sizes, with nothing open, with the controls box open (the chrome alone,
+        /// as the 16:9 chrome test holds it) and with the notebook open. A frame only measured would
+        /// have its findings printed; none is, now that 21:9 is laid out by height (A12b).
         /// </summary>
         [UnityTest, Timeout(600000)]
-        public IEnumerator Accessibility_TheHudHoldsAtSixteenTenAndIsMeasuredAtTwentyOneNine()
+        public IEnumerator Accessibility_TheHudHoldsAtSixteenTenAndTwentyOneNine()
         {
             if (!Application.isBatchMode) yield break;
             measuredFindings.Clear();
@@ -125,11 +129,42 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
             }
             yield return ApplyTextSize(false);
-            string report = "21:9 measurement (decision 14):\n  " + string.Join("\n  ", measuredFindings);
-            TestContext.WriteLine(report);
-            Debug.Log("[Gamesim] " + report);
-            Assert.That(measuredFindings, Has.Count.EqualTo(6),
-                "The 21:9 frame was measured six times: two sizes, the house with the controls closed and open, and the notebook.");
+            Assert.That(measuredFindings, Is.Empty, "Every review frame is gated; none is only measured: " + string.Join(" | ", measuredFindings));
+        }
+
+        /// <summary>
+        /// The canvas each review frame lays the HUD out on (A12b): on 16:9 and every narrower frame
+        /// exactly the canvas the half-and-half match has always given - 1600x900 at 16:9 whatever the
+        /// pixels, 1385x1039 at 4:3, 1518x949 at 16:10 - and on a frame wider than 16:9 the reference's
+        /// 900 tall, the width whatever the frame leaves. The 21:9 canvas was 1848x779 before.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Accessibility_AFrameWiderThanSixteenNineKeepsTheReferenceHeight()
+        {
+            var hud = director.GetComponentsInChildren<Canvas>(true).First(item => item.name == "Gamesim Episode HUD");
+            var frames = new (int Width, int Height, float CanvasWidth, float CanvasHeight)[]
+            {
+                (1600, 900, 1600f, 900f), (1920, 1080, 1600f, 900f), (1280, 720, 1600f, 900f),
+                (1200, 900, 1385.64f, 1039.23f), (1280, 800, 1517.89f, 948.68f),
+                (2560, 1080, 2133.33f, 900f), (3440, 1440, 2150f, 900f),
+            };
+            foreach (var frame in frames)
+            {
+                var lens = new CaptureLens(cameraRig.ViewCamera, frame.Width, frame.Height);
+                try
+                {
+                    yield return null; yield return null;
+                    Canvas.ForceUpdateCanvases();
+                    var rect = ((RectTransform)hud.transform).rect;
+                    string at = frame.Width + "x" + frame.Height;
+                    Assert.That(rect.width, Is.EqualTo(frame.CanvasWidth).Within(.5f), "The HUD's canvas is " + frame.CanvasWidth + " wide at " + at + ".");
+                    Assert.That(rect.height, Is.EqualTo(frame.CanvasHeight).Within(.5f), "The HUD's canvas is " + frame.CanvasHeight + " tall at " + at + ".");
+                    Assert.That(hud.GetComponent<CanvasScaler>().matchWidthOrHeight, Is.EqualTo(.5f),
+                        "The scaler's own match is never written: the wide frame's is lent for the arithmetic alone.");
+                }
+                finally { lens.Dispose(); }
+            }
+            yield return null;
         }
 
         /// <summary>Whether a live control carries these words: a check that says no, where <see cref="FindButton"/> throws.</summary>

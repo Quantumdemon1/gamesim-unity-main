@@ -53,7 +53,7 @@ namespace Gamesim.Presentation
 
         public static CompetitionResult Attach(GameObject owner)
         {
-            var root=new GameObject("Gamesim Competition Result",typeof(RectTransform),typeof(Canvas),typeof(CanvasScaler),
+            var root=new GameObject("Gamesim Competition Result",typeof(RectTransform),typeof(Canvas),typeof(FrameScaler),
                 typeof(CanvasGroup),typeof(GraphicRaycaster));
             if(owner!=null&&owner.scene.IsValid())SceneManager.MoveGameObjectToScene(root,owner.scene);
             var canvas=root.GetComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;canvas.sortingOrder=105;
@@ -162,7 +162,8 @@ namespace Gamesim.Presentation
             if(scaler!=null&&scaler.uiScaleMode==CanvasScaler.ScaleMode.ScaleWithScreenSize&&pixelsWide>0&&pixelsHigh>0)
             {
                 var reference=scaler.referenceResolution;
-                float log=Mathf.Lerp(Mathf.Log(pixelsWide/reference.x,2f),Mathf.Log(pixelsHigh/reference.y,2f),scaler.matchWidthOrHeight);
+                // The match the canvas is laid out at: its own, or the height on a frame wider than 16:9 (A12b).
+                float log=Mathf.Lerp(Mathf.Log(pixelsWide/reference.x,2f),Mathf.Log(pixelsHigh/reference.y,2f),FrameMatch.For(pixelsWide,pixelsHigh,scaler.matchWidthOrHeight));
                 float scale=Mathf.Pow(2f,log);
                 return new Vector2(pixelsWide/scale,pixelsHigh/scale);
             }

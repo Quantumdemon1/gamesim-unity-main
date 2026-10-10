@@ -241,7 +241,7 @@ namespace Gamesim.Presentation
         public static CastSelect Attach(GameObject owner)
         {
             var root = new GameObject("Gamesim Cast Select",
-                typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler),
+                typeof(RectTransform), typeof(Canvas), typeof(FrameScaler),
                 typeof(GraphicRaycaster), typeof(CanvasGroup));
             root.transform.SetParent(owner.transform, false);
 

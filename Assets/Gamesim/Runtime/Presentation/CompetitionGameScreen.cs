@@ -94,7 +94,7 @@ namespace Gamesim.Presentation
         public static CompetitionGameScreen Attach(GameObject owner)
         {
             var root = new GameObject("Gamesim Competition Surface", typeof(RectTransform), typeof(Canvas),
-                typeof(CanvasScaler), typeof(CanvasGroup), typeof(GraphicRaycaster));
+                typeof(FrameScaler), typeof(CanvasGroup), typeof(GraphicRaycaster));
             if (owner != null && owner.scene.IsValid()) SceneManager.MoveGameObjectToScene(root, owner.scene);
             var canvas = root.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 104;

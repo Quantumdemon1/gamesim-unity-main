@@ -149,7 +149,7 @@ namespace Gamesim.Episode
 
         private void Create()
         {
-            root = new GameObject("Observed house conversation", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler));
+            root = new GameObject("Observed house conversation", typeof(RectTransform), typeof(Canvas), typeof(Gamesim.Presentation.FrameScaler));
             root.transform.SetParent(transform, false);
             var canvas = root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 69;
             var scaler = root.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;

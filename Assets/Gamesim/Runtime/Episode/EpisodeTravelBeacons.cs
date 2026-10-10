@@ -103,7 +103,7 @@ namespace Gamesim.Episode
         {
             var existing = host.GetComponentInChildren<EpisodeTravelBeacons>(true);
             if (existing != null) return existing;
-            var holder = new GameObject(RootName, typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            var holder = new GameObject(RootName, typeof(RectTransform), typeof(Canvas), typeof(FrameScaler), typeof(GraphicRaycaster));
             holder.transform.SetParent(host.transform, false);
             return holder.AddComponent<EpisodeTravelBeacons>();
         }

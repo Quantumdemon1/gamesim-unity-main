@@ -70,6 +70,21 @@ namespace Gamesim.Tests.PlayMode
             yield return Frames(2);
         }
 
+        /// <summary>
+        /// The keyboard's walk through a form with text fields in it: Tab - the ring's own step, which
+        /// a field passes on - to the control carrying <paramref name="caption"/>, then Enter. Down
+        /// cannot leave a field being edited: on the keyboard the arrows are the caret's (A6, Risk R7),
+        /// so a Down walk that reaches a field stops in it.
+        /// </summary>
+        private IEnumerator TabToAndPress(string caption, int limit = 80)
+        {
+            for (int step = 0; step < limit && !SelectedCarries(caption); step++) yield return PressKey(Key.Tab);
+            Assert.That(SelectedCarries(caption), Is.True, "Tab never reached '" + caption + "'; the walk ended on '" + SelectedName() + "'.");
+            lastSubmit = caption + " on '" + SelectedName() + "' by Enter";
+            yield return PressKey(Key.Enter);
+            yield return Frames(2);
+        }
+
         /// <summary>Walks down the ring to the first control <paramref name="wanted"/> accepts, and presses it.</summary>
         private IEnumerator ReachAndPress(System.Func<GameObject, bool> wanted, string what, bool pad, int limit = 80)
         {
@@ -108,7 +123,8 @@ namespace Gamesim.Tests.PlayMode
             yield return Frames(3);
             AssertASeasonStarted(before, "The keyboard's Play as");
 
-            // The second: Customize, the name typed (typing is the allowed raw read), then Start.
+            // The second: Customize, the name typed on the Identity step (typing is the allowed raw
+            // read), then Start, reached by Tab past the step's fields.
             yield return FreshEpisode();
             before = director.Snapshot.sessionId;
             director.OpenMainMenu();
@@ -117,9 +133,13 @@ namespace Gamesim.Tests.PlayMode
             yield return ReachAndPress(IsCastCard, "a cast card", pad: false);
             yield return ReachAndPress("Customize ", pad: false, prefix: true);
             Assert.That(Creator().IsShowing, Is.True, "Enter on Customize opens the creator: " + lastSubmit);
+            // Customize opens the detailed creator on its Appearance step, which has no fields; the
+            // name is the Identity step's.
+            Assert.That(Creator().Mode, Is.EqualTo(CharacterCreator.EntryMode.Detailed), "Customize opens the detailed creator.");
+            yield return ReachAndPress("Identity", pad: false);
             CreatorEntryName("Keyboard Kim");
             yield return null;
-            yield return ReachAndPress(CharacterCreator.StartCaption, pad: false);
+            yield return TabToAndPress(CharacterCreator.StartCaption);
             yield return Frames(3);
             AssertASeasonStarted(before, "The keyboard's Customize");
             Assert.That(director.Snapshot.Find(director.Snapshot.playerId).name, Is.EqualTo("Keyboard Kim"), "The typed name is the player's.");
@@ -370,6 +390,10 @@ namespace Gamesim.Tests.PlayMode
             player.Agent.speed = 25; player.Agent.acceleration = 100;
             director.SetCeremonyPace(CeremonyPace.Quick);
             Assert.That(director.Snapshot.week, Is.EqualTo(1));
+            // The season is new each run, seeded from the clock: named, so a panel the walk does not
+            // know can be played again from its seed.
+            string season = "seed " + director.Snapshot.seed + ", session " + director.Snapshot.sessionId;
+            TestContext.WriteLine("first week: " + season);
 
             var previous = director.Snapshot;
             bool evicted = false;
@@ -398,14 +422,14 @@ namespace Gamesim.Tests.PlayMode
                 foreach (var caption in captions)
                 {
                     Assert.That(ControlCarrying(caption), Is.Not.Null, "The rules-on week put up a panel the walk does not know in " + state.phase
-                        + ": it wanted '" + caption + "' and the panel offers " + PanelCaptions() + ".");
+                        + ": it wanted '" + caption + "' and the panel offers " + PanelCaptions() + " (" + season + ").");
                     yield return ReachAndPress(caption, pad: true);
                 }
                 Assert.That(director.Snapshot.revision, Is.GreaterThan(state.revision), "A commits a decision in " + state.phase + "; " + lastSubmit);
                 yield return PadThroughCards("first week, " + state.phase);
                 previous = state;
             }
-            Assert.That(evicted, Is.True, "The pad reached week 1's eviction recap.");
+            Assert.That(evicted, Is.True, "The pad reached week 1's eviction recap (" + season + ").");
             Assert.That(director.Snapshot.contestants.Count(actor => actor.status != ContestantStatus.Active), Is.GreaterThanOrEqualTo(1),
                 "Somebody left the house in week 1.");
         }

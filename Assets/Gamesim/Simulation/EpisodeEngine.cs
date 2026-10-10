@@ -1009,9 +1009,10 @@ namespace Gamesim.Simulation
                 s.nominees.Remove(saved); s.nominees.Add(replacement); NominationEffects(s, replacement, false);
                 MoodLift(s, saved);
                 StoryReplacement(s, replacement);
-                Change(s, saved, s.vetoHolderId, 25, Name(s, s.vetoHolderId) + " used POV to save " + Target(s, saved, s.vetoHolderId));
-                Change(s, replacement, s.hohId, -20, Name(s, s.hohId) + " named " + Target(s, replacement, s.hohId) + " as replacement nominee");
-                if (s.hohId != s.vetoHolderId) Change(s, replacement, s.vetoHolderId, -15, Name(s, s.vetoHolderId) + " used POV forcing " + Target(s, replacement, s.vetoHolderId) + " on the block");
+                // Between two houseguests, under D2's rules, through the ledger and no arc (ChangeBetween).
+                ChangeBetween(s, saved, s.vetoHolderId, 25, Name(s, s.vetoHolderId) + " used POV to save " + Target(s, saved, s.vetoHolderId), null, VetoSaveEvent);
+                ChangeBetween(s, replacement, s.hohId, -20, Name(s, s.hohId) + " named " + Target(s, replacement, s.hohId) + " as replacement nominee", null, VetoReplacementEvent);
+                if (s.hohId != s.vetoHolderId) ChangeBetween(s, replacement, s.vetoHolderId, -15, Name(s, s.vetoHolderId) + " used POV forcing " + Target(s, replacement, s.vetoHolderId) + " on the block", null, VetoForcedEvent);
                 Log(s, "veto", Name(s, s.vetoHolderId) + Verb(s, s.vetoHolderId, " saves ", " save ")
                     + Target(s, saved, s.vetoHolderId) + "; " + Target(s, replacement, s.vetoHolderId)
                     + Verb(s, replacement, " is", " are") + " the replacement nominee.");
@@ -1464,7 +1465,7 @@ namespace Gamesim.Simulation
                 && about.id != recipient.id, "Choose someone else in the house to lie about.");
 
             double damage = -(5 + Math.Floor(Roll(s) * 8));
-            Change(s, recipient.id, about.id, damage,
+            ChangeBetween(s, recipient.id, about.id, damage,
                 "You told " + recipient.name + " something about " + about.name, "lie");
             // Under the levers the memory sounds like what it is, so the ballot's memory term reads
             // it as a lie about that person rather than as a neutral mention of their name.
@@ -1529,7 +1530,7 @@ namespace Gamesim.Simulation
                 var victim = Draw(s, others);
                 others.Remove(victim);
                 double damage = -(3 + Math.Floor(Roll(s) * 6));
-                Change(s, target.id, victim.id, damage, "Something you said reached " + victim.name, "scheme");
+                ChangeBetween(s, target.id, victim.id, damage, "Something you said reached " + victim.name, "scheme");
             }
             Remember(s, s.playerId, target.id, "I spent week " + s.week + " quietly working against "
                 + target.name + ".", true);

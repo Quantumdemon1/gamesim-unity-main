@@ -26,6 +26,12 @@ unchanged on `818b36a1`.
 fresh seasons play mode 2; V6's paired 100-seed run at budget 0 (*History: vote family V6* below) found 2,233 of
 2,400 seasons byte-identical and no finding's reading changed, so the tables stand for mode 2 until the next rerun.
 
+**The change paths (2026-10-10).** Since `c8abcee2` a veto's, a lie's and a scheme's moves between two houseguests
+go through the ledger and write none of the player's arcs, at every budget; the tables below predate it. Its paired
+100-seed run at budget 0 (*History: the change paths* below) moved 2,321 of 2,400 rows but no win rate (p = 0.20 and
+0.86) and no finding's reading; the player's final-two rate at 8 leans up 4 points, the one number to watch at the
+next rerun.
+
 ## Whose numbers are these
 
 Every table and finding below is this run's unless it says otherwise. Where an older number is quoted beside a new
@@ -601,6 +607,85 @@ enable either (the tuple still read `allWeekRulesStartWeek=0`), so the recording
 **At the merge with the arcs fix** (on `claude/lead-integration`), the budget-0 goldens and `BudgetNoughtRows` are
 V6's (budget 0 runs no NPC world, so the arcs fix cannot reach it), and the 24 budget-300 cells are re-recorded on
 the merged tip, the first recording with both the unified vote rules and the arcs fix.
+
+## History: the change paths, the same 2,400 seasons with a veto, a lie and a scheme between houseguests through the ledger (2026-10-10)
+
+*Measured on the change-paths lane at 100 seeds, as V6's run was, not the 480-seed tables below. No constant was
+tuned.*
+
+**What changed.** The arcs review's finding 8: after the conversation fix, three of the player's commands still moved
+two houseguests through `EpisodeEngine.Change`, which wrote the player's arc with both of them - a veto's three moves
+(the one saved and the holder by 25, the replacement and the Head of Household by -20, the replacement and the holder
+by -15, whenever a houseguest's veto is used on somebody else), a lie (its recipient and its subject) and a scheme
+(the target and each victim). Under D2's rules (`EpisodeEngine.ChangeBetween`, `c8abcee2`) a move between two
+houseguests goes through `RelationshipLedger.Move` (the act's own amount both ways, not weighed by the social stat,
+no rolled reciprocal) and `Record` (a lie's and a scheme's records keep the types the engine always wrote; the veto's
+moves take the fading `veto-save`, `veto-replacement` and `veto-forced`), and writes no arc; a move with the player
+keeps the engine's path and its arc. The season's stream is drawn exactly as before: the engine's reciprocal draws
+are drawn and set aside. Its sequence ids are not: a veto's move between houseguests takes two where the engine's
+path took none, so the house-event and story ids after it shift. (The jury's two changes in `EpisodeFinale` are
+always between a juror and the player finalist, so they stay the player's own.)
+
+How far it reached: in the engine tests' busy walker's seasons (20 a size, after the fix), a houseguest's veto moved
+two houseguests 6.8 times a season at 8 and 11.6 at 12. On the old path each move wrote two arc entries, about 14
+and 23 a season beside the 37 and 74 the player's own changes write: about a quarter of the player's arc history
+came from vetoes the player was not part of.
+
+**Before and after.** Before is `de88a8bb`'s behaviour: this lane's build with `ChangeBetween` forced onto the
+engine's path (a build of its own, never committed), which plays `BalanceLabGoldens`' twelve budget-0 cells at 8 as
+they were recorded at `de88a8bb`, and whose all-twelve wins (258 and 299) are V6's mode-2 half's. After is
+`c8abcee2` (the parts' stamp v5). Both halves are the headline tier's first 100 seasons of every policy and house
+(indices 0-99) at budget 0, played in five parts of 20 and merged (`BALANCE_TIER=headline BALANCE_FROM BALANCE_COUNT
+BALANCE_PARTS`, then `MergeReport`), so they pair season for season; b counts the seasons only the after player won,
+c those only the before player won. No season had an error in either half (0 of 2,400 each); 28.9 and 25.2 minutes
+on six threads shared with other lanes' Unity runs.
+
+**Win rate, before to after, on the same seasons** (wins of 100; b/c; McNemar p):
+
+| policy | at 8 | at 12 |
+|---|---|---|
+| passive | 15 to 14 (3/4, 1.000) | 17 to 15 (5/7, 0.774) |
+| random | 15 to 20 (13/8, 0.383) | 13 to 19 (15/9, 0.307) |
+| social | 16 to 16 (11/11, 1.000) | 21 to 26 (15/10, 0.424) |
+| reader | 19 to 26 (16/9, 0.230) | 23 to 25 (20/18, 0.871) |
+| schemer | 12 to 11 (9/10, 1.000) | 28 to 25 (17/20, 0.742) |
+| loyalist | 20 to 16 (5/9, 0.424) | 26 to 24 (13/15, 0.850) |
+| floater | 22 to 28 (8/2, 0.109) | 26 to 22 (9/13, 0.523) |
+| beast | 86 to 87 (6/5, 1.000) | 55 to 56 (5/4, 1.000) |
+| novice | 10 to 7 (6/9, 0.607) | 19 to 17 (8/10, 0.815) |
+| exploit | 12 to 10 (5/7, 0.774) | 11 to 18 (13/6, 0.167) |
+| oracle-reader | 16 to 25 (16/7, 0.093) | 30 to 29 (15/16, 1.000) |
+| oracle-skilled | 15 to 17 (11/9, 0.824) | 30 to 27 (14/17, 0.719) |
+| all twelve (of 1,200) | 258 to 277 (109/90, 0.202) | 299 to 303 (149/145, 0.861) |
+
+**What moved.** Nearly every season, a little: 2,321 of the 2,400 rows differ (79 are byte-identical, 68 at 8 - 20
+of them the beast's, who holds most of its vetoes - and 11 at 12). A houseguest uses the veto on somebody else, or
+names the replacement, in almost every season, and from then on the pair's scores differ (the ledger's move against
+the engine's weighed move and rolled reciprocal), the two hold fading records of it that feed their trust, the
+season's ids run two a move ahead, and those houseguests' arcs with the player read differently - any of which a
+later decision of the house can read. Seven of the 66 paired intervals (bootstrap 95% of the paired mean) exclude 0,
+where about three would by chance:
+- at 8: the final two 41.5% to 45.6% (+4.1 points [+1.3, +6.8]), placement 0.12 of a place better (3.90 to 3.78,
+  [-0.21, -0.02]), the player's Head of Household wins 1.90 to 1.96 a season (+0.06 [+0.01, +0.11]), Game Sense's
+  social part 37.4 to 37.1 (-0.34 [-0.66, -0.00]), NPC-only pacts 1.27 to 1.30 (+0.03 [+0.01, +0.06]) and commands
+  147.3 to 148.5 a season (+1.2 [+0.4, +2.0]);
+- at 12: war-room plans 0.083 to 0.115 a season (+0.03 [+0.00, +0.06]).
+
+Within their intervals at both sizes: the win rate (+1.6 points [-0.8, +3.9] at 8, +0.3 [-2.5, +3.2] at 12), out by
+week 3, nominations a week, nominated and evicted in week one, Game Sense (+0.04 at both) and its strategy part, the
+player's deals, promises and pacts and their kept and broken counts, NPC-only deals (13.17 to 13.07 and 49.17 to
+49.10) and their kept and broken, the warmest and coldest pairs (within 1.4), the jury's margin, bitter jurors,
+storylines, pariah seasons (17.4% to 16.3% at 8, 45.1% at 12 both), budgeted asks and the NPCs' nominations of the
+player.
+
+**For the findings:** F1 holds (p = 0.20 and 0.86), and no finding's reading changes at this sample. The lean to
+watch is the final two at 8 (+4.1 points). It fits the change - a houseguest's veto no longer writes a friendship
+with the one it saved and a rivalry with the one it put up into the player's arcs, which the house's votes on the
+player read - but it was not traced season by season. The 480-seed tables below predate the change.
+
+**Goldens.** `BalanceLabGoldens` (all 48 cells; the rules' tuple does not move) and `BalanceLabTests.BudgetNoughtRows`
+(`3878f7a1d2ea39a8`, was `c7d250380346ae38`) are re-recorded on this lane; the parts' stamp is v5, so no part played
+before the change merges with one played after.
 
 ## The headline tables (budget 0, 480 seasons a cell)
 

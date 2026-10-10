@@ -719,6 +719,7 @@ namespace Gamesim.Tests.EditMode
             var without = s.Clone(); without.allWeekRulesStartWeek = 0;
             without.npcSocial.acts.Clear(); without.npcSocial.beatPlan.Clear(); without.npcSocial.beatWindow = Windows.None;
             without.npcSocial.beatWeek = without.npcSocial.beatsFired = without.npcSocial.beatSeats = 0;
+            foreach (var edge in without.relationships) edge.events.RemoveAll(e => EpisodeEngine.AllWeekRecord(e.type));
             var settled = new EpisodeEngine(without).Apply(Next(without));
             Assert.That(settled.accepted, Is.True, settled.reason);
             int settleWords = CommitmentReferences.Promises(settled.state).Count(p => p.id.StartsWith("promise-npc-", StringComparison.Ordinal))

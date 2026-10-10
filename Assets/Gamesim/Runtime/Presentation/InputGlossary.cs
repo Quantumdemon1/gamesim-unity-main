@@ -297,16 +297,18 @@ namespace Gamesim.Presentation
             return doing + "  ·  " + key + " to " + undo;
         }
 
-        /// <summary>The first of a row's pad buttons: "A" of the ceremony Skip's "A / B".</summary>
+        /// <summary>The first of a row's pad buttons: "A" of the ceremony Skip's "A / B" - or the button the player gave it (A5).</summary>
         private static string PadKey(string map, string action)
         {
+            string chosen = KeyBindings.PadLabel(map, action);
+            if (chosen != null) return chosen;
             string pad = Find(map, action).Pad;
             int slash = pad.IndexOf(" / ", StringComparison.Ordinal);
             return slash > 0 ? pad.Substring(0, slash) : pad;
         }
 
-        /// <summary>A row's pad words with the slashes closed up, for the help card's narrow box.</summary>
-        private static string PadOf(string map, string action) => Find(map, action).Pad.Replace(" / ", "/");
+        /// <summary>A row's pad words with the slashes closed up, for the help card's narrow box - or the button the player gave it (A5).</summary>
+        private static string PadOf(string map, string action) => KeyBindings.PadLabel(map, action) ?? Find(map, action).Pad.Replace(" / ", "/");
 
         /// <summary>The row for an action, or null.</summary>
         public static Row Find(string map, string action)

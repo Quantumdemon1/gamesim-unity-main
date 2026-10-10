@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Gamesim.House;
 using Gamesim.Persistence;
 using Gamesim.Presentation;
 using UnityEngine;
@@ -62,6 +63,7 @@ namespace Gamesim.Episode
                 Say("camera", CameraSpeedName(cameraSpeedPercent)),
                 Say("tilt", invertTilt ? "inverted" : "normal"),
                 Say("captions", CaptionTiming.Name(captionTime)),
+                Say("keys", HouseBindings.Current.Summary()),
                 Say(SoundPictures.LogKey(SoundChannel.Music), musicVolumePercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),
                 Say(SoundPictures.LogKey(SoundChannel.Effects), effectsVolumePercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),
                 Say(SoundPictures.LogKey(SoundChannel.Interface), interfaceVolumePercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),

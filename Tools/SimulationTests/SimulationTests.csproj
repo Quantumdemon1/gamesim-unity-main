@@ -266,6 +266,9 @@
     <Compile Include="$(EditMode)ScrambleDealTests.cs" />
     <!-- The input glossary (PLAN A, A0): every thing the player presses, and the raw-read guard over Runtime's scripts. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/InputGlossary.cs" />
+    <!-- Rebinding (A5): what rebinds, the rules a binding keeps, the kept form and the words on screen. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/KeyBindings.cs" />
+    <Compile Include="$(EditMode)KeyBindingsTests.cs" />
     <Compile Include="$(EditMode)InputGlossaryTests.cs" />
     <Compile Include="$(EditMode)InputRawReadScanTests.cs" />
     <!-- The ceremony cards' press guard (A4f), the Back matrix's representative rows rest on it. -->

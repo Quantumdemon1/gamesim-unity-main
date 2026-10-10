@@ -173,6 +173,8 @@ namespace Gamesim.Episode
             textSize = TextSizes.FromRecord(preferences.HasKey(TextSizes.SizeKey) ? preferences.GetInt(TextSizes.SizeKey, 0) : (int?)null,
                 preferences.HasKey(TextSizes.LegacyKey) ? preferences.GetInt(TextSizes.LegacyKey, 0) : (int?)null);
             captionTime = CaptionTiming.FromRecord(preferences.GetInt(CaptionTiming.Key, 0));
+            // The player's own keys and buttons (A5), on every copy of the actions from the start.
+            HouseBindings.Load(preferences);
             musicVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.MusicVolumeKey, SoundPictures.DefaultVolume));
             effectsVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.EffectsVolumeKey, SoundPictures.DefaultVolume));
             interfaceVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.InterfaceVolumeKey, SoundPictures.DefaultVolume));
@@ -465,6 +467,10 @@ namespace Gamesim.Episode
                 hud.SetChallenge(challengeValue, challengeHits);
                 if (shortcuts != null && shortcuts.Hit.WasPressedThisFrame()) RecordChallengeHit();
             }
+            // A rebinding listening for its press, or the frame its press ended it (A5): the press is
+            // the rebinding's - Esc cancels it without closing the settings, a key is the new one -
+            // and nothing else in the house acts on it.
+            if (HouseBindings.Busy) return;
             // Escape or Start: the priority chain, topmost first (EpisodeDirector.Controls.cs).
             if (shortcuts != null && shortcuts.Menu.WasPressedThisFrame()) { MenuPressed(); return; }
             // The pad's B: the same chain, and nothing at all with nothing open (PLAN A, A2).
@@ -666,6 +672,8 @@ namespace Gamesim.Episode
 
         private void ClosePanelsInternal(bool render)
         {
+            // A rebinding listening in the settings goes with them (A5), with nothing changed.
+            if (HouseBindings.Listening) { HouseBindings.Cancel(); rebindMessage = null; }
             CloseHouseActivities(!render);
             if (focusedNpc != null) focusedNpc.GetComponent<CharacterPresentation>()?.SetTalking(false);
             // What the player came into a conversation for goes with the conversation; a houseguest's
@@ -1723,6 +1731,7 @@ namespace Gamesim.Episode
 
         private void OnDestroy()
         {
+            HouseBindings.Cancel();
             CastRail.CompetitionField = null;
             CastRail.PlayerProgress = null;
             EndDiaryVisit(true);

@@ -340,25 +340,29 @@ namespace Gamesim.Tests.EditMode
         /// player's relationship rows (to and from them) as they were, and leaves a valid season; and the season played
         /// through the world validates after every Advance.
         ///
-        /// <para>The player's relationship arcs: the brief expected them untouched too, and they are not. The engine's
-        /// own completion of an NPC conversation (EpisodeNpcSocial's TickNpcSocial) moves the pair through ChangeWithRoll,
-        /// which writes an arc for each houseguest of the pair - as the director's world does in a played season. The
-        /// driver adds nothing of its own (it only calls PrepareNpcOperation); this test pins where it happens - only on a
-        /// Tick that completed a conversation, only the arcs of that conversation's pair or of the houseguest the pair
-        /// gossiped about - and the finding is the lead's, with the engine's NPC world.</para>
+        /// <para>And the player's relationship arcs, every one, on every operation. Before D2's rules the engine's own
+        /// completion of an NPC conversation (EpisodeNpcSocial's TickNpcSocial) moved the pair through ChangeWithRoll, which
+        /// wrote an arc for each houseguest of the pair - the player's arcs, which feed how the house votes on the player
+        /// (the balance review's finding 3; this test pinned where it happened). Under them, as every season the director
+        /// starts plays, a completed conversation moves the pair through the ledger and writes no arc
+        /// (EpisodeNpcSocialTests); here the season the world drove shows it, conversations recorded and no arc moved.
+        /// Those records take the season's sequence ids, and nothing else the world does takes one: every operation moves
+        /// <c>nextSequence</c> by exactly EpisodeEngine.HouseTalkRecords, which the autonomy QA allows.</para>
         /// </summary>
         [Test]
         public void EveryNpcOperationLeavesTheSeasonsStreamAndThePlayersRowsAloneAndTheSeasonValid()
         {
-            int ops = 0, moved = 0, arcsMoved = 0, phaseCount = 0;
+            int ops = 0, moved = 0, recorded = 0, phaseCount = 0;
             string lastPhase = null;
             var ticksByPhase = new SortedDictionary<string, int>(StringComparer.Ordinal);
             string Rows(EpisodeState s) => Newtonsoft.Json.JsonConvert.SerializeObject(s.relationships.Where(r => r.fromId == s.playerId || r.toId == s.playerId)
                 .OrderBy(r => r.fromId, StringComparer.Ordinal).ThenBy(r => r.toId, StringComparer.Ordinal));
-            string Arc(EpisodeState s, string id) => Newtonsoft.Json.JsonConvert.SerializeObject(s.relationshipArcs.FirstOrDefault(a => a.npcId == id));
+            string Arcs(EpisodeState s) => Newtonsoft.Json.JsonConvert.SerializeObject(s.relationshipArcs);
+            int Talks(EpisodeState s) => s.relationships.Sum(r => r.events.Count(e => e.type == EpisodeEngine.NpcConversationEvent));
             var run = WatchedSeason((before, after, kind) =>
             {
                 ops++;
+                Assert.That(EpisodeEngine.AllWeekOn(before), Is.True, kind + ": the world runs under D2's rules.");
                 if (kind == NpcOperationKind.Tick)
                 {
                     // One entry a phase as it is played: week one holds two free-time phases, the move-in night and the
@@ -372,20 +376,15 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(Rows(after), Is.EqualTo(Rows(before)), kind + ": the player's relationship rows.");
                 Assert.That(EpisodeValidation.TryValidate(after, out string invalid), Is.True, kind + ": " + invalid);
                 if (after.npcSocial.randomState != before.npcSocial.randomState) moved++;
-                var changedArcs = after.contestants.Select(c => c.id).Concat(before.contestants.Select(c => c.id)).Distinct().Where(id => Arc(after, id) != Arc(before, id)).ToList();
-                if (changedArcs.Count == 0) return;
-                arcsMoved++;
-                var completed = before.npcSocial.pending.Where(p => after.npcSocial.pending.All(q => q.sequence != p.sequence)).ToList();
-                Assert.That(kind, Is.EqualTo(NpcOperationKind.Tick), "Only a completion moves an arc.");
-                Assert.That(completed, Is.Not.Empty, "Only a Tick that completed a conversation moves an arc.");
-                var pairs = completed.SelectMany(p => new[] { p.firstId, p.secondId }).ToList();
-                // The gossip target's arc moves by the gossip: anybody else's would be a new finding.
-                var others = changedArcs.Where(id => !pairs.Contains(id)).ToList();
-                foreach (string id in others)
-                    Assert.That(pairs.Any(p => after.Score(p, id) != before.Score(p, id)), Is.True, id + "'s arc moved with nothing said about them.");
+                Assert.That(Arcs(after), Is.EqualTo(Arcs(before)), kind + ": the player's arcs (the balance review's finding 3).");
+                // The season's sequence ids: only the house's talk records take one (what the autonomy QA allows).
+                Assert.That(after.nextSequence, Is.EqualTo(before.nextSequence + EpisodeEngine.HouseTalkRecords(after, before.nextSequence)),
+                    kind + ": the season's sequence ids, the house's talk records alone.");
+                recorded += Math.Max(0, Talks(after) - Talks(before));
             });
-            TestContext.WriteLine("operations " + ops + ", conversations started " + run.npcStarts + ", NPC draws on " + moved + " operations, arcs moved on " + arcsMoved
-                + "; ticks by phase " + string.Join(", ", ticksByPhase.Select(p => p.Key + " " + p.Value)));
+            TestContext.WriteLine("operations " + ops + ", conversations started " + run.npcStarts + ", NPC draws on " + moved + " operations, ledger records of a conversation "
+                + recorded + "; ticks by phase " + string.Join(", ", ticksByPhase.Select(p => p.Key + " " + p.Value)));
+            Assert.That(recorded, Is.GreaterThan(5), "Completed conversations went through the ledger.");
             // Decision 3: half the week's ticks in the social week and half in the campaign, every one spent - in slices
             // before the decisions and the rest before the Advance that closes the phase.
             Assert.That(ticksByPhase.Values.Distinct(), Is.EqualTo(new[] { HumanBudget / 2 }), "Each phase the world ran spent its half of the week.");
@@ -480,8 +479,10 @@ namespace Gamesim.Tests.EditMode
         /// operations, the npcWorld and pairs fields) and none of its behaviour.
         /// </summary>
         // f3b663c383491ce1 before and after the driver (2989e94f, 6a29f08d); re-recorded when D3's counter reach was
-        // re-amended to twenty at ten (the war rooms the policies play now settle differently).
-        internal const string BudgetNoughtRows = "bbae7f5d572fdb95";
+        // re-amended to twenty at ten (the war rooms the policies play now settle differently); bbae7f5d572fdb95 until D2's
+        // all-week rules went into ApplyFresh, re-recorded with them on (budget nought plays no NPC world, so the arcs fix
+        // in EpisodeNpcSocial does not reach these rows).
+        internal const string BudgetNoughtRows = "fa8d4d420fad8953";
 
         [Test, Explicit("B5b: budget nought plays, byte for byte, the seasons it played before the NPC world's driver (about 5 min). Run by name.")]
         public void BudgetNoughtPlaysTheSeasonsItPlayedBeforeTheDriver()

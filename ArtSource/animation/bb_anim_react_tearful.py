@@ -34,7 +34,10 @@ bow = merge({"Neck": {"flex": 8}, "Head": {"flex": 10}, "Spine1": {"flex": 3}, "
 
 take.key(0, base)
 take.leave_base(0, 12, bow)
-bowed = rig.hang_with(bow)
+# The hips ease back 6 mm through the bow: bowed with a hand at the eyes, the body's centre of
+# mass went 3.1 cm forward of its root (the EditMode test allows 3), and a body bowing over
+# counterbalances.
+bowed = rig.shift_hips(rig.hang_with(bow), forward=-0.006)
 take.key(12, bowed)
 
 

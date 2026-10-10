@@ -12,8 +12,8 @@ walk as soon as either body is sent somewhere. From the art brief's R2:
 - f21-f84, held: a sway (Spine side +2 at f30, -2 at f48, +2 at f66, 0 at f84), two pats (the
   right hand flex +25 and back at f50-f54 and f62-f66), breathing (4.0 s, depth 1.0).
 - f96, release: the f9 arms, the head straight, Spine2 +2. f108: the base.
-- The interlock, checked here on two copies of the take D_STAR apart, the second turned to face
-  the first, at f40: the left palm at least 0.15 m above the right; the heads at least 0.20 m
+- The interlock, checked here on two copies of the take D_STAR apart, each stepped SIDE_STEP to
+  its own right, the second turned to face the first, at f40: the left palm at least 0.15 m above the right; the heads at least 0.20 m
   apart sideways, on opposite sides; no hand within 0.05 m of a partner's hand; the Spine2
   joints at least 0.15 m apart; no hand point inside the partner's torso capsule.
   The heads need the body to lean into the hug for that: the brief's Head side +10 alone puts
@@ -30,11 +30,26 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 import bb_anim  # noqa: E402
 from bb_anim import F, L, U, both, merge  # noqa: E402
 
-D_STAR = 0.46
-LEAN = {"Spine": {"side": 3}, "Spine1": {"side": 3}, "Spine2": {"side": 3}, "Neck": {"side": 6}}
+# The pair's distance, root to root (EmbracePair.PairDistance at runtime). The brief's 0.46 left
+# the back targets at arm's length unless the bodies leaned in far enough to carry their centre of
+# mass 5 cm off the root; at 0.40 the at-ease stances' toes are still 0.16 m apart.
+D_STAR = 0.40
+# The body leans to its right so the two heads pass each other: 3/3/3 and the neck 6 put the
+# Mixamo heads 0.24 m apart sideways, and on two UMA bodies only 0.094 (their muscle ranges are
+# narrower), with the heads touching in the capture; so more.
+LEAN = {"Spine": {"side": 4}, "Spine1": {"side": 4}, "Spine2": {"side": 4}, "Neck": {"side": 10}}
 # At d* the brief's Spine2 +4 leaves the chests 0.2 m apart and the arms straight at full reach
 # (the low elbow bent 2 degrees): an A-frame hug. The upper bodies lean in to meet.
-INTO = {"Spine": {"flex": 4}, "Spine1": {"flex": 4}, "Spine2": {"flex": 4}}
+INTO = {"Spine": {"flex": 3}, "Spine1": {"flex": 3}, "Spine2": {"flex": 3}}
+# And the hips counterbalance both leans, as a body does: leaning in and over carried the centre
+# of mass 5.4 cm forward of the root in Unity (the EditMode test allows 3 cm either way), and
+# 3.4 cm with the hips 1.5 cm back.
+COUNTER_BACK, COUNTER_LEFT = 0.025, 0.015
+# Each body also stands this far to its own right of the line between the two roots
+# (EmbracePair.SideStep at runtime), so the heads pass each other: the lean alone, retargeted onto
+# two UMA bodies, put their head joints only 0.092 m apart across the pair's line. Off the take, so
+# the take's own centre of mass stays over its root.
+SIDE_STEP = 0.035
 # The high hand's height above the partner's Spine2 joint (the brief's 0.12).
 HIGH_UP = 0.17
 
@@ -48,8 +63,8 @@ open_upper = {"Spine2": {"flex": 4}, "Head": {"flex": 3}}
 # other's right are on the same side at the same height, and they pass through each other on the
 # way in and out (the pair check measured the forearms 0.07 m inside each other at f94). So the
 # arms open as they will wrap: the left higher and both wider, the high arm passing over the
-# partner's low one.
-open_arms = merge({"LeftArm": {"flex": 75, "abd": 40, "rot": 10}, "RightArm": {"flex": 45, "abd": 40, "rot": 10}},
+# partner's low one, which opens low (flex 30) because the side steps bring it nearer.
+open_arms = merge({"LeftArm": {"flex": 70, "abd": 60, "rot": 10}, "RightArm": {"flex": 30, "abd": 60, "rot": 10}},
                   both("ForeArm", {"bend": 30}), {"LeftFingers": (10, 10, 10), "RightFingers": (10, 10, 10)})
 
 take.key(0, base)
@@ -60,12 +75,14 @@ wrap_upper = merge({"Spine2": {"flex": 4}, "Neck": {"yaw": 15}, "Head": {"yaw": 
                     "LeftShoulder": {"raise": 8, "fwd": 10}, "RightShoulder": {"fwd": 10}}, LEAN, INTO)
 wrap = rig.hang_with(wrap_upper, merge(open_arms, {"LeftHand": {"flex": 10}, "RightHand": {"flex": 10},
                                                    "LeftFingers": (20, 20, 20), "RightFingers": (15, 15, 15)}))
+wrap = rig.shift_hips(wrap, forward=-COUNTER_BACK, left=COUNTER_LEFT)
 lm = rig.landmarks(wrap)
 
 
 def partner_point(p):
-    """A point of this pose as the partner holds it: turned half round U, D_STAR ahead."""
-    return Vector((-p.x, p.y, -p.z)) + F * m(D_STAR)
+    """A point of this pose as the partner holds it: turned half round U, D_STAR ahead, and two
+    side steps to this body's left (each body steps to its own right)."""
+    return Vector((-p.x, p.y, -p.z)) + F * m(D_STAR) + L * m(2 * SIDE_STEP)
 
 
 # The brief's targets, measured from the partner's own spine as it leans in: 10 and 12 cm behind
@@ -80,8 +97,17 @@ print("SANITY f21 left (flex, abd, bend)", rig.arm_angles(wrap, "Left"), "right"
 take.key(21, wrap)
 take.key(84, wrap)
 take.hold(21, 84)
-take.key(96, rig.hang_with({"Spine2": {"flex": 2}}, open_arms))
-take.return_to_base(96, 108)
+# The release opens the arms wider and less far forward than they opened on the way in: the side
+# steps put one body's right forearm and the other's left on the same side, and opened forward they
+# crossed on the way down.
+release_arms = merge({"LeftArm": {"flex": 45, "abd": 70, "rot": 10}, "RightArm": {"flex": 15, "abd": 70, "rot": 10}},
+                     both("ForeArm", {"bend": 30}), {"LeftFingers": (10, 10, 10), "RightFingers": (10, 10, 10)})
+take.key(96, rig.hang_with({"Spine2": {"flex": 2}}, release_arms))
+# Home without dropping the open arms to the sides first, as the other takes do: this close, two
+# partners' forearms cross on the way down. Straight out to the side, then round to the clasp.
+take.via(101, rig.aside())
+take.via(104, rig.release())
+take.key(108, base)
 
 take.curve("Spine", "side", [(21, 0.0), (30, 2.0), (48, -2.0), (66, 2.0), (84, 0.0)])
 pats = [bb_anim.bump(50, 52, 54, 15.0), bb_anim.bump(62, 64, 66, 15.0)]
@@ -95,13 +121,11 @@ act = take.bake()
 
 def interlock(frame):
     """The two-body checks at a frame: the partner is this pose turned half round U and set
-    D_STAR ahead along F."""
+    D_STAR ahead along F and two side steps along L."""
     pose = rig.sample(act, frame)
     mats = rig.fk(pose)
     ahead = F * m(D_STAR)
-
-    def partner(p):
-        return Vector((-p.x, p.y, -p.z)) + ahead
+    partner = partner_point
 
     u = rig.unit
     lmA = rig.landmarks(pose)

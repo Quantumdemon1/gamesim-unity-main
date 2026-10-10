@@ -405,6 +405,16 @@ class Rig:
         out = self.hang(self.turn(self.base(), upper)) if upper else self.hang()
         return self.turn(out, arms) if arms else out
 
+    def shift_hips(self, pose, forward=0.0, left=0.0):
+        """The hips (and the body with them) moved along the floor by metres: a counterbalance, so a
+        bow or a reach does not carry the body's centre of mass away from its root."""
+        out = copy_pose(pose)
+        hips = full("Hips")
+        loc, q = out[hips]
+        delta = F * self.m(forward) + L * self.m(left)
+        out[hips] = (loc + self.rel[hips].to_3x3().inverted() @ delta, q)
+        return out
+
     def curl(self, pose, bone, degrees, ax=None):
         """Sets a finger segment's curl, absolute from straight."""
         ax = ax or self.axes()
@@ -1046,14 +1056,20 @@ def finish(rig, act, take, default_name):
         raise failure
 
 
+def _script_args():
+    return sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+
+
 def output_path(default_name):
-    if "--" in sys.argv and sys.argv.index("--") + 1 < len(sys.argv):
-        return sys.argv[sys.argv.index("--") + 1]
+    """The first argument after '--' unless it is a flag, or Animation/Humanoid/<default_name>."""
+    args = _script_args()
+    if args and not args[0].startswith("--"):
+        return args[0]
     return os.path.join(HUMANOID, default_name)
 
 
 def extra_args():
-    """Arguments after the output path: --check-only skips the export."""
-    if "--" not in sys.argv:
-        return []
-    return sys.argv[sys.argv.index("--") + 2:]
+    """The flags, after the output path or in its place: --check-only skips the export, --draft
+    exports a failing take anyway."""
+    args = _script_args()
+    return args[1:] if args and not args[0].startswith("--") else args

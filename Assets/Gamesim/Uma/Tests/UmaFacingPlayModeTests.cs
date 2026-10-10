@@ -61,6 +61,13 @@ namespace Gamesim.Uma.Tests
             ("ReactNominated", 0f, false, false, false, false, false, true, null, false, 0),
             ("ReactSaved", 0f, false, false, false, false, false, true, null, false, 0),
             ("ReactEvicted", 0f, false, false, false, false, false, true, null, false, 0),
+            // The story's five, authored in Blender (ArtSource/animation): measured over their
+            // first 0.2-0.7 s, where the storm-off turns away and the fury turns on someone.
+            ("ReactShocked", 0f, false, false, false, false, false, true, null, false, 0),
+            ("ReactTearful", 0f, false, false, false, false, false, true, null, false, 0),
+            ("ReactEmbrace", 0f, false, false, false, false, false, true, null, false, 0),
+            ("ReactFurious", 0f, false, false, false, false, false, true, null, false, 0),
+            ("ReactStormOff", 0f, false, false, false, false, false, true, null, false, 0),
             ("Cheer", 0f, false, false, false, false, false, true, null, false, 0),
             ("Shrug", 0f, false, false, false, false, false, true, null, false, 0),
             ("Celebrate", 0f, false, false, false, false, false, true, null, false, 0),

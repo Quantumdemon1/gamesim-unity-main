@@ -127,6 +127,25 @@ namespace Gamesim.Presentation
         /// <summary>The last beat this body was asked to act out, whether or not it had a clip for it.</summary>
         public Reaction? LastReaction { get; private set; }
 
+        /// <summary>
+        /// The tag every reaction state carries in the shipped controller
+        /// (<c>HumanoidClipWiring</c> sets it), which is how a body knows it is acting a beat out
+        /// whichever beat it is.
+        /// </summary>
+        public const string ReactionStateTag = "Reaction";
+        /// <summary>
+        /// How long a beat's trigger may wait to be taken before it is dropped. A trigger sent while
+        /// the body cooks, sleeps or dances waits behind the activity's guard on every reaction edge,
+        /// and used to fire when the activity ended, out of its moment.
+        /// </summary>
+        public const float StaleReactionSeconds = .5f;
+        /// <summary>How long a body that began a beat standing still must keep moving before the beat gives way to the walk.</summary>
+        public const float GiveWaySeconds = .15f;
+        private static readonly int IdleStateHash = Animator.StringToHash("Idle"), WalkStateHash = Animator.StringToHash("Walk");
+        private int pendingReaction = -1;
+        private float pendingAge, giveWayHeld;
+        private bool reactionFromStill;
+
         // V6 (VISUAL-TARGET.md): a head that turns to look. The crowd at a ceremony turns to the
         // nominee, the evicted, the winner; a conversation partner is already faced by the whole
         // body, so the head adds nothing there. Applied as a world-space turn about the vertical and
@@ -255,6 +274,11 @@ namespace Gamesim.Presentation
         /// and never a command.
         /// </summary>
         public bool IsBodyAssembling => awaitingBody;
+        /// <summary>
+        /// Whether this is the primitive rig: no provider's body, so no animator and no clip - a beat
+        /// asked of it is only recorded (<see cref="LastReaction"/>), and needs no stand-in.
+        /// </summary>
+        public bool IsPrimitiveBody => built && !providedBody.Exists;
         private static int deferredCloneBuilds;
 
         /// <summary>
@@ -630,7 +654,77 @@ namespace Gamesim.Presentation
                 { animator.SetTrigger(SeatedVictoryParam); seatedGesturePending = true; }
                 return;
             }
-            if ((reactionParams & (1 << (int)kind)) != 0) animator.SetTrigger(ReactionParams[(int)kind]);
+            if ((reactionParams & (1 << (int)kind)) == 0) return;
+            animator.SetTrigger(ReactionParams[(int)kind]);
+            // Watched until the controller takes it (TickReaction): dropped if it waits too long, and
+            // let go to the walk if a body that began it standing still is sent somewhere.
+            pendingReaction = (int)kind;
+            pendingAge = 0f;
+            reactionFromStill = movementBlend < .1f;
+            giveWayHeld = 0f;
+        }
+
+        /// <summary>
+        /// Whether the body is acting a beat out: the controller's current state, or the one it is
+        /// crossing into, carries <see cref="ReactionStateTag"/>.
+        /// </summary>
+        public bool IsReacting
+        {
+            get
+            {
+                if (animator == null || !animator.isActiveAndEnabled || !animator.isInitialized
+                    || animator.runtimeAnimatorController == null) return false;
+                if (animator.GetCurrentAnimatorStateInfo(0).IsTag(ReactionStateTag)) return true;
+                return animator.IsInTransition(0) && animator.GetNextAnimatorStateInfo(0).IsTag(ReactionStateTag);
+            }
+        }
+
+        /// <summary>
+        /// Stops whatever beat the body is acting or waiting to act: every reaction trigger the
+        /// controller declares is reset, and a beat under way cross-fades to idle in 0.2 s.
+        /// </summary>
+        public void CancelReaction()
+        {
+            pendingReaction = -1;
+            giveWayHeld = 0f;
+            reactionFromStill = false;
+            if (animator == null || !animator.isInitialized) return;
+            RefreshAnimatorParameters();
+            for (int i = 0; i < ReactionParams.Length; i++)
+                if ((reactionParams & (1 << i)) != 0) animator.ResetTrigger(ReactionParams[i]);
+            if (IsReacting && animator.HasState(0, IdleStateHash)) animator.CrossFadeInFixedTime(IdleStateHash, .2f, 0);
+        }
+
+        /// <summary>
+        /// The two guards on a beat, run each frame the animator is driven. A trigger the
+        /// controller has not taken within <see cref="StaleReactionSeconds"/>, or that is still
+        /// waiting when the body sits or starts an activity, is reset. And a beat begun by a body
+        /// standing still gives way to the walk once the body has been moving for
+        /// <see cref="GiveWaySeconds"/>; a beat fired on a body still settling plays on, because
+        /// the ceremonies fire at commits that can land on a body easing to a halt.
+        ///
+        /// <para>Both count the frame's delta - the clock the animator and the movement blend run
+        /// on - so a frame the animator did not advance never ages a beat.</para>
+        /// </summary>
+        private void TickReaction()
+        {
+            if (pendingReaction >= 0)
+            {
+                int trigger = ReactionParams[pendingReaction];
+                if (!animator.GetBool(trigger)) pendingReaction = -1;
+                else if ((pendingAge += Time.deltaTime) > StaleReactionSeconds || seated || activity != BodyActivity.None)
+                {
+                    animator.ResetTrigger(trigger);
+                    pendingReaction = -1;
+                }
+            }
+            if (!reactionFromStill) return;
+            if (!IsReacting) { if (pendingReaction < 0) reactionFromStill = false; return; }
+            giveWayHeld = movementBlend > .3f ? giveWayHeld + Time.deltaTime : 0f;
+            if (giveWayHeld < GiveWaySeconds || !animator.HasState(0, WalkStateHash)) return;
+            animator.CrossFadeInFixedTime(WalkStateHash, .15f, 0);
+            reactionFromStill = false;
+            giveWayHeld = 0f;
         }
 
         /// <summary>Whether a seated body can answer the reaction from its seat.</summary>
@@ -778,6 +872,9 @@ namespace Gamesim.Presentation
                 hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
                 hasRunningParam = hasPaceParam = false;
                 hasDanceStyleParam = hasDanceOffsetParam = hasPoseParam = hasSeatedClapParam = hasSeatedVictoryParam = false;
+                // A body whose controller went keeps no beat either: Supports(Reaction) read the last
+                // controller's triggers here and told the director a body with none could act.
+                reactionParams = 0;
                 activityParams = 0;
                 gestureParams = 0;
                 return;
@@ -1053,6 +1150,7 @@ namespace Gamesim.Presentation
                 if (hasSeatedVictoryParam) animator.ResetTrigger(SeatedVictoryParam);
                 seatedGesturePending = false;
             }
+            TickReaction();
 
             // A provided body streams its rig in over a few frames. Retry on a slow cadence so the
             // hierarchy walk behind ResolveModelHead cannot become a per-frame cost on a body that
@@ -1243,6 +1341,7 @@ namespace Gamesim.Presentation
             talking = seated = arguing = false; facingYaw = float.NaN; lookTarget = null; lookBlend = 0f;
             activity = BodyActivity.None; activityMoving = false; activityParams = 0;
             movementBlend = walkPhase = 0f;
+            pendingReaction = -1; reactionFromStill = false; giveWayHeld = 0f;
             CharacterId = null;
         }
     }

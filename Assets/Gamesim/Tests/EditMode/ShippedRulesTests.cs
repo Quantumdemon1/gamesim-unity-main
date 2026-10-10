@@ -49,7 +49,8 @@ namespace Gamesim.Tests.EditMode
             { "agencyRulesStartWeek", 1 },
             { "finaleRulesStartWeek", 1 },
             { "commitmentRulesStartWeek", 1 },
-            { "unifiedCommitmentRulesVersion", 1 },
+            // Mode 2, the unified vote rules, since vote family V6 (it was mode 1).
+            { "unifiedCommitmentRulesVersion", 2 },
             { "unifiedHearingRulesVersion", 1 },
             { "blocRulesStartWeek", 1 },
             { "socialBudgetRulesStartWeek", 1 },
@@ -60,8 +61,7 @@ namespace Gamesim.Tests.EditMode
             { "strategyRulesStartWeek", 1 },
             { "allianceLeakRulesStartWeek", 1 },
             { "pactPlanRulesStartWeek", 1 },
-            // Wave D's all-week beats are storage nobody switches on yet.
-            { "allWeekRulesStartWeek", 0 },
+            { "allWeekRulesStartWeek", 1 },
             { "npcSocial.rulesStartWeek", 1 },
             { "story.rulesStartWeek", 1 },
             { "story.rulesVersion", 9 },
@@ -78,9 +78,10 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(field.Value, Is.EqualTo(Shipped[field.Key]), builder + " " + size + ": " + field.Key);
             Assert.That(s.competitionRulesVersion, Is.EqualTo(CompetitionRules.Current));
             Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Current));
-            Assert.That(s.unifiedCommitmentRulesVersion, Is.EqualTo(UnifiedCommitments.ProspectiveVersion));
+            Assert.That(s.unifiedCommitmentRulesVersion, Is.EqualTo(UnifiedVoteFamilyValidation.Version), "The unified vote rules (V6).");
             Assert.That(s.unifiedHearingRulesVersion, Is.EqualTo(UnifiedCommitmentHearings.ProspectiveVersion));
             Assert.That(EpisodeValidation.TryValidate(s, out var error), Is.True, error);
+            Assert.DoesNotThrow(() => new EpisodeEngine(s), "The public engine takes it.");
         }
 
         /// <summary>
@@ -88,7 +89,8 @@ namespace Gamesim.Tests.EditMode
         /// setup gave at ca7f4da6 (EpisodeDirector.Season.cs StartSeason, copied below line for line), every
         /// public field of it, first impressions and lore included. A rule the shipped game gains later goes
         /// into ApplyFresh and is added to this copy in the same commit, so the two stay one list: D3's war
-        /// rooms are the first, added as the two lanes landed together.
+        /// rooms are the first, added as the two lanes landed together, D2's all-week beats the next, and the
+        /// unified vote rules (vote family V6: mode 2 in place of mode 1) the third.
         /// </summary>
         [TestCaseSource(nameof(Builders))]
         public void ApplyFreshGivesTheSeasonTheDirectorsInlineSetupGave(string builder, int size, CastTemplates.Roster roster)
@@ -119,7 +121,8 @@ namespace Gamesim.Tests.EditMode
             EpisodeEngine.EnableCommitments(fresh);
             EpisodeEngine.EnableAllianceLeaks(fresh);
             EpisodeEngine.EnablePactPlans(fresh);
-            fresh.unifiedCommitmentRulesVersion = UnifiedCommitments.ProspectiveVersion;
+            EpisodeEngine.EnableAllWeek(fresh);
+            fresh.unifiedCommitmentRulesVersion = UnifiedVoteFamilyValidation.Version;
             fresh.unifiedHearingRulesVersion = UnifiedCommitmentHearings.ProspectiveVersion;
         }
 
@@ -135,6 +138,19 @@ namespace Gamesim.Tests.EditMode
             Assert.That(s.events.Count, Is.EqualTo(events), "Nothing logged.");
             Assert.That(s.revision, Is.Zero);
             Assert.That(s.acceptedCommandIds, Is.Empty);
+        }
+
+        /// <summary>
+        /// The schema-29 tripwire (vote family V6's review). Since V6 every fresh season plays mode 2, so players'
+        /// schema-28 saves hold the whole mode-2 Vote core, which no frozen contract holds yet: the save contract
+        /// freezes at 28 (the lead's decision D2). Whoever bumps the live schema must freeze that core into
+        /// FrozenEpisodeV28 and load a mode-2 schema-28 save through it, then move this pin with them.
+        /// </summary>
+        [Test]
+        public void TheLiveSchemaStaysAt28UntilFrozenEpisodeV28FreezesTheModeTwoCore()
+        {
+            Assert.That(new EpisodeState().schemaVersion, Is.EqualTo(28),
+                "Bumping past 28: FrozenEpisodeV28 must freeze the whole mode-2 core (vote family V6, D2) and load a mode-2 schema-28 save.");
         }
 
         /// <summary>Fresh seasons only: the economy refuses a season that has been played, so ApplyFresh does too.</summary>

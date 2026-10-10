@@ -86,11 +86,11 @@ namespace Gamesim.Simulation
         public static bool RulesOn(EpisodeState state) => state != null && state.unifiedCommitmentRulesVersion == ProspectiveVersion;
 
         /// <summary>
-        /// Whether canonical Safety rows are the season's one Safety authority: the public mode 1, and the
-        /// prospective mode 2 (vote family V3b), which keeps the Vote family's canonical rows beside them.
-        /// The Safety writers, the nomination, spared and expiry gateways and the hearing lineage they
-        /// install select it; a reader not yet moved stays on <see cref="RulesOn"/> (vote family V5). Mode 2
-        /// is still refused publicly, so no recorded season reaches it.
+        /// Whether canonical Safety rows are the season's one Safety authority: mode 1, which seasons recorded
+        /// before vote family V6 keep, and mode 2 (vote family V3b), which keeps the Vote family's canonical rows
+        /// beside them and every fresh season plays since V6. The Safety writers, the nomination, spared and
+        /// expiry gateways and the hearing lineage they install select it, and so does every reader (vote
+        /// family V5); <see cref="RulesOn"/> is mode 1 alone.
         /// </summary>
         public static bool SafetyAuthorityOn(EpisodeState state) => state != null
             && (state.unifiedCommitmentRulesVersion == ProspectiveVersion
@@ -368,7 +368,7 @@ namespace Gamesim.Simulation
             row.makerId == actor && row.beneficiaryId == wronged || row.reciprocal && row.beneficiaryId == actor && row.makerId == wronged;
         private static List<UnifiedCommitmentState> CheckedRows(EpisodeState state)
         {
-            if (!ValidateSafetyAuthority(state, out string error)) throw new ArgumentException(error, nameof(state));
+            if (!ValidateSafetyAuthority(state, out string error)) throw CommitmentReferences.StorageRefusal(error, nameof(state));
             // Mode 2 keeps the Vote family's canonical rows beside Safety's: this policy reads only its own.
             return RulesOn(state) ? state.unifiedCommitments : state.unifiedCommitments.Where(row => row.kind == Safety).ToList();
         }

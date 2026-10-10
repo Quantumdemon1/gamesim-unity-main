@@ -47,7 +47,7 @@ namespace Gamesim.Simulation
                 case DealStatus.Fulfilled: return PromiseStatus.Fulfilled;
                 case DealStatus.Broken: return PromiseStatus.Broken;
                 case DealStatus.Expired: return PromiseStatus.Expired;
-                default: throw new ArgumentException("Only a validated promise status may be projected.");
+                default: throw CommitmentReferences.StorageRefusal("Only a validated promise status may be projected.");
             }
         }
     }

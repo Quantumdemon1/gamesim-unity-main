@@ -284,12 +284,17 @@ namespace Gamesim.Tests.EditMode
             Assert.That(imported.contestants[0].stats.social, Is.EqualTo(6));
             Assert.That(imported.contestants[0].hohWins, Is.EqualTo(1));
             Assert.That(imported.phase, Is.EqualTo(EpisodePhase.Social));
-            // Wave D's leak rules (D4) and war rooms (D3) from the week after the import, as the commitment
-            // rules; the all-week rules' wait for their own slices.
+            // Wave D's leak rules (D4), war rooms (D3) and the house's turns all week (D2) from the week after
+            // the import, as the commitment rules; the all-week rules beside the week rules they play in.
             Assert.That(imported.allianceLeakRulesStartWeek, Is.EqualTo(imported.week + 1));
             Assert.That(imported.pactPlanRulesStartWeek, Is.EqualTo(imported.week + 1));
             Assert.That(imported.commitmentRulesStartWeek, Is.EqualTo(imported.week + 1));
-            Assert.That(imported.allWeekRulesStartWeek, Is.Zero);
+            Assert.That(imported.allWeekRulesStartWeek, Is.EqualTo(imported.week + 1));
+            Assert.That(imported.weekRulesStartWeek, Is.EqualTo(imported.week + 1));
+            Assert.That(EpisodeEngine.AllWeekOn(imported), Is.False, "The import week plays the weekly pass.");
+            // Never the unified rules: the importer selects no canonical authority, though a fresh season is mode 2 (vote family V6).
+            Assert.That((imported.unifiedCommitmentRulesVersion, imported.unifiedHearingRulesVersion, imported.unifiedVoteReveals.Count),
+                Is.EqualTo((0, 0, 0)), "The import is mode 0.");
             var originals = Directory.GetFiles(archive);
             Assert.That(originals, Has.Length.EqualTo(1));
             Assert.That(File.ReadAllText(originals[0]), Is.EqualTo(json));

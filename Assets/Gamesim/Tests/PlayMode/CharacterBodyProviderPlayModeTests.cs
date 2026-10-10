@@ -199,6 +199,45 @@ namespace Gamesim.Tests.PlayMode
             }
         }
 
+        /// <summary>
+        /// A stall is not assembly time. With Run In Background off, a window out of focus stops the
+        /// player loop while the wall clock runs on; read on the wall clock, coming back gave every
+        /// houseguest still assembling the primitive rig at once. One frame held for 1.2 s, under a
+        /// 0.5 s bound, counts for at most a quarter second, so the body is still being waited for;
+        /// the bound still gives up on it once the frames the game runs add up.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AStalledFrame_DoesNotSpendABodysAssemblyBound()
+        {
+            provider = new RecordingProvider(); // deferred, never Ready, never a renderer
+            CharacterBodySource.Register(provider);
+            float previous = CharacterPresentation.AssemblyTimeoutSeconds;
+            CharacterPresentation.AssemblyTimeoutSeconds = 0.5f;
+            try
+            {
+                var presentation = CharacterPresentation.Attach(actor, Houseguest(), Color.green);
+                yield return null;
+                Assert.That(presentation.IsBodyAssembling, Is.True, "Assembling, while the provider's body is nothing yet.");
+
+                System.Threading.Thread.Sleep(1200);
+                yield return null;
+                yield return null;
+                Assert.That(presentation.IsBodyAssembling, Is.True,
+                    "A 1.2 s stall under a 0.5 s bound spends at most " + CharacterPresentation.AssemblyFrameAllowanceSeconds + " s of it.");
+                Assert.That(actor.GetComponentsInChildren<Transform>(true).Any(t => t.name == "Head pivot"), Is.False,
+                    "Nothing stands in yet.");
+
+                LogAssert.Expect(LogType.Warning, new Regex("body was still not drawable after 0\\.5 s"));
+                float deadline = Time.realtimeSinceStartup + 10f;
+                while (presentation.IsBodyAssembling && Time.realtimeSinceStartup < deadline) yield return null;
+                Assert.That(presentation.IsBodyAssembling, Is.False, "The bound still gives up once the game's own frames add up.");
+            }
+            finally
+            {
+                CharacterPresentation.AssemblyTimeoutSeconds = previous;
+            }
+        }
+
         private static ContestantState Houseguest() =>
             ContentCatalog.Create(1).contestants.First(contestant => !contestant.isPlayer);
 

@@ -94,7 +94,8 @@ namespace Gamesim.Episode
                 line.alignment = TextAlignmentOptions.MidlineLeft;
                 line.textWrappingMode = TextWrappingModes.NoWrap;
             }
-            var input = rect.gameObject.AddComponent<TMP_InputField>();
+            // A pad's d-pad passes over the box rather than stopping in it (EpisodeTextField, Risk R7).
+            var input = rect.gameObject.AddComponent<EpisodeTextField>();
             input.textViewport = area; input.textComponent = value; input.placeholder = hint;
             input.lineType = TMP_InputField.LineType.SingleLine; input.characterLimit = 40;
             input.onFocusSelectAll = false;

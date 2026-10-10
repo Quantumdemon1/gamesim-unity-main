@@ -29,8 +29,9 @@ namespace Gamesim.Tests.EditMode
             string before = Fingerprint(s);
             Assert.That(UnifiedVoteFamilyValidation.TryValidate(s, s.unifiedVoteReveals, out var error), Is.True, error);
             Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(s, out error), Is.True, error);
-            Assert.That(EpisodeValidation.TryValidate(s, out _), Is.False);
-            Assert.Throws<ArgumentException>(() => new EpisodeEngine(s));
+            // Flipped at vote family V6: public validation takes mode 2 to the same complete core (it refused it until V6).
+            Assert.That(EpisodeValidation.TryValidate(s, out error), Is.True, error);
+            Assert.DoesNotThrow(() => new EpisodeEngine(s));
             Assert.That(UnifiedCommitments.RulesOn(s), Is.False);
             Assert.That(UnifiedCommitmentHearings.RulesOn(s), Is.False);
             Assert.That(UnifiedCommitments.ValidateRecords(s, out _), Is.False);
@@ -213,7 +214,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(UnifiedCommitmentHistory.Breaches(s).All(incident => !incident.EvidenceIds.Contains(row.id)), Is.True);
             Assert.That(UnifiedCommitmentHistory.Fulfillments(s).All(incident => !incident.EvidenceIds.Contains(row.id)), Is.True);
             Assert.That(ProspectiveVoteFacade.CanonicalLeaf(s, new HouseFactState { refId = row.id }), Is.False);
-            Assert.That(CommitmentReferences.ReceiptWeek(s, row.id, row.createdWeek), Is.EqualTo(row.settledWeek));
+            // A Vote receipt keeps mode 1's legacy dating, the week it was made (vote family V5e); its decision has the reveal's.
+            Assert.That(CommitmentReferences.ReceiptWeek(s, row.id, row.createdWeek), Is.EqualTo(row.createdWeek));
             Assert.That(Fingerprint(s), Is.EqualTo(before));
             decision.Record.status = DealStatus.Expired; decision.Reveal.ballots.Clear();
             Assert.That(Fingerprint(s), Is.EqualTo(before));
@@ -315,7 +317,8 @@ namespace Gamesim.Tests.EditMode
             if (status == DealStatus.Broken) { price.brokenById = actor; price.settlementEffectKey = UnifiedVoteHistory.Key(price, selected.week); }
             Accepted(s);
             Assert.That(UnifiedVoteHistory.FindDecision(s, price.id).SettledWeek, Is.EqualTo(later.week));
-            Assert.That(CommitmentReferences.ReceiptWeek(s, price.id, price.createdWeek), Is.EqualTo(later.week));
+            // The receipt keeps mode 1's legacy dating (vote family V5e): the week the price was made, not its later decision's.
+            Assert.That(CommitmentReferences.ReceiptWeek(s, price.id, price.createdWeek), Is.EqualTo(first.week));
             // Both completed nominee frames/private ballots are ACTUAL public progression.
             // The changed historical Levers boundary and linked ask/price are detached local
             // compatibility controls, NOT actual ask commands, migration or historical saves.
@@ -516,7 +519,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Fingerprint(opportunity), Is.EqualTo(Fingerprint(actualAnsweredOpportunity)));
             Accepted(s);
             Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(s, out error), Is.True, error);
-            Assert.That(EpisodeValidation.TryValidate(s, out _), Is.False);
+            // Flipped at vote family V6: public validation takes mode 2 to the same complete core (it refused it until V6).
+            Assert.That(EpisodeValidation.TryValidate(s, out error), Is.True, error);
             Assert.That(UnifiedVoteHistory.FindDecision(s, pending.id), Is.Null, "A real answer is not an already-made archived ballot verdict.");
             Assert.That(CommitmentReferences.FindDeal(s, pending.id).week, Is.EqualTo(witness.Offer.week));
             Assert.That(CommitmentReferences.ReceiptWeek(s, pending.id, witness.Offer.week), Is.EqualTo(witness.Offer.week));

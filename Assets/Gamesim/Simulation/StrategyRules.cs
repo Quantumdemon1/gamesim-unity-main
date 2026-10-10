@@ -425,18 +425,23 @@ namespace Gamesim.Simulation
             double reluctance = s.Score(hohId, id);
             if (!Apply(s)) return reluctance;
             if (Allegiance.Holds(s, hohId, id)) reluctance += AllyShield;
-            foreach (var deal in s.deals.Where(d => (d.proposerId == hohId && d.recipientId == id) || (d.proposerId == id && d.recipientId == hohId)))
+            // Mode 2 (vote family V5b): mode 1's raw list, a broken vote deal held once per Rule2 incident (D1).
+            var raw = CommitmentReferences.RawDeals(s);
+            var incidents = UnifiedVoteHistory.Breaches(s);
+            foreach (var deal in raw.Where(d => (d.proposerId == hohId && d.recipientId == id) || (d.proposerId == id && d.recipientId == hohId)))
             {
                 if (deal.status == DealStatus.Active)
                 {
                     // New-rule safety has one canonical protection term below. Other families
                     // keep their existing weights; legacy seasons retain their original sum.
-                    if (!UnifiedCommitments.RulesOn(s) || deal.type != DealKind.SafetyAgreement)
+                    if (!UnifiedCommitments.SafetyAuthorityOn(s) || deal.type != DealKind.SafetyAgreement)
                         reluctance += DealWeight(deal.type);
                 }
-                else if (deal.status == DealStatus.Broken && Breaches.CountsAgainst(s, deal, id)) reluctance += BrokenDealWeight;
+                else if (deal.status == DealStatus.Broken && Breaches.CountsAgainst(s, deal, id)
+                    && (!UnifiedVoteHistory.ByIncident(s, deal) || incidents.Any(i => i.DealId == deal.id && i.ActorId == id && i.WrongedId == hohId)))
+                    reluctance += BrokenDealWeight;
             }
-            reluctance -= TargetPull * s.deals.Count(d => d.status == DealStatus.Active && d.type == DealKind.TargetAgreement
+            reluctance -= TargetPull * raw.Count(d => d.status == DealStatus.Active && d.type == DealKind.TargetAgreement
                 && d.targetId == id && (d.proposerId == hohId || d.recipientId == hohId));
             foreach (var plea in s.lobbies.Where(l => l.week == s.week && l.deciderId == hohId && l.subjectId == id))
             {
@@ -445,10 +450,10 @@ namespace Gamesim.Simulation
             }
             // Under the commitment rules (C7) a promise of safety the player called in holds its maker to
             // it: a safety deal's weight, times how hard it was held. Nothing in any other season.
-            reluctance += UnifiedCommitments.RulesOn(s)
+            reluctance += UnifiedCommitments.SafetyAuthorityOn(s)
                 ? UnifiedCommitments.StrongestProtection(s, hohId, id).Strength
                 : Negotiation.SafetyHeld(s, hohId, id);
-            if (UnifiedCommitments.RulesOn(s))
+            if (UnifiedCommitments.SafetyAuthorityOn(s))
                 reluctance += BrokenDealWeight * UnifiedCommitmentHistory.Breaches(s)
                     .Count(incident => incident.ActorId == id && incident.WrongedId == hohId);
             return reluctance;

@@ -96,6 +96,21 @@
     <Compile Include="$(EditMode)UnifiedSafetyModeTwoTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteSettlementTests.cs" />
     <Compile Include="$(EditMode)OrdinaryVoterRemovalTests.cs" />
+    <!-- Vote family V5: the readers moved to mode 2, each against mode 1 on the projected season (P2) and blind to hidden ballots (P3).
+         The whole-season sweeps run a sample always; the rest of their seeds are explicit and compiled out of Unity, run on demand. -->
+    <Compile Include="$(EditMode)ModeTwoReaderSweep.cs" />
+    <Compile Include="$(EditMode)CommitmentReaderViewTests.cs" />
+    <Compile Include="$(EditMode)CommitmentReaderScanTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoSeasonSweepTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoHouseReaderTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoReaderParityTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoThreatStoryTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoBargainReaderTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoFinaleReaderTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoPageReaderTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoVotePromiseFlipTests.cs" />
+    <!-- Vote family V6: a fresh season is mode 2, played through the public engine alone. -->
+    <Compile Include="$(EditMode)UnifiedVotePublicCommandTests.cs" />
     <Compile Include="$(EditMode)CommitmentReferencesTests.cs" />
     <Compile Include="$(EditMode)UnifiedCommitmentStoreTests.cs" />
     <Compile Include="$(EditMode)UnifiedSafetyCommandOwnerTests.cs" />
@@ -125,6 +140,8 @@
     <Compile Include="$(EditMode)EndgameCommitmentsTests.cs" />
     <!-- Explicit, and compiled out of Unity: the commitment rules' recorded-season evidence, run on demand. -->
     <Compile Include="$(EditMode)CommitmentRulesSeasonDigests.cs" />
+    <!-- Explicit, and compiled out of Unity: mode 1's recorded-season evidence over 36 seasons (vote family V5a, D6), run on demand. -->
+    <Compile Include="$(EditMode)ModeOneSeasonDigests.cs" />
     <!--
       Independent fixed JSON contracts ONLY: a source-bound test observer validates a separate
       public-field view, while legacy digest traces retain their getters and original bytes.
@@ -163,6 +180,10 @@
     <Compile Include="$(EditMode)PactPlanReaderTests.cs" />
     <!-- Explicit, and compiled out of Unity: D3's recorded-season evidence over the digests' 54 seasons, run on demand. -->
     <Compile Include="$(EditMode)PactPlanSeasonDigests.cs" />
+    <Compile Include="$(EditMode)AllWeekCadenceTests.cs" />
+    <Compile Include="$(EditMode)WitnessNpcActTests.cs" />
+    <!-- Explicit, and compiled out of Unity: D2's season evidence - the measure of the house's turns, then the all-week digests - run on demand. -->
+    <Compile Include="$(EditMode)AllWeekSeasonDigests.cs" />
     <Compile Include="$(EditMode)FinalBracketTests.cs" />
     <Compile Include="$(EditMode)JuryHouseReadTests.cs" />
     <Compile Include="$(EditMode)FinaleRulesTests.cs" />
@@ -247,6 +268,26 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/InputGlossary.cs" />
     <Compile Include="$(EditMode)InputGlossaryTests.cs" />
     <Compile Include="$(EditMode)InputRawReadScanTests.cs" />
+    <!-- The ceremony cards' press guard (A4f), the Back matrix's representative rows rest on it. -->
+    <Compile Include="$(EditMode)CeremonyCardInputScanTests.cs" />
+    <!--
+      Playtest-safe preferences (A13): an isolated root's own preferences file and the rule that
+      routes a session to it, PlayerPrefs or the defaults (BCL and Newtonsoft only, outside the frozen
+      contracts above), and the player log's settings lines.
+    -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/PreferenceFile.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/SettingsEvidence.cs" />
+    <Compile Include="$(EditMode)PreferenceFileTests.cs" />
+    <!-- Colour-blind safety (A9): the colour-vision arithmetic the HUD's tints are held to in the editor. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ColourVision.cs" />
+    <Compile Include="$(EditMode)ColourVisionMathTests.cs" />
+    <!-- Display options (A12): the resolution list, the modes, VSync beside the limit, the old records and the first launch's decision. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/DisplayChoices.cs" />
+    <Compile Include="$(EditMode)DisplayChoicesTests.cs" />
+    <!-- And the window written only by the window's own controls, the first launch and the verifier (A12, Risk R3). -->
+    <Compile Include="$(EditMode)WindowWriteScanTests.cs" />
+    <!-- The prepared block speech a pad gives without typing (A6): every approach's line is a valid speech carrying it. -->
+    <Compile Include="$(EditMode)PreparedSpeechTests.cs" />
     <!-- The standalone profile's performance verdict and arithmetic, and the verification-only stress house. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/VerificationPerformance.cs" />
     <Compile Include="$(EditMode)VerificationPerformanceTests.cs" />
@@ -254,6 +295,8 @@
     <!-- The balance plan: the shipped rules (B0) and the season autopsy (B1). -->
     <Compile Include="$(EditMode)ShippedRulesTests.cs" />
     <Compile Include="$(EditMode)SeasonAutopsyTests.cs" />
+    <!-- B5a: the NPC world's pairing, out of the director's route planner. -->
+    <Compile Include="$(EditMode)NpcPairingTests.cs" />
     <!--
       The balance lab (B2-B4), compiled out of Unity: the player's view, the policies, the performance
       model, the lab, its smoke tier (not Explicit) and its explicit report tiers. The ceremony timings
@@ -266,6 +309,13 @@
     <Compile Include="$(EditMode)BalanceLabPerformance.cs" />
     <Compile Include="$(EditMode)BalanceLabTests.cs" />
     <Compile Include="$(EditMode)BalanceLabReports.cs" />
+    <!-- B6b and T0: a long tier played in parts and merged; the diagnostics that decide each tuning question. -->
+    <Compile Include="$(EditMode)BalanceLabParts.cs" />
+    <!-- B5b: the synthetic NPC world the lab drives at a budget of ticks a week. -->
+    <Compile Include="$(EditMode)BalanceLabNpcWorld.cs" />
+    <!-- B6b: the headline's cells at budgets 0 and 300, pinned (explicit). -->
+    <Compile Include="$(EditMode)BalanceLabGoldens.cs" />
+    <Compile Include="$(EditMode)BalanceLabDiagnostics.cs" />
 
     <!--
       Several parity tests already carry an #else branch for running outside the editor: without

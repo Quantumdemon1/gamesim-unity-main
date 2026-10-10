@@ -29,10 +29,26 @@ namespace Gamesim.Simulation
         public const int WarRoomSize = 3;
 
         /// <summary>
-        /// How far a counter can reach a member: eight at a view of the player of fifty or more, scaled down
-        /// to nothing at zero; half as much again for the Loyal, nothing for the Sneaky; never past twelve.
+        /// How far a counter can reach a member: twenty at a view of the player of ten or more, scaled down
+        /// to nothing at zero; half as much again for the Loyal, nothing for the Sneaky; never past thirty.
+        /// So a counter can bring round a toss-up or a lean, never a decided vote but a Loyal member's.
+        ///
+        /// <para>Amended in place (BALANCE plan §4 Q1, the lead's decision 6): at eight, fifty and twelve the
+        /// counter reached only toss-ups, against a band of 0.35 to 0.50 for the mean come-round odds. The two
+        /// measures count different members. PactPlanSeasonDigests counts those a counter actually played could
+        /// reach: 0.17 before (1 of 13 came round), about 0.49 after (3 of 13). The lab's headline counts every
+        /// member a counter could have faced at every plan answered: 0.10 before (854 members), 0.36 after; at the
+        /// counters the lab actually played, the digests' population, it is 0.28 after, under the band. The lab's
+        /// members view the player less warmly and lean harder than the digests' constructed trio, so no reach
+        /// constants put both measures inside the band; which population the band means is the lead's call.</para>
+        ///
+        /// <para>No season outside the tests played the war rooms before main took D3 with the old reach
+        /// (3f23e76b, PR #24, 2026-10-09). The odds are reckoned when the player answers and never saved, so a save
+        /// loads either way; but a season started from main before this amendment landed would change its rules
+        /// partway. The amendment stands in place only if no such season was saved (the owner confirms); if one
+        /// was, these constants belong behind B9's tuning boundary instead.</para>
         /// </summary>
-        public const double ReachBase = 8, ReachFullView = 50, ReachLoyal = 1.5, ReachCap = 12;
+        public const double ReachBase = 20, ReachFullView = 10, ReachLoyal = 1.5, ReachCap = 30;
 
         /// <summary>How a plan is answered: the player goes with it, counters it, or lies low; or nobody answers by the campaign's close.</summary>
         public const string Agree = "agree", Counter = "counter", LieLow = "low", Lapse = "lapse";

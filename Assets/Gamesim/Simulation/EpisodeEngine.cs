@@ -30,17 +30,18 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// The internal exact-mode-2 engine seam (vote family V2). Public mode 2 stays refused: the public
-        /// constructor, load, migration and save validate publicly and never dispatch here. This engine
-        /// keeps every guard of the public path - command identity and duplicates, revision, phase, actor,
-        /// kind, text and performance - and the same Execute body, and selects the complete prospective
-        /// Vote core (<see cref="EpisodeValidation.TryValidateProspectiveUnifiedVote"/>) at its input and
-        /// for every candidate, which is a detached clone installed only once it passes. No callback, flag
-        /// or relabelling lets a caller skip that core. Tests reach it through their reflection facade.
+        /// The internal exact-mode-2 engine seam (vote family V2). Since V6 the public constructor accepts mode 2
+        /// too - public validation dispatches it to the same complete Vote core - so on a mode-2 season this
+        /// factory and the public constructor are the same engine; the seam differs only in refusing every other
+        /// mode at its input. It keeps every guard of the public path - command identity and duplicates, revision,
+        /// phase, actor, kind, text and performance - and the same Execute body, and selects the complete Vote core
+        /// (<see cref="EpisodeValidation.TryValidateProspectiveUnifiedVote"/>) at its input and for every candidate,
+        /// which is a detached clone installed only once it passes. No callback, flag or relabelling lets a caller
+        /// skip that core. Kept for the V1 to V5 tests, which reach it through their reflection facade.
         /// </summary>
         internal static EpisodeEngine ProspectiveVote(EpisodeState initial) => new EpisodeEngine(initial, true);
 
-        /// <summary>The engine's one validator: public, or under the seam the complete prospective Vote core.</summary>
+        /// <summary>The engine's one validator: public (which takes mode 2 to the complete Vote core since V6), or under the seam that core alone.</summary>
         private bool Valid(EpisodeState state, out string error) => prospectiveVote
             ? EpisodeValidation.TryValidateProspectiveUnifiedVote(state, out error)
             : EpisodeValidation.TryValidate(state, out error);
@@ -63,6 +64,15 @@ namespace Gamesim.Simulation
             try
             {
                 Execute(next, command);
+                // Under the all-week rules (D2, WAVE-D-NPC-PACTS-PLAN §1) the house catches up after the
+                // command's own effects, inside the same candidate, so a pact a beat forms is reconciled and
+                // validated with it. Player-free where the command put a counter on the table (decision 6).
+                int beatsFrom = 0;
+                if (AllWeekOn(next))
+                {
+                    beatsFrom = next.nextSequence;
+                    CatchUp(next, CounterOnTheTable(next, current.nextSequence));
+                }
                 CancelInvalidNpcConversations(next);
                 ReconcileAllianceRows(next);
                 next.revision = checked(current.revision + 1);
@@ -70,9 +80,16 @@ namespace Gamesim.Simulation
                 if (next.acceptedCommandIds.Count > 256) next.acceptedCommandIds.RemoveAt(0);
                 if (!Valid(next, out var error)) throw new RuleException("Candidate rejected: " + error);
                 current = next;
-                return new CommandResult { accepted = true, reason = "Committed", state = Snapshot };
+                return new CommandResult { accepted = true, reason = "Committed", state = Snapshot, beatsFromSequence = beatsFrom };
             }
             catch (RuleException error) { return Rejected(error.Message); }
+            // Mode 2 only (vote family V5a, the lead's decision D3): a commitment reader's refusal of the state it was given -
+            // its storage check, a malformed row (CommitmentReferences.StorageRefusal) - refuses the command, as an NPC
+            // operation's does (EpisodeNpcSocial), instead of escaping it. Only that refusal (narrowed at the pre-V6 review):
+            // an ArgumentNullException or ArgumentOutOfRangeException from a bug, or any other ArgumentException, still
+            // escapes, as every one does in modes 0 and 1, which keep their error path exactly.
+            catch (ArgumentException error) when (UnifiedVoteStore.On(current) && CommitmentReferences.IsStorageRefusal(error))
+            { return Rejected(error.Message); }
         }
 
         private CommandResult Rejected(string reason) => new CommandResult { reason = reason, state = Snapshot };
@@ -88,6 +105,8 @@ namespace Gamesim.Simulation
                     ResolveCompetition(s, c.performance); break;
                 case EpisodeCommandKind.Nominate:
                     Require(s.phase == EpisodePhase.Nomination && s.hohId == s.playerId, "Only the reigning HoH chooses nominees.");
+                    // The house's last beats before the names are said (D2, §1).
+                    Close(s);
                     // A beat that closes at the nominations lapses first, so anything it moved has
                     // moved before the names are said.
                     if (StoryOn(s)) StoryLapse(s, StoryAnchors.NomsSet);
@@ -105,6 +124,8 @@ namespace Gamesim.Simulation
                         var saved = NpcVetoSave(s);
                         Require(saved != null && c.useVeto && c.targetId == saved, "The NPC veto decision must be preserved.");
                     }
+                    // The house's last beats before the veto is used (D2, §1).
+                    Close(s);
                     ResolveVeto(s, c.useVeto, c.targetId, c.secondTargetId); break;
                 case EpisodeCommandKind.CastVote:
                     if (s.phase == EpisodePhase.Jury)
@@ -214,18 +235,17 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.RenameAlliance:
                     Require(CommitmentRulesOn(s), CommitmentKindRefusal);
                     RenameAlliance(s, c); break;
-                // Wave D's two kinds (schema 28) are refused before anything is spent, drawn or logged
-                // until their rule slices replace these refusals: without them they would fall to
-                // Social and be refused for the wrong reason. D3's answer is free, as answering any
-                // offer is, and refused the same way without the war rooms.
+                // Wave D's two kinds (schema 28), each refused before anything is spent, drawn or logged
+                // without its rules: without their own cases they would fall to Social and be refused for
+                // the wrong reason. D3's answer is free, as answering any offer is; so is D2's sighting,
+                // which the house detects as it does a walk-in.
                 case EpisodeCommandKind.AnswerPactPlan: AnswerPactPlan(s, c); break;
-                case EpisodeCommandKind.WitnessNpcAct:
-                    Require(false, WaveDKindRefusal); break;
+                case EpisodeCommandKind.WitnessNpcAct: WitnessNpcAct(s, c); break;
                 default: Social(s, c); break;
             }
         }
 
-        /// <summary>Why <see cref="EpisodeCommandKind.WitnessNpcAct"/> is refused until its rules land, and <see cref="EpisodeCommandKind.AnswerPactPlan"/> without the war rooms.</summary>
+        /// <summary>Why <see cref="EpisodeCommandKind.WitnessNpcAct"/> is refused without the all-week rules, and <see cref="EpisodeCommandKind.AnswerPactPlan"/> without the war rooms.</summary>
         public const string WaveDKindRefusal = "Not available in this season.";
 
         public static bool IsCompetition(EpisodePhase phase) => phase == EpisodePhase.HoH || phase == EpisodePhase.Veto ||
@@ -259,6 +279,8 @@ namespace Gamesim.Simulation
             {
                 case EpisodePhase.Social:
                     Require(s.pendingDiary == null, "Visit the Diary Room or skip the pending reflection before beginning the next competition.");
+                    // The free time's last beats, before the window closes (D2, §1). They never spend.
+                    Close(s);
                     // Capture before story closure can expire a bonus or remove a contestant, but
                     // do not let the story's opening reads see a debit while these actions are
                     // still counted in its window. Publishing it belongs to the counter reset.
@@ -285,6 +307,8 @@ namespace Gamesim.Simulation
                         ResolveUnifiedSafetyExpiry(s, UnifiedCommitmentExpiry.PromiseWeekTurn);
                         if (StoryAt(s, StoryRules.Bonds)) MoodsSettle(s);
                         StoryWeekTurn(s);
+                        // The week's acts are the week's (D2): none outside the all-week rules.
+                        s.npcSocial?.acts?.Clear();
                     }
                     s.socialActions = 0; s.outOfPhaseSocialActions = 0; s.competitionResolved = false;
                     ResetWindows(s);
@@ -326,6 +350,8 @@ namespace Gamesim.Simulation
                     if (s.nominees.Count == 0)
                     {
                         Require(s.hohId != s.playerId, "Choose two nominees first.");
+                        // The house's last beats before the Head of Household names anybody (D2, §1).
+                        Close(s);
                         // A beat that closes at the nominations lapses first: a pitch the HoH heard
                         // has already moved their view by the time they rank the house.
                         if (StoryOn(s)) StoryLapse(s, StoryAnchors.NomsSet);
@@ -341,6 +367,8 @@ namespace Gamesim.Simulation
                         StoryAnchor(s, StoryAnchors.NomsSet);
                         return;
                     }
+                    // Idempotent: the window closed at the nominations (D2-L1).
+                    Close(s);
                     Phase(s, EpisodePhase.VetoSelection); break;
                 case EpisodePhase.VetoSelection:
                     s.vetoPlayers = DrawVetoPlayers(s);
@@ -354,6 +382,9 @@ namespace Gamesim.Simulation
                         Require(s.vetoHolderId != s.playerId, "Choose whether to use the veto first.");
                         var saved = NpcVetoSave(s);
                         Require(saved == null || s.hohId != s.playerId, "The veto will be used. As HoH, choose the replacement nominee.");
+                        // The house's last beats before the veto is used (D2, §1): the holder's decision stands
+                        // as the player saw it asked for.
+                        Close(s);
                         var replacement = saved == null ? null : NpcReplacement(s);
                         ResolveVeto(s, saved != null, saved, replacement); return;
                     }
@@ -373,6 +404,8 @@ namespace Gamesim.Simulation
                     NpcSocialActions.Campaign(s);
                     break;
                 case EpisodePhase.Campaign:
+                    // The campaign's last beats, before the house votes (D2, §1).
+                    Close(s);
                     if (StoryOn(s)) StoryLapse(s, StoryAnchors.EvictionEve);
                     // Campaigning IS the reference build's interaction stage — last conversations
                     // and vote-wrangling — so eviction night opens on the speeches rather than
@@ -420,7 +453,10 @@ namespace Gamesim.Simulation
                         // takes its turns, so a houseguest who confronts you fills a gap in the
                         // week rather than taking the only card the night had.
                         if (StoryOn(s)) StoryAnchor(s, StoryAnchors.EvictionNight);
-                        NpcSocialActions.Settle(s);
+                        // Under the all-week rules (D2) the house's turns are the week's beats, and this is
+                        // the moment only for what has soured: the beats begin after the step (§1).
+                        if (AllWeekOn(s)) NpcAlliances.Dissolve(s);
+                        else NpcSocialActions.Settle(s);
                         NpcDeals.Settle(s);
                         NpcDeals.Propose(s);
                         // The week has turned, so what the last one left behind gets a week older
@@ -808,7 +844,7 @@ namespace Gamesim.Simulation
             StrategyRules.NominationReluctance(s, hohId, id) + StoryConsumers.NominationPreference(s, hohId, id) - s.Score(hohId, id)
             // Native unified rules: story's word and strategy's hold describe the same protection.
             // Subtract only their overlap; grudges, alliances, bonds, targets and pleas stay independent.
-            - (UnifiedCommitments.RulesOn(s) ? Math.Min(UnifiedCommitments.StrongestProtection(s, hohId, id).Strength,
+            - (UnifiedCommitments.SafetyAuthorityOn(s) ? Math.Min(UnifiedCommitments.StrongestProtection(s, hohId, id).Strength,
                 StoryConsumers.SafetyPreference(s, hohId, id)) : 0)
             // Under agency, how dangerous they are, as the Head of Household and their pact read it (NPC-AGENCY-PLAN.md §5.1).
             - ThreatTerm(s, hohId, id);
@@ -1405,7 +1441,11 @@ namespace Gamesim.Simulation
             // Under the leak rules a pact of exactly these two is heard for what it is (WAVE-D-NPC-PACTS-PLAN
             // D4-M2): the player a suspected knower, in the line and nowhere else. No draw, no id.
             string pact = AllianceLeaks.On(s) ? ListenIn(s, first, second) : null;
-            Log(s, "eavesdrop", EavesdropLine(first.name, second.name, reading, vote, null, pact), s.playerId);
+            // Under the all-week rules an open act of these two the player saw is heard for what it was
+            // (WAVE-D-NPC-PACTS-PLAN D2-M1), once: words in the line, no knowledge granted (D2-M4), before the spend.
+            var heard = AllWeekOn(s) ? OverheardAct(s, first.id, second.id, pact != null) : null;
+            if (heard != null) heard.overheard = true;
+            Log(s, "eavesdrop", EavesdropLine(first.name, second.name, reading, vote, heard == null ? null : ActClause(s, heard), pact), s.playerId);
         }
 
         /// <summary>
@@ -2530,7 +2570,9 @@ namespace Gamesim.Simulation
         /// narrated itself, or the final eviction, after the first jury question - for two reasons. Every id minted in the step - the pacts, promises, deals and
         /// house events the settle writes - is what it was before this existed. And the director's
         /// status line is the last event the player may see, so this is what they read. It draws
-        /// no roll and saves no new field.</para>
+        /// no roll and saves no new field. Under the all-week rules (D2-L4) it is last before the
+        /// house's first beats, which the catch-up fires after the step: the status line still names
+        /// the step (<see cref="CommandResult.beatsFromSequence"/>).</para>
         ///
         /// <para>It carries no number and no direction. A partner leaving the house is public; an
         /// alliance that sours has fallen apart, in the same words however it soured. Nobody is

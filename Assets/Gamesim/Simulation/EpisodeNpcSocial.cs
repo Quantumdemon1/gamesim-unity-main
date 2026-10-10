@@ -171,15 +171,69 @@ namespace Gamesim.Simulation
                 // Under agency the pair's temperaments bias the outcome (NPC-AGENCY-PLAN.md §3.1):
                 // kindred pairs never come out of a chat colder, oil and water rarely warmer.
                 int delta = completion.delta + ConversationBias(state, row.firstId, row.secondId);
-                if (delta != 0) ChangeWithRoll(state, row.firstId, row.secondId, delta, () => NpcRoll(state));
+                if (delta != 0) CompletionChange(state, row, row.firstId, row.secondId, delta, NpcConversationEvent);
                 if (completion.gossipTarget != null)
                 {
-                    ChangeWithRoll(state, row.firstId, completion.gossipTarget.id, completion.gossipTarget.delta, () => NpcRoll(state));
-                    ChangeWithRoll(state, row.secondId, completion.gossipTarget.id, completion.gossipTarget.delta, () => NpcRoll(state));
+                    CompletionChange(state, row, row.firstId, completion.gossipTarget.id, completion.gossipTarget.delta, NpcGossipEvent);
+                    CompletionChange(state, row, row.secondId, completion.gossipTarget.id, completion.gossipTarget.delta, NpcGossipEvent);
                 }
                 SetNpcCooldown(social, row.firstId); SetNpcCooldown(social, row.secondId);
                 social.pending.Remove(row); result.completedSequences.Add(row.sequence);
             }
+        }
+
+        /// <summary>
+        /// The ledger's types for what a completed conversation did under D2's rules (<see cref="CompletionChange"/>):
+        /// the pair's own talk, and what the two of them said about a third. Both fade (<see cref="RelationshipLedger.Decays"/>),
+        /// and neither is a type anything else reads by name, so a conversation in the house counts for trust and nothing more.
+        /// </summary>
+        public const string NpcConversationEvent = "npc-conversation", NpcGossipEvent = "npc-gossip";
+
+        /// <summary>
+        /// How many of the season's sequence ids the house's talk has taken from <paramref name="fromSequence"/> on: the
+        /// <see cref="NpcConversationEvent"/> and <see cref="NpcGossipEvent"/> records between two houseguests, one id each
+        /// (<see cref="RelationshipLedger.Record"/> writes both directions, so two for a pair's talk that moved them and four
+        /// for a gossip). None with D2's rules off. These are the only ids free roam takes, so a check that the house left
+        /// the season's own counter alone allows exactly this many (PortVerification's autonomy QA).
+        /// </summary>
+        public static int HouseTalkRecords(EpisodeState state, int fromSequence) =>
+            state == null ? 0 : state.relationships
+                .Where(r => r.fromId != state.playerId && r.toId != state.playerId)
+                .Sum(r => r.events.Count(e => e.sequence >= fromSequence && (e.type == NpcConversationEvent || e.type == NpcGossipEvent)));
+
+        /// <summary>
+        /// What a completed conversation does to two houseguests' standing with each other.
+        ///
+        /// <para><b>Before D2's rules</b> (<see cref="AllWeekOn"/> false: every season saved before them) the engine's own
+        /// path, <c>ChangeWithRoll</c> on the NPC world's stream, exactly as it always ran. That path also writes
+        /// <c>relationshipArcs</c> for both houseguests, and an arc is the player's own - it feeds how each houseguest votes
+        /// on the player (<see cref="WebEvictionVoting"/>) and the threat ranking (<see cref="ThreatAssessment"/>) - so in
+        /// those seasons the house's chatter moved how it voted on the player (the balance review's finding 3).</para>
+        ///
+        /// <para><b>Under them</b> a pair of houseguests moves as <see cref="NpcSocialActions"/> moves one: through
+        /// <see cref="RelationshipLedger.Move"/> and <see cref="RelationshipLedger.Record"/>, no arc. The player is never one
+        /// of the two today (a conversation is between two houseguests and its gossip leaves the player out); were they,
+        /// the engine's own path would stay, as it does for an act of the house's on the player. The ledger's move is
+        /// symmetric, so it has no reciprocal to roll; the draw <c>ChangeWithRoll</c> spent on one is drawn and set aside,
+        /// so the NPC world's stream advances exactly as it did and every later conversation draws what it would have.
+        /// The season's own stream is untouched either way. Its sequence counter is not: each record takes an id
+        /// (<see cref="HouseTalkRecords"/>), so what is keyed to <c>nextSequence</c> - the talk story hooks, a refused
+        /// deal's counter coin, the ids of house events, deals and promises - lands differently in a season the house
+        /// talked through, as it may under a new rule.</para>
+        /// </summary>
+        private static void CompletionChange(EpisodeState state, NpcConversationState row, string from, string to, double delta, string type)
+        {
+            if (!AllWeekOn(state) || from == state.playerId || to == state.playerId)
+            {
+                ChangeWithRoll(state, from, to, delta, () => NpcRoll(state));
+                return;
+            }
+            if (from == to) return;
+            string pair = Name(state, row.firstId) + " and " + Name(state, row.secondId);
+            RelationshipLedger.Move(state, from, to, delta);
+            RelationshipLedger.Record(state, from, to, type, delta,
+                type == NpcGossipEvent ? "What " + pair + " said about " + Name(state, to) : pair + " talked (" + row.topic + ")");
+            NpcRoll(state);
         }
 
         private static bool MatchesWorld(NpcWorldReadyEvidence evidence, long sequence, string firstId, string secondId, string venue, long clock) =>

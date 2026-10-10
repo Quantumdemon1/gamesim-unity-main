@@ -52,8 +52,8 @@ namespace Gamesim.Simulation
             if (opportunity.source == null && opportunity.note == null)
                 return taken && neutral && answered && (row.origin == UnifiedCommitments.PlayerDeal
                     || row.origin == UnifiedCommitments.NpcOffer || row.origin == UnifiedCommitments.CounterDeal
-                    || row.origin == UnifiedCommitments.CounterPrice || row.origin == "veto-ask-price"
-                    || row.origin == "own-veto-price");
+                    || row.origin == UnifiedCommitments.CounterPrice || row.origin == UnifiedVoteFamilyValidation.VetoAskPrice
+                    || row.origin == UnifiedVoteFamilyValidation.OwnVetoPrice);
             string source = row.subtype + (row.targetId != null ? ":" + row.targetId : "");
             if (opportunity.source != source || opportunity.note == null) return false;
             string prefix = (row.makerId == s.playerId ? "put to " + row.beneficiaryId
@@ -85,7 +85,17 @@ namespace Gamesim.Simulation
         {
             var decision = UnifiedVoteHistory.FindDecision(s, row.id);
             if (decision == null || decision.SettledWeek != row.settledWeek || decision.Status != row.status) return false;
+            // The lead's decision D7 (vote family V5e): a receipt is its Rule2 group's owner, as the questions choose one
+            // (FinaleQuestions.Receipts) - never a row that owned no consequence of its reveal. And the owner of the receipt's
+            // own direction (the pre-V6 save-contract review): an Accountability receipt is the owner of the player's breach
+            // of the juror, never of the juror's of the player, which a deal both of them broke can own alone; a Personal
+            // one the owner of a kept group between the two.
             string player = s.playerId, juror = question.questionerId;
+            var groups = row.status == DealStatus.Broken ? UnifiedVoteHistory.Incidents(s) : UnifiedVoteHistory.Fulfillments(s);
+            bool accountability = question.category == FinaleQuestions.Accountability;
+            if (!groups.Any(group => group.OwnerId == row.id && (group.ActorId == player && group.WrongedId == juror
+                    || !accountability && group.ActorId == juror && group.WrongedId == player)))
+                return false;
             if (question.receiptKind == FinaleQuestions.PromiseReceipt)
             {
                 if (row.sourcePolicy != UnifiedCommitments.PromisePolicy || row.makerId != player || row.beneficiaryId != juror)

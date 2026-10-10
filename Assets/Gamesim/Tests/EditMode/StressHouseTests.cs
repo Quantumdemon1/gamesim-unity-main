@@ -122,14 +122,19 @@ namespace Gamesim.Tests.EditMode
             var engine = new EpisodeEngine(fresh);
             int commands = 0, own = 0, peakFacts = 0, peakHouseEvents = 0, peakSaveBytes = 0, weeks = 0, logFullFromWeek = 0, playerDealsClosedFromWeek = 0;
             int peakMemories = 0, peakAlliances = 0, peakPromises = 0, peakDeals = 0, peakStorylines = 0;
+            // The weeks the player had a free action in the house, and their own actions each week.
+            var freeWeeks = new SortedSet<int>();
+            var ownByWeek = new Dictionary<int, int>();
             while (engine.Snapshot.phase != EpisodePhase.Finished && commands < 8000)
             {
                 var s = engine.Snapshot;
+                if (s.Find(s.playerId).status == ContestantStatus.Active && (s.phase == EpisodePhase.Social || s.phase == EpisodePhase.Campaign)
+                    && EpisodeEngine.SocialActionsSpent(s) < EpisodeEngine.SocialActionBudget(s)) freeWeeks.Add(s.week);
                 var mine = busy ? Busy(s) : null;
                 var command = mine ?? Next(s);
                 var result = engine.Apply(command);
                 if (mine != null && !result.accepted) { command = Next(s); result = engine.Apply(command); }
-                else if (mine != null) own++;
+                else if (mine != null) { own++; ownByWeek[s.week] = (ownByWeek.TryGetValue(s.week, out var n) ? n : 0) + 1; }
                 Assert.That(result.accepted, Is.True, "seed " + seed + " week " + s.week + " " + s.phase + " " + command.kind + ": " + result.reason);
                 commands++;
                 var after = engine.Snapshot;
@@ -157,7 +162,15 @@ namespace Gamesim.Tests.EditMode
             Assert.That(jurors, Is.EqualTo(14), "Fourteen leave; the final two stay.");
             Assert.That(peakFacts, Is.LessThanOrEqualTo(Knowledge.Ceiling));
             Assert.That(peakSaveBytes, Is.LessThan(8 * 1024 * 1024), "The save store's eight MiB limit.");
-            if (busy) Assert.That(own, Is.GreaterThan(20), "The busy player acted.");
+            // The busy player acts every week they have a free action, and four and more a week of their own: scaled to
+            // the weeks they were in the house, since how long that is is the season's (under D2 seed 1602's busy player
+            // leaves in week two after 12 and 7; seasons that run on hold 5 and more a week). A broken script acts not at all.
+            if (busy)
+            {
+                Assert.That(freeWeeks, Is.Not.Empty, "The busy player had free time.");
+                Assert.That(freeWeeks.Where(week => !ownByWeek.ContainsKey(week)), Is.Empty, "The busy player acted in every week they could.");
+                Assert.That(own, Is.GreaterThanOrEqualTo(4 * freeWeeks.Count), "The busy player acted: " + own + " in " + freeWeeks.Count + " weeks.");
+            }
             TestContext.WriteLine("Stress house seed " + seed + (busy ? " (busy, " + own + " own actions)" : " (passive)") + ": " + commands + " commands, " + weeks + " weeks, winner "
                 + finished.Find(finished.winnerId).name + ", jurors " + jurors + "; peaks: story facts " + peakFacts + " of " + Knowledge.Ceiling
                 + ", house events " + peakHouseEvents + " of " + HouseEvents.Ceiling + ", memories " + peakMemories + " of " + (30 * 16)

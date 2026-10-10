@@ -5,14 +5,19 @@ NPC strategy is on from week one, D3's war rooms are played by the lab's policie
 on, and a completed NPC conversation moves its pair through the ledger and writes no arc (the balance review's
 finding 3, fixed behind D2's rule). The headline is 480 seasons per policy and size at NPC budget 0 (92 minutes in
 twelve parts); the NPC budget is measured on B6b's cut grid (five players at 0 and 300 on 100 seeds; passive and
-reader at 0 and 900 on 50). The per-policy performance distributions are assumptions until human data exists (B8).
+reader at 0 and 900 on 50; the reader at 0 and 1800 on 15); the projections at 0, 300 and 900 ticks; B4's
+fixed-performance grid on 200 seeds a level and size. The per-policy performance distributions are assumptions until
+human data exists (B8).
 Every number here is reproducible from the commands below; treat differences inside the intervals as noise.
 
 Measured on 2026-10-09 on `claude/arcs-balance-rerun` at `a91462b4` (base `claude/lead-integration` at `27b21b28`):
 schema 28, competition rules 4, story rules 9, the economy, agency, the finale, the commitment rules, the unified
 commitment and hearing version 1, D4's leaks, D3's war rooms and **D2's all-week rules** - exactly what the director
 starts, because every lab season is built by `SeasonBuilder.Create` and `ShippedRules.ApplyFresh` (B0). The shipped
-rules' tuple is pinned in `BalanceLabGoldens.Rules` (now `allWeekRulesStartWeek=1`).
+rules' tuple is pinned in `BalanceLabGoldens.Rules` (now `allWeekRulesStartWeek=1`). The three tiers the first pass
+carried - NPC budget 1800, the projections at 900 and B4's fixed-performance grid - were measured later the same day
+at `43af48c5`, whose code is `a91462b4`'s (the commit between them changed only this document and
+`PLAYTEST_PROTOCOL.md`), with the parts' stamp v4.
 
 ## Whose numbers are these
 
@@ -21,12 +26,15 @@ one it is marked **B6b** (the previous baseline). What each earlier measurement 
 
 | measurement | measured at | the lab's war-room policies (B6a) and D3's amended reach | D2's all-week rules | the arcs fix |
 |---|---|---|---|---|
-| **this baseline**: headline, NPC budget 0/300 and 0/900, projections, studier, Q1-Q5 | `a91462b4` | yes | yes | yes |
-| B6b: the previous headline, NPC grid, projections and T0 diagnostics (quoted as "B6b") | `3f31fcd9` | yes | **no** | **no** |
-| B6b's NPC budget 1800 (saturation only, not rerun) | `3f31fcd9` | yes | **no** | **no** |
+| **this baseline**: headline, NPC budget 0/300 and 0/900, projections at 0 and 300, studier, Q1-Q5 | `a91462b4` | yes | yes | yes |
+| **this baseline, second pass**: NPC budget 0/1800, the projections at 900, *Competition by fixed performance* (B4) | `43af48c5` (the same code as `a91462b4`; only the documents moved) | yes | yes | yes |
+| B6b: the previous headline, NPC grid (0/300, 0/900, 0/1800), projections and T0 diagnostics (quoted as "B6b") | `3f31fcd9` | yes | **no** | **no** |
 | *D2's enable* (kept below as history) | `f047db13` / `c0090f07` | **no** (old reach, no war room answered) | on and off | not reached (budget 0 only) |
-| *Competition by fixed performance* (B4, carried) | `95e99bd2` | **no** | **no** | not reached (budget 0) |
+| B4's first fixed-performance grid (quoted as "first baseline" under its table) | `95e99bd2` | **no** | **no** | not reached (budget 0) |
 | the first baseline (`6b18d59e`) | `95e99bd2` | **no** | **no** | **no** |
+
+Nothing in this document is carried any more: every table is this baseline's, measured with every shipped rule on.
+An older number appears only beside a new one, marked with where it came from.
 
 The arcs fix only reaches seasons with an NPC world (a budget above 0): **every player outcome B6b measured at 300,
 900 or 1800 ticks includes the arc artefact**, and the B6b caveat on F5 and B-4 is answered under F5 below. At
@@ -100,11 +108,13 @@ dotnet test Tools/SimulationTests --filter "FullyQualifiedName~BalanceLabTests" 
 BALANCE_TIER=headline BALANCE_FROM=0 BALANCE_COUNT=40 BALANCE_PARTS=<dir> dotnet test Tools/SimulationTests --filter "FullyQualifiedName~BalanceLabParts.PartReport"
 #   ... parts 40, 80, ... 440, then:
 BALANCE_TIER=headline BALANCE_PARTS=<dir> dotnet test Tools/SimulationTests --filter "FullyQualifiedName~BalanceLabParts.MergeReport"
-# the other tiers, the same way (BALANCE_TIER = npc, projection, competition), each into its own BALANCE_PARTS:
+# the other tiers, the same way (BALANCE_TIER = npc, projection, competition, performance), each into its own BALANCE_PARTS:
 BALANCE_NPC_POLICIES=passive,novice,social,reader,beast BALANCE_NPC_BUDGETS=0,300   # npc, 100 seeds, parts of 10
 BALANCE_NPC_POLICIES=passive,reader BALANCE_NPC_BUDGETS=0,900                       # npc, 50 seeds, parts of 10
-BALANCE_PROJECTION_BUDGETS=0 (400 seeds), =300 (200)                                # projection
+BALANCE_NPC_POLICIES=reader BALANCE_NPC_BUDGETS=0,1800                              # npc, 15 seeds, parts of 5
+BALANCE_PROJECTION_BUDGETS=0 (400 seeds), =300 (200), =900 (50)                     # projection
 BALANCE_TIER=competition, 200 seeds                                                 # the studier (T0 Q3)
+BALANCE_TIER=performance, 200 seeds, parts of 50                                    # B4: the passive player at fixed performance
 dotnet test Tools/SimulationTests --filter "FullyQualifiedName~BalanceLabGoldens.Budget300Size12First"   # one golden slice
 dotnet test Tools/SimulationTests --filter "FullyQualifiedName~BudgetNoughtPlaysTheSeasonsItPlayedBeforeTheDriver"   # budget 0's rows, about 5 min
 ```
@@ -113,7 +123,8 @@ Rows land as JSONL, and the tables as Markdown, in `Tools/SimulationTests/bin/De
 
 ## Runtime
 
-Measured on six threads shared with two or three other lanes' test hosts.
+Measured on six threads shared with two or three other lanes' test hosts (the second pass beside another lane's
+Unity editor).
 
 | tier | seasons | wall time |
 |---|---|---|
@@ -122,8 +133,10 @@ Measured on six threads shared with two or three other lanes' test hosts.
 | NPC budget 0 and 300 | 2,000 (5 players x 8, 12 x 2 x 100) | 68 min in 10 parts |
 | NPC budget 0 and 900 | 400 (passive, reader x 8, 12 x 2 x 50) | 31.5 min in 5 parts |
 | the 900 control (the old completion path) | 400 | 38 min in 5 parts, beside the projections |
-| projections (novice x 6 houses) | 2,400 at 0, 1,200 at 300 | 11.4 + 38.4 min |
+| NPC budget 0 and 1800 | 60 (reader x 8, 12 x 2 x 15) | 13.1 min in 3 parts |
+| projections (novice x 6 houses) | 2,400 at 0, 1,200 at 300, 300 at 900 | 11.4 + 38.4 + 25.7 min |
 | competition (T0 Q3) | 1,600 | 9.7 min in 4 parts |
+| fixed performance (B4) | 2,000 (passive x 5 levels x 8, 12 x 200) | 9.8 min in 4 parts |
 | goldens | 960 (48 cells x 20) | about 45 min in 8 tests |
 | budget 0's rows (`BudgetNoughtRows`) | 564 (the smoke grid's 84 and the headline grid's 480) | about 5 min |
 
@@ -178,8 +191,11 @@ Each finding is this run's; **B6b**'s number (before D2 and the arcs fix) is in 
 
   Five free-time seats of study (preparation +5, permanent) are still worth far more than playing the minigames
   well: they take an average player from about half the weekly competitions to 95%, and from a 13-16% season to
-  50-74% (B6b 9% to 45-64%). Full marks alone (B4, carried from the first baseline) reach only 79-80%. With D2 the
-  studier's seasons rose more at 8 (+9.5 points at .5) than the passive player's (+3.5).
+  50-74% (B6b 9% to 45-64%). Full marks alone (B4, now measured on 200 seeds with every rule on) win 78% of the
+  weekly competitions at both sizes and 39% / 33% of seasons (first baseline, 60 seeds: 79-80% and 37% / 40%): an
+  average player who studies beats a perfect one who does not, by 17 points of weekly wins and by 34.5 and 16.5
+  points of seasons. With D2 the studier's seasons rose more at 8 (+9.5 points at .5) than the passive player's
+  (+3.5).
 
 - The field's strongest on paper wins 45.9% and 45.2% of weekly competitions (B6b 45.4% and 45.3%; a uniform draw
   is 19% and 16%).
@@ -206,7 +222,7 @@ Each finding is this run's; **B6b**'s number (before D2 and the arcs fix) is in 
 - Default (the lead's decision 7): no tuning; D2 has done most of what tuning would have at 12.
 
 **F5. The NPC world, measured again with the arcs fixed (B5): the house deals and pairs off more, and the player's
-outcomes do not move detectably at 300 or at 900. B6b's 900-tick gains were the arc artefact.**
+outcomes do not move detectably at 300, 900 or 1800. B6b's 900-tick gains were the arc artefact.**
 
 - **At 300** (the budget that stands for a human; five players, 8 and 12, 100 seeds, every metric paired with budget
   0): no win, final-two or out-by-week-3 rate moves (every McNemar p >= 0.06; B6b >= 0.10). NPC-only deals rise by
@@ -235,10 +251,21 @@ outcomes do not move detectably at 300 or at 900. B6b's 900-tick gains were the 
   artefact, not NPC agency**: NPC chatter wrote friendship arcs with the player, which lowered the threat the house
   read on them and raised its votes for them. The fix removes it; the reader's final-two lean at 8 (46% to 60%) is
   inside the noise of 50 seeds, so a smaller real effect is not excluded.
-- **Saturation (risk 8)**: the share of houseguest pairs within ten of ±200 is about 1% at budget 0, 2% at 300 and
-  3-4% at 900 (B6b 3-5% at 900); at ±200 itself 2.5-2.8% at 900. 1800 was not rerun (B6b: 5.6-5.7%).
+- **At 1800** (the reader, 15 seeds, saturation's tier as in B6b): the house deals and pacts most - NPC-only deals
+  +11 a season at 8 and +28 at 12 (B6b +16 and +35), pacts +0.9 and +1.2, broken NPC-only deals +0.5 and +0.9 -
+  and no player outcome moves detectably (win 20% to 13% at 8 and 13% to 33% at 12, p = 1.0 and 0.38; final two
+  40% to 47% and 20% to 47%, p = 1.0 and 0.22; Game Sense +2.1 and +3.9, intervals spanning 0). At 15 seeds only a
+  large effect would show; the reader's lean at 12 (final two 20% to 47%, placement 2.2 better, neither significant)
+  is the one to watch if 1800 is ever played on more seeds.
+- **Saturation (risk 8)**: the share of houseguest pairs within ten of ±200 is about 1% at budget 0, 2% at 300,
+  3-4% at 900 (B6b 3-5%) and 5.2-5.4% at 1800 (B6b 5.6-5.7%); at ±200 itself 2.5-2.8% at 900 and 4.0-5.1% at 1800
+  (B6b 3.9-5.4%). The warmest pair's mean reaches 183 at 8 and 198 at 12 at 900, 191 and 199 at 1800 (B6b 194-195
+  at 1800). As in B6b, 1800 measures a house beginning to saturate and 300 and 900 do not. The arcs fix was not
+  expected to change it: for two houseguests the ledger moves each by the engine's own forward amount, where the
+  engine moved the reciprocal by 0.8-1.2 of it, and arcs never fed the pair's scores.
 - **B-4** (normalising NPC activity per week) can now be read without B6b's caveat: at the human budget the NPC world
-  adds dealing and warmth inside the house and does not move the player's odds, and at 900 it still does not.
+  adds dealing and warmth inside the house and does not move the player's odds, and at 900 it still does not; 1800
+  saturates the house a little more (5% of pairs near the bound) and shows no player effect on its 15 seeds.
 
 **F6. Harness rules drift from what ships - resolved for the lab.** Every lab season starts through
 `ShippedRules.ApplyFresh`; the 48 golden cells and the shipped rules' tuple are pinned, and this run re-recorded them
@@ -253,8 +280,10 @@ still out of reach for a novice-like tester (B7).**
   three testers week 6 (B6b 6), four week 4 (B6b 3), five week 3 (B6b 3). At 12, weeks 7, 6 and 5 (B6b 6, 5, 5).
 - More novices see a commitment of theirs settle while in the house (the plateau 69% at 8 and 85% at 12; B6b 61% and
   79%), but every one of three testers seeing one never passes 33% at 8 and 61% at 12 (B6b 22% and 48%).
-- The NPC world at 300 changes none of this (E4 weeks 6 / 4 / 3 at 8). See *The projections* and the proposed
-  *Session length* in `PLAYTEST_PROTOCOL.md`.
+- The NPC world at 300 changes none of this (E4 weeks 6 / 4 / 3 at 8), nor does 900: its 50-seed rows read earlier
+  (4 / 3 / 2 at 8), but the same 50 seeds at budget 0 read 5 / 3 / 3 and no house's survival or settle rate moves
+  between them (every paired p >= 0.11). See *The projections* and the proposed *Session length* in
+  `PLAYTEST_PROTOCOL.md`.
 
 ## The tuning questions (BALANCE plan §4), with what T0 measured
 
@@ -288,9 +317,10 @@ pact, never convened one. Plans the player backs are the week's call; 73% of pla
 
 ## The projections (B7)
 
-From the novice (the first-timer model) in every house, at budget 0 (400 seeds) and 300 (200); B6b's figures in
-parentheses. S(k) is the chance a tester is out by week k; C(k) the chance they saw a commitment of theirs settle (a
-deal or promise kept or broken whose ending they know, or a war-room plan they answered) while still in the house.
+From the novice (the first-timer model) in every house, at budget 0 (400 seeds), 300 (200) and 900 (50, the second
+pass); B6b's figures in parentheses (B6b published no 900 row). S(k) is the chance a tester is out by week k; C(k)
+the chance they saw a commitment of theirs settle (a deal or promise kept or broken whose ending they know, or a
+war-room plan they answered) while still in the house.
 The 4-house lasts two weeks (S(2) 19%, C 43%) and reaches no criterion.
 
 | house | S(1) / S(3) / S(5) | C(2) / C(4) / C(plateau) | E4 (at least one of n out, 90%): n = 3 / 4 / 5 | E3 (all n saw one, 90%) | joint |
@@ -301,6 +331,20 @@ The 4-house lasts two weeks (S(2) 19%, C 43%) and reaches no criterion.
 | 12 | 0.5% / 20% / 42% (2% / 23% / 46%) | 63% / 81% / 85% (42% / 72% / 79%) | week 7 / 6 / 5 (6 / 5 / 5) | never | never |
 | All-Stars 8 | 4% / 29% / 41% (11% / 32% / 42%) | 57% / 78% / 80% (45% / 69% / 72%) | never / 6 / 5 (never / 6 / 5) | never | never |
 | 8 at 300 ticks | 14% / 42% / 52% (25% / 45% / 55%) | 48% / 68.5% / 69.5% (46% / 60% / 62%) | week 6 / 4 / 3 (5 / 3 / 3) | never | never |
+| 8 at 900 ticks (50 seeds) | 12% / 50% / 60% | 52% / 62% / 62% | week 4 / 3 / 2 | never | never |
+| 8 at 0, the same 50 seeds | 10% / 52% / 60% | 48% / 66% / 68% | week 5 / 3 / 3 | never | never |
+| 12 at 900 ticks (50 seeds) | 0% / 24% / 52% | 68% / 78% / 82% | week 6 / 5 / 4 | never | never |
+| 12 at 0, the same 50 seeds | 0% / 20% / 46% | 72% / 88% / 88% | week 6 / 5 / 5 | never | never |
+
+**At 900 ticks the projection does not move; its earlier weeks are its seeds.** The 900 rows play the first 50
+seeds of the 400, and those 50 are a harsher sample: at budget 0 they put 52% of novices at 8 out by week 3, against
+41% over all 400. Paired season for season with the same seeds at 0, no house's S(3), S(5), C(3) or C(5) moves at
+900 (every McNemar p >= 0.11, at 4, 6, 8, 10, 12 and the All-Stars eight). Read E4 from the 400-seed rows; neither
+budget moves the eight-house's survival (300 against 0 on the same 200 seeds: S(3) p = 0.90, S(5) p = 0.49). What
+the NPC world does move, at 300 on 200 seeds, is the settle rate in the larger houses: by week five fewer novices at
+10 and 12 have seen a commitment of theirs settle (C(5) 86% to 77.5% and 85% to 78.5%, p = 0.008 and 0.035; the
+plateau 86% to 77.5% and 85.5% to 80%), and 900 leans the same way on its 50 seeds. That lowers E3's odds, which are
+already out of reach as worded, and changes no E4 week.
 
 The chance at least one tester is out by week k in the eight-house (budget 0; at 300 ticks in parentheses where it
 matters):
@@ -315,10 +359,10 @@ matters):
   novices at 8 (one in six at 12) never see a commitment of theirs settle while they are in the house (B6b four in
   ten and two in ten).
 - The lab's own minutes a week in the house - ceremonies, the competitions played, decisions at 30 s each, and
-  the NPC budget as free roam - are 8.5 at 8 (13.6 at 300 ticks; B6b 8.7 and 13.7; 900 was not rerun, about 23.5 by
-  the same sum, B6b 23.6), well under E1's 30-45 minutes an episode: the time a person takes over a decision is the
-  unknown, and B8 measures it. At E1's own pace an E4 session of three testers at 8 (six episode-weeks) is three to
-  four and a half hours.
+  the NPC budget as free roam - are 8.5 at 8 (13.6 at 300 ticks, 23.7 at 900; B6b 8.7, 13.7 and 23.6), and
+  22.2-24.0 across the houses at 900, so even fifteen minutes of free roam a week stays under E1's 30-45 minutes an
+  episode: the time a person takes over a decision is the unknown, and B8 measures it. At E1's own pace an E4 session
+  of three testers at 8 (six episode-weeks) is three to four and a half hours.
 
 ## The NPC world: key metrics against the budget
 
@@ -372,9 +416,28 @@ Paired season for season, the artefact against the fix at 900: out by week 3 for
 (p = 0.15), at 12, 11 against 19 (p = 0.021); the reader's final two at 8, 35 against 30 (p = 0.38); mean placement
 better under the artefact by 0.66 and 0.58 (passive at 8 and 12) and 0.34 (the reader at both).
 
+**At 1800** (the reader, 15 seeds a cell: saturation's tier, as B6b cut it). B6b's column is what its text quoted;
+it published no other 1800 figure.
+
+| metric | size | 0 | 1800 (vs 0) | B6b: 0 to 1800 |
+|---|---|---|---|---|
+| win | 8 / 12 | 20.0% / 13.3% | 13.3% (1/2, p 1.0) / 33.3% (4/1, p 0.38) | - |
+| final two | 8 / 12 | 40.0% / 20.0% | 46.7% (3/2, p 1.0) / 46.7% (5/1, p 0.22) | - |
+| out by week 3 | 8 / 12 | 20.0% / 26.7% | 26.7% (2/1, p 1.0) / 20.0% (2/3, p 1.0) | - |
+| mean placement | 8 / 12 | 3.60 / 7.40 | 3.73 (+0.13 [-0.80, +1.13]) / 5.20 (-2.20 [-4.53, +0.27]) | - |
+| nominations a week | 8 / 12 | 0.417 / 0.350 | 0.506 (+0.089 [-0.028, +0.194]) / 0.345 (-0.005 [-0.096, +0.088]) | - |
+| Game Sense | 8 / 12 | 72.9 / 72.1 | 75.1 (+2.1 [-2.1, +6.3]) / 75.9 (+3.9 [-1.5, +9.9]) | - |
+| NPC-only deals | 8 / 12 | 12.0 / 45.4 | 23.2 (+11.2 *) / 73.4 (+28.0 *) | +16 / +35 |
+| NPC-only pacts | 8 / 12 | 1.47 / 2.47 | 2.40 (+0.93 *) / 3.67 (+1.20 *) | - |
+| warmest pair | 8 / 12 | 140 / 180 | 191 (+52 *) / 199 (+19 *) | 194-195 at 1800 |
+| pairs within ten of ±200 | 8 / 12 | 0.6% / 1.1% | 5.4% * / 5.2% * | 5.6-5.7% at 1800 |
+| pairs at ±200 | 8 / 12 | 0.6% / 0.7% | 5.1% / 4.0% | 3.9-5.4% at 1800 |
+| NPC conversations | 8 / 12 | 0 | 415 / 793 | - |
+
 **The cost.** An operation costs about 7.2-7.5 ms of engine time (`PrepareNpcOperation` validates the candidate and
 installing it validates it again, as the director does). A season at 300 a week is about 1,650 operations (12.4 s of
-engine), at 900 about 4,670 (33.5 s; 5,070 and 40.9 s with the artefact, which keeps more conversations going),
+engine), at 900 about 4,670 (33.5 s; 5,070 and 40.9 s with the artefact, which keeps more conversations going), at
+1800 about 10,620 (88.6 s at 8.3 ms an operation, measured beside another lane's editor; B6b 10,700 and 72 s),
 against about 2.8 thread-seconds for the whole season at budget 0.
 
 ## History: D2's enable, the same 2,400 seasons with the house's turns all week (2026-10-09)
@@ -646,24 +709,33 @@ The bar is 1.5 / size. Clears: the win rate is at or over the bar; surely: the W
 | oracle-reader | 12 | 9.27 | 2262 | 50.9% [49.4%, 52.3%] | 0.51 | 2.58 | 2.48 |
 | oracle-skilled | 12 | 8.85 | 2170 | 51.1% [49.6%, 52.6%] | 0.51 | 2.50 | 2.35 |
 
-### Competition by fixed performance (B4: the passive player, 60 seasons a level and size)
+### Competition by fixed performance (B4: the passive player, 200 seasons a level and size)
 
-Carried from the first baseline (measured at `95e99bd2`, before the war rooms, D2 and the arcs fix): not rerun.
-The passive player never convenes a war room or calls a vote; D2 does reach its seasons (its headline win rate at 12
-is 14.8% here against 9.8% in B6b), so read these as the shape of the curve, not today's level.
+Measured in this baseline's second pass (`43af48c5`, every shipped rule on; 2,000 seasons in 9.8 minutes), on 200
+seeds where the first baseline (`95e99bd2`, before the war rooms, D2 and the arcs fix) had 60. The passive player
+never convenes a war room or calls a vote, and the NPC budget is 0, so of this baseline's changes only D2 reaches
+these seasons. The .5 rows are the same seasons as the studier table's passive rows (F3) and match them exactly.
+The last column is the first baseline's weekly and season win rates, on its 60 seasons.
 
-| size | performance | played | won | win rate [Wilson] | field 3-5 | field 6-8 | field 9-11 | season win rate [Wilson] |
-|---|---|---|---|---|---|---|---|---|
-| 8 | 0.00 | 194 | 44 | 22.7% [17.4%, 29.1%] | 31.4% (35) | 20.8% (159) | - | 0.0% [0.0%, 6.0%] |
-| 8 | 0.25 | 250 | 93 | 37.2% [31.4%, 43.3%] | 50.7% (67) | 32.2% (183) | - | 3.3% [0.9%, 11.4%] |
-| 8 | 0.50 | 295 | 143 | 48.5% [42.8%, 54.2%] | 53.2% (94) | 46.3% (201) | - | 11.7% [5.8%, 22.2%] |
-| 8 | 0.75 | 386 | 253 | 65.5% [60.7%, 70.1%] | 72.2% (158) | 61.0% (228) | - | 28.3% [18.5%, 40.8%] |
-| 8 | 1.00 | 442 | 352 | 79.6% [75.6%, 83.1%] | 82.0% (206) | 77.5% (236) | - | 36.7% [25.6%, 49.3%] |
-| 12 | 0.00 | 345 | 93 | 27.0% [22.5%, 31.9%] | 27.8% (18) | 35.1% (194) | 19.2% (73) | 3.3% [0.9%, 11.4%] |
-| 12 | 0.25 | 328 | 122 | 37.2% [32.1%, 42.5%] | 66.7% (9) | 44.0% (191) | 26.5% (68) | 1.7% [0.3%, 8.9%] |
-| 12 | 0.50 | 395 | 208 | 52.7% [47.7%, 57.5%] | 61.1% (36) | 57.4% (237) | 48.4% (62) | 8.3% [3.6%, 18.1%] |
-| 12 | 0.75 | 489 | 337 | 68.9% [64.7%, 72.9%] | 79.2% (77) | 68.2% (296) | 75.0% (56) | 16.7% [9.3%, 28.0%] |
-| 12 | 1.00 | 560 | 441 | 78.8% [75.2%, 81.9%] | 90.9% (110) | 74.4% (336) | 83.3% (54) | 40.0% [28.6%, 52.6%] |
+| size | performance | played | won | win rate [Wilson] | field 3-5 | field 6-8 | field 9-11 | season win rate [Wilson] | first baseline: weekly / season |
+|---|---|---|---|---|---|---|---|---|---|
+| 8 | 0.00 | 742 | 185 | 24.9% [22.0%, 28.2%] | 36.4% (132) | 22.5% (610) | - | 1.0% [0.3%, 3.6%] | 22.7% / 0.0% |
+| 8 | 0.25 | 859 | 308 | 35.9% [32.7%, 39.1%] | 47.2% (212) | 32.1% (647) | - | 5.5% [3.1%, 9.6%] | 37.2% / 3.3% |
+| 8 | 0.50 | 1027 | 516 | 50.2% [47.2%, 53.3%] | 61.7% (339) | 44.5% (687) | - | 13.0% [9.0%, 18.4%] | 48.5% / 11.7% |
+| 8 | 0.75 | 1204 | 793 | 65.9% [63.1%, 68.5%] | 74.6% (460) | 60.5% (744) | - | 26.0% [20.4%, 32.5%] | 65.5% / 28.3% |
+| 8 | 1.00 | 1303 | 1015 | 77.9% [75.6%, 80.1%] | 84.5% (563) | 72.8% (740) | - | 39.0% [32.5%, 45.9%] | 79.6% / 36.7% |
+| 12 | 0.00 | 1352 | 314 | 23.2% [21.1%, 25.5%] | 39.6% (91) | 29.4% (754) | 11.7% (307) | 1.0% [0.3%, 3.6%] | 27.0% / 3.3% |
+| 12 | 0.25 | 1464 | 521 | 35.6% [33.2%, 38.1%] | 58.7% (138) | 38.8% (846) | 26.4% (280) | 10.0% [6.6%, 14.9%] | 37.2% / 1.7% |
+| 12 | 0.50 | 1516 | 734 | 48.4% [45.9%, 50.9%] | 68.2% (173) | 49.3% (902) | 46.1% (241) | 16.0% [11.6%, 21.7%] | 52.7% / 8.3% |
+| 12 | 0.75 | 1425 | 878 | 61.6% [59.1%, 64.1%] | 76.2% (189) | 60.9% (846) | 62.1% (190) | 19.5% [14.6%, 25.5%] | 68.9% / 16.7% |
+| 12 | 1.00 | 1574 | 1228 | 78.0% [75.9%, 80.0%] | 90.2% (286) | 74.5% (929) | 84.3% (159) | 33.0% [26.9%, 39.8%] | 78.8% / 40.0% |
+
+The weekly curve keeps its shape - about 24% at nought, 50% at .5 and 78% at full marks, at both sizes - and sits
+inside the first baseline's intervals everywhere but 12 at .75 (61.6% against 68.9% [64.7%, 72.9%]). The season curve is steeper at 8 than at 12: at 12 the passive player gains little from .5 to
+.75 (16.0% to 19.5%) and full marks win a third of seasons, against the studier's 49.5% at .5 (F3). At 12 the season
+rates sit above the first baseline's at .25 and .5 (10.0% and 16.0% against 1.7% and 8.3%, each one to five seasons
+of 60 there), in line with the passive player's headline rise at 12 under D2 (F1, F4); this grid was not played
+with D2 off, so it does not separate D2 from the first baseline's small samples.
 
 ### Competition concentration (all policies' seasons; NPC rows from the passive player's)
 
@@ -946,12 +1018,9 @@ p90 97.1; the vote margin: p10 2.1, median 10.8, p90 47.5. Loyal 15, Sneaky 16 o
 
 ## What this baseline does not cover
 
-- **Seed counts.** The headline is 480 a cell, not 800; the NPC budgets 100 (300) and 50 (900, two players); the
-  projections 400 and 200. The full tier (every size and the All-Stars) has not run.
-- **NPC budget 1800** was not rerun: its saturation figures (pairs within ten of the bound 5.6-5.7%, the warmest
-  pair's mean 194-195) are B6b's, before D2 and the arcs fix.
-- **Competition by fixed performance (B4)** is carried from the first baseline (`95e99bd2`): the passive player's
-  seasons, before the war rooms, D2 and the arcs fix.
+- **Seed counts.** The headline is 480 a cell, not 800; the NPC budgets 100 (300), 50 (900, two players) and 15
+  (1800, the reader alone); the projections 400, 200 and 50 (900). The full tier (every size and the All-Stars) has
+  not run.
 - **Walk-ins** stay off (decision 4): the NPC world here is the 1 Hz conversation world and D2's beats.
 - **Human performance and time (B8).** The performance distributions and the 30 seconds a decision are
   assumptions.

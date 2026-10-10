@@ -57,17 +57,20 @@ the notes.
 
 How many episode-weeks a session must cover for E3 and E4 to be likely to be observable at all, projected from
 the balance lab's first-timer model (the novice: plays about half its seats on plain talk, takes every offer,
-pulls no lever, performs at .35) over 400 seasons a house, NPC budget 0, and 200 at the 300 ticks a week that stand
-for a human's free roam. Re-projected on 2026-10-09 with every shipped rule on - D2's all-week NPC strategy, the war
-rooms, the leaks - and the NPC world's arc fault fixed (B6c); the earlier projection (B6b) predated D2 and the fix.
+pulls no lever, performs at .35) over 400 seasons a house, NPC budget 0, 200 at the 300 ticks a week that stand
+for a human's free roam, and 50 at 900. Re-projected on 2026-10-09 with every shipped rule on - D2's all-week NPC
+strategy, the war rooms, the leaks - and the NPC world's arc fault fixed (B6c); the earlier projection (B6b) predated
+D2 and the fix. Neither 300 nor 900 ticks moves the eight-house's survival, so the E4 weeks below hold with a
+human's free roam; at 300 ticks a little fewer first-timers at ten and twelve see a commitment of theirs settle
+(6.5 to 8.5 points fewer by week five), which only lowers E3's odds further.
 Full tables: `BALANCE_BASELINE.md`, *The projections*. Testers are taken as independent; a human tester is not the
 novice, so treat these as the order of magnitude.
 
 **The week, not the minute, is the unit.** The lab's mechanical minutes a week in the house - ceremonies at the
 suspenseful pace, the competitions played, the NPC free roam, and 30 seconds a decision - are about 8.5 at eight
-(13.6 with five minutes of free roam), far below E1's own 30–45 minutes an episode. What a person spends over a
-decision is the unknown (B8 measures it), so plan a session as a number of episode-weeks, at E1's 30–45 minutes
-each until B8 says otherwise.
+(13.6 with five minutes of free roam, 23.7 with fifteen), below E1's own 30–45 minutes an episode. What a person
+spends over a decision is the unknown (B8 measures it), so plan a session as a number of episode-weeks, at E1's
+30–45 minutes each until B8 says otherwise.
 
 **E4 (a loss that reads as an ending) needs six weeks with three testers, four with four, three with five.** The
 chance at least one tester is out by week k, in the shipped eight-house:

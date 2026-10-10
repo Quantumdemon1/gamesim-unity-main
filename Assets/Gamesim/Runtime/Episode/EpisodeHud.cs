@@ -369,7 +369,7 @@ namespace Gamesim.Episode
             LeftGutter(state, recovery);
             if (Compact) CompactObjective(state, recovery);
 
-            // Settled before the column, which gives way to an open controls card (RecentSlotsShown).
+            // Settled before the column, which gives way to an open controls card (FoldColumn).
             if (open || Compact) helpExpanded = false;
             RightColumn(state);
 
@@ -847,7 +847,8 @@ namespace Gamesim.Episode
             // The feed's own 16:9 at the column's width, with a two-line caption under it.
             float pictureWidth = RightColumnWidth - 24f;
             float pictureHeight = Mathf.Round(pictureWidth * LiveFeed.Height / LiveFeed.Width);
-            float height = 42f + pictureHeight + 8f + 38f;
+            // 42 + the picture + 8 + 38: the column's fold reckons with the same (LiveFeedHeight).
+            float height = LiveFeedHeight;
             var card = Chrome(EpisodeDirector.LiveFeedCardName, parent);
             Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top), new Vector2(RightColumnWidth, height));
             liveFeedHeading = CardHeading(card, "Live Feed", Paper);

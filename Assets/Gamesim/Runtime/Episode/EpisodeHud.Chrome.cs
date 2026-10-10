@@ -86,35 +86,56 @@ namespace Gamesim.Episode
         /// <summary>The Recent Events card's height for this many rows: its heading alone at none.</summary>
         private static float RecentEventsHeight(int slots) => 42f + slots * RecentEventRowHeight + 2f;
 
+        /// <summary>The relationships card's height for this many rows.</summary>
+        private static float RelationshipsHeight(int rows) => 44f + rows * RelationshipRowHeight + 6f;
+
+        /// <summary>The live feed card's height: the feed's own 16:9 at the column's width, with a two-line caption under it.</summary>
+        private static float LiveFeedHeight => 42f + Mathf.Round((RightColumnWidth - 24f) * LiveFeed.Height / LiveFeed.Width) + 8f + 38f;
+
         /// <summary>
-        /// How the Recent Events card was last laid out: the rows it holds (the empty card's line is
-        /// one), the rows it shows, where it starts and how tall the card under it is - so the
-        /// controls card's toggle can tell whether opening or closing it changes the column.
+        /// How the right column was last laid out against the controls card: which card folds (Recent
+        /// Events, or the relationships card while somebody is in focus), the rows it holds and the
+        /// fewest it may fold to, the rows it shows and whether the live feed was let go, and the
+        /// shape its foot is reckoned from - so the controls card's toggle can tell whether opening or
+        /// closing it changes the column.
         /// </summary>
-        private readonly struct RecentFold
+        private readonly struct ColumnFold
         {
-            public readonly int Slots, Shown;
-            public readonly float Top, WeekHeight;
-            public RecentFold(int slots, int shown, float top, float weekHeight)
-            { Slots = slots; Shown = shown; Top = top; WeekHeight = weekHeight; }
+            public readonly bool Relationships, FeedShed;
+            public readonly int Rows, Least, Shown;
+            /// <summary>Where the column starts, the live feed's room above the folding card (none without a feed), and the card under it.</summary>
+            public readonly float Top, Feed, WeekHeight;
+            public ColumnFold(bool relationships, int rows, int least, int shown, bool feedShed, float top, float feed, float weekHeight)
+            {
+                Relationships = relationships; Rows = rows; Least = least; Shown = shown; FeedShed = feedShed;
+                Top = top; Feed = feed; WeekHeight = weekHeight;
+            }
         }
 
-        /// <summary>The column's last Recent Events layout, or null when the column built none (a focus, the overview, compact).</summary>
-        private RecentFold? recentFold;
+        /// <summary>The column's last layout against the controls card, or null when it built none (the overview, compact).</summary>
+        private ColumnFold? columnFold;
 
         /// <summary>
-        /// The rows the Recent Events card shows. All it holds, unless the controls card is open and
-        /// the column's foot - this card, the gap and the week card under it - would come down onto
-        /// it: then the card gives way a row at a time, to its heading alone if need be, until the
-        /// week card ends a gap above the controls card. The column never moves on a frame where the
-        /// two already clear each other (4:3 among them), and every row comes back as the controls
-        /// card closes; 'View all' keeps the whole story a press away meanwhile.
+        /// The rows the right column's folding card shows - Recent Events, or the relationships card
+        /// while somebody is in focus - and whether the live feed stays. Everything it holds, unless
+        /// the controls card is open and the column's foot - the feed, this card, the gap and the week
+        /// card under it - would come down onto it: then the card gives way a row at a time, to its
+        /// heading alone (the one in focus, for the relationships card) if need be, until the week
+        /// card ends a gap above the controls card. The column never moves on a frame where the two
+        /// already clear each other (4:3 among them), and every row comes back as the controls card
+        /// closes; 'View all' and 'See all' keep the whole list a press away meanwhile.
         ///
         /// <para>At 16:9, the reference frame, the live feed, two events and the week card ended at
         /// y 654 of 900 while the open controls card began at 596 (577 at the larger text), so it
         /// lay over the week card's last rows; the 16:10 frame's chrome check found it (PLAN A,
         /// A12). The card cannot move instead: the status band holds its left and the cast strip
         /// its foot.</para>
+        ///
+        /// <para>Where the folded column would still come down onto the card - the Final 3's
+        /// objectives with their tagline or the spectator's line are 224 tall, and at the larger text
+        /// on 16:9 even Recent Events' heading alone ended 9 units into the card - the live feed goes
+        /// too, and the rows its room buys come back. Only there: a column that clears the card once
+        /// folded keeps its feed (the fix lane's review, finding 2).</para>
         ///
         /// <para>Two thresholds, on purpose. A column that already clears the open card - flush
         /// included - stays exactly as it is: asking it for the fold's gap too would fold 4:3 at
@@ -124,22 +145,35 @@ namespace Gamesim.Episode
         /// which meets the card flush at 596; a canvas that a 16:9 screen other than 1600x900 scales
         /// to a float's hair under 900 folds that row to the heading instead. Clear either way.</para>
         /// </summary>
-        private int RecentSlotsShown(int slots, float top, float weekHeight, bool controlsOpen)
+        private (int Shown, bool FeedShed) FoldColumn(bool relationships, int rows, int least, float top, float feed, float weekHeight, bool controlsOpen)
         {
-            if (!controlsOpen) return slots;
+            if (!controlsOpen) return (rows, false);
             var bounds = ((RectTransform)canvas.transform).rect;
             float floor = (bounds.height > 0f ? bounds.height : 900f) - HelpBottom - ExpandedHelpHeight;
-            float Foot(int rows) => top + RecentEventsHeight(rows) + RightColumnGap + weekHeight;
-            if (Foot(slots) <= floor) return slots;
-            int shown = slots;
-            while (shown > 0 && Foot(shown) + RightColumnGap > floor) shown--;
-            return shown;
+            float Foot(int shown, bool shed) => top + (shed ? 0f : feed)
+                + (relationships ? RelationshipsHeight(shown) : RecentEventsHeight(shown)) + RightColumnGap + weekHeight;
+            if (Foot(rows, false) <= floor) return (rows, false);
+            int kept = rows;
+            while (kept > least && Foot(kept, false) + RightColumnGap > floor) kept--;
+            if (feed <= 0f || Foot(kept, false) <= floor) return (kept, false);
+            // Folded as far as it goes and still over the card: the feed goes, and its room's rows come back.
+            if (Foot(rows, true) <= floor) return (rows, true);
+            kept = rows;
+            while (kept > least && Foot(kept, true) + RightColumnGap > floor) kept--;
+            return (kept, true);
         }
 
-        /// <summary>Whether the controls card, open or closed as it is now, changes the rows the column shows.</summary>
-        private bool ColumnGivesWayToTheControls =>
-            recentFold.HasValue && RecentSlotsShown(recentFold.Value.Slots, recentFold.Value.Top, recentFold.Value.WeekHeight, helpExpanded)
-                != recentFold.Value.Shown;
+        /// <summary>Whether the controls card, open or closed as it is now, changes what the column shows.</summary>
+        private bool ColumnGivesWayToTheControls
+        {
+            get
+            {
+                if (!columnFold.HasValue) return false;
+                var was = columnFold.Value;
+                var now = FoldColumn(was.Relationships, was.Rows, was.Least, was.Top, was.Feed, was.WeekHeight, helpExpanded);
+                return now.Shown != was.Shown || now.FeedShed != was.FeedShed;
+            }
+        }
 
         /// <summary>The card under Recent Events: the week's vibe, or the endgame's objectives at three and at two.</summary>
         private static float WeekCardHeight(EpisodeState state) =>
@@ -1122,7 +1156,7 @@ namespace Gamesim.Episode
         /// </summary>
         private void RightColumn(EpisodeState state)
         {
-            recentFold = null;
+            columnFold = null;
             if (director.IsOverview)
             {
                 float at = RightColumnTop;
@@ -1136,14 +1170,29 @@ namespace Gamesim.Episode
             }
             if(Compact)return;
             float top = RightColumnTop;
+            float weekHeight = WeekCardHeight(state);
             string focus = director.TalkingToId ?? director.FollowedId;
             if (!string.IsNullOrEmpty(focus) && state.Find(focus) != null && focus != state.playerId)
-                top += RelationshipsCard(canvas.transform, state, top, focus) + RightColumnGap;
-            else
             {
-                if (director.LiveFeedTexture != null) top += LiveFeedCard(canvas.transform, top) + RightColumnGap;
-                top += RecentEventsCard(canvas.transform, state, top, WeekCardHeight(state)) + RightColumnGap;
+                // The one in focus stays whatever the card gives way to the controls (FoldColumn).
+                var people = RelationshipPeople(state, focus);
+                int least = Mathf.Min(1, people.Count);
+                var fold = FoldColumn(true, people.Count, least, top, 0f, weekHeight, helpExpanded);
+                columnFold = new ColumnFold(true, people.Count, least, fold.Shown, false, top, 0f, weekHeight);
+                top += RelationshipsCard(canvas.transform, state, top, focus, people.Take(fold.Shown).ToList()) + RightColumnGap;
             }
+            else if (state != null)
+            {
+                var entries = RecentEntries(state);
+                // A row's room, or the empty card's one line.
+                int slots = Mathf.Max(1, entries.Count);
+                float feed = director.LiveFeedTexture != null ? LiveFeedHeight + RightColumnGap : 0f;
+                var fold = FoldColumn(false, slots, 0, top, feed, weekHeight, helpExpanded);
+                columnFold = new ColumnFold(false, slots, 0, fold.Shown, fold.FeedShed, top, feed, weekHeight);
+                if (feed > 0f && !fold.FeedShed) top += LiveFeedCard(canvas.transform, top) + RightColumnGap;
+                top += RecentEventsCard(canvas.transform, state, top, entries, fold.Shown) + RightColumnGap;
+            }
+            else if (director.LiveFeedTexture != null) top += LiveFeedCard(canvas.transform, top) + RightColumnGap;
             // The endgame's objectives and the jury's faces take the vibe card's place at three and
             // at two (ENDGAME-PLAN F1); the finished season keeps the week it just had.
             if (IsFinalThree(state) || IsFinalTwo(state)) EndgameCard(canvas.transform, top, state);
@@ -1305,18 +1354,10 @@ namespace Gamesim.Episode
         /// - the same boundary as <see cref="CastRail.StandingOf"/>. What any of them think of the
         /// player is exactly what the game does not tell you, so it is not drawn.</para>
         /// </summary>
-        private float RelationshipsCard(Transform parent, EpisodeState state, float top, string focusId)
+        private float RelationshipsCard(Transform parent, EpisodeState state, float top, string focusId, System.Collections.Generic.List<ContestantState> people)
         {
-            var bounds = ((RectTransform)canvas.transform).rect;
-            int most = (bounds.height > 0 ? bounds.height : 900f) < 1000f ? 7 : 8;
-            var people = RelationshipWeb.Others(state)
-                .OrderByDescending(actor => actor.id == focusId)
-                .ThenByDescending(actor => System.Math.Abs(state.Score(state.playerId, actor.id)))
-                .Take(most)
-                .ToList();
-
             float width = RightColumnWidth;
-            float height = 44f + people.Count * RelationshipRowHeight + 6f;
+            float height = RelationshipsHeight(people.Count);
             var card = Chrome(RelationshipsCardName, parent);
             Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top), new Vector2(width, height));
             CardHeading(card, "Relationships");
@@ -1338,6 +1379,21 @@ namespace Gamesim.Episode
             for (int i = 0; i < people.Count; i++)
                 RelationshipRow(card, state, people[i], -(40f + i * RelationshipRowHeight), people[i].id == focusId);
             return height;
+        }
+
+        /// <summary>
+        /// The houseguests the relationships card can hold, the one in focus first and then by how
+        /// strongly the player feels either way: seven on a canvas under 1000 tall, eight on a taller.
+        /// </summary>
+        private System.Collections.Generic.List<ContestantState> RelationshipPeople(EpisodeState state, string focusId)
+        {
+            var bounds = ((RectTransform)canvas.transform).rect;
+            int most = (bounds.height > 0 ? bounds.height : 900f) < 1000f ? 7 : 8;
+            return RelationshipWeb.Others(state)
+                .OrderByDescending(actor => actor.id == focusId)
+                .ThenByDescending(actor => System.Math.Abs(state.Score(state.playerId, actor.id)))
+                .Take(most)
+                .ToList();
         }
 
         private void RelationshipRow(RectTransform card, EpisodeState state, ContestantState actor, float y, bool focused)
@@ -1403,28 +1459,25 @@ namespace Gamesim.Episode
         /// <para>"When" is the beat of the week, not the mockups' clock time: the simulation keeps
         /// no clock, and a time it does not have is a fact it would be making up.</para>
         /// </summary>
-        private float RecentEventsCard(Transform parent, EpisodeState state, float top, float weekHeight)
-        {
-            if (state == null) return 0f;
-            var entries = state.events
-                .Where(entry => entry.audienceIds.Count == 0 || entry.audienceIds.Contains(state.playerId))
-                // Phase markers are the engine's scaffolding, not something that happened - the
-                // story page leaves them out for the same reason. They filled the card with
-                // "Week 1 · Nomination" where the nomination itself should have been. So are the
-                // competition's committed standings and performance arithmetic: the record's
-                // numbers, which nobody in the house sees (UI-UX-PASS-PLAN decision 12).
-                .Where(entry => !EpisodeEngine.IsScaffolding(entry.kind))
-                .Reverse()
-                // A quieter house at the endgame: two rows, as the outline asks (ENDGAME-PLAN F1).
-                .Take(IsEndgame(state) ? EndgameEventRows : RecentEventRows)
-                .ToList();
+        /// <summary>The events the card can hold, newest first: only what the player may have seen, and none of the engine's scaffolding.</summary>
+        private static System.Collections.Generic.List<EpisodeEvent> RecentEntries(EpisodeState state) => state.events
+            .Where(entry => entry.audienceIds.Count == 0 || entry.audienceIds.Contains(state.playerId))
+            // Phase markers are the engine's scaffolding, not something that happened - the
+            // story page leaves them out for the same reason. They filled the card with
+            // "Week 1 · Nomination" where the nomination itself should have been. So are the
+            // competition's committed standings and performance arithmetic: the record's
+            // numbers, which nobody in the house sees (UI-UX-PASS-PLAN decision 12).
+            .Where(entry => !EpisodeEngine.IsScaffolding(entry.kind))
+            .Reverse()
+            // A quieter house at the endgame: two rows, as the outline asks (ENDGAME-PLAN F1).
+            .Take(IsEndgame(state) ? EndgameEventRows : RecentEventRows)
+            .ToList();
 
+        private float RecentEventsCard(Transform parent, EpisodeState state, float top, System.Collections.Generic.List<EpisodeEvent> entries, int shown)
+        {
             float width = RightColumnWidth;
             // A row's room, or the empty card's one line; fewer while the controls card is open on
-            // a frame too short for both (see RecentSlotsShown).
-            int slots = Mathf.Max(1, entries.Count);
-            int shown = RecentSlotsShown(slots, top, weekHeight, helpExpanded);
-            recentFold = new RecentFold(slots, shown, top, weekHeight);
+            // a frame too short for both (see FoldColumn).
             float height = RecentEventsHeight(shown);
             var card = Chrome(RecentEventsCardName, parent);
             Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top),

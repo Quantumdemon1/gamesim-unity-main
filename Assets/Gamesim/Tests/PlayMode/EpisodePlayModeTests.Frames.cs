@@ -3,7 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Episode;
+using Gamesim.House;
 using Gamesim.Presentation;
+using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
@@ -239,6 +241,130 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
             }
             finally { lens.Dispose(); }
+        }
+
+        /// <summary>The right column's cards and the chrome round them, whichever of them this state draws.</summary>
+        private static readonly string[] ColumnNeighbours =
+        {
+            "Brand", "Navigation", "Objective", "Status", "House pill", "Live feed", CastRail.RootName, IconRail.RootName,
+            EpisodeHud.HouseVibeCardName, EpisodeHud.RecentEventsCardName, EpisodeHud.RelationshipsCardName, EpisodeHud.ObjectivesCardName,
+            EpisodeHud.NearbyCardName, EpisodeHud.PullCardName,
+        };
+
+        /// <summary>
+        /// The panels named in <paramref name="required"/> are up and, with every other one of
+        /// <see cref="ColumnNeighbours"/> that is, none overlaps another: the fixed chrome's check
+        /// (<see cref="AssertFixedChromeDoesNotOverlap"/>) for a column that is not the vibe card under
+        /// Recent Events - somebody in focus, or the endgame's objectives.
+        /// </summary>
+        private void AssertColumnClear(string where, params string[] required)
+        {
+            Canvas.ForceUpdateCanvases();
+            var panels = new List<RectTransform>();
+            foreach (var name in required.Concat(ColumnNeighbours).Distinct())
+            {
+                var rect = director.GetComponentsInChildren<RectTransform>(true).LastOrDefault(item => item.name == name && item.gameObject.activeInHierarchy);
+                if (rect == null) { Assert.That(required, Has.No.Member(name), where + ": '" + name + "' is up."); continue; }
+                panels.Add(rect);
+            }
+            for (int a = 0; a < panels.Count; a++)
+            for (int b = a + 1; b < panels.Count; b++)
+            {
+                var first = ScreenRect(panels[a]);
+                var second = ScreenRect(panels[b]);
+                Assert.That(first.Overlaps(second), Is.False,
+                    where + ": '" + panels[a].name + "' " + first + " overlaps '" + panels[b].name + "' " + second + ".");
+            }
+        }
+
+        /// <summary>
+        /// The two states the right column's fold did not reach (the fix lane's review, finding 2),
+        /// with the controls card open on every review frame at every text size. Somebody in focus:
+        /// the relationships card is seven rows and 400 tall, and it ended at 668 against the open
+        /// card's 596 on 16:9; now it gives way a row at a time, the one in focus last. The Final 3
+        /// with the tagline: the objectives are 224 tall, and at the larger text on 16:9 even Recent
+        /// Events' heading alone ended 9 units into the card; now the live feed goes there too.
+        /// </summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator Accessibility_TheColumnGivesWayToTheControlsWithSomeoneInFocusAndAtTheFinalThree()
+        {
+            if (!Application.isBatchMode) yield break;
+            // The Final 3 first: its fixture is installed over the scene's own season, which a
+            // twelve-house season started first would no longer be.
+            yield return InstallTheFinalThree();
+            foreach (var textSize in TextSizes.All)
+            {
+                string size = SizeSuffix(textSize), text = TextSizes.Name(textSize);
+                bool larger = textSize != TextSize.Standard;
+                yield return ApplyTextSize(textSize);
+                Assert.That(director.TextSize, Is.EqualTo(textSize));
+                director.ClosePanels();
+                yield return null;
+                Assert.That(ActiveChromePanel(EpisodeHud.ObjectivesTaglineName), Is.Not.Null, "A finalist's objectives carry the tagline at three.");
+                bool feedUp = ActiveChromePanel(EpisodeDirector.LiveFeedCardName) != null;
+                ButtonWithCaption(ExpandControlsCaption).onClick.Invoke();
+                yield return null;
+                yield return OnFrames("frames-final-three-help" + size, "The Final 3 with the controls open at " + text + " text",
+                    where =>
+                    {
+                        AssertColumnClear(where, EpisodeHud.ObjectivesCardName, EpisodeHud.RecentEventsCardName, "Exploration controls");
+                        // The one state the fold alone could not clear: the feed gives way there.
+                        var canvas = director.GetComponentsInChildren<Canvas>(true).First(item => item.name == "Gamesim Episode HUD");
+                        if (feedUp && larger && Mathf.Abs(((RectTransform)canvas.transform).rect.height - EpisodeHud.ReferenceHeight) < 1f)
+                            Assert.That(ActiveChromePanel(EpisodeDirector.LiveFeedCardName), Is.Null,
+                                where + ": the live feed gives way on a 900-tall canvas above the standard text.");
+                    });
+                ButtonWithCaption(CollapseControlsCaption).onClick.Invoke();
+                yield return null;
+                Assert.That(ActiveChromePanel(EpisodeDirector.LiveFeedCardName) != null, Is.EqualTo(feedUp), "The live feed comes back as the controls close.");
+                // And somebody in focus at three: the objectives under the relationships card.
+                var finalist = director.Snapshot.Active.First(actor => !actor.isPlayer);
+                director.FollowHouseguest(finalist.id);
+                director.ClosePanels();
+                yield return null;
+                Assert.That(ActiveChromePanel(EpisodeHud.RelationshipsCardName), Is.Not.Null, "A finalist in focus at three.");
+                ButtonWithCaption(ExpandControlsCaption).onClick.Invoke();
+                yield return null;
+                yield return OnFrames("frames-final-three-focus-help" + size, "Somebody in focus at the Final 3 with the controls open at " + text + " text",
+                    where => AssertColumnClear(where, EpisodeHud.RelationshipsCardName, EpisodeHud.ObjectivesCardName, "Exploration controls"));
+                ButtonWithCaption(CollapseControlsCaption).onClick.Invoke();
+                director.FollowHouseguest(finalist.id);
+                yield return null;
+            }
+
+            // Twelve in the house, so the card holds the seven rows it holds on a 900-tall canvas -
+            // the fixture's six-house season fills five, which cleared the open card on 16:9 anyway -
+            // and nothing in the house moves meanwhile, so no witnessed talk swaps the vibe card out.
+            director.StartSeason(new SeasonBuilder.Choice { HouseSize = 12 });
+            yield return null; yield return null;
+            HoldTheHouseForTheFixture();
+            yield return PutAwayTheCards();
+            yield return SettleCast();
+            Assert.That(director.Snapshot.contestants, Has.Count.EqualTo(12), "A twelve-house season.");
+            var npc = SceneComponents<HouseNpc>().First(actor => actor.gameObject.activeInHierarchy && director.Snapshot.Find(actor.Id) != null);
+            foreach (var textSize in TextSizes.All)
+            {
+                string size = SizeSuffix(textSize), text = TextSizes.Name(textSize);
+                yield return ApplyTextSize(textSize);
+                Assert.That(director.TextSize, Is.EqualTo(textSize));
+                // Following draws nothing by itself: the render that closing the panels makes does.
+                if (director.FollowedId != npc.Id) director.FollowHouseguest(npc.Id);
+                director.ClosePanels();
+                yield return null;
+                Assert.That(director.FollowedId, Is.EqualTo(npc.Id), "Somebody is in focus.");
+                Assert.That(ActiveChromePanel(EpisodeHud.RelationshipsCardName), Is.Not.Null, "The column is the relationships card while somebody is in focus.");
+                ButtonWithCaption(ExpandControlsCaption).onClick.Invoke();
+                yield return null;
+                yield return OnFrames("frames-focus-help" + size, "Somebody in focus with the controls open at " + text + " text",
+                    where => AssertColumnClear(where, EpisodeHud.RelationshipsCardName, EpisodeHud.HouseVibeCardName, "Exploration controls"));
+                // And the one in focus is the row the card keeps, whatever it gives way.
+                var card = director.GetComponentsInChildren<RectTransform>(true).Last(item => item.name == EpisodeHud.RelationshipsCardName && item.gameObject.activeInHierarchy);
+                Assert.That(card.GetComponentsInChildren<RectTransform>(true).Any(item => item.name == "Focus row"), Is.True, "The one in focus keeps their row.");
+                ButtonWithCaption(CollapseControlsCaption).onClick.Invoke();
+                director.FollowHouseguest(npc.Id);
+                yield return null;
+            }
+            yield return ApplyTextSize(TextSize.Standard);
         }
     }
 }

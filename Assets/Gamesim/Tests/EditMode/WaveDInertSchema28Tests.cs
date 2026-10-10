@@ -370,6 +370,29 @@ namespace Gamesim.Tests.EditMode
             s.allianceLeakRulesStartWeek = 1; Accepted(s);
         }
 
+        /// <summary>
+        /// D2's records of the house's talk - a completed NPC conversation and its gossip, which under the all-week rules
+        /// move the pair through the ledger (EpisodeNpcSocialTests) - belong to those rules from their start week, as D4's
+        /// receipt belongs to the leak rules: they feed trust between houseguests, so a season without the rules carries
+        /// none, and none is dated before them.
+        /// </summary>
+        [TestCase("npc-conversation")] [TestCase("npc-gossip")]
+        public void TheHousesTalkRecordsBelongToTheAllWeekRulesFromTheirStartWeek(string type)
+        {
+            Assert.That(new[] { EpisodeEngine.NpcConversationEvent, EpisodeEngine.NpcGossipEvent }, Has.Member(type), "The saved types.");
+            var s = ContentCatalog.Create(2820);
+            var edge = s.relationships.First(r => r.fromId != s.playerId && r.toId != s.playerId);
+            edge.events.Add(new RelationshipEventState
+            {
+                sequence = s.nextSequence++, week = s.week, type = type, description = "Two of the house talked", impactScore = 3,
+                decayable = RelationshipLedger.Decays(type),
+            });
+            Refused(s, "none of their records");
+            s.pactPlanRulesStartWeek = s.allianceLeakRulesStartWeek = 1; Refused(s, "none of their records");
+            s.allWeekRulesStartWeek = 2; Refused(s, "none of their records");
+            s.allWeekRulesStartWeek = 1; Accepted(s);
+        }
+
         [Test]
         public void TheVocabularyIsConstantsOnly()
         {

@@ -40,7 +40,9 @@ namespace Gamesim.Presentation
             if (scaler != null && scaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize && width > 0 && height > 0)
             {
                 var reference = scaler.referenceResolution;
-                float log = Mathf.Lerp(Mathf.Log(width / reference.x, 2f), Mathf.Log(height / reference.y, 2f), scaler.matchWidthOrHeight);
+                // The match the canvas is laid out at: its own, or the height on a frame wider than 16:9 (A12b).
+                float log = Mathf.Lerp(Mathf.Log(width / reference.x, 2f), Mathf.Log(height / reference.y, 2f),
+                    FrameMatch.For(width, height, scaler.matchWidthOrHeight));
                 float scale = Mathf.Pow(2f, log);
                 return new Vector2(width / scale, height / scale);
             }

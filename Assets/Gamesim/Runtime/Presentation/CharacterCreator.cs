@@ -78,7 +78,7 @@ namespace Gamesim.Presentation
         public static CharacterCreator Attach(GameObject owner)
         {
             var root = new GameObject("Gamesim Character Creator",
-                typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler),
+                typeof(RectTransform), typeof(Canvas), typeof(FrameScaler),
                 typeof(GraphicRaycaster), typeof(CanvasGroup));
             root.transform.SetParent(owner.transform, false);
 

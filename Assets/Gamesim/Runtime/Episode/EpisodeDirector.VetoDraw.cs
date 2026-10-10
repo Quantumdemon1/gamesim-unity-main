@@ -74,7 +74,7 @@ namespace Gamesim.Episode
             if (drawn.Count == 0) return false;
             // Unity's fake null: a card destroyed with its scene compares equal to null, and a ?? would not see it.
             if (drawReveal == null) drawReveal = VetoDrawReveal.Attach(gameObject);
-            drawReveal.FontScale = largeText ? 1.2f : 1f;
+            drawReveal.FontScale = TextScale;
             VetoDrawReveal.Player Entry(string id, string badge)
             {
                 var actor = committed.Find(id);

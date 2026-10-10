@@ -98,10 +98,35 @@ namespace Gamesim.Episode
             hud.Action("Volume up", () => { volumePercent = Mathf.Min(100, volumePercent + 10); ApplyPreferences(); Render(); });
             hud.Action(muted ? "Turn sound on" : "Mute sound", () => { muted = !muted; ApplyPreferences(); Render(); });
             hud.Action(musicOn ? "Turn music off" : "Turn music on", () => { musicOn = !musicOn; ApplyPreferences(); Render(); });
+            // The music, the effects and the interface, each a share of the master (A11).
+            foreach (var channel in new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface })
+            {
+                var each = channel;
+                hud.Meter(SoundPictures.MeterCaption(each), ChannelVolumePercent(each), 100, muted ? UiTheme.Muted : UiTheme.Accent);
+                hud.Action(SoundPictures.DownCaption(each), () => { SetChannelVolume(each, SoundPictures.Stepped(ChannelVolumePercent(each), false)); hud.FocusWhenWired(SoundPictures.DownCaption(each)); });
+                hud.Action(SoundPictures.UpCaption(each), () => { SetChannelVolume(each, SoundPictures.Stepped(ChannelVolumePercent(each), true)); hud.FocusWhenWired(SoundPictures.UpCaption(each)); });
+            }
             hud.Section("ACCESSIBILITY");
             hud.Action(reducedMotion ? "Enable character motion" : "Reduce character motion", () => { reducedMotion = !reducedMotion; ApplyPreferences(); Render(); });
             hud.Action(reducedAudio ? "Full sound" : "Reduce sound", () => { reducedAudio = !reducedAudio; ApplyPreferences(); Render(); });
-            hud.Action(largeText ? "Use standard text" : "Use larger text", () => SetLargeText(!largeText));
+            // The two sizes not in use, each by its own control (A8): "Use larger text" and "Use
+            // standard text" keep their words wherever they are offered, and the largest is a third.
+            foreach (var size in TextSizes.Others(textSize))
+            {
+                var chosen = size;
+                hud.Action(TextSizes.Caption(chosen), () =>
+                {
+                    SetTextSize(chosen);
+                    // The keyboard stays among the sizes: on the first of the two now offered.
+                    hud.FocusWhenWired(TextSizes.Caption(TextSizes.Others(chosen)[0]));
+                });
+            }
+            // How long the ceremony's strip and a witnessed conversation's line stay up (A10).
+            hud.Action(CaptionTiming.Caption(captionTime), () =>
+            {
+                SetCaptionTime(captionTime == CaptionTime.Longer ? CaptionTime.Standard : CaptionTime.Longer);
+                hud.FocusWhenWired(CaptionTiming.Caption(captionTime));
+            });
             hud.Section("CEREMONIES");
             // The key ceremony and the live eviction reveal one name at a time; suspenseful holds a
             // beat on each, quick keeps them brisk. Either can be sped up or skipped while it plays,
@@ -397,11 +422,46 @@ namespace Gamesim.Episode
             Project();
         }
 
-        public bool LargeText => largeText;
+        /// <summary>Whether the text is larger than the standard size: the larger or the largest.</summary>
+        public bool LargeText => textSize != TextSize.Standard;
 
-        public void SetLargeText(bool enabled)
+        /// <summary>The text size in use (A8).</summary>
+        public TextSize TextSize => textSize;
+
+        /// <summary>How much the copy grows at the size in use: 1, 1.2 or 1.4.</summary>
+        public float TextScale => TextSizes.Scale(textSize);
+
+        /// <summary>The larger text, or the standard: what the toggle this replaced did, for the callers that ask for one of those two.</summary>
+        public void SetLargeText(bool enabled) => SetTextSize(enabled ? TextSize.Larger : TextSize.Standard);
+
+        public void SetTextSize(TextSize size)
         {
-            largeText = enabled;
+            textSize = size;
+            ApplyPreferences();
+            Render();
+        }
+
+        /// <summary>A channel's share of the master, as a percentage (A11).</summary>
+        public int ChannelVolumePercent(SoundChannel channel) =>
+            channel == SoundChannel.Music ? musicVolumePercent : channel == SoundChannel.Interface ? interfaceVolumePercent : effectsVolumePercent;
+
+        /// <summary>Sets a channel's share of the master, 0 to 100, applies it and keeps it.</summary>
+        public void SetChannelVolume(SoundChannel channel, int percent)
+        {
+            percent = SoundPictures.Clamp(percent);
+            if (channel == SoundChannel.Music) musicVolumePercent = percent;
+            else if (channel == SoundChannel.Interface) interfaceVolumePercent = percent;
+            else effectsVolumePercent = percent;
+            ApplyPreferences();
+            Render();
+        }
+
+        /// <summary>The caption reading time in use (A10).</summary>
+        public CaptionTime CaptionTimeSetting => captionTime;
+
+        public void SetCaptionTime(CaptionTime time)
+        {
+            captionTime = time;
             ApplyPreferences();
             Render();
         }
@@ -412,28 +472,39 @@ namespace Gamesim.Episode
             audioBed?.SetVolume(volumePercent / 100f);
             audioBed?.SetAmbienceEnabled(musicOn);
             audioBed?.SetReducedAudio(reducedAudio);
+            audioBed?.SetChannelVolumes(musicVolumePercent / 100f, effectsVolumePercent / 100f, interfaceVolumePercent / 100f);
             ApplyMusic();
             cameraRig?.SetReducedMotion(reducedMotion);
-            if (hud != null) { hud.FontScale = largeText ? 1.2f : 1; hud.ReducedMotion = reducedMotion; }
-            if (sting != null) sting.FontScale = largeText ? 1.2f : 1;
-            if (takeover != null) takeover.FontScale = largeText ? 1.2f : 1;
-            if (voteReveal != null) voteReveal.FontScale = largeText ? 1.2f : 1;
-            if (juryReveal != null) juryReveal.FontScale = largeText ? 1.2f : 1;
-            if (competitionCard != null) competitionCard.FontScale = largeText ? 1.2f : 1;
-            if (keyCeremony != null) keyCeremony.FontScale = largeText ? 1.2f : 1;
-            if (skipChip != null) skipChip.FontScale = largeText ? 1.2f : 1;
-            if (tutorial != null) { tutorial.FontScale = largeText ? 1.2f : 1; tutorial.ReducedMotion = reducedMotion; }
-            if (opening != null) opening.FontScale = largeText ? 1.2f : 1;
-            if (seasonReport != null) { seasonReport.FontScale = largeText ? 1.2f : 1; seasonReport.ReducedMotion = reducedMotion; }
-            if (weeklyRecap != null) weeklyRecap.FontScale = largeText ? 1.2f : 1;
-            if (castSelect != null) { castSelect.FontScale = largeText ? 1.2f : 1; castSelect.ReducedMotion = reducedMotion; }
-            if (characterCreator != null) characterCreator.FontScale = largeText ? 1.2f : 1;
-            if (mainMenu != null) mainMenu.FontScale = largeText ? 1.2f : 1;
+            // Every surface that grows with the text, at the size chosen (A8): 1, 1.2 or 1.4.
+            float scale = TextScale;
+            if (hud != null) { hud.FontScale = scale; hud.ReducedMotion = reducedMotion; }
+            if (sting != null) { sting.FontScale = scale; sting.CaptionTime = captionTime; }
+            if (takeover != null) takeover.FontScale = scale;
+            if (voteReveal != null) voteReveal.FontScale = scale;
+            if (juryReveal != null) juryReveal.FontScale = scale;
+            if (competitionCard != null) competitionCard.FontScale = scale;
+            if (keyCeremony != null) keyCeremony.FontScale = scale;
+            if (skipChip != null) skipChip.FontScale = scale;
+            if (tutorial != null) { tutorial.FontScale = scale; tutorial.ReducedMotion = reducedMotion; }
+            if (opening != null) opening.FontScale = scale;
+            if (seasonReport != null) { seasonReport.FontScale = scale; seasonReport.ReducedMotion = reducedMotion; }
+            if (weeklyRecap != null) weeklyRecap.FontScale = scale;
+            if (castSelect != null) { castSelect.FontScale = scale; castSelect.ReducedMotion = reducedMotion; }
+            if (characterCreator != null) characterCreator.FontScale = scale;
+            if (mainMenu != null) mainMenu.FontScale = scale;
+            // And the names over the houseguests' heads, which were fixed at one size.
+            HouseNpc.NameScale = scale;
             foreach (var visual in FindObjectsByType<CharacterPresentation>()) visual.SetReducedMotion(reducedMotion);
             ApplyDisplayPreferences();
             // Kept in the session's store (A13): PlayerPrefs, the root's own file, or nowhere.
             var store = Preferences;
-            store.SetInt("Gamesim.Muted", muted ? 1 : 0); store.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); store.SetInt("Gamesim.ReducedAudio", reducedAudio ? 1 : 0); store.SetInt("Gamesim.LargeText", largeText ? 1 : 0); store.SetInt("Gamesim.Volume", volumePercent); store.SetInt("Gamesim.Music", musicOn ? 1 : 0); store.SetInt("Gamesim.CeremonyPace", ceremonyPace == CeremonyPace.Quick ? 1 : 0); store.Save();
+            store.SetInt("Gamesim.Muted", muted ? 1 : 0); store.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); store.SetInt("Gamesim.ReducedAudio", reducedAudio ? 1 : 0); store.SetInt("Gamesim.Volume", volumePercent); store.SetInt("Gamesim.Music", musicOn ? 1 : 0); store.SetInt("Gamesim.CeremonyPace", ceremonyPace == CeremonyPace.Quick ? 1 : 0);
+            // The size as 0 to 2, and the boolean an earlier build reads beside it.
+            store.SetInt(TextSizes.SizeKey, (int)textSize); store.SetInt(TextSizes.LegacyKey, TextSizes.LegacyRecord(textSize));
+            store.SetInt(CaptionTiming.Key, (int)captionTime);
+            store.SetInt(SoundPictures.MusicVolumeKey, musicVolumePercent); store.SetInt(SoundPictures.EffectsVolumeKey, effectsVolumePercent);
+            store.SetInt(SoundPictures.InterfaceVolumeKey, interfaceVolumePercent);
+            store.Save();
             // And a line in the player log for each value that changed since the last one logged.
             LogSettingChanges();
         }

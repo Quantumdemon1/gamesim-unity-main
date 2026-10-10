@@ -120,6 +120,32 @@ namespace Gamesim.Presentation
         /// <summary>Whether the room tone is playing right now.</summary>
         public bool AmbiencePlaying => ambienceSource != null && ambienceSource.isPlaying;
 
+        // The three volumes beside the master (PLAN A, A11), each a share of it: the music, the
+        // effects - the game's news and the house's air - and the interface's answers to a hand.
+        private float musicShare = 1f, effectsShare = 1f, interfaceShare = 1f;
+
+        /// <summary>A channel's share of the master, 0 to 1.</summary>
+        public float ChannelVolume(SoundChannel channel) =>
+            channel == SoundChannel.Music ? musicShare : channel == SoundChannel.Interface ? interfaceShare : effectsShare;
+
+        /// <summary>Sets the three shares of the master: the music's, the effects' and the interface's, each 0 to 1.</summary>
+        public void SetChannelVolumes(float music, float effects, float interfaceVolume)
+        {
+            musicShare = Share(music); effectsShare = Share(effects); interfaceShare = Share(interfaceVolume);
+            ApplySettings();
+        }
+
+        private static float Share(float value) => float.IsNaN(value) ? 1f : Mathf.Clamp01(value);
+
+        /// <summary>The volume a cue plays at, after the master, reduced audio and its channel's share.</summary>
+        public float VolumeOf(Cue cue) => CueVolume * ChannelVolume(SoundPictures.ChannelOf(cue.ToString()));
+
+        /// <summary>
+        /// Every cue asked for, muted or not, as it is asked: what a test listens to for the picture
+        /// each sound carries (A11). Nothing in the game subscribes.
+        /// </summary>
+        public event System.Action<Cue> CueAsked;
+
         public void SetReducedAudio(bool value)
         {
             ReducedAudio = value;
@@ -413,7 +439,7 @@ namespace Gamesim.Presentation
         /// </summary>
         private void WriteMusicVolumes()
         {
-            float preferences = volume * (ReducedAudio ? 0.5f : 1f);
+            float preferences = volume * (ReducedAudio ? 0.5f : 1f) * musicShare;
             if (themeSource != null)
             {
                 themeSource.mute = Muted;
@@ -430,9 +456,11 @@ namespace Gamesim.Presentation
         {
             LastCue = cue;
             CuesAsked++;
+            CueAsked?.Invoke(cue);
             if (!isActiveAndEnabled || Muted || volume <= 0f) return;
             Initialize();
-            if (clips.TryGetValue(cue, out var clip)) cueSource.PlayOneShot(clip);
+            // At its channel's share of the master (A11): the source carries the master.
+            if (clips.TryGetValue(cue, out var clip)) cueSource.PlayOneShot(clip, ChannelVolume(SoundPictures.ChannelOf(cue.ToString())));
         }
 
         private void OnEnable()
@@ -512,7 +540,8 @@ namespace Gamesim.Presentation
             if (ambienceSource != null)
             {
                 ambienceSource.mute = Muted;
-                ambienceSource.volume = volume;
+                // The house's air is an effect (A11).
+                ambienceSource.volume = volume * effectsShare;
                 // A room's own bed replaces the generic air while it plays.
                 bool roomBed = roomSource != null && roomSource.clip != null;
                 if (isActiveAndEnabled && ambienceEnabled && !ReducedAudio && !roomBed)
@@ -529,7 +558,7 @@ namespace Gamesim.Presentation
             if (roomSource != null)
             {
                 roomSource.mute = Muted;
-                roomSource.volume = volume * 0.7f;
+                roomSource.volume = volume * 0.7f * effectsShare;
                 bool wanted = roomSource.clip != null && isActiveAndEnabled && ambienceEnabled && !ReducedAudio;
                 if (wanted && !roomSource.isPlaying) roomSource.Play();
                 else if (!wanted && roomSource.isPlaying) roomSource.Stop();

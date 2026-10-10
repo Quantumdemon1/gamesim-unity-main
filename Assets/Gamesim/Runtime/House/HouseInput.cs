@@ -55,6 +55,8 @@ namespace Gamesim.House
                 if (shared == null || shared.Asset == null)
                 {
                     shared = new HouseCameraActions();
+                    // With the player's own keys and buttons (A5), as every copy has them.
+                    HouseBindings.Apply(shared);
                     shared.Enable();
                 }
                 WatchButtons();
@@ -68,7 +70,18 @@ namespace Gamesim.House
             if (actions == null) return;
             registered.Remove(actions);
             registered.Add(actions);
+            HouseBindings.Apply(actions);
             WatchButtons();
+        }
+
+        /// <summary>Every copy of the actions alive now: each rig's that is up, and the shared copy once built (A5).</summary>
+        public static IEnumerable<HouseCameraActions> Live()
+        {
+            var live = new List<HouseCameraActions>();
+            foreach (var actions in registered)
+                if (actions != null && actions.Asset != null && !live.Contains(actions)) live.Add(actions);
+            if (shared != null && shared.Asset != null && !live.Contains(shared)) live.Add(shared);
+            return live;
         }
 
         /// <summary>A rig going away: the house reads the rig enabled before it, or the shared copy.</summary>

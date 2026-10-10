@@ -84,7 +84,9 @@ namespace Gamesim.Episode
         /// </summary>
         private void TickNearby()
         {
-            if (hud != null) hud.SetNearby(!IsPanelOpen && !string.IsNullOrEmpty(ObservedNpcConversation) && CanListenIn);
+            // While the pair is being witnessed: a line left up only to be read (A10) offers nothing.
+            if (hud != null) hud.SetNearby(!IsPanelOpen && !string.IsNullOrEmpty(ObservedNpcConversation)
+                && !(npcCaption != null && npcCaption.IsReleasing) && CanListenIn);
         }
         public string NpcAutonomyDiagnostic => npcWorldFailure;
         /// <summary>Read-only proof for explicit QA; never a command or UI knowledge source.</summary>
@@ -443,13 +445,15 @@ namespace Gamesim.Episode
                     // Use the same current body endpoints that passed visibility. Navigation
                     // approaches stay reserved; they are not where seated faces are rendered.
                     var between = visibleMidpoint+Vector3.up*(lease.Seated ? .35f : CaptionHeadHeight-1.15f);
+                    npcCaption.CaptionTime = captionTime;
                     npcCaption.Show(projected.Find(pending.firstId).name, projected.Find(pending.secondId).name,
-                        pending.topic, largeText ? 1.2f : 1, between);
+                        pending.topic, TextScale, between);
                     npcShownLease = lease;
                     witnessed = true;
                 }
             }
-            if (!witnessed) { npcCaption?.Hide(); npcShownLease = null; }
+            // Out of sight, the line stays up until it has been read (A10); the witness is over at once.
+            if (!witnessed) { npcCaption?.Release(); npcShownLease = null; }
             npcSatDown.RemoveWhere(lease => !npcMeetings.TryGetLease(lease.Token, out var current) || !ReferenceEquals(current, lease));
             // Arrived pairs talk; at a seated venue they sit; either way each settles on the lease's
             // heading. A pair still travelling, or released, has none of the three.

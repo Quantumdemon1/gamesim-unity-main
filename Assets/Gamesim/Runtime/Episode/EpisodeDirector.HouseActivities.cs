@@ -222,7 +222,7 @@ namespace Gamesim.Episode
             string caption=null;
             if(anchor!=null && HouseIsTheView && playerIsActive && HouseFurniture.TryClick(anchor,out _,out var said))caption=said;
             if(caption!=null && travelBeacons==null)TickTravelBeacons();
-            travelBeacons?.ShowFurnitureTip(caption,screen,largeText ? 1.2f : 1f);
+            travelBeacons?.ShowFurnitureTip(caption,screen,TextScale);
         }
 
         /// <summary>The status line at a piece of furniture, in the device's words: "E or a click to get up", or X on a pad (A4f).</summary>

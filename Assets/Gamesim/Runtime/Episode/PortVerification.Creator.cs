@@ -161,7 +161,8 @@ namespace Gamesim.Episode
                 foreach (bool large in new[] { false, true })
                 {
                     Screen.SetResolution(size.x, size.y, FullScreenMode.Windowed);
-                    creator.FontScale = large ? 1.2f : 1f;
+                    // The settings' own scale for the larger text (A8), not a literal beside it.
+                    creator.FontScale = TextSizes.Scale(large ? TextSize.Larger : TextSize.Standard);
                     for (int frame = 0; frame < 20; frame++) yield return null;
                     var capture = new CreatorCapture { requestedWidth = size.x, requestedHeight = size.y,
                         actualWidth = Screen.width, actualHeight = Screen.height, largerText = large, mode = "Detailed" };
@@ -438,7 +439,7 @@ namespace Gamesim.Episode
                 foreach (bool large in new[] { false, true })
                 {
                     Screen.SetResolution(size.x, size.y, FullScreenMode.Windowed);
-                    creator.FontScale = large ? 1.2f : 1f;
+                    creator.FontScale = TextSizes.Scale(large ? TextSize.Larger : TextSize.Standard);
                     for (int frame = 0; frame < 20; frame++) yield return null;
                     var capture = new CreatorCapture { requestedWidth = size.x, requestedHeight = size.y,
                         actualWidth = Screen.width, actualHeight = Screen.height, largerText = large, mode = "Quick" };

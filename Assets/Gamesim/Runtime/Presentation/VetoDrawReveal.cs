@@ -102,7 +102,7 @@ namespace Gamesim.Presentation
         public static VetoDrawReveal Attach(GameObject owner)
         {
             var root = new GameObject("Gamesim Veto Draw",
-                typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(CanvasGroup));
+                typeof(RectTransform), typeof(Canvas), typeof(FrameScaler), typeof(CanvasGroup));
             if (owner != null && owner.scene.IsValid()) SceneManager.MoveGameObjectToScene(root, owner.scene);
 
             var canvas = root.GetComponent<Canvas>();

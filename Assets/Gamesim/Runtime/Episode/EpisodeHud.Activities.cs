@@ -561,7 +561,7 @@ namespace Gamesim.Episode
             // would trade an overlap with the right column for an overlap with the modal. It cannot
             // rise any further either: on a frame as short as 16:9 the right column's foot comes
             // down past its expanded top, so the column gives way while it is open - see
-            // RecentSlotsShown - and takes its rows back as it closes.
+            // FoldColumn - and takes its rows back as it closes.
             Anchor(explorationHelp,new Vector2(1,0),new Vector2(1,0),new Vector2(-24,HelpBottom),new Vector2(width,height));
             var toggle = FixedButton(explorationHelp, helpExpanded ? "Hide controls" : "Help · controls",
                 helpExpanded ? new Vector2(10,-8) : new Vector2(4,-3),

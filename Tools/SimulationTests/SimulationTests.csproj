@@ -269,6 +269,9 @@
     <Compile Include="$(EditMode)ScrambleDealTests.cs" />
     <!-- The input glossary (PLAN A, A0): every thing the player presses, and the raw-read guard over Runtime's scripts. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/InputGlossary.cs" />
+    <!-- Rebinding (A5): what rebinds, the rules a binding keeps, the kept form and the words on screen. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/KeyBindings.cs" />
+    <Compile Include="$(EditMode)KeyBindingsTests.cs" />
     <Compile Include="$(EditMode)InputGlossaryTests.cs" />
     <Compile Include="$(EditMode)InputRawReadScanTests.cs" />
     <!-- The ceremony cards' press guard (A4f), the Back matrix's representative rows rest on it. -->
@@ -289,6 +292,17 @@
     <Compile Include="$(EditMode)DisplayChoicesTests.cs" />
     <!-- And the window written only by the window's own controls, the first launch and the verifier (A12, Risk R3). -->
     <Compile Include="$(EditMode)WindowWriteScanTests.cs" />
+    <!-- A frame wider than 16:9 lays its canvases out by height (A12b); 16:9 and narrower keep their own match. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FrameMatch.cs" />
+    <Compile Include="$(EditMode)FrameMatchTests.cs" />
+    <!-- Text sizes (A8): the three sizes, their controls and the kept choice; caption reading time (A10). -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TextSizes.cs" />
+    <Compile Include="$(EditMode)TextSizesTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CaptionTiming.cs" />
+    <Compile Include="$(EditMode)CaptionTimingTests.cs" />
+    <!-- Every sound has a picture, and the three volumes beside the master (A11). -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/SoundPictures.cs" />
+    <Compile Include="$(EditMode)SoundPicturesTests.cs" />
     <!-- The prepared block speech a pad gives without typing (A6): every approach's line is a valid speech carrying it. -->
     <Compile Include="$(EditMode)PreparedSpeechTests.cs" />
     <!-- The standalone profile's performance verdict and arithmetic, and the verification-only stress house. -->

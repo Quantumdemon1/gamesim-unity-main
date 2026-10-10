@@ -219,7 +219,7 @@ namespace Gamesim.House
 
             font = UiTheme.Font(UiTheme.Weight.Regular);
             GameObject canvasObject = new GameObject("Gamesim House HUD", typeof(RectTransform),
-                typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+                typeof(Canvas), typeof(FrameScaler), typeof(GraphicRaycaster));
             canvasObject.transform.SetParent(transform, false);
             hud = canvasObject.GetComponent<Canvas>();
             hud.renderMode = RenderMode.ScreenSpaceOverlay;

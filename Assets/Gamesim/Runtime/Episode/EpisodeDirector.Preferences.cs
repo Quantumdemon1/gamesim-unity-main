@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Gamesim.House;
 using Gamesim.Persistence;
 using Gamesim.Presentation;
 using UnityEngine;
@@ -44,7 +45,7 @@ namespace Gamesim.Episode
             KeyValuePair<string, string> Say(string key, string value) => new KeyValuePair<string, string>(key, value);
             return new List<KeyValuePair<string, string>>
             {
-                Say("text", largeText ? "larger" : "standard"),
+                Say("text", TextSizes.Name(textSize)),
                 Say("motion", reducedMotion ? "reduced" : "full"),
                 Say("pace", ceremonyPace == CeremonyPace.Quick ? "quick" : "suspenseful"),
                 Say("volume", volumePercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),
@@ -61,6 +62,11 @@ namespace Gamesim.Episode
                 Say("language", language),
                 Say("camera", CameraSpeedName(cameraSpeedPercent)),
                 Say("tilt", invertTilt ? "inverted" : "normal"),
+                Say("captions", CaptionTiming.Name(captionTime)),
+                Say("keys", HouseBindings.Current.Summary()),
+                Say(SoundPictures.LogKey(SoundChannel.Music), musicVolumePercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                Say(SoundPictures.LogKey(SoundChannel.Effects), effectsVolumePercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                Say(SoundPictures.LogKey(SoundChannel.Interface), interfaceVolumePercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),
             };
         }
 

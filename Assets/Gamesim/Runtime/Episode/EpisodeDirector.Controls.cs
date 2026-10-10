@@ -103,6 +103,60 @@ namespace Gamesim.Episode
                 if (line.Context != context) { context = line.Context; hud.Heading(context); }
                 hud.NamedParagraph(line.Name, line.Text);
             }
+            // Rebinding (A5): each of the house's actions given a key, or a pad button, of the
+            // player's own. The device that presses "Rebind ..." is the one it listens to, and the
+            // lines above say what each answers to now.
+            hud.Heading(RebindHeading);
+            hud.Paragraph(RebindLine());
+            foreach (var target in KeyBindings.Targets)
+            {
+                var each = target;
+                hud.Action(each.Caption, () => StartRebind(each));
+            }
+            hud.Action(KeyBindings.ResetCaption, ResetBindings);
+        }
+
+        /// <summary>The heading over the rebinding controls.</summary>
+        public const string RebindHeading = "Change a control";
+
+        /// <summary>What the last rebinding came to, in the player's words, or null for the section's own line.</summary>
+        private string rebindMessage;
+
+        /// <summary>The line under the heading: what to press while a rebinding listens, what the last one came to, or how it is done.</summary>
+        private string RebindLine()
+        {
+            var listening = HouseBindings.ListeningFor;
+            if (listening != null) return "Press the new key or button for " + listening.Name + ". Esc cancels.";
+            return rebindMessage ?? "Choose an action below, then press the key - or the pad button - it should answer to. Esc cancels.";
+        }
+
+        /// <summary>Listens for the next press for <paramref name="target"/> on the device that pressed the control.</summary>
+        private void StartRebind(KeyBindings.Target target)
+        {
+            // The press that ended the last rebinding - Enter on this very control among them - starts none.
+            if (HouseBindings.Busy) return;
+            rebindMessage = null;
+            HouseBindings.Listen(target, PressWasPad, Preferences, (said, changed) =>
+            {
+                rebindMessage = said;
+                if (changed) LogSettingChanges();
+                if (!settingsOpen || hud == null) return;
+                Render();
+                hud.FocusWhenWired(target.Caption);
+            });
+            Render();
+            hud.FocusWhenWired(target.Caption);
+        }
+
+        /// <summary>Every key and button back as shipped, kept, and said.</summary>
+        private void ResetBindings()
+        {
+            if (HouseBindings.Busy) return;
+            HouseBindings.ResetAll(Preferences);
+            rebindMessage = "Every control is back as it was shipped.";
+            LogSettingChanges();
+            Render();
+            hud.FocusWhenWired(KeyBindings.ResetCaption);
         }
 
         /// <summary>The house's actions: the rig's, or the shared copy when there is no rig (HouseInput).</summary>

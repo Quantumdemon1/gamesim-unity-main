@@ -282,7 +282,7 @@ namespace Gamesim.Episode
             // The mockups' face (VISUAL-TARGET.md §4). UiTheme.Font falls back to the TMP default,
             // so a clone without Resources/Fonts still draws every label.
             font = UiTheme.Font(UiTheme.Weight.Regular);
-            var root = new GameObject("Gamesim Episode HUD", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            var root = new GameObject("Gamesim Episode HUD", typeof(RectTransform), typeof(Canvas), typeof(FrameScaler), typeof(GraphicRaycaster));
             root.transform.SetParent(transform, false); canvas = root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 70;
             var scaler = root.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(ReferenceWidth,ReferenceHeight); scaler.matchWidthOrHeight = .5f;
@@ -369,7 +369,7 @@ namespace Gamesim.Episode
             LeftGutter(state, recovery);
             if (Compact) CompactObjective(state, recovery);
 
-            // Settled before the column, which gives way to an open controls card (RecentSlotsShown).
+            // Settled before the column, which gives way to an open controls card (FoldColumn).
             if (open || Compact) helpExpanded = false;
             RightColumn(state);
 
@@ -847,7 +847,8 @@ namespace Gamesim.Episode
             // The feed's own 16:9 at the column's width, with a two-line caption under it.
             float pictureWidth = RightColumnWidth - 24f;
             float pictureHeight = Mathf.Round(pictureWidth * LiveFeed.Height / LiveFeed.Width);
-            float height = 42f + pictureHeight + 8f + 38f;
+            // 42 + the picture + 8 + 38: the column's fold reckons with the same (LiveFeedHeight).
+            float height = LiveFeedHeight;
             var card = Chrome(EpisodeDirector.LiveFeedCardName, parent);
             Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top), new Vector2(RightColumnWidth, height));
             liveFeedHeading = CardHeading(card, "Live Feed", Paper);

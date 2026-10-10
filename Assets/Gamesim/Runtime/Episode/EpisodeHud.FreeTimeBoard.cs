@@ -189,6 +189,9 @@ namespace Gamesim.Episode
             float replyTiles = spec.Hero == FreeTimeHero.Reply
                 ? CampaignReplyHeight(probe, leftWidth - 2f * BoardPad * s, spec.Replies, BoardReplyTiles * s) : 0f;
             float need = Mathf.Max(BoardHeroNeed(probe, spec, leftWidth, replyTiles), BoardBudgetNeed(probe, spec, budgetWidth));
+            // The budget card's copy - the week's rule and what costs and what is free - at the least
+            // size it may step down to: the card is never shorter than that (A8).
+            float budgetLeast = BoardBudgetCopyLeast(probe, spec, budgetWidth);
             probe.gameObject.SetActive(false);
             Destroy(probe.gameObject);
             float shared = Mathf.Max(0f, room - fixedPart);
@@ -199,6 +202,10 @@ namespace Gamesim.Episode
             // house cards, the existing outer scroll is preferable to truncating the choice.
             if (spec.Hero == FreeTimeHero.Reply)
                 hero = Mathf.Max(hero, (2f * BoardPad + 17f + 22f + 6f) * s + BoardLine(13) + replyTiles);
+            // And the budget's copy whole, for the same reason: at the largest text on a 16:9 frame
+            // the hero's share left "what costs and what is free" ending in an ellipsis at its least
+            // size. Wherever it fitted before, this asks for no more than the card already had.
+            hero = Mathf.Max(hero, budgetLeast);
             float cardsHeight = Mathf.Clamp(shared - hero, cardsLeast, cardsMost);
 
             // Laid top to bottom, and built in the order the keyboard should walk it: what came to the
@@ -335,6 +342,20 @@ namespace Gamesim.Episode
 
         /// <summary>The budget card's left-hand column: the count and what moving on loses.</summary>
         private float BoardBudgetLeft(float inner) => Mathf.Clamp(inner * .34f, 118f * FontScale, 190f * FontScale);
+
+        /// <summary>
+        /// The height the budget card needs for its right-hand copy - the week's rule and what costs
+        /// and what is free - at the least size <see cref="BoardBudget"/> steps it down to, with the
+        /// card's padding and its row of ways to buy time.
+        /// </summary>
+        private float BoardBudgetCopyLeast(TMP_Text probe, FreeTimeBoardSpec spec, float width)
+        {
+            float s = FontScale, pad = BoardPad * s, inner = width - 2f * pad;
+            float right = Mathf.Max(60f * s, inner - BoardBudgetLeft(inner) - 12f * s);
+            bool both = !string.IsNullOrEmpty(spec.Rule) && !string.IsNullOrEmpty(spec.Copy);
+            float copy = BoardMeasureAt(probe, spec.Rule, BoardCopyLeast, right) + (both ? 4f * s : 0f) + BoardMeasureAt(probe, spec.Copy, BoardCopyLeast, right);
+            return pad + copy + 8f * s + BoardBuyRow(probe, spec.Buys, inner, out _) + pad;
+        }
 
         /// <summary>The height the budget card needs for its words at <paramref name="width"/>.</summary>
         private float BoardBudgetNeed(TMP_Text probe, FreeTimeBoardSpec spec, float width)

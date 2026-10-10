@@ -53,6 +53,38 @@ the notes.
   slot untouched.
 - Have a timer and somewhere to write. Write during the session, not after.
 
+### The settings record (PLAN A, A13 and A15)
+
+Each participant plays on a root of their own that keeps its own preferences: the editor's
+`Gamesim > Port > Start Isolated Preview`, or a build launched with `--gamesim-save-root <folder>` (and
+without `--gamesim-verify`, which always plays on the defaults). Their settings are then kept in
+`<folder>/preferences.json`, never in the machine's PlayerPrefs, and survive a resumed session; and the
+player log says what they were.
+
+**Decide the settings before the first participant, and keep them the same for every one.** A
+participant who needs a change - a larger text, a pad - gets it, and the change is written down beside
+their numbers, not quietly made. Record, for each participant:
+
+| Field | Where it comes from | Values |
+|---|---|---|
+| Device | `device=` on the session line, then a `Gamesim input device:` line at each switch | `keyboard`, `pad` |
+| Text size | `text=` | `standard`, `larger`, `largest` |
+| Motion | `motion=` | `full`, `reduced` |
+| Ceremony pace | `pace=` | `suspenseful`, `quick` |
+| Caption time | `captions=` | `standard`, `longer` (half as long again) |
+| Sound | `volume=`, `muted=`, `music=`, `sound=`, `music-volume=`, `effects-volume=`, `interface-volume=` | master 0-100, each share of it 0-100 |
+| Window | `display=` (mode and size as the window stands), `resolution=`, `vsync=`, `frames=` | e.g. `borderless,1920x1080` |
+| Controls | `keys=` | `default`, or each rebound action, e.g. `Notebook:K,Diary:D-pad left(pad)` |
+| First launch | `first-run=` | what the first launch's window rule decided |
+
+Fill the table from the log, not from memory: the session's first line is
+`Gamesim settings: text=standard motion=full pace=suspenseful volume=35 ...`, written once as the house
+starts; every later change is a `Gamesim setting changed: text=larger` line, at the moment it changed.
+A build's log is `%USERPROFILE%\AppData\LocalLow\DefaultCompany\Gamesim Big Brother\Player.log`; the
+editor's preview writes the same lines to the editor's log. A session with no `Gamesim settings:` line
+was not started on a root that keeps its own preferences: start it again on one before the participant
+plays.
+
 ## Session length (proposed by BALANCE plan B7 — awaiting the owner's approval)
 
 How many episode-weeks a session must cover for E3 and E4 to be likely to be observable at all, projected from

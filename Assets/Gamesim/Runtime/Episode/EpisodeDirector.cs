@@ -56,7 +56,11 @@ namespace Gamesim.Episode
         // What the last social command actually moved, so the panel can say so.
         private double lastSocialDelta;
         private string saveRoot, message = "Welcome home. Meet the houseguests, then visit the living-room screen.";
-        private bool blockedRecovery, reducedMotion, muted, largeText, phaseOpen, settingsOpen, journalOpen;
+        private bool blockedRecovery, reducedMotion, muted, phaseOpen, settingsOpen, journalOpen;
+        /// <summary>The text size the settings chose (A8): standard, larger or largest.</summary>
+        private TextSize textSize;
+        /// <summary>How long the captions the game takes down by itself stay up (A10): standard, or half as long again.</summary>
+        private CaptionTime captionTime;
         /// <summary>Which page of the notebook is showing. The rail picks it; Render obeys it.</summary>
         private string journalSection = NotebookSection.Network;
         private bool challengeActive;
@@ -77,6 +81,8 @@ namespace Gamesim.Episode
         /// reachable in HouseAudio but only mute was ever exposed, so a player could silence the
         /// game or leave it alone and nothing in between.</summary>
         private int volumePercent = 35;
+        /// <summary>The music's, the effects' and the interface's shares of the master, as percentages (A11).</summary>
+        private int musicVolumePercent = SoundPictures.DefaultVolume, effectsVolumePercent = SoundPictures.DefaultVolume, interfaceVolumePercent = SoundPictures.DefaultVolume;
         private bool musicOn = true;
         private HouseNpc promptNpc;
         private string npcPrompt;
@@ -163,7 +169,15 @@ namespace Gamesim.Episode
             reducedMotion = preferences.GetInt("Gamesim.ReducedMotion", 0) == 1;
             reducedAudio = preferences.GetInt("Gamesim.ReducedAudio", 0) == 1;
             muted = preferences.GetInt("Gamesim.Muted", 0) == 1;
-            largeText = preferences.GetInt("Gamesim.LargeText", 0) == 1;
+            // The size kept as 0 to 2 since the third size (A8), or the larger text an earlier build kept as a boolean.
+            textSize = TextSizes.FromRecord(preferences.HasKey(TextSizes.SizeKey) ? preferences.GetInt(TextSizes.SizeKey, 0) : (int?)null,
+                preferences.HasKey(TextSizes.LegacyKey) ? preferences.GetInt(TextSizes.LegacyKey, 0) : (int?)null);
+            captionTime = CaptionTiming.FromRecord(preferences.GetInt(CaptionTiming.Key, 0));
+            // The player's own keys and buttons (A5), on every copy of the actions from the start.
+            HouseBindings.Load(preferences);
+            musicVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.MusicVolumeKey, SoundPictures.DefaultVolume));
+            effectsVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.EffectsVolumeKey, SoundPictures.DefaultVolume));
+            interfaceVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.InterfaceVolumeKey, SoundPictures.DefaultVolume));
             volumePercent = Mathf.Clamp(preferences.GetInt("Gamesim.Volume", 35), 0, 100);
             musicOn = preferences.GetInt("Gamesim.Music", 1) == 1;
             ceremonyPace = preferences.GetInt("Gamesim.CeremonyPace", 0) == 1 ? CeremonyPace.Quick : CeremonyPace.Suspenseful;
@@ -453,6 +467,10 @@ namespace Gamesim.Episode
                 hud.SetChallenge(challengeValue, challengeHits);
                 if (shortcuts != null && shortcuts.Hit.WasPressedThisFrame()) RecordChallengeHit();
             }
+            // A rebinding listening for its press, or the frame its press ended it (A5): the press is
+            // the rebinding's - Esc cancels it without closing the settings, a key is the new one -
+            // and nothing else in the house acts on it.
+            if (HouseBindings.Busy) return;
             // Escape or Start: the priority chain, topmost first (EpisodeDirector.Controls.cs).
             if (shortcuts != null && shortcuts.Menu.WasPressedThisFrame()) { MenuPressed(); return; }
             // The pad's B: the same chain, and nothing at all with nothing open (PLAN A, A2).
@@ -654,6 +672,8 @@ namespace Gamesim.Episode
 
         private void ClosePanelsInternal(bool render)
         {
+            // A rebinding listening in the settings goes with them (A5), with nothing changed.
+            if (HouseBindings.Listening) { HouseBindings.Cancel(); rebindMessage = null; }
             CloseHouseActivities(!render);
             if (focusedNpc != null) focusedNpc.GetComponent<CharacterPresentation>()?.SetTalking(false);
             // What the player came into a conversation for goes with the conversation; a houseguest's
@@ -1712,6 +1732,7 @@ namespace Gamesim.Episode
 
         private void OnDestroy()
         {
+            HouseBindings.Cancel();
             CastRail.CompetitionField = null;
             CastRail.PlayerProgress = null;
             EndDiaryVisit(true);

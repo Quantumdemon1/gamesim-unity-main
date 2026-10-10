@@ -341,7 +341,17 @@ namespace Gamesim.Uma.Editor
             Start(true);
         }
 
-        private static void Start(bool verify)
+        /// <summary>
+        /// Batch entry: re-renders the four garment thumbnails over Legs (see <see cref="RerenderSaved"/>),
+        /// with the same guards as <see cref="Build"/>, and leaves the project index's bytes as they
+        /// were. Omit -quit.
+        /// </summary>
+        public static void RerenderThumbnails()
+        {
+            Start(false, true);
+        }
+
+        private static void Start(bool verify, bool thumbnails = false)
         {
             try
             {
@@ -354,13 +364,15 @@ namespace Gamesim.Uma.Editor
                     "-gamesimGarmentAuthoringRoot must explicitly name this isolated project.");
                 Require(Path.GetFileName(project).IndexOf("Acceptance", StringComparison.OrdinalIgnoreCase) >= 0,
                     "Only an acceptance copy may author these assets.");
-                reportPath = Path.Combine(project, "Logs", verify ? "house-garment-verification.json" : "house-garment-authoring.json");
+                reportPath = Path.Combine(project, "Logs", thumbnails ? "house-garment-thumbnails.json"
+                    : verify ? "house-garment-verification.json" : "house-garment-authoring.json");
                 report = new Report { project = project, startedUtc = DateTime.UtcNow.ToString("o") };
-                verifying = verify;
-                if (verify) report.indexShaBefore = Hash(IndexPath);
+                // A re-render must leave the index as a verification does.
+                verifying = verify || thumbnails;
+                if (verifying) report.indexShaBefore = Hash(IndexPath);
                 started = EditorApplication.timeSinceStartup;
                 DynamicCharacterAvatar.EditorGenerationPaused = true;
-                routine = verify ? VerifySaved() : Author();
+                routine = thumbnails ? RerenderSaved() : verify ? VerifySaved() : Author();
                 EditorApplication.update += Advance;
                 Progress("scheduled");
             }
@@ -608,6 +620,57 @@ namespace Gamesim.Uma.Editor
             Progress("fresh project index, four recipes, private dyes and effective masks verified");
         }
 
+        /// <summary>
+        /// The four thumbnails again, from the saved recipes: each garment on its reference body over
+        /// the first compatible Legs recipe by name (the art brief's A1, the owner's D7), framed from
+        /// halfway between the hips and the neck at 0.95 of that span, so the whole garment shows and
+        /// no bare skin below its hem. Only the four PNGs are written.
+        /// </summary>
+        private static IEnumerator RerenderSaved()
+        {
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            UMAAssetIndexer.RuntimeInitializeOnLoad();
+            index = UMAAssetIndexer.Instance;
+            Require(index != null && AssetDatabase.GetAssetPath(index) == IndexPath,
+                "Fresh process did not discover the project Global Library override.");
+            report.indexAssetPath = AssetDatabase.GetAssetPath(index);
+            report.indexGuid = AssetDatabase.AssetPathToGUID(IndexPath);
+            string[] stems = { "Gamesim_KnitCrew", "Gamesim_CompetitionVest" };
+            string[] races = { UmaCastLibrary.FemaleRace, UmaCastLibrary.MaleRace };
+            for (int body = 0; body < races.Length; body++)
+            {
+                string fit = body == 0 ? "A" : "B";
+                string legsName = CompatibleLegs(races[body])[0];
+                UMAWardrobeRecipe legs = index.GetAsset<UMAWardrobeRecipe>(legsName, recursionGuard: true);
+                Require(legs != null, "A compatible Legs recipe is unavailable: " + legsName);
+                foreach (string stem in stems)
+                {
+                    string name = stem + "_" + fit;
+                    Progress("thumbnail " + name + " over " + legsName);
+                    UMAWardrobeRecipe garment = index.GetAsset<UMAWardrobeRecipe>(name + "_Recipe", recursionGuard: true);
+                    Require(garment != null && AssetDatabase.GetAssetPath(garment) == ContentRoot + "/" + name + "_Recipe.asset",
+                        "Recipe cannot resolve through the saved Global Library: " + name + "_Recipe");
+                    DynamicCharacterAvatar avatar = Reference(races[body]);
+                    avatar.ClearSlots();
+                    Require(avatar.SetSlot(garment), "The reference body refused its garment recipe: " + garment.name);
+                    Require(avatar.SetSlot(legs), "The reference body refused its Legs recipe: " + legsName);
+                    avatar.GenerateNow();
+                    AssertBody(avatar);
+                    Require(avatar.GetWardrobeItem("Chest") == garment && avatar.GetWardrobeItem("Legs") == legs,
+                        "The reference is not wearing " + garment.name + " over " + legsName);
+                    Require(avatar.umaRecipe.slotDataList.Any(slot => slot != null && slot.slotName == name + "_Slot"),
+                        "GenerateNow did not dress the reference in its garment: " + garment.name);
+                    Thumbnail(avatar, name + "_Thumbnail", .5f, .95f);
+                    report.fits.Add(new FitReport { id = name, race = races[body], recipe = garment.name, slot = name + "_Slot",
+                        geometryStatus = "thumbnail over " + legsName });
+                    UnityEngine.Object.DestroyImmediate(avatar.gameObject);
+                    yield return null;
+                }
+            }
+            Require(report.fits.Count == 4, "Four thumbnails were not re-rendered.");
+            Progress("four thumbnails re-rendered over Legs");
+        }
+
         private static DynamicCharacterAvatar Reference(string race)
         {
             var root = new GameObject("__HouseGarmentReference");
@@ -694,16 +757,22 @@ namespace Gamesim.Uma.Editor
             }
             return width > .05f ? Mathf.Min(width * .92f, fallback * 1.12f) : fallback * .92f;
         }
-        private static LowerLayerEnvelope MeasureLegsEnvelope(string race, Surface body)
+        /// <summary>The Legs recipes a garment on this race is worn over, by name: every one the catalog fits to the race that does not suppress the Chest.</summary>
+        private static string[] CompatibleLegs(string race)
         {
-            Vector3 hips = body.Bone(HumanBodyBones.Hips);
-            float shoulder = (body.Bone(HumanBodyBones.LeftUpperArm).y + body.Bone(HumanBodyBones.RightUpperArm).y) * .5f;
-            var envelope = new LowerLayerEnvelope(hips, hips.y - .02f, hips.y + (shoulder - hips.y) * .7f);
             var catalog = new UmaAppearanceCatalog();
             string[] names = catalog.Items.Where(item => item.Slot == "Legs" && item.Fits(race)
                     && !item.SuppressedSlots.Contains("Chest"))
                 .Select(item => catalog.ResolveRecipeName(item.Id)).Distinct(StringComparer.Ordinal).OrderBy(value => value, StringComparer.Ordinal).ToArray();
             Require(names.Length > 0 && names.Length <= 64, "The supported lower-layer catalog needs a bounded set of compatible Legs recipes.");
+            return names;
+        }
+        private static LowerLayerEnvelope MeasureLegsEnvelope(string race, Surface body)
+        {
+            Vector3 hips = body.Bone(HumanBodyBones.Hips);
+            float shoulder = (body.Bone(HumanBodyBones.LeftUpperArm).y + body.Bone(HumanBodyBones.RightUpperArm).y) * .5f;
+            var envelope = new LowerLayerEnvelope(hips, hips.y - .02f, hips.y + (shoulder - hips.y) * .7f);
+            string[] names = CompatibleLegs(race);
             DynamicCharacterAvatar dressed = Reference(race);
             try
             {
@@ -1176,7 +1245,12 @@ namespace Gamesim.Uma.Editor
             }
             finally { UnityEngine.Object.DestroyImmediate(pixels); }
         }
-        private static Sprite Thumbnail(DynamicCharacterAvatar avatar, string name)
+        /// <summary>
+        /// Photographs the dressed reference into the garment's thumbnail PNG: centred <paramref name="centre"/>
+        /// of the way from the hips to the neck, the orthographic half-height <paramref name="size"/>
+        /// times that span (0.4 m at the least).
+        /// </summary>
+        private static Sprite Thumbnail(DynamicCharacterAvatar avatar, string name, float centre = .55f, float size = .8f)
         {
             var cameraObject = new GameObject("__GarmentThumbnailCamera");
             Camera camera = cameraObject.AddComponent<Camera>();
@@ -1185,8 +1259,8 @@ namespace Gamesim.Uma.Editor
             camera.orthographic = true;
             Vector3 hips = avatar.GetComponent<Animator>().GetBoneTransform(HumanBodyBones.Hips).position;
             Vector3 neck = avatar.GetComponent<Animator>().GetBoneTransform(HumanBodyBones.Neck).position;
-            Vector3 center = Vector3.Lerp(hips, neck, .55f);
-            camera.orthographicSize = Mathf.Max(.4f, (neck.y - hips.y) * .8f);
+            Vector3 center = Vector3.Lerp(hips, neck, centre);
+            camera.orthographicSize = Mathf.Max(.4f, (neck.y - hips.y) * size);
             cameraObject.transform.position = center + new Vector3(.35f, .05f, 3f);
             cameraObject.transform.LookAt(center);
             var lightObject = new GameObject("__GarmentThumbnailLight");

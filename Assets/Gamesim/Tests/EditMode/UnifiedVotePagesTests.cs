@@ -142,7 +142,101 @@ namespace Gamesim.Tests.EditMode
             pair.AssertBlind("YourWeek", state => YourWeek.Build(state, week));
         }
 
-        // ------------------------------------------------------------ the jury's receipt
+        // ------------------------------------------------------------ the record and the log: the owner's line, gated
+
+        /// <summary>
+        /// The record and the log tell a Rule2 incident once, in its owner's line - the engine's write, which stays as it is (a
+        /// line a row would re-mint every mode-2 season since V6). The owner's line can itself tell a ballot: the player proposed a
+        /// vote to evict and kept it, so the reveal writes "You honoured a vote to evict with ..." to their log and to their record
+        /// of the partner - written only where the partner's hidden ballot kept the deal too. Under mode 2 neither the player's
+        /// record nor their log tells it while that ballot is hidden, as Your week and the Your word page do not: the flip pair
+        /// reads alike. Once the player was told and the reveal judged it, the keep is theirs to read; mode 1 tells it, as its
+        /// recorded seasons did.
+        /// </summary>
+        [Test]
+        public void TheRecordAndTheLogTellAKeptVoteDealOnlyWhereThePartnersBallotIsKnown()
+        {
+            var blind = ModeTwoReaderSweep.Flip(false);
+            int week = blind.Kept.week;
+            string keep = Keep(blind.Kept, blind.PartnerId);
+            Assert.That(KnownBallots.Knows(blind.Kept, week, blind.PartnerId), Is.False, "Fixture: the partner's ballot is hidden.");
+            Assert.That(Log(blind.Kept, week, gated: false), Does.Contain(keep), "Fixture: the reveal wrote the keep to the player's log,");
+            Assert.That(Record(blind.Kept, blind.PartnerId, week, gated: false).Select(entry => entry.Item1), Does.Contain(keep),
+                "and to their record of the partner,");
+            Assert.That(Log(blind.Broken, week, gated: false), Does.Not.Contain(keep), "and to neither where the partner broke it.");
+            blind.AssertBlind("The player's log", s => Log(s, week, gated: true));
+            blind.AssertBlind("The player's record of the partner", s => Record(s, blind.PartnerId, week, gated: true));
+            blind.AssertBlind("Every line of the player's log", s => s.events.Where(e => e.week == week && Addressed(s, e)
+                && !KnownBallots.TellsAnUnknownBallot(s, e) && e.kind != "deal-outcome" && e.kind != "promise-outcome").Count());
+
+            var told = ModeTwoReaderSweep.Flip(true);
+            Assert.That(KnownBallots.Knows(told.Kept, week, told.PartnerId), Is.True, "Fixture: the player was told, and the reveal judged it.");
+            Assert.That(Log(told.Kept, week, gated: true), Does.Contain(Keep(told.Kept, told.PartnerId)), "The keep, theirs to read.");
+            told.AssertControl("The player's log", s => Log(s, week, gated: true));
+            told.AssertControl("The player's record of the partner", s => Record(s, told.PartnerId, week, gated: true));
+
+            // The same reveal in mode 1 and its mode-2 twin: mode 1 tells the keep, as its recorded seasons did.
+            var s0 = ModeTwoReaderSweep.Campaign();
+            var voters = PinnedVoteSeason.NpcVoters(s0).ToList();
+            string partner = voters[0], other = voters[1], x = s0.nominees[0], y = s0.nominees[1];
+            s0 = ModeTwoReaderSweep.Strike(s0, partner, DealKind.VoteEvict, x);
+            var reveal = ModeTwoReaderSweep.Reveal(s0, x, voters.ToDictionary(id => id, id => id == other ? y : x, StringComparer.Ordinal));
+            Assert.That(KnownBallots.Knows(reveal.Mode1, week, partner) || KnownBallots.Knows(reveal.Mode2, week, partner), Is.False,
+                "Fixture: the partner's ballot is hidden in both.");
+            Assert.That(Log(reveal.Mode1, week, gated: true), Does.Contain(Keep(reveal.Mode1, partner)), "Mode 1's log tells the keep,");
+            Assert.That(Record(reveal.Mode1, partner, week, gated: true).Select(entry => entry.Item1), Does.Contain(Keep(reveal.Mode1, partner)),
+                "and so does its record.");
+            Assert.That(Log(reveal.Mode2, week, gated: true), Does.Not.Contain(Keep(reveal.Mode2, partner)), "Mode 2's does not,");
+            Assert.That(Record(reveal.Mode2, partner, week, gated: true).Select(entry => entry.Item1), Does.Not.Contain(Keep(reveal.Mode2, partner)),
+                "nor its record.");
+            Assert.That(KnownBallots.TellsAnUnknownBallot(reveal.Mode1, partner, Keep(reveal.Mode1, partner), week), Is.False, "Mode 1 is unchanged.");
+        }
+
+        /// <summary>
+        /// Why dropping a Rule2 group's other lines tells nothing (vote family V7, the lead's question on the owners' lines): the
+        /// player's own word on the vote - the one line of the incident mode 1 always shows them, written by their own ballot -
+        /// owns every group it is in, since a vote promise outweighs every vote deal there is. The family's validation holds a
+        /// vote deal to its kind's own trust (<see cref="DealKind.DefaultTrust"/>), and an accepted offer's breach is one step
+        /// heavier (<see cref="DealResolution.BreachWeight"/>): the promise's keep and breach still weigh more, as the reveal's
+        /// settlement ranks them. A change of weights that reversed this would let a hidden ballot decide
+        /// whether the player's own line is written.
+        /// </summary>
+        [Test]
+        public void TheWordOnTheVoteOutweighsEveryVoteDealSoItsOwnLineIsAlwaysWritten()
+        {
+            double kept = WebRules.PromiseImpact("vote", "fulfilled"), broken = WebRules.PromiseImpact("vote", "broken");
+            foreach (string kind in new[] { DealKind.VoteTogether, DealKind.VoteSave, DealKind.VoteEvict })
+            {
+                string trust = DealKind.DefaultTrust(kind);
+                Assert.That(kept, Is.GreaterThan(DealResolution.FulfilledBase * DealTrust.Weight(trust)), kind + ": a kept word outweighs a kept deal.");
+                foreach (string weight in new[] { trust, DealTrust.Heavier(trust) })
+                    Assert.That(broken, Is.LessThan(DealResolution.BrokenBase * DealTrust.Weight(weight)), kind + " at " + weight + ": a broken word is the more severe.");
+            }
+        }
+
+        /// <summary>
+        /// The other side of the gate: a keep the player's own ballot made alone - the partner cast none, as the Head of
+        /// Household with no tie to break - tells nobody's ballot, and is shown in mode 2 as in mode 1.
+        /// </summary>
+        [Test]
+        public void AKeepThePartnerCastNoBallotOnIsTheirsToRead()
+        {
+            var s = ModeTwoReaderSweep.Campaign();
+            var voters = PinnedVoteSeason.NpcVoters(s).ToList();
+            string hoh = s.hohId, x = s.nominees[0];
+            Assert.That(hoh, Is.Not.Null.And.Not.EqualTo(s.playerId), "Fixture: a houseguest holds the house.");
+            s = ModeTwoReaderSweep.Strike(s, hoh, DealKind.VoteEvict, x);
+            var y = s.nominees[1];
+            var reveal = ModeTwoReaderSweep.Reveal(s, x, voters.ToDictionary(id => id, id => id == voters[0] ? y : x, StringComparer.Ordinal));
+            int week = reveal.Mode2.week;
+            var sheet = KnownBallots.Read(reveal.Mode2, week);
+            Assert.That(sheet.voters.Contains(hoh) || (sheet.tieBroken && sheet.hohId == hoh), Is.False, "Fixture: the partner cast no ballot.");
+            foreach (var season in new[] { reveal.Mode2, reveal.Mode1 })
+            {
+                Assert.That(Log(season, week, gated: true), Does.Contain(Keep(season, hoh)), "The keep is the player's own ballot's.");
+                Assert.That(KnownBallots.YourKeepTellsTheirBallot(season, hoh, Keep(season, hoh), week), Is.False);
+            }
+        }
 
         /// <summary>
         /// The jury flow's receipt of the player's word: the player promised a voter their vote and broke it. In mode 2 that word
@@ -226,6 +320,24 @@ namespace Gamesim.Tests.EditMode
         private static int Records(EpisodeState s, string partner, int week, string type) =>
             s.relationships.Where(edge => edge.fromId == s.playerId && edge.toId == partner)
                 .SelectMany(edge => edge.events).Count(e => e.week == week && e.type == type);
+
+        /// <summary>The engine's line for a vote to evict the player kept with <paramref name="partner"/> (EpisodeEngine.UnifiedVoteNamedRecipe).</summary>
+        private static string Keep(EpisodeState s, string partner) =>
+            s.Find(s.playerId).name + " honoured a " + DealKind.Title(DealKind.VoteEvict).ToLowerInvariant() + " with " + s.Find(partner).name + ".";
+
+        /// <summary>Whether the log line is written to the player: to the house, or to them among its audience.</summary>
+        private static bool Addressed(EpisodeState s, EpisodeEvent e) => e.audienceIds == null || e.audienceIds.Count == 0 || e.audienceIds.Contains(s.playerId);
+
+        /// <summary>The deals' and promises' endings the player's log holds from <paramref name="week"/>, in order - as its readers print them where <paramref name="gated"/>.</summary>
+        private static List<string> Log(EpisodeState s, int week, bool gated) =>
+            s.events.Where(e => e.week == week && (e.kind == "deal-outcome" || e.kind == "promise-outcome") && Addressed(s, e)
+                && !(gated && KnownBallots.TellsAnUnknownBallot(s, e))).Select(e => e.text).ToList();
+
+        /// <summary>The player's record of <paramref name="partner"/> from <paramref name="week"/>: each entry's words and weight - as the web's history and the recap's sums read it where <paramref name="gated"/>.</summary>
+        private static List<(string, double)> Record(EpisodeState s, string partner, int week, bool gated) =>
+            s.relationships.Where(edge => edge.fromId == s.playerId && edge.toId == partner).SelectMany(edge => edge.events)
+                .Where(e => e.week == week && !(gated && KnownBallots.TellsAnUnknownBallot(s, partner, e.description, e.week)))
+                .Select(e => (e.description, e.impactScore)).ToList();
 
         private static string Json(object value) => ModeTwoReaderSweep.Json(value);
     }

@@ -163,6 +163,27 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(RelationshipCopy(s, told.PartnerId), Does.Contain(Word + "Broken"), "Mode 2, the ballot told and judged.");
         }
 
+        /// <summary>
+        /// The built details' recent history is the player's record of the houseguest, where a Rule2 incident is its owner's line
+        /// (vote family V7). The player proposed a vote to evict and kept it, so the record holds "You honoured a vote to evict with
+        /// ..." exactly where the partner's hidden ballot kept it too: under mode 2 the history leaves it out while that ballot is
+        /// hidden, and tells it once the player was told and the reveal judged it.
+        /// </summary>
+        [Test]
+        public void BuiltRelationshipHistoryTellsAKeptVoteDealOnlyWhereThePartnersBallotIsKnown()
+        {
+            string Keep(EpisodeState s, string partner) => s.Find(s.playerId).name + " honoured a "
+                + DealKind.Title(DealKind.VoteEvict).ToLowerInvariant() + " with " + s.Find(partner).name + ".";
+            var blind = ModeTwoReaderSweep.Flip(false);
+            Assert.That(blind.Kept.relationships.Single(r => r.fromId == blind.Kept.playerId && r.toId == blind.PartnerId).events
+                .Any(e => e.description == Keep(blind.Kept, blind.PartnerId)), Is.True, "Fixture: the player's record holds the keep.");
+            string kept = RelationshipCopy(blind.Kept, blind.PartnerId);
+            Assert.That(kept, Does.Not.Contain(Keep(blind.Kept, blind.PartnerId)), "Mode 2, the ballot hidden: the history leaves the keep out.");
+            Assert.That(kept, Is.EqualTo(RelationshipCopy(blind.Broken, blind.PartnerId)), "The details read the flip pair alike.");
+            var told = ModeTwoReaderSweep.Flip(true);
+            Assert.That(RelationshipCopy(told.Kept, told.PartnerId), Does.Contain(Keep(told.Kept, told.PartnerId)), "Mode 2, the ballot told and judged.");
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void DecisionCandidateUsesOwnCanonicalPromiseDirectionAndSourceStatus(bool incoming)

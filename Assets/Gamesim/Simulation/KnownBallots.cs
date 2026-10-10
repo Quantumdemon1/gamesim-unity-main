@@ -553,8 +553,9 @@ namespace Gamesim.Simulation
         /// Whether a line of record written to the player - a memory, or an entry on their own record
         /// with somebody - tells them a ballot they do not know: the engine's own sentence for a vote
         /// deal or a vote promise between them and <paramref name="partnerId"/>, settled in
-        /// <paramref name="week"/>, while that partner's ballot is not theirs to know. A reader that
-        /// prints such lines leaves these out.
+        /// <paramref name="week"/>, while that partner's ballot is not theirs to know - and, under the
+        /// unified vote rules, the player's own keep of a vote deal with them
+        /// (<see cref="YourKeepTellsTheirBallot"/>). A reader that prints such lines leaves these out.
         /// </summary>
         public static bool TellsAnUnknownBallot(EpisodeState s, string partnerId, string text, int week)
         {
@@ -580,8 +581,54 @@ namespace Gamesim.Simulation
             // player, a call of theirs the ally refused and then voted against, or a vote deal they broke
             // with them by it, on the player's record of them.
             if (Allegiance.TellsABallot(s, partnerId, text)) tells = true;
-            if (!tells) return false;
+            if (!tells) return YourKeepTellsTheirBallot(s, partnerId, text, week);
             return !Knows(s, week, partnerId);
+        }
+
+        /// <summary>
+        /// Under the unified vote rules (mode 2) only, vote family V7: whether a line written to the player tells them a
+        /// ballot they do not know by telling them they kept a vote deal with <paramref name="partnerId"/> - the engine's
+        /// "You honoured a vote to evict with Maya.", which a reveal writes to the keeper's log and to their record of the
+        /// other (the kept deal's second direction). A vote to save or a vote to evict is kept only where the other party's
+        /// ballot kept it too (<see cref="UnifiedVoteObligations"/>), so the keep tells that ballot - unless the other cast none
+        /// in <paramref name="week"/>, when the player's own ballot kept it alone, or the player knows it - as
+        /// <see cref="DealOutcomeKnown"/> reads the deal on the Your word page and Your week reads its line (vote family V5e).
+        /// The other's own lines and a pair's are <see cref="TellsAnUnknownBallot(EpisodeState, string, string, int)"/>'s
+        /// already, and every other ballot's line goes to its voter alone. The player never holds this line as a memory (the
+        /// one kept is who remembers it). Mode 1 tells it, as its recorded seasons did.
+        /// </summary>
+        public static bool YourKeepTellsTheirBallot(EpisodeState s, string partnerId, string text, int week)
+        {
+            if (!UnifiedVoteStore.On(s) || string.IsNullOrEmpty(partnerId) || string.IsNullOrEmpty(text) || partnerId == s.playerId) return false;
+            var partner = s.Find(partnerId);
+            var player = s.Find(s.playerId);
+            if (partner == null || player == null) return false;
+            bool says = false;
+            foreach (var kind in new[] { DealKind.VoteSave, DealKind.VoteEvict })
+            foreach (var spelling in DealKind.Titles(kind))
+                if (text == player.name + " honoured a " + spelling.ToLowerInvariant() + " with " + partner.name + ".") says = true;
+            if (!says) return false;
+            var sheet = Read(s, week);
+            // A partner who cast no ballot that week - the Head of Household with no tie to break, a nominee -
+            // had none for the keep to tell: the player's own ballot kept it.
+            if (!sheet.voters.Contains(partnerId) && !(sheet.tieBroken && sheet.hohId == partnerId)) return false;
+            return !sheet.Knows(partnerId);
+        }
+
+        /// <summary>
+        /// Whether a line of the log written to the player tells them a ballot they do not know: under the unified vote rules,
+        /// a deal's ending that says they kept a vote deal whose other party's ballot is not theirs to know
+        /// (<see cref="YourKeepTellsTheirBallot"/>). The engine writes every other ballot's verdict to its voter alone, so this
+        /// is the one line the player's log can hold that does. Every reader that prints the player's log - the recent events
+        /// card, the status line, the story so far, the week's recap - leaves it out, as the record's readers leave out the
+        /// same words.
+        /// </summary>
+        public static bool TellsAnUnknownBallot(EpisodeState s, EpisodeEvent e)
+        {
+            if (e == null || e.kind != "deal-outcome" || !UnifiedVoteStore.On(s) || s.contestants == null) return false;
+            foreach (var other in s.contestants)
+                if (other != null && YourKeepTellsTheirBallot(s, other.id, e.text, e.week)) return true;
+            return false;
         }
 
         /// <summary>

@@ -9,6 +9,7 @@ using NUnit.Framework;
 using TMPro;
 using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.UI;
 
 namespace Gamesim.Tests.PlayMode
 {
@@ -107,6 +108,70 @@ namespace Gamesim.Tests.PlayMode
             }
             Assert.That(LastActive(WeeklyRecapScreen.WordName).GetComponentsInChildren<TMP_Text>().Any(label => label.text.Contains("broke the vote-to-evict")
                 || label.text.Contains("kept the vote-to-evict")), Is.False, "Mode " + mode + ": nor does the recap tell the hidden ballot.");
+            screen.Hide();
+            yield return null;
+        }
+
+        /// <summary>
+        /// The log and the record in both modes (vote family V7): the player proposed a vote to evict and kept it, and the partner's
+        /// ballot - which the player cannot know - kept it too. The reveal writes the keep to the player's log and their record of
+        /// the partner, a Rule2 incident's owner's line, and its words tell that ballot. In mode 2 the story so far, the relationship
+        /// web's history of the partner and the week's recap leave it out while the Your word page reads the deal unresolved; the
+        /// mode-1 twin tells it on each, as its recorded seasons did.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator UnifiedVotePages_TheLogAndTheRecordKeepAHiddenBallotsKeepToThemselves([Values(2, 1)] int mode)
+        {
+            HoldTheHouseForTheFixture();
+            var fixture = UvpWordFixture(mode, keptDeal: true);
+            var twin = UvpWordFixture(3 - mode, keptDeal: true);
+            Assert.That(twin.Seed, Is.EqualTo(fixture.Seed), "Fixture: the twin plays the same season.");
+            var settled = fixture.Settled;
+            string partner = settled.Find(fixture.PartnerId).name;
+            string keep = settled.Find(settled.playerId).name + " honoured a " + DealKind.Title(DealKind.VoteEvict).ToLowerInvariant() + " with " + partner + ".";
+            Assert.That(settled.events.Any(e => e.week == fixture.Week && e.kind == "deal-outcome" && e.text == keep && e.audienceIds.Contains(settled.playerId)),
+                Is.True, "Fixture: the reveal wrote the keep to the player's log.");
+            Assert.That(KnownBallots.Knows(settled, fixture.Week, fixture.PartnerId), Is.False, "Fixture: the partner's ballot is hidden.");
+            Assert.That(CommitmentsRead.Of(settled).Single(c => c.id == fixture.DealId).outcome, Is.EqualTo(CommitmentsRead.Outcomes.Unresolved),
+                "Fixture: the Your word page reads the deal unresolved.");
+            bool tells = mode == 1;
+            string told = tells ? "tells the keep, as before" : "leaves the keep out";
+
+            yield return UvpInstall(settled);
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
+            yield return Frames(2);
+            Canvas.ForceUpdateCanvases();
+            Assert.That(VisibleLines().Any(line => line.Contains(keep)), Is.EqualTo(tells), "Mode " + mode + ": the story so far " + told + ".");
+            director.ClosePanels();
+            yield return null;
+
+            RelationshipWeb.ClearSelection();
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network);
+            yield return Frames(2);
+            Under(Section(), RelationshipWeb.GraphName).GetComponentsInChildren<Button>(true)
+                .Single(node => node.name == RelationshipWeb.NodeName(partner)).onClick.Invoke();
+            yield return Frames(2);
+            Canvas.ForceUpdateCanvases();
+            Assert.That(RelationshipWeb.Selected, Is.EqualTo(fixture.PartnerId), "Fixture: the web reads the partner.");
+            string column = Copy(Under(Section(), RelationshipWeb.ColumnName));
+            Assert.That(column, Does.Contain(RelationshipWeb.HistoryHeading), "Fixture: the partner's history is on screen.");
+            Assert.That(column.Contains(keep), Is.EqualTo(tells), "Mode " + mode + ": the web's history " + told + ".");
+            director.ClosePanels();
+            RelationshipWeb.ClearSelection();
+            yield return null;
+
+            var screen = director.GetComponentInChildren<WeeklyRecapScreen>(true);
+            screen.Review(director.Snapshot, fixture.Week);
+            yield return null;
+            var recap = new List<string>();
+            foreach (string tab in WeeklyRecapScreen.TabCaptions)
+            {
+                ButtonWithCaption(tab).onClick.Invoke();
+                yield return Frames(2);
+                Canvas.ForceUpdateCanvases();
+                recap.AddRange(VisibleLines());
+            }
+            Assert.That(recap.Any(line => line.Contains(keep)), Is.EqualTo(tells), "Mode " + mode + ": the week's recap " + told + ".");
             screen.Hide();
             yield return null;
         }
@@ -247,11 +312,12 @@ namespace Gamesim.Tests.PlayMode
         /// The page's season: the first campaign the player votes in with two actions left, where they give a voter their word to
         /// evict the first nominee and strike a vote-to-evict deal on the same nominee with another (agreed by the season's own
         /// draw); then the walk to the next week's campaign, past a reveal where the player's ballot kept the word and the
-        /// partner's ballot - which the player cannot know - settled the deal.
+        /// partner's ballot - which the player cannot know - settled the deal. With <paramref name="keptDeal"/>, a season where
+        /// that ballot kept the deal: the player's keep then tells it (vote family V7's gate on the record and the log).
         /// </summary>
-        private static UvpWord UvpWordFixture(int mode)
+        private static UvpWord UvpWordFixture(int mode, bool keptDeal = false)
         {
-            foreach (uint seed in UvpSeeds(23, 40))
+            foreach (uint seed in keptDeal ? UvpSeeds(350, 400) : UvpSeeds(23, 40))
             {
                 var engine = new EpisodeEngine(UvpFresh(seed, mode));
                 EpisodeState s = null;
@@ -284,13 +350,13 @@ namespace Gamesim.Tests.PlayMode
                 var deal = CommitmentReferences.Deals(found.Settled).Single(d => d.id == found.DealId);
                 var word = CommitmentReferences.Promises(found.Settled).Single(p => p.id == found.PromiseId);
                 if ((deal.status == DealStatus.Fulfilled || deal.status == DealStatus.Broken) && !KnownBallots.DealOutcomeKnown(found.Settled, deal)
-                    && word.status == PromiseStatus.Fulfilled)
+                    && word.status == PromiseStatus.Fulfilled && (!keptDeal || deal.status == DealStatus.Fulfilled))
                 {
-                    Debug.Log("[Gamesim] Unified vote pages: the word fixture is seed " + seed + " in mode " + mode + ".");
+                    Debug.Log("[Gamesim] Unified vote pages: the word fixture" + (keptDeal ? " (a kept deal)" : "") + " is seed " + seed + " in mode " + mode + ".");
                     return found;
                 }
             }
-            Assert.Fail("No bounded public fixture in mode " + mode + ": a kept word and a deal a hidden ballot settled.");
+            Assert.Fail("No bounded public fixture in mode " + mode + ": a kept word and a deal a hidden ballot " + (keptDeal ? "kept." : "settled."));
             return null;
         }
 

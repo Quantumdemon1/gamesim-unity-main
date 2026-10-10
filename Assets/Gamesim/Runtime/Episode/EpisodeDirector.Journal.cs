@@ -159,6 +159,8 @@ namespace Gamesim.Episode
 
             var visible = state.events
                 .Where(e => e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId))
+                // Nor a line telling a ballot the player cannot know (KnownBallots; vote family V7).
+                .Where(e => !KnownBallots.TellsAnUnknownBallot(state, e))
                 // Phase markers are scaffolding for the engine, not events in the story; so are the
                 // competition's committed standings and performance arithmetic (decision 12).
                 .Where(e => !EpisodeEngine.IsScaffolding(e.kind))

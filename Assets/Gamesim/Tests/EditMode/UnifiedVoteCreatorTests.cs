@@ -715,7 +715,7 @@ namespace Gamesim.Tests.EditMode
                 else Strike(s, s.nominees[0], voters[0]);
             });
             Assert.That(thrown.InnerException?.GetType().Name, Is.EqualTo("RuleException"), "The whole command's refusal.");
-            Assert.That(thrown.InnerException.Message, Does.StartWith("The prospective Vote state fails its core in the middle of the command: "));
+            Assert.That(thrown.InnerException.Message, Does.StartWith("The unified vote state fails its core in the middle of the command: "));
             Assert.That(thrown.InnerException.Message, Does.EndWith(invalid));
             Assert.That(PinnedVoteSeason.Json(s), Is.EqualTo(before), "Nothing is written.");
         }

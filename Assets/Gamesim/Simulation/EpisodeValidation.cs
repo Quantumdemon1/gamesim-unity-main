@@ -61,9 +61,9 @@ namespace Gamesim.Simulation
         {
             if (s == null || s.unifiedCommitmentRulesVersion != UnifiedVoteFamilyValidation.Version
                 || !YourWord.On(s))
-                return Fail(out error, "Prospective Vote requires its explicit version and active commitment/story rules.");
+                return Fail(out error, "The unified vote rules require their explicit version and active commitment/story rules.");
             if (s.dealRulesStartWeek != 1)
-                return Fail(out error, "Prospective Vote requires the house's deal pass from the first week.");
+                return Fail(out error, "The unified vote rules require the house's deal pass from the first week.");
             return TryValidateCore(s, UnifiedVoteFamilyValidation.Version, out error);
         }
 
@@ -106,7 +106,7 @@ namespace Gamesim.Simulation
             if (prospectiveVote)
             {
                 if (s.unifiedVoteReveals == null || s.unifiedVoteReveals.Count > UnifiedVoteRevealArchive.MaximumFrames)
-                    return Fail(out error, "Prospective Vote requires bounded complete reveal evidence.");
+                    return Fail(out error, "The unified vote rules require bounded complete reveal evidence.");
             }
             else if (s.unifiedVoteReveals == null || s.unifiedVoteReveals.Count != 0)
                 return Fail(out error, "Unified Vote evidence is not enabled in this build.");

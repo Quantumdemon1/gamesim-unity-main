@@ -45,10 +45,10 @@ namespace Gamesim.Simulation
         public static bool TryValidateStorage(EpisodeState s, out string error)
         {
             if (s == null || s.unifiedCommitmentRulesVersion != Version)
-                return Fail(out error, "Expected the explicit prospective Vote storage.");
+                return Fail(out error, "Expected the explicit unified vote storage.");
             if (!UnifiedCommitments.ValidateSafetyAuthority(s, out error)) return false;
             if (s.promises.Any(row => row.kind == PromiseKind.Vote) || s.deals.Any(row => IsVoteType(row.type)))
-                return Fail(out error, "Prospective Safety/Vote authority cannot have writable raw mirrors.");
+                return Fail(out error, "The unified Safety and Vote authority cannot have writable raw mirrors.");
             HashSet<string> deals = null;
             foreach (var row in s.unifiedCommitments)
             {
@@ -201,7 +201,7 @@ namespace Gamesim.Simulation
                 || s.unifiedCommitments == null || s.unifiedCommitments.Count > UnifiedCommitments.FamilyCapacity * 2
                 || s.promises == null || s.deals == null || s.promises.Count > UnifiedCommitments.FamilyCapacity
                 || s.deals.Count > UnifiedCommitments.FamilyCapacity)
-                return Fail(out error, "Expected the explicit prospective Vote aggregate at the live episode schema.");
+                return Fail(out error, "Expected the explicit unified vote aggregate at the live episode schema.");
             // The archive leaf establishes bounded cast/status/departure/power ownership first.
             // Its current private-box proof is deliberately not a UI or listener knowledge grant.
             if (!UnifiedVoteCompletedReveal.TryContext(s, out var context, out error)
@@ -215,7 +215,7 @@ namespace Gamesim.Simulation
                 if (!Token(id) || !ids.Add(id)) return Fail(out error, "Commitment full identities must be globally unique and bounded.");
             if (s.promises.Any(row => row.kind == PromiseKind.Safety || row.kind == PromiseKind.Vote)
                 || s.deals.Any(row => row.type == DealKind.SafetyAgreement || IsVoteType(row.type)))
-                return Fail(out error, "Prospective Safety/Vote authority cannot have writable raw mirrors.");
+                return Fail(out error, "The unified Safety and Vote authority cannot have writable raw mirrors.");
             if (!UnifiedVoteRevealArchive.TryValidateComplete(s, archive, out error)) return false;
             int promises = s.promises.Count, deals = s.deals.Count;
             foreach (var row in s.unifiedCommitments)

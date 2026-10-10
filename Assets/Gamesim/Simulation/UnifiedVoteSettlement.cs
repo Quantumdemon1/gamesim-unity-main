@@ -154,13 +154,13 @@ namespace Gamesim.Simulation
                 if (row.sourcePolicy == UnifiedCommitments.DealPolicy && row.subtype == DealKind.VoteTogether)
                 {
                     if (!UnifiedVoteTogether.TryVerdict(row, ballots, out status, out error))
-                        throw new ArgumentException(error, nameof(s));
+                        throw CommitmentReferences.StorageRefusal(error, nameof(s));
                     actor = null;
                 }
                 else
                 {
                     if (!UnifiedVoteObligations.TryVerdict(row, ballots, s.nominees, out var verdict, out error))
-                        throw new ArgumentException(error, nameof(s));
+                        throw CommitmentReferences.StorageRefusal(error, nameof(s));
                     status = verdict?.Status; actor = verdict?.ActorId;
                 }
                 if (status == null) continue;

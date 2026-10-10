@@ -30,17 +30,18 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// The internal exact-mode-2 engine seam (vote family V2). Public mode 2 stays refused: the public
-        /// constructor, load, migration and save validate publicly and never dispatch here. This engine
-        /// keeps every guard of the public path - command identity and duplicates, revision, phase, actor,
-        /// kind, text and performance - and the same Execute body, and selects the complete prospective
-        /// Vote core (<see cref="EpisodeValidation.TryValidateProspectiveUnifiedVote"/>) at its input and
-        /// for every candidate, which is a detached clone installed only once it passes. No callback, flag
-        /// or relabelling lets a caller skip that core. Tests reach it through their reflection facade.
+        /// The internal exact-mode-2 engine seam (vote family V2). Since V6 the public constructor accepts mode 2
+        /// too - public validation dispatches it to the same complete Vote core - so on a mode-2 season this
+        /// factory and the public constructor are the same engine; the seam differs only in refusing every other
+        /// mode at its input. It keeps every guard of the public path - command identity and duplicates, revision,
+        /// phase, actor, kind, text and performance - and the same Execute body, and selects the complete Vote core
+        /// (<see cref="EpisodeValidation.TryValidateProspectiveUnifiedVote"/>) at its input and for every candidate,
+        /// which is a detached clone installed only once it passes. No callback, flag or relabelling lets a caller
+        /// skip that core. Kept for the V1 to V5 tests, which reach it through their reflection facade.
         /// </summary>
         internal static EpisodeEngine ProspectiveVote(EpisodeState initial) => new EpisodeEngine(initial, true);
 
-        /// <summary>The engine's one validator: public, or under the seam the complete prospective Vote core.</summary>
+        /// <summary>The engine's one validator: public (which takes mode 2 to the complete Vote core since V6), or under the seam that core alone.</summary>
         private bool Valid(EpisodeState state, out string error) => prospectiveVote
             ? EpisodeValidation.TryValidateProspectiveUnifiedVote(state, out error)
             : EpisodeValidation.TryValidate(state, out error);
@@ -82,10 +83,13 @@ namespace Gamesim.Simulation
                 return new CommandResult { accepted = true, reason = "Committed", state = Snapshot, beatsFromSequence = beatsFrom };
             }
             catch (RuleException error) { return Rejected(error.Message); }
-            // Mode 2 only (vote family V5a, the lead's decision D3): a reader's refusal of the state it was given -
-            // its storage check, a malformed row - refuses the command, as an NPC operation's does
-            // (EpisodeNpcSocial), instead of escaping it. Modes 0 and 1 keep their error path exactly.
-            catch (ArgumentException error) when (UnifiedVoteStore.On(current)) { return Rejected(error.Message); }
+            // Mode 2 only (vote family V5a, the lead's decision D3): a commitment reader's refusal of the state it was given -
+            // its storage check, a malformed row (CommitmentReferences.StorageRefusal) - refuses the command, as an NPC
+            // operation's does (EpisodeNpcSocial), instead of escaping it. Only that refusal (narrowed at the pre-V6 review):
+            // an ArgumentNullException or ArgumentOutOfRangeException from a bug, or any other ArgumentException, still
+            // escapes, as every one does in modes 0 and 1, which keep their error path exactly.
+            catch (ArgumentException error) when (UnifiedVoteStore.On(current) && CommitmentReferences.IsStorageRefusal(error))
+            { return Rejected(error.Message); }
         }
 
         private CommandResult Rejected(string reason) => new CommandResult { reason = reason, state = Snapshot };

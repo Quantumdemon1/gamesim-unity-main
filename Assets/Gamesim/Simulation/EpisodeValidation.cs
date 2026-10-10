@@ -19,8 +19,13 @@ namespace Gamesim.Simulation
 
         public static bool TryValidate(EpisodeState s, out string error)
         {
-            // Only supported canonical mode selects the enabled complete core. Legacy saves stay
+            // Each supported canonical mode selects its own complete core. Legacy saves stay
             // disabled; validation never activates, converts or clears any stored authority.
+            // Mode 2, the unified vote rules (vote family V6): a fresh season's since V6
+            // (ShippedRules.ApplyFresh), held to the complete Vote core - its prerequisites, the
+            // deal pass from the first week, every archive frame, row, ending and saved reference.
+            if (s != null && s.unifiedCommitmentRulesVersion == UnifiedVoteFamilyValidation.Version)
+                return TryValidateProspectiveUnifiedVote(s, out error);
             if (s != null && s.unifiedCommitmentRulesVersion == UnifiedCommitments.ProspectiveVersion)
             {
                 // Real new seasons start C0 and story knowledge together. An enabled save cannot
@@ -43,8 +48,10 @@ namespace Gamesim.Simulation
             TryValidateCore(s, true, out error);
 
         /// <summary>
-        /// Complete detached candidate validation only. No public command, constructor, load,
-        /// migration or save path dispatches here or opts a recorded season into Vote authority.
+        /// The complete mode-2 core. Public validation dispatches a mode-2 season here (vote family V6): the engine's
+        /// constructor and every command's candidate, a save, a load and a recovery. Nothing here - and no migration,
+        /// import or recovery - opts a season into Vote authority: only a fresh season's rules select mode 2
+        /// (<see cref="ShippedRules.ApplyFresh"/>), and a season recorded in mode 0 or 1 keeps its mode.
         /// Current prerequisites must be active; historical rows retain their own source weeks.
         /// <para>The house's deal pass runs from the first week (vote family V5a, the lead's decision D5): a finite
         /// Vote deal past its week ends at that pass, which mode 1's settlement leaves to decide, so the two agree only

@@ -349,6 +349,8 @@ namespace Gamesim.Tests.EditMode
         {
             internal EpisodeState Kept, Broken;
             internal string PartnerId, OtherVoterId, DealId, EvictId, SpareId;
+            /// <summary>With <see cref="Flip(bool, bool)"/>'s word: the partner's vote promise to the player, broken in both.</summary>
+            internal string WordId;
             internal bool Told;
 
             /// <summary>A player-facing reader gives byte-identical answers on the two: it shows nothing of the hidden ballot.</summary>
@@ -374,8 +376,14 @@ namespace Gamesim.Tests.EditMode
                 && PinnedVoteSeason.NpcVoters(s).Count() >= 4 && s.nominees.Count == 2
                 && PlayerDeals.CanPropose(s, PinnedVoteSeason.NpcVoters(s).First(), DealKind.VoteEvict, s.nominees[0], out _)))).Clone();
 
-        /// <summary>Builds the pair (or, <paramref name="told"/>, the control pair) from <see cref="FlipCampaign"/>.</summary>
-        internal static FlipPair Flip(bool told)
+        /// <summary>
+        /// Builds the pair (or, <paramref name="told"/>, the control pair) from <see cref="FlipCampaign"/>. With <paramref name="word"/>
+        /// the partner has also given the player their word on the vote, as a story gives it (EpisodeEngine.StoryPromise: no target, so
+        /// any ballot of theirs breaks it): filed as a story files it, its id the season's next sequence, consumed, on the public mode-1
+        /// season, which public validation accepts. Their one ballot then breaks the word in both seasons, and in <see cref="FlipPair.Broken"/>
+        /// the deal with it - one Rule2 incident there, two groups in <see cref="FlipPair.Kept"/> (the V5 review's finding 8).
+        /// </summary>
+        internal static FlipPair Flip(bool told, bool word = false)
         {
             var s = FlipCampaign();
             var voters = PinnedVoteSeason.NpcVoters(s).ToList();
@@ -383,6 +391,14 @@ namespace Gamesim.Tests.EditMode
             s.randomState = ProspectiveVoteTwins.Draw(true, PlayerDeals.AcceptanceChance(s, pair.PartnerId, DealKind.VoteEvict, pair.EvictId));
             s = Accepted(s, ProspectiveVoteTwins.Command(s, EpisodeCommandKind.ProposeDeal, pair.PartnerId, pair.EvictId, DealKind.VoteEvict));
             pair.DealId = s.deals.Single(d => d.type == DealKind.VoteEvict && d.recipientId == pair.PartnerId && d.status == DealStatus.Active).id;
+            if (word)
+            {
+                pair.WordId = "promise-" + s.nextSequence;
+                s.promises.Add(new PromiseState { id = pair.WordId, fromId = pair.PartnerId, toId = s.playerId, kind = PromiseKind.Vote,
+                    status = PromiseStatus.Active, week = s.week, expiresWeek = s.week });
+                s.nextSequence++;
+                s = ProspectiveVoteTwins.Valid(s);
+            }
             if (told)
             {
                 // Warm enough to answer at all, as the negotiation fixtures set a view; the answer is the real command's.
@@ -405,6 +421,13 @@ namespace Gamesim.Tests.EditMode
             var broken = pair.Broken.unifiedCommitments.Single(r => r.id == pair.DealId);
             Assert.That((kept.status, broken.status, broken.brokenById), Is.EqualTo((DealStatus.Fulfilled, DealStatus.Broken, pair.PartnerId)),
                 "The partner's ballot kept the deal in one and broke it in the other.");
+            if (word)
+                foreach (var state in new[] { pair.Kept, pair.Broken })
+                {
+                    var promise = state.unifiedCommitments.Single(r => r.id == pair.WordId);
+                    Assert.That((promise.origin, promise.status, promise.brokenById), Is.EqualTo((UnifiedCommitments.StoryPromise, DealStatus.Broken, pair.PartnerId)),
+                        "The partner's ballot broke their word in both.");
+                }
             return pair;
         }
 

@@ -109,7 +109,11 @@ namespace Gamesim.Tests.EditMode
             return owners;
         }
 
-        /// <summary>One command through the public mode-1 engine and through the seam on the twin.</summary>
+        /// <summary>
+        /// One command through the public mode-1 engine and through the seam on the twin. Since vote family V6 the twin is a
+        /// public season too, and the command goes through the public engine on it as well: the same acceptance, reason and
+        /// state as the seam's, byte for byte - so every case driven through here is also a public command of mode 2.
+        /// </summary>
         internal static (CommandResult legacy, CommandResult prospective) Both(EpisodeState mode1, EpisodeCommand command)
         {
             var twin = Twin(mode1);
@@ -120,6 +124,10 @@ namespace Gamesim.Tests.EditMode
             Assert.That(PinnedVoteSeason.Json(twin), Is.EqualTo(before), "The seam never touches the state it was given.");
             if (!prospective.accepted) Assert.That(PinnedVoteSeason.Json(engine.Snapshot), Is.EqualTo(before), "A refusal installs nothing.");
             else Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(prospective.state, out var error), Is.True, error);
+            var shipped = new EpisodeEngine(twin).Apply(command);
+            Assert.That((shipped.accepted, shipped.duplicate, shipped.reason), Is.EqualTo((prospective.accepted, prospective.duplicate, prospective.reason)),
+                "The public engine answers a mode-2 command as the seam does (vote family V6).");
+            Assert.That(PinnedVoteSeason.Json(shipped.state), Is.EqualTo(PinnedVoteSeason.Json(prospective.state)), "And leaves the same season.");
             return (legacy, prospective);
         }
 

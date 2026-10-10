@@ -70,7 +70,8 @@ namespace Gamesim.Tests.EditMode
                     point.ledger.power.Any(row => row.week == frame.week && row.tally.Count == 2)));
                 Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(projected, out var error), Is.True,
                     "week " + point.week + " " + point.phase + ": " + error);
-                Assert.That(EpisodeValidation.TryValidate(projected, out _), Is.False, "Public mode 2 remains refused.");
+                // Flipped at vote family V6: public validation takes mode 2 to the same complete core (it refused it until V6).
+                Assert.That(EpisodeValidation.TryValidate(projected, out error), Is.True, "A public season since V6. " + error);
                 if (!player)
                 {
                     var deal = CommitmentReferences.FindDeal(projected, w.DealId);

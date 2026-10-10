@@ -243,6 +243,31 @@ namespace Gamesim.Simulation
                 else line.text = record.description ?? (kept ? "A deal with " + Whom(s, partner) + " was kept." : "A deal with " + Whom(s, partner) + " was broken.");
                 lines.Add(line);
             }
+            if (UnifiedVoteStore.On(s)) UntoldVoteDeals(s, week, lines);
+        }
+
+        /// <summary>
+        /// Mode 2 only (the pre-V6 review; the lead's decision that what a ballot settled is the player's to know only where that
+        /// ballot is): a vote deal of the player's whose ending they cannot know (<see cref="KnownBallots.DealOutcomeKnown"/>) is a
+        /// not-known line of its own, as the record's line for it says. Under Rule2 a row that owned no consequence of its reveal
+        /// wrote no record, and which row owns turns on how the others voted - the partner's word broken by the same hidden ballot
+        /// owns their breach of the player where the deal broke with it, and not where it held - so each such row the record did not
+        /// tell is told here, after the record's lines. Mode 1 writes every row's record, and never reaches this.
+        /// </summary>
+        private static void UntoldVoteDeals(EpisodeState s, int week, List<Line> lines)
+        {
+            var untold = CommitmentReferences.Deals(s).Where(d => KnownBallots.IsVoteDeal(d.type) && d.settledWeek == week
+                    && (d.status == DealStatus.Fulfilled || d.status == DealStatus.Broken) && (d.proposerId == s.playerId) != (d.recipientId == s.playerId)
+                    && CommitmentReferences.FindCanonical(s, d.id)?.kind == UnifiedVoteTogether.Vote && !KnownBallots.DealOutcomeKnown(s, d))
+                .GroupBy(d => (partner: d.proposerId == s.playerId ? d.recipientId : d.proposerId, d.type)).ToList();
+            foreach (var group in untold)
+            {
+                if (s.Find(group.Key.partner) == null) continue;
+                string text = "The " + DealWords(group.Key.type) + " with " + Whom(s, group.Key.partner) + " is " + KnownBallots.Unresolved + ".";
+                int told = lines.Count(line => line.kind == Kinds.Deal && line.verdict == Verdicts.NotKnown && line.aboutId == group.Key.partner && line.text == text);
+                for (int i = told; i < group.Count(); i++)
+                    lines.Add(new Line { kind = Kinds.Deal, verdict = Verdicts.NotKnown, aboutId = group.Key.partner, text = text });
+            }
         }
 
         /// <summary>

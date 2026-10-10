@@ -178,7 +178,7 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void ASmallHouseCanRestEveryHousemateInAWindow()
         {
-            var s = Fresh(6, 6108);
+            var s = FreshInModeOne(6, 6108);
             // Two houseguests four places apart in the cast rest in the same window; take the rest out of the house.
             var npcs = s.contestants.Where(c => !c.isPlayer).ToList();
             var keep = new[] { npcs[0], npcs.First(c => (s.contestants.IndexOf(c) - s.contestants.IndexOf(npcs[0])) % 4 == 0 && c != npcs[0]) };
@@ -431,7 +431,11 @@ namespace Gamesim.Tests.EditMode
                     if (!reached) Assert.That(Json(closed.relationshipArcs), Is.EqualTo(Json(s.relationshipArcs)), "and moves no arc.");
                     var ticked = s.Clone();
                     while (ticked.windowActions.Count < Windows.Count) ticked.windowActions.Add(0);
-                    ticked.windowActions[window] = 100;
+                    // Every seat spent (Due gives every beat once the tick reaches the seats). The window's seats rather than
+                    // the 100 this once set: since vote family V6 a fresh season is mode 2, whose Vote writers hold the state
+                    // to the complete core whenever a beat gives a word on the vote, and 100 is no count a window can hold.
+                    int seats = Math.Max(EpisodeEngine.WindowSeats(ticked, window), ticked.npcSocial.beatWindow == window ? ticked.npcSocial.beatSeats : 0);
+                    ticked.windowActions[window] = Math.Max(ticked.windowActions[window], seats);
                     EpisodeEngine.CatchUp(ticked);
                     Assert.That(ticked.randomState, Is.EqualTo(s.randomState), "A tick's beats draw nothing either.");
                     if (New(s, closed).Count + New(s, ticked).Count > 0) probed++;
@@ -590,7 +594,7 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void TheQuotaStopsAFourthBeatAndRecordsDoNotCount()
         {
-            var s = InWindow(Fresh(8, 6119), Windows.AfterVeto);
+            var s = InWindow(FreshInModeOne(8, 6119), Windows.AfterVeto);
             s.npcSocial.acts.Clear();
             string npc = s.contestants.First(c => !c.isPlayer && c.status == ContestantStatus.Active).id;
             string other = s.contestants.Last(c => !c.isPlayer && c.status == ContestantStatus.Active).id;
@@ -894,7 +898,10 @@ namespace Gamesim.Tests.EditMode
             Assert.That(EpisodeEngine.MostActs(s), Is.EqualTo(64));
         }
 
-        /// <summary>A fresh season as the director starts one - the hearing rules on - with the beats from week one plays to its end, every command legal.</summary>
+        /// <summary>
+        /// A fresh season as the director starts one - the hearing rules on, and since vote family V6 the unified vote rules (mode 2),
+        /// whose hearing lineage is mode 1's - with the beats from week one plays to its end, every command legal.
+        /// </summary>
         [TestCase(8, 6131u)]
 #if !UNITY_5_3_OR_NEWER
         [TestCase(6, 6132u)] [TestCase(12, 6133u)]
@@ -902,7 +909,9 @@ namespace Gamesim.Tests.EditMode
         public void AFreshSeasonUnderTheHearingRulesPlaysTheBeatsToItsEnd(int size, uint seed)
         {
             var s = Fresh(size, seed);
-            Assert.That(UnifiedCommitmentHearings.RulesOn(s), Is.True, "The hearing rules are on.");
+            // UnifiedCommitmentHearings.RulesOn is mode 1's alone; a fresh season is mode 2 since V6, its hearings the same version.
+            Assert.That((s.unifiedCommitmentRulesVersion, s.unifiedHearingRulesVersion, UnifiedCommitments.SafetyAuthorityOn(s)),
+                Is.EqualTo((UnifiedVoteFamilyValidation.Version, UnifiedCommitmentHearings.ProspectiveVersion, true)), "The hearing rules are on.");
             var engine = new EpisodeEngine(s);
             int acts = 0;
             for (int i = 0; i < 6000 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
@@ -1006,6 +1015,22 @@ namespace Gamesim.Tests.EditMode
             s.npcSocial.beatsFired = 0;
             Assert.That(s.npcSocial.beatWindow, Is.EqualTo(window));
             Assert.That(s.npcSocial.beatPlan, Is.Not.Empty);
+            return s;
+        }
+
+        /// <summary>
+        /// <see cref="Fresh"/> in mode 1, the commitment mode seasons recorded before vote family V6 keep (the lead's decision D6), for
+        /// a case that builds a window no command leaves - a house emptied by hand, a week jumped to, a plan forced - in which a beat
+        /// gives a word on the vote. Since V6 a fresh season is mode 2, whose Vote writers hold the whole state to the complete core
+        /// whenever they write (vote family V3), and a built window is no state that core accepts. These cases measure the beats'
+        /// cadence, which no commitment mode changes; whole fresh seasons play the beats in mode 2
+        /// (<see cref="AFreshSeasonUnderTheHearingRulesPlaysTheBeatsToItsEnd"/>, <see cref="ASixteenPersonHouseStaysInsideTheWeeksBound"/>).
+        /// </summary>
+        private static EpisodeState FreshInModeOne(int size, uint seed)
+        {
+            var s = Fresh(size, seed);
+            s.unifiedCommitmentRulesVersion = UnifiedCommitments.ProspectiveVersion;
+            Valid(s);
             return s;
         }
 

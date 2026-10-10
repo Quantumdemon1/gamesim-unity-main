@@ -29,8 +29,9 @@ namespace Gamesim.Tests.EditMode
             string before = Fingerprint(s);
             Assert.That(UnifiedVoteFamilyValidation.TryValidate(s, s.unifiedVoteReveals, out var error), Is.True, error);
             Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(s, out error), Is.True, error);
-            Assert.That(EpisodeValidation.TryValidate(s, out _), Is.False);
-            Assert.Throws<ArgumentException>(() => new EpisodeEngine(s));
+            // Flipped at vote family V6: public validation takes mode 2 to the same complete core (it refused it until V6).
+            Assert.That(EpisodeValidation.TryValidate(s, out error), Is.True, error);
+            Assert.DoesNotThrow(() => new EpisodeEngine(s));
             Assert.That(UnifiedCommitments.RulesOn(s), Is.False);
             Assert.That(UnifiedCommitmentHearings.RulesOn(s), Is.False);
             Assert.That(UnifiedCommitments.ValidateRecords(s, out _), Is.False);
@@ -518,7 +519,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Fingerprint(opportunity), Is.EqualTo(Fingerprint(actualAnsweredOpportunity)));
             Accepted(s);
             Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(s, out error), Is.True, error);
-            Assert.That(EpisodeValidation.TryValidate(s, out _), Is.False);
+            // Flipped at vote family V6: public validation takes mode 2 to the same complete core (it refused it until V6).
+            Assert.That(EpisodeValidation.TryValidate(s, out error), Is.True, error);
             Assert.That(UnifiedVoteHistory.FindDecision(s, pending.id), Is.Null, "A real answer is not an already-made archived ballot verdict.");
             Assert.That(CommitmentReferences.FindDeal(s, pending.id).week, Is.EqualTo(witness.Offer.week));
             Assert.That(CommitmentReferences.ReceiptWeek(s, pending.id, witness.Offer.week), Is.EqualTo(witness.Offer.week));

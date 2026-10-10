@@ -113,6 +113,10 @@ namespace Gamesim.Tests.EditMode
             (double)Call(typeof(ThreatAssessment), "TotalBeforeCommitmentEffects", new[] { typeof(EpisodeState), typeof(string), typeof(string),
                 typeof(IReadOnlyList<string>), typeof(IReadOnlyCollection<string>) }, s, evaluatorId, targetId, excludedSafetyEffects, excludedVoteEffects);
 
+        /// <summary>CommitmentReferences.IsStorageRefusal: a commitment reader's own marked refusal, the one a mode-2 command takes as its refusal.</summary>
+        internal static bool IsStorageRefusal(Exception error) =>
+            (bool)Call(typeof(CommitmentReferences), "IsStorageRefusal", new[] { typeof(Exception) }, error);
+
         /// <summary>EpisodeEngine.ProspectiveVote: the internal exact-mode-2 engine seam (vote family V2).</summary>
         internal static EpisodeEngine Engine(EpisodeState s) =>
             (EpisodeEngine)Call(typeof(EpisodeEngine), "ProspectiveVote", new[] { typeof(EpisodeState) }, s);

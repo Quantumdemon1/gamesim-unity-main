@@ -31,65 +31,67 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary><see cref="ShippedRules.Fields"/> of a fresh season when the digests below were recorded.</summary>
         internal const string Rules = "competitionRulesVersion=4,readRulesStartWeek=1,leverRulesStartWeek=1,weekRulesStartWeek=1,economyRulesVersion=1,"
-            + "agencyRulesStartWeek=1,finaleRulesStartWeek=1,commitmentRulesStartWeek=1,unifiedCommitmentRulesVersion=1,unifiedHearingRulesVersion=1,"
+            + "agencyRulesStartWeek=1,finaleRulesStartWeek=1,commitmentRulesStartWeek=1,unifiedCommitmentRulesVersion=2,unifiedHearingRulesVersion=1,"
             + "blocRulesStartWeek=1,socialBudgetRulesStartWeek=1,dealRulesStartWeek=1,eventRulesStartWeek=1,storyRulesStartWeek=1,haveNotRulesStartWeek=1,"
             + "strategyRulesStartWeek=1,allianceLeakRulesStartWeek=1,pactPlanRulesStartWeek=1,allWeekRulesStartWeek=1,npcSocial.rulesStartWeek=1,"
             + "story.rulesStartWeek=1,story.rulesVersion=9";
 
         /// <summary>
         /// Each cell's digest: "policy/roster/size/npcN hash". Recorded with every shipped rule on: the war rooms played,
-        /// D3's counter reach at twenty from a view of ten, D2's all-week rules from week one, and (budget 300) a completed
-        /// NPC conversation moving its pair through the ledger with no arc (the balance review's finding 3). Every cell
-        /// moved when D2 went into ApplyFresh; the budget-300 cells moved again with the arcs fix.
+        /// D3's counter reach at twenty from a view of ten, D2's all-week rules from week one, the unified vote rules
+        /// (unifiedCommitmentRulesVersion 2, vote family V6, with the lab's player view and skilled oracle reading mode 2's
+        /// offers), and (budget 300) a completed NPC conversation moving its pair through the ledger with no arc (the balance
+        /// review's finding 3). Every cell moved when D2 went into ApplyFresh and again with V6; the budget-300 cells moved
+        /// again with the arcs fix.
         /// </summary>
         internal static readonly string[] Recorded =
         {
             "passive/Regular/8/npc0 dd34b55c93c22593",
             "random/Regular/8/npc0 f5ba35d31aa5c421",
-            "social/Regular/8/npc0 747f193a61aa2f4a",
+            "social/Regular/8/npc0 7fdd488992ee0d68",
             "reader/Regular/8/npc0 047d2ab28c2329b8",
-            "schemer/Regular/8/npc0 be4717c3d895c372",
+            "schemer/Regular/8/npc0 f5a6dd25fd0216ec",
             "loyalist/Regular/8/npc0 5b4e0798244a2723",
             "floater/Regular/8/npc0 3b7b17a5a7b82d3c",
             "beast/Regular/8/npc0 621a7c0ed2d2eb83",
-            "novice/Regular/8/npc0 8e4fb73201a863ab",
-            "exploit/Regular/8/npc0 af6638eadcf23c57",
+            "novice/Regular/8/npc0 8fff1c5489c84553",
+            "exploit/Regular/8/npc0 70fa0803dad06598",
             "oracle-reader/Regular/8/npc0 98b56e71a16f6fbd",
             "oracle-skilled/Regular/8/npc0 f99467d29aced9af",
             "passive/Regular/12/npc0 76def56bbc757019",
-            "random/Regular/12/npc0 0c3ed664a9a0bad5",
-            "social/Regular/12/npc0 876115c271996aba",
+            "random/Regular/12/npc0 a63c4f0794c468b7",
+            "social/Regular/12/npc0 d4a6e78da312ce61",
             "reader/Regular/12/npc0 d8fcf425a7685d94",
-            "schemer/Regular/12/npc0 4e057ea0bb5d85e6",
+            "schemer/Regular/12/npc0 6ae1b0cd57769ef6",
             "loyalist/Regular/12/npc0 980e8b709e89d0c1",
             "floater/Regular/12/npc0 9a8d117b0abde251",
             "beast/Regular/12/npc0 8a18d86721253bef",
-            "novice/Regular/12/npc0 7f909a850fdd051d",
-            "exploit/Regular/12/npc0 0fbec6085aacc525",
+            "novice/Regular/12/npc0 5e3eb55dc4d7fea9",
+            "exploit/Regular/12/npc0 7a5426228dfeed8f",
             "oracle-reader/Regular/12/npc0 bf3f9183d2f42d95",
             "oracle-skilled/Regular/12/npc0 015de0c0bd3f1fe9",
             "passive/Regular/8/npc300 29cace4f15555984",
-            "random/Regular/8/npc300 3ff1a2ada7d85c48",
-            "social/Regular/8/npc300 2553811cfc530c41",
+            "random/Regular/8/npc300 eefa3eaa5d7d9543",
+            "social/Regular/8/npc300 55cf699723312b4d",
             "reader/Regular/8/npc300 b9a07710fffaa17b",
-            "schemer/Regular/8/npc300 47038bcacb94a207",
+            "schemer/Regular/8/npc300 7f3c2d509447067b",
             "loyalist/Regular/8/npc300 a25a35e3bff8bfa6",
             "floater/Regular/8/npc300 51bfda505356b6c5",
             "beast/Regular/8/npc300 c2fa51eb43450c3a",
-            "novice/Regular/8/npc300 2e087cfb3940c10f",
-            "exploit/Regular/8/npc300 6931067aee68d228",
+            "novice/Regular/8/npc300 2405773e87740604",
+            "exploit/Regular/8/npc300 db7692366dbbb121",
             "oracle-reader/Regular/8/npc300 34dc320d60dfad3f",
             "oracle-skilled/Regular/8/npc300 0d03e8c1d2e23605",
             "passive/Regular/12/npc300 93b9031365c8f427",
-            "random/Regular/12/npc300 24d47c3061a3c29f",
-            "social/Regular/12/npc300 4dffefc0695d03f0",
+            "random/Regular/12/npc300 e45cf6c997793b54",
+            "social/Regular/12/npc300 8f26c61e6788c0ef",
             "reader/Regular/12/npc300 5c603a5061728f13",
-            "schemer/Regular/12/npc300 7ed25c19559acf89",
+            "schemer/Regular/12/npc300 e593a17f655c473d",
             "loyalist/Regular/12/npc300 03e3d5d23ef7d659",
             "floater/Regular/12/npc300 40223dab2e83b037",
             "beast/Regular/12/npc300 86eb69b71f936d83",
-            "novice/Regular/12/npc300 aee9b901915f2ff1",
-            "exploit/Regular/12/npc300 316d3b8b6eb103f7",
+            "novice/Regular/12/npc300 7101fec82fa5b867",
+            "exploit/Regular/12/npc300 3945a203b0b0ba86",
             "oracle-reader/Regular/12/npc300 ed0645b74af10560",
             "oracle-skilled/Regular/12/npc300 07b6c40d6ab3d158",
         };

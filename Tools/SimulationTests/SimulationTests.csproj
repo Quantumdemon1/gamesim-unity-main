@@ -108,6 +108,9 @@
     <Compile Include="$(EditMode)ModeTwoBargainReaderTests.cs" />
     <Compile Include="$(EditMode)ModeTwoFinaleReaderTests.cs" />
     <Compile Include="$(EditMode)ModeTwoPageReaderTests.cs" />
+    <Compile Include="$(EditMode)ModeTwoVotePromiseFlipTests.cs" />
+    <!-- Vote family V6: a fresh season is mode 2, played through the public engine alone. -->
+    <Compile Include="$(EditMode)UnifiedVotePublicCommandTests.cs" />
     <Compile Include="$(EditMode)CommitmentReferencesTests.cs" />
     <Compile Include="$(EditMode)UnifiedCommitmentStoreTests.cs" />
     <Compile Include="$(EditMode)UnifiedSafetyCommandOwnerTests.cs" />

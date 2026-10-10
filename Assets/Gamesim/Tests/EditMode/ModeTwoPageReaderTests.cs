@@ -70,7 +70,8 @@ namespace Gamesim.Tests.EditMode
 
         // ------------------------------------------------------------ the flip pair (pattern P3)
 
-        private static object Reader(string reader, EpisodeState s, string partner)
+        /// <summary>The player-facing pages V5f moved (also read of the word's flip pair, <see cref="ModeTwoVotePromiseFlipTests"/>).</summary>
+        internal static object Reader(string reader, EpisodeState s, string partner)
         {
             var decisions = Decisions(s);
             switch (reader)

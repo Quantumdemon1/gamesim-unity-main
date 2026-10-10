@@ -236,8 +236,13 @@ namespace Gamesim.Tests.EditMode
             public string id, fromId, type, aboutId;
         }
 
-        /// <summary>Deals put to the player and waiting on an answer.</summary>
-        public IReadOnlyList<Offer> Offers => (UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Deals(s) : (IReadOnlyList<DealState>)s.deals)
+        /// <summary>
+        /// Deals put to the player and waiting on an answer. Read through the views wherever commitments are canonical - mode 1,
+        /// and mode 2, a fresh season's since vote family V6, whose Vote and Safety offers are canonical rows (the game's own
+        /// reader, NpcDeals.Pending, moved in V5a); the raw list in mode 0. Until V6's re-measure this read mode 1's gate alone,
+        /// so a lab player in mode 2 never saw an offer.
+        /// </summary>
+        public IReadOnlyList<Offer> Offers => (UnifiedCommitments.SafetyAuthorityOn(s) ? CommitmentReferences.Deals(s) : (IReadOnlyList<DealState>)s.deals)
             .Where(d => d != null && d.status == DealStatus.Proposed && d.recipientId == s.playerId)
             .Select(d => new Offer { id = d.id, fromId = d.proposerId, type = d.type, aboutId = d.targetId }).ToList();
 

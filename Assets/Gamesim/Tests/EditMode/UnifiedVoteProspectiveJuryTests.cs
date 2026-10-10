@@ -45,8 +45,9 @@ namespace Gamesim.Tests.EditMode
                 .Any(ballot => ballot.voterId == s.playerId), Is.True);
             if (scenario >= 2)
                 Assert.That(KnownBallots.DealOutcomeKnown(s, CommitmentReferences.FindDeal(s, row.id)), Is.True);
-            Assert.That(EpisodeValidation.TryValidate(s, out _), Is.False, "Public mode2 remains refused.");
-            Assert.Throws<ArgumentException>(() => new EpisodeEngine(s));
+            // Flipped at vote family V6: public validation takes mode 2 to the same complete core (it refused it until V6).
+            Assert.That(EpisodeValidation.TryValidate(s, out var publicError), Is.True, publicError);
+            Assert.DoesNotThrow(() => new EpisodeEngine(s));
             Assert.That(UnifiedCommitments.RulesOn(s), Is.False);
             Assert.That(UnifiedCommitmentHearings.RulesOn(s), Is.False);
             Assert.That(Trace(witness.State), Is.EqualTo(witness.SourceImage));
@@ -174,6 +175,48 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Trace(witness.State), Is.EqualTo(witness.SourceImage));
         }
 
+        /// <summary>
+        /// The pre-V6 save-contract review of D7: an Accountability receipt is the owner of the player's breach of the juror, not of
+        /// any group. One ballot of the player's broke their vote promise to the juror and the vote deal they struck, which the
+        /// juror's ballot broke too: the promise, the heavier, owns the player's breach of the juror, and the deal - broken by both -
+        /// owns only the juror's breach of the player. The juror asks about the promise, as mode 1's asks; a saved question naming
+        /// the deal is refused; and the receipts never pick the deal, even where they reach it before the promise (a constructed
+        /// reader case: the promise dated a week earlier, which only the storage check reads).
+        /// </summary>
+        [Test]
+        public void AnAccountabilityReceiptOwnsThePlayersBreachOfTheJurorNotTheJurorsOfThePlayer()
+        {
+            var witness = Source(5); var s = Candidate(witness); Check(s, true);
+            var deal = Selected(s, witness); var q = s.juryExchanges[s.juryQuestionIndex];
+            string player = s.playerId, juror = q.questionerId, word = witness.Receipt.id;
+            Assert.That((deal.status, deal.brokenById), Is.EqualTo((DealStatus.Broken, (string)null)), "Fixture: both of them broke the deal.");
+            Assert.That(FinalistRead.DealBreaker(s, CommitmentReferences.FindDeal(s, deal.id)), Is.EqualTo(player),
+                "Fixture: the player's own ballot broke it, so the player can name themself its breaker.");
+            var incidents = UnifiedVoteHistory.Incidents(s).Where(item => item.Week == deal.settledWeek).ToList();
+            var mine = incidents.Single(item => item.ActorId == player && item.WrongedId == juror);
+            var theirs = incidents.Single(item => item.ActorId == juror && item.WrongedId == player);
+            Assert.That(mine.EvidenceIds, Is.EquivalentTo(new[] { word, deal.id }), "Fixture: the player's breach of the juror holds both rows.");
+            Assert.That(mine.OwnerId, Is.EqualTo(word), "Fixture: the promise, the heavier, owns it.");
+            Assert.That(theirs.OwnerId, Is.EqualTo(deal.id), "Fixture: the deal owns the juror's breach of the player alone.");
+            Assert.That(FinaleQuestions.Receipts(s, juror).Single(item => item.category == FinaleQuestions.Accountability).id, Is.EqualTo(word));
+            Assert.That(Receipt(witness.State, juror), Is.EqualTo(Receipt(s, juror)), "Mode 2's receipts are mode 1's.");
+
+            var named = s.Clone(); var question = named.juryExchanges[named.juryQuestionIndex];
+            SelectQuestion(named, question, FinaleQuestions.Accountability, FinaleQuestions.DealReceipt, deal.id, deal.settledWeek);
+            Assert.That(UnifiedVoteFamilyValidation.TryValidate(named, named.unifiedVoteReveals, out var familyError), Is.True, familyError);
+            Check(named, false);
+
+            // The reader: reach the deal first by dating the word a week earlier; the deal is still not the player's receipt.
+            var earlier = s.Clone();
+            earlier.unifiedCommitments.Single(item => item.id == word).createdWeek--;
+            Assert.That(ProspectiveVoteFacade.TryValidateProspectiveVoteStorage(earlier, out var storage), Is.True, storage);
+            Assert.That(UnifiedVoteHistory.Incidents(earlier).Single(item => item.ActorId == player && item.WrongedId == juror && item.Week == deal.settledWeek).OwnerId,
+                Is.EqualTo(word), "Fixture: the same owners.");
+            Assert.That(FinaleQuestions.Receipts(earlier, juror).Single(item => item.category == FinaleQuestions.Accountability).id, Is.EqualTo(word),
+                "The deal both broke is never the player's receipt.");
+            Assert.That(Trace(witness.State), Is.EqualTo(witness.SourceImage));
+        }
+
         /// <summary>A question is prepared with exactly two draws in both modes (vote family V5e), and to the same receipt where no group holds two rows.</summary>
         [TestCase(0)] [TestCase(1)] [TestCase(2)] [TestCase(3)]
         public void PreparingAQuestionDrawsTwoRollsInBothModes(int scenario)
@@ -251,8 +294,10 @@ namespace Gamesim.Tests.EditMode
         {
             var walk = new PinnedVoteSeason(seed, Fresh(seed));
             bool promise = scenario < 2;
-            string type = scenario == 2 ? DealKind.VoteEvict : DealKind.VoteTogether;
-            string selected = null, partner = null; int week = 0; var refusals = new List<string>();
+            // 5: the player's vote deal to evict the first nominee with an ordinary voter, and the player's vote promise to
+            // them on the same nominee; both of them vote the other one out (the pre-V6 save-contract review's direction).
+            string type = scenario == 2 || scenario == 5 ? DealKind.VoteEvict : DealKind.VoteTogether;
+            string selected = null, partner = null, word = null; int week = 0; var refusals = new List<string>();
             while (selected == null)
             {
                 // A. The vote week: the next one, where the last found no partner.
@@ -273,8 +318,8 @@ namespace Gamesim.Tests.EditMode
                 foreach (string id in pool)
                 {
                     var s = walk.State;
-                    if (Seats(s) < 1) { refusals.Add("week " + week + ": no seat left"); break; }
-                    string target = promise ? s.nominees[0] : scenario == 2 ? id : null;
+                    if (Seats(s) < (scenario == 5 ? 2 : 1)) { refusals.Add("week " + week + ": no seat left"); break; }
+                    string target = promise || scenario == 5 ? s.nominees[0] : scenario == 2 ? id : null;
                     if (promise ? s.promises.Any(row => row.kind == PromiseKind.Vote && row.fromId == s.playerId && row.toId == id && row.status == PromiseStatus.Active)
                         : !PlayerDeals.CanPropose(s, id, type, target, out _)) { refusals.Add("week " + week + ": " + id + " not offerable"); continue; }
                     var command = EpisodeEngineTests.Command(s, promise ? EpisodeCommandKind.PromiseVote : EpisodeCommandKind.ProposeDeal);
@@ -285,7 +330,20 @@ namespace Gamesim.Tests.EditMode
                     string created = (promise ? "promise-" : "deal-player-") + s.nextSequence;
                     if (promise ? result.state.promises.Any(row => row.id == created && row.status == PromiseStatus.Active)
                         : result.state.deals.Any(row => row.id == created && row.type == type && row.status == DealStatus.Active))
-                    { selected = created; partner = id; break; }
+                    {
+                        selected = created; partner = id;
+                        if (scenario == 5)
+                        {
+                            // The player's word to the same partner on the same nominee, by the real command.
+                            var pledge = EpisodeEngineTests.Command(result.state, EpisodeCommandKind.PromiseVote);
+                            pledge.id = "jury-source-word-" + seed + "-" + result.state.revision; pledge.targetId = id; pledge.secondTargetId = target;
+                            var pledged = walk.Step(pledge);
+                            word = "promise-" + result.state.nextSequence;
+                            Assert.That(pledged.promises.Count(row => row.id == word && row.kind == PromiseKind.Vote && row.status == PromiseStatus.Active
+                                && row.toId == id && row.targetId == target), Is.EqualTo(1), "The player's real vote promise to the partner.");
+                        }
+                        break;
+                    }
                     refusals.Add("week " + week + ": " + id + " declined");
                 }
             }
@@ -316,8 +374,9 @@ namespace Gamesim.Tests.EditMode
             foreach (string voter in npc)
                 targets[voter] = scenario == 3 ? (voter == partner || voter == other ? x : y)
                     : scenario == 4 ? (voter == partner || voter == other ? y : x)
+                    : scenario == 5 ? (voter == partner ? y : x)
                     : scenario == 2 ? partner : x;
-            string own = scenario == 1 ? y : x;
+            string own = scenario == 1 || scenario == 5 ? y : x;
             walk.PinCast(targets);
             walk.CastVote(own);
             var revealed = walk.Reveal();
@@ -366,10 +425,17 @@ namespace Gamesim.Tests.EditMode
             }
             Assert.That(status, Is.EqualTo(scenario == 0 || scenario == 3 ? DealStatus.Fulfilled : DealStatus.Broken), "G4: the designed verdict.");
             Assert.That(breaker, Is.EqualTo(scenario == 1 || scenario == 2 ? revealed.playerId : null), "G4: the designed breaker.");
+            if (scenario == 5)
+            {
+                var pledge = revealed.promises.Single(item => item.id == word);
+                Assert.That((pledge.status, pledge.brokenById, pledge.settledWeek), Is.EqualTo((PromiseStatus.Broken, revealed.playerId, week)),
+                    "G4: the player's own ballot broke their word as well.");
+            }
 
             string category = scenario == 0 || scenario == 3 ? FinaleQuestions.Personal : FinaleQuestions.Accountability;
+            // Scenario 5's juror asks about the player's word, which owns the player's breach of them (see its test).
             var receipt = scenario == 4 ? null
-                : FinaleQuestions.Receipts(revealed, partner).FirstOrDefault(item => item.id == selected && item.category == category);
+                : FinaleQuestions.Receipts(revealed, partner).FirstOrDefault(item => item.id == (scenario == 5 ? word : selected) && item.category == category);
             if (scenario != 4 && receipt == null)
             { miss = "week " + week + ": no source-returned " + category + " receipt for the selected owner"; return null; }
 
@@ -393,7 +459,7 @@ namespace Gamesim.Tests.EditMode
             string otherParty = OtherParty(projected, projectedRow, walk.Frames);
             var reasons = new List<string>();
             if (decision == null) reasons.Add("no qualifying decision in the complete frames");
-            if (otherParty == null) reasons.Add("no alternative party preserves the agreement-local verdict");
+            if (otherParty == null && scenario != 5) reasons.Add("no alternative party preserves the agreement-local verdict");
             if (scenario == 3 && !ClaimIsNecessary(projected, projectedRow)) reasons.Add("the told claim is absent or unnecessary");
             if (scenario == 4 && (KnownBallots.Knows(projected, projectedRow.settledWeek, partner) || decision?.ActorId != null))
                 reasons.Add("the partner is known or the decision has an actor");

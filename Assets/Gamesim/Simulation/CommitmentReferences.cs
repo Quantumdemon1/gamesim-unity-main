@@ -7,8 +7,9 @@ namespace Gamesim.Simulation
     /// <summary>
     /// Detached, source-shaped references for readers being moved to the single safety authority.
     /// These are NOT writable mirrors, settlement verdicts, or deduplicated mechanical scores.
-    /// All evidence remains visible; a future incident reader must group betrayal effects separately.
-    /// Version 1 still cannot be created, loaded or played by the production engine.
+    /// All evidence remains visible; the incident readers group betrayal effects separately
+    /// (<see cref="UnifiedCommitmentHistory"/>, <see cref="UnifiedVoteHistory"/>). A fresh season plays mode 2
+    /// since vote family V6; seasons recorded in mode 1 still load and play.
     /// </summary>
     public static class CommitmentReferences
     {
@@ -181,7 +182,7 @@ namespace Gamesim.Simulation
                 case DealStatus.Active: return PromiseStatus.Active;
                 case DealStatus.Broken: return PromiseStatus.Broken;
                 case DealStatus.Expired: return PromiseStatus.Expired;
-                default: throw new ArgumentException("Unsupported canonical safety-promise status.");
+                default: throw StorageRefusal("Unsupported canonical safety-promise status.");
             }
         }
 
@@ -195,11 +196,31 @@ namespace Gamesim.Simulation
                 // The storage only (vote family V5a): a reader may run in the middle of a command, before what
                 // the complete core asks of a finished one holds; the command's candidate is held to that core.
                 if (!UnifiedVoteFamilyValidation.TryValidateStorage(state, out string storageError))
-                    throw new ArgumentException(storageError, nameof(state));
+                    throw StorageRefusal(storageError, nameof(state));
                 return;
             }
             if (!UnifiedCommitments.ValidateRecords(state, out string error))
-                throw new ArgumentException(error, nameof(state));
+                throw StorageRefusal(error, nameof(state));
         }
+
+        /// <summary>
+        /// A commitment reader's refusal of the state it was given: its storage check failed, or a row it reads is malformed.
+        /// The ArgumentException these readers have always thrown - same type, same message - marked as theirs. Inside a mode-2
+        /// command it refuses the command (EpisodeEngine.Apply, the lead's decision D3); any other ArgumentException - an
+        /// ArgumentNullException or ArgumentOutOfRangeException from a bug, an unmarked one from a reader outside the commitment
+        /// family - escapes the command, as every one does in modes 0 and 1 (narrowed at the pre-V6 review).
+        /// </summary>
+        internal static ArgumentException StorageRefusal(string error, string paramName = null)
+        {
+            var refusal = paramName == null ? new ArgumentException(error) : new ArgumentException(error, paramName);
+            refusal.Data[RefusalMark] = true;
+            return refusal;
+        }
+
+        /// <summary>Whether this is a commitment reader's refusal (<see cref="StorageRefusal"/>): exactly an ArgumentException, so marked.</summary>
+        internal static bool IsStorageRefusal(Exception error) =>
+            error != null && error.GetType() == typeof(ArgumentException) && error.Data.Contains(RefusalMark);
+
+        private const string RefusalMark = "Gamesim.Simulation.CommitmentStorageRefusal";
     }
 }

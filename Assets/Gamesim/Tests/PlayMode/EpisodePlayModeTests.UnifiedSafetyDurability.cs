@@ -14,7 +14,8 @@ namespace Gamesim.Tests.PlayMode
     /// <summary>
     /// Actual fresh director, public player channel and local durable boundary. No phase, role,
     /// source record, pending conversation, physical evidence or random stream is manufactured.
-    /// Existing scene fixtures still start in their legacy mode; only these cases start a new run.
+    /// Existing scene fixtures still start in their legacy mode; only these cases start a new run,
+    /// which since vote family V6 plays mode 2 (canonical Safety as mode 1, beside canonical Vote rows).
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
@@ -353,6 +354,9 @@ namespace Gamesim.Tests.PlayMode
         {
             director.SuspendNpcAutonomyForDiagnostics();
             director.StartSeason(choice);
+            // Since vote family V6 a season the director starts plays the unified vote rules (mode 2), whose
+            // canonical Safety these cases read as mode 1's; the recorded mode-1 checkpoints below keep mode 1.
+            Assert.That(director.Snapshot.unifiedCommitmentRulesVersion, Is.EqualTo(UnifiedVoteFamilyValidation.Version));
             UsAssertMode(director.Snapshot);
             UsAssertDisk(director.Snapshot); // Bind the first write before a frame, opening beat or extra save can run.
             yield return SettleCast();
@@ -515,7 +519,10 @@ namespace Gamesim.Tests.PlayMode
 
         private static void UsAssertMode(EpisodeState s)
         {
-            Assert.That(s.unifiedCommitmentRulesVersion, Is.EqualTo(1));
+            // Canonical Safety's two modes: 1, the recorded checkpoints these cases build, and 2, every season the
+            // director starts since vote family V6 (UsStartFresh pins which).
+            Assert.That(s.unifiedCommitmentRulesVersion, Is.EqualTo(1).Or.EqualTo(UnifiedVoteFamilyValidation.Version));
+            Assert.That(UnifiedCommitments.SafetyAuthorityOn(s), Is.True);
             Assert.That(s.unifiedHearingRulesVersion, Is.EqualTo(1));
             Assert.That(s.commitmentRulesStartWeek, Is.EqualTo(1));
             Assert.That(EpisodeEngine.CommitmentRulesOn(s), Is.True);

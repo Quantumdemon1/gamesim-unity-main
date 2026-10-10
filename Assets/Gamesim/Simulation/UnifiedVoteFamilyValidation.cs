@@ -6,10 +6,12 @@ using System.Linq;
 namespace Gamesim.Simulation
 {
     /// <summary>
-    /// Aggregate read-only validation for the explicit, uninstalled Vote proposal. This is a leaf
-    /// of an internal whole-episode core, NOT public/save acceptance or historical command proof.
-    /// Its aggregate leaf never changes authority, installs an archive or calls whole validation.
-    /// Separate draft entries require the complete internal core before cloning unrelated state.
+    /// Aggregate read-only validation of the Vote family under mode 2, the unified vote rules. This is a leaf
+    /// of the whole-episode core, which public and save validation dispatch a mode-2 season to since vote family
+    /// V6; it is not historical command proof. Its aggregate leaf never changes authority, installs an archive or
+    /// calls whole validation. Separate draft entries require the complete core before cloning unrelated state.
+    /// <para>The save contract freezes here at schema 28 (the lead's decision D2): whoever bumps the schema to 29
+    /// must freeze this whole mode-2 core into FrozenEpisodeV28, as players' schema-28 saves hold mode 2.</para>
     /// </summary>
     public static class UnifiedVoteFamilyValidation
     {
@@ -34,8 +36,8 @@ namespace Gamesim.Simulation
         /// storage check (<see cref="UnifiedCommitments.ValidateSafetyAuthority"/>: every Safety row under its policy,
         /// no raw Safety mirror, identities unique across all three lists, the two 200-row capacities); no raw Vote
         /// mirror; and each Vote row's shape - its family, policy and origin, a deal's Vote subtype, a known installed
-        /// status a promise can be read at, bounded identities, parties and a target that exist, and a link that
-        /// resolves to a deal the season holds.
+        /// status a promise can be read at, its source's trust weight (pre-V6 save-contract review), bounded
+        /// identities, parties and a target that exist, and a link that resolves to a deal the season holds.
         /// <para>Never frames, ballots, endings, chronology or terminal decisions: those are the complete core's
         /// (<see cref="TryValidate"/>), which judges a command's candidate, a save and the reveal, never a reader in
         /// the middle of a command. Reads only the commitment lists and the cast.</para>
@@ -57,10 +59,18 @@ namespace Gamesim.Simulation
                     || !DealStatus.IsKnown(row.status) || row.status == DealStatus.Accepted
                     || promise && (row.status == DealStatus.Proposed || row.status == DealStatus.Declined))
                     return Fail(out error, "A stored Vote row needs its family, policy, origin, subtype and an installed status.");
+                // The weight every reader of a broken or kept row prices it by (DealResolution.Impact, a promise's
+                // native impact): a promise's is medium and a deal's its subtype's default, as the core holds them.
+                if (row.trustImpact != (promise ? DealTrust.Medium : DealKind.DefaultTrust(row.subtype)))
+                    return Fail(out error, "A stored Vote row keeps its source's trust weight.");
                 if (!Token(row.makerId) || !Token(row.beneficiaryId) || row.makerId == row.beneficiaryId
                     || s.Find(row.makerId) == null || s.Find(row.beneficiaryId) == null
                     || row.targetId != null && (!Token(row.targetId) || s.Find(row.targetId) == null))
                     return Fail(out error, "A stored Vote row's parties and target must be houseguests of this season.");
+                // Whether it names a target at all, as the core holds it (the pre-V6 save-contract review): a story's word on the
+                // vote and a bloc name none, every other word and deal one - the target every reader compares a ballot with.
+                if ((row.targetId == null) != (promise ? row.origin == UnifiedCommitments.StoryPromise : row.subtype == DealKind.VoteTogether))
+                    return Fail(out error, "A stored Vote row names a target exactly where its source does.");
                 if (row.linkedCommitmentId == null) continue;
                 deals ??= new HashSet<string>(s.deals.Select(item => item.id)
                     .Concat(s.unifiedCommitments.Where(item => item.sourcePolicy == UnifiedCommitments.DealPolicy).Select(item => item.id)),

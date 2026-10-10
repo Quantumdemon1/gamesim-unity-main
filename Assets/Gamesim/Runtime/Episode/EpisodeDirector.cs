@@ -400,6 +400,8 @@ namespace Gamesim.Episode
             // A story's Pull (plan §5.1), then the Nearby card (mockup-06), which is up exactly
             // while a conversation is being witnessed and no Pull has the week card's place.
             TickStoryPull();
+            // Before the scene's staging: an embrace a peace has just asked for holds the scene first.
+            TickStoryReactions();
             TickSceneStage();
             TickNearby();
             // ] and [ (or the shoulders) cycle who the camera follows, out in the house with no panel

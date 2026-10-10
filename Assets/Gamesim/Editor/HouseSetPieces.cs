@@ -578,58 +578,82 @@ namespace Gamesim.Editor
             return count;
         }
 
+        /// <summary>The scene group the entrance is built under, and the three authored pieces it is built from (ArtSource/setpieces).</summary>
+        public const string EntranceGroup = "Entrance";
+        public const string EntranceArch = "bb_set_entrancearch", EntranceStanchion = "bb_set_stanchion", EntranceRope = "bb_set_velvetrope";
+        /// <summary>How high a rope's lowest point hangs over the deck: its ends then meet the stanchions' eyes at 0.86 m.</summary>
+        public const float EntranceRopeLift = 0.72f;
+
         /// <summary>
-        /// The roped entrance at the yard's outer edge: a gold arch and a run of stanchions, which
-        /// is how the house announces itself in every broadcast of this format.
+        /// The roped entrance at the yard's outer edge: a gold Art-Deco arch and a run of brass
+        /// stanchions with red velvet ropes between them, which is how the house announces itself in
+        /// every broadcast of this format. Authored in Blender (the art brief's A3) and placed as
+        /// set dressing: no collider, no static flag, so placing it needs no NavMesh or lightmap bake.
+        /// The arch keeps the box arch's footprint and centre line - it is the HoH competition's gate.
         /// </summary>
         private static int Entrance(Transform world, Transform root)
         {
             var yard = Room(world, "Competition yard floor");
-            var gold = AssetDatabase.LoadAssetAtPath<Material>(ArtRoot + "Emissive/Neon Gold.mat");
-            var brass = AssetDatabase.LoadAssetAtPath<Material>(ArtRoot + "Brass.mat");
-            var red = AssetDatabase.LoadAssetAtPath<Material>(ArtRoot + "Emissive/Neon Red.mat");
-            if (yard == null || gold == null || red == null) return 0;
-            if (brass == null) brass = gold;
+            if (yard == null) return 0;
 
             var bounds = yard.bounds;
             float z = bounds.max.z - 0.9f;          // just inside the far edge
             float centre = bounds.center.x;
-            const float openWidth = 4.6f, height = 3.1f, post = 0.22f;
+            const float openWidth = 4.6f;
 
-            var group = new GameObject("Entrance").transform;
+            var group = new GameObject(EntranceGroup).transform;
             group.SetParent(root, false);
 
-            int parts = 0;
-            // Two uprights and a lintel.
-            parts += Box(group, "Arch post left", gold,
-                new Vector3(post, height, post), new Vector3(centre - openWidth * 0.5f, bounds.max.y + height * 0.5f, z));
-            parts += Box(group, "Arch post right", gold,
-                new Vector3(post, height, post), new Vector3(centre + openWidth * 0.5f, bounds.max.y + height * 0.5f, z));
-            parts += Box(group, "Arch lintel", gold,
-                new Vector3(openWidth + post * 2f, post * 1.4f, post),
-                new Vector3(centre, bounds.max.y + height, z));
-
-            // Stanchions and rope, running out to either side of the opening. The posts are turned
-            // cylinders with a cap and a base plate rather than single boxes: a square stanchion is
-            // the clearest tell there is that a set was blocked out and never finished.
+            int parts = EntrancePiece(group, EntranceArch, new Vector3(centre, bounds.max.y, z));
+            // Stanchions and rope, running out to either side of the opening, 1.6 m apart.
             for (int side = -1; side <= 1; side += 2)
             {
                 float from = centre + side * (openWidth * 0.5f + 1.4f);
                 for (int i = 0; i < 3; i++)
                 {
                     float x = from + side * i * 1.6f;
-                    parts += Shape(group, "Stanchion", brass, PrimitiveType.Cylinder,
-                        new Vector3(0.09f, 0.5f, 0.09f), new Vector3(x, bounds.max.y + 0.5f, z));
-                    parts += Shape(group, "Stanchion cap", gold, PrimitiveType.Sphere,
-                        new Vector3(0.14f, 0.14f, 0.14f), new Vector3(x, bounds.max.y + 1.04f, z));
-                    parts += Shape(group, "Stanchion base", brass, PrimitiveType.Cylinder,
-                        new Vector3(0.30f, 0.02f, 0.30f), new Vector3(x, bounds.max.y + 0.02f, z));
+                    parts += EntrancePiece(group, EntranceStanchion, new Vector3(x, bounds.max.y, z));
                     if (i == 2) continue;
-                    parts += Box(group, "Rope", red,
-                        new Vector3(1.6f, 0.07f, 0.07f), new Vector3(x + side * 0.8f, bounds.max.y + 0.82f, z));
+                    parts += EntrancePiece(group, EntranceRope, new Vector3(x + side * 0.8f, bounds.max.y + EntranceRopeLift, z));
                 }
             }
             return parts;
+        }
+
+        /// <summary>One authored entrance piece, its bottom-centre on a point, with no collider and no static flag.</summary>
+        private static int EntrancePiece(Transform group, string model, Vector3 bottomCentre)
+        {
+            var instance = Model(model, group, 0f, 0f);
+            if (instance == null) return 0;
+            var placed = Measure(instance);
+            instance.transform.position += bottomCentre - new Vector3(placed.center.x, placed.min.y, placed.center.z);
+            foreach (var collider in instance.GetComponentsInChildren<Collider>(true)) UnityEngine.Object.DestroyImmediate(collider);
+            foreach (var node in instance.GetComponentsInChildren<Transform>(true)) GameObjectUtility.SetStaticEditorFlags(node.gameObject, 0);
+            return 1;
+        }
+
+        /// <summary>
+        /// Rebuilds the yard's entrance alone, in place: the full pass also fits collision, resolves
+        /// the doorways and bakes the NavMesh, none of which the entrance - set dressing without
+        /// collision - touches. Batch entry: -executeMethod Gamesim.Editor.HouseSetPieces.RebuildEntrance.
+        /// </summary>
+        [MenuItem("Gamesim/U07/Rebuild the yard entrance")]
+        public static void RebuildEntrance()
+        {
+            var scene = EditorSceneManager.OpenScene(EpisodeScene, OpenSceneMode.Single);
+            var world = scene.GetRootGameObjects().FirstOrDefault(r => r.name == WorldRoot);
+            if (world == null) throw new InvalidOperationException("No '" + WorldRoot + "' root in the episode scene.");
+            var root = world.transform.Find(RootName);
+            if (root == null) throw new InvalidOperationException("No '" + RootName + "' under the house; run the full set-piece pass.");
+            int order = -1;
+            var old = root.Find(EntranceGroup);
+            if (old != null) { order = old.GetSiblingIndex(); UnityEngine.Object.DestroyImmediate(old.gameObject); }
+            int parts = Entrance(world.transform, root);
+            var fresh = root.Find(EntranceGroup);
+            if (fresh != null && order >= 0) fresh.SetSiblingIndex(order);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log("[Gamesim] set pieces · the yard entrance rebuilt: " + parts + " authored pieces.");
         }
 
         /// <summary>

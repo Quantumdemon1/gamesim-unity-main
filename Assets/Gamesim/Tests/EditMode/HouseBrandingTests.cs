@@ -52,6 +52,41 @@ namespace Gamesim.Tests.EditMode
                 "Exactly the pack-5 diary halo and neon and the pack-6 diary surfaces ride into a build through the palette.");
         }
 
+        /// <summary>
+        /// The tufted interview wall stands where the box did and wears the pack's padding the way
+        /// the box did: 4.6 by 2.9 m from the floor, no deeper than 0.10 m, its crowns no further
+        /// forward than +0.05 (the branding's WallFace once it stands at the studio's -0.85), and
+        /// its front's UVs within 0..1, so Pad() still lays 3.83 by 2.42 tiles across it rather
+        /// than repeating a metre-per-unit projection 3.8 times a metre.
+        /// </summary>
+        [Test]
+        public void TheDiaryWallKeepsItsEnvelope()
+        {
+            var palette = Resources.Load<HouseBrandingPalette>(HouseBrandingPalette.ResourceName);
+            Assert.That(palette.diaryWallMesh, Is.Not.Null, "The palette carries the authored wall.");
+            Assert.That(AssetDatabase.GetAssetPath(palette.diaryWallMesh), Is.EqualTo(HouseBrandingAssets.DiaryWallPath));
+            var mesh = palette.diaryWallMesh;
+            var bounds = mesh.bounds;
+            Assert.That(bounds.size.x, Is.EqualTo(DiaryStudioBranding.WallWidth).Within(.01f), "as wide as the box was");
+            Assert.That(bounds.size.y, Is.EqualTo(DiaryStudioBranding.WallHeight).Within(.01f), "as tall");
+            Assert.That(bounds.min.y, Is.EqualTo(0f).Within(.001f), "standing on the floor");
+            Assert.That(bounds.center.x, Is.EqualTo(0f).Within(.005f), "centred on its origin");
+            Assert.That(bounds.size.z, Is.LessThanOrEqualTo(.10f + 1e-4f), "no deeper than the box");
+            Assert.That(bounds.max.z, Is.LessThanOrEqualTo(.05f + 1e-4f), "its crowns at the branding's wall face, never in front of it");
+            var vertices = mesh.vertices; var normals = mesh.normals; var uvs = mesh.uv;
+            Assert.That(uvs.Length, Is.EqualTo(vertices.Length), "The wall carries UVs.");
+            int front = 0;
+            for (int i = 0; i < vertices.Length; i++)
+            {
+                if (normals[i].z < .3f) continue;
+                front++;
+                Assert.That(uvs[i].x >= -1e-4f && uvs[i].x <= 1f + 1e-4f && uvs[i].y >= -1e-4f && uvs[i].y <= 1f + 1e-4f, Is.True,
+                    "A front vertex's UV " + uvs[i] + " lies outside 0..1.");
+            }
+            Assert.That(front, Is.GreaterThan(1000), "The front is the tufted face, facing the camera (+z).");
+            Assert.That(mesh.triangles.Length / 3, Is.InRange(8000, 10500), "8 to 10 thousand triangles");
+        }
+
         [Test]
         public void TheGlowTemplateIsTransparentAdditiveUnlit()
         {

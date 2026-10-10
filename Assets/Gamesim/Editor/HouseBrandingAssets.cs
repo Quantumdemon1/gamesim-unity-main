@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Gamesim.Presentation;
 using UnityEditor;
 using UnityEngine;
@@ -28,6 +29,8 @@ namespace Gamesim.Editor
         public const string DiarySlatsPath = Pack6 + "DiaryRoom/diary_dark_wood_slats.png";
         public const string DiaryOnCameraPath = Pack6 + "DiaryRoom/on_camera_sign.png";
         public const string DiaryTallyPath = Pack6 + "DiaryRoom/camera_tally_light.png";
+        /// <summary>The tufted interview wall, authored in Blender (ArtSource/setpieces/bb_set_diarywall.py).</summary>
+        public const string DiaryWallPath = AuthoredAssetImporter.Root + "SetPieces/bb_set_diarywall.fbx";
         /// <summary>Every texture the palette names, for the test that holds a build to exactly these.</summary>
         public static readonly string[] TexturePaths =
         {
@@ -64,6 +67,8 @@ namespace Gamesim.Editor
             palette.diarySlats = Texture(DiarySlatsPath);
             palette.diaryOnCamera = Texture(DiaryOnCameraPath);
             palette.diaryTally = Texture(DiaryTallyPath);
+            palette.diaryWallMesh = AssetDatabase.LoadAllAssetsAtPath(DiaryWallPath).OfType<Mesh>().FirstOrDefault();
+            if (palette.diaryWallMesh == null) throw new InvalidOperationException("Missing authored mesh " + DiaryWallPath);
             EditorUtility.SetDirty(palette);
             AssetDatabase.SaveAssets();
             Debug.Log("[Gamesim] House branding palette built: " + PalettePath);

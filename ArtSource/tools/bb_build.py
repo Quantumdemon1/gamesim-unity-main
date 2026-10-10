@@ -141,6 +141,97 @@ def ring(name, outer, inner, height, center_bottom, mat=None, segments=32):
     return _finish(bm, name, mat, smooth_sides=True)
 
 
+def lathe(name, profile, segments, mat=None, center=(0.0, 0.0, 0.0)):
+    """A turned piece: profile is a list of (radius, z) from bottom to top, revolved about the
+    vertical axis through center. A zero radius at either end closes the piece there with a fan of
+    triangles; otherwise the end is capped flat. Quads and triangles only; the sides shade smooth."""
+    bm = bmesh.new()
+    rings = []
+    for radius, z in profile:
+        if radius <= 1e-6:
+            rings.append([bm.verts.new((0.0, 0.0, z))])
+            continue
+        rings.append([bm.verts.new((radius * math.cos(2 * math.pi * i / segments),
+                                    radius * math.sin(2 * math.pi * i / segments), z)) for i in range(segments)])
+    for a, b in zip(rings, rings[1:]):
+        if len(a) == 1 and len(b) == 1:
+            continue
+        if len(a) == 1:
+            for i in range(segments):
+                bm.faces.new((a[0], b[i], b[(i + 1) % segments]))
+        elif len(b) == 1:
+            for i in range(segments):
+                bm.faces.new((a[i], b[0], a[(i + 1) % segments]))
+        else:
+            for i in range(segments):
+                j = (i + 1) % segments
+                bm.faces.new((a[i], a[j], b[j], b[i]))
+    for end in (rings[0], rings[-1]):
+        if len(end) > 1:
+            centre = bm.verts.new((0.0, 0.0, end[0].co.z))
+            for i in range(segments):
+                bm.faces.new((centre, end[(i + 1) % segments], end[i]))
+    for v in bm.verts:
+        v.co += Vector(center)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return _finish(bm, name, mat, smooth_sides=True)
+
+
+def tube_along(name, points, radius, segments=12, mat=None, closed_ends=True):
+    """A round tube following a polyline of world points, with rings oriented along the path
+    (parallel transport, so it does not twist), capped at both ends. Quads and triangles only."""
+    bm = bmesh.new()
+    pts = [Vector(p) for p in points]
+    tangents = []
+    for i in range(len(pts)):
+        a = pts[max(0, i - 1)]
+        b = pts[min(len(pts) - 1, i + 1)]
+        tangents.append((b - a).normalized())
+    reference = Vector((0.0, 0.0, 1.0)) if abs(tangents[0].z) < 0.9 else Vector((1.0, 0.0, 0.0))
+    normal = tangents[0].cross(reference).normalized()
+    rings = []
+    for i, p in enumerate(pts):
+        if i > 0:
+            # Parallel transport: turn the last ring's normal by the change of tangent.
+            normal = tangents[i - 1].rotation_difference(tangents[i]) @ normal
+        binormal = tangents[i].cross(normal).normalized()
+        rings.append([bm.verts.new(p + (normal * math.cos(2 * math.pi * s / segments)
+                                        + binormal * math.sin(2 * math.pi * s / segments)) * radius) for s in range(segments)])
+    for a, b in zip(rings, rings[1:]):
+        for s in range(segments):
+            t = (s + 1) % segments
+            bm.faces.new((a[s], a[t], b[t], b[s]))
+    if closed_ends:
+        for end in (rings[0], rings[-1]):
+            centre = bm.verts.new(sum((v.co for v in end), Vector()) / len(end))
+            for s in range(segments):
+                bm.faces.new((centre, end[s], end[(s + 1) % segments]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return _finish(bm, name, mat, smooth_sides=True)
+
+
+def torus(name, major, minor, center, axis='Z', mat=None, major_segments=16, minor_segments=8):
+    """A ring of round section - an eye, a link - about the given axis ('X', 'Y' or 'Z')."""
+    bm = bmesh.new()
+    rot = {'Z': Matrix.Identity(3), 'X': Matrix.Rotation(math.radians(90), 3, 'Y'),
+           'Y': Matrix.Rotation(math.radians(90), 3, 'X')}[axis]
+    up = Vector((0.0, 0.0, 1.0))
+    rings = []
+    for i in range(major_segments):
+        u = 2 * math.pi * i / major_segments
+        out = Vector((math.cos(u), math.sin(u), 0.0))
+        rings.append([bm.verts.new(Vector(center) + rot @ (out * major + (out * math.cos(2 * math.pi * s / minor_segments)
+                                                                          + up * math.sin(2 * math.pi * s / minor_segments)) * minor))
+                      for s in range(minor_segments)])
+    for i in range(major_segments):
+        a, b = rings[i], rings[(i + 1) % major_segments]
+        for s in range(minor_segments):
+            t = (s + 1) % minor_segments
+            bm.faces.new((a[s], b[s], b[t], a[t]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return _finish(bm, name, mat, smooth_sides=True)
+
+
 def plane(name, size, center, mat=None):
     bm = bmesh.new()
     bmesh.ops.create_grid(bm, x_segments=1, y_segments=1, size=1.0)

@@ -41,7 +41,21 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>The controller's seats: every state whose name starts Sit.</summary>
         private static readonly string[] Sits = { "SitIdle", "SitTalk", "SitTalkB", "SitClap", "SitVictory" };
-        private static readonly string[] Standing = { "Idle", "Talk", "TalkB", "TalkC", "Listen", "ReactNominated", "ReactSaved", "ReactEvicted" };
+        private static readonly string[] Standing = { "Idle", "Talk", "TalkB", "TalkC", "Listen", "ReactNominated", "ReactSaved", "ReactEvicted",
+            "ReactShocked", "ReactTearful", "ReactEmbrace", "ReactFurious", "ReactStormOff" };
+
+        /// <summary>
+        /// The story's five, each played out and back to idle: its take's length plus half a second,
+        /// in frames at sixty a second (Tearful, the longest at 4.0 s, is 270).
+        /// </summary>
+        private static readonly (CharacterPresentation.Reaction beat, string state, int frames)[] StoryBeats =
+        {
+            (CharacterPresentation.Reaction.Shocked, "ReactShocked", 186),
+            (CharacterPresentation.Reaction.Tearful, "ReactTearful", 270),
+            (CharacterPresentation.Reaction.Embrace, "ReactEmbrace", 258),
+            (CharacterPresentation.Reaction.Furious, "ReactFurious", 210),
+            (CharacterPresentation.Reaction.StormOff, "ReactStormOff", 126),
+        };
 
         private GameObject actor, chair;
         private SkeletonProvider provider;
@@ -108,9 +122,16 @@ namespace Gamesim.Tests.PlayMode
                 visual.React(beat);
                 for (int frame = 0; frame < BeatFrames; frame++) { yield return null; Sample(); }
             }
+            // And the story's five, which stand too: none of them moves the hips or the legs.
+            foreach (var (beat, _, frames) in StoryBeats)
+            {
+                visual.React(beat);
+                for (int frame = 0; frame < frames; frame++) { yield return null; Sample(); }
+            }
 
-            Assert.That(played, Is.SupersetOf(new[] { "Talk", "TalkC", "Listen", "ReactNominated", "ReactSaved", "ReactEvicted" }),
-                "The conversation played the way in, the ring's second take, the listen and the three beats; it played: "
+            Assert.That(played, Is.SupersetOf(new[] { "Talk", "TalkC", "Listen", "ReactNominated", "ReactSaved", "ReactEvicted" }
+                    .Concat(StoryBeats.Select(row => row.state))),
+                "The conversation played the way in, the ring's second take, the listen, the three beats and the story's five; it played: "
                 + string.Join(", ", played));
             Assert.That(lowest, Is.GreaterThanOrEqualTo(.8f * standing),
                 "The hips came down to " + (lowest / standing).ToString("0.00") + " of standing height in " + lowestIn

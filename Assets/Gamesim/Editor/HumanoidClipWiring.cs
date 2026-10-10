@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using Gamesim.Presentation;
 using UnityEditor.Animations;
 using UnityEngine;
 
@@ -139,6 +140,8 @@ namespace Gamesim.Editor
             "DanceSamba_loop", "DanceHipHop_loop", "DanceWave_loop", "SitLounge_loop", "SitClap", "SitVictory",
             "PoseHandBehindHead", "PoseFootUp", "PoseOverShoulder", "PoseAtEase",
             "PoseHandOnHip", "PoseHandOnHipGlance", "PosePowerStance",
+            // The story's five, authored in Blender on this same skeleton (ArtSource/animation).
+            "React_shocked", "React_tearful", "React_embrace", "React_furious", "React_stormoff",
         };
 
         /// <summary>The states the graph is built from, and the take each one plays.</summary>
@@ -167,6 +170,11 @@ namespace Gamesim.Editor
             ("ReactNominated", "React_nominated", 1240, 350),
             ("ReactSaved", "React_saved", 1240, 420),
             ("ReactEvicted", "React_evicted", 1240, 490),
+            ("ReactShocked", "React_shocked", 1240, 560),
+            ("ReactTearful", "React_tearful", 1240, 630),
+            ("ReactEmbrace", "React_embrace", 1240, 700),
+            ("ReactFurious", "React_furious", 1240, 770),
+            ("ReactStormOff", "React_stormoff", 1240, 840),
             ("Sleep", "Sleep_loop", 1500, 0),
             ("SwimIdle", "Swim_Idle_Loop", 1500, 120),
             ("SwimForward", "Swim_Fwd_Loop", 1500, 240),
@@ -188,9 +196,35 @@ namespace Gamesim.Editor
         {
             ("ReactNominated", "ReactNominated"), ("ReactSaved", "ReactSaved"), ("ReactEvicted", "ReactEvicted"),
             ("ReactWon", "ReactWon"), ("ReactCheered", "ReactCheered"),
-            // The story's five (plan §5.1): no takes yet, so the director plays a stand-in instead.
-            ("ReactShocked", null), ("ReactTearful", null), ("ReactEmbrace", null), ("ReactFurious", null), ("ReactStormOff", null),
+            // The story's five (plan §5.1), authored in Blender (ArtSource/animation/bb_anim_react_*.py).
+            ("ReactShocked", "ReactShocked"), ("ReactTearful", "ReactTearful"), ("ReactEmbrace", "ReactEmbrace"),
+            ("ReactFurious", "ReactFurious"), ("ReactStormOff", "ReactStormOff"),
         };
+
+        /// <summary>
+        /// Where each beat hands back to idle, as a share of its take: the ceremony five at 0.9;
+        /// the story beats at their own exit point, by which each is back in the base pose (0.95,
+        /// and 0.97 for the embrace, whose release is longer).
+        /// </summary>
+        public static float ReactionExitTime(string state)
+        {
+            switch (state)
+            {
+                case "ReactShocked": case "ReactTearful": case "ReactFurious": case "ReactStormOff": return .95f;
+                case "ReactEmbrace": return .97f;
+                default: return .9f;
+            }
+        }
+
+        /// <summary>
+        /// The beats that give way to a walk: an embrace let go of and a storm-off are both ways of
+        /// leaving, so a body sent somewhere goes at once. The rest play out over a step, because
+        /// they fire at commits that can land on a body still coming to a halt.
+        /// </summary>
+        public static readonly string[] ReactionsThatGiveWay = { "ReactEmbrace", "ReactStormOff" };
+
+        /// <summary>How quickly each beat that gives way crosses into the walk.</summary>
+        public static float ReactionGiveWayFade(string state) => state == "ReactStormOff" ? .12f : .15f;
 
         /// <summary>The beats this cast can act out - the rest are left to the body's idle.</summary>
         public static IEnumerable<(string trigger, string state)> WiredReactions =>
@@ -394,13 +428,17 @@ namespace Gamesim.Editor
             Go(states["Argue"], states[TalkEntry], 0.15f, Bool(ArguingParameter, false), Bool(TalkingParameter, true));
             Go(states["Argue"], states["Idle"], 0.15f, Bool(ArguingParameter, false), Bool(TalkingParameter, false));
 
-            // Reactions: one-shots from Any State on their trigger, only while standing, back to Idle.
+            // Reactions: one-shots from Any State on their trigger, only while standing, back to Idle,
+            // each tagged so a body can tell it is acting a beat out whichever beat it is.
             foreach (var (trigger, stateName) in WiredReactions)
             {
                 var state = states[stateName];
+                state.tag = CharacterPresentation.ReactionStateTag;
+                if (ReactionsThatGiveWay.Contains(stateName))
+                    Go(state, states["Walk"], ReactionGiveWayFade(stateName), Moving(true));
                 var back = Go(state, states["Idle"], 0.2f);
                 back.hasExitTime = true;
-                back.exitTime = 0.9f;
+                back.exitTime = ReactionExitTime(stateName);
                 OneShot(machine, state, trigger);
             }
 

@@ -542,7 +542,8 @@ namespace Gamesim.Episode
             {
                 bool stale = !wanted || npcMeetings.SceneStageKey != beat.id
                     || (!IsPanelOpen && Time.unscaledTime - sceneStagedAt > SceneHoldSeconds);
-                if (stale) npcMeetings.EndSceneStage();
+                // Two of its people embracing keep the scene up until they let go (EpisodeDirector.Embrace.cs).
+                if (stale && !npcMeetings.SceneHeldForEmbrace) npcMeetings.EndSceneStage();
                 return;
             }
             if (!wanted || sceneStagedBeat == beat.id || IsPanelOpen || challengeActive || OpeningOwnsHouse) return;

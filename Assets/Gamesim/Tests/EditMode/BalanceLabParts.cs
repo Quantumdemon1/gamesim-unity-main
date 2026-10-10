@@ -27,8 +27,9 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// Changed whenever what a season records changes, so parts of two builds never merge. v4: a completed NPC
         /// conversation moves its pair through the ledger under D2's rules (the arcs fix), which the rules' tuple does not show.
+        /// v5: so do a veto's, a lie's and a scheme's moves between two houseguests (EpisodeEngine.ChangeBetween), at every budget.
         /// </summary>
-        internal const string Stamp = "balance-lab-parts/v4";
+        internal const string Stamp = "balance-lab-parts/v5";
 
         private static BalanceLabReports.TierSpec TierFromEnvironment()
         {

@@ -481,8 +481,10 @@ namespace Gamesim.Tests.EditMode
         // f3b663c383491ce1 before and after the driver (2989e94f, 6a29f08d); re-recorded when D3's counter reach was
         // re-amended to twenty at ten (the war rooms the policies play now settle differently). Re-recorded at vote family
         // V6 (fa8d4d420fad8953 at its base, 27b21b28, where D2's all-week rules had already moved it): fresh seasons play the
-        // unified vote rules, and the lab's player view and skilled oracle read mode 2's offers.
-        internal const string BudgetNoughtRows = "c7d250380346ae38";
+        // unified vote rules, and the lab's player view and skilled oracle read mode 2's offers. Re-recorded for the change
+        // paths (c7d250380346ae38 at de88a8bb): under D2's rules a veto's, a lie's and a scheme's moves between two
+        // houseguests go through the ledger and write no arc (EpisodeEngine.ChangeBetween), which budget nought plays too.
+        internal const string BudgetNoughtRows = "3878f7a1d2ea39a8";
 
         [Test, Explicit("B5b: budget nought plays, byte for byte, the seasons it played before the NPC world's driver (about 5 min). Run by name.")]
         public void BudgetNoughtPlaysTheSeasonsItPlayedBeforeTheDriver()

@@ -27,7 +27,8 @@ namespace Gamesim.Simulation
         public static void ApplyFresh(EpisodeState fresh, SeasonBuilder.Choice choice)
         {
             ApplyFresh(fresh);
-            AlumniHistory.InitializeFresh(fresh, choice);
+            // Null is the existing authored scenario / verification route, not an alumni casting choice.
+            if (choice != null) AlumniHistory.InitializeFresh(fresh, choice);
         }
 #endif
         /// <summary>Switches every shipped rule on for a fresh, unplayed season, from week one.</summary>

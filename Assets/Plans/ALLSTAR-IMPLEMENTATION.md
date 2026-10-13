@@ -39,11 +39,12 @@ Do not enable the candidate symbol in an editor containing existing season saves
 
 ## Validation and retained evidence
 
-- Normal-build Unity-free suite: 5,381/5,381 passed, including the unchanged schema pin. Evidence: `D:\CodexGamesimEvidence\allstar-normal-20261012\results\allstar-normal-verified.trx`.
-- Candidate feature selection: 98/98 passed. Evidence: `D:\CodexGamesimEvidence\allstar-candidate-20261012\results\allstar-candidate-reviewed.trx`.
+- Normal-build Unity-free suite: all 5,381 executed cases passed, including the unchanged schema pin; 143 explicit long-running cases were not executed by this default invocation. Evidence: `D:\CodexGamesimEvidence\allstar-normal-20261012\results\allstar-normal-verified.trx`.
+- Final default-build schema, reader-inventory, catalog and naming guards: 62/62 passed. Evidence: `D:\CodexGamesimEvidence\allstar-normal-20261012\results\allstar-default-final-guards.trx`.
+- Candidate feature selection: 99/99 passed. Evidence: `D:\CodexGamesimEvidence\allstar-candidate-20261012\results\allstar-candidate-final-source.trx`.
 - The candidate selection includes sixteen complete public-command seasons: four fixed seeds, eight and twelve contestants, histories on/off. These prove bounded season completion and valid state, not balance or character authenticity acceptance.
 - Additional cases cover selected spoken words, stale/duplicate/spoofed requests, no cost/RNG on refusal, private-deal independence, copy isolation, missing/renamed/duplicate identities, catalog provenance, evidence pruning, actual selective score suppression and current known betrayal.
-- Candidate NoUMA source compilation: five/five assemblies without errors, using cached Unity dependencies and current declared precompiled references. Evidence: `D:\CodexGamesimEvidence\allstar-candidate-20261012\offline-candidate-reviewed.log`. This is not an editor import or native test run. The first cache replay failed because its old PlayMode response lacked the already-declared Newtonsoft reference; failed evidence remains retained.
+- Candidate NoUMA source compilation: five/five assemblies without errors, using cached Unity dependencies and current declared precompiled references. Evidence: `D:\CodexGamesimEvidence\allstar-candidate-20261012\offline-candidate-final-source.log`. This is not an editor import or native test run. The first cache replay failed because its old PlayMode response lacked the already-declared Newtonsoft reference; failed evidence remains retained.
 - Original off-tree full test output is retained separately; nine source-scanner failures came from its binary having no source tree above it. The source-bound rerun above resolves those. An intermediate candidate test caught a missing canonical Safety invalidation; the accepted-command hook was corrected and rerun.
 - Normal suite floors increased by 45 EditMode/pure cases and one PlayMode case. Candidate-only cases are not counted as normal discovery. Eleven real SaveStore cases and native UI/setup/nameplate cases compile but were NOT executed in Unity.
 

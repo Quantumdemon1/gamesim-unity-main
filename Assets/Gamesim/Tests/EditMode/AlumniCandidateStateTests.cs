@@ -46,6 +46,16 @@ namespace Gamesim.Tests.EditMode
             Assert.That(EpisodeValidation.TryValidate(state, out var error), Is.True, error);
         }
 
+        [Test]
+        public void NullChoiceKeepsTheAuthoredScenarioStartupWithoutInventingAlumniCasting()
+        {
+            var state = ContentCatalog.Create(947u);
+            ShippedRules.ApplyFresh(state, null);
+            Assert.That(state.alumniRulesVersion, Is.Zero);
+            Assert.That(state.playerHistoriesEnabled, Is.False);
+            Assert.That(EpisodeValidation.TryValidate(state, out var error), Is.True, error);
+        }
+
         [TestCase(true)]
         [TestCase(false)]
         public void CandidateClonePreservesConfigurationAndDetachedEdges(bool histories)

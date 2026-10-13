@@ -1350,12 +1350,7 @@ namespace Gamesim.Presentation
             return parts.Count == 0 ? null : string.Join(" · ", parts);
         }
 
-        private static string GivenName(string name)
-        {
-            if (string.IsNullOrEmpty(name)) return string.Empty;
-            int space = name.IndexOf(' ');
-            return space > 0 ? name.Substring(0, space) : name;
-        }
+        private static string GivenName(string name) => CharacterNames.FirstName(name);
 
         /// <summary>Lets a label shrink to fit its box, so a long name never clips.</summary>
         private static void Fit(TMP_Text label, float minimum)

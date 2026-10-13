@@ -436,7 +436,7 @@ namespace Gamesim.Episode
             int mine = sheet.nomineeIds[0] == actor.id ? sheet.evictFirst : sheet.evictSecond;
             int theirs = sheet.nomineeIds[0] == actor.id ? sheet.evictSecond : sheet.evictFirst;
             var other = state.Find(sheet.nomineeIds.FirstOrDefault(id => id != actor.id));
-            string otherName = other != null ? (other.name ?? "").Split(' ')[0] : "them";
+            string otherName = other != null ? CharacterNames.FirstName(other.name ?? "") : "them";
             var whip = FixedText(card, "Evict you " + mine + " · Evict " + otherName + " " + theirs + " · Unknown " + sheet.unknown,
                 12, Paper, new Vector2(left, -below), new Vector2(inner, height - below - pad));
             whip.name = "Campaign whip";
@@ -486,7 +486,7 @@ namespace Gamesim.Episode
         /// <summary>The walk over to talk to somebody, on Pack 8's talk face, captioned as it has always been.</summary>
         private void CampaignTalkButton(RectTransform card, ContestantState actor, float x, float y, float width, float height, Action<string> talk)
         {
-            string id = actor.id, first = (actor.name ?? "").Split(' ')[0];
+            string id = actor.id, first = CharacterNames.FirstName(actor.name ?? "");
             var button = FixedButton(card, CastTalkCaption(first), new Vector2(x, -y), new Vector2(width, height), () => talk?.Invoke(id));
             // The face's edge, not the face's under the fixed button's own.
             WearFace(button, PackArt.Pack8TalkButton, 8f * FontScale,

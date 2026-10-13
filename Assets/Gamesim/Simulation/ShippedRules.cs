@@ -22,6 +22,14 @@ namespace Gamesim.Simulation
     /// </summary>
     public static class ShippedRules
     {
+#if GAMESIM_ALLSTAR_CANDIDATE
+        /// <summary>Explicit private candidate setup; loading never calls this overload.</summary>
+        public static void ApplyFresh(EpisodeState fresh, SeasonBuilder.Choice choice)
+        {
+            ApplyFresh(fresh);
+            AlumniHistory.InitializeFresh(fresh, choice);
+        }
+#endif
         /// <summary>Switches every shipped rule on for a fresh, unplayed season, from week one.</summary>
         public static void ApplyFresh(EpisodeState fresh)
         {
@@ -76,6 +84,9 @@ namespace Gamesim.Simulation
             if (s == null) throw new ArgumentNullException(nameof(s));
             return new List<KeyValuePair<string, int>>
             {
+#if GAMESIM_ALLSTAR_CANDIDATE
+                Field("alumniRulesVersion", s.alumniRulesVersion),
+#endif
                 Field("competitionRulesVersion", s.competitionRulesVersion),
                 Field("readRulesStartWeek", s.readRulesStartWeek),
                 Field("leverRulesStartWeek", s.leverRulesStartWeek),

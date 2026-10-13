@@ -315,7 +315,11 @@ namespace Gamesim.Episode
                 // Every rule a fresh season plays under, from week one, in one place shared with the
                 // balance harness: a rule the shipped game gains goes into ShippedRules.ApplyFresh, never
                 // here (StressHouseTests reads this body and fails on a rule field set beside it).
+#if GAMESIM_ALLSTAR_CANDIDATE
+                ShippedRules.ApplyFresh(fresh, choice);
+#else
                 ShippedRules.ApplyFresh(fresh);
+#endif
                 CharacterAppearanceSnapshots.Materialize(fresh);
                 fresh.sessionId = Guid.NewGuid().ToString("N");
                 nextStore.Save(fresh); // Stage and validate on disk before replacing the current in-memory session.

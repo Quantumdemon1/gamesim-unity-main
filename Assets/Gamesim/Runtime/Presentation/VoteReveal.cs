@@ -617,7 +617,7 @@ namespace Gamesim.Presentation
         public static Color DrawnChipGround => new Color(UiTheme.Danger.r, UiTheme.Danger.g, UiTheme.Danger.b, 0.22f);
 
         private static string FirstName(string name) =>
-            string.IsNullOrEmpty(name) ? string.Empty : name.Split(' ')[0];
+            CharacterNames.FirstName(name);
 
         /// <summary>
         /// The card's frame: how big its parts are and where they sit, in canvas units, with the type

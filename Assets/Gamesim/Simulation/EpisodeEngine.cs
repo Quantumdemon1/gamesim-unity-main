@@ -75,6 +75,9 @@ namespace Gamesim.Simulation
                 }
                 CancelInvalidNpcConversations(next);
                 ReconcileAllianceRows(next);
+#if GAMESIM_ALLSTAR_CANDIDATE
+                ReconcileAlumniKnownBreaches(next);
+#endif
                 next.revision = checked(current.revision + 1);
                 next.acceptedCommandIds.Add(command.id);
                 if (next.acceptedCommandIds.Count > 256) next.acceptedCommandIds.RemoveAt(0);
@@ -697,6 +700,11 @@ namespace Gamesim.Simulation
                     // competition bonus is already read — a second path would be a second answer.
                     // A throw gives every bonus up.
                     bool throwing = thrown && contestant.isPlayer;
+#if GAMESIM_ALLSTAR_CANDIDATE
+                    double npcEffort = contestant.isPlayer ? 1 : AlumniStrategy.CompetitionEffort(s, contestant.id,
+                        s.phase == EpisodePhase.FinalHoHPart1 || s.phase == EpisodePhase.FinalHoHPart2
+                        || s.phase == EpisodePhase.FinalHoHPart3, category);
+#endif
                     double bonus = contestant.isPlayer && !throwing
                         ? performance * weight + (s.competitionRulesVersion >= 3 ? CommonCompetitionBonus(s) : Storylines.CompetitionBonus(s)) : 0;
                     // A Have-Not is tired in the veto, thrown or not. Zero everywhere else and in
@@ -709,6 +717,11 @@ namespace Gamesim.Simulation
                         ? CompetitionRules.Score(contestant.stats, category, s.nominees.Contains(contestant.id), bonus, roll, luckRoll)
                         : WebRules.WeightedCompetitionScore(contestant.stats, category, s.nominees.Contains(contestant.id), bonus, roll, 0);
                     double score = throwing ? raw * CompetitionRules.ThrowShare(players.Length) : raw;
+#if GAMESIM_ALLSTAR_CANDIDATE
+                    score *= npcEffort;
+                    if (npcEffort < 1)
+                        Log(s, "alumni-competition-effort", "I chose to reduce my effort in this competition.", contestant.id);
+#endif
                     s.competitionScores.Add(new CompetitionScore { contestantId = contestant.id, score = score });
                     if (contestant.isPlayer) { playerRoll = roll; playerLuckRoll = luckRoll; playerRaw = raw; }
                     if (s.competitionRulesVersion >= 3 && !widened && contestant.isPlayer)
@@ -847,7 +860,11 @@ namespace Gamesim.Simulation
             - (UnifiedCommitments.SafetyAuthorityOn(s) ? Math.Min(UnifiedCommitments.StrongestProtection(s, hohId, id).Strength,
                 StoryConsumers.SafetyPreference(s, hohId, id)) : 0)
             // Under agency, how dangerous they are, as the Head of Household and their pact read it (NPC-AGENCY-PLAN.md §5.1).
-            - ThreatTerm(s, hohId, id);
+            - ThreatTerm(s, hohId, id)
+#if GAMESIM_ALLSTAR_CANDIDATE
+            + AlumniStrategy.ShieldValue(s, hohId, id)
+#endif
+            ;
 
         /// <summary>How much a veto holder wants to save a nominee: the strategy windows' willingness plus the story's terms.</summary>
         public static double SaveWeight(EpisodeState s, string holderId, string id) =>
@@ -1203,6 +1220,10 @@ namespace Gamesim.Simulation
             // is aimed at somebody, and at somebody still in the house.
             if (c.kind != EpisodeCommandKind.Eavesdrop)
                 Require(target != null && target.status == ContestantStatus.Active && !target.isPlayer, "Approach an active housemate.");
+#if GAMESIM_ALLSTAR_CANDIDATE
+            if (c.kind == EpisodeCommandKind.AskForIntel && c.text?.StartsWith("history:", StringComparison.Ordinal) == true)
+                Require(AlumniHistory.CanDiscuss(s, c, target, out string historyError), historyError);
+#endif
             Require(SocialActionsSpent(s) < SocialActionBudget(s),
                 "This social window is complete. Continue the episode.");
             switch (c.kind)
@@ -1258,7 +1279,12 @@ namespace Gamesim.Simulation
                     Require(known != null, "You have no personal information to share yet.");
                     Remember(s, target.id, known.subjectId, sharingRules ? InformationShareChoice.Receipt(known) : "Heard from you: " + known.text, true);
                     Change(s, s.playerId, target.id, 3); Log(s, "information", "You shared something you personally knew with " + target.name + ".", s.playerId, target.id); break;
-                case EpisodeCommandKind.AskForIntel: AskForIntel(s, target, c.secondTargetId); break;
+                case EpisodeCommandKind.AskForIntel:
+#if GAMESIM_ALLSTAR_CANDIDATE
+                    if (c.text?.StartsWith("history:", StringComparison.Ordinal) == true)
+                    { AlumniHistory.Discuss(s, c, target); break; }
+#endif
+                    AskForIntel(s, target, c.secondTargetId); break;
                 case EpisodeCommandKind.Eavesdrop: Eavesdrop(s, c); break;
                 case EpisodeCommandKind.SpreadLie: SpreadLie(s, target, c.secondTargetId); break;
                 case EpisodeCommandKind.VentAbout: VentAbout(s, target, c.secondTargetId); break;

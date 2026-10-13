@@ -9,7 +9,7 @@
 #
 # Overrides: GAMESIM_ACCEPTANCE (the batchmode copy, default D:\GamesimAcceptance) and
 # GAMESIM_UNITY_EDITOR (the editor folder, default derived from ProjectSettings/ProjectVersion.txt).
-param([switch]$WithoutUma,[string]$OutputRoot)
+param([switch]$WithoutUma,[string]$OutputRoot,[ValidateSet('GAMESIM_ALLSTAR_CANDIDATE')][string]$AdditionalDefine)
 $ErrorActionPreference = 'Stop'
 
 $Project    = Split-Path -Parent $PSScriptRoot
@@ -72,6 +72,21 @@ foreach ($t in $Targets) {
     $rsp  = Join-Path $Dag "$name.rsp"
 
     $lines = [System.Collections.Generic.List[string]](Get-Content -LiteralPath $rsp)
+    if ($AdditionalDefine) { $lines.Add('-define:' + $AdditionalDefine) }
+    # Refresh explicitly declared precompiled references against an existing cached reference.
+    # This is source compilation, not a regenerated Unity assembly graph or native acceptance.
+    $asmdef = Join-Path (Join-Path $Project $t.Root) ($name + '.asmdef')
+    if (Test-Path -LiteralPath $asmdef) {
+        $definition = Get-Content -LiteralPath $asmdef -Raw | ConvertFrom-Json
+        foreach ($dll in $definition.precompiledReferences) {
+            $suffix = '/' + $dll + '"'
+            if (@($lines | Where-Object { $_.StartsWith('-r:') -and $_.Replace('\','/').EndsWith($suffix) }).Count) { continue }
+            $matches = @($runtimeResponse | Where-Object { $_.StartsWith('-r:') -and $_.Replace('\','/').EndsWith($suffix) })
+            if ($matches.Count -ne 1) { throw "No unique cached reference for declared $dll in $name." }
+            $lines.Add($matches[0])
+            Write-Output "  declared reference: $dll"
+        }
+    }
 
     # Redirect output; drop the reference-assembly emit we do not need.
     $kept = [System.Collections.Generic.List[string]]::new()

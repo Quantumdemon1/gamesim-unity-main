@@ -71,7 +71,11 @@ namespace Gamesim.Presentation
         /// frame is too narrow for that.
         /// </summary>
         private const float HeaderHeight = 244f;
-        private float FooterHeight => WideFooter ? 150f : 214f;
+        private float FooterHeight => (WideFooter ? 150f : 214f)
+#if GAMESIM_ALLSTAR_CANDIDATE
+            + (ShowsPlayerHistories ? 82f : 0f)
+#endif
+            ;
         private bool WideFooter => Width - Pad * 2f >= 1180f;
 
         private float width = 1180f;
@@ -113,6 +117,15 @@ namespace Gamesim.Presentation
         private string category = CastTemplates.AllCategories;
         private string selectedId;
         private int houseSize = SeasonBuilder.DefaultHouseSize;
+#if GAMESIM_ALLSTAR_CANDIDATE
+        public const string PlayerHistoriesControlName = "Player histories";
+        public const string PlayerHistoriesOnCaption = "Player histories: On";
+        public const string PlayerHistoriesOffCaption = "Player histories: Off";
+        private bool playerHistories = true;
+        private bool ShowsPlayerHistories => roster == CastTemplates.Roster.AllStars
+            || CastTemplates.Find(retainedDraft?.SourceTemplateId ?? selectedId)?.Roster == CastTemplates.Roster.AllStars
+            || customHouseguests.Any(profile => CastTemplates.Find(profile.sourceTemplateId)?.Roster == CastTemplates.Roster.AllStars);
+#endif
 
         private Action<SeasonBuilder.Choice> onStart;
         private Action onCancel;
@@ -300,6 +313,9 @@ namespace Gamesim.Presentation
             resumeError = null;
             scrollToTop = true;
             houseSize = SeasonBuilder.ClampHouseSize(roster, SeasonBuilder.DefaultHouseSize);
+#if GAMESIM_ALLSTAR_CANDIDATE
+            playerHistories = true;
+#endif
             Rebuild();
             group.alpha = 1f;
             group.blocksRaycasts = true;
@@ -1135,12 +1151,7 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>A houseguest's given name, skipping an honorific: "Dr. Will Kirby" plays as Will.</summary>
-        internal static string FirstName(string name)
-        {
-            if (string.IsNullOrEmpty(name)) return string.Empty;
-            var words = name.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            return words.FirstOrDefault(word => !word.EndsWith(".", StringComparison.Ordinal)) ?? words[0];
-        }
+        internal static string FirstName(string name) => CharacterNames.FirstName(name);
 
         /// <summary>Turns the live model under a drag.</summary>
         private sealed class ModelTurntable : MonoBehaviour, IDragHandler
@@ -1213,6 +1224,9 @@ namespace Gamesim.Presentation
                     ? "You will play as " + chosen.Name + ", " + chosen.Archetype.ToLowerInvariant() + "."
                     : "No card picked. You will play as an unaffiliated newcomer.",
                 14f, chosen != null ? UiTheme.Gold : UiTheme.Muted, 22f, TextAlignmentOptions.Center);
+#if GAMESIM_ALLSTAR_CANDIDATE
+            if (ShowsPlayerHistories) PlayerHistoriesRow();
+#endif
 
             // The house-size block was the smallest type on the screen - its range line 12 in a
             // 16-tall box, the footnote 12, the chips' words shrunk to fit (cast-select;
@@ -1246,6 +1260,45 @@ namespace Gamesim.Presentation
         /// <summary>The house-size chips' height: tall enough to read and to press beside the start.</summary>
         public const float HouseSizeChipHeight = 44f;
         public const string HouseSizePanelName = "House size panel";
+
+#if GAMESIM_ALLSTAR_CANDIDATE
+        private void PlayerHistoriesRow()
+        {
+            Space(8f);
+            var row = Row(42f);
+            var control = HudPrimitives.Fill(PlayerHistoriesControlName, row, UiTheme.GlassFill, 12);
+            control.anchorMin = control.anchorMax = new Vector2(.5f, .5f);
+            control.pivot = new Vector2(.5f, .5f);
+            control.sizeDelta = new Vector2(320f, 42f);
+            control.GetComponent<Image>().raycastTarget = true;
+            UiTheme.AddBorder(control, 12, UiTheme.Hairline);
+            var box = HudPrimitives.Fill("Checkbox", control, UiTheme.SurfaceRaised, 3);
+            box.anchorMin = box.anchorMax = new Vector2(0f, .5f);
+            box.pivot = new Vector2(.5f, .5f);
+            box.anchoredPosition = new Vector2(24f, 0f);
+            box.sizeDelta = new Vector2(22f, 22f);
+            UiTheme.AddBorder(box, 3, UiTheme.Hairline);
+            var check = HudPrimitives.Fill("Checked", box, UiTheme.Accent, 2);
+            check.anchorMin = Vector2.zero; check.anchorMax = Vector2.one;
+            check.offsetMin = new Vector2(4f, 4f); check.offsetMax = new Vector2(-4f, -4f);
+            var label = HudPrimitives.Label("Label", control, 16f, UiTheme.Paper, TextAlignmentOptions.Left);
+            label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMin = new Vector2(46f, 0f); label.rectTransform.offsetMax = new Vector2(-12f, 0f);
+            label.text = Localisation.Text(playerHistories ? PlayerHistoriesOnCaption : PlayerHistoriesOffCaption);
+            label.raycastTarget = false;
+            var toggle = control.gameObject.AddComponent<Toggle>();
+            toggle.targetGraphic = control.GetComponent<Image>();
+            toggle.graphic = check.GetComponent<Image>();
+            toggle.isOn = playerHistories;
+            toggle.onValueChanged.AddListener(enabled =>
+            {
+                playerHistories = enabled;
+                label.text = Localisation.Text(enabled ? PlayerHistoriesOnCaption : PlayerHistoriesOffCaption);
+            });
+            Text("Off removes past connections and shared-history dialogue. Play styles and public reputations stay.",
+                FootnoteSize, UiTheme.Muted, 26f, TextAlignmentOptions.Center);
+        }
+#endif
 
         /// <summary>The house size: what it is and its range, and the count between its two controls.</summary>
         private void HouseSizePanel(RectTransform bar, float left, float panelWidth, bool compact)
@@ -1339,6 +1392,9 @@ namespace Gamesim.Presentation
                 Roster = roster,
                 PlayerTemplateId = selectedId,
                 HouseSize = SeasonBuilder.ClampHouseSize(roster, houseSize),
+#if GAMESIM_ALLSTAR_CANDIDATE
+                PlayerHistories = playerHistories,
+#endif
                 CustomHouseguests = customHouseguests.Select(profile => profile.Clone()).ToList(),
             };
             if (authored != null) choice.Authored = authored.Copy();
@@ -1372,6 +1428,9 @@ namespace Gamesim.Presentation
                 Roster = roster,
                 PlayerTemplateId = selectedId,
                 HouseSize = SeasonBuilder.ClampHouseSize(roster, houseSize),
+#if GAMESIM_ALLSTAR_CANDIDATE
+                PlayerHistories = playerHistories,
+#endif
                 CustomHouseguests = customHouseguests.Select(profile => profile.Clone()).ToList(),
             };
             var customise = onCustomise;
@@ -1389,6 +1448,9 @@ namespace Gamesim.Presentation
             var choice = new SeasonBuilder.Choice
             {
                 Roster = roster, PlayerTemplateId = selectedId, HouseSize = houseSize,
+#if GAMESIM_ALLSTAR_CANDIDATE
+                PlayerHistories = playerHistories,
+#endif
                 CustomHouseguests = customHouseguests.Select(value => value.Clone()).ToList(),
             };
             Hide();

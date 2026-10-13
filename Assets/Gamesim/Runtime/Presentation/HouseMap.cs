@@ -225,7 +225,7 @@ namespace Gamesim.Presentation
             float x = Pad * scale, y = (Pad + 64f) * scale, span = size.x - 2f * Pad * scale;
             foreach (var occupant in room.Occupants.OrderBy(o => o.IsPlayer ? 0 : 1).ThenBy(o => o.Name, System.StringComparer.Ordinal))
             {
-                var who = Label(card, HudPrimitives.WithYou(occupant.Name?.Split(' ')[0], occupant.IsPlayer), 15, UiTheme.Paper, scale, font);
+                var who = Label(card, HudPrimitives.WithYou(CharacterNames.FirstName(occupant.Name), occupant.IsPlayer), 15, UiTheme.Paper, scale, font);
                 if (semibold != null) who.font = semibold;
                 float words = Mathf.Min(Mathf.Ceil(who.GetPreferredValues(who.text).x) + 2f, 150f * scale);
                 float token = (Face + 10f) * scale + words;

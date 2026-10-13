@@ -157,7 +157,13 @@ namespace Gamesim.Simulation
                 // Under agency the first free turn goes to the agenda (NPC-AGENCY-PLAN.md §4).
                 if (taken < turns && PursueOn(state, npc, turn) != null) taken++;
 
-                foreach (var kind in Repertoire(LeadTrait(npc)))
+                foreach (var kind in
+#if GAMESIM_ALLSTAR_CANDIDATE
+                    AlumniStrategy.Repertoire(state, npc)
+#else
+                    Repertoire(LeadTrait(npc))
+#endif
+                    )
                 {
                     if (taken >= turns) break;
                     // Both were already attempted above, at the priority the source gives them.
@@ -215,7 +221,13 @@ namespace Gamesim.Simulation
             }
             // The repertoire: each kind once a week, a pact's meeting once.
             var met = new HashSet<string>(week.Where(a => a.kind == NpcActKinds.Meet && a.subjectId != null).Select(a => a.subjectId), StringComparer.Ordinal);
-            foreach (var kind in Repertoire(LeadTrait(npc)))
+            foreach (var kind in
+#if GAMESIM_ALLSTAR_CANDIDATE
+                AlumniStrategy.Repertoire(state, npc)
+#else
+                Repertoire(LeadTrait(npc))
+#endif
+                )
             {
                 if (kind == NpcActionKind.AllianceProposal || kind == NpcActionKind.Promise) continue;
                 if (mine.Any(a => a.kind == ActKind(kind))) continue;

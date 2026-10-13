@@ -566,7 +566,7 @@ namespace Gamesim.Presentation
         private static Color Tint(int finalist) => finalist == 0 ? UiTheme.Accent : UiTheme.Flirt;
 
         private static string FirstName(string name) =>
-            string.IsNullOrEmpty(name) ? string.Empty : name.Split(' ')[0];
+            CharacterNames.FirstName(name);
 
         private static void Place(RectTransform rect, float width, float height, float y, float x = 0f)
         {

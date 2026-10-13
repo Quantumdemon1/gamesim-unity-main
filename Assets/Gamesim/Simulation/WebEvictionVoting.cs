@@ -99,6 +99,9 @@ namespace Gamesim.Simulation
 
     [Serializable] public sealed class WebVoteOptions
     {
+#if GAMESIM_ALLSTAR_CANDIDATE
+        [NonSerialized] public Dictionary<string, double> alumniShieldValues = new Dictionary<string, double>();
+#endif
         public WebVoteState state = new WebVoteState();
         public WebVoteContestant voter;
         public List<WebVoteContestant> nominees = new List<WebVoteContestant>();
@@ -276,6 +279,10 @@ namespace Gamesim.Simulation
             };
             if (UnifiedCommitments.SafetyAuthorityOn(state)) options.safetyTerms = SafetyTerms(state, voterId);
             BlockSpeeches.Configure(state, options);
+#if GAMESIM_ALLSTAR_CANDIDATE
+            foreach (var nominee in state.nominees)
+                options.alumniShieldValues[nominee] = AlumniStrategy.ShieldValue(state, voterId, nominee);
+#endif
             return options;
         }
 
@@ -618,6 +625,11 @@ namespace Gamesim.Simulation
             var story = o.storyTerms?.FirstOrDefault(t => t.nomineeId == nominee.id);
             if (story != null && story.grudge != 0) factors.Add(Factor("grudge", story.grudge, "private", "grudge:" + o.voter.id + ":" + nominee.id));
             if (story != null && story.bond != 0) factors.Add(Factor("bond", story.bond, "private", "bond:" + o.voter.id + ":" + nominee.id));
+#if GAMESIM_ALLSTAR_CANDIDATE
+            if (o.alumniShieldValues != null && o.alumniShieldValues.TryGetValue(nominee.id, out double shield) && shield > 0
+                && !o.omittedFactors.Contains("strategicValue"))
+                factors.Add(Factor("alumniShield", shield, "private"));
+#endif
             // The levers' terms: what this voter owes the player on this nominee, and how they
             // answered a plea, known to the player because they are the player's own doing.
             // Present only where there is one.

@@ -32,7 +32,7 @@ namespace Gamesim.Tests.PlayMode
                 var renderer = text.GetComponent<MeshRenderer>();
                 Assert.That(renderer == null || !renderer.enabled, Is.True, npc.Id + "'s 3D text no longer draws the name.");
                 Assert.That(Plate(npc), Is.Not.Null, npc.Id + " carries a name plate.");
-                string given = npc.DisplayName.Split(' ')[0];
+                string given = CharacterNames.FirstName(npc.DisplayName);
                 Assert.That(Plate(npc).GetComponentsInChildren<TMPro.TMP_Text>(true).Select(label => label.text), Does.Contain(given));
             }
 
@@ -54,6 +54,29 @@ namespace Gamesim.Tests.PlayMode
             if (Application.isBatchMode) yield return CaptureFraming("followed");
             director.FollowHouseguest(chosen.Id);
             yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator NamePlates_UseGivenNameForTitledHouseguestAndPreserveIdentity()
+        {
+            yield return null;
+            var npc = SceneComponents<HouseNpc>().Single(person => person.Id == ContentCatalog.MayaId);
+            string originalId = npc.Id, originalName = npc.DisplayName;
+            try
+            {
+                npc.Configure("dr-will-kirby", "Dr. Will Kirby");
+                Assert.That(npc.Id, Is.EqualTo("dr-will-kirby"), "The displayed given name does not replace the character identity.");
+                Assert.That(npc.DisplayName, Is.EqualTo("Dr. Will Kirby"), "The full name retains its title.");
+                Assert.That(Plate(npc), Is.Not.Null);
+                var labels = Plate(npc).GetComponentsInChildren<TMPro.TMP_Text>(true).Select(label => label.text).ToArray();
+                Assert.That(labels, Does.Contain("Will").And.Not.Contain("Dr."), "The name over the houseguest is Will.");
+                Assert.That(npc.GetComponentInChildren<TextMesh>(true).text, Is.EqualTo("Dr. Will Kirby"),
+                    "The underlying full-name holder remains unchanged for existing readers.");
+            }
+            finally
+            {
+                npc.Configure(originalId, originalName);
+            }
         }
 
         /// <summary>

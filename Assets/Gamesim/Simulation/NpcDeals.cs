@@ -264,6 +264,34 @@ namespace Gamesim.Simulation
         /// <summary>How many offers the player is shown in one week. The reference's ceiling.</summary>
         public const int ProposalsPerWeek = 3;
 
+#if GAMESIM_ALLSTAR_CANDIDATE
+        internal static void SeedOpeningPair(EpisodeState state, string a, string b)
+        {
+            if (!OpeningHitmen(state, a, b) || state.Find(a).isPlayer || state.Find(b).isPlayer
+                || Between(state, a, b).Any(d => d.type == DealKind.FinalTwo)) return;
+            Strike(state, a, b, DealKind.FinalTwo);
+        }
+
+        internal static void SeedOpeningProposal(EpisodeState state, string npcId)
+        {
+            if (!OpeningHitmen(state, state.playerId, npcId) || state.Find(npcId).isPlayer
+                || UnifiedVoteStore.Deals(state).Any(d => d.recipientId == state.playerId && d.id.StartsWith(OfferPrefix, StringComparison.Ordinal))) return;
+            state.deals.Add(new DealState { id = OfferPrefix + state.nextSequence, type = DealKind.FinalTwo,
+                proposerId = npcId, recipientId = state.playerId, status = DealStatus.Proposed, week = 1,
+                expiresWeek = 1, trustImpact = DealKind.DefaultTrust(DealKind.FinalTwo) });
+            RelationshipLedger.Record(state, npcId, state.playerId, "deal_proposed", 0,
+                state.Find(npcId).name + " asked whether to renew your final two.");
+            Propose(state, true);
+        }
+
+        private static bool OpeningHitmen(EpisodeState state, string a, string b) =>
+            AlumniHistory.On(state) && state.playerHistoriesEnabled && state.week == 1 && state.revision == 0
+            && state.acceptedCommandIds.Count == 0 && EpisodeEngine.CommitmentRulesOn(state)
+            && AlumniHistory.TryProfile(state, a, out var first) && AlumniHistory.TryProfile(state, b, out var second)
+            && ((first.TemplateId == "derrick-levasseur" && second.TemplateId == "cody-calafiore")
+                || (second.TemplateId == "derrick-levasseur" && first.TemplateId == "cody-calafiore"));
+#endif
+
         /// <summary>
         /// Houseguests putting something to the player.
         ///
@@ -283,6 +311,11 @@ namespace Gamesim.Simulation
         /// the roll is in the answer, and the answer belongs to the player.</para>
         /// </summary>
         public static void Propose(EpisodeState state)
+#if GAMESIM_ALLSTAR_CANDIDATE
+            => Propose(state, false);
+
+        private static void Propose(EpisodeState state, bool fillOpeningReservation)
+#endif
         {
             if (state?.npcSocial == null || state.week < state.dealRulesStartWeek) return;
             var player = state.Find(state.playerId);
@@ -291,18 +324,29 @@ namespace Gamesim.Simulation
             // One round of offers per week. The test is whether anything was PUT to the player this
             // week, not whether anything is still waiting — otherwise clearing the table would
             // refill it, and a player who answers promptly would be asked more than one who does not.
-            if (UnifiedVoteStore.Deals(state).Any(d => d.recipientId == state.playerId && d.week == state.week
-                                     && d.id.StartsWith(OfferPrefix, StringComparison.Ordinal))) return;
+            var alreadyAsked = UnifiedVoteStore.Deals(state).Where(d => d.recipientId == state.playerId && d.week == state.week
+                                     && d.id.StartsWith(OfferPrefix, StringComparison.Ordinal)).ToArray();
+#if GAMESIM_ALLSTAR_CANDIDATE
+            if (alreadyAsked.Length != 0 && !fillOpeningReservation) return;
+#else
+            if (alreadyAsked.Length != 0) return;
+#endif
 
             var offers = state.contestants
                 .Where(npc => npc.status == ContestantStatus.Active && !npc.isPlayer)
                 .Select(npc => new { npc, kind = Offer(state, npc.id, state.playerId) })
                 .Where(row => row.kind != null)
+#if GAMESIM_ALLSTAR_CANDIDATE
+                .Where(row => !fillOpeningReservation || !alreadyAsked.Any(d => d.proposerId == row.npc.id))
+#endif
                 .OrderByDescending(row => Adjusted(state, row.npc.id, state.playerId) + Urgency(row.kind))
                 .ThenBy(row => row.npc.id, StringComparer.Ordinal)
                 .ToList();
 
             var types = new HashSet<string>(StringComparer.Ordinal);
+#if GAMESIM_ALLSTAR_CANDIDATE
+            if (fillOpeningReservation) foreach (var asked in alreadyAsked) types.Add(asked.type);
+#endif
             int room = Math.Min(ProposalsPerWeek, Math.Max(0, DealCeiling - UnifiedVoteStore.DealCount(state)));
             foreach (var offer in offers)
             {

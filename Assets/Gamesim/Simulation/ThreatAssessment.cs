@@ -125,7 +125,11 @@ namespace Gamesim.Simulation
         private static double AllianceThreat(EpisodeState state, string evaluatorId, string targetId) =>
             Math.Min(20, state.alliances
                 .Where(a => a.active && a.members.Contains(targetId) && Knowledge.AllianceVisibleTo(state, a, evaluatorId))
-                .Sum(a => Allegiance.Counted(state, a).Count * 4));
+                .Sum(a => Allegiance.Counted(state, a).Count * 4)
+#if GAMESIM_ALLSTAR_CANDIDATE
+                + AlumniStrategy.KnownPairRisk(state, evaluatorId, targetId)
+#endif
+                );
 
         /// <summary>
         /// What they might still do. Capped at ten by the source, though its terms reach only seven:
@@ -163,6 +167,9 @@ namespace Gamesim.Simulation
                 broken += UnifiedCommitmentHistory.Breaches(state).Count(incident => incident.ActorId == targetId
                     && (excludedSafetyEffects == null || !excludedSafetyEffects.Contains(incident.EffectKey)));
             double threat = Math.Min(8, broken * 3);
+#if GAMESIM_ALLSTAR_CANDIDATE
+            threat += AlumniStrategy.CareerRisk(state, targetId);
+#endif
 
             double trust = TrustScore(state, targetId, evaluatorId);
             if (trust < 35) threat += 5;
@@ -199,7 +206,11 @@ namespace Gamesim.Simulation
         {
             if (state == null || ofId == byId) return NeutralTrust;
             double ledger = RelationshipLedger.WeightedImpact(state, byId, ofId);
-            return Math.Max(0, Math.Min(100, NeutralTrust + ledger * TrustPerImpactPoint));
+            double prior = 0;
+#if GAMESIM_ALLSTAR_CANDIDATE
+            if (AlumniHistory.On(state)) prior = state.relationships.FirstOrDefault(r => r.fromId == byId && r.toId == ofId)?.priorTrustOffset ?? 0;
+#endif
+            return Math.Max(0, Math.Min(100, NeutralTrust + prior + ledger * TrustPerImpactPoint));
         }
 
         /// <summary>

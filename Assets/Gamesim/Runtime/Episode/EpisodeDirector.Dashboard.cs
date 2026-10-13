@@ -91,7 +91,7 @@ namespace Gamesim.Episode
             var target = RecommendedTarget(state, out string why);
             if (target != null && freeTime && left > 0)
             {
-                string id = target.id, first = (target.name ?? "").Split(' ')[0];
+                string id = target.id, first = CharacterNames.FirstName(target.name ?? "");
                 tiles.Add(new EpisodeHud.MoveTile
                 {
                     Caption = EpisodeHud.CastTalkCaption(first), Description = why, Glyph = "chat",
@@ -150,7 +150,7 @@ namespace Gamesim.Episode
             var warmest = state.Active.Where(c => !c.isPlayer && !state.Allied(state.playerId, c.id))
                 .OrderByDescending(c => state.Score(state.playerId, c.id)).FirstOrDefault()
                 ?? state.Active.FirstOrDefault(c => !c.isPlayer);
-            if (warmest != null) why = "Build trust and learn where " + warmest.name.Split(' ')[0] + " stands.";
+            if (warmest != null) why = "Build trust and learn where " + CharacterNames.FirstName(warmest.name) + " stands.";
             return warmest;
         }
     }

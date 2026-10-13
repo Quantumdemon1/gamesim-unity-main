@@ -32,6 +32,10 @@ namespace Gamesim.Simulation
         public sealed class Choice
         {
             public CastTemplates.Roster Roster = CastTemplates.Roster.Regular;
+#if GAMESIM_ALLSTAR_CANDIDATE
+            // MemberwiseClone in Copy preserves this proposed season choice.
+            public bool PlayerHistories = true;
+#endif
 
             /// <summary>
             /// The houseguest the player is. Null keeps the unaffiliated newcomer the project has

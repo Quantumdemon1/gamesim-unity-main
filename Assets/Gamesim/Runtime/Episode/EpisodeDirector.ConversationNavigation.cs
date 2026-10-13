@@ -82,6 +82,10 @@ namespace Gamesim.Episode
                 Render();
                 return true;
             }
+#if GAMESIM_ALLSTAR_CANDIDATE
+            if (!toTopics && BackAlumniHistoryPicker()) { }
+            else
+#endif
             if (!toTopics && ConversationPicker != null) conversationPick = null;
             else if (!toTopics && lobbyAsk != null) ClearLobbyDraft();
             else
@@ -168,8 +172,14 @@ namespace Gamesim.Episode
                     ConversationAction(state, npc, EpisodeHud.DiscussGameCaption, EpisodeCommandKind.DiscussGame);
                     break;
                 case LearnCategoryCaption:
+#if GAMESIM_ALLSTAR_CANDIDATE
+                    if (RenderAlumniHistoryPicker(state, npc, token)) break;
+#endif
                     AskRows(state, npc, window);
                     InformationShareRow(state, npc);
+#if GAMESIM_ALLSTAR_CANDIDATE
+                    AlumniHistoryEntry(state, npc, token);
+#endif
                     break;
                 case PressureCategoryCaption:
                     ConversationGroups(state, npc, window, allied, SchemeGroupTitle);

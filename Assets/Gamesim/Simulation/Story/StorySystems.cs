@@ -93,6 +93,16 @@ namespace Gamesim.Simulation
     /// </summary>
     public static class Knowledge
     {
+#if GAMESIM_ALLSTAR_CANDIDATE
+        internal static void SeedAlumniFact(EpisodeState state, string kind, string actor, string subject, string reference)
+        {
+            if (state.story.facts.Any(f => f.kind == kind && f.refId == reference)) return;
+            var fact = new HouseFactState { id = "fact-" + state.nextSequence++, kind = kind,
+                actorId = actor, subjectId = subject, refId = reference, visibility = FactVisibility.Public, week = 1 };
+            state.story.facts.Add(fact);
+            MakeKnown(state, fact, FactVisibility.Public);
+        }
+#endif
         /// <summary>A fact about something a cycle did, found by kind.</summary>
         public static HouseFactState Of(EpisodeState state, string kind, string refId) =>
             state?.story?.facts.FirstOrDefault(f => f.kind == kind && f.refId == refId);
@@ -219,12 +229,21 @@ namespace Gamesim.Simulation
                 if (at < 0) at = facts.FindIndex(f => f.kind == FactKinds.Alliance);
                 if (at < 0) at = 0;
             }
+#if GAMESIM_ALLSTAR_CANDIDATE
+            if (AlumniHistory.On(state) && (facts[at].kind == AlumniHistory.PriorHistory || facts[at].kind == AlumniHistory.PriorCareer))
+                at = facts.FindIndex(f => f.kind != AlumniHistory.PriorHistory && f.kind != AlumniHistory.PriorCareer);
+            if (at < 0) throw new InvalidOperationException("Audited alumni provenance exceeds the fact capacity.");
+#endif
             facts.RemoveAt(at);
         }
 
         /// <summary>A fact a full list keeps under the commitment rules: an alliance's (X14), or the player's broken word (C8).</summary>
         private static bool KeptWhenFull(EpisodeState state, HouseFactState fact) =>
-            fact.kind == FactKinds.Alliance || (fact.kind == FactKinds.BrokenWord && fact.actorId == state.playerId);
+            fact.kind == FactKinds.Alliance || (fact.kind == FactKinds.BrokenWord && fact.actorId == state.playerId)
+#if GAMESIM_ALLSTAR_CANDIDATE
+            || (AlumniHistory.On(state) && (fact.kind == AlumniHistory.PriorHistory || fact.kind == AlumniHistory.PriorCareer))
+#endif
+            ;
 
         /// <summary>
         /// Whether an evaluator can see an alliance. <b>The legacy rule:</b> an alliance with no fact

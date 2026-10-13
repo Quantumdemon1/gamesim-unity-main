@@ -463,7 +463,11 @@ namespace Gamesim.Simulation
         public const string Alliance = "alliance", Couple = "couple", BrokenWord = "broken-word", Strike = "strike";
         public const string Outcome = "outcome", Secret = "secret", Plan = "plan", Conversation = "conversation";
         public static readonly string[] All = { Alliance, Couple, BrokenWord, Strike, Outcome, Secret, Plan, Conversation };
-        public static bool IsKnown(string kind) => kind != null && Array.IndexOf(All, kind) >= 0;
+        public static bool IsKnown(string kind) => kind != null && (Array.IndexOf(All, kind) >= 0
+#if GAMESIM_ALLSTAR_CANDIDATE
+            || kind == AlumniHistory.PriorHistory || kind == AlumniHistory.PriorCareer
+#endif
+            );
     }
 
     /// <summary>Why a grudge is held.</summary>

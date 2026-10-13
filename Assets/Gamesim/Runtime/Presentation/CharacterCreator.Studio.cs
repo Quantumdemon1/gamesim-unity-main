@@ -623,7 +623,7 @@ namespace Gamesim.Presentation
             {
                 string id = ids[i];
                 var template = CastTemplates.Find(id);
-                string label = template != null ? template.Name.Split(' ')[0] : "You";
+                string label = template != null ? CharacterNames.FirstName(template.Name) : "You";
                 Thumbnail(studioControls, "Starting look " + label, label, new Rect(x, studioCursor, face, face + 18f), i == current, null,
                     null, "houseguest", () => ChangeAppearance(() => draft.Appearance = StartingAppearance(id)),
                     template != null ? CastTemplates.ToContestant(template, false) : null);

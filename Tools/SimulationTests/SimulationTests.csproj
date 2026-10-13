@@ -30,11 +30,19 @@
     <RootDir>$(MSBuildThisFileDirectory)../../</RootDir>
     <Simulation>$(RootDir)Assets/Gamesim/Simulation/</Simulation>
     <EditMode>$(RootDir)Assets/Gamesim/Tests/EditMode/</EditMode>
+    <!-- Detached All-Star candidate only. Never add this symbol to Unity ProjectSettings. -->
+    <DefineConstants Condition="'$(AlumniCandidate)' == 'true'">$(DefineConstants);GAMESIM_ALLSTAR_CANDIDATE</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- The whole assembly, exactly as Unity compiles it. -->
     <Compile Include="$(Simulation)**/*.cs" />
+    <Compile Include="$(EditMode)CharacterNamesTests.cs" />
+    <Compile Include="$(EditMode)AlumniCatalogTests.cs" />
+    <Compile Include="$(EditMode)AlumniCandidateStateTests.cs" />
+    <Compile Include="$(EditMode)AlumniHistoryTests.cs" />
+    <Compile Include="$(EditMode)AlumniStrategyTests.cs" />
+    <Compile Include="$(EditMode)AlumniConversationTests.cs" />
     <Compile Include="$(EditMode)NarrativeDisplayTests.cs" />
     <Compile Include="$(EditMode)ConversationExchangeTests.cs" />
     <Compile Include="$(EditMode)ConversationExchangeResponseTests.cs" />

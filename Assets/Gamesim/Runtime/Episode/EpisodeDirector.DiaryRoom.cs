@@ -333,7 +333,7 @@ namespace Gamesim.Episode
             var latest = KnownBallots.PlayerMemories(state).LastOrDefault();
             var self = state.Find(state.playerId);
             if (latest != null && self != null)
-                hud.Confessional((self.name ?? "You").Split(' ')[0], NarrativeDisplay.Render(state, MemoryWords.Said(state, latest)));
+                hud.Confessional(CharacterNames.FirstName(self.name ?? "You"), NarrativeDisplay.Render(state, MemoryWords.Said(state, latest)));
             // Refinement Kit 6's three tabs, in place of one column that ran the decision, the
             // record's rules and every memory together. The decision's tab opens first when there
             // is something to choose; otherwise the record does. A tab is view state: choosing

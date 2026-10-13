@@ -76,7 +76,11 @@ namespace Gamesim.Simulation
             bool prospectiveVote = canonicalMode == UnifiedVoteFamilyValidation.Version;
             bool prospectiveSafety = canonicalMode == UnifiedCommitments.ProspectiveVersion || prospectiveVote;
             error = null;
+#if GAMESIM_ALLSTAR_CANDIDATE
+            if (s == null || s.schemaVersion != 29) return Fail(out error, "Unsupported private alumni candidate schema.");
+#else
             if (s == null || s.schemaVersion != 28) return Fail(out error, "Unsupported episode schema.");
+#endif
             if (prospectiveSafety)
             {
                 if (s.unifiedCommitmentRulesVersion != canonicalMode
@@ -167,6 +171,11 @@ namespace Gamesim.Simulation
                 !Optional(s.runnerUpId) || !Optional(s.finalPart1WinnerId) || !Optional(s.finalPart2WinnerId)) return Fail(out error, "Unknown role identity.");
             if (s.relationships == null || s.relationships.Count > s.contestants.Count * (s.contestants.Count - 1) || s.relationships.Any(r => r == null || !Id(r.fromId) || !Id(r.toId) || !Finite(r.score) || Math.Abs(r.score) > 100) ||
                 s.relationships.GroupBy(r => new { r.fromId, r.toId }).Any(g => g.Count() > 1)) return Fail(out error, "Invalid directed relationship graph.");
+#if GAMESIM_ALLSTAR_CANDIDATE
+            if (s.relationships.Any(edge => !Finite(edge.priorTrustOffset) || Math.Abs(edge.priorTrustOffset) > 30
+                    || ((!s.playerHistoriesEnabled || s.alumniRulesVersion == 0) && edge.priorTrustOffset != 0)))
+                return Fail(out error, "Invalid inherited trust offset.");
+#endif
             if (s.nominees == null || s.nominees.Count > 2 || s.nominees.Any(id => !Id(id)) || s.nominees.Distinct().Count() != s.nominees.Count ||
                 s.vetoPlayers == null || s.vetoPlayers.Count > EpisodeEngine.VetoLineupSize || s.vetoPlayers.Any(id => !Id(id)) || s.vetoPlayers.Distinct().Count() != s.vetoPlayers.Count)
                 return Fail(out error, "Invalid nomination or veto participant references.");
@@ -439,7 +448,11 @@ namespace Gamesim.Simulation
             return TryValidateV2(s, out error) && TryValidateV3(s, out error) && TryValidateNpcSocial(s, out error)
                 && TryValidateStory(s, out error) && TryValidateLedger(s, out error) && TryValidateWaveD(s, out error)
                 && (!prospectiveSafety || TryValidateUnifiedSafetyReferences(s, prospectiveVote, out error))
-                && (!prospectiveVote || TryValidateUnifiedVoteReferences(s, out error));
+                && (!prospectiveVote || TryValidateUnifiedVoteReferences(s, out error))
+#if GAMESIM_ALLSTAR_CANDIDATE
+                && AlumniHistory.TryValidateState(s, out error)
+#endif
+                ;
         }
 
         /// <summary>

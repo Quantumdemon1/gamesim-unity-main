@@ -21,11 +21,18 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+#if GAMESIM_ALLSTAR_CANDIDATE
+            if (version == 29) return (JObject)original.DeepClone();
+            if (version >= 1 && version <= 28)
+                throw new InvalidDataException("The private alumni candidate cannot promote historical saves until the complete FrozenEpisodeV28 reader is qualified. The original save was preserved.");
+            throw new InvalidDataException("Unsupported private alumni candidate schema version.");
+#else
             if (version == 28) return (JObject)original.DeepClone();
             if (version < 1 || version > 27) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV27ToV28(version == 27 ? original : PrepareV27Payload(original, out _));
             migrated = true;
             return result;
+#endif
         }
 
         /// <summary>

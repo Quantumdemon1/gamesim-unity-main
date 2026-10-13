@@ -250,7 +250,7 @@ namespace Gamesim.Episode
                 answers.Add((npc, at, answer));
                 lastAnswers.Add((npc.Id, answer));
                 at += .35f;
-                string first = (state.Find(npc.Id)?.name ?? npc.DisplayName).Split(' ')[0];
+                string first = CharacterNames.FirstName(state.Find(npc.Id)?.name ?? npc.DisplayName);
                 if (answer == Answer.Cheer) cheered.Add(first);
                 else if (answer == Answer.Shrug) shrugged.Add(first);
             }

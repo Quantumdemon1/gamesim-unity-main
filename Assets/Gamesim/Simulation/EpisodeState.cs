@@ -79,6 +79,10 @@ namespace Gamesim.Simulation
     {
         public string fromId, toId;
         public double score;
+#if GAMESIM_ALLSTAR_CANDIDATE
+        // Candidate only: inherited trust is distinct from this season's receipts.
+        public double priorTrustOffset;
+#endif
         public int lastInteractionWeek;
         public List<string> notes = new List<string>();
         public List<RelationshipEventState> events = new List<RelationshipEventState>();
@@ -233,6 +237,10 @@ namespace Gamesim.Simulation
         public int sequence, week;
         public EpisodePhase phase;
         public string kind, text;
+#if GAMESIM_ALLSTAR_CANDIDATE
+        // Binds a spoken history receipt to the exact accepted request, without exposing it in UI text.
+        public string historyCommandRef;
+#endif
         public List<string> audienceIds = new List<string>();
         public EpisodeEvent Clone()
         {
@@ -244,7 +252,15 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
+#if GAMESIM_ALLSTAR_CANDIDATE
+        // Proposed private schema. Historical 28 promotion awaits the complete Frozen28 reader.
+        public int schemaVersion = 29;
+        public int alumniRulesVersion;
+        public string alumniCatalogVersion;
+        public bool playerHistoriesEnabled;
+#else
         public int schemaVersion = 28;
+#endif
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;

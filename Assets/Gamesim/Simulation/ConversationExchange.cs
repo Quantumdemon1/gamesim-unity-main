@@ -76,6 +76,10 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.AskVote:
                     return VoteQuestion(before, after, npc, current);
                 case EpisodeCommandKind.AskForIntel:
+#if GAMESIM_ALLSTAR_CANDIDATE
+                    if (command.text?.StartsWith("history:", StringComparison.Ordinal) == true)
+                        return AlumniExchange(after, command, npc, current);
+#endif
                     return Intel(before, after, command, npc, current);
                 case EpisodeCommandKind.SmallTalk:
                     source = Exact(current, "conversation", "You passed the time with " + npc.name + ".");
@@ -182,6 +186,9 @@ namespace Gamesim.Simulation
                     dramatic = true; break;
                 default: return null;
             }
+#if GAMESIM_ALLSTAR_CANDIDATE
+            if (source != null) response = AlumniVoice.Response(after, npc.id, command.kind, response);
+#endif
             return source == null || string.IsNullOrEmpty(response) ? null
                 : new ConversationExchange(after, npc.id, player, response, source.text, dramatic);
         }
@@ -194,11 +201,27 @@ namespace Gamesim.Simulation
             // The caller can pass cloned projections, but cannot change their words or audience.
             return after.events.Any(saved => saved.sequence == item.sequence && saved.week == item.week
                 && saved.phase == item.phase && saved.kind == item.kind && saved.text == item.text
-                && saved.audienceIds.SequenceEqual(item.audienceIds));
+                && saved.audienceIds.SequenceEqual(item.audienceIds)
+#if GAMESIM_ALLSTAR_CANDIDATE
+                && saved.historyCommandRef == item.historyCommandRef
+#endif
+                );
         }
 
         private static EpisodeEvent Exact(IEnumerable<EpisodeEvent> events, string kind, string text) =>
             events.FirstOrDefault(item => item.kind == kind && item.text == text);
+
+#if GAMESIM_ALLSTAR_CANDIDATE
+        private static ConversationExchange AlumniExchange(EpisodeState after, EpisodeCommand command,
+            ContestantState npc, IReadOnlyList<EpisodeEvent> events)
+        {
+            if (!AlumniHistory.TryReceipt(after, command, out string player, out string response)) return null;
+            var receipts = events.Where(item => item.kind == "history-conversation"
+                && item.text == player + "\n" + response && item.audienceIds.Contains(npc.id)).ToArray();
+            return receipts.Length == 1 ? new ConversationExchange(after, npc.id, player, response,
+                "You discussed your past games with " + npc.name + ".", true) : null;
+        }
+#endif
 
         private static ConversationExchange Lobby(EpisodeState before, EpisodeState after, EpisodeCommand command,
             ContestantState npc, IReadOnlyList<EpisodeEvent> events)

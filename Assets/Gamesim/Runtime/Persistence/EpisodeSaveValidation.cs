@@ -10,7 +10,11 @@ namespace Gamesim.Persistence
         public static void Validate(EpisodeState state)
         {
             if (!EpisodeValidation.TryValidate(state, out var reason)) throw new InvalidDataException(reason);
+#if GAMESIM_ALLSTAR_CANDIDATE
+            Require(state.schemaVersion == 29, "Unsupported private alumni candidate schema version.");
+#else
             Require(state.schemaVersion == 28, "Unsupported simulation schema version.");
+#endif
             // The shared complete validator owns mode dispatch, prerequisites, source provenance,
             // canonical/mixed links and durable hearings. Never bypass it or rebuild raw mirrors.
             Require(state.sessionId != null && state.sessionId.Length <= 256, "Session identifier is too long.");

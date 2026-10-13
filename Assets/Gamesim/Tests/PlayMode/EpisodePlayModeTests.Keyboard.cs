@@ -44,7 +44,7 @@ namespace Gamesim.Tests.PlayMode
             yield return OpenNearbyNpc(maya);
             var dial=director.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name==EpisodeHud.DialName);
             var petals=dial.GetComponentsInChildren<Button>().Where(button=>button.IsInteractable()).ToArray();
-            Assert.That(petals.Length,Is.EqualTo(7),"Seven seats, clockwise from the top.");
+            Assert.That(petals.Length,Is.EqualTo(6),"Six category seats, clockwise from the top.");
             EventSystem.current.SetSelectedGameObject(petals[0].gameObject);yield return null;
 
             // Arrows go where they point on the ring: from the head, Right is the next seat
@@ -59,44 +59,30 @@ namespace Gamesim.Tests.PlayMode
             yield return PressKey(Key.LeftArrow);
             Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(petals[0].gameObject));
             yield return PressKey(Key.LeftArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(petals[6].gameObject),
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(petals[5].gameObject),
                 "Left from the head of the ring is the seat to its left, not nowhere.");
             director.ClosePanels();yield return null;
         }
 
         [UnityTest]
-        public IEnumerator Conversation_TheRingsFootLeadsToTheRowsAndTheRowsLeadBack()
+        public IEnumerator Conversation_KeyboardEntersACategoryAndBackReturnsToTheRoot()
         {
             var maya=SceneComponents<HouseNpc>().Single(npc=>npc.Id==ContentCatalog.MayaId);
             yield return OpenNearbyNpc(maya);
             var dial=director.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name==EpisodeHud.DialName);
             var petals=dial.GetComponentsInChildren<Button>().Where(button=>button.IsInteractable()).ToArray();
-            Assert.That(petals.Length,Is.EqualTo(7));
-            var more=ButtonWithCaption(EpisodeHud.MorePetalCaption);
-            Assert.That(more,Is.EqualTo(petals[3]),"More ways to talk sits at the ring's foot, on the right.");
-            var following=ButtonWithCaption(EpisodeHud.DiscussGameCaption);
-            var revision=director.Snapshot.revision;
-            EventSystem.current.SetSelectedGameObject(petals[3].gameObject);yield return null;
-
-            // Only this initial focus is staged; every move below is real input through the UI module.
-            yield return PressKey(Key.RightArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(petals[2].gameObject),"Right from the foot climbs the right side.");
-            yield return PressKey(Key.LeftArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(petals[3].gameObject));
-            yield return PressKey(Key.LeftArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(petals[4].gameObject),"Left crosses the foot to the other side.");
-            yield return PressKey(Key.DownArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(following.gameObject),"Down from the foot leaves the ring for the rows.");
-            yield return PressKey(Key.UpArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(more.gameObject),
-                "Up from the first row returns to the petal that hands the keyboard to it.");
-            yield return PressKey(Key.DownArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(following.gameObject));
-            yield return PressKey(Key.Tab,shift:true);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(petals[6].gameObject),"Shift+Tab retains reading order.");
-            yield return PressKey(Key.Tab);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(following.gameObject));
-            Assert.That(director.Snapshot.revision,Is.EqualTo(revision),"Moving focus must not commit a conversation.");
+            Assert.That(petals.Length,Is.EqualTo(6));
+            var before=JsonUtility.ToJson(director.Snapshot);
+            yield return AssertKeyboardRing("conversation categories",ModalRoot);
+            yield return KeyboardSubmit(EpisodeDirector.GameCategoryCaption);
+            Assert.That(ActiveRect(EpisodeHud.DialName),Is.Null,"Entering a category replaces the wheel with its choices.");
+            Assert.That(ButtonWithCaption(EpisodeHud.DiscussGameCaption),Is.Not.Null);
+            yield return AssertKeyboardRing("game conversation choices",ModalRoot);
+            yield return KeyboardSubmit(EpisodeDirector.ConversationTopicsBackCaption);
+            Assert.That(ActiveRect(EpisodeHud.DialName),Is.Not.Null);
+            Assert.That(ActiveRect(EpisodeHud.ConversationColumnName),Is.Null,"Back removes the options column.");
+            yield return AssertKeyboardRing("returned conversation categories",ModalRoot);
+            Assert.That(JsonUtility.ToJson(director.Snapshot),Is.EqualTo(before),"Moving through menus must not commit a conversation.");
             director.ClosePanels();yield return null;
         }
 
@@ -127,6 +113,8 @@ namespace Gamesim.Tests.PlayMode
             yield return OpenNearbyNpc(maya);
             yield return AssertKeyboardRing("conversation", ModalRoot);
             var talked = director.Snapshot;
+            yield return KeyboardSubmit(EpisodeDirector.ConnectCategoryCaption);
+            yield return AssertKeyboardRing("conversation choices", ModalRoot);
             yield return KeyboardSubmit("Spend time together");
             Assert.That(director.Snapshot.revision, Is.EqualTo(talked.revision + 1), "Enter on a conversation control must commit it.");
             director.ClosePanels();

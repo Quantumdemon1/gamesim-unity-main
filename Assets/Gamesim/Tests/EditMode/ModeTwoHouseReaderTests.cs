@@ -123,7 +123,7 @@ namespace Gamesim.Tests.EditMode
             var marks = new[] { typeof(WebVotePromise).GetField(nameof(WebVotePromise.ownerOf)),
                 typeof(WebVoteDeal).GetField(nameof(WebVoteDeal.ownerOf)), typeof(WebVoteDeal).GetField(nameof(WebVoteDeal.dealOf)) };
             foreach (var field in marks)
-                Assert.That((field.Attributes & System.Reflection.FieldAttributes.NotSerialized) != 0, Is.True, field.DeclaringType.Name + "." + field.Name);
+                Assert.That(field.IsDefined(typeof(NonSerializedAttribute), false), Is.True, field.DeclaringType.Name + "." + field.Name);
             var deal = Newtonsoft.Json.JsonConvert.DeserializeObject<WebVoteDeal>("{\"id\":\"d\",\"ownerOf\":[],\"dealOf\":[]}");
             Assert.That(deal.ownerOf == null && deal.dealOf == null, Is.True, "A round's JSON never sets them.");
             Assert.That(Newtonsoft.Json.JsonConvert.SerializeObject(new WebVotePromise { ownerOf = new List<string> { "x" } }), Does.Not.Contain("ownerOf"));

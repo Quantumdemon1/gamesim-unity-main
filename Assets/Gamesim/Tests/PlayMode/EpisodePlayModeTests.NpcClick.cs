@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Gamesim.Episode;
 using Gamesim.House;
 using NUnit.Framework;
 using UnityEngine;
@@ -593,8 +594,12 @@ namespace Gamesim.Tests.PlayMode
                     .Count(label => label.gameObject.activeInHierarchy && label.text.Contains("stakes")));
 
             yield return CaptureFraming("conversation-panel",
-                panel: (() => LastActive(Gamesim.Episode.EpisodeHud.ConversationColumnName), "The conversation's column"));
+                panel: (() => LastActive("Dial ground"), "The conversation's topic wheel"));
             AssertNothingInThePanelIsClipped("with the topics showing");
+            Assert.That(LastActive(EpisodeHud.ConversationColumnName), Is.Null, "Topic selection leaves the actors visible.");
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
+            yield return CaptureFraming("conversation-panel-deal-choices",
+                panel: (() => LastActive(EpisodeHud.ConversationColumnName), "The deals category's column"));
 
             // And again at the foot of the scroll, because the deal rows are down there. The first
             // frame showed a header that was verified and nine stakes tags that were not: they were
@@ -673,6 +678,9 @@ namespace Gamesim.Tests.PlayMode
                 .Select(label => label.text));
 
             var state = director.Snapshot;
+            Assert.That(director.CurrentConversationCategory, Is.Null, "Context remains visible on the root wheel.");
+            Assert.That(copy, Does.Contain(state.Find(npc.Id).name));
+            Assert.That(copy, Does.Contain(state.Find(npc.Id).pronouns));
             string standing = Gamesim.Presentation.RelationshipWeb.StandingWord(
                 Gamesim.Presentation.RelationshipWeb.KindOf(state, npc.Id));
             Assert.That(copy, Does.Contain(standing),

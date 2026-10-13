@@ -1,3 +1,4 @@
+using Gamesim.Presentation;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -101,6 +102,9 @@ namespace Gamesim.House
         public const float TwoShotDistance = 4.6f;
         public const float TwoShotPitch = 25f;
         public const float TwoShotFieldOfView = 40f;
+        // A 4:3 category leaves less room beside its reading column. Keep both full heads
+        // clear of the screen edge, including the largest text column.
+        public const float TwoShotNarrowCategoryFieldOfView = 56f;
         /// <summary>
         /// Zero: the two-shot eases the way conversation framing always has, arriving fast and
         /// settling slowly. A timed move starts from rest, and a framing that has not visibly
@@ -122,6 +126,7 @@ namespace Gamesim.House
         public const float TwoShotShift = -0.54f;
 
         private Shot? activeShot;
+        private float conversationRequestedFieldOfView;
         private Vector3 shotReturnFocus;
         private float shotReturnDistance, shotReturnYaw;
         // The angles the camera is actually at. Eased as angles rather than as a quaternion slerp:
@@ -162,6 +167,10 @@ namespace Gamesim.House
         /// <summary>The close-up volume's weight this frame: how far the depth of field is in.</summary>
         public float DepthOfFieldWeight => depthOfFieldWeight;
         public float DesiredDepthOfFieldWeight => activeShot.HasValue ? Mathf.Clamp01(activeShot.Value.DepthOfFieldWeight) : 0f;
+        /// <summary>The current shot's target lens; captures can wait for the actual requested field of view.</summary>
+        public float DesiredFieldOfView => activeShot.HasValue && activeShot.Value.FieldOfView > 0f
+            ? activeShot.Value.FieldOfView : defaultFieldOfView > 0f ? defaultFieldOfView
+            : viewCamera != null ? viewCamera.fieldOfView : 60f;
         /// <summary>How orthographic the lens is this frame, 0 (the camera's own) to 1.</summary>
         public float LensOrthographic => lensOrthographic;
         public float DesiredDistance => desiredDistance;
@@ -285,6 +294,7 @@ namespace Gamesim.House
             conversationPlayer = player;
             conversationNpc = npc;
             IsConversationFocused = true;
+            conversationRequestedFieldOfView = ConversationLensFieldOfView;
             if (reducedMotion) return;
             desiredFocus = ConversationFocus();
             desiredDistance = Mathf.Clamp(12f, minimumDistance, maximumDistance);
@@ -295,6 +305,12 @@ namespace Gamesim.House
 
         /// <summary>A bystander nearer the two-shot's eye than this would fill the frame with their back.</summary>
         public const float TwoShotClearance = 2.2f;
+
+        // Only a category occupying the left side of a narrow frame widens the lens. The pivot
+        // and its clearance checks use this same lens to retain the HUD's published actor window.
+        private float ConversationLensFieldOfView => ConversationWindowOffset > 0f
+            && viewCamera != null && viewCamera.aspect < 1.5f
+                ? TwoShotNarrowCategoryFieldOfView : TwoShotFieldOfView;
 
         /// <summary>
         /// The two-shot: across the pair, so both faces read, on the side that turns the camera
@@ -315,10 +331,11 @@ namespace Gamesim.House
             bool alternativeClear = TwoShotSideIsClear(farther, player, npc);
             float side = preferredClear || !alternativeClear ? nearer : farther;
             var pivot = TwoShotPivot(side);
+            conversationRequestedFieldOfView = ConversationLensFieldOfView;
             return new Shot
             {
                 Focus = pivot, Distance = TwoShotDistance, Pitch = TwoShotPitch, Yaw = side,
-                FieldOfView = TwoShotFieldOfView, Seconds = TwoShotSeconds, DepthOfFieldWeight = 1f,
+                FieldOfView = conversationRequestedFieldOfView, Seconds = TwoShotSeconds, DepthOfFieldWeight = 1f,
             };
         }
 
@@ -653,9 +670,31 @@ namespace Gamesim.House
                 {
                     EndConversation();
                 }
-                else if (!reducedMotion)
+                else
                 {
-                    desiredFocus = activeShot.HasValue ? TwoShotPivot(activeShot.Value.Yaw) : ConversationFocus();
+                    // A resize can change the requested lens even while reduced motion freezes
+                    // the eye and pivot. Only a real layout/lens-target change replaces the lens:
+                    // enabling reduced motion mid-blend must retain its current frozen field of view.
+                    float requestedFieldOfView = ConversationLensFieldOfView;
+                    if (activeShot.HasValue && !Mathf.Approximately(conversationRequestedFieldOfView, requestedFieldOfView))
+                    {
+                        if (!reducedMotion)
+                        {
+                            // The effective lens also moves the pivot. Recheck both candidate eyes
+                            // before an aspect change adopts that new framing at the same HUD offset.
+                            MoveTo(TwoShot(conversationPlayer, conversationNpc));
+                        }
+                        else
+                        {
+                            // Reduced motion keeps the frozen eye/pivot; only the resized lens adapts.
+                            var shot = activeShot.Value;
+                            shot.FieldOfView = requestedFieldOfView;
+                            activeShot = shot;
+                        }
+                    }
+                    conversationRequestedFieldOfView = requestedFieldOfView;
+                    if (!reducedMotion)
+                        desiredFocus = activeShot.HasValue ? TwoShotPivot(activeShot.Value.Yaw) : ConversationFocus();
                 }
             }
             else
@@ -985,13 +1024,47 @@ namespace Gamesim.House
         /// </summary>
         private Vector3 TwoShotPivot(float sideYaw)
         {
-            // Stood where the conversation's screen leaves room for the pair: its offset from the
-            // frame's centre, in half-heights, is metres at the shot's distance through its vertical
-            // field of view (the briefing does the same for the arena).
+            var focus = ConversationFocus() + Vector3.up * TwoShotLift;
+            var right = Quaternion.Euler(0f, sideYaw, 0f) * Vector3.right;
+            if (ConversationWindowOffset > 0f && viewCamera != null && viewCamera.aspect < 1.5f)
+            {
+                // Heads above the low focus are closer to a pitched camera than its focus plane.
+                // Solve the lateral eye shift from their actual perspective projections, so their
+                // mean lands in the HUD's published actor window rather than overshooting it.
+                var forward = Quaternion.Euler(TwoShotPitch, sideYaw, 0f) * Vector3.forward;
+                var eye = focus - forward * TwoShotDistance;
+                var mine = ConversationHeadPoint(conversationPlayer) - eye;
+                var theirs = ConversationHeadPoint(conversationNpc) - eye;
+                float mineDepth = Mathf.Max(.1f, Vector3.Dot(mine, forward));
+                float theirDepth = Mathf.Max(.1f, Vector3.Dot(theirs, forward));
+                float meanHorizontal = (Vector3.Dot(mine, right) / mineDepth
+                    + Vector3.Dot(theirs, right) / theirDepth) * .5f;
+                float meanInverseDepth = (1f / mineDepth + 1f / theirDepth) * .5f;
+                float targetHorizontal = ConversationWindowOffset
+                    * Mathf.Tan(ConversationLensFieldOfView * .5f * Mathf.Deg2Rad);
+                float headShift = (meanHorizontal - targetHorizontal) / meanInverseDepth;
+                return focus + right * headShift;
+            }
+            // Root topics and wide frames retain the authored framing.
             float shift = ConversationWindowOffset > 0f
                 ? -ConversationWindowOffset * TwoShotDistance * Mathf.Tan(TwoShotFieldOfView * .5f * Mathf.Deg2Rad)
                 : TwoShotShift;
-            return ConversationFocus() + Vector3.up * TwoShotLift + Quaternion.Euler(0f, sideYaw, 0f) * Vector3.right * shift;
+            return focus + right * shift;
+        }
+
+        private static Vector3 ConversationHeadPoint(Transform subject)
+        {
+            var presentation = subject.GetComponent<CharacterPresentation>();
+            if (presentation != null)
+            {
+                if (presentation.HeadBone != null) return presentation.HeadBone.position;
+                var root = presentation.VisualRoot;
+                var primitiveHead = root != null ? root.Find("Chest/Head pivot") : null;
+                if (primitiveHead != null) return primitiveHead.position;
+            }
+            var seat = subject.GetComponent<HouseSeatPresentation>();
+            if (seat != null && seat.Active) return seat.VisualFocus;
+            return ConversationPoint(subject) + Vector3.up * .7f;
         }
 
         private float conversationWindowOffset;

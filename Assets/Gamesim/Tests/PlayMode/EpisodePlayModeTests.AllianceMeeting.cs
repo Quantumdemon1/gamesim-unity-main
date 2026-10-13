@@ -86,6 +86,7 @@ namespace Gamesim.Tests.PlayMode
                     while (director.PlayerRoom != room && Time.realtimeSinceStartup < by) yield return null;
                     if (director.PlayerRoom != room || !director.TryOpenNpc(id)) continue;
                     yield return null;
+                    yield return EnterConversationCategory(EpisodeDirector.TogetherCategoryCaption);
                     yield break;
                 }
             }
@@ -144,7 +145,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(TagOn(row), Is.EqualTo(EpisodeDirector.WarmthTag + " · " + EpisodeDirector.LearnTag),
                     where + ": warmth, and in a vote week with voters at it, learning where a vote is going.");
                 Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.AllianceMeetCaption), Is.Null, where + ": and the old word is the backyard's alone, and only without the rules.");
-                AssertConversationFits(textSize, where);
+                AssertConversationFits(textSize, where, EpisodeDirector.ConversationTopicsBackCaption,
+                    EpisodeDirector.AllianceMeetingCaption, EpisodeDirector.PillowTalkCaption);
                 AssertTagsHaveRoom(where);
                 yield return CaptureConversation("conversation-alliance-meeting" + TextScales.Suffix(textSize), where, null);
                 if (larger)

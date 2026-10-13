@@ -175,6 +175,8 @@ namespace Gamesim.Episode
         private const float WindowSettleSeconds = 1f;
         /// <summary>When this director last asked for a window or a monitor, on the real clock.</summary>
         private float windowAppliedAt = float.NegativeInfinity;
+        private readonly DisplayEvidenceSettlement windowEvidence = new DisplayEvidenceSettlement();
+        private AsyncOperation pendingMonitorMove;
 
         /// <summary>
         /// Applies the window - mode and size - and counts it. The editor's game view is not a window
@@ -185,6 +187,9 @@ namespace Gamesim.Episode
             WindowApplications++;
             windowAppliedAt = Time.realtimeSinceStartup;
             var size = WindowSize();
+            pendingMonitorMove = null;
+            if (!Application.isEditor && !Application.isBatchMode)
+                windowEvidence.Begin(windowAppliedAt, DisplayChoices.ModeName(displayMode) + "," + DisplayChoices.SizeKey(size.x, size.y), DisplayEvidence());
             if (!Application.isEditor) Screen.SetResolution(size.x, size.y, ToFullScreenMode(displayMode));
         }
 
@@ -210,6 +215,7 @@ namespace Gamesim.Episode
         private void ReadWindowIntoRecord()
         {
             if (Application.isEditor || Application.isBatchMode) return;
+            if (windowEvidence.Pending) return;
             if (Time.realtimeSinceStartup - windowAppliedAt < WindowSettleSeconds) return;
             displayMode = WindowModeNow();
             resolution = ResolutionNow();
@@ -291,7 +297,41 @@ namespace Gamesim.Episode
             var position = displayMode == DisplayMode.Windowed
                 ? new Vector2Int(Mathf.Max(0, (target.width - Screen.width) / 2), Mathf.Max(0, (target.height - Screen.height) / 2))
                 : Vector2Int.zero;
-            if (!Application.isEditor) Screen.MoveMainWindowTo(target, position);
+            if (!Application.isEditor)
+            {
+                if (!Application.isBatchMode) windowEvidence.Begin(windowAppliedAt, DisplayEvidence(), DisplayEvidence());
+                pendingMonitorMove = Screen.MoveMainWindowTo(target, position);
+            }
+        }
+
+        /// <summary>
+        /// Runs before any early return in Update. Window changes are logged from their eventual
+        /// observation, never from a later unrelated volume click. An OS refusal is bounded and
+        /// explicit; external changes such as Alt+Enter are also observed without reapplying them.
+        /// </summary>
+        private void TickDisplayEvidence()
+        {
+            if (Application.isEditor || Application.isBatchMode || loggedSettings == null) return;
+            string actual = DisplayEvidence();
+            if (windowEvidence.Pending)
+            {
+                double now = Time.realtimeSinceStartup;
+                if (pendingMonitorMove != null && !pendingMonitorMove.isDone && now < windowEvidence.Deadline) return;
+                var observed = windowEvidence.Observe(now, actual);
+                if (observed == DisplayEvidenceSettlement.Observation.Waiting) return;
+                if (observed == DisplayEvidenceSettlement.Observation.TimedOut)
+                    Debug.LogWarning("Gamesim display request did not settle at " + windowEvidence.Expected + "; actual=" + actual + ".");
+                pendingMonitorMove = null;
+            }
+            string actualResolution = ResolutionNow();
+            bool recordChanged = displayMode != WindowModeNow() || resolution != actualResolution;
+            if (!SettingsEvidence.WindowObservationNeedsRecording(loggedSettings, actual, actualResolution, recordChanged)) return;
+            displayMode = WindowModeNow();
+            resolution = actualResolution;
+            ApplyDisplayPreferences();
+            Preferences.Save();
+            LogSettingChanges();
+            if (settingsOpen && recordChanged) Render();
         }
 
         /// <summary>The display block of the settings panel; each control cycles or flips one preference.</summary>

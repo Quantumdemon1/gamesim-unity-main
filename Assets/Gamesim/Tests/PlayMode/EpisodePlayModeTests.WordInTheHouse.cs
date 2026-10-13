@@ -74,6 +74,7 @@ namespace Gamesim.Tests.PlayMode
                 // The conversation: the one note over the chances says whose read they are first, and the reading last.
                 var listener = Listener(state);
                 yield return TalkTo(listener.id);
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
                 string where = "A conversation with the player's word heard of" + size;
                 Assert.That(director.IsConversationOpen, Is.True, where + ": the conversation opens.");
                 var notes = LiveRects(EpisodeHud.OddsNoteName);
@@ -167,6 +168,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(YourWord.On(plain), Is.False);
             var them = Listener(plain);
             yield return TalkTo(them.id);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             Assert.That(director.IsConversationOpen, Is.True, "Without the rules: the conversation opens.");
             var plainNotes = LiveRects(EpisodeHud.OddsNoteName);
             Assert.That(plainNotes, Has.Count.EqualTo(1));

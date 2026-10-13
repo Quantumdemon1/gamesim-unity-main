@@ -33,6 +33,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(director.TryOpenNpc(voter.id), Is.True, "The conversation opens.");
             yield return null;
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
 
             var nominees = state.nominees.Select(id => state.Find(id)).ToList();
             foreach (var nominee in nominees)

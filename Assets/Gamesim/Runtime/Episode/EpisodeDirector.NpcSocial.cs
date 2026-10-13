@@ -367,7 +367,7 @@ namespace Gamesim.Episode
             var result = engine.PrepareNpcOperation(request);
             if (!result.accepted) return false;
             if (!TryPersistCandidate(result.candidate, out var installed, out var failure))
-            { message = failure; SetNpcWorldPaused(true); npcCaption?.Hide(); Render(); return false; }
+            { message = failure; BeginPersistenceNotice(failure); SetNpcWorldPaused(true); npcCaption?.Hide(); Render(); return false; }
             if (queued.Generation != loadGeneration) { StopNpcWorld("A stale world operation cannot publish into a loaded session."); return false; }
             if (startLease != null) npcPendingWorld[request.sequence] = startLease;
             engine = new EpisodeEngine(installed);
@@ -504,6 +504,7 @@ namespace Gamesim.Episode
             npcWorldFailed = true; npcWorldFailure = reason ?? "Housemate navigation is unavailable.";
             SetNpcWorldPaused(true); npcCaption?.Hide();
             message = "Housemate activity is paused: " + npcWorldFailure + " Your episode and saved history remain available.";
+            BeginSystemNotice(message);
         }
         private void ResetNpcSocialForLoad()
         {
@@ -512,6 +513,7 @@ namespace Gamesim.Episode
         }
         private void DisposeNpcSocialWorld()
         {
+            ResetNpcInvitationsForLoad();
             // The talk spot is the world's: it goes with it, the player's seat with it.
             EndTalkSpot();
             EndDiaryVisit(true);

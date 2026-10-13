@@ -1,98 +1,126 @@
-# Builds only the inputs proven by a named fully passing test run. No player is launched.
-param([Parameter(Mandatory=$true)][string]$TestName, [switch]$WithoutUma)
-$ErrorActionPreference = 'Stop'
+# Build only exact inputs proven by a full schema4 suite run. No player is launched.
+param([Parameter(Mandatory=$true)][string]$TestName,[switch]$WithoutUma,[switch]$RetainInstalledUma,[int]$BuildTimeoutSeconds=5400)
+$ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'review-evidence.ps1')
-if ($TestName -notmatch '^[a-zA-Z0-9_-]+$') { throw 'Supply the simple name of the final passing test run.' }
-$projectRoot = Split-Path -Parent $PSScriptRoot
-$acceptanceRoot = (Resolve-Path -LiteralPath $(if ($env:GAMESIM_ACCEPTANCE) { $env:GAMESIM_ACCEPTANCE } else { 'D:\GamesimAcceptance' })).Path
-$summaryPath = Join-Path $acceptanceRoot "Logs/$TestName-summary.json"
-$summary = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
-# Schema 3 changed what buildSettingsSha256 means, so evidence captured by an earlier version
-# is not comparable with a manifest captured now: the hashes would differ for a file that had
-# not changed, and the audit would refuse a sound build for the wrong reason. Rejecting the
-# stale summary outright says so, rather than leaving that to be read out of a drift report.
-if ($summary.schema -ne 3 -or $summary.status -ne 'Passed' -or $summary.umaEnabled -eq [bool]$WithoutUma) {
-    throw 'A fully passing schema3 summary for the same UMA configuration is required; re-run verify-review-candidate.ps1 with a fresh name if the evidence predates the current input accounting.'
-}
-foreach ($pair in @(@($summary.sourceManifest,$summary.sourceManifestSha256),
-    @($summary.finalSourceManifest,$summary.finalSourceManifestSha256), @($summary.driftReport,$summary.driftReportSha256))) {
-    if ((Get-ReviewHash $pair[0]) -ne $pair[1]) { throw "Test evidence changed: $($pair[0])" }
-}
-$expectedSuites = @('Gamesim.EditModeTests','Gamesim.PlayModeTests')
-if (-not $WithoutUma) { $expectedSuites += 'Gamesim.Uma.PlayModeTests' }
-if ((@($summary.suites.suite | Sort-Object) -join '|') -ne (($expectedSuites | Sort-Object) -join '|')) { throw 'Incomplete owned test suites.' }
-foreach ($suite in $summary.suites) {
-    if ($suite.total -le 0 -or $suite.passed -ne $suite.total -or $suite.failed -ne 0 -or $suite.skipped -ne 0 -or $suite.exit -ne 0 -or
-            (Get-ReviewHash $suite.report) -ne $suite.reportSha256 -or (Get-ReviewHash $suite.log) -ne $suite.logSha256) {
-        throw "Missing, failed or changed test evidence: $($suite.suite)"
+. (Join-Path $PSScriptRoot 'review-workflow.ps1')
+$projectRoot=Split-Path -Parent $PSScriptRoot
+$destination=Get-ReviewDestination $projectRoot
+$runRoot=New-ReviewRunRoot $destination ('build-'+$TestName)
+$lease=$null; $snapshot=$null; $before=$null; $after=$null; $failure=$null; $accepted=$false
+$process=$null; $report=$null; $postDrift=@(); $summary=$null; $baselineSha256=$null; $buildRoot=$null
+try {
+    $lease=Enter-ReviewLease $destination; Assert-ReviewEditorIdle $destination
+    if ($TestName -notmatch '^[a-zA-Z0-9_-]{1,100}$') { throw 'Supply a simple passing test name.' }
+    $summaryPath=Join-Path $destination ("Logs/"+$TestName+'-summary.json')
+    $summary=Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
+    if ($summary.schema -ne 4 -or $summary.status -cne 'Passed' -or -not $summary.fullSuiteAcceptance -or
+        $summary.umaEnabled -eq [bool]$WithoutUma -or $summary.retainedInstalledUma -ne [bool]$RetainInstalledUma) {
+        throw 'Fresh complete schema4 suites for exactly this UMA projection are required.'
     }
-    [xml]$xml = Get-Content -LiteralPath $suite.report
-    if ([int]$xml.'test-run'.total -ne $suite.total -or [int]$xml.'test-run'.passed -ne $suite.total) { throw 'Test totals do not match their XML.' }
-}
-$testedBefore = Get-Content -LiteralPath $summary.sourceManifest -Raw | ConvertFrom-Json
-$testedAfter = Get-Content -LiteralPath $summary.finalSourceManifest -Raw | ConvertFrom-Json
-if ($testedBefore.schema -ne 3 -or $testedAfter.schema -ne 3) {
-    throw 'The tested input manifests are not schema3; re-run verify-review-candidate.ps1 with a fresh name.'
-}
-$baselinePath = Join-Path $PSScriptRoot 'baseline.txt'
-$baselineSha256 = Assert-ReviewSuiteFloorEvidence $summary $baselinePath $expectedSuites $testedBefore $testedAfter
-$stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')
-$prefix = Join-Path $acceptanceRoot "Logs/review13-build-$stamp"
-$preview = New-ReviewInputManifest -ProjectRoot $projectRoot -WorkflowRoot $projectRoot -WithoutUma:$WithoutUma -PreviewSync -RetainedRoot $acceptanceRoot
-Write-ReviewJson $preview "$prefix-live-inputs.json"
-$previewDrift = @(Compare-ReviewInputs -Before $testedBefore -After $preview -AllowShippingGpu)
-Write-ReviewJson $previewDrift "$prefix-live-drift.json"
-if (@($previewDrift | Where-Object { -not $_.allowed }).Count -ne 0) { throw "Live product inputs differ from the passing snapshot: $prefix-live-drift.json. Nothing synced or built." }
-if ((Get-ReviewHash $baselinePath) -ne $baselineSha256) { throw 'Suite baseline changed before sync; run fresh full suites.' }
-& (Join-Path $PSScriptRoot 'sync-acceptance.ps1') -WithoutUma:$WithoutUma
-Assert-ReviewConfiguration $acceptanceRoot ([bool]$WithoutUma) 1
-$before = New-ReviewInputManifest -ProjectRoot $acceptanceRoot -WorkflowRoot $projectRoot -WithoutUma:$WithoutUma -MetaArchive "$prefix-meta-before"
-Write-ReviewJson $before "$prefix-inputs-before.json"
-$preDrift = @(Compare-ReviewInputs -Before $testedBefore -After $before -AllowShippingGpu)
-Write-ReviewJson $preDrift "$prefix-before-drift.json"
-if (@($preDrift | Where-Object { -not $_.allowed }).Count -ne 0) { throw "Synced product inputs differ from passing tests: $prefix-before-drift.json" }
-$version = (Get-Content -LiteralPath (Join-Path $acceptanceRoot 'ProjectSettings/ProjectVersion.txt') |
-    Select-String '^m_EditorVersion:\s*(.+)$').Matches[0].Groups[1].Value.Trim()
-$unityPath = "C:\Program Files\Unity\Hub\Editor\$version\Editor\Unity.exe"
-if (-not (Test-Path -LiteralPath $unityPath)) { throw "Unity is not installed: $unityPath" }
-$log = "$prefix.log"
-$arguments = @('-batchmode','-quit','-accept-apiupdate','-projectPath',('"'+$acceptanceRoot+'"'),'-executeMethod',
-    'Gamesim.Editor.U01ProjectSetup.BuildReviewCandidate','-logFile',('"'+$log+'"'))
-$buildStarted = [DateTime]::UtcNow
-$failure = $null; $process = $null
-try { $process = Start-Process -FilePath $unityPath -ArgumentList $arguments -WindowStyle Hidden -PassThru -Wait }
-catch { $failure = $_.Exception.Message }
+    $testedRoot=Assert-ReviewPlainPath $summary.runRoot
+    if (-not $testedRoot.StartsWith((Join-Path $destination 'Logs/validation')+'\',[StringComparison]::OrdinalIgnoreCase)) { throw 'Test evidence is outside the destination evidence boundary.' }
+    if ((Get-ReviewHash $summaryPath) -ne (Get-ReviewHash (Join-Path $testedRoot 'summary.json'))) { throw 'Test summary convenience copy changed.' }
+    foreach ($pair in @(@($summary.sourceManifest,$summary.sourceManifestSha256),
+        @($summary.finalSourceManifest,$summary.finalSourceManifestSha256),@($summary.driftReport,$summary.driftReportSha256),
+        @($summary.snapshotProof,$summary.snapshotProofSha256),@($summary.provenance,$summary.provenanceSha256))) {
+        Assert-ReviewEvidenceFile $pair[0] $testedRoot $pair[1]
+    }
+    $testedBefore=Get-Content -LiteralPath $summary.sourceManifest -Raw | ConvertFrom-Json
+    $testedAfter=Get-Content -LiteralPath $summary.finalSourceManifest -Raw | ConvertFrom-Json
+    $testDrift=Get-Content -LiteralPath $summary.driftReport -Raw | ConvertFrom-Json
+    if (@($testDrift.changes | Where-Object {-not $_.allowed}).Count -or @($testDrift.sourceChanges).Count) { throw 'Passing evidence contains source drift.' }
+    $expected=@('Gamesim.EditModeTests','Gamesim.PlayModeTests')
+    if (-not $WithoutUma) { $expected+='Gamesim.Uma.PlayModeTests' }
+    if ((@($summary.suites.suite | Sort-Object) -join '|') -cne (($expected | Sort-Object) -join '|')) { throw 'Incomplete or duplicate owned suites.' }
+    foreach ($suite in $summary.suites) {
+        Assert-ReviewEvidenceFile $suite.report $testedRoot $suite.reportSha256
+        Assert-ReviewEvidenceFile $suite.log $testedRoot $suite.logSha256
+        $actual=Read-ReviewSuiteReport $suite.report $suite.suite $suite.minimumCount $suite.exit ([bool]$suite.filtered)
+        if (-not $actual.fullSuite -or $actual.total -ne $suite.total -or $actual.passed -ne $suite.passed) { throw 'Not complete passing suite evidence.' }
+    }
+    $baselineSha256=Assert-ReviewSuiteFloorEvidence $summary (Join-Path $PSScriptRoot 'baseline.txt') $expected $testedBefore $testedAfter
+    $snapshot=New-ReviewSnapshot $projectRoot $runRoot
+    $testedSnapshot=Assert-ReviewPlainPath $summary.snapshot
+    if ($testedSnapshot -ne (Join-Path $testedRoot 'snapshot')) { throw 'Unexpected tested snapshot path.' }
+    $testedRaw=Get-Content -LiteralPath (Join-Path $testedRoot 'snapshot.json') -Raw | ConvertFrom-Json
+    Assert-ReviewManifestEqual $testedRaw (New-ReviewRawManifest $testedSnapshot)
+    Assert-ReviewManifestEqual $testedRaw $snapshot.manifest
+    $preview=New-ReviewInputManifest -ProjectRoot $snapshot.root -WorkflowRoot $snapshot.root -WithoutUma:$WithoutUma -PreviewSync -RetainedRoot $destination -RetainInstalledUma:$RetainInstalledUma
+    Write-ReviewNewJson $preview (Join-Path $runRoot 'projection-before.json')
+    $previewDrift=@(Compare-ReviewInputs -Before $testedBefore -After $preview -AllowShippingGpu -RequireWorkflowStable)
+    Write-ReviewNewJson $previewDrift (Join-Path $runRoot 'projection-drift.json')
+    Assert-ReviewRetainedVendorEqual $testedBefore $preview
+    if (@($previewDrift | Where-Object {-not $_.allowed}).Count) { throw 'Current retained dependencies/product inputs differ from passing tests; nothing synced or built.' }
+    & (Join-Path $PSScriptRoot 'sync-acceptance.ps1') -WithoutUma:$WithoutUma -RetainInstalledUma:$RetainInstalledUma -ValidationLease $lease -Snapshot $snapshot
+    Assert-ReviewConfiguration $destination ([bool]$WithoutUma) 1
+    $before=New-ReviewInputManifest -ProjectRoot $destination -WorkflowRoot $snapshot.root -WithoutUma:$WithoutUma -RetainInstalledUma:$RetainInstalledUma -MetaArchive (Join-Path $runRoot 'meta-before')
+    Write-ReviewNewJson $before (Join-Path $runRoot 'inputs-before.json')
+    $preDrift=@(Compare-ReviewInputs -Before $testedBefore -After $before -AllowShippingGpu -RequireWorkflowStable)
+    Write-ReviewNewJson $preDrift (Join-Path $runRoot 'before-drift.json')
+    if (@($preDrift | Where-Object {-not $_.allowed}).Count) { throw 'Synced inputs do not match passing tests.' }
+    $version=(Get-Content -LiteralPath (Join-Path $destination 'ProjectSettings/ProjectVersion.txt') | Select-String '^m_EditorVersion:\s*(.+)$').Matches[0].Groups[1].Value.Trim()
+    $unity=if ($env:GAMESIM_UNITY) {$env:GAMESIM_UNITY} else {"C:\Program Files\Unity\Hub\Editor\$version\Editor\Unity.exe"}
+    $rawReport=Join-Path $destination 'Logs/review13-build-report.json'
+    $buildRoot=Join-Path $destination 'Builds/Port-Windows-Review13'
+    # Preserve every byte of previous fixed-output build before the existing build owner overwrites it.
+    $previous=@()
+    if (Test-Path -LiteralPath $buildRoot) {
+        foreach ($file in @(Get-ReviewFiles $buildRoot)) {
+            $relative=$file.FullName.Substring($buildRoot.Length+1).Replace('\','/')
+            $previous+=Get-ReviewFileRecord $file.FullName $relative (Join-Path $runRoot ('previous-build/'+$relative))
+        }
+    }
+    if (Test-Path -LiteralPath $rawReport) { [void](Get-ReviewFileRecord $rawReport 'review13-build-report.json' (Join-Path $runRoot 'previous-build-report.json')) }
+    Write-ReviewNewJson $previous (Join-Path $runRoot 'previous-build-tree.json')
+    $log=Join-Path $runRoot 'build.log'
+    $arguments=@('-batchmode','-quit','-accept-apiupdate','-projectPath',('"'+$destination+'"'),'-executeMethod',
+        'Gamesim.Editor.U01ProjectSetup.BuildReviewCandidate','-logFile',('"'+$log+'"'))
+    $buildStarted=[DateTime]::UtcNow
+    $process=Invoke-ReviewOwnedProcess $unity $arguments $BuildTimeoutSeconds (Join-Path $runRoot 'build-process.json')
+    if ($process.failure -or -not $process.closed -or $process.stopped -or $process.timedOut -or $process.exit -ne 0) { throw 'Owned build did not finish normally within its deadline.' }
+    if (-not (Test-Path -LiteralPath $rawReport) -or (Get-Item -LiteralPath $rawReport).LastWriteTimeUtc -lt $buildStarted) { throw 'Missing fresh build report.' }
+    [void](Get-ReviewFileRecord $rawReport 'build-report.json' (Join-Path $runRoot 'build-report.json'))
+    $report=Get-Content -LiteralPath (Join-Path $runRoot 'build-report.json') -Raw | ConvertFrom-Json
+    if ($report.result -cne 'Succeeded' -or $report.errors -ne 0 -or -not (Test-Path -LiteralPath (Join-Path $buildRoot 'Gamesim.exe') -PathType Leaf)) { throw 'Build report/executable gate failed.' }
+} catch { $failure=$_.Exception.Message }
 finally {
-    $after = New-ReviewInputManifest -ProjectRoot $acceptanceRoot -WorkflowRoot $projectRoot -WithoutUma:$WithoutUma -MetaArchive "$prefix-meta-after"
-    Write-ReviewJson $after "$prefix-inputs-after.json"
-    $postDrift = @(Compare-ReviewInputs -Before $testedAfter -After $after -AllowShippingGpu -AllowBuildSettings)
-    Write-ReviewJson $postDrift "$prefix-after-drift.json"
+    try {
+        if ($snapshot) {
+            try {
+                $after=New-ReviewInputManifest -ProjectRoot $destination -WorkflowRoot $snapshot.root -WithoutUma:$WithoutUma -RetainInstalledUma:$RetainInstalledUma -MetaArchive (Join-Path $runRoot 'meta-after')
+                Write-ReviewNewJson $after (Join-Path $runRoot 'inputs-after.json')
+                if ($summary) { $postDrift=@(Compare-ReviewInputs -Before $testedAfter -After $after -AllowShippingGpu -AllowBuildSettings -RequireWorkflowStable) }
+                Write-ReviewNewJson $postDrift (Join-Path $runRoot 'after-drift.json')
+                $sourceFinal=New-ReviewRawManifest $projectRoot
+                Write-ReviewNewJson $sourceFinal (Join-Path $runRoot 'source-final.json')
+                Assert-ReviewManifestEqual $snapshot.original $sourceFinal
+                Assert-ReviewSnapshot $snapshot
+                Assert-ReviewSourceIdentity $snapshot
+                Assert-ReviewRetainedVendorEqual $testedAfter $after
+                Assert-ReviewEditorIdle $destination
+                if ((Get-ReviewHash (Join-Path $PSScriptRoot 'baseline.txt')) -ne $baselineSha256) { throw 'Baseline changed during build.' }
+            } catch { $failure=($failure+'; final audit: '+$_.Exception.Message) }
+        }
+        try {
+            if (-not $failure -and $report -and @($postDrift | Where-Object {-not $_.allowed}).Count -eq 0) {
+                $tree=@(Get-ReviewFiles $buildRoot | ForEach-Object {Get-ReviewFileRecord $_.FullName $_.FullName.Substring($buildRoot.Length+1).Replace('\','/')})
+                Write-ReviewNewJson ([ordered]@{root=$buildRoot;files=$tree}) (Join-Path $runRoot 'build-tree.json')
+                $accepted=$true
+            }
+        } catch { $failure=($failure+'; build output audit: '+$_.Exception.Message); $accepted=$false }
+        $evidence=[ordered]@{schema=4;status=$(if ($accepted) {'Succeeded'} else {'Failed'});failure=$failure;runRoot=$runRoot;
+            executable=$(if ($buildRoot) {Join-Path $buildRoot 'Gamesim.exe'} else {$null});umaEnabled=(-not $WithoutUma);
+            retainedInstalledUma=[bool]$RetainInstalledUma;baselinePath=(Join-Path $PSScriptRoot 'baseline.txt');baselineSha256=$baselineSha256;
+            suiteFloors=$(if ($summary) {$summary.suiteFloors} else {$null});testSummary=$(if ($summary) {$summaryPath} else {$null});
+            testSummarySha256=$(if ($summary) {Get-ReviewHash $summaryPath} else {$null});
+            inputsBefore=$(if ($before) {Join-Path $runRoot 'inputs-before.json'} else {$null});inputsBeforeSha256=$(if ($before) {Get-ReviewHash (Join-Path $runRoot 'inputs-before.json')} else {$null});
+            inputsAfter=$(if ($after) {Join-Path $runRoot 'inputs-after.json'} else {$null});inputsAfterSha256=$(if ($after) {Get-ReviewHash (Join-Path $runRoot 'inputs-after.json')} else {$null});
+            buildTree=$(if ($accepted) {Join-Path $runRoot 'build-tree.json'} else {$null});buildTreeSha256=$(if ($accepted) {Get-ReviewHash (Join-Path $runRoot 'build-tree.json')} else {$null});
+            report=$(if ($report) {Join-Path $runRoot 'build-report.json'} else {$null});reportSha256=$(if ($report) {Get-ReviewHash (Join-Path $runRoot 'build-report.json')} else {$null});
+            log=$(if ($process) {$log} else {$null});logSha256=$(if ($process -and (Test-Path -LiteralPath $log)) {Get-ReviewHash $log} else {$null});
+            playerLaunched=$false;leaseToken=$(if ($lease) {$lease.token} else {$null})}
+        Write-ReviewNewJson $evidence (Join-Path $runRoot 'evidence.json')
+    } finally { Exit-ReviewLease $lease }
 }
-$rawReport = Join-Path $acceptanceRoot 'Logs/review13-build-report.json'
-$reportPath = "$prefix-report.json"
-if (Test-Path -LiteralPath $rawReport) {
-    if ((Get-Item -LiteralPath $rawReport).LastWriteTimeUtc -ge $buildStarted) { Copy-Item -LiteralPath $rawReport -Destination $reportPath }
-}
-if ($failure -or -not $process -or $process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $reportPath)) {
-    throw "Build failed or produced no fresh report. $failure See $log. No executable launched."
-}
-$report = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
-if ($report.result -ne 'Succeeded' -or $report.errors -ne 0 -or @($postDrift | Where-Object { -not $_.allowed }).Count -ne 0) {
-    throw "Build or post-build input audit failed: $reportPath; $prefix-after-drift.json"
-}
-if ((Get-ReviewHash $baselinePath) -ne $baselineSha256) { throw 'Suite baseline changed during build; no candidate acceptance.' }
-$buildRoot = Join-Path $acceptanceRoot 'Builds/Port-Windows-Review13'
-$exe = Join-Path $buildRoot 'Gamesim.exe'
-if (-not (Test-Path -LiteralPath $exe)) { throw 'Successful report has no player executable.' }
-$buildFiles = @(Get-ChildItem -LiteralPath $buildRoot -File -Recurse -Force | ForEach-Object {
-    [pscustomobject]@{path=$_.FullName.Substring($buildRoot.Length+1).Replace('\','/');bytes=$_.Length;sha256=(Get-ReviewHash $_.FullName)}
-} | Sort-Object path)
-Write-ReviewJson ([ordered]@{capturedUtc=[DateTime]::UtcNow.ToString('o');root=$buildRoot;files=$buildFiles}) "$prefix-build-tree.json"
-$evidence = [ordered]@{status='Succeeded';executable=$exe;umaEnabled=(-not $WithoutUma);
-    baselinePath=$baselinePath;baselineSha256=$baselineSha256;suiteFloors=$summary.suiteFloors;
-    testSummary=$summaryPath;testSummarySha256=(Get-ReviewHash $summaryPath);report=$reportPath;reportSha256=(Get-ReviewHash $reportPath);
-    inputsBefore="$prefix-inputs-before.json";inputsBeforeSha256=(Get-ReviewHash "$prefix-inputs-before.json");
-    inputsAfter="$prefix-inputs-after.json";inputsAfterSha256=(Get-ReviewHash "$prefix-inputs-after.json");
-    buildTree="$prefix-build-tree.json";buildTreeSha256=(Get-ReviewHash "$prefix-build-tree.json");log=$log;logSha256=(Get-ReviewHash $log)}
-Write-ReviewJson $evidence "$prefix-evidence.json"
+if (-not $accepted) { throw "Build/snapshot gate failed: $runRoot. $failure" }
 $evidence | ConvertTo-Json -Depth 5

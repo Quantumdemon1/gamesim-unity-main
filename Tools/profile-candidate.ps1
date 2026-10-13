@@ -14,8 +14,10 @@
 # three valid runs, of one build (one buildGuid), whose whole tree matched -BuildEvidence file by
 # file. The exit code is the evidence's completeness, never the performance verdict.
 #
-# Refuses to start while Unity.exe or Gamesim.exe is running (close them yourself, saving any work),
-# and records any that start during a run. Without -BuildEvidence the runs are still made, but the
+# Refuses to start while a Unity Editor, unknown Unity.exe or Gamesim.exe is running (close them yourself,
+# saving any work). Only the exact installed Hub executable's literal quoted serve command is classified
+# separately; it is retained in host telemetry, not a claim that CPU/GPU background work is globally quiet.
+# Records known-name processes seen during a run. Without -BuildEvidence the runs are still made, but the
 # evidence is incomplete: Gamesim.exe alone is Unity's player stub and does not identify a build.
 #
 #   powershell -NoProfile -File Tools/profile-candidate.ps1
@@ -30,6 +32,8 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'review-evidence.ps1')
+. (Join-Path $PSScriptRoot 'review-workflow.ps1')
+. (Join-Path $PSScriptRoot 'profile-evidence.ps1')
 $invariant = [Globalization.CultureInfo]::InvariantCulture
 
 $acceptanceRoot = if ($env:GAMESIM_ACCEPTANCE) { $env:GAMESIM_ACCEPTANCE } else { 'D:\GamesimAcceptance' }
@@ -38,25 +42,49 @@ if (-not (Test-Path -LiteralPath $Executable -PathType Leaf)) { throw "No player
 $Executable = (Resolve-Path -LiteralPath $Executable).Path
 if ([IO.Path]::GetFileName($Executable) -ne 'Gamesim.exe') { throw "Profile the built Gamesim.exe, not $Executable." }
 
+$script:profileKnownProcesses = @{}
+$profileProgramFiles = [Environment]::GetFolderPath([Environment+SpecialFolder]::ProgramFiles)
 function Get-CompetingProcesses {
-    @(Get-Process -Name 'Unity', 'Gamesim' -ErrorAction SilentlyContinue)
+    # CIM supplies executable/command/creation identity. Never publish an unknown Unity command line:
+    # editor launch arguments can carry credentials. A failed query cannot become a clean sample.
+    foreach ($item in @(Get-CimInstance -ClassName Win32_Process -Filter "Name='Unity.exe' OR Name='Gamesim.exe'" -ErrorAction Stop)) {
+        $ignored = Test-ProfileUnityHubServeProcess $item $profileProgramFiles
+        $startedUtc = if ($item.CreationDate -is [DateTime]) { $item.CreationDate.ToUniversalTime().ToString('o') } else { $null }
+        $key = [string]$item.ProcessId+'|'+$startedUtc+'|'+[string]$item.ExecutablePath+'|'+[string]$ignored
+        $now = [DateTime]::UtcNow.ToString('o')
+        if (-not $script:profileKnownProcesses.ContainsKey($key)) {
+            $script:profileKnownProcesses[$key] = [ordered]@{name=[string]$item.Name;pid=$item.ProcessId;startedUtc=$startedUtc;
+                executable=[string]$item.ExecutablePath;firstSeenUtc=$now;lastSeenUtc=$now;
+                classification=$(if ($ignored) {'ExactUnityHubServeHelper'} else {'Competitor'});
+                exactInstalledHubServeMatch=[bool]$ignored}
+        } else { $script:profileKnownProcesses[$key].lastSeenUtc=$now }
+        if (-not $ignored) {
+            [pscustomobject]@{ProcessName=[IO.Path]::GetFileNameWithoutExtension([string]$item.Name);Id=$item.ProcessId;
+                executable=[string]$item.ExecutablePath;startedUtc=$startedUtc}
+        }
+    }
 }
 function Assert-NothingCompeting([string]$When) {
-    $competing = Get-CompetingProcesses
+    $competing = @(Get-CompetingProcesses)
     if ($competing.Count -gt 0) {
         $names = ($competing | ForEach-Object { "$($_.ProcessName).exe (pid $($_.Id))" }) -join ', '
         throw "Refusing to profile ${When}: $names running. A clean performance run has no editor, build or other game beside it; close them yourself (saving any work) and run again."
     }
 }
-Assert-NothingCompeting 'at all'
-
-if (-not $OutputRoot) { $OutputRoot = Join-Path $acceptanceRoot ('Logs\profile-' + [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ', $invariant)) }
+if (-not $OutputRoot) { $OutputRoot = Join-Path $acceptanceRoot ('Logs\profile-' + [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ', $invariant) + '-' + [Guid]::NewGuid().ToString('N')) }
+Assert-ReviewPlainPath $OutputRoot | Out-Null
 if ((Test-Path -LiteralPath $OutputRoot) -and @(Get-ChildItem -LiteralPath $OutputRoot -Force).Count -ne 0) {
     throw "The output root already holds files: $OutputRoot. Every profile gets a fresh one."
 }
 New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
 $OutputRoot = (Resolve-Path -LiteralPath $OutputRoot).Path
 if ($Seconds -lt 300) { Write-Warning "A $Seconds s sample is shorter than the 300 s the verdict requires; every run will read 'Not assessed'." }
+$lease = $null
+$ownedProcess = $null
+$results = @()
+try {
+    $lease = Enter-ReviewLease $acceptanceRoot
+    Assert-NothingCompeting 'at all'
 
 # ------------------------------------------------------------------ what is being measured, and where
 
@@ -98,28 +126,16 @@ function Get-HostIdentity {
     [ordered]@{ computer = $env:COMPUTERNAME; gpus = $gpus; processors = $cpu;
         operatingSystem = if ($os) { "$($os.Caption) $($os.Version)" } else { $null };
         memoryBytes = if ($os) { [int64]$os.TotalVisibleMemorySize * 1024 } else { $null };
-        powerScheme = ((powercfg /getactivescheme 2>$null) -join ' ').Trim() }
+        powerScheme = ((powercfg /getactivescheme 2>$null) -join ' ').Trim();
+        knownNameProcessObservations = @($script:profileKnownProcesses.Values | Sort-Object name,pid,startedUtc);
+        ignoredUnityHubHelpers = @($script:profileKnownProcesses.Values | Where-Object classification -CEQ 'ExactUnityHubServeHelper' | Sort-Object pid,startedUtc);
+        processClassifier = [ordered]@{queriedNames=@('Unity.exe','Gamesim.exe');expectedHubExecutable=(Join-Path $profileProgramFiles 'Unity Hub\resources\unity.exe');
+            policy='Only exact installed executable plus exact quoted serve command with complete CIM identity is a non-editor helper. All other monitored names compete except this script''s exact owned player during its own sample.';
+            limitation='This known-name classification does not establish globally quiet CPU/GPU or eliminate the helper''s background cost.'} }
 }
 
 # A run's verdict counts only when the run is valid evidence: its report was read, it measured the
 # house asked for in a season it started, nothing competed beside it, and its own checks Passed.
-function Test-ProfileRunValid($Run) {
-    [bool]($Run.report -and $Run.houseSizeMatches -and @($Run.competingProcesses).Count -eq 0 -and $Run.status -eq 'Passed')
-}
-function Get-ProfileRunVerdict($Run) {
-    if (-not $Run.report) {
-        return "Not assessed: no report ($($Run.ending), exit $($Run.exitCode))" + $(if ($Run.reportError) { '; ' + $Run.reportError } else { '' }) + '.'
-    }
-    $why = @()
-    if (-not $Run.houseSizeMatches) { $why += "it measured $($Run.houseSize) houseguests (stress $($Run.reportStressRoster), season $($Run.seasonSource)) for the $($Run.houseSizeRequested) asked for" }
-    if (@($Run.competingProcesses).Count -gt 0) { $why += "$(@($Run.competingProcesses) -join ', ') ran beside it" }
-    if ($Run.status -ne 'Passed') { $why += "its own checks were $($Run.status) with $($Run.errors) errors" }
-    $said = if ($Run.performanceAcceptance) { [string]$Run.performanceAcceptance } else { 'nothing' }
-    if ($why.Count -gt 0) { return "Not assessed: $($why -join '; ') (the player said: $said)" }
-    if (-not $Run.performanceAcceptance) { return 'Not assessed: the report carries no verdict.' }
-    return [string]$Run.performanceAcceptance
-}
-
 # ------------------------------------------------------------------ the three runs, one at a time
 
 $runs = @(
@@ -144,25 +160,32 @@ foreach ($run in $runs) {
     $started = [DateTime]::UtcNow
     Write-Host "Profiling $($run.purpose): $($Seconds) s steady sample into $root"
     $process = Start-Process -FilePath $Executable -ArgumentList $arguments -WorkingDirectory (Split-Path -Parent $Executable) -PassThru
+    $ownedProcess = $process
     $null = $process.Handle   # Cached now, or Windows PowerShell reports no exit code once the player has gone.
     $deadline = $started.AddSeconds($Seconds + $StartupAllowanceSeconds)
     $competingSeen = @{}
-    while (-not $process.HasExited -and [DateTime]::UtcNow -lt $deadline) {
+    while (-not $process.WaitForExit(0) -and [DateTime]::UtcNow -lt $deadline) {
         foreach ($other in Get-CompetingProcesses) {
             if ($other.Id -ne $process.Id) { $competingSeen["$($other.ProcessName).exe (pid $($other.Id))"] = $true }
         }
         Start-Sleep -Seconds 5
     }
     $ending = 'exited'
-    if (-not $process.HasExited) {
+    if (-not $process.WaitForExit(0)) {
         # Past the steady sample and the whole startup allowance: ask the window to close, and only
         # then end the one process this script started.
         $null = $process.CloseMainWindow()
-        if ($process.WaitForExit(60000)) { $ending = 'closed after the deadline' }
-        else { Stop-Process -Id $process.Id -Force; $process.WaitForExit(); $ending = 'stopped after the deadline' }
+        if ($process.WaitForExit(10000)) { $ending = 'closed after the deadline' }
+        else {
+            $process.Kill()
+            if (-not $process.WaitForExit(5000)) { throw 'The owned isolated profile player did not close within its bounded cleanup.' }
+            $ending = 'stopped after the deadline'
+        }
     }
-    $process.WaitForExit()
-    $finished = [DateTime]::UtcNow
+    if (-not $process.WaitForExit(0)) { throw 'The owned profile player has not signaled completion.' }
+    $finished = $process.ExitTime.ToUniversalTime()
+    $deadlineMet = $finished -le $deadline
+    if (-not $deadlineMet -and $ending -eq 'exited') { $ending = 'exited after the deadline' }
 
     $reportPath = Join-Path $root 'verification.json'
     $report = $null
@@ -176,8 +199,15 @@ foreach ($run in $runs) {
         name = $run.name; purpose = $run.purpose; houseSizeRequested = $run.houseSize; stressRoster = $run.stress
         saveRoot = $root; arguments = ($arguments -join ' '); startedUtc = $started.ToString('o', $invariant); finishedUtc = $finished.ToString('o', $invariant)
         ending = $ending; exitCode = $process.ExitCode; competingProcesses = @($competingSeen.Keys | Sort-Object)
+        deadlineUtc = $deadline.ToString('o', $invariant); deadlineMet = $deadlineMet
+        actualProcessSeconds = ($finished - $process.StartTime.ToUniversalTime()).TotalSeconds
         report = if ($report) { $reportPath } else { $null }; reportSha256 = if (Test-Path -LiteralPath $reportPath) { Get-ReviewHash $reportPath } else { $null }
         reportError = $reportError
+        reportFresh = if ($report) { Test-ProfileReportFresh $reportPath $report $started $finished } else { $false }
+        rawFramesBound = $false
+        ignoredUnityHubHelpers = @($script:profileKnownProcesses.Values | Where-Object {
+            $_.classification -ceq 'ExactUnityHubServeHelper' -and [DateTimeOffset]::Parse($_.lastSeenUtc).UtcDateTime -ge $started
+        } | Sort-Object pid,startedUtc)
     }
     if ($report) {
         $result.performanceAcceptance = $report.performanceAcceptance
@@ -231,11 +261,18 @@ foreach ($run in $runs) {
         $result.graphicsDeviceVersion = $report.graphicsDeviceVersion
         $result.errors = @($report.errors).Count
         $result.rawFrameTimesFile = $report.rawFrameTimesFile
-        $result.rawFrameTimesSha256 = if ($report.rawFrameTimesFile -and (Test-Path -LiteralPath $report.rawFrameTimesFile)) { Get-ReviewHash $report.rawFrameTimesFile } else { $null }
+        try {
+            $raw = Assert-ProfileArtifactPath $root ([string]$report.rawFrameTimesFile)
+            $rawItem = Get-Item -LiteralPath $raw
+            $result.rawFrameTimesSha256 = Get-ReviewHash $raw
+            $result.rawFramesBound = $rawItem.LastWriteTimeUtc -ge $started -and $rawItem.LastWriteTimeUtc -le $finished.AddSeconds(2)
+        } catch { $result.rawFrameTimesSha256 = $null; $result.rawFramesError = $_.Exception.Message }
     }
     $result.valid = Test-ProfileRunValid $result
     $result.verdict = Get-ProfileRunVerdict $result
     $results += $result
+    Write-ReviewNewJson $result (Join-Path $root 'run-evidence.json')
+    $process.Dispose(); $ownedProcess = $null
 }
 
 # ------------------------------------------------------------------ the summary
@@ -249,14 +286,20 @@ function Get-CombinedVerdict($Verdicts) {
 # One build behind all three reports: the player's own buildGUID, beside the tree checked above.
 $buildGuids = @($results | Where-Object { $_.report } | ForEach-Object { [string]$_.buildGuid } | Sort-Object -Unique)
 $oneBuild = ($buildGuids.Count -eq 1) -and -not [string]::IsNullOrEmpty($buildGuids[0]) -and (@($results | Where-Object { -not $_.report }).Count -eq 0)
-$complete = (@($results | Where-Object { -not $_.valid }).Count -eq 0) -and [bool]$build.evidenceMatches -and $oneBuild
+$buildAfterMatches = $false
+if ($build.evidenceMatches) { $buildAfterMatches = @(Compare-ReviewBuildTree $buildRoot $tree.files).Count -eq 0 }
+$targetGpuMatches = @($results | Where-Object { $_.gpu -notmatch '(?i)GTX\s*1060' }).Count -eq 0
+$complete = $results.Count -eq 3 -and (@($results | Where-Object { -not $_.valid }).Count -eq 0) -and
+    [bool]$build.evidenceMatches -and $buildAfterMatches -and $oneBuild -and $targetGpuMatches -and $Seconds -ge 300
 $gameplay = @($results | Where-Object { -not $_.stressRoster } | ForEach-Object { $_.verdict })
 $stress = @($results | Where-Object { $_.stressRoster } | ForEach-Object { $_.verdict })
 $summary = [ordered]@{
-    schema = 2; createdUtc = [DateTime]::UtcNow.ToString('o', $invariant); outputRoot = $OutputRoot
+    schema = 3; createdUtc = [DateTime]::UtcNow.ToString('o', $invariant); outputRoot = $OutputRoot
     target = [ordered]@{ resolution = '1920x1080'; window = 'Windowed'; uncapped = $true; p95LimitMs = 16.7; p99LimitMs = 33.3; minimumSeconds = 300; requestedSeconds = $Seconds }
     evidenceComplete = $complete
     buildEvidenceMatches = [bool]$build.evidenceMatches
+    buildAfterMatches = $buildAfterMatches
+    targetGpuMatches = $targetGpuMatches
     buildGuids = $buildGuids
     oneBuild = $oneBuild
     gameplayVerdict = Get-CombinedVerdict $gameplay
@@ -318,4 +361,44 @@ foreach ($r in $results) {
 $mdPath = Join-Path $OutputRoot 'profile-summary.md'
 [IO.File]::WriteAllText($mdPath, $md.ToString(), (New-Object Text.UTF8Encoding $false))
 Write-Host "Summary: $jsonPath and $mdPath. Gameplay $($summary.gameplayVerdict); stress $($summary.stressVerdict); evidence complete $complete."
-if ($complete) { exit 0 } else { exit 1 }
+if ($complete) { $profileExit = 0 } else { $profileExit = 1 }
+} catch {
+    Write-ReviewNewJson ([ordered]@{schema=3;status='Failed';createdUtc=[DateTime]::UtcNow.ToString('o');
+        failure=$_.Exception.Message;completedRuns=@($results);evidenceComplete=$false}) (Join-Path $OutputRoot 'profile-failure.json')
+    Write-Error $_ -ErrorAction Continue
+    $profileExit = 1
+} finally {
+    $cleanup = [ordered]@{executable=$Executable;pid=$null;startedUtc=$null;closed=$true;normalCloseRequested=$false;
+        killed=$false;cleanupWaitSeconds=10;failure=$null;
+        knownNameProcessObservations=@($script:profileKnownProcesses.Values | Sort-Object name,pid,startedUtc);
+        ignoredUnityHubHelpers=@($script:profileKnownProcesses.Values | Where-Object classification -CEQ 'ExactUnityHubServeHelper' | Sort-Object pid,startedUtc)}
+    try {
+        if ($ownedProcess) {
+            try {
+                $cleanup.pid = $ownedProcess.Id
+                $cleanup.startedUtc = $ownedProcess.StartTime.ToUniversalTime().ToString('o')
+                $cleanup.closed = $ownedProcess.WaitForExit(0)
+                if (-not $cleanup.closed) {
+                    $cleanup.normalCloseRequested = $true
+                    [void]$ownedProcess.CloseMainWindow()
+                    $cleanup.closed = $ownedProcess.WaitForExit(5000)
+                    if (-not $cleanup.closed) {
+                        $cleanup.killed = $true
+                        $ownedProcess.Kill()
+                        $cleanup.closed = $ownedProcess.WaitForExit(5000)
+                    }
+                }
+                if (-not $cleanup.closed) { throw 'The exact owned isolated profile process did not signal closure within bounded cleanup.' }
+            } catch {
+                $cleanup.failure = $_.Exception.Message
+                $cleanup.closed = $false
+                $profileExit = 1
+                Write-Error $_ -ErrorAction Continue
+            } finally { $ownedProcess.Dispose() }
+        }
+        Write-ReviewNewJson $cleanup (Join-Path $OutputRoot 'profile-cleanup.json')
+    } finally {
+        Exit-ReviewLease $lease
+    }
+}
+exit $profileExit

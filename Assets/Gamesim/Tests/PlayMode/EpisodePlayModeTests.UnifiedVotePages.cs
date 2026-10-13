@@ -47,15 +47,17 @@ namespace Gamesim.Tests.PlayMode
             var standing = CommitmentsRead.Of(director.Snapshot);
             Assert.That(standing.Single(c => c.id == fixture.PromiseId).IsOpen && standing.Single(c => c.id == fixture.DealId).IsOpen, Is.True,
                 "Fixture: both stand.");
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
-                string where = "Mode " + mode + ", the campaign" + (larger ? " at the larger text" : "");
+                yield return ApplyTextSize(textSize);
+                string where = "Mode " + mode + ", the campaign at " + TextSizes.Name(textSize) + " text";
                 yield return UvpOpenYourWord(where);
-                UvpAssertCard(EpisodeHud.WordOpenCardPrefix, fixture.PromisedId, standing.Single(c => c.id == fixture.PromiseId), where);
-                UvpAssertCard(EpisodeHud.WordOpenCardPrefix, fixture.PartnerId, standing.Single(c => c.id == fixture.DealId), where);
-                AssertEveryLabelDraws(ActiveRect("Episode panel"), where);
-                if (!larger && Application.isBatchMode) yield return CaptureFraming("unified-vote-your-word-open-mode-" + mode);
+                yield return OnFrames("unified-vote-your-word-open-mode-" + mode + SizeSuffix(textSize), where, at =>
+                {
+                    UvpAssertCard(EpisodeHud.WordOpenCardPrefix, fixture.PromisedId, standing.Single(c => c.id == fixture.PromiseId), at);
+                    UvpAssertCard(EpisodeHud.WordOpenCardPrefix, fixture.PartnerId, standing.Single(c => c.id == fixture.DealId), at);
+                    AssertEveryLabelDraws(ActiveRect("Episode panel"), at);
+                });
                 director.ClosePanels();
                 yield return null;
             }
@@ -71,20 +73,22 @@ namespace Gamesim.Tests.PlayMode
             Assert.That((word.outcome, word.status), Is.EqualTo((CommitmentsRead.Outcomes.Kept, "kept")), "The player's own ballot kept their word.");
             Assert.That((deal.outcome, deal.status, deal.brokenById), Is.EqualTo((CommitmentsRead.Outcomes.Unresolved, KnownBallots.Unresolved, (string)null)),
                 "The partner's hidden ballot settled the deal: unresolved, blaming nobody.");
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
-                string where = "Mode " + mode + ", settled" + (larger ? " at the larger text" : "");
+                yield return ApplyTextSize(textSize);
+                string where = "Mode " + mode + ", settled at " + TextSizes.Name(textSize) + " text";
                 yield return UvpOpenYourWord(where);
-                UvpAssertCard(EpisodeHud.WordSettledCardPrefix, fixture.PromisedId, word, where);
-                var card = UvpAssertCard(EpisodeHud.WordSettledCardPrefix, fixture.PartnerId, deal, where);
-                string cardWords = Words(card);
-                Assert.That(cardWords, Does.Not.Contain("broken by").And.Not.Contain("honoured"), where + ": the card tells nothing of the hidden ballot.");
-                var line = card.GetComponentsInChildren<TMP_Text>().Single(label => label.text == CommitmentsRead.Line(deal));
-                var ink = EpisodeDirector.WordInk(CommitmentsRead.Outcomes.Unresolved);
-                Assert.That(new Vector3(line.color.r - ink.r, line.color.g - ink.g, line.color.b - ink.b).magnitude, Is.LessThan(0.01f), where + ": in the unresolved ink.");
-                AssertEveryLabelDraws(ActiveRect("Episode panel"), where);
-                if (!larger && Application.isBatchMode) yield return CaptureFraming("unified-vote-your-word-settled-mode-" + mode);
+                yield return OnFrames("unified-vote-your-word-settled-mode-" + mode + SizeSuffix(textSize), where, at =>
+                {
+                    UvpAssertCard(EpisodeHud.WordSettledCardPrefix, fixture.PromisedId, word, at);
+                    var card = UvpAssertCard(EpisodeHud.WordSettledCardPrefix, fixture.PartnerId, deal, at);
+                    string cardWords = Words(card);
+                    Assert.That(cardWords, Does.Not.Contain("broken by").And.Not.Contain("honoured"), at + ": the card tells nothing of the hidden ballot.");
+                    var line = card.GetComponentsInChildren<TMP_Text>().Single(label => label.text == CommitmentsRead.Line(deal));
+                    var ink = EpisodeDirector.WordInk(CommitmentsRead.Outcomes.Unresolved);
+                    Assert.That(new Vector3(line.color.r - ink.r, line.color.g - ink.g, line.color.b - ink.b).magnitude, Is.LessThan(0.01f), at + ": in the unresolved ink.");
+                    AssertEveryLabelDraws(ActiveRect("Episode panel"), at);
+                });
                 director.ClosePanels();
                 yield return null;
             }
@@ -95,21 +99,29 @@ namespace Gamesim.Tests.PlayMode
             var mine = YourWeek.Build(state, fixture.Week);
             Assert.That(mine.word.Select(line => (line.aboutId, line.verdict)), Is.EquivalentTo(new[]
                 { (fixture.PartnerId, YourWeek.Verdicts.NotKnown), (fixture.PromisedId, YourWeek.Verdicts.Kept) }), "Fixture: the week's word, one line a row.");
-            screen.Review(state, fixture.Week);
-            yield return null;
-            ButtonWithCaption(WeeklyRecapScreen.YourWeekCaption).onClick.Invoke();
-            yield return null; yield return null;
-            Canvas.ForceUpdateCanvases();
-            var words = LabelsUnder(LastActive(WeeklyRecapScreen.TabBodyName));
-            foreach (var line in mine.word)
+            foreach (var textSize in TextSizes.All)
             {
-                Assert.That(words, Does.Contain(line.text), "Mode " + mode + ": the recap's Your week tells " + line.text);
-                Assert.That(words, Does.Contain(WeeklyRecapScreen.VerdictWord(line.verdict)), line.text);
+                yield return ApplyTextSize(textSize);
+                screen.Review(state, fixture.Week);
+                yield return null;
+                ButtonWithCaption(WeeklyRecapScreen.YourWeekCaption).onClick.Invoke();
+                yield return Frames(2);
+                yield return OnFrames("unified-vote-recap-word-mode-" + mode + SizeSuffix(textSize), "The recap's Your week", at =>
+                {
+                    var words = LabelsUnder(LastActive(WeeklyRecapScreen.TabBodyName));
+                    foreach (var line in mine.word)
+                    {
+                        Assert.That(words, Does.Contain(line.text), at + ": the recap tells " + line.text);
+                        Assert.That(words, Does.Contain(WeeklyRecapScreen.VerdictWord(line.verdict)), line.text);
+                    }
+                    Assert.That(LastActive(WeeklyRecapScreen.WordName).GetComponentsInChildren<TMP_Text>().Any(label => label.text.Contains("broke the vote-to-evict")
+                        || label.text.Contains("kept the vote-to-evict")), Is.False, at + ": nor does the recap tell the hidden ballot.");
+                    AssertEveryLabelDraws(LastActive(WeeklyRecapScreen.TabBodyName), at);
+                });
+                screen.Hide();
+                yield return null;
             }
-            Assert.That(LastActive(WeeklyRecapScreen.WordName).GetComponentsInChildren<TMP_Text>().Any(label => label.text.Contains("broke the vote-to-evict")
-                || label.text.Contains("kept the vote-to-evict")), Is.False, "Mode " + mode + ": nor does the recap tell the hidden ballot.");
-            screen.Hide();
-            yield return null;
+            yield return ApplyTextSize(TextSize.Standard);
         }
 
         /// <summary>
@@ -138,42 +150,70 @@ namespace Gamesim.Tests.PlayMode
             string told = tells ? "tells the keep, as before" : "leaves the keep out";
 
             yield return UvpInstall(settled);
-            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
-            yield return Frames(2);
-            Canvas.ForceUpdateCanvases();
-            Assert.That(VisibleLines().Any(line => line.Contains(keep)), Is.EqualTo(tells), "Mode " + mode + ": the story so far " + told + ".");
-            director.ClosePanels();
-            yield return null;
-
-            RelationshipWeb.ClearSelection();
-            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network);
-            yield return Frames(2);
-            Under(Section(), RelationshipWeb.GraphName).GetComponentsInChildren<Button>(true)
-                .Single(node => node.name == RelationshipWeb.NodeName(partner)).onClick.Invoke();
-            yield return Frames(2);
-            Canvas.ForceUpdateCanvases();
-            Assert.That(RelationshipWeb.Selected, Is.EqualTo(fixture.PartnerId), "Fixture: the web reads the partner.");
-            string column = Copy(Under(Section(), RelationshipWeb.ColumnName));
-            Assert.That(column, Does.Contain(RelationshipWeb.HistoryHeading), "Fixture: the partner's history is on screen.");
-            Assert.That(column.Contains(keep), Is.EqualTo(tells), "Mode " + mode + ": the web's history " + told + ".");
-            director.ClosePanels();
-            RelationshipWeb.ClearSelection();
-            yield return null;
-
             var screen = director.GetComponentInChildren<WeeklyRecapScreen>(true);
-            screen.Review(director.Snapshot, fixture.Week);
-            yield return null;
-            var recap = new List<string>();
-            foreach (string tab in WeeklyRecapScreen.TabCaptions)
+            foreach (var textSize in TextSizes.All)
             {
-                ButtonWithCaption(tab).onClick.Invoke();
+                yield return ApplyTextSize(textSize);
+                director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
                 yield return Frames(2);
-                Canvas.ForceUpdateCanvases();
-                recap.AddRange(VisibleLines());
+                yield return OnFrames("unified-vote-story-mode-" + mode + SizeSuffix(textSize), "The story so far", at =>
+                {
+                    Assert.That(VisibleLines().Any(line => line.Contains(keep)), Is.EqualTo(tells), at + ": " + told + ".");
+                    Assert.That(director.ActiveSection, Is.EqualTo(EpisodeDirector.NotebookSection.Story), at);
+                    var story = LastActive(EpisodeDirector.NotebookSection.Story);
+                    Assert.That(story, Is.Not.Null, at + ": the actual Story owner marked its eyebrow.");
+                    var storyContent = story.parent as RectTransform;
+                    Assert.That(storyContent, Is.Not.Null, at + ": the Story marker belongs to its content.");
+                    Assert.That(storyContent.name, Is.EqualTo("Episode content"), at);
+                    Assert.That(storyContent.IsChildOf(LastActive(ModalRoot)), Is.True, at);
+                    AssertEveryLabelDraws(storyContent, at);
+                });
+                director.ClosePanels();
+                yield return null;
+
+                RelationshipWeb.ClearSelection();
+                director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network);
+                yield return Frames(2);
+                Under(Section(), RelationshipWeb.GraphName).GetComponentsInChildren<Button>(true)
+                    .Single(node => node.name == RelationshipWeb.NodeName(partner)).onClick.Invoke();
+                yield return Frames(2);
+                yield return OnFrames("unified-vote-record-mode-" + mode + SizeSuffix(textSize), "The partner's record", at =>
+                {
+                    Assert.That(RelationshipWeb.Selected, Is.EqualTo(fixture.PartnerId), at + ": the web reads the partner.");
+                    string column = Copy(Under(Section(), RelationshipWeb.ColumnName));
+                    Assert.That(column, Does.Contain(RelationshipWeb.HistoryHeading), at + ": the history is on screen.");
+                    Assert.That(column.Contains(keep), Is.EqualTo(tells), at + ": " + told + ".");
+                    AssertEveryLabelDraws(Under(Section(), RelationshipWeb.ColumnName), at);
+                });
+                director.ClosePanels();
+                RelationshipWeb.ClearSelection();
+                yield return null;
+
+                screen.Review(director.Snapshot, fixture.Week);
+                yield return null;
+                var recapByFrame = new Dictionary<int, List<string>>();
+                foreach (string tab in WeeklyRecapScreen.TabCaptions)
+                {
+                    ButtonWithCaption(tab).onClick.Invoke();
+                    yield return Frames(2);
+                    int frameIndex = 0;
+                    yield return OnFrames("unified-vote-recap-privacy-mode-" + mode + "-" + System.Array.IndexOf(WeeklyRecapScreen.TabCaptions, tab) + SizeSuffix(textSize),
+                        "The recap's " + tab + " tab", at =>
+                        {
+                            int frame = frameIndex++;
+                            if (!recapByFrame.TryGetValue(frame, out var recap)) recapByFrame.Add(frame, recap = new List<string>());
+                            recap.AddRange(VisibleLines());
+                            if (!tells) Assert.That(VisibleLines().Any(line => line.Contains(keep)), Is.False, at + ": leaves the hidden keep out.");
+                            AssertEveryLabelDraws(LastActive(WeeklyRecapScreen.TabBodyName), at);
+                        });
+                }
+                foreach (var recap in recapByFrame)
+                    Assert.That(recap.Value.Any(line => line.Contains(keep)), Is.EqualTo(tells),
+                        "Mode " + mode + ", " + TextSizes.Name(textSize) + " text, frame " + recap.Key + ": the week's recap " + told + ".");
+                screen.Hide();
+                yield return null;
             }
-            Assert.That(recap.Any(line => line.Contains(keep)), Is.EqualTo(tells), "Mode " + mode + ": the week's recap " + told + ".");
-            screen.Hide();
-            yield return null;
+            yield return ApplyTextSize(TextSize.Standard);
         }
 
         /// <summary>
@@ -219,40 +259,50 @@ namespace Gamesim.Tests.PlayMode
             string kicker = FinaleQuestions.Kicker(state, exchange);
             Assert.That(kicker, Does.EndWith("you gave them your word, and broke it"));
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenFinalePanel();
                 yield return Frames(2);
                 Canvas.ForceUpdateCanvases();
-                string where = "Mode " + mode + (larger ? " at the larger text" : "");
-                Assert.That(LastActive("Jury question").GetComponent<TMP_Text>().text, Is.EqualTo(exchange.question), where + ": the saved question, word for word.");
-                var over = LastActive(EpisodeHud.JuryKickerName);
-                Assert.That(over?.GetComponent<TMP_Text>().text, Is.EqualTo(kicker), where + ": the receipt's kicker over the question.");
-                Assert.That(over.IsChildOf(LastActive(EpisodeHud.JuryQuestionPanelName)), Is.True, where + ": in the question's panel.");
-                Assert.That(LastActive(EpisodeHud.JuryReceiptLineName)?.GetComponent<TMP_Text>().text, Is.EqualTo(FinaleQuestions.ReceiptLine(state, exchange)),
-                    where + ": the receipt line, in the record's words.");
-                var grid = LastActive(EpisodeHud.JuryResponsesName);
-                foreach (var response in FinaleQuestions.Offered(exchange.category, exchange.receiptKind))
-                    Assert.That(ButtonWithCaption(FinaleQuestions.Caption(response)).transform.IsChildOf(grid), Is.True, where + ": " + response);
-                AssertDecisionCopyFits(LastActive(EpisodeHud.JuryReceiptColumnName));
-                AssertDecisionCopyFits(LastActive(EpisodeHud.JuryAskerColumnName));
-                if (!larger && Application.isBatchMode) yield return CaptureFraming("unified-vote-jury-receipt-mode-" + mode, settle: false);
+                string where = "Mode " + mode + " at " + TextSizes.Name(textSize) + " text";
+                yield return OnFrames("unified-vote-jury-receipt-mode-" + mode + SizeSuffix(textSize), where, at =>
+                {
+                    Assert.That(LastActive("Jury question").GetComponent<TMP_Text>().text, Is.EqualTo(exchange.question), at + ": the saved question, word for word.");
+                    var over = LastActive(EpisodeHud.JuryKickerName);
+                    Assert.That(over?.GetComponent<TMP_Text>().text, Is.EqualTo(kicker), at + ": the receipt's kicker over the question.");
+                    Assert.That(over.IsChildOf(LastActive(EpisodeHud.JuryQuestionPanelName)), Is.True, at + ": in the question's panel.");
+                    Assert.That(LastActive(EpisodeHud.JuryReceiptLineName)?.GetComponent<TMP_Text>().text, Is.EqualTo(FinaleQuestions.ReceiptLine(state, exchange)),
+                        at + ": the receipt line, in the record's words.");
+                    var grid = LastActive(EpisodeHud.JuryResponsesName);
+                    foreach (var response in FinaleQuestions.Offered(exchange.category, exchange.receiptKind))
+                        Assert.That(ButtonWithCaption(FinaleQuestions.Caption(response)).transform.IsChildOf(grid), Is.True, at + ": " + response);
+                    AssertDecisionCopyFits(LastActive(EpisodeHud.JuryReceiptColumnName));
+                    AssertDecisionCopyFits(LastActive(EpisodeHud.JuryAskerColumnName));
+                    AssertEveryLabelDraws(LastActive(EpisodeHud.JuryQuestionPanelName), at);
+                });
                 director.ClosePanels();
                 yield return null;
             }
-            yield return ApplyTextSize(false);
+            yield return ApplyTextSize(TextSize.Standard);
 
             // The jury house, from the questioning's own door: observe only, the jury as the read gives it.
-            yield return OpenFinalePanel();
-            var beforeTheHouse = director.Snapshot;
-            ButtonWithCaption(EpisodeDirector.JuryHouseCaption).onClick.Invoke();
-            yield return null; yield return null;
-            Canvas.ForceUpdateCanvases();
-            AssertTheJuryHouse(beforeTheHouse);
-            UvEquivalent(beforeTheHouse, director.Snapshot);
-            ButtonWithCaption(EpisodeDirector.LeaveJuryHouseCaption).onClick.Invoke();
-            yield return null; yield return null;
+            foreach (var textSize in TextSizes.All)
+            {
+                yield return ApplyTextSize(textSize);
+                yield return OpenFinalePanel();
+                var beforeTheHouse = director.Snapshot;
+                ButtonWithCaption(EpisodeDirector.JuryHouseCaption).onClick.Invoke();
+                yield return Frames(2);
+                yield return OnFrames("unified-vote-jury-house-mode-" + mode + SizeSuffix(textSize), "The jury house", at =>
+                {
+                    AssertTheJuryHouse(beforeTheHouse);
+                    UvEquivalent(beforeTheHouse, director.Snapshot);
+                });
+                ButtonWithCaption(EpisodeDirector.LeaveJuryHouseCaption).onClick.Invoke();
+                yield return Frames(2);
+            }
+            yield return ApplyTextSize(TextSize.Standard);
 
             // The answer is the one commit; the receipt stays with the question it was asked from.
             yield return OpenFinalePanel();

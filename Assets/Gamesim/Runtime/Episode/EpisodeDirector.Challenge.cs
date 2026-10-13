@@ -356,7 +356,7 @@ namespace Gamesim.Episode
             challengeStarted = Time.unscaledTime; challengePractice = practice; challengeResultShown = false; challengeFinishHold = 0f;
             challengeCommandId = Guid.NewGuid().ToString("N");
             if (!BeginCompetitionArena(state))
-            { challengeActive = false; challengeOrigin = null; message = competitionArenaStatus; Render(); return; }
+            { challengeActive = false; challengeOrigin = null; message = competitionArenaStatus; BeginSystemNotice(); Render(); return; }
             FrameCompetition();
             var kind = timingBarForDiagnostics ? CompetitionMiniGames.Kind.Precision
                 : CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));

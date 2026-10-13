@@ -14,6 +14,54 @@ namespace Gamesim.Tests.PlayMode
 {
     public sealed partial class EpisodePlayModeTests
     {
+        [UnityTest]
+        public IEnumerator RankedFinish_DiceKeepSoundsWithItsPlateBeforeOneCommittedResult()
+        {
+            yield return InstallRules4AtFirstHoH(SeedOpeningWithBoard(CompetitionDefinitions.RollTheDice));
+            var found = new CompetitionGameScreen[1];
+            yield return EnterRanked(CompetitionMiniGames.Kind.Dice, found);
+            var screen = found[0]; var run = ChallengeRun();
+            Assert.That(run.Definition, Is.SameAs(CompetitionDefinitions.RollTheDice));
+            var before = director.Snapshot;
+            var audio = director.GetComponent<HouseAudio>(); audio.SetMuted(true);
+            int heard = 0, cueFrame = -1, cueRevision = -1;
+            bool visibleAtCue = false; string headlineAtCue = null, measureAtCue = null;
+            screen.CueRequested += cue =>
+            {
+                if (cue != HouseAudio.Cue.SocialUp) return;
+                heard++; cueFrame = Time.frameCount; cueRevision = director.Snapshot.revision;
+                visibleAtCue = screen.IsDrawn && screen.FinishShowing;
+                headlineAtCue = Labelled(screen, "Finish headline");
+                measureAtCue = Labelled(screen, "Finish measure");
+            };
+            screen.GetComponentsInChildren<Button>().Single(button => button.name == "Roll dice").onClick.Invoke();
+            yield return WaitFor(() => run.HasRoll && screen.GetComponentsInChildren<Button>().Any(button => button.name == "Keep roll"), 5f,
+                "The real ranked dice land before Keep can be accepted.");
+            int total = run.RollTotal;
+            screen.GetComponentsInChildren<Button>().Single(button => button.name == "Keep roll").onClick.Invoke();
+            Assert.That(run.Finished, Is.True);
+            Assert.That(heard, Is.Zero, "No outcome cue on the command frame before the director paints the plate.");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision));
+            yield return WaitFor(() => heard == 1, 5f, "The director paints the ranked finish and publishes its cue.");
+            float plateUp = Time.realtimeSinceStartup;
+            Assert.That(cueFrame, Is.LessThanOrEqualTo(Time.frameCount));
+            Assert.That(visibleAtCue, Is.True);
+            Assert.That(headlineAtCue, Is.EqualTo("KEPT " + total));
+            Assert.That(measureAtCue, Is.EqualTo("Total " + total + " of 18  ·  roll 1 of " + MiniGameRun.MaxRolls));
+            Assert.That(cueRevision, Is.EqualTo(before.revision), "The visible result and cue precede the transaction.");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision));
+            Assert.That(audio.Muted, Is.True, "Muting does not hide the outcome evidence.");
+            yield return WaitFor(() => director.Snapshot.revision != before.revision, 5f, "The held ranked result is saved once.");
+            Assert.That(Time.realtimeSinceStartup - plateUp, Is.GreaterThan(.6f));
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1));
+            yield return null; yield return null;
+            Assert.That(heard, Is.EqualTo(1));
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1));
+            Assert.That(screen.IsShowing, Is.False);
+            Assert.That(Labelled(SceneComponents<CompetitionResult>().Single(), "Player attempt"),
+                Does.Contain("kept " + total + " on roll 1").And.Contain("performance"));
+        }
+
         /// <summary>The player's reduced-motion setting reaches the competition screen.</summary>
         [UnityTest]
         public IEnumerator ReducedMotion_TheDirectorHandsItToTheCompetitionScreen()

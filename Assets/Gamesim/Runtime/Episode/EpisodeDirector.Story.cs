@@ -416,7 +416,7 @@ namespace Gamesim.Episode
             if (play == null) return null;
             string eventId = item.id;
             string until = StoryText.ClosesAt(play.deadline);
-            string goal = StoryText.Fill(state, play.goal, cycle.cast);
+            string goal = StoryText.FillDisplay(state, play.goal, cycle.cast);
             bool offer = !EpisodeEngine.TakenOn(cycle);
             return new EpisodeHud.StoryPull
             {
@@ -554,6 +554,7 @@ namespace Gamesim.Episode
                 .Distinct().Take(SceneCastLimit).ToList();
             var places = ScenePlaces(room, SceneCandidates);
             if (places.Count == 0) return;
+            CancelNpcInvitation();
             if (npcMeetings.BeginSceneStage(beat.id, ids, places) > 0) sceneStagedAt = Time.unscaledTime;
         }
 
@@ -734,7 +735,7 @@ namespace Gamesim.Episode
             var decided = ending == null ? null : state.events.LastOrDefault(e => e.kind == StoryLog.Play && Mine(e));
             if (decided != null) hud.Paragraph(decided.text);
             else if (ending == null)
-                hud.Paragraph("Goal: " + StoryText.Fill(state, play.goal, cycle.cast) + " It is decided by " + StoryText.ClosesAt(play.deadline) + ".");
+                hud.Paragraph("Goal: " + StoryText.FillDisplay(state, play.goal, cycle.cast) + " It is decided by " + StoryText.ClosesAt(play.deadline) + ".");
             foreach (var receipt in state.events.Where(e => e.kind == StoryLog.Receipt && Mine(e)))
                 hud.Paragraph(receipt.text);
             hud.Action(SceneCardDoneCaption, ClosePanels);

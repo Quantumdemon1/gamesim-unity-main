@@ -103,6 +103,7 @@ namespace Gamesim.Tests.PlayMode
             });
             string id = null;
             yield return OpenSomebody(opened => id = opened, candidate => candidate != liked && candidate != loathed);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             var state = director.Snapshot;
             var npc = state.Find(id);
 
@@ -166,6 +167,7 @@ namespace Gamesim.Tests.PlayMode
                 ColdBehindAWarmReading(state);
             });
             yield return TalkTo(hoh);
+            yield return EnterConversationCategory(EpisodeDirector.GameCategoryCaption);
             var state = director.Snapshot;
             string name = state.Find(hoh).name;
             ButtonWithCaption(EpisodeHud.LobbyAskCaption(state, name, LobbyAsk.Spare, state.playerId)).onClick.Invoke();
@@ -212,6 +214,7 @@ namespace Gamesim.Tests.PlayMode
             });
             string id = null;
             yield return OpenSomebody(opened => id = opened);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             var state = director.Snapshot;
             Assert.That(KnownOdds.Unknowns(state, id), Is.EqualTo(KnownOdds.Few), "A current read and a history to go on.");
             Assert.That(ShownText(), Does.Contain(EpisodeDirector.OddsReadLine(FinalistRead.FirstName(state.Find(id).name))),
@@ -240,31 +243,55 @@ namespace Gamesim.Tests.PlayMode
                 });
                 yield return ApplyTextSize(textSize);
                 yield return TalkTo(hoh);
+                yield return EnterConversationCategory(EpisodeDirector.GameCategoryCaption);
                 var state = director.Snapshot;
+                string savedSeason = JsonUtility.ToJson(state);
                 ButtonWithCaption(EpisodeHud.LobbyAskCaption(state, state.Find(hoh).name, LobbyAsk.Spare, state.playerId)).onClick.Invoke();
                 yield return null;
-                Canvas.ForceUpdateCanvases();
-                string at = "the " + TextSizes.Name(textSize) + " text";
 
-                var column = ActiveRect(EpisodeHud.ConversationColumnName);
-                Assert.That(column != null, Is.True, "A conversation is open at " + at + ".");
-                var pieces = director.GetComponentsInChildren<RectTransform>(true)
-                    .Where(rect => rect.gameObject.activeInHierarchy && (rect.name == EpisodeHud.OddsNoteName || rect.name == EpisodeHud.UnknownsChipName))
-                    .ToList();
-                Assert.That(pieces.Count(rect => rect.name == EpisodeHud.OddsNoteName), Is.EqualTo(1),
-                    "The plea and the deal table are explained once, above the first, at " + at + ".");
-                Assert.That(pieces.Count(rect => rect.name == EpisodeHud.UnknownsChipName), Is.EqualTo(1), "and, with nothing to go on, one chip.");
-                Assert.That(director.GetComponentsInChildren<Button>(true).Any(button => button.IsActive()
-                    && button.GetComponentsInChildren<TMP_Text>(true).Any(text => text.text == EpisodeHud.DealProposeCaption(DealKind.Title(DealKind.Partnership).ToLowerInvariant()))),
-                    Is.True, "The deal table is drawn below it all the same.");
-                foreach (var label in pieces.SelectMany(rect => rect.GetComponentsInChildren<TMP_Text>(true)))
+                foreach (bool dealPage in new[] { false, true })
                 {
-                    label.ForceMeshUpdate();
-                    Assert.That(label.isTextOverflowing, Is.False, "'" + label.text + "' fits its box at " + at + ".");
+                    if (dealPage) yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
+                    Canvas.ForceUpdateCanvases();
+                    string at = (dealPage ? "the deal table" : "the plea's approaches") + " at the " + TextSizes.Name(textSize) + " text";
+                    string partnership = EpisodeHud.DealProposeCaption(DealKind.Title(DealKind.Partnership).ToLowerInvariant());
+                    if (dealPage)
+                    {
+                        Assert.That(PlayerDeals.Available(director.Snapshot, hoh), Does.Contain(DealKind.Partnership),
+                            "The existing proposal is eligible on this page.");
+                        Assert.That(ButtonWithCaption(partnership), Is.Not.Null, "The eligible deal table is reached through its category.");
+                        foreach (string approach in LobbyApproach.All)
+                            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.LobbyApproachCaption(approach, true)), Is.Null,
+                                "The deal table does not keep the plea's choices beside it.");
+                    }
+                    else
+                    {
+                        foreach (string approach in LobbyApproach.All)
+                            Assert.That(ButtonWithCaption(EpisodeHud.LobbyApproachCaption(approach, true)), Is.Not.Null,
+                                "Every offered approach is present before measuring its odds.");
+                        Assert.That(ButtonWithCaptionOrNull(partnership), Is.Null,
+                            "The chosen plea shows its approaches without another category's deal table.");
+                    }
+                    var column = ActiveRect(EpisodeHud.ConversationColumnName);
+                    Assert.That(column != null, Is.True, "A conversation is open at " + at + ".");
+                    var pieces = director.GetComponentsInChildren<RectTransform>(true)
+                        .Where(rect => rect.gameObject.activeInHierarchy && (rect.name == EpisodeHud.OddsNoteName || rect.name == EpisodeHud.UnknownsChipName))
+                        .ToList();
+                    Assert.That(pieces.Count(rect => rect.name == EpisodeHud.OddsNoteName), Is.EqualTo(1),
+                        "The current page explains the player's read once at " + at + ".");
+                    Assert.That(pieces.Count(rect => rect.name == EpisodeHud.UnknownsChipName), Is.EqualTo(1),
+                        "With nothing to go on, the current page has one unknowns chip.");
+                    foreach (var label in pieces.SelectMany(rect => rect.GetComponentsInChildren<TMP_Text>(true)))
+                    {
+                        label.ForceMeshUpdate();
+                        Assert.That(label.isTextOverflowing, Is.False, "'" + label.text + "' fits its box at " + at + ".");
+                    }
+                    var inside = ScreenRect(column);
+                    foreach (var chip in pieces.Where(rect => rect.name == EpisodeHud.UnknownsChipName).Select(rect => (RectTransform)rect.GetChild(0)))
+                        Assert.That(ScreenRect(chip).xMax, Is.LessThanOrEqualTo(inside.xMax + .5f), "The chip stays in the column at " + at + ".");
+                    Assert.That(JsonUtility.ToJson(director.Snapshot), Is.EqualTo(savedSeason),
+                        "Selecting an approach or deal category draws no roll and spends no action.");
                 }
-                var inside = ScreenRect(column);
-                foreach (var chip in pieces.Where(rect => rect.name == EpisodeHud.UnknownsChipName).Select(rect => (RectTransform)rect.GetChild(0)))
-                    Assert.That(ScreenRect(chip).xMax, Is.LessThanOrEqualTo(inside.xMax + .5f), "The chip stays in the column at " + at + ".");
                 director.ClosePanels();
                 yield return null;
             }
@@ -289,6 +316,7 @@ namespace Gamesim.Tests.PlayMode
             });
             string id = null;
             yield return OpenSomebody(opened => id = opened);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             var state = director.Snapshot;
             Assert.That(EpisodeDirector.PastTheDealCeiling(state), Is.True);
             Assert.That(PlayerDeals.Available(state, id), Is.Empty, "Past the ceiling nothing can be put to anybody.");

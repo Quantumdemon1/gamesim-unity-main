@@ -305,15 +305,22 @@ namespace Gamesim.Episode
                 yield break;
             }
 
+            yield return EnterSeasonConversationCategory(EpisodeDirector.DealsCategoryCaption);
             // An offer on the table is answered before anything is put to them.
             var offer = NpcDeals.Pending(before).FirstOrDefault(deal => deal.proposerId == chosen.Id);
             if (offer != null && HasSeasonButtonText(EpisodeHud.DealAcceptCaption))
             {
                 yield return CaptureSeason("deal-offer", graphical);
                 yield return ClickSeasonButton(EpisodeHud.DealAcceptCaption);
-                var answered = SeasonDeal(seasonDirector.Snapshot, offer.id);
-                RequireSeason(answered != null && answered.status != DealStatus.Proposed, "Accepting an offer must settle its status.");
+                var answeredState = seasonDirector.Snapshot;
+                var answered = SeasonDeal(answeredState, offer.id);
+                RequireSeason(answeredState.revision == before.revision + 1
+                    && answered != null && answered.status != DealStatus.Proposed,
+                    "Accepting the exact offer must settle it with one command.");
                 seasonReport.dealsAnswered++;
+                seasonReport.commands++;
+                yield return DrainSeasonConversationExchange("deal-accepted", graphical);
+                yield return EnterSeasonConversationCategory(EpisodeDirector.DealsCategoryCaption);
                 before = seasonDirector.Snapshot;
             }
 
@@ -338,10 +345,12 @@ namespace Gamesim.Episode
                     "A proposal control must commit the proposal it names: " + chosenKind
                     + " (revision " + before.revision + " -> " + after.revision + "; status: " + seasonDirector.StatusMessage + ")");
                 seasonReport.dealsProposed++;
+                seasonReport.commands++;
                 seasonReport.dealKind = chosenKind;
                 seasonReport.dealOutcome = deal != null ? deal.status : "Refused";
                 seasonReport.dealNote = "Put to " + chosen.Id + " through the conversation panel; the housemate's answer is the season's own.";
                 yield return CaptureSeason("deal-proposed", graphical);
+                yield return DrainSeasonConversationExchange("deal-answer", graphical);
             }
             yield return CloseSeasonPanel();
         }

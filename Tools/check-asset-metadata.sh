@@ -13,6 +13,8 @@ status=0
 
 missing=$(git ls-files -z Assets | tr '\0' '\n' | grep -v '\.meta$' \
   | while IFS= read -r f; do
+      # Match CI's Unity-ignored hidden-path policy only for missing metas.
+      case "$f" in */.*) continue;; esac
       git ls-files --error-unmatch "$f.meta" >/dev/null 2>&1 || echo "  $f"
     done)
 [ -n "$missing" ] && { echo "Tracked assets with no tracked .meta:"; echo "$missing"; status=1; }

@@ -131,6 +131,7 @@ namespace Gamesim.Tests.PlayMode
                 var asked = HouseNpcs(director.Snapshot)[0];
                 Assert.That(HasBody(asked.id), Is.True, "The one asked has a body to talk to.");
                 yield return TalkTo(asked.id);
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
                 string where = "A conversation with " + asked.name + " under the commitment rules" + size;
                 Assert.That(director.IsConversationOpen, Is.True, where + ": the conversation opens.");
                 var open = director.Snapshot;
@@ -179,6 +180,7 @@ namespace Gamesim.Tests.PlayMode
             var outsider = HouseNpcs(director.Snapshot)[0];
             Assert.That(HasBody(outsider.id), Is.True);
             yield return TalkTo(outsider.id);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             const string full = "A conversation at a pact of four";
             Assert.That(director.IsConversationOpen, Is.True, full + ": the conversation opens.");
             var held = director.Snapshot;
@@ -206,6 +208,7 @@ namespace Gamesim.Tests.PlayMode
             var npcs = HouseNpcs(director.Snapshot);
             Assert.That(HasBody(npcs[0].id), Is.True);
             yield return TalkTo(npcs[0].id);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             const string where = "A conversation with the partner in two pacts";
             Assert.That(director.IsConversationOpen, Is.True, where + ": the conversation opens.");
             Assert.That(ButtonWithCaptionOrNull("Leave our alliance"), Is.Null, where + ": with two pacts between them, no row says 'our alliance'.");
@@ -227,6 +230,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(after.alliances.Single(a => a.id == PairPactId).active, Is.True, "and the pair is untouched.");
 
             // One pact between them now: the row is the one it always was, and it names the pair.
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             var only = ButtonWithCaption("Leave our alliance");
             Assert.That(TagOn(only), Is.EqualTo(EpisodeDirector.VerbTag(EpisodeCommandKind.LeaveAlliance)), "A pact of two: it ends.");
             Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.LeavePactCaption(PairPactName)), Is.Null, "One pact, one row.");
@@ -257,6 +261,7 @@ namespace Gamesim.Tests.PlayMode
                 var partner = HouseNpcs(director.Snapshot)[0];
                 Assert.That(HasBody(partner.id), Is.True);
                 yield return TalkTo(partner.id);
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
                 string where = "A conversation with a partner in a pact the player founded" + (larger ? " " + TextScales.At(textSize) : "");
                 Assert.That(director.IsConversationOpen, Is.True, where + ": the conversation opens.");
                 var open = director.Snapshot;
@@ -311,6 +316,7 @@ namespace Gamesim.Tests.PlayMode
             // An ally - in the trio - is asked into none of the player's other pacts: no row, locked or open.
             Assert.That(HasBody(npcs[1].id), Is.True, "The ally has a body to talk to.");
             yield return TalkTo(npcs[1].id);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             const string ally = "A conversation with an ally in the trio";
             Assert.That(director.IsConversationOpen, Is.True, ally + ": the conversation opens.");
             foreach (string pact in new[] { PairPactName, GrowPactName })
@@ -322,6 +328,7 @@ namespace Gamesim.Tests.PlayMode
             // about them, said once, over the first.
             Assert.That(HasBody(npcs[4].id), Is.True, "The soured-on houseguest has a body to talk to.");
             yield return TalkTo(npcs[4].id);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             string soured = "A conversation with " + npcs[4].name + ", whom the player has soured on";
             Assert.That(director.IsConversationOpen, Is.True, soured + ": the conversation opens.");
             var rows = new[] { PairPactName, TrioPactName, GrowPactName }
@@ -354,6 +361,7 @@ namespace Gamesim.Tests.PlayMode
                 // A member of both: each leave row names its pact, and the four's names are open, the
                 // longest of the web's among them.
                 yield return TalkTo(partner.id);
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
                 string where = "A conversation with " + partner.name + ", in a pact of four and a pair" + size;
                 Assert.That(director.IsConversationOpen, Is.True, where + ": the conversation opens.");
                 string leaveFour = EpisodeDirector.LeavePactCaption(four.name);
@@ -377,6 +385,7 @@ namespace Gamesim.Tests.PlayMode
                     .OrderByDescending(npc => npc.name.Length).ThenBy(npc => npc.id, System.StringComparer.Ordinal).First();
                 Assert.That(HasBody(outsider.id), Is.True, "The one asked has a body to talk to.");
                 yield return TalkTo(outsider.id);
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
                 string asking = "A conversation with " + outsider.name + ", outside both" + size;
                 Assert.That(director.IsConversationOpen, Is.True, asking + ": the conversation opens.");
                 var held = director.Snapshot;
@@ -409,6 +418,7 @@ namespace Gamesim.Tests.PlayMode
             var npcs = HouseNpcs(director.Snapshot);
             Assert.That(EpisodeEngine.CommitmentRulesOn(director.Snapshot), Is.False, "A house without the commitment rules.");
             yield return TalkTo(npcs[0].id);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             Assert.That(director.IsConversationOpen, Is.True);
             Assert.That(ButtonWithCaption("Leave our alliance"), Is.Not.Null, "The one row it always had, with two pacts between them,");
             foreach (string caption in new[]

@@ -84,6 +84,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return ApplyTextSize(textSize);
                 var listener = Listener(director.Snapshot);
                 yield return TalkTo(listener.id);
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
                 string where = "A conversation under the commitment rules" + size;
                 Assert.That(director.IsConversationOpen, Is.True, where + ": the conversation opens.");
                 var open = director.Snapshot;
@@ -107,6 +108,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return ApplyTextSize(textSize);
                 listener = Listener(director.Snapshot);
                 yield return TalkTo(listener.id);
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
                 where = "A conversation at three pacts" + size;
                 Assert.That(director.IsConversationOpen, Is.True, where + ": the conversation opens.");
                 var held = director.Snapshot;

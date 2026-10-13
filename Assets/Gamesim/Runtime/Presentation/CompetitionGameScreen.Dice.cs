@@ -32,6 +32,9 @@ namespace Gamesim.Presentation
         private float tumbleClock;
         private int shownRolls;
         private System.Random tumble;
+        // A Keep press finishes the attempt before the director paints its outcome. The sound
+        // belongs to that visible finish, not to the earlier press. Presentation only; never saved.
+        private bool keptRollCuePending;
 
         // Where each face puts its pips on a three-by-three grid, read left to right, top to bottom.
         private static readonly int[][] PipLayout =
@@ -160,8 +163,18 @@ namespace Gamesim.Presentation
         private void KeepRoll()
         {
             if (!IsPlaying || run == null || !run.Keep()) return;
-            Cue(HouseAudio.Cue.SocialUp);
+            keptRollCuePending = true;
             Refresh();
+        }
+
+        private void PublishKeptRollCue()
+        {
+            if (!keptRollCuePending) return;
+            // Consume before callbacks: a repaint, retry, or reentrant subscriber cannot repeat it.
+            keptRollCuePending = false;
+            if (IsDrawn && FinishShowing && finishPlate.gameObject.activeInHierarchy && run != null && run.Finished
+                && run.Kind == CompetitionMiniGames.Kind.Dice && run.KeptTotal > 0)
+                Cue(HouseAudio.Cue.SocialUp);
         }
 
         /// <summary>

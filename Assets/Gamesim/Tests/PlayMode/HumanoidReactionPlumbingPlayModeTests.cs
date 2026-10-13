@@ -210,6 +210,43 @@ namespace Gamesim.Tests.PlayMode
             }
         }
 
+        /// <summary>
+        /// Diagnostic local-pair control, not a played story/ceremony: real provided mocap bodies
+        /// at the failed goodbye's approximately 3.34 m root spacing must refuse safely.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AProvidedEmbraceRefusesDistantRootsWithoutWarpingOrRequestingTheBeat()
+        {
+            Time.captureDeltaTime = FrameTime;
+            var first = Attach("Distant first");
+            var firstActor = actor;
+            try
+            {
+                var second = AttachAnother("Distant second", new Vector3(1000f, 0f, 1003.34f), Quaternion.Euler(0f, 180f, 0f));
+                for (int frame = 0; frame < 40; frame++) yield return null;
+                Assert.That(first.IsPrimitiveBody || second.IsPrimitiveBody, Is.False);
+                Assert.That(first.Supports(CharacterPresentation.Reaction.Embrace)
+                    && second.Supports(CharacterPresentation.Reaction.Embrace), Is.True);
+                Assert.That(first.IsStill && second.IsStill, Is.True);
+                var firstAt = first.transform.position;
+                var secondAt = second.transform.position;
+                var firstVisual = first.VisualRoot.localPosition;
+                var secondVisual = second.VisualRoot.localPosition;
+                Assert.That(Vector3.Distance(firstAt, secondAt), Is.GreaterThan(EmbracePair.FarthestApart));
+                Assert.That(EmbracePair.Refusal(first, second, null), Does.Contain("m apart"));
+                var pair = EmbracePair.TryBegin(first, second);
+                Assert.That(pair, Is.Null, "The radius is not widened to cover the authored chairs' outer approaches.");
+                yield return null; yield return null;
+                Assert.That(first.LastReaction, Is.Not.EqualTo(CharacterPresentation.Reaction.Embrace));
+                Assert.That(second.LastReaction, Is.Not.EqualTo(CharacterPresentation.Reaction.Embrace));
+                Assert.That(first.transform.position, Is.EqualTo(firstAt));
+                Assert.That(second.transform.position, Is.EqualTo(secondAt));
+                Assert.That(first.VisualRoot.localPosition, Is.EqualTo(firstVisual));
+                Assert.That(second.VisualRoot.localPosition, Is.EqualTo(secondVisual));
+            }
+            finally { if (firstActor != null) Object.Destroy(firstActor); }
+        }
+
         private CharacterPresentation AttachAnother(string name, Vector3 at, Quaternion facing)
         {
             actor = new GameObject(name);

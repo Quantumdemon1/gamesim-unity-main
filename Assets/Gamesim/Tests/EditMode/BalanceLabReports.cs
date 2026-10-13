@@ -215,7 +215,7 @@ namespace Gamesim.Tests.EditMode
             md.Append(BalanceLabDiagnostics.GameSenseWhatIf(runs));
             md.Append(BalanceLabDiagnostics.NominationDecomposition(runs));
             md.Append(BalanceLabDiagnostics.PariahDecomposition(runs));
-            if (runs.Any(r => r.counterMembers.Count > 0)) md.Append(BalanceLabDiagnostics.CounterWhatIf(runs));
+            if (runs.Any(r => r.counterMembers.Count > 0 || (r.autopsy != null && r.autopsy.warRooms.counters > 0))) md.Append(BalanceLabDiagnostics.CounterWhatIf(runs));
             return md.ToString();
         }
 

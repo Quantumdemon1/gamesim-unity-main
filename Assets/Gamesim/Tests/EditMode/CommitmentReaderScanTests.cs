@@ -204,6 +204,8 @@ namespace Gamesim.Tests.EditMode
                 "V5f: the page's views (For, AtStake), Settled's raw views and Safety branch, the nominations' Safety rules, BallotRules' raw views; a gate's raw branch is mode 0's"),
             new Site(Sim + "AllianceRead.cs", null, 1, Why.Moved, "V5f: a pact's deals; the raw branch is mode 0's"),
             new Site(Sim + "HouseDialogue.cs", null, 4, Why.Moved, "V5f: the promise a line remembers; the raw branch is mode 0's"),
+            new Site(Sim + "ConversationExchange.cs", "CommitmentReferences.FindDeal(", 1, Why.ModeAware,
+                "transient dialogue identifies the player's incoming offer through the canonical mode-aware view"),
             new Site(Run + "Episode/EpisodeDirector.WalkOut.cs", null, 1, Why.Moved, "V5f: GoodbyeTone"),
             new Site(Run + "Presentation/WeeklyRecap.Ledger.cs", null, 2, Why.Moved, "V5f: the ledger's word count; the raw branch is mode 0's"),
             new Site(Run + "Episode/PortVerification.Season.Systems.cs", null, 3, Why.Moved, "V5f: the verification's deal lookups, through the views"),

@@ -43,8 +43,6 @@ namespace Gamesim.Episode
         private const float PillX = ObjectiveX + ObjectiveChipWidth + TopBarGap;
         /// <summary>The compact HUD's objective card, which keeps the travel buttons.</summary>
         private const float ObjectiveWidth = 330f;
-        /// <summary>How wide a canvas has to be before the tagline has room at the band's end.</summary>
-        private const float TaglineCanvas = 1500f;
 
         /// <summary>
         /// The week · house · HoH chip, and one of its three cells.
@@ -572,25 +570,6 @@ namespace Gamesim.Episode
                 rule.GetComponent<Image>().raycastTarget = false;
             }
             ClickThrough(pill);
-        }
-
-        /// <summary>
-        /// The mockups' tagline at the band's far end, where there is room for it: a wide window has
-        /// 130 units spare past the house pill, a 4:3 one has none and goes without.
-        /// </summary>
-        private void Tagline()
-        {
-            var bounds = ((RectTransform)canvas.transform).rect;
-            float width = bounds.width > 0 ? bounds.width : 1600f;
-            if (width < TaglineCanvas) return;
-            var line = FixedText((RectTransform)canvas.transform, "GOOD PEOPLE\nBIGGER STORIES", 11, UiTheme.Muted,
-                Vector2.zero, new Vector2(200f, 34f));
-            line.name = "Tagline";
-            Anchor(line.rectTransform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-24f, -TopBarTop - 9f), new Vector2(200f, 34f));
-            line.alignment = TextAlignmentOptions.TopRight;
-            line.characterSpacing = 10f;
-            var medium = UiTheme.Font(UiTheme.Weight.Medium);
-            if (medium != null) line.font = medium;
         }
 
         /// <summary>
@@ -1271,15 +1250,21 @@ namespace Gamesim.Episode
         {
             // A story's Pull outranks it: both borrow the week card's place, and the Pull is rarer.
             bool visible = nearbyWanted && !PullShowing;
-            if (nearbyCard == null || nearbyCard.gameObject.activeSelf == visible) return;
-            nearbyCard.gameObject.SetActive(visible);
-            SyncWeekCard();
+            if (nearbyCard == null) return;
+            bool changed = nearbyCard.gameObject.activeSelf != visible;
+            if (changed)
+            {
+                nearbyCard.gameObject.SetActive(visible);
+                SyncWeekCard();
+            }
             if (nearbyBar != null)
             {
-                nearbyBar.gameObject.SetActive(visible);
+                bool barVisible = visible && !statusNoticePriority;
+                if (nearbyBar.gameObject.activeSelf != barVisible)
+                { nearbyBar.gameObject.SetActive(barVisible); changed = true; }
                 ApplyStatusLine();
             }
-            MarkChromeChanged();
+            if (changed) MarkChromeChanged();
         }
 
         /// <summary>
@@ -1334,7 +1319,8 @@ namespace Gamesim.Episode
         private void ApplyStatusLine()
         {
             if (statusRoot == null) return;
-            bool show = (nearbyBar == null || !nearbyBar.gameObject.activeSelf) && !StatusSaysTheCard;
+            bool show = statusGuidanceVisible && (statusNoticePriority
+                || ((nearbyBar == null || !nearbyBar.gameObject.activeSelf) && !StatusSaysTheCard));
             if (statusRoot.gameObject.activeSelf == show) return;
             statusRoot.gameObject.SetActive(show);
             MarkChromeChanged();

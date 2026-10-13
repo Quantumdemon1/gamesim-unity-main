@@ -25,6 +25,14 @@ namespace Gamesim.Episode
         private Keyboard creatorKeyboard;
         private Gamepad creatorGamepad;
         private Mouse creatorMouse;
+        private static readonly Vector2Int[] CreatorDetailedFrames =
+        { new Vector2Int(1280, 720), new Vector2Int(1600, 900), new Vector2Int(1920, 1080) };
+        private static readonly Vector2Int[] CreatorQuickFrames =
+        { new Vector2Int(1280, 720), new Vector2Int(1920, 1080), new Vector2Int(1200, 900) };
+
+        private static bool CreatorResolutionCapturesComplete(int detailed, int quick) =>
+            detailed == CreatorDetailedFrames.Length * TextSizes.All.Length
+            && quick == CreatorQuickFrames.Length * TextSizes.All.Length;
 
         private IEnumerator RunCreatorVerification(EpisodeDirector director)
         {
@@ -34,7 +42,7 @@ namespace Gamesim.Episode
                 processor = SystemInfo.processorType, gpu = SystemInfo.graphicsDeviceName,
                 systemMemoryMB = SystemInfo.systemMemorySize, graphicsMemoryMB = SystemInfo.graphicsMemorySize,
                 visualStatus = "Pending inspection of captured frames",
-                workload = "Fresh Quick entry, native InputSystem pointer preset selection, independent body choice with Undo/Redo and keyboard/controller mode navigation, unchanged draft across modes, six Quick resolution/text captures including 4:3; then the Detailed Customise route, both bodies at supported slider bounds in front/profile views, restored appearance, pointer-handler slider input, six Detailed resolution/text combinations, isolated library save/load, repeated custom cast and NPC-only edit, new season, save/reload, isolated portrait. Detailed route buttons use direct UI callbacks. Automated checks do not establish visual quality or human usability.",
+                workload = "Fresh Quick entry, native InputSystem pointer preset selection, independent body choice with Undo/Redo and keyboard/controller mode navigation, unchanged draft across modes, " + (CreatorQuickFrames.Length * TextSizes.All.Length) + " Quick resolution/text captures including 4:3; then the Detailed Customise route, both bodies at supported slider bounds in front/profile views, restored appearance, pointer-handler slider input, " + (CreatorDetailedFrames.Length * TextSizes.All.Length) + " Detailed resolution/text combinations, isolated library save/load, repeated custom cast and NPC-only edit, new season, save/reload, isolated portrait. Detailed route buttons use direct UI callbacks. Automated checks do not establish visual quality or human usability.",
             };
             creatorReport.workloadLimitSeconds = CreatorWorkloadSeconds;
             creatorDeadline = Time.realtimeSinceStartupAsDouble + CreatorWorkloadSeconds;
@@ -65,7 +73,7 @@ namespace Gamesim.Episode
                 && creatorReport.isolatedLibrary && creatorReport.librarySaveLoadEqual && creatorReport.customCastRepeatedAndEdited
                 && creatorReport.playerPreservedDuringNpcEdit && creatorReport.libraryUnaffectedByCastEdit && creatorReport.customCastSaveReloadEqual
                 && creatorReport.bodyBoundsCaptures == 8 && creatorReport.bodyBoundsAppearanceRestored
-                && creatorReport.resolutionCaptures == 6 && creatorReport.quickResolutionCaptures == 6
+                && CreatorResolutionCapturesComplete(creatorReport.resolutionCaptures, creatorReport.quickResolutionCaptures)
                 && creatorReport.quickDraftPreserved && creatorReport.keyboardModeSwitch && creatorReport.controllerModeSwitch
                 && creatorReport.controllerNavigation && creatorReport.quickPointerPresetChanged
                 && creatorReport.quickBodyChangedIndependently
@@ -157,7 +165,7 @@ namespace Gamesim.Episode
             CreatorRequire(director.Snapshot.randomState == randomBefore, "Creator cosmetics must not consume season RNG.");
             creatorReport.cosmeticsPreservedGameplayAndRng = true;
 
-            foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1600, 900), new Vector2Int(1920, 1080) })
+            foreach (var size in CreatorDetailedFrames)
                 foreach (var textSize in TextSizes.All)
                 {
                     Screen.SetResolution(size.x, size.y, FullScreenMode.Windowed);
@@ -436,7 +444,7 @@ namespace Gamesim.Episode
             CreatorRequire(creatorReport.controllerNavigation, "Controller navigation did not stay on and move through the creator.");
             creatorReport.quickDraftPreserved = JsonUtility.ToJson(creator.Draft) == draftBefore;
             CreatorRequire(creatorReport.quickDraftPreserved, "Changing creator mode changed the authored draft.");
-            foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1920, 1080), new Vector2Int(1200, 900) })
+            foreach (var size in CreatorQuickFrames)
                 foreach (var textSize in TextSizes.All)
                 {
                     Screen.SetResolution(size.x, size.y, FullScreenMode.Windowed);

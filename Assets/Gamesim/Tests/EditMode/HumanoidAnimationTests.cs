@@ -44,7 +44,7 @@ namespace Gamesim.Tests.EditMode
             // and UMA's Locomotion controller has no walk, so it filled it with a run - then three
             // dances, three seated takes, the seven standing stills the living poses come from, and
             // the story's five reactions, authored in Blender on the same skeleton.
-            Assert.That(HumanoidClipWiring.Takes.Length, Is.EqualTo(32), "thirty-two takes arrived");
+            Assert.That(HumanoidClipWiring.Takes.Length, Is.EqualTo(33), "the original thirty-two takes plus the separate grounded farewell");
             foreach (var take in HumanoidClipWiring.Takes)
             {
                 var path = HumanoidClipWiring.Path(take);
@@ -276,7 +276,7 @@ namespace Gamesim.Tests.EditMode
             }
             Assert.That(HumanoidClipWiring.WiredReactions.Select(r => r.trigger).ToArray(),
                 Is.EqualTo(new[] { "ReactNominated", "ReactSaved", "ReactEvicted", "ReactWon", "ReactCheered",
-                    "ReactShocked", "ReactTearful", "ReactEmbrace", "ReactFurious", "ReactStormOff" }),
+                    "ReactShocked", "ReactTearful", "ReactEmbrace", "ReactFurious", "ReactStormOff", "ReactFarewell" }),
                 "every beat, the story's five included, has a distinct authored or captured motion, in the enum's order");
             Assert.That(HumanoidClipWiring.Reactions.Single(r => r.trigger == "ReactSaved").state,
                 Is.EqualTo("ReactSaved"));
@@ -652,7 +652,7 @@ namespace Gamesim.Tests.EditMode
             // embrace let go of and a storm-off are ways of leaving, and give way at once.
             var playOut = new[] { "ReactNominated", "ReactSaved", "ReactEvicted", "ReactWon", "ReactCheered",
                 "ReactShocked", "ReactTearful", "ReactFurious" };
-            var leave = new[] { "ReactEmbrace", "ReactStormOff" };
+            var leave = new[] { "ReactEmbrace", "ReactStormOff", "ReactFarewell" };
             Assert.That(HumanoidClipWiring.WiredReactions.Select(r => r.state).OrderBy(s => s, StringComparer.Ordinal),
                 Is.EqualTo(playOut.Concat(leave).OrderBy(s => s, StringComparer.Ordinal)), "every wired beat is in one list or the other");
             Assert.That(HumanoidClipWiring.ReactionsThatGiveWay, Is.EqualTo(leave));
@@ -753,8 +753,9 @@ namespace Gamesim.Tests.EditMode
             }
             var scripts = Directory.GetFiles(folder, "bb_anim_*.py").Select(file => Path.GetFileNameWithoutExtension(file))
                 .OrderBy(name => name, StringComparer.Ordinal).ToArray();
-            Assert.That(scripts, Is.EqualTo(StoryBeats.Select(b => "bb_anim_" + StoryTake(b).ToLowerInvariant()).OrderBy(name => name, StringComparer.Ordinal)),
-                "every script in ArtSource/animation exports one of the story's takes");
+            Assert.That(scripts, Is.EqualTo(StoryBeats.Select(b => "bb_anim_" + StoryTake(b).ToLowerInvariant())
+                    .Concat(new[] { "bb_anim_react_farewell" }).OrderBy(name => name, StringComparer.Ordinal)),
+                "the five story sources and the separate grounded farewell are the exact source inventory");
         }
 
         /// <summary>
@@ -858,6 +859,18 @@ namespace Gamesim.Tests.EditMode
             Assert.That(handle.runtimeAnimatorController, Is.SameAs(Controller()), "the handle carries the controller");
             Assert.That(Resources.Load<AnimatorOverrideController>(HumanoidClipWiring.HandleResource),
                 Is.SameAs(handle), "and UmaBodyProvider can load it by that name");
+
+            // Wiring an already correct Resources handle must be a no-op, including its dirty
+            // flag. SaveAssets would otherwise rewrite its retained serialization unnecessarily.
+            Assert.That(EditorUtility.IsDirty(handle), Is.False, "the imported handle starts clean");
+            var handleBytes = File.ReadAllBytes(HumanoidClipWiring.Handle);
+            var wireHandle = typeof(HumanoidClipWiring).GetMethod("WireHandle",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.That(wireHandle, Is.Not.Null, "exercise the real wiring path, not a test substitute");
+            wireHandle.Invoke(null, new object[] { Controller() });
+            Assert.That(EditorUtility.IsDirty(handle), Is.False, "same-base wiring must not dirty the handle");
+            CollectionAssert.AreEqual(handleBytes, File.ReadAllBytes(HumanoidClipWiring.Handle),
+                "same-base wiring leaves all serialized bytes intact");
 
             // The two states UMA fills in are wired to takes nothing else plays, so overriding them
             // at runtime cannot disturb a state that has a take of its own.

@@ -96,7 +96,7 @@ namespace Gamesim.Episode
         private void LogSettingChanges()
         {
             if (loggedSettings == null) return;
-            var now = SettingsNow();
+            var now = SettingsEvidence.AfterWindowObservation(loggedSettings, SettingsNow(), windowEvidence.Pending);
             foreach (var line in SettingsEvidence.ChangeLines(loggedSettings, now)) Debug.Log(line);
             loggedSettings = now;
         }

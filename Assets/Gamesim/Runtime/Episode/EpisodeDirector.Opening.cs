@@ -114,6 +114,7 @@ namespace Gamesim.Episode
         /// <summary>What the opening needs from the house, for this season as it stands.</summary>
         public OpeningSequence.Settings OpeningPlan(bool stage, bool holdUntilAdvanced = false, bool verification = false)
         {
+            CancelNpcInvitation();
             var state = projected;
             openingStage = stage ? CreateOpeningStage(verification) : null;
             return new OpeningSequence.Settings
@@ -169,7 +170,7 @@ namespace Gamesim.Episode
         public static string EventLine(EpisodeState state, EpisodeEvent entry)
         {
             string line = StoryText.Log(state, entry);
-            return entry != null && entry.kind == "arrival" ? InTheHousesWord(line) : line;
+            return entry != null && entry.kind == "arrival" ? InTheHousesWord(line) : NarrativeDisplay.Render(state, line);
         }
 
         /// <summary>

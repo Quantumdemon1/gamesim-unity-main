@@ -52,6 +52,7 @@ namespace Gamesim.Episode
 
         private bool BeginCompetitionArena(EpisodeState state)
         {
+            CancelNpcInvitation();
             EndCompetitionArena();
             // The show's own stage comes first: a ceremony still holding its seats lets go for the arena.
             EndCeremonyStage();
@@ -410,6 +411,7 @@ namespace Gamesim.Episode
                     +" corner="+(outside!=null?CompetitionOutsideCorner(footprint,outside):"none")
                     +" blockers="+(reserved?CompetitionStaticBlockers(footprint):"no reservation")+". "+CompetitionStageDiagnostic(),this);
                 message="An instrument's reserved place is obstructed. Return to the briefing and try again.";
+                BeginSystemNotice();
                 CancelChallenge();return false;
             }
             instrument.gameObject.SetActive(true);return true;
@@ -601,7 +603,7 @@ namespace Gamesim.Episode
                 || (competitionPlayerStation.Position-competitionPlayerStationPosition).sqrMagnitude>.0025f
                 || Mathf.Abs(Mathf.DeltaAngle(competitionPlayerStation.Facing,competitionPlayerStationFacing))>.5f
                 || !player.IsActivityMoveValid(competitionPlayerOwner))
-            { message="Your competition route changed. Return to the briefing and try again.";CancelChallenge();return; }
+            { message="Your competition route changed. Return to the briefing and try again.";BeginSystemNotice();CancelChallenge();return; }
             competitionArenaWasReady|=CompetitionArenaReady;
             bool paused=competitionScreen!=null && competitionScreen.Paused;
             player.PauseActivityMove(competitionPlayerOwner,paused);
@@ -661,7 +663,7 @@ namespace Gamesim.Episode
             {
                 Debug.Log("[Gamesim competition stage] native assembly deadline. "+CompetitionStageDiagnostic(),this);
                 if(!player.ActivityHasArrived(competitionPlayerOwner))
-                {message="Your competition route could not finish. Your attempt has not started.";CancelChallenge();}
+                {message="Your competition route could not finish. Your attempt has not started.";BeginSystemNotice();CancelChallenge();}
                 else {EndCompetitionCast();competitionAudienceStatus="Some audience routes did not finish. The eligible field remains listed.";}
             }
         }

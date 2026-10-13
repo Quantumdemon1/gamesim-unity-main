@@ -429,7 +429,7 @@ namespace Gamesim.Episode
                 Memories = KnownBallots.PlayerMemories(state)
                     .Where(m => m.subjectId == actor.id && !string.IsNullOrEmpty(m.text))
                     .OrderByDescending(m => m.week).Take(3)
-                    .Select(m => "Week " + m.week + " \u00b7 " + MemoryWords.Said(state, m)).ToList(),
+                    .Select(m => "Week " + m.week + " \u00b7 " + NarrativeDisplay.Render(state, MemoryWords.Said(state, m))).ToList(),
                 Records = ProfileRecords(state, actor, first),
                 Back = BackToHouseguests,
             };

@@ -295,7 +295,61 @@ namespace Gamesim.Episode
             var lines = dated.Skip(Math.Max(0, dated.Count - 2)).Concat(read.knows.Take(2)).ToList();
             if (lines.Count == 0) FlowText("Nothing on the record between you.", 13, UiTheme.Muted);
             foreach (var line in lines) FlowText(line, 13, UiTheme.Muted);
-            if (!exchange.completed) IconNote(JuryReactNoteName, PackArt.KitIconJury, JuryReactWords, 13);
+            if (!exchange.completed) JuryReactNote();
+        }
+
+        /// <summary>
+        /// The jury's waiting note follows the column's resolved width, like its receipt card.
+        /// Float-sized inset rows keep the original six-unit text and eight-unit glyph offsets
+        /// at every text scale; RectOffset's integer padding would round those offsets.
+        /// </summary>
+        private void JuryReactNote()
+        {
+            if (content == null) return;
+            float s = FontScale;
+            var row = new GameObject(JuryReactNoteName, typeof(RectTransform), typeof(HorizontalLayoutGroup)).GetComponent<RectTransform>();
+            row.SetParent(content, false);
+            var layout = row.GetComponent<HorizontalLayoutGroup>();
+            layout.childAlignment = TextAnchor.UpperLeft;
+            layout.childControlWidth = layout.childControlHeight = true;
+            layout.childForceExpandWidth = layout.childForceExpandHeight = false;
+            layout.spacing = 0f;
+
+            var slot = new GameObject("Jury note glyph slot", typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
+            slot.SetParent(row, false);
+            var glyph = KitGlyph(slot, PackArt.KitIconJury, UiTheme.Muted, new Vector2(0, 1), new Vector2(0f, -8f * s), 20f * s);
+            var fixedSize = slot.GetComponent<LayoutElement>();
+            fixedSize.minWidth = fixedSize.preferredWidth = glyph != null ? 30f * s : 0f;
+            fixedSize.minHeight = fixedSize.preferredHeight = glyph != null ? 28f * s : 0f;
+            fixedSize.flexibleWidth = fixedSize.flexibleHeight = 0f;
+
+            var copy = new GameObject("Jury note copy", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(LayoutElement)).GetComponent<RectTransform>();
+            copy.SetParent(row, false);
+            var stack = copy.GetComponent<VerticalLayoutGroup>();
+            stack.childAlignment = TextAnchor.UpperLeft;
+            stack.childControlWidth = stack.childControlHeight = true;
+            stack.childForceExpandWidth = true; stack.childForceExpandHeight = false;
+            stack.spacing = 0f;
+            var flexible = copy.GetComponent<LayoutElement>();
+            flexible.minWidth = flexible.preferredWidth = 0f;
+            flexible.flexibleWidth = 1f; flexible.flexibleHeight = 0f;
+
+            Inset("Jury note top inset");
+            var text = NewText(copy, JuryReactWords, 13, UiTheme.Muted);
+            var face = UiTheme.Font(UiTheme.Weight.Regular);
+            if (face != null) text.font = face;
+            // PlacedCopy's original unscaled four-unit bottom allowance, not a width shave.
+            text.margin = new Vector4(0f, 0f, 0f, 4f);
+            Inset("Jury note bottom inset");
+
+            void Inset(string name)
+            {
+                var inset = new GameObject(name, typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
+                inset.SetParent(copy, false);
+                var size = inset.GetComponent<LayoutElement>();
+                size.minHeight = size.preferredHeight = 6f * s;
+                size.flexibleHeight = 0f;
+            }
         }
 
         /// <summary>
@@ -306,14 +360,28 @@ namespace Gamesim.Episode
         /// </summary>
         private void ReceiptCard(string line, ContestantState juror, int? week, string tally)
         {
-            float s = FontScale, width = ContentWidth();
-            var card = new GameObject(JuryReceiptCardName, typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
+            float s = FontScale;
+            var card = new GameObject(JuryReceiptCardName, typeof(RectTransform), typeof(HorizontalLayoutGroup)).GetComponent<RectTransform>();
             card.SetParent(content, false);
-            float x = 0f, tall = 0f;
+            // The parent column resolves its width during layout; ContentWidth() while building
+            // it is only the preferred width. Lay out the fixed photo/tally first and let TMP
+            // measure the receipt's wrapped height at the actual remaining width. Unity performs
+            // horizontal control before vertical measurement, without an extra rebuild callback.
+            var layout = card.GetComponent<HorizontalLayoutGroup>();
+            layout.childAlignment = TextAnchor.UpperLeft;
+            layout.childControlWidth = layout.childControlHeight = true;
+            layout.childForceExpandWidth = layout.childForceExpandHeight = false;
+            layout.spacing = 0f;
             if (juror != null)
             {
                 var size = new Vector2(ReceiptPhotoWidth, ReceiptPhotoHeight) * s;
-                var photo = HudPrimitives.RectPortrait(card, "Receipt photo", CharacterPortraits.Get(juror), juror, size, 6);
+                var slot = new GameObject("Receipt photo slot", typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
+                slot.SetParent(card, false);
+                var fixedSize = slot.GetComponent<LayoutElement>();
+                fixedSize.minWidth = fixedSize.preferredWidth = size.x + 10f * s;
+                fixedSize.minHeight = fixedSize.preferredHeight = size.y;
+                fixedSize.flexibleWidth = fixedSize.flexibleHeight = 0f;
+                var photo = HudPrimitives.RectPortrait(slot, "Receipt photo", CharacterPortraits.Get(juror), juror, size, 6);
                 Anchor(photo, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, size);
                 var face = photo.GetComponentInChildren<RawImage>();
                 if (face != null) face.color = new Color(.6f, .65f, .7f, 1f);
@@ -333,27 +401,32 @@ namespace Gamesim.Episode
                     if (bold != null) words.font = bold;
                     AutoSize(words, 8);
                 }
-                x = size.x + 10f * s; tall = size.y;
             }
             TMP_Text count = null;
-            float countWidth = 0f;
             if (!string.IsNullOrEmpty(tally))
             {
                 count = NewText(card, tally, 14, UiTheme.Muted);
                 count.name = JuryReceiptTallyName;
                 count.textWrappingMode = TextWrappingModes.NoWrap;
                 count.alignment = TextAlignmentOptions.TopRight;
-                countWidth = Mathf.Ceil(count.GetPreferredValues(count.text).x) + 4f * s;
-                Anchor(count.rectTransform, new Vector2(1, 1), new Vector2(1, 1), Vector2.zero, new Vector2(countWidth, 20f * s));
+                float countWidth = Mathf.Ceil(count.GetPreferredValues(count.text).x) + 4f * s;
+                var fixedSize = count.gameObject.AddComponent<LayoutElement>();
+                // The six-unit gap belongs to the tally's empty left margin; its words still
+                // align to the card's right edge, beside the receipt in the same parent.
+                fixedSize.minWidth = fixedSize.preferredWidth = countWidth + 6f * s;
+                fixedSize.minHeight = fixedSize.preferredHeight = 20f * s;
+                fixedSize.flexibleWidth = fixedSize.flexibleHeight = 0f;
             }
-            float lineWidth = Mathf.Max(60f * s, width - x - (count != null ? countWidth + 6f * s : 0f));
             var receipt = NewText(card, line, 14, Paper);
             receipt.name = JuryReceiptLineName;
             receipt.fontStyle = FontStyles.Bold;
-            float lineHeight = Mathf.Ceil(receipt.GetPreferredValues(receipt.text, lineWidth, 0f).y) + 4f * s;
-            Anchor(receipt.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(x, 0f), new Vector2(lineWidth, lineHeight));
-            var element = card.GetComponent<LayoutElement>();
-            element.minHeight = element.preferredHeight = Mathf.Max(tall, lineHeight);
+            receipt.margin = new Vector4(0f, 0f, 0f, 4f * s);
+            var flexible = receipt.gameObject.AddComponent<LayoutElement>();
+            flexible.minWidth = flexible.preferredWidth = 0f;
+            flexible.flexibleWidth = 1f;
+            // Leave height to TMP's preferred height, including the existing bottom allowance.
+            // Both labels stay direct siblings, in their original photo/receipt/tally order.
+            if (count != null) count.transform.SetAsLastSibling();
         }
 
         /// <summary>For a player juror: what they know of the finalist they are asking, the finalist cards' first facts.</summary>

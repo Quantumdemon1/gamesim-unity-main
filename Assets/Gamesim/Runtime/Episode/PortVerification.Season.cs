@@ -398,20 +398,30 @@ namespace Gamesim.Episode
             {
                 var before = seasonDirector.Snapshot;
                 if (before.phase != EpisodePhase.Social
-                    || EpisodeEngine.SocialActionsSpent(before) >= EpisodeEngine.SocialActionBudget(before)
-                    || !HasSeasonButton("Spend time together")) break;
+                    || EpisodeEngine.SocialActionsSpent(before) >= EpisodeEngine.SocialActionBudget(before)) break;
                 // Plain +4 conversations climb slowly from a neutral start.
                 // Use the same legal alliance opportunity as the live Play Mode fixture - once. Under the
                 // commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C4) the proposal rolls on the invitation's
                 // odds and a no spends the action, so asking again would spend the oath's budget on the
                 // roll; before them a proposal at this score was never refused, so once is all it took.
-                string action = !proposed && !before.Allied(before.playerId,npc.Id) && before.Score(npc.Id,before.playerId) >= 8
-                    && HasSeasonButton("Propose an alliance") ? "Propose an alliance" : "Spend time together";
+                string action = "Spend time together";
+                if (!proposed && !before.Allied(before.playerId,npc.Id) && before.Score(npc.Id,before.playerId) >= 8)
+                {
+                    yield return EnterSeasonConversationCategory(EpisodeDirector.DealsCategoryCaption);
+                    if (HasSeasonButton("Propose an alliance")) action = "Propose an alliance";
+                }
+                if (action == "Spend time together")
+                    yield return EnterSeasonConversationCategory(EpisodeDirector.ConnectCategoryCaption);
+                if (!HasSeasonButton(action)) break;
                 proposed |= action == "Propose an alliance";
                 yield return ClickSeasonButton(action);
                 if (seasonDirector.Snapshot.revision != before.revision + 1) break;
                 seasonReport.optionalSocialCommands++;
+                seasonReport.commands++;
+                yield return DrainSeasonConversationExchange("oath-social-" + spent, graphical);
             }
+            if (seasonDirector.Snapshot.oathOpportunities.Contains(npc.Id))
+                yield return EnterSeasonConversationCategory(EpisodeDirector.DealsCategoryCaption);
             if (seasonDirector.Snapshot.oathOpportunities.Contains(npc.Id) && HasSeasonButton(EpisodeHud.OathDeclareCaption))
             {
                 yield return CaptureSeason("oath-opportunity",graphical);
@@ -419,9 +429,11 @@ namespace Gamesim.Episode
                 yield return ClickSeasonButton(EpisodeHud.OathDeclareCaption);
                 RequireSeason(seasonDirector.Snapshot.revision == before.revision + 1
                     && seasonDirector.Snapshot.loyaltyOaths.Any(oath => oath.playerId == before.playerId && oath.targetId == npc.Id),"An available oath button must commit the player's declaration.");
+                seasonReport.commands++;
                 seasonReport.oathOutcome = "Legally earned and declared";
                 seasonReport.oathNote = "Earned through at most eighteen actual social actions, at most one of them an alliance proposal, whatever its answer; no fabricated role, score, seed, or oath state.";
                 yield return CaptureSeason("oath-recorded",graphical);
+                yield return DrainSeasonConversationExchange("oath-declared", graphical);
             }
             else seasonReport.oathNote = verifyStudy
                 ? "Five confirmed study actions left " + studyReport.socialActionsRemainingForOptionalOath + " social actions for this optional oath attempt; no opportunity was reached and oath coverage is not asserted as passed."
@@ -609,6 +621,7 @@ namespace Gamesim.Episode
             public int weeklyRecaps, houseEventsResolved, dealsProposed, dealsAnswered, minigameInputs, storylinesBegun, houseEventsSeen, dealsRecorded, modifiersCarried;
             public int replyCardsAnswered;
             public int votesAsked, peopleRead;
+            public int conversationNavigations, conversationPlaybackControls;
             public string readNote;
             public int playsTaken;
             public string playNote;

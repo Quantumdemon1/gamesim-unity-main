@@ -119,10 +119,10 @@ namespace Gamesim.Simulation
                 views.Add(new PlayView
                 {
                     cycleId = cycle.id, arcId = template.id, title = template.title, currency = play.currency,
-                    deadline = play.deadline, goal = StoryText.Fill(s, play.goal, cycle.cast),
+                    deadline = play.deadline, goal = StoryText.FillDisplay(s, play.goal, cycle.cast),
                     takenOn = TakenOn(cycle), progress = running ? ProgressOf(s, cycle) : default,
                     ending = running ? null : cycle.endingId,
-                    outcome = outcome == null ? null : StoryText.Fill(s, outcome, cycle.cast),
+                    outcome = outcome == null ? null : StoryText.FillDisplay(s, outcome, cycle.cast),
                     openEventId = s.houseEvents.FirstOrDefault(e => e.cycleId == cycle.id && !e.resolved)?.id,
                     week = cycle.week,
                 });

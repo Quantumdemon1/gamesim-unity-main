@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using Gamesim.Episode;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
@@ -44,38 +43,64 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Listens to the house's cues and reads the words on screen at the head and the foot of every
-        /// frame. An information cue asked for between the two is pictured when a label's words changed
-        /// in that frame - a label that was not already changing the frame before (a clock), or one
-        /// whose words changed in more than their numbers (a countdown that becomes "WAVE").
-        ///
-        /// <para>A label is known by its place in its canvas - the names down to it, with the words of
-        /// every label at that place together - so a HUD that rebuilds itself with the same words has
-        /// changed nothing, and a card fading in counts from the frame its words are set.</para>
+        /// Read-only diagnostics: each requested information event keeps its frame, source-derived
+        /// expected words and its own label paths. Unrelated clocks or panel text cannot satisfy it.
+        /// Active screen-canvas text is structured evidence, not rendered-pixel/legibility proof.
         /// </summary>
         private sealed class SoundPictureWatch : IDisposable
         {
+            internal sealed class Need
+            {
+                public Component Owner;
+                public TMP_Text Target;
+                public string Name, Words;
+                public bool Prefix;
+            }
+
+            internal sealed class Expected
+            {
+                public string Source;
+                public readonly List<Need> Needs = new List<Need>();
+                public Expected(string source) { Source = source; }
+                public Expected At(Component owner, string name, string words, bool prefix = false)
+                {
+                    Needs.Add(new Need { Owner = owner, Name = name, Words = words, Prefix = prefix });
+                    return this;
+                }
+                public Expected Label(TMP_Text label, string words)
+                {
+                    Needs.Add(new Need { Target = label, Words = words });
+                    return this;
+                }
+            }
+
+            private sealed class Request
+            {
+                public HouseAudio.Cue Cue;
+                public int Frame, Ordinal;
+                public Expected Expected;
+                public string Error;
+                public Dictionary<string, string> Before;
+            }
+
             private readonly HouseAudio audio;
             private readonly Func<string> where;
+            private readonly Func<HouseAudio.Cue, Expected> expected;
             private readonly GameObject probes;
             private Dictionary<string, string> atHead, lastFoot;
-            private HashSet<string> lastChanged = new HashSet<string>(StringComparer.Ordinal);
-            private HashSet<string> moving = new HashSet<string>(StringComparer.Ordinal);
-            private readonly List<HouseAudio.Cue> cues = new List<HouseAudio.Cue>();
-
-            /// <summary>Every information cue asked for, and how often.</summary>
+            private int headFrame = -1, nextOrdinal;
+            private readonly List<Request> pending = new List<Request>();
             public readonly Dictionary<HouseAudio.Cue, int> Heard = new Dictionary<HouseAudio.Cue, int>();
-            /// <summary>The information cues asked for between a head and a foot: the ones the watch judged.</summary>
             public readonly Dictionary<HouseAudio.Cue, int> Checked = new Dictionary<HouseAudio.Cue, int>();
-            /// <summary>The cues that sounded in a frame whose words did not change.</summary>
             public readonly List<string> Silent = new List<string>();
-            /// <summary>Each judged cue with the change that pictured it, for the log.</summary>
             public readonly List<string> Pictures = new List<string>();
 
-            public SoundPictureWatch(HouseAudio audio, Func<string> where)
+            public SoundPictureWatch(HouseAudio audio, Func<string> where, Func<HouseAudio.Cue, Expected> expected)
             {
                 this.audio = audio;
                 this.where = where;
+                this.expected = expected;
+                lastFoot = LabelsOnScreen();
                 probes = new GameObject("Sound picture probes");
                 probes.AddComponent<FrameHeadProbe>().Head = Head;
                 probes.AddComponent<FrameFootProbe>().Foot = Foot;
@@ -91,84 +116,90 @@ namespace Gamesim.Tests.PlayMode
             public static string Count(Dictionary<HouseAudio.Cue, int> cues) =>
                 string.Join(", ", cues.Select(pair => pair.Key + " x" + pair.Value));
 
+            public void AssertAccounted()
+            {
+                Assert.That(pending, Is.Empty, "No requested event may be dropped or carried into a later frame.");
+                Assert.That(Heard.Keys.OrderBy(cue => cue), Is.EqualTo(Checked.Keys.OrderBy(cue => cue)));
+                foreach (var cue in Heard)
+                    Assert.That(Checked[cue.Key], Is.EqualTo(cue.Value), "Every request is judged exactly once: " + cue.Key);
+                Assert.That(Silent, Is.Empty, string.Join(" | ", Silent));
+                Assert.That(Pictures.Count, Is.EqualTo(Heard.Values.Sum()), "One evidence row per requested information event.");
+            }
+
             private void Listen(HouseAudio.Cue cue)
             {
                 if (!SoundPictures.IsInformation(cue.ToString())) return;
-                cues.Add(cue);
+                var request = new Request { Cue = cue, Frame = Time.frameCount, Ordinal = ++nextOrdinal,
+                    Before = headFrame == Time.frameCount ? atHead : lastFoot };
+                // Never throw through the product's sound event, mutate it, or suppress its outcome.
+                try { request.Expected = expected(cue); }
+                catch (Exception error) { request.Error = error.GetType().Name + ": " + error.Message; }
+                pending.Add(request);
                 Heard[cue] = Heard.TryGetValue(cue, out int count) ? count + 1 : 1;
             }
 
             private void Head()
             {
                 atHead = LabelsOnScreen();
-                // What changed the frame before, and between that frame's foot and this head: a label
-                // still changing now was changing anyway.
-                moving = new HashSet<string>(lastChanged, StringComparer.Ordinal);
-                if (lastFoot != null) moving.UnionWith(Changed(lastFoot, atHead));
-                cues.Clear();
+                headFrame = Time.frameCount;
+                // Crucially no pending.Clear(): requests between the prior foot and this head are
+                // still accounted, against the prior foot, in their actual request frame.
             }
 
             private void Foot()
             {
-                if (atHead == null) return;
                 var now = LabelsOnScreen();
-                var changed = Changed(atHead, now);
-                if (cues.Count > 0)
+                foreach (var request in pending.ToArray())
                 {
-                    foreach (var cue in cues) Checked[cue] = Checked.TryGetValue(cue, out int count) ? count + 1 : 1;
-                    string said = string.Join("+", cues);
-                    string picture = changed
-                        .Where(path => !moving.Contains(path) || Shape(Read(atHead, path)) != Shape(Read(now, path)))
-                        .Select(path => path + ": '" + Read(atHead, path) + "' -> '" + Read(now, path) + "'")
-                        .FirstOrDefault();
-                    if (picture != null) Pictures.Add(said + ": " + picture);
-                    else Silent.Add(said + " in " + where() + " (frame " + Time.frameCount
-                        + (changed.Count > 0 ? "; only labels already changing moved: " + string.Join(", ", changed.Take(3)) : "") + ")");
+                    if (request.Frame > Time.frameCount) continue;
+                    Checked[request.Cue] = Checked.TryGetValue(request.Cue, out int count) ? count + 1 : 1;
+                    var paths = new HashSet<string>(StringComparer.Ordinal);
+                    var missing = new List<string>();
+                    var wanted = request.Expected;
+                    if (request.Frame != Time.frameCount) missing.Add("no foot observation in the request frame");
+                    if (request.Error != null) missing.Add(request.Error);
+                    if (wanted == null || wanted.Needs.Count == 0) missing.Add("no cue-specific source expectation");
+                    else foreach (var need in wanted.Needs)
+                    {
+                        var labels = need.Target != null ? new[] { need.Target }
+                            : need.Owner != null ? need.Owner.GetComponentsInChildren<TMP_Text>(true) : Array.Empty<TMP_Text>();
+                        var matches = labels.Where(label => ScreenLabel(label)
+                            && (need.Name == null || label.name == need.Name)
+                            && (need.Prefix ? label.text.StartsWith(need.Words, StringComparison.Ordinal) : label.text == need.Words)).ToArray();
+                        if (matches.Length == 0) missing.Add((need.Name ?? need.Target?.name ?? "label") + " must say '" + need.Words + "'");
+                        foreach (var label in matches) paths.Add(Place(label.transform, label.canvas.rootCanvas.transform));
+                    }
+                    bool changed = request.Before != null && paths.Any(path => Read(request.Before, path) != Read(now, path));
+                    if (!changed) missing.Add("none of this cue's own labels changed in its request frame");
+                    string identity = "#" + request.Ordinal + " " + request.Cue + " frame " + request.Frame
+                        + " (" + where() + "; " + wanted?.Source + ")";
+                    if (missing.Count == 0)
+                        Pictures.Add(identity + ": " + string.Join(" | ", paths.Select(path => path + "='" + Read(now, path) + "'")));
+                    else Silent.Add(identity + ": " + string.Join("; ", missing));
+                    pending.Remove(request);
                 }
-                cues.Clear();
-                lastChanged = changed;
                 lastFoot = now;
             }
 
             private static string Read(Dictionary<string, string> labels, string path) =>
                 labels.TryGetValue(path, out var words) ? words : null;
 
-            /// <summary>The words with their numbers taken out: a clock's every tick has the same shape.</summary>
-            private static string Shape(string words) => words == null ? "\u0000" : Regex.Replace(words, "[0-9]+", "#");
+            private static bool ScreenLabel(TMP_Text label) =>
+                label != null && label.isActiveAndEnabled && !string.IsNullOrWhiteSpace(label.text)
+                && label.canvas != null && label.canvas.rootCanvas.renderMode != RenderMode.WorldSpace;
 
-            private static HashSet<string> Changed(Dictionary<string, string> before, Dictionary<string, string> after)
-            {
-                var changed = new HashSet<string>(StringComparer.Ordinal);
-                foreach (var pair in after)
-                    if (!before.TryGetValue(pair.Key, out var words) || words != pair.Value) changed.Add(pair.Key);
-                foreach (var pair in before)
-                    if (!after.ContainsKey(pair.Key)) changed.Add(pair.Key);
-                return changed;
-            }
-
-            /// <summary>
-            /// Every label up on a screen canvas with words in it, by its place: what the screen says this
-            /// moment, a card fading in included (its words are set the frame it is played).
-            /// </summary>
             private static Dictionary<string, string> LabelsOnScreen()
             {
                 var byPlace = new Dictionary<string, List<string>>(StringComparer.Ordinal);
                 foreach (var label in Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
                 {
-                    if (!label.isActiveAndEnabled || string.IsNullOrWhiteSpace(label.text)) continue;
-                    var canvas = label.canvas;
-                    if (canvas == null || canvas.rootCanvas.renderMode == RenderMode.WorldSpace) continue;
-                    string place = Place(label.transform, canvas.rootCanvas.transform);
+                    if (!ScreenLabel(label)) continue;
+                    string place = Place(label.transform, label.canvas.rootCanvas.transform);
                     if (!byPlace.TryGetValue(place, out var words)) byPlace[place] = words = new List<string>();
                     words.Add(label.text);
                 }
-                var labels = new Dictionary<string, string>(byPlace.Count, StringComparer.Ordinal);
-                foreach (var pair in byPlace)
-                {
-                    pair.Value.Sort(StringComparer.Ordinal);
-                    labels[pair.Key] = string.Join("\u0001", pair.Value);
-                }
-                return labels;
+                return byPlace.ToDictionary(pair => pair.Key,
+                    pair => string.Join("\u0001", pair.Value.OrderBy(words => words, StringComparer.Ordinal)), StringComparer.Ordinal);
             }
 
             private static string Place(Transform label, Transform root)
@@ -179,6 +210,181 @@ namespace Gamesim.Tests.PlayMode
                 names.Reverse();
                 return string.Join("/", names);
             }
+        }
+
+        // Diagnostic field reads only: no private method, callback, setter, RNG or state writer is
+        // invoked. Expectations come from the actual presentation's payload, not from the text
+        // being checked; anonymous house ballots retain no voter identity.
+        private static T SoundSourceField<T>(object source, string name)
+        {
+            var field = source.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic);
+            if (field == null) throw new InvalidOperationException("Missing sound source field: " + name);
+            return (T)field.GetValue(source);
+        }
+
+        // The private roster entry exposes these actual label/source fields publicly. Reading
+        // them does not invoke private methods or setters, nor accept an unrelated name/SAFE pair.
+        private static T SoundRosterField<T>(object source, string name)
+        {
+            var field = source.GetType().GetField(name, BindingFlags.Instance | BindingFlags.Public);
+            if (field == null) throw new InvalidOperationException("Missing sound roster field: " + name);
+            return (T)field.GetValue(source);
+        }
+
+        private static string MemoryPicturePair(CompetitionGameScreen screen, MiniGameRun run)
+        {
+            var previouslyShown = SoundSourceField<bool[]>(screen, "pairShown");
+            int face = Enumerable.Range(0, 8).Reverse().First(value => !previouslyShown[value]
+                && Enumerable.Range(0, run.Faces.Count).Count(index => run.Matched[index] && run.Faces[index] == value) == 2);
+            return "Pair found: " + CompetitionGameScreen.MemoryFaceName(face);
+        }
+
+        private SoundPictureWatch.Expected InformationPictureFor(HouseAudio.Cue cue)
+        {
+            var key = SceneComponents<KeyCeremony>().SingleOrDefault(item => item.IsPlaying);
+            if ((cue == HouseAudio.Cue.Save || cue == HouseAudio.Cue.Nomination) && key != null)
+            {
+                var safe = SoundSourceField<List<KeyCeremony.Person>>(key, "safe");
+                var nominated = SoundSourceField<List<KeyCeremony.Person>>(key, "nominated");
+                if (cue == HouseAudio.Cue.Save)
+                {
+                    int shown = key.KeysShown;
+                    if (shown <= 0 || shown > safe.Count) throw new InvalidOperationException("Save without an actual revealed key.");
+                    var picture = new SoundPictureWatch.Expected("key " + shown + "/" + safe.Count + " for " + safe[shown - 1].Id)
+                        .At(key, "Progress", SoundSourceField<bool>(key, "lastKeyPending") ? "One key left" : "Revealing key " + shown + " of " + safe.Count);
+                    // Pending hides only the last, unrevealed stage recipient. A coalesced Save
+                    // can still name the final already-revealed safe person on their actual roster
+                    // row. This is that source-keyed row, never a generic name/SAFE text pairing;
+                    // each request is retained, without claiming unseen intermediate subframes.
+                    if (!SoundSourceField<bool>(key, "lastKeyPending"))
+                        picture.At(key, "Name", safe[shown - 1].Name).At(key, "Badge text", "SAFE");
+                    else
+                    {
+                        var person = safe[shown - 1];
+                        if (string.IsNullOrEmpty(person.Id)) throw new InvalidOperationException("Revealed safe roster identity is missing.");
+                        var entries = SoundSourceField<IEnumerable>(key, "roster").Cast<object>()
+                            .Where(entry => string.Equals(SoundRosterField<KeyCeremony.Person>(entry, "Person").Id,
+                                person.Id, StringComparison.Ordinal)).ToArray();
+                        if (entries.Length != 1) throw new InvalidOperationException("Revealed safe identity must have exactly one actual roster row.");
+                        var row = entries[0];
+                        if (SoundRosterField<KeyCeremony.Person>(row, "Person").Name != person.Name
+                            || SoundRosterField<bool>(row, "HeadOfHousehold"))
+                            throw new InvalidOperationException("Revealed safe roster row has a different source name or role.");
+                        var name = SoundRosterField<TMP_Text>(row, "Name");
+                        var badge = SoundRosterField<TMP_Text>(row, "ChipText");
+                        if (name == null || badge == null) throw new InvalidOperationException("Revealed safe roster labels are missing.");
+                        picture.Label(name, person.Name).Label(badge, "SAFE");
+                    }
+                    return picture;
+                }
+                var block = new SoundPictureWatch.Expected("actual nominated IDs " + string.Join(",", nominated.Select(person => person.Id)))
+                    .At(key, "Progress", nominated.Count == 2 ? "Nominated for eviction" : "On the block");
+                foreach (var person in nominated) block.At(key, "Nominee", person.Name);
+                return block;
+            }
+
+            var jury = SceneComponents<JuryReveal>().SingleOrDefault(item => item.IsPlaying);
+            if ((cue == HouseAudio.Cue.Vote || cue == HouseAudio.Cue.Finale) && jury != null)
+            {
+                var finalists = SoundSourceField<List<JuryReveal.Finalist>>(jury, "finalists");
+                var jurors = SoundSourceField<List<JuryReveal.Juror>>(jury, "jurors");
+                var counts = SoundSourceField<List<TMP_Text>>(jury, "counts");
+                int shown = jury.VotesShown;
+                var picture = new SoundPictureWatch.Expected("actual jury prefix " + shown + "/" + jurors.Count);
+                for (int i = 0; i < finalists.Count; i++)
+                {
+                    picture.At(jury, "Finalist", HudPrimitives.WithYou(finalists[i].Name, finalists[i].IsPlayer));
+                    picture.Label(counts[i], jurors.Take(shown).Count(vote => vote.TargetId == finalists[i].Id).ToString());
+                }
+                if (cue == HouseAudio.Cue.Finale)
+                {
+                    string winnerId = SoundSourceField<string>(jury, "winnerId");
+                    var winner = finalists.Single(person => person.Id == winnerId);
+                    int won = jurors.Count(vote => vote.TargetId == winnerId), other = jurors.Count - won;
+                    picture.At(jury, "Result", (winner.IsPlayer ? "YOU" : winner.Name.ToUpperInvariant()) + "  ·  WINNER")
+                        .At(jury, "Count", won + " TO " + other);
+                }
+                return picture;
+            }
+
+            var eviction = SceneComponents<VoteReveal>().SingleOrDefault(item => item.IsPlaying);
+            if ((cue == HouseAudio.Cue.Vote || cue == HouseAudio.Cue.Eviction) && eviction != null)
+            {
+                var nominees = SoundSourceField<List<VoteReveal.Nominee>>(eviction, "nominees");
+                var ballots = SoundSourceField<List<VoteReveal.Ballot>>(eviction, "house");
+                var counts = SoundSourceField<List<TMP_Text>>(eviction, "counts");
+                int shown = Math.Max(0, SoundSourceField<int>(eviction, "shown"));
+                var picture = new SoundPictureWatch.Expected("anonymous house prefix " + shown + "/" + ballots.Count
+                    + "; deciding=" + SoundSourceField<bool>(eviction, "tieBroken"));
+                for (int i = 0; i < nominees.Count; i++)
+                {
+                    picture.At(eviction, "Nominee", nominees[i].Name);
+                    picture.Label(counts[i], ballots.Take(shown).Count(vote => vote.TargetId == nominees[i].Id).ToString());
+                }
+                if (cue == HouseAudio.Cue.Eviction)
+                    return picture.At(eviction, "Result", nominees.Single(person => person.Id == eviction.EvictedId).Name.ToUpperInvariant() + "  ·  EVICTED")
+                        .At(eviction, "Progress", "All votes are in");
+                bool tied = SoundSourceField<bool>(eviction, "tieBroken");
+                string progress = tied ? (SoundSourceField<bool>(eviction, "hohIsPlayer")
+                    ? "You have cast the deciding vote." : "The Head of Household has cast the deciding vote.")
+                    : SoundSourceField<bool>(eviction, "lastVotePending") ? "One vote left" : "Revealing vote " + shown + " of " + ballots.Count;
+                return picture.At(eviction, "Progress", progress);
+            }
+
+            var screen = SceneComponents<CompetitionGameScreen>().SingleOrDefault(item => item.IsShowing);
+            var run = screen != null ? SoundSourceField<MiniGameRun>(screen, "run") : null;
+            if (cue == HouseAudio.Cue.CompetitionStart)
+            {
+                if (screen != null && run != null)
+                    return new SoundPictureWatch.Expected("actual " + run.Kind + " board GO")
+                        .At(screen, "Competition title", run.Definition?.Title ?? CompetitionMiniGames.DisplayName(run.Kind))
+                        .At(screen, "Countdown", "GO");
+                // The existing timing-bar diagnostic has no MiniGameRun and no season category.
+                return new SoundPictureWatch.Expected("explicit timing-bar diagnostic panel, not a naturally dealt competition")
+                    .At(director, null, InputGlossary.ChallengeLine(false)).At(director, null, "STOP marker  [Space]");
+            }
+            if ((cue == HouseAudio.Cue.SocialUp || cue == HouseAudio.Cue.SocialDown) && run != null)
+            {
+                var picture = new SoundPictureWatch.Expected("actual " + run.Kind + " outcome; hits=" + run.Hits
+                    + ", wrong=" + run.WrongDirections + ", expired=" + run.ExpiredTargets + ", pairs=" + run.MatchedPairs
+                    + ", mistakes=" + run.WrongFlips + ", solved=" + run.WordsSolved + ", wrongWords=" + run.WrongSpellings);
+                switch (run.Kind)
+                {
+                    case CompetitionMiniGames.Kind.Reaction:
+                        return picture.At(screen, "Attempt feedback", run.Feedback)
+                            .At(screen, "Progress", run.Hits + " / " + run.Spawned + " hits  ·  " + run.FalseStarts + " early", prefix: true);
+                    case CompetitionMiniGames.Kind.Memory:
+                        return picture.At(screen, "Progress", run.MatchedPairs + " / " + run.Pairs + " pairs  ·  "
+                            + run.WrongFlips + (run.WrongFlips == 1 ? " mistake" : " mistakes"), prefix: true)
+                            .At(screen, "Attempt feedback", cue == HouseAudio.Cue.SocialUp ? MemoryPicturePair(screen, run) : "No match. The cards turn back.");
+                    case CompetitionMiniGames.Kind.Endurance:
+                        return picture.At(screen, "Pressure label", "WAVE x" + run.GripPressure.ToString("0.0"));
+                    case CompetitionMiniGames.Kind.Words:
+                        return picture.At(screen, "Progress", run.WordsSolved + (run.WordsSolved == 1 ? " word" : " words")
+                            + " spelled  ·  " + run.WordPoints.ToString("0.#") + " points")
+                            .At(screen, "Attempt feedback", cue == HouseAudio.Cue.SocialUp ? "Solved: " + run.Feedback : "Not quite: the letters clear");
+                    case CompetitionMiniGames.Kind.Dice:
+                        return picture.At(screen, "Finish headline", "KEPT " + run.KeptTotal)
+                            .At(screen, "Finish measure", "Total " + run.KeptTotal + " of 18  ·  roll " + run.RollsUsed + " of " + MiniGameRun.MaxRolls);
+                }
+            }
+            var state = director.Snapshot;
+            if (cue == HouseAudio.Cue.CompetitionWin)
+            {
+                var winner = state.Find(state.competitionScores.OrderByDescending(row => row.score).First().contestantId);
+                var result = SceneComponents<CompetitionResult>().Single(item => item.IsPlaying);
+                return new SoundPictureWatch.Expected("actual committed competition winner " + winner.id)
+                    .At(result, "Winner", winner.isPlayer ? "You win!" : winner.name + " wins!");
+            }
+            if (cue == HouseAudio.Cue.Veto)
+            {
+                var actual = state.events.Last(entry => entry.kind == "veto");
+                var sting = SceneComponents<CeremonySting>().Single(item => item.IsPlaying && item.PlayingKind == CeremonySting.VetoKind);
+                return new SoundPictureWatch.Expected("actual committed veto event " + actual.sequence)
+                    .At(sting, "Sting headline", CeremonySting.HeadlineFor(CeremonySting.VetoKind))
+                    .At(sting, "Sting detail", actual.text);
+            }
+            throw new InvalidOperationException("No mapped actual source for information cue " + cue);
         }
 
         [UnityTest, Timeout(900000)]
@@ -197,7 +403,7 @@ namespace Gamesim.Tests.PlayMode
             player.Agent.speed = 25; player.Agent.acceleration = 100;
             director.SetCeremonyPace(CeremonyPace.Quick);
 
-            using (var watch = new SoundPictureWatch(audio, () => director.Snapshot.phase + " week " + director.Snapshot.week))
+            using (var watch = new SoundPictureWatch(audio, () => director.Snapshot.phase + " week " + director.Snapshot.week, InformationPictureFor))
             {
                 var previous = director.Snapshot;
                 bool recapped = false;
@@ -232,6 +438,7 @@ namespace Gamesim.Tests.PlayMode
                     "A week's nominations and its eviction both sound: " + said);
                 Assert.That(watch.Silent, Is.Empty,
                     "These cues sounded in a frame whose text did not change - news only a hearing player was given: " + string.Join(" | ", watch.Silent));
+                watch.AssertAccounted();
             }
         }
 
@@ -274,6 +481,8 @@ namespace Gamesim.Tests.PlayMode
             var board = CueBoard(kind);
             yield return InstallRules4AtFirstHoH(SeedOpeningWithBoard(board));
             var audio = director.GetComponent<HouseAudio>();
+            audio.SetMuted(true);
+            Assert.That(audio.Muted, Is.True, "The board outcome evidence is collected while muted.");
             var expected = new List<HouseAudio.Cue> { HouseAudio.Cue.CompetitionStart };
             bool rises = kind != CompetitionMiniGames.Kind.Precision && kind != CompetitionMiniGames.Kind.Endurance;
             bool falls = kind != CompetitionMiniGames.Kind.Precision && kind != CompetitionMiniGames.Kind.Dice;
@@ -281,7 +490,7 @@ namespace Gamesim.Tests.PlayMode
             if (falls) expected.Add(HouseAudio.Cue.SocialDown);
 
             MiniGameRun run = null;
-            using (var watch = new SoundPictureWatch(audio, () => kind + (run != null ? " at " + run.Elapsed.ToString("0.00") + " s" : " at the briefing")))
+            using (var watch = new SoundPictureWatch(audio, () => kind + (run != null ? " at " + run.Elapsed.ToString("0.00") + " s" : " at the briefing"), InformationPictureFor))
             {
                 if (kind == CompetitionMiniGames.Kind.Precision)
                 {
@@ -321,6 +530,7 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(watch.Checked.ContainsKey(cue), Is.True, kind + " sounds " + cue + " in a frame the watch judged: " + heard);
                 Assert.That(watch.Silent, Is.Empty,
                     "These cues sounded in a frame whose text did not change - news only a hearing player was given: " + string.Join(" | ", watch.Silent));
+                watch.AssertAccounted();
             }
         }
 
@@ -419,7 +629,9 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.Snapshot.phase, Is.EqualTo(EpisodePhase.Jury));
 
             var audio = director.GetComponent<HouseAudio>();
-            using (var watch = new SoundPictureWatch(audio, () => director.Snapshot.phase + (SceneComponents<JuryReveal>().Any(reveal => reveal.IsPlaying) ? " under the jury's reveal" : "")))
+            audio.SetMuted(true);
+            Assert.That(audio.Muted, Is.True, "The installed finale fixture is observed while muted, not claimed as a played season.");
+            using (var watch = new SoundPictureWatch(audio, () => director.Snapshot.phase + (SceneComponents<JuryReveal>().Any(reveal => reveal.IsPlaying) ? " under the jury's reveal" : ""), InformationPictureFor))
             {
                 ButtonWithCaption("Continue episode").onClick.Invoke();
                 yield return Frames(2);
@@ -435,6 +647,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(watch.Checked.ContainsKey(HouseAudio.Cue.Finale), Is.True, "The winner's sound is judged: " + heard);
                 Assert.That(watch.Silent, Is.Empty,
                     "These cues sounded in a frame whose text did not change - news only a hearing player was given: " + string.Join(" | ", watch.Silent));
+                watch.AssertAccounted();
             }
             yield return SkipReveals();
         }

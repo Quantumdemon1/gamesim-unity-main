@@ -241,6 +241,8 @@ namespace Gamesim.Episode
             else if (IsSeasonReportOpen) seasonReport.Close();
             else
             {
+                if (TryDeferVisibleNpcInvitation()) return true;
+                if (BackConversationNavigation()) return true;
                 // A panel closes. With nothing open at all, Escape and Start are the pause menu,
                 // and B is nothing - not even a redraw; the overview, your moves or a chip's card
                 // close first and the press stops there.

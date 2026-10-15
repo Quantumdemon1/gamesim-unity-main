@@ -68,15 +68,20 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(FindButton(HouseNpcInvitationBubble.HearCaption), Is.SameAs(bubble.HearControl), "One control wears the bubble's yes.");
             Assert.That(FindButton(HouseNpcInvitationBubble.NotNowCaption), Is.SameAs(bubble.NotNowControl), "One control wears its no.");
 
+            // A walk-in found while the bubble is up. The engine takes none in a season's first week
+            // (EpisodeEngine.BeforeTheFirstAsk), so StageWalkInForDiagnostics refuses this fixture; and
+            // what a walk-in would become is not this test's subject, what is on screen is. The offer
+            // is set as the proximity watch sets it - a pair, the room, the week - and, as the watch's
+            // offer, writes nothing.
             var now = director.Snapshot;
-            var npcs = now.Active.Where(actor => !actor.isPlayer).Select(actor => actor.id).OrderBy(id => id, StringComparer.Ordinal).ToList();
-            string first = null, second = null, room = null;
-            for (int a = 0; a < npcs.Count && first == null; a++)
-                for (int b = a + 1; b < npcs.Count && first == null; b++)
-                    foreach (var where in RoomWords.Rooms)
-                        if (EpisodeEngine.ProximityOpen(now, npcs[a], npcs[b], where)) { first = npcs[a]; second = npcs[b]; room = where; break; }
-            Assert.That(first, Is.Not.Null, "Some pair could be walked in on.");
-            Assert.That(director.StageWalkInForDiagnostics(first, second, room), Is.True, "The walk-in is staged.");
+            var pair = now.Active.Where(actor => !actor.isPlayer && actor.id != director.CurrentNpcInvitationNpcId)
+                .Select(actor => actor.id).OrderBy(id => id, StringComparer.Ordinal).Take(2).ToList();
+            Assert.That(pair, Has.Count.EqualTo(2), "Two others to walk in on.");
+            Assert.That(EpisodeEngine.StoryOn(now), Is.True, "A walk-in is offered as a Pull only under the story system.");
+            NpcWrite("walkInFirst", pair[0]);
+            NpcWrite("walkInSecond", pair[1]);
+            NpcWrite("walkInRoom", "Living");
+            NpcWrite("walkInWeek", now.week);
             NpcWrite("proximityWatch", -1e6f);
 
             int together = 0, frames = 0;

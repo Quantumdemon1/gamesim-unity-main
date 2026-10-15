@@ -190,5 +190,31 @@ namespace Gamesim.Tests.EditMode
             Assert.That(SettingsEvidence.DeviceLine(true), Is.EqualTo("Gamesim input device: pad"));
             Assert.That(SettingsEvidence.DeviceLine(false), Is.EqualTo("Gamesim input device: keyboard"));
         }
+
+        [Test]
+        public void AWindowOnItsWay_IsLoggedOnceItHasLanded()
+        {
+            // Asked for at 10 s, with a second to land: the old window still reads as the window.
+            Assert.That(SettingsEvidence.WindowSettling(false, 10.5f, 10f, 1f), Is.True, "Still on its way.");
+            Assert.That(SettingsEvidence.WindowSettling(false, 11f, 10f, 1f), Is.False, "Landed.");
+            Assert.That(SettingsEvidence.WindowSettling(true, 10.5f, 10f, 1f), Is.False, "In the editor or a batch run the record is the window.");
+            Assert.That(SettingsEvidence.WindowSettling(false, 0f, float.NegativeInfinity, 1f), Is.False, "Never asked for, never waited on.");
+
+            var logged = Settings("volume=35", "display=Windowed,1600x900", "resolution=1600x900");
+            // The press: the resolution is the record's at once, the window still the old one.
+            var pressed = Settings("volume=35", "display=Windowed,1600x900", "resolution=1920x1080");
+            var held = SettingsEvidence.HoldWindow(logged, pressed);
+            Assert.That(SettingsEvidence.ChangeLines(logged, held), Is.EqualTo(new[] { "Gamesim setting changed: resolution=1920x1080" }));
+            // Read back mid-landing, the window may already say something else: still held.
+            var midway = Settings("volume=35", "display=Borderless,1600x900", "resolution=1920x1080");
+            Assert.That(SettingsEvidence.ChangeLines(held, SettingsEvidence.HoldWindow(held, midway)), Is.Empty,
+                "Nothing about the window until it has landed.");
+            // Landed: the window's line, alone, at the time it changed - not with the next setting.
+            var landed = Settings("volume=35", "display=Windowed,1920x1080", "resolution=1920x1080");
+            Assert.That(SettingsEvidence.ChangeLines(held, landed), Is.EqualTo(new[] { "Gamesim setting changed: display=Windowed,1920x1080" }));
+
+            Assert.That(SettingsEvidence.HoldWindow(null, landed), Is.EqualTo(landed), "Nothing logged yet holds nothing.");
+            Assert.That(SettingsEvidence.HoldWindow(Settings("volume=35"), landed), Is.EqualTo(landed), "Nor does a log without a window.");
+        }
     }
 }

@@ -184,6 +184,7 @@ namespace Gamesim.Episode
         {
             WindowApplications++;
             windowAppliedAt = Time.realtimeSinceStartup;
+            windowEvidenceOwed = true;
             var size = WindowSize();
             if (!Application.isEditor) Screen.SetResolution(size.x, size.y, ToFullScreenMode(displayMode));
         }
@@ -286,6 +287,7 @@ namespace Gamesim.Episode
             if (index < 0 || index >= layout.Count) return;
             WindowApplications++;
             windowAppliedAt = Time.realtimeSinceStartup;
+            windowEvidenceOwed = true;
             monitorChosen = index;
             var target = layout[index];
             var position = displayMode == DisplayMode.Windowed

@@ -358,6 +358,8 @@ namespace Gamesim.Episode
         {
             // Which device the hints speak of, before anything this frame words one (A4).
             NoteInputDevice();
+            // A window the settings asked for, in the player log once it has landed (A13).
+            TickSettingsEvidence();
             // First, and whatever else returns early: the dip is only a clock, and a frame that
             // skipped it would hold the house black for as long as a card or a load owned the frame.
             TickTravelDip();

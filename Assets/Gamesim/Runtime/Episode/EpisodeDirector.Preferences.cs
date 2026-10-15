@@ -50,7 +50,7 @@ namespace Gamesim.Episode
                 Say("volume", volumePercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),
                 Say("muted", muted ? "yes" : "no"),
                 Say("music", musicOn ? "on" : "off"),
-                Say("display", DisplayEvidence()),
+                Say(SettingsEvidence.DisplayKey, DisplayEvidence()),
                 Say("sound", reducedAudio ? "reduced" : "full"),
                 Say("hud", compactHud ? "compact" : "full"),
                 Say("quality", QualityName(qualityTier)),
@@ -86,13 +86,33 @@ namespace Gamesim.Episode
             Debug.Log(SettingsEvidence.SessionLine(session));
         }
 
-        /// <summary>A line for each setting that differs from the one last logged; nothing before Start has noted them.</summary>
+        /// <summary>
+        /// A line for each setting that differs from the one last logged; nothing before Start has
+        /// noted them. While a window this director asked for is still on its way the window's line
+        /// keeps the one last logged, and <see cref="TickSettingsEvidence"/> logs it once it has landed.
+        /// </summary>
         private void LogSettingChanges()
         {
             if (loggedSettings == null) return;
             var now = SettingsNow();
+            if (WindowLanding) now = SettingsEvidence.HoldWindow(loggedSettings, now);
             foreach (var line in SettingsEvidence.ChangeLines(loggedSettings, now)) Debug.Log(line);
             loggedSettings = now;
+        }
+
+        /// <summary>Set as this director asks for a window or a monitor: the log owes the window's line once it lands.</summary>
+        private bool windowEvidenceOwed;
+
+        /// <summary>Whether a window this director asked for may still be on its way (<see cref="SettingsEvidence.WindowSettling"/>).</summary>
+        private bool WindowLanding => SettingsEvidence.WindowSettling(Application.isEditor || Application.isBatchMode,
+            Time.realtimeSinceStartup, windowAppliedAt, WindowSettleSeconds);
+
+        /// <summary>Each frame: once a window this director asked for has landed, the window as it stands in the log.</summary>
+        private void TickSettingsEvidence()
+        {
+            if (!windowEvidenceOwed || WindowLanding) return;
+            windowEvidenceOwed = false;
+            LogSettingChanges();
         }
 
         /// <summary>

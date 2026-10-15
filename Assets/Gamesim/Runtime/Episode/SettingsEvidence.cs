@@ -65,5 +65,33 @@ namespace Gamesim.Episode
 
         /// <summary>The device line.</summary>
         public static string DeviceLine(bool pad) => DevicePrefix + (pad ? "pad" : "keyboard");
+
+        /// <summary>The window's setting: its mode and size as the window stands, not as the record asks.</summary>
+        public const string DisplayKey = "display";
+
+        /// <summary>
+        /// Whether a window the game asked for <paramref name="appliedAt"/> may still be on its way at
+        /// <paramref name="now"/>: Unity changes the window at the end of a later frame (an exclusive
+        /// switch can take longer), and until it has the window still reads as it was. Never in the
+        /// editor or a batch run, where the window is not the game's and the record is the window.
+        /// </summary>
+        public static bool WindowSettling(bool editorOrBatch, float now, float appliedAt, float settleSeconds) =>
+            !editorOrBatch && now - appliedAt < settleSeconds;
+
+        /// <summary>
+        /// The settings <paramref name="now"/> with the window's line held at the one last logged, for
+        /// while a window the game asked for is still on its way: logged then, it would say the old
+        /// window as the change and leave the new one to come out with whatever setting changed next.
+        /// Nothing logged yet holds nothing.
+        /// </summary>
+        public static List<KeyValuePair<string, string>> HoldWindow(IEnumerable<KeyValuePair<string, string>> lastLogged, IEnumerable<KeyValuePair<string, string>> now)
+        {
+            string held = null;
+            if (lastLogged != null) foreach (var setting in lastLogged) if (setting.Key == DisplayKey) held = setting.Value;
+            var settings = new List<KeyValuePair<string, string>>();
+            foreach (var setting in now)
+                settings.Add(setting.Key == DisplayKey && held != null ? new KeyValuePair<string, string>(DisplayKey, held) : setting);
+            return settings;
+        }
     }
 }

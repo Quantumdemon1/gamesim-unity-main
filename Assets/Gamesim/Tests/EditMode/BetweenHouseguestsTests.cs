@@ -465,6 +465,36 @@ namespace Gamesim.Tests.EditMode
             s.allWeekRulesStartWeek = 1; Accepted(s);
         }
 
+        /// <summary>
+        /// The consolidation check's ARCS2-4: the all-week rules' records - a veto's three moves and the house's talk - are only
+        /// ever written between two houseguests. A change with the player as one of the two keeps the engine's own path
+        /// (<c>ChangeBetween</c>, <c>CompletionChange</c>), which records none of them, as it has since each was introduced. So a
+        /// season holding one on an edge of the player's, either way, is refused though the rules are on and it is dated from
+        /// their start: it would feed the player's own ledger trust and the web's history with an entry no play can write. The
+        /// same record between two houseguests stays legal (the control).
+        /// </summary>
+        [TestCase(EpisodeEngine.VetoSaveEvent)] [TestCase(EpisodeEngine.VetoReplacementEvent)] [TestCase(EpisodeEngine.VetoForcedEvent)]
+        [TestCase(EpisodeEngine.NpcConversationEvent)] [TestCase(EpisodeEngine.NpcGossipEvent)]
+        public void TheAllWeekRulesRecordsAreNeverOnAnEdgeOfThePlayers(string type)
+        {
+            Assert.That(EpisodeEngine.AllWeekRecord(type), Is.True, "One of the rules' types.");
+            foreach (bool fromThePlayer in new[] { true, false })
+            {
+                var s = ContentCatalog.Create(2831);
+                s.pactPlanRulesStartWeek = s.allianceLeakRulesStartWeek = s.allWeekRulesStartWeek = 1;
+                RelationshipEventState Entry() => new RelationshipEventState
+                {
+                    sequence = s.nextSequence++, week = s.week, type = type, description = "A record of the all-week rules", impactScore = 25,
+                    decayable = RelationshipLedger.Decays(type),
+                };
+                s.relationships.First(r => r.fromId != s.playerId && r.toId != s.playerId).events.Add(Entry());
+                Accepted(s);
+                s.relationships.First(r => fromThePlayer ? r.fromId == s.playerId && r.toId != s.playerId
+                    : r.toId == s.playerId && r.fromId != s.playerId).events.Add(Entry());
+                Refused(s, "only ever between two houseguests");
+            }
+        }
+
         private static void Accepted(EpisodeState s)
         { string before = Json(s); Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.True, error); Assert.That(Json(s), Is.EqualTo(before)); }
 

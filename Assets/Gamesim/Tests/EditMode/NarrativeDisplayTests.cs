@@ -20,19 +20,27 @@ namespace Gamesim.Tests.EditMode
         private static ContestantState Teller(EpisodeState state) => state.contestants.First(c => !c.isPlayer);
         private static ContestantState Subject(EpisodeState state) => state.contestants.Where(c => !c.isPlayer).Skip(1).First();
 
+        /// <summary>
+        /// The repaired intel lines use the pronouns every other line of the season uses (<see cref="StoryPeople.Pronouns"/>: the
+        /// engine's own sentences and a story card's tokens) - the consolidation check's PE-9. A set the creator does not offer,
+        /// or none, reads as that rule reads it ("they" unless it starts "she" or "he"), never as the name where the rest of the
+        /// season says "they".
+        /// </summary>
         [TestCase("he/him", "he", "He", "thinks", "is", "does")]
         [TestCase("she/her", "she", "She", "thinks", "is", "does")]
         [TestCase("they/them", "they", "They", "think", "are", "do")]
-        [TestCase(null, "Alex Chen", "Alex Chen", "thinks", "is", "does")]
-        [TestCase("", "Alex Chen", "Alex Chen", "thinks", "is", "does")]
-        [TestCase("ze/zir", "Alex Chen", "Alex Chen", "thinks", "is", "does")]
-        [TestCase("he/they", "Alex Chen", "Alex Chen", "thinks", "is", "does")]
-        [TestCase("he", "Alex Chen", "Alex Chen", "thinks", "is", "does")]
-        [TestCase(" SHE/HER ", "she", "She", "thinks", "is", "does")]
+        [TestCase(null, "they", "They", "think", "are", "do")]
+        [TestCase("", "they", "They", "think", "are", "do")]
+        [TestCase("ze/zir", "they", "They", "think", "are", "do")]
+        [TestCase("he/they", "he", "He", "thinks", "is", "does")]
+        [TestCase("he", "he", "He", "thinks", "is", "does")]
+        [TestCase("SHE/HER", "she", "She", "thinks", "is", "does")]
+        [TestCase(" SHE/HER ", "they", "They", "think", "are", "do")]
         public void HistoricalIntelReadsUseChosenPronounsAndAgreementWithoutChangingRecords(string pronouns,
             string lower, string upper, string thinks, string be, string does)
         {
             var state = Cast(pronouns);
+            Assert.That(lower, Is.EqualTo(StoryPeople.Pronouns(Teller(state)).they), "The pronoun every other line of the season uses.");
             var readings = new[]
             {
                 ("is solid with", be + " solid with Quinn Martinez."),
@@ -113,14 +121,18 @@ namespace Gamesim.Tests.EditMode
         [TestCase("he/him", "he", "him", "likes", "keeps", "knows", "wants", "owes")]
         [TestCase("she/her", "she", "her", "likes", "keeps", "knows", "wants", "owes")]
         [TestCase("they/them", "they", "them", "like", "keep", "know", "want", "owe")]
-        [TestCase(null, "Alex Chen", "Alex Chen", "likes", "keeps", "knows", "wants", "owes")]
-        [TestCase("ze/zir", "Alex Chen", "Alex Chen", "likes", "keeps", "knows", "wants", "owes")]
+        [TestCase(null, "they", "them", "like", "keep", "know", "want", "owe")]
+        [TestCase("ze/zir", "they", "them", "like", "keep", "know", "want", "owe")]
+        [TestCase("he/they", "he", "him", "likes", "keeps", "knows", "wants", "owes")]
         public void KnownCatalogueClausesAgreeOnlyAtDisplayTime(string pronouns, string subject, string obj,
             string likes, string keeps, string knows, string wants, string owes)
         {
             var state = Cast(pronouns);
             var cast = new[] { "CONFIDANT", "HOH", "SUBJECT", "NOMINEE" }
                 .Select(role => new StoryRoleState { role = role, contestantId = Teller(state).id }).ToArray();
+            // One card, one pronoun rule (PE-9): a corrected sentence names the houseguest as the card's other sentences do.
+            Assert.That((subject, obj), Is.EqualTo((StoryText.FillDisplay(state, "{HOH.they}", cast), StoryText.FillDisplay(state, "{HOH.them}", cast))),
+                "The pronouns the card's other sentences fill in.");
             var templates = new[]
             {
                 ("Let {CONFIDANT} think what {CONFIDANT.they} likes.", "Let Alex Chen think what " + subject + " " + likes + "."),
@@ -138,8 +150,7 @@ namespace Gamesim.Tests.EditMode
                 "Historical neutral fallback bytes stay unchanged.");
             Assert.That(StoryText.Neutral(templates[1].Item1), Is.EqualTo("Promise a houseguest you will keep them safe next week if they keep you safe now."));
             Assert.That(JsonConvert.SerializeObject(state), Is.EqualTo(snapshot));
-            Assert.That(StoryPeople.Pronouns(Teller(state)).they, Is.EqualTo(pronouns == "he/him" ? "he" : pronouns == "she/her" ? "she" : "they"),
-                "The existing public pronoun fallback is unchanged.");
+            Assert.That(StoryPeople.Pronouns(Teller(state)).they, Is.EqualTo(subject), "The existing public pronoun fallback is unchanged.");
         }
 
         [Test]
@@ -153,7 +164,7 @@ namespace Gamesim.Tests.EditMode
                 new StoryRoleState { role = "HOH", contestantId = Subject(state).id }
             };
             Assert.That(StoryText.FillDisplay(state, "Ask {SUBJECT} what {SUBJECT.they} want out of this game.", cast),
-                Is.EqualTo("Ask {HOH} what {HOH} wants out of this game."), "Names are never recursively treated as story tokens.");
+                Is.EqualTo("Ask {HOH} what they want out of this game."), "Names are never recursively treated as story tokens.");
             Assert.That(StoryText.FillDisplay(state, "A quotation: Ask {SUBJECT} what {SUBJECT.they} want out of this game.", cast),
                 Is.EqualTo("A quotation: Ask {HOH} what they want out of this game."), "Only the exact authored sentence gets the correction.");
         }

@@ -106,17 +106,15 @@ namespace Gamesim.Simulation
             private EnglishReference(string subject, string obj, string sentenceSubject, bool plural)
             { Subject = subject; Object = obj; SentenceSubject = sentenceSubject; this.plural = plural; }
 
+            /// <summary>
+            /// The pronouns every other line of the season uses (<see cref="StoryPeople.Pronouns"/>: the engine's own sentences,
+            /// a story card's tokens through <see cref="StoryText.Fill"/>), so a repaired sentence never names a houseguest the
+            /// card beside it calls "they" (the consolidation check's PE-9). Plural agreement goes with "they".
+            /// </summary>
             public static EnglishReference For(ContestantState who)
             {
-                switch (who.pronouns?.Trim().ToLowerInvariant())
-                {
-                    case "he/him": return new EnglishReference("he", "him", "He", false);
-                    case "she/her": return new EnglishReference("she", "her", "She", false);
-                    case "they/them": return new EnglishReference("they", "them", "They", true);
-                    default:
-                        string name = string.IsNullOrEmpty(who.name) ? "this houseguest" : who.name;
-                        return new EnglishReference(name, name, name, false);
-                }
+                var forms = StoryPeople.Pronouns(who);
+                return new EnglishReference(forms.they, forms.them, char.ToUpperInvariant(forms.they[0]) + forms.they.Substring(1), forms.they == "they");
             }
             public string Present(string singular, string pluralForm) => plural ? pluralForm : singular;
         }

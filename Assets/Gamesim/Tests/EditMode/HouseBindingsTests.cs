@@ -56,6 +56,8 @@ namespace Gamesim.Tests.EditMode
                             Assert.That(binding.path, Is.EqualTo(KeyBindings.ShippedPath(target)),
                                 target.Name + " answers to the key the words on screen were written with.");
                         }
+                        // The one a choice puts back, and the one it may always have again (lane-input-6).
+                        Assert.That(binding.path, Is.EqualTo(KeyBindings.ShippedPath(target, scheme)), target.Name + " on " + scheme + " as shipped.");
                     }
                     if (!target.OnPad)
                         Assert.That(target.Takes(KeyBindings.GamepadScheme), Is.False, target.Name + " is the keyboard's alone: the pad uses its sticks and triggers.");
@@ -95,6 +97,42 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(PathsOf(actions.Pan), Does.Contain("<Keyboard>/w").And.Not.Contain("<Keyboard>/i"));
                 Assert.That(PathsOf(actions.ZoomRate), Does.Contain("<Keyboard>/minus"));
             }
+        }
+
+        /// <summary>
+        /// The conflict check reads the panels' navigation beside the house's own bindings (D4): the
+        /// UI module's Navigate - here the DefaultInputActions the scene's UI module is given - its
+        /// whole D-pad, its sticks' directions, WASD and the arrows. The notebook may not take one of
+        /// them; the diary may; and every action may have its own key or button as shipped back,
+        /// against everything the house reads.
+        /// </summary>
+        [Test]
+        public void TheConflictCheck_ReadsThePanelsNavigation_BesideTheHousesOwnBindings()
+        {
+            var ui = new DefaultInputActions();
+            try
+            {
+                using (var actions = new HouseCameraActions())
+                {
+                    var live = HouseBindings.LiveBindings(actions, ui.UI.Navigate);
+                    bool Has(string scheme, string path) => live.Any(binding => binding.Map == KeyBindings.PanelMap
+                        && binding.Action == KeyBindings.PanelNavigate && binding.Scheme == scheme && binding.Path == path);
+                    Assert.That(Has(KeyBindings.GamepadScheme, "<Gamepad>/dpad"), Is.True, "The D-pad, whole,");
+                    Assert.That(Has(KeyBindings.GamepadScheme, "<Gamepad>/leftStick/up"), Is.True, "the sticks' directions,");
+                    Assert.That(Has(KeyBindings.KeyboardScheme, "<Keyboard>/w") && Has(KeyBindings.KeyboardScheme, "<Keyboard>/downArrow"), Is.True, "WASD and the arrows.");
+                    Assert.That(KeyBindings.Check(live, "Shortcuts", "Notebook", KeyBindings.GamepadScheme, "<Gamepad>/dpad/down"),
+                        Is.EqualTo("D-pad down moves between a panel's controls, and Notebook works with a panel open. Notebook keeps its button."));
+                    Assert.That(KeyBindings.Check(live, "Shortcuts", "Diary", KeyBindings.GamepadScheme, "<Gamepad>/dpad/left"), Is.Null);
+                    Assert.That(KeyBindings.Check(HouseBindings.LiveBindings(actions, null), "Shortcuts", "Notebook", KeyBindings.GamepadScheme, "<Gamepad>/dpad/down"), Is.Null,
+                        "Without the UI module's navigation, nothing the house reads refuses it: the check needs the module's.");
+                    foreach (var target in KeyBindings.Targets)
+                        foreach (var scheme in new[] { KeyBindings.KeyboardScheme, KeyBindings.GamepadScheme })
+                            if (target.Takes(scheme))
+                                Assert.That(KeyBindings.Check(live, target, scheme, KeyBindings.ShippedPath(target, scheme)), Is.Null,
+                                    target.Name + " on " + scheme + " may have its own back.");
+                }
+            }
+            finally { UnityEngine.Object.DestroyImmediate(ui.asset); }
         }
     }
 }

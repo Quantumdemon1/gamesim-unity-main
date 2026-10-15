@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using Gamesim.Persistence;
 using Gamesim.Presentation;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.UI;
 
 namespace Gamesim.House
 {
@@ -11,9 +13,9 @@ namespace Gamesim.House
     /// Rebinding in the house (PLAN A, A5): the player's choices (<see cref="KeyBindings"/>) applied
     /// to every copy of the game's actions - the rig's while one is up and the shared copy beside it
     /// (<see cref="HouseInput"/>) - kept in the session's preferences (A13), and the one press a
-    /// rebinding listens for. Esc cancels a rebinding; a key the rules refuse leaves the action as it
-    /// was and says why; nothing else the press might mean in the house acts on it
-    /// (<see cref="Busy"/>).
+    /// rebinding listens for. Esc cancels a rebinding, and B one listening on the pad; a key the rules
+    /// refuse leaves the action as it was and says why; nothing else the press might mean in the house
+    /// acts on it (<see cref="Busy"/>).
     /// </summary>
     public static class HouseBindings
     {
@@ -30,6 +32,9 @@ namespace Gamesim.House
 
         /// <summary>The action a rebinding is listening for, or null.</summary>
         public static KeyBindings.Target ListeningFor { get; private set; }
+
+        /// <summary>Whether the rebinding listening is listening to the pad: its words name the pad's way out, B.</summary>
+        public static bool ListeningOnPad { get; private set; }
 
         /// <summary>
         /// Whether the house should leave this frame's presses alone: a rebinding is listening, or one
@@ -133,30 +138,61 @@ namespace Gamesim.House
             return false;
         }
 
-        /// <summary>Every binding of the actions as they stand, composites' parts included, for the conflict check.</summary>
-        public static List<KeyBindings.Binding> LiveBindings(HouseCameraActions actions)
+        /// <summary>
+        /// Every binding of the actions as they stand, composites' parts included, and the event
+        /// system's navigation beside them (<see cref="PanelNavigation"/>), for the conflict check.
+        /// </summary>
+        public static List<KeyBindings.Binding> LiveBindings(HouseCameraActions actions) => LiveBindings(actions, PanelNavigation());
+
+        /// <summary>
+        /// Every binding of the actions as they stand, and <paramref name="panelNavigation"/>'s - the
+        /// UI module's Navigate - as the <see cref="KeyBindings.PanelMap"/>'s: the D-pad, the sticks,
+        /// WASD and the arrows that move between a panel's controls (D4).
+        /// </summary>
+        public static List<KeyBindings.Binding> LiveBindings(HouseCameraActions actions, InputAction panelNavigation)
         {
             var live = new List<KeyBindings.Binding>();
-            if (actions?.Asset == null) return live;
-            foreach (var map in actions.Asset.actionMaps)
-                foreach (var action in map.actions)
-                    foreach (var binding in action.bindings)
-                    {
-                        if (binding.isComposite) continue;
-                        foreach (var group in (binding.groups ?? "").Split(';'))
-                            if (group == KeyBindings.KeyboardScheme || group == KeyBindings.GamepadScheme)
-                                live.Add(new KeyBindings.Binding(map.name, action.name, group, binding.effectivePath,
-                                    binding.isPartOfComposite ? binding.name : null));
-                    }
+            if (actions?.Asset != null)
+                foreach (var map in actions.Asset.actionMaps)
+                    foreach (var action in map.actions)
+                        AddBindings(live, map.name, action);
+            if (panelNavigation != null) AddBindings(live, KeyBindings.PanelMap, panelNavigation);
             return live;
+        }
+
+        private static void AddBindings(List<KeyBindings.Binding> live, string map, InputAction action)
+        {
+            foreach (var binding in action.bindings)
+            {
+                if (binding.isComposite) continue;
+                foreach (var group in (binding.groups ?? "").Split(';'))
+                    if (group == KeyBindings.KeyboardScheme || group == KeyBindings.GamepadScheme)
+                        live.Add(new KeyBindings.Binding(map, map == KeyBindings.PanelMap ? KeyBindings.PanelNavigate : action.name, group,
+                            binding.effectivePath, binding.isPartOfComposite ? binding.name : null));
+            }
+        }
+
+        /// <summary>
+        /// The event system's navigation: the scene's UI module's Navigate, which moves between a
+        /// panel's controls in every panel, or null where there is no UI module to ask.
+        /// </summary>
+        private static InputAction PanelNavigation()
+        {
+            var events = EventSystem.current;
+            if (events == null) return null;
+            var module = events.currentInputModule as InputSystemUIInputModule;
+            if (module == null) module = events.GetComponent<InputSystemUIInputModule>();
+            if (module == null || module.move == null) return null;
+            return module.move.action;
         }
 
         /// <summary>
         /// Listens for the next press on the keyboard (or the pad, <paramref name="pad"/>, for a target
         /// the pad has a binding of its own for: the camera's keys always listen to the keyboard) and
-        /// gives it to <paramref name="target"/>, if the rules allow; Esc cancels. <paramref name="done"/>
-        /// is told the outcome in the player's words, and whether anything changed. One rebinding at a
-        /// time: asking for another while one listens cancels the first.
+        /// gives it to <paramref name="target"/>, if the rules allow; Esc cancels, and on the pad B, its
+        /// way out, as well (lane-input-5). <paramref name="done"/> is told the outcome in the player's
+        /// words, and whether anything changed. One rebinding at a time: asking for another while one
+        /// listens cancels the first.
         /// </summary>
         public static void Listen(KeyBindings.Target target, bool pad, IPreferenceStore store, Action<string, bool> done)
         {
@@ -164,7 +200,9 @@ namespace Gamesim.House
             if (target == null) return;
             pad = pad && target.OnPad;
             string scheme = pad ? KeyBindings.GamepadScheme : KeyBindings.KeyboardScheme;
+            string keeps = target.Name + " keeps its " + (pad ? "button" : "key") + ".";
             ListeningFor = target;
+            ListeningOnPad = pad;
             // A probe of its own, never one of the game's actions: nothing the house reads is
             // switched off while it listens, and the probe is thrown away after.
             probe = new InputAction("Rebind " + target.Name, InputActionType.Button, pad ? "<Gamepad>/buttonSouth" : "<Keyboard>/space");
@@ -179,6 +217,11 @@ namespace Gamesim.House
                 {
                     string path = probe.bindings[0].effectivePath;
                     End();
+                    // The pad's B is its way out: listening on the pad, it cancels as Esc does. Only one
+                    // control can cancel a rebinding, and "*/{Cancel}" would take the opening press's
+                    // release on a pad whose A is its Cancel (the Switch's and iOS layouts), so B is
+                    // read here, as the press the rebinding took.
+                    if (pad && string.Equals(path, PadWayOut, StringComparison.OrdinalIgnoreCase)) { done?.Invoke(keeps, false); return; }
                     string refusal = KeyBindings.Check(LiveBindings(HouseInput.Actions), target, scheme, path);
                     if (refusal != null) { done?.Invoke(refusal, false); return; }
                     current.Set(target, scheme, path);
@@ -189,7 +232,7 @@ namespace Gamesim.House
                 .OnCancel(cancelled =>
                 {
                     End();
-                    done?.Invoke(target.Name + " keeps its " + (pad ? "button" : "key") + ".", false);
+                    done?.Invoke(keeps, false);
                 })
                 .Start();
         }
@@ -213,10 +256,14 @@ namespace Gamesim.House
             End();
         }
 
+        /// <summary>The pad's B: Back and the panels' Cancel, which a rebinding on the pad takes as its cancel.</summary>
+        private const string PadWayOut = "<Gamepad>/buttonEast";
+
         private static void End()
         {
             settledFrame = Time.frameCount;
             ListeningFor = null;
+            ListeningOnPad = false;
             var finished = operation;
             operation = null;
             finished?.Dispose();
@@ -233,6 +280,7 @@ namespace Gamesim.House
             probe?.Dispose();
             probe = null;
             ListeningFor = null;
+            ListeningOnPad = false;
             settledFrame = int.MinValue;
             current = new KeyBindings();
             KeyBindings.Show(null);

@@ -305,10 +305,16 @@ namespace Gamesim.Episode
         /// </summary>
         public const float LeftColumnX = 14f + IconRail.Width + 12f;
 
-        public void Begin(EpisodeState state, string message, bool recovery, bool open)
+        /// <summary>
+        /// Rebuilds the chrome, and the panel when <paramref name="open"/>. <paramref name="recovery"/>
+        /// is a blocked save only: it builds the panel the recovery is made in and locks the travel.
+        /// <paramref name="warning"/> tints the status line amber - a stopped house world, a save
+        /// that failed - and changes nothing else.
+        /// </summary>
+        public void Begin(EpisodeState state, string message, bool recovery, bool open, bool warning = false)
         {
             statusGuidanceVisible = !string.IsNullOrEmpty(message);
-            statusNoticePriority = recovery;
+            statusNoticePriority = recovery || warning;
             var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
             // Whatever had the keyboard keeps it by name, chrome as well as panel. The HUD rebuilds
             // itself for reasons that have nothing to do with the player - a houseguest's body
@@ -399,10 +405,11 @@ namespace Gamesim.Episode
             if (message != lastStatusMessage) { HudReveal.Play(status,ReducedMotion,10f); lastStatusMessage = message; }
             // Lower third: a coloured rule leads the caption, and turns amber on recovery so the
             // state of the save is legible at a glance rather than only in the wording.
-            var rule = Panel("Caption rule",status,recovery ? UiTheme.Warning : Accent,2);
+            bool amber = recovery || warning;
+            var rule = Panel("Caption rule",status,amber ? UiTheme.Warning : Accent,2);
             Anchor(rule,new Vector2(0,.5f),new Vector2(0,.5f),new Vector2(16,0),new Vector2(4,28*FontScale));
             rule.GetComponent<Image>().raycastTarget = false;
-            var caption = FixedText(status,message,16,recovery ? UiTheme.Warning : Paper,new Vector2(32,-9),new Vector2(1150,48));
+            var caption = FixedText(status,message,16,amber ? UiTheme.Warning : Paper,new Vector2(32,-9),new Vector2(1150,48));
             AutoSize(caption,12);
             float wanted = caption.GetPreferredValues(caption.text).x + 64f;
             float statusWidth = Mathf.Clamp(wanted, Mathf.Min(420f, statusRoom), statusRoom);

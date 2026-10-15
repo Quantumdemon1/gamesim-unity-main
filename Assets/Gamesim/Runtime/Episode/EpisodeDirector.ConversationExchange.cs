@@ -155,6 +155,16 @@ namespace Gamesim.Episode
             saveFeedbackUntil = 0f;
         }
 
+        /// <summary>
+        /// Lets go of a notice that only said where the player was - a piece of furniture's line once
+        /// they are up - so the phase's own guidance comes back rather than an empty line.
+        /// </summary>
+        private void EndSystemNotice()
+        {
+            commandNotice = false;
+            systemNotice = null;
+        }
+
         /// <summary>State-derived guidance; conversation prose and save suffixes have other homes.</summary>
         private string HudStatusMessage(EpisodeState state)
         {

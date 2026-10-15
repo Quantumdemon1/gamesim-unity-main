@@ -216,9 +216,14 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.StatusMessage, Is.EqualTo(InputGlossary.StationLine(warp, true)),
                 "A pad's A on the rail: the line names the pad's button. It read: " + director.StatusMessage);
             AssertNoKeyboardWords(director.StatusMessage, "the way to the episode screen");
+            // On the screen, not only in the field: the line is travel guidance, as the diary's is.
+            Assert.That(ExchangeFlowStatusText(), Does.Contain(InputGlossary.StationLine(warp, true)),
+                "The pad's line reaches the visible status line. It showed: " + ExchangeFlowStatusText());
             yield return PressKey(Key.LeftCtrl);
             yield return Frames(2);
             Assert.That(director.StatusMessage, Is.EqualTo(InputGlossary.StationLine(warp, false)), "A key puts the keyboard's words back, byte for byte.");
+            Assert.That(ExchangeFlowStatusText(), Does.Contain(InputGlossary.StationLine(warp, false)),
+                "and on the visible status line. It showed: " + ExchangeFlowStatusText());
 
             // 2. The diary, the same way.
             yield return PadSubmitCaption(EpisodeHud.DiaryTravelCaption);
@@ -226,9 +231,13 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.StatusMessage, Is.EqualTo(InputGlossary.DiaryWayLine(warp, true)),
                 "The diary's way in, in the pad's words. It read: " + director.StatusMessage);
             AssertNoKeyboardWords(director.StatusMessage, "the way to the diary");
+            Assert.That(ExchangeFlowStatusText(), Does.Contain(InputGlossary.DiaryWayLine(warp, true)),
+                "The diary's way in reaches the visible status line. It showed: " + ExchangeFlowStatusText());
             yield return PressKey(Key.LeftCtrl);
             yield return Frames(2);
             Assert.That(director.StatusMessage, Is.EqualTo(InputGlossary.DiaryWayLine(warp, false)));
+            Assert.That(ExchangeFlowStatusText(), Does.Contain(InputGlossary.DiaryWayLine(warp, false)),
+                "and in the keyboard's words after a key. It showed: " + ExchangeFlowStatusText());
 
             // 3. The settings' CEREMONIES paragraph, worded again while the settings are open.
             director.ClosePanels();

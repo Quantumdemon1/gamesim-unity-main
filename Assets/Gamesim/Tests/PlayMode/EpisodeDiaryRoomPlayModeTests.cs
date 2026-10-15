@@ -247,6 +247,9 @@ namespace Gamesim.Tests.PlayMode
             ButtonWithCaption(EpisodeHud.DiaryCancelCaption).onClick.Invoke();
             yield return null; yield return null;
             Assert.That(director.HasDiaryDecisionDraft, Is.False);
+            // What became of the choice is said where the player reads it (D10).
+            Assert.That(ExchangeFlowStatusText(), Does.Contain("Unconfirmed diary choice discarded. The episode is unchanged."),
+                "The discard reaches the visible status line. It showed: " + ExchangeFlowStatusText());
             AssertEquivalent(before,director.Snapshot);
             yield return ReviewDiaryNominations(before);
             yield return PressDiaryKey(Key.Escape);

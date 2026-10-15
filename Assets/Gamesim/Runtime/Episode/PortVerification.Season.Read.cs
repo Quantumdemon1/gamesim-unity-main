@@ -55,6 +55,7 @@ namespace Gamesim.Episode
             { seasonReport.readNote = "The read's approach did not complete within its route deadline."; Missed(); yield break; }
             if (!seasonDirector.TryOpenNpc(chosen.Id)) { seasonReport.readNote = chosen.Id + " was not interactable for the read."; Missed(); yield break; }
             yield return null; yield return null;
+            yield return EnterSeasonConversationCategory(EpisodeDirector.LearnCategoryCaption);
             if (!HasSeasonButtonText(caption))
             {
                 seasonReport.readNote = "The conversation offered no \"" + caption + "\" to " + chosen.Id + ".";
@@ -77,6 +78,7 @@ namespace Gamesim.Episode
                 seasonReport.votesAsked++;
             }
             else seasonReport.peopleRead++;
+            yield return DrainSeasonConversationExchange(asking ? "vote-answer" : "person-reading", graphical);
             yield return CloseSeasonPanel();
         }
 

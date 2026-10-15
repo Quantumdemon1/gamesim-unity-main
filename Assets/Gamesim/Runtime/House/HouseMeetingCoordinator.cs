@@ -239,6 +239,7 @@ namespace Gamesim.House
             if (departing != null && !eligible.Contains(departing.id)) EndDeparture();
             RetireInvalidActivities();
             RetireInvalidTalk();
+            RetireInvalidNpcInvitation();
             // Release invalid pairs before changing any participant's collision owner.
             leaseBuffer.Clear(); leaseBuffer.AddRange(leases.Values);
             foreach (var lease in leaseBuffer)
@@ -281,7 +282,7 @@ namespace Gamesim.House
                 // and so does somebody the player has asked over to talk.
                 actor.motion.SetPaused(paused && !OpeningHoldsActor(actor.id) && !CeremonyHoldsActor(actor.id)
                     && !DepartureHoldsActor(actor.id) && !WanderHoldsActor(actor.id) && !TalkHoldsActor(actor.id) && !ActHoldsActor(actor.id)
-                    && !StormHoldsActor(actor.id));
+                    && !StormHoldsActor(actor.id) && !NpcInvitationHoldsActor(actor.id));
             }
             LastFailure = null;
             return true;
@@ -451,6 +452,7 @@ namespace Gamesim.House
             if (disposed) return;
             RetireInvalidActivities();
             RetireInvalidTalk();
+            RetireInvalidNpcInvitation();
             leaseBuffer.Clear(); leaseBuffer.AddRange(leases.Values); leaseBuffer.Sort(leaseComparison);
             foreach (var lease in leaseBuffer)
             {
@@ -465,12 +467,13 @@ namespace Gamesim.House
         {
             if (disposed || paused == value) return;
             paused = value;
-            foreach (var actor in cast) if (actor.motion != null) actor.motion.SetPaused(value && !OpeningHoldsActor(actor.id) && !CeremonyHoldsActor(actor.id) && !DepartureHoldsActor(actor.id) && !WanderHoldsActor(actor.id) && !TalkHoldsActor(actor.id) && !ActHoldsActor(actor.id) && !StormHoldsActor(actor.id));
+            foreach (var actor in cast) if (actor.motion != null) actor.motion.SetPaused(value && !OpeningHoldsActor(actor.id) && !CeremonyHoldsActor(actor.id) && !DepartureHoldsActor(actor.id) && !WanderHoldsActor(actor.id) && !TalkHoldsActor(actor.id) && !ActHoldsActor(actor.id) && !StormHoldsActor(actor.id) && !NpcInvitationHoldsActor(actor.id));
             foreach (var lease in leases.Values) lease.Status = value ? HouseMeetingStatus.Paused : HouseMeetingStatus.Travelling;
         }
         public bool Release(HouseMeetingLease lease) => Current(lease) && Retire(lease,HouseMeetingStatus.Released,null);
         public void ReleaseAll()
         {
+            EndNpcInvitation();
             ReleaseActivities();
             EndCompetitionStage();
             EndOpeningStage();
@@ -507,6 +510,7 @@ namespace Gamesim.House
             && actor.motion.BoundNpcId == actor.id && actor.motion.LeaseId == token;
         private bool OwnsMotionLease(HouseNpcMotion motion)
         {
+            if (NpcInvitationOwnsMotion(motion)) return true;
             if (ActivityOwnsMotion(motion)) return true;
             if (CompetitionOwnsMotion(motion)) return true;
             if (OpeningOwnsMotion(motion)) return true;

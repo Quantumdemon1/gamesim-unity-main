@@ -16,6 +16,7 @@ function CheckOptional([string]$Name,[bool]$Passed) {
     $optionalChecks.Add($Name)
 }
 $guardJunction = $null
+$fixtureSucceeded = $false
 try {
     Put $source 'ProjectSettings/ProjectVersion.txt' 'm_EditorVersion: fixture'
     Put $destination 'ProjectSettings/ProjectVersion.txt' 'm_EditorVersion: fixture'
@@ -55,7 +56,7 @@ try {
     Put $source 'Packages/manifest.json' '{}'
     Put $source 'ArtSource/source.txt' 'fixture authoring'
     [void][IO.Directory]::CreateDirectory((Join-Path $source 'Tools'))
-    foreach ($name in @('sync-acceptance.ps1','review-evidence.ps1')) {
+    foreach ($name in @('sync-acceptance.ps1','review-evidence.ps1','review-workflow.ps1')) {
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $source "Tools/$name")
     }
     $env:GAMESIM_ACCEPTANCE = $destination
@@ -179,12 +180,43 @@ try {
     if (-not $rejected -or (Read $destination 'Assets/Ordinary/keep.txt') -cne 'new ordinary data') {
         throw 'An incomplete index did not fail before mirror mutation.'
     }
+    # Worktrees deliberately exclude licensed vendor source. Explicit retention preserves it
+    # only as a separately hashed destination dependency, never an unevidenced empty mirror.
+    Put $source 'Assets/UMAProjectData/Resources/AssetIndexerProject.asset.meta' $projectIndex['Assets/UMAProjectData/Resources/AssetIndexerProject.asset.meta']
+    Put $source 'Assets/Ordinary/keep.txt' 'new ordinary data'
+    $fixtureSourceSdk=[IO.Path]::GetFullPath((Join-Path $source 'Assets/UMA'))
+    if (-not $fixtureSourceSdk.StartsWith($fixtureBase+'\',[StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe fixture vendor boundary.' }
+    Remove-Item -LiteralPath $fixtureSourceSdk -Recurse -Force
+    $vendorBefore=Get-ReviewHash (Join-Path $destination 'Assets/UMA/installed.asset')
+    $rejected=$false
+    try { & (Join-Path $source 'Tools/sync-acceptance.ps1') } catch {
+        if ($_.Exception.Message -notlike '*source has no Assets\UMA*') { throw }
+        $rejected=$true
+    }
+    CheckOptional 'Vendor-free worktree cannot silently delete installed UMA' $rejected
+    Put $source 'ProjectSettings/ProjectSettings.asset' "  scriptingDefineSymbols:`n    Standalone: SENTIS_ANALYTICS_ENABLED;KEEP`n"
+    $sourceSettingsBefore=Get-ReviewHash (Join-Path $source 'ProjectSettings/ProjectSettings.asset')
+    & (Join-Path $source 'Tools/sync-acceptance.ps1') -DisableGpuResidentDrawer -RetainInstalledUma
+    CheckOptional 'Explicit retained vendor preserves exact installed bytes' ((Get-ReviewHash (Join-Path $destination 'Assets/UMA/installed.asset')) -ceq $vendorBefore)
+    CheckOptional 'Explicit UMA activation affects only local copy, not source Settings bytes' ((Read $destination 'ProjectSettings/ProjectSettings.asset') -ceq "  scriptingDefineSymbols:`n    Standalone: KEEP;GAMESIM_UMA`n" -and
+        (Get-ReviewHash (Join-Path $source 'ProjectSettings/ProjectSettings.asset')) -ceq $sourceSettingsBefore)
+    Assert-ReviewConfiguration $destination $false 0
+    $retainedPreview=New-ReviewInputManifest -ProjectRoot $source -WorkflowRoot $source -PreviewSync -RetainedRoot $destination -RetainInstalledUma
+    $retainedActual=New-ReviewInputManifest -ProjectRoot $destination -WorkflowRoot $source
+    $retainedDrift=@(Compare-ReviewInputs $retainedActual $retainedPreview -AllowShippingGpu -RequireWorkflowStable)
+    CheckOptional 'Retained vendor projection accounts for every dependency byte' (@($retainedDrift | Where-Object {-not $_.allowed}).Count -eq 0 -and
+        @($retainedPreview.files | Where-Object {$_.path -eq 'Assets/UMA/installed.asset' -and $_.sha256 -ceq $vendorBefore}).Count -eq 1)
+    Put $destination 'Assets/UMA/installed.asset' 'changed vendor dependency'
+    $changedVendor=New-ReviewInputManifest -ProjectRoot $source -WorkflowRoot $source -PreviewSync -RetainedRoot $destination -RetainInstalledUma
+    CheckOptional 'Changed retained vendor is product drift, not an allowed import cache' (@(Compare-ReviewInputs $retainedPreview $changedVendor -RequireWorkflowStable | Where-Object {-not $_.allowed -and $_.path -eq 'Assets/UMA/installed.asset'}).Count -eq 1)
     Write-Output ("Existing mirror/prediction fixtures and {0} optional-content checks passed; only temporary fixture trees were changed." -f $optionalChecks.Count)
     $optionalChecks | ForEach-Object { Write-Output ("Passed: " + $_) }
+    $fixtureSucceeded = $true
 } finally {
     $env:GAMESIM_ACCEPTANCE = $previousAcceptance
     if ($guardJunction) { [IO.Directory]::Delete($guardJunction) }
     $resolved = [IO.Path]::GetFullPath($fixture)
     if (-not $resolved.StartsWith($fixtureBase + '\',[StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe fixture cleanup boundary.' }
-    if (Test-Path -LiteralPath $resolved) { Remove-Item -LiteralPath $resolved -Recurse -Force }
+    if ($fixtureSucceeded -and (Test-Path -LiteralPath $resolved)) { Remove-Item -LiteralPath $resolved -Recurse -Force }
+    elseif (-not $fixtureSucceeded) { Write-Output "Failed isolated mirror fixture retained: $resolved" }
 }

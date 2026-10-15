@@ -87,6 +87,7 @@ namespace Gamesim.Tests.PlayMode
             {
                 overlayUnavailable = false;
                 fallbackSaid = false;
+                openLenses.Clear();
             }
 
             /// <summary>
@@ -120,6 +121,25 @@ namespace Gamesim.Tests.PlayMode
             /// <summary>How far in front of <see cref="Lens"/> the canvases stand.</summary>
             private float Plane => Overlay != null ? PlaneDistance : View.nearClipPlane + PastNearClip;
 
+            // Only a live capture may lend its pixel bounds to the pressability instrument. A
+            // camera with an arbitrary render target is not evidence of an accessible screen.
+            private static readonly List<CaptureLens> openLenses = new List<CaptureLens>();
+
+            public static bool TryFrame(Canvas canvas, Camera eye, out Rect frame)
+            {
+                frame = default;
+                if (canvas == null || eye == null || canvas.renderMode != RenderMode.ScreenSpaceCamera) return false;
+                for (int index = openLenses.Count - 1; index >= 0; index--)
+                {
+                    var lens = openLenses[index];
+                    if (lens.Target == null || eye != lens.Lens || eye.targetTexture != lens.Target
+                        || canvas.worldCamera != eye || !lens.canvases.Any(held => held.Canvas == canvas)) continue;
+                    frame = eye.pixelRect;
+                    return true;
+                }
+                return false;
+            }
+
             private readonly RenderTexture previousTarget;
             private List<Camera> stack;
             private Canvas guard;
@@ -142,6 +162,7 @@ namespace Gamesim.Tests.PlayMode
                 // Made with the lens, so the canvas system has laid it out by the first read.
                 guard = MakeGuard();
                 PointTheCanvases();
+                openLenses.Add(this);
             }
 
             /// <summary>The overlay camera, made and put in the view camera's stack.</summary>
@@ -339,6 +360,7 @@ namespace Gamesim.Tests.PlayMode
             /// <summary>Puts every canvas back as it was, takes the overlay camera out of the stack, hands the view camera its own target again, and takes the guard down.</summary>
             public void Dispose()
             {
+                openLenses.Remove(this);
                 // A canvas can be gone by now: a capture's wait spans frames, and a panel's fade-out
                 // ghost is a canvas that destroys itself when its fade ends.
                 foreach (var (canvas, mode, camera, distance) in canvases)

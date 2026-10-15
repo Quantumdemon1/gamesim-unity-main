@@ -54,31 +54,40 @@ namespace Gamesim.Tests.PlayMode
         [UnityTearDown]
         public IEnumerator CleanUpIsolatedEpisode()
         {
-            if (testKeyboard != null && testKeyboard.added) InputSystem.RemoveDevice(testKeyboard);
-            testKeyboard = null;
-            if (testMouse != null && testMouse.added) InputSystem.RemoveDevice(testMouse);
-            testMouse = null;
-            if (testGamepad != null && testGamepad.added) InputSystem.RemoveDevice(testGamepad);
-            testGamepad = null;
-            if (director != null) director.ClosePanels();
-            var episode = SceneManager.GetSceneByName(EpisodeScene);
-            if (episode.IsValid() && episode.isLoaded)
+            bool originalCleanupCompleted = false;
+            try
             {
-                var cleanupScene = SceneManager.CreateScene("Episode test cleanup " + Guid.NewGuid().ToString("N"));
-                SceneManager.SetActiveScene(cleanupScene);
-                yield return SceneManager.UnloadSceneAsync(episode);
+                if (testKeyboard != null && testKeyboard.added) InputSystem.RemoveDevice(testKeyboard);
+                testKeyboard = null;
+                if (testMouse != null && testMouse.added) InputSystem.RemoveDevice(testMouse);
+                testMouse = null;
+                if (testGamepad != null && testGamepad.added) InputSystem.RemoveDevice(testGamepad);
+                testGamepad = null;
+                if (director != null) director.ClosePanels();
+                var episode = SceneManager.GetSceneByName(EpisodeScene);
+                if (episode.IsValid() && episode.isLoaded)
+                {
+                    var cleanupScene = SceneManager.CreateScene("Episode test cleanup " + Guid.NewGuid().ToString("N"));
+                    SceneManager.SetActiveScene(cleanupScene);
+                    yield return SceneManager.UnloadSceneAsync(episode);
+                }
+                EpisodeDirector.SaveRootOverride = null;
+                // A test that opted its root into its own preferences (A13) lets the opt-in go with it.
+                EpisodeDirector.PreferencesBesideSaves = false;
+                if (GamesimBootstrap.Instance != null) Object.Destroy(GamesimBootstrap.Instance.gameObject);
+                yield return null;
+                if (!string.IsNullOrEmpty(temporaryDirectory))
+                {
+                    var resolved = Path.GetFullPath(temporaryDirectory);
+                    Assert.That(resolved.StartsWith(Path.GetFullPath(Path.GetTempPath()), StringComparison.OrdinalIgnoreCase), Is.True);
+                    Assert.That(Path.GetFileName(resolved), Does.StartWith("GamesimEpisodeTests-"));
+                    if (Directory.Exists(resolved)) Directory.Delete(resolved, true);
+                }
+                originalCleanupCompleted = true;
             }
-            EpisodeDirector.SaveRootOverride = null;
-            // A test that opted its root into its own preferences (A13) lets the opt-in go with it.
-            EpisodeDirector.PreferencesBesideSaves = false;
-            if (GamesimBootstrap.Instance != null) Object.Destroy(GamesimBootstrap.Instance.gameObject);
-            yield return null;
-            if (!string.IsNullOrEmpty(temporaryDirectory))
+            finally
             {
-                var resolved = Path.GetFullPath(temporaryDirectory);
-                Assert.That(resolved.StartsWith(Path.GetFullPath(Path.GetTempPath()), StringComparison.OrdinalIgnoreCase), Is.True);
-                Assert.That(Path.GetFileName(resolved), Does.StartWith("GamesimEpisodeTests-"));
-                if (Directory.Exists(resolved)) Directory.Delete(resolved, true);
+                ReleaseProvidedFarewellFixture(originalCleanupCompleted);
             }
         }
 
@@ -129,6 +138,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(player.InputEnabled, Is.False);
             Assert.That(cameraRig.IsConversationFocused, Is.True);
             var before = director.Snapshot;
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             var promise = ButtonWithCaption("Promise safety");
             Assert.That(promise.IsInteractable(), Is.True);
             promise.onClick.Invoke();
@@ -533,14 +543,19 @@ namespace Gamesim.Tests.PlayMode
             var rect = (RectTransform)button.transform;
             Canvas.ForceUpdateCanvases();
             var canvas = button.GetComponentInParent<Canvas>();
+            if (canvas != null) canvas = canvas.rootCanvas;
             // An overlay canvas draws in screen coordinates, so its rects need a null camera; a
             // camera-space one needs the camera that renders it.
             var eye = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
                 ? canvas.worldCamera : null;
             var centre = RectTransformUtility.WorldToScreenPoint(eye, rect.TransformPoint(rect.rect.center));
-            if (centre.x < 0f || centre.y < 0f || centre.x > Screen.width || centre.y > Screen.height)
+            bool captured = CaptureLens.TryFrame(canvas, eye, out var bounds);
+            if (!captured) bounds = new Rect(0f, 0f, Screen.width, Screen.height);
+            string surface = captured ? "capture frame" : "screen";
+            if (centre.x < bounds.xMin || centre.y < bounds.yMin || centre.x > bounds.xMax || centre.y > bounds.yMax)
                 Assert.Fail("'" + caption + "' sits at " + centre.ToString("0") + ", off a "
-                    + Screen.width + "x" + Screen.height + " screen, so a player could not reach it.");
+                    + bounds.width.ToString("0") + "x" + bounds.height.ToString("0") + " " + surface
+                    + ", so a player could not reach it.");
 
             var hits = new System.Collections.Generic.List<RaycastResult>();
             EventSystem.current.RaycastAll(new PointerEventData(EventSystem.current) { position = centre }, hits);
@@ -556,7 +571,7 @@ namespace Gamesim.Tests.PlayMode
                 var own = button.targetGraphic;
                 if (own != null && !own.canvasRenderer.cull
                     && own.canvasRenderer.GetInheritedAlpha() > 0.01f
-                    && own.Raycast(centre, null))
+                    && own.Raycast(centre, eye))
                     return;
 
                 // Report the state rather than the symptom. "Hits nothing" has several possible
@@ -568,7 +583,8 @@ namespace Gamesim.Tests.PlayMode
                 var caster = owner != null ? owner.GetComponent<GraphicRaycaster>() : null;
                 var group = button.GetComponentInParent<CanvasGroup>();
                 Assert.Fail("'" + caption + "' is at " + centre.ToString("0") + " on a "
-                    + Screen.width + "x" + Screen.height + " screen and the pointer hits nothing."
+                    + bounds.width.ToString("0") + "x" + bounds.height.ToString("0") + " " + surface
+                    + " and the pointer hits nothing."
                     + "  graphic=" + (graphic == null ? "none" : graphic.GetType().Name
                         + " raycastTarget=" + graphic.raycastTarget + " enabled=" + graphic.enabled)
                     + "  canvas=" + (owner == null ? "none" : owner.name + " mode=" + owner.renderMode
@@ -581,7 +597,7 @@ namespace Gamesim.Tests.PlayMode
                     + "  inheritedAlpha=" + (graphic == null ? "?"
                         : graphic.canvasRenderer.GetInheritedAlpha().ToString("0.00"))
                     + "  selfRaycast=" + (graphic == null ? "?"
-                        : graphic.Raycast(centre, null).ToString())
+                        : graphic.Raycast(centre, eye).ToString())
                     + "  raycasters=" + Object.FindObjectsByType<BaseRaycaster>(
                         FindObjectsInactive.Exclude, FindObjectsSortMode.None).Length
                     + "  topCanvases=" + string.Join(",", Object.FindObjectsByType<Canvas>(

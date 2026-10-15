@@ -154,6 +154,7 @@ namespace Gamesim.Episode
             if (!TryApproach(npc, out var approach) || !player.TryRunTo(approach))
             {
                 message = "You cannot reach " + npc.DisplayName + " from here.";
+                BeginSystemNotice();
                 Render();
                 return;
             }
@@ -227,6 +228,7 @@ namespace Gamesim.Episode
             message = npc == null
                 ? "You lost track of who you were going to see."
                 : "You could not get to " + npc.DisplayName + ".";
+            BeginSystemNotice();
             Render();
         }
 

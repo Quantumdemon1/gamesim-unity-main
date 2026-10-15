@@ -35,6 +35,11 @@
   <ItemGroup>
     <!-- The whole assembly, exactly as Unity compiles it. -->
     <Compile Include="$(Simulation)**/*.cs" />
+    <Compile Include="$(EditMode)NarrativeDisplayTests.cs" />
+    <Compile Include="$(EditMode)ConversationExchangeTests.cs" />
+    <Compile Include="$(EditMode)ConversationExchangeResponseTests.cs" />
+    <!-- NpcInvitation.cs is included by the whole Simulation glob above. -->
+    <Compile Include="$(EditMode)NpcInvitationTests.cs" />
 
     <!--
       Tests that touch nothing but System, NUnit, Newtonsoft and Gamesim.Simulation. Nothing of
@@ -290,6 +295,8 @@
     <!-- Display options (A12): the resolution list, the modes, VSync beside the limit, the old records and the first launch's decision. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/DisplayChoices.cs" />
     <Compile Include="$(EditMode)DisplayChoicesTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/DisplayEvidenceSettlement.cs" />
+    <Compile Include="$(EditMode)DisplayEvidenceSettlementTests.cs" />
     <!-- And the window written only by the window's own controls, the first launch and the verifier (A12, Risk R3). -->
     <Compile Include="$(EditMode)WindowWriteScanTests.cs" />
     <!-- A frame wider than 16:9 lays its canvases out by height (A12b); 16:9 and narrower keep their own match. -->

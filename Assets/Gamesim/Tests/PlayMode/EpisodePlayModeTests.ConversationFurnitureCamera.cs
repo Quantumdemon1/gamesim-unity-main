@@ -124,6 +124,60 @@ namespace Gamesim.Tests.PlayMode
                 rig.ConversationWindowOffset = .5f;
                 Assert.That(rig.Yaw, Is.EqualTo(frozenYaw), "A layout update cannot reframe a reduced-motion conversation.");
                 Assert.That(rig.DesiredFocus, Is.EqualTo(frozenFocus));
+
+                // An aspect change can move the lens-normalized eye even when the HUD's offset
+                // is unchanged. The old clear eye must not authorize that different obstructed eye.
+                rig.SetReducedMotion(false);
+                upright.enabled = false;
+                rig.ViewCamera.aspect = 16f / 9f;
+                rig.ConversationWindowOffset = NativeConversationPanelOffset;
+                rig.MoveTo(new HouseCameraRig.Shot { Focus = rig.DesiredFocus, Distance = HouseCameraRig.TwoShotDistance,
+                    Pitch = HouseCameraRig.TwoShotPitch, Yaw = NativeSecondEYaw, FieldOfView = HouseCameraRig.TwoShotFieldOfView });
+                rig.SetConversationFocus(mine, theirs);
+                AssertConversationYaw(rig, NativeSecondEPairSide, "The wider category's preferred eye is clear.");
+                var wideEye = ConversationGeometryEye(rig);
+                var right = Quaternion.Euler(0f, rig.Yaw, 0f) * Vector3.right;
+                var forward = Quaternion.Euler(HouseCameraRig.TwoShotPitch, rig.Yaw, 0f) * Vector3.forward;
+                var zeroFocus = (mine.position + theirs.position) * .5f + Vector3.up * (1f + HouseCameraRig.TwoShotLift);
+                var zeroEye = zeroFocus - forward * HouseCameraRig.TwoShotDistance;
+                // These independent actors have no provided body: their standing fallback heads
+                // are 1.7m high. Place the blocker at the perspective-centered prospective eye.
+                var mineHead = mine.position + Vector3.up * 1.7f - zeroEye;
+                var theirHead = theirs.position + Vector3.up * 1.7f - zeroEye;
+                float mineDepth = Vector3.Dot(mineHead, forward), theirDepth = Vector3.Dot(theirHead, forward);
+                float targetHorizontal = NativeConversationPanelOffset
+                    * Mathf.Tan(HouseCameraRig.TwoShotNarrowCategoryFieldOfView * .5f * Mathf.Deg2Rad);
+                float shift = (Vector3.Dot(mineHead, right) / mineDepth + Vector3.Dot(theirHead, right) / theirDepth
+                    - 2f * targetHorizontal) / (1f / mineDepth + 1f / theirDepth);
+                var narrowPreferredEye = zeroEye + right * shift;
+                var awayFromWide = (narrowPreferredEye - wideEye).normalized;
+                var resizedObstruction = ConversationGeometryBox(fixture,
+                    narrowPreferredEye + awayFromWide * .12f - ConversationGeometryTranslation, new Vector3(.06f, .06f, .06f));
+                Physics.SyncTransforms();
+                Assert.That(Physics.OverlapSphere(wideEye, .18f, 1 << HouseLayers.Furniture, QueryTriggerInteraction.Ignore)
+                    .Any(collider => collider == resizedObstruction), Is.False, "The current wide eye has physical clearance.");
+                Assert.That(Physics.OverlapSphere(narrowPreferredEye, .18f, 1 << HouseLayers.Furniture, QueryTriggerInteraction.Ignore)
+                    .Any(collider => collider == resizedObstruction), Is.True, "The narrow prospective eye is physically obstructed.");
+                Assert.That(ConversationGeometryFaceBlocked(wideEye, mine, resizedObstruction), Is.False);
+                Assert.That(ConversationGeometryFaceBlocked(wideEye, theirs, resizedObstruction), Is.False,
+                    "The fixture blocks the newly shifted eye, not the previously clear view.");
+                var resizeMine = mine.position; var resizeTheirs = theirs.position;
+                rig.enabled = true;
+                rig.ViewCamera.aspect = 4f / 3f;
+                yield return null;
+                yield return null;
+                Assert.That(rig.ConversationWindowOffset, Is.EqualTo(NativeConversationPanelOffset),
+                    "Only aspect changed; the HUD did not publish a different offset.");
+                Assert.That(rig.DesiredFieldOfView, Is.EqualTo(HouseCameraRig.TwoShotNarrowCategoryFieldOfView));
+                AssertConversationYaw(rig, NativeSecondEPairSide + 180f,
+                    "The aspect change rechecks both actual eyes and chooses the clear side.");
+                var resizedClearEye = ConversationGeometryEye(rig);
+                Assert.That(resizedObstruction.bounds.Contains(resizedClearEye), Is.False);
+                Assert.That(ConversationGeometryFaceBlocked(resizedClearEye, mine, resizedObstruction), Is.False);
+                Assert.That(ConversationGeometryFaceBlocked(resizedClearEye, theirs, resizedObstruction), Is.False);
+                Assert.That(rig.DesiredDistance, Is.EqualTo(HouseCameraRig.TwoShotDistance).Within(.001f));
+                Assert.That(mine.position, Is.EqualTo(resizeMine));
+                Assert.That(theirs.position, Is.EqualTo(resizeTheirs), "A resized camera does not relocate either actor.");
             }
             finally { Object.Destroy(fixture); }
             yield return null;

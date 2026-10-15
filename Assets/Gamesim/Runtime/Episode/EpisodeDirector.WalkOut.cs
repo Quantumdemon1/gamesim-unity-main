@@ -234,6 +234,7 @@ namespace Gamesim.Episode
                 return RefuseWalkOut("The departing houseguest has no active body.");
             // The goodbye's embrace (the art brief's R7) lets go before the walk takes the evicted:
             // both agents unparked, both bodies easing home.
+            ReleaseGoodbyeFarewell("the walk out");
             ReleaseGoodbyeEmbrace("the walk out");
             walkingOutId = id;
             walkOutLeg = 0;
@@ -594,6 +595,7 @@ namespace Gamesim.Episode
         /// </summary>
         private void SkipTheGoodbye()
         {
+            ReleaseGoodbyeFarewell("the goodbye skipped");
             string leaving = departingId;
             if (leaving == null) return;
             if (walkOutDoor != null) walkOutDoor.Close(true);
@@ -712,6 +714,7 @@ namespace Gamesim.Episode
         /// <summary>Forgets a walk out and the jury's places when the season is replaced under them.</summary>
         private void ResetWalkOut()
         {
+            ReleaseGoodbyeFarewell("the season replaced");
             if (npcMeetings != null && walkingOutId != null) { npcMeetings.EndDeparture(); npcMeetings.DepartureCandidate = null; }
             walkingOutId = null;
             LastWalkOutFailure = null;

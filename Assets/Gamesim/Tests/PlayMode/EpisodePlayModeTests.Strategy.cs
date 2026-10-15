@@ -83,8 +83,10 @@ namespace Gamesim.Tests.PlayMode
             yield return TalkTo(hoh);
             var state = director.Snapshot;
             string name = state.Find(hoh).name;
-            Assert.That(ShownText(), Does.Contain(EpisodeDirector.LobbyHeading(state)));
+            yield return EnterConversationCategory(EpisodeDirector.ConnectCategoryCaption);
             Assert.That(ButtonWithCaptionOrNull(EpisodeHud.SmallTalkCaption), Is.Not.Null, "A word before the ceremony can be any conversation.");
+            yield return EnterConversationCategory(EpisodeDirector.GameCategoryCaption);
+            Assert.That(ShownText(), Does.Contain(EpisodeDirector.LobbyHeading(state)));
             Assert.That(ButtonWithCaptionOrNull("Work against them quietly"), Is.Null, "Scheming waits for free time.");
             ButtonWithCaption(EpisodeHud.LobbyAskCaption(state, name, LobbyAsk.Spare, state.playerId)).onClick.Invoke();
             yield return null;
@@ -97,6 +99,7 @@ namespace Gamesim.Tests.PlayMode
             var plea = director.Snapshot.lobbies.Single();
             Assert.That((plea.deciderId, plea.ask, plea.subjectId, plea.approach),
                 Is.EqualTo((hoh, LobbyAsk.Spare, state.playerId, LobbyApproach.Emotional)));
+            yield return EnterConversationCategory(EpisodeDirector.GameCategoryCaption);
             Assert.That(ShownText(), Does.Contain("You have had your plea with " + name + ". They were " + plea.response + "."));
             Assert.That(ButtonWithCaptionOrNull(EpisodeHud.LobbyAskCaption(state, name, LobbyAsk.Spare, state.playerId)), Is.Null,
                 "One plea each.");
@@ -109,6 +112,7 @@ namespace Gamesim.Tests.PlayMode
             var state = director.Snapshot;
             string holder = state.vetoHolderId, name = state.Find(holder).name, nominee = state.nominees[0];
             yield return TalkTo(holder);
+            yield return EnterConversationCategory(EpisodeDirector.GameCategoryCaption);
             ButtonWithCaption(EpisodeHud.LobbyAskCaption(state, name, LobbyAsk.Save, nominee)).onClick.Invoke();
             yield return null;
             Assert.That(ButtonWithCaptionOrNull(EpisodeHud.LobbyApproachCaption(LobbyApproach.Emotional, false)), Is.Not.Null,
@@ -125,6 +129,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That((plea.deciderId, plea.ask, plea.subjectId, plea.approach), Is.EqualTo((holder, LobbyAsk.Keep, (string)null, LobbyApproach.Strategic)));
 
             yield return TalkTo(state.hohId);
+            yield return EnterConversationCategory(EpisodeDirector.GameCategoryCaption);
             Assert.That(ButtonWithCaptionOrNull(EpisodeHud.LobbyAskCaption(state, state.Find(state.hohId).name, LobbyAsk.Spare, state.playerId)),
                 Is.Not.Null, "The Head of Household still has a replacement to name, and the player could be it.");
         }

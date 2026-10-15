@@ -85,6 +85,8 @@ namespace Gamesim.Episode
             bool going = TryTravel(DiaryPosition);
             message = !going ? "The diary room is not reachable from here. Your current episode is unchanged."
                 : InputGlossary.DiaryWayLine(LastTravel == TravelKind.Warp, PressWasPad);
+            // Travel guidance is a system notice too; it must not be replaced by ordinary phase guidance.
+            BeginSystemNotice();
             Render();
         }
 
@@ -101,6 +103,7 @@ namespace Gamesim.Episode
             message = BlockSpeechPending(projected) ? DiaryBlockSpeechInsideMessage
                 : HoHPitches.Available(projected) && ReplyCards.Pending(projected)?.kind == ReplyCards.Pitch
                     ? DiaryPitchInsideMessage : DiaryInsideMessage;
+            BeginSystemNotice();
             player.SetInputEnabled(false); cameraRig.ControlsEnabled = false;
             // Physical arrival authorizes the visit. Seating is temporary presentation, restored
             // before movement resumes; the shot frames this player's face against the diary set.
@@ -108,6 +111,7 @@ namespace Gamesim.Episode
             {
                 ClosePanels();
                 message="The diary chair is unavailable. Your current episode is unchanged.";
+                BeginSystemNotice();
                 Render();return false;
             }
             Render(); return true;
@@ -140,6 +144,7 @@ namespace Gamesim.Episode
                 if(this==null || !diaryOpen)return;
                 ClosePanels();
                 message="The diary visit ended because its chair became unavailable. Unconfirmed choices were discarded.";
+                BeginSystemNotice();
                 Render();
             },()=>{StartDiaryShot();Render();}))return false;
             return true;
@@ -330,7 +335,7 @@ namespace Gamesim.Episode
             var latest = KnownBallots.PlayerMemories(state).LastOrDefault();
             var self = state.Find(state.playerId);
             if (latest != null && self != null)
-                hud.Confessional((self.name ?? "You").Split(' ')[0], MemoryWords.Said(state, latest));
+                hud.Confessional((self.name ?? "You").Split(' ')[0], NarrativeDisplay.Render(state, MemoryWords.Said(state, latest)));
             // Refinement Kit 6's three tabs, in place of one column that ran the decision, the
             // record's rules and every memory together. The decision's tab opens first when there
             // is something to choose; otherwise the record does. A tab is view state: choosing
@@ -483,7 +488,7 @@ namespace Gamesim.Episode
             hud.DiarySection("YOUR PRIVATE REFLECTIONS");
             var memories = KnownBallots.PlayerMemories(state).Reverse().Take(20).ToArray();
             if (memories.Length == 0) hud.Aside("You have no recorded personal memories yet. Explore and talk to the housemates.");
-            foreach (var memory in memories) hud.Aside("Week " + memory.week + ": " + MemoryWords.Said(state, memory));
+            foreach (var memory in memories) hud.Aside("Week " + memory.week + ": " + NarrativeDisplay.Render(state, MemoryWords.Said(state, memory)));
         }
 
         /// <summary>
@@ -749,7 +754,7 @@ namespace Gamesim.Episode
 
             string recalled = remembered == null
                 ? "You have nothing specific on them this season."
-                : "Week " + remembered.week + ": " + MemoryWords.Said(state, remembered);
+                : "Week " + remembered.week + ": " + NarrativeDisplay.Render(state, MemoryWords.Said(state, remembered));
 
             bool allied = state.Allied(state.playerId, voter.id);
             return standing + " " + recalled

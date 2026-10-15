@@ -1,5 +1,6 @@
 # Shared, read-only input accounting. Dot-source; this file never launches Unity or mirrors files.
 function Get-ReviewHash([string]$Path) {
+    if (Test-Path Function:Get-ReviewFileRecord) { return (Get-ReviewFileRecord $Path $Path).sha256 }
     (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 function Get-ReviewSuiteFloor([string]$Path, [string]$Assembly) {
@@ -102,7 +103,14 @@ function Compare-ReviewBuildTree([string]$Root, $RecordedFiles) {
 function Write-ReviewJson($Value, [string]$Path) {
     ConvertTo-Json -InputObject $Value -Depth 12 | Set-Content -LiteralPath $Path -Encoding utf8
 }
-function ConvertTo-ReviewAcceptanceSettings([string]$Text, [bool]$WithoutUma) {
+function ConvertTo-ReviewAcceptanceSettings([string]$Text, [bool]$WithoutUma, [bool]$EnableRetainedUma=$false) {
+    if ($EnableRetainedUma -and $WithoutUma) { throw 'Retained UMA activation cannot be used for NoUMA.' }
+    if ($EnableRetainedUma) {
+        $blocks=[regex]::Matches($Text,'(?m)^(  scriptingDefineSymbols:\r?\n)((?:    [^\r\n]*(?:\r?\n|$))*)')
+        if ($blocks.Count -ne 1 -or [regex]::Matches($blocks[0].Groups[2].Value,'(?m)^    Standalone: [^\r\n]*').Count -ne 1) {
+            throw 'Explicit retained UMA activation requires one existing Standalone scripting define entry.'
+        }
+    }
     # The installed inference package removes its editor analytics symbol on batch startup.
     # Apply that same exact Standalone-token change before hashing; never alter the live settings.
     [regex]::Replace($Text, '(?m)^(  scriptingDefineSymbols:\r?\n)((?:    [^\r\n]*(?:\r?\n|$))*)', [Text.RegularExpressions.MatchEvaluator]{
@@ -112,6 +120,7 @@ function ConvertTo-ReviewAcceptanceSettings([string]$Text, [bool]$WithoutUma) {
             $tokens = @($match.Groups[2].Value.Split(';') | Where-Object {
                 $_ -cne 'SENTIS_ANALYTICS_ENABLED' -and (-not $WithoutUma -or $_ -cne 'GAMESIM_UMA')
             })
+            if ($EnableRetainedUma -and $tokens -cnotcontains 'GAMESIM_UMA') { $tokens += 'GAMESIM_UMA' }
             $match.Groups[1].Value + ($tokens -join ';')
         })
         $block.Groups[1].Value + $defines
@@ -146,7 +155,7 @@ function ConvertTo-ReviewBuildSettings([string]$Text) {
 }
 function New-ReviewInputManifest {
     param([string]$ProjectRoot, [string]$WorkflowRoot, [switch]$WithoutUma,
-        [string]$RetainedRoot, [switch]$PreviewSync, [string]$MetaArchive)
+        [string]$RetainedRoot, [switch]$PreviewSync, [string]$MetaArchive, [switch]$RetainInstalledUma)
     $ProjectRoot = [IO.Path]::GetFullPath($ProjectRoot).TrimEnd('\','/')
     if ($MetaArchive -and (Test-Path -LiteralPath $MetaArchive)) { throw 'Use a fresh metadata archive; previous evidence is never overwritten.' }
     $records = [Collections.Generic.List[object]]::new()
@@ -154,23 +163,29 @@ function New-ReviewInputManifest {
         $root = if ($relative -eq 'Tools') { $WorkflowRoot } else { $ProjectRoot }
         $folder = Join-Path $root $relative
         if (-not (Test-Path -LiteralPath $folder -PathType Container)) { throw "Missing evidence input: $folder" }
-        $files = @(Get-ChildItem -LiteralPath $folder -File -Recurse -Force)
+        $files = if (Test-Path Function:Get-ReviewFiles) { @(Get-ReviewFiles $folder) } else { @(Get-ChildItem -LiteralPath $folder -File -Recurse -Force) }
         if ($PreviewSync -and $relative -eq 'Assets') {
             $files = @($files | Where-Object {
                 $local = $_.FullName.Substring($ProjectRoot.Length + 1).Replace('\','/')
                 $local -notmatch '^Assets/(Resources|UMAProjectData)(/|\.meta$)' -and
+                    (-not $RetainInstalledUma -or $local -notmatch '^Assets/UMA(/|\.meta$)') -and
                     (-not $WithoutUma -or ($local -notmatch '^Assets/UMA(/|\.meta$)' -and
                         $local -notmatch '^Assets/Gamesim/Uma/(Content|Resources)(/|\.meta$)'))
             })
-            foreach ($retained in @('Assets/Resources','Assets/UMAProjectData')) {
+            $retainedFolders = @('Assets/Resources','Assets/UMAProjectData')
+            if ($RetainInstalledUma -and -not $WithoutUma) { $retainedFolders += 'Assets/UMA' }
+            foreach ($retained in $retainedFolders) {
                 $retainedPath = Join-Path $RetainedRoot $retained
-                if (Test-Path -LiteralPath $retainedPath) { $files += @(Get-ChildItem -LiteralPath $retainedPath -File -Recurse -Force) }
+                if (Test-Path -LiteralPath $retainedPath) {
+                    $files += if (Test-Path Function:Get-ReviewFiles) { @(Get-ReviewFiles $retainedPath) } else { @(Get-ChildItem -LiteralPath $retainedPath -File -Recurse -Force) }
+                }
                 if (Test-Path -LiteralPath ($retainedPath + '.meta')) { $files += Get-Item -LiteralPath ($retainedPath + '.meta') }
             }
             $overrides = @(Get-ReviewProjectUmaOverrides -ProjectRoot $ProjectRoot -WithoutUma:$WithoutUma)
             if ($overrides.Count -gt 0) {
                 $files = @($files | Where-Object {
-                    if ($_.FullName.StartsWith($RetainedRoot.TrimEnd('\','/') + '\', [StringComparison]::OrdinalIgnoreCase)) {
+                    if ($_.FullName.StartsWith($RetainedRoot.TrimEnd('\','/') + '\', [StringComparison]::OrdinalIgnoreCase) -and
+                        -not $_.FullName.StartsWith($ProjectRoot + '\', [StringComparison]::OrdinalIgnoreCase)) {
                         $relativeFile = $_.FullName.Substring($RetainedRoot.TrimEnd('\','/').Length + 1).Replace('\','/')
                         return $overrides -notcontains $relativeFile
                     }
@@ -181,7 +196,8 @@ function New-ReviewInputManifest {
         }
         foreach ($file in $files) {
             $fileRoot = $root
-            if ($PreviewSync -and $RetainedRoot -and $file.FullName.StartsWith($RetainedRoot.TrimEnd('\','/') + '\', [StringComparison]::OrdinalIgnoreCase)) {
+            if ($PreviewSync -and $RetainedRoot -and $file.FullName.StartsWith($RetainedRoot.TrimEnd('\','/') + '\', [StringComparison]::OrdinalIgnoreCase) -and
+                -not $file.FullName.StartsWith($ProjectRoot + '\', [StringComparison]::OrdinalIgnoreCase)) {
                 $fileRoot = $RetainedRoot.TrimEnd('\','/')
             }
             $path = $file.FullName.Substring($fileRoot.Length + 1).Replace('\','/')
@@ -189,9 +205,10 @@ function New-ReviewInputManifest {
             if ($path -eq 'ProjectSettings/ProjectSettings.asset') {
                 $content = [IO.File]::ReadAllText($file.FullName)
                 if ($PreviewSync) {
-                    $content = ConvertTo-ReviewAcceptanceSettings $content ([bool]$WithoutUma)
+                    $content = ConvertTo-ReviewAcceptanceSettings $content ([bool]$WithoutUma) ([bool]$RetainInstalledUma)
                     $record.sha256 = Get-ReviewTextHash $content
                     $record.bytes = [Text.Encoding]::UTF8.GetByteCount($content)
+                    $record.explicitRetainedUmaProjection = [bool]$RetainInstalledUma
                 }
                 $record.buildSettingsSha256 = Get-ReviewTextHash (ConvertTo-ReviewBuildSettings $content)
                 $record.configuredBuildSettings = ($content -match '(?m)^  defaultScreenWidth: 1600\r?$' -and
@@ -226,23 +243,31 @@ function New-ReviewInputManifest {
         }
     }
     [pscustomobject][ordered]@{schema=3; capturedUtc=[DateTime]::UtcNow.ToString('o'); projectRoot=$ProjectRoot;
-        workflowRoot=$WorkflowRoot; umaEnabled=(-not $WithoutUma); previewSync=[bool]$PreviewSync;metadataArchive=$MetaArchive;
+        workflowRoot=$WorkflowRoot; umaEnabled=(-not $WithoutUma); previewSync=[bool]$PreviewSync;metadataArchive=$MetaArchive;retainedInstalledUma=[bool]$RetainInstalledUma;
         coverage=@('Assets/**','ProjectSettings/**','Packages/**','ArtSource/**','Tools/** (live workflow)');
         files=@($records | Sort-Object path)}
 }
 function Compare-ReviewInputs {
     param($Before, $After, [switch]$AllowShippingGpu, [switch]$AllowBuildSettings,
-        [switch]$AllowImportMeta, [array]$ApprovedMetaDrift=@())
+        [switch]$AllowImportMeta, [array]$ApprovedMetaDrift=@(), [switch]$RequireWorkflowStable, [switch]$NoTolerances)
     $left = @{}; $right = @{}
-    foreach ($entry in $Before.files) { $left[$entry.path] = $entry }
-    foreach ($entry in $After.files) { $right[$entry.path] = $entry }
+    foreach ($entry in $Before.files) {
+        if (-not $entry.path -or $left.ContainsKey($entry.path)) { throw 'Duplicate or empty before-manifest path.' }
+        $left[$entry.path] = $entry
+    }
+    foreach ($entry in $After.files) {
+        if (-not $entry.path -or $right.ContainsKey($entry.path)) { throw 'Duplicate or empty after-manifest path.' }
+        $right[$entry.path] = $entry
+    }
     foreach ($path in @(@($left.Keys) + @($right.Keys) | Sort-Object -Unique)) {
         $old = $left[$path]; $new = $right[$path]
-        if ($old -and $new -and $old.sha256 -eq $new.sha256) { continue }
+        if ($old -and $new -and $old.sha256 -eq $new.sha256 -and $old.bytes -eq $new.bytes) { continue }
         $oldHash = if ($old) { $old.sha256 } else { $null }
         $newHash = if ($new) { $new.sha256 } else { $null }
         $reason = ''; $allowed = $false; $kind = 'unexpected-product-drift'
-        if ($path.StartsWith('Tools/')) {
+        if ($NoTolerances) {
+            $reason = 'Exact byte/source inventory required.'
+        } elseif ($path.StartsWith('Tools/') -and -not $RequireWorkflowStable) {
             $allowed = $true; $kind = 'workflow-change'; $reason = 'Workflow evidence is retained separately from product inputs.'
         } elseif ($old -and $new -and $path -match '^Assets/Gamesim/Resources/Fonts/Inter-(Bold|Medium|Regular|SemiBold) SDF\.asset$') {
             # These atlases are dynamic with clear-on-build: the editor writes their glyph cache back

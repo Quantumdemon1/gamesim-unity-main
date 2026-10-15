@@ -40,6 +40,8 @@ Assets/Gamesim/Data/EpisodeHouseNavMesh.asset binary
 Assets/UMAProjectData/Resources/AssetIndexerProject.asset binary
 Assets/Gamesim/Uma/Content/HouseGarments/*_Slot.asset binary
 Assets/Gamesim/Uma/Content/HouseGarments/*_Mesh.asset binary
+Assets/Gamesim/Uma/Content/HouseGarments/Gamesim_CompetitionVest_Overlay.asset binary
+Assets/Gamesim/Uma/Content/HouseGarments/Gamesim_KnitCrew_Overlay.asset binary
 
 # So is baked lighting data. Stored as text, the CR-LF byte pairs inside it came back as LF,
 # and every fresh clone got a copy four bytes short that Unity cannot load.

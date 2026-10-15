@@ -27,6 +27,7 @@ namespace Gamesim.Tests.PlayMode
             });
             intentListenerId = Listener(director.Snapshot).id;
             yield return TalkTo(intentListenerId);
+            yield return EnterConversationCategory(EpisodeDirector.ConnectCategoryCaption);
         }
 
         private void AssertIntentDurable(EpisodeState expected)
@@ -51,7 +52,7 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator ConversationIntent_FreshDialHasSixNonoverlappingPetalsAndThePlainTalkRowAtBothTextSizes()
+        public IEnumerator ConversationIntent_FreshRootHasSixNonoverlappingCategoriesAndConnectKeepsThePlainTalkChoice()
         {
             yield return InstallIntentHouse(size: 16);
             foreach (var textSize in TextSizes.All)
@@ -63,34 +64,35 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(dial, Is.Not.Null);
                 var petals = dial.GetComponentsInChildren<Button>().Where(b => b.IsActive()).ToArray();
                 Assert.That(petals.Length, Is.EqualTo(6));
-                foreach (string caption in PetalCaptions.Where(c => c != "Spend time together"))
+                foreach (string caption in PetalCaptions)
                     Assert.That(ButtonWithCaption(caption).transform.IsChildOf(dial), Is.True, caption);
-                var plain = ButtonWithCaption("Spend time together");
-                Assert.That(plain.transform.IsChildOf(dial), Is.False);
-                Assert.That(plain.IsInteractable(), Is.True);
-                Assert.That(TagOn(ButtonWithCaption(EpisodeHud.PersonalChatCaption)), Is.EqualTo(EpisodeDirector.LearnTag));
-                Assert.That(TagOn(ButtonWithCaption(EpisodeHud.RelationshipBuildingCaption)), Is.EqualTo(EpisodeDirector.WarmthTag));
+                Assert.That(ButtonWithCaptionOrNull("Spend time together"), Is.Null, "The root holds categories, not action choices.");
                 Canvas.ForceUpdateCanvases(); yield return null;
                 for (int a = 0; a < petals.Length; a++)
                 for (int b = a + 1; b < petals.Length; b++)
                     Assert.That(ScreenRect((RectTransform)petals[a].transform).Overlaps(ScreenRect((RectTransform)petals[b].transform)), Is.False);
                 yield return AssertKeyboardRing("Fresh six-petal conversation " + TextSizes.Name(textSize), ModalRoot);
-                ButtonWithCaption(EpisodeHud.MorePetalCaption).onClick.Invoke(); yield return null;
-                Assert.That(EventSystem.current.currentSelectedGameObject, Is.EqualTo(ButtonWithCaption(EpisodeHud.DiscussGameCaption).gameObject),
-                    "Moving plain Talk does not change More's first-row destination.");
+                yield return EnterConversationCategory(EpisodeDirector.ConnectCategoryCaption);
+                var plain = ButtonWithCaption("Spend time together");
+                Assert.That(plain.IsInteractable(), Is.True);
+                Assert.That(TagOn(ButtonWithCaption(EpisodeHud.PersonalChatCaption)), Does.Contain(EpisodeDirector.LearnTag));
+                Assert.That(TagOn(ButtonWithCaption(EpisodeHud.RelationshipBuildingCaption)), Does.Contain(EpisodeDirector.WarmthTag));
+                Assert.That(ActiveRect(EpisodeHud.DialName), Is.Null);
                 Assert.That(JsonUtility.ToJson(director.Snapshot), Is.EqualTo(JsonUtility.ToJson(before)));
             }
         }
 
         [UnityTest]
-        public IEnumerator ConversationIntent_LegacyKeepsSevenPetalsAndItsOriginalPersonalWarmthTag()
+        public IEnumerator ConversationIntent_LegacyUsesTheSameCategoriesAndKeepsItsOriginalPersonalWarmthTag()
         {
             yield return InstallIntentHouse(fresh: false);
+            yield return KeyboardSubmit(EpisodeDirector.ConversationTopicsBackCaption);
             var dial = ActiveRect(EpisodeHud.DialName);
-            Assert.That(dial.GetComponentsInChildren<Button>().Count(b => b.IsActive()), Is.EqualTo(7));
+            Assert.That(dial.GetComponentsInChildren<Button>().Count(b => b.IsActive()), Is.EqualTo(6));
             foreach (string caption in PetalCaptions)
                 Assert.That(ButtonWithCaption(caption).transform.IsChildOf(dial), Is.True, caption);
-            Assert.That(TagOn(ButtonWithCaption(EpisodeHud.PersonalChatCaption)), Is.EqualTo(EpisodeDirector.WarmthTag));
+            yield return EnterConversationCategory(EpisodeDirector.ConnectCategoryCaption);
+            Assert.That(TagOn(ButtonWithCaption(EpisodeHud.PersonalChatCaption)), Does.Contain(EpisodeDirector.WarmthTag));
         }
 
         [UnityTest]

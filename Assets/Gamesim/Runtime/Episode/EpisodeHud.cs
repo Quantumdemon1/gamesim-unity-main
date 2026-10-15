@@ -307,6 +307,8 @@ namespace Gamesim.Episode
 
         public void Begin(EpisodeState state, string message, bool recovery, bool open)
         {
+            statusGuidanceVisible = !string.IsNullOrEmpty(message);
+            statusNoticePriority = recovery;
             var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
             // Whatever had the keyboard keeps it by name, chrome as well as panel. The HUD rebuilds
             // itself for reasons that have nothing to do with the player - a houseguest's body
@@ -336,7 +338,7 @@ namespace Gamesim.Episode
             // The dial belongs to the panel that was just thrown away; a stale one would seat the
             // next screen's petals on a destroyed rectangle.
             dialRoot = null; dialSeat = null; conversationColumn = null; topicSeats = topicTaken = 0;
-            tagUnder.Clear(); readingRows.Clear();
+            tagUnder.Clear(); readingRows.Clear(); readingUnder.Clear();
             // So do a person picker and a row it asked to bring to the top (EpisodeHud.ConversationGroups.cs).
             picker = null; revealAtTop = null;
             // Brand and Objective used to be placed at hard-coded offsets, so Objective's -143
@@ -353,8 +355,8 @@ namespace Gamesim.Episode
                 director.FollowedId, endgame, endgame ? state.contestants.Where(IsJuror).ToList() : null);
             FollowChip(director.FollowedName);
 
-            // The top bar (mockup-01): the brand, the week, the objective, the house's numbers
-            // and the tagline, as separate chips on one band - never a button among them. The
+            // The top bar: the brand, the week, the objective and the house's numbers,
+            // as separate chips on one band - never a button among them. The
             // buttons that lived at its right-hand end are rows of the left rail now, which is
             // where every mockup puts navigation.
             TopShade();
@@ -362,7 +364,6 @@ namespace Gamesim.Episode
             WeekChip(state);
             if (!Compact) ObjectiveChip(state);
             HousePill(state);
-            Tagline();
 
             // The left gutter: the notebook's pages, the two places to go next and the notebook,
             // save and settings, as one list on one ground.
@@ -1277,11 +1278,16 @@ namespace Gamesim.Episode
                 // nothing - so the words stood one letter a line in a row grown 860 tall (playtest,
                 // 2026-09-27). The caption keeps what the row's right-hand end already reserved.
                 chip.anchorMin = chip.anchorMax = Vector2.zero; chip.pivot = Vector2.zero;
-                chip.anchoredPosition = new Vector2(left, TagUnderInset * FontScale);
+                float readingLift = readingUnder.TryGetValue(target, out float footerLift) ? footerLift : 0f;
+                chip.anchoredPosition = new Vector2(left, readingLift + TagUnderInset * FontScale);
                 float lift = size.y + 2f * TagUnderInset * FontScale;
                 caption.rectTransform.offsetMin = new Vector2(left, caption.rectTransform.offsetMin.y + lift);
                 var element = target.GetComponent<LayoutElement>();
-                if (element != null) { element.minHeight += lift; tagUnder[element] = lift; }
+                if (element != null)
+                {
+                    element.minHeight += lift;
+                    tagUnder[element] = (tagUnder.TryGetValue(element, out float priorLift) ? priorLift : 0f) + lift;
+                }
             }
         }
 
@@ -1302,6 +1308,8 @@ namespace Gamesim.Episode
         /// end the reading, the chevron and any ALLY tag take between them; cleared with each rebuild.
         /// </summary>
         private readonly Dictionary<Button, float> readingRows = new Dictionary<Button, float>();
+        /// <summary>Conversation rows whose reading moved under the caption, and the vertical room it reserves.</summary>
+        private readonly Dictionary<Button, float> readingUnder = new Dictionary<Button, float>();
 
         /// <summary>The name of the trust reading on an annotated row, so a test can find it beside the chevron.</summary>
         public const string TrustReadingName = "Trust reading";
@@ -1594,18 +1602,37 @@ namespace Gamesim.Episode
 
             // Keep a long caption from running underneath the chips.
             var caption = button.GetComponentInChildren<TMP_Text>();
+            bool footer = activityLayout == ActivityLayout.Conversation && caption != null
+                && ContentWidth() - caption.rectTransform.offsetMin.x - reserved < MinCaptionWidth * s;
+            float captionReserve = footer ? readingRight + RowEndAir : reserved;
             if (caption != null)
-                caption.rectTransform.offsetMax = new Vector2(-reserved, caption.rectTransform.offsetMax.y);
+                caption.rectTransform.offsetMax = new Vector2(-captionReserve, caption.rectTransform.offsetMax.y);
+            if (footer)
+            {
+                // The trust reading and ALLY mark remain readable without taking the caption's
+                // minimum width. A later tag takes a separate line above this same footer.
+                float lift = box + 2f * TagUnderInset * s;
+                readingUnder[button] = lift;
+                caption.rectTransform.offsetMin += Vector2.up * lift;
+                var element = button.GetComponent<LayoutElement>();
+                if (element != null)
+                {
+                    element.minHeight += lift;
+                    tagUnder[element] = (tagUnder.TryGetValue(element, out float priorLift) ? priorLift : 0f) + lift;
+                }
+            }
+            var readingAnchor = new Vector2(1f, footer ? 0f : .5f);
+            float readingY = footer ? TagUnderInset * s : 0f;
 
             if (allied)
             {
                 var tag = NewText(rect,"ALLY",14,UiTheme.Allied);
-                Anchor(tag.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-allyRight,0f),new Vector2(allyWidth,box));
+                Anchor(tag.rectTransform,readingAnchor,readingAnchor,new Vector2(-allyRight,readingY),new Vector2(allyWidth,box));
                 tag.alignment = TextAlignmentOptions.Right;
             }
 
-            readingRows[button] = reserved;
-            Anchor(reading.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-readingRight,0f),new Vector2(readingWidth,box));
+            readingRows[button] = captionReserve;
+            Anchor(reading.rectTransform,readingAnchor,readingAnchor,new Vector2(-readingRight,readingY),new Vector2(readingWidth,box));
             reading.alignment = TextAlignmentOptions.Right;
         }
 
@@ -1685,6 +1712,47 @@ namespace Gamesim.Episode
             if (!ReducedMotion && Mathf.Abs(shown - target) > 0.001f) fill.gameObject.AddComponent<HudFill>().Play(shown, target);
         }
         private readonly Dictionary<string, float> meterShown = new Dictionary<string, float>();
+
+        /// <summary>A literal whole-percent control; left/right adjust it, up/down leave it in the panel's focus ring.</summary>
+        public Slider VolumeSlider(string caption, int percent, Color tint, Action<int> changed)
+        {
+            var row = Panel(caption + " slider", content, Surface);
+            row.gameObject.AddComponent<LayoutElement>().minHeight = Mathf.RoundToInt(78 * FontScale);
+            var label = NewText(row, caption, 16, Paper);
+            var count = NewText(row, SoundPictures.Clamp(percent) + "%", 16, tint);
+            float top = 10 * FontScale, line = 24 * FontScale;
+            label.rectTransform.anchorMin = new Vector2(0, 1); label.rectTransform.anchorMax = new Vector2(1, 1);
+            label.rectTransform.offsetMin = new Vector2(16, -top - line); label.rectTransform.offsetMax = new Vector2(-100 * FontScale, -top);
+            count.alignment = TextAlignmentOptions.Right;
+            count.rectTransform.anchorMin = new Vector2(1, 1); count.rectTransform.anchorMax = new Vector2(1, 1);
+            count.rectTransform.pivot = new Vector2(1, 1);
+            count.rectTransform.anchoredPosition = new Vector2(-16, -top - line / 2);
+            count.rectTransform.sizeDelta = new Vector2(80 * FontScale, line);
+
+            var track = Panel("Track", row, UiTheme.Outline, 3);
+            track.anchorMin = new Vector2(0, 0); track.anchorMax = new Vector2(1, 0);
+            track.offsetMin = new Vector2(28, 22 * FontScale); track.offsetMax = new Vector2(-28, 30 * FontScale);
+            track.GetComponent<Image>().raycastTarget = false;
+            var fill = Panel("Fill", track, tint, 3);
+            Stretch(fill, 0, 0, 0, 0); fill.GetComponent<Image>().raycastTarget = false;
+            var handles = new GameObject("Handle area", typeof(RectTransform)).GetComponent<RectTransform>();
+            handles.SetParent(row, false);
+            handles.anchorMin = new Vector2(0, 0); handles.anchorMax = new Vector2(1, 0);
+            handles.offsetMin = new Vector2(28, 12 * FontScale); handles.offsetMax = new Vector2(-28, 40 * FontScale);
+            var handle = Panel("Handle", handles, Paper);
+            handle.sizeDelta = new Vector2(24 * FontScale, 0);
+            var slider = row.gameObject.AddComponent<Slider>();
+            slider.targetGraphic = handle.GetComponent<Image>(); slider.handleRect = handle; slider.fillRect = fill;
+            slider.direction = Slider.Direction.LeftToRight; slider.minValue = 0; slider.maxValue = 100; slider.wholeNumbers = true;
+            slider.SetValueWithoutNotify(SoundPictures.Clamp(percent));
+            slider.onValueChanged.AddListener(value =>
+            {
+                int held = Mathf.RoundToInt(value);
+                count.text = held + "%";
+                changed?.Invoke(held);
+            });
+            return slider;
+        }
 
         public const string FollowChipName = "Follow chip";
 

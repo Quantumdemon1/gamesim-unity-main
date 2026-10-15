@@ -9,33 +9,11 @@ using UnityEngine.UI;
 namespace Gamesim.Episode
 {
     /// <summary>
-    /// The conversation dial (mockup-12): seven round petals on a ring around a glowing hub, below
-    /// the pair, with the speaker's words and every other way to talk in a column beside it.
-    ///
-    /// <para>The petals carry the build's own captions, unshortened. That is not a stylistic choice:
-    /// a test and a screen reader both identify a control by the words on it, and there is exactly
-    /// one active control in the HUD with any given caption, so a petal reading "Chat" where the
-    /// list read "Make small talk" would be a different button as far as either is concerned. The
-    /// mockup's single words survive as the glyph and the colour on each petal, and the caption
-    /// sits in the disc under the glyph, as the mockup's word does - on a disc wide enough for
-    /// three short lines. Hung under the disc it ran across the player's body and the set, and
-    /// the captions of neighbouring petals ran into each other.</para>
-    ///
-    /// <para>It was a ring once before, then a four-column grid of cards "to leave the people
-    /// visible" - inside an opaque panel that covered exactly where the two-shot puts the people.
-    /// The people are visible now because the panel is gone, not because the ring is.</para>
-    ///
-    /// <para>Nothing is hidden by the dial. The actions it does not seat are the same rows they
-    /// always were, in the column, in the same order - the "More" petal moves the keyboard to the
-    /// first of them rather than revealing them, because the panel wires its selection ring from
-    /// the controls that exist, and a control that only exists after a press is a control the
-    /// keyboard can never reach. A zero-height seat in the column marks where the dial stands in
-    /// the panel's reading order, which is what the rows before and after it are measured from.</para>
+    /// Conversation categories on a ring below the actors. A category replaces the ring with
+    /// its own choices; all captions remain available to keyboard navigation and screen readers.
     /// </summary>
     public sealed partial class EpisodeHud
     {
-        /// <summary>The words on the petal that hands over to the rows beneath the dial.</summary>
-        public const string MorePetalCaption = "More ways to talk";
         /// <summary>The line at the hub.</summary>
         public const string DialPrompt = "Choose a conversation topic";
         /// <summary>The dial's block, so a test can find it the way it finds a named panel.</summary>
@@ -91,7 +69,7 @@ namespace Gamesim.Episode
             // And back: Up from the first row returns to the petal that hands the keyboard to it.
             if (after != null)
             {
-                var more = petals.FirstOrDefault(petal => petal.name == MorePetalCaption) ?? petals[petals.Length - 1];
+                var more = petals[petals.Length - 1];
                 var navigation = after.navigation;
                 navigation.selectOnUp = more;
                 after.navigation = navigation;
@@ -134,7 +112,8 @@ namespace Gamesim.Episode
 
             // The ring stands in the part of the panel the column leaves, as large as the text
             // preference asks and the room allows.
-            float column = conversationColumn != null ? conversationColumn.sizeDelta.x + 12f : 0f;
+            float column = conversationColumn != null && conversationColumn.gameObject.activeInHierarchy
+                ? conversationColumn.sizeDelta.x + 12f : 0f;
             float areaWidth = Mathf.Max(1f, modal.sizeDelta.x - column);
             float areaHeight = Mathf.Max(1f, modal.sizeDelta.y);
             dialScale = Mathf.Clamp(Mathf.Min(FontScale, areaWidth / DialBlockWidth, areaHeight / DialBlockHeight), .7f, FontScale);
@@ -253,17 +232,6 @@ namespace Gamesim.Episode
             // longest of them is allowed to shrink rather than to clip.
             AutoSize(label, 9);
             return button;
-        }
-
-        /// <summary>
-        /// Moves the keyboard to the first row after the dial, which the panel then scrolls to.
-        /// What the "More" petal does, and nothing a mouse cannot already do by scrolling.
-        /// </summary>
-        public void RevealBeyondRadial()
-        {
-            if (content == null || EventSystem.current == null) return;
-            var next = AdjacentRadialControl(true);
-            if (next != null) EventSystem.current.SetSelectedGameObject(next.gameObject);
         }
 
         private Selectable AdjacentRadialControl(bool after)

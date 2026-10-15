@@ -118,7 +118,7 @@ namespace Gamesim.Tests.PlayMode
         /// A stand-in for the HUD on an emulated window: the six pieces of chrome the tour lights,
         /// where the HUD draws them in its 1600x900 units - the week chip and house pill on the top
         /// bar, the left rail's ground and its "Go to episode screen" row, the cast strip along the
-        /// floor and the status line over it.
+        /// floor and the current objective above it.
         /// </summary>
         private RectTransform EmulatedTourHud(int wide, int high)
         {
@@ -142,7 +142,7 @@ namespace Gamesim.Tests.PlayMode
             Part("House pill", topLeft, new Vector2(894f, -14f), new Vector2(360f, 52f));
             Part("Rail ground", topLeft, new Vector2(8f, -74f), new Vector2(212f, 560f));
             Part("Go to episode screen", topLeft, new Vector2(20f, -420f), new Vector2(188f, 40f));
-            Part("Status", new Vector2(.5f, 0f), new Vector2(0f, 124f), new Vector2(620f, 50f));
+            Part("Objective", topLeft, new Vector2(564f, -14f), new Vector2(320f, 52f));
             var strip = new GameObject(CastRail.StripName, typeof(RectTransform)).GetComponent<RectTransform>();
             strip.SetParent(frame, false);
             strip.anchorMin = Vector2.zero; strip.anchorMax = new Vector2(1f, 0f); strip.pivot = new Vector2(.5f, 0f);
@@ -283,15 +283,15 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator Tour_AStepWhoseChromeIsMissingOrHiddenIsDropped()
         {
             var tour = DirectorTour();
-            var hidden = new GameObject("Status", typeof(RectTransform)).GetComponent<RectTransform>();
+            var hidden = new GameObject("Objective", typeof(RectTransform)).GetComponent<RectTransform>();
             hidden.sizeDelta = new Vector2(620f, 50f);
             hidden.gameObject.SetActive(false);
             try
             {
-                tour.Show(name => name == CastRail.StripName ? null : name == "Status" ? hidden : TourChrome(name));
+                tour.Show(name => name == CastRail.StripName || name == "Episode panel" ? null : name == "Objective" ? hidden : TourChrome(name));
                 yield return TourFrames(2);
                 var expected = new[] { "Welcome to Gamesim: The House!", "Top Bar", "Side Rail", "The Episode Screen", "You're Ready!" };
-                Assert.That(tour.Count, Is.EqualTo(5), "No strip, and a status line that is switched off: two steps fewer.");
+                Assert.That(tour.Count, Is.EqualTo(5), "No strip, and neither an open decision panel nor a visible objective: two steps fewer.");
                 Assert.That(tour.StepTitles, Is.EqualTo(expected));
                 Assert.That(TourText(tour, "Counter"), Is.EqualTo("1 of 5"));
                 for (int i = 1; i < expected.Length; i++)
@@ -304,15 +304,15 @@ namespace Gamesim.Tests.PlayMode
                 tour.Skip();
                 yield return null;
 
-                // Chrome that goes after the tour has begun: all seven at the start, and the status
-                // line gone by the time its step comes up.
-                bool statusGone = false;
-                tour.Show(name => statusGone && name == "Status" ? null : TourChrome(name));
+                // Chrome that goes after the tour has begun: all seven at the start, and both
+                // ways of finding the current decision gone by the time its step comes up.
+                bool phaseGone = false;
+                tour.Show(name => phaseGone && (name == "Episode panel" || name == "Objective") ? null : TourChrome(name));
                 yield return null;
                 Assert.That(tour.Count, Is.EqualTo(7));
                 while (tour.StepIndex < 4) { TourButton(tour, "Next").onClick.Invoke(); yield return null; }
                 Assert.That(TourText(tour, "Title"), Is.EqualTo("Cast Strip"));
-                statusGone = true;
+                phaseGone = true;
                 TourButton(tour, "Next").onClick.Invoke();
                 yield return null;
                 Assert.That(TourText(tour, "Title"), Is.EqualTo("You're Ready!"),

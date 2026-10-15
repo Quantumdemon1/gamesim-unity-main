@@ -39,22 +39,45 @@ namespace Gamesim.Tests.EditMode
         };
 
         /// <summary>
-        /// Q1 (D3's counter rarely moves anyone): every member a counter could reach at every plan the players answered,
-        /// as the lab logged them - their view of the player, their vote margin and traits, as the player knew the season -
-        /// and the mean come-round odds and expected comers-round under candidate constants. The odds under today's
-        /// constants are recomputed from the record and checked against the odds the lab read.
+        /// Q1: carried counter transactions over accepted Countered settlements is the primary observed outcome.
+        /// Member conversion and raw/effective odds are separate diagnostics, over attempted counters or all accepted
+        /// plan answers. Candidate odds are recomputed from recorded knowledge, never predicted transaction outcomes.
         /// </summary>
         internal static string CounterWhatIf(IReadOnlyList<BalanceLab.SeasonRun> runs)
         {
             var md = new StringBuilder();
-            var all = runs.Where(r => r.error == null).SelectMany(r => r.counterMembers).ToList();
+            var complete = runs.Where(r => r.error == null && r.autopsy != null && r.autopsy.finished).ToList();
+            var all = complete.SelectMany(r => r.counterMembers).ToList();
             var countered = all.Where(m => m.stance == PactPlanStance.Countered).ToList();
-            md.AppendLine("### Q1 what-if: the counter's reach under candidate constants (T0)");
+            md.AppendLine("### Q1: observed counter outcomes and member-odds diagnostics (T0)");
             md.AppendLine();
-            if (all.Count == 0) { md.AppendLine("No member a counter could reach in these seasons."); md.AppendLine(); return md.ToString(); }
+            if (complete.Count != runs.Count)
+                md.AppendLine("Incomplete cohort: " + (runs.Count - complete.Count) + " of " + runs.Count
+                    + " seasons have an error, missing autopsy or unfinished outcome. The completed-row subset below is diagnostic only and cannot qualify B9.");
+            md.AppendLine("Primary observed outcome: transactions carried / all accepted Countered transactions, including attempts with no eligible member records. "
+                + "Existing supporters and founder tie-breaking count in settlement; these rows do not attribute their individual contributions. Unanswered Lapsed plans are not accepted counter attempts. "
+                + "These are measurements, not an acceptance verdict; empty denominators are unavailable. Wilson intervals summarize transaction counts, not season-clustered acceptance uncertainty.");
+            md.AppendLine();
+            md.AppendLine("| population | accepted counter transactions | carried transactions | primary carried / accepted [Wilson] | attempted-counter members | converted members / attempted members | known-lapsed attempted members |");
+            md.AppendLine("|---|---|---|---|---|---|---|");
+            void Outcome(string population, IReadOnlyList<BalanceLab.SeasonRun> seasons)
+            {
+                int attempts = seasons.Sum(r => r.autopsy.warRooms.counters), carried = seasons.Sum(r => r.autopsy.warRooms.countersCarried);
+                var members = seasons.SelectMany(r => r.counterMembers).Where(m => m.stance == PactPlanStance.Countered).ToList();
+                string rate = attempts == 0 ? "n/a (0 attempts)" : BalanceLab.Pct((double)carried / attempts) + " " + BalanceLab.Interval(BalanceLab.Wilson(carried, attempts));
+                string converted = members.Count == 0 ? "n/a (0 members)" : members.Count(m => m.cameRound) + " of " + members.Count
+                    + " (" + BalanceLab.Pct((double)members.Count(m => m.cameRound) / members.Count) + ")";
+                md.AppendLine("| " + population + " | " + attempts + " | " + carried + " | " + rate + " | " + members.Count + " | " + converted + " | " + members.Count(m => m.lapsed) + " |");
+            }
+            Outcome("all completed seasons", complete);
+            foreach (var cell in BalanceLabReports.Cells(complete)) Outcome(cell.Key.policy + " / " + cell.Key.size, cell.ToList());
+            md.AppendLine();
+            md.AppendLine("Member records across accepted plan answers: " + all.Count + "; at accepted counter attempts: " + countered.Count
+                + ". Known-lapsed members: " + all.Count(m => m.lapsed) + " across answers, " + countered.Count(m => m.lapsed) + " at attempts. "
+                + "Raw odds include zero-odds and known-lapsed members; effective odds zero known-lapsed members without dropping their denominator. Neither mean is counter-transaction success.");
+            if (all.Count == 0) { md.AppendLine("No eligible member records in the completed rows; member-odds diagnostics are unavailable."); md.AppendLine(); return md.ToString(); }
             double drift = all.Max(m => Math.Abs(Odds(m, PactPlans.ReachBase, PactPlans.ReachFullView, PactPlans.ReachLoyal, PactPlans.ReachCap) - m.odds));
-            md.AppendLine("Members a counter could reach (said the plan, off the block) at every plan the players answered: " + all.Count + ", of them at the "
-                + countered.Count + " counters " + countered.Count + "; known to have turned " + all.Count(m => m.lapsed) + ". Today's constants (base "
+            md.AppendLine("Today's constants (base "
                 + Num(PactPlans.ReachBase) + ", full view " + Num(PactPlans.ReachFullView) + ", Loyal x" + Num(PactPlans.ReachLoyal) + ", cap " + Num(PactPlans.ReachCap)
                 + ") recomputed from the records differ from the odds the lab read by at most " + drift.ToString("0.######", CultureInfo.InvariantCulture) + ".");
             md.AppendLine();
@@ -70,16 +93,18 @@ namespace Gamesim.Tests.EditMode
             md.AppendLine();
             md.AppendLine("Traits: Loyal " + all.Count(m => m.traits.Contains("Loyal")) + ", Sneaky " + all.Count(m => m.traits.Contains("Sneaky")) + " of " + all.Count + ".");
             md.AppendLine();
-            md.AppendLine("| base | full view | cap | mean odds (every answer) | mean odds (counters) | reachable at all | expected to come round (not turned) |");
-            md.AppendLine("|---|---|---|---|---|---|---|");
+            md.AppendLine("| base | full view | cap | raw member odds (accepted answers) | effective member odds (accepted answers) | raw member odds (counter attempts) | effective member odds (counter attempts) | positive raw odds (accepted-answer members) |");
+            md.AppendLine("|---|---|---|---|---|---|---|---|");
             foreach (var (reachBase, fullView) in new[] { (PactPlans.ReachBase, PactPlans.ReachFullView) }.Concat(Candidates))
             {
                 double cap = reachBase * PactPlans.ReachLoyal;
                 bool today = reachBase == PactPlans.ReachBase && fullView == PactPlans.ReachFullView;
                 double Mean(List<BalanceLab.CounterMember> list) => list.Count == 0 ? double.NaN : list.Average(m => Odds(m, reachBase, fullView, PactPlans.ReachLoyal, cap));
-                md.AppendLine("| " + Num(reachBase) + (today ? " (today)" : "") + " | " + Num(fullView) + " | " + Num(cap) + " | " + Num(Mean(all), "0.00") + " | " + Num(Mean(countered), "0.00") + " | "
-                    + BalanceLab.Pct((double)all.Count(m => Odds(m, reachBase, fullView, PactPlans.ReachLoyal, cap) > 0) / all.Count) + " | "
-                    + Num(all.Where(m => !m.lapsed).Sum(m => Odds(m, reachBase, fullView, PactPlans.ReachLoyal, cap)) / all.Count, "0.00") + " |");
+                double Effective(List<BalanceLab.CounterMember> list) => list.Count == 0 ? double.NaN
+                    : list.Sum(m => m.lapsed ? 0 : Odds(m, reachBase, fullView, PactPlans.ReachLoyal, cap)) / list.Count;
+                md.AppendLine("| " + Num(reachBase) + (today ? " (today)" : "") + " | " + Num(fullView) + " | " + Num(cap) + " | " + Num(Mean(all), "0.00") + " | " + Num(Effective(all), "0.00")
+                    + " | " + Num(Mean(countered), "0.00") + " | " + Num(Effective(countered), "0.00") + " | "
+                    + BalanceLab.Pct((double)all.Count(m => Odds(m, reachBase, fullView, PactPlans.ReachLoyal, cap) > 0) / all.Count) + " |");
             }
             md.AppendLine();
             return md.ToString();

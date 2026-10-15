@@ -93,7 +93,7 @@ namespace Gamesim.Episode
             hud.Action("New season in a NEW slot (preserves this season)", NewSeason);
             hud.Action("Main menu", OpenMainMenu);
             hud.Section("SOUND");
-            hud.Meter("Master volume", volumePercent, 100, muted ? UiTheme.Muted : UiTheme.Accent);
+            hud.VolumeSlider("Master volume", volumePercent, muted ? UiTheme.Muted : UiTheme.Accent, SetMasterVolumeFromSlider);
             hud.Action("Volume down", () => { volumePercent = Mathf.Max(0, volumePercent - 10); ApplyPreferences(); Render(); });
             hud.Action("Volume up", () => { volumePercent = Mathf.Min(100, volumePercent + 10); ApplyPreferences(); Render(); });
             hud.Action(muted ? "Turn sound on" : "Mute sound", () => { muted = !muted; ApplyPreferences(); Render(); });
@@ -102,7 +102,8 @@ namespace Gamesim.Episode
             foreach (var channel in new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface })
             {
                 var each = channel;
-                hud.Meter(SoundPictures.MeterCaption(each), ChannelVolumePercent(each), 100, muted ? UiTheme.Muted : UiTheme.Accent);
+                hud.VolumeSlider(SoundPictures.MeterCaption(each), ChannelVolumePercent(each), muted ? UiTheme.Muted : UiTheme.Accent,
+                    percent => ApplyChannelVolume(each, percent));
                 hud.Action(SoundPictures.DownCaption(each), () => { SetChannelVolume(each, SoundPictures.Stepped(ChannelVolumePercent(each), false)); hud.FocusWhenWired(SoundPictures.DownCaption(each)); });
                 hud.Action(SoundPictures.UpCaption(each), () => { SetChannelVolume(each, SoundPictures.Stepped(ChannelVolumePercent(each), true)); hud.FocusWhenWired(SoundPictures.UpCaption(each)); });
             }
@@ -158,13 +159,15 @@ namespace Gamesim.Episode
 
         private void TryAutosave()
         {
-            if (TryPersistCandidate(engine.Snapshot, out _, out var failure)) message += "  ·  Saved locally.";
-            else { message = failure; PauseNpcSocialForPanel(); }
+            if (TryPersistCandidate(engine.Snapshot, out _, out var failure))
+            { message += "  ·  Saved locally."; MarkSaveFeedback(); }
+            else { message = failure; BeginPersistenceNotice(failure); PauseNpcSocialForPanel(); }
         }
 
         public void LoadNow()
         {
             if (durableCommitInProgress) return;
+            BeginSystemNotice();
             SuspendNpcWorldWithoutSaving();
             if (saves.TryLoad(out var state, out var result)) Install(state);
             message = result; Render();
@@ -173,6 +176,7 @@ namespace Gamesim.Episode
         public void RecoverBackup()
         {
             if (durableCommitInProgress) return;
+            BeginSystemNotice();
             SuspendNpcWorldWithoutSaving();
             if (saves.TryRecoverBackup(out var state, out var result)) Install(state);
             message = result; Render();
@@ -315,6 +319,7 @@ namespace Gamesim.Episode
                 CharacterAppearanceSnapshots.Materialize(fresh);
                 fresh.sessionId = Guid.NewGuid().ToString("N");
                 nextStore.Save(fresh); // Stage and validate on disk before replacing the current in-memory session.
+                MarkSaveFeedback();
                 saves = nextStore; Install(fresh);
                 if (SaveRootOverride == null) { PlayerPrefs.SetString("Gamesim.ActiveSave", Path.GetFileName(saves.SavePath)); PlayerPrefs.Save(); }
                 message = SeasonMessage(fresh, choice);
@@ -322,6 +327,7 @@ namespace Gamesim.Episode
             }
             catch (Exception error) when (error is IOException || error is InvalidDataException || error is UnauthorizedAccessException || error is ArgumentException)
             {
+                BeginSystemNotice();
                 message = "New season could not be saved. Your current session and slot were preserved. "
                     + SaveJson.Explain(error);
                 failed?.Invoke(message);
@@ -382,6 +388,7 @@ namespace Gamesim.Episode
         public void ImportFile(string path)
         {
             if (durableCommitInProgress) return;
+            BeginSystemNotice();
             SuspendNpcWorldWithoutSaving();
             try
             {
@@ -401,6 +408,7 @@ namespace Gamesim.Episode
 
         private void Install(EpisodeState state)
         {
+            ResetNpcInvitationsForLoad();
             // A season replaced under the opening ends it without recording anything: the beats
             // belonged to the season that is going.
             if (opening != null && opening.IsPlaying) opening.Cancel();
@@ -448,12 +456,24 @@ namespace Gamesim.Episode
         /// <summary>Sets a channel's share of the master, 0 to 100, applies it and keeps it.</summary>
         public void SetChannelVolume(SoundChannel channel, int percent)
         {
+            ApplyChannelVolume(channel, percent);
+            Render();
+        }
+
+        // Slider callbacks keep their actual control alive throughout a drag or repeated key presses.
+        private void SetMasterVolumeFromSlider(int percent)
+        {
+            volumePercent = SoundPictures.Clamp(percent);
+            ApplyPreferences();
+        }
+
+        private void ApplyChannelVolume(SoundChannel channel, int percent)
+        {
             percent = SoundPictures.Clamp(percent);
             if (channel == SoundChannel.Music) musicVolumePercent = percent;
             else if (channel == SoundChannel.Interface) interfaceVolumePercent = percent;
             else effectsVolumePercent = percent;
             ApplyPreferences();
-            Render();
         }
 
         /// <summary>The caption reading time in use (A10).</summary>

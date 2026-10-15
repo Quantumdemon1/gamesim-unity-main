@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using Gamesim.Episode;
@@ -116,7 +117,7 @@ namespace Gamesim.Tests.PlayMode
         /// excepted, which assert the same of the frame they take - the strip and the status line are
         /// never up together, the line is never up under the card, the chrome never comes back while
         /// the card is up, and the meeting's sentence is never on screen twice; once both are gone the
-        /// line comes back with the director's words. Nothing is asserted at a moment the cards' clocks
+        /// line comes back with state-derived phase guidance. Nothing is asserted at a moment the cards' clocks
         /// choose: a long frame carries both past their ends. The used veto's run is the reduced-motion
         /// player's, whose card and strip are whole from the commit's frame - the frame the look sheet
         /// takes in a batch run, held there for it. The unused veto's run has the motion on, and its card
@@ -144,6 +145,18 @@ namespace Gamesim.Tests.PlayMode
             var result = director.Submit(command);
             Assert.That(result.accepted, Is.True, result.reason);
             string sentence = result.state.events.Last(entry => entry.kind == CeremonySting.VetoKind).text;
+            string committedJson = JsonUtility.ToJson(result.state);
+            byte[] committedSave = File.ReadAllBytes(director.SavePath);
+            void AssertCommittedUnchanged(string where)
+            {
+                Assert.That(JsonUtility.ToJson(director.Snapshot), Is.EqualTo(committedJson), where + ": the full accepted state is unchanged.");
+                Assert.That(File.ReadAllBytes(director.SavePath), Is.EqualTo(committedSave), where + ": the committed save bytes are unchanged.");
+            }
+            var outcome = EpisodeDirector.VetoMeetingOutcome(result.state);
+            Assert.That(outcome.Used, Is.EqualTo(used), "The accepted state records the actual veto decision.");
+            Assert.That(outcome.SavedId, Is.EqualTo(used ? command.targetId : null));
+            Assert.That(outcome.ReplacementId, Is.EqualTo(used ? command.secondTargetId : null));
+            AssertCommittedUnchanged("Immediately after the accepted veto");
 
             // The frame the commit lands in, before the director has ticked: the render the commit
             // made was made under the hold, with the line down.
@@ -156,6 +169,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Hud.IsStatusUnderCard, Is.True);
             Assert.That(StatusLineShowing(), Is.False, "the status line with it,");
             Assert.That(TimesOnScreen(sentence), Is.EqualTo(1), "and the meeting's sentence is on screen once: the strip's.");
+            Assert.That(strip.GetComponentsInChildren<TMP_Text>(true).Single(label => label.name == "Sting detail").text,
+                Is.EqualTo(sentence), "The strip says the complete accepted outcome, not phase guidance.");
             var headline = strip.GetComponentsInChildren<TMP_Text>(true).Single(label => label.name == "Sting headline");
             var title = takeover.GetComponentsInChildren<TMP_Text>(true).Single(label => label.name == "Takeover title");
             Assert.That(headline.text, Is.EqualTo("VETO MEETING"), "The strip names the veto meeting,");
@@ -223,23 +238,34 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(unheld, Is.Zero, "The chrome came back under the meeting's card on " + unheld + " of " + frames + " frames.");
             Assert.That(twice, Is.Zero, "The meeting's sentence was on screen twice on " + twice + " of " + frames + " frames.");
 
-            // Back the frame after they are gone, saying what the commit said.
+            // Back the frame after they are gone, guiding the current phase rather than replaying the outcome.
             yield return null;
             Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back once the card is down,");
             Assert.That(Hud.IsStatusUnderCard, Is.False, "and the status line with it,");
             Assert.That(StatusLineShowing(), Is.True, "on screen,");
-            Assert.That(LastActive("Status").GetComponentsInChildren<TMP_Text>().Single().text, Is.EqualTo(director.StatusMessage),
-                "with the director's line.");
+            var guidance = LastActive("Status").GetComponentsInChildren<TMP_Text>().Single();
+            Assert.That(guidance.text, Is.EqualTo(EpisodeDirector.PhaseLine(director.Snapshot.phase, director.Snapshot.week)),
+                "with the complete state-derived phase guidance.");
+            Assert.That(guidance.text, Does.Not.Contain(sentence), "The ordinary status does not replay the accepted outcome.");
+            Assert.That(guidance.text, Does.Not.Contain("Saved locally."), "Save feedback has its own surface.");
             Assert.That(director.Snapshot.revision, Is.EqualTo(result.state.revision), "The cards commit nothing.");
+            AssertCommittedUnchanged("After the card and strip finish");
 
             // The episode screen after the meeting names it as the cards did.
             yield return OpenStation();
             yield return null;
             Assert.That(Words(LastActive("Phase band")), Does.Contain(EpisodeDirector.PhaseTitle(EpisodePhase.VetoMeeting)), "The band says VETO MEETING.");
             Assert.That(ActiveRect(EpisodeHud.CeremonyTitleName).GetComponent<TMP_Text>().text, Is.EqualTo("The Veto Meeting Is Over"));
+            Assert.That(ActiveRect("Episode panel").GetComponentsInChildren<TMP_Text>().Select(label => label.text),
+                Does.Contain(sentence), "The outcome page retains the complete accepted meeting sentence.");
+            Assert.That(ActiveRect(EpisodeHud.MeetingInfoStripName).GetComponentsInChildren<TMP_Text>().Select(label => label.text),
+                Does.Contain(used ? EpisodeDirector.VetoUsedLine : EpisodeDirector.VetoNotUsedLine),
+                "The outcome page marks the actual used/not-used decision.");
             AssertTheMeetingHasOneName("The episode screen after the meeting");
+            AssertCommittedUnchanged("While browsing the outcome page");
             director.ClosePanels();
             yield return null;
+            AssertCommittedUnchanged("After closing the outcome page");
         }
 
         /// <summary>

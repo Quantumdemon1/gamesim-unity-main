@@ -338,15 +338,15 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// The status line under the rail with a line as long as a story's outcome with "Saved
-        /// locally." after it, at both text sizes: it grows up towards the rail, stays clear of the
-        /// rail and of the stage, and says every word. It was a box 148 units wide and two short
-        /// lines deep, and the end of what a commit did was cut off.
+        /// The status line under the rail with a real long system notice, at all three text sizes:
+        /// it grows up towards the rail, stays clear of the rail and of the stage, and says every
+        /// word. It was a box 148 units wide and two short lines deep, and long notices were cut off.
+        /// Committed narration and save feedback have their own surfaces.
         /// </summary>
         [UnityTest]
         public IEnumerator StrategyStage_TheStatusLineUnderTheRailSaysALongLineWhole()
         {
-            const string line = "The episode changed. Review a new diary choice before confirming.  ·  Saved locally.";
+            const string line = "The diary visit ended because its chair became unavailable. Unconfirmed choices were discarded.";
             yield return InstallStrategySeason(47, state => AtVetoMeeting(state, false));
             foreach (var (textSize, larger) in TextScales.Steps)
             {
@@ -355,16 +355,22 @@ namespace Gamesim.Tests.PlayMode
                     director.ClosePanels();
                     yield return ApplyTextSize(textSize);
                 }
-                // The director's line, as a commit leaves it, and then the panel rendered over it; a
-                // frame after, so the stage is drawn as a player sees it.
-                NpcWrite("message", line);
                 yield return OpenStation();
+                // Opening the station clears old notices. Install this real notice afterwards,
+                // then explicitly render it before the next frame's full-copy and layout checks.
+                NpcWrite("message", line);
+                NpcInvoke("BeginSystemNotice", line);
+                NpcInvoke("Render");
                 yield return null;
                 Assert.That(director.StatusMessage, Is.EqualTo(line), "Nothing has said anything else since.");
                 AssertOnTheStrategyStage("Continue episode", "The veto meeting under a long status line" + (larger ? " " + TextScales.At(textSize) : ""));
                 var status = ActiveRect("Status");
-                Assert.That(status.GetComponentsInChildren<TMP_Text>().Single().text, Is.EqualTo(line), "The line is the one the director holds,");
+                var label = status.GetComponentsInChildren<TMP_Text>().Single();
+                Assert.That(label.text, Is.EqualTo(line), "The line is the one the director holds,");
                 Assert.That(status.rect.height, Is.GreaterThan(50f * Hud.FontScale + .5f), "and it grew to hold it " + TextScales.At(textSize) + ".");
+                label.ForceMeshUpdate();
+                Assert.That(label.isTextOverflowing, Is.False, "The complete notice fits at " + TextScales.At(textSize) + ".");
+                Assert.That(label.isTextTruncated, Is.False, "Every notice word is drawn at " + TextScales.At(textSize) + ".");
             }
             director.ClosePanels();
             yield return ApplyTextSize(false);

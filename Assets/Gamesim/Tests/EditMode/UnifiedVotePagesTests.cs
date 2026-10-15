@@ -282,6 +282,189 @@ namespace Gamesim.Tests.EditMode
             }
         }
 
+        // ------------------------------------------------------------ reveal-order regression and detached record diagnostics
+
+        /// <summary>
+        /// Actual public mode-1 progression, with the walk's source-observed mode-2 projection: no ballot, draw,
+        /// history or role is supplied by this regression. This is not a public mode-2 or native execution claim.
+        /// </summary>
+        [Test]
+        public void Seed23ListsTheKeptVoteBeforeTheInformationBreachWithoutChangingEitherGraph()
+        {
+            var pair = InformationOrderWitness();
+            string oneBefore = PinnedVoteSeason.Json(pair.One), twoBefore = PinnedVoteSeason.Json(pair.Two);
+            var one = YourWeek.Build(pair.One, 1);
+            var two = YourWeek.Build(pair.Two, 1);
+            Assert.That(PinnedVoteSeason.Json(pair.One), Is.EqualTo(oneBefore), "Every field and collection in mode 1 is unchanged.");
+            Assert.That(PinnedVoteSeason.Json(pair.Two), Is.EqualTo(twoBefore), "Every field and collection in the projection is unchanged.");
+            var expected = new[]
+            {
+                (YourWeek.Kinds.Deal, YourWeek.Verdicts.Kept, "jordan-taylor", (string)null,
+                    "You and Jordan Taylor held to your voting bloc."),
+                (YourWeek.Kinds.Deal, YourWeek.Verdicts.Broken, "jordan-taylor", "jordan-taylor",
+                    "Jordan Taylor broke the information deal with you."),
+            };
+            foreach (var week in new[] { one, two })
+                Assert.That(week.word.Select(line => (line.kind, line.verdict, line.aboutId, line.byId, line.text)), Is.EqualTo(expected),
+                    "Exactly the two known outcomes, in the source's reveal order; no comparison normalization.");
+            Assert.That(Json(two), Is.EqualTo(Json(one)), "The complete week reads alike at this non-overlapping actual checkpoint.");
+            var recorded = pair.One.relationships.Where(edge => edge.fromId == pair.One.playerId && edge.toId == "jordan-taylor")
+                .SelectMany(edge => edge.events).Where(entry => entry.week == 1 && (entry.type == YourWeek.DealKept || entry.type == YourWeek.DealBroken))
+                .OrderBy(entry => entry.sequence).ToList();
+            Assert.That(recorded.Select(entry => (entry.sequence, entry.type)),
+                Is.EqualTo(new[] { (75, YourWeek.DealKept), (85, YourWeek.DealBroken) }), "The actual records prove kept-before-broken.");
+        }
+
+        /// <summary>
+        /// Detached reader-input diagnostic, not an accepted engine state: keeps the actual canonical rows and frame,
+        /// but crafts raw records and one raw partnership to isolate pre-veto / merged vote / post-information ordering.
+        /// </summary>
+        [Test]
+        public void DetachedMixedRecordsKeepPreVoteAndPostVoteOrderAroundTheMergedLane()
+        {
+            var original = InformationOrderWitness().Two;
+            var s = DiagnosticOrderRecords(original);
+            const string partner = "jordan-taylor";
+            s.deals.Add(new DealState { id = "deal-reader-diagnostic-1", type = DealKind.Partnership, proposerId = s.playerId,
+                recipientId = partner, status = DealStatus.Fulfilled, week = 1, settledWeek = 1, expiresWeek = 1 });
+            // Deliberately inserted out of record sequence. The partnership's creation precedes the actual Vote row,
+            // although its recorded outcome follows that row; the information outcomes must keep record order instead.
+            AddOrderRecord(s, partner, 110, YourWeek.DealBroken, InformationRecord(s, partner, false, false));
+            AddOrderRecord(s, partner, 80, YourWeek.DealKept, "You and Jordan Taylor held to their partnership.");
+            AddOrderRecord(s, partner, 10, YourWeek.DealKept, "You honoured a veto commitment with Jordan Taylor.");
+            AddOrderRecord(s, partner, 100, YourWeek.DealBroken, InformationRecord(s, partner, true, false));
+            Assert.That(Json(s.unifiedCommitments), Is.EqualTo(Json(original.unifiedCommitments)), "No canonical row is fabricated or changed.");
+            Assert.That(Json(s.unifiedVoteReveals), Is.EqualTo(Json(original.unifiedVoteReveals)), "The real reveal frame is retained unchanged.");
+            var lines = ReadDiagnosticOrder(s);
+            Assert.That(lines.Select(line => (line.verdict, line.byId, line.text)), Is.EqualTo(new[]
+            {
+                (YourWeek.Verdicts.Kept, s.playerId, "You kept the veto commitment with Jordan Taylor."),
+                (YourWeek.Verdicts.Kept, (string)null, "You and Jordan Taylor held to your partnership."),
+                (YourWeek.Verdicts.Kept, (string)null, "You and Jordan Taylor held to your voting bloc."),
+                (YourWeek.Verdicts.Broken, s.playerId, "You broke the information deal with Jordan Taylor."),
+                (YourWeek.Verdicts.Broken, partner, "Jordan Taylor broke the information deal with you."),
+            }), "Pre-vote records, then the creation-ordered merged lane, then information breaches in record-sequence order.");
+        }
+
+        /// <summary>Detached malformed legacy-reader records must not acquire a supported source post-vote classification.</summary>
+        [TestCase("unknown")]
+        [TestCase("mismatched")]
+        public void DetachedUnrecognisedOrInconsistentInformationRecordsKeepTheirOriginalPosition(string malformed)
+        {
+            var s = DiagnosticOrderRecords(InformationOrderWitness().Two);
+            const string partner = "jordan-taylor";
+            string text = malformed == "unknown" ? "Jordan Taylor gave an unrecognised information-deal ending."
+                : InformationRecord(s, partner, false, false);
+            string recordType = malformed == "unknown" ? YourWeek.DealBroken : YourWeek.DealKept;
+            bool read = YourWeek.ReadDeal(s, text, partner, out _, out var kind, out var said);
+            Assert.That(read, Is.EqualTo(malformed != "unknown"), "The control proves which parser boundary it exercises.");
+            if (read)
+            {
+                Assert.That(kind, Is.EqualTo(DealKind.InformationSharing));
+                Assert.That(said, Is.False, "The recognised sentence says broken while its record says kept.");
+            }
+            AddOrderRecord(s, partner, 100, recordType, text);
+            var lines = ReadDiagnosticOrder(s);
+            Assert.That(lines.Select(line => (line.verdict, line.byId, line.text)), Is.EqualTo(new[]
+            {
+                (malformed == "unknown" ? YourWeek.Verdicts.Broken : YourWeek.Verdicts.Kept, (string)null, text),
+                (YourWeek.Verdicts.Kept, (string)null, "You and Jordan Taylor held to your voting bloc."),
+            }), "Unknown or contradictory words remain exactly as recorded, in the ordinary pre-lane position.");
+        }
+
+        /// <summary>
+        /// Detached record compatibility only: fulfilled information stays in the ordinary lane; genuinely fresh modes 0/1
+        /// retain their raw sequence. These crafted outcome records are not claimed to be real settled production states.
+        /// </summary>
+        [Test]
+        public void DetachedFulfilledInformationAndLegacyModesKeepTheirExistingRecordOrder()
+        {
+            var s = DiagnosticOrderRecords(InformationOrderWitness().Two);
+            AddOrderRecord(s, "jordan-taylor", 100, YourWeek.DealKept, InformationRecord(s, "jordan-taylor", true, true));
+            Assert.That(ReadDiagnosticOrder(s).Select(line => line.text), Is.EqualTo(new[]
+            {
+                "You kept the information deal with Jordan Taylor.",
+                "You and Jordan Taylor held to your voting bloc.",
+            }), "A consistent fulfilled information record is not moved into the post-vote list.");
+            foreach (int mode in new[] { 0, 1 })
+            {
+                // The existing fresh helper validates the real empty opening before these diagnostic records are added.
+                var legacy = DiagnosticOrderRecords(PinnedVoteSeason.Fresh(23, mode: mode, size: 6));
+                string partner = legacy.contestants.First(c => !c.isPlayer).id, name = legacy.Find(partner).name;
+                AddOrderRecord(legacy, partner, 30, YourWeek.DealKept, InformationRecord(legacy, partner, true, true));
+                AddOrderRecord(legacy, partner, 10, YourWeek.DealBroken, InformationRecord(legacy, partner, false, false));
+                AddOrderRecord(legacy, partner, 20, YourWeek.DealKept, "You honoured a veto commitment with " + name + ".");
+                Assert.That(ReadDiagnosticOrder(legacy).Select(line => line.text), Is.EqualTo(new[]
+                {
+                    name + " broke the information deal with you.",
+                    "You kept the veto commitment with " + name + ".",
+                    "You kept the information deal with " + name + ".",
+                }), "Mode " + mode + " preserves the original raw record-sequence order, not insertion order.");
+            }
+        }
+
+        /// <summary>The unchanged busy public walker, stopped at the exact originally observed checkpoint.</summary>
+        private static (EpisodeState One, EpisodeState Two) InformationOrderWitness()
+        {
+            EpisodeState one = null, two = null;
+            var walked = ModeTwoReaderSweep.Walk(23, (mode1, mode2, where) =>
+            {
+                if (mode1.revision != 20) return;
+                one = mode1.Clone(); two = mode2.Clone();
+            }, size: 6, done: () => one != null);
+            Assert.That(one, Is.Not.Null, "The original public walk must reach revision 20: " + walked);
+            Assert.That(two, Is.Not.Null);
+            Assert.That(walked.Commands, Is.EqualTo(20), "No alternate search or fabricated ballots replaces the original accepted-command sequence.");
+            foreach (var state in new[] { one, two })
+                Assert.That((state.week, state.phase, state.revision, state.evictionResolved),
+                    Is.EqualTo((1, EpisodePhase.Eviction, 20, true)), "The actual week-1 reveal checkpoint.");
+            Assert.That(one.unifiedCommitmentRulesVersion, Is.EqualTo(1));
+            Assert.That(two.unifiedCommitmentRulesVersion, Is.EqualTo(2), "A source-observed projection, not a separately executed mode-2 season.");
+            Assert.That(KnownBallots.Knows(two, 1, "jordan-taylor"), Is.True, "The regression's two endings are known.");
+            Assert.That(two.unifiedCommitments.Count(row => row.kind == UnifiedVoteTogether.Vote && row.sourcePolicy == UnifiedCommitments.DealPolicy
+                && row.subtype == DealKind.VoteTogether && row.status == DealStatus.Fulfilled && row.settledWeek == 1), Is.EqualTo(1));
+            return (one, two);
+        }
+
+        /// <summary>
+        /// Isolates a detached raw-record diagnostic. Never validates or installs the crafted state as an engine/save positive;
+        /// the input graph, canonical rows, reveal frames and knowledge are not changed by this fixture preparation.
+        /// </summary>
+        private static EpisodeState DiagnosticOrderRecords(EpisodeState source)
+        {
+            string before = PinnedVoteSeason.Json(source);
+            var s = source.Clone();
+            foreach (var edge in s.relationships.Where(edge => edge.fromId == s.playerId))
+                edge.events.RemoveAll(entry => entry.week == s.week && (entry.type == YourWeek.DealKept || entry.type == YourWeek.DealBroken));
+            Assert.That(PinnedVoteSeason.Json(source), Is.EqualTo(before), "The genuine source witness is untouched.");
+            Assert.That(Json(s.unifiedCommitments), Is.EqualTo(Json(source.unifiedCommitments)));
+            Assert.That(Json(s.unifiedVoteReveals), Is.EqualTo(Json(source.unifiedVoteReveals)));
+            return s;
+        }
+
+        private static void AddOrderRecord(EpisodeState s, string partner, int sequence, string type, string text)
+        {
+            var edge = s.relationships.SingleOrDefault(row => row.fromId == s.playerId && row.toId == partner);
+            if (edge == null)
+            {
+                edge = new RelationshipState { fromId = s.playerId, toId = partner };
+                s.relationships.Add(edge);
+            }
+            edge.events.Add(new RelationshipEventState { sequence = sequence, week = s.week, type = type, description = text });
+        }
+
+        private static string InformationRecord(EpisodeState s, string partner, bool playerActs, bool kept) =>
+            (playerActs ? "You" : s.Find(partner).name) + (kept ? " honoured a " : " broke a ")
+                + DealKind.Title(DealKind.InformationSharing).ToLowerInvariant() + " with " + (playerActs ? s.Find(partner).name : "You") + ".";
+
+        private static List<YourWeek.Line> ReadDiagnosticOrder(EpisodeState s)
+        {
+            string before = PinnedVoteSeason.Json(s);
+            var lines = YourWeek.Build(s, s.week).word;
+            Assert.That(PinnedVoteSeason.Json(s), Is.EqualTo(before), "The complete detached graph is unchanged by the reader.");
+            return lines;
+        }
+
         // ------------------------------------------------------------ helpers
 
         /// <summary>The Your word page's model - every commitment, each one's line, the house's reading - reads the reveal as mode 1 does.</summary>

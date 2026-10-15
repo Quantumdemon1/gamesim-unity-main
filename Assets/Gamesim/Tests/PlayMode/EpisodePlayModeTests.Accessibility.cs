@@ -455,8 +455,69 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
         }
 
+        [Test]
+        public void CapturePortraitWait_BodyOnlyProviderDoesNotWaitForUnavailableFace()
+        {
+            var previous = CharacterBodySource.Provider;
+            var provider = new CaptureBodyOnlyProvider();
+            var face = new GameObject("Unavailable capture portrait", typeof(RectTransform),
+                typeof(RawImage), typeof(CharacterPortraitBinding));
+            try
+            {
+                CharacterBodySource.Register(provider);
+                var image = face.GetComponent<RawImage>();
+                image.enabled = false;
+                Assert.That(image.texture, Is.Null, "The unavailable face remains a real missing binding, not invented pixels.");
+                Assert.That(AnyBoundFaceIsStillMissing(), Is.False,
+                    "A body-only provider cannot build a portrait; a capture must not wait for one.");
+            }
+            finally
+            {
+                CharacterBodySource.Unregister(provider);
+                Object.DestroyImmediate(face);
+            }
+            Assert.That(CharacterBodySource.Provider, Is.SameAs(previous), "The capture test restores the prior provider owner.");
+        }
+
+        [Test]
+        public void CapturePortraitWait_ModularProviderKeepsMissingFaceWait()
+        {
+            var previous = CharacterBodySource.Provider;
+            var provider = new CaptureModularProvider();
+            var face = new GameObject("Pending capture portrait", typeof(RectTransform),
+                typeof(RawImage), typeof(CharacterPortraitBinding));
+            try
+            {
+                CharacterBodySource.Register(provider);
+                face.GetComponent<RawImage>().enabled = false;
+                Assert.That(AnyBoundFaceIsStillMissing(), Is.True,
+                    "A portrait-capable provider retains the existing bounded wait for missing faces.");
+            }
+            finally
+            {
+                CharacterBodySource.Unregister(provider);
+                Object.DestroyImmediate(face);
+            }
+            Assert.That(CharacterBodySource.Provider, Is.SameAs(previous), "The capture test restores the prior provider owner.");
+        }
+
+        private class CaptureBodyOnlyProvider : ICharacterBodyProvider
+        {
+            public bool TryCreate(string appearanceId, Transform parent, Color wardrobe, out CharacterBody body)
+            { body = default; return false; }
+            public void SetWardrobeColor(in CharacterBody body, Color wardrobe) { }
+        }
+
+        private sealed class CaptureModularProvider : CaptureBodyOnlyProvider, IModularCharacterBodyProvider
+        {
+            public ICharacterAppearanceCatalog Catalog => null;
+            public bool TryCreate(in CharacterBodyRequest request, Transform parent, Color wardrobe, out CharacterBody body)
+            { body = default; return false; }
+        }
+
         private static bool AnyBoundFaceIsStillMissing() =>
-            Object.FindObjectsByType<CharacterPortraitBinding>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
+            CharacterBodySource.Provider is IModularCharacterBodyProvider
+            && Object.FindObjectsByType<CharacterPortraitBinding>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
                 .Select(binding => binding.GetComponent<RawImage>())
                 .Any(face => face != null && face.gameObject.activeInHierarchy && (face.texture == null || !face.enabled));
 

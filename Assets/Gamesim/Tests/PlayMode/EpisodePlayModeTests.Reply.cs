@@ -12,15 +12,10 @@ using UnityEngine.TestTools;
 namespace Gamesim.Tests.PlayMode
 {
     /// <summary>
-    /// A houseguest's reply to time spent together says each thing once.
-    ///
-    /// <para>The reply to "Spend time together" was the shipped acknowledgement with the
-    /// houseguest's standing sentence glued to the end - and that sentence was the one the greeting
-    /// had just ended on, nearly every time, because a single talk rarely moves anyone across a
-    /// band. So the reply read as the greeting said twice, and the one time the sentence WAS news
-    /// it was buried where the player had learned to skim. Now the acknowledgement is the reply,
-    /// and the standing is a line of its own only when the talk moved it. Nothing is hidden: when
-    /// nothing moved, it is the sentence the player just read.</para>
+    /// A houseguest's acknowledgement of time spent together is spoken once after the player.
+    /// The ordered exchange does not repeat the old greeting or duplicate its reply in the menu.
+    /// The committed relationship can stay in its band or cross it; reading the spoken reply never
+    /// applies either outcome again.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
@@ -37,17 +32,24 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(HouseDialogue.Response(after, mayaId), Is.EqualTo(before),
                 "Precondition: one talk from 5 stays in the same band, so where Maya stands is unchanged.");
 
-            var spoken = Said(SpokenDialogueName);
+            Assert.That(director.ConversationExchangeSpeakerId, Is.EqualTo(after.playerId), "The player speaks first.");
+            ButtonWithCaption(EpisodeHud.ConversationContinueCaption).onClick.Invoke();
+            yield return null;
+            Assert.That(director.ConversationExchangeSpeakerId, Is.EqualTo(mayaId));
+            var spoken = Said(EpisodeHud.ConversationExchangeLineName);
             Assert.That(spoken, Is.EqualTo(new[] { Quoted(HouseDialogue.TalkAcknowledgement(after, mayaId)) }),
                 "The reply is the acknowledgement.");
             Assert.That(spoken[0], Does.Not.Contain(before),
                 "It used to end on the sentence the greeting had just ended on.");
             Assert.That(Said(EpisodeHud.FollowUpDialogueName), Is.Empty,
                 "Nothing moved, so there is nothing more to say.");
+            ButtonWithCaption(EpisodeHud.ConversationContinueCaption).onClick.Invoke();
+            yield return null;
+            Assert.That(Said(SpokenDialogueName), Is.Empty, "Returning to topics does not replay the acknowledged conversation.");
         }
 
         [UnityTest]
-        public IEnumerator Conversation_ATalkThatMovesThemSaysWhereTheyStandNow()
+        public IEnumerator Conversation_ATalkThatMovesThemKeepsTheChangedStandingAndSpeaksItsAcknowledgementOnce()
         {
             yield return OpenMayaWithHerTrustAt(22);
             string mayaId = ContentCatalog.MayaId;
@@ -57,17 +59,20 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(after.Score(mayaId, after.playerId), Is.GreaterThanOrEqualTo(25d),
                 "Precondition: a talk is worth at least +3.2 to her, so from 22 it crosses into the warm band.");
 
-            Assert.That(Said(SpokenDialogueName), Is.EqualTo(new[] { Quoted(HouseDialogue.TalkAcknowledgement(after, mayaId)) }));
-            var follow = Said(EpisodeHud.FollowUpDialogueName);
-            Assert.That(follow, Is.EqualTo(new[] { Quoted(HouseDialogue.Response(after, mayaId)) }),
-                "The talk moved her, and she says where she stands now - as a line of its own.");
-            Assert.That(follow[0], Is.Not.EqualTo(Quoted(before)), "and it is not what she said before the talk.");
-
-            Canvas.ForceUpdateCanvases();
-            var reply = Line(SpokenDialogueName);
-            var shift = Line(EpisodeHud.FollowUpDialogueName);
-            Assert.That(ScreenRect(reply.rectTransform).yMin, Is.GreaterThanOrEqualTo(ScreenRect(shift.rectTransform).yMax - 0.5f),
-                "The reply comes first and what changed comes under it, without the two running into each other.");
+            Assert.That(HouseDialogue.Response(after, mayaId), Is.Not.EqualTo(before), "The changed relationship remains on the committed state.");
+            Assert.That(director.ConversationExchangeSpeakerId, Is.EqualTo(after.playerId));
+            ButtonWithCaption(EpisodeHud.ConversationContinueCaption).onClick.Invoke();
+            yield return null;
+            Assert.That(director.ConversationExchangeSpeakerId, Is.EqualTo(mayaId));
+            var spoken = Said(EpisodeHud.ConversationExchangeLineName);
+            Assert.That(spoken, Is.EqualTo(new[] { Quoted(HouseDialogue.TalkAcknowledgement(after, mayaId)) }));
+            Assert.That(spoken[0], Does.Not.Contain(before), "The reply does not repeat the greeting from before the talk.");
+            Assert.That(Said(SpokenDialogueName), Is.Empty, "The old reply surface does not duplicate the current speaker.");
+            Assert.That(Said(EpisodeHud.FollowUpDialogueName), Is.Empty, "The ordered exchange displays one spoken line at a time.");
+            ButtonWithCaption(EpisodeHud.ConversationContinueCaption).onClick.Invoke();
+            yield return null;
+            Assert.That(Said(SpokenDialogueName), Is.Empty, "Reading the reply again does not replay it in the menu.");
+            Assert.That(HouseDialogue.Response(director.Snapshot, mayaId), Is.EqualTo(HouseDialogue.Response(after, mayaId)));
         }
 
         /// <summary>

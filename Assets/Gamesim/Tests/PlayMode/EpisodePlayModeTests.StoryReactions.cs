@@ -261,14 +261,97 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// Fixture-arranged physical precondition only. The actual source-selected cast and ending
+        /// remain unchanged; this isolated, suspended-clock case does not prove scene gathering.
+        /// Existing provided bodies are kept, never replaced and never sent React by the fixture.
+        /// </summary>
+        private IEnumerator ArrangePeacePairForTheHeldFixture()
+        {
+            yield return SettleCast();
+            var before = director.Snapshot;
+            var firstNpc = HouseguestBody(peaceFirstId);
+            var secondNpc = HouseguestBody(peaceSecondId);
+            var first = Presentation(firstNpc);
+            var second = Presentation(secondNpc);
+            Assert.That(first, Is.Not.Null); Assert.That(second, Is.Not.Null);
+            Assert.That(first.CharacterId, Is.EqualTo(peaceFirstId));
+            Assert.That(second.CharacterId, Is.EqualTo(peaceSecondId));
+            if (CharacterBodySource.Provider != null)
+            {
+                Assert.That(first.IsPrimitiveBody || second.IsPrimitiveBody, Is.False,
+                    "The installed provider's actual bodies must be used, not a primitive fallback.");
+                bool supports = first.Supports(CharacterPresentation.Reaction.Embrace)
+                    && second.Supports(CharacterPresentation.Reaction.Embrace);
+                Assert.That(supports, Is.True, supports ? null : HugEndpoint(peaceFirstId, peaceSecondId, false));
+            }
+            Assert.That(HouseRoomQuery.TryCreate(director.gameObject.scene, out var rooms, out var reason), Is.True, reason);
+            var firstCapsule = firstNpc.GetComponent<CapsuleCollider>();
+            var secondCapsule = secondNpc.GetComponent<CapsuleCollider>();
+            Assert.That(firstCapsule, Is.Not.Null); Assert.That(secondCapsule, Is.Not.Null);
+            var filter = new NavMeshQueryFilter { agentTypeID = player.Agent.agentTypeID, areaMask = player.Agent.areaMask };
+            var furniture = new Collider[64];
+            bool ClearFurniture(Vector3 feet, CapsuleCollider capsule)
+            {
+                int count = rooms.Scene.GetPhysicsScene().OverlapCapsule(feet + Vector3.up * capsule.radius,
+                    feet + Vector3.up * (capsule.height - capsule.radius), capsule.radius, furniture,
+                    1 << HouseLayers.Furniture, QueryTriggerInteraction.Ignore);
+                // An exactly-full buffer is unknown, not evidence of clear floor.
+                return count == 0;
+            }
+            var markers = SceneComponents<HouseRoomMarker>().Where(marker => marker.RoomName == "Yard" || marker.RoomName == "Living")
+                .OrderBy(marker => marker.RoomName == "Yard" ? 0 : 1).ThenBy(marker => marker.name, System.StringComparer.Ordinal).Take(2).ToArray();
+            Assert.That(markers.Length, Is.GreaterThan(0), "A measured source room is required for the physical fixture.");
+            bool placed = false;
+            // At most 2 source markers x 4 radii x 8 directions = 64 read-only floor candidates.
+            foreach (var marker in markers)
+            {
+                for (int radius = 0; radius < 4 && !placed; radius++)
+                    for (int direction = 0; direction < 8 && !placed; direction++)
+                    {
+                        float angle = direction * 45f * Mathf.Deg2Rad;
+                        var across = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+                        var centre = marker.transform.position + across * radius;
+                        centre.y = first.transform.position.y; // The current measured actor floor; sampling below must still prove it.
+                        var wantedFirst = centre - across * (EpisodeDirector.EmbraceApart * .5f);
+                        var wantedSecond = centre + across * (EpisodeDirector.EmbraceApart * .5f);
+                        if (!rooms.TrySampleFloor(wantedFirst, firstCapsule.radius, filter, .25f, out var firstAt, out var firstRoom)
+                            || !rooms.TrySampleFloor(wantedSecond, secondCapsule.radius, filter, .25f, out var secondAt, out var secondRoom)
+                            || firstRoom != secondRoom
+                            || Flat(firstAt, secondAt) < EmbracePair.NearestApart || Flat(firstAt, secondAt) > EmbracePair.FarthestApart
+                            || !rooms.HasCapsuleClearance(firstAt, firstCapsule.radius, firstCapsule.height, first.transform, second.transform)
+                            || !rooms.HasCapsuleClearance(secondAt, secondCapsule.radius, secondCapsule.height, second.transform, first.transform)
+                            || !ClearFurniture(firstAt, firstCapsule) || !ClearFurniture(secondAt, secondCapsule)) continue;
+                        // The world is intentionally disposed/clock held. This existing test-only
+                        // placement seam changes physical roots, not saved cast/roles/knowledge.
+                        Assert.That(PutBodyAt(firstNpc, firstAt), Is.True, "Fixture placement of the actual first body.");
+                        Assert.That(PutBodyAt(secondNpc, secondAt), Is.True, "Fixture placement of the actual second body.");
+                        Physics.SyncTransforms();
+                        placed = true;
+                    }
+                if (placed) break;
+            }
+            Assert.That(placed, Is.True, "No clear measured physical pair within the 64-candidate fixture bound.");
+            UvEquivalent(before, director.Snapshot);
+            yield return WaitForHugEndpoint(() => !first.IsBodyAssembling && !second.IsBodyAssembling
+                && !first.IsChangingOutfit && !second.IsChangingOutfit && first.IsStill && second.IsStill,
+                1f, "The physically arranged existing bodies settle", peaceFirstId, peaceSecondId, false);
+            Assert.That(first.IsSeated || second.IsSeated, Is.False);
+            Assert.That(first.Activity, Is.EqualTo(CharacterPresentation.BodyActivity.None));
+            Assert.That(second.Activity, Is.EqualTo(CharacterPresentation.BodyActivity.None));
+            UvEquivalent(before, director.Snapshot);
+        }
+
+        /// <summary>
         /// The player brings a feud to an end, and once the scene's card closes the two who made up
-        /// embrace - the parts the beat names, at the ending the player saw. The embrace commits
-        /// nothing: with the house's own clock held, the revision does not move.
+        /// embrace - the parts the beat names, at the ending the player saw. Their physical floor
+        /// positions are explicitly fixture-arranged, not proof of a scene's navigation gather.
+        /// With the clock held, the reaction changes neither revision nor the complete saved graph.
         /// </summary>
         [UnityTest]
         public IEnumerator StoryReactions_TwoWhoMakePeaceEmbraceOnceTheCardCloses()
         {
             yield return InstallPeaceFixture();
+            yield return ArrangePeacePairForTheHeldFixture();
             var beat = EpisodeEngine.OpenStoryBeats(director.Snapshot).Single(item => item.id == peaceEventId);
             var option = beat.choices.Single(c => c.optionId == peaceOptionId);
             Assert.That(director.OpenSceneCard(beat.id), Is.True);
@@ -279,12 +362,36 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(line.endingId, Is.EqualTo(StoryReactions.Peace), "The player made peace between them.");
             Assert.That(StoryBody(peaceFirstId).LastReaction, Is.Not.EqualTo(CharacterPresentation.Reaction.Embrace),
                 "Nothing while the card still says what came of it.");
-            int revision = director.Snapshot.revision;
+            Assert.That(StoryBody(peaceSecondId).LastReaction, Is.Not.EqualTo(CharacterPresentation.Reaction.Embrace),
+                "Neither body begins while the actual source ending's card is open.");
+            var committed = director.Snapshot;
+            int revision = committed.revision;
+            var first = StoryBody(peaceFirstId);
+            var second = StoryBody(peaceSecondId);
+            var firstRoot = first.transform.position;
+            var secondRoot = second.transform.position;
+            bool primitive = first.IsPrimitiveBody || second.IsPrimitiveBody;
             ButtonWithCaption(EpisodeDirector.SceneCardDoneCaption).onClick.Invoke();
-            yield return Frames(3);
-            Assert.That(StoryBody(peaceFirstId).LastReaction, Is.EqualTo(CharacterPresentation.Reaction.Embrace), "The one who started it embraces,");
-            Assert.That(StoryBody(peaceSecondId).LastReaction, Is.EqualTo(CharacterPresentation.Reaction.Embrace), "and so does the other.");
+            yield return WaitForHugEndpoint(() => first.LastReaction == CharacterPresentation.Reaction.Embrace
+                && second.LastReaction == CharacterPresentation.Reaction.Embrace
+                && (primitive || director.CurrentEmbrace != null && director.CurrentEmbrace.Fired
+                    && first.IsReacting && second.IsReacting),
+                EpisodeDirector.EmbraceGatherSeconds, "The actual ending requests the two beats after its card closes",
+                peaceFirstId, peaceSecondId, false);
+            Assert.That(first.LastReaction, Is.EqualTo(CharacterPresentation.Reaction.Embrace), "The one who started it embraces,");
+            Assert.That(second.LastReaction, Is.EqualTo(CharacterPresentation.Reaction.Embrace), "and so does the other.");
+            if (!primitive)
+            {
+                Assert.That(director.CurrentEmbrace, Is.Not.Null);
+                bool fired = director.CurrentEmbrace.Fired;
+                Assert.That(fired, Is.True, fired ? null : HugEndpoint(peaceFirstId, peaceSecondId, false));
+                Assert.That(director.CurrentEmbrace.First, Is.SameAs(first));
+                Assert.That(director.CurrentEmbrace.Second, Is.SameAs(second));
+            }
+            Assert.That(Vector3.Distance(first.transform.position, firstRoot), Is.LessThan(.001f), "The reaction never moves the first actor root.");
+            Assert.That(Vector3.Distance(second.transform.position, secondRoot), Is.LessThan(.001f), "Nor the second.");
             Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "The embrace commits nothing.");
+            UvEquivalent(committed, director.Snapshot);
             Assert.That(director.PendingEmbraceFirst, Is.Null, "and nothing is left waiting.");
         }
 

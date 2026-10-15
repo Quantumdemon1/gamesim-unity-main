@@ -354,14 +354,13 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.ConversationIntent, Is.EqualTo(EpisodeDirector.IntentAsk), "and knows what you came for.");
             var content = ActiveRect("Episode content");
             var labels = content.GetComponentsInChildren<TMP_Text>().Where(t => t.gameObject.activeInHierarchy).Select(t => t.text).ToList();
-            int heading = labels.IndexOf("WHAT YOU CAME TO ASK");
-            Assert.That(heading, Is.GreaterThanOrEqualTo(0), "What you came for is named first.");
             int ask = labels.IndexOf("Ask what they have heard");
-            Assert.That(ask, Is.GreaterThan(heading), "The asking rows follow it,");
+            Assert.That(ask, Is.GreaterThanOrEqualTo(0), "The question is inside the category the intent opens.");
             Assert.That(labels.Count(l => l == "Ask what they have heard"), Is.EqualTo(1), "and are not drawn twice.");
-            // The dial's petals hang on their own hub, not in the scroll column; the first row the
-            // dial leads to is the one to measure against.
-            Assert.That(labels.IndexOf(EpisodeHud.DiscussGameCaption), Is.GreaterThan(ask), "before the rows the dial leads to.");
+            Assert.That(director.CurrentConversationCategory, Is.Not.Null);
+            Assert.That(ActiveRect(EpisodeHud.DialName), Is.Null, "The intent opens one category instead of the wheel and another list.");
+            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.DiscussGameCaption), Is.Null, "Game topics wait in their own category.");
+            Assert.That(JsonUtility.ToJson(director.Snapshot), Is.EqualTo(JsonUtility.ToJson(state)), "Opening an intended topic spends nothing.");
             director.ClosePanels();
             yield return null;
             Assert.That(director.ConversationIntent, Is.Null, "Closing the conversation forgets the intent.");

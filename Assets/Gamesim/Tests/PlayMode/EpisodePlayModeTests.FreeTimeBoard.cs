@@ -308,8 +308,9 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(BudgetLabel(EpisodeHud.BudgetRuleName).text, Is.EqualTo(EpisodeDirector.BudgetRule(state)), where + " says the week's rule,");
                     Assert.That(BudgetLabel(EpisodeHud.BudgetRuleName).text, Does.EndWith("tonight; " + (house <= 8 ? "it does" : "they do") + " not carry into the week."),
                         where + " in move-in night's own words.");
-                    // Seven others fit one page at either size on either frame; fifteen page.
-                    if (house <= 8) Assert.That(FreeTimeCards().Length, Is.EqualTo(house - 1), where + ": everybody else is a card on one page.");
+                    // House8 follows the renderer's readable-width paging; house4 remains one page.
+                    if (house == 4) Assert.That(FreeTimeCards().Length, Is.EqualTo(house - 1), where + ": everybody else is a card on one page.");
+                    else if (house == 8) AssertFreeTimeEightReadablePages11(where);
                     else
                     {
                         Assert.That(FreeTimeCards().Length, Is.LessThan(house - 1), where + ": the house runs past one page,");

@@ -123,6 +123,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return ApplyTextSize(textSize);
                 string id = listener[0];
                 yield return TalkTo(id);
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
                 string where = "A counter standing" + size + (take ? ", taken" : ", turned down");
                 Assert.That(director.IsConversationOpen, Is.True, where + ": the conversation opens.");
                 var open = director.Snapshot;
@@ -190,6 +191,7 @@ namespace Gamesim.Tests.PlayMode
             }, listener);
             string npc = listener[0];
             yield return TalkTo(npc);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             Assert.That(director.IsConversationOpen, Is.True, "The conversation opens.");
             var open = director.Snapshot;
             Assert.That((open.nextSequence, open.randomState), Is.EqualTo((shaped[0], drawn[0])),
@@ -205,6 +207,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(refused.deals.Count, Is.EqualTo(deals), "turned down,");
             var counter = Negotiation.OpenCounter(refused, npc);
             Assert.That(counter, Is.Not.Null, "and it comes back as a counter.");
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             Assert.That(director.IsConversationOpen, Is.True, "The conversation answers at its head:");
             string shown = ShownText();
             Assert.That(shown, Does.Contain(EpisodeDirector.CounterHeading(name)), "the counter, who it is from,");
@@ -242,6 +245,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return ApplyTextSize(textSize);
                 string id = listener[0];
                 yield return TalkTo(id);
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
                 string where = "A promise of a final two owed" + (larger ? " " + TextScales.At(textSize) : "");
                 Assert.That(director.IsConversationOpen, Is.True, where + ": the conversation opens.");
                 var open = director.Snapshot;
@@ -323,6 +327,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return ApplyTextSize(textSize);
                 string id = listener[0];
                 yield return TalkTo(id);
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
                 string where = "A promise owed and a breach of the player's" + size;
                 Assert.That(director.IsConversationOpen, Is.True, where + ": the conversation opens.");
                 var open = director.Snapshot;
@@ -353,6 +358,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(ButtonWithCaptionOrNull(EpisodeHud.CallInCaption(Negotiation.Demand, first, Negotiation.PromiseWords(promise.kind))), Is.Null,
                     where + ": and called in for the week.");
 
+                yield return EnterCategoryForLeaf(EpisodeHud.MendFencesCaption(first));
                 ButtonWithCaption(EpisodeHud.MendFencesCaption(first)).onClick.Invoke();
                 yield return null;
                 var mended = director.Snapshot;
@@ -387,6 +393,7 @@ namespace Gamesim.Tests.PlayMode
             {
                 yield return ApplyTextSize(textSize);
                 yield return TalkTo(nominee);
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
                 string where = "A word with a nominee, holding the veto" + (larger ? " " + TextScales.At(textSize) : "");
                 Assert.That(director.IsConversationOpen, Is.True, where + ": in the week's window a word with a nominee is open.");
                 var shown = director.Snapshot;
@@ -404,6 +411,7 @@ namespace Gamesim.Tests.PlayMode
             }
             yield return ApplyTextSize(false);
             yield return TalkTo(nominee);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             var open = director.Snapshot;
             string first = FinalistRead.FirstName(open.Find(nominee).name);
             var prices = Negotiation.VetoPrices(open, nominee);

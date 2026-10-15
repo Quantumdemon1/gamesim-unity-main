@@ -405,6 +405,7 @@ namespace Gamesim.Presentation
             if (IsShowing) dismissedFrame = Time.frameCount;
             IsAssembling=false; if(assemblyPanel!=null)assemblyPanel.gameObject.SetActive(false);
             IsShowing=false; playing=false; Paused=false; held=false; holdingFinish=false;
+            keptRollCuePending=false;
             if(group!=null) { group.alpha=0;group.interactable=false;group.blocksRaycasts=false; }
             if(EventSystem.current!=null && EventSystem.current.currentSelectedGameObject!=null
                 && EventSystem.current.currentSelectedGameObject.transform.IsChildOf(transform))

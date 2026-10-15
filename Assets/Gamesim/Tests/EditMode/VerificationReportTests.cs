@@ -492,6 +492,27 @@ namespace Gamesim.Tests.EditMode
             var layouts = (IList)layoutsField.GetValue(report);
             for (int i = 0; i < 31; i++)
                 layouts.Add(Activator.CreateInstance(layoutsField.FieldType.GetGenericArguments()[0], true));
+            // Explicit nonvisual sentinel records test only the completion contract. They are
+            // not rendered frames or visual acceptance, just like the twelve route sentinels above.
+            var conversationField = reportType.GetField("conversationLayouts");
+            var conversation = (IList)conversationField.GetValue(report);
+            var conversationFrames = (IList)reportType.GetField("conversationFrames").GetValue(report);
+            foreach (string view in new[] { "selected-game", "selected-connect", "exchange-player", "exchange-npc" })
+            foreach (var viewport in new[] { new Vector2Int(1280,720), new Vector2Int(1600,900), new Vector2Int(1920,1080),
+                new Vector2Int(1200,900), new Vector2Int(2560,1080) })
+            foreach (Gamesim.Presentation.TextSize text in Gamesim.Presentation.TextSizes.All)
+            foreach (bool compact in new[] { false, true })
+            {
+                var row = Activator.CreateInstance(conversationField.FieldType.GetGenericArguments()[0], true);
+                string path = Path.Combine(temporary, "conversation-contract-" + conversation.Count + ".png");
+                File.WriteAllBytes(path, new byte[] { 1 });
+                var rowType = row.GetType();
+                rowType.GetField("view").SetValue(row, view);
+                rowType.GetField("width").SetValue(row, viewport.x); rowType.GetField("height").SetValue(row, viewport.y);
+                rowType.GetField("textSize").SetValue(row, text); rowType.GetField("compactHud").SetValue(row, compact);
+                rowType.GetField("path").SetValue(row, path); rowType.GetField("npcId").SetValue(row, "unit-sentinel-npc");
+                conversation.Add(row); conversationFrames.Add(path);
+            }
             Field("lookReport").SetValue(runner, report);
             return report;
         }

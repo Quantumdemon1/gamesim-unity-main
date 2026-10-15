@@ -7,15 +7,18 @@ Unity (it sits outside `Assets/`). Machine-specific paths are derived or overrid
 
 | Script | What it does | Time |
 | --- | --- | --- |
-| `offline-compile.ps1` | Smoke-compiles all eight owned assemblies from current source lists using cached editor references. Missing assemblies/configuration mismatches fail; outputs and dependencies are unique to this invocation. `-WithoutUma` requires matching UMA-free cached responses. | seconds |
+| `offline-compile.ps1` | Smoke-compiles all eight owned assemblies from current source lists using cached editor references. Missing assemblies/configuration mismatches fail; outputs and dependencies are unique to this invocation. `-OutputRoot <directory>` retains fresh outputs on another drive. `-WithoutUma` requires matching UMA-free cached responses. Changed asmdef dependencies require a freshly regenerated Unity Bee graph; stale cached references are not acceptance. | seconds |
 | `player-compile.ps1` | Same for all three player assemblies (two with `-WithoutUma`); validates player/UMA defines and refuses stale dependency outputs. Cached compiler checks do not replace Unity tests/builds. | seconds |
 | `verify-review-candidate.ps1 -Name <fresh-name>` | Runs every owned suite, enforces each assembly's minimum in `baseline.txt`, and retains before/after complete input manifests, exact `.meta` archives, XML/log hashes and individual test names. Missing/malformed floors, short suites and unexpected product-input drift fail. `-WithoutUma` requires the existing separate UMA-free copy. | depends on suites and input hashing |
 | `build-review-candidate.ps1 -TestName <passing-name>` | Requires a passing complete same-configuration test summary. Checks live and synced inputs, builds Review13, checks final inputs, retains a timestamped report and hashes the entire build tree. Supports `-WithoutUma`. | depends on changed assets |
-| `profile-candidate.ps1 [-Executable <Gamesim.exe>] [-BuildEvidence <build evidence.json>]` | The performance evidence for the owner's 1920x1080 / 60 fps target: three clean 300 s `--gamesim-verify` profiles of the built player, one at a time, each into its own fresh save root - six, twelve and the sixteen-person verification-only stress house (`--gamesim-stress-roster`). Windowed, uncapped, never `-batchmode`; refuses to start while Unity.exe or Gamesim.exe runs and records any that start mid-run. Writes `profile-summary.json`/`.md`; each run's `performanceAcceptance` (p95 <= 16.7 ms, p99 <= 33.3 ms) is the verdict, never its `Passed`, and only for a valid run (the house asked for in a season the player started, nothing competing, its report `Passed`); any other run reads "Not assessed". Exit 0 (evidence complete) also needs `-BuildEvidence` to match the player's whole build tree file by file and one `buildGuid` across the three reports. | about 20 min |
+| `profile-candidate.ps1 [-Executable <Gamesim.exe>] [-BuildEvidence <build evidence.json>]` | The performance evidence for the owner's 1920x1080 / 60 fps target: three clean 300 s `--gamesim-verify` profiles of the built player, one at a time, each into its own fresh save root - six, twelve and the sixteen-person verification-only stress house (`--gamesim-stress-roster`). Windowed, uncapped, never `-batchmode`; blocks competing Unity/Gamesim processes and records any that start mid-run. Only the exactly identified installed Unity Hub `resources/unity.exe` quoted `serve` helper is exempt, with a separate sanitized receipt; incomplete or unexpected identities still block. This inventory does not establish global CPU/GPU quietness. Writes `profile-summary.json`/`.md`; each valid run's `performanceAcceptance` (p95 <= 16.7 ms, p99 <= 33.3 ms) is the verdict, never its `Passed`; invalid runs read "Not assessed". Exit 0 (evidence complete) also needs `-BuildEvidence` to match the player's whole build tree file by file and one `buildGuid` across the three reports. | about 20 min |
+| `test-profile-evidence.ps1` | Exercises the pure profile predicates, bounded closure/verdict conditions and exact Hub helper identity against 42 synthetic cases. No player or hardware measurement. | seconds |
 | `test-review-evidence.ps1` | Exercises evidence comparisons against temporary synthetic fixtures. No Unity, mirroring or acceptance-copy access. | seconds |
 | `test-acceptance-mirror.ps1` | Exercises the real mirror runner against temporary fixture projects, including retained subtrees, folder GUIDs, ordinary deletion and manifest prediction. No Unity or real acceptance-copy writes. | seconds |
-| `sync-acceptance.ps1` | Checks source/destination boundaries and that the acceptance editor is idle, then checks every folder mirror. GPU Resident Drawer is disabled only when explicitly requested for tests. | depends on changes |
-| `sync-and-run.sh` | Waits for the acceptance copy to be free, mirrors `Assets/` and `ProjectSettings/` over it, then runs each `name:Platform:Assembly` suite headless and prints the totals and any failures. | ~1 min EditMode, 10–15 min PlayMode |
+| `sync-acceptance.ps1` | Holds the shared destination file lease, verifies an immutable byte snapshot, then checks every mirror against the exact UMA/NoUMA projection. GPU Resident Drawer is disabled only for explicit test mode. | depends on input hashing |
+| `sync-and-run.sh` | Routes `name:Platform:Assembly[:filter]` to the same held PowerShell controller. Retains unique evidence; failures/skips/nonzero exits/shortfalls fail. Always diagnostic evidence, never a build gate. | depends on suites |
+| `test-review-workflow.ps1` | Isolated lock/snapshot/XML/failure-retention fixtures, including real controller refusal paths. No Unity or real acceptance-copy access. | seconds |
+| `test-asset-metadata.ps1` | Twelve isolated fixtures for metadata, GUID and binary-attribute enforcement, including the same Unity-ignored hidden-path missing-meta exemption as CI. No source or acceptance-copy mutation. | seconds |
 | `build-and-verify.sh` | Retired and fail-closed. It never builds, launches an old executable, or recursively removes a named output folder. Use the current PowerShell runners. | immediate |
 
 ```bash
@@ -36,7 +39,26 @@ the editor harness crash. The build explicitly permits only its 0-to-1 shipping 
 the tested BEFORE snapshot, and compares post-build inputs with the tested AFTER snapshot. The build's
 window settings and known input-action preload are the only other permitted build changes. All other
 product differences fail. Workflow changes under `Tools` are retained separately and never described
-as tested product changes. Keep feature/source edits frozen through the final tests and build.
+as tested product changes by the legacy comparison API. Schema4 workflows require the workflow bytes
+to remain unchanged too. Keep feature/source edits frozen through the final tests and build.
+
+Sync, full verification, build, and profiling share the held `.gamesim-validation.lock` file in the
+destination. They fail immediately on contention; a lock file left on disk is not itself a live lease.
+Do not bypass these entrypoints with an overlapping direct editor or copy operation. Every invocation
+gets a fresh `Logs/validation/<label>-<UTC>-<GUID>` directory. Previous failures, source snapshots,
+logs/XML and receipts are never overwritten. Full schema4 verification is required for a new build;
+old schema3 summaries and filtered/partial diagnostics are deliberately refused.
+
+Vendor-free worktrees may pass `-RetainInstalledUma` to sync, verify, and build. This explicitly
+excludes destination `Assets/UMA` and its folder meta from mirroring, fingerprints every retained
+vendor byte in the projected and before/after inputs, and requires that the vendor already exists.
+It never installs, deletes, or puts licensed vendor content into Git. Use the same option for the
+tests and build. Only this explicit option also adds the exact `GAMESIM_UMA` Standalone token to the
+isolated copy and identical projection, if missing; source Settings stay byte-identical and other
+platforms/tokens remain unchanged. Vendor presence by itself is not activation. `-WithoutUma` still
+requires an existing vendor-free destination and omits exactly
+the established optional native content; the two options are mutually exclusive. The shell bridge
+uses `GAMESIM_RETAIN_INSTALLED_UMA=1` or `GAMESIM_WITHOUT_UMA=1` for these explicit routes.
 
 Before hashing, both test and build copies remove only the `SENTIS_ANALYTICS_ENABLED` Standalone
 symbol that the installed inference package removes on batch startup. The live editor's analytics
@@ -94,8 +116,9 @@ its save slots are untouched.
 
 ## Before a commit
 
-`Tools/check-asset-metadata.sh` asserts the three metadata invariants: every tracked asset under
-`Assets/` has a tracked `.meta`, no `.meta` is an orphan, and no GUID is used twice. A `.cs` written
+`Tools/check-asset-metadata.sh` asserts metadata and binary hygiene: every tracked Unity asset under
+`Assets/` has a tracked `.meta` (Unity-ignored hidden paths follow CI's narrow exemption), no `.meta`
+is an orphan, no GUID is used twice, and binary assets are not normalized as text. A `.cs` written
 from the CLI has no `.meta` until the editor imports it, and Unity writes one on the acceptance copy
 during the sync - so a file committed without its `.meta` passes every suite here and breaks only in
 a fresh clone, where Unity invents a new GUID and every reference to the asset resolves to nothing.

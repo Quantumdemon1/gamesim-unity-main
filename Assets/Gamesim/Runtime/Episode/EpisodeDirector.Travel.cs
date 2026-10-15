@@ -128,6 +128,7 @@ namespace Gamesim.Episode
             message = !going ? "The " + name + " is not reachable from here."
                 : LastTravel == TravelKind.Warp ? ArrivalLine() ?? "In the " + name + "."
                 : "Heading to the " + name + ".";
+            if (!going) BeginSystemNotice();
             // On foot, the room says who is in it when the player gets there.
             if (going && LastTravel != TravelKind.Warp) arrivingIn = room;
             Render();

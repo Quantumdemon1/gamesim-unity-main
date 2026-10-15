@@ -105,6 +105,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(strip, Is.Not.Null, "The objectives card keeps its strip" + where + ".");
                 Assert.That(strip.GetComponentsInChildren<Image>().Count(image => image.name == "Juror"), Is.EqualTo(jurors.Count), "One face per juror on the strip.");
                 var card = LastActive(CastRail.QuoteName);
+                if (cards && band - rail.rect.width >= 306f * scale)
+                    Assert.That(card, Is.Not.Null, "Removing the decorative quote keeps the jury card when the finalists leave room" + where + ".");
                 if (card != null)
                 {
                     var labels = card.GetComponentsInChildren<TMP_Text>().ToList();

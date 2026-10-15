@@ -51,7 +51,7 @@ namespace Gamesim.Episode
                     // chrome a world bubble must clear, and the caption used to be low enough that
                     // the default floor covered it.
                     bool bottomCard=item.name=="Interaction prompt" || item.name==CastRail.RootName
-                        || item.name=="Status" || item.name==CastRail.StripName || item.name==SpeechBarName;
+                        || item.name=="Status" || item.name==SaveFeedbackName || item.name==CastRail.StripName || item.name==SpeechBarName;
                     // The follow chip is anchored TOP-centre, under the house pill, and was being
                     // counted as a bottom card: it pushed `bottom` to 834 while `top` was 796, so
                     // MinMaxRect returned an inverted rect and every world bubble was pinned above
@@ -159,9 +159,9 @@ namespace Gamesim.Episode
         private RectTransform conversationColumn;
 
         /// <summary>The share of the stage the conversation's reading column takes, and the widest it runs at the resting text size.</summary>
-        private const float ConversationColumnShare = .52f, ConversationColumnMax = 760f;
+        private const float ConversationColumnShare = .42f, ConversationColumnMax = 760f;
         /// <summary>How much of the house shows through a conversation: dimmed, not gone, so the pair stay behind the dial.</summary>
-        private const float ConversationScrim = .72f;
+        private const float ConversationScrim = .28f;
 
         /// <summary>
         /// Where the conversation leaves the pair: the middle of the stage right of its column, in
@@ -198,7 +198,11 @@ namespace Gamesim.Episode
                     child.gameObject.SetActive(false);
             HideStageChrome();
 
-            float columnWidth = Mathf.Min(stage.width, Mathf.Clamp(stage.width * ConversationColumnShare, 420f, ConversationColumnMax * FontScale));
+            // The column's 58 units of scroll, viewport and content padding are outside a
+            // row. Keep 200 units beside the caption for its portrait and readings; putting
+            // a tag underneath cannot recover the room those pieces already reserve.
+            float minimumColumn = Mathf.Max(420f, MinCaptionWidth * FontScale + 200f + 14f + 10f + 18f + 16f);
+            float columnWidth = Mathf.Min(stage.width, Mathf.Clamp(stage.width * ConversationColumnShare, minimumColumn, ConversationColumnMax * FontScale));
             float window = stage.x + columnWidth + 12f + (stage.width - columnWidth - 12f) * .5f;
             ConversationWindowOffset = Mathf.Max(0f, (window - canvasWidth * .5f) / (canvasHeight * .5f));
 

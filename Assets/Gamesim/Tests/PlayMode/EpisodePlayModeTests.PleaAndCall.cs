@@ -42,6 +42,12 @@ namespace Gamesim.Tests.PlayMode
             Assume.That(voter, Is.Not.Null, "A voter with a body who can be asked.");
             yield return OpenVoterConversation(voter);
 
+            string beforeBrowsing = JsonUtility.ToJson(director.Snapshot);
+            byte[] savedBeforeBrowsing = System.IO.File.ReadAllBytes(director.SavePath);
+            yield return EnterConversationCategory(EpisodeDirector.GameCategoryCaption);
+            Assert.That(JsonUtility.ToJson(director.Snapshot), Is.EqualTo(beforeBrowsing), "Opening the plea's category commits nothing.");
+            Assert.That(System.IO.File.ReadAllBytes(director.SavePath), Is.EqualTo(savedBeforeBrowsing), "Browsing does not rewrite the save.");
+
             string ask = EpisodeHud.LobbyAskCaption(state, voter.name, LobbyAsk.Vote, state.playerId);
             Assert.That(ask, Is.EqualTo("Ask " + voter.name + " to vote to keep you"));
             ButtonWithCaption(ask).onClick.Invoke();
@@ -80,6 +86,12 @@ namespace Gamesim.Tests.PlayMode
             Assume.That(ally, Is.Not.Null, "An ally with a body.");
             yield return OpenVoterConversation(ally);
 
+            string beforeBrowsing = JsonUtility.ToJson(director.Snapshot);
+            byte[] savedBeforeBrowsing = System.IO.File.ReadAllBytes(director.SavePath);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
+            Assert.That(JsonUtility.ToJson(director.Snapshot), Is.EqualTo(beforeBrowsing), "Opening the call's category commits nothing.");
+            Assert.That(System.IO.File.ReadAllBytes(director.SavePath), Is.EqualTo(savedBeforeBrowsing), "Browsing does not rewrite the save.");
+
             var target = state.Find(state.nominees.First(id => id != state.playerId));
             var button = ButtonWithCaptionOrNull(EpisodeHud.CallTheVoteCaption(pact.name, target.name));
             Assert.That(button, Is.Not.Null, "The call is offered per nominee.");
@@ -93,6 +105,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(call.targetId, Is.EqualTo(target.id));
             Assert.That(call.followed.Concat(call.defected), Is.EquivalentTo(pact.members.Where(id => id != after.playerId)), "and every member decided.");
             Assert.That(after.events.Any(e => e.kind == "lever" && e.text.Contains("You called it in " + pact.name)), Is.True);
+            string acceptedPayload = JsonUtility.ToJson(after);
+            byte[] acceptedSave = System.IO.File.ReadAllBytes(director.SavePath);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
+            Assert.That(JsonUtility.ToJson(director.Snapshot), Is.EqualTo(acceptedPayload), "Finishing playback and reopening deals cannot repeat the call.");
+            Assert.That(System.IO.File.ReadAllBytes(director.SavePath), Is.EqualTo(acceptedSave), "Finishing playback and reopening deals leaves the accepted save intact.");
             Assert.That(ButtonWithCaptionOrNull(EpisodeHud.CallTheVoteCaption(pact.name, target.name)), Is.Null, "Once a week.");
             director.ClosePanels();
             yield return null;

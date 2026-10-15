@@ -138,6 +138,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.TryOpenNpc(voter.id), Is.True, "The conversation opens.");
             yield return null;
             int spent = EpisodeEngine.SocialActionsSpent(director.Snapshot);
+            yield return EnterConversationCategory(EpisodeDirector.LearnCategoryCaption);
             Assert.That(ButtonWithCaptionOrNull(EpisodeHud.ReadPersonCaption), Is.Not.Null, "A look is on offer too.");
             ButtonWithCaption(EpisodeHud.AskVoteCaption).onClick.Invoke();
             yield return null;

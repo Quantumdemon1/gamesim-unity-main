@@ -1018,7 +1018,7 @@ namespace Gamesim.Presentation
                 if (known.Count == 0) Note(column, "Nothing recorded yet.", scale, font);
                 foreach (var memory in known.Take(ListLimit))
                     TextRow(column, memory.isPrivate ? "eye" : "journal", UiTheme.Strategic,
-                        Localisation.Text("Week") + " " + memory.week + ": " + MemoryWords.Said(state, memory), scale, font);
+                        Localisation.Text("Week") + " " + memory.week + ": " + NarrativeDisplay.Render(state, MemoryWords.Said(state, memory)), scale, font);
 
                 var record = state.relationships.FirstOrDefault(r => r.fromId == state.playerId && r.toId == focus.id);
                 var history = record != null

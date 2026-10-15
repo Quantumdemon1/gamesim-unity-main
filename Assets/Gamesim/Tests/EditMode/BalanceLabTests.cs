@@ -18,6 +18,117 @@ namespace Gamesim.Tests.EditMode
     /// </summary>
     public sealed class BalanceLabTests
     {
+        // ---------------------------------------------------------------- Q1's reporting denominators
+
+        [Test]
+        public void CounterReport_HeadlineDispatchesAcceptedTransactionsWithoutMembers()
+        {
+            // One bounded legal season supplies the other headline tables' existing DTOs; only the
+            // reporting fixture's counter quantities are replaced. No lab report or files are written.
+            var run = BalanceLab.Play(new BalanceLab.Cell { policy = BalancePolicies.Passive, size = 8 }, 0);
+            Assert.That(run.error, Is.Null);
+            Assert.That(run.autopsy.finished, Is.True);
+            run.counterMembers.Clear();
+            run.autopsy.warRooms.counters = 0;
+            run.autopsy.warRooms.countersCarried = 0;
+            Assert.That(BalanceLabReports.Headline(new[] { run }), Does.Not.Contain("### Q1: observed counter outcomes and member-odds diagnostics (T0)"),
+                "The pre-existing non-counter dispatch stays off.");
+            run.autopsy.warRooms.counters = 2;
+            run.autopsy.warRooms.countersCarried = 1;
+            string md = BalanceLabReports.Headline(new[] { run });
+            Assert.That(md, Does.Contain("### Q1: observed counter outcomes and member-odds diagnostics (T0)"));
+            Assert.That(md, Does.Contain("| all completed seasons | 2 | 1 | 50.0% ["));
+            Assert.That(md, Does.Contain("| 0 | n/a (0 members) | 0 |"));
+            Assert.That(run.counterMembers, Is.Empty);
+        }
+
+        [Test]
+        public void CounterReport_PrimaryOutcomeCountsTransactionsNotMembers()
+        {
+            var first = CounterReportRun(BalancePolicies.Random, 8, 4, 3,
+                CounterReportMember(PactPlanStance.Countered, 0, cameRound: true), CounterReportMember(PactPlanStance.Countered, 20));
+            first.autopsy.warRooms.stances[PactPlanStance.Lapsed] = 7;
+            var second = CounterReportRun(BalancePolicies.Reader, 12, 2, 0,
+                CounterReportMember(PactPlanStance.Countered, 20), CounterReportMember(PactPlanStance.Countered, 20), CounterReportMember(PactPlanStance.Countered, 20));
+            string md = BalanceLabDiagnostics.CounterWhatIf(new[] { first, second });
+            Assert.That(md, Does.Contain("| all completed seasons | 6 | 3 | 50.0% ["));
+            Assert.That(md, Does.Contain("| random / 8 | 4 | 3 | 75.0% ["));
+            Assert.That(md, Does.Contain("| reader / 12 | 2 | 0 | 0.0% ["));
+            Assert.That(md, Does.Contain("| 5 | 1 of 5 (20.0%) | 0 |"));
+            Assert.That(md, Does.Contain("Unanswered Lapsed plans are not accepted counter attempts."));
+            Assert.That(first.autopsy.warRooms.counters, Is.EqualTo(4), "Reporting does not rewrite recorded outcomes.");
+            Assert.That(first.autopsy.warRooms.stances[PactPlanStance.Lapsed], Is.EqualTo(7));
+        }
+
+        [Test]
+        public void CounterReport_RawAndEffectiveOddsKeepBothMemberPopulations()
+        {
+            var run = CounterReportRun(BalancePolicies.Reader, 8, 3, 2,
+                CounterReportMember(PactPlanStance.Countered, 0, cameRound: true), CounterReportMember(PactPlanStance.Countered, 0, lapsed: true),
+                CounterReportMember(PactPlanStance.Countered, 20), CounterReportMember(PactPlanStance.Agreed, 0));
+            string md = BalanceLabDiagnostics.CounterWhatIf(new[] { run });
+            Assert.That(md, Does.Contain("Member records across accepted plan answers: 4; at accepted counter attempts: 3."));
+            Assert.That(md, Does.Contain("Known-lapsed members: 1 across answers, 1 at attempts."));
+            Assert.That(md, Does.Contain("| raw member odds (accepted answers) | effective member odds (accepted answers) | raw member odds (counter attempts) | effective member odds (counter attempts) |"));
+            Assert.That(md, Does.Contain("| 20 (today) | 10 | 30 | 0.75 | 0.50 | 0.67 | 0.33 | 75.0% |"));
+            Assert.That(md, Does.Contain("| 3 | 1 of 3 (33.3%) | 1 |"));
+            Assert.That(md, Does.Not.Contain("3 counters 3"));
+        }
+
+        [Test]
+        public void CounterReport_ZeroMemberAttemptsStillCountAsTransactions()
+        {
+            string md = BalanceLabDiagnostics.CounterWhatIf(new[] { CounterReportRun(BalancePolicies.Random, 8, 2, 1) });
+            Assert.That(md, Does.Contain("| all completed seasons | 2 | 1 | 50.0% ["));
+            Assert.That(md, Does.Contain("| 0 | n/a (0 members) | 0 |"));
+            Assert.That(md, Does.Contain("member-odds diagnostics are unavailable."));
+            Assert.That(md, Does.Not.Contain("NaN").And.Not.Contain("Infinity"));
+        }
+
+        [Test]
+        public void CounterReport_ZeroAttemptAndEmptyCohortsAreUnavailable()
+        {
+            string contextual = BalanceLabDiagnostics.CounterWhatIf(new[] { CounterReportRun(BalancePolicies.Reader, 8, 0, 0,
+                CounterReportMember(PactPlanStance.Agreed, 0, lapsed: true)) });
+            Assert.That(contextual, Does.Contain("| all completed seasons | 0 | 0 | n/a (0 attempts) | 0 | n/a (0 members) | 0 |"));
+            Assert.That(contextual, Does.Contain("| 20 (today) | 10 | 30 | 1.00 | 0.00 | n/a | n/a | 100.0% |"));
+            string empty = BalanceLabDiagnostics.CounterWhatIf(Array.Empty<BalanceLab.SeasonRun>());
+            Assert.That(empty, Does.Contain("| all completed seasons | 0 | 0 | n/a (0 attempts) | 0 | n/a (0 members) | 0 |"));
+            Assert.That(empty, Does.Contain("empty denominators are unavailable."));
+            Assert.That(contextual + empty, Does.Not.Contain("NaN").And.Not.Contain("Infinity"));
+        }
+
+        [Test]
+        public void CounterReport_ErrorAndUnfinishedRowsCannotQualifyTheCohort()
+        {
+            var complete = CounterReportRun(BalancePolicies.Reader, 8, 1, 0, CounterReportMember(PactPlanStance.Countered, 0));
+            var failed = CounterReportRun(BalancePolicies.Reader, 8, 100, 100, CounterReportMember(PactPlanStance.Countered, 0, cameRound: true));
+            failed.error = "retained failure";
+            var unfinished = CounterReportRun(BalancePolicies.Reader, 8, 100, 100, CounterReportMember(PactPlanStance.Countered, 0, cameRound: true));
+            unfinished.autopsy.finished = false;
+            var missing = CounterReportRun(BalancePolicies.Reader, 8, 100, 100, CounterReportMember(PactPlanStance.Countered, 0, cameRound: true));
+            missing.autopsy = null;
+            string md = BalanceLabDiagnostics.CounterWhatIf(new[] { complete, failed, unfinished, missing });
+            Assert.That(md, Does.Contain("Incomplete cohort: 3 of 4 seasons have an error, missing autopsy or unfinished outcome."));
+            Assert.That(md, Does.Contain("diagnostic only and cannot qualify B9."));
+            Assert.That(md, Does.Contain("| all completed seasons | 1 | 0 | 0.0% ["));
+            Assert.That(md, Does.Contain("Member records across accepted plan answers: 1; at accepted counter attempts: 1."));
+            Assert.That(failed.error, Is.EqualTo("retained failure"));
+            Assert.That(unfinished.autopsy.finished, Is.False);
+        }
+
+        private static BalanceLab.SeasonRun CounterReportRun(string policy, int size, int attempts, int carried, params BalanceLab.CounterMember[] members)
+        {
+            var run = new BalanceLab.SeasonRun { cell = new BalanceLab.Cell { policy = policy, size = size }, autopsy = new SeasonAutopsy.Report { finished = true } };
+            run.autopsy.warRooms.counters = attempts;
+            run.autopsy.warRooms.countersCarried = carried;
+            run.counterMembers.AddRange(members);
+            return run;
+        }
+
+        private static BalanceLab.CounterMember CounterReportMember(string stance, double margin, bool cameRound = false, bool lapsed = false) =>
+            new BalanceLab.CounterMember { stance = stance, view = 10, margin = margin, odds = PactPlans.ComeRoundOdds(PactPlans.ReachBase, margin), cameRound = cameRound, lapsed = lapsed };
+
         // ---------------------------------------------------------------- the smoke tier
 
         [Test]

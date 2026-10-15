@@ -10,7 +10,9 @@ using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
@@ -57,6 +59,128 @@ namespace Gamesim.Tests.PlayMode
                 if (words != null) shown.Add(new KeyValuePair<string, string>(button.name, words.text));
             }
             return shown;
+        }
+
+
+        [UnityTest, Timeout(240000)]
+        public IEnumerator Rebinding_EnterSubmittedByTheRealUiModuleStartsCaptureWithoutTakingItsOpeningPress()
+        {
+            yield return RealSubmitRebindingOpening(pad: false);
+        }
+
+        [UnityTest, Timeout(240000)]
+        public IEnumerator Rebinding_SouthSubmittedByTheRealUiModuleStartsCaptureWithoutTakingItsOpeningPress()
+        {
+            yield return RealSubmitRebindingOpening(pad: true);
+        }
+
+        // Only selection is arranged by the fixture. The critical opening press is a queued device
+        // event delivered by the existing EventSystem/InputSystemUIInputModule, never onClick or
+        // ExecuteEvents. This is an input fixture, not evidence of a complete human season.
+        private IEnumerator RealSubmitRebindingOpening(bool pad)
+        {
+            EpisodeDirector.PreferencesBesideSaves = true;
+            director.FreezeForReloadForDiagnostics();
+            yield return ReloadEpisode();
+            HoldTheHouseForTheFixture();
+            Assert.That(director.PreferenceRouteInUse, Is.EqualTo(PreferenceRoute.RootFile));
+            Assert.That(HouseBindings.Current.Count, Is.Zero);
+            if (testKeyboard == null) testKeyboard = InputSystem.AddDevice<Keyboard>();
+            var gamepad = pad ? TestGamepad() : null;
+            yield return OpenTheControlsSection();
+            yield return Frames(2);
+            var events = EventSystem.current;
+            Assert.That(events, Is.Not.Null);
+            var module = events.currentInputModule as InputSystemUIInputModule;
+            Assert.That(module, Is.Not.Null, "The actual UI input module must deliver Submit.");
+            Assert.That(module.submit, Is.Not.Null);
+            Assert.That(module.submit.action.enabled, Is.True);
+            var openingControl = pad ? (InputControl)gamepad.buttonSouth : testKeyboard.enterKey;
+            Assert.That(module.submit.action.controls.Any(control => control == openingControl), Is.True,
+                "The installed Submit action must resolve the device used here.");
+            var button = ButtonWithCaption("Rebind Notebook");
+            Assert.That(button.name, Is.EqualTo("Rebind Notebook"));
+            events.SetSelectedGameObject(button.gameObject);
+            yield return Frames(2);
+            button = ButtonWithCaption("Rebind Notebook");
+            events.SetSelectedGameObject(button.gameObject);
+            var graph = director.Snapshot;
+            var files = UvImage();
+            var actionNames = cameraRig.Actions.Asset.actionMaps
+                .SelectMany(map => map.actions.Select(action => map.name + "/" + action.name)).ToArray();
+
+            if (pad) InputSystem.QueueStateEvent(gamepad, new GamepadState().WithButton(GamepadButton.South));
+            else InputSystem.QueueStateEvent(testKeyboard, new KeyboardState(Key.Enter));
+            yield return null;
+            Assert.That(HouseBindings.Listening, Is.True, "The real Submit opens capture; its own press is not a replacement.");
+            Assert.That(HouseBindings.ListeningFor.Name, Is.EqualTo("Notebook"));
+            Assert.That(HouseBindings.Current.Count, Is.Zero);
+            Assert.That(RebindLineShown(), Is.EqualTo("Press the new key or button for Notebook. Esc cancels."));
+            Assert.That(ShowsControl(EpisodeDirector.HideControlsCaption), Is.True,
+                "The opening press neither closes/cancels settings nor opens a shortcut panel.");
+            UvEquivalent(graph, director.Snapshot);
+            UvAssertImage(files); // Not even preferences were saved by the opening press.
+
+            if (pad) InputSystem.QueueStateEvent(gamepad, new GamepadState());
+            else InputSystem.QueueStateEvent(testKeyboard, new KeyboardState());
+            yield return Frames(2);
+            Assert.That(HouseBindings.Listening, Is.True, "Releasing the opening press leaves capture waiting.");
+            Assert.That(HouseBindings.Current.Count, Is.Zero);
+            UvEquivalent(graph, director.Snapshot);
+            UvAssertImage(files);
+
+            if (pad) yield return PressPad(gamepad, GamepadButton.DpadLeft);
+            else yield return PressKey(Key.K);
+            yield return Frames(2);
+            string scheme = pad ? KeyBindings.GamepadScheme : KeyBindings.KeyboardScheme;
+            string path = pad ? "<Gamepad>/dpad/left" : "<Keyboard>/k";
+            Assert.That(HouseBindings.Listening, Is.False);
+            Assert.That(HouseBindings.Current.Count, Is.EqualTo(1), "Exactly one replacement is accepted.");
+            Assert.That(HouseBindings.Current.Get("Shortcuts", "Notebook", scheme), Is.EqualTo(path));
+            Assert.That(RebindLineShown(), Is.EqualTo(pad ? "Notebook is now D-pad left on the pad." : "Notebook is now K."));
+            Assert.That(ShowsControl(EpisodeDirector.HideControlsCaption), Is.True, "The replacement opens no shortcut and leaves settings up.");
+            Assert.That(ButtonWithCaption("Rebind Notebook").name, Is.EqualTo("Rebind Notebook"));
+            Assert.That(cameraRig.Actions.Asset.FindAction("Shortcuts/Notebook", true).bindings
+                .Any(binding => binding.effectivePath == path), Is.True, "The existing action receives the override.");
+            Assert.That(cameraRig.Actions.Asset.actionMaps.SelectMany(map => map.actions.Select(action => map.name + "/" + action.name)),
+                Is.EqualTo(actionNames), "Action names and order are unchanged.");
+            UvEquivalent(graph, director.Snapshot);
+            var saved = UvImage();
+            Assert.That(saved.Keys.Where(name => name != PreferenceFile.FileName),
+                Is.EqualTo(files.Keys.Where(name => name != PreferenceFile.FileName)));
+            Assert.That(saved.ContainsKey(PreferenceFile.FileName), Is.True);
+            foreach (var file in files)
+                if (file.Key != PreferenceFile.FileName)
+                    CollectionAssert.AreEqual(file.Value, saved[file.Key], "Rebinding saves no episode slot: " + file.Key);
+            string preferences = File.ReadAllText(Path.Combine(temporaryDirectory, PreferenceFile.FileName));
+            Assert.That(preferences, Does.Contain(KeyBindings.PreferenceKey).And.Contain(path));
+
+            yield return Frames(2);
+            Assert.That(HouseBindings.Listening, Is.False, "The completion press does not restart capture.");
+            Assert.That(HouseBindings.Current.Count, Is.EqualTo(1));
+            UvAssertImage(saved); // The complete persisted byte image remains stable.
+            director.ClosePanels();
+            yield return Frames(2);
+            if (pad)
+            {
+                var rail = ButtonWithCaption("Notebook [J]");
+                Assert.That(rail.name, Is.EqualTo("Notebook [J]"));
+                var chip = rail.transform.Find(EpisodeHud.PadGlyphName);
+                Assert.That(chip, Is.Not.Null);
+                Assert.That(chip.GetComponentInChildren<TMP_Text>().text, Is.EqualTo("D-pad left"));
+                Assert.That(HouseBindings.Current.Get("Shortcuts", "Notebook", KeyBindings.KeyboardScheme), Is.Null);
+                yield return PressPad(gamepad, GamepadButton.DpadLeft);
+            }
+            else
+            {
+                Assert.That(ButtonWithCaption("Notebook [K]").name, Is.EqualTo("Notebook [J]"),
+                    "Visible caption changes, original control name does not.");
+                yield return PressKey(Key.K);
+            }
+            Assert.That(director.IsPanelOpen, Is.True, "The replacement works after settings close.");
+            UvEquivalent(graph, director.Snapshot);
+            director.ClosePanels();
+            yield return null;
         }
 
         [UnityTest, Timeout(240000)]

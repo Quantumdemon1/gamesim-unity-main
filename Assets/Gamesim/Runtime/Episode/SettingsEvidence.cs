@@ -63,6 +63,40 @@ namespace Gamesim.Episode
             return lines;
         }
 
+        /// <summary>
+        /// A pending window request must not log its requested resolution beside the old actual
+        /// window. Keep only those two evidence fields at their last observation; other settings
+        /// still report immediately. Neither input collection is changed.
+        /// </summary>
+        public static List<KeyValuePair<string, string>> AfterWindowObservation(
+            IEnumerable<KeyValuePair<string, string>> lastLogged, IEnumerable<KeyValuePair<string, string>> now, bool pending)
+        {
+            var before = new Dictionary<string, string>(StringComparer.Ordinal);
+            if (lastLogged != null) foreach (var setting in lastLogged) before[setting.Key] = setting.Value;
+            var result = new List<KeyValuePair<string, string>>();
+            foreach (var setting in now)
+                result.Add(pending && (setting.Key == "display" || setting.Key == "resolution") && before.TryGetValue(setting.Key, out var old)
+                    ? new KeyValuePair<string, string>(setting.Key, old) : setting);
+            return result;
+        }
+
+        /// <summary>
+        /// A refused request can leave the actual screen and the last log unchanged. It still
+        /// needs reconciliation when the recorded request differs, before another preference click.
+        /// </summary>
+        public static bool WindowObservationNeedsRecording(IEnumerable<KeyValuePair<string, string>> lastLogged,
+            string actualDisplay, string actualResolution, bool recordChanged)
+        {
+            if (recordChanged) return true;
+            bool displayMatches = false, resolutionMatches = false;
+            if (lastLogged != null) foreach (var setting in lastLogged)
+            {
+                if (setting.Key == "display") displayMatches = setting.Value == actualDisplay;
+                if (setting.Key == "resolution") resolutionMatches = setting.Value == actualResolution;
+            }
+            return !displayMatches || !resolutionMatches;
+        }
+
         /// <summary>The device line.</summary>
         public static string DeviceLine(bool pad) => DevicePrefix + (pad ? "pad" : "keyboard");
     }

@@ -151,8 +151,8 @@ namespace Gamesim.Presentation
         /// on the last card, which is true in both. The side menu is the left rail. The game-phase
         /// button is "Go to episode screen", the rail's (or the compact objective card's) way to the
         /// screen the week's decisions are made at. The carousel is the cast strip along the bottom.
-        /// The phase overlays are the docked panel, pointed at through the status line under it,
-        /// because the panel is closed while the tour is up.</para>
+        /// The phase step points at the open decision panel when one exists, or at the Current
+        /// Objective when it is closed. Status is a report of what happened, not the next decision.</para>
         /// </summary>
         private static readonly Step[] Steps =
         {
@@ -162,7 +162,7 @@ namespace Gamesim.Presentation
                 "The week and where the house is in it, how many houseguests are left, the social actions you have left this week, and who is Head of Household.",
                 "Week chip", "House pill"),
             new Step("sidemenu", "Side Rail",
-                "The Overview of the whole house and your notebook's pages: Houseguests, Relationships, Who is where, The vote and The story so far. Notebook, Save and Settings are at its foot.",
+                "The Overview of the whole house and your notebook's pages: Houseguests, Relationships, Who is where, The vote and The story so far. Notebook, Save and Settings are at its foot. After a change, the save feedback tells you when it was saved or if saving failed.",
                 "Rail ground"),
             new Step("gamephase", "The Episode Screen",
                 "Nominations, votes and the week's other decisions happen at the living-room screen. This button walks you there; " + StationStepKeys,
@@ -171,8 +171,8 @@ namespace Gamesim.Presentation
                 "Everyone in the house, along the bottom. Click a face to follow them with the camera. Under each name is their mood; once you know them, a tag says where you stand.",
                 CastRail.StripName),
             new Step("overlay", "Phase Panels",
-                "When you open the episode screen, the decision in front of you comes up in a panel low on the screen, with the house still in view. Watch this line for what just happened.",
-                "Status"),
+                "A phase is the part of the week the house is in, such as free time, nominations or the vote. Open the episode screen for its decisions; the Current Objective explains what comes next. Conversations show your words, then the houseguest's reply. Continue conversation reads the next line; Skip conversation moves on after the action has already happened.",
+                "Episode panel", "Objective"),
             new Step("ready", "You're Ready!",
                 "Whenever you are unsure what to do next, the Current Objective names what the house is waiting on. Good luck!"),
         };
@@ -224,7 +224,7 @@ namespace Gamesim.Presentation
         public IReadOnlyList<string> StepTitles => visible.Select(item => item.Title).ToArray();
 
         /// <summary>The chrome the step on screen lights, by name; empty for a centred step.</summary>
-        public IReadOnlyList<string> CurrentAnchors => IsShowing ? visible[step].Anchors : Array.Empty<string>();
+        public IReadOnlyList<string> CurrentAnchors => IsShowing ? anchorNames : Array.Empty<string>();
 
         /// <summary>True when this player has already been through the tour, or skipped it.</summary>
         public static bool Seen => PlayerPrefs.GetInt(SeenKey, 0) != 0;
@@ -357,12 +357,20 @@ namespace Gamesim.Presentation
         /// <summary>Takes up a step's chrome. False when none of it is on screen, which drops the step.</summary>
         private bool Enter(Step candidate)
         {
-            anchorNames = candidate.Anchors;
-            targets = new RectTransform[anchorNames.Length];
-            for (int i = 0; i < anchorNames.Length; i++) targets[i] = Lookup(anchorNames[i]);
+            LookupTargets(candidate);
             hole = null;
             relookIn = 0f;
-            return anchorNames.Length == 0 || targets.Any(Visible);
+            return candidate.Anchors.Length == 0 || targets.Any(Visible);
+        }
+
+        /// <summary>The phase step lights one useful target: the decision itself, then its objective.</summary>
+        private void LookupTargets(Step candidate)
+        {
+            anchorNames = candidate.Id == "overlay"
+                ? candidate.Anchors.Where(name => Lookup(name) != null).Take(1).ToArray()
+                : candidate.Anchors;
+            targets = new RectTransform[anchorNames.Length];
+            for (int i = 0; i < anchorNames.Length; i++) targets[i] = Lookup(anchorNames[i]);
         }
 
         private RectTransform Lookup(string name)
@@ -384,12 +392,11 @@ namespace Gamesim.Presentation
         /// </summary>
         private void Track(float delta)
         {
-            if (anchorNames.Length == 0) { hole = null; return; }
+            if (visible[step].Anchors.Length == 0) { hole = null; return; }
             relookIn -= delta;
-            if (relookIn <= 0f && !targets.All(Visible))
+            if (relookIn <= 0f && (!targets.All(Visible) || visible[step].Id == "overlay"))
             {
-                for (int i = 0; i < targets.Length; i++)
-                    if (!Visible(targets[i])) targets[i] = Lookup(anchorNames[i]);
+                LookupTargets(visible[step]);
                 relookIn = RelookSeconds;
             }
 

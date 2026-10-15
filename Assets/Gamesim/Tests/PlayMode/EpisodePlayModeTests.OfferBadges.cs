@@ -58,6 +58,7 @@ namespace Gamesim.Tests.PlayMode
             }
 
             yield return OpenNearbyNpc(maya);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             ButtonWithCaption(EpisodeHud.DealDeclineCaption).onClick.Invoke();
             yield return null;
             Assert.That(director.Snapshot.deals.Single(deal => deal.id == "deal-ask-badge").status, Is.EqualTo(DealStatus.Declined));

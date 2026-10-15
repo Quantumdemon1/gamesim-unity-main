@@ -142,6 +142,7 @@ namespace Gamesim.Editor
             "PoseHandOnHip", "PoseHandOnHipGlance", "PosePowerStance",
             // The story's five, authored in Blender on this same skeleton (ArtSource/animation).
             "React_shocked", "React_tearful", "React_embrace", "React_furious", "React_stormoff",
+            "React_farewell",
         };
 
         /// <summary>The states the graph is built from, and the take each one plays.</summary>
@@ -175,6 +176,7 @@ namespace Gamesim.Editor
             ("ReactEmbrace", "React_embrace", 1240, 700),
             ("ReactFurious", "React_furious", 1240, 770),
             ("ReactStormOff", "React_stormoff", 1240, 840),
+            ("ReactFarewell", "React_farewell", 1240, 910),
             ("Sleep", "Sleep_loop", 1500, 0),
             ("SwimIdle", "Swim_Idle_Loop", 1500, 120),
             ("SwimForward", "Swim_Fwd_Loop", 1500, 240),
@@ -199,6 +201,7 @@ namespace Gamesim.Editor
             // The story's five (plan §5.1), authored in Blender (ArtSource/animation/bb_anim_react_*.py).
             ("ReactShocked", "ReactShocked"), ("ReactTearful", "ReactTearful"), ("ReactEmbrace", "ReactEmbrace"),
             ("ReactFurious", "ReactFurious"), ("ReactStormOff", "ReactStormOff"),
+            ("ReactFarewell", "ReactFarewell"),
         };
 
         /// <summary>
@@ -212,6 +215,7 @@ namespace Gamesim.Editor
             {
                 case "ReactShocked": case "ReactTearful": case "ReactFurious": case "ReactStormOff": return .95f;
                 case "ReactEmbrace": return .97f;
+                case "ReactFarewell": return 29f / 30f;
                 default: return .9f;
             }
         }
@@ -221,7 +225,7 @@ namespace Gamesim.Editor
         /// leaving, so a body sent somewhere goes at once. The rest play out over a step, because
         /// they fire at commits that can land on a body still coming to a halt.
         /// </summary>
-        public static readonly string[] ReactionsThatGiveWay = { "ReactEmbrace", "ReactStormOff" };
+        public static readonly string[] ReactionsThatGiveWay = { "ReactEmbrace", "ReactStormOff", "ReactFarewell" };
 
         /// <summary>How quickly each beat that gives way crosses into the walk.</summary>
         public static float ReactionGiveWayFade(string state) => state == "ReactStormOff" ? .12f : .15f;
@@ -319,7 +323,10 @@ namespace Gamesim.Editor
                 if (stale != null) controller.RemoveParameter(stale);
             }
 
-            var machine = controller.layers[0].stateMachine;
+            var layers = controller.layers;
+            layers[0].iKPass = true; // Passive native IK diagnostics; no state Foot IK or goal setters.
+            controller.layers = layers;
+            var machine = layers[0].stateMachine;
             var states = new Dictionary<string, AnimatorState>();
             foreach (var (name, take, x, y) in States)
                 states[name] = Ensure(machine, name, clips[take], new Vector3(x, y, 0));
@@ -570,7 +577,10 @@ namespace Gamesim.Editor
                 handle = new AnimatorOverrideController();
                 AssetDatabase.CreateAsset(handle, Handle);
             }
-            if (handle.runtimeAnimatorController != controller) handle.runtimeAnimatorController = controller;
+            // A matching handle is already correct. Do not dirty and reserialize it merely because
+            // another state was added to its base controller; that changes otherwise retained bytes.
+            if (handle.runtimeAnimatorController == controller) return;
+            handle.runtimeAnimatorController = controller;
             EditorUtility.SetDirty(handle);
         }
 

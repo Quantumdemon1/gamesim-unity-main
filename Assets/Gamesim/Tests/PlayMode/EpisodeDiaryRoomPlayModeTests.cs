@@ -312,10 +312,10 @@ namespace Gamesim.Tests.PlayMode
                 Is.True, "The ballot has its bar.");
             Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == Gamesim.Presentation.CastRail.RootName && rect.gameObject.activeInHierarchy),
                 Is.False, "The bar stands in the strip's place.");
-            // The ballot takes the stage, so the strip's quote card stands down with the strip, and the
-            // bar runs under the whole vote; the vote's foot stays above the status line.
+            // The ballot takes the stage, and the decorative quote is absent from house play.
+            // The bar runs under the whole vote; the vote's foot stays above the status line.
             Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == Gamesim.Presentation.CastRail.QuoteName && rect.gameObject.activeInHierarchy),
-                Is.False, "The quote card stands down with the strip.");
+                Is.False, "House play does not create the decorative quote card.");
             var ballotPanel = ScreenRect(director.GetComponentsInChildren<RectTransform>().First(rect => rect.name == "Episode panel" && rect.gameObject.activeInHierarchy));
             Assert.That(ballotPanel.width * ballotPanel.height, Is.GreaterThan(Screen.width * Screen.height * .5f), "The vote takes most of the frame: " + ballotPanel + ".");
             var statusLine = director.GetComponentsInChildren<RectTransform>().FirstOrDefault(rect => rect.name == "Status" && rect.gameObject.activeInHierarchy);
@@ -585,9 +585,11 @@ namespace Gamesim.Tests.PlayMode
 
             var before = director.Snapshot;
             Assert.That(EpisodeEngine.SocialActionBudget(before), Is.GreaterThan(0));
+            yield return EnterConversationCategory(EpisodeDirector.ConnectCategoryCaption);
             ButtonWithCaption("Spend time together").onClick.Invoke();
             yield return null; yield return null;
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1));
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
 
             Assert.That(director.Snapshot.oathOpportunities, Does.Contain(npc.Id),
                 "Crossing the source milestone through a real conversation must offer the declaration.");

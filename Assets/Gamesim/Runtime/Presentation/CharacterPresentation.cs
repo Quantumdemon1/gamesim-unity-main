@@ -11,7 +11,7 @@ namespace Gamesim.Presentation
     /// other cast. Only this component's visual hierarchy moves; navigation stays authoritative.
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed class CharacterPresentation : MonoBehaviour
+    public sealed partial class CharacterPresentation : MonoBehaviour
     {
         private static readonly int SpeedParam = Animator.StringToHash("Speed");
         private static readonly int SeatedParam = Animator.StringToHash("Seated");
@@ -113,7 +113,7 @@ namespace Gamesim.Presentation
         /// moves: until a controller declares their triggers a body skips them like any clip it
         /// lacks, and the director plays a ceremony stand-in instead (see <see cref="Supports"/>).
         /// </summary>
-        public enum Reaction { Nominated, Saved, Evicted, Won, Cheered, Shocked, Tearful, Embrace, Furious, StormOff }
+        public enum Reaction { Nominated, Saved, Evicted, Won, Cheered, Shocked, Tearful, Embrace, Furious, StormOff, Farewell }
         private static readonly int[] ReactionParams =
         {
             Animator.StringToHash("ReactNominated"), Animator.StringToHash("ReactSaved"),
@@ -122,6 +122,7 @@ namespace Gamesim.Presentation
             Animator.StringToHash("ReactShocked"), Animator.StringToHash("ReactTearful"),
             Animator.StringToHash("ReactEmbrace"), Animator.StringToHash("ReactFurious"),
             Animator.StringToHash("ReactStormOff"),
+            Animator.StringToHash("ReactFarewell"),
         };
         private int reactionParams;
         /// <summary>The last beat this body was asked to act out, whether or not it had a clip for it.</summary>

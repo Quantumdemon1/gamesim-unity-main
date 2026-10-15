@@ -212,10 +212,12 @@ namespace Gamesim.Simulation
         /// </summary>
         private static void Deals(EpisodeState s, int week, List<Line> lines)
         {
-            // Mode 2 (vote family V7): the reveal's lane - the partnerships the vote settled and every Vote deal it decided - goes
-            // after the week's other deals, in the one order mode 1's single list met them in (UnifiedVoteSettlement.Occurrence).
+            // Mode 2 (vote family V7): the reveal's lane - partnerships and every decided Vote deal - follows the pre-vote
+            // endings in mode 1's creation order. InformationSharing breaches are written afterwards by SettleVoteRead;
+            // preserve their recorded sequence after that merged lane, without reclassifying unknown or contradictory words.
             bool byRow = UnifiedVoteStore.On(s);
             var lane = new List<((long, int, int, int) at, Line line)>();
+            var afterVote = new List<Line>();
             var settled = s.relationships
                 .Where(r => r.fromId == s.playerId && r.toId != s.playerId && s.Find(r.toId) != null)
                 .SelectMany(r => r.events.Where(e => e.week == week && (e.type == DealKept || e.type == DealBroken)).Select(e => (partner: r.toId, record: e)))
@@ -253,11 +255,13 @@ namespace Gamesim.Simulation
                 else line.text = record.description ?? (kept ? "A deal with " + Whom(s, partner) + " was kept." : "A deal with " + Whom(s, partner) + " was broken.");
                 var at = byRow && read && said == kept && type == DealKind.Partnership ? PartnershipAt(s, week, partner) : null;
                 if (at != null) lane.Add((at.Value, line));
+                else if (byRow && read && said == kept && !kept && type == DealKind.InformationSharing) afterVote.Add(line);
                 else lines.Add(line);
             }
             if (!byRow) return;
             lane.AddRange(VoteRowDeals(s, week));
             lines.AddRange(lane.OrderBy(item => item.at).Select(item => item.line));
+            lines.AddRange(afterVote);
         }
 
         /// <summary>"You and Maya held to your voting bloc.", "You kept the vote-to-evict deal with Maya.", "Maya broke the vote-to-save deal with you."</summary>

@@ -24,6 +24,55 @@ namespace Gamesim.Tests.EditMode
             Assert.That(BatchTestRelayIsolation.IsBatchTestRun(batch, Array.Empty<string>()), Is.False);
         }
 
+        private const string WiringMethod = "Gamesim.Editor.HumanoidClipWiring.Apply";
+
+        [TestCase(false, "-executeMethod", WiringMethod, false)]
+        [TestCase(true, null, null, false)]
+        [TestCase(true, "-executeMethod", WiringMethod, true)]
+        [TestCase(true, "-executeMethod", "Gamesim.Editor.HumanoidClipWiring.ReimportLibrary", false)]
+        [TestCase(true, "-executeMethod", "gamesim.Editor.HumanoidClipWiring.Apply", false)]
+        [TestCase(true, "-EXECUTEMETHOD", WiringMethod, false)]
+        [TestCase(true, "-executeMethod=Gamesim.Editor.HumanoidClipWiring.Apply", null, false)]
+        [TestCase(true, "-executeMethod", null, false)]
+        public void OnlyTheExactBatchWiringSelectorOptsIn(bool batch, string selector, string method, bool expected)
+        {
+            string[] arguments = selector == null ? null
+                : method == null ? new[] { "Unity.exe", selector } : new[] { "Unity.exe", selector, method };
+            Assert.That(BatchTestRelayIsolation.HumanoidWiringMethod, Is.EqualTo(WiringMethod));
+            Assert.That(BatchTestRelayIsolation.IsHumanoidWiringRun(batch, arguments), Is.EqualTo(expected));
+            Assert.That(BatchTestRelayIsolation.IsHumanoidWiringRun(batch, Array.Empty<string>()), Is.False);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void DuplicateAndMalformedWiringSelectorsNeverOptIn(bool batch)
+        {
+            string[][] refused = {
+                new[] { "Unity.exe", "-executeMethod", WiringMethod, "-executeMethod", WiringMethod },
+                new[] { "Unity.exe", "-executeMethod", WiringMethod, "-EXECUTEMETHOD", WiringMethod },
+                new[] { "Unity.exe", "-executeMethod", WiringMethod, "-executeMethod=" + WiringMethod },
+                new[] { "Unity.exe", "-executeMethod-extra", WiringMethod },
+                new[] { "Unity.exe", "-executeMethod", WiringMethod + " " },
+                new[] { "Unity.exe", "-executeMethod", (string)null },
+                new[] { "Unity.exe", "-executeMethod", "-quit" },
+                new[] { "Unity.exe", "-logFile", WiringMethod }
+            };
+            foreach (var arguments in refused)
+                Assert.That(BatchTestRelayIsolation.IsHumanoidWiringRun(batch, arguments), Is.False,
+                    string.Join("|", arguments));
+        }
+
+        [Test]
+        public void WiringRecognitionDoesNotBroadenLegacyBatchTestDetection()
+        {
+            var wiring = new[] { "Unity.exe", "-batchmode", "-projectPath", "D:/owned", "-executeMethod", WiringMethod, "-quit" };
+            Assert.That(BatchTestRelayIsolation.IsHumanoidWiringRun(true, wiring), Is.True);
+            Assert.That(BatchTestRelayIsolation.IsBatchTestRun(true, wiring), Is.False);
+            var tests = new[] { "Unity.exe", "-RUNTESTS", "-executeMethod", "An.Unrelated.Method" };
+            Assert.That(BatchTestRelayIsolation.IsBatchTestRun(true, tests), Is.True, "Existing explicit batch-test behavior stays intact.");
+            Assert.That(BatchTestRelayIsolation.IsHumanoidWiringRun(true, tests), Is.False);
+        }
+
         private static class FakeRelay
         {
             internal static int calls;

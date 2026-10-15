@@ -595,6 +595,14 @@ namespace Gamesim.Episode
             }
         }
 
+        /// <summary>
+        /// Where a promise stands as the player can know it: a houseguest's vote promise to them, kept or broken by a ballot
+        /// they do not know, is <see cref="KnownBallots.Unresolved"/> until they know it (<see cref="KnownBallots.PromiseOutcomeKnown"/>,
+        /// decision 4), as their notes, the web and the Your word page tell it (the consolidation check's D14).
+        /// </summary>
+        private static string KnownPromiseStanding(EpisodeState state, PromiseState promise) =>
+            KnownBallots.PromiseOutcomeKnown(state, promise) ? PromiseStanding(promise.status) : KnownBallots.Unresolved;
+
         public Vector3 StationPosition => ResolveStationPosition();
         private bool CanUseStation() => !playerIsActive ||
             Vector3.Distance(player.transform.position, StationPosition) < 3;
@@ -1260,16 +1268,7 @@ namespace Gamesim.Episode
             hud.Paragraph("Your mood: " + state.Find(state.playerId).mood + " · Stress: " + state.Find(state.playerId).stressLevel);
             // Aggregate source arcs have no participant/knowledge provenance.
             // NPC-only conversations must not masquerade as the player's bonds.
-            foreach (var promise in CommitmentReferences.Promises(state).Where(p => p.fromId == state.playerId || p.toId == state.playerId))
-            {
-                // Was the raw enum on both ends: "AllianceLoyalty - Dana -> You - Active". The
-                // vocabulary the player was given when they made the promise already exists.
-                bool mine = promise.fromId == state.playerId;
-                string who = mine ? state.Find(promise.toId).name : state.Find(promise.fromId).name;
-                hud.Paragraph((mine ? "You promised " + who : who + " promised you")
-                    + " " + Presentation.RelationshipWeb.PromiseWord(promise.kind)
-                    + "  ·  " + PromiseStanding(promise.status));
-            }
+            foreach (var line in NotebookPromises(state)) hud.Paragraph(line);
             foreach (var alliance in state.alliances.Where(a => a.members.Contains(state.playerId))) hud.Paragraph(alliance.name + (alliance.active ? " · active" : " · ended"));
             hud.Heading("YOUR LOYALTY DECLARATIONS");
             // Said as the conversation says it (X12): no promise from them, and binding both ways.
@@ -1282,6 +1281,27 @@ namespace Gamesim.Episode
             // private waits for the ballot (KnownBallots.PlayerMemories; decision 4).
             foreach (var memory in KnownBallots.PlayerMemories(state)) hud.Paragraph("Week " + memory.week + ": " + MemoryWords.Said(state, memory));
             RenderStorySoFar(state);
+        }
+
+        /// <summary>
+        /// The notebook's Story section's promises: every promise the player made or was made, where each stands - a
+        /// houseguest's vote promise to the player told only once the player knows the ballot that ended it
+        /// (<see cref="KnownPromiseStanding"/>).
+        /// </summary>
+        private static List<string> NotebookPromises(EpisodeState state)
+        {
+            var lines = new List<string>();
+            foreach (var promise in CommitmentReferences.Promises(state).Where(p => p.fromId == state.playerId || p.toId == state.playerId))
+            {
+                // Was the raw enum on both ends: "AllianceLoyalty - Dana -> You - Active". The
+                // vocabulary the player was given when they made the promise already exists.
+                bool mine = promise.fromId == state.playerId;
+                string who = mine ? state.Find(promise.toId).name : state.Find(promise.fromId).name;
+                lines.Add((mine ? "You promised " + who : who + " promised you")
+                    + " " + Presentation.RelationshipWeb.PromiseWord(promise.kind)
+                    + "  ·  " + KnownPromiseStanding(state, promise));
+            }
+            return lines;
         }
 
         private static Color Palette(int i)

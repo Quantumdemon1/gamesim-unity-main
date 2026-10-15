@@ -62,8 +62,18 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(NpcRead<bool>("npcDiagnosticsSuspended"), Is.False, "The house's own world runs: it is what brings the invitation.");
             // The walk-in watch's clock held off, so the staged walk-in is the only one offered.
             NpcWrite("proximityWatch", -1e6f);
+            // In the house's own view, not the map: the Pull's card is built only there (RightColumn
+            // builds the overview's column in its place), so only there can the two share the screen.
             Assert.That(director.ShowOverview(), Is.True);
-            yield return WaitForVisibleNpcInvitation();
+            director.EndOverview();
+            yield return null;
+            Assert.That(director.IsOverview || director.IsBriefing, Is.False, "The house's own view.");
+            float deadline = Time.realtimeSinceStartup + 35f;
+            while (!director.NpcInvitationIsVisible && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(director.NpcAutonomyReady, Is.True, director.NpcAutonomyDiagnostic);
+            Assert.That(director.NpcInvitationIsVisible, Is.True, "A motivated houseguest reaches the player and the bubble is up.");
+            Assert.That(director.GetComponentsInChildren<RectTransform>(true).Any(rect => rect.name == EpisodeHud.PullCardName), Is.True,
+                "The Pull's card is built in this view, so its being on screen can be seen.");
             var bubble = director.GetComponent<HouseNpcInvitationBubble>();
             Assert.That(FindButton(HouseNpcInvitationBubble.HearCaption), Is.SameAs(bubble.HearControl), "One control wears the bubble's yes.");
             Assert.That(FindButton(HouseNpcInvitationBubble.NotNowCaption), Is.SameAs(bubble.NotNowControl), "One control wears its no.");
@@ -88,8 +98,8 @@ namespace Gamesim.Tests.PlayMode
             void Sample()
             {
                 frames++;
-                bool pull = director.PullOffered != null || ActiveRect(EpisodeHud.PullCardName) != null;
-                if (director.NpcInvitationIsVisible && pull) together++;
+                // On screen, both: the bubble drawn and the Pull's card up.
+                if (director.NpcInvitationIsVisible && ActiveRect(EpisodeHud.PullCardName) != null) together++;
             }
             for (int frame = 0; frame < 30; frame++) { yield return null; Sample(); }
             Assert.That(together, Is.Zero, "The bubble and the Pull were on screen together on " + together + " of " + frames + " frames.");

@@ -51,7 +51,8 @@ try {
     Write-ReviewNewJson $previewDrift (Join-Path $runRoot 'projection-drift.json')
     Assert-ReviewRetainedVendorEqual $testedBefore $preview
     if (@($previewDrift | Where-Object {-not $_.allowed}).Count) { throw 'Current retained dependencies/product inputs differ from passing tests; nothing synced or built.' }
-    & (Join-Path $PSScriptRoot 'sync-acceptance.ps1') -WithoutUma:$WithoutUma -RetainInstalledUma:$RetainInstalledUma -ValidationLease $lease -Snapshot $snapshot
+    # Explicitly no diagnostics define, whatever GAMESIM_DIAGNOSTICS says: a build matches a full acceptance run.
+    & (Join-Path $PSScriptRoot 'sync-acceptance.ps1') -WithoutUma:$WithoutUma -RetainInstalledUma:$RetainInstalledUma -Diagnostics:$false -ValidationLease $lease -Snapshot $snapshot
     Assert-ReviewConfiguration $destination ([bool]$WithoutUma) 1
     $before=New-ReviewInputManifest -ProjectRoot $destination -WorkflowRoot $snapshot.root -WithoutUma:$WithoutUma -RetainInstalledUma:$RetainInstalledUma -MetaArchive (Join-Path $runRoot 'meta-before')
     Write-ReviewNewJson $before (Join-Path $runRoot 'inputs-before.json')

@@ -1,6 +1,8 @@
 #!/bin/sh
 # Diagnostic bridge: same destination lease/snapshot/XML gates as full verification.
 # Each argument remains name:platform:assembly[:filter]. Never overwrites prior artifacts.
+# GAMESIM_DIAGNOSTICS=1 adds the GAMESIM_DIAGNOSTICS define to the copy, for the diagnostics assemblies:
+#   GAMESIM_DIAGNOSTICS=1 GAMESIM_WITHOUT_UMA=1 Tools/sync-and-run.sh diag:PlayMode:Gamesim.DiagnosticsPlayModeTests
 set -eu
 [ "$#" -gt 0 ] || { echo 'Supply name:platform:assembly[:filter]'; exit 2; }
 SRC_POSIX="$(cd "$(dirname "$0")/.." && pwd)"

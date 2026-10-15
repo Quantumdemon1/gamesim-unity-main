@@ -9,7 +9,7 @@ Unity (it sits outside `Assets/`). Machine-specific paths are derived or overrid
 | --- | --- | --- |
 | `offline-compile.ps1` | Smoke-compiles all eight owned assemblies from current source lists using cached editor references. Missing assemblies/configuration mismatches fail; outputs and dependencies are unique to this invocation. `-OutputRoot <directory>` retains fresh outputs on another drive. `-WithoutUma` requires matching UMA-free cached responses. Changed asmdef dependencies require a freshly regenerated Unity Bee graph; stale cached references are not acceptance. | seconds |
 | `player-compile.ps1` | Same for all three player assemblies (two with `-WithoutUma`); validates player/UMA defines and refuses stale dependency outputs. Cached compiler checks do not replace Unity tests/builds. | seconds |
-| `verify-review-candidate.ps1 -Name <fresh-name>` | Runs every owned suite, enforces each assembly's minimum in `baseline.txt`, and retains before/after complete input manifests, exact `.meta` archives, XML/log hashes and individual test names. Missing/malformed floors, short suites and unexpected product-input drift fail. `-WithoutUma` requires the existing separate UMA-free copy. | depends on suites and input hashing |
+| `verify-review-candidate.ps1 -Name <fresh-name>` | Runs every owned suite - a failing suite no longer stops the ones after it - records each, then fails at the end if any failed. Enforces each assembly's minimum in `baseline.txt`, and retains before/after complete input manifests, exact `.meta` archives, XML/log hashes and individual test names. Missing/malformed XML, short suites (floor shortfall), a Unity that never exits and unexpected product-input drift still stop it at once. Each suite has its own deadline (see *Deadlines* below); a late run is recorded failed and never killed. `-WithoutUma` requires the existing separate UMA-free copy. | depends on suites and input hashing |
 | `build-review-candidate.ps1 -TestName <passing-name>` | Requires a passing complete same-configuration test summary. Checks live and synced inputs, builds Review13, checks final inputs, retains a timestamped report and hashes the entire build tree. Supports `-WithoutUma`. | depends on changed assets |
 | `profile-candidate.ps1 [-Executable <Gamesim.exe>] [-BuildEvidence <build evidence.json>]` | The performance evidence for the owner's 1920x1080 / 60 fps target: three clean 300 s `--gamesim-verify` profiles of the built player, one at a time, each into its own fresh save root - six, twelve and the sixteen-person verification-only stress house (`--gamesim-stress-roster`). Windowed, uncapped, never `-batchmode`; blocks competing Unity/Gamesim processes and records any that start mid-run. Only the exactly identified installed Unity Hub `resources/unity.exe` quoted `serve` helper is exempt, with a separate sanitized receipt; incomplete or unexpected identities still block. This inventory does not establish global CPU/GPU quietness. Writes `profile-summary.json`/`.md`; each valid run's `performanceAcceptance` (p95 <= 16.7 ms, p99 <= 33.3 ms) is the verdict, never its `Passed`; invalid runs read "Not assessed". Exit 0 (evidence complete) also needs `-BuildEvidence` to match the player's whole build tree file by file and one `buildGuid` across the three reports. | about 20 min |
 | `test-profile-evidence.ps1` | Exercises the pure profile predicates, bounded closure/verdict conditions and exact Hub helper identity against 42 synthetic cases. No player or hardware measurement. | seconds |
@@ -18,6 +18,7 @@ Unity (it sits outside `Assets/`). Machine-specific paths are derived or overrid
 | `sync-acceptance.ps1` | Holds the shared destination file lease, verifies an immutable byte snapshot, then checks every mirror against the exact UMA/NoUMA projection. GPU Resident Drawer is disabled only for explicit test mode. | depends on input hashing |
 | `sync-and-run.sh` | Routes `name:Platform:Assembly[:filter]` to the same held PowerShell controller. Retains unique evidence; failures/skips/nonzero exits/shortfalls fail. Always diagnostic evidence, never a build gate. | depends on suites |
 | `test-review-workflow.ps1` | Isolated lock/snapshot/XML/failure-retention fixtures, including real controller refusal paths. No Unity or real acceptance-copy access. | seconds |
+| `test-review-suite-runs.ps1` | 46 isolated fixtures for how the controller runs suites, with a fake Unity (a `.cmd` writing NUnit XML): per-suite deadlines at least twice their measured durations, a late process recorded late and never killed (and abandoned, still running, past its grace), every suite run after a failure, the `GAMESIM_DIAGNOSTICS` define (refused for full acceptance, added to and taken off the copy), and a source status probe that leaves `.git/index` byte for byte. | about a minute |
 | `test-asset-metadata.ps1` | Twelve isolated fixtures for metadata, GUID and binary-attribute enforcement, including the same Unity-ignored hidden-path missing-meta exemption as CI. No source or acceptance-copy mutation. | seconds |
 | `build-and-verify.sh` | Retired and fail-closed. It never builds, launches an old executable, or recursively removes a named output folder. Use the current PowerShell runners. | immediate |
 
@@ -33,6 +34,47 @@ Run EditMode, PlayMode and UMA PlayMode separately, preserving each XML and its 
 The release requirement is zero failures and skipped tests; a historical test count is not evidence
 that the current source passes. Record added/removed tests explicitly rather than lowering a count
 to accommodate a regression.
+
+### Deadlines
+
+Each suite's deadline covers the whole Unity process (start, import, compile, the tests, exit) and is at
+least twice the longest time measured for it (`Get-ReviewSuiteDeadline` in `review-workflow.ps1`):
+
+| Assembly | Measured | Deadline |
+| --- | --- | --- |
+| `Gamesim.EditModeTests` | 2,305 s for 7,846 tests (NoUMA, 2026-10-14) | 7,200 s |
+| `Gamesim.PlayModeTests` | 5,401 s for 1,218 tests (NoUMA, 2026-10-15); 4,305 s for 1,081 under `GAMESIM_UMA` | 14,400 s |
+| `Gamesim.Uma.PlayModeTests` | 308 s for 89 tests (2026-10-15) | 3,600 s |
+| `Gamesim.DiagnosticsPlayModeTests`, `Gamesim.Uma.DiagnosticsPlayModeTests` | the longest probe run, 135 s | 3,600 s |
+
+Any other assembly takes its platform's (EditMode 7,200 s, PlayMode 14,400 s); a player build keeps its
+5,400 s (measured builds 150-298 s). `-SuiteTimeoutSeconds` overrides every suite at once (the cap is
+28,800 s). Past its deadline a run is recorded late and failed, and left to exit on its own; one still
+running after a further grace (the deadline again) is abandoned while running, never killed, and the
+failure names its pid. The sync and the suites refuse to start while any Unity holds the copy. Re-measure
+and raise a deadline whenever a suite's measured time passes half of it.
+
+### Diagnostics
+
+Feasibility and diagnostic probes - the farewell's IK feasibility, inert-stream, stream-topology,
+passive-IK, untouched-Idle and Source21 Idle Foot IK probes - live in their own assemblies under
+`Assets/Gamesim/Tests/Diagnostics`, never in the shipping suites: `Gamesim.DiagnosticsPlayModeTests`
+(skeleton probes) and `Gamesim.Uma.DiagnosticsPlayModeTests` (the same on UMA bodies). Both compile only
+under the `GAMESIM_DIAGNOSTICS` define (the UMA one also needs `GAMESIM_UMA`), which is never committed:
+a diagnostic run adds it to the test copy only, and the next ordinary sync takes it off again. Each has
+its own floor in `baseline.txt`; the floor counts that the probes ran, not that they passed. `[Explicit]`
+would not keep them out, because the batch runner executes Explicit tests.
+
+```bash
+# UMA-free copy: the skeleton probes
+GAMESIM_DIAGNOSTICS=1 GAMESIM_WITHOUT_UMA=1 Tools/sync-and-run.sh diag:PlayMode:Gamesim.DiagnosticsPlayModeTests
+# UMA copy: the UMA probes
+GAMESIM_DIAGNOSTICS=1 GAMESIM_RETAIN_INSTALLED_UMA=1 Tools/sync-and-run.sh umadiag:PlayMode:Gamesim.Uma.DiagnosticsPlayModeTests
+```
+
+The same `GAMESIM_DIAGNOSTICS=1` in the environment of any direct `sync-acceptance.ps1` call (as the
+locked runner makes) adds the define; `verify-review-candidate.ps1` refuses it, so full acceptance never
+compiles the probes.
 
 Use the review-candidate scripts for acceptance. A test snapshot disables GPU Resident Drawer to avoid
 the editor harness crash. The build explicitly permits only its 0-to-1 shipping difference when matching

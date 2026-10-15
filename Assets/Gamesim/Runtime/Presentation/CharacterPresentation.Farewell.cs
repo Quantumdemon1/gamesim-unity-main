@@ -367,7 +367,7 @@ namespace Gamesim.Presentation
         private Quaternion[] farewellHoldRotation;
         private Animator farewellHoldAnimator;
         private float farewellHoldWeight, farewellHoldAge, farewellHoldSettled, farewellHoldRelease;
-        private bool farewellHoldEntered;
+        private bool farewellHoldEntered, farewellHoldBack;
 
         /// <summary>Whether this body is holding its hips and legs where the farewell's cue found them.</summary>
         internal bool HoldsFarewellStance => farewellHold != null;
@@ -408,20 +408,20 @@ namespace Gamesim.Presentation
             farewellHoldAnimator = animator;
             farewellHoldWeight = 1f;
             farewellHoldAge = farewellHoldSettled = farewellHoldRelease = 0f;
-            farewellHoldEntered = false;
+            farewellHoldEntered = farewellHoldBack = false;
         }
 
         private void EndFarewellStance()
         {
             farewellHold = null; farewellHoldPosition = null; farewellHoldRotation = null; farewellHoldAnimator = null;
-            farewellHoldWeight = 0f; farewellHoldEntered = false;
+            farewellHoldWeight = 0f; farewellHoldEntered = farewellHoldBack = false;
         }
 
         /// <summary>
         /// Run after the animator has written the frame. Holds the stance while the body is in Idle, the
-        /// take, or the cross-fades between them; lets go once the body has stood in Idle again for
-        /// <see cref="FarewellHoldSettleSeconds"/>, and sooner when something else takes the body: a walk,
-        /// another beat, a seat, an activity, reduced motion, or a cue that never played.
+        /// take, or the cross-fades between them; lets go once the body has stood in Idle again for a
+        /// frame and then <see cref="FarewellHoldSettleSeconds"/>, and sooner when something else takes
+        /// the body: a walk, another beat, a seat, an activity, reduced motion, or a cue that never played.
         /// </summary>
         private void TickFarewellStance()
         {
@@ -441,8 +441,12 @@ namespace Gamesim.Presentation
                 farewellHoldRelease = Mathf.Max(farewellHoldRelease, 1f / FarewellHoldGiveWaySeconds);
             else if (farewellHoldEntered && currentIdle && !transition)
             {
-                if ((farewellHoldSettled += delta) > FarewellHoldSettleSeconds)
+                // The first frame back in Idle is held in full however long it ran - FarewellPair completes
+                // the beat on it - so the settle counts from the frame after. A 0.12 s frame once began
+                // the release on it and moved a UMA body's foot 3.8 mm.
+                if (farewellHoldBack && (farewellHoldSettled += delta) > FarewellHoldSettleSeconds)
                     farewellHoldRelease = Mathf.Max(farewellHoldRelease, 1f / FarewellHoldReleaseSeconds);
+                farewellHoldBack = true;
             }
             else if (!farewellHoldEntered && (farewellHoldAge += delta) > FarewellHoldEntrySeconds)
                 farewellHoldRelease = Mathf.Max(farewellHoldRelease, 1f / FarewellHoldReleaseSeconds);

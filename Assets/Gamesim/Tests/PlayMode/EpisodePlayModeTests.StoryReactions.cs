@@ -282,7 +282,7 @@ namespace Gamesim.Tests.PlayMode
                     "The installed provider's actual bodies must be used, not a primitive fallback.");
                 bool supports = first.Supports(CharacterPresentation.Reaction.Embrace)
                     && second.Supports(CharacterPresentation.Reaction.Embrace);
-                Assert.That(supports, Is.True, supports ? null : HugEndpoint(peaceFirstId, peaceSecondId, false));
+                Assert.That(supports, Is.True, supports ? null : HugEndpoint(peaceFirstId, peaceSecondId));
             }
             Assert.That(HouseRoomQuery.TryCreate(director.gameObject.scene, out var rooms, out var reason), Is.True, reason);
             var firstCapsule = firstNpc.GetComponent<CapsuleCollider>();
@@ -334,7 +334,7 @@ namespace Gamesim.Tests.PlayMode
             UvEquivalent(before, director.Snapshot);
             yield return WaitForHugEndpoint(() => !first.IsBodyAssembling && !second.IsBodyAssembling
                 && !first.IsChangingOutfit && !second.IsChangingOutfit && first.IsStill && second.IsStill,
-                1f, "The physically arranged existing bodies settle", peaceFirstId, peaceSecondId, false);
+                1f, "The physically arranged existing bodies settle", peaceFirstId, peaceSecondId);
             Assert.That(first.IsSeated || second.IsSeated, Is.False);
             Assert.That(first.Activity, Is.EqualTo(CharacterPresentation.BodyActivity.None));
             Assert.That(second.Activity, Is.EqualTo(CharacterPresentation.BodyActivity.None));
@@ -377,14 +377,14 @@ namespace Gamesim.Tests.PlayMode
                 && (primitive || director.CurrentEmbrace != null && director.CurrentEmbrace.Fired
                     && first.IsReacting && second.IsReacting),
                 EpisodeDirector.EmbraceGatherSeconds, "The actual ending requests the two beats after its card closes",
-                peaceFirstId, peaceSecondId, false);
+                peaceFirstId, peaceSecondId);
             Assert.That(first.LastReaction, Is.EqualTo(CharacterPresentation.Reaction.Embrace), "The one who started it embraces,");
             Assert.That(second.LastReaction, Is.EqualTo(CharacterPresentation.Reaction.Embrace), "and so does the other.");
             if (!primitive)
             {
                 Assert.That(director.CurrentEmbrace, Is.Not.Null);
                 bool fired = director.CurrentEmbrace.Fired;
-                Assert.That(fired, Is.True, fired ? null : HugEndpoint(peaceFirstId, peaceSecondId, false));
+                Assert.That(fired, Is.True, fired ? null : HugEndpoint(peaceFirstId, peaceSecondId));
                 Assert.That(director.CurrentEmbrace.First, Is.SameAs(first));
                 Assert.That(director.CurrentEmbrace.Second, Is.SameAs(second));
             }

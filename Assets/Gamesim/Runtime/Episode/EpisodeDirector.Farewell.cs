@@ -7,7 +7,7 @@ namespace Gamesim.Episode
     public sealed partial class EpisodeDirector
     {
         private FarewellPair goodbyeFarewell;
-        /// <summary>The actual NONCONTACT transaction; never an alias for GoodbyeEmbrace.</summary>
+        /// <summary>The actual NONCONTACT transaction; the goodbye is never an embrace.</summary>
         public FarewellPair GoodbyeFarewell => goodbyeFarewell;
         public string GoodbyeFarewellFailure => ceremonyStage?.farewellFailure;
         public string GoodbyeFarewellDiagnostic => ceremonyStage?.FarewellDiagnostic;

@@ -232,10 +232,10 @@ namespace Gamesim.Episode
             if (projected == null || FinaleNight(projected.phase)) return RefuseWalkOut("There is no weekly departure on finale night.");
             if (housemates == null || !housemates.Any(npc => npc != null && npc.Id == id && npc.gameObject.activeInHierarchy))
                 return RefuseWalkOut("The departing houseguest has no active body.");
-            // The goodbye's embrace (the art brief's R7) lets go before the walk takes the evicted:
-            // both agents unparked, both bodies easing home.
+            // The goodbye's short noncontact farewell lets go before the walk takes the evicted:
+            // both agents unparked, both bodies easing home. The goodbye is never an embrace (the
+            // owner's decision); the 3.8 s embrace is the peace's alone (EpisodeDirector.Embrace.cs).
             ReleaseGoodbyeFarewell("the walk out");
-            ReleaseGoodbyeEmbrace("the walk out");
             walkingOutId = id;
             walkOutLeg = 0;
             walkOutUntil = Time.unscaledTime + WalkOutSeconds;

@@ -100,6 +100,9 @@ namespace Gamesim.Episode
         {
             if (IsSceneCardOpen || IsPanelOpen) { peaceSince = Time.unscaledTime; return; }
             if (EmbraceInterrupted(state) != null) { EndPeace(); return; }
+            // The frame the card closes the house is still paused - its world ticks after this - and
+            // a paused body takes no route: the gather waits for the house as it waits for the card.
+            if (npcMeetings != null && npcMeetings.IsPaused) { peaceSince = Time.unscaledTime; return; }
             var first = BodyFor(peaceFirst);
             var second = BodyFor(peaceSecond);
             if (first == null || second == null) { EndPeace(); return; }

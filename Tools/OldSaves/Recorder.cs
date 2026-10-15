@@ -4,7 +4,11 @@
 // tests replay on. C# 9 and nothing newer than that build's API: it has to compile at every commit it is pointed at.
 //
 //   record  <save> <out>                     load a save with that build's store, play it to its end, write the script and digest
+//   replay  <save> <record folder>           what the EditMode test does: apply a recorded script, say where it parts (OLDSAVE_RESULT, OLDSAVE_DUMP)
 //   generate <out> <seed> <size> <rules> <week> <phase>   play a fresh seeded season to a point and save it with that build's store
+//   shape                                    every saved field path of that build (OLDSAVE_DEFINES=OLDSAVE_SHAPE_ONLY compiles only this)
+//   migrate <save> <out>                     the schema-28 payload this build's chain hands on (what a schema-29 step would validate)
+//   resave  <save> <out>                     load with that build's store and save again, as the next autosave would
 //
 // Nothing here is read by the tests: they read the fixture, its script and its digests.
 using System;
@@ -28,6 +32,27 @@ namespace Gamesim.OldSaves
             try
             {
                 if (args.Length >= 1 && args[0] == "shape") { Shape(typeof(EpisodeState), "", 0); return 0; }
+                if (args.Length >= 3 && args[0] == "resave")
+                {
+                    var slot = Path.Combine(Path.GetTempPath(), "oldsave-resave-" + Guid.NewGuid().ToString("N"));
+                    Directory.CreateDirectory(slot);
+                    var file = Path.Combine(slot, "episode.json");
+                    File.WriteAllBytes(file, File.ReadAllBytes(args[1]));
+                    var store = new EpisodeSaveStore(file);
+                    if (!store.TryLoad(out var state, out var message)) { Console.Error.WriteLine("LOAD REFUSED: " + message); return 3; }
+                    store.Save(state);
+                    File.WriteAllBytes(args[2], File.ReadAllBytes(file));
+                    Directory.Delete(slot, true);
+                    Console.WriteLine("resaved at schema " + state.schemaVersion + ": " + message);
+                    return 0;
+                }
+                if (args.Length >= 3 && args[0] == "migrate")
+                {
+                    var envelope = JObject.Parse(File.ReadAllText(args[1]));
+                    var payload = EpisodeSaveMigrations.PrepareCurrentPayload((JObject)envelope["state"], out _);
+                    File.WriteAllText(args[2], payload.ToString(Formatting.None));
+                    return 0;
+                }
 #if !OLDSAVE_SHAPE_ONLY
                 if (args.Length >= 3 && args[0] == "record") return Record(args[1], args[2]);
                 if (args.Length >= 3 && args[0] == "replay") return Replay(args[1], args[2]);

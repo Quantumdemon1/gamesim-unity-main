@@ -189,11 +189,16 @@ namespace Gamesim.Persistence
             return result;
         }
 
-        /// <summary>Old seasons retain their economy forever, including pristine opening saves. No RNG, history or budgets are rewritten.</summary>
+        /// <summary>
+        /// Old seasons retain their economy forever, including pristine opening saves. No RNG, history or budgets are rewritten.
+        /// A file from schema 22's first builds is given the two fields later schema-22 builds added first, as literals
+        /// (<see cref="FrozenEpisodeV22.WithLaterFields"/>), and then held to the same contract as every other.
+        /// </summary>
         public static JObject UpgradeV22ToV23(JObject original)
         {
-            FrozenEpisodeV22.Validate(original);
-            var result = (JObject)original.DeepClone();
+            var complete = FrozenEpisodeV22.WithLaterFields(original);
+            FrozenEpisodeV22.Validate(complete);
+            var result = (JObject)complete.DeepClone();
             result.Add("economyRulesVersion", 0);
             result.Add("moveInExtrasSpent", 0);
             result["schemaVersion"] = 23;

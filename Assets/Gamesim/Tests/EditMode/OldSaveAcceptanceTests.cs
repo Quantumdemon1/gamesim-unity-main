@@ -367,6 +367,89 @@ namespace Gamesim.Tests.EditMode
                 foreach (var s in StringsOf(property.GetValue(value), depth + 1)) yield return s;
         }
 
+        // ------------------------------------------------------------------ the seventeen historical readers
+
+        /// <summary>
+        /// The seventeen readers Codex's whole-save plan held open (PORT_COMPLETION_20261010, "all17"; the plan's hold
+        /// map): asked of every old save, as it loads and where its recorded season ends, each gives the answer this build
+        /// gave when the fixture was curated. So a change that moves how any of them reads an old season - a fresh-season
+        /// rule, a balance retune, a mode-2 refactor - fails here, fixture by fixture, before it reaches a player's file.
+        /// </summary>
+        [TestCaseSource(nameof(Episodes))]
+        public void TheSeventeenHistoricalReadersGiveTheirPinnedAnswersOnEveryOldSave(string id)
+        {
+            var entry = Entry(id);
+            using var slot = new Slot((string)entry["save"]);
+            Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
+            string first = HoldAnswers(loaded);
+            var (_, _, _, final) = Replay(id, loaded);
+            string last = HoldAnswers(final);
+            Assert.That(OldSaveTrace.Sha256(first + "\n" + last).Substring(0, 16), Is.EqualTo((string)entry["holdsDigest"]),
+                id + ": a historical reader reads this old season otherwise. Loaded: " + Shorten(first) + " Ended: " + Shorten(last));
+        }
+
+        private static string Shorten(string text) => text.Length <= 600 ? text : text.Substring(0, 600) + "...";
+
+        /// <summary>
+        /// Every answer of the seventeen readers for one state, as canonical JSON: each deal and promise through
+        /// CommitmentReferences (Deals, FindDeal, FindPromise), each deal's breaker (FinalistRead.DealBreaker) and whether
+        /// its outcome is known (KnownBallots.DealOutcomeKnown), the final argument's references (FinalArgument.Resolves),
+        /// each jury exchange's receipt week (FinaleQuestions.ReceiptWeek), the storage and reference validators
+        /// (UnifiedCommitmentHearings.ValidateStorage and TryValidateProspectiveVoteStorage, UnifiedSafetySaveReferences.TryValidate
+        /// and TryValidateProspectiveVote, UnifiedVoteFamilyValidation.TryValidate), and the canonical histories
+        /// (UnifiedCommitmentHistory.Breaches and Fulfillments, UnifiedVoteHistory.Incidents, Fulfillments and FindDecision).
+        /// A reader that refuses the state answers with its exception's type: that refusal is pinned too.
+        /// </summary>
+        internal static string HoldAnswers(EpisodeState s)
+        {
+            var answers = new JObject();
+            void Ask(string name, Func<object> read)
+            {
+                JToken value;
+                try
+                {
+                    object result = read();
+                    value = result == null ? JValue.CreateNull() : result as JToken ?? new JValue(result);
+                }
+                catch (Exception error) when (!(error is AssertionException))
+                {
+                    value = new JValue("threw " + (error is TargetInvocationException wrapped && wrapped.InnerException != null ? wrapped.InnerException : error).GetType().Name);
+                }
+                answers[name] = value;
+            }
+            JToken Fields(object row) => row == null ? JValue.CreateNull() : (JToken)OldSaveTrace.Fields(row);
+            JToken Each<T>(IEnumerable<T> rows) => new JArray(rows.Select(row => Fields(row)));
+
+            Ask("CommitmentReferences.Deals", () => new JArray(CommitmentReferences.Deals(s).Select(d => d.id + "/" + d.type + "/" + d.status)));
+            Ask("CommitmentReferences.FindDeal", () => new JArray(CommitmentReferences.Deals(s).Select(d => CommitmentReferences.FindDeal(s, d.id)?.id)));
+            Ask("CommitmentReferences.FindPromise", () => new JArray(s.promises.Select(p => CommitmentReferences.FindPromise(s, p.id)?.id)));
+            Ask("FinalistRead.DealBreaker", () => new JArray(CommitmentReferences.Deals(s).Select(d => FinalistRead.DealBreaker(s, d))));
+            Ask("KnownBallots.DealOutcomeKnown", () => new JArray(CommitmentReferences.Deals(s).Select(d => KnownBallots.DealOutcomeKnown(s, d))));
+            Ask("FinalArgument.Resolves", () => new JArray((s.finalArgument?.momentRefs ?? new List<string>()).Select(r => FinalArgument.Resolves(s, r))));
+            Ask("FinaleQuestions.ReceiptWeek", () => new JArray(s.juryExchanges.Select(x => FinaleQuestions.ReceiptWeek(s, x))));
+            Ask("UnifiedCommitmentHearings.ValidateStorage", () => UnifiedCommitmentHearings.ValidateStorage(s, out string error) + " " + error);
+            Ask("UnifiedCommitmentHearings.TryValidateProspectiveVoteStorage", () => Internal(typeof(UnifiedCommitmentHearings), "TryValidateProspectiveVoteStorage", s));
+            Ask("UnifiedCommitmentHistory.Breaches", () => Each(UnifiedCommitmentHistory.Breaches(s)));
+            Ask("UnifiedCommitmentHistory.Fulfillments", () => Each(UnifiedCommitmentHistory.Fulfillments(s)));
+            Ask("UnifiedSafetySaveReferences.TryValidate", () => UnifiedSafetySaveReferences.TryValidate(s, out string error) + " " + error);
+            Ask("UnifiedSafetySaveReferences.TryValidateProspectiveVote", () => Internal(typeof(UnifiedSafetySaveReferences), "TryValidateProspectiveVote", s));
+            Ask("UnifiedVoteFamilyValidation.TryValidate", () => UnifiedVoteFamilyValidation.TryValidate(s, s.unifiedVoteReveals, out string error) + " " + error);
+            Ask("UnifiedVoteHistory.FindDecision", () => new JArray(s.unifiedCommitments.Select(row => Fields(UnifiedVoteHistory.FindDecision(s, row.id)))));
+            Ask("UnifiedVoteHistory.Fulfillments", () => Each(UnifiedVoteHistory.Fulfillments(s)));
+            Ask("UnifiedVoteHistory.Incidents", () => Each(UnifiedVoteHistory.Incidents(s)));
+            return OldSaveTrace.Canonical(answers, false);
+        }
+
+        /// <summary>One of the two internal validators, by reflection: the test assembly sees no internals (ProspectiveVoteFacade).</summary>
+        private static string Internal(Type owner, string name, EpisodeState s)
+        {
+            var method = owner.GetMethod(name, BindingFlags.Static | BindingFlags.NonPublic, null, new[] { typeof(EpisodeState), typeof(string).MakeByRefType() }, null);
+            Assert.That(method, Is.Not.Null, owner.Name + "." + name);
+            var arguments = new object[] { s, null };
+            bool ok = (bool)method.Invoke(null, arguments);
+            return ok + " " + arguments[1];
+        }
+
         // ------------------------------------------------------------------ refused on purpose
 
         /// <summary>

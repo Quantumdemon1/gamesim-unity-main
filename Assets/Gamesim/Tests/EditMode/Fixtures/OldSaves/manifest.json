@@ -43,7 +43,8 @@
    "winnerId": "player",
    "oldestLoader": "76654f3b",
    "oldestLoaderDigest": "23dd3c88557799e4",
-   "oldestLoaderSchema": 16
+   "oldestLoaderSchema": 16,
+   "holdsDigest": "dedd636833610bb7"
   },
   {
    "id": "s16-director-final-speeches",
@@ -87,7 +88,8 @@
    "winnerId": "riley-johnson",
    "oldestLoader": "76654f3b",
    "oldestLoaderDigest": "6520c7f9a18e2f53",
-   "oldestLoaderSchema": 16
+   "oldestLoaderSchema": 16,
+   "holdsDigest": "e8af0e50e334b36c"
   },
   {
    "id": "s16-director-finished-winner",
@@ -131,7 +133,8 @@
    "winnerId": "player",
    "oldestLoader": "76654f3b",
    "oldestLoaderDigest": "393d96ae8a53e48e",
-   "oldestLoaderSchema": 16
+   "oldestLoaderSchema": 16,
+   "holdsDigest": "a37ff8653f0f48ec"
   },
   {
    "id": "s16-default-w1-social",
@@ -175,7 +178,8 @@
    "winnerId": "maya-hassan",
    "oldestLoader": "76654f3b",
    "oldestLoaderDigest": "2ef641ad216d8a9c",
-   "oldestLoaderSchema": 16
+   "oldestLoaderSchema": 16,
+   "holdsDigest": "f7f11e141990f90b"
   },
   {
    "id": "s17-director-finished",
@@ -220,7 +224,8 @@
    "winnerId": "casey-wilson",
    "oldestLoader": "58f86235",
    "oldestLoaderDigest": "f8d2d19ad1375626",
-   "oldestLoaderSchema": 17
+   "oldestLoaderSchema": 17,
+   "holdsDigest": "a4e2eae2b246e03b"
   },
   {
    "id": "s17-default-w1-social",
@@ -265,7 +270,8 @@
    "winnerId": "casey-wilson",
    "oldestLoader": "923fb299",
    "oldestLoaderDigest": "2c5775b2cea50d7c",
-   "oldestLoaderSchema": 17
+   "oldestLoaderSchema": 17,
+   "holdsDigest": "004fd15f73e953a4"
   },
   {
    "id": "s18-director-w1-eviction",
@@ -311,7 +317,8 @@
    "winnerId": "alex-chen",
    "oldestLoader": "fae01079",
    "oldestLoaderDigest": "4a17725fa3d79048",
-   "oldestLoaderSchema": 18
+   "oldestLoaderSchema": 18,
+   "holdsDigest": "f44e87f69470981c"
   },
   {
    "id": "s18-default-w1-social",
@@ -357,7 +364,8 @@
    "winnerId": "casey-wilson",
    "oldestLoader": "fae01079",
    "oldestLoaderDigest": "b1da38a5660bf1d5",
-   "oldestLoaderSchema": 18
+   "oldestLoaderSchema": 18,
+   "holdsDigest": "004fd15f73e953a4"
   },
   {
    "id": "s19-director-finished",
@@ -404,7 +412,8 @@
    "winnerId": "emma-brown",
    "oldestLoader": "3bab3743",
    "oldestLoaderDigest": "3cfc51040bff3d86",
-   "oldestLoaderSchema": 19
+   "oldestLoaderSchema": 19,
+   "holdsDigest": "59a4f5936f778cfe"
   },
   {
    "id": "s19-default-w1-social",
@@ -451,7 +460,8 @@
    "winnerId": "maya-hassan",
    "oldestLoader": "3bab3743",
    "oldestLoaderDigest": "49df3e4a0aa9cda5",
-   "oldestLoaderSchema": 19
+   "oldestLoaderSchema": 19,
+   "holdsDigest": "f7f11e141990f90b"
   },
   {
    "id": "s20-director-finished-runner-up",
@@ -499,7 +509,8 @@
    "winnerId": "casey-wilson",
    "oldestLoader": "7f398b94",
    "oldestLoaderDigest": "fdac6c82847f9fb9",
-   "oldestLoaderSchema": 20
+   "oldestLoaderSchema": 20,
+   "holdsDigest": "a77984f5dbc3a2e6"
   },
   {
    "id": "s20-default-w1-social",
@@ -547,7 +558,8 @@
    "winnerId": "casey-wilson",
    "oldestLoader": "7f398b94",
    "oldestLoaderDigest": "81971b4140e7fd54",
-   "oldestLoaderSchema": 20
+   "oldestLoaderSchema": 20,
+   "holdsDigest": "277f7f7c8b23e2ca"
   },
   {
    "id": "s21-director-w1-hoh",
@@ -596,7 +608,8 @@
    "winnerId": "riley-johnson",
    "oldestLoader": "639c821a",
    "oldestLoaderDigest": "6e99d2b1afe6cd4c",
-   "oldestLoaderSchema": 21
+   "oldestLoaderSchema": 21,
+   "holdsDigest": "9ff70da128e09188"
   },
   {
    "id": "s21-default-w1-social",
@@ -645,7 +658,8 @@
    "winnerId": "player",
    "oldestLoader": "639c821a",
    "oldestLoaderDigest": "49eb163136e74641",
-   "oldestLoaderSchema": 21
+   "oldestLoaderSchema": 21,
+   "holdsDigest": "41ca6cedf4f14730"
   },
   {
    "id": "s26-mode1-finished",
@@ -698,7 +712,8 @@
    "winnerId": "riley-johnson",
    "oldestLoader": "3b95d172",
    "oldestLoaderDigest": "6304205393410198",
-   "oldestLoaderSchema": 26
+   "oldestLoaderSchema": 26,
+   "holdsDigest": "c7edcd7e0950f7cc"
   },
   {
    "id": "s26-default-w1-social",
@@ -751,7 +766,8 @@
    "winnerId": "casey-wilson",
    "oldestLoader": "3b95d172",
    "oldestLoaderDigest": "17aaddd41910bb60",
-   "oldestLoaderSchema": 26
+   "oldestLoaderSchema": 26,
+   "holdsDigest": "bc3f307166fae1a5"
   },
   {
    "id": "s28-mode1-finished",
@@ -807,7 +823,8 @@
    "winnerId": "casey-wilson",
    "oldestLoader": "42e34f4d",
    "oldestLoaderDigest": "acfaf62b33a916ca",
-   "oldestLoaderSchema": 28
+   "oldestLoaderSchema": 28,
+   "holdsDigest": "439758e36c0504dc"
   },
   {
    "id": "s28-mode2-finished",
@@ -863,7 +880,8 @@
    "winnerId": "alex-chen",
    "oldestLoader": "de88a8bb",
    "oldestLoaderDigest": "d0efad8f6171cff8",
-   "oldestLoaderSchema": 28
+   "oldestLoaderSchema": 28,
+   "holdsDigest": "0d2bbf538cc03a25"
   },
   {
    "id": "s28-default-w1-social",
@@ -919,7 +937,8 @@
    "winnerId": "player",
    "oldestLoader": "42e34f4d",
    "oldestLoaderDigest": "7475b5da001862a7",
-   "oldestLoaderSchema": 28
+   "oldestLoaderSchema": 28,
+   "holdsDigest": "41ca6cedf4f14730"
   },
   {
    "id": "s06-default-w2-social",
@@ -956,7 +975,8 @@
    "generated": "20260910 6 default 2 Social",
    "writerDigest": "8af38400344d3c58",
    "writerSchema": 6,
-   "writerCommands": 33
+   "writerCommands": 33,
+   "holdsDigest": "ff737ae6fcdb74f5"
   },
   {
    "id": "s07-director-w2-hoh",
@@ -993,7 +1013,8 @@
    "generated": "701 8 director 2 HoH",
    "writerDigest": "721ac88ead6b1020",
    "writerSchema": 7,
-   "writerCommands": 88
+   "writerCommands": 88,
+   "holdsDigest": "33a224065325d4e2"
   },
   {
    "id": "s07-default-w2-social",
@@ -1030,7 +1051,8 @@
    "generated": "20260910 6 default 2 Social",
    "writerDigest": "883188bcfde6bde1",
    "writerSchema": 7,
-   "writerCommands": 33
+   "writerCommands": 33,
+   "holdsDigest": "ff737ae6fcdb74f5"
   },
   {
    "id": "s09-director-w2-veto",
@@ -1068,7 +1090,8 @@
    "generated": "901 8 director 2 Veto",
    "writerDigest": "f99a3da09343b1b8",
    "writerSchema": 9,
-   "writerCommands": 66
+   "writerCommands": 66,
+   "holdsDigest": "85b80705250ea532"
   },
   {
    "id": "s09-default-w2-social",
@@ -1106,7 +1129,8 @@
    "generated": "20260910 6 default 2 Social",
    "writerDigest": "483e91ee81cffa49",
    "writerSchema": 9,
-   "writerCommands": 34
+   "writerCommands": 34,
+   "holdsDigest": "79d746e95bb93677"
   },
   {
    "id": "s10-director-w2-nomination",
@@ -1147,7 +1171,8 @@
    "writerSchema": 10,
    "writerCommands": 76,
    "schema20BuildDigest": "044521a0750bfee0",
-   "note": "The schema-20 build 7f398b94 plays it otherwise from checkpoint 47: the story's agency retune (8a5f2ecc) changed story-v9 seasons without a version."
+   "note": "The schema-20 build 7f398b94 plays it otherwise from checkpoint 47: the story's agency retune (8a5f2ecc) changed story-v9 seasons without a version.",
+   "holdsDigest": "f859a4a9ebaea6a8"
   },
   {
    "id": "s11-director-w2-campaign",
@@ -1189,7 +1214,8 @@
    "writerSchema": 11,
    "writerCommands": 75,
    "schema20BuildDigest": "059b071b2e2ce206",
-   "note": "The schema-20 build 7f398b94 plays it otherwise from checkpoint 23: the story's agency retune (8a5f2ecc)."
+   "note": "The schema-20 build 7f398b94 plays it otherwise from checkpoint 23: the story's agency retune (8a5f2ecc).",
+   "holdsDigest": "655502b4d6a9f40d"
   },
   {
    "id": "s12-director-w3-hoh",
@@ -1230,7 +1256,8 @@
    "generated": "1201 8 director 3 HoH",
    "writerDigest": "ad322371c3f0d91b",
    "writerSchema": 12,
-   "writerCommands": 60
+   "writerCommands": 60,
+   "holdsDigest": "9049d2fbed49f9d1"
   },
   {
    "id": "s13-director-w2-eviction",
@@ -1272,7 +1299,8 @@
    "generated": "1301 8 director 2 Eviction",
    "writerDigest": "f823a0d2619de7fe",
    "writerSchema": 13,
-   "writerCommands": 68
+   "writerCommands": 68,
+   "holdsDigest": "d4ddc3e656232bb5"
   },
   {
    "id": "s13-default-w2-social",
@@ -1314,7 +1342,8 @@
    "generated": "20260910 6 default 2 Social",
    "writerDigest": "21e512a01d2b0b36",
    "writerSchema": 13,
-   "writerCommands": 34
+   "writerCommands": 34,
+   "holdsDigest": "347b234f1fd8878f"
   },
   {
    "id": "s14-director-w2-veto-meeting",
@@ -1359,7 +1388,8 @@
    "writerSchema": 14,
    "writerCommands": 74,
    "schema20BuildDigest": "bfc45b92d7069d0f",
-   "note": "The schema-20 build 7f398b94 plays it otherwise from checkpoint 19: the story's agency retune (8a5f2ecc)."
+   "note": "The schema-20 build 7f398b94 plays it otherwise from checkpoint 19: the story's agency retune (8a5f2ecc).",
+   "holdsDigest": "8bf32adc7f8cd83f"
   },
   {
    "id": "s15-director-w2-campaign",
@@ -1403,7 +1433,8 @@
    "generated": "1501 8 director 2 Campaign",
    "writerDigest": "ed6e1326d3989f89",
    "writerSchema": 15,
-   "writerCommands": 69
+   "writerCommands": 69,
+   "holdsDigest": "12c2d91f73764a1c"
   },
   {
    "id": "s20-director-w2-veto-meeting",
@@ -1456,7 +1487,8 @@
    "writerSchema": 20,
    "writerCommands": 77,
    "schema20BuildDigest": "75153f18254d0f5c",
-   "note": "Its own writer plays it otherwise from checkpoint 8: the story's agency retune (8a5f2ecc), five hours after schema 20 shipped."
+   "note": "Its own writer plays it otherwise from checkpoint 8: the story's agency retune (8a5f2ecc), five hours after schema 20 shipped.",
+   "holdsDigest": "4fb1e9158b604960"
   },
   {
    "id": "s22-director-early-w2-campaign",
@@ -1510,7 +1542,8 @@
    "writerDigest": "3f99c2c4ece519b7",
    "writerSchema": 22,
    "writerCommands": 67,
-   "note": "Schema 22's first shape: no deals[].linkedDealId (C7, c55a4535) and no alliances[].playerJoined (C5 fix, d44bf492). Refused by every later build until FrozenEpisodeV22.WithLaterFields; no historical build both loads it and plays C1 to C9, which the C0 boundary carries, so the reference is this build."
+   "note": "Schema 22's first shape: no deals[].linkedDealId (C7, c55a4535) and no alliances[].playerJoined (C5 fix, d44bf492). Refused by every later build until FrozenEpisodeV22.WithLaterFields; no historical build both loads it and plays C1 to C9, which the C0 boundary carries, so the reference is this build.",
+   "holdsDigest": "d92c2f864c816db3"
   },
   {
    "id": "s22-director-late-w3-veto",
@@ -1563,7 +1596,8 @@
    "generated": "2202 8 director 3 Veto",
    "writerDigest": "81f9ef0fb69f3190",
    "writerSchema": 22,
-   "writerCommands": 51
+   "writerCommands": 51,
+   "holdsDigest": "3b80607c317a256c"
   },
   {
    "id": "s22-default-w2-social",
@@ -1616,7 +1650,8 @@
    "generated": "20260910 6 default 2 Social",
    "writerDigest": "f2f6405c78eedc3c",
    "writerSchema": 22,
-   "writerCommands": 34
+   "writerCommands": 34,
+   "holdsDigest": "1030960a3a7ad9cd"
   },
   {
    "id": "s23-director-w2-veto-meeting",
@@ -1670,7 +1705,8 @@
    "generated": "2301 6 director 2 VetoMeeting",
    "writerDigest": "c13a804e1cf8fd0a",
    "writerSchema": 23,
-   "writerCommands": 48
+   "writerCommands": 48,
+   "holdsDigest": "e1c59160140206ae"
   },
   {
    "id": "s23-default-w2-social",
@@ -1724,7 +1760,8 @@
    "generated": "20260910 6 default 2 Social",
    "writerDigest": "e9f19a9a19de271b",
    "writerSchema": 23,
-   "writerCommands": 34
+   "writerCommands": 34,
+   "holdsDigest": "1030960a3a7ad9cd"
   },
   {
    "id": "s24-director-w3-nomination",
@@ -1779,7 +1816,8 @@
    "generated": "2401 8 director 3 Nomination",
    "writerDigest": "61edc19dc1b590e0",
    "writerSchema": 24,
-   "writerCommands": 54
+   "writerCommands": 54,
+   "holdsDigest": "c9e624894809a0ff"
   },
   {
    "id": "s24-default-w2-social",
@@ -1834,7 +1872,8 @@
    "generated": "20260910 6 default 2 Social",
    "writerDigest": "67b5e7fa0981f644",
    "writerSchema": 24,
-   "writerCommands": 34
+   "writerCommands": 34,
+   "holdsDigest": "1030960a3a7ad9cd"
   },
   {
    "id": "s25-director-w2-eviction",
@@ -1890,7 +1929,8 @@
    "generated": "2501 12 director 2 Eviction",
    "writerDigest": "b066cd8b7a29014e",
    "writerSchema": 25,
-   "writerCommands": 116
+   "writerCommands": 116,
+   "holdsDigest": "1853335199409605"
   },
   {
    "id": "s25-default-w2-social",
@@ -1946,7 +1986,8 @@
    "generated": "20260910 6 default 2 Social",
    "writerDigest": "5cd628270567426f",
    "writerSchema": 25,
-   "writerCommands": 34
+   "writerCommands": 34,
+   "holdsDigest": "1030960a3a7ad9cd"
   },
   {
    "id": "s27-mode1-w3-social",
@@ -2002,7 +2043,8 @@
    "generated": "2701 8 director 3 Social",
    "writerDigest": "ee0507a0b36924e8",
    "writerSchema": 27,
-   "writerCommands": 43
+   "writerCommands": 43,
+   "holdsDigest": "5efc8b19b5410ad8"
   },
   {
    "id": "s27-default-w2-social",
@@ -2058,7 +2100,8 @@
    "generated": "20260910 6 default 2 Social",
    "writerDigest": "8bc2889837e75f01",
    "writerSchema": 27,
-   "writerCommands": 34
+   "writerCommands": 34,
+   "holdsDigest": "1030960a3a7ad9cd"
   },
   {
    "id": "s28-mode1-waved-off-w2-hoh",
@@ -2117,7 +2160,8 @@
    "generated": "2801 8 director 2 HoH",
    "writerDigest": "d464ebc6db86b490",
    "writerSchema": 28,
-   "writerCommands": 70
+   "writerCommands": 70,
+   "holdsDigest": "267e46fc55c31e0f"
   },
   {
    "id": "s28-mode1-allweek-w2-campaign",
@@ -2177,7 +2221,8 @@
    "writerDigest": "cf34f045a9ae3533",
    "writerSchema": 28,
    "writerCommands": 61,
-   "note": "Its writer (and b25bfeba, de88a8bb) plays it otherwise from checkpoint 13: the arcs change-paths merge (8ffc99cd) changed all-week seasons without a version."
+   "note": "Its writer (and b25bfeba, de88a8bb) plays it otherwise from checkpoint 13: the arcs change-paths merge (8ffc99cd) changed all-week seasons without a version.",
+   "holdsDigest": "fe0aff2d02bf03ff"
   }
  ],
  "refused": [

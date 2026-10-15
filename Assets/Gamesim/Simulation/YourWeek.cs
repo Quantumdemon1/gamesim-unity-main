@@ -350,11 +350,22 @@ namespace Gamesim.Simulation
         /// only where the other party's ballot kept it too, so "you kept it" tells that ballot - unless the player can know how the
         /// deal ended (<see cref="KnownBallots.DealOutcomeKnown"/>: the other cast none, or the player knows it). Mode 1 tells it,
         /// as its recorded seasons did; closing it there needs a rule. A deal the player broke is theirs to know.
+        ///
+        /// <para>A partner who cast no ballot that week had none for the keep to tell, as <see cref="KnownBallots.DealOutcomeKnown"/>
+        /// and <see cref="KnownBallots.YourKeepTellsTheirBallot"/> read it - read from the week's ballots, not the deal, because a
+        /// partnership the player kept stands with no status or settlement week (C1), so no settled deal says so. Its voter decides
+        /// it alone and its partner is the nominee, so a partnership the player kept is always theirs to read (the consolidation
+        /// check's D5).</para>
         /// </summary>
-        private static bool KeepingTellsTheirBallot(EpisodeState s, int week, string partner, string type, bool kept) =>
-            kept && UnifiedVoteStore.On(s) && !CommitmentReferences.Deals(s).Any(d => d.type == type && d.status == DealStatus.Fulfilled
+        private static bool KeepingTellsTheirBallot(EpisodeState s, int week, string partner, string type, bool kept)
+        {
+            if (!kept || !UnifiedVoteStore.On(s)) return false;
+            var sheet = KnownBallots.Read(s, week);
+            if (!sheet.voters.Contains(partner) && !(sheet.tieBroken && sheet.hohId == partner)) return false;
+            return !CommitmentReferences.Deals(s).Any(d => d.type == type && d.status == DealStatus.Fulfilled
                 && d.settledWeek == week && ((d.proposerId == s.playerId && d.recipientId == partner) || (d.proposerId == partner && d.recipientId == s.playerId))
                 && KnownBallots.DealOutcomeKnown(s, d));
+        }
 
         /// <summary>The record types a deal's end writes on both parties' records (EpisodeEngine.SettleDeals).</summary>
         public const string DealKept = "deal_fulfilled", DealBroken = "deal_broken";

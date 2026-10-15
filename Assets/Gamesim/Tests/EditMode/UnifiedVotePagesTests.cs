@@ -239,6 +239,42 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// The consolidation check's D5 (the V7 review's V7-1): a partnership is decided by its voter alone, its partner the
+        /// nominee, who casts no ballot (DealResolution.PartnershipAtTheVote). The player struck one with a nominee and kept it
+        /// by their own ballot, so the keep tells nobody's ballot - Your week says so in mode 2 as mode 1 does, not "unresolved:
+        /// you do not know how they voted" of a partner who never voted. The other side of the gate stays: a partnership the
+        /// partner's ballot kept for the player is not theirs to know until they know that ballot.
+        /// </summary>
+        [Test]
+        public void APartnershipThePlayerKeptByTheirOwnBallotIsTheirsToReadAsInModeOne()
+        {
+            var s = ModeTwoReaderSweep.Campaign();
+            var voters = PinnedVoteSeason.NpcVoters(s).ToList();
+            string partner = s.nominees[0], y = s.nominees[1];
+            s = ModeTwoReaderSweep.Strike(s, partner, DealKind.Partnership);
+            // The player votes the other nominee out, and so does the house: the partnership is kept by the player's ballot.
+            var reveal = ModeTwoReaderSweep.Reveal(s, y, voters.ToDictionary(id => id, id => y, StringComparer.Ordinal));
+            int week = reveal.Mode2.week;
+            var sheet = KnownBallots.Read(reveal.Mode2, week);
+            Assert.That(sheet.voters.Contains(partner) || (sheet.tieBroken && sheet.hohId == partner), Is.False, "Fixture: the partner cast no ballot.");
+            string keep = reveal.Mode2.Find(reveal.Mode2.playerId).name + " honoured a " + DealKind.Title(DealKind.Partnership).ToLowerInvariant()
+                + " with " + reveal.Mode2.Find(partner).name + ".";
+            foreach (var season in new[] { reveal.Mode1, reveal.Mode2 })
+                Assert.That(Record(season, partner, week, gated: true).Select(entry => entry.Item1), Does.Contain(keep),
+                    "Fixture: the player's record of the partner tells the keep, in both modes.");
+
+            string name = reveal.Mode2.Find(partner).name;
+            var two = YourWeek.Build(reveal.Mode2, week).word;
+            Assert.That(two.Select(line => (line.kind, line.verdict, line.byId, line.text)), Is.EqualTo(new[]
+            {
+                (YourWeek.Kinds.Deal, YourWeek.Verdicts.Kept, reveal.Mode2.playerId, "You kept the partnership with " + name + "."),
+            }), "The player's own keep, theirs to read.");
+            Assert.That(Json(two), Is.EqualTo(Json(YourWeek.Build(reveal.Mode1, week).word)), "As mode 1 lists it.");
+            Assert.That(Json(YourWeek.Build(reveal.Projection, week)), Is.EqualTo(Json(YourWeek.Build(reveal.Mode2, week))),
+                "The projection of mode 1's season reads as mode 2's.");
+        }
+
+        /// <summary>
         /// The jury flow's receipt of the player's word: the player promised a voter their vote and broke it. In mode 2 that word
         /// is a canonical Vote row, the owner of its incident, and the voter - asked as a juror - has it as the accountability
         /// receipt, with the receipt line and the kicker mode 1 gives its raw promise; a promise kept to another voter is their

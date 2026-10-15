@@ -350,6 +350,118 @@ namespace Gamesim.Presentation
             return FiniteFarewell(weight) && weight > 0f && weight <= 1f;
         }
 
+        // ----- Planted feet ----------------------------------------------------------------------
+        // The farewell is an upper-body beat on planted feet: FarewellPair refuses a foot that moves
+        // more than FootTolerance (1 mm) from the cue's frame until the body is back in Idle. Neither
+        // the take nor the cross-fade can keep that (measured 2026-10-15, every Idle frame against the
+        // take): the take stands in PoseAtEase's stance, a foot 168 to 173 mm from where Idle_Loop puts
+        // it on the mocap skeleton and 52 to 69 mm from UMA's Idle on a UMA body, at every phase of
+        // either; and no Idle holds a foot to a millimetre - over its loop a foot moves up to 17 mm
+        // (Idle_Loop) and 21 mm (UMA's Idle). So from the cue until the body has settled back in Idle,
+        // the hips and the two leg chains keep the pose they had on the cue's frame, and only then ease
+        // into the live Idle again. The upper body plays the take as authored, on the held hips.
+        private const float FarewellHoldSettleSeconds = .1f, FarewellHoldReleaseSeconds = .3f,
+            FarewellHoldGiveWaySeconds = .15f, FarewellHoldEntrySeconds = .5f;
+        private Transform[] farewellHold;
+        private Vector3[] farewellHoldPosition;
+        private Quaternion[] farewellHoldRotation;
+        private Animator farewellHoldAnimator;
+        private float farewellHoldWeight, farewellHoldAge, farewellHoldSettled, farewellHoldRelease;
+        private bool farewellHoldEntered;
+
+        /// <summary>Whether this body is holding its hips and legs where the farewell's cue found them.</summary>
+        internal bool HoldsFarewellStance => farewellHold != null;
+
+        /// <summary>
+        /// Takes hold of the hips and both leg chains as they stand, on the frame the farewell is cued.
+        /// Only a body settled in Idle is held: a cue that lands on anything else plays as it always has.
+        /// </summary>
+        private void HoldFarewellStance()
+        {
+            // A cue repeated while its stance is still held keeps the stance it already has.
+            if (farewellHold != null && farewellHoldRelease <= 0f && animator == farewellHoldAnimator) return;
+            if (animator == null || !TryReadFarewell(out var pose) || !pose.Idle) return;
+            EndFarewellStance();
+            var hips = animator.GetBoneTransform(HumanBodyBones.Hips);
+            if (hips == null) return;
+            var chain = new List<Transform> { hips };
+            foreach (var (toes, foot) in new[] { (HumanBodyBones.LeftToes, HumanBodyBones.LeftFoot),
+                         (HumanBodyBones.RightToes, HumanBodyBones.RightFoot) })
+            {
+                var end = animator.GetBoneTransform(toes);
+                if (end == null) end = animator.GetBoneTransform(foot);
+                int at = chain.Count;
+                for (var bone = end; bone != hips; bone = bone.parent)
+                {
+                    if (bone == null) return; // A leg that does not hang from the hips is not held.
+                    chain.Insert(at, bone);
+                }
+            }
+            farewellHold = chain.ToArray();
+            farewellHoldPosition = new Vector3[farewellHold.Length];
+            farewellHoldRotation = new Quaternion[farewellHold.Length];
+            for (int i = 0; i < farewellHold.Length; i++)
+            {
+                farewellHoldPosition[i] = farewellHold[i].localPosition;
+                farewellHoldRotation[i] = farewellHold[i].localRotation;
+            }
+            farewellHoldAnimator = animator;
+            farewellHoldWeight = 1f;
+            farewellHoldAge = farewellHoldSettled = farewellHoldRelease = 0f;
+            farewellHoldEntered = false;
+        }
+
+        private void EndFarewellStance()
+        {
+            farewellHold = null; farewellHoldPosition = null; farewellHoldRotation = null; farewellHoldAnimator = null;
+            farewellHoldWeight = 0f; farewellHoldEntered = false;
+        }
+
+        /// <summary>
+        /// Run after the animator has written the frame. Holds the stance while the body is in Idle, the
+        /// take, or the cross-fades between them; lets go once the body has stood in Idle again for
+        /// <see cref="FarewellHoldSettleSeconds"/>, and sooner when something else takes the body: a walk,
+        /// another beat, a seat, an activity, reduced motion, or a cue that never played.
+        /// </summary>
+        private void TickFarewellStance()
+        {
+            if (farewellHold == null) return;
+            if (animator == null || animator != farewellHoldAnimator || !animator.isActiveAndEnabled || !animator.isInitialized)
+            { EndFarewellStance(); return; } // A rebuilt or retired body: nothing of the old one to write.
+            foreach (var bone in farewellHold) if (bone == null) { EndFarewellStance(); return; }
+            float delta = Time.deltaTime;
+            var current = animator.GetCurrentAnimatorStateInfo(0);
+            bool transition = animator.IsInTransition(0);
+            var next = transition ? animator.GetNextAnimatorStateInfo(0) : default;
+            bool currentTake = current.IsName(FarewellState), nextTake = transition && next.IsName(FarewellState);
+            bool currentIdle = current.IsName("Idle");
+            bool lawful = (currentTake || currentIdle) && (!transition || nextTake || next.IsName("Idle"));
+            farewellHoldEntered |= currentTake || nextTake;
+            if (!lawful || reducedMotion || seated || activity != BodyActivity.None)
+                farewellHoldRelease = Mathf.Max(farewellHoldRelease, 1f / FarewellHoldGiveWaySeconds);
+            else if (farewellHoldEntered && currentIdle && !transition)
+            {
+                if ((farewellHoldSettled += delta) > FarewellHoldSettleSeconds)
+                    farewellHoldRelease = Mathf.Max(farewellHoldRelease, 1f / FarewellHoldReleaseSeconds);
+            }
+            else if (!farewellHoldEntered && (farewellHoldAge += delta) > FarewellHoldEntrySeconds)
+                farewellHoldRelease = Mathf.Max(farewellHoldRelease, 1f / FarewellHoldReleaseSeconds);
+            if (farewellHoldRelease > 0f) farewellHoldWeight -= delta * farewellHoldRelease;
+            if (farewellHoldWeight <= 0f) { EndFarewellStance(); return; }
+            for (int i = 0; i < farewellHold.Length; i++)
+            {
+                var bone = farewellHold[i];
+                if (farewellHoldWeight >= 1f)
+                {
+                    bone.localPosition = farewellHoldPosition[i];
+                    bone.localRotation = farewellHoldRotation[i];
+                    continue;
+                }
+                bone.localPosition = Vector3.Lerp(bone.localPosition, farewellHoldPosition[i], farewellHoldWeight);
+                bone.localRotation = Quaternion.Slerp(bone.localRotation, farewellHoldRotation[i], farewellHoldWeight);
+            }
+        }
+
         internal static bool FiniteFarewell(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
         internal static bool FiniteFarewell(Vector3 value) => FiniteFarewell(value.x) && FiniteFarewell(value.y) && FiniteFarewell(value.z);
         internal static bool FiniteFarewell(Quaternion value) => FiniteFarewell(value.x) && FiniteFarewell(value.y) && FiniteFarewell(value.z) && FiniteFarewell(value.w);

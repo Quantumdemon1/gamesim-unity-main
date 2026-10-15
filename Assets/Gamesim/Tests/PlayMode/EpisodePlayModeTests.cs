@@ -54,40 +54,31 @@ namespace Gamesim.Tests.PlayMode
         [UnityTearDown]
         public IEnumerator CleanUpIsolatedEpisode()
         {
-            bool originalCleanupCompleted = false;
-            try
+            if (testKeyboard != null && testKeyboard.added) InputSystem.RemoveDevice(testKeyboard);
+            testKeyboard = null;
+            if (testMouse != null && testMouse.added) InputSystem.RemoveDevice(testMouse);
+            testMouse = null;
+            if (testGamepad != null && testGamepad.added) InputSystem.RemoveDevice(testGamepad);
+            testGamepad = null;
+            if (director != null) director.ClosePanels();
+            var episode = SceneManager.GetSceneByName(EpisodeScene);
+            if (episode.IsValid() && episode.isLoaded)
             {
-                if (testKeyboard != null && testKeyboard.added) InputSystem.RemoveDevice(testKeyboard);
-                testKeyboard = null;
-                if (testMouse != null && testMouse.added) InputSystem.RemoveDevice(testMouse);
-                testMouse = null;
-                if (testGamepad != null && testGamepad.added) InputSystem.RemoveDevice(testGamepad);
-                testGamepad = null;
-                if (director != null) director.ClosePanels();
-                var episode = SceneManager.GetSceneByName(EpisodeScene);
-                if (episode.IsValid() && episode.isLoaded)
-                {
-                    var cleanupScene = SceneManager.CreateScene("Episode test cleanup " + Guid.NewGuid().ToString("N"));
-                    SceneManager.SetActiveScene(cleanupScene);
-                    yield return SceneManager.UnloadSceneAsync(episode);
-                }
-                EpisodeDirector.SaveRootOverride = null;
-                // A test that opted its root into its own preferences (A13) lets the opt-in go with it.
-                EpisodeDirector.PreferencesBesideSaves = false;
-                if (GamesimBootstrap.Instance != null) Object.Destroy(GamesimBootstrap.Instance.gameObject);
-                yield return null;
-                if (!string.IsNullOrEmpty(temporaryDirectory))
-                {
-                    var resolved = Path.GetFullPath(temporaryDirectory);
-                    Assert.That(resolved.StartsWith(Path.GetFullPath(Path.GetTempPath()), StringComparison.OrdinalIgnoreCase), Is.True);
-                    Assert.That(Path.GetFileName(resolved), Does.StartWith("GamesimEpisodeTests-"));
-                    if (Directory.Exists(resolved)) Directory.Delete(resolved, true);
-                }
-                originalCleanupCompleted = true;
+                var cleanupScene = SceneManager.CreateScene("Episode test cleanup " + Guid.NewGuid().ToString("N"));
+                SceneManager.SetActiveScene(cleanupScene);
+                yield return SceneManager.UnloadSceneAsync(episode);
             }
-            finally
+            EpisodeDirector.SaveRootOverride = null;
+            // A test that opted its root into its own preferences (A13) lets the opt-in go with it.
+            EpisodeDirector.PreferencesBesideSaves = false;
+            if (GamesimBootstrap.Instance != null) Object.Destroy(GamesimBootstrap.Instance.gameObject);
+            yield return null;
+            if (!string.IsNullOrEmpty(temporaryDirectory))
             {
-                ReleaseProvidedFarewellFixture(originalCleanupCompleted);
+                var resolved = Path.GetFullPath(temporaryDirectory);
+                Assert.That(resolved.StartsWith(Path.GetFullPath(Path.GetTempPath()), StringComparison.OrdinalIgnoreCase), Is.True);
+                Assert.That(Path.GetFileName(resolved), Does.StartWith("GamesimEpisodeTests-"));
+                if (Directory.Exists(resolved)) Directory.Delete(resolved, true);
             }
         }
 

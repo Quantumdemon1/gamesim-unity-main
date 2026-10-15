@@ -1,0 +1,27 @@
+{
+  "name": "Gamesim.Uma.DiagnosticsPlayModeTests",
+  "rootNamespace": "Gamesim.Uma.Tests.Diagnostics",
+  "references": [
+    "Gamesim.Uma",
+    "Gamesim.Runtime",
+    "Gamesim.Simulation",
+    "Gamesim.DiagnosticsPlayModeTests",
+    "UMA_Core"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS",
+    "GAMESIM_UMA",
+    "GAMESIM_DIAGNOSTICS"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

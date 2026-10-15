@@ -93,15 +93,20 @@ namespace Gamesim.Tests.PlayMode
         {
             yield return BeginFarewellFixture();
             var pair = director.GoodbyeFarewell;
-            if (pair == null)
-            {
-                // This is the explicitly primitive clone contract, not provided-body cancellation acceptance.
-                var diagnostics = SceneComponents<CharacterPresentation>().Where(p => p.LastReaction == CharacterPresentation.Reaction.Farewell).ToArray();
-                Assert.That(diagnostics.Length, Is.EqualTo(2));
-                Assert.That(diagnostics.All(p => p.IsPrimitiveBody), Is.True);
-                Assert.That(director.GoodbyeFarewellFailure, Is.Null);
-                yield break;
-            }
+#if !GAMESIM_UMA
+            // The UMA-free build has only the primitive rig, so here this test checks exactly the primitive
+            // clone contract, and asserts that is what ran. Provided-body cancellation is judged in the
+            // GAMESIM_UMA build, where the branch below is required instead of skipped.
+            Assert.That(pair, Is.Null, "The UMA-free build has no provided bodies; a provided pair here is not the primitive contract.");
+            var diagnostics = SceneComponents<CharacterPresentation>().Where(p => p.LastReaction == CharacterPresentation.Reaction.Farewell).ToArray();
+            Assert.That(diagnostics.Length, Is.EqualTo(2));
+            Assert.That(diagnostics.All(p => p.IsPrimitiveBody), Is.True);
+            Assert.That(director.GoodbyeFarewellFailure, Is.Null);
+            TestContext.WriteLine("UMA-free build: the primitive-rig farewell contract only; provided-body cancellation is judged under GAMESIM_UMA.");
+#else
+            // The UMA build plays the real cast: the provided pair must exist. A fall back to the primitive rig
+            // fails here instead of passing through the primitive contract.
+            Assert.That(pair, Is.Not.Null, "MISSING provided-body farewell pair in the UMA build: " + director.GoodbyeFarewellFailure);
             pair.First.SetReducedMotion(true);
             yield return null;
             yield return null;
@@ -112,6 +117,7 @@ namespace Gamesim.Tests.PlayMode
             director.SkipWalkOut();
             yield return null;
             Assert.That(director.GoodbyeFarewell, Is.Null);
+#endif
         }
 
         [UnityTest]
@@ -129,6 +135,15 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             var first = Presentation(HouseguestBody(leaving)); var second = Presentation(HouseguestBody(staying));
             bool primitive = first.IsPrimitiveBody && second.IsPrimitiveBody;
+            // The build decides the branch, and the test asserts it: the UMA-free build has only the primitive
+            // rig and checks its contract; the UMA build plays the real cast and requires the provided-body
+            // Idle witness. A UMA body that fell back to the primitive rig fails here instead of passing.
+#if GAMESIM_UMA
+            Assert.That(first.IsPrimitiveBody || second.IsPrimitiveBody, Is.False,
+                "The UMA build plays the real cast; a primitive principal is a fallback, not this test's subject.");
+#else
+            Assert.That(primitive, Is.True, "The UMA-free build has only the primitive rig.");
+#endif
             float by = Time.realtimeSinceStartup + 2f; // Observation only; the product's existing absolute1.5 cap is unchanged.
             while ((primitive ? first.LastReaction != CharacterPresentation.Reaction.Farewell
                     || second.LastReaction != CharacterPresentation.Reaction.Farewell : director.GoodbyeFarewellCameraCutFrame < 0)
@@ -149,8 +164,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.GoodbyeFarewellIdleObservations, Is.Zero);
                 Assert.That(director.GoodbyeFarewellIdlePreparationAttempts, Is.Zero);
                 Assert.That(director.GoodbyeFarewellIdlePreparationCalls, Is.Zero);
-                Debug.Log("[Gamesim] Farewell readiness: primitive diagnostic ONLY; no actual Idle/WalkStop witness.");
-                yield break; // Explicit primitive diagnostic, NEVER an actual Idle/WalkStop acceptance claim.
+                Debug.Log("[Gamesim] Farewell readiness: UMA-free build, primitive-rig contract ONLY; the actual Idle/WalkStop witness is judged under GAMESIM_UMA.");
+                yield break; // The UMA-free build's whole subject, NEVER an actual Idle/WalkStop acceptance claim.
             }
             Assert.That(first.IsPrimitiveBody || second.IsPrimitiveBody, Is.False);
             Assert.That(director.GoodbyeFarewellIdlePreparationFrame, Is.GreaterThanOrEqualTo(0));
@@ -181,9 +196,13 @@ namespace Gamesim.Tests.PlayMode
         }
 
 
-#if UNITY_EDITOR && UNITY_INCLUDE_TESTS
-        // These require actual provided bodies. A primitive clone or a missing ordinary branch
-        // FAILS as a missing witness; it is never promoted from the generic diagnostic case.
+#if UNITY_EDITOR && UNITY_INCLUDE_TESTS && GAMESIM_UMA
+        // These require actual provided bodies, so they exist only in the GAMESIM_UMA build and are judged
+        // on the UMA cast (the owner's decision: UMA bodies only for the cast, and no non-UMA body as a
+        // stand-in or test cast). The UMA-free build used to borrow the animation library's mesh-less
+        // skeleton (bb_anim_PoseAtEase.fbx) as the evicted pair, with no wardrobe catalog, which proved
+        // nothing about the product either way. A primitive clone or a missing ordinary branch FAILS as a
+        // missing witness; it is never promoted from the generic diagnostic case.
         private sealed class FarewellReadinessRoute
         {
             internal object Stage;
@@ -195,153 +214,6 @@ namespace Gamesim.Tests.PlayMode
             internal float Deadline, GoodbyeEnd;
         }
         private FarewellReadinessRoute farewellReadinessRoute;
-
-#if !GAMESIM_UMA
-        // This lease supplies only the existing imported skeleton. It is not a wardrobe provider.
-        private ProvidedFarewellFixtureProvider providedFarewellFixtureProvider;
-        private bool providedFarewellFixtureReleaseSucceeded;
-        private readonly System.Collections.Generic.List<System.Exception> providedFarewellFixtureReleaseFailures
-            = new System.Collections.Generic.List<System.Exception>();
-
-        private static void RetainProvidedFarewellReleaseFailure(
-            System.Collections.Generic.List<System.Exception> failures, string phase, System.Exception failure)
-        {
-            failures.Add(new System.InvalidOperationException("Farewell fixture release: " + phase, failure));
-            try
-            {
-                TestContext.Error.WriteLine("[Gamesim] Farewell fixture release FAILED phase=" + phase
-                    + " type=" + failure.GetType().FullName);
-            }
-            catch (System.Exception evidenceFailure)
-            {
-                // Keep the reporting failure too; do not replace an active original test exception.
-                failures.Add(new System.InvalidOperationException("Farewell fixture release evidence", evidenceFailure));
-            }
-        }
-
-        private sealed class ProvidedFarewellFixtureProvider : IModularCharacterBodyProvider
-        {
-            private const string Skeleton = "Assets/Gamesim/Art/Authored/Animation/Humanoid/bb_anim_PoseAtEase.fbx";
-            private readonly GameObject model;
-            private readonly Avatar avatar;
-            private readonly RuntimeAnimatorController controller;
-            private GameObject pendingClone;
-            private readonly System.Collections.Generic.List<GameObject> ownedClones
-                = new System.Collections.Generic.List<GameObject>();
-            private readonly System.Collections.Generic.List<System.Exception> releaseFailures;
-
-            internal ProvidedFarewellFixtureProvider(System.Collections.Generic.List<System.Exception> failures)
-            {
-                releaseFailures = failures;
-                model = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(Skeleton);
-                avatar = UnityEditor.AssetDatabase.LoadAllAssetsAtPath(Skeleton).OfType<Avatar>().FirstOrDefault();
-                controller = Resources.Load<RuntimeAnimatorController>("Animation/GamesimHumanoid");
-                Assert.That(model != null && avatar != null && avatar.isValid && avatar.isHuman && controller != null,
-                    Is.True, "MISSING genuine imported Skeleton/valid human Avatar/canonical controller; no fallback.");
-            }
-
-            public ICharacterAppearanceCatalog Catalog => null;
-            internal int LiveOwnedCloneCount => ownedClones.Count(root => root != null) + (pendingClone != null ? 1 : 0);
-
-            public bool TryCreate(in CharacterBodyRequest request, Transform parent, Color badge, out CharacterBody body)
-            {
-                body = default;
-                GameObject root = null;
-                try
-                {
-                    root = Object.Instantiate(model, parent, false);
-                    pendingClone = root; // Retain ownership even if adding the clone to the list fails.
-                    ownedClones.Add(root); // Own the actual clone before any Animator configuration can fail.
-                    pendingClone = null;
-                    var animator = root.GetComponent<Animator>() ?? root.AddComponent<Animator>();
-                    animator.avatar = avatar; animator.runtimeAnimatorController = controller; animator.applyRootMotion = false;
-                    animator.cullingMode = AnimatorCullingMode.AlwaysAnimate; animator.updateMode = AnimatorUpdateMode.Normal;
-                    body = new CharacterBody(root, animator, false, this);
-                    return true;
-                }
-                catch
-                {
-                    try
-                    {
-                        CharacterBodySource.Unregister(this); // Refuse further builds before releasing any owned clone.
-                    }
-                    catch (System.Exception failure)
-                    {
-                        RetainProvidedFarewellReleaseFailure(releaseFailures, "create-unregister", failure);
-                    }
-                    ReleaseOwnedClones(); // A failed build unwinds ALL owned clones, not just the failed root.
-                    throw; // The original builder failure, not a replacement cleanup exception.
-                }
-            }
-
-            public bool TryCreate(string id, Transform parent, Color colour, out CharacterBody body)
-            { body = default; return false; }
-            public void SetWardrobeColor(in CharacterBody body, Color colour) { }
-
-            private void ReleaseOwnedClone(GameObject root, string phase)
-            {
-                try
-                {
-                    if (root != null) Object.DestroyImmediate(root); // Owned instance only; never the borrowed asset or parent.
-                    Assert.That(root == null, Is.True, "Owned farewell fixture clone remains live after release.");
-                    ownedClones.Remove(root);
-                    if (object.ReferenceEquals(pendingClone, root)) pendingClone = null;
-                }
-                catch (System.Exception failure)
-                {
-                    RetainProvidedFarewellReleaseFailure(releaseFailures, phase, failure);
-                }
-            }
-
-            internal void ReleaseOwnedClones()
-            {
-                // Do not let one release exception skip any later owned instance.
-                if (pendingClone != null) ReleaseOwnedClone(pendingClone, "pending-clone");
-                else pendingClone = null;
-                for (int i = ownedClones.Count - 1; i >= 0; i--)
-                    ReleaseOwnedClone(ownedClones[i], "teardown-clone");
-            }
-        }
-#endif
-
-        private void AcquireProvidedFarewellFixture()
-        {
-#if !GAMESIM_UMA
-            if (providedFarewellFixtureProvider != null)
-            {
-                try
-                {
-                    Assert.That(providedFarewellFixtureReleaseFailures, Is.Empty, "A failed lease cannot be reused.");
-                    Assert.That(object.ReferenceEquals(CharacterBodySource.Provider, providedFarewellFixtureProvider),
-                        Is.True, "Unrelated provider displaced the current readiness lease; do not reorder the registry.");
-                }
-                catch
-                {
-                    ReleaseProvidedFarewellFixture(false);
-                    throw;
-                }
-                return; // Existing intra-test reloads use this exact one lease, not stacked registrations.
-            }
-
-            Assert.That(providedFarewellFixtureReleaseFailures, Is.Empty, "An earlier fixture release failure is retained.");
-            var previous = CharacterBodySource.Provider;
-            Assert.That(previous, Is.Null, "Unexpected preexisting NoUMA provider; fixture refuses to replace it.");
-            var owned = new ProvidedFarewellFixtureProvider(providedFarewellFixtureReleaseFailures);
-            providedFarewellFixtureProvider = owned; // Ownership precedes Register and its postcondition.
-            providedFarewellFixtureReleaseSucceeded = false;
-            try
-            {
-                CharacterBodySource.Register(owned);
-                Assert.That(object.ReferenceEquals(CharacterBodySource.Provider, owned), Is.True,
-                    "The exact owned provider must be current before staged reload.");
-            }
-            catch
-            {
-                ReleaseProvidedFarewellFixture(false);
-                throw;
-            }
-#endif
-        }
 
         private static object ReadFarewellField(object owner, string name)
         {
@@ -390,7 +262,6 @@ namespace Gamesim.Tests.PlayMode
 
         private IEnumerator BeginProvidedFarewellReadiness(float validCardReadingSeconds = 0f)
         {
-            AcquireProvidedFarewellFixture();
             yield return InstallStagedSeason(52, AtEviction);
             yield return PlayUntilTheCeremony();
             yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing,
@@ -1140,56 +1011,6 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ReadFarewellField<float>(route.Stage, "goodbyeUntil"), Is.EqualTo(route.GoodbyeEnd));
         }
 #endif
-
-        private void ReleaseProvidedFarewellFixture(bool originalCleanupCompleted)
-        {
-#if UNITY_EDITOR && UNITY_INCLUDE_TESTS && !GAMESIM_UMA
-            var owned = providedFarewellFixtureProvider;
-            if (owned == null) return; // Generic and UMA paths never acquired this readiness lease.
-            bool unregistered = false;
-            try
-            {
-                CharacterBodySource.Unregister(owned); // Exact instance even if an unrelated provider is now top.
-                unregistered = true;
-            }
-            catch (System.Exception failure)
-            {
-                RetainProvidedFarewellReleaseFailure(providedFarewellFixtureReleaseFailures, "unregister", failure);
-            }
-            owned.ReleaseOwnedClones(); // Each owned clone attempted independently, after registry removal.
-            try
-            {
-                Assert.That(CharacterBodySource.Provider, Is.Null,
-                    "NoUMA fixture must restore its observed empty registry; never delete an unrelated provider.");
-            }
-            catch (System.Exception failure)
-            {
-                RetainProvidedFarewellReleaseFailure(providedFarewellFixtureReleaseFailures, "registry-restoration", failure);
-            }
-            providedFarewellFixtureReleaseSucceeded = originalCleanupCompleted && unregistered
-                && owned.LiveOwnedCloneCount == 0 && providedFarewellFixtureReleaseFailures.Count == 0;
-            if (unregistered && owned.LiveOwnedCloneCount == 0) providedFarewellFixtureProvider = null;
-            try
-            {
-                TestContext.WriteLine("[Gamesim] Farewell fixture release completedOriginalCleanup=" + originalCleanupCompleted
-                    + " unregistered=" + unregistered + " liveOwnedClones=" + owned.LiveOwnedCloneCount
-                    + " retainedReleaseFailures=" + providedFarewellFixtureReleaseFailures.Count
-                    + " releaseSucceeded=" + providedFarewellFixtureReleaseSucceeded
-                    + (originalCleanupCompleted ? "" : " INTERRUPTED_OR_ACTIVE_FAILURE_NOT_SUCCESS"));
-            }
-            catch (System.Exception evidenceFailure)
-            {
-                providedFarewellFixtureReleaseSucceeded = false;
-                providedFarewellFixtureReleaseFailures.Add(
-                    new System.InvalidOperationException("Farewell fixture release summary evidence", evidenceFailure));
-            }
-            if (originalCleanupCompleted && providedFarewellFixtureReleaseFailures.Count != 0)
-                throw new System.AggregateException("Farewell fixture release failed; every owned release was attempted.",
-                    providedFarewellFixtureReleaseFailures);
-            // An interrupted iterator can be cancellation/disposal, not necessarily an original exception.
-            // Keep secondary failures and releaseSucceeded=false without masking an active original exception.
-#endif
-        }
 
         private IEnumerator BeginFarewellFixture()
         {

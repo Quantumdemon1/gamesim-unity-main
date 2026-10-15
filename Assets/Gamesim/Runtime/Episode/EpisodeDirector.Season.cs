@@ -93,7 +93,7 @@ namespace Gamesim.Episode
             hud.Action("New season in a NEW slot (preserves this season)", NewSeason);
             hud.Action("Main menu", OpenMainMenu);
             hud.Section("SOUND");
-            hud.VolumeSlider("Master volume", volumePercent, muted ? UiTheme.Muted : UiTheme.Accent, SetMasterVolumeFromSlider);
+            hud.VolumeSlider("Master volume", volumePercent, muted ? UiTheme.Muted : UiTheme.Accent, SetMasterVolumeLive, SetMasterVolumeFromSlider);
             hud.Action("Volume down", () => { volumePercent = Mathf.Max(0, volumePercent - 10); ApplyPreferences(); Render(); });
             hud.Action("Volume up", () => { volumePercent = Mathf.Min(100, volumePercent + 10); ApplyPreferences(); Render(); });
             hud.Action(muted ? "Turn sound on" : "Mute sound", () => { muted = !muted; ApplyPreferences(); Render(); });
@@ -103,7 +103,7 @@ namespace Gamesim.Episode
             {
                 var each = channel;
                 hud.VolumeSlider(SoundPictures.MeterCaption(each), ChannelVolumePercent(each), muted ? UiTheme.Muted : UiTheme.Accent,
-                    percent => ApplyChannelVolume(each, percent));
+                    percent => ApplyChannelVolumeLive(each, percent), percent => ApplyChannelVolume(each, percent));
                 hud.Action(SoundPictures.DownCaption(each), () => { SetChannelVolume(each, SoundPictures.Stepped(ChannelVolumePercent(each), false)); hud.FocusWhenWired(SoundPictures.DownCaption(each)); });
                 hud.Action(SoundPictures.UpCaption(each), () => { SetChannelVolume(each, SoundPictures.Stepped(ChannelVolumePercent(each), true)); hud.FocusWhenWired(SoundPictures.UpCaption(each)); });
             }
@@ -467,12 +467,38 @@ namespace Gamesim.Episode
             ApplyPreferences();
         }
 
-        private void ApplyChannelVolume(SoundChannel channel, int percent)
+        // Heard as a slider moves: the level only. Kept, scanned and logged once the value is chosen
+        // (SetMasterVolumeFromSlider, ApplyChannelVolume) - a drag used to write the preferences,
+        // find every body in the scene and log a line for each percent it passed through (PR-10).
+        private void SetMasterVolumeLive(int percent)
+        {
+            volumePercent = SoundPictures.Clamp(percent);
+            ApplyVolumesLive();
+        }
+
+        private void ApplyChannelVolumeLive(SoundChannel channel, int percent)
+        {
+            SetChannelShare(channel, percent);
+            ApplyVolumesLive();
+        }
+
+        private void ApplyVolumesLive()
+        {
+            audioBed?.SetVolume(volumePercent / 100f);
+            audioBed?.SetChannelVolumes(musicVolumePercent / 100f, effectsVolumePercent / 100f, interfaceVolumePercent / 100f);
+        }
+
+        private void SetChannelShare(SoundChannel channel, int percent)
         {
             percent = SoundPictures.Clamp(percent);
             if (channel == SoundChannel.Music) musicVolumePercent = percent;
             else if (channel == SoundChannel.Interface) interfaceVolumePercent = percent;
             else effectsVolumePercent = percent;
+        }
+
+        private void ApplyChannelVolume(SoundChannel channel, int percent)
+        {
+            SetChannelShare(channel, percent);
             ApplyPreferences();
         }
 

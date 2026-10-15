@@ -1720,10 +1720,19 @@ namespace Gamesim.Episode
         }
         private readonly Dictionary<string, float> meterShown = new Dictionary<string, float>();
 
-        /// <summary>A literal whole-percent control; left/right adjust it, up/down leave it in the panel's focus ring.</summary>
-        public Slider VolumeSlider(string caption, int percent, Color tint, Action<int> changed)
+        /// <summary>
+        /// A literal whole-percent control; left/right adjust it, up/down leave it in the panel's focus
+        /// ring. <paramref name="changed"/> hears every value as it moves. <paramref name="settled"/>,
+        /// when given, hears a value once it is chosen: at once for a key, a pad or a value set in code,
+        /// and for a pointer drag only once it is let go - so what is kept is written once a drag, not
+        /// once a percent (PR-10).
+        /// </summary>
+        public Slider VolumeSlider(string caption, int percent, Color tint, Action<int> changed, Action<int> settled = null)
         {
             var row = Panel(caption + " slider", content, Surface);
+            // Before the slider, so it hears a press before the slider moves on it: the jump a click
+            // makes is part of the drag, not a value of its own.
+            var drag = settled != null ? row.gameObject.AddComponent<SliderSettle>() : null;
             row.gameObject.AddComponent<LayoutElement>().minHeight = Mathf.RoundToInt(78 * FontScale);
             var label = NewText(row, caption, 16, Paper);
             var count = NewText(row, SoundPictures.Clamp(percent) + "%", 16, tint);
@@ -1752,11 +1761,15 @@ namespace Gamesim.Episode
             slider.targetGraphic = handle.GetComponent<Image>(); slider.handleRect = handle; slider.fillRect = fill;
             slider.direction = Slider.Direction.LeftToRight; slider.minValue = 0; slider.maxValue = 100; slider.wholeNumbers = true;
             slider.SetValueWithoutNotify(SoundPictures.Clamp(percent));
+            if (drag != null) drag.Settled = () => settled(Mathf.RoundToInt(slider.value));
             slider.onValueChanged.AddListener(value =>
             {
                 int held = Mathf.RoundToInt(value);
                 count.text = held + "%";
                 changed?.Invoke(held);
+                if (drag == null) return;
+                if (drag.Dragging) drag.Pending = true;
+                else settled(held);
             });
             return slider;
         }

@@ -50,8 +50,10 @@ namespace Gamesim.Episode
                     // The floor grew a band. The strip and the caption above it are both fixed
                     // chrome a world bubble must clear, and the caption used to be low enough that
                     // the default floor covered it.
+                    // The save's confirmation is a bottom card only in the full HUD: the compact HUD
+                    // puts it in the top bar, which the ceiling above already clears.
                     bool bottomCard=item.name=="Interaction prompt" || item.name==CastRail.RootName
-                        || item.name=="Status" || item.name==SaveFeedbackName || item.name==CastRail.StripName || item.name==SpeechBarName;
+                        || item.name=="Status" || (item.name==SaveFeedbackName && !Compact) || item.name==CastRail.StripName || item.name==SpeechBarName;
                     // The follow chip is anchored TOP-centre, under the house pill, and was being
                     // counted as a bottom card: it pushed `bottom` to 834 while `top` was 796, so
                     // MinMaxRect returned an inverted rect and every world bubble was pinned above

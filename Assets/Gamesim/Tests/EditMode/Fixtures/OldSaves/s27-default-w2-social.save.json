@@ -1,0 +1,2450 @@
+{
+  "format": "gamesim-unity-save",
+  "version": 1,
+  "savedAt": "2026-10-15T20:13:42.5051979Z",
+  "checksum": "4cd940b018c849b4e3771d65d168225f64d7e8a79090f821092639b74fd0ede1",
+  "state": {
+    "schemaVersion": 27,
+    "competitionRulesVersion": 1,
+    "sessionId": "oldsave-default-20260910-6",
+    "seed": 20260910,
+    "randomState": 1212414753,
+    "revision": 33,
+    "week": 2,
+    "nextSequence": 109,
+    "socialActions": 0,
+    "phase": 0,
+    "playerId": "player",
+    "hohId": "maya-hassan",
+    "previousHohId": "player",
+    "vetoHolderId": "player",
+    "winnerId": null,
+    "runnerUpId": null,
+    "finalPart1WinnerId": null,
+    "finalPart2WinnerId": null,
+    "competitionResolved": false,
+    "vetoResolved": true,
+    "evictionResolved": true,
+    "contestants": [
+      {
+        "id": "player",
+        "name": "You",
+        "pronouns": "they/them",
+        "motive": "Choose who to trust, survive the vote, and build a game you can explain.",
+        "homeRoom": "Living",
+        "occupation": "Houseguest",
+        "archetype": "The Newcomer",
+        "hometown": null,
+        "bio": null,
+        "sourceTemplateId": null,
+        "appearance": null,
+        "age": 30,
+        "mood": "Angry",
+        "stressLevel": "Stressed",
+        "isPlayer": true,
+        "status": 0,
+        "stats": {
+          "physical": 6.0,
+          "mental": 6.0,
+          "endurance": 6.0,
+          "social": 6.0,
+          "luck": 6.0,
+          "competition": 6.0,
+          "strategic": 6.0,
+          "loyalty": 6.0
+        },
+        "traits": [],
+        "hohWins": 1,
+        "vetoWins": 1,
+        "timesNominated": 1,
+        "nominationWeeks": [
+          2
+        ]
+      },
+      {
+        "id": "maya-hassan",
+        "name": "Maya Hassan",
+        "pronouns": "she/her",
+        "motive": "Build a dependable voting partnership without making promises she cannot keep.",
+        "homeRoom": "Private",
+        "occupation": "Lawyer",
+        "archetype": "The Diplomat",
+        "hometown": null,
+        "bio": null,
+        "sourceTemplateId": null,
+        "appearance": null,
+        "age": 30,
+        "mood": "Angry",
+        "stressLevel": "Stressed",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4.0,
+          "mental": 8.0,
+          "endurance": 4.0,
+          "social": 8.0,
+          "luck": 6.0,
+          "competition": 4.0,
+          "strategic": 6.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Strategic",
+          "Social"
+        ],
+        "hohWins": 1,
+        "vetoWins": 0,
+        "timesNominated": 1,
+        "nominationWeeks": [
+          1
+        ]
+      },
+      {
+        "id": "taylor-kim",
+        "name": "Taylor Kim",
+        "pronouns": "she/her",
+        "motive": "Prove she can win under pressure and earn safety without surrendering her independence.",
+        "homeRoom": "Yard",
+        "occupation": "Fitness Instructor",
+        "archetype": "The Firebrand",
+        "hometown": null,
+        "bio": null,
+        "sourceTemplateId": null,
+        "appearance": null,
+        "age": 27,
+        "mood": "Angry",
+        "stressLevel": "Stressed",
+        "isPlayer": false,
+        "status": 2,
+        "stats": {
+          "physical": 10.0,
+          "mental": 4.0,
+          "endurance": 7.0,
+          "social": 4.0,
+          "luck": 4.0,
+          "competition": 4.0,
+          "strategic": 4.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Competitive",
+          "Confrontational"
+        ],
+        "hohWins": 0,
+        "vetoWins": 1,
+        "timesNominated": 2,
+        "nominationWeeks": [
+          1,
+          2
+        ]
+      },
+      {
+        "id": "jamie-roberts",
+        "name": "Jamie Roberts",
+        "pronouns": "she/her",
+        "motive": "Protect people who treat her honestly while keeping the courage to make her own move.",
+        "homeRoom": "Kitchen",
+        "occupation": "Nurse",
+        "archetype": "The Caregiver",
+        "hometown": null,
+        "bio": null,
+        "sourceTemplateId": null,
+        "appearance": null,
+        "age": 27,
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 2,
+        "stats": {
+          "physical": 4.0,
+          "mental": 8.0,
+          "endurance": 4.0,
+          "social": 8.0,
+          "luck": 4.0,
+          "competition": 4.0,
+          "strategic": 6.0,
+          "loyalty": 6.0
+        },
+        "traits": [
+          "Emotional",
+          "Strategic"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 1,
+        "nominationWeeks": [
+          1
+        ]
+      },
+      {
+        "id": "casey-wilson",
+        "name": "Casey Wilson",
+        "pronouns": "she/her",
+        "motive": "Keep conversations light, compare what people say, and avoid becoming the obvious target.",
+        "homeRoom": "Living",
+        "occupation": "Bartender",
+        "archetype": "The Party Animal",
+        "hometown": null,
+        "bio": null,
+        "sourceTemplateId": null,
+        "appearance": null,
+        "age": 24,
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4.0,
+          "mental": 8.0,
+          "endurance": 4.0,
+          "social": 8.0,
+          "luck": 6.0,
+          "competition": 4.0,
+          "strategic": 6.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Social",
+          "Strategic"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      },
+      {
+        "id": "riley-johnson",
+        "name": "Riley Johnson",
+        "pronouns": "he/him",
+        "motive": "Turn careful observation into one reliable partnership and a well-timed competition win.",
+        "homeRoom": "Bedroom",
+        "occupation": "Software Engineer",
+        "archetype": "The Brainiac",
+        "hometown": null,
+        "bio": null,
+        "sourceTemplateId": null,
+        "appearance": null,
+        "age": 29,
+        "mood": "Angry",
+        "stressLevel": "Stressed",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4.0,
+          "mental": 10.0,
+          "endurance": 4.0,
+          "social": 4.0,
+          "luck": 4.0,
+          "competition": 4.0,
+          "strategic": 7.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Analytical",
+          "Strategic"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 1,
+        "nominationWeeks": [
+          2
+        ]
+      }
+    ],
+    "relationships": [
+      {
+        "fromId": "player",
+        "toId": "maya-hassan",
+        "score": -29.492296887561679,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "Something Maya Hassan heard about you",
+          "Something Maya Hassan heard about you"
+        ],
+        "events": [
+          {
+            "sequence": 45,
+            "week": 1,
+            "type": "rumor",
+            "description": "Something Maya Hassan heard about you",
+            "impactScore": -12.937515396159144,
+            "decayable": true
+          },
+          {
+            "sequence": 103,
+            "week": 2,
+            "type": "rumor",
+            "description": "Something Maya Hassan heard about you",
+            "impactScore": -14.286201142240316,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "player",
+        "toId": "taylor-kim",
+        "score": -27.530114599037919,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "Something you heard about Taylor Kim",
+          "You used POV forcing Taylor Kim on the block",
+          "Taylor Kim campaigned to stay"
+        ],
+        "events": [
+          {
+            "sequence": 50,
+            "week": 1,
+            "type": "rumor",
+            "description": "Something you heard about Taylor Kim",
+            "impactScore": -15.0,
+            "decayable": true
+          },
+          {
+            "sequence": 75,
+            "week": 2,
+            "type": "campaign",
+            "description": "Taylor Kim campaigned to stay",
+            "impactScore": 4.1578394486568868,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "player",
+        "toId": "jamie-roberts",
+        "score": -12.2347151953727,
+        "lastInteractionWeek": 1,
+        "notes": [
+          "You named Jamie Roberts as replacement nominee"
+        ],
+        "events": []
+      },
+      {
+        "fromId": "player",
+        "toId": "casey-wilson",
+        "score": -9.83928355686367,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "Something Casey Wilson heard about you",
+          "Casey Wilson spent time with you"
+        ],
+        "events": [
+          {
+            "sequence": 39,
+            "week": 1,
+            "type": "rumor",
+            "description": "Something Casey Wilson heard about you",
+            "impactScore": -14.256091954652222,
+            "decayable": true
+          },
+          {
+            "sequence": 100,
+            "week": 2,
+            "type": "talk",
+            "description": "Casey Wilson spent time with you",
+            "impactScore": 3.2456389091908933,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "player",
+        "toId": "riley-johnson",
+        "score": -7.4136138463392864,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "Riley Johnson campaigned to stay",
+          "Something Riley Johnson heard about you",
+          "Riley Johnson spent time with you"
+        ],
+        "events": [
+          {
+            "sequence": 78,
+            "week": 2,
+            "type": "campaign",
+            "description": "Riley Johnson campaigned to stay",
+            "impactScore": 5.5274855187162766,
+            "decayable": true
+          },
+          {
+            "sequence": 96,
+            "week": 2,
+            "type": "rumor",
+            "description": "Something Riley Johnson heard about you",
+            "impactScore": -16.59847752051428,
+            "decayable": true
+          },
+          {
+            "sequence": 105,
+            "week": 2,
+            "type": "talk",
+            "description": "Riley Johnson spent time with you",
+            "impactScore": 3.6554939482361082,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "maya-hassan",
+        "toId": "player",
+        "score": -30.0,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "Something Maya Hassan heard about you",
+          "Something Maya Hassan heard about you"
+        ],
+        "events": [
+          {
+            "sequence": 44,
+            "week": 1,
+            "type": "rumor",
+            "description": "Something Maya Hassan heard about you",
+            "impactScore": -15.0,
+            "decayable": true
+          },
+          {
+            "sequence": 102,
+            "week": 2,
+            "type": "rumor",
+            "description": "Something Maya Hassan heard about you",
+            "impactScore": -15.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "maya-hassan",
+        "toId": "taylor-kim",
+        "score": -15.952453019097451,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "Maya Hassan named Taylor Kim as replacement nominee"
+        ],
+        "events": [
+          {
+            "sequence": 19,
+            "week": 1,
+            "type": "campaign",
+            "description": "Maya Hassan campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "maya-hassan",
+        "toId": "jamie-roberts",
+        "score": 15.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "maya-hassan",
+        "toId": "casey-wilson",
+        "score": 12.0,
+        "lastInteractionWeek": 2,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 15,
+            "week": 1,
+            "type": "promise-made",
+            "description": "Maya Hassan gave Casey Wilson their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 40,
+            "week": 1,
+            "type": "talk",
+            "description": "Maya Hassan spent time with Casey Wilson",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 47,
+            "week": 1,
+            "type": "talk",
+            "description": "Casey Wilson spent time with Maya Hassan",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 71,
+            "week": 2,
+            "type": "promise-made",
+            "description": "Casey Wilson gave Maya Hassan their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 97,
+            "week": 2,
+            "type": "talk",
+            "description": "Maya Hassan spent time with Casey Wilson",
+            "impactScore": 4.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "maya-hassan",
+        "toId": "riley-johnson",
+        "score": -4.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 48,
+            "week": 1,
+            "type": "eavesdrop",
+            "description": "Maya Hassan caught Riley Johnson listening in",
+            "impactScore": -8.0,
+            "decayable": true
+          },
+          {
+            "sequence": 54,
+            "week": 1,
+            "type": "talk",
+            "description": "Riley Johnson spent time with Maya Hassan",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 73,
+            "week": 2,
+            "type": "promise-made",
+            "description": "Riley Johnson gave Maya Hassan their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "taylor-kim",
+        "toId": "player",
+        "score": -25.561459101736546,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "Something you heard about Taylor Kim",
+          "You used POV forcing Taylor Kim on the block",
+          "Taylor Kim campaigned to stay"
+        ],
+        "events": [
+          {
+            "sequence": 51,
+            "week": 1,
+            "type": "rumor",
+            "description": "Something you heard about Taylor Kim",
+            "impactScore": -14.67419573524967,
+            "decayable": true
+          },
+          {
+            "sequence": 74,
+            "week": 2,
+            "type": "campaign",
+            "description": "Taylor Kim campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "taylor-kim",
+        "toId": "maya-hassan",
+        "score": -15.0,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "Maya Hassan named Taylor Kim as replacement nominee"
+        ],
+        "events": [
+          {
+            "sequence": 20,
+            "week": 1,
+            "type": "campaign",
+            "description": "Maya Hassan campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "taylor-kim",
+        "toId": "jamie-roberts",
+        "score": -7.3906461466103792,
+        "lastInteractionWeek": 1,
+        "notes": [
+          "Taylor Kim used POV forcing Jamie Roberts on the block"
+        ],
+        "events": [
+          {
+            "sequence": 22,
+            "week": 1,
+            "type": "campaign",
+            "description": "Jamie Roberts campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "taylor-kim",
+        "toId": "casey-wilson",
+        "score": 4.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 42,
+            "week": 1,
+            "type": "talk",
+            "description": "Taylor Kim spent time with Casey Wilson",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 68,
+            "week": 2,
+            "type": "promise-made",
+            "description": "Taylor Kim gave Casey Wilson their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "taylor-kim",
+        "toId": "riley-johnson",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jamie-roberts",
+        "toId": "player",
+        "score": -15.974008284509182,
+        "lastInteractionWeek": 1,
+        "notes": [
+          "You named Jamie Roberts as replacement nominee"
+        ],
+        "events": []
+      },
+      {
+        "fromId": "jamie-roberts",
+        "toId": "maya-hassan",
+        "score": 15.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jamie-roberts",
+        "toId": "taylor-kim",
+        "score": -10.0,
+        "lastInteractionWeek": 1,
+        "notes": [
+          "Taylor Kim used POV forcing Jamie Roberts on the block"
+        ],
+        "events": [
+          {
+            "sequence": 21,
+            "week": 1,
+            "type": "campaign",
+            "description": "Jamie Roberts campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "jamie-roberts",
+        "toId": "casey-wilson",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 17,
+            "week": 1,
+            "type": "promise-made",
+            "description": "Jamie Roberts gave Casey Wilson their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "jamie-roberts",
+        "toId": "riley-johnson",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "player",
+        "score": -7.31191718801856,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "Something Casey Wilson heard about you",
+          "Casey Wilson spent time with you"
+        ],
+        "events": [
+          {
+            "sequence": 38,
+            "week": 1,
+            "type": "rumor",
+            "description": "Something Casey Wilson heard about you",
+            "impactScore": -15.0,
+            "decayable": true
+          },
+          {
+            "sequence": 99,
+            "week": 2,
+            "type": "talk",
+            "description": "Casey Wilson spent time with you",
+            "impactScore": 4.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "maya-hassan",
+        "score": 12.0,
+        "lastInteractionWeek": 2,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 16,
+            "week": 1,
+            "type": "promise-made",
+            "description": "Maya Hassan gave Casey Wilson their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 41,
+            "week": 1,
+            "type": "talk",
+            "description": "Maya Hassan spent time with Casey Wilson",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 46,
+            "week": 1,
+            "type": "talk",
+            "description": "Casey Wilson spent time with Maya Hassan",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 70,
+            "week": 2,
+            "type": "promise-made",
+            "description": "Casey Wilson gave Maya Hassan their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 98,
+            "week": 2,
+            "type": "talk",
+            "description": "Maya Hassan spent time with Casey Wilson",
+            "impactScore": 4.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "taylor-kim",
+        "score": 4.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 43,
+            "week": 1,
+            "type": "talk",
+            "description": "Taylor Kim spent time with Casey Wilson",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 69,
+            "week": 2,
+            "type": "promise-made",
+            "description": "Taylor Kim gave Casey Wilson their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "jamie-roberts",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 18,
+            "week": 1,
+            "type": "promise-made",
+            "description": "Jamie Roberts gave Casey Wilson their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "riley-johnson",
+        "score": -10.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "player",
+        "score": -6.0,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "Riley Johnson campaigned to stay",
+          "Something Riley Johnson heard about you",
+          "Riley Johnson spent time with you"
+        ],
+        "events": [
+          {
+            "sequence": 77,
+            "week": 2,
+            "type": "campaign",
+            "description": "Riley Johnson campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 95,
+            "week": 2,
+            "type": "rumor",
+            "description": "Something Riley Johnson heard about you",
+            "impactScore": -15.0,
+            "decayable": true
+          },
+          {
+            "sequence": 104,
+            "week": 2,
+            "type": "talk",
+            "description": "Riley Johnson spent time with you",
+            "impactScore": 4.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "maya-hassan",
+        "score": -4.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 49,
+            "week": 1,
+            "type": "eavesdrop",
+            "description": "Maya Hassan caught Riley Johnson listening in",
+            "impactScore": -8.0,
+            "decayable": true
+          },
+          {
+            "sequence": 53,
+            "week": 1,
+            "type": "talk",
+            "description": "Riley Johnson spent time with Maya Hassan",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 72,
+            "week": 2,
+            "type": "promise-made",
+            "description": "Riley Johnson gave Maya Hassan their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "taylor-kim",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "jamie-roberts",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "casey-wilson",
+        "score": -10.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      }
+    ],
+    "promises": [
+      {
+        "id": "promise-npc-15",
+        "fromId": "maya-hassan",
+        "toId": "casey-wilson",
+        "targetId": "jamie-roberts",
+        "kind": 1,
+        "status": 3,
+        "week": 1,
+        "expiresWeek": 1,
+        "impact": "medium",
+        "brokenById": null,
+        "settledWeek": 0
+      },
+      {
+        "id": "promise-npc-17",
+        "fromId": "jamie-roberts",
+        "toId": "casey-wilson",
+        "targetId": "maya-hassan",
+        "kind": 1,
+        "status": 3,
+        "week": 1,
+        "expiresWeek": 1,
+        "impact": "medium",
+        "brokenById": null,
+        "settledWeek": 0
+      },
+      {
+        "id": "promise-npc-68",
+        "fromId": "taylor-kim",
+        "toId": "casey-wilson",
+        "targetId": "riley-johnson",
+        "kind": 1,
+        "status": 0,
+        "week": 2,
+        "expiresWeek": 2,
+        "impact": "medium",
+        "brokenById": null,
+        "settledWeek": 0
+      },
+      {
+        "id": "promise-npc-70",
+        "fromId": "casey-wilson",
+        "toId": "maya-hassan",
+        "targetId": null,
+        "kind": 0,
+        "status": 0,
+        "week": 2,
+        "expiresWeek": 3,
+        "impact": "medium",
+        "brokenById": null,
+        "settledWeek": 0
+      },
+      {
+        "id": "promise-npc-72",
+        "fromId": "riley-johnson",
+        "toId": "maya-hassan",
+        "targetId": "taylor-kim",
+        "kind": 1,
+        "status": 0,
+        "week": 2,
+        "expiresWeek": 2,
+        "impact": "medium",
+        "brokenById": null,
+        "settledWeek": 0
+      }
+    ],
+    "alliances": [],
+    "memories": [
+      {
+        "ownerId": "maya-hassan",
+        "subjectId": "jamie-roberts",
+        "text": "Jamie checked in on me during arrival. I appreciated it.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "jamie-roberts",
+        "subjectId": "maya-hassan",
+        "text": "Maya listened when I talked about the pressure of moving in.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "casey-wilson",
+        "subjectId": "riley-johnson",
+        "text": "Riley questioned my first plan before hearing me out.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "riley-johnson",
+        "subjectId": "casey-wilson",
+        "text": "Casey's first plan moved faster than I was comfortable with.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "casey-wilson",
+        "subjectId": "player",
+        "text": "We spent time talking in week 1.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "jamie-roberts",
+        "subjectId": "player",
+        "text": "We spent time talking in week 1.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "maya-hassan",
+        "subjectId": "player",
+        "text": "Nominated me in week 1.",
+        "week": 1,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "taylor-kim",
+        "subjectId": "player",
+        "text": "Nominated me in week 1.",
+        "week": 1,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "jamie-roberts",
+        "subjectId": "player",
+        "text": "Nominated me in week 1.",
+        "week": 1,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "player",
+        "subjectId": "maya-hassan",
+        "text": "Nominated me in week 2.",
+        "week": 2,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "riley-johnson",
+        "subjectId": "maya-hassan",
+        "text": "Nominated me in week 2.",
+        "week": 2,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "taylor-kim",
+        "subjectId": "maya-hassan",
+        "text": "Nominated me in week 2.",
+        "week": 2,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "riley-johnson",
+        "subjectId": "casey-wilson",
+        "text": "I overheard Casey Wilson and Maya Hassan in week 2. They sounded careful with each other.",
+        "week": 2,
+        "isPrivate": true
+      }
+    ],
+    "nominees": [
+      "riley-johnson",
+      "taylor-kim"
+    ],
+    "vetoPlayers": [
+      "player",
+      "maya-hassan",
+      "taylor-kim",
+      "casey-wilson",
+      "riley-johnson"
+    ],
+    "votes": [
+      {
+        "voterId": "player",
+        "targetId": "riley-johnson",
+        "reason": "Player's decision"
+      },
+      {
+        "voterId": "casey-wilson",
+        "targetId": "taylor-kim",
+        "reason": "Taylor Kim is the bigger threat and needs to go."
+      },
+      {
+        "voterId": "maya-hassan",
+        "targetId": "taylor-kim",
+        "reason": "HoH tie-break: Taylor Kim is the bigger threat and needs to go."
+      }
+    ],
+    "ledger": {
+      "opportunities": [
+        {
+          "id": "read-1",
+          "kind": "read",
+          "anchor": "EvictionNight",
+          "source": null,
+          "response": "ignored",
+          "outcome": "na",
+          "currency": null,
+          "note": null,
+          "week": 1,
+          "payoff": 0.0,
+          "steps": []
+        },
+        {
+          "id": "read-2",
+          "kind": "read",
+          "anchor": "EvictionNight",
+          "source": null,
+          "response": "ignored",
+          "outcome": "na",
+          "currency": null,
+          "note": null,
+          "week": 2,
+          "payoff": 0.0,
+          "steps": []
+        }
+      ],
+      "competitions": [
+        {
+          "week": 1,
+          "field": 6,
+          "placement": 1,
+          "kind": "HoH",
+          "entry": "played",
+          "performance": 0.5,
+          "expectedWin": 0.18478516585751864
+        },
+        {
+          "week": 1,
+          "field": 6,
+          "placement": 3,
+          "kind": "Veto",
+          "entry": "played",
+          "performance": 0.5,
+          "expectedWin": 0.12322964357537115
+        },
+        {
+          "week": 2,
+          "field": 4,
+          "placement": 0,
+          "kind": "HoH",
+          "entry": "watched",
+          "performance": 0.0,
+          "expectedWin": 0.0
+        },
+        {
+          "week": 2,
+          "field": 5,
+          "placement": 1,
+          "kind": "Veto",
+          "entry": "played",
+          "performance": 0.5,
+          "expectedWin": 0.29880245386904086
+        }
+      ],
+      "power": [
+        {
+          "week": 1,
+          "hohId": "player",
+          "vetoHolderId": "taylor-kim",
+          "savedId": "taylor-kim",
+          "replacementId": "jamie-roberts",
+          "evicteeId": "jamie-roberts",
+          "backdoorTargetId": null,
+          "backdoorResult": null,
+          "vetoUsed": true,
+          "nominees": [
+            "maya-hassan",
+            "jamie-roberts"
+          ],
+          "tally": [
+            1,
+            2
+          ]
+        },
+        {
+          "week": 2,
+          "hohId": "maya-hassan",
+          "vetoHolderId": "player",
+          "savedId": "player",
+          "replacementId": "taylor-kim",
+          "evicteeId": "taylor-kim",
+          "backdoorTargetId": null,
+          "backdoorResult": null,
+          "vetoUsed": true,
+          "nominees": [
+            "riley-johnson",
+            "taylor-kim"
+          ],
+          "tally": [
+            1,
+            1
+          ]
+        }
+      ],
+      "ballots": [
+        {
+          "week": 2,
+          "voterId": "player",
+          "targetId": "riley-johnson",
+          "readBefore": null,
+          "correct": false
+        }
+      ],
+      "claims": [],
+      "alliances": [],
+      "standings": [
+        {
+          "week": 1,
+          "fromId": "jamie-roberts",
+          "toId": "player",
+          "source": "juror",
+          "score": -15.974008284509182
+        },
+        {
+          "week": 2,
+          "fromId": "taylor-kim",
+          "toId": "player",
+          "source": "juror",
+          "score": -25.561459101736546
+        }
+      ],
+      "replies": [],
+      "calls": [],
+      "dropped": 0
+    },
+    "readRulesStartWeek": 0,
+    "leverRulesStartWeek": 0,
+    "weekRulesStartWeek": 0,
+    "windowActions": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "economyRulesVersion": 0,
+    "moveInExtrasSpent": 0,
+    "agencyRulesStartWeek": 0,
+    "finaleRulesStartWeek": 0,
+    "commitmentRulesStartWeek": 0,
+    "unifiedCommitmentRulesVersion": 0,
+    "unifiedCommitments": [],
+    "unifiedHearingRulesVersion": 0,
+    "unifiedHearingEvidence": [],
+    "unifiedHearingReceipts": [],
+    "unifiedVoteReveals": [],
+    "competitionScores": [
+      {
+        "contestantId": "player",
+        "score": 8.9371201200410724
+      },
+      {
+        "contestantId": "maya-hassan",
+        "score": 7.8102886523120105
+      },
+      {
+        "contestantId": "taylor-kim",
+        "score": 3.7097831163555384
+      },
+      {
+        "contestantId": "casey-wilson",
+        "score": 6.92244478231296
+      },
+      {
+        "contestantId": "riley-johnson",
+        "score": 8.1607087529730045
+      }
+    ],
+    "events": [
+      {
+        "sequence": 1,
+        "week": 1,
+        "phase": 0,
+        "kind": "arrival",
+        "text": "Six housemates, one new game. Meet the cast, decide who to trust, and prepare for the first competition.",
+        "audienceIds": [
+          "player",
+          "maya-hassan",
+          "taylor-kim",
+          "jamie-roberts",
+          "casey-wilson",
+          "riley-johnson"
+        ]
+      },
+      {
+        "sequence": 2,
+        "week": 1,
+        "phase": 0,
+        "kind": "conversation",
+        "text": "You and Casey Wilson talked about the game.",
+        "audienceIds": [
+          "player",
+          "casey-wilson"
+        ]
+      },
+      {
+        "sequence": 3,
+        "week": 1,
+        "phase": 0,
+        "kind": "conversation",
+        "text": "You and Jamie Roberts talked about the game.",
+        "audienceIds": [
+          "player",
+          "jamie-roberts"
+        ]
+      },
+      {
+        "sequence": 4,
+        "week": 1,
+        "phase": 1,
+        "kind": "phase",
+        "text": "Week 1 · HoH",
+        "audienceIds": []
+      },
+      {
+        "sequence": 5,
+        "week": 1,
+        "phase": 1,
+        "kind": "competition",
+        "text": "Competition winner: You · Skill.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 6,
+        "week": 1,
+        "phase": 2,
+        "kind": "phase",
+        "text": "Week 1 · Nomination",
+        "audienceIds": []
+      },
+      {
+        "sequence": 7,
+        "week": 1,
+        "phase": 2,
+        "kind": "nomination",
+        "text": "You nominate Maya Hassan and Taylor Kim.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 8,
+        "week": 1,
+        "phase": 3,
+        "kind": "phase",
+        "text": "Week 1 · VetoSelection",
+        "audienceIds": []
+      },
+      {
+        "sequence": 9,
+        "week": 1,
+        "phase": 3,
+        "kind": "veto-selection",
+        "text": "Everyone remaining in the house is eligible for the veto competition.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 10,
+        "week": 1,
+        "phase": 4,
+        "kind": "phase",
+        "text": "Week 1 · Veto",
+        "audienceIds": []
+      },
+      {
+        "sequence": 11,
+        "week": 1,
+        "phase": 4,
+        "kind": "competition",
+        "text": "Competition winner: Taylor Kim · Skill.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 12,
+        "week": 1,
+        "phase": 5,
+        "kind": "phase",
+        "text": "Week 1 · VetoMeeting",
+        "audienceIds": []
+      },
+      {
+        "sequence": 13,
+        "week": 1,
+        "phase": 5,
+        "kind": "veto",
+        "text": "Taylor Kim saves herself; Jamie Roberts is the replacement nominee.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 14,
+        "week": 1,
+        "phase": 6,
+        "kind": "phase",
+        "text": "Week 1 · Campaign",
+        "audienceIds": []
+      },
+      {
+        "sequence": 23,
+        "week": 1,
+        "phase": 6,
+        "kind": "campaign-close",
+        "text": "Campaigning has closed. The house votes privately to evict.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 24,
+        "week": 1,
+        "phase": 7,
+        "kind": "phase",
+        "text": "Week 1 · Eviction",
+        "audienceIds": []
+      },
+      {
+        "sequence": 25,
+        "week": 1,
+        "phase": 7,
+        "kind": "eviction-speech",
+        "text": "Maya Hassan: I've kept every promise I made in here, including the ones that cost me. Keep me and that doesn't change.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 26,
+        "week": 1,
+        "phase": 7,
+        "kind": "eviction-speech",
+        "text": "Jamie Roberts: I've looked after people in this house when it wasn't strategic. I'd like to think that counts for something tonight.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 27,
+        "week": 1,
+        "phase": 7,
+        "kind": "eviction-stage",
+        "text": "The house votes privately to evict.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 28,
+        "week": 1,
+        "phase": 7,
+        "kind": "private-vote",
+        "text": "Your eviction vote was recorded.",
+        "audienceIds": [
+          "taylor-kim"
+        ]
+      },
+      {
+        "sequence": 29,
+        "week": 1,
+        "phase": 7,
+        "kind": "private-vote",
+        "text": "Your eviction vote was recorded.",
+        "audienceIds": [
+          "casey-wilson"
+        ]
+      },
+      {
+        "sequence": 30,
+        "week": 1,
+        "phase": 7,
+        "kind": "private-vote",
+        "text": "Your eviction vote was recorded.",
+        "audienceIds": [
+          "riley-johnson"
+        ]
+      },
+      {
+        "sequence": 31,
+        "week": 1,
+        "phase": 7,
+        "kind": "eviction",
+        "text": "Jamie Roberts is evicted and joins the jury. By a vote of 2 to 1.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 32,
+        "week": 1,
+        "phase": 7,
+        "kind": "vote-reveal",
+        "text": "Taylor Kim voted to evict Maya Hassan. Maya Hassan is the bigger threat and needs to go.",
+        "audienceIds": [
+          "taylor-kim"
+        ]
+      },
+      {
+        "sequence": 33,
+        "week": 1,
+        "phase": 7,
+        "kind": "vote-reveal",
+        "text": "Casey Wilson voted to evict Jamie Roberts. Keeping Maya Hassan is better for my game right now.",
+        "audienceIds": [
+          "casey-wilson"
+        ]
+      },
+      {
+        "sequence": 34,
+        "week": 1,
+        "phase": 7,
+        "kind": "vote-reveal",
+        "text": "Riley Johnson voted to evict Jamie Roberts. Keeping Maya Hassan is better for my game right now.",
+        "audienceIds": [
+          "riley-johnson"
+        ]
+      },
+      {
+        "sequence": 35,
+        "week": 1,
+        "phase": 7,
+        "kind": "diary-invitation",
+        "text": "A private post-eviction reflection is ready in the Diary Room. You may also skip it.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 36,
+        "week": 1,
+        "phase": 7,
+        "kind": "diary-skip",
+        "text": "You skipped this private reflection. No persona or impression change was applied.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 37,
+        "week": 1,
+        "phase": 0,
+        "kind": "phase",
+        "text": "Week 1 · Social",
+        "audienceIds": []
+      },
+      {
+        "sequence": 52,
+        "week": 1,
+        "phase": 0,
+        "kind": "information",
+        "text": "Riley Johnson told you something about Taylor Kim.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 55,
+        "week": 1,
+        "phase": 0,
+        "kind": "storyline",
+        "text": "Back Against the Wall. Riley Johnson has made it clear — you are the target this week. The votes are stacking up against you. You have one last chance to flip the house before eviction night.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 56,
+        "week": 1,
+        "phase": 0,
+        "kind": "house-ambient",
+        "text": "Maya Hassan and Riley Johnson are deep in strategy talk in the kitchen.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 57,
+        "week": 2,
+        "phase": 1,
+        "kind": "phase",
+        "text": "Week 2 · HoH",
+        "audienceIds": []
+      },
+      {
+        "sequence": 58,
+        "week": 2,
+        "phase": 1,
+        "kind": "competition",
+        "text": "Competition winner: Maya Hassan · Mental.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 59,
+        "week": 2,
+        "phase": 2,
+        "kind": "phase",
+        "text": "Week 2 · Nomination",
+        "audienceIds": []
+      },
+      {
+        "sequence": 60,
+        "week": 2,
+        "phase": 2,
+        "kind": "nomination",
+        "text": "Maya Hassan nominates you and Riley Johnson.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 61,
+        "week": 2,
+        "phase": 3,
+        "kind": "phase",
+        "text": "Week 2 · VetoSelection",
+        "audienceIds": []
+      },
+      {
+        "sequence": 62,
+        "week": 2,
+        "phase": 3,
+        "kind": "veto-selection",
+        "text": "Everyone remaining in the house is eligible for the veto competition.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 63,
+        "week": 2,
+        "phase": 4,
+        "kind": "phase",
+        "text": "Week 2 · Veto",
+        "audienceIds": []
+      },
+      {
+        "sequence": 64,
+        "week": 2,
+        "phase": 4,
+        "kind": "competition",
+        "text": "Competition winner: You · Mental.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 65,
+        "week": 2,
+        "phase": 5,
+        "kind": "phase",
+        "text": "Week 2 · VetoMeeting",
+        "audienceIds": []
+      },
+      {
+        "sequence": 66,
+        "week": 2,
+        "phase": 5,
+        "kind": "veto",
+        "text": "You save yourself; Taylor Kim is the replacement nominee.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 67,
+        "week": 2,
+        "phase": 6,
+        "kind": "phase",
+        "text": "Week 2 · Campaign",
+        "audienceIds": []
+      },
+      {
+        "sequence": 76,
+        "week": 2,
+        "phase": 6,
+        "kind": "campaign",
+        "text": "Taylor Kim came to you asking to stay this week.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 79,
+        "week": 2,
+        "phase": 6,
+        "kind": "campaign",
+        "text": "Riley Johnson came to you asking to stay this week.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 80,
+        "week": 2,
+        "phase": 6,
+        "kind": "campaign-close",
+        "text": "Campaigning has closed. The house votes privately to evict.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 81,
+        "week": 2,
+        "phase": 7,
+        "kind": "phase",
+        "text": "Week 2 · Eviction",
+        "audienceIds": []
+      },
+      {
+        "sequence": 82,
+        "week": 2,
+        "phase": 7,
+        "kind": "eviction-speech",
+        "text": "Riley Johnson: I've paid attention, and I've shared what I saw with the people who asked. I'd like to keep doing that for you.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 83,
+        "week": 2,
+        "phase": 7,
+        "kind": "eviction-speech",
+        "text": "Taylor Kim: I've won when it mattered and I've lost without excuses. Give me the chance to do it again.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 84,
+        "week": 2,
+        "phase": 7,
+        "kind": "eviction-stage",
+        "text": "The house votes privately to evict.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 85,
+        "week": 2,
+        "phase": 7,
+        "kind": "private-vote",
+        "text": "Your eviction vote was recorded.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 86,
+        "week": 2,
+        "phase": 7,
+        "kind": "private-vote",
+        "text": "Your eviction vote was recorded.",
+        "audienceIds": [
+          "casey-wilson"
+        ]
+      },
+      {
+        "sequence": 87,
+        "week": 2,
+        "phase": 7,
+        "kind": "private-vote",
+        "text": "Your eviction vote was recorded.",
+        "audienceIds": [
+          "maya-hassan"
+        ]
+      },
+      {
+        "sequence": 88,
+        "week": 2,
+        "phase": 7,
+        "kind": "eviction",
+        "text": "Taylor Kim is evicted and joins the jury. By a vote of 1 to 1; Maya Hassan broke the tie.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 89,
+        "week": 2,
+        "phase": 7,
+        "kind": "vote-reveal",
+        "text": "You voted to evict Riley Johnson. Player's decision",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 90,
+        "week": 2,
+        "phase": 7,
+        "kind": "vote-reveal",
+        "text": "Casey Wilson voted to evict Taylor Kim. Taylor Kim is the bigger threat and needs to go.",
+        "audienceIds": [
+          "casey-wilson"
+        ]
+      },
+      {
+        "sequence": 91,
+        "week": 2,
+        "phase": 7,
+        "kind": "vote-reveal",
+        "text": "Maya Hassan voted to evict Taylor Kim. HoH tie-break: Taylor Kim is the bigger threat and needs to go.",
+        "audienceIds": [
+          "maya-hassan"
+        ]
+      },
+      {
+        "sequence": 92,
+        "week": 2,
+        "phase": 7,
+        "kind": "diary-invitation",
+        "text": "A private post-eviction reflection is ready in the Diary Room. You may also skip it.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 93,
+        "week": 2,
+        "phase": 7,
+        "kind": "diary-skip",
+        "text": "You skipped this private reflection. No persona or impression change was applied.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 94,
+        "week": 2,
+        "phase": 0,
+        "kind": "phase",
+        "text": "Week 2 · Social",
+        "audienceIds": []
+      },
+      {
+        "sequence": 101,
+        "week": 2,
+        "phase": 0,
+        "kind": "conversation",
+        "text": "Casey Wilson sought you out this week.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 106,
+        "week": 2,
+        "phase": 0,
+        "kind": "conversation",
+        "text": "Riley Johnson sought you out this week.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 107,
+        "week": 2,
+        "phase": 0,
+        "kind": "storyline",
+        "text": "Broken Trust. Through the wall you hear Riley Johnson explaining your plan - your plan - to people who were never meant to hear it. They walk out smiling, unaware you were on the other side.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 108,
+        "week": 2,
+        "phase": 0,
+        "kind": "house-ambient",
+        "text": "There's tension between Casey Wilson and Maya Hassan — they haven't spoken all day.",
+        "audienceIds": [
+          "player"
+        ]
+      }
+    ],
+    "acceptedCommandIds": [
+      "generate-0001",
+      "generate-0002",
+      "generate-0003",
+      "generate-0004",
+      "generate-0005",
+      "generate-0006",
+      "generate-0007",
+      "generate-0008",
+      "generate-0009",
+      "generate-0010",
+      "generate-0011",
+      "generate-0012",
+      "generate-0013",
+      "generate-0014",
+      "generate-0015",
+      "generate-0016",
+      "generate-0017",
+      "generate-0018",
+      "generate-0019",
+      "generate-0020",
+      "generate-0021",
+      "generate-0022",
+      "generate-0023",
+      "generate-0024",
+      "generate-0025",
+      "generate-0026",
+      "generate-0027",
+      "generate-0028",
+      "generate-0029",
+      "generate-0030",
+      "generate-0031",
+      "generate-0032",
+      "generate-0033"
+    ],
+    "juryExchanges": [],
+    "juryQuestionIndex": 0,
+    "finalSpeeches": [],
+    "finalArgument": null,
+    "relationshipArcs": [
+      {
+        "npcId": "casey-wilson",
+        "npcName": "Casey Wilson",
+        "arcType": "neutral",
+        "intensity": 27.0,
+        "escalationLevel": 1,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": 4.0,
+            "reason": "Relationship changed by 4"
+          },
+          {
+            "week": 1,
+            "delta": -15.0,
+            "reason": "Something Casey Wilson heard about you"
+          },
+          {
+            "week": 2,
+            "delta": 4.0,
+            "reason": "Casey Wilson spent time with you"
+          }
+        ]
+      },
+      {
+        "npcId": "jamie-roberts",
+        "npcName": "Jamie Roberts",
+        "arcType": "rivalry",
+        "intensity": 48.0,
+        "escalationLevel": 1,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": 4.0,
+            "reason": "Relationship changed by 4"
+          },
+          {
+            "week": 1,
+            "delta": -8.0,
+            "reason": "Nominated Jamie Roberts in week 1"
+          },
+          {
+            "week": 1,
+            "delta": -20.0,
+            "reason": "You named Jamie Roberts as replacement nominee"
+          },
+          {
+            "week": 1,
+            "delta": -15.0,
+            "reason": "Taylor Kim used POV forcing Jamie Roberts on the block"
+          }
+        ]
+      },
+      {
+        "npcId": "maya-hassan",
+        "npcName": "Maya Hassan",
+        "arcType": "rivalry",
+        "intensity": 69.0,
+        "escalationLevel": 2,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": -8.0,
+            "reason": "Nominated Maya Hassan in week 1"
+          },
+          {
+            "week": 1,
+            "delta": -15.0,
+            "reason": "Something Maya Hassan heard about you"
+          },
+          {
+            "week": 2,
+            "delta": -8.0,
+            "reason": "Nominated you in week 2"
+          },
+          {
+            "week": 2,
+            "delta": -20.0,
+            "reason": "Maya Hassan named Taylor Kim as replacement nominee"
+          },
+          {
+            "week": 2,
+            "delta": -15.0,
+            "reason": "Something Maya Hassan heard about you"
+          }
+        ]
+      },
+      {
+        "npcId": "taylor-kim",
+        "npcName": "Taylor Kim",
+        "arcType": "rivalry",
+        "intensity": 79.5,
+        "escalationLevel": 3,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": -8.0,
+            "reason": "Nominated Taylor Kim in week 1"
+          },
+          {
+            "week": 1,
+            "delta": -15.0,
+            "reason": "Taylor Kim used POV forcing Jamie Roberts on the block"
+          },
+          {
+            "week": 1,
+            "delta": -15.0,
+            "reason": "Something you heard about Taylor Kim"
+          },
+          {
+            "week": 2,
+            "delta": -20.0,
+            "reason": "Maya Hassan named Taylor Kim as replacement nominee"
+          },
+          {
+            "week": 2,
+            "delta": -15.0,
+            "reason": "You used POV forcing Taylor Kim on the block"
+          },
+          {
+            "week": 2,
+            "delta": 5.0,
+            "reason": "Taylor Kim campaigned to stay"
+          }
+        ]
+      },
+      {
+        "npcId": "riley-johnson",
+        "npcName": "Riley Johnson",
+        "arcType": "neutral",
+        "intensity": 28.5,
+        "escalationLevel": 1,
+        "weeklyHistory": [
+          {
+            "week": 2,
+            "delta": 5.0,
+            "reason": "Riley Johnson campaigned to stay"
+          },
+          {
+            "week": 2,
+            "delta": -15.0,
+            "reason": "Something Riley Johnson heard about you"
+          },
+          {
+            "week": 2,
+            "delta": 4.0,
+            "reason": "Riley Johnson spent time with you"
+          }
+        ]
+      }
+    ],
+    "playerPersona": {
+      "current": "Neutral",
+      "scores": [
+        {
+          "persona": "Neutral",
+          "score": 0
+        },
+        {
+          "persona": "Remorseful",
+          "score": 0
+        },
+        {
+          "persona": "Ruthless",
+          "score": 0
+        },
+        {
+          "persona": "Calculated",
+          "score": 0
+        },
+        {
+          "persona": "Social Butterfly",
+          "score": 0
+        }
+      ],
+      "history": []
+    },
+    "jurySentiment": {
+      "jurors": [
+        {
+          "jurorId": "jamie-roberts",
+          "jurorName": "Jamie Roberts",
+          "sentiment": -6.0,
+          "events": [
+            {
+              "week": 0,
+              "delta": 0.0,
+              "reason": "Entered jury"
+            }
+          ]
+        },
+        {
+          "jurorId": "taylor-kim",
+          "jurorName": "Taylor Kim",
+          "sentiment": -14.0,
+          "events": [
+            {
+              "week": 0,
+              "delta": 0.0,
+              "reason": "Entered jury"
+            }
+          ]
+        }
+      ],
+      "overallSentiment": -10.0
+    },
+    "pendingDiary": null,
+    "lastDiaryRoomWeek": 2,
+    "phaseEventSocialBonus": 0,
+    "phaseEventCompBonus": 0,
+    "resolvedDiaryIds": [
+      "diary-post_eviction-1",
+      "diary-post_eviction-2"
+    ],
+    "loyaltyOaths": [],
+    "oathOpportunities": [],
+    "shownOathMilestones": [],
+    "playerStudyBonus": 0,
+    "blocRulesStartWeek": 1,
+    "npcSocial": {
+      "rulesStartWeek": 1,
+      "clockTick": 0,
+      "nextScanTick": 3,
+      "nextConversationSequence": 1,
+      "randomState": 2203633174,
+      "pending": [],
+      "cooldowns": [],
+      "pairMemory": []
+    },
+    "evictionStage": 0,
+    "evictionSpeeches": [
+      {
+        "speakerId": "riley-johnson",
+        "text": "I've paid attention, and I've shared what I saw with the people who asked. I'd like to keep doing that for you.",
+        "week": 2,
+        "isPlayerAuthored": false
+      },
+      {
+        "speakerId": "taylor-kim",
+        "text": "I've won when it mattered and I've lost without excuses. Give me the chance to do it again.",
+        "week": 2,
+        "isPlayerAuthored": false
+      }
+    ],
+    "backdoorTargetId": null,
+    "outOfPhaseSocialActions": 0,
+    "openingBeatsSeen": [],
+    "socialBudgetRulesStartWeek": 1,
+    "deals": [],
+    "dealRulesStartWeek": 1,
+    "boughtActionPoints": 0,
+    "houseEvents": [
+      {
+        "id": "house-event-55",
+        "kind": "house",
+        "title": "The Last Stand",
+        "narrative": "Riley Johnson has made it clear — you are the target this week. The votes are stacking up against you. You have one last chance to flip the house before eviction night.",
+        "involvedIds": [
+          "riley-johnson"
+        ],
+        "choices": [
+          {
+            "label": "Make a desperate deal",
+            "description": "Offer them whatever it takes to get through the week.",
+            "risk": "medium",
+            "impacts": [
+              {
+                "targetId": "riley-johnson",
+                "amount": 8.0
+              }
+            ],
+            "trustChange": -2.0,
+            "optionId": null,
+            "glyph": null,
+            "approach": null,
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          },
+          {
+            "label": "Win the veto",
+            "description": "Stop negotiating and go and take it off the table yourself.",
+            "risk": "high",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": null,
+            "glyph": null,
+            "approach": null,
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          },
+          {
+            "label": "Accept your fate gracefully",
+            "description": "Stop fighting it, and be remembered for how you went out.",
+            "risk": "low",
+            "impacts": [
+              {
+                "targetId": "riley-johnson",
+                "amount": 5.0
+              }
+            ],
+            "trustChange": 5.0,
+            "optionId": null,
+            "glyph": null,
+            "approach": null,
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          }
+        ],
+        "week": 1,
+        "resolved": false,
+        "chosenIndex": -1,
+        "outcome": null,
+        "contentId": null,
+        "cycleId": null,
+        "closesAnchor": null,
+        "surface": null,
+        "venue": null,
+        "lapseOptionId": null,
+        "cast": []
+      },
+      {
+        "id": "house-event-56",
+        "kind": "ambient",
+        "title": "In the house",
+        "narrative": "Maya Hassan and Riley Johnson are deep in strategy talk in the kitchen.",
+        "involvedIds": [
+          "maya-hassan",
+          "riley-johnson"
+        ],
+        "choices": [],
+        "week": 1,
+        "resolved": true,
+        "chosenIndex": -1,
+        "outcome": null,
+        "contentId": null,
+        "cycleId": null,
+        "closesAnchor": null,
+        "surface": null,
+        "venue": null,
+        "lapseOptionId": null,
+        "cast": []
+      },
+      {
+        "id": "house-event-107",
+        "kind": "house",
+        "title": "The Revelation",
+        "narrative": "Through the wall you hear Riley Johnson explaining your plan - your plan - to people who were never meant to hear it. They walk out smiling, unaware you were on the other side.",
+        "involvedIds": [
+          "riley-johnson"
+        ],
+        "choices": [
+          {
+            "label": "Confront them privately",
+            "description": "Say it to their face, with nobody else in the room.",
+            "risk": "low",
+            "impacts": [
+              {
+                "targetId": "riley-johnson",
+                "amount": -8.0
+              }
+            ],
+            "trustChange": 3.0,
+            "optionId": null,
+            "glyph": null,
+            "approach": null,
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          },
+          {
+            "label": "Use it against them",
+            "description": "Say nothing, and spend what you know when it is worth most.",
+            "risk": "high",
+            "impacts": [
+              {
+                "targetId": "riley-johnson",
+                "amount": -18.0
+              }
+            ],
+            "trustChange": -5.0,
+            "optionId": null,
+            "glyph": null,
+            "approach": null,
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          }
+        ],
+        "week": 2,
+        "resolved": false,
+        "chosenIndex": -1,
+        "outcome": null,
+        "contentId": null,
+        "cycleId": null,
+        "closesAnchor": null,
+        "surface": null,
+        "venue": null,
+        "lapseOptionId": null,
+        "cast": []
+      },
+      {
+        "id": "house-event-108",
+        "kind": "ambient",
+        "title": "In the house",
+        "narrative": "There's tension between Casey Wilson and Maya Hassan — they haven't spoken all day.",
+        "involvedIds": [
+          "casey-wilson",
+          "maya-hassan"
+        ],
+        "choices": [],
+        "week": 2,
+        "resolved": true,
+        "chosenIndex": -1,
+        "outcome": null,
+        "contentId": null,
+        "cycleId": null,
+        "closesAnchor": null,
+        "surface": null,
+        "venue": null,
+        "lapseOptionId": null,
+        "cast": []
+      }
+    ],
+    "eventRulesStartWeek": 1,
+    "storylines": [
+      {
+        "id": "story-55",
+        "templateId": "fallback_survival",
+        "category": "survival",
+        "title": "Back Against the Wall",
+        "eventId": "house-event-55",
+        "status": "active",
+        "week": 1,
+        "endedWeek": 0,
+        "beatId": null,
+        "lane": null,
+        "variant": 0,
+        "cast": [],
+        "path": [],
+        "vars": [],
+        "nextWeek": 0,
+        "nextAnchor": null,
+        "endingId": null
+      },
+      {
+        "id": "story-107",
+        "templateId": "fallback_social_drama",
+        "category": "social_drama",
+        "title": "Broken Trust",
+        "eventId": "house-event-107",
+        "status": "active",
+        "week": 2,
+        "endedWeek": 0,
+        "beatId": null,
+        "lane": null,
+        "variant": 0,
+        "cast": [],
+        "path": [],
+        "vars": [],
+        "nextWeek": 0,
+        "nextAnchor": null,
+        "endingId": null
+      }
+    ],
+    "activeModifiers": [],
+    "storyRulesStartWeek": 1,
+    "haveNotRulesStartWeek": 0,
+    "haveNots": [],
+    "haveNotPasses": [],
+    "punishedHaveNots": [],
+    "vetoPrizes": [],
+    "strategyRulesStartWeek": 0,
+    "lobbies": [],
+    "replyCards": [],
+    "story": {
+      "rulesStartWeek": 0,
+      "rulesVersion": 0,
+      "productionStrictness": 1,
+      "romanceStorylines": true,
+      "grudges": [],
+      "facts": [],
+      "bonds": [],
+      "hooks": [],
+      "contacts": [],
+      "lore": [],
+      "knownFacts": [],
+      "conduct": [],
+      "removals": [],
+      "pendingRemovalId": null,
+      "cooldowns": [],
+      "reckonings": []
+    }
+  }
+}

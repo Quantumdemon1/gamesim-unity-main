@@ -27,10 +27,13 @@ namespace Gamesim.OldSaves
         {
             try
             {
+                if (args.Length >= 1 && args[0] == "shape") { Shape(typeof(EpisodeState), "", 0); return 0; }
+#if !OLDSAVE_SHAPE_ONLY
                 if (args.Length >= 3 && args[0] == "record") return Record(args[1], args[2]);
                 if (args.Length >= 3 && args[0] == "replay") return Replay(args[1], args[2]);
                 if (args.Length >= 7 && args[0] == "generate")
                     return Generate(args[1], uint.Parse(args[2]), int.Parse(args[3]), args[4], int.Parse(args[5]), (EpisodePhase)Enum.Parse(typeof(EpisodePhase), args[6]));
+#endif
                 Console.Error.WriteLine("usage: record <save> <out> | generate <out> <seed> <size> <rules> <week> <phase>");
                 return 2;
             }
@@ -41,6 +44,7 @@ namespace Gamesim.OldSaves
             }
         }
 
+#if !OLDSAVE_SHAPE_ONLY
         // ------------------------------------------------------------------ record
 
         private static int Record(string save, string outDir)
@@ -208,12 +212,35 @@ namespace Gamesim.OldSaves
             File.WriteAllText(outFile, JToken.Parse(OldSaveTrace.Canonical(fields, false)).ToString(Formatting.Indented));
             Directory.Delete(slot, true);
         }
+#endif
+
+        /// <summary>
+        /// The saved shape of this build: every public instance field a save stores, one "path type" a line, through
+        /// lists and the simulation's own classes. Two builds of one schema with different shapes mean a field was
+        /// added without a version, and the older build's files cannot pass the newer one's exact shape check.
+        /// </summary>
+        private static void Shape(Type type, string path, int depth)
+        {
+            if (depth > 10) return;
+            foreach (var field in type.GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public))
+            {
+                var t = field.FieldType;
+                string here = path + field.Name;
+                bool list = t.IsGenericType && t.GetGenericTypeDefinition() == typeof(List<>);
+                var element = list ? t.GetGenericArguments()[0] : t;
+                Console.WriteLine(here + (list ? "[]" : "") + " " + (element.IsEnum ? "enum" : element.Name));
+                if (!element.IsPrimitive && !element.IsEnum && element != typeof(string) && element.Namespace != null
+                    && element.Namespace.StartsWith("Gamesim", StringComparison.Ordinal))
+                    Shape(element, here + (list ? "[]." : "."), depth + 1);
+            }
+        }
 
         private static string Sha(byte[] bytes)
         {
             using (var sha = SHA256.Create()) return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-", "").ToLowerInvariant();
         }
 
+#if !OLDSAVE_SHAPE_ONLY
         // ------------------------------------------------------------------ generate
 
         /// <summary>
@@ -229,14 +256,18 @@ namespace Gamesim.OldSaves
             EpisodeState fresh;
             if (rules == "director")
             {
+#if OLDSAVE_BEFORE_SEASON_BUILDER
+                throw new ArgumentException("Schema 6's build has no season builder: its director played the catalogue season (default).");
+#else
                 fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = size }, seed);
                 Rules.Fresh(fresh);
+#endif
             }
             else if (rules == "default") fresh = ContentCatalog.Create(seed);
             else throw new ArgumentException("rules is director or default");
             fresh.sessionId = "oldsave-" + rules + "-" + seed + "-" + size;
             var engine = new EpisodeEngine(fresh);
-            var walker = new Walker();
+            var walker = new Walker("generate-");
             for (int step = 0; step < 4000; step++)
             {
                 var s = engine.Snapshot;
@@ -260,8 +291,10 @@ namespace Gamesim.OldSaves
             Console.WriteLine("saved schema " + at.schemaVersion + " week " + at.week + " " + at.phase + " revision " + at.revision + " to " + outFile);
             return 0;
         }
+#endif
     }
 
+#if !OLDSAVE_SHAPE_ONLY
     /// <summary>
     /// The fixed command walker: the plain legal walk the engine tests use (EpisodeEngineTests.NextCommand), and in the
     /// social week up to two conversations, with the houseguest the season's revision picks. Deterministic in the state
@@ -271,9 +304,14 @@ namespace Gamesim.OldSaves
     public sealed class Walker
     {
         private readonly Dictionary<int, int> talks = new Dictionary<int, int>();
+        private readonly string prefix;
         private int sequence;
 
-        public bool MayRefuse(EpisodeCommand command) => command.kind == EpisodeCommandKind.Talk;
+        /// <summary>A walker naming its commands <paramref name="prefix"/>0001 on: "oldsave-" records a script, "generate-" plays a fresh season to its save point, so a script's ids never meet the save's own.</summary>
+        public Walker(string prefix = "oldsave-") { this.prefix = prefix; }
+
+        public bool MayRefuse(EpisodeCommand command) => command.kind == EpisodeCommandKind.Talk
+            || (command.kind == EpisodeCommandKind.AnswerJury && command.secondTargetId == "A");
 
         public IEnumerable<EpisodeCommand> Candidates(EpisodeState s, int step)
         {
@@ -289,12 +327,35 @@ namespace Gamesim.OldSaves
                     yield return talk;
                 }
             }
-            yield return Next(s);
+            var next = Next(s);
+            yield return next;
+            // Under the finale rules (schema 21 on) the player finalist answers with one of the responses the question
+            // offers, not the catalogue's A: tried after A, in the order the build offers them.
+            if (next.kind == EpisodeCommandKind.AnswerJury && next.secondTargetId == "A")
+                foreach (string key in Offered(s))
+                {
+                    var answer = Command(s, EpisodeCommandKind.AnswerJury);
+                    answer.targetId = next.targetId;
+                    answer.secondTargetId = key;
+                    yield return answer;
+                }
+        }
+
+        /// <summary>The responses the current jury question offers, by reflection: a build before schema 21 has none.</summary>
+        private static IEnumerable<string> Offered(EpisodeState s)
+        {
+            var exchange = s.juryExchanges[s.juryQuestionIndex];
+            var questions = typeof(EpisodeState).Assembly.GetType("Gamesim.Simulation.FinaleQuestions");
+            var offered = questions?.GetMethod("Offered", new[] { typeof(string), typeof(string) });
+            if (offered == null) return new string[0];
+            string category = typeof(JuryExchangeState).GetField("category")?.GetValue(exchange) as string;
+            string receipt = typeof(JuryExchangeState).GetField("receiptKind")?.GetValue(exchange) as string;
+            return (string[])offered.Invoke(null, new object[] { category, receipt }) ?? new string[0];
         }
 
         private EpisodeCommand Command(EpisodeState s, EpisodeCommandKind kind) => new EpisodeCommand
         {
-            id = "oldsave-" + (++sequence).ToString("D4"),
+            id = prefix + (++sequence).ToString("D4"),
             actorId = s.playerId,
             expectedRevision = s.revision,
             expectedPhase = s.phase,
@@ -315,10 +376,20 @@ namespace Gamesim.OldSaves
             else if (s.phase == EpisodePhase.VetoMeeting && !s.vetoResolved && (s.vetoHolderId == s.playerId || (s.hohId == s.playerId && EpisodeEngine.NpcVetoSave(s) != null)))
             {
                 c.kind = EpisodeCommandKind.ResolveVeto;
+#if OLDSAVE_BEFORE_SCHEMA8
+                // Schemas 6 and 7: no Final 4 lock and no eviction stages (EpisodeEngineTests.NextCommand at 44fa4580).
+                c.useVeto = EpisodeEngine.ReplacementCandidates(s).Any();
+#else
                 c.useVeto = EpisodeEngine.ReplacementCandidates(s).Any() && !EpisodeEngine.VetoIsLockedAtFinalFour(s);
+#endif
                 c.targetId = s.vetoHolderId == s.playerId ? s.nominees[0] : EpisodeEngine.NpcVetoSave(s);
                 c.secondTargetId = EpisodeEngine.ReplacementCandidates(s).FirstOrDefault()?.id;
             }
+#if OLDSAVE_BEFORE_SCHEMA8
+            else if (s.phase == EpisodePhase.Eviction && !s.evictionResolved && !s.votes.Any(v => v.voterId == s.playerId) &&
+                (EpisodeEngine.Voters(s).Any(v => v.isPlayer) || EpisodeEngine.NeedsPlayerTieBreak(s)))
+            { c.kind = EpisodeCommandKind.CastVote; c.targetId = s.nominees[0]; }
+#else
             else if (s.phase == EpisodePhase.Eviction && s.evictionStage == EvictionStage.Speeches
                 && s.nominees.Contains(s.playerId) && !s.evictionSpeeches.Any(x => x.speakerId == s.playerId))
             { c.kind = EpisodeCommandKind.SubmitEvictionSpeech; c.text = "I'd like to stay. I've been straight with all of you."; }
@@ -327,6 +398,7 @@ namespace Gamesim.OldSaves
                 && !s.votes.Any(v => v.voterId == s.playerId) &&
                 (EpisodeEngine.Voters(s).Any(v => v.isPlayer) || EpisodeEngine.NeedsPlayerTieBreak(s)))
             { c.kind = EpisodeCommandKind.CastVote; c.targetId = s.nominees[0]; }
+#endif
             else if (s.phase == EpisodePhase.FinalEviction && s.hohId == s.playerId)
             { c.kind = EpisodeCommandKind.FinalEvict; c.targetId = s.Active.First(p => !p.isPlayer).id; }
             else if (s.phase == EpisodePhase.JuryQuestioning && !s.juryExchanges[s.juryQuestionIndex].completed)
@@ -342,4 +414,5 @@ namespace Gamesim.OldSaves
             return c;
         }
     }
+#endif
 }

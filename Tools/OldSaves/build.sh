@@ -26,11 +26,15 @@ NEWTONSOFT=$(ls "$ACC"/Library/PackageCache/com.unity.nuget.newtonsoft-json@*/Ru
 CSC=$(ls -d "$DATA"/DotNetSdk/sdk/*/Roslyn/bincore/csc.dll | head -1)
 win () { cygpath -m "$1"; }
 
-if [ ! -d "$WT" ]; then
-  "$GIT" -C "$REPO" worktree add --detach --no-checkout "$(win "$WT")" "$COMMIT"
-  "$GIT" -C "$WT" checkout "$COMMIT" -- Assets/Gamesim/Simulation Assets/Gamesim/Runtime/Persistence
+# OLDSAVE_SOURCE_TREE=1 builds from <worktree> as a plain folder, uncommitted edits included, with no git check
+# (a scratch copy holding a candidate fix); <commit> is then only a label.
+if [ -z "$OLDSAVE_SOURCE_TREE" ]; then
+  if [ ! -d "$WT" ]; then
+    "$GIT" -C "$REPO" worktree add --detach --no-checkout "$(win "$WT")" "$COMMIT"
+    "$GIT" -C "$WT" checkout "$COMMIT" -- Assets/Gamesim/Simulation Assets/Gamesim/Runtime/Persistence
+  fi
+  [ "$("$GIT" -C "$WT" rev-parse HEAD)" = "$("$GIT" -C "$REPO" rev-parse "$COMMIT^{commit}")" ] || { echo "worktree $WT is not at $COMMIT"; exit 1; }
 fi
-[ "$("$GIT" -C "$WT" rev-parse HEAD)" = "$("$GIT" -C "$REPO" rev-parse "$COMMIT^{commit}")" ] || { echo "worktree $WT is not at $COMMIT"; exit 1; }
 
 if [ -z "$RULES" ]; then
   if [ -f "$WT/Assets/Gamesim/Simulation/ShippedRules.cs" ]; then RULES="$HERE/Rules.Shipped.cs"; else RULES="$HERE/Rules.None.cs"; fi
@@ -38,8 +42,11 @@ fi
 
 mkdir -p "$OUT"
 RSP="$OUT/recorder.rsp"
-grep '^-r:"[A-Za-z]:/' "$DAG/Gamesim.Simulation.rsp" > "$RSP"
-grep '^-define:' "$DAG/Gamesim.Simulation.rsp" >> "$RSP"
+# OLDSAVE_SIMULATION_RSP names a saved copy of the Simulation response file, for while the batchmode copy is compiling.
+SIMRSP="${OLDSAVE_SIMULATION_RSP:-$DAG/Gamesim.Simulation.rsp}"
+grep '^-r:"[A-Za-z]:/' "$SIMRSP" > "$RSP"
+grep '^-define:' "$SIMRSP" >> "$RSP"
+for d in $OLDSAVE_DEFINES; do echo "-define:$d" >> "$RSP"; done
 {
   echo "-r:\"$(win "$NEWTONSOFT")\""
   echo "-target:exe"

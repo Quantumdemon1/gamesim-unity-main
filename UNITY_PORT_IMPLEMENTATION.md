@@ -1,5 +1,88 @@
 # Integrated Unity port — implementation and acceptance record
 
+## Consolidation - 2026-10-15
+
+Every agent's work now has one line: branch `claude/consolidation` (a4fdfa38) holds GitHub main, the
+lead branch (waves A-D, vote V1-V6, input A0-A13, balance B0-B7), the lanes V7 (through a3d116db),
+input's later group, arcs2 and the art reactions, and Codex's phase-and-dialogue work. The wave-1 lanes
+branch from it; the lead lands them. The entries below this one are the historical record and are not
+rewritten.
+
+**Codex's phase-and-dialogue work** (`D:\GamesimIntegration20261010`, uncommitted on top of 515246bf)
+was ported byte for byte by 4cef3e0b: 213 of its 221 entries, each copy's sha256 checked.
+- Separate phase guidance, system and save feedback, and accepted dialogue. The grammar repairs are
+  display-time only (`NarrativeDisplay`, `StoryText.FillDisplay`): recorded narration and saved Fill text
+  are never rewritten.
+- Six conversation categories with only the chosen surface shown, nested person and plea choices, and
+  spoken player and NPC turns for accepted receipts (`ConversationExchange`), behind the knowledge gate:
+  only receipts the player was shown, filtered by `KnownBallots.TellsAnUnknownBallot`, never odds.
+  Command costs are unchanged.
+- Physical invitations from real pending NPC offers (`NpcInvitation`, `HouseNpcInvitationBubble`).
+- The farewell as a noncontact one-second beat (the owner's decision), with the original 3.8 s Embrace
+  and its regression coverage kept; the veto draw's heading reservation; the creator verifier's nine
+  captures with their test; the Free Time metrics (FT11).
+- `YourWeek` under mode 2: an information-sharing deal's breach, which the vote's settlement writes
+  afterwards, keeps its recorded place after the reveal's lane (the `afterVote` list).
+- **A removed caption, at the owner's request (2026-10-15):** the radial's "More ways to talk" petal
+  (`EpisodeHud.MorePetalCaption`) and `RevealBeyondRadial` are gone with the category redesign. This is an
+  accepted caption-contract change, the only removal; no other caption changed or was appended to.
+
+Eight files keep 515246bf's bytes, not the candidate's: the six HouseGarments slot and overlay assets,
+the UMA asset index and the URP global settings. An editor opened without Assets/UMA had rewritten them
+(the KnitCrew slot then read half its bones-per-vertex; the URP runtime list was emptied).
+
+**Nine PlayMode tests were renamed by the redesign** (old full name, then new; all in
+`Gamesim.Tests.PlayMode.EpisodePlayModeTests`), so a reconciliation of failures across runs can follow
+them:
+
+| Old | New |
+| --- | --- |
+| `Chrome_TheTwoSpendTimePetalsAreToldApart` | `Chrome_TheTwoSpendTimeChoicesAreToldApartInsideConnect` |
+| `Chrome_ConversationDialSeatsSevenPetalsAndKeepsEveryCaption` | `Chrome_ConversationDialSeatsSixCategoriesAndHidesLeafLists` |
+| `Chrome_MorePetalMovesTheKeyboardToTheRowsBeneathTheDial` | `Chrome_CategoryOpensItsChoicesAndBackReturnsToTheWheelWithoutCost` |
+| `ConversationGroups_FourGroupsUnderTheDialAndEachVerbIsOneRow` | `ConversationGroups_EachCategoryHoldsItsOwnVerbsAndTargetsStayFolded` |
+| `ConversationGroups_InAStrategyWindowTheGroupsHoldWhatTheWindowAllows` | `ConversationGroups_InAStrategyWindowTheCategoriesHoldWhatTheWindowAllows` |
+| `ConversationIntent_FreshDialHasSixNonoverlappingPetalsAndThePlainTalkRowAtBothTextSizes` | `ConversationIntent_FreshRootHasSixNonoverlappingCategoriesAndConnectKeepsThePlainTalkChoice` |
+| `ConversationIntent_LegacyKeepsSevenPetalsAndItsOriginalPersonalWarmthTag` | `ConversationIntent_LegacyUsesTheSameCategoriesAndKeepsItsOriginalPersonalWarmthTag` |
+| `Conversation_TheRingsFootLeadsToTheRowsAndTheRowsLeadBack` | `Conversation_KeyboardEntersACategoryAndBackReturnsToTheRoot` |
+| `Conversation_ATalkThatMovesThemSaysWhereTheyStandNow` | `Conversation_ATalkThatMovesThemKeepsTheChangedStandingAndSpeaksItsAcknowledgementOnce` |
+
+**The suites (lane S3).** Tests that cannot pass by design left the shipping suites:
+- The farewell's feasibility and diagnostic probes moved, unchanged, to two assemblies that compile only
+  under `GAMESIM_DIAGNOSTICS` (a diagnostic run adds it to the test copy; it is never committed), each with
+  its own floor: `Gamesim.DiagnosticsPlayModeTests` (`Gamesim.Tests.Diagnostics`) and
+  `Gamesim.Uma.DiagnosticsPlayModeTests` (`Gamesim.Uma.Tests.Diagnostics`, also `GAMESIM_UMA`). Old to new:
+  `Gamesim.Tests.PlayMode.GroundedFarewellPlumbingPlayModeTests.{CalibratedIk_*, DynamicIk_*, InertStream_*,
+  StreamTopology_*, PassiveIk_*, UntouchedIdle_*}` to `Gamesim.Tests.Diagnostics.GroundedFarewellDiagnosticPlayModeTests`
+  (same method names); `Gamesim.Uma.Tests.UmaGroundedFarewellPlayModeTests.{the same six}` to
+  `Gamesim.Uma.Tests.Diagnostics.UmaGroundedFarewellDiagnosticPlayModeTests`; `Gamesim.Tests.PlayMode.Source21ProvidedIdleFootIkPlayModeTests`
+  to `Gamesim.Tests.Diagnostics.Source21ProvidedIdleFootIkPlayModeTests`; `Gamesim.Uma.Tests.Source21UmaIdleFootIkPlayModeTests`
+  to `Gamesim.Uma.Tests.Diagnostics.Source21UmaIdleFootIkPlayModeTests`. Source21 now builds its Idle Foot IK
+  controller in memory (nothing is written under Assets/) and no longer pins the shipping controller's
+  SHA, state count or IK pass.
+- The 14 farewell readiness tests (`FarewellProvidedReadiness`, `FarewellReadinessControlledNegative`)
+  compile only under `GAMESIM_UMA` and are judged on the UMA cast. The UMA-free fixture that borrowed the
+  mesh-less animation skeleton as the cast is gone (the owner's decision: UMA bodies only).
+- Kept in the shipping suites: the behaviour tests, among them `TwoActualTakesEnterTogetherStayPlantedAndReturnToIdle`
+  and `BothUmaBodiesGiveTheGroundedGestureAndReturnToIdle`, and FT11, which asserts the eight Largest
+  receipts fit (the Free Time slice fixes the board).
+- The review runner gives each suite a deadline at least twice its measured duration (PlayMode 14,400 s)
+  and never kills a late Unity; it runs every suite before failing. `Tools/README.md` has the table and
+  the diagnostics run commands.
+
+**Floors** (`Tools/baseline.txt`): at 4cef3e0b the counts observed on that source, EditMode 7846, PlayMode
+1218, UMA 89, the subset 5336 (the candidate's file said 7840/1211/89/5336). After S3: EditMode 7846,
+PlayMode 1197 (1218 less the 7 moved probes and the 14 readiness tests now UMA-only), UMA 82 (89 less 7),
+the subset 5336, and the new lines `Gamesim.DiagnosticsPlayModeTests` 7 and `Gamesim.Uma.DiagnosticsPlayModeTests` 7.
+
+**IK pass: pending S5.** The shipping controller's base layer now has `iKPass` on
+(`HumanoidClipWiring`, `GamesimHumanoid.controller` `m_IKPass: 1`), and the EditMode
+`GroundedFarewellAnimationTests` pins it. Codex's record calls it diagnostic only. The farewell slice (S5)
+either adopts it with a 1080p/60 FPS profile (owner gate O4) or reverts it to 0 and drops the pin.
+
+**Still open** (the check report's sections 4 and 5): Largest-text layouts (19 tests, S4), two feet 1-4 mm
+off at the farewell blend (S5), the HUD, input, reader and art defects of wave 1, and the release run.
+
 **Later V06 closure, 2026-10-11 UTC:** bound V06 root3684 closed exit1 before
 run-directory creation/compiler/game capture, reporting a SequenceEqual overload
 error. The exact old compiler-name expression reproduces that error with

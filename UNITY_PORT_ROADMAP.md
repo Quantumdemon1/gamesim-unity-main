@@ -1,5 +1,37 @@
 # Gamesim Unity port
 
+## Consolidation - 2026-10-15
+
+**One line.** All agents' work is on `claude/consolidation` (a4fdfa38): GitHub main, the lead branch
+(waves A-D, vote V1-V6, input A0-A13, balance B0-B7), V7 through a3d116db, input's later group, arcs2,
+the art reactions, and Codex's phase-and-dialogue work ported byte for byte (4cef3e0b; eight files keep
+515246bf's bytes, the editor-rewritten garments, asset index and URP settings). Wave-1 lanes branch from
+it and the lead lands them; the test copies and `D:\GamesimPlay` are downstream.
+
+**What the dialogue patch shipped:** six conversation categories, physical NPC invitations, spoken
+receipts behind the knowledge gate, display-only grammar repairs, the farewell as a noncontact beat with
+the 3.8 s Embrace kept, the veto draw's heading reservation, the creator verifier's nine captures, the
+Free Time metrics. The radial's "More ways to talk" caption was removed at the owner's request - an
+accepted caption-contract change. Nine PlayMode tests were renamed; UNITY_PORT_IMPLEMENTATION.md maps
+old to new.
+
+**Floors:** EditMode 7846, PlayMode 1197, UMA 82, the subset 5336, and the diagnostics assemblies 7 and 7.
+PlayMode and UMA dropped from 1218 and 89 only because probes moved to `Gamesim.DiagnosticsPlayModeTests` /
+`Gamesim.Uma.DiagnosticsPlayModeTests` (compiled under `GAMESIM_DIAGNOSTICS` only, own floors) and the 14
+farewell readiness tests are now judged on UMA bodies only; no test left the floor system.
+
+**IK pass:** on in the shipping controller and pinned by an EditMode test; S5 adopts it with a 1080p/60
+FPS profile or reverts it.
+
+**Owner decisions in force:** UMA bodies only for the cast; the noncontact farewell and the kept 3.8 s
+Embrace; at the Largest text size (1.4) a screen that cannot fit may page or scroll with a visible
+indicator, Standard and Larger keep their one-page layouts; the caption removal above; desktop target
+GTX 1060 at 1920x1080, 60 FPS.
+
+**Next:** wave 1 (garment restore proof, integration drift, HUD status, input, the readers behind the
+knowledge gate, art and the farewell clean-up, the suites), then the Largest-text screens (S4) and the
+farewell's foot planting (S5), then the release-candidate run.
+
 **Later V06 closure, 2026-10-11 UTC:** initial capture failed before compiler,
 game code or run-directory creation on a reproduced untyped-array SequenceEqual
 overload error. No corpus or schema29 activation exists. The original failed

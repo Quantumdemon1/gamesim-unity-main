@@ -274,5 +274,37 @@ namespace Gamesim.Tests.PlayMode
             }
             finally { Time.captureDeltaTime = 0f; }
         }
+
+        /// <summary>
+        /// A walk that runs out of time short of its spot stops where it stands: the sulk is stood,
+        /// not walked. The route they hold ends at their own feet, they stay put through the sulk,
+        /// and the storm still holds them.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StormOff_AWalkOutOfTimeStopsWhereItStandsToSulk()
+        {
+            try
+            {
+                yield return TurnTheHouse(storms: true);
+                // Out of time on the walk's first tick: metres short of any spot in another room.
+                director.StormWalkLimitSeconds = 0f;
+                yield return UntilTheStormWalks();
+                var body = ActBody(stormTarget);
+                var motion = body.GetComponent<HouseNpcMotion>();
+                yield return WaitFor(() => director.StormNow != EpisodeDirector.StormStage.Walking, 5f, "The walk runs out of time.");
+                Assert.That(director.StormNow, Is.EqualTo(EpisodeDirector.StormStage.Sulking), "They sulk where the time ran out.");
+                Assert.That(director.StormLeaseHeld, Is.True, "The storm still holds them,");
+                var stoodAt = body.position;
+                float onward = Flat(motion.ReservedDestination, stoodAt);
+                Assert.That(onward, Is.LessThan(.3f), "and the route they hold ends at their own feet, not at the spot "
+                    + onward.ToString("F2") + " m on.");
+                // A game second at the pinned 1/30 s: the storm's 2.6 m/s would carry a walking body 2.6 m.
+                yield return Frames(30);
+                Assert.That(director.StormNow, Is.EqualTo(EpisodeDirector.StormStage.Sulking), "Still sulking,");
+                float moved = Flat(body.position, stoodAt);
+                Assert.That(moved, Is.LessThan(.5f), "they stand where they stopped rather than walk on: moved " + moved.ToString("F2") + " m.");
+            }
+            finally { Time.captureDeltaTime = 0f; }
+        }
     }
 }

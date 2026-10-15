@@ -74,6 +74,25 @@ namespace Gamesim.House
         public bool StormArrived() =>
             storming != null && stormToken != null && storming.motion != null && storming.motion.HasArrivedAt(stormToken);
 
+        /// <summary>
+        /// The walk ran out of time short of its spot: the one storming off stops where they stand,
+        /// still the storm's - a fresh storm token reserved at their own feet, so nothing else takes
+        /// them and the route no longer walks them on. False, and the storm let go, when they cannot
+        /// be held there.
+        /// </summary>
+        public bool StormHoldHere()
+        {
+            if (storming?.motion == null || stormToken == null) return false;
+            var motion = storming.motion;
+            motion.Release(stormToken);
+            stormToken = null;
+            string token = "storm:" + storming.id + ":" + (++stormLegs);
+            if (token.Length > 128) token = "storm:" + storming.id.GetHashCode() + ":" + stormLegs;
+            if (!motion.TryReserveAndPath(token, motion.transform.position)) { EndStorm(); return false; }
+            stormToken = token;
+            return true;
+        }
+
         /// <summary>Lets them go: their route released and the house's pause theirs again.</summary>
         public void EndStorm()
         {

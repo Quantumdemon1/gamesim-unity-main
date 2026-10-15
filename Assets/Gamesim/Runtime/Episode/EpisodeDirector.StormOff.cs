@@ -43,6 +43,9 @@ namespace Gamesim.Episode
         /// <summary>How long a storm sulks once there (12 s; a test may shorten it).</summary>
         public float StormSulkSeconds { get; set; } = 12f;
 
+        /// <summary>How long the walk may take before they stop where they are (<see cref="StormWalkSeconds"/>; a test may shorten it).</summary>
+        public float StormWalkLimitSeconds { get; set; } = StormWalkSeconds;
+
         public enum StormStage { None, Beat, Walking, Sulking }
 
         private StormStage stormStage;
@@ -162,12 +165,16 @@ namespace Gamesim.Episode
                         if (onlooker != null) onlooker.LookAt(body, StormLookSeconds);
                     }
                     stormStage = StormStage.Walking;
-                    stormClock = Time.unscaledTime + StormWalkSeconds;
+                    stormClock = Time.unscaledTime + StormWalkLimitSeconds;
                     break;
                 case StormStage.Walking:
                     // A meeting, a ceremony or a departure took them back: the storm is over.
                     if (!npcMeetings.IsStorming(stormId)) { EndStormHere(); return; }
-                    if (!npcMeetings.StormArrived() && Time.unscaledTime < stormClock) return;
+                    bool arrived = npcMeetings.StormArrived();
+                    if (!arrived && Time.unscaledTime < stormClock) return;
+                    // Out of time short of the spot: they stop where they stand and sulk there, rather
+                    // than sulk while the route walks them on. Where they cannot be held, the storm is over.
+                    if (!arrived && !npcMeetings.StormHoldHere()) { EndStormHere(); return; }
                     Sulk(visual, body);
                     stormStage = StormStage.Sulking;
                     stormClock = Time.unscaledTime + StormSulkSeconds;

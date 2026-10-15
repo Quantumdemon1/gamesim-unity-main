@@ -83,3 +83,16 @@ Provenance is retained in `D:/GamesimVerify/pr22e/player.log` (SHA-256 `5e69f9bd
 `UntouchedV21StandaloneSaveMigratesInUnityAndRetainsExactBytesUntilExplicitSave` runs only under `UNITY_EDITOR`, copies these bytes into a fresh isolated directory, and exercises the real save store's original-checksum verification, schema-21-to-22 in-memory migration, explicit save, exact old-byte backup, and equivalent reload. The existing fixture below instead verifies a .NET-generated historical payload. Passing the new regression establishes native Unity Editor/Mono persistence compatibility, not a separately built player, scene-install, visual, performance, or human acceptance result. The old `pr22e` functional report passed, but its inspected `house.png` capture is black; its `graphical: true` flag does not establish rendered-graphics acceptance.
 
 `V21CommitmentsSave.json` is a save written by the schema 21 build itself, not a schema 22 capture with the new fields taken off: the simulation and persistence sources of 7991687 (`git archive 7991687 Assets/Gamesim/Simulation Assets/Gamesim/Runtime/Persistence`, with a one-line `UnityEngine.Application` stand-in for the importer's convenience overload), driven by a scratch program and saved by that build's own `EpisodeSaveStore`. The season is an eight-house (`SeasonBuilder`, seed 29) whose first Head of Household holds a safety pact and a safety promise with the player and nominates them anyway; a voting bloc is struck between two voters at the campaign, and the week is played through its eviction with the plainest legal answers. So it holds deals and promises kept and broken before the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN R0, C0) recorded who broke them and when. `PersistenceV22MigrationTests` loads its state through the whole chain. Line endings are normalised to LF; the envelope's checksum is over the canonical state and does not see them. It does see a double's round-trip text, which is the runtime's: the checksum was made by .NET, which writes `4.625035332515836` where Unity's Mono can write a seventeenth digit, and in the editor the file as written reads as damaged. The test seals the state again for the runtime it runs in; not a value of it changes.
+
+# Old-save acceptance fixtures
+
+`OldSaves/` holds one real save per save version and rules combination that has a real file (the owner's
+old-save acceptance; the matrix and every cell's source are in `Assets/Plans/OLD-SAVE-ACCEPTANCE.md`). Each
+`<id>.save.json` is a byte-exact copy of a save the standalone verification walks wrote between 2026-09-28 and
+2026-10-10 (`GamesimVerify/<folder>/...`, named in `manifest.json`); the schema-21 default-scene cell reuses
+`V21StandaloneProfileSave.json` above. `<id>.replay.json` is the command script and per-checkpoint season hash
+its reference build recorded with `Tools/OldSaves` under the editor's Mono; `manifest.json` pins every save's
+SHA-256, its rules, the reference build, the season digest and this build's state and text digests. The two
+`career-*.career.json` files are real career records. The nested `.gitattributes` keeps every byte as written,
+CRLF included. `OldSaveAcceptanceTests` loads, migrates, validates and replays each, and reads it with every
+reader the screens use.

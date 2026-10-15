@@ -1,0 +1,3670 @@
+{
+  "format": "gamesim-unity-save",
+  "version": 1,
+  "savedAt": "2026-10-02T10:51:21.0283679Z",
+  "checksum": "3ae86dd0e6318955867c9b8d6ba961f9b6b29e4bac4d475dd6ad914982ca0e0d",
+  "state": {
+    "schemaVersion": 21,
+    "competitionRulesVersion": 4,
+    "sessionId": "618da1dbb5654376a2b4e81d81a138f1",
+    "seed": 381344611,
+    "randomState": 1581074754,
+    "revision": 2,
+    "week": 1,
+    "nextSequence": 6,
+    "socialActions": 0,
+    "phase": 1,
+    "playerId": "player",
+    "hohId": null,
+    "previousHohId": null,
+    "vetoHolderId": null,
+    "winnerId": null,
+    "runnerUpId": null,
+    "finalPart1WinnerId": null,
+    "finalPart2WinnerId": null,
+    "competitionResolved": false,
+    "vetoResolved": false,
+    "evictionResolved": false,
+    "contestants": [
+      {
+        "id": "player",
+        "name": "You",
+        "pronouns": "they/them",
+        "motive": "Choose who to trust, survive the vote, and build a game you can explain.",
+        "homeRoom": "Living",
+        "occupation": "Houseguest",
+        "archetype": "The Newcomer",
+        "hometown": null,
+        "bio": null,
+        "sourceTemplateId": null,
+        "appearance": {
+          "version": 1,
+          "provider": "uma",
+          "presetId": "player",
+          "bodyId": "Human Male 3.0",
+          "fallbackId": "player",
+          "activeOutfit": "Everyday",
+          "dna": [
+            {
+              "id": "armLength",
+              "value": 0.5
+            },
+            {
+              "id": "armWidth",
+              "value": 0.62
+            },
+            {
+              "id": "belly",
+              "value": 0.5
+            },
+            {
+              "id": "chestSize",
+              "value": 0.5
+            },
+            {
+              "id": "feetSize",
+              "value": 0.66
+            },
+            {
+              "id": "forearmLength",
+              "value": 0.5
+            },
+            {
+              "id": "forearmWidth",
+              "value": 0.62
+            },
+            {
+              "id": "gluteusSize",
+              "value": 0.5
+            },
+            {
+              "id": "handsSize",
+              "value": 0.68
+            },
+            {
+              "id": "height",
+              "value": 0.12
+            },
+            {
+              "id": "legSeparation",
+              "value": 0.5
+            },
+            {
+              "id": "legsSize",
+              "value": 0.62
+            },
+            {
+              "id": "lowerMuscle",
+              "value": 0.58
+            },
+            {
+              "id": "lowerWeight",
+              "value": 0.5
+            },
+            {
+              "id": "shoulderWidth",
+              "value": 0.5
+            },
+            {
+              "id": "upperMuscle",
+              "value": 0.58
+            },
+            {
+              "id": "upperWeight",
+              "value": 0.5
+            },
+            {
+              "id": "waist",
+              "value": 0.5
+            },
+            {
+              "id": "BrowPosition",
+              "value": 0.5
+            },
+            {
+              "id": "cheekPosition",
+              "value": 0.5
+            },
+            {
+              "id": "cheekPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "cheekSize",
+              "value": 0.5
+            },
+            {
+              "id": "cheekWidth",
+              "value": 0.5
+            },
+            {
+              "id": "chinPosition",
+              "value": 0.5
+            },
+            {
+              "id": "chinPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "chinSize",
+              "value": 0.5
+            },
+            {
+              "id": "earsPitch",
+              "value": 0.5
+            },
+            {
+              "id": "earsPosition",
+              "value": 0.5
+            },
+            {
+              "id": "earsRotation",
+              "value": 0.5
+            },
+            {
+              "id": "earsSize",
+              "value": 0.5
+            },
+            {
+              "id": "earsYaw",
+              "value": 0.5
+            },
+            {
+              "id": "ElfEars",
+              "value": 0.5
+            },
+            {
+              "id": "EyePosition",
+              "value": 1.0
+            },
+            {
+              "id": "eyeRotation",
+              "value": 0.5
+            },
+            {
+              "id": "eyeSize",
+              "value": 0.62
+            },
+            {
+              "id": "eyeSpacing",
+              "value": 0.5
+            },
+            {
+              "id": "foreheadPosition",
+              "value": 0.5
+            },
+            {
+              "id": "foreheadSize",
+              "value": 0.5
+            },
+            {
+              "id": "Happy_DNA",
+              "value": 0.5
+            },
+            {
+              "id": "headSize",
+              "value": 0.72
+            },
+            {
+              "id": "headWidth",
+              "value": 0.58
+            },
+            {
+              "id": "jawsPosition",
+              "value": 0.5
+            },
+            {
+              "id": "jawsSize",
+              "value": 0.5
+            },
+            {
+              "id": "lipsSize",
+              "value": 0.5
+            },
+            {
+              "id": "lowCheekPosition",
+              "value": 0.5
+            },
+            {
+              "id": "lowCheekPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "mandibleSize",
+              "value": 0.5
+            },
+            {
+              "id": "mouthSize",
+              "value": 0.5
+            },
+            {
+              "id": "neckThickness",
+              "value": 0.6
+            },
+            {
+              "id": "noseBroken",
+              "value": 0.5
+            },
+            {
+              "id": "noseCurve",
+              "value": 0.5
+            },
+            {
+              "id": "noseFlatten",
+              "value": 0.5
+            },
+            {
+              "id": "noseInclination",
+              "value": 0.5
+            },
+            {
+              "id": "nosePosition",
+              "value": 0.5
+            },
+            {
+              "id": "nosePronounced",
+              "value": 0.5
+            },
+            {
+              "id": "noseSize",
+              "value": 0.5
+            },
+            {
+              "id": "noseWidth",
+              "value": 0.5
+            }
+          ],
+          "colors": [
+            {
+              "id": "Skin",
+              "r": 0.7254902,
+              "g": 0.5411765,
+              "b": 0.3764706,
+              "a": 1.0
+            },
+            {
+              "id": "Hair",
+              "r": 0.0470588244,
+              "g": 0.0431372561,
+              "b": 0.05490196,
+              "a": 1.0
+            },
+            {
+              "id": "Brows",
+              "r": 0.0470588244,
+              "g": 0.0431372561,
+              "b": 0.05490196,
+              "a": 1.0
+            },
+            {
+              "id": "Eyes",
+              "r": 0.180392161,
+              "g": 0.113725491,
+              "b": 0.07058824,
+              "a": 1.0
+            }
+          ],
+          "outfits": [
+            {
+              "id": "Everyday",
+              "wardrobe": [
+                {
+                  "slot": "Hair",
+                  "itemId": "uma-2467b9f23683edf47929c985261c0f29"
+                },
+                {
+                  "slot": "Eyebrows",
+                  "itemId": "uma-8863e8885a6b77f4389d5f513b13715f"
+                },
+                {
+                  "slot": "BottomUnderlayer",
+                  "itemId": "uma-172d750a4828df1469001a8e8ed15fee"
+                },
+                {
+                  "slot": "Chest",
+                  "itemId": "uma-3a1b3f708e1d5654c96e86b08bdfd8bf"
+                },
+                {
+                  "slot": "Legs",
+                  "itemId": "uma-9d9f5b51a78e0f44a87f7fb7dd80795d"
+                },
+                {
+                  "slot": "Feet",
+                  "itemId": "uma-b55cee5facaaacb49adbf21556a91930"
+                }
+              ],
+              "colors": []
+            }
+          ]
+        },
+        "age": 30,
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": true,
+        "status": 0,
+        "stats": {
+          "physical": 6.0,
+          "mental": 6.0,
+          "endurance": 6.0,
+          "social": 6.0,
+          "luck": 6.0,
+          "competition": 6.0,
+          "strategic": 6.0,
+          "loyalty": 6.0
+        },
+        "traits": [],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      },
+      {
+        "id": "alex-chen",
+        "name": "Alex Chen",
+        "pronouns": "he/him",
+        "motive": "Run the house from one seat behind it, and never be the name anyone says out loud.",
+        "homeRoom": "Private",
+        "occupation": "Marketing Executive",
+        "archetype": "The Mastermind",
+        "hometown": "San Francisco, CA",
+        "bio": "Strategic mastermind who excels at social manipulation and long-term planning. Always three steps ahead.",
+        "sourceTemplateId": "alex-chen",
+        "appearance": {
+          "version": 1,
+          "provider": "uma",
+          "presetId": "alex-chen",
+          "bodyId": "Human Male 3.0",
+          "fallbackId": "maya-hassan",
+          "activeOutfit": "Everyday",
+          "dna": [
+            {
+              "id": "armLength",
+              "value": 0.5
+            },
+            {
+              "id": "armWidth",
+              "value": 0.62
+            },
+            {
+              "id": "belly",
+              "value": 0.5
+            },
+            {
+              "id": "chestSize",
+              "value": 0.5
+            },
+            {
+              "id": "feetSize",
+              "value": 0.66
+            },
+            {
+              "id": "forearmLength",
+              "value": 0.5
+            },
+            {
+              "id": "forearmWidth",
+              "value": 0.62
+            },
+            {
+              "id": "gluteusSize",
+              "value": 0.5
+            },
+            {
+              "id": "handsSize",
+              "value": 0.68
+            },
+            {
+              "id": "height",
+              "value": 0.18
+            },
+            {
+              "id": "legSeparation",
+              "value": 0.5
+            },
+            {
+              "id": "legsSize",
+              "value": 0.62
+            },
+            {
+              "id": "lowerMuscle",
+              "value": 0.58
+            },
+            {
+              "id": "lowerWeight",
+              "value": 0.5
+            },
+            {
+              "id": "shoulderWidth",
+              "value": 0.5
+            },
+            {
+              "id": "upperMuscle",
+              "value": 0.64
+            },
+            {
+              "id": "upperWeight",
+              "value": 0.5
+            },
+            {
+              "id": "waist",
+              "value": 0.5
+            },
+            {
+              "id": "BrowPosition",
+              "value": 0.5
+            },
+            {
+              "id": "cheekPosition",
+              "value": 0.5
+            },
+            {
+              "id": "cheekPronounced",
+              "value": 0.55
+            },
+            {
+              "id": "cheekSize",
+              "value": 0.5
+            },
+            {
+              "id": "cheekWidth",
+              "value": 0.5
+            },
+            {
+              "id": "chinPosition",
+              "value": 0.5
+            },
+            {
+              "id": "chinPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "chinSize",
+              "value": 0.5
+            },
+            {
+              "id": "earsPitch",
+              "value": 0.5
+            },
+            {
+              "id": "earsPosition",
+              "value": 0.5
+            },
+            {
+              "id": "earsRotation",
+              "value": 0.5
+            },
+            {
+              "id": "earsSize",
+              "value": 0.5
+            },
+            {
+              "id": "earsYaw",
+              "value": 0.5
+            },
+            {
+              "id": "ElfEars",
+              "value": 0.5
+            },
+            {
+              "id": "EyePosition",
+              "value": 1.0
+            },
+            {
+              "id": "eyeRotation",
+              "value": 0.56
+            },
+            {
+              "id": "eyeSize",
+              "value": 0.62
+            },
+            {
+              "id": "eyeSpacing",
+              "value": 0.5
+            },
+            {
+              "id": "foreheadPosition",
+              "value": 0.5
+            },
+            {
+              "id": "foreheadSize",
+              "value": 0.5
+            },
+            {
+              "id": "Happy_DNA",
+              "value": 0.5
+            },
+            {
+              "id": "headSize",
+              "value": 0.72
+            },
+            {
+              "id": "headWidth",
+              "value": 0.58
+            },
+            {
+              "id": "jawsPosition",
+              "value": 0.5
+            },
+            {
+              "id": "jawsSize",
+              "value": 0.56
+            },
+            {
+              "id": "lipsSize",
+              "value": 0.5
+            },
+            {
+              "id": "lowCheekPosition",
+              "value": 0.5
+            },
+            {
+              "id": "lowCheekPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "mandibleSize",
+              "value": 0.5
+            },
+            {
+              "id": "mouthSize",
+              "value": 0.5
+            },
+            {
+              "id": "neckThickness",
+              "value": 0.6
+            },
+            {
+              "id": "noseBroken",
+              "value": 0.5
+            },
+            {
+              "id": "noseCurve",
+              "value": 0.5
+            },
+            {
+              "id": "noseFlatten",
+              "value": 0.56
+            },
+            {
+              "id": "noseInclination",
+              "value": 0.5
+            },
+            {
+              "id": "nosePosition",
+              "value": 0.5
+            },
+            {
+              "id": "nosePronounced",
+              "value": 0.5
+            },
+            {
+              "id": "noseSize",
+              "value": 0.5
+            },
+            {
+              "id": "noseWidth",
+              "value": 0.5
+            }
+          ],
+          "colors": [
+            {
+              "id": "Skin",
+              "r": 0.8901961,
+              "g": 0.7529412,
+              "b": 0.5882353,
+              "a": 1.0
+            },
+            {
+              "id": "Hair",
+              "r": 0.0470588244,
+              "g": 0.0431372561,
+              "b": 0.05490196,
+              "a": 1.0
+            },
+            {
+              "id": "Brows",
+              "r": 0.0470588244,
+              "g": 0.0431372561,
+              "b": 0.05490196,
+              "a": 1.0
+            },
+            {
+              "id": "Eyes",
+              "r": 0.180392161,
+              "g": 0.113725491,
+              "b": 0.07058824,
+              "a": 1.0
+            }
+          ],
+          "outfits": [
+            {
+              "id": "Everyday",
+              "wardrobe": [
+                {
+                  "slot": "Hair",
+                  "itemId": "uma-2467b9f23683edf47929c985261c0f29"
+                },
+                {
+                  "slot": "Eyebrows",
+                  "itemId": "uma-8863e8885a6b77f4389d5f513b13715f"
+                },
+                {
+                  "slot": "BottomUnderlayer",
+                  "itemId": "uma-172d750a4828df1469001a8e8ed15fee"
+                },
+                {
+                  "slot": "Chest",
+                  "itemId": "uma-3a1b3f708e1d5654c96e86b08bdfd8bf"
+                },
+                {
+                  "slot": "Legs",
+                  "itemId": "uma-86f6dbab2e17ea143adb297336a735ff"
+                },
+                {
+                  "slot": "Feet",
+                  "itemId": "uma-9962c28dfacdf1d41b3b420c64a157c7"
+                }
+              ],
+              "colors": [
+                {
+                  "id": "Fabric-Chest",
+                  "r": 0.117647059,
+                  "g": 0.129411772,
+                  "b": 0.149019614,
+                  "a": 1.0
+                }
+              ]
+            }
+          ]
+        },
+        "age": 28,
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4.0,
+          "mental": 8.0,
+          "endurance": 4.0,
+          "social": 8.0,
+          "luck": 6.0,
+          "competition": 4.0,
+          "strategic": 6.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Strategic",
+          "Social"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      },
+      {
+        "id": "emma-brown",
+        "name": "Emma Brown",
+        "pronouns": "she/her",
+        "motive": "Test every claim she hears against what she has already seen before acting on it.",
+        "homeRoom": "Bedroom",
+        "occupation": "Scientist",
+        "archetype": "The Scientist",
+        "hometown": "Newark, NJ",
+        "bio": "Brilliant mind with a flair for the dramatic. Uses her analytical skills to outthink the competition while keeping everyone guessing.",
+        "sourceTemplateId": "emma-brown",
+        "appearance": {
+          "version": 1,
+          "provider": "uma",
+          "presetId": "emma-brown",
+          "bodyId": "Human Female 3.0",
+          "fallbackId": "riley-johnson",
+          "activeOutfit": "Everyday",
+          "dna": [
+            {
+              "id": "BrowPosition",
+              "value": 0.5
+            },
+            {
+              "id": "cheekPosition",
+              "value": 0.5
+            },
+            {
+              "id": "cheekPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "cheekSize",
+              "value": 0.56
+            },
+            {
+              "id": "cheekWidth",
+              "value": 0.5
+            },
+            {
+              "id": "chinPosition",
+              "value": 0.5
+            },
+            {
+              "id": "chinPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "chinSize",
+              "value": 0.5
+            },
+            {
+              "id": "earsPitch",
+              "value": 0.5
+            },
+            {
+              "id": "earsPosition",
+              "value": 0.5
+            },
+            {
+              "id": "earsRotation",
+              "value": 0.5
+            },
+            {
+              "id": "earsSize",
+              "value": 0.5
+            },
+            {
+              "id": "earsYaw",
+              "value": 0.5
+            },
+            {
+              "id": "ElfEars",
+              "value": 0.5
+            },
+            {
+              "id": "EyePosition",
+              "value": 1.0
+            },
+            {
+              "id": "eyeRotation",
+              "value": 0.5
+            },
+            {
+              "id": "eyeSize",
+              "value": 0.62
+            },
+            {
+              "id": "eyeSpacing",
+              "value": 0.5
+            },
+            {
+              "id": "foreheadPosition",
+              "value": 0.5
+            },
+            {
+              "id": "foreheadSize",
+              "value": 0.5
+            },
+            {
+              "id": "Happy_DNA",
+              "value": 0.5
+            },
+            {
+              "id": "headSize",
+              "value": 0.72
+            },
+            {
+              "id": "headWidth",
+              "value": 0.58
+            },
+            {
+              "id": "jawsPosition",
+              "value": 0.5
+            },
+            {
+              "id": "jawsSize",
+              "value": 0.5
+            },
+            {
+              "id": "lipsSize",
+              "value": 0.58
+            },
+            {
+              "id": "lowCheekPosition",
+              "value": 0.5
+            },
+            {
+              "id": "lowCheekPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "mandibleSize",
+              "value": 0.5
+            },
+            {
+              "id": "mouthSize",
+              "value": 0.5
+            },
+            {
+              "id": "neckThickness",
+              "value": 0.6
+            },
+            {
+              "id": "noseBroken",
+              "value": 0.5
+            },
+            {
+              "id": "noseCurve",
+              "value": 0.5
+            },
+            {
+              "id": "noseFlatten",
+              "value": 0.5
+            },
+            {
+              "id": "noseInclination",
+              "value": 0.5
+            },
+            {
+              "id": "nosePosition",
+              "value": 0.5
+            },
+            {
+              "id": "nosePronounced",
+              "value": 0.5
+            },
+            {
+              "id": "noseSize",
+              "value": 0.5
+            },
+            {
+              "id": "noseWidth",
+              "value": 0.5
+            },
+            {
+              "id": "armLength",
+              "value": 0.5
+            },
+            {
+              "id": "armWidth",
+              "value": 0.62
+            },
+            {
+              "id": "belly",
+              "value": 0.5
+            },
+            {
+              "id": "breastCleavage",
+              "value": 0.5
+            },
+            {
+              "id": "breastOrientation",
+              "value": 0.5
+            },
+            {
+              "id": "breastPosition",
+              "value": 0.5
+            },
+            {
+              "id": "breastSize",
+              "value": 0.5
+            },
+            {
+              "id": "breastWidth",
+              "value": 0.5
+            },
+            {
+              "id": "feetHighHeels",
+              "value": 0.5
+            },
+            {
+              "id": "feetSize",
+              "value": 0.66
+            },
+            {
+              "id": "forearmLength",
+              "value": 0.5
+            },
+            {
+              "id": "forearmWidth",
+              "value": 0.62
+            },
+            {
+              "id": "gluteusSize",
+              "value": 0.5
+            },
+            {
+              "id": "handsSize",
+              "value": 0.68
+            },
+            {
+              "id": "height",
+              "value": 0.16
+            },
+            {
+              "id": "legSeparation",
+              "value": 0.5
+            },
+            {
+              "id": "legsSize",
+              "value": 0.62
+            },
+            {
+              "id": "lowerMuscle",
+              "value": 0.58
+            },
+            {
+              "id": "lowerWeight",
+              "value": 0.5
+            },
+            {
+              "id": "upperMuscle",
+              "value": 0.5
+            },
+            {
+              "id": "upperWeight",
+              "value": 0.5
+            },
+            {
+              "id": "waist",
+              "value": 0.5
+            }
+          ],
+          "colors": [
+            {
+              "id": "Skin",
+              "r": 0.7764706,
+              "g": 0.58431375,
+              "b": 0.4627451,
+              "a": 1.0
+            },
+            {
+              "id": "Hair",
+              "r": 0.6627451,
+              "g": 0.654902,
+              "b": 0.635294139,
+              "a": 1.0
+            },
+            {
+              "id": "Brows",
+              "r": 0.2,
+              "g": 0.141176477,
+              "b": 0.101960786,
+              "a": 1.0
+            },
+            {
+              "id": "Eyes",
+              "r": 0.180392161,
+              "g": 0.113725491,
+              "b": 0.07058824,
+              "a": 1.0
+            }
+          ],
+          "outfits": [
+            {
+              "id": "Everyday",
+              "wardrobe": [
+                {
+                  "slot": "Hair",
+                  "itemId": "uma-7635ff0685fcb874f8e7fc84d6fc53fb"
+                },
+                {
+                  "slot": "Eyebrows",
+                  "itemId": "uma-847521e630faed24aabc69e112e5e765"
+                },
+                {
+                  "slot": "TopUnderlayer",
+                  "itemId": "uma-2391614db8c7ea04d947e6026453e322"
+                },
+                {
+                  "slot": "BottomUnderlayer",
+                  "itemId": "uma-e4c92bff99b7d9d4d97499b89f1fdb02"
+                },
+                {
+                  "slot": "Chest",
+                  "itemId": "uma-807cfcd005a81894988384eeaceb2e21"
+                },
+                {
+                  "slot": "Legs",
+                  "itemId": "uma-f0cf7145ad4ca614a950a661dcb5428e"
+                },
+                {
+                  "slot": "Feet",
+                  "itemId": "uma-6c6a4d38cb8219542a36651aa79e38cd"
+                },
+                {
+                  "slot": "Eyewear",
+                  "itemId": "gs-acc-visor"
+                },
+                {
+                  "slot": "Neckwear",
+                  "itemId": "gs-acc-bowtie"
+                }
+              ],
+              "colors": [
+                {
+                  "id": "Fabric-Chest",
+                  "r": 0.9490196,
+                  "g": 0.9490196,
+                  "b": 0.933333337,
+                  "a": 1.0
+                }
+              ]
+            }
+          ]
+        },
+        "age": 29,
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4.0,
+          "mental": 10.0,
+          "endurance": 4.0,
+          "social": 4.0,
+          "luck": 4.0,
+          "competition": 4.0,
+          "strategic": 7.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Analytical",
+          "Strategic"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      },
+      {
+        "id": "jordan-taylor",
+        "name": "Jordan Taylor",
+        "pronouns": "he/him",
+        "motive": "Be everyone's second-favourite person, because nobody targets their second favourite.",
+        "homeRoom": "Living",
+        "occupation": "Sales Representative",
+        "archetype": "The Charmer",
+        "hometown": "Chicago, IL",
+        "bio": "Charismatic charmer who can talk anyone into anything. Will do whatever it takes to win.",
+        "sourceTemplateId": "jordan-taylor",
+        "appearance": {
+          "version": 1,
+          "provider": "uma",
+          "presetId": "jordan-taylor",
+          "bodyId": "Human Male 3.0",
+          "fallbackId": "casey-wilson",
+          "activeOutfit": "Everyday",
+          "dna": [
+            {
+              "id": "armLength",
+              "value": 0.5
+            },
+            {
+              "id": "armWidth",
+              "value": 0.62
+            },
+            {
+              "id": "belly",
+              "value": 0.5
+            },
+            {
+              "id": "chestSize",
+              "value": 0.5
+            },
+            {
+              "id": "feetSize",
+              "value": 0.66
+            },
+            {
+              "id": "forearmLength",
+              "value": 0.5
+            },
+            {
+              "id": "forearmWidth",
+              "value": 0.62
+            },
+            {
+              "id": "gluteusSize",
+              "value": 0.5
+            },
+            {
+              "id": "handsSize",
+              "value": 0.68
+            },
+            {
+              "id": "height",
+              "value": 0.21
+            },
+            {
+              "id": "legSeparation",
+              "value": 0.5
+            },
+            {
+              "id": "legsSize",
+              "value": 0.62
+            },
+            {
+              "id": "lowerMuscle",
+              "value": 0.58
+            },
+            {
+              "id": "lowerWeight",
+              "value": 0.5
+            },
+            {
+              "id": "shoulderWidth",
+              "value": 0.5
+            },
+            {
+              "id": "upperMuscle",
+              "value": 0.64
+            },
+            {
+              "id": "upperWeight",
+              "value": 0.5
+            },
+            {
+              "id": "waist",
+              "value": 0.5
+            },
+            {
+              "id": "BrowPosition",
+              "value": 0.5
+            },
+            {
+              "id": "cheekPosition",
+              "value": 0.5
+            },
+            {
+              "id": "cheekPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "cheekSize",
+              "value": 0.5
+            },
+            {
+              "id": "cheekWidth",
+              "value": 0.5
+            },
+            {
+              "id": "chinPosition",
+              "value": 0.5
+            },
+            {
+              "id": "chinPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "chinSize",
+              "value": 0.5
+            },
+            {
+              "id": "earsPitch",
+              "value": 0.5
+            },
+            {
+              "id": "earsPosition",
+              "value": 0.5
+            },
+            {
+              "id": "earsRotation",
+              "value": 0.5
+            },
+            {
+              "id": "earsSize",
+              "value": 0.5
+            },
+            {
+              "id": "earsYaw",
+              "value": 0.5
+            },
+            {
+              "id": "ElfEars",
+              "value": 0.5
+            },
+            {
+              "id": "EyePosition",
+              "value": 1.0
+            },
+            {
+              "id": "eyeRotation",
+              "value": 0.5
+            },
+            {
+              "id": "eyeSize",
+              "value": 0.62
+            },
+            {
+              "id": "eyeSpacing",
+              "value": 0.5
+            },
+            {
+              "id": "foreheadPosition",
+              "value": 0.5
+            },
+            {
+              "id": "foreheadSize",
+              "value": 0.5
+            },
+            {
+              "id": "Happy_DNA",
+              "value": 0.5
+            },
+            {
+              "id": "headSize",
+              "value": 0.72
+            },
+            {
+              "id": "headWidth",
+              "value": 0.58
+            },
+            {
+              "id": "jawsPosition",
+              "value": 0.5
+            },
+            {
+              "id": "jawsSize",
+              "value": 0.58
+            },
+            {
+              "id": "lipsSize",
+              "value": 0.5
+            },
+            {
+              "id": "lowCheekPosition",
+              "value": 0.5
+            },
+            {
+              "id": "lowCheekPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "mandibleSize",
+              "value": 0.5
+            },
+            {
+              "id": "mouthSize",
+              "value": 0.6
+            },
+            {
+              "id": "neckThickness",
+              "value": 0.6
+            },
+            {
+              "id": "noseBroken",
+              "value": 0.5
+            },
+            {
+              "id": "noseCurve",
+              "value": 0.5
+            },
+            {
+              "id": "noseFlatten",
+              "value": 0.5
+            },
+            {
+              "id": "noseInclination",
+              "value": 0.5
+            },
+            {
+              "id": "nosePosition",
+              "value": 0.5
+            },
+            {
+              "id": "nosePronounced",
+              "value": 0.5
+            },
+            {
+              "id": "noseSize",
+              "value": 0.5
+            },
+            {
+              "id": "noseWidth",
+              "value": 0.5
+            }
+          ],
+          "colors": [
+            {
+              "id": "Skin",
+              "r": 0.9098039,
+              "g": 0.8039216,
+              "b": 0.6666667,
+              "a": 1.0
+            },
+            {
+              "id": "Hair",
+              "r": 0.368627459,
+              "g": 0.254901975,
+              "b": 0.164705887,
+              "a": 1.0
+            },
+            {
+              "id": "Brows",
+              "r": 0.2,
+              "g": 0.141176477,
+              "b": 0.101960786,
+              "a": 1.0
+            },
+            {
+              "id": "Eyes",
+              "r": 0.2901961,
+              "g": 0.184313729,
+              "b": 0.109803922,
+              "a": 1.0
+            }
+          ],
+          "outfits": [
+            {
+              "id": "Everyday",
+              "wardrobe": [
+                {
+                  "slot": "Hair",
+                  "itemId": "uma-047de1958ad5cfe4ea70df1f1b57762d"
+                },
+                {
+                  "slot": "Eyebrows",
+                  "itemId": "uma-8863e8885a6b77f4389d5f513b13715f"
+                },
+                {
+                  "slot": "Beard",
+                  "itemId": "uma-f8fe366049072804991888edda22c14d"
+                },
+                {
+                  "slot": "BottomUnderlayer",
+                  "itemId": "uma-aedd2f3f964b4c0499131e38c6a5422c"
+                },
+                {
+                  "slot": "Chest",
+                  "itemId": "uma-3a1b3f708e1d5654c96e86b08bdfd8bf"
+                },
+                {
+                  "slot": "Legs",
+                  "itemId": "uma-86f6dbab2e17ea143adb297336a735ff"
+                },
+                {
+                  "slot": "Feet",
+                  "itemId": "uma-b55cee5facaaacb49adbf21556a91930"
+                }
+              ],
+              "colors": [
+                {
+                  "id": "Fabric-Chest",
+                  "r": 0.3529412,
+                  "g": 0.372549027,
+                  "b": 0.4117647,
+                  "a": 1.0
+                }
+              ]
+            }
+          ]
+        },
+        "age": 31,
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4.0,
+          "mental": 6.0,
+          "endurance": 4.0,
+          "social": 8.0,
+          "luck": 6.0,
+          "competition": 4.0,
+          "strategic": 8.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Social",
+          "Sneaky"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      },
+      {
+        "id": "casey-wilson",
+        "name": "Casey Wilson",
+        "pronouns": "she/her",
+        "motive": "Keep conversations light, compare what people say, and avoid becoming the obvious target.",
+        "homeRoom": "Living",
+        "occupation": "Bartender",
+        "archetype": "The Party Animal",
+        "hometown": "New Orleans, LA",
+        "bio": "Life of the party with a surprisingly sharp strategic mind. Nobody suspects the fun one.",
+        "sourceTemplateId": "casey-wilson",
+        "appearance": {
+          "version": 1,
+          "provider": "uma",
+          "presetId": "casey-wilson",
+          "bodyId": "Human Female 3.0",
+          "fallbackId": "casey-wilson",
+          "activeOutfit": "Everyday",
+          "dna": [
+            {
+              "id": "BrowPosition",
+              "value": 0.5
+            },
+            {
+              "id": "cheekPosition",
+              "value": 0.5
+            },
+            {
+              "id": "cheekPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "cheekSize",
+              "value": 0.5
+            },
+            {
+              "id": "cheekWidth",
+              "value": 0.5
+            },
+            {
+              "id": "chinPosition",
+              "value": 0.5
+            },
+            {
+              "id": "chinPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "chinSize",
+              "value": 0.5
+            },
+            {
+              "id": "earsPitch",
+              "value": 0.5
+            },
+            {
+              "id": "earsPosition",
+              "value": 0.5
+            },
+            {
+              "id": "earsRotation",
+              "value": 0.5
+            },
+            {
+              "id": "earsSize",
+              "value": 0.5
+            },
+            {
+              "id": "earsYaw",
+              "value": 0.5
+            },
+            {
+              "id": "ElfEars",
+              "value": 0.5
+            },
+            {
+              "id": "EyePosition",
+              "value": 1.0
+            },
+            {
+              "id": "eyeRotation",
+              "value": 0.5
+            },
+            {
+              "id": "eyeSize",
+              "value": 0.62
+            },
+            {
+              "id": "eyeSpacing",
+              "value": 0.5
+            },
+            {
+              "id": "foreheadPosition",
+              "value": 0.5
+            },
+            {
+              "id": "foreheadSize",
+              "value": 0.5
+            },
+            {
+              "id": "Happy_DNA",
+              "value": 0.5
+            },
+            {
+              "id": "headSize",
+              "value": 0.78
+            },
+            {
+              "id": "headWidth",
+              "value": 0.58
+            },
+            {
+              "id": "jawsPosition",
+              "value": 0.5
+            },
+            {
+              "id": "jawsSize",
+              "value": 0.5
+            },
+            {
+              "id": "lipsSize",
+              "value": 0.62
+            },
+            {
+              "id": "lowCheekPosition",
+              "value": 0.5
+            },
+            {
+              "id": "lowCheekPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "mandibleSize",
+              "value": 0.5
+            },
+            {
+              "id": "mouthSize",
+              "value": 0.5
+            },
+            {
+              "id": "neckThickness",
+              "value": 0.6
+            },
+            {
+              "id": "noseBroken",
+              "value": 0.5
+            },
+            {
+              "id": "noseCurve",
+              "value": 0.5
+            },
+            {
+              "id": "noseFlatten",
+              "value": 0.5
+            },
+            {
+              "id": "noseInclination",
+              "value": 0.5
+            },
+            {
+              "id": "nosePosition",
+              "value": 0.5
+            },
+            {
+              "id": "nosePronounced",
+              "value": 0.5
+            },
+            {
+              "id": "noseSize",
+              "value": 0.5
+            },
+            {
+              "id": "noseWidth",
+              "value": 0.58
+            },
+            {
+              "id": "armLength",
+              "value": 0.5
+            },
+            {
+              "id": "armWidth",
+              "value": 0.62
+            },
+            {
+              "id": "belly",
+              "value": 0.5
+            },
+            {
+              "id": "breastCleavage",
+              "value": 0.5
+            },
+            {
+              "id": "breastOrientation",
+              "value": 0.5
+            },
+            {
+              "id": "breastPosition",
+              "value": 0.5
+            },
+            {
+              "id": "breastSize",
+              "value": 0.5
+            },
+            {
+              "id": "breastWidth",
+              "value": 0.5
+            },
+            {
+              "id": "feetHighHeels",
+              "value": 0.5
+            },
+            {
+              "id": "feetSize",
+              "value": 0.66
+            },
+            {
+              "id": "forearmLength",
+              "value": 0.5
+            },
+            {
+              "id": "forearmWidth",
+              "value": 0.62
+            },
+            {
+              "id": "gluteusSize",
+              "value": 0.5
+            },
+            {
+              "id": "handsSize",
+              "value": 0.68
+            },
+            {
+              "id": "height",
+              "value": 0.08
+            },
+            {
+              "id": "legSeparation",
+              "value": 0.5
+            },
+            {
+              "id": "legsSize",
+              "value": 0.62
+            },
+            {
+              "id": "lowerMuscle",
+              "value": 0.58
+            },
+            {
+              "id": "lowerWeight",
+              "value": 0.5
+            },
+            {
+              "id": "upperMuscle",
+              "value": 0.58
+            },
+            {
+              "id": "upperWeight",
+              "value": 0.5
+            },
+            {
+              "id": "waist",
+              "value": 0.44
+            }
+          ],
+          "colors": [
+            {
+              "id": "Skin",
+              "r": 0.368627459,
+              "g": 0.254901975,
+              "b": 0.211764708,
+              "a": 1.0
+            },
+            {
+              "id": "Hair",
+              "r": 0.09019608,
+              "g": 0.07058824,
+              "b": 0.05882353,
+              "a": 1.0
+            },
+            {
+              "id": "Brows",
+              "r": 0.09019608,
+              "g": 0.07058824,
+              "b": 0.05882353,
+              "a": 1.0
+            },
+            {
+              "id": "Eyes",
+              "r": 0.180392161,
+              "g": 0.113725491,
+              "b": 0.07058824,
+              "a": 1.0
+            }
+          ],
+          "outfits": [
+            {
+              "id": "Everyday",
+              "wardrobe": [
+                {
+                  "slot": "Hair",
+                  "itemId": "uma-511aa62754b82734e8a3ef2c7730b4d1"
+                },
+                {
+                  "slot": "Eyebrows",
+                  "itemId": "uma-ec43efbaab6ee6342ad64c668874c4c7"
+                },
+                {
+                  "slot": "TopUnderlayer",
+                  "itemId": "uma-2391614db8c7ea04d947e6026453e322"
+                },
+                {
+                  "slot": "BottomUnderlayer",
+                  "itemId": "uma-e4c92bff99b7d9d4d97499b89f1fdb02"
+                },
+                {
+                  "slot": "Chest",
+                  "itemId": "uma-2f3acfc4dd93b3c4faa2410e4255b666"
+                },
+                {
+                  "slot": "Legs",
+                  "itemId": "uma-f0cf7145ad4ca614a950a661dcb5428e"
+                },
+                {
+                  "slot": "Feet",
+                  "itemId": "uma-6c6a4d38cb8219542a36651aa79e38cd"
+                },
+                {
+                  "slot": "Earrings",
+                  "itemId": "gs-acc-studs"
+                }
+              ],
+              "colors": [
+                {
+                  "id": "Fabric-Chest",
+                  "r": 0.6627451,
+                  "g": 0.784313738,
+                  "b": 0.917647064,
+                  "a": 1.0
+                }
+              ]
+            }
+          ]
+        },
+        "age": 24,
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4.0,
+          "mental": 8.0,
+          "endurance": 4.0,
+          "social": 8.0,
+          "luck": 6.0,
+          "competition": 4.0,
+          "strategic": 6.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Social",
+          "Strategic"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      },
+      {
+        "id": "riley-johnson",
+        "name": "Riley Johnson",
+        "pronouns": "he/him",
+        "motive": "Turn careful observation into one reliable partnership and a well-timed competition win.",
+        "homeRoom": "Bedroom",
+        "occupation": "Software Engineer",
+        "archetype": "The Brainiac",
+        "hometown": "Seattle, WA",
+        "bio": "Analytical genius who calculates every move. May struggle socially but never in puzzles.",
+        "sourceTemplateId": "riley-johnson",
+        "appearance": {
+          "version": 1,
+          "provider": "uma",
+          "presetId": "riley-johnson",
+          "bodyId": "Human Male 3.0",
+          "fallbackId": "riley-johnson",
+          "activeOutfit": "Everyday",
+          "dna": [
+            {
+              "id": "armLength",
+              "value": 0.5
+            },
+            {
+              "id": "armWidth",
+              "value": 0.62
+            },
+            {
+              "id": "belly",
+              "value": 0.5
+            },
+            {
+              "id": "chestSize",
+              "value": 0.5
+            },
+            {
+              "id": "feetSize",
+              "value": 0.66
+            },
+            {
+              "id": "forearmLength",
+              "value": 0.5
+            },
+            {
+              "id": "forearmWidth",
+              "value": 0.62
+            },
+            {
+              "id": "gluteusSize",
+              "value": 0.5
+            },
+            {
+              "id": "handsSize",
+              "value": 0.68
+            },
+            {
+              "id": "height",
+              "value": 0.26
+            },
+            {
+              "id": "legSeparation",
+              "value": 0.5
+            },
+            {
+              "id": "legsSize",
+              "value": 0.56
+            },
+            {
+              "id": "lowerMuscle",
+              "value": 0.58
+            },
+            {
+              "id": "lowerWeight",
+              "value": 0.5
+            },
+            {
+              "id": "shoulderWidth",
+              "value": 0.5
+            },
+            {
+              "id": "upperMuscle",
+              "value": 0.46
+            },
+            {
+              "id": "upperWeight",
+              "value": 0.5
+            },
+            {
+              "id": "waist",
+              "value": 0.5
+            },
+            {
+              "id": "BrowPosition",
+              "value": 0.5
+            },
+            {
+              "id": "cheekPosition",
+              "value": 0.5
+            },
+            {
+              "id": "cheekPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "cheekSize",
+              "value": 0.5
+            },
+            {
+              "id": "cheekWidth",
+              "value": 0.5
+            },
+            {
+              "id": "chinPosition",
+              "value": 0.5
+            },
+            {
+              "id": "chinPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "chinSize",
+              "value": 0.5
+            },
+            {
+              "id": "earsPitch",
+              "value": 0.5
+            },
+            {
+              "id": "earsPosition",
+              "value": 0.5
+            },
+            {
+              "id": "earsRotation",
+              "value": 0.5
+            },
+            {
+              "id": "earsSize",
+              "value": 0.5
+            },
+            {
+              "id": "earsYaw",
+              "value": 0.5
+            },
+            {
+              "id": "ElfEars",
+              "value": 0.5
+            },
+            {
+              "id": "EyePosition",
+              "value": 1.0
+            },
+            {
+              "id": "eyeRotation",
+              "value": 0.5
+            },
+            {
+              "id": "eyeSize",
+              "value": 0.62
+            },
+            {
+              "id": "eyeSpacing",
+              "value": 0.5
+            },
+            {
+              "id": "foreheadPosition",
+              "value": 0.5
+            },
+            {
+              "id": "foreheadSize",
+              "value": 0.5
+            },
+            {
+              "id": "Happy_DNA",
+              "value": 0.5
+            },
+            {
+              "id": "headSize",
+              "value": 0.72
+            },
+            {
+              "id": "headWidth",
+              "value": 0.58
+            },
+            {
+              "id": "jawsPosition",
+              "value": 0.5
+            },
+            {
+              "id": "jawsSize",
+              "value": 0.5
+            },
+            {
+              "id": "lipsSize",
+              "value": 0.5
+            },
+            {
+              "id": "lowCheekPosition",
+              "value": 0.5
+            },
+            {
+              "id": "lowCheekPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "mandibleSize",
+              "value": 0.5
+            },
+            {
+              "id": "mouthSize",
+              "value": 0.5
+            },
+            {
+              "id": "neckThickness",
+              "value": 0.6
+            },
+            {
+              "id": "noseBroken",
+              "value": 0.5
+            },
+            {
+              "id": "noseCurve",
+              "value": 0.5
+            },
+            {
+              "id": "noseFlatten",
+              "value": 0.5
+            },
+            {
+              "id": "noseInclination",
+              "value": 0.5
+            },
+            {
+              "id": "nosePosition",
+              "value": 0.5
+            },
+            {
+              "id": "nosePronounced",
+              "value": 0.5
+            },
+            {
+              "id": "noseSize",
+              "value": 0.56
+            },
+            {
+              "id": "noseWidth",
+              "value": 0.5
+            }
+          ],
+          "colors": [
+            {
+              "id": "Skin",
+              "r": 0.6117647,
+              "g": 0.509803951,
+              "b": 0.3764706,
+              "a": 1.0
+            },
+            {
+              "id": "Hair",
+              "r": 0.0470588244,
+              "g": 0.0431372561,
+              "b": 0.05490196,
+              "a": 1.0
+            },
+            {
+              "id": "Brows",
+              "r": 0.0470588244,
+              "g": 0.0431372561,
+              "b": 0.05490196,
+              "a": 1.0
+            },
+            {
+              "id": "Eyes",
+              "r": 0.105882354,
+              "g": 0.07058824,
+              "b": 0.0470588244,
+              "a": 1.0
+            }
+          ],
+          "outfits": [
+            {
+              "id": "Everyday",
+              "wardrobe": [
+                {
+                  "slot": "Hair",
+                  "itemId": "uma-03fb4cc282e649744aa9712e47554170"
+                },
+                {
+                  "slot": "Eyebrows",
+                  "itemId": "uma-075bd537b74a2d8439dc3cae07db9fa8"
+                },
+                {
+                  "slot": "Beard",
+                  "itemId": "uma-729f0566362ff0446831676c6eb01b67"
+                },
+                {
+                  "slot": "BottomUnderlayer",
+                  "itemId": "uma-172d750a4828df1469001a8e8ed15fee"
+                },
+                {
+                  "slot": "Chest",
+                  "itemId": "uma-3a1b3f708e1d5654c96e86b08bdfd8bf"
+                },
+                {
+                  "slot": "Legs",
+                  "itemId": "uma-0ed25761b684b7048a76eafe523486da"
+                },
+                {
+                  "slot": "Feet",
+                  "itemId": "uma-9962c28dfacdf1d41b3b420c64a157c7"
+                },
+                {
+                  "slot": "Eyewear",
+                  "itemId": "gs-acc-glasses"
+                }
+              ],
+              "colors": [
+                {
+                  "id": "Fabric-Chest",
+                  "r": 0.180392161,
+                  "g": 0.196078435,
+                  "b": 0.219607845,
+                  "a": 1.0
+                }
+              ]
+            }
+          ]
+        },
+        "age": 29,
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4.0,
+          "mental": 10.0,
+          "endurance": 4.0,
+          "social": 4.0,
+          "luck": 4.0,
+          "competition": 4.0,
+          "strategic": 7.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Analytical",
+          "Strategic"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      },
+      {
+        "id": "jamie-roberts",
+        "name": "Jamie Roberts",
+        "pronouns": "she/her",
+        "motive": "Protect people who treat her honestly while keeping the courage to make her own move.",
+        "homeRoom": "Kitchen",
+        "occupation": "Nurse",
+        "archetype": "The Caregiver",
+        "hometown": "Boston, MA",
+        "bio": "Empathetic caregiver who everyone trusts. Not afraid to make bold moves when necessary.",
+        "sourceTemplateId": "jamie-roberts",
+        "appearance": {
+          "version": 1,
+          "provider": "uma",
+          "presetId": "jamie-roberts",
+          "bodyId": "Human Female 3.0",
+          "fallbackId": "jamie-roberts",
+          "activeOutfit": "Everyday",
+          "dna": [
+            {
+              "id": "BrowPosition",
+              "value": 0.5
+            },
+            {
+              "id": "cheekPosition",
+              "value": 0.5
+            },
+            {
+              "id": "cheekPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "cheekSize",
+              "value": 0.5
+            },
+            {
+              "id": "cheekWidth",
+              "value": 0.5
+            },
+            {
+              "id": "chinPosition",
+              "value": 0.5
+            },
+            {
+              "id": "chinPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "chinSize",
+              "value": 0.5
+            },
+            {
+              "id": "earsPitch",
+              "value": 0.5
+            },
+            {
+              "id": "earsPosition",
+              "value": 0.5
+            },
+            {
+              "id": "earsRotation",
+              "value": 0.5
+            },
+            {
+              "id": "earsSize",
+              "value": 0.5
+            },
+            {
+              "id": "earsYaw",
+              "value": 0.5
+            },
+            {
+              "id": "ElfEars",
+              "value": 0.5
+            },
+            {
+              "id": "EyePosition",
+              "value": 1.0
+            },
+            {
+              "id": "eyeRotation",
+              "value": 0.5
+            },
+            {
+              "id": "eyeSize",
+              "value": 0.62
+            },
+            {
+              "id": "eyeSpacing",
+              "value": 0.5
+            },
+            {
+              "id": "foreheadPosition",
+              "value": 0.5
+            },
+            {
+              "id": "foreheadSize",
+              "value": 0.5
+            },
+            {
+              "id": "Happy_DNA",
+              "value": 0.5
+            },
+            {
+              "id": "headSize",
+              "value": 0.76
+            },
+            {
+              "id": "headWidth",
+              "value": 0.58
+            },
+            {
+              "id": "jawsPosition",
+              "value": 0.5
+            },
+            {
+              "id": "jawsSize",
+              "value": 0.5
+            },
+            {
+              "id": "lipsSize",
+              "value": 0.5
+            },
+            {
+              "id": "lowCheekPosition",
+              "value": 0.5
+            },
+            {
+              "id": "lowCheekPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "mandibleSize",
+              "value": 0.5
+            },
+            {
+              "id": "mouthSize",
+              "value": 0.5
+            },
+            {
+              "id": "neckThickness",
+              "value": 0.6
+            },
+            {
+              "id": "noseBroken",
+              "value": 0.5
+            },
+            {
+              "id": "noseCurve",
+              "value": 0.5
+            },
+            {
+              "id": "noseFlatten",
+              "value": 0.5
+            },
+            {
+              "id": "noseInclination",
+              "value": 0.5
+            },
+            {
+              "id": "nosePosition",
+              "value": 0.5
+            },
+            {
+              "id": "nosePronounced",
+              "value": 0.5
+            },
+            {
+              "id": "noseSize",
+              "value": 0.5
+            },
+            {
+              "id": "noseWidth",
+              "value": 0.5
+            },
+            {
+              "id": "armLength",
+              "value": 0.5
+            },
+            {
+              "id": "armWidth",
+              "value": 0.62
+            },
+            {
+              "id": "belly",
+              "value": 0.5
+            },
+            {
+              "id": "breastCleavage",
+              "value": 0.5
+            },
+            {
+              "id": "breastOrientation",
+              "value": 0.5
+            },
+            {
+              "id": "breastPosition",
+              "value": 0.5
+            },
+            {
+              "id": "breastSize",
+              "value": 0.5
+            },
+            {
+              "id": "breastWidth",
+              "value": 0.5
+            },
+            {
+              "id": "feetHighHeels",
+              "value": 0.5
+            },
+            {
+              "id": "feetSize",
+              "value": 0.66
+            },
+            {
+              "id": "forearmLength",
+              "value": 0.5
+            },
+            {
+              "id": "forearmWidth",
+              "value": 0.62
+            },
+            {
+              "id": "gluteusSize",
+              "value": 0.5
+            },
+            {
+              "id": "handsSize",
+              "value": 0.68
+            },
+            {
+              "id": "height",
+              "value": 0.06
+            },
+            {
+              "id": "legSeparation",
+              "value": 0.5
+            },
+            {
+              "id": "legsSize",
+              "value": 0.62
+            },
+            {
+              "id": "lowerMuscle",
+              "value": 0.58
+            },
+            {
+              "id": "lowerWeight",
+              "value": 0.5
+            },
+            {
+              "id": "upperMuscle",
+              "value": 0.58
+            },
+            {
+              "id": "upperWeight",
+              "value": 0.6
+            },
+            {
+              "id": "waist",
+              "value": 0.5
+            }
+          ],
+          "colors": [
+            {
+              "id": "Skin",
+              "r": 0.9607843,
+              "g": 0.882352948,
+              "b": 0.768627465,
+              "a": 1.0
+            },
+            {
+              "id": "Hair",
+              "r": 0.6313726,
+              "g": 0.298039228,
+              "b": 0.141176477,
+              "a": 1.0
+            },
+            {
+              "id": "Brows",
+              "r": 0.482352942,
+              "g": 0.180392161,
+              "b": 0.101960786,
+              "a": 1.0
+            },
+            {
+              "id": "Eyes",
+              "r": 0.478431374,
+              "g": 0.41568628,
+              "b": 0.227450982,
+              "a": 1.0
+            }
+          ],
+          "outfits": [
+            {
+              "id": "Everyday",
+              "wardrobe": [
+                {
+                  "slot": "Hair",
+                  "itemId": "uma-c056e63f5e59a2e4b85e160707cb276e"
+                },
+                {
+                  "slot": "Eyebrows",
+                  "itemId": "uma-847521e630faed24aabc69e112e5e765"
+                },
+                {
+                  "slot": "TopUnderlayer",
+                  "itemId": "uma-2391614db8c7ea04d947e6026453e322"
+                },
+                {
+                  "slot": "BottomUnderlayer",
+                  "itemId": "uma-e4c92bff99b7d9d4d97499b89f1fdb02"
+                },
+                {
+                  "slot": "Chest",
+                  "itemId": "uma-eb5716d692323e1428f16773a964c77f"
+                },
+                {
+                  "slot": "Legs",
+                  "itemId": "uma-f0cf7145ad4ca614a950a661dcb5428e"
+                },
+                {
+                  "slot": "Feet",
+                  "itemId": "uma-6c6a4d38cb8219542a36651aa79e38cd"
+                }
+              ],
+              "colors": [
+                {
+                  "id": "Fabric-Chest",
+                  "r": 0.5411765,
+                  "g": 0.56078434,
+                  "b": 0.6,
+                  "a": 1.0
+                }
+              ]
+            }
+          ]
+        },
+        "age": 27,
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4.0,
+          "mental": 8.0,
+          "endurance": 4.0,
+          "social": 8.0,
+          "luck": 4.0,
+          "competition": 4.0,
+          "strategic": 6.0,
+          "loyalty": 6.0
+        },
+        "traits": [
+          "Emotional",
+          "Strategic"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      },
+      {
+        "id": "quinn-martinez",
+        "name": "Quinn Martinez",
+        "pronouns": "she/her",
+        "motive": "Be at the centre of every story the house tells, and control how each one is told.",
+        "homeRoom": "Living",
+        "occupation": "Social Media Influencer",
+        "archetype": "The Influencer",
+        "hometown": "Los Angeles, CA",
+        "bio": "Fame-seeking manipulator who plays for the cameras. Will create drama for entertainment.",
+        "sourceTemplateId": "quinn-martinez",
+        "appearance": {
+          "version": 1,
+          "provider": "uma",
+          "presetId": "quinn-martinez",
+          "bodyId": "Human Female 3.0",
+          "fallbackId": "taylor-kim",
+          "activeOutfit": "Everyday",
+          "dna": [
+            {
+              "id": "BrowPosition",
+              "value": 0.5
+            },
+            {
+              "id": "cheekPosition",
+              "value": 0.5
+            },
+            {
+              "id": "cheekPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "cheekSize",
+              "value": 0.5
+            },
+            {
+              "id": "cheekWidth",
+              "value": 0.5
+            },
+            {
+              "id": "chinPosition",
+              "value": 0.5
+            },
+            {
+              "id": "chinPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "chinSize",
+              "value": 0.5
+            },
+            {
+              "id": "earsPitch",
+              "value": 0.5
+            },
+            {
+              "id": "earsPosition",
+              "value": 0.5
+            },
+            {
+              "id": "earsRotation",
+              "value": 0.5
+            },
+            {
+              "id": "earsSize",
+              "value": 0.5
+            },
+            {
+              "id": "earsYaw",
+              "value": 0.5
+            },
+            {
+              "id": "ElfEars",
+              "value": 0.5
+            },
+            {
+              "id": "EyePosition",
+              "value": 1.0
+            },
+            {
+              "id": "eyeRotation",
+              "value": 0.5
+            },
+            {
+              "id": "eyeSize",
+              "value": 0.68
+            },
+            {
+              "id": "eyeSpacing",
+              "value": 0.5
+            },
+            {
+              "id": "foreheadPosition",
+              "value": 0.5
+            },
+            {
+              "id": "foreheadSize",
+              "value": 0.5
+            },
+            {
+              "id": "Happy_DNA",
+              "value": 0.5
+            },
+            {
+              "id": "headSize",
+              "value": 0.72
+            },
+            {
+              "id": "headWidth",
+              "value": 0.58
+            },
+            {
+              "id": "jawsPosition",
+              "value": 0.5
+            },
+            {
+              "id": "jawsSize",
+              "value": 0.5
+            },
+            {
+              "id": "lipsSize",
+              "value": 0.62
+            },
+            {
+              "id": "lowCheekPosition",
+              "value": 0.5
+            },
+            {
+              "id": "lowCheekPronounced",
+              "value": 0.5
+            },
+            {
+              "id": "mandibleSize",
+              "value": 0.5
+            },
+            {
+              "id": "mouthSize",
+              "value": 0.5
+            },
+            {
+              "id": "neckThickness",
+              "value": 0.6
+            },
+            {
+              "id": "noseBroken",
+              "value": 0.5
+            },
+            {
+              "id": "noseCurve",
+              "value": 0.5
+            },
+            {
+              "id": "noseFlatten",
+              "value": 0.5
+            },
+            {
+              "id": "noseInclination",
+              "value": 0.5
+            },
+            {
+              "id": "nosePosition",
+              "value": 0.5
+            },
+            {
+              "id": "nosePronounced",
+              "value": 0.5
+            },
+            {
+              "id": "noseSize",
+              "value": 0.5
+            },
+            {
+              "id": "noseWidth",
+              "value": 0.5
+            },
+            {
+              "id": "armLength",
+              "value": 0.5
+            },
+            {
+              "id": "armWidth",
+              "value": 0.62
+            },
+            {
+              "id": "belly",
+              "value": 0.5
+            },
+            {
+              "id": "breastCleavage",
+              "value": 0.5
+            },
+            {
+              "id": "breastOrientation",
+              "value": 0.5
+            },
+            {
+              "id": "breastPosition",
+              "value": 0.5
+            },
+            {
+              "id": "breastSize",
+              "value": 0.5
+            },
+            {
+              "id": "breastWidth",
+              "value": 0.5
+            },
+            {
+              "id": "feetHighHeels",
+              "value": 0.5
+            },
+            {
+              "id": "feetSize",
+              "value": 0.66
+            },
+            {
+              "id": "forearmLength",
+              "value": 0.5
+            },
+            {
+              "id": "forearmWidth",
+              "value": 0.62
+            },
+            {
+              "id": "gluteusSize",
+              "value": 0.5
+            },
+            {
+              "id": "handsSize",
+              "value": 0.68
+            },
+            {
+              "id": "height",
+              "value": 0.17
+            },
+            {
+              "id": "legSeparation",
+              "value": 0.5
+            },
+            {
+              "id": "legsSize",
+              "value": 0.62
+            },
+            {
+              "id": "lowerMuscle",
+              "value": 0.58
+            },
+            {
+              "id": "lowerWeight",
+              "value": 0.5
+            },
+            {
+              "id": "upperMuscle",
+              "value": 0.58
+            },
+            {
+              "id": "upperWeight",
+              "value": 0.5
+            },
+            {
+              "id": "waist",
+              "value": 0.5
+            }
+          ],
+          "colors": [
+            {
+              "id": "Skin",
+              "r": 0.847058833,
+              "g": 0.6666667,
+              "b": 0.5019608,
+              "a": 1.0
+            },
+            {
+              "id": "Hair",
+              "r": 0.2,
+              "g": 0.141176477,
+              "b": 0.101960786,
+              "a": 1.0
+            },
+            {
+              "id": "Brows",
+              "r": 0.09019608,
+              "g": 0.07058824,
+              "b": 0.05882353,
+              "a": 1.0
+            },
+            {
+              "id": "Eyes",
+              "r": 0.180392161,
+              "g": 0.113725491,
+              "b": 0.07058824,
+              "a": 1.0
+            }
+          ],
+          "outfits": [
+            {
+              "id": "Everyday",
+              "wardrobe": [
+                {
+                  "slot": "Hair",
+                  "itemId": "uma-298f42deb7ecf594eaf5d429c89bf2cf"
+                },
+                {
+                  "slot": "Eyebrows",
+                  "itemId": "uma-cdc364b6089619049a3dec0eb0406687"
+                },
+                {
+                  "slot": "TopUnderlayer",
+                  "itemId": "uma-2391614db8c7ea04d947e6026453e322"
+                },
+                {
+                  "slot": "BottomUnderlayer",
+                  "itemId": "uma-e4c92bff99b7d9d4d97499b89f1fdb02"
+                },
+                {
+                  "slot": "Chest",
+                  "itemId": "uma-eb5716d692323e1428f16773a964c77f"
+                },
+                {
+                  "slot": "Legs",
+                  "itemId": "uma-f0cf7145ad4ca614a950a661dcb5428e"
+                },
+                {
+                  "slot": "Feet",
+                  "itemId": "uma-4b579de8cf2e7384e9d53efdfb680c3f"
+                }
+              ],
+              "colors": [
+                {
+                  "id": "Fabric-Chest",
+                  "r": 0.431372553,
+                  "g": 0.117647059,
+                  "b": 0.164705887,
+                  "a": 1.0
+                }
+              ]
+            }
+          ]
+        },
+        "age": 25,
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 8.0,
+          "mental": 4.0,
+          "endurance": 6.0,
+          "social": 8.0,
+          "luck": 6.0,
+          "competition": 4.0,
+          "strategic": 4.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Confrontational",
+          "Social"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      }
+    ],
+    "relationships": [
+      {
+        "fromId": "player",
+        "toId": "alex-chen",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "player",
+        "toId": "emma-brown",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "player",
+        "toId": "jordan-taylor",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "player",
+        "toId": "casey-wilson",
+        "score": 12.0,
+        "lastInteractionWeek": 1,
+        "notes": [
+          "Agreed a safety pact with you."
+        ],
+        "events": [
+          {
+            "sequence": 2,
+            "week": 1,
+            "type": "deal_accepted",
+            "description": "Agreed a safety pact with you.",
+            "impactScore": 12.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "player",
+        "toId": "riley-johnson",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "player",
+        "toId": "jamie-roberts",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "player",
+        "toId": "quinn-martinez",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "alex-chen",
+        "toId": "player",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "alex-chen",
+        "toId": "emma-brown",
+        "score": 6.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "alex-chen",
+        "toId": "jordan-taylor",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "alex-chen",
+        "toId": "casey-wilson",
+        "score": 9.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "alex-chen",
+        "toId": "riley-johnson",
+        "score": 6.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "alex-chen",
+        "toId": "jamie-roberts",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "alex-chen",
+        "toId": "quinn-martinez",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "emma-brown",
+        "toId": "player",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "emma-brown",
+        "toId": "alex-chen",
+        "score": 9.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "emma-brown",
+        "toId": "jordan-taylor",
+        "score": -3.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "emma-brown",
+        "toId": "casey-wilson",
+        "score": 9.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "emma-brown",
+        "toId": "riley-johnson",
+        "score": 12.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "emma-brown",
+        "toId": "jamie-roberts",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "emma-brown",
+        "toId": "quinn-martinez",
+        "score": -3.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jordan-taylor",
+        "toId": "player",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jordan-taylor",
+        "toId": "alex-chen",
+        "score": 6.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jordan-taylor",
+        "toId": "emma-brown",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jordan-taylor",
+        "toId": "casey-wilson",
+        "score": 6.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jordan-taylor",
+        "toId": "riley-johnson",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jordan-taylor",
+        "toId": "jamie-roberts",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jordan-taylor",
+        "toId": "quinn-martinez",
+        "score": -6.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "player",
+        "score": 12.645220533013344,
+        "lastInteractionWeek": 1,
+        "notes": [
+          "Agreed a safety pact with you."
+        ],
+        "events": [
+          {
+            "sequence": 3,
+            "week": 1,
+            "type": "deal_accepted",
+            "description": "Agreed a safety pact with you.",
+            "impactScore": 12.864640045166016,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "alex-chen",
+        "score": 9.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "emma-brown",
+        "score": 6.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "jordan-taylor",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "riley-johnson",
+        "score": 6.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "jamie-roberts",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "quinn-martinez",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "player",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "alex-chen",
+        "score": 9.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "emma-brown",
+        "score": 12.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "jordan-taylor",
+        "score": -3.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "casey-wilson",
+        "score": 9.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "jamie-roberts",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "quinn-martinez",
+        "score": -3.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jamie-roberts",
+        "toId": "player",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jamie-roberts",
+        "toId": "alex-chen",
+        "score": 6.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jamie-roberts",
+        "toId": "emma-brown",
+        "score": 3.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jamie-roberts",
+        "toId": "jordan-taylor",
+        "score": -3.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jamie-roberts",
+        "toId": "casey-wilson",
+        "score": 6.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jamie-roberts",
+        "toId": "riley-johnson",
+        "score": 3.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jamie-roberts",
+        "toId": "quinn-martinez",
+        "score": -9.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "quinn-martinez",
+        "toId": "player",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "quinn-martinez",
+        "toId": "alex-chen",
+        "score": 6.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "quinn-martinez",
+        "toId": "emma-brown",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "quinn-martinez",
+        "toId": "jordan-taylor",
+        "score": -6.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "quinn-martinez",
+        "toId": "casey-wilson",
+        "score": 6.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "quinn-martinez",
+        "toId": "riley-johnson",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "quinn-martinez",
+        "toId": "jamie-roberts",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      }
+    ],
+    "promises": [],
+    "alliances": [],
+    "memories": [
+      {
+        "ownerId": "casey-wilson",
+        "subjectId": "player",
+        "text": "Agreed a safety pact with me.",
+        "week": 1,
+        "isPrivate": true
+      }
+    ],
+    "nominees": [],
+    "vetoPlayers": [],
+    "votes": [],
+    "ledger": {
+      "opportunities": [],
+      "competitions": [],
+      "power": [],
+      "ballots": [],
+      "claims": [],
+      "alliances": [],
+      "standings": [],
+      "replies": [],
+      "calls": [],
+      "dropped": 0
+    },
+    "readRulesStartWeek": 1,
+    "leverRulesStartWeek": 1,
+    "weekRulesStartWeek": 1,
+    "windowActions": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "agencyRulesStartWeek": 1,
+    "finaleRulesStartWeek": 1,
+    "competitionScores": [],
+    "events": [
+      {
+        "sequence": 1,
+        "week": 1,
+        "phase": 0,
+        "kind": "arrival",
+        "text": "Eight houseguests, one new game. Meet the cast, decide who to trust, and prepare for the first competition.",
+        "audienceIds": [
+          "player",
+          "alex-chen",
+          "emma-brown",
+          "jordan-taylor",
+          "casey-wilson",
+          "riley-johnson",
+          "jamie-roberts",
+          "quinn-martinez"
+        ]
+      },
+      {
+        "sequence": 4,
+        "week": 1,
+        "phase": 0,
+        "kind": "deal",
+        "text": "Casey Wilson agreed a safety pact. “This could be beneficial for both of us.”",
+        "audienceIds": [
+          "player",
+          "casey-wilson"
+        ]
+      },
+      {
+        "sequence": 5,
+        "week": 1,
+        "phase": 1,
+        "kind": "phase",
+        "text": "Week 1 · HoH",
+        "audienceIds": []
+      }
+    ],
+    "acceptedCommandIds": [
+      "63caea095df94eab8c399d2bd18109f0",
+      "7e0d2139adac4aefb2e4a62548a7c1b9"
+    ],
+    "juryExchanges": [],
+    "juryQuestionIndex": 0,
+    "finalSpeeches": [],
+    "finalArgument": null,
+    "relationshipArcs": [
+      {
+        "npcId": "casey-wilson",
+        "npcName": "Casey Wilson",
+        "arcType": "neutral",
+        "intensity": 15.0,
+        "escalationLevel": 0,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": 12.0,
+            "reason": "Agreed a safety pact with you."
+          }
+        ]
+      }
+    ],
+    "playerPersona": {
+      "current": "Neutral",
+      "scores": [
+        {
+          "persona": "Neutral",
+          "score": 0
+        },
+        {
+          "persona": "Remorseful",
+          "score": 0
+        },
+        {
+          "persona": "Ruthless",
+          "score": 0
+        },
+        {
+          "persona": "Calculated",
+          "score": 0
+        },
+        {
+          "persona": "Social Butterfly",
+          "score": 0
+        }
+      ],
+      "history": []
+    },
+    "jurySentiment": {
+      "jurors": [],
+      "overallSentiment": 0.0
+    },
+    "pendingDiary": null,
+    "lastDiaryRoomWeek": 0,
+    "phaseEventSocialBonus": 0,
+    "phaseEventCompBonus": 0,
+    "resolvedDiaryIds": [],
+    "loyaltyOaths": [],
+    "oathOpportunities": [],
+    "shownOathMilestones": [],
+    "playerStudyBonus": 0,
+    "blocRulesStartWeek": 1,
+    "npcSocial": {
+      "rulesStartWeek": 1,
+      "clockTick": 0,
+      "nextScanTick": 3,
+      "nextConversationSequence": 1,
+      "randomState": 1174814321,
+      "pending": [],
+      "cooldowns": [],
+      "pairMemory": []
+    },
+    "evictionStage": 0,
+    "evictionSpeeches": [],
+    "backdoorTargetId": null,
+    "outOfPhaseSocialActions": 0,
+    "openingBeatsSeen": [],
+    "socialBudgetRulesStartWeek": 1,
+    "deals": [
+      {
+        "id": "deal-player-2",
+        "type": "safety_agreement",
+        "proposerId": "player",
+        "recipientId": "casey-wilson",
+        "targetId": null,
+        "status": "active",
+        "week": 1,
+        "expiresWeek": 1,
+        "trustImpact": "high"
+      }
+    ],
+    "dealRulesStartWeek": 1,
+    "boughtActionPoints": 0,
+    "houseEvents": [],
+    "eventRulesStartWeek": 1,
+    "storylines": [],
+    "activeModifiers": [],
+    "storyRulesStartWeek": 1,
+    "haveNotRulesStartWeek": 1,
+    "haveNots": [],
+    "haveNotPasses": [],
+    "punishedHaveNots": [],
+    "vetoPrizes": [],
+    "strategyRulesStartWeek": 1,
+    "lobbies": [],
+    "replyCards": [],
+    "story": {
+      "rulesStartWeek": 1,
+      "rulesVersion": 9,
+      "productionStrictness": 1,
+      "romanceStorylines": true,
+      "grudges": [],
+      "facts": [],
+      "bonds": [],
+      "hooks": [],
+      "contacts": [],
+      "lore": [
+        {
+          "contestantId": "alex-chen",
+          "sheetKey": "alex-chen",
+          "source": "authored",
+          "factIds": [
+            "alex-chen:origin",
+            "alex-chen:home",
+            "alex-chen:work",
+            "alex-chen:respects",
+            "alex-chen:unforgivable",
+            "alex-chen:hot-exposed",
+            "alex-chen:comfort",
+            "alex-chen:goal",
+            "alex-chen:conflict",
+            "alex-chen:romance",
+            "alex-chen:secret"
+          ]
+        },
+        {
+          "contestantId": "emma-brown",
+          "sheetKey": "emma-brown",
+          "source": "authored",
+          "factIds": [
+            "emma-brown:origin",
+            "emma-brown:home",
+            "emma-brown:work",
+            "emma-brown:respects",
+            "emma-brown:unforgivable",
+            "emma-brown:hot-rushed",
+            "emma-brown:comfort",
+            "emma-brown:goal",
+            "emma-brown:conflict",
+            "emma-brown:romance",
+            "emma-brown:secret"
+          ]
+        },
+        {
+          "contestantId": "jordan-taylor",
+          "sheetKey": "jordan-taylor",
+          "source": "authored",
+          "factIds": [
+            "jordan-taylor:origin",
+            "jordan-taylor:home",
+            "jordan-taylor:work",
+            "jordan-taylor:respects",
+            "jordan-taylor:unforgivable",
+            "jordan-taylor:hot-cornered",
+            "jordan-taylor:comfort",
+            "jordan-taylor:goal",
+            "jordan-taylor:conflict",
+            "jordan-taylor:romance",
+            "jordan-taylor:secret"
+          ]
+        },
+        {
+          "contestantId": "casey-wilson",
+          "sheetKey": "casey-wilson",
+          "source": "authored",
+          "factIds": [
+            "casey-wilson:origin",
+            "casey-wilson:home",
+            "casey-wilson:work",
+            "casey-wilson:respects",
+            "casey-wilson:unforgivable",
+            "casey-wilson:hot-party",
+            "casey-wilson:comfort",
+            "casey-wilson:goal",
+            "casey-wilson:conflict",
+            "casey-wilson:romance",
+            "casey-wilson:secret"
+          ]
+        },
+        {
+          "contestantId": "riley-johnson",
+          "sheetKey": "riley-johnson",
+          "source": "authored",
+          "factIds": [
+            "riley-johnson:origin",
+            "riley-johnson:home",
+            "riley-johnson:work",
+            "riley-johnson:respects",
+            "riley-johnson:unforgivable",
+            "riley-johnson:hot-teased",
+            "riley-johnson:comfort",
+            "riley-johnson:goal",
+            "riley-johnson:conflict",
+            "riley-johnson:romance",
+            "riley-johnson:secret"
+          ]
+        },
+        {
+          "contestantId": "jamie-roberts",
+          "sheetKey": "jamie-roberts",
+          "source": "authored",
+          "factIds": [
+            "jamie-roberts:origin",
+            "jamie-roberts:home",
+            "jamie-roberts:work",
+            "jamie-roberts:respects",
+            "jamie-roberts:unforgivable",
+            "jamie-roberts:hot-emotional",
+            "jamie-roberts:hot-mom",
+            "jamie-roberts:comfort",
+            "jamie-roberts:goal",
+            "jamie-roberts:conflict",
+            "jamie-roberts:romance",
+            "jamie-roberts:secret"
+          ]
+        },
+        {
+          "contestantId": "quinn-martinez",
+          "sheetKey": "quinn-martinez",
+          "source": "authored",
+          "factIds": [
+            "quinn-martinez:origin",
+            "quinn-martinez:home",
+            "quinn-martinez:work",
+            "quinn-martinez:respects",
+            "quinn-martinez:unforgivable",
+            "quinn-martinez:hot-calm",
+            "quinn-martinez:comfort",
+            "quinn-martinez:goal",
+            "quinn-martinez:conflict",
+            "quinn-martinez:romance",
+            "quinn-martinez:secret"
+          ]
+        }
+      ],
+      "knownFacts": [],
+      "conduct": [],
+      "removals": [],
+      "pendingRemovalId": null,
+      "cooldowns": [],
+      "reckonings": []
+    }
+  }
+}

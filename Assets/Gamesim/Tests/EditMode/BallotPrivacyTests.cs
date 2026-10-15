@@ -80,7 +80,7 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>The true ballots the engine logged to their voters, by week: voter, target. Never the player's.</summary>
-        private static List<(int week, string voterId, string targetId)> PrivateBallots(EpisodeState s)
+        internal static List<(int week, string voterId, string targetId)> PrivateBallots(EpisodeState s)
         {
             var ballots = new List<(int, string, string)>();
             foreach (var line in s.events.Where(e => e.kind == "vote-reveal" && e.audienceIds != null && e.audienceIds.Count == 1 && e.audienceIds[0] != s.playerId))
@@ -99,7 +99,7 @@ namespace Gamesim.Tests.EditMode
         /// ("Jamie told you Casey and voted Riley") is not the subject. The words that say a ballot is
         /// not known (KnownBallots.Unresolved) are not a ballot said.
         /// </summary>
-        private static bool NamesTheBallot(EpisodeState s, string line, string voterId, string targetId)
+        internal static bool NamesTheBallot(EpisodeState s, string line, string voterId, string targetId)
         {
             if (string.IsNullOrEmpty(line)) return false;
             string voter = s.Find(voterId)?.name, target = s.Find(targetId)?.name;
@@ -130,7 +130,7 @@ namespace Gamesim.Tests.EditMode
         /// Every line the simulation's readers offer the screens, for the player, dated "Week N: "
         /// where the reader dates it (a week's page, a note, a memory), as the screens date them.
         /// </summary>
-        private static List<string> ReaderLines(EpisodeState s)
+        internal static List<string> ReaderLines(EpisodeState s)
         {
             var lines = new List<string>();
             foreach (int week in Enumerable.Range(1, s.week)) lines.AddRange(YourWeek.Build(s, week).Lines.Select(l => "Week " + week + ": " + l));
@@ -172,7 +172,7 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>A line as the engine wrote it, without the "Week 3: " or "Week 3 · " a screen dates it with.</summary>
-        private static string Unprefixed(string line)
+        internal static string Unprefixed(string line)
         {
             if (line == null || !line.StartsWith("Week ", StringComparison.Ordinal)) return line;
             int colon = line.IndexOf(": ", StringComparison.Ordinal), dot = line.IndexOf(" · ", StringComparison.Ordinal);
@@ -181,7 +181,7 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>The week a line is dated to by its "Week 3: " or "Week 3 · ", or null where it carries none.</summary>
-        private static int? WeekOf(string line)
+        internal static int? WeekOf(string line)
         {
             if (line == null || !line.StartsWith("Week ", StringComparison.Ordinal)) return null;
             int end = 5;

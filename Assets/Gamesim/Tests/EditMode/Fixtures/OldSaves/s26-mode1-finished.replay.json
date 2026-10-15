@@ -1,0 +1,17 @@
+{
+ "id": "s26-mode1-finished",
+ "referenceBuild": "3b95d172",
+ "referenceSchema": 26,
+ "digest": "6304205393410198",
+ "checkpoints": [
+  {
+   "i": 0,
+   "week": 6,
+   "phase": "Finished",
+   "revision": 117,
+   "randomState": 1169498991,
+   "season": "e8620c58108a05e8"
+  }
+ ],
+ "commands": []
+}

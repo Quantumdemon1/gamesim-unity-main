@@ -1008,7 +1008,8 @@ asset-production/vendoring executable path is missing; do not bypass package/lic
 gates, buy assets or publish/push an unconfigured project.
 No port completion, production grounding, shipping, performance or human acceptance
 is claimed. Detailed task handoff:
-work/port-completion-owner-decisions-20261012/REMAINING_WORK.md.
+REMAINING_WORK_20261012.md (in this repository; Codex's queue as of 2026-10-12,
+superseded for planning by the consolidation of 2026-10-15).
 
 
 ## Doc17 checkpoint: actual Source22/23 changes and preserved validation failures

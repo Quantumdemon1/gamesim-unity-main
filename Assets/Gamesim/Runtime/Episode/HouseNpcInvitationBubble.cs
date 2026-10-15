@@ -15,8 +15,10 @@ namespace Gamesim.Episode
     {
         public const string PanelName = "NPC invitation bubble";
         public const string LineName = "NPC invitation line";
-        public const string HearCaption = "Hear them out";
-        public const string NotNowCaption = "Not now";
+        // Captions of their own (D18): the Story Pull's card says "Hear them out" and "Not now", and a
+        // caption names one control. These never shipped, so no contract changes.
+        public const string HearCaption = "Hear their offer";
+        public const string NotNowCaption = "Not right now";
         private GameObject root;
         private RectTransform canvasRect, panel, tail;
         private TMP_Text speaker, words;

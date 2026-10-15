@@ -455,7 +455,9 @@ namespace Gamesim.Episode
         private void TickStoryPull()
         {
             if (hud == null) return;
-            bool free = IsReady && !IsPanelOpen && !challengeActive && !CeremonyOverlays.OnScreen && playerIsActive;
+            // An invitation already up keeps the floor (D18): the two never share the screen.
+            bool free = IsReady && !IsPanelOpen && !challengeActive && !CeremonyOverlays.OnScreen && playerIsActive
+                && !NpcInvitationIsVisible;
             string walkIn = walkInFirst == null ? null : WalkInKey(walkInWeek, walkInRoom, walkInFirst, walkInSecond);
             if (!ReferenceEquals(pullFor, projected) || pullFree != free || pullWalkIn != walkIn || pullDeclined != declinedPulls.Count)
             {

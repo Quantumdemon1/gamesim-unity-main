@@ -231,5 +231,48 @@ namespace Gamesim.Tests.PlayMode
             }
             finally { Object.Destroy(seat); }
         }
+
+        /// <summary>
+        /// A storm with no route to its spot takes nobody from what they were doing: the houseguest
+        /// out on a stroll is refused before the stroll is let go, and walks on it as before.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StormOff_WithNoRouteThereTakesNobodyFromTheirStroll()
+        {
+            try
+            {
+                Application.runInBackground = true;
+                Time.captureDeltaTime = 1f / 30f;
+                director.BuildNpcWorldForDiagnostics();
+                for (int frame = 0; frame < 300 && !director.NpcAutonomyReady; frame++) yield return null;
+                Assert.That(director.NpcAutonomyReady, Is.True, "The house's world is up.");
+                var coordinator = StormCoordinator();
+                // Somebody out on a stroll: the house's own, or one sent a step away. All in one frame,
+                // so nothing of the house's moves between the stroll and the storm.
+                HouseNpc walker = null;
+                foreach (var npc in SceneComponents<HouseNpc>().Where(each => each.gameObject.activeInHierarchy && each.Id != director.Snapshot.playerId)
+                    .OrderBy(each => each.Id, System.StringComparer.Ordinal))
+                {
+                    if (coordinator.IsWandering(npc.Id)) { walker = npc; break; }
+                    bool sent = false;
+                    foreach (float step in new[] { 1.5f, 2.5f, 1f })
+                        if (coordinator.TryWander(npc.Id, PointBeside(npc.transform.position, step))) { sent = true; break; }
+                    if (sent) { walker = npc; break; }
+                }
+                Assert.That(walker, Is.Not.Null, "Somebody is out on a stroll.");
+                var motion = walker.GetComponent<HouseNpcMotion>();
+                string stroll = motion.LeaseId;
+                var going = motion.ReservedDestination;
+                Assert.That(stroll, Does.StartWith("wander:"), "Their route is the stroll's.");
+                // Off every floor: nobody can walk there.
+                var nowhere = new Vector3(500f, 0f, 500f);
+                Assert.That(coordinator.TryStormOff(walker.Id, nowhere, EpisodeDirector.StormSpeed), Is.False, "No route there, no storm.");
+                Assert.That(coordinator.StormingActorId, Is.Null, "Nobody is storming,");
+                Assert.That(coordinator.IsWandering(walker.Id), Is.True, walker.Id + "'s stroll is still theirs,");
+                Assert.That(motion.LeaseId, Is.EqualTo(stroll), "on the same route,");
+                Assert.That(Flat(motion.ReservedDestination, going), Is.LessThan(.01f), "to the same place.");
+            }
+            finally { Time.captureDeltaTime = 0f; }
+        }
     }
 }

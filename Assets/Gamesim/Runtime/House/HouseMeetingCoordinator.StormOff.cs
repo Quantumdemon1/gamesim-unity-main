@@ -28,8 +28,9 @@ namespace Gamesim.House
         /// Takes a houseguest from a scene, a stroll or an activity and sends them to
         /// <paramref name="spot"/> at <paramref name="speed"/> metres a second (the house's own pace
         /// for zero): false, and nothing changed, when somebody else is storming, the house is staged
-        /// for something else, a meeting, a conversation or a staged act has them, or there is no
-        /// route there.
+        /// for something else, a meeting, a conversation, a staged act or any other borrow has them,
+        /// or there is no route there. All of that is asked before they are taken from anything: a
+        /// storm with nowhere to go leaves them in their scene, their stroll, their activity and their seat.
         /// </summary>
         public bool TryStormOff(string id, Vector3 spot, float speed = 0f)
         {
@@ -40,6 +41,11 @@ namespace Gamesim.House
             foreach (var lease in leases.Values)
                 if (lease.FirstId == id || lease.SecondId == id) return false;
             if (TalkHoldsActor(id) || ActHoldsActor(id)) return false;
+            // A lease nothing below lets go of (anybody else's borrow) refuses here, not after the yields.
+            var motion = actor.motion;
+            if (motion.LeaseId != null && !(storming == actor && motion.LeaseId == stormToken)
+                && !SceneOwnsMotion(motion) && !WanderOwnsMotion(motion) && !ActivityOwnsMotion(motion)) return false;
+            if (!motion.CanRouteTo(spot)) return false;
             ReleaseFromSceneStage(id);
             YieldWander(id);
             YieldActivity(id);

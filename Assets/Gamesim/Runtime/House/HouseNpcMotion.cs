@@ -158,6 +158,24 @@ namespace Gamesim.House
             return true;
         }
 
+        private NavMeshPath probePath;
+
+        /// <summary>
+        /// Whether <see cref="TryReserveAndPath"/> would find this body a route to
+        /// <paramref name="requested"/> from where it stands - the same floor, clearance and
+        /// complete-path tests - with nothing reserved, walked or recorded, whatever lease it holds
+        /// and whether or not it is paused: for a borrower that must know before it takes the body
+        /// from whatever has it.
+        /// </summary>
+        public bool CanRouteTo(Vector3 requested)
+        {
+            if (!IsBound || !HouseRoomQuery.Finite(requested) || !ValidateOwnedComponents(out _)) return false;
+            if (!rooms.TrySampleFloor(requested, capsule.radius, filter, .25f, out var sampled, out _)) return false;
+            if (!rooms.HasCapsuleClearance(sampled, capsule.radius, capsule.height, transform)) return false;
+            if (probePath == null) probePath = new NavMeshPath();
+            return ownedAgent.CalculatePath(sampled, probePath) && probePath.status == NavMeshPathStatus.PathComplete;
+        }
+
         public bool HasArrivedAt(string reservationId) => reservationId != null && reservationId == leaseId
             && !paused && state == HouseNpcMotionState.Arrived && PhysicalArrival();
 

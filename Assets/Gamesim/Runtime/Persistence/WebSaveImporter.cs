@@ -215,6 +215,9 @@ namespace Gamesim.Persistence
             EpisodeEngine.EnableAllianceLeaks(result, checked(week + 1));
             // The war rooms (WAVE-D-NPC-PACTS-PLAN D3, §6 Q1) from the week after too.
             EpisodeEngine.EnablePactPlans(result, checked(week + 1));
+            // And the house's turns all week (D2, §6 Q1), with the week rules they play in, set for that week
+            // above: the import week plays the weekly pass, as the web house did.
+            EpisodeEngine.EnableAllWeek(result, checked(week + 1));
             return result;
         }
 

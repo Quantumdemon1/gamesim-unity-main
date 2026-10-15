@@ -6,7 +6,7 @@ namespace Gamesim.Episode
 {
     public sealed partial class EpisodeDirector
     {
-        public const string BlockSpeechSaveLine = "Deliver your speech and Say nothing save immediately. Your speech addresses the house; leaving this view does not deliver it.";
+        public const string BlockSpeechSaveLine = "Deliver your speech, Say nothing and Deliver a prepared speech save immediately. Your speech addresses the house; leaving this view does not deliver it.";
         public const string BlockSpeechInfluenceLine = "Choose how to put your speech. This approach, not a hidden interpretation of your typed words, may slightly sway undecided NPC voters who hear it. Their response is uncertain; no vote is promised and your own ballot remains yours.";
 
         private object blockSpeechView;
@@ -33,6 +33,9 @@ namespace Gamesim.Episode
             && ReferenceEquals(blockSpeechView, view) && loadGeneration == generation
             && IsCurrentDiaryRevision(state) && state.week == projected.week && BlockSpeechPending(projected)
             && (privateRoom ? diaryOpen && CanUseDiary && IsDiarySettled : phaseOpen && !diaryOpen);
+
+        /// <summary>The prepared speech for an approach: its authored closing line, trimmed.</summary>
+        public static string PreparedSpeech(string approach) => BlockSpeeches.NpcClosing(approach).Trim();
 
         private void CommitBlockSpeech(EpisodeState state, string text, string approach)
         {
@@ -72,10 +75,20 @@ namespace Gamesim.Episode
                 blockSpeechView = null; // Even a refused write retires this activation before it tries to save.
                 CommitBlockSpeech(state, quiet ? "" : blockSpeechDraft, blockSpeechApproach);
             }
+            // A pad has no keys to type with (PLAN A, A6; the lead's decision 8): the chosen approach's
+            // own authored line, as a houseguest on the block would put it (BlockSpeeches.NpcClosing).
+            // Never empty, so it is never Quiet and the approach is carried, as typed words carry it;
+            // no roll, no new command - the speech command with valid inputs.
+            void DeliverPrepared()
+            {
+                if (!BlockSpeechViewCurrent(state, view, generation, privateRoom)) return;
+                blockSpeechView = null;
+                CommitBlockSpeech(state, PreparedSpeech(blockSpeechApproach), blockSpeechApproach);
+            }
             hud.EvictionSpeech(blockSpeechDraft, value =>
             {
                 if (BlockSpeechViewCurrent(state, view, generation, privateRoom)) blockSpeechDraft = value;
-            }, () => Deliver(false), () => Deliver(true));
+            }, () => Deliver(false), () => Deliver(true), DeliverPrepared);
         }
 
         private bool RenderBlockSpeechReadback(EpisodeState state)

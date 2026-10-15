@@ -6,10 +6,12 @@ using System.Linq;
 namespace Gamesim.Simulation
 {
     /// <summary>
-    /// Aggregate read-only validation for the explicit, uninstalled Vote proposal. This is a leaf
-    /// of an internal whole-episode core, NOT public/save acceptance or historical command proof.
-    /// Its aggregate leaf never changes authority, installs an archive or calls whole validation.
-    /// Separate draft entries require the complete internal core before cloning unrelated state.
+    /// Aggregate read-only validation of the Vote family under mode 2, the unified vote rules. This is a leaf
+    /// of the whole-episode core, which public and save validation dispatch a mode-2 season to since vote family
+    /// V6; it is not historical command proof. Its aggregate leaf never changes authority, installs an archive or
+    /// calls whole validation. Separate draft entries require the complete core before cloning unrelated state.
+    /// <para>The save contract freezes here at schema 28 (the lead's decision D2): whoever bumps the schema to 29
+    /// must freeze this whole mode-2 core into FrozenEpisodeV28, as players' schema-28 saves hold mode 2.</para>
     /// </summary>
     public static class UnifiedVoteFamilyValidation
     {
@@ -27,6 +29,57 @@ namespace Gamesim.Simulation
 
         public static bool TryValidate(EpisodeState s, IReadOnlyList<UnifiedVoteRevealState> archive, out string error)
             => TryValidateCore(s, archive, null, out error);
+
+        /// <summary>
+        /// The readers' check of mode 2's commitment storage (vote family V5a): what a reader needs to read the rows
+        /// at all, and nothing that a command in its middle may not yet have made true. The Safety authority's own
+        /// storage check (<see cref="UnifiedCommitments.ValidateSafetyAuthority"/>: every Safety row under its policy,
+        /// no raw Safety mirror, identities unique across all three lists, the two 200-row capacities); no raw Vote
+        /// mirror; and each Vote row's shape - its family, policy and origin, a deal's Vote subtype, a known installed
+        /// status a promise can be read at, its source's trust weight (pre-V6 save-contract review), bounded
+        /// identities, parties and a target that exist, and a link that resolves to a deal the season holds.
+        /// <para>Never frames, ballots, endings, chronology or terminal decisions: those are the complete core's
+        /// (<see cref="TryValidate"/>), which judges a command's candidate, a save and the reveal, never a reader in
+        /// the middle of a command. Reads only the commitment lists and the cast.</para>
+        /// </summary>
+        public static bool TryValidateStorage(EpisodeState s, out string error)
+        {
+            if (s == null || s.unifiedCommitmentRulesVersion != Version)
+                return Fail(out error, "Expected the explicit prospective Vote storage.");
+            if (!UnifiedCommitments.ValidateSafetyAuthority(s, out error)) return false;
+            if (s.promises.Any(row => row.kind == PromiseKind.Vote) || s.deals.Any(row => IsVoteType(row.type)))
+                return Fail(out error, "Prospective Safety/Vote authority cannot have writable raw mirrors.");
+            HashSet<string> deals = null;
+            foreach (var row in s.unifiedCommitments)
+            {
+                if (row.kind == UnifiedCommitments.Safety) continue;
+                bool promise = row.sourcePolicy == UnifiedCommitments.PromisePolicy;
+                if (row.kind != UnifiedVoteTogether.Vote || !promise && row.sourcePolicy != UnifiedCommitments.DealPolicy
+                    || (promise ? row.subtype != null || !IsPromiseOrigin(row.origin) : !IsVoteType(row.subtype) || !IsDealOrigin(row.origin))
+                    || !DealStatus.IsKnown(row.status) || row.status == DealStatus.Accepted
+                    || promise && (row.status == DealStatus.Proposed || row.status == DealStatus.Declined))
+                    return Fail(out error, "A stored Vote row needs its family, policy, origin, subtype and an installed status.");
+                // The weight every reader of a broken or kept row prices it by (DealResolution.Impact, a promise's
+                // native impact): a promise's is medium and a deal's its subtype's default, as the core holds them.
+                if (row.trustImpact != (promise ? DealTrust.Medium : DealKind.DefaultTrust(row.subtype)))
+                    return Fail(out error, "A stored Vote row keeps its source's trust weight.");
+                if (!Token(row.makerId) || !Token(row.beneficiaryId) || row.makerId == row.beneficiaryId
+                    || s.Find(row.makerId) == null || s.Find(row.beneficiaryId) == null
+                    || row.targetId != null && (!Token(row.targetId) || s.Find(row.targetId) == null))
+                    return Fail(out error, "A stored Vote row's parties and target must be houseguests of this season.");
+                // Whether it names a target at all, as the core holds it (the pre-V6 save-contract review): a story's word on the
+                // vote and a bloc name none, every other word and deal one - the target every reader compares a ballot with.
+                if ((row.targetId == null) != (promise ? row.origin == UnifiedCommitments.StoryPromise : row.subtype == DealKind.VoteTogether))
+                    return Fail(out error, "A stored Vote row names a target exactly where its source does.");
+                if (row.linkedCommitmentId == null) continue;
+                deals ??= new HashSet<string>(s.deals.Select(item => item.id)
+                    .Concat(s.unifiedCommitments.Where(item => item.sourcePolicy == UnifiedCommitments.DealPolicy).Select(item => item.id)),
+                    StringComparer.Ordinal);
+                if (promise || row.linkedCommitmentId == row.id || !deals.Contains(row.linkedCommitmentId))
+                    return Fail(out error, "A stored Vote deal's link must resolve to another deal of this season.");
+            }
+            return true;
+        }
 
         // A draft may use the current sequence, but no stored row may. The exception is an
         // explicit, bounded set of additions on a detached candidate, never a staging/save gate.
@@ -412,25 +465,24 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// Whether an Expired row has an ending to have expired by: its term passed, or an ending that exists -
-        /// including, at regular Results, this week's evictee's departure, which the following Advance writes
-        /// first thing and so may already have written (vote family V4).
-        /// <para>That last is a tolerance for the middle of a command, not a state any command leaves: the Safety
-        /// gateway's context check (EpisodeEngine.CheckUnifiedSafetyContext) validates the Vote family inside that
-        /// Advance, after its departure ending and while the eviction still reads Results. No accepted command ends at
-        /// Results with an evictee's deal already Expired, yet a saved state that holds one passes this check - a
-        /// save gate (vote family V6) that must refuse it needs a check of its own.</para>
+        /// Whether an Expired row has an ending to have expired by: its term passed, or an ending the source has
+        /// already published. At regular Results this week's evictee's departure is not one yet - the following
+        /// Advance writes it - so a state at Results with the evictee's deal already Expired is refused: no command
+        /// leaves one (vote family V5a, the lead's decision D4). Until V5a the readers checked the whole family in
+        /// the middle of that Advance, after its departure ending and while the eviction still read Results, and
+        /// this accepted such a state for them; they check the storage only now
+        /// (<see cref="TryValidateStorage"/>), so the complete core is the save gate by itself.
         /// </summary>
         private static bool CompatibleEnding(EpisodeState s, UnifiedCommitmentState row)
         {
             if (row.expiresWeek > 0 && row.expiresWeek < s.week) return true;
-            return Ending(s, row, true);
+            return Ending(s, row);
         }
 
         /// <summary>Whether a still-binding row has outlived an ending the source has already written.</summary>
-        private static bool PublishedEnding(EpisodeState s, UnifiedCommitmentState row) => Ending(s, row, false);
+        private static bool PublishedEnding(EpisodeState s, UnifiedCommitmentState row) => Ending(s, row);
 
-        private static bool Ending(EpisodeState s, UnifiedCommitmentState row, bool departureDue)
+        private static bool Ending(EpisodeState s, UnifiedCommitmentState row)
         {
             bool promise = row.sourcePolicy == UnifiedCommitments.PromisePolicy;
             if (s.story.removals.Any(item => item.contestantId == row.makerId || item.contestantId == row.beneficiaryId
@@ -439,7 +491,7 @@ namespace Gamesim.Simulation
                 || item.evicteeId != null && item.evicteeId == row.targetId)
                 // At regular Results the ballot writer has marked the evictee Jury, but
                 // EndWithTheEvictee still belongs to the subsequent real Advance command.
-                && (departureDue || item.week < s.week || s.phase != EpisodePhase.Eviction || !s.evictionResolved
+                && (item.week < s.week || s.phase != EpisodePhase.Eviction || !s.evictionResolved
                     || s.evictionStage != EvictionStage.Results))) return true;
             return EndingCutoff(s, row) < s.week || row.linkedCommitmentId != null
                 && (EndingCutoff(s, row) < row.voteFirstRevealWeek || VoidingBreach(s, row) != null);
@@ -583,6 +635,8 @@ namespace Gamesim.Simulation
             _ => null,
         };
         internal static bool IsVoteType(string type) => type == DealKind.VoteTogether || type == DealKind.VoteSave || type == DealKind.VoteEvict;
+        private static bool IsPromiseOrigin(string origin) => origin == UnifiedCommitments.PlayerPromise
+            || origin == UnifiedCommitments.NpcPromise || origin == UnifiedCommitments.StoryPromise;
         private static bool IsDealOrigin(string origin) => origin == UnifiedCommitments.PlayerDeal || origin == UnifiedCommitments.NpcDeal
             || origin == UnifiedCommitments.NpcOffer || origin == VoteLobby || origin == UnifiedCommitments.StoryDeal
             || origin == UnifiedCommitments.CounterDeal || origin == UnifiedCommitments.CounterPrice || origin == VetoAskPrice || origin == OwnVetoPrice;

@@ -252,7 +252,9 @@ namespace Gamesim.Tests.EditMode
                     swear.targetId = oath;
                     return swear;
                 }
-                var offer = s.deals.Where(d => d.status == DealStatus.Proposed && d.recipientId == me && circle.Any(c => c.id == d.proposerId))
+                // Mode 1's raw list (CommitmentReferences.RawDeals: the list itself in modes 0 and 1, and in mode 2 - every fresh
+                // season since vote family V6 - the list mode 1's would have been, its Vote offers canonical rows).
+                var offer = CommitmentReferences.RawDeals(s).Where(d => d.status == DealStatus.Proposed && d.recipientId == me && circle.Any(c => c.id == d.proposerId))
                     .OrderBy(d => d.id, StringComparer.Ordinal).FirstOrDefault();
                 if (offer != null)
                 {

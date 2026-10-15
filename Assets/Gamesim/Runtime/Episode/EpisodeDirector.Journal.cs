@@ -241,9 +241,31 @@ namespace Gamesim.Episode
             hud.FilterRow("Room filters", tabs, HouseMap.Summary(rooms, unplaced));
             hud.Mark(NotebookSection.Rooms);
             hud.HouseMapPanel(rooms, unplaced, roomsFilter);
+            // The keyboard's and the pad's way across the house (PLAN A, A7; the lead's decision 5):
+            // the beacons and the overview's chips are the mouse's, and the overview ends on any arrow
+            // or stick, so the trips are here, on a page the ring walks. Each is the beacon's own trip.
+            hud.Heading(GoToRoomHeading);
+            foreach (var room in TravelRooms())
+            {
+                string target = room;
+                hud.Action(GoToRoomCaption(target), () => GoToRoom(target));
+            }
             hud.NotebookFooter("Read from where everyone is standing right now. The house shows everyone; an empty room is empty.",
                 "House activities", OpenHouseActivities);
         }
+
+        /// <summary>The heading over the notebook's room trips.</summary>
+        public const string GoToRoomHeading = "Go to a room";
+
+        /// <summary>A room trip's caption on the Who is where page: "Go to the kitchen", "Go to the HoH suite".</summary>
+        public static string GoToRoomCaption(string room) => "Go to the " + RoomLabels.InSentence(room);
+
+        /// <summary>The rooms a trip can go to, as the beacons offer them: every active room marker, in the order the set lays them out.</summary>
+        public IReadOnlyList<string> TravelRooms() => RoomMarkers()
+            .Where(marker => marker.isActiveAndEnabled)
+            .Select(marker => marker.RoomName).Distinct()
+            .OrderBy(room => { int at = Array.IndexOf(RoomWords.Rooms, room); return at < 0 ? int.MaxValue : at; })
+            .ThenBy(room => room, StringComparer.Ordinal).ToList();
 
         /// <summary>Which houseguests the directory lists. View state, like the room filter.</summary>
         private enum PeopleFilter { All, Active, Jury }

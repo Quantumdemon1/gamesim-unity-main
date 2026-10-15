@@ -9,8 +9,9 @@ namespace Gamesim.Tests.EditMode
     /// <summary>
     /// Vote family V2: the internal exact-mode-2 engine seam. The same Apply - its guards, its Execute body,
     /// its detached candidate - with the complete prospective Vote core at the input and at the output in
-    /// place of public validation. Public mode 2 stays refused; the seam is internal and reached here through
-    /// the reflection facade, as the editor's test assembly must reach it.
+    /// place of public validation. Since vote family V6 public validation takes mode 2 to that same core, and the
+    /// public engine and the seam agree on it (<see cref="ThePublicEngineAndTheSeamAgreeOnModeTwo"/>); the seam is still
+    /// internal and reached here through the reflection facade, as the editor's test assembly must reach it.
     /// </summary>
     public sealed class UnifiedVoteEngineSeamTests
     {
@@ -29,8 +30,10 @@ namespace Gamesim.Tests.EditMode
         public void TheSeamTakesExactlyModeTwoAndOwnsADetachedCopy()
         {
             var s = Mode2();
-            Assert.Throws<ArgumentException>(() => new EpisodeEngine(s), "The public constructor still refuses mode 2.");
-            Assert.That(EpisodeValidation.TryValidate(s, out _), Is.False);
+            // Flipped at vote family V6: public validation dispatches mode 2 to the same complete core, so the public
+            // constructor takes the season the seam takes (it refused it until V6).
+            Assert.That(EpisodeValidation.TryValidate(s, out var publicError), Is.True, publicError);
+            Assert.That(PinnedVoteSeason.Json(new EpisodeEngine(s).Snapshot), Is.EqualTo(PinnedVoteSeason.Json(s)), "The public constructor takes mode 2.");
 
             string image = PinnedVoteSeason.Json(s);
             var engine = ProspectiveVoteFacade.Engine(s);
@@ -74,7 +77,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(result.state.acceptedCommandIds.Last(), Is.EqualTo(talk.id));
             Assert.That(result.state.unifiedCommitmentRulesVersion, Is.EqualTo(UnifiedVoteFamilyValidation.Version), "Still mode 2,");
             Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(result.state, out var error), Is.True, error);
-            Assert.That(EpisodeValidation.TryValidate(result.state, out _), Is.False, "and still not a public season.");
+            Assert.That(EpisodeValidation.TryValidate(result.state, out error), Is.True, "and, since V6, a public season. " + error);
+            Assert.That(PinnedVoteSeason.Json(new EpisodeEngine(s).Apply(talk).state), Is.EqualTo(PinnedVoteSeason.Json(result.state)),
+                "The public engine commits the same candidate.");
 
             // The same command on the public mode-1 game draws, mints and logs the same.
             var legacy = new EpisodeEngine(Mode1()).Apply(talk);
@@ -156,8 +161,8 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// The seam's trusted NPC operation holds its candidate to the same core (EpisodeEngine.PrepareNpcOperation):
-        /// a clock second on a mode-2 season is prepared - never installed - as a core-valid, still-not-public
-        /// candidate, as the public mode-1 game prepares the same second.
+        /// a clock second on a mode-2 season is prepared - never installed - as a core-valid candidate, as the public
+        /// mode-1 game prepares the same second; and, since vote family V6, as the public engine prepares it on mode 2.
         /// </summary>
         [Test]
         public void TheSeamPreparesAnNpcOperationUnderTheCompleteCore()
@@ -175,15 +180,24 @@ namespace Gamesim.Tests.EditMode
             Assert.That(PinnedVoteSeason.Json(engine.Snapshot), Is.EqualTo(before), "Prepared, never installed.");
             Assert.That((result.candidate.npcSocial.clockTick, result.candidate.revision), Is.EqualTo((s.npcSocial.clockTick + 1, s.revision + 1)));
             Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(result.candidate, out var error), Is.True, error);
-            Assert.That(EpisodeValidation.TryValidate(result.candidate, out _), Is.False, "Still not a public season.");
+            Assert.That(EpisodeValidation.TryValidate(result.candidate, out error), Is.True, "A public season since V6 (it was refused until then). " + error);
+            var shipped = new EpisodeEngine(s).PrepareNpcOperation(Tick(s));
+            Assert.That(shipped.accepted, Is.True, shipped.reason);
+            Assert.That(PinnedVoteSeason.Json(shipped.candidate), Is.EqualTo(PinnedVoteSeason.Json(result.candidate)), "The public engine prepares the same second.");
             var legacy = new EpisodeEngine(Mode1()).PrepareNpcOperation(Tick(Mode1()));
             Assert.That(legacy.accepted, Is.True, legacy.reason);
             Assert.That(legacy.candidate.npcSocial.clockTick, Is.EqualTo(result.candidate.npcSocial.clockTick));
         }
 
-        /// <summary>No public path reaches the seam: it is one internal factory, and the public constructor is the one there was.</summary>
+        /// <summary>
+        /// Vote family V6 (this was "the seam is not reachable from public code" until mode 2 shipped): the public engine and the
+        /// seam agree on mode 2. The seam is still one internal factory, kept for the tests that reach it through their facade,
+        /// fixed at construction; the public constructor is the one there was; on a mode-2 season the two take the same input,
+        /// refuse the same input in the same words, and commit the same candidate for the same command - and only the seam
+        /// refuses every other mode.
+        /// </summary>
         [Test]
-        public void TheSeamIsNotReachableFromPublicCode()
+        public void ThePublicEngineAndTheSeamAgreeOnModeTwo()
         {
             var factory = typeof(EpisodeEngine).GetMethod("ProspectiveVote", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             Assert.That(factory, Is.Not.Null);
@@ -197,6 +211,30 @@ namespace Gamesim.Tests.EditMode
             Assert.That(flag.IsPrivate && flag.IsInitOnly, Is.True, "Fixed at construction, by the engine alone.");
             Assert.That(typeof(EpisodeEngine).GetProperties(BindingFlags.Instance | BindingFlags.Public)
                 .Select(p => p.Name), Is.EqualTo(new[] { nameof(EpisodeEngine.Snapshot) }), "Nothing public reads or sets it.");
+
+            // The same input.
+            var s = Mode2();
+            Assert.That(EpisodeValidation.TryValidate(s, out var publicError), Is.EqualTo(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(s, out var coreError)));
+            Assert.That(publicError, Is.EqualTo(coreError));
+            var refused = s.Clone(); refused.dealRulesStartWeek = 2;
+            Assert.That(EpisodeValidation.TryValidate(refused, out publicError), Is.False);
+            Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(refused, out coreError), Is.False);
+            Assert.That(publicError, Is.EqualTo(coreError), "Refused in the same words.");
+            Assert.That(Assert.Throws<ArgumentException>(() => new EpisodeEngine(refused)).Message,
+                Is.EqualTo(Assert.Throws<ArgumentException>(() => ProspectiveVoteFacade.Engine(refused)).Message));
+            // The same command, the same candidate - accepted and refused alike.
+            var shipped = new EpisodeEngine(s); var seam = ProspectiveVoteFacade.Engine(s);
+            foreach (var command in new[] { ProspectiveVoteTwins.Command(s, EpisodeCommandKind.Talk, Npc(s)),
+                ProspectiveVoteTwins.Command(s, EpisodeCommandKind.Talk, Npc(s), tag: "stale") })
+            {
+                var one = shipped.Apply(command); var two = seam.Apply(command);
+                Assert.That((one.accepted, one.reason), Is.EqualTo((two.accepted, two.reason)));
+                Assert.That(PinnedVoteSeason.Json(one.state), Is.EqualTo(PinnedVoteSeason.Json(two.state)));
+            }
+            // Only the seam refuses another mode.
+            var mode1 = Mode1();
+            Assert.DoesNotThrow(() => new EpisodeEngine(mode1));
+            Assert.Throws<ArgumentException>(() => ProspectiveVoteFacade.Engine(mode1));
         }
     }
 }

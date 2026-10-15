@@ -419,12 +419,17 @@ namespace Gamesim.Simulation
             bool Pair(string a, string b) => (a == npcId && b == me) || (a == me && b == npcId);
             // A history is every agreement the player was party to, not the number of betrayal
             // incidents. Detached canonical provenance keeps each alias and excludes NPC-only pairs.
-            return (UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Promises(s) : s.promises).Count(p => Pair(p.fromId, p.toId))
-                + (UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Deals(s) : s.deals).Count(d => Pair(d.proposerId, d.recipientId))
+            // Wherever canonical Safety is the authority - mode 2 too, its Vote rows among them (vote family V5d) - each row once (D1).
+            return (UnifiedCommitments.SafetyAuthorityOn(s) ? CommitmentReferences.Promises(s) : s.promises).Count(p => Pair(p.fromId, p.toId))
+                + (UnifiedCommitments.SafetyAuthorityOn(s) ? CommitmentReferences.Deals(s) : s.deals).Count(d => Pair(d.proposerId, d.recipientId))
                 + (s.ledger?.replies?.Count(r => r.fromId == npcId) ?? 0)
                 + (s.ledger?.calls?.Count(c => c.callerId == me && (c.followed.Contains(npcId) || c.defected.Contains(npcId))) ?? 0)
                 + s.alliances.Count(a => a.members.Contains(me) && a.members.Contains(npcId))
-                + s.memories.Count(m => m.ownerId == me && m.subjectId == npcId && !string.IsNullOrEmpty(m.text));
+                // Mode 2 (vote family V5d) reads the player's memories through the knowledge gate every reader that prints them
+                // reads (KnownBallots.PlayerMemories): a memory that tells a ballot the player cannot know is no history of
+                // theirs. Modes 0 and 1 keep their own count.
+                + (UnifiedVoteStore.On(s) ? KnownBallots.PlayerMemories(s).Count(m => m.subjectId == npcId && !string.IsNullOrEmpty(m.text))
+                    : s.memories.Count(m => m.ownerId == me && m.subjectId == npcId && !string.IsNullOrEmpty(m.text)));
         }
 
         // ---------------------------------------------------------------- the parts

@@ -140,8 +140,9 @@ namespace Gamesim.Episode
             // A lost EnableAllianceLeaks would keep every secret pact secret and the whisper's two names (WAVE-D D4).
             RequireSeason(fresh.allianceLeakRulesStartWeek == 1,"The cast screen's season must play the leak rules from its first week.");
             // A lost EnablePactPlans would leave a pact of three calling and meeting as a pair (WAVE-D D3).
-            // The all-week rules' start week stays 0 until its own slices.
             RequireSeason(fresh.pactPlanRulesStartWeek == 1,"The cast screen's season must play the war rooms from its first week.");
+            // A lost EnableAllWeek would leave the house's turns all at the social week's opening (WAVE-D D2).
+            RequireSeason(fresh.allWeekRulesStartWeek == 1,"The cast screen's season must play the house's turns all week from its first week.");
             CheckSaveIsIsolated();
             seasonReport.sessionId = fresh.sessionId; seasonReport.seed = fresh.seed.ToString();
             seasonReport.profileSavePath = previousSlot; seasonReport.seasonSavePath = seasonDirector.SavePath;

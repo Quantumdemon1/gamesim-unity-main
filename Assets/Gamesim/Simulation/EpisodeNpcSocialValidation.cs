@@ -77,8 +77,11 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// Schema 28: D2's all-week cadence (WAVE-D-NPC-PACTS-PLAN §4.3). With its start week 0 nothing
-        /// has planned or acted: 0, -1, 0, 0, [] and []. With it set these are the storage bounds only;
-        /// the rule slice that writes them tightens them to its own semantics.
+        /// has planned or acted: 0, -1, 0, 0, [] and []. With it set, what is there is consistent - never
+        /// that a plan must exist, since a season can take the rules mid-week: the plan is of distinct
+        /// houseguests; the week's acts are at most <see cref="EpisodeEngine.MostActs"/>, none on move-in
+        /// night, each of a known kind, staged in a room the house builds or nowhere, seen only if staged,
+        /// at most three seen a window, and a pact's meeting names its pact (D2's decision 3).
         /// </summary>
         private static bool TryValidateNpcBeats(EpisodeState state, out string error)
         {
@@ -105,12 +108,15 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Invalid NPC beat plan.");
             // This week's acts only: they are cleared as the week turns. A sighted act is one the
             // player saw, at most three a window; an overheard one was seen too.
-            if (social.acts.Count > 4 * MaximumCast
-                || social.acts.Any(act => !Text(act.id, 160) || !Text(act.kind, 64) || !Party(act.actorId)
-                    || (act.partnerId != null && !Party(act.partnerId)) || (act.subjectId != null && !Party(act.subjectId))
-                    || !ShortOrAbsent(act.room, 64) || act.week != state.week || act.week < state.allWeekRulesStartWeek
+            bool Pact(string id) => state.alliances.Any(alliance => alliance != null && alliance.id == id);
+            if (social.acts.Count > EpisodeEngine.MostActs(state)
+                || (social.acts.Count > 0 && EpisodeEngine.IsFirstNight(state))
+                || social.acts.Any(act => !Text(act.id, 160) || !NpcActKinds.IsKnown(act.kind) || !Party(act.actorId)
+                    || (act.partnerId != null && !Party(act.partnerId))
+                    || (act.kind == NpcActKinds.Meet ? !Pact(act.subjectId) : act.subjectId != null && !Party(act.subjectId))
+                    || (act.room != null && !RoomWords.IsRoom(act.room)) || act.week != state.week || act.week < state.allWeekRulesStartWeek
                     || act.window < 0 || act.window >= Windows.Count || act.firedTick < 0 || act.firedTick > MostActionsAWeekCanHold
-                    || (act.overheard && !act.sighted))
+                    || (act.overheard && !act.sighted) || (act.sighted && act.room == null))
                 || social.acts.Select(act => act.id).Distinct(StringComparer.Ordinal).Count() != social.acts.Count
                 || social.acts.Where(act => act.sighted).GroupBy(act => act.window).Any(group => group.Count() > 3))
                 return Fail(out error, "Invalid NPC acts.");

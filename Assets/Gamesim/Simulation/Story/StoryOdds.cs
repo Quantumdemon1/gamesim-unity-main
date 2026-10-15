@@ -48,8 +48,9 @@ namespace Gamesim.Simulation
                 int standing = (int)Math.Round(Math.Max(-25, Math.Min(25, 0.5 * state.Score(state.playerId, subject.id))));
                 if (standing != 0) terms.Add(new Term("your standing", standing));
                 if (state.Allied(state.playerId, subject.id)) terms.Add(new Term("you're allied", 15));
-                if (state.deals.Any(d => d.status == DealStatus.Active && Pair(d.proposerId, d.recipientId, state.playerId, subject.id))
-                    || (UnifiedCommitments.RulesOn(state) && UnifiedCommitments.Binding(state, state.playerId, subject.id)
+                // Mode 2 (vote family V5c): mode 1's raw list, its vote deals the canonical rows.
+                if (CommitmentReferences.RawDeals(state).Any(d => d.status == DealStatus.Active && Pair(d.proposerId, d.recipientId, state.playerId, subject.id))
+                    || (UnifiedCommitments.SafetyAuthorityOn(state) && UnifiedCommitments.Binding(state, state.playerId, subject.id)
                         .Any(row => row.sourcePolicy == UnifiedCommitments.DealPolicy)))
                     terms.Add(new Term("a live deal", 10));
                 if (state.nominees.Contains(subject.id)) terms.Add(new Term(subject.name + " is on the block", 10));
@@ -118,10 +119,11 @@ namespace Gamesim.Simulation
         /// broke read as the player's broken word.
         /// </summary>
         public static bool PlayerBrokeTheirWord(EpisodeState state, string npcId) =>
-            state.promises.Any(p => p.status == PromiseStatus.Broken && p.fromId == state.playerId && p.toId == npcId)
-            || state.deals.Any(d => d.status == DealStatus.Broken && Pair(d.proposerId, d.recipientId, state.playerId, npcId)
+            // Mode 2 (vote family V5c): mode 1's raw lists, their vote rows the canonical ones.
+            CommitmentReferences.RawPromises(state).Any(p => p.status == PromiseStatus.Broken && p.fromId == state.playerId && p.toId == npcId)
+            || CommitmentReferences.RawDeals(state).Any(d => d.status == DealStatus.Broken && Pair(d.proposerId, d.recipientId, state.playerId, npcId)
                                     && (EpisodeEngine.CommitmentRulesOn(state) ? Breaches.Broke(state, d, state.playerId) : BrokeIt(state, d, state.playerId)))
-            || (UnifiedCommitments.RulesOn(state) && UnifiedCommitmentHistory.Breaches(state)
+            || (UnifiedCommitments.SafetyAuthorityOn(state) && UnifiedCommitmentHistory.Breaches(state)
                 .Any(incident => incident.ActorId == state.playerId && incident.WrongedId == npcId));
 
         private static bool BrokeIt(EpisodeState state, DealState deal, string who) =>

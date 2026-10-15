@@ -58,6 +58,8 @@ namespace Gamesim.Episode
                 if (npc == null || !npc.gameObject.activeInHierarchy) continue;
                 string id = npc.Id;
                 if (projected.Find(id)?.status != ContestantStatus.Active) continue;
+                // Somebody a staged act holds stands where it happens (EpisodeDirector.AllWeek).
+                if (npcMeetings.ActHoldsActor(id)) continue;
                 if (npcMeetings.IsWandering(id))
                 {
                     if (!npcMeetings.WanderArrived(id)) continue;

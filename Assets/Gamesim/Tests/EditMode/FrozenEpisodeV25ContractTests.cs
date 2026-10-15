@@ -159,7 +159,9 @@ namespace Gamesim.Tests.EditMode
                 case "story-off": payload["story"]["rulesStartWeek"] = 0; break;
                 case "story-scheduled": payload["story"]["rulesStartWeek"] = (int)payload["week"] + 1; break;
                 case "pre-bonds": payload["story"]["rulesVersion"] = StoryRules.Bonds - 1; break;
-                case "unknown-unified": payload["unifiedCommitmentRulesVersion"] = 2; break;
+                // 3, not 2: since vote family V6 mode 2 is the unified vote rules, which current validation judges by its own core;
+                // a former25 payload claiming 2 is the fixed contract's to refuse (AFormer25PayloadClaimingModeTwoIsRefused).
+                case "unknown-unified": payload["unifiedCommitmentRulesVersion"] = 3; break;
                 case "negative-unified": payload["unifiedCommitmentRulesVersion"] = -1; break;
                 case "unknown-hearing": payload["unifiedHearingRulesVersion"] = 2; break;
                 case "negative-hearing": payload["unifiedHearingRulesVersion"] = -1; break;
@@ -168,6 +170,18 @@ namespace Gamesim.Tests.EditMode
                 default: Assert.Fail("Unknown mode defect."); break;
             }
             RejectSemantic(payload);
+        }
+
+        /// <summary>
+        /// Vote family V6: mode 2 exists now, but never in a historical save. A former25 payload claiming it is refused by the fixed
+        /// contract and never migrated, whatever current validation would make of the season it describes.
+        /// </summary>
+        [Test]
+        public void AFormer25PayloadClaimingModeTwoIsRefused()
+        {
+            var payload = Baseline(2, "broken-deal");
+            payload["unifiedCommitmentRulesVersion"] = UnifiedVoteFamilyValidation.Version;
+            Reject(payload);
         }
 
         [TestCase("missing-field")] [TestCase("unknown-field")] [TestCase("null-id")]

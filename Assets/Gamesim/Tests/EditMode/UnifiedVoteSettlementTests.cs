@@ -20,11 +20,10 @@ namespace Gamesim.Tests.EditMode
     /// owner runs its memory, line, Story and witness lanes). Every reveal is seen as tapes - the views, the
     /// record, the memories, the lines and the draws.</para>
     ///
-    /// <para>One difference is no rule but a reader still to move (vote family V5): the Story grudge's threat
-    /// scaling (ThreatAssessment.ReputationThreat) counts raw promises, and canonical breaches only under mode 1,
-    /// so in mode 2 it counts no canonical Vote or Safety breach at all - not the reveal's own, which the approved
-    /// Rule2 policy excludes, and not an earlier one, which it does not exclude. A first reveal cannot tell the two
-    /// apart; V5 moves the reader and passes the reveal's own exclusions to it.</para>
+    /// <para>One more difference is the approved policy's too (vote family V5c): the Story grudge's threat scaling
+    /// (ThreatAssessment.ReputationThreat) leaves the reveal's own Vote breaches out of the breaker's reputation, where
+    /// mode 1 counts the promise it has just broken; an earlier reveal's breach counts in both
+    /// (ModeTwoThreatStoryTests holds a second reveal).</para>
     ///
     /// <para>Fixtures are seasons walked with real public commands; the constructed facts are the ones
     /// <see cref="ProspectiveVoteTwins"/> and <see cref="PinnedVoteSeason"/> allow - a relationship score, the
@@ -46,6 +45,8 @@ namespace Gamesim.Tests.EditMode
             internal CommandResult Legacy, Prospective;
             internal EpisodeCommand Command;
             internal UnifiedVoteRevealState Frame;
+            /// <summary>The Rule2 groups the mode-2 reveal's plan selected, as the walk observer saw them (vote family V5e).</summary>
+            internal List<UnifiedVoteIncident> Plans = new List<UnifiedVoteIncident>();
             internal EpisodeState Projection => PinnedVoteSeason.Project(Legacy.state, Owners, new[] { Frame });
             internal EpisodeState After => Prospective.state;
         }
@@ -156,9 +157,11 @@ namespace Gamesim.Tests.EditMode
             reveal.Cast = castLegacy.state; reveal.CastTwin = castProspective.state;
             reveal.Command = ProspectiveVoteTwins.Command(castLegacy.state, EpisodeCommandKind.Advance, tag: "reveal");
             reveal.Legacy = legacy.Apply(reveal.Command);
-            reveal.Prospective = prospective.Apply(reveal.Command);
+            using (ProspectiveVoteFacade.ObservePlans(reveal.Plans)) reveal.Prospective = prospective.Apply(reveal.Command);
             Assert.That(reveal.Legacy.accepted, Is.True, reveal.Legacy.reason);
             Assert.That(reveal.Prospective.accepted, Is.True, "The mode-2 reveal settles: " + reveal.Prospective.reason);
+            // The walk observer (vote family V5e): past the reveal, the archive rebuilds the owners its plan selected.
+            ModeTwoReaderSweep.AssertOwnersRebuilt(reveal.After, reveal.Plans, "the reveal");
             Assert.That(reveal.Legacy.state.evictionResolved && reveal.After.evictionResolved, Is.True, "Both counted the box.");
             reveal.Frame = new UnifiedVoteRevealState { week = reveal.Legacy.state.week, ballots = reveal.Legacy.state.votes
                 .Select(v => new UnifiedVoteBallotState { voterId = v.voterId, targetId = v.targetId }).ToList() };
@@ -252,12 +255,12 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// The player's vote promise, broken: stamped Broken by its maker with its breach identity; the view, record,
-        /// memories, line and the witness loop's draws as mode 1 writes them. The one value apart is the Story
-        /// grudge's threat scaling, a reader still to move (vote family V5): mode 1's raw store counts the promise it
-        /// has just broken, mode 2's reader counts no canonical breach, so mode 1's grudge can only be the heavier.
+        /// memories, line and the witness loop's draws as mode 1 writes them. The one value apart is designed: the Story
+        /// grudge's threat scaling leaves the reveal's own breach out of the breaker's reputation (the approved policy's
+        /// current-reveal exclusion, vote family V5c), where mode 1's raw store counts the promise it has just broken.
         /// </summary>
         [Test]
-        public void ABrokenVotePromiseSettlesAsModeOneSettlesItSaveTheThreatReadersGap()
+        public void ABrokenVotePromiseSettlesAsModeOneSettlesItSaveTheCurrentRevealExclusion()
         {
             var s = Campaign();
             string to = NpcVoters(s)[0], promised = s.nominees[0], other = s.nominees[1];
@@ -270,7 +273,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(tape.Lines, Is.EqualTo(new[] { "promise-outcome [" + s.playerId + "] You broke a Vote promise." }));
             Assert.That(tape.Draw, Is.EqualTo(reveal.Legacy.state.randomState), "The witness loop draws as mode 1 draws it.");
             Assert.That(tape.Draw, Is.Not.EqualTo(reveal.CastTwin.randomState), "Fixture: the witness loop drew.");
-            AssertParityButTheThreatReadersGap(reveal, "A broken vote promise", to, s.playerId);
+            AssertParityButTheCurrentRevealExclusion(reveal, "A broken vote promise", to, s.playerId);
         }
 
         /// <summary>
@@ -295,6 +298,18 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Moved(reveal.CastTwin, reveal.After, s.playerId, npc), Is.Zero, "The player's own view never moves on a ballot's verdict.");
             Assert.That(Moved(reveal.CastTwin, reveal.After, npc, s.playerId), Is.EqualTo(kept ? 12 : -22.5));
             ProspectiveVoteTwins.AssertProjection(reveal.Projection, reveal.After, "A voting bloc, " + (kept ? "kept" : "broken"));
+            // A collective row: both views, each a group it owns alone, as the archive rebuilds them (vote family V5e).
+            Assert.That(Owner(reveal, kept, s.playerId, npc), Is.EqualTo(new[] { id, id }));
+            Assert.That(Owner(reveal, kept, npc, s.playerId), Is.EqualTo(new[] { id, id }));
+        }
+
+        private static string Ids(params string[] ids) => string.Join(",", ids.OrderBy(id => id, StringComparer.Ordinal));
+
+        /// <summary>The plan's group of one polarity, actor and holder: its owner, then its evidence joined (vote family V5e's walk observer).</summary>
+        private static string[] Owner(Reveal reveal, bool kept, string actor, string holder)
+        {
+            var group = reveal.Plans.Single(item => item.Kept == kept && item.ActorId == actor && item.WrongedId == holder);
+            return new[] { group.OwnerId, string.Join(",", group.EvidenceIds) };
         }
 
         /// <summary>
@@ -504,6 +519,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(tape.Lines[1], Does.StartWith("deal-outcome [" + npc + "] "));
             Assert.That(Moved(reveal.CastTwin, reveal.After, npc, p), Is.EqualTo(-31), "One breach, the more severe.");
             Assert.That(reveal.After.story.grudges.Count(g => g.holderId == npc && g.targetId == p), Is.EqualTo(1));
+            // The plan's groups (vote family V5e): the houseguest's view one incident the promise owns; the bloc's other edge its own.
+            Assert.That(Owner(reveal, false, p, npc), Is.EqualTo(new[] { promise, Ids(promise, bloc) }));
+            Assert.That(Owner(reveal, false, npc, p), Is.EqualTo(new[] { bloc, bloc }));
             Assert.That(tape.Draw, Is.EqualTo(reveal.Legacy.state.randomState), "The witness loop draws as mode 1's; the bloc draws nothing in either.");
             Assert.That(Moved(reveal.Cast, reveal.Legacy.state, npc, p), Is.EqualTo(-53.5), "Mode 1 moves the one view twice.");
         }
@@ -548,6 +566,9 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(tape.Memories, Is.Empty);
             }
             Assert.That(Moved(reveal.Cast, reveal.Legacy.state, npc, p), Is.EqualTo(24), "Mode 1 moves the one view twice.");
+            // A tie, both orders (vote family V5e): the smaller id owns the houseguest's view; the bloc alone the player's.
+            Assert.That(Owner(reveal, true, p, npc), Is.EqualTo(new[] { evictFirst ? evict : bloc, Ids(evict, bloc) }));
+            Assert.That(Owner(reveal, true, npc, p), Is.EqualTo(new[] { bloc, bloc }));
         }
 
         /// <summary>
@@ -568,6 +589,9 @@ namespace Gamesim.Tests.EditMode
             Stamped(reveal.After, save, DealStatus.Broken, s.playerId);
             Assert.That(Moved(reveal.CastTwin, reveal.After, npc, s.playerId), Is.EqualTo(15 - 22.5));
             ProspectiveVoteTwins.AssertProjection(reveal.Projection, reveal.After, "A keep and a breach of one pair");
+            // Two groups of one pair, a keep and a breach, each its own owner (vote family V5e).
+            Assert.That(Owner(reveal, true, s.playerId, npc), Is.EqualTo(new[] { promise, promise }));
+            Assert.That(Owner(reveal, false, s.playerId, npc), Is.EqualTo(new[] { save, save }));
         }
 
         /// <summary>
@@ -577,14 +601,16 @@ namespace Gamesim.Tests.EditMode
         /// stacks two grudges). Broken by the houseguest, against the player: the player's view is masked, the record
         /// kept once, and the betrayal spread is drawn once - mode 1 draws it twice.
         /// </summary>
-        [TestCase(true)] [TestCase(false)]
-        public void TwoDealsBrokenByOneBallotAreOneBreach(bool playerBreaks)
+        [TestCase(true, true)] [TestCase(false, true)] [TestCase(true, false)] [TestCase(false, false)]
+        public void TwoDealsBrokenByOneBallotAreOneBreach(bool playerBreaks, bool saveFirst)
         {
             var s = Campaign();
             string npc = NpcVoters(s)[0], x = s.nominees[0], y = s.nominees[1];
-            // Keep x and evict y: one duty, to vote y out. Its breaker votes x out.
-            s = Deal(Deal(s, npc, DealKind.VoteSave, x), npc, DealKind.VoteEvict, y);
+            // Keep x and evict y: one duty, to vote y out. Its breaker votes x out. Struck in either order.
+            s = saveFirst ? Deal(Deal(s, npc, DealKind.VoteSave, x), npc, DealKind.VoteEvict, y)
+                : Deal(Deal(s, npc, DealKind.VoteEvict, y), npc, DealKind.VoteSave, x);
             string save = DealId(s, npc, DealKind.VoteSave), evict = DealId(s, npc, DealKind.VoteEvict);
+            Assert.That(string.CompareOrdinal(save, evict) < 0, Is.EqualTo(saveFirst), "Fixture: the first struck has the smaller id.");
             string p = s.playerId, breaker = playerBreaks ? p : npc, wronged = playerBreaks ? npc : p;
             var reveal = Play(s, playerBreaks ? x : y, Pins((npc, playerBreaks ? y : x)));
             Stamped(reveal.After, save, DealStatus.Broken, breaker);
@@ -616,6 +642,10 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(tape.Draw, Is.EqualTo(Advance(reveal.CastTwin.randomState, witnesses + heard)), "One spread drawn.");
                 Assert.That(reveal.Legacy.state.randomState, Is.EqualTo(Advance(reveal.Cast.randomState, 2 * witnesses + heard1)), "Mode 1 draws two.");
             }
+            // One incident, both rows its evidence, the smaller id its owner and its deal - in either order (vote family V5e).
+            string owner = saveFirst ? save : evict;
+            Assert.That(Owner(reveal, false, breaker, wronged), Is.EqualTo(new[] { owner, Ids(save, evict) }));
+            Assert.That(reveal.Plans.Single(group => !group.Kept).DealId, Is.EqualTo(owner));
         }
 
         // ------------------------------------------------------------ once, across duplicates and reloads
@@ -816,8 +846,7 @@ namespace Gamesim.Tests.EditMode
             string bloc = DealId(s, survivor, DealKind.VoteTogether);
             var pending = offers.Where(o => o.proposerId == survivor).Select(o => o.id).ToList();
             Assert.That(pending, Is.Not.Empty, "Fixture: the surviving nominee's offer waits unanswered.");
-            // Each bargain's voter keeps their nominee, the rest vote the evictee out: no vote deal is broken, so the
-            // house's next deal ladder reads nobody's breach (NpcDeals.BrokenDeals still reads raw deals: vote family V5).
+            // Each bargain's voter keeps their nominee, the rest vote the evictee out: no vote deal is broken.
             var bargains = s.deals.Where(d => d.id.StartsWith("deal-npc-", StringComparison.Ordinal) && d.type == DealKind.VoteSave).ToList();
             var pins = NpcVoters(s).ToDictionary(v => v, v => evictee, StringComparer.Ordinal);
             foreach (var b in bargains) pins[b.recipientId] = s.nominees.Single(id => id != b.proposerId);
@@ -1207,12 +1236,23 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// Two seasons whose walks meet no reader still to move (vote family V5) - every Vote row they hold is decided,
-        /// expired or ended without a breach a reader would weigh - equal mode 1's after projection at every one of
-        /// their commands, reveals, endings and the final eviction included, to the jury's verdict.
+        /// Seasons whose walks meet no reader still to move (vote family V5) equal mode 1's after projection at every one of
+        /// their commands, reveals, endings and the final eviction included, to the jury's verdict: since V5c every seed of
+        /// 1..16 in a house of 8. ModeTwoSeasonSweepTests plays seeds 1..32 in every house size, the busy player's too, and
+        /// names where each that differs first does. Seeds 5 and 6 on every run; the other fourteen on demand
+        /// (<c>TheOtherSeasonsWithoutReaderGapsEqualModeOneToTheFinish</c>, explicit and compiled out of Unity).
         /// </summary>
         [TestCase(5u)] [TestCase(6u)]
-        public void ASeasonWithoutReaderGapsEqualsModeOneToTheFinish(uint seed)
+        public void ASeasonWithoutReaderGapsEqualsModeOneToTheFinish(uint seed) => PlayWithoutReaderGaps(seed);
+
+#if !UNITY_5_3_OR_NEWER
+        [TestCase(1u)] [TestCase(2u)] [TestCase(3u)] [TestCase(4u)] [TestCase(7u)] [TestCase(8u)] [TestCase(9u)]
+        [TestCase(10u)] [TestCase(11u)] [TestCase(12u)] [TestCase(13u)] [TestCase(14u)] [TestCase(15u)] [TestCase(16u)]
+        [Explicit("The other fourteen seeds of 1..16, whole seasons: run before landing a change to the vote family.")]
+        public void TheOtherSeasonsWithoutReaderGapsEqualModeOneToTheFinish(uint seed) => PlayWithoutReaderGaps(seed);
+#endif
+
+        private static void PlayWithoutReaderGaps(uint seed)
         {
             var fresh = PinnedVoteSeason.Fresh(seed);
             var season = new PinnedVoteSeason(seed, fresh);
@@ -1222,7 +1262,7 @@ namespace Gamesim.Tests.EditMode
             {
                 var s = season.State;
                 if (s.phase == EpisodePhase.Finished) return;
-                var command = EpisodeEngineTests.NextCommand(s);
+                var command = ModeTwoReaderSweep.Next(s);
                 var legacy = season.Apply(command);
                 var prospective = engine.Apply(command);
                 Assert.That(legacy.accepted && prospective.accepted, Is.True, command.kind + ": " + legacy.reason + " / " + prospective.reason);
@@ -1240,24 +1280,28 @@ namespace Gamesim.Tests.EditMode
             return state;
         }
 
-        // ------------------------------------------------------------ helpers for the reader still to move (V5)
+        // ------------------------------------------------------------ the designed difference of the threat reader (V5c)
 
         /// <summary>
-        /// The reveal equals mode 1's but for the wronged party's grudge against the breaker. Its threat scaling
-        /// (ThreatAssessment.ReputationThreat) is a reader vote family V5 moves: it counts raw promises, and canonical
-        /// breaches only under mode 1, so in mode 2 it counts none - neither this reveal's breach (which the approved
-        /// Rule2 policy excludes) nor an earlier one (which it does not). At a first reveal, as here, the two coincide:
-        /// mode 1 counts the promise it has just broken. The same holder, target, cause, week and count; a severity
-        /// lighter by what one broken promise adds to the breaker's reputation - three threat points, scaled by 60/200
-        /// and rounded: never more than one. Not a Rule2 difference: V5 replaces it with the exclusion itself.
+        /// The reveal equals mode 1's but for the wronged party's grudge against the breaker, by design: the approved Rule2
+        /// policy's current-reveal exclusion (vote family V5c). The grudge's threat scaling (ThreatAssessment.ReputationThreat)
+        /// counts every canonical breach mode 1 counts - an earlier reveal's included - and leaves out the breaches this reveal
+        /// decides, where mode 1 counts the promise it has just broken. The same holder, target, cause, week and count; a
+        /// severity lighter by what that one broken promise adds to the breaker's reputation - three threat points, scaled by
+        /// 60/200 and rounded: never more than one - and only for a breaker of this reveal's own Vote row.
         /// </summary>
-        private static void AssertParityButTheThreatReadersGap(Reveal reveal, string what, string holder, string breaker)
+        private static void AssertParityButTheCurrentRevealExclusion(Reveal reveal, string what, string holder, string breaker)
         {
             var expected = reveal.Projection;
             var mode1 = expected.story.grudges.Single(g => g.holderId == holder && g.targetId == breaker);
             var mode2 = reveal.After.story.grudges.Single(g => g.holderId == holder && g.targetId == breaker);
             Assert.That((mode2.cause, mode2.originWeek, mode2.count), Is.EqualTo((mode1.cause, mode1.originWeek, mode1.count)), what + ": the same grudge.");
-            Assert.That(mode1.severity - mode2.severity, Is.InRange(0, 1), what + ": mode 2's threat reader counts no canonical breach (V5).");
+            Assert.That(reveal.After.unifiedCommitments.Any(r => r.kind == UnifiedVoteTogether.Vote && r.status == DealStatus.Broken
+                && r.settledWeek == reveal.After.week && r.brokenById == breaker), Is.True, what + ": the breaker broke a Vote row at this reveal.");
+            Assert.That(mode1.severity - mode2.severity, Is.InRange(0, 1), what + ": this reveal's own breach is left out of the breaker's reputation (V5c).");
+            if (mode1.severity != mode2.severity)
+                Assert.That(ModeTwoReaderSweep.Designed(expected, reveal.After, ModeTwoReaderSweep.Differences(expected, reveal.After)),
+                    Is.EqualTo("the current-reveal exclusion"), what + ": nothing else differs.");
             mode1.severity = mode2.severity;
             ProspectiveVoteTwins.AssertProjection(expected, reveal.After, what);
         }

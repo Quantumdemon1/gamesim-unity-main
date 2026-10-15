@@ -161,10 +161,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(row.trustImpact, Is.EqualTo(DealKind.DefaultTrust(type)));
             BoundNow(row, s.week, s.week);
             NoRawVoteRows(prospective.state);
-            // The lever line after a targeted vote deal reads the voter's obligations through the ballot reader,
-            // which sees canonical rows only once the readers move (vote family V5).
-            if (type == DealKind.VoteTogether) ProspectiveVoteTwins.AssertParity(legacy.state, prospective.state, "ProposeDeal " + type);
-            else ProspectiveVoteTwins.AssertParity(legacy.state, prospective.state, "ProposeDeal " + type, "lever");
+            // The lever line after a targeted vote deal reads the voter's obligations through the ballot reader, which reads
+            // the canonical rows since vote family V5b: the whole command is mode 1's.
+            ProspectiveVoteTwins.AssertParity(legacy.state, prospective.state, "ProposeDeal " + type);
 
             var after = prospective.state;
             var again = ProspectiveVoteTwins.Command(after, EpisodeCommandKind.ProposeDeal, npc, about, type);

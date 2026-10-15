@@ -886,9 +886,39 @@ namespace Gamesim.House
         /// <summary>A drag in pixels, or a stick's share of a second, turned into yaw and tilt.</summary>
         private void ApplyOrbit(Vector2 amount)
         {
+            // The player's camera speed and tilt (PLAN A, A7), one place for the mouse's drag, the
+            // stick and Q/C alike: the speed scales the turn, and an inverted tilt runs the other way.
+            amount *= orbitSpeedScale;
+            if (invertTilt) amount.y = -amount.y;
             yaw = Mathf.Repeat(yaw + amount.x, 360f);
             pitchOffset = Mathf.Clamp(pitchOffset - amount.y, -20f, 20f);
         }
+
+        private float orbitSpeedScale = 1f;
+        private bool invertTilt;
+
+        /// <summary>The slowest and fastest the settings turn the camera: half and twice its own speed.</summary>
+        public const float SlowestOrbitSpeed = .5f, FastestOrbitSpeed = 2f;
+
+        /// <summary>
+        /// How fast the camera turns, as a share of its own speed (the player's camera speed, A7): it
+        /// scales the mouse's orbit sensitivity and the stick's and Q/C's rate together. 1 is as built.
+        /// </summary>
+        public float OrbitSpeedScale
+        {
+            get => orbitSpeedScale;
+            set => orbitSpeedScale = Mathf.Clamp(float.IsNaN(value) ? 1f : value, SlowestOrbitSpeed, FastestOrbitSpeed);
+        }
+
+        /// <summary>Whether the tilt runs the other way: pushing up looks down, for the mouse, the stick and the keys.</summary>
+        public bool InvertTilt
+        {
+            get => invertTilt;
+            set => invertTilt = value;
+        }
+
+        /// <summary>The tilt the player has added on top of the distance's own pitch, in degrees.</summary>
+        public float PitchOffset => pitchOffset;
 
         /// <summary>
         /// Shortens the boom by <paramref name="metres"/> (negative lengthens it). Toward the cursor

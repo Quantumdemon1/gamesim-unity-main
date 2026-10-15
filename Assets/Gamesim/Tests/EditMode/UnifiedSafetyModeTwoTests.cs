@@ -96,7 +96,7 @@ namespace Gamesim.Tests.EditMode
             {
                 s.unifiedCommitmentRulesVersion = mode;
                 Assert.That(UnifiedCommitments.SafetyAuthorityOn(s), Is.EqualTo(on), "Mode " + mode + ".");
-                Assert.That(UnifiedCommitments.RulesOn(s), Is.EqualTo(mode == 1), "RulesOn stays mode 1's: the readers not yet moved keep it.");
+                Assert.That(UnifiedCommitments.RulesOn(s), Is.EqualTo(mode == 1), "RulesOn stays mode 1's alone; the readers read SafetyAuthorityOn (vote family V5).");
             }
             Assert.That(UnifiedCommitments.SafetyAuthorityOn(null), Is.False);
         }

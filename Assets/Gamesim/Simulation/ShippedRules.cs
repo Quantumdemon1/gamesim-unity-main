@@ -51,10 +51,16 @@ namespace Gamesim.Simulation
             // The war rooms (WAVE-D-NPC-PACTS-PLAN D3): a pact of three or more meets once the block is
             // set, its members say who they want out, and the player goes with it, counters once or lies low.
             EpisodeEngine.EnablePactPlans(fresh);
-            // Fresh playable seasons use canonical Safety and durable hearing authority from
-            // the start, with C0 and story knowledge already active. Do not infer this opt-in
-            // while loading, recovering, migrating or importing an existing legacy season.
-            fresh.unifiedCommitmentRulesVersion = UnifiedCommitments.ProspectiveVersion;
+            // The house's turns all week (WAVE-D-NPC-PACTS-PLAN D2): spread over the four windows, fired on the
+            // season's own steps, each act in a room the player can walk in on. After the week rules, which it plays in.
+            EpisodeEngine.EnableAllWeek(fresh);
+            // The unified vote rules (vote family V6, mode 2): canonical Safety and Vote authority and
+            // durable hearings from the start, with C0, story knowledge and the house's deal pass
+            // already active - every vote promise and deal one canonical row, settled at the reveal
+            // under Rule2 and archived with its frame. Do not infer this opt-in while loading,
+            // recovering, migrating or importing an existing season: a season recorded in mode 0 or 1
+            // keeps its mode (the lead's decision D6), and the schema stays 28 (D2).
+            fresh.unifiedCommitmentRulesVersion = UnifiedVoteFamilyValidation.Version;
             fresh.unifiedHearingRulesVersion = UnifiedCommitmentHearings.ProspectiveVersion;
         }
 

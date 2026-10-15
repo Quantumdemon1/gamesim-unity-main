@@ -84,9 +84,7 @@ namespace Gamesim.Episode
             // line had just told them to walk to.
             bool going = TryTravel(DiaryPosition);
             message = !going ? "The diary room is not reachable from here. Your current episode is unchanged."
-                : LastTravel == TravelKind.Warp
-                    ? "At the private room: press E to open your diary. No choice is committed by entering."
-                    : "Walk to the private room, then press E to open your diary. No choice is committed by entering.";
+                : InputGlossary.DiaryWayLine(LastTravel == TravelKind.Warp, PressWasPad);
             Render();
         }
 

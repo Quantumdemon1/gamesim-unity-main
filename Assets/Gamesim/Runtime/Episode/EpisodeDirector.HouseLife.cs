@@ -76,7 +76,8 @@ namespace Gamesim.Episode
             // the player likes can still have no time for them.
             foreach (var friend in state.Active.Where(c => !c.isPlayer && !companionTaken.Contains(c.id)
                              && state.Score(state.playerId, c.id) >= 0 && state.Score(c.id, state.playerId) >= 0
-                             && !state.npcSocial.pending.Any(row => row.firstId == c.id || row.secondId == c.id))
+                             && !state.npcSocial.pending.Any(row => row.firstId == c.id || row.secondId == c.id)
+                             && !npcMeetings.ActHoldsActor(c.id))
                          .OrderByDescending(c => state.Score(state.playerId, c.id)).ThenBy(c => c.id, StringComparer.Ordinal))
             {
                 var npc = housemates.FirstOrDefault(actor => actor != null && actor.Id == friend.id && actor.gameObject.activeInHierarchy);

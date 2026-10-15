@@ -101,7 +101,7 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// The leak rules (D4-4's enable line) on a season the director starts, from its first week, and
-        /// across a save. The war rooms (D3-S5) start in week one beside them; the all-week rules' stay 0.
+        /// across a save. The war rooms (D3-S5) and the house's turns all week (D2-S4) start in week one beside them.
         /// </summary>
         [UnityTest]
         public IEnumerator AllianceLeaks_ASeasonTheDirectorStartsPlaysThem()
@@ -113,7 +113,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return SettleCast();
                 Assert.That(director.Snapshot.allianceLeakRulesStartWeek, Is.EqualTo(1), which + " plays the leak rules from week one.");
                 Assert.That(director.Snapshot.pactPlanRulesStartWeek, Is.EqualTo(1), which + ": D3's war rooms from week one too,");
-                Assert.That(director.Snapshot.allWeekRulesStartWeek, Is.Zero, which + ": D2's waits.");
+                Assert.That(director.Snapshot.allWeekRulesStartWeek, Is.EqualTo(1), which + ": and D2's all-week beats.");
                 Assert.That(AllianceLeaks.On(director.Snapshot), Is.True, which);
             }
             director.SaveNow();

@@ -130,7 +130,7 @@ namespace Gamesim.Episode
             state.npcSocial != null && !NpcSocialState.IsEligiblePhase(state.phase) && !FinaleNight(state.phase)
             && NpcSocialState.AutonomyHasBegun(state) && state.Find(state.playerId)?.status == ContestantStatus.Active
             && state.Active.Count(actor => !actor.isPlayer) >= 2
-            && (!Application.isBatchMode || StagesInBatchRuns || WalkOutsInBatchRuns);
+            && (!Application.isBatchMode || StagesInBatchRuns || WalkOutsInBatchRuns || ActsInBatchRuns);
 
         /// <summary>
         /// Editor-only: builds the house's world now, as a season's first social phase does and a
@@ -264,32 +264,23 @@ namespace Gamesim.Episode
         private void PlanNpcApproaches()
         {
             var state = projected;
-            var unavailable = new HashSet<string>(state.npcSocial.pending.SelectMany(row => new[] { row.firstId, row.secondId }));
-            foreach (var approach in npcApproaches) { unavailable.Add(approach.lease.FirstId); unavailable.Add(approach.lease.SecondId); }
+            // Pending pairs and cooldowns are the saved world's (NpcPairing.Busy); approaches under way are this one's.
+            var busy = NpcPairing.Busy(state);
+            foreach (var approach in npcApproaches) { busy.Add(approach.lease.FirstId); busy.Add(approach.lease.SecondId); }
             // Whoever the player has asked over to talk is on their way to the player, not free to
             // be paired: a pairing tried on them would only take their partner off their furniture.
-            if (talkSpot != null) unavailable.Add(talkSpot.NpcId);
-            foreach (var cooldown in state.npcSocial.cooldowns.Where(row => row.untilTick > state.npcSocial.clockTick)) unavailable.Add(cooldown.npcId);
-            var idle = state.Active.Where(actor => !actor.isPlayer && !unavailable.Contains(actor.id)).ToArray();
-            for (int first = 0; first < idle.Length; first++)
+            if (talkSpot != null) busy.Add(talkSpot.NpcId);
+            // The two of a staged act stand where it happens (EpisodeDirector.AllWeek): not free to be paired.
+            foreach (var actor in state.Active) if (npcMeetings.ActHoldsActor(actor.id)) busy.Add(actor.id);
+            // Who tries whom, and in what order, is NpcPairing's (the balance lab pairs its house the same way);
+            // each try mints one lease token and asks the coordinator for a route.
+            NpcPairing.Plan(state, busy, (firstId, secondId) =>
             {
-                if (unavailable.Contains(idle[first].id)) continue;
-                // Under agency each houseguest tries the one their agenda points at before the next
-                // idle body in cast order (NPC-AGENCY-PLAN.md §4); without it, cast order as always.
-                var order = new List<int>();
-                string wanted = NpcAgendas.PreferredPartner(state, idle[first].id);
-                int at = wanted == null ? -1 : Array.FindIndex(idle, actor => actor.id == wanted);
-                if (at >= 0 && at != first) order.Add(at);
-                for (int second = first + 1; second < idle.Length; second++) if (second != at) order.Add(second);
-                foreach (int second in order)
-                {
-                    if (unavailable.Contains(idle[second].id)) continue;
-                    string token = NpcWorldGeneration + ":approach:" + (++npcLeaseCounter).ToString(CultureInfo.InvariantCulture);
-                    if (!npcMeetings.TryReservePair(token, idle[first].id, idle[second].id, out var lease, out _)) continue;
-                    npcApproaches.Add(new NpcApproach { lease = lease, expiresAt = npcFreeSeconds + 20 });
-                    unavailable.Add(idle[first].id); unavailable.Add(idle[second].id); break;
-                }
-            }
+                string token = NpcWorldGeneration + ":approach:" + (++npcLeaseCounter).ToString(CultureInfo.InvariantCulture);
+                if (!npcMeetings.TryReservePair(token, firstId, secondId, out var lease, out _)) return false;
+                npcApproaches.Add(new NpcApproach { lease = lease, expiresAt = npcFreeSeconds + 20 });
+                return true;
+            });
         }
 
         private void ExpireNpcApproaches()

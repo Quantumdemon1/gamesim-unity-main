@@ -69,6 +69,8 @@ namespace Gamesim.Tests.PlayMode
                 yield return SceneManager.UnloadSceneAsync(episode);
             }
             EpisodeDirector.SaveRootOverride = null;
+            // A test that opted its root into its own preferences (A13) lets the opt-in go with it.
+            EpisodeDirector.PreferencesBesideSaves = false;
             if (GamesimBootstrap.Instance != null) Object.Destroy(GamesimBootstrap.Instance.gameObject);
             yield return null;
             if (!string.IsNullOrEmpty(temporaryDirectory))

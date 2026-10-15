@@ -201,15 +201,30 @@ namespace Gamesim.Presentation
         /// <summary>A provider's body asked for and not yet drawable: see <see cref="BodyArrived"/>.</summary>
         private bool awaitingBody;
         /// <summary>
-        /// How long a provider may take to make a body drawable, in real seconds, before the
-        /// houseguest gets the primitive rig instead (<see cref="FallBackToPrimitive"/>), and how
-        /// long a change of clothes may take before it is called off. UMA takes about half a second.
-        /// A body that is still nothing after this long is not coming - a look its index cannot
-        /// build, say - and an invisible houseguest with the opening waiting on them is the worse
-        /// outcome. Public so a test can shorten it.
+        /// How long a provider may take to make a body drawable, in seconds of frames the game ran,
+        /// before the houseguest gets the primitive rig instead (<see cref="FallBackToPrimitive"/>),
+        /// and how long a change of clothes may take before it is called off. UMA takes about half a
+        /// second. A body that is still nothing after this long is not coming - a look its index
+        /// cannot build, say - and an invisible houseguest with the opening waiting on them is the
+        /// worse outcome. Public so a test can shorten it.
         /// </summary>
         public static float AssemblyTimeoutSeconds = 30f;
-        private float assemblyDeadline, dressingDeadline;
+
+        /// <summary>
+        /// The most one frame counts toward <see cref="AssemblyTimeoutSeconds"/>. A frame that stalled
+        /// - the window out of focus with Run In Background off, so the player loop stopped while the
+        /// wall clock ran on - is time nothing could build in, not time the build took. Read on the
+        /// wall clock, half a minute away from the window gave every houseguest still assembling the
+        /// primitive rig for the rest of the session (2026-10-09, the owner's first play of the D:
+        /// copy).
+        /// </summary>
+        public const float AssemblyFrameAllowanceSeconds = 0.25f;
+
+        /// <summary>The time a frame adds to an assembly's or a change of clothes' bound: its own, at most <see cref="AssemblyFrameAllowanceSeconds"/>.</summary>
+        public static float AssemblyFrameTime(float unscaledDeltaTime) =>
+            Mathf.Clamp(unscaledDeltaTime, 0f, AssemblyFrameAllowanceSeconds);
+
+        private float assemblyElapsed, dressingElapsed;
         private RuntimeAnimatorController inspectedController;
         private bool hasSpeedParam, hasSeatedParam, hasTalkingParam, hasListeningParam, hasArguingParam;
         private bool hasRunningParam;
@@ -367,7 +382,7 @@ namespace Gamesim.Presentation
                 return;
             }
             dressingRoom = room; dressing = created; dressingAs = character.Clone(); dressingKey = key;
-            dressingDeadline = Time.realtimeSinceStartup + AssemblyTimeoutSeconds;
+            dressingElapsed = 0f;
         }
 
         /// <summary>Copies every parameter the shown body's animator holds onto the one being made.</summary>
@@ -402,8 +417,10 @@ namespace Gamesim.Presentation
             if (dressingRoom == null) return;
             if (!dressing.Exists) { CancelDressing(); return; }
             // A change that never becomes drawable is called off, and the body on show keeps its
-            // clothes; otherwise the houseguest read as changing for the rest of the session.
-            if (Time.realtimeSinceStartup > dressingDeadline)
+            // clothes; otherwise the houseguest read as changing for the rest of the session. The
+            // bound counts frames the game ran, not a stall (AssemblyFrameAllowanceSeconds).
+            dressingElapsed += AssemblyFrameTime(Time.unscaledDeltaTime);
+            if (dressingElapsed > AssemblyTimeoutSeconds)
             {
                 Debug.LogWarning("[Gamesim] " + CharacterId + "'s change of clothes was still not drawable after "
                     + AssemblyTimeoutSeconds.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)
@@ -695,7 +712,7 @@ namespace Gamesim.Presentation
             else
             {
                 awaitingBody = true;
-                assemblyDeadline = Time.realtimeSinceStartup + AssemblyTimeoutSeconds;
+                assemblyElapsed = 0f;
             }
             return true;
         }
@@ -984,7 +1001,9 @@ namespace Gamesim.Presentation
         private void AnimateProvidedBody()
         {
             BodyArrived();
-            if (awaitingBody && Time.realtimeSinceStartup > assemblyDeadline) { FallBackToPrimitive(); return; }
+            // The bound counts frames the game ran, not a stall (AssemblyFrameAllowanceSeconds).
+            if (awaitingBody && (assemblyElapsed += AssemblyFrameTime(Time.unscaledDeltaTime)) > AssemblyTimeoutSeconds)
+            { FallBackToPrimitive(); return; }
             if (animator == null)
             {
                 animator = providedBody.Root.GetComponentInChildren<Animator>(true);

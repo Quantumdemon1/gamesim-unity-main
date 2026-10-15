@@ -87,9 +87,16 @@ namespace Gamesim.Presentation
         /// </summary>
         public Func<bool> LastDeviceWasPad { get; set; }
 
-        /// <summary>A step's words, with the controls line in the device's words.</summary>
+        /// <summary>
+        /// The episode screen's step names the keys that open and close the screen (A4f): on a pad
+        /// they are replaced as the controls line is.
+        /// </summary>
+        public const string StationStepKeys = InputGlossary.KeyboardStationStepKeys;
+
+        /// <summary>A step's words, with the controls line and the episode screen's keys in the device's words.</summary>
         private string BodyFor(Step current) =>
-            PadLine ? current.Body.Replace(ControlsLine, InputGlossary.TourLine(true)) : current.Body;
+            PadLine ? current.Body.Replace(ControlsLine, InputGlossary.TourLine(true)).Replace(StationStepKeys, InputGlossary.StationStepKeys(true))
+                : current.Body;
 
         /// <summary>A press on the other kind of device rewords the step on screen, in place.</summary>
         private void FollowDevice()
@@ -158,7 +165,7 @@ namespace Gamesim.Presentation
                 "The Overview of the whole house and your notebook's pages: Houseguests, Relationships, Who is where, The vote and The story so far. Notebook, Save and Settings are at its foot.",
                 "Rail ground"),
             new Step("gamephase", "The Episode Screen",
-                "Nominations, votes and the week's other decisions happen at the living-room screen. This button walks you there; press E to open it and Esc to close it.",
+                "Nominations, votes and the week's other decisions happen at the living-room screen. This button walks you there; " + StationStepKeys,
                 "Go to episode screen"),
             new Step("carousel", "Cast Strip",
                 "Everyone in the house, along the bottom. Click a face to follow them with the camera. Under each name is their mood; once you know them, a tag says where you stand.",

@@ -65,7 +65,8 @@ namespace Gamesim.Simulation
                     var ballot = s.votes.FirstOrDefault(v => v.voterId == id);
                     if (ballot != null && ballot.targetId != call.targetId) Betrayal(s, id, Allegiance.IgnoredCall(Name(s, call.targetId)), true);
                 }
-            foreach (var deal in s.deals.Where(d => d.status == DealStatus.Broken && d.settledWeek == s.week && KnownBallots.IsVoteDeal(d.type)
+            // Mode 2 (vote family V5b): mode 1's raw list, its vote deals the canonical rows this reveal stamped.
+            foreach (var deal in CommitmentReferences.RawDeals(s).Where(d => d.status == DealStatus.Broken && d.settledWeek == s.week && KnownBallots.IsVoteDeal(d.type)
                          && !string.IsNullOrEmpty(d.brokenById) && d.brokenById != s.playerId
                          && DealResolution.Partner(d, d.brokenById) == s.playerId).ToList())
                 Betrayal(s, deal.brokenById, Allegiance.BrokeDeal(deal.type), true);

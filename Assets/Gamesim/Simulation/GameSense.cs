@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 namespace Gamesim.Simulation
@@ -173,9 +174,12 @@ namespace Gamesim.Simulation
                         if (chance.response == OpportunityResponse.Ignored) Add(notes, Strategy, -2, when + "a vote to read, and you asked nobody.", "opportunity", chance.id, chance.week, known: true);
                         break;
                     case OpportunityKinds.Deal:
+                        // A canonical row's outcome scores once per group (ScoredSafetyOutcomes, mode 2's Vote groups too),
+                        // and only a Safety one is dated by its settlement: a Vote row keeps mode 1's week (vote family V5e).
                         var canonical = CommitmentReferences.FindCanonical(s, chance.id);
                         if (canonical != null && (chance.outcome == OpportunityOutcome.Won || chance.outcome == OpportunityOutcome.Lost)
                             && !scoredSafety.Contains(chance.id)) break;
+                        if (canonical != null && canonical.kind != UnifiedCommitments.Safety) canonical = null;
                         // Under the commitment rules (C0, X3) a deal the other side broke is not the
                         // player's to answer for: on the record, and it costs them nothing.
                         var brokenAgainst = chance.outcome == OpportunityOutcome.Lost && EpisodeEngine.CommitmentRulesOn(s)
@@ -227,15 +231,28 @@ namespace Gamesim.Simulation
             }
         }
 
+        /// <summary>
+        /// The canonical deal chances whose outcome scores: one per group, its owner's where the owner has one, else the first
+        /// by id. Safety's incidents and receipts wherever Safety is canonical; in mode 2 the Vote family's Rule2 groups too
+        /// (vote family V5e, the lead's decision D1) - a row in two groups (a deal both broke, a bloc both kept) scores in the
+        /// one the player's own word made.
+        /// </summary>
         private static HashSet<string> ScoredSafetyOutcomes(EpisodeState s)
         {
-            if (!UnifiedCommitments.RulesOn(s)) return new HashSet<string>(StringComparer.Ordinal);
+            if (!UnifiedCommitments.SafetyAuthorityOn(s)) return new HashSet<string>(StringComparer.Ordinal);
             var groups = new Dictionary<string, (string key, string owner)>(StringComparer.Ordinal);
             foreach (var incident in UnifiedCommitmentHistory.Breaches(s))
                 foreach (string id in incident.EvidenceIds) groups[id] = ("broken:" + incident.EffectKey, incident.EffectOwnerId);
             foreach (var receipt in UnifiedCommitmentHistory.Fulfillments(s))
                 foreach (string id in receipt.EvidenceIds) groups[id] = ("kept:" + receipt.EffectOwnerId, receipt.EffectOwnerId);
-            var rows = UnifiedCommitmentHistory.Records(s).ToDictionary(row => row.id, StringComparer.Ordinal);
+            foreach (var group in UnifiedVoteHistory.Incidents(s).Concat(UnifiedVoteHistory.Fulfillments(s))
+                         .OrderBy(group => group.ActorId == s.playerId ? 1 : 0))
+                foreach (string id in group.EvidenceIds)
+                    groups[id] = ((group.Kept ? "vote-kept\u0001" : "vote-broken\u0001") + group.Week.ToString(CultureInfo.InvariantCulture)
+                        + "\u0001" + group.ActorId + "\u0001" + group.WrongedId, group.OwnerId);
+            var rows = UnifiedCommitmentHistory.Records(s)
+                .Concat(UnifiedVoteStore.On(s) ? UnifiedVoteHistory.Records(s) : Array.Empty<UnifiedCommitmentState>())
+                .ToDictionary(row => row.id, StringComparer.Ordinal);
             return new HashSet<string>(s.ledger.opportunities.Where(chance => chance.kind == OpportunityKinds.Deal
                 && groups.ContainsKey(chance.id) && rows.TryGetValue(chance.id, out var row)
                 && ((row.status == DealStatus.Broken && chance.outcome == OpportunityOutcome.Lost)

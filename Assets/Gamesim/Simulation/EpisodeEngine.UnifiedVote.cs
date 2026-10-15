@@ -9,8 +9,8 @@ namespace Gamesim.Simulation
     /// decides the canonical Vote rows, runs their source effects once under the Rule2 plan
     /// (<see cref="UnifiedVoteSettlement"/>) and publishes its archive frame; the week's turn, the house's deal
     /// pass, a departure, a production removal and a voided price end them. Only mode 2 reaches anything here -
-    /// every entry returns at once otherwise - and mode 2 is still reached only through the internal engine seam
-    /// (<see cref="ProspectiveVote"/>), so recorded seasons draw, mint and write exactly as before.
+    /// every entry returns at once otherwise - and only a fresh season is mode 2 (vote family V6), so seasons
+    /// recorded in modes 0 and 1 draw, mint and write exactly as before.
     ///
     /// <para>Everything here runs inside a command's detached candidate, sometimes at a moment the source leaves
     /// unfinished (the reveal between its verdicts and its record, the final eviction before its departure
@@ -30,7 +30,9 @@ namespace Gamesim.Simulation
             if (!UnifiedVoteFamilyValidation.TryValidate(s, s.unifiedVoteReveals, out string error))
                 throw new RuleException("The prospective Vote state fails its core as the reveal settles: " + error);
             try { return UnifiedVoteSettlement.Plan(s); }
-            catch (ArgumentException malformed) { throw new RuleException("The reveal cannot judge a Vote row: " + malformed.Message); }
+            // The plan's own refusal of a row its leaf cannot judge; a bug's exception escapes (the pre-V6 review).
+            catch (ArgumentException malformed) when (CommitmentReferences.IsStorageRefusal(malformed))
+            { throw new RuleException("The reveal cannot judge a Vote row: " + malformed.Message); }
         }
 
         /// <summary>
@@ -43,7 +45,7 @@ namespace Gamesim.Simulation
             foreach (var verdict in plan.PromisesOf(voterId).ToList())
             {
                 StampUnifiedVote(s, plan, verdict);
-                if (verdict.Owns) UnifiedVotePromiseRecipe(s, verdict);
+                if (verdict.Owns) UnifiedVotePromiseRecipe(s, verdict, plan.VoteEffects);
             }
         }
 
@@ -65,7 +67,7 @@ namespace Gamesim.Simulation
                 StampUnifiedVote(s, plan, item.canonical);
                 if (!item.canonical.Owns) continue;
                 if (item.canonical.Collective) UnifiedVoteCollectiveRecipe(s, item.canonical);
-                else UnifiedVoteNamedRecipe(s, item.canonical);
+                else UnifiedVoteNamedRecipe(s, item.canonical, plan.VoteEffects);
             }
         }
 
@@ -111,7 +113,7 @@ namespace Gamesim.Simulation
         /// beneficiary's view of the maker, their permanent one-way record, both memories, the maker's line, and
         /// for a breach the Story hook and the witness loop - writing only the atoms the plan selected.
         /// </summary>
-        private static void UnifiedVotePromiseRecipe(EpisodeState s, UnifiedVoteVerdict verdict)
+        private static void UnifiedVotePromiseRecipe(EpisodeState s, UnifiedVoteVerdict verdict, IReadOnlyCollection<string> revealEffects)
         {
             var row = verdict.Row;
             bool broken = !verdict.Kept;
@@ -124,7 +126,8 @@ namespace Gamesim.Simulation
             // A vote promise's outcome is the promiser's ballot: the line goes to them alone.
             Log(s, "promise-outcome", text, row.makerId);
             if (!broken) return;
-            StoryWordBroken(s, row.beneficiaryId, row.makerId, GrudgeCauses.PromiseBroken, 60);
+            // The grudge's threat leaves out this reveal's own Vote effects (vote family V5c); an earlier breach still counts.
+            StoryWordBrokenBeforeCommitmentEffects(s, row.beneficiaryId, row.makerId, GrudgeCauses.PromiseBroken, 60, null, revealEffects);
             foreach (var witness in s.Active.Where(c => c.id != row.makerId && c.id != row.beneficiaryId))
             {
                 double chance = s.Allied(witness.id, row.beneficiaryId) ? 0.8 : s.Score(witness.id, row.beneficiaryId) > 50 ? 0.6
@@ -140,7 +143,7 @@ namespace Gamesim.Simulation
         /// partner's memory, the actor's line, and for a breach the Story hook (not on the player wronged by a ballot)
         /// and the betrayal spread - writing only the atoms the plan selected. A ballot's breach voids no price.
         /// </summary>
-        private static void UnifiedVoteNamedRecipe(EpisodeState s, UnifiedVoteVerdict verdict)
+        private static void UnifiedVoteNamedRecipe(EpisodeState s, UnifiedVoteVerdict verdict, IReadOnlyCollection<string> revealEffects)
         {
             var deal = verdict.Deal();
             string actor = verdict.ActorId, wronged = DealResolution.Partner(deal, actor);
@@ -155,7 +158,7 @@ namespace Gamesim.Simulation
             Log(s, "deal-outcome", text, actor);
             if (kept) return;
             if (!(keepPlayersView && wronged == s.playerId))
-                StoryWordBroken(s, wronged, actor, GrudgeCauses.DealBroken, 60);
+                StoryWordBrokenBeforeCommitmentEffects(s, wronged, actor, GrudgeCauses.DealBroken, 60, null, revealEffects);
             SpreadBetrayal(s, deal, actor);
         }
 

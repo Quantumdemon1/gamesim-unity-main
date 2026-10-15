@@ -33,10 +33,12 @@ namespace Gamesim.Presentation
                     + (state.Allied(state.playerId, id) ? " · Shared alliance" : "");
             var promises = CommitmentReferences.Promises(state).Where(p =>
                 (p.fromId == state.playerId && p.toId == id) || (p.fromId == id && p.toId == state.playerId)).ToArray();
+            // Their vote promise, ended by their ballot, is told once the player knows that ballot
+            // (KnownBallots.PromiseOutcomeKnown; decision 4), as the houseguest's notes tell it.
             string known = promises.Length == 0 ? "No promises recorded between you."
                 : string.Join("\n", promises.Reverse().Take(2).Select(p =>
                     (p.fromId == state.playerId ? "You promised: " : "Promised to you: ") + PromiseName(p.kind)
-                    + " · " + p.status.ToString().ToLowerInvariant()))
+                    + " · " + (KnownBallots.PromiseOutcomeKnown(state, p) ? p.status.ToString().ToLowerInvariant() : KnownBallots.Unresolved)))
                     + (promises.Length > 2 ? "\n+" + (promises.Length - 2) + " other promises between you" : "");
             return new Candidate(actor, "HoH " + actor.hohWins + " · Veto " + actor.vetoWins
                 + " · Nominated " + actor.timesNominated, relationship, known, Deals(state, id));

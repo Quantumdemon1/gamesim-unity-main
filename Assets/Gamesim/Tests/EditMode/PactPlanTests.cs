@@ -46,8 +46,11 @@ namespace Gamesim.Tests.EditMode
             Assert.Throws<ArgumentNullException>(() => EpisodeEngine.EnablePactPlans(null));
         }
 
-        [TestCase(0, "", 0)] [TestCase(-20, "", 0)] [TestCase(25, "", 4)] [TestCase(50, "", 8)] [TestCase(90, "", 8)]
-        [TestCase(50, "Loyal", 12)] [TestCase(100, "Loyal", 12)] [TestCase(25, "Loyal", 6)] [TestCase(100, "Sneaky", 0)]
+        // The reach amended in place for BALANCE plan §4 Q1 (eight at fifty, cap twelve, reached only toss-ups:
+        // mean come-round odds 0.17 in PactPlanSeasonDigests, 0.10 in the lab): twenty at a view of ten or more,
+        // scaled down to nothing at zero, Loyal half as much again, cap thirty.
+        [TestCase(0, "", 0)] [TestCase(-20, "", 0)] [TestCase(5, "", 10)] [TestCase(10, "", 20)] [TestCase(90, "", 20)]
+        [TestCase(10, "Loyal", 30)] [TestCase(100, "Loyal", 30)] [TestCase(5, "Loyal", 15)] [TestCase(100, "Sneaky", 0)]
         public void ACountersReachIsTheObligationsSizing(double view, string trait, double reach)
         {
             var traits = trait.Length == 0 ? new List<string> { "Social" } : new List<string> { trait };
@@ -265,14 +268,18 @@ namespace Gamesim.Tests.EditMode
                 var s = WarRoom(out var pact, seed: seed);
                 var npcs = NpcIds(s);
                 string member = npcs[(int)(seed % 2) + 3];
-                // A Loyal member who thinks the world of the player: the counter's furthest reach, twelve.
-                s.Find(member).traits = new List<string> { "Loyal" };
-                SetScore(s, member, s.playerId, 100);
+                // On odd seeds a Loyal member who thinks the world of the player: the counter's furthest reach,
+                // thirty (twelve before the reach was amended for BALANCE plan §4 Q1, since when nearly every such
+                // member comes round); on even seeds one barely warm to the player, a view of three: reach six.
+                bool far = seed % 2 == 1;
+                double view = far ? 100 : 3, reach = far ? 30 : 20 * 0.3;
+                s.Find(member).traits = new List<string> { far ? "Loyal" : "Social" };
+                SetScore(s, member, s.playerId, view);
                 double odds = PactPlans.ComeRoundOdds(s, member);
                 var known = Allegiance.AsThePlayerKnows(s);
                 double margin = WebEvictionVoting.EvaluateNative(known, member).margin;
-                Assert.That(odds, Is.EqualTo(PactPlans.ComeRoundOdds(PactPlans.CounterReach(100, s.Find(member).traits), margin)).Within(1e-12));
-                Assert.That(odds, Is.EqualTo(Math.Max(0, Math.Min(1, (12 - margin) / 12))).Within(1e-12), "Seed " + seed + ": reach twelve, margin " + margin + ".");
+                Assert.That(odds, Is.EqualTo(PactPlans.ComeRoundOdds(PactPlans.CounterReach(view, s.Find(member).traits), margin)).Within(1e-12));
+                Assert.That(odds, Is.EqualTo(Math.Max(0, Math.Min(1, (reach - margin) / reach))).Within(1e-12), "Seed " + seed + ": reach " + reach + ", margin " + margin + ".");
                 bool coin = StoryRandom.Unit(s, PactPlans.CounterKey(s, PactId, member)) < odds;
                 bool round = PactPlans.ComesRound(s, PactId, member);
                 Assert.That(round, Is.EqualTo(odds > 0 && coin), "Seed " + seed + ": the coin under the odds.");
@@ -603,6 +610,59 @@ namespace Gamesim.Tests.EditMode
             string text = result.state.events.Last().text;
             Assert.That(text, Does.StartWith("You pushed for " + Name(open, npcs[2]) + "."));
             Assert.That(text, Does.Contain(PactName + " goes with " + Name(open, after.targetId) + "."));
+        }
+
+        /// <summary>
+        /// D2's beats between the meeting and the answer (§3.6), with the all-week rules on: the meeting's commit
+        /// catches the house up at the campaign's first tick - as many beats as are due, each an act of the
+        /// window fired at tick one - and draws what the same meeting draws without them; the answer, free,
+        /// fires none, and reads the state after them: its counter is settled by that snapshot's coins and odds;
+        /// and the same two commands replay to the same state.
+        /// </summary>
+        [Test]
+        public void TheHousesBeatsFallBetweenTheMeetingAndTheAnswer()
+        {
+            var decided = Decided(out _);
+            EpisodeEngine.EnableWeek(decided);
+            EpisodeEngine.EnableAllWeek(decided);
+            Valid(decided);
+            var npcs = NpcIds(decided);
+            var meeting = Command(decided, EpisodeCommandKind.AllianceMeet, npcs[3], null, PactId);
+            var engine = new EpisodeEngine(decided);
+            var opened = engine.Apply(meeting);
+            Assert.That(opened.accepted, Is.True, opened.reason);
+            var s = opened.state;
+            var row = PactPlans.OpenPlan(s, PactId);
+            Assert.That(row, Is.Not.Null, "The war room met.");
+            var social = s.npcSocial;
+            Assert.That(social.beatWindow, Is.EqualTo(Windows.AfterVeto));
+            Assert.That(EpisodeEngine.WindowTick(s, Windows.AfterVeto), Is.EqualTo(1), "The meeting spent the campaign's first seat.");
+            Assert.That(social.beatsFired, Is.EqualTo(EpisodeEngine.Due(social.beatPlan.Count, social.beatSeats, 1)));
+            var beats = social.acts.Where(EpisodeEngine.IsBeat).ToList();
+            Assert.That(beats, Is.Not.Empty, "The house acted after the meeting.");
+            Assert.That(beats.All(a => a.window == Windows.AfterVeto && a.firedTick == 1), Is.True);
+
+            var off = Decided(out _);
+            EpisodeEngine.EnableWeek(off);
+            var without = new EpisodeEngine(off).Apply(meeting);
+            Assert.That(without.accepted, Is.True, without.reason);
+            Assert.That(s.randomState, Is.EqualTo(without.state.randomState), "The beats drew nothing from the season's stream.");
+
+            var pact = s.alliances.Single(a => a.id == PactId);
+            var expected = PactPlans.Settle(s, pact, row, PactPlans.Counter, npcs[2]);
+            var answer = Command(s, EpisodeCommandKind.AnswerPactPlan, npcs[3], npcs[2], PactId);
+            var answered = engine.Apply(answer);
+            Assert.That(answered.accepted, Is.True, answered.reason);
+            var settled = answered.state.ledger.plans.Single();
+            Assert.That(settled.cameRound, Is.EqualTo(expected.cameRound), "Each came round by the post-beat snapshot's coin and odds.");
+            Assert.That(settled.targetId, Is.EqualTo(expected.targetId));
+            Assert.That(answered.state.randomState, Is.EqualTo(s.randomState), "The answer draws nothing,");
+            Assert.That(answered.state.npcSocial.beatsFired, Is.EqualTo(social.beatsFired), "and, free, fires no beat.");
+            Assert.That(answered.state.npcSocial.acts.Count, Is.EqualTo(social.acts.Count));
+
+            var replay = new EpisodeEngine(decided);
+            Assert.That(Json(replay.Apply(meeting).state), Is.EqualTo(Json(s)));
+            Assert.That(Json(replay.Apply(answer).state), Is.EqualTo(Json(answered.state)), "The same commands, the same season.");
         }
 
         [Test]

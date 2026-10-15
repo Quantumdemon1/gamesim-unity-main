@@ -218,7 +218,8 @@ namespace Gamesim.Simulation
                 var parts = evidence.Split(':');
                 return parts.Length >= 3 && (parts[1] == s.playerId || parts[2] == s.playerId);
             }
-            var deal = s.deals.FirstOrDefault(d => d.id == evidence);
+            // Mode 2 (vote family V5b, for V5d): mode 1's raw list, its vote deals the canonical rows.
+            var deal = CommitmentReferences.RawDeals(s).FirstOrDefault(d => d.id == evidence);
             return deal != null && (deal.proposerId == s.playerId || deal.recipientId == s.playerId);
         }
     }

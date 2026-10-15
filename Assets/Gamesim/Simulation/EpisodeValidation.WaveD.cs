@@ -4,8 +4,8 @@ using System.Linq;
 namespace Gamesim.Simulation
 {
     /// <summary>
-    /// Schema 28 (WAVE-D-NPC-PACTS-PLAN §0.3): Wave D's three start weeks, and the lines and the
-    /// receipt each design alone may write. D2's cadence is checked with the NPC world
+    /// Schema 28 (WAVE-D-NPC-PACTS-PLAN §0.3): Wave D's three start weeks, and the lines, the
+    /// receipt and the talk records each design alone may write. D2's cadence is checked with the NPC world
     /// (EpisodeNpcSocialValidation) and D3's plans with the ledger (EpisodeLedgerValidation).
     /// While a design's start week is 0 it has left nothing behind; once set, nothing it wrote
     /// predates it.
@@ -28,6 +28,10 @@ namespace Gamesim.Simulation
             if (s.relationships.Any(r => r.events.Any(e => e.type == StoryReceipts.DoubleDealt
                     && (s.allianceLeakRulesStartWeek == 0 || e.week < s.allianceLeakRulesStartWeek))))
                 return Fail(out error, "A season without the leak rules has none of their receipts.");
+            // D2's records of the house's talk (EpisodeEngine.CompletionChange), which feed trust between houseguests.
+            if (s.relationships.Any(r => r.events.Any(e => (e.type == EpisodeEngine.NpcConversationEvent || e.type == EpisodeEngine.NpcGossipEvent)
+                    && (s.allWeekRulesStartWeek == 0 || e.week < s.allWeekRulesStartWeek))))
+                return Fail(out error, "A season without the all-week rules has none of their records.");
             return true;
         }
 

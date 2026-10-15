@@ -231,7 +231,7 @@ namespace Gamesim.Simulation
             roles = new[] { Role("FIRST"), Role("SECOND") },
             cast = c =>
             {
-                var deal = (UnifiedCommitments.RulesOn(c.state) ? CommitmentReferences.Deals(c.state) : c.state.deals)
+                var deal = (UnifiedCommitments.SafetyAuthorityOn(c.state) ? CommitmentReferences.Deals(c.state) : c.state.deals)
                     .Where(d => d.status == DealStatus.Active && d.proposerId != P(c) && d.recipientId != P(c))
                     .OrderBy(d => d.id, StringComparer.Ordinal)
                     .FirstOrDefault(d => c.Find(d.proposerId)?.status == ContestantStatus.Active && c.Find(d.recipientId)?.status == ContestantStatus.Active);

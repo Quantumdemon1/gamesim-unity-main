@@ -4,10 +4,10 @@ using System.Linq;
 namespace Gamesim.Simulation
 {
     /// <summary>
-    /// The Vote family's storage writer under the prospective mode 2 (unifiedCommitmentRulesVersion 2),
-    /// and the creators' own reads of what already stands. Callable only from simulation command owners
-    /// running inside a command's detached candidate; public mode 2 stays refused, so only the internal
-    /// engine seam (<see cref="EpisodeEngine.ProspectiveVote"/>) reaches a mode-2 write.
+    /// The Vote family's storage writer under mode 2 (unifiedCommitmentRulesVersion 2, the unified vote rules
+    /// every fresh season plays since vote family V6), and the creators' own reads of what already stands.
+    /// Callable only from simulation command owners running inside a command's detached candidate, which the
+    /// public engine holds to the complete Vote core as the internal seam (<see cref="EpisodeEngine.ProspectiveVote"/>) does.
     ///
     /// <para>Every write goes through <see cref="UnifiedVoteAdmission"/>, which requires the complete
     /// prospective core on the state it is given and the source owner's own prerequisites, duplicates
@@ -24,7 +24,8 @@ namespace Gamesim.Simulation
     ///
     /// <para>Settlement, the reveal's archive and the endings are not this writer's: the reveal stamps and
     /// publishes them, and the week's turn, deal pass, departures, removals and voided prices end them
-    /// (<see cref="UnifiedVoteSettlement"/>, EpisodeEngine.UnifiedVote, vote family V4). The readers move in V5.</para>
+    /// (<see cref="UnifiedVoteSettlement"/>, EpisodeEngine.UnifiedVote, vote family V4). The readers read them through
+    /// the mode-1-shaped views and the histories (vote family V5).</para>
     /// </summary>
     internal static class UnifiedVoteStore
     {

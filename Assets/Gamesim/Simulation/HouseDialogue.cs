@@ -556,7 +556,8 @@ namespace Gamesim.Simulation
 
         private static PromiseState LatestDirectOutcome(EpisodeState state, string npcId)
         {
-            if (UnifiedCommitments.RulesOn(state))
+            // The view wherever Safety is canonical - mode 2's is mode 1's list (vote family V5f).
+            if (UnifiedCommitments.SafetyAuthorityOn(state))
                 return CommitmentReferences.Promises(state).Where(promise => promise != null
                         && promise.fromId == state.playerId && promise.toId == npcId
                         && promise.week <= state.week && promise.settledWeek <= state.week

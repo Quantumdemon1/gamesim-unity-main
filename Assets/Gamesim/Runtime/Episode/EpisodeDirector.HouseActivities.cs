@@ -208,7 +208,7 @@ namespace Gamesim.Episode
             DressPlayer(projected);
             // In close enough to see what they are doing: from the far view a swimmer is a dot.
             cameraRig?.FocusSubject(player.transform);
-            message=ActivityStatus(kind);
+            message=ActivityStatus(kind,PressWasPad);
             Render();
         }
 
@@ -225,18 +225,11 @@ namespace Gamesim.Episode
             travelBeacons?.ShowFurnitureTip(caption,screen,largeText ? 1.2f : 1f);
         }
 
-        private static string ActivityStatus(HouseFurnitureActivity kind)
-        {
-            switch(kind)
-            {
-                case HouseFurnitureActivity.Sleep:return "Off to bed  ·  E or a click to get up";
-                case HouseFurnitureActivity.Swim:return "Going for a swim  ·  E or a click to get out";
-                case HouseFurnitureActivity.Soak:return "Into the hot tub  ·  E or a click to get out";
-                case HouseFurnitureActivity.Cook:return "Cooking a meal  ·  E or a click to stop";
-                case HouseFurnitureActivity.Dance:return "Dancing  ·  E or a click to stop";
-                default:return "At the furniture  ·  E to finish";
-            }
-        }
+        /// <summary>The status line at a piece of furniture, in the device's words: "E or a click to get up", or X on a pad (A4f).</summary>
+        private static string ActivityStatus(HouseFurnitureActivity kind,bool pad)=>InputGlossary.ActivityLine(kind.ToString(),pad);
+
+        /// <summary>Whether the status line is the furniture's, in either device's words.</summary>
+        private static bool IsActivityStatus(string line,HouseFurnitureActivity kind)=>line==ActivityStatus(kind,false) || line==ActivityStatus(kind,true);
 
         /// <summary>
         /// A click on the house while the player is busy at a piece of furniture: they get up the
@@ -279,7 +272,7 @@ namespace Gamesim.Episode
                             playerActivityInHouse=false;
                             // Back into the day's clothes, behind the body getting up.
                             DressPlayer(projected);
-                            if(message==ActivityStatus(playerActivityKind))message="";
+                            if(IsActivityStatus(message,playerActivityKind))message="";
                             // The click that got them up, now that they are up.
                             var click=clickAfterActivity;clickAfterActivity=null;
                             if(click.HasValue && player!=null)player.DispatchClick(click.Value,clickAfterActivityScreen);

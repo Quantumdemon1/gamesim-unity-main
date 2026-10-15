@@ -341,10 +341,11 @@ namespace Gamesim.Presentation
             if (you != null && you.status == ContestantStatus.Active)
             {
                 // What carries is each standing agreement, not a count of past incidents.
-                // Preserve the original Active predicate and the legacy stores' list semantics.
-                int word = (UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Promises(state) : state.promises)
+                // Preserve the original Active predicate and the legacy stores' list semantics. The views
+                // wherever Safety is canonical - mode 2's are mode 1's lists (vote family V5f).
+                int word = (UnifiedCommitments.SafetyAuthorityOn(state) ? CommitmentReferences.Promises(state) : state.promises)
                     .Count(p => p.status == PromiseStatus.Active && (p.fromId == state.playerId || p.toId == state.playerId))
-                    + (UnifiedCommitments.RulesOn(state) ? CommitmentReferences.Deals(state) : state.deals)
+                    + (UnifiedCommitments.SafetyAuthorityOn(state) ? CommitmentReferences.Deals(state) : state.deals)
                     .Count(d => d.status == DealStatus.Active && (d.proposerId == state.playerId || d.recipientId == state.playerId));
                 if (word > 0) lines.Add(word == 1 ? "You carry one promise or deal into the week." : "You carry " + word + " promises and deals into the week.");
             }

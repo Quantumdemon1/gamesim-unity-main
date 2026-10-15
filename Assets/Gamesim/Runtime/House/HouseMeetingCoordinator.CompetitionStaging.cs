@@ -32,6 +32,7 @@ namespace Gamesim.House
         {
             reason=null;
             EndWandering();
+            EndActStaging();
             if(!IsReady||HasCompetitionStage||leases.Count!=0||ids==null||anchors==null||ids.Count!=anchors.Count||ids.Count==0)
             {reason="Houseguests are not available for arena staging.";return false;}
             var unique=new HashSet<string>();var uniqueAnchors=new HashSet<HouseInteractionAnchor>();

@@ -89,18 +89,39 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(unchanged.relationships.Select(edge => edge.fromId + ":" + edge.toId),
                 Is.EqualTo(before.relationships.Select(edge => edge.fromId + ":" + edge.toId)),
                 "Autonomy cannot add/remove/reorder the authored directed relationship graph.");
+            int recorded = 0;
             for (int index = 0; index < unchanged.relationships.Count; index++)
             {
                 var edge = unchanged.relationships[index];
                 var original = before.relationships[index];
                 if (edge.fromId == before.playerId || edge.toId == before.playerId) continue;
-                // Source NPC completion writes only score and lastInteractionWeek.
-                // IDs, notes and event histories remain subject to the full comparison.
+                // Source NPC completion writes only score and lastInteractionWeek. Under D2's rules (every
+                // season the director starts) it moves the pair through the ledger, which also appends a
+                // fading record of the talk. IDs, notes and older event histories remain subject to the
+                // full comparison.
                 Assert.That(edge.lastInteractionWeek,
                     Is.EqualTo(original.lastInteractionWeek).Or.EqualTo(after.week));
                 edge.score = original.score;
                 edge.lastInteractionWeek = original.lastInteractionWeek;
+                var appended = edge.events.Skip(original.events.Count).ToList();
+                if (appended.Count == 0) continue;
+                Assert.That(EpisodeEngine.AllWeekOn(before), Is.True, "Only D2's rules record a conversation in the ledger.");
+                foreach (var entry in appended)
+                {
+                    Assert.That(entry.type == EpisodeEngine.NpcConversationEvent || entry.type == EpisodeEngine.NpcGossipEvent, Is.True, entry.type);
+                    Assert.That(entry.week, Is.EqualTo(after.week));
+                    Assert.That(entry.decayable, Is.True);
+                    Assert.That(entry.sequence, Is.GreaterThanOrEqualTo(before.nextSequence).And.LessThan(after.nextSequence));
+                }
+                edge.events.RemoveRange(original.events.Count, appended.Count);
+                recorded += appended.Count;
             }
+            Assert.That(after.nextSequence, Is.EqualTo(before.nextSequence + recorded), "Only the ledger's records take sequence numbers.");
+            unchanged.nextSequence = before.nextSequence;
+            // Under D2's rules a completed conversation writes no arc (the balance review's finding 3): arcs are the player's.
+            if (EpisodeEngine.AllWeekOn(before))
+                Assert.That(after.relationshipArcs.Select(arc => JsonUtility.ToJson(arc)),
+                    Is.EqualTo(before.relationshipArcs.Select(arc => JsonUtility.ToJson(arc))), "No arc moves under D2's rules.");
 
             Assert.That(after.relationshipArcs.Select(arc => arc.npcId).Take(before.relationshipArcs.Count),
                 Is.EqualTo(before.relationshipArcs.Select(arc => arc.npcId)),

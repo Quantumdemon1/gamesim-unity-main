@@ -136,6 +136,33 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Json(s), Is.EqualTo(before));
         }
 
+        /// <summary>
+        /// The built details' "between you" lines tell a houseguest's vote promise's ending as their notes tell it (vote family
+        /// V6's review, finding 2; <see cref="KnownBallots.PromiseOutcomeKnown"/>, decision 4): "unresolved" while the ballot that
+        /// ended it is hidden from the player, the ending once they know that ballot - before mode 2
+        /// (<see cref="DecisionContextTests.LegacyVoteWord"/>) and in mode 2's flip pair (<see cref="ModeTwoReaderSweep.Flip"/>).
+        /// </summary>
+        [Test]
+        public void BuiltRelationshipDetailsTellAVotePromisesEndingOnlyWhereItsBallotIsKnown()
+        {
+            const string Word = " promised you a vote · ";
+            var legacy = DecisionContextTests.LegacyVoteWord();
+            Assert.That(RelationshipCopy(legacy.blind, legacy.promiser), Does.Contain(Word + KnownBallots.Unresolved).And.Not.Contain(Word + "Broken"));
+            Assert.That(RelationshipCopy(legacy.told, legacy.promiser), Does.Contain(Word + "Broken").And.Not.Contain(Word + KnownBallots.Unresolved));
+
+            var blind = ModeTwoReaderSweep.Flip(false, word: true);
+            foreach (var s in new[] { blind.Kept, blind.Broken })
+            {
+                string before = Json(s);
+                Assert.That(RelationshipCopy(s, blind.PartnerId), Does.Contain(Word + KnownBallots.Unresolved).And.Not.Contain(Word + "Broken"),
+                    "Mode 2, the ballot hidden.");
+                Assert.That(Json(s), Is.EqualTo(before));
+            }
+            var told = ModeTwoReaderSweep.Flip(true, word: true);
+            foreach (var s in new[] { told.Kept, told.Broken })
+                Assert.That(RelationshipCopy(s, told.PartnerId), Does.Contain(Word + "Broken"), "Mode 2, the ballot told and judged.");
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void DecisionCandidateUsesOwnCanonicalPromiseDirectionAndSourceStatus(bool incoming)

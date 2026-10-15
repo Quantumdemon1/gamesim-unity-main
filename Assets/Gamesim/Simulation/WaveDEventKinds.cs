@@ -1,10 +1,11 @@
 namespace Gamesim.Simulation
 {
     /// <summary>
-    /// Schema 28 vocabulary: the event kinds Wave D's lines will carry (WAVE-D-NPC-PACTS-PLAN §0.3).
-    /// Constants. D4's double-dealing line (the leak rules, <see cref="AllianceLeaks"/>) and D3's pact-plan
-    /// line (the war rooms, <see cref="PactPlans"/>) are logged so far, each under its own start week; D2's
-    /// are not yet. Validation refuses each until its own design's start week (<c>EpisodeValidation.WaveD</c>).
+    /// Schema 28 vocabulary: the event kinds Wave D's lines carry (WAVE-D-NPC-PACTS-PLAN §0.3). Constants.
+    /// D4's double-dealing line (the leak rules, <see cref="AllianceLeaks"/>), D3's pact-plan line (the war
+    /// rooms, <see cref="PactPlans"/>) and D2's sighting and overheard lines (the all-week rules, a witness of
+    /// an act, <c>EpisodeEngine.AllWeek</c>) are each logged under their own start week. Validation refuses
+    /// each until its own design's start week (<c>EpisodeValidation.WaveD</c>).
     /// </summary>
     public static class WaveDEventKinds
     {

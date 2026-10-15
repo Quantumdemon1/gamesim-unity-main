@@ -352,13 +352,14 @@ namespace Gamesim.Episode
             // The competition takes the yard they would cross: anybody still walking out goes now,
             // at once - a staged exit's hold on the shut door and its dip are not for this.
             FinishWalkOut(immediate: true);
-            challengeOrigin = state; challengeActive = true; challengeHits = 0; challengeTotal = 0;
+            challengeOrigin = state; challengeActive = true; challengeHits = 0; challengeTotal = 0; challengeHitFrame = -1;
             challengeStarted = Time.unscaledTime; challengePractice = practice; challengeResultShown = false; challengeFinishHold = 0f;
             challengeCommandId = Guid.NewGuid().ToString("N");
             if (!BeginCompetitionArena(state))
             { challengeActive = false; challengeOrigin = null; message = competitionArenaStatus; Render(); return; }
             FrameCompetition();
-            var kind = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
+            var kind = timingBarForDiagnostics ? CompetitionMiniGames.Kind.Precision
+                : CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
             challengeRun = kind == CompetitionMiniGames.Kind.Precision ? null : new MiniGameRun(kind,
                 CompetitionMiniGames.AttemptSeed(state.seed, state.week, (int)state.phase, state.competitionRulesVersion, practice),
                 state.competitionRulesVersion, CompetitionDefinitions.For(state), ScrambleWords(state));
@@ -624,12 +625,42 @@ namespace Gamesim.Episode
             // While a game is being played its screen is the decision: the panel and the column
             // step aside rather than sit, empty, under a competition that no longer hides them.
             if (challengeRun != null) { hud.StandAsideForPlay(); return; }
-            hud.Paragraph("Press Space or STOP when the marker is near the center. Three attempts; no time limit. Escape cancels without committing.");
+            hud.Paragraph(InputGlossary.ChallengeLine(PressWasPad));
             hud.ChallengeMeter(); hud.Action("STOP marker  [Space]", RecordChallengeHit);
         }
+
+        // The frame of the timing bar's last stop. One press is one stop (PLAN A, Risk R6): the pad's
+        // A on the focused STOP is both the shortcuts' Hit, read in Update, and the UI's Submit on
+        // the control, and both reached RecordChallengeHit in the same frame - two of the three
+        // stops, and a ranked attempt's Compete committed on the second press. A key and a button
+        // pressed together in one frame are one stop too, as a person means them. Only presses
+        // change: a recorded season replays the Compete it committed, not the presses behind it.
+        private int challengeHitFrame = -1;
+
+        // While set, StartChallenge plays the timing bar whatever the category: the seam
+        // StartTimingBarForDiagnostics, the only way left onto it.
+        private bool timingBarForDiagnostics;
+
+        /// <summary>
+        /// A seam for tests, never called by the game: the timing bar - the fallback
+        /// <see cref="CompetitionMiniGames.Kind.Precision"/>, which no category a season deals plays
+        /// any more (<c>CompetitionMiniGameTests.EveryCompetitionASeasonCanReachRoutesToAGameWithRules</c>)
+        /// - started from the open competition's briefing, as Practice or an entry starts its game.
+        /// True when the bar is up. Its stops commit a Compete as they always did.
+        /// </summary>
+        public bool StartTimingBarForDiagnostics(bool practice)
+        {
+            if (projected == null) return false;
+            timingBarForDiagnostics = true;
+            try { StartChallenge(projected, practice); }
+            finally { timingBarForDiagnostics = false; }
+            return challengeActive && challengeRun == null;
+        }
+
         public void RecordChallengeHit()
         {
-            if (!challengeActive || challengeRun != null) return;
+            if (!challengeActive || challengeRun != null || challengeHitFrame == Time.frameCount) return;
+            challengeHitFrame = Time.frameCount;
             challengeTotal += Math.Max(0, 1 - Math.Abs(challengeValue - .5) * 2); challengeHits++;
             audioBed.PlayCue(HouseAudio.Cue.Button);
             if (challengeHits < 3) return;

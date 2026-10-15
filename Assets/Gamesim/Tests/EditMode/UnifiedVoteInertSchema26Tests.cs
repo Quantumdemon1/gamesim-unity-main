@@ -56,10 +56,20 @@ namespace Gamesim.Tests.EditMode
             Refused(s);
         }
 
+        /// <summary>
+        /// Flipped at vote family V6 (this was "proposed Vote authority still cannot be constructed"): mode 2 is the unified vote
+        /// rules a fresh season plays, judged by its own complete core and never converted to. A season relabelled 2 by hand is
+        /// held to that core as it stands: this one, canonical Safety only and before any reveal, is field for field a mode-2
+        /// season, and is taken. Nothing in the game relabels a season (the lead's decision D6); 3 stays unknown and refused.
+        /// </summary>
         [TestCase(false)] [TestCase(true)]
-        public void ProposedVoteAuthorityStillCannotBeConstructed(bool hearing)
+        public void ASeasonRelabelledTwoIsJudgedByTheVoteCoreAndAnUnknownModeIsRefused(bool hearing)
         {
-            var s = Promise(hearing); Accepted(s); s.unifiedCommitmentRulesVersion = 2; Refused(s);
+            var s = Promise(hearing); Accepted(s);
+            var two = s.Clone(); two.unifiedCommitmentRulesVersion = 2;
+            Accepted(two);
+            Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(two, out var error), Is.True, "The complete Vote core takes it. " + error);
+            var three = s.Clone(); three.unifiedCommitmentRulesVersion = 3; Refused(three);
         }
 
         [Test]

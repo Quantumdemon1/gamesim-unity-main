@@ -159,7 +159,9 @@ namespace Gamesim.Tests.PlayMode
                 .FirstOrDefault(c => c.renderMode == RenderMode.ScreenSpaceOverlay && c.isActiveAndEnabled);
             Assert.That(canvas, Is.Not.Null, "The HUD canvas should be a screen-space overlay.");
 
-            foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1600, 900), new Vector2Int(2560, 1440) })
+            // And 16:10 and 21:9 (PLAN A, A12): the frames the display options can now choose.
+            foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1600, 900), new Vector2Int(2560, 1440),
+                new Vector2Int(1280, 800), new Vector2Int(2560, 1080) })
             {
                 var lens = new CaptureLens(cameraRig.ViewCamera, size.x, size.y);
                 Texture2D readback = null;

@@ -104,10 +104,9 @@ namespace Gamesim.Episode
             hud.Action(largeText ? "Use standard text" : "Use larger text", () => SetLargeText(!largeText));
             hud.Section("CEREMONIES");
             // The key ceremony and the live eviction reveal one name at a time; suspenseful holds a
-            // beat on each, quick keeps them brisk. Either can be sped up or skipped while it plays.
-            hud.Paragraph(ceremonyPace == CeremonyPace.Suspenseful
-                ? "Keys and votes are revealed one at a time, with a pause before the last. Press Space to speed a reveal up, or Enter to skip to the result."
-                : "Keys and votes are revealed quickly. Press Space to speed a reveal up, or Enter to skip to the result.");
+            // beat on each, quick keeps them brisk. Either can be sped up or skipped while it plays,
+            // by the keys or the pad's buttons as the device last pressed names them (A4f).
+            hud.Paragraph(InputGlossary.CeremonyPaceLine(ceremonyPace == CeremonyPace.Suspenseful, PressWasPad));
             hud.Action(ceremonyPace == CeremonyPace.Suspenseful ? QuickCeremoniesCaption : SuspensefulCeremoniesCaption,
                 () => { SetCeremonyPace(ceremonyPace == CeremonyPace.Suspenseful ? CeremonyPace.Quick : CeremonyPace.Suspenseful); Render(); });
             DisplaySettings();
@@ -432,8 +431,11 @@ namespace Gamesim.Episode
             if (mainMenu != null) mainMenu.FontScale = largeText ? 1.2f : 1;
             foreach (var visual in FindObjectsByType<CharacterPresentation>()) visual.SetReducedMotion(reducedMotion);
             ApplyDisplayPreferences();
-            if (SaveRootOverride == null)
-            { PlayerPrefs.SetInt("Gamesim.Muted", muted ? 1 : 0); PlayerPrefs.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); PlayerPrefs.SetInt("Gamesim.ReducedAudio", reducedAudio ? 1 : 0); PlayerPrefs.SetInt("Gamesim.LargeText", largeText ? 1 : 0); PlayerPrefs.SetInt("Gamesim.Volume", volumePercent); PlayerPrefs.SetInt("Gamesim.Music", musicOn ? 1 : 0); PlayerPrefs.SetInt("Gamesim.CeremonyPace", ceremonyPace == CeremonyPace.Quick ? 1 : 0); PlayerPrefs.Save(); }
+            // Kept in the session's store (A13): PlayerPrefs, the root's own file, or nowhere.
+            var store = Preferences;
+            store.SetInt("Gamesim.Muted", muted ? 1 : 0); store.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); store.SetInt("Gamesim.ReducedAudio", reducedAudio ? 1 : 0); store.SetInt("Gamesim.LargeText", largeText ? 1 : 0); store.SetInt("Gamesim.Volume", volumePercent); store.SetInt("Gamesim.Music", musicOn ? 1 : 0); store.SetInt("Gamesim.CeremonyPace", ceremonyPace == CeremonyPace.Quick ? 1 : 0); store.Save();
+            // And a line in the player log for each value that changed since the last one logged.
+            LogSettingChanges();
         }
     }
 }

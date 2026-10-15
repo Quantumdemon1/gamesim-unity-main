@@ -52,6 +52,47 @@ namespace Gamesim.Tests.EditMode
                 Is.SubsetOf(new[] { InputGlossary.InterfaceMap, InputGlossary.PointerMap, InputGlossary.TypingMap }));
         }
 
+        /// <summary>The mouse's own words: a row pressed only these ways is the mouse's alone.</summary>
+        private static readonly string[] MouseWords = { "Right-drag", "Middle-drag", "Left-drag", "Wheel", "Pointer", "Left click", "Right button", "Middle button", "Move" };
+
+        /// <summary>
+        /// PLAN A, A7's acceptance: nothing is the mouse's alone without a way a keyboard player and a
+        /// pad player can do the same. Each mouse-only row names the row that is its equivalent, and
+        /// that row has a key that is not the mouse's and a pad button. The pointer's walk and the
+        /// beacons' trips are the notebook's room trips ("Go to the kitchen"), pressed as any panel's
+        /// control is.
+        /// </summary>
+        [Test]
+        public void NoActionIsTheMousesAlone_WithoutAnEquivalent()
+        {
+            var equivalents = new Dictionary<string, string>
+            {
+                { "Camera/Orbit", "Camera/OrbitRate" },     // Q/C, the right stick (A7)
+                { "Camera/Drag", "Camera/Pan" },            // WASD and the arrows, the left stick
+                { "Camera/Zoom", "Camera/ZoomRate" },       // - and =, the triggers
+                { "Camera/Point", "Camera/Pan" },           // the edges' pan is the keys' pan; zooming is ZoomRate
+                { InputGlossary.InterfaceMap + "/Click", InputGlossary.InterfaceMap + "/Submit" },
+                { InputGlossary.InterfaceMap + "/ScrollWheel", InputGlossary.InterfaceMap + "/Navigate" },
+                { InputGlossary.PointerMap + "/Walk", InputGlossary.InterfaceMap + "/Submit" },   // the notebook's room trips
+                { InputGlossary.PointerMap + "/Beacon", InputGlossary.InterfaceMap + "/Submit" }, // the same trips
+            };
+            bool MouseOnly(InputGlossary.Row row) => row.Pad.Length == 0 && row.Keyboard.Length > 0
+                && row.Keyboard.Split(new[] { " / " }, System.StringSplitOptions.None).All(word => MouseWords.Contains(word));
+            var mouseOnly = InputGlossary.Rows.Where(MouseOnly).Select(row => row.ToString()).ToList();
+            Assert.That(mouseOnly, Is.EquivalentTo(equivalents.Keys), "Every row the mouse alone presses, and nothing else.");
+            foreach (var pair in equivalents)
+            {
+                var parts = pair.Value.Split('/');
+                var equivalent = InputGlossary.Find(parts[0], parts[1]);
+                Assert.That(equivalent, Is.Not.Null, pair.Key + "'s equivalent " + pair.Value + " is a row.");
+                Assert.That(MouseOnly(equivalent), Is.False, pair.Key + "'s equivalent is not the mouse's too.");
+                Assert.That(equivalent.Keyboard.Split(new[] { " / " }, System.StringSplitOptions.None).Any(word => word.Length > 0 && !MouseWords.Contains(word)), Is.True,
+                    pair.Value + " has a key: " + equivalent.Keyboard);
+                Assert.That(equivalent.Pad, Is.Not.Empty, pair.Value + " has a pad button.");
+            }
+            Assert.That(InputGlossary.Find("Camera", "OrbitRate").Keyboard, Is.EqualTo("Q/C"), "The camera turns on Q and C (A7).");
+        }
+
         [TestCase("<Keyboard>/escape", "Esc")]
         [TestCase("<Keyboard>/f5", "F5")]
         [TestCase("<Keyboard>/j", "J")]
@@ -113,6 +154,67 @@ namespace Gamesim.Tests.EditMode
             Assert.That(tour, Does.Contain("Press " + InputGlossary.Find("Shortcuts", "Interact").Pad + " near a houseguest"));
             Assert.That(tour, Does.Contain(InputGlossary.Find("Shortcuts", "Back").Pad + " closes this tour"));
             Assert.That(tour, Does.Not.Contain("Click").And.Not.Contain("Esc"));
+        }
+
+        /// <summary>
+        /// The status lines, the settings' CEREMONIES paragraph, the tour's episode-screen step and
+        /// the house challenge's paragraph (A4f): on the keyboard each is the literal it always was,
+        /// pinned here byte for byte; on a pad each names its row's pad button and none of the keys.
+        /// </summary>
+        [Test]
+        public void TheStatusLines_KeepTheKeyboardsWordsAndNameThePadsButtons()
+        {
+            Assert.That(InputGlossary.StationLine(true, false), Is.EqualTo("At the episode screen  ·  E to open"));
+            Assert.That(InputGlossary.StationLine(false, false), Is.EqualTo("Heading to the episode screen  ·  E to open"));
+            Assert.That(InputGlossary.DiaryWayLine(true, false),
+                Is.EqualTo("At the private room: press E to open your diary. No choice is committed by entering."));
+            Assert.That(InputGlossary.DiaryWayLine(false, false),
+                Is.EqualTo("Walk to the private room, then press E to open your diary. No choice is committed by entering."));
+            Assert.That(InputGlossary.CeremonyPaceLine(true, false), Is.EqualTo(
+                "Keys and votes are revealed one at a time, with a pause before the last. Press Space to speed a reveal up, or Enter to skip to the result."));
+            Assert.That(InputGlossary.CeremonyPaceLine(false, false),
+                Is.EqualTo("Keys and votes are revealed quickly. Press Space to speed a reveal up, or Enter to skip to the result."));
+            Assert.That(InputGlossary.StationStepKeys(false), Is.EqualTo("press E to open it and Esc to close it."));
+            Assert.That(InputGlossary.ChallengeLine(false), Is.EqualTo(
+                "Press Space or STOP when the marker is near the center. Three attempts; no time limit. Escape cancels without committing."));
+            Assert.That(InputGlossary.ActivityLine("Sleep", false), Is.EqualTo("Off to bed  ·  E or a click to get up"));
+            Assert.That(InputGlossary.ActivityLine("Swim", false), Is.EqualTo("Going for a swim  ·  E or a click to get out"));
+            Assert.That(InputGlossary.ActivityLine("Soak", false), Is.EqualTo("Into the hot tub  ·  E or a click to get out"));
+            Assert.That(InputGlossary.ActivityLine("Cook", false), Is.EqualTo("Cooking a meal  ·  E or a click to stop"));
+            Assert.That(InputGlossary.ActivityLine("Dance", false), Is.EqualTo("Dancing  ·  E or a click to stop"));
+            Assert.That(InputGlossary.ActivityLine("Rest", false), Is.EqualTo("At the furniture  ·  E to finish"));
+            Assert.That(InputGlossary.ActivityLine("PrepareSnack", false), Is.EqualTo("At the furniture  ·  E to finish"));
+
+            string interact = InputGlossary.Find("Shortcuts", "Interact").Pad, back = InputGlossary.Find("Shortcuts", "Back").Pad;
+            string hit = InputGlossary.Find("Shortcuts", "Hit").Pad, speed = InputGlossary.Find("Ceremony", "Speed").Pad;
+            string skip = InputGlossary.Find("Ceremony", "Skip").Pad.Split(new[] { " / " }, System.StringSplitOptions.None)[0];
+            Assert.That(new[] { interact, back, hit, speed, skip }, Is.EqualTo(new[] { "X", "B", "A", "X", "A" }), "The rows' pad buttons.");
+            var padLines = new Dictionary<string, string>
+            {
+                { "station, warped", InputGlossary.StationLine(true, true) },
+                { "station, walking", InputGlossary.StationLine(false, true) },
+                { "diary, warped", InputGlossary.DiaryWayLine(true, true) },
+                { "diary, walking", InputGlossary.DiaryWayLine(false, true) },
+                { "ceremonies, suspenseful", InputGlossary.CeremonyPaceLine(true, true) },
+                { "ceremonies, quick", InputGlossary.CeremonyPaceLine(false, true) },
+                { "tour step", InputGlossary.StationStepKeys(true) },
+                { "challenge", InputGlossary.ChallengeLine(true) },
+            };
+            foreach (var kind in new[] { "Sleep", "Swim", "Soak", "Cook", "Dance", "Rest" }) padLines.Add("furniture " + kind, InputGlossary.ActivityLine(kind, true));
+            foreach (var line in padLines)
+                foreach (var key in new[] { "E ", "Esc", "Space", "Enter", "click" })
+                    Assert.That(line.Value, Does.Not.Contain(key), line.Key + " names " + key + " on a pad: " + line.Value);
+
+            Assert.That(InputGlossary.StationLine(true, true), Is.EqualTo("At the episode screen  ·  " + interact + " to open"));
+            Assert.That(InputGlossary.StationLine(false, true), Is.EqualTo("Heading to the episode screen  ·  " + interact + " to open"));
+            Assert.That(InputGlossary.DiaryWayLine(true, true), Does.Contain("press " + interact + " to open your diary"));
+            Assert.That(InputGlossary.DiaryWayLine(false, true), Does.StartWith("Walk to the private room, then press " + interact + " "));
+            Assert.That(InputGlossary.CeremonyPaceLine(true, true), Does.EndWith("Press " + speed + " to speed a reveal up, or " + skip + " to skip to the result."));
+            Assert.That(InputGlossary.CeremonyPaceLine(false, true), Does.StartWith("Keys and votes are revealed quickly. Press " + speed + " "));
+            Assert.That(InputGlossary.StationStepKeys(true), Is.EqualTo("press " + interact + " to open it and " + back + " to close it."));
+            Assert.That(InputGlossary.ChallengeLine(true), Does.StartWith("Press " + hit + " when the marker").And.Contain(back + " cancels without committing."));
+            Assert.That(InputGlossary.ActivityLine("Sleep", true), Is.EqualTo("Off to bed  ·  " + interact + " to get up"));
+            Assert.That(InputGlossary.ActivityLine("Rest", true), Is.EqualTo("At the furniture  ·  " + interact + " to finish"));
         }
 
         [Test]

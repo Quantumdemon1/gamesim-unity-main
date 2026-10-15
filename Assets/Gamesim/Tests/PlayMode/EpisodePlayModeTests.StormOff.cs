@@ -7,6 +7,7 @@ using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 
 namespace Gamesim.Tests.PlayMode
@@ -51,6 +52,27 @@ namespace Gamesim.Tests.PlayMode
             foreach (var card in SceneComponents<CeremonyTakeover>()) card.Cancel();
         }
 
+        /// <summary>
+        /// What on the furniture layer (8) a body standing at <paramref name="feet"/> would overlap -
+        /// its own capsule, five centimetres off the floor as the ceremony marks ask it, its own
+        /// colliders aside - or null for nothing.
+        /// </summary>
+        private static string FurnitureAround(Vector3 feet, Transform body)
+        {
+            var capsule = body.GetComponent<CapsuleCollider>();
+            Assert.That(capsule, Is.Not.Null, body.name + " has a capsule.");
+            Physics.SyncTransforms();
+            var hits = new Collider[32];
+            float radius = capsule.radius;
+            int count = body.gameObject.scene.GetPhysicsScene().OverlapCapsule(feet + Vector3.up * (radius + .05f),
+                feet + Vector3.up * Mathf.Max(radius + .05f, capsule.height - radius), radius, hits,
+                1 << HouseLayers.Furniture, QueryTriggerInteraction.Ignore);
+            Assert.That(count, Is.LessThan(hits.Length), "The furniture query overflowed; occupancy is unknown.");
+            var names = hits.Take(count).Where(hit => hit != null && !hit.transform.IsChildOf(body))
+                .Select(hit => (hit.transform.parent != null ? hit.transform.parent.name + "/" : "") + hit.name).ToList();
+            return names.Count == 0 ? null : string.Join(", ", names);
+        }
+
         // The storm's beats wait on the unscaled clock, which the pinned frame time does not move: a
         // batchmode frame is a fraction of a millisecond, so these waits are in real seconds.
         private IEnumerator UntilTheStormWalks()
@@ -78,6 +100,9 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.StormNow, Is.EqualTo(EpisodeDirector.StormStage.Sulking), "They arrived and sulk.");
                 var body = ActBody(stormTarget);
                 Assert.That(RoomAt(body), Is.EqualTo(expected), "Their hips stand on the " + expected + "'s floor.");
+                // The clearance the walk asks reads the sight layers, which leave the furniture out.
+                Assert.That(FurnitureAround(body.position, body), Is.Null,
+                    "Their arrived capsule overlaps nothing on the furniture layer, at " + body.position.ToString("F2") + ".");
                 Assert.That(director.StormLeaseHeld, Is.True, "The house holds them through the sulk.");
                 yield return WaitFor(() => director.StormNow == EpisodeDirector.StormStage.None, 6f, "The sulk ends,");
                 Assert.That(director.AnyStormLease, Is.False, "and the body is the house's again.");
@@ -156,6 +181,55 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.AnyStormLease, Is.False, "and no storm lease was taken.");
             }
             finally { Time.captureDeltaTime = 0f; }
+        }
+
+        /// <summary>
+        /// A storm's spot is never in furniture - the clearance the walk asks reads the sight layers,
+        /// which leave the furniture out: not in the house's own, in any room a storm can be sent to,
+        /// for anybody; and not in a seat cloned at run time on the spot it picked, which the baked
+        /// NavMesh has no hole under.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StormOff_PicksNoSpotInsideFurnitureEvenFurnitureClonedAtRunTime()
+        {
+            yield return SettleCast();
+            var state = director.Snapshot;
+            var bodies = SceneComponents<HouseNpc>().Where(npc => npc.gameObject.activeInHierarchy && npc.Id != state.playerId)
+                .OrderBy(npc => npc.Id, System.StringComparer.Ordinal).ToList();
+            Assert.That(bodies, Is.Not.Empty, "Houseguests to storm off.");
+            // Every room a storm can be sent to: a home room, the Bedroom or the Yard (decision D4) -
+            // never the Private or the Head of Household's room.
+            var rooms = ActiveRoomMarkers().Select(marker => marker.RoomName).Where(room => room != "Private" && room != "HoH")
+                .Distinct().OrderBy(room => room, System.StringComparer.Ordinal).ToList();
+            Assert.That(rooms, Does.Contain("Bedroom").And.Contain("Yard"), "The rooms a storm goes to by decision D4.");
+            int picked = 0;
+            foreach (var npc in bodies)
+                foreach (var room in rooms)
+                {
+                    if (!director.StormSpotForDiagnostics(npc.Id, room, out var spot)) continue;
+                    picked++;
+                    string inside = FurnitureAround(spot, npc.transform);
+                    Assert.That(inside, Is.Null, npc.Id + "'s storm to the " + room + " is sent to " + spot.ToString("F2") + ", inside " + inside + ".");
+                }
+            Assert.That(picked, Is.GreaterThan(0), "Some storm had somewhere to go.");
+
+            // A seat cloned at run time on the spot: furniture layer, and no hole in the NavMesh under it.
+            var who = bodies[0];
+            Assert.That(director.StormSpotForDiagnostics(who.Id, "Bedroom", out var first), Is.True, "A storm to the Bedroom has somewhere to go.");
+            var seat = new GameObject("storm-off-test-seat");
+            SceneManager.MoveGameObjectToScene(seat, director.gameObject.scene);
+            seat.layer = HouseLayers.Furniture;
+            seat.transform.position = first + Vector3.up * .5f;
+            seat.AddComponent<BoxCollider>().size = new Vector3(.9f, 1f, .9f);
+            try
+            {
+                yield return null;
+                Assert.That(director.StormSpotForDiagnostics(who.Id, "Bedroom", out var next), Is.True, "The Bedroom still offers a spot.");
+                string inside = FurnitureAround(next, who.transform);
+                Assert.That(inside, Is.Null, "Nobody is sent into the seat cloned at " + first.ToString("F2") + ": sent to "
+                    + next.ToString("F2") + ", inside " + inside + ".");
+            }
+            finally { Object.Destroy(seat); }
         }
     }
 }

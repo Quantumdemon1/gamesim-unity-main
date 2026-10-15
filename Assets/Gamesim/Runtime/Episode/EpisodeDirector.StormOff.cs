@@ -34,6 +34,11 @@ namespace Gamesim.Episode
         public const float StormStartSeconds = .9f, StormSpeed = 2.6f, StormLookSeconds = 3f;
         /// <summary>How far a storm's spot stands from anybody else; how long the walk may take before they stop where they are.</summary>
         public const float StormClearOfOthers = 2f, StormWalkSeconds = 25f;
+        /// <summary>
+        /// How much farther than the body's own capsule a storm's spot keeps clear of furniture: the
+        /// agent stops up to its stopping distance (0.15 m) short of where it was sent.
+        /// </summary>
+        public const float StormSpotMargin = .15f;
 
         /// <summary>How long a storm sulks once there (12 s; a test may shorten it).</summary>
         public float StormSulkSeconds { get; set; } = 12f;
@@ -214,9 +219,42 @@ namespace Gamesim.Episode
             stormId = stormRoom = stormFromRoom = null;
         }
 
+        /// <summary>For the tests: the spot a storm by this houseguest to this room would walk to now, picked as the walk picks it.</summary>
+        public bool StormSpotForDiagnostics(string id, string room, out Vector3 spot)
+        {
+            spot = default;
+            var body = BodyFor(id);
+            return body != null && TryPickStormSpot(body, room, out spot);
+        }
+
+        private static readonly Collider[] stormFurniture = new Collider[16];
+
         /// <summary>
-        /// A spot in the room to storm to: on that room's own floor, the body clear of everything,
-        /// and <see cref="StormClearOfOthers"/> from everybody else - a spiral out from the room's
+        /// Whether a body standing here would stand in furniture. The clearance query reads the sight
+        /// layers, which leave the furniture out, and the NavMesh has no hole under a low prop or a
+        /// seat cloned at run time; so the furniture layer itself is asked, with the body's own
+        /// capsule and <see cref="StormSpotMargin"/>, five centimetres off the floor as the ceremony
+        /// marks ask it. The body's own colliders do not count (a parked body stands on that layer).
+        /// </summary>
+        private bool StormSpotInFurniture(Vector3 feet, float radius, float height, Transform body)
+        {
+            Physics.SyncTransforms();
+            float reach = radius + StormSpotMargin;
+            var bottom = feet + Vector3.up * (reach + .05f);
+            var top = feet + Vector3.up * Mathf.Max(reach + .05f, height - radius);
+            int count = gameObject.scene.GetPhysicsScene().OverlapCapsule(bottom, top, reach,
+                stormFurniture, 1 << HouseLayers.Furniture, QueryTriggerInteraction.Ignore);
+            // An exactly-full buffer is unknown, not evidence of clear floor.
+            if (count == stormFurniture.Length) return true;
+            for (int i = 0; i < count; i++)
+                if (stormFurniture[i] != null && !stormFurniture[i].transform.IsChildOf(body)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// A spot in the room to storm to: on that room's own floor, the body clear of everything -
+        /// the furniture included (<see cref="StormSpotInFurniture"/>) - and
+        /// <see cref="StormClearOfOthers"/> from everybody else; a spiral out from the room's
         /// marker, never the marker itself, so there is a middle to turn their back on.
         /// </summary>
         private bool TryPickStormSpot(Transform body, string room, out Vector3 spot)
@@ -244,6 +282,7 @@ namespace Gamesim.Episode
                 var wanted = origin + new Vector3(Mathf.Cos(angle) * reach, 0f, Mathf.Sin(angle) * reach);
                 if (!rooms.TrySampleFloor(wanted, radius, filter, .25f, out var feet, out var name) || name != room) continue;
                 if (!rooms.HasCapsuleClearance(feet, radius, height, body)) continue;
+                if (StormSpotInFurniture(feet, radius, height, body)) continue;
                 bool crowded = false;
                 foreach (var other in others)
                 {

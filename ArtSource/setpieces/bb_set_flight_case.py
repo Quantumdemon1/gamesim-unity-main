@@ -125,60 +125,6 @@ def make_maps(out):
     return images
 
 
-def atlas_material(images):
-    mat = bpy.data.materials.new("bb_mat_flightcase_atlas")
-    mat.use_nodes = True
-    nodes, links = mat.node_tree.nodes, mat.node_tree.links
-    shader = nodes.get("Principled BSDF")
-    uv_map = nodes.new("ShaderNodeUVMap")
-    uv_map.uv_map = UV_NAME
-    uv_map.location = (-900, 0)
-    tex = {}
-    for index, kind in enumerate(MAP_NAMES):
-        node = nodes.new("ShaderNodeTexImage")
-        node.image, node.label, node.location = images[kind], kind, (-650,-index*220)
-        node.interpolation = "Linear"
-        node.extension = "EXTEND"
-        links.new(uv_map.outputs["UV"], node.inputs["Vector"])
-        tex[kind] = node
-    links.new(tex["albedo"].outputs["Color"], shader.inputs["Base Color"])
-    channel = nodes.new("ShaderNodeSeparateColor")
-    links.new(tex["metallic"].outputs["Color"],channel.inputs["Color"])
-    links.new(channel.outputs["Red"],shader.inputs["Metallic"])
-    invert = nodes.new("ShaderNodeMath")
-    invert.operation = "SUBTRACT"
-    invert.inputs[0].default_value = 1.0
-    links.new(tex["metallic"].outputs["Alpha"],invert.inputs[1])
-    links.new(invert.outputs[0],shader.inputs["Roughness"])
-    normal = nodes.new("ShaderNodeNormalMap")
-    normal.uv_map = UV_NAME
-    links.new(tex["normal"].outputs["Color"],normal.inputs["Color"])
-    links.new(normal.outputs["Normal"],shader.inputs["Normal"])
-    return mat
-
-
-def material_uv_evidence(mat):
-    textures = [n for n in mat.node_tree.nodes if n.bl_idname == "ShaderNodeTexImage"]
-    uv_nodes = [n for n in mat.node_tree.nodes if n.bl_idname == "ShaderNodeUVMap"]
-    if len(textures) != 4 or len(uv_nodes) != 1 or uv_nodes[0].uv_map != UV_NAME:
-        raise RuntimeError("Exact atlas UV source graph required")
-    rows = []
-    for node in textures:
-        links = list(node.inputs["Vector"].links)
-        if (node.image is None or node.image.name not in ["bb_flightcase_"+kind for kind in MAP_NAMES]
-                or len(links) != 1 or links[0].from_node != uv_nodes[0]
-                or links[0].from_socket.name != "UV"):
-            raise RuntimeError("Texture Vector is not bound to exact UVMap")
-        rows.append({"texture":node.image.name,"vectorSource":links[0].from_node.name,
-                     "vectorSocket":links[0].from_socket.name,"uvMap":uv_nodes[0].uv_map})
-    if len({row["texture"] for row in rows}) != 4:
-        raise RuntimeError("Atlas texture assignment duplicates")
-    normals = [n for n in mat.node_tree.nodes if n.bl_idname == "ShaderNodeNormalMap"]
-    if len(normals) != 1 or normals[0].uv_map != UV_NAME:
-        raise RuntimeError("Tangent normal basis is not exact UVMap")
-    return rows
-
-
 def one_uv_layer(mesh):
     if len(mesh.uv_layers) > 1:
         raise RuntimeError("Ambiguous part UV layers; refuse guessed merge")

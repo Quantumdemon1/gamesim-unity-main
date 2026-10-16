@@ -153,6 +153,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(TagOn(ButtonWithCaption(EpisodeHud.DiscussGameCaption)), Does.Contain(EpisodeDirector.LearnTag + " · " + EpisodeDirector.RiskTag));
                 yield return AssertKeyboardRing("Information conversation " + TextSizes.Name(textSize), ModalRoot);
                 director.ClosePanels(); yield return OpenStation();
+                // At the largest text free time's board pages, and the moves are on its second (EpisodeHud.LargestPages.cs).
+                ShowPageWith(EpisodeHud.HouseMovesName);
                 Assert.That(ButtonWithCaption(EpisodeHud.AirLaundryCaption).IsInteractable(), Is.True);
                 yield return AssertKeyboardRing("Information house moves " + TextSizes.Name(textSize), ModalRoot);
             }

@@ -23,6 +23,13 @@ namespace Gamesim.Episode
     /// hero takes what it needs and no more than the cards can spare; when the height is short its
     /// longest copy steps down a size or two rather than the board growing a scroll.</para>
     ///
+    /// <para>At the largest text a board that cannot fit its frame on one page - on the 16:9 and
+    /// the 4:3 frame alike - pages instead (the owner's contract of 2026-10-15;
+    /// EpisodeHud.LargestPages.cs): decided before anything is built, its four sections - the hero
+    /// row, the strip, the cards, the moves - are dealt whole onto pages of the frame's height, the
+    /// cards on the first with the hero and the strip, with the pager at each page's foot. At the
+    /// standard and the larger text it is one page, laid as it always was.</para>
+    ///
     /// <para>Every word on it is the player's own reading, a public fact, a row the player owns or
     /// the game's own rule copy. The pinned names stay: the budget card is 'Screen head', the cards
     /// are under 'House cards', the tiles under 'House moves', the play is 'Current play' and the
@@ -100,6 +107,8 @@ namespace Gamesim.Episode
             public IList<HouseCard> Cards;
             public int Page;
             public Action<int> ChoosePage;
+            /// <summary>Renders the board again: the largest text's pager has turned its page (EpisodeHud.LargestPages.cs). View state.</summary>
+            public Action Redraw;
             public Action<string> Talk, Pick;
             /// <summary>The other ways to spend the time.</summary>
             public IList<BoardTile> Moves;
@@ -198,53 +207,114 @@ namespace Gamesim.Episode
             float heroMost = Mathf.Max(BoardHeroLeast * s, spec.Hero == FreeTimeHero.Reply
                 ? shared - cardsLeast : Mathf.Min(shared * BoardHeroShare, shared - cardsLeast));
             float hero = Mathf.Clamp(need, BoardHeroLeast * s, heroMost);
-            // Keep every reply's consequence visible. On a frame too short for that and the
-            // house cards, the existing outer scroll is preferable to truncating the choice.
-            if (spec.Hero == FreeTimeHero.Reply)
-                hero = Mathf.Max(hero, (2f * BoardPad + 17f + 22f + 6f) * s + BoardLine(13) + replyTiles);
-            // And the budget's copy whole, for the same reason: at the largest text on a 16:9 frame
-            // the hero's share left "what costs and what is free" ending in an ellipsis at its least
-            // size. Wherever it fitted before, this asks for no more than the card already had.
+            // Keep every reply's consequence visible, and the budget's copy whole: the least the
+            // hero row may be, whatever share it was offered. At the largest text on a 16:9 frame the
+            // hero's share left "what costs and what is free" ending in an ellipsis at its least size.
+            float replyLeast = spec.Hero == FreeTimeHero.Reply ? (2f * BoardPad + 17f + 22f + 6f) * s + BoardLine(13) + replyTiles : 0f;
+            if (spec.Hero == FreeTimeHero.Reply) hero = Mathf.Max(hero, replyLeast);
             hero = Mathf.Max(hero, budgetLeast);
-            float cardsHeight = Mathf.Clamp(shared - hero, cardsLeast, cardsMost);
+
+            // Whether the board fits its frame on one page, decided here - with the height known and
+            // nothing built - rather than found out afterwards: the hero row at the least it may be,
+            // and the cards at theirs, under the strip, the heads and the moves. At the standard and
+            // the larger text it always has on the frames the game is played on, and the board is
+            // laid on one page exactly as it always was; where it would not, the panel's scroll is the
+            // last word, as it always was. At the largest text a board that cannot fit is dealt onto
+            // pages of the frame's height instead (the owner's contract, EpisodeHud.LargestPages.cs).
+            bool paged = LargestTextPages && hero + fixedPart + cardsLeast > room + .5f;
+            bool showHero = true, showStrip = true, showTalk = true, showMoves = true;
+            int boardPage = 0, boardPages = 1;
+            float pageRoom = room, cardsHeight;
+            if (!paged) cardsHeight = Mathf.Clamp(shared - hero, cardsLeast, cardsMost);
+            else
+            {
+                // A page has the frame's height less the pager at its foot. The hero row takes what
+                // its words need at their own size, up to what still leaves the house's cards on its
+                // page under the strip - the cards are the board's first business - and never less
+                // than its least: every reply's consequence and the budget's copy whole. The sections
+                // are then dealt onto the pages in reading order, whole.
+                pageRoom = Mathf.Max(0f, room - LargestPagerHeight);
+                float talk = head + headGap, movesPart = head + headGap + tiles;
+                float heroLeast = Mathf.Max(BoardHeroLeast * s, replyLeast, budgetLeast);
+                float heroFull = Mathf.Max(Mathf.Min(need, pageRoom), heroLeast);
+                float besideCards = pageRoom - (gap + strip + gap + talk + cardsLeast);
+                hero = besideCards >= heroLeast ? Mathf.Min(besideCards, heroFull) : heroFull;
+                var breaks = LargestPages.Breaks(new[] { hero, strip, talk + cardsLeast, movesPart }, gap, pageRoom);
+                boardPages = LargestPages.Count(breaks);
+                boardPage = LargestPageOf(FreeTimeBoardName, boardPages);
+                if (spec.FocusSafely)
+                {
+                    // The board replaced a step under the pointer: it shows the page the keyboard is
+                    // going to - the next beat's Answer, else the first card's way to talk.
+                    boardPage = spec.Hero == FreeTimeHero.Beat ? breaks[0] : breaks[2];
+                    ShowLargestPage(FreeTimeBoardName, boardPage);
+                }
+                showHero = breaks[0] == boardPage; showStrip = breaks[1] == boardPage;
+                showTalk = breaks[2] == boardPage; showMoves = breaks[3] == boardPage;
+                // The cards take what their page leaves them, between their least and most.
+                float above = (showHero ? hero + gap : 0f) + (showStrip ? strip + gap : 0f);
+                float below = showMoves ? gap + movesPart : 0f;
+                cardsHeight = Mathf.Clamp(pageRoom - above - talk - below, cardsLeast, cardsMost);
+            }
 
             // Laid top to bottom, and built in the order the keyboard should walk it: what came to the
             // player, the story's waiting beats, the cards, the pager, the moves, and the budget's ways
             // to buy time last - the budget card a child of the board, beside the hero rather than in
             // it, since the ring follows the hierarchy - so the panel never opens on spending goodwill.
-            // What opens a beat stands over the step's words column, never over its options.
+            // What opens a beat stands over the step's words column, never over its options. A page
+            // of the largest text's lays only its own sections, in the same order, and its pager last.
             float y = 0f, words = BoardStepWords(width);
-            var heroRow = EndScreenKit.Box(FreeTimeHeroName, board, 0f, y, leftWidth, hero);
-            switch (spec.Hero)
+            if (showHero)
             {
-                case FreeTimeHero.Reply: BoardReply(heroRow, leftWidth, hero, replyTiles, spec); break;
-                case FreeTimeHero.Beat: BoardBanner(heroRow, leftWidth, hero, words, spec); break;
-                default: BoardPlay(heroRow, leftWidth, hero, spec); break;
+                var heroRow = EndScreenKit.Box(FreeTimeHeroName, board, 0f, y, leftWidth, hero);
+                switch (spec.Hero)
+                {
+                    case FreeTimeHero.Reply: BoardReply(heroRow, leftWidth, hero, replyTiles, spec); break;
+                    case FreeTimeHero.Beat: BoardBanner(heroRow, leftWidth, hero, words, spec); break;
+                    default: BoardPlay(heroRow, leftWidth, hero, spec); break;
+                }
+                y += hero + gap;
             }
-            y += hero + gap;
-            BoardStrip(board, y, width, words, spec);
-            y += strip + gap;
-            float talkY = y;
-            y += head + headGap;
-            var shown = cards.Skip(page * perPage).Take(perPage).ToList();
-            BoardCards(board, y, width, cardsHeight, shown, cardWidth, cardGap, spec, state);
-            float reserve = BoardPager(board, talkY, width, page, pages, spec);
-            BoardHead(board, TalkHeadName, "people", "TALK TO A HOUSEGUEST", "Choose someone to approach, or select an action below.",
-                talkY, width, head, lines, reserve);
-            y += cardsHeight + gap;
-            BoardHead(board, MovesHeadName, "star", "OTHER WAYS TO SPEND YOUR TIME", "Explore the house, make a move, or find something to do.",
-                y, width, head, lines, 0f);
-            y += head + headGap;
-            BoardMoves(board, y, width, moves, perRow, tileHeight, gap);
-            y += tiles;
-            BoardBudget(board, leftWidth + heroGap, budgetWidth, hero, spec);
+            if (showStrip)
+            {
+                BoardStrip(board, y, width, words, spec);
+                y += strip + gap;
+            }
+            var shown = new List<HouseCard>();
+            if (showTalk)
+            {
+                float talkY = y;
+                y += head + headGap;
+                shown = cards.Skip(page * perPage).Take(perPage).ToList();
+                BoardCards(board, y, width, cardsHeight, shown, cardWidth, cardGap, spec, state);
+                float reserve = BoardPager(board, talkY, width, page, pages, spec);
+                BoardHead(board, TalkHeadName, "people", "TALK TO A HOUSEGUEST", "Choose someone to approach, or select an action below.",
+                    talkY, width, head, lines, reserve);
+                y += cardsHeight + gap;
+            }
+            if (showMoves)
+            {
+                BoardHead(board, MovesHeadName, "star", "OTHER WAYS TO SPEND YOUR TIME", "Explore the house, make a move, or find something to do.",
+                    y, width, head, lines, 0f);
+                y += head + headGap;
+                BoardMoves(board, y, width, moves, perRow, tileHeight, gap);
+                y += tiles;
+            }
+            if (showHero) BoardBudget(board, leftWidth + heroGap, budgetWidth, hero, spec);
+            if (paged)
+            {
+                // The pager at the page's foot, where it stands on every page, so the press that
+                // turned one page can turn it back.
+                LargestPager(board, 0f, room - LargestPagerPill * s, width, FreeTimeBoardName, boardPage, boardPages, spec.Redraw);
+                y = room;
+            }
             var size = board.GetComponent<LayoutElement>();
             size.minHeight = size.preferredHeight = y;
             if (!spec.FocusSafely) return;
             // The way into the next beat, which only opens it; else the walk over to the first card's
             // houseguest. Never a reply's answer, a move, a way to buy time or the way on.
             var first = shown.Count > 0 ? state.Find(shown[0].Id) : null;
-            if (spec.Hero == FreeTimeHero.Beat) FocusWhenWired(EpisodeDirector.AnswerBeatCaption);
+            if (spec.Hero == FreeTimeHero.Beat && showHero) FocusWhenWired(EpisodeDirector.AnswerBeatCaption);
             else if (first != null) FocusWhenWired(CastTalkCaption((first.name ?? "").Split(' ')[0]));
         }
 

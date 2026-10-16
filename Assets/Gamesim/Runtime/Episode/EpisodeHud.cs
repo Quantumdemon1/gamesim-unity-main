@@ -326,6 +326,8 @@ namespace Gamesim.Episode
             // A panel arriving has no finalist's column the player lit on it yet; a rebuild of an
             // open one keeps the one they did.
             if (!open || modal == null) litChoice = null;
+            // Nor a page of the largest text's turned on it yet (EpisodeHud.LargestPages.cs).
+            if (!open || modal == null) ForgetLargestPages();
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             MarkChromeChanged();
             challengeMeter = null; challengeCaption = null;

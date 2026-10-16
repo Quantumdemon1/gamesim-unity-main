@@ -11,13 +11,16 @@ namespace Gamesim.Uma.Tests.Diagnostics
     /// <summary>
     /// Three farewell readiness tests that wait for an Idle/WalkStop combination to occur naturally and
     /// refuse to force one: both WalkStop, both Idle, and a WalkStop exit already crossing before the
-    /// authorization. On the UMA cast the evicted always stands into WalkStop and the survivor into Idle,
-    /// so none of the three combinations occurs and these cannot pass; they are kept for a gather that
-    /// would produce them, never acceptance. Moved here from Gamesim.Tests.PlayMode.EpisodePlayModeTests
-    /// (where they compiled behind GAMESIM_DIAGNOSTICS with no floor) by the lead's ruling of 2026-10-16,
-    /// unchanged but for reaching the fixture through its shared readiness helper, so this assembly's floor
-    /// counts them. The product branches they name are acceptance-tested directly, by forcing each
-    /// combination, in Gamesim.Uma.Tests.UmaFarewellReadinessDecisionPlayModeTests.
+    /// authorization. On the UMA cast the evicted ordinarily stands into WalkStop and the survivor into
+    /// Idle, so whether a test's combination occurs depends on how the walk's timing falls: in runs
+    /// w1s3b1 and w1s3c1 none occurred, in run r3s3b both Idle did (the evicted settled within BothIdle's
+    /// .35 s card reading) and the other two did not. They are diagnostics, never acceptance: a pass is a
+    /// measurement, and a "MISSING requested ... combination" failure is not a product defect. Moved here
+    /// from Gamesim.Tests.PlayMode.EpisodePlayModeTests (where they compiled behind GAMESIM_DIAGNOSTICS
+    /// with no floor) by the lead's ruling of 2026-10-16, unchanged but for reaching the fixture through
+    /// its shared readiness helper, so this assembly's floor counts them. The product branches they name
+    /// are acceptance-tested directly, by forcing each combination, in
+    /// Gamesim.Uma.Tests.UmaFarewellReadinessDecisionPlayModeTests.
     /// </summary>
     public sealed class FarewellReadinessDiagnosticPlayModeTests
     {
@@ -37,7 +40,8 @@ namespace Gamesim.Uma.Tests.Diagnostics
             episode = null;
         }
 
-        // Diagnostic only: the UMA cast never stands into both WalkStop, and this refuses to force it.
+        // Diagnostic only: the UMA cast's survivor stands into Idle, so both WalkStop has not occurred, and
+        // this refuses to force it.
         [UnityTest, Category("FarewellReadinessDiagnostic")]
         public IEnumerator GroundedFarewell_ReadinessBothWalkStopCallsOnlyOnce()
         {
@@ -49,8 +53,9 @@ namespace Gamesim.Uma.Tests.Diagnostics
             episode.AssertCapturedFarewellBranch(route, false, false);
         }
 
-        // Diagnostic only: the evicted always stands into WalkStop on the UMA cast, so both Idle never
-        // occurs naturally, and this refuses to force it.
+        // Diagnostic only: the evicted ordinarily stands into WalkStop on the UMA cast, so both Idle occurs
+        // only when the evicted settles within the card reading (it did in r3s3b, not in w1s3b1 or w1s3c1),
+        // and this refuses to force it.
         [UnityTest, Category("FarewellReadinessDiagnostic")]
         public IEnumerator GroundedFarewell_ReadinessBothIdleStillRequiresNewEvaluations()
         {

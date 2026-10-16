@@ -15,14 +15,15 @@ Free Time metrics. The radial's "More ways to talk" caption was removed at the o
 accepted caption-contract change. Nine PlayMode tests were renamed; UNITY_PORT_IMPLEMENTATION.md maps
 old to new.
 
-**Floors:** EditMode 7846, PlayMode 1197, UMA 82, the subset 5336, and the diagnostics assemblies 7 and 7.
+**Floors:** EditMode 7846, PlayMode 1197, UMA 85, the subset 5336, and the diagnostics assemblies 7 and 10.
 PlayMode and UMA dropped from 1218 and 89 only because probes moved to `Gamesim.DiagnosticsPlayModeTests` /
 `Gamesim.Uma.DiagnosticsPlayModeTests` (compiled under `GAMESIM_DIAGNOSTICS` only, own floors) and the 14
-farewell readiness tests are now judged on UMA bodies only. Of those 14, the three asking for an
-Idle/WalkStop combination the UMA cast never stands into compile only with `GAMESIM_DIAGNOSTICS` as well
-and stay in `Gamesim.PlayModeTests` for its fixture: kept, outside every floor, never acceptance. On the
-UMA cast 12 of the 14 `GroundedFarewell_` tests of the UMA build pass; the other two are the farewell's
-foot drift (S5).
+farewell readiness tests are now judged on UMA bodies only. By the lead's ruling of 2026-10-16, the three
+of them that wait for an Idle/WalkStop combination the UMA cast does not reliably stand into are
+diagnostics in `Gamesim.Uma.DiagnosticsPlayModeTests` (7 to 10), and the decisions they name are tested
+directly, by forcing each combination on the cast, in `Gamesim.Uma.PlayModeTests` (82 to 85). On the UMA
+cast 12 of the 14 `GroundedFarewell_` tests of the UMA build of `Gamesim.PlayModeTests` pass and the three
+decision tests pass; the two failures are the farewell's foot drift (S5).
 
 **IK pass:** on in the shipping controller and pinned by an EditMode test; S5 adopts it with a 1080p/60
 FPS profile or reverts it.

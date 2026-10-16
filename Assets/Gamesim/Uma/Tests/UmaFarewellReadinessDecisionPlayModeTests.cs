@@ -10,13 +10,13 @@ namespace Gamesim.Uma.Tests
 {
     /// <summary>
     /// The farewell readiness's three Idle/WalkStop decisions, tested directly on the UMA cast in the real
-    /// staged eviction (lead ruling, 2026-10-16). On the UMA cast the evicted always stands into WalkStop and
-    /// the survivor into Idle, so the cast never reaches both WalkStop, both Idle, or a WalkStop exit already
-    /// crossing when the director authorizes; the readiness tests that wait for those combinations to occur
-    /// naturally are diagnostics (Gamesim.Uma.DiagnosticsPlayModeTests). These tests do not wait: each puts
-    /// the two principals' Animators into its combination on the frame before the director authorizes the
-    /// Idle preparation, then lets the unchanged director decide. The forcing is the test's; the decision,
-    /// every Animator write and every refusal are the product's.
+    /// staged eviction (lead ruling, 2026-10-16). On the UMA cast the evicted ordinarily stands into WalkStop
+    /// and the survivor into Idle, so whether the cast reaches both WalkStop, both Idle, or a WalkStop exit
+    /// already crossing when the director authorizes depends on the walk's timing; the readiness tests that
+    /// wait for those combinations to occur naturally are diagnostics (Gamesim.Uma.DiagnosticsPlayModeTests).
+    /// These tests do not wait: each puts the two principals' Animators into its combination on the frame
+    /// before the director authorizes the Idle preparation, then lets the unchanged director decide. The
+    /// forcing is the test's; the decision, every Animator write and every refusal are the product's.
     /// The fixture is EpisodePlayModeTests, composed (its own set-up and tear-down), and the route and its
     /// witnesses are that fixture's public readiness helper, shared with the shipping readiness tests.
     /// </summary>

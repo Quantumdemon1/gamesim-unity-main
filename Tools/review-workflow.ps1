@@ -261,9 +261,9 @@ $script:ReviewDeadlineCapSeconds = 28800
 #   Gamesim.EditModeTests      2,305 s for 7,846 tests (NoUMA, 2026-10-14)                -> 7,200 s (3.1x)
 #   Gamesim.PlayModeTests      5,557 s for 1,197 tests (NoUMA, 2026-10-15; 5,401 s for 1,218
 #                              earlier that day); 4,305 s for 1,081 under GAMESIM_UMA      -> 14,400 s (2.6x)
-#   Gamesim.Uma.PlayModeTests    308 s for 89 tests (2026-10-15)                           -> 3,600 s (11.7x)
+#   Gamesim.Uma.PlayModeTests    308 s for 89 tests (2026-10-15; 208 s for 85 on 10-16)   -> 3,600 s (11.7x)
 #   Gamesim.DiagnosticsPlayModeTests 261 s, Gamesim.Uma.DiagnosticsPlayModeTests 294 s
-#                              (seven probes each, 2026-10-15)                             -> 3,600 s (12x)
+#                              (seven probes each, 2026-10-15; the UMA one 220 s for ten) -> 3,600 s (12x)
 # An assembly not listed takes its platform's suite deadline. Player builds keep their own 5,400 s
 # (build-review-candidate.ps1; measured builds took 150-298 s).
 $script:ReviewSuiteDeadlines = @{

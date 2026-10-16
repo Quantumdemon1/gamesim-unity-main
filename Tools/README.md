@@ -44,8 +44,8 @@ least twice the longest time measured for it (`Get-ReviewSuiteDeadline` in `revi
 | --- | --- | --- |
 | `Gamesim.EditModeTests` | 2,305 s for 7,846 tests (NoUMA, 2026-10-14) | 7,200 s |
 | `Gamesim.PlayModeTests` | 5,557 s for 1,197 tests (NoUMA, 2026-10-15; 5,401 s for 1,218 earlier that day); 4,305 s for 1,081 under `GAMESIM_UMA` | 14,400 s |
-| `Gamesim.Uma.PlayModeTests` | 308 s for 89 tests (2026-10-15) | 3,600 s |
-| `Gamesim.DiagnosticsPlayModeTests`, `Gamesim.Uma.DiagnosticsPlayModeTests` | 261 s and 294 s for seven probes each (2026-10-15) | 3,600 s |
+| `Gamesim.Uma.PlayModeTests` | 308 s for 89 tests (2026-10-15); 208 s for 85 (2026-10-16) | 3,600 s |
+| `Gamesim.DiagnosticsPlayModeTests`, `Gamesim.Uma.DiagnosticsPlayModeTests` | 261 s and 294 s for seven probes each (2026-10-15); the UMA one 220 s for ten tests (2026-10-16) | 3,600 s |
 
 Any other assembly takes its platform's (EditMode 7,200 s, PlayMode 14,400 s); a player build keeps its
 5,400 s (measured builds 150-298 s). `-SuiteTimeoutSeconds` overrides every suite at once (the cap is
@@ -72,18 +72,20 @@ GAMESIM_DIAGNOSTICS=1 GAMESIM_WITHOUT_UMA=1 Tools/sync-and-run.sh diag:PlayMode:
 GAMESIM_DIAGNOSTICS=1 GAMESIM_RETAIN_INSTALLED_UMA=1 Tools/sync-and-run.sh umadiag:PlayMode:Gamesim.Uma.DiagnosticsPlayModeTests
 ```
 
-Three farewell readiness tests also compile only under `GAMESIM_DIAGNOSTICS` (and `GAMESIM_UMA`):
+The UMA one also holds three farewell readiness tests (`FarewellReadinessDiagnosticPlayModeTests`:
 `GroundedFarewell_ReadinessBothWalkStopCallsOnlyOnce`, `...BothIdleStillRequiresNewEvaluations` and
-`...DoesNotRestartAnExistingGlobalStopExit`. They ask for an Idle/WalkStop combination the UMA cast never
-stands into and refuse to force one, so they are kept but never acceptance. They need the episode fixture,
-so they stay in `Gamesim.PlayModeTests`, where no floor counts them. The farewell readiness tests that do
-ship run on the UMA copy only (the UMA-free build has no provided bodies):
+`...DoesNotRestartAnExistingGlobalStopExit`) that wait for an Idle/WalkStop combination the UMA cast does
+not reliably stand into and refuse to force one; its floor counts them. They reach the episode fixture by
+composing `EpisodePlayModeTests` and calling its public readiness helper (lead ruling, 2026-10-16). The
+decisions they name are acceptance-tested by forcing each combination, in `Gamesim.Uma.PlayModeTests`
+(`UmaFarewellReadinessDecisionPlayModeTests`). The readiness tests that ship in `Gamesim.PlayModeTests`
+run on the UMA copy only (the UMA-free build has no provided bodies):
 
 ```bash
 # UMA copy: the readiness tests of the UMA build
 GAMESIM_RETAIN_INSTALLED_UMA=1 Tools/sync-and-run.sh ready:PlayMode:Gamesim.PlayModeTests:GroundedFarewell_
-# UMA copy: the three diagnostic-only readiness tests
-GAMESIM_DIAGNOSTICS=1 GAMESIM_RETAIN_INSTALLED_UMA=1 Tools/sync-and-run.sh 'readydiag:PlayMode:Gamesim.PlayModeTests:GroundedFarewell_Readiness(BothWalkStop|BothIdle|DoesNotRestart)'
+# UMA copy: the readiness decision tests (part of the UMA suite)
+GAMESIM_RETAIN_INSTALLED_UMA=1 Tools/sync-and-run.sh decide:PlayMode:Gamesim.Uma.PlayModeTests:UmaFarewellReadinessDecision
 ```
 
 The same `GAMESIM_DIAGNOSTICS=1` in the environment of any direct `sync-acceptance.ps1` call (as the

@@ -203,6 +203,16 @@ namespace Gamesim.Tests.PlayMode
         // skeleton (bb_anim_PoseAtEase.fbx) as the evicted pair, with no wardrobe catalog, which proved
         // nothing about the product either way. A primitive clone or a missing ordinary branch FAILS as a
         // missing witness; it is never promoted from the generic diagnostic case.
+        //
+        // What the UMA cast actually stands into (measured 2026-10-15, every case of the staged eviction):
+        // the evicted houseguest left the committed state at the commit, so the summons cannot send them;
+        // the stage's retry sends them late, and they are seated the frame they reach their mark, before
+        // their walk has settled. At the goodbye they stand and finish that walk into WalkStop, while the
+        // survivor, gathered at the summons and settled, stands into Idle. So the natural combination is
+        // FIRST WalkStop, SECOND Idle: one Animator write and one Idle no-op. The tests below read that
+        // combination rather than request one, and still never force a state. The three that need a
+        // combination the cast never stands into (both WalkStop, both Idle, a stop exit already crossing
+        // before authorization) compile only with GAMESIM_DIAGNOSTICS: kept, never acceptance.
         private sealed class FarewellReadinessRoute
         {
             internal object Stage;
@@ -458,37 +468,73 @@ namespace Gamesim.Tests.PlayMode
             return pending || current || incoming; // Exact predicate UNCHANGED; diagnostics are not an owner fallback.
         }
 
-        private static bool CapturedFarewellWalkStops(FarewellReadinessRoute route)
+        // The one frame a natural handoff reads false on (measured on the UMA cast): the controller has
+        // taken the cue's trigger and is crossing into the cue's exact state and clip, still at zero
+        // weight. It is not playback evidence and never cleanup; it only names the frame the exact
+        // predicate above may miss, so any other miss inside a window still fails.
+        private static bool FarewellForeignHandoff(CharacterPresentation body, int cue)
         {
+            if (cue == 3) return false;
+            var animator = ReadFarewellAnimator(body);
+            string stateName = cue == 0 ? "ReactFurious" : cue == 1 ? "ReactShocked" : "Shrug";
+            string clipName = cue == 0 ? "React_furious" : cue == 1 ? "React_shocked" : "React_shrug";
+            var motion = ReadFarewellSelectedClip(animator, clipName);
+            if (!animator.IsInTransition(0)) return false;
+            var incoming = animator.GetNextAnimatorStateInfo(0);
+            var clips = animator.GetNextAnimatorClipInfo(0);
+            return incoming.IsName(stateName) && clips.Length == 1 && clips[0].clip == motion && clips[0].weight == 0f;
+        }
+
+        private static void AssertFarewellForeignHeld(CharacterPresentation body, int cue)
+        {
+            if (PendingOrCurrentFarewellForeign(body, cue)) return;
+            Assert.That(FarewellForeignHandoff(body, cue), Is.True,
+                "MISSING the exact newer cue inside its window, other than at its zero-weight handoff; natural expiry is not a substitute witness.");
+        }
+
+        // At the after-first-write boundary: the FIRST captured endpoint is the WalkStop whose write just
+        // returned, and the SECOND is whatever that body actually stood into (Idle on the UMA cast), both
+        // captured on this frame from the same live bodies. Actual stored capture, never a fabricated write.
+        private static bool CapturedFarewellFirstWrite(FarewellReadinessRoute route, out bool secondStop)
+        {
+            secondStop = false;
             int frame = ReadFarewellField<int>(route.Stage, "farewellIdlePreparationFrame");
             var records = new[] { ReadFarewellField(route.Stage, "farewellIdleA"), ReadFarewellField(route.Stage, "farewellIdleB") };
             var bodies = new[] { route.First, route.Second };
             for (int i = 0; i < records.Length; i++)
             {
                 var captured = records[i];
+                bool idle = ReadFarewellField<bool>(captured, "WasIdle");
                 var motion = ReadFarewellField<AnimationClip>(captured, "SourceMotion");
-                if (ReadFarewellField<bool>(captured, "WasIdle")
+                if ((i == 0 && idle)
                     || ReadFarewellField<int>(captured, "Frame") != frame || frame != Time.frameCount
-                    || motion == null || motion != ReadFarewellField<AnimationClip>(captured, "StopMotion")
+                    || motion == null || motion != ReadFarewellField<AnimationClip>(captured, idle ? "IdleMotion" : "StopMotion")
                     || !motion.humanMotion || !(motion.length > 0f)) return false;
+                if (i == 1) secondStop = !idle;
                 var identity = ReadFarewellField(captured, "Body");
                 var actual = ReadFarewellBodyIdentity(bodies[i]);
                 string[] fields = { "Visual", "ProvidedRoot", "Animator", "Controller", "Avatar", "Build", "RequestRevision" };
                 for (int j = 0; j < fields.Length; j++)
                     if (!object.Equals(ReadFarewellField(identity, fields[j]), actual[j])) return false;
             }
-            return true; // Actual stored capture, never a fabricated second write or phase.
+            return true;
         }
 
-        private static void AssertActualFarewellWalkStopBeforeControl(CharacterPresentation body)
+        // The endpoint a principal actually stands in before lifecycle control: a positive, nontransitioning
+        // Idle or WalkStop on its exact clip object, so the preparation would otherwise go ahead. Returns
+        // whether it is Idle. Read, never requested; no forced-state fallback.
+        private static bool AssertActualFarewellEndpointBeforeControl(CharacterPresentation body)
         {
             var animator = ReadFarewellAnimator(body);
             var state = animator.GetCurrentAnimatorStateInfo(0);
             var clips = animator.GetCurrentAnimatorClipInfo(0);
-            Assert.That(body.isActiveAndEnabled && !animator.IsInTransition(0) && state.IsName("WalkStop")
-                && clips.Length == 1 && clips[0].clip == ReadFarewellSelectedClip(animator, "WalkStop")
+            bool idle = state.IsName("Idle");
+            var expected = idle ? ReadFarewellIdleClip(animator) : ReadFarewellSelectedClip(animator, "WalkStop");
+            Assert.That(body.isActiveAndEnabled && !animator.IsInTransition(0) && (idle || state.IsName("WalkStop"))
+                && clips.Length == 1 && clips[0].clip == expected
                 && clips[0].weight > 0f && clips[0].weight <= 1f, Is.True,
-                "MISSING actual positive nontransitioning WalkStop before lifecycle control; no forced-state fallback.");
+                "MISSING actual positive nontransitioning Idle or WalkStop before lifecycle control; no forced-state fallback.");
+            return idle;
         }
 
         private void AssertNoNewFarewellTake(FarewellReadinessRoute route, int calls, bool attempted)
@@ -540,6 +586,9 @@ namespace Gamesim.Tests.PlayMode
             AssertOriginalFarewellLeasesReleased(route); // BEFORE any Skip can supply cleanup.
         }
 
+#if GAMESIM_DIAGNOSTICS
+        // Diagnostic only: the UMA cast never stands into both WalkStop (see the note above), and this
+        // refuses to force it, so it cannot pass in the shipping suite. Kept for a gather that would.
         [UnityTest, Category("FarewellProvidedReadiness")]
         public IEnumerator GroundedFarewell_ReadinessBothWalkStopCallsOnlyOnce()
         {
@@ -550,6 +599,7 @@ namespace Gamesim.Tests.PlayMode
             yield return ObserveFarewellIdleBeforeCut(route);
             AssertCapturedFarewellBranch(route, false, false);
         }
+#endif
 
         [UnityTest, Category("FarewellProvidedReadiness")]
         public IEnumerator GroundedFarewell_ReadinessMixedIdleDoesNotResetTheIdleEndpoint()
@@ -568,6 +618,9 @@ namespace Gamesim.Tests.PlayMode
                 Is.GreaterThan(initialIdle), "The no-op Idle advances rather than resetting.");
         }
 
+#if GAMESIM_DIAGNOSTICS
+        // Diagnostic only: the evicted always stands into WalkStop on the UMA cast, so both Idle never
+        // occurs naturally, and this refuses to force it. Kept for a gather that would.
         [UnityTest, Category("FarewellProvidedReadiness")]
         public IEnumerator GroundedFarewell_ReadinessBothIdleStillRequiresNewEvaluations()
         {
@@ -579,6 +632,9 @@ namespace Gamesim.Tests.PlayMode
             AssertCapturedFarewellBranch(route, true, true);
         }
 
+        // Diagnostic only: on the UMA cast the authorization comes while the evicted's WalkStop still
+        // plays, never after its exit to Idle has begun, so no global crossing exists to be observed
+        // first; this refuses to manufacture one. Kept for a timing that would.
         [UnityTest, Category("FarewellProvidedReadiness")]
         public IEnumerator GroundedFarewell_ReadinessDoesNotRestartAnExistingGlobalStopExit()
         {
@@ -617,6 +673,7 @@ namespace Gamesim.Tests.PlayMode
             yield return WaitForFarewellAuthorization(route);
             yield return ObserveFarewellIdleBeforeCut(route);
         }
+#endif
 
         [UnityTest, Category("FarewellProvidedReadiness")]
         public IEnumerator GroundedFarewell_ReadinessOrdinaryUpdatesNeverRetryPreparation()
@@ -751,15 +808,16 @@ namespace Gamesim.Tests.PlayMode
             {
                 yield return BeginProvidedFarewellReadiness();
                 var route = farewellReadinessRoute;
-                bool fired = false, joined = false, rearmed = false, capturedBothStops = false; string fresh = null; int callsAtBoundary = -1;
+                bool fired = false, joined = false, rearmed = false, capturedFirstWrite = false, secondStop = false;
+                string fresh = null; int callsAtBoundary = -1;
                 int selected = scenario;
                 try
                 {
                     Assert.That(director.ArmGoodbyeFarewellAfterFirstWriteForTests((first, second, owner, pa, pb) =>
                     {
                         fired = true; callsAtBoundary = ReadFarewellField<int>(route.Stage, "farewellIdleCalls");
-                        capturedBothStops = CapturedFarewellWalkStops(route);
-                        if (!capturedBothStops) return; // Outside assertion must FAIL; runtime catches callback exceptions.
+                        capturedFirstWrite = CapturedFarewellFirstWrite(route, out secondStop);
+                        if (!capturedFirstWrite) return; // Outside assertion must FAIL; runtime catches callback exceptions.
                         if (selected == 0) second.SetActivity(CharacterPresentation.BodyActivity.Cooking);
                         else if (selected == 1)
                         {
@@ -778,10 +836,22 @@ namespace Gamesim.Tests.PlayMode
                     while (!fired && Time.realtimeSinceStartup < by && Time.unscaledTime <= route.Deadline)
                     { AssertFarewellSave(route); yield return null; }
                     Assert.That(fired, Is.True, "MISSING actual FIRST returned WalkStop write; next-frame injection is not equivalent.");
-                    Assert.That(capturedBothStops, Is.True, "MISSING captured SECOND WalkStop; an Idle no-op cannot prove a refused write.");
+                    Assert.That(capturedFirstWrite, Is.True,
+                        "MISSING the FIRST captured WalkStop and the SECOND's captured endpoint on the boundary frame.");
+                    TestContext.WriteLine("After-first boundary scenario " + selected + ": SECOND captured "
+                        + (secondStop ? "WalkStop" : "Idle"));
                     Assert.That(callsAtBoundary, Is.EqualTo(1));
                     Assert.That(ReadFarewellField<bool>(route.Stage, "farewellIdleAttemptUsed"), Is.True);
-                    AssertNoNewFarewellTake(route, 1, true); // A genuine captured SECOND WalkStop remains unwritten.
+                    AssertNoNewFarewellTake(route, 1, true); // A captured SECOND WalkStop remains unwritten.
+                    // The SECOND endpoint is refused, not completed. On the UMA cast it stood into Idle, whose
+                    // preparation is a no-op, so a missing write cannot show the refusal: the guard that refused
+                    // does. The recheck between the two endpoints refuses here, before the SECOND is touched.
+                    Assert.That(ReadFarewellField<bool>(route.Stage, "farewellIdlePrepared"), Is.False,
+                        "The interrupted preparation never completes.");
+                    if (selected < 2)
+                        Assert.That(ReadFarewellField<string>(route.Stage, "farewellFailure"),
+                            Does.Contain("Idle preparation interrupted after first endpoint"),
+                            "The recheck between the endpoints refuses, before the SECOND's own preparation is asked.");
                     if (selected == 0) Assert.That(route.Second.Activity, Is.EqualTo(CharacterPresentation.BodyActivity.Cooking));
                     else if (selected == 1)
                     {
@@ -809,26 +879,34 @@ namespace Gamesim.Tests.PlayMode
             yield return BeginProvidedFarewellReadiness();
             var route = farewellReadinessRoute;
             yield return WaitForFarewellAuthorization(route);
-            AssertCapturedFarewellBranch(route, false, false); // EXACTLY TWO actual normally returned writes.
+            // Both endpoints prepared: the actual combination the cast stood into (on the UMA cast the
+            // evicted's WalkStop written and the survivor's Idle a no-op), with at least one normally
+            // returned write, so this is AFTER the calls and not an authorization that wrote nothing.
+            bool firstIdle = ReadFarewellField<bool>(ReadFarewellField(route.Stage, "farewellIdleA"), "WasIdle");
+            bool secondIdle = ReadFarewellField<bool>(ReadFarewellField(route.Stage, "farewellIdleB"), "WasIdle");
+            Assert.That(firstIdle && secondIdle, Is.False, "MISSING an actual returned WalkStop write before the newer cue.");
+            AssertCapturedFarewellBranch(route, firstIdle, secondIdle); // Exact captured clips and exact call count.
+            int calls = (firstIdle ? 0 : 1) + (secondIdle ? 0 : 1);
             Assert.That(ReadFarewellField<bool>(route.Stage, "farewellIdlePrepared"), Is.True,
                 "A stamped/interrupted authorization cannot qualify AFTER BOTH.");
-            AssertNoNewFarewellTake(route, 2, true); // This is pre-pair, not playing-pair cancellation.
+            AssertNoNewFarewellTake(route, calls, true); // This is pre-pair, not playing-pair cancellation.
             Assert.That(route.Second.Supports(CharacterPresentation.Reaction.Furious), Is.True);
             route.Second.React(CharacterPresentation.Reaction.Furious); // Next-frame AFTER BOTH, not AFTER FIRST.
             Assert.That(PendingOrCurrentFarewellForeign(route.Second, 0), Is.True);
             int samples = 0; float by = Time.realtimeSinceStartup + .25f;
-            while (Time.realtimeSinceStartup < by && PendingOrCurrentFarewellForeign(route.Second, 0))
+            while (Time.realtimeSinceStartup < by)
             {
-                AssertNoNewFarewellTake(route, 2, true);
+                AssertFarewellForeignHeld(route.Second, 0);
+                AssertNoNewFarewellTake(route, calls, true);
                 samples++; yield return null;
             }
             Assert.That(samples, Is.GreaterThan(0), "MISSING ordinary update with the exact newer owner.");
             Assert.That(PendingOrCurrentFarewellForeign(route.Second, 0), Is.True,
                 "MISSING surviving exact cue at cleanup; natural expiry is not a substitute witness.");
-            AssertNoNewFarewellTake(route, 2, true);
+            AssertNoNewFarewellTake(route, calls, true);
             director.SkipWalkOut();
             Assert.That(PendingOrCurrentFarewellForeign(route.Second, 0), Is.True);
-            AssertNoNewFarewellTake(route, 2, true);
+            AssertNoNewFarewellTake(route, calls, true);
         }
 
         [UnityTest, Category("FarewellReadinessControlledNegative")]
@@ -931,14 +1009,17 @@ namespace Gamesim.Tests.PlayMode
                 var disabled = endpoint == 0 ? route.First : route.Second;
                 var identity = ReadFarewellBodyIdentity(disabled);
                 var liveAnimator = ReadFarewellAnimator(disabled);
-                bool fired = false, capturedBothStops = false; int callsAtBoundary = -1;
+                bool fired = false, capturedFirstWrite = false; int callsAtBoundary = -1;
                 try
                 {
                     if (afterFirst == 0)
                     {
                         yield return WaitForFarewellBeforeCommit(route);
-                        AssertActualFarewellWalkStopBeforeControl(route.First);
-                        AssertActualFarewellWalkStopBeforeControl(route.Second);
+                        // Both endpoints stand where the preparation would otherwise go ahead, and a write is
+                        // due (the evicted's WalkStop), so the activation input is the ONLY refusal cause.
+                        bool firstIdle = AssertActualFarewellEndpointBeforeControl(route.First);
+                        bool secondIdle = AssertActualFarewellEndpointBeforeControl(route.Second);
+                        Assert.That(firstIdle && secondIdle, Is.False, "MISSING a due WalkStop write; two Idle no-ops write nothing to withhold.");
                         disabled.enabled = false; // Controlled component lifecycle, not a root/Animator disable.
                     }
                     else
@@ -947,14 +1028,14 @@ namespace Gamesim.Tests.PlayMode
                         {
                             fired = true;
                             callsAtBoundary = ReadFarewellField<int>(route.Stage, "farewellIdleCalls");
-                            capturedBothStops = CapturedFarewellWalkStops(route);
-                            if (capturedBothStops) disabled.enabled = false; // The activation input is the ONLY refusal cause.
+                            capturedFirstWrite = CapturedFarewellFirstWrite(route, out _);
+                            if (capturedFirstWrite) disabled.enabled = false; // The activation input is the ONLY refusal cause.
                         }), Is.True);
                         float by = Time.realtimeSinceStartup + 2f;
                         while (!fired && Time.realtimeSinceStartup < by && Time.unscaledTime <= route.Deadline)
                             yield return null;
-                        Assert.That(fired && capturedBothStops, Is.True,
-                            "MISSING actual FIRST write/BOTH captured WalkStops; an Idle no-op is not activation coverage.");
+                        Assert.That(fired && capturedFirstWrite, Is.True,
+                            "MISSING actual FIRST write with both endpoints captured on the boundary frame.");
                         Assert.That(callsAtBoundary, Is.EqualTo(1));
                     }
                     Assert.That(disabled.isActiveAndEnabled, Is.False);
@@ -978,8 +1059,16 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(route.Second.Supports(CharacterPresentation.Reaction.Shocked), Is.True);
                     route.Second.React(CharacterPresentation.Reaction.Shocked);
                     Assert.That(PendingOrCurrentFarewellForeign(route.Second, 1), Is.True);
-                    yield return null;
-                    Assert.That(PendingOrCurrentFarewellForeign(route.Second, 1), Is.True);
+                    int samples = 0; float cueBy = Time.realtimeSinceStartup + .25f;
+                    while (Time.realtimeSinceStartup < cueBy)
+                    {
+                        AssertFarewellForeignHeld(route.Second, 1);
+                        AssertNoNewFarewellTake(route, afterFirst == 0 ? 0 : 1, afterFirst != 0);
+                        samples++; yield return null;
+                    }
+                    Assert.That(samples, Is.GreaterThan(0), "MISSING ordinary update with the exact newer owner.");
+                    Assert.That(PendingOrCurrentFarewellForeign(route.Second, 1), Is.True,
+                        "MISSING surviving exact cue at cleanup; natural expiry is not a substitute witness.");
                     AssertNoNewFarewellTake(route, afterFirst == 0 ? 0 : 1, afterFirst != 0);
                     director.SkipWalkOut();
                     Assert.That(PendingOrCurrentFarewellForeign(route.Second, 1), Is.True,

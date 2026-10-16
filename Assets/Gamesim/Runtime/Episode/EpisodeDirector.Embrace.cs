@@ -100,9 +100,6 @@ namespace Gamesim.Episode
         {
             if (IsSceneCardOpen || IsPanelOpen) { peaceSince = Time.unscaledTime; return; }
             if (EmbraceInterrupted(state) != null) { EndPeace(); return; }
-            // The frame the card closes the house is still paused - its world ticks after this - and
-            // a paused body takes no route: the gather waits for the house as it waits for the card.
-            if (npcMeetings != null && npcMeetings.IsPaused) { peaceSince = Time.unscaledTime; return; }
             var first = BodyFor(peaceFirst);
             var second = BodyFor(peaceSecond);
             if (first == null || second == null) { EndPeace(); return; }
@@ -120,10 +117,20 @@ namespace Gamesim.Episode
             bool held = npcMeetings != null && npcMeetings.SceneHeldForEmbrace && npcMeetings.SceneStageKey == peaceScene;
             if (held && !peaceGathering)
             {
-                var centre = (first.position + second.position) * .5f;
-                peaceGathering = npcMeetings.TryBringTogether(peaceScene, peaceFirst, peaceSecond, centre, EmbraceApart);
-                if (!peaceGathering) held = false;
-                peaceSince = Time.unscaledTime;
+                if (npcMeetings.IsPaused)
+                {
+                    // The frame the card closes the house is still paused - its world ticks after this -
+                    // and a paused body takes no route: the gather waits for the house, but no longer
+                    // than a gather may take. A house that stays paused (its world stopped, a save
+                    // suspending it) walks nobody: the two embrace where they stand, or not at all.
+                    if (Time.unscaledTime - peaceSince <= EmbraceGatherSeconds) return;
+                }
+                else
+                {
+                    var centre = (first.position + second.position) * .5f;
+                    peaceGathering = npcMeetings.TryBringTogether(peaceScene, peaceFirst, peaceSecond, centre, EmbraceApart);
+                    peaceSince = Time.unscaledTime;
+                }
             }
             bool arrived = !peaceGathering || npcMeetings.SceneActorsArrived(peaceFirst, peaceSecond);
             bool late = Time.unscaledTime - peaceSince > EmbraceGatherSeconds;

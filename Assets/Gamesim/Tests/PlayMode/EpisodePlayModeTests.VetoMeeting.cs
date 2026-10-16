@@ -95,7 +95,7 @@ namespace Gamesim.Tests.PlayMode
             var before = director.Snapshot;
             yield return AtEveryTextSize(larger =>
             {
-                string where = "The meeting with a houseguest holding the veto" + (larger ? " at the larger text" : "");
+                string where = "The meeting with a houseguest holding the veto" + (larger ? " " + TextScales.At(director.TextSize) : "");
                 AssertOnTheStrategyStage("Continue episode", where);
                 AssertTheMeetingFits(where);
                 var panel = ActiveRect("Episode panel");
@@ -145,7 +145,7 @@ namespace Gamesim.Tests.PlayMode
             var before = director.Snapshot;
             yield return AtEveryTextSize(larger =>
             {
-                string where = "The player's veto decision" + (larger ? " at the larger text" : "");
+                string where = "The player's veto decision" + (larger ? " " + TextScales.At(director.TextSize) : "");
                 Canvas.ForceUpdateCanvases();
                 Assert.That(director.GetComponentInChildren<EpisodeHud>().CurrentActivityLayout, Is.EqualTo(EpisodeHud.ActivityLayout.Strategy),
                     where + " takes the strategy stage.");
@@ -212,7 +212,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(candidates, Has.Count.GreaterThanOrEqualTo(2), "The fixture has a choice of replacement.");
             yield return AtEveryTextSize(larger =>
             {
-                string where = "The Head of Household's veto decision" + (larger ? " at the larger text" : "");
+                string where = "The Head of Household's veto decision" + (larger ? " " + TextScales.At(director.TextSize) : "");
                 AssertTheMeetingFits(where);
                 foreach (var candidate in candidates)
                     Assert.That(director.GetComponentsInChildren<Button>(true).Count(button => button.IsActive()
@@ -263,7 +263,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(candidates, Has.Count.EqualTo(EpisodeValidation.MaximumCast - 3), "Everybody but the player and the block can go up.");
             yield return AtEveryTextSize(larger =>
             {
-                string where = "The Head of Household's veto decision in a house of " + EpisodeValidation.MaximumCast + (larger ? " at the larger text" : "");
+                string where = "The Head of Household's veto decision in a house of " + EpisodeValidation.MaximumCast + (larger ? " " + TextScales.At(director.TextSize) : "");
                 Canvas.ForceUpdateCanvases();
                 Assert.That(director.GetComponentInChildren<EpisodeHud>().CurrentActivityLayout, Is.EqualTo(EpisodeHud.ActivityLayout.Strategy),
                     where + " takes the strategy stage.");
@@ -317,7 +317,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(EpisodeDirector.VetoSaveCaption(before, other), Is.EqualTo("Save " + before.Find(other).name + " (HoH chooses replacement)"));
             yield return AtEveryTextSize(larger =>
             {
-                string where = "The holder's own save" + (larger ? " at the larger text" : "");
+                string where = "The holder's own save" + (larger ? " " + TextScales.At(director.TextSize) : "");
                 AssertTheMeetingFits(where);
                 var own = ButtonWithCaption("Save yourself (HoH chooses replacement)");
                 Assert.That(own.IsInteractable(), Is.True, where + " is a live control.");
@@ -353,7 +353,7 @@ namespace Gamesim.Tests.PlayMode
             string line = before.Find(holder).name + " is using the veto on herself. Name the replacement nominee.";
             yield return AtEveryTextSize(larger =>
             {
-                string where = "Naming the replacement" + (larger ? " at the larger text" : "");
+                string where = "Naming the replacement" + (larger ? " " + TextScales.At(director.TextSize) : "");
                 AssertTheMeetingFits(where);
                 var panel = ActiveRect("Episode panel");
                 var words = PanelWords(panel);
@@ -402,7 +402,7 @@ namespace Gamesim.Tests.PlayMode
             string reflexive = StoryPeople.Pronouns(before.Find(holder)).themselves;
             yield return AtEveryTextSize(larger =>
             {
-                string where = "After the meeting" + (larger ? " at the larger text" : "");
+                string where = "After the meeting" + (larger ? " " + TextScales.At(director.TextSize) : "");
                 AssertOnTheStrategyStage("Continue episode", where);
                 AssertTheMeetingFits(where);
                 var panel = ActiveRect("Episode panel");

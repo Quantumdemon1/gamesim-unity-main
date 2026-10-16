@@ -180,7 +180,12 @@ namespace Gamesim.Presentation
             var stage = new GameObject("Preview stage", typeof(RectTransform)).GetComponent<RectTransform>();
             stage.SetParent(scrim, false);
             Place(stage, r.x, r.y, r.width, r.height);
-            float chipsY = r.height - 36f;
+            // The camera's views on one row, or at the largest text on a stage too narrow for that
+            // row on two (ViewsOnTwoRows): the first row then stands a row higher, and so does all
+            // that stands on it.
+            float zoom = 36f, chip = Mathf.Min(106f, (r.width - 16f - 2f * zoom - 4f * 6f) / 3.7f);
+            bool twoRows = full && ViewsOnTwoRows(chip);
+            float chipsY = r.height - 36f - (twoRows ? ViewRowPitch : 0f);
             float turnY = full ? chipsY - 12f - 52f : r.height - 52f;
             float ringWidth = Mathf.Min(r.width * .86f, 480f), ringHeight = Mathf.Min(ringWidth * .24f, 110f);
             float floor = turnY - 6f;
@@ -234,14 +239,16 @@ namespace Gamesim.Presentation
             previewStatus = Words(stage, studioPreview.DisplayStatus, 13f, UiTheme.Muted, new Rect(8f, 8f, r.width - 156f, 44f),
                 TextAlignmentOptions.TopLeft, "Preview status");
             previewStatus.textWrappingMode = TextWrappingModes.Normal;
+            // Under Retry preview, across the stage, where the largest text leaves it no room beside it.
+            if (StatusUnderRetry(previewStatus, r.width)) Place(previewStatus.rectTransform, 8f, 38f, r.width - 16f, 44f);
             retryPreviewButton = Pill(stage, "Retry preview", new Rect(r.width - 132f, 2f, 132f, 30f), Tone.Quiet,
                 () => studioPreview.Retry(), size: 13f);
             retryPreviewButton.interactable = studioPreview.CanRetry;
             if (!full) return;
             // The camera's other views, and the look the edit began from. Zoom is two glyphs whose
             // captions are their names: as words the pair did not fit a narrow stage.
-            float zoom = 36f, chip = Mathf.Min(106f, (r.width - 16f - 2f * zoom - 4f * 6f) / 3.7f);
             string compare = comparingOriginal ? "Return to edited look" : "Compare original";
+            if (twoRows) { ViewsOnTwoRowsBuilt(stage, r.width, chipsY, zoom, compare); return; }
             float x = (r.width - (3.7f * chip + 2f * zoom + 4f * 6f)) * .5f;
             Pill(stage, "Front", new Rect(x, chipsY, chip, 36f), Tone.Quiet, () => studioPreview.View(0f), size: 14f);
             x += chip + 6f;
@@ -253,6 +260,82 @@ namespace Gamesim.Presentation
             x += zoom + 6f;
             Pill(stage, compare, new Rect(x, chipsY, chip * 1.7f, 36f), comparingOriginal ? Tone.Selected : Tone.Quiet,
                 () => { comparingOriginal = !comparingOriginal; Rebuild(); }, size: 14f);
+        }
+
+        /// <summary>
+        /// The narrowest the appearance panel's four actions may stand beside its heading:
+        /// "Randomize", 81 wide at its 15 points, and the pill's 28 of margins. At the largest text
+        /// the panel is at its least, 600, and beside the heading each action got 86 - "Randomize" in
+        /// a box of 58, cut to "Randomiz" at the pill's floor of 11 points.
+        /// </summary>
+        private const float ActionLeast = 110f;
+
+        /// <summary>How far the appearance panel's copy and choices stand lower when its actions take a row of their own.</summary>
+        private const float ActionRowDrop = 48f;
+
+        /// <summary>
+        /// Whether the appearance panel's actions stand on a row of their own under its heading:
+        /// only at the largest text (the owner's contract of 2026-10-15), and only where beside the
+        /// heading each would be narrower than <see cref="ActionLeast"/>. On their own row the four
+        /// share the panel's width, 132 each in the 600 panel, their captions at their own size.
+        /// </summary>
+        private bool ActionsUnderTheHeading(float actionWidth) => LargestPages.At(fontScale) && actionWidth < ActionLeast;
+
+        /// <summary>The views' second row stands this far under the first: a 36-tall row and a gap of 6.</summary>
+        private const float ViewRowPitch = 42f;
+
+        /// <summary>
+        /// The narrowest chip the views' one row may give its words: "Compare original", 116 wide at
+        /// its 14 points, in 1.7 chips less the pill's 28 of margins needs 85, and a unit to spare.
+        /// The larger text's 4:3 stage gives 93 and the largest's 16:9 one 90.
+        /// </summary>
+        private const float ViewChipLeast = 86f;
+
+        /// <summary>
+        /// Whether the camera's views stand on two rows rather than one: only at the largest text
+        /// (the owner's contract of 2026-10-15), and only where one row's chips would be narrower
+        /// than <see cref="ViewChipLeast"/>. On the Detailed page's 4:3 stage, 262 wide at the largest
+        /// text, one row gave each chip 40 - "Front" in a box 12 wide - and the captions ran past
+        /// their pills at the floor of their type.
+        /// </summary>
+        private bool ViewsOnTwoRows(float chip) => LargestPages.At(fontScale) && chip < ViewChipLeast;
+
+        /// <summary>
+        /// The views on two rows: Front, Side and the two zoom glyphs across the first, as wide as the
+        /// stage lets them up to the one row's 106, and the comparison alone on the second, as wide as
+        /// one row's 1.7 chips at most. The same controls, in the same order, under the same captions.
+        /// </summary>
+        private void ViewsOnTwoRowsBuilt(RectTransform stage, float width, float y, float zoom, string compare)
+        {
+            float chip = Mathf.Min(106f, (width - 16f - 2f * zoom - 3f * 6f) * .5f);
+            float x = (width - (2f * chip + 2f * zoom + 3f * 6f)) * .5f;
+            Pill(stage, "Front", new Rect(x, y, chip, 36f), Tone.Quiet, () => studioPreview.View(0f), size: 14f);
+            x += chip + 6f;
+            Pill(stage, "Side", new Rect(x, y, chip, 36f), Tone.Quiet, () => studioPreview.View(90f), size: 14f);
+            x += chip + 6f;
+            GlyphButton(stage, "Zoom out", new Rect(x, y, zoom, zoom), "−", null, () => studioPreview.Zoom(-.1f));
+            x += zoom + 6f;
+            GlyphButton(stage, "Zoom in", new Rect(x, y, zoom, zoom), "+", null, () => studioPreview.Zoom(.1f));
+            float wide = Mathf.Min(width - 16f, 106f * 1.7f);
+            Pill(stage, compare, new Rect((width - wide) * .5f, y + ViewRowPitch, wide, 36f), comparingOriginal ? Tone.Selected : Tone.Quiet,
+                () => { comparingOriginal = !comparingOriginal; Rebuild(); }, size: 14f);
+        }
+
+        /// <summary>
+        /// Whether the preview's status stands under Retry preview, across the stage, rather than in
+        /// the room beside it (the stage's width less the button's 132 and the margins): only at the
+        /// largest text (the owner's contract of 2026-10-15), and only on a stage whose room beside
+        /// the button is narrower than the status's fallback sentences at their 13 points. That is
+        /// the Detailed page's stage on a 4:3 frame, which the form's magnification leaves 262 wide:
+        /// 106 beside the button for a first sentence 125 long. Measured as the stage is built,
+        /// before it is drawn; the label's own words are put back after the measure.
+        /// </summary>
+        private bool StatusUnderRetry(TMP_Text status, float stageWidth)
+        {
+            if (!LargestPages.At(fontScale)) return false;
+            float wanted = status.GetPreferredValues(Localisation.Text(CharacterStudioPreview.FallbackDisplayStatus)).x;
+            status.SetText(status.text);
+            return wanted > stageWidth - 156f;
         }
 
         /// <summary>The live preview, awake and showing the look on the draft (or the original being compared).</summary>
@@ -293,25 +376,33 @@ namespace Gamesim.Presentation
             var heading = Words(box, "APPEARANCE", 24f, UiTheme.Glow, new Rect(24f, 20f, 200f, 34f));
             var bold = UiTheme.Font(UiTheme.Weight.Bold); if (bold != null) heading.font = bold;
             heading.characterSpacing = 1.5f;
-            // Undo, Redo, Randomize and Reset, at the head of the panel as the mockup sets them.
+            // Undo, Redo, Randomize and Reset, at the head of the panel as the mockup sets them - or at
+            // the largest text, where the heading leaves them too little room, on a row of their own
+            // under it (ActionsUnderTheHeading), everything under them a row lower.
             float actionWidth = Mathf.Min(150f, (inner - 176f) / 4f - 8f), ax = r.width - 24f - 4f * (actionWidth + 8f) + 8f;
             bool glyphs = actionWidth >= 132f;
-            undoAppearanceButton = Pill(box, "Undo", new Rect(ax, 18f, actionWidth, 40f), Tone.Secondary, UndoAppearance,
+            float actionsY = 18f, below = 0f;
+            if (ActionsUnderTheHeading(actionWidth))
+            {
+                actionWidth = (inner - 3f * 8f) / 4f; ax = 24f; glyphs = false;
+                actionsY = 62f; below = ActionRowDrop;
+            }
+            undoAppearanceButton = Pill(box, "Undo", new Rect(ax, actionsY, actionWidth, 40f), Tone.Secondary, UndoAppearance,
                 icon: glyphs ? PackArt.KitIconArrowBack : null, size: 15f);
-            redoAppearanceButton = Pill(box, "Redo", new Rect(ax + actionWidth + 8f, 18f, actionWidth, 40f), Tone.Secondary, RedoAppearance,
+            redoAppearanceButton = Pill(box, "Redo", new Rect(ax + actionWidth + 8f, actionsY, actionWidth, 40f), Tone.Secondary, RedoAppearance,
                 icon: glyphs ? PackArt.KitIconChevronRight : null, size: 15f);
-            Pill(box, "Randomize", new Rect(ax + 2f * (actionWidth + 8f), 18f, actionWidth, 40f), Tone.Secondary, RandomizeAppearance,
+            Pill(box, "Randomize", new Rect(ax + 2f * (actionWidth + 8f), actionsY, actionWidth, 40f), Tone.Secondary, RandomizeAppearance,
                 icon: glyphs ? PackArt.KitIconRefresh : null, size: 15f);
-            Pill(box, "Reset look", new Rect(ax + 3f * (actionWidth + 8f), 18f, actionWidth, 40f), Tone.Secondary,
+            Pill(box, "Reset look", new Rect(ax + 3f * (actionWidth + 8f), actionsY, actionWidth, 40f), Tone.Secondary,
                 () => ChangeAppearance(() => draft.Appearance = initialAppearance?.Clone() ?? new CharacterAppearance()),
                 icon: glyphs ? PackArt.KitIconRefresh : null, size: 15f);
             undoAppearanceButton.interactable = appearanceUndo.Count > 0;
             redoAppearanceButton.interactable = appearanceRedo.Count > 0;
             Words(box, "Customize your look. Your appearance is independent of pronouns, personality and competition stats.", 15f, UiTheme.Muted,
-                new Rect(24f, 64f, inner, 42f)).textWrappingMode = TextWrappingModes.Normal;
+                new Rect(24f, 64f + below, inner, 42f)).textWrappingMode = TextWrappingModes.Normal;
 
             var viewport = HudPrimitives.Fill("Appearance controls viewport", box, Color.clear, 1);
-            Place(viewport, 12f, 110f, r.width - 24f, r.height - 122f);
+            Place(viewport, 12f, 110f + below, r.width - 24f, r.height - 122f - below);
             viewport.gameObject.AddComponent<RectMask2D>();
             studioControls = new GameObject("Appearance controls", typeof(RectTransform)).GetComponent<RectTransform>();
             studioControls.SetParent(viewport, false);

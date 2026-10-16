@@ -101,6 +101,7 @@ namespace Gamesim.Tests.EditMode
         {
             public const string Living = HouseConversationSpots.LivingFamily;
             public const string Table = HouseConversationSpots.TableFamily;
+            public const string Lounger = HouseFurniture.LoungerAnchor;
         }
 
         private static float Flat(Vector3 a, Vector3 b) => new Vector2(a.x - b.x, a.z - b.z).magnitude;
@@ -357,7 +358,14 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// The house itself: its gallery and its long table get the same five spots, on the pieces
-        /// the scene places, and the six venues the saves know are untouched.
+        /// the scene places, the spare lounger pairs with its neighbour, and the six venues the saves
+        /// know are untouched.
+        ///
+        /// <para>The spare lounger's spot is the sixth because the placement pass authors the rest
+        /// anchors into the saved scene, as the runtime makes them before it asks for spots (the
+        /// coordinator's EnsureDefaults, then HouseConversationSpots.Ensure). The scene saved before
+        /// that pass last ran (2026-10-15, the owner's room arrangement) had only the runtime's copy,
+        /// so a preview of it dressed five.</para>
         /// </summary>
         [Test]
         public void TheHouseGetsItsSpotsOnItsOwnPieces()
@@ -377,12 +385,14 @@ namespace Gamesim.Tests.EditMode
                     HouseConversationSpots.IdFor(SpotFamily.Living, "corner-east"),
                     HouseConversationSpots.IdFor(SpotFamily.Table, "side-0"),
                     HouseConversationSpots.IdFor(SpotFamily.Table, "side-180"),
-                }), "The house's gallery and long table, dressed as the preview's.");
+                    HouseConversationSpots.IdFor(SpotFamily.Lounger, "spare-2"),
+                }), "The house's gallery, long table and spare lounger, dressed as the preview's.");
                 AssertEverySpotKeepsTheRules(scene, spots.Values);
                 foreach (var spot in spots.Values)
                     foreach (var seat in new[] { spot.First, spot.Second })
                         Assert.That(spot.Family == SpotFamily.Living
                             ? seat.transform.parent.name == CeremonySets.LoungeFourName || seat.transform.parent.name == CeremonySets.LoungeThreeName
+                            : spot.Family == SpotFamily.Lounger ? seat.transform.parent.name == "bb_set_lounger"
                             : seat.transform.parent.name == "bb_set_ph_diningchair" || seat.transform.parent.name == "bb_set_diningchair", Is.True,
                             spot.Id + " hangs on " + seat.transform.parent.name);
                 Assert.That(Venues(), Is.EqualTo(venuesBefore), "The six venues' own anchors are what they were.");

@@ -657,7 +657,12 @@ namespace Gamesim.Editor
                 if (Tin(group, "Toiletry", Pack6 + "BedroomClutter/" + label + ".png", 0.03f, 0.10f, new Vector3(db.center.x + (i % 2 == 0 ? 0.12f : -0.12f), db.max.y, db.center.z)) != null) count++;
             }
 
-            var east = WallFace(house, room, "Bedroom / private room north");
+            // The corkboard goes on the segment of the east partition nothing tall stands in front
+            // of: the north one, unless a piece hides it there - as the bookcase does in the owner's
+            // arrangement (HouseRoomArrangement), which stands it against that segment.
+            var east = new[] { "Bedroom / private room north", "Bedroom / private room south" }
+                .Select(wall => WallFace(house, room, wall)).Where(face => face.HasValue)
+                .OrderBy(face => Screened(house, room, face.Value, 0.5f) ? 1 : 0).FirstOrDefault();
             if (east.HasValue)
             {
                 var e = east.Value;
@@ -745,6 +750,26 @@ namespace Gamesim.Editor
             if (material == null) return null;
             Quad(group, "Band · " + wallName, material, f.Centre, new Vector2(f.Length, f.Height), f.Normal, Vector3.up);
             return face;
+        }
+
+        /// <summary>
+        /// Whether a set piece taller than knee height stands within 0.8 m in front of a face's
+        /// middle, over <paramref name="halfWidth"/> either side of it: a board hung there would be
+        /// hidden behind it.
+        /// </summary>
+        private static bool Screened(House house, Room room, Face face, float halfWidth)
+        {
+            foreach (var piece in house.Standing(room))
+            {
+                var b = Measure(piece.gameObject);
+                // The shell and the plan's procedural groups span rooms; a piece of furniture does not.
+                if (b.max.y < room.FloorTop + 0.5f || Mathf.Max(b.size.x, b.size.z) > 4f) continue;
+                float near = Vector3.Dot(b.center - face.Centre, face.Normal) - Mathf.Abs(Vector3.Dot(b.extents, face.Normal));
+                if (near > 0.8f || Vector3.Dot(b.center - face.Centre, face.Normal) + Mathf.Abs(Vector3.Dot(b.extents, face.Normal)) < 0f) continue;
+                float along = Mathf.Abs(Vector3.Dot(b.center - face.Centre, face.Along));
+                if (along - Mathf.Abs(Vector3.Dot(b.extents, face.Along)) < halfWidth) return true;
+            }
+            return false;
         }
 
         /// <summary>
@@ -1044,6 +1069,12 @@ namespace Gamesim.Editor
         /// A quad facing <paramref name="normal"/> with its image's top toward <paramref name="up"/>:
         /// no collider, no shadow, no static flags. Unity's quad shows its image to a viewer on its
         /// local -z, so it looks along -normal.
+        ///
+        /// <para>Under the Room Finish root a quad stays that way: the lighting pass leaves the root
+        /// out of the bake (ROOM-FINISH-PLAN 4.3). The screens' idle boards hang under the screen
+        /// prop instead, so the lighting pass the full rebuild runs after this
+        /// (HouseLivingGallery.BuildFromCommandLine) marks them lightmap-static with the rest of the
+        /// set pieces, as every full rebuild before b1cfccdd left them.</para>
         /// </summary>
         private static GameObject Quad(Transform parent, string name, Material material, Vector3 centre, Vector2 size, Vector3 normal, Vector3 up)
         {
@@ -1273,6 +1304,22 @@ namespace Gamesim.Editor
             /// </summary>
             public IEnumerable<Transform> Pieces(Room room, string name) =>
                 PiecesMatching(room, candidate => candidate == name || candidate.StartsWith(name + " (", StringComparison.Ordinal));
+
+            /// <summary>The set-piece plan's pieces standing in the room, switched on.</summary>
+            public IEnumerable<Transform> Standing(Room room)
+            {
+                var setPieces = world.Find(HouseSetPieces.RootName);
+                if (setPieces == null) yield break;
+                foreach (Transform piece in setPieces)
+                {
+                    if (!piece.gameObject.activeInHierarchy) continue;
+                    var renderers = piece.GetComponentsInChildren<Renderer>(true);
+                    if (renderers.Length == 0) continue;
+                    var bounds = renderers[0].bounds;
+                    foreach (var renderer in renderers) bounds.Encapsulate(renderer.bounds);
+                    if (room.Contains(bounds.center, 0f)) yield return piece;
+                }
+            }
 
             public IEnumerable<Transform> PiecesMatching(Room room, Func<string, bool> name)
             {

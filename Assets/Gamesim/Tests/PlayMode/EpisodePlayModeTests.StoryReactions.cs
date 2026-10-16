@@ -424,23 +424,11 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.NpcAutonomyReady, Is.True, "The house's world is up.");
                 var house = StormCoordinator();
 
-                // The scene gathers its people in its room, as the house stages an open scene. A beat
-                // already open as a season loads has its one try spent on a house still binding its
-                // people, and the stage refuses it (measured 2026-10-15; reported, and not what this
-                // test is about): the try is armed again once the house could take it, as a beat that
-                // opens while the house is free arms it.
-                var oneTry = typeof(EpisodeDirector).GetField("sceneStagedBeat",
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                Assert.That(oneTry, Is.Not.Null, "The director keeps its scene's one try.");
-                for (int attempt = 0; attempt < 3 && house.SceneStageKey != peaceEventId; attempt++)
-                {
-                    yield return WaitFor(() => house.IsReady && !house.IsPaused && house.LeaseCount == 0 && !director.IsPanelOpen,
-                        30f, "The house is free to stage a scene");
-                    oneTry.SetValue(director, null);
-                    for (int frame = 0; frame < 5 && house.SceneStageKey != peaceEventId; frame++) yield return null;
-                }
+                // The scene gathers its people in its room, as the house stages an open scene: this one
+                // open as the season loaded, and staged once the house could take it.
+                yield return WaitForSceneStage(peaceEventId, 30f, "The scene stages the two who will make up");
                 yield return WaitForHugEndpoint(() => house.SceneStageKey == peaceEventId && house.SceneActorsArrived(peaceFirstId, peaceSecondId),
-                    10f, "The scene stages the two who will make up", peaceFirstId, peaceSecondId);
+                    10f, "The scene's two reach their places", peaceFirstId, peaceSecondId);
                 yield return SettleCast();
                 var first = StoryBody(peaceFirstId);
                 var second = StoryBody(peaceSecondId);

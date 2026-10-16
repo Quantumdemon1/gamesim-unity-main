@@ -30,6 +30,13 @@ namespace Gamesim.House
         public int SceneStageCount => sceneLeases.Count;
 
         /// <summary>
+        /// Whether the house could take a scene now: its people bound, not paused, no stage of its
+        /// own up and no meeting held. <see cref="BeginSceneStage"/> refuses whenever this is false,
+        /// so the director spends a beat's one try only while it holds.
+        /// </summary>
+        public bool CanBeginSceneStage => IsReady && !paused && !HasCompetitionStage && !HasOpeningStage && !HasCeremonyStage && leases.Count == 0;
+
+        /// <summary>
         /// Borrows the free ones among these houseguests and walks each to the first of the offered
         /// places it can reserve: on the floor, with its own body clear of other actors and of what
         /// blocks sight. Furniture is not part of that test; the director's places have already been
@@ -40,8 +47,7 @@ namespace Gamesim.House
         public int BeginSceneStage(string key, IReadOnlyList<string> ids, IReadOnlyList<Vector3> places)
         {
             EndSceneStage();
-            if (string.IsNullOrEmpty(key) || !IsReady || paused || HasCompetitionStage || HasOpeningStage || HasCeremonyStage
-                || leases.Count != 0 || ids == null || places == null || places.Count == 0) return 0;
+            if (string.IsNullOrEmpty(key) || !CanBeginSceneStage || ids == null || places == null || places.Count == 0) return 0;
             var taken = new bool[places.Count];
             for (int i = 0; i < ids.Count; i++)
             {

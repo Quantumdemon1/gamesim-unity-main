@@ -547,6 +547,10 @@ namespace Gamesim.Episode
                 return;
             }
             if (!wanted || sceneStagedBeat == beat.id || IsPanelOpen || challengeActive || OpeningOwnsHouse) return;
+            // The beat's one try waits for a house that could take it. As a season loads its people
+            // are still binding, and the frame a panel closes the house is still paused (its world
+            // ticks after this): a try spent then was refused, and the scene was never staged.
+            if (!npcMeetings.CanBeginSceneStage) return;
             sceneStagedBeat = beat.id;
             string room = VenueRoom(beat.venue);
             var ids = beat.involvedIds.Concat(beat.cast.Select(role => role.contestantId))

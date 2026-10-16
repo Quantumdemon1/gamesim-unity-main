@@ -126,6 +126,8 @@ namespace Gamesim.Episode
             if (hud == null) return;
             hud.EndPointerHold();
             hud.DropFocusAsked();
+            // And the largest text's pages: the board opens again on its first.
+            hud.ForgetLargestPages();
         }
 
         /// <summary>
@@ -383,6 +385,7 @@ namespace Gamesim.Episode
             }).ToList();
             spec.Page = freeTimePage;
             spec.ChoosePage = page => { freeTimePage = page; Render(); };
+            spec.Redraw = Render;
             spec.Talk = TalkFromCampaign;
             spec.Pick = OpenHouseguestScreen;
             spec.Moves = FreeTimeMoves(state, left);

@@ -20,10 +20,12 @@ Where it stands (lane W2-saves, 2026-10-15; review fixes 2026-10-16):
   are committed (2.2).
 - **One real defect found and repaired**: a schema-22 save from that version's first or middle builds was refused by
   every later build (finding F1).
-- **Two unversioned replay breaks found** in the history (F2, F3). Saves written inside those two windows continue
-  otherwise on today's build than on the build that wrote them. Neither can be gated after the fact, because a save
-  carries no field that sets it apart from later saves of the same schema. Both are reported to the owner (section 7).
-  The fixtures record each writer's own season as evidence and are referenced past the break.
+- **Two unversioned replay breaks found** in the history (F2, F3), **accepted as windows**: the lead accepted both on
+  2026-10-16, with the owner informed. Saves written inside those two windows continue otherwise on today's build than
+  on the build that wrote them. Neither can be gated after the fact, because a save carries no field that sets it
+  apart from later saves of the same schema, and a gate added now would move every later season of those rules
+  instead (section 7). They are accepted windows, not fixes: the fixtures record each writer's own season as evidence
+  and are referenced past the break.
 - **One schema number has two meanings**: the story-arcs line's own 14. This build refuses it whole (F4, the owner's
   call).
 - **Schema 16's step is frozen** (F6, 2026-10-16). It writes story rules 9 as a literal. Before, the next story
@@ -321,8 +323,8 @@ Beyond the 19 curated from GamesimVerify, they are not fixtures. The rest are th
 repository is public. Every cell they fall in already has a fixture.
 
 The owner's local saves were also checked against the windows of F2 and F3 (2026-10-16, read only: each file's
-`savedAt` and rules). Some unfinished ones were saved inside those windows. The count went to the owner in the lane
-report and is not listed here.
+`savedAt` and rules). Some unfinished ones were saved inside those windows. The count went to the lead in the lane's
+round-3 report and is not listed here.
 
 ## 3. Findings
 
@@ -362,7 +364,7 @@ report and is not listed here.
 - **The writers play on otherwise.** 5eedae12 and ce5b3d95 play these saves on before C7 to C9 (or C9) landed. Those
   steps share C0's boundary on purpose: "a season started on a build with R0 and C0 alone would play under the rules
   as they stand now, and move when C1 to C9 land behind the same boundary" (ACTIONS-DEALS-ALLIANCES-PLAN, "One PR for
-  wave B"). That window is the plan's own design, listed with F2 and F3 for the owner (section 7).
+  wave B"). That window is the plan's own design, recorded with F2 and F3 among the accepted windows (section 7).
 - Nothing else changed: no other schema's first and last builds differ in shape (1.2).
 
 **F2. The story's agency retune (8a5f2ecc, 09-28 13:51) moved story-v9 seasons without a version.**
@@ -377,7 +379,8 @@ report and is not listed here.
   cells. 7f398b94 and this build agree on all of them.
 - Bisected: 7b9e4b60 differs, 8a5f2ecc matches.
 - The window of affected saves is 7f398b94 to 8a5f2ecc^ (09-28 08:36 to 13:51 PDT): five hours.
-- **Found and reported for the owner, not settled here.** It cannot be gated after the fact: a save's envelope holds
+- **An accepted window, not a fix** (the lead, 2026-10-16, with the owner informed). It cannot be gated after the
+  fact: a save's envelope holds
   only its format, version, time, checksum and state, so a schema-20 agency save from the window cannot be told from
   one written after it. A gate added now would move every agency season since 8a5f2ecc instead. The retune applies
   under the agency rules only ("under agency: one play offer a week, and whispering takes the pact threshold"), so a
@@ -396,9 +399,9 @@ report and is not listed here.
 - The window of affected saves is 27b21b28 to 8ffc99cd^: the all-week rules shipped 10-09 09:09, the merge landed
   10-10 15:28. It holds every mode-2 season saved before the merge.
 - The merge keeps house-to-house changes out of the player's arcs (memory "Arcs belong to the player").
-- **Found and reported for the owner, not settled here.** As with F2, a schema-28 all-week save from the window
-  cannot be told from a later one, so no gate is possible after the fact; one added now would move every all-week and
-  mode-2 season since 10-10, the lead6 era included.
+- **An accepted window, not a fix** (the lead, 2026-10-16, with the owner informed). As with F2, a schema-28 all-week
+  save from the window cannot be told from a later one, so no gate is possible after the fact; one added now would
+  move every all-week and mode-2 season since 10-10, the lead6 era included.
 - The fixtures are referenced at 8ffc99cd and record their writers' digests as evidence.
 
 **F4. "Schema 14" has two meanings.**
@@ -509,8 +512,9 @@ report and is not listed here.
   another week. Every other undated line is held against every hidden ballot, whatever the player knows elsewhere.
   - Until then any undated line was excused whenever the ballot was known or public in another week, so a reader that
     leaked week w's ballot without a date passed if the voter happened to vote the same way in a known week.
-  - Measured under the Mono harness: taking the lean excuse away turns four fixtures red, each on a juror lean ("Quinn
-    Martinez · Emma · voted to evict them": s19, s21, s22 early, s25). The old public-reveal excuse is no longer
+  - Measured under the Mono harness: taking the lean excuse away turns four fixtures red, each on a juror lean of a
+    ballot the player knows from another week (s19 and s21 "Quinn Martinez · Emma · voted to evict them", s22 early
+    "Riley Johnson · Jordan …", s25 "Jamie Roberts · Jordan …"). The old public-reveal excuse is no longer
     needed by any fixture (all 172 cases green without it), so it was removed.
 - `BallotPrivacyTests` itself is unchanged and could meet the same case.
 
@@ -543,6 +547,10 @@ All tests run in EditMode. None are in the dotnet subset, which excludes the sav
 8. The state and text digests are pinned.
 9. The winner is the recorded one.
 10. An explicit save keeps the old bytes as the backup, and the reload is unchanged.
+
+Of its 56 cases, the eight read-only saves (1.3) replay three commands or none: for them the case is a load, a
+validation and a check of the end state, not replay coverage. The replay coverage is the 48 cells' mid-season
+fixtures.
 
 `EveryReaderRendersAnOldSaveWithoutAHiddenBallotOrOdds` reads every phase and stage the season passes through, and its
 end, through every simulation and presentation reader the screens print through. It does not run the screens' own
@@ -619,6 +627,8 @@ the frozen one none.
   - **The review fixes**, at 015fc720 (the seven mid-season fixtures, schema 22 re-referenced): OldSaveAcceptanceTests,
     PersistenceV22MigrationTests, PersistenceV23MigrationTests and BallotPrivacyTests, 213 of 213 pass.
     OldSaveAcceptanceTests is 172: 56 fixtures three ways, the manifest, the refused save and the two careers.
+  - **Full EditMode suite**, at 015fc720 (with the review fixtures): 8021 of 8021 pass, exactly the new floor.
+  - **The narrowed sentinel**, at b9211622: OldSaveAcceptanceTests, 172 of 172 pass.
 - **Review fixes under the Mono harness** (2026-10-16): OldSaveAcceptanceTests 172 of 172 at 015fc720 and again with
   the sentinel narrowed to the juror lean; PersistenceV23MigrationTests 26 of 26 apart from the two cases that read
   `Application.dataPath`, which only fail outside Unity. The 49 earlier fixtures' seventeen-reader pins were
@@ -750,18 +760,20 @@ The live pin `ShippedRulesTests.TheLiveSchemaStaysAt28UntilFrozenEpisodeV28Freez
 
 - The schema 1 and 8 cells cannot have a build-written fixture: no build that wrote schema 1 survives, and no build
   ever wrote schema 8 (2.1). They stay covered by synthetic payload tests.
-- **For the owner's information: three windows of saves that continue otherwise than their builds played them.**
+- **Accepted windows: three spans of saves that continue otherwise than their builds played them.** The lead accepted
+  F2 and F3 on 2026-10-16, with the owner informed; schema 22's wave-B window is the commitments plan's own choice.
   None can be gated after the fact: a save holds no build id, so a save from a window cannot be told from a later
   save of the same schema, and a gate added now would move every later season of those rules instead. Each loads,
   validates and finishes on today's build; only the weeks after the save differ from what its own build would have
-  played. From now on the gate holds: a season saved today replays byte for byte, or a fixture here goes red.
+  played. They are recorded as accepted windows, not as fixes, and the writers' digests stay in the manifest as the
+  evidence. From now on the gate holds: a season saved today replays byte for byte, or a fixture here goes red.
   - **F2**, schema-20 agency seasons saved by 7f398b94 to 8a5f2ecc^ (2026-09-28, five hours).
   - **F3**, all-week seasons of schema 28, mode 1 and mode 2, saved by 27b21b28 to 8ffc99cd^ (2026-10-09 09:09 to
     10-10 15:28): the all-week mode-1 testing and the first mode-2 seasons.
   - **Schema 22 during wave B** (2026-10-02 to 10-05): a season saved before C7 to C9 landed plays on under them.
     The commitments plan chose this ("One PR for wave B"), and the integration branch carried it until wave B
     reached main as one PR.
-  - Some of the owner's local saves fall inside the F2 and F3 windows (the lane report has the count).
+  - Some of the owner's local saves fall inside the F2 and F3 windows (the lane's round-3 report has the count).
 - One owner decision. It does not block this gate:
   - **F4**: should a story-arcs-14 file load?
     - No (today): it is refused whole and left untouched. It only ever came from one day's branch builds

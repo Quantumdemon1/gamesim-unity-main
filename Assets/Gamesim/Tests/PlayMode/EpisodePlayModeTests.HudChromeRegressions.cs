@@ -73,6 +73,72 @@ namespace Gamesim.Tests.PlayMode
             yield return ApplyTextSize(TextSize.Standard);
         }
 
+        /// <summary>A rect in its canvas's own units, which every frame's layout is written in.</summary>
+        private static Rect CanvasUnits(RectTransform rect, RectTransform canvas)
+        {
+            var corners = new Vector3[4];
+            rect.GetWorldCorners(corners);
+            Vector2 min = canvas.InverseTransformPoint(corners[0]), max = canvas.InverseTransformPoint(corners[2]);
+            return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
+        }
+
+        /// <summary>
+        /// The full HUD's save confirmation sits at the foot of the left gutter, and the gutter grows
+        /// down the frame with the text (RailFit). Lane S2a's note for the lead worked out from the
+        /// layout that the two meet at the larger sizes; measured here at every text size on every
+        /// review frame: the confirmation is drawn whole, inside the frame, and clear of the gutter's
+        /// rows and glass and of the chrome around it.
+        /// </summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator HudStatus_TheFullHudsSaveConfirmationClearsTheLeftGutterAtEveryTextSize()
+        {
+            HoldTheHouseForTheFixture();
+            director.SetCompactHud(false);
+            var found = new List<string>();
+            var frames = new[] { (1600, 900, "16:9"), (1200, 900, "4:3"), (1280, 800, "16:10"), (2560, 1080, "21:9") };
+            foreach (var size in TextSizes.All)
+            {
+                yield return ApplyTextSize(size);
+                foreach (var frame in frames)
+                {
+                    string where = "The full HUD at " + TextSizes.Name(size) + " text on the " + frame.Item3 + " frame";
+                    director.ClosePanels();
+                    yield return null;
+                    director.SaveNow();
+                    Assert.That(director.StatusMessage, Does.Contain("Saved locally."), where + ": the save succeeded.");
+                    yield return AtFrame(frame.Item1, frame.Item2, () =>
+                    {
+                        Canvas.ForceUpdateCanvases();
+                        var chip = ActiveRect(EpisodeHud.SaveFeedbackName);
+                        Assert.That(chip, Is.Not.Null, where + ": the save is confirmed on screen.");
+                        var label = chip.GetComponentsInChildren<TMP_Text>().Single();
+                        Assert.That(label.text, Is.EqualTo("Saved"), where);
+                        label.ForceMeshUpdate();
+                        if (label.isTextTruncated || label.isTextOverflowing) found.Add(where + ": the word is cut short.");
+                        var canvas = (RectTransform)HudCanvas().transform;
+                        var mine = CanvasUnits(chip, canvas);
+                        if (!TourEncloses(TourWorldRect(canvas), TourWorldRect(chip)))
+                            found.Add(where + ": the confirmation " + mine + " leaves the frame " + canvas.rect + ".");
+                        foreach (var name in new[] { "Rail ground", IconRail.RootName, "Next move", "Navigation", "Status", CastRail.RootName,
+                            "Exploration controls", "Brand", "Week chip", "House pill", "Objective", EpisodeHud.SpeechBarName })
+                        {
+                            var other = ActiveRect(name);
+                            if (other == null) continue;
+                            var theirs = CanvasUnits(other, canvas);
+                            if (mine.Overlaps(theirs))
+                                found.Add(where + ": the confirmation " + mine + " overlaps '" + name + "' " + theirs + " by "
+                                    + (Mathf.Min(mine.yMax, theirs.yMax) - Mathf.Max(mine.yMin, theirs.yMin)).ToString("0.#") + " units of height.");
+                        }
+                        var ground = ActiveRect("Rail ground");
+                        Debug.Log("[Gamesim] save chip: " + where + ": " + mine + " under a gutter of "
+                            + (ground != null ? CanvasUnits(ground, canvas).ToString() : "none") + " on a canvas of " + canvas.rect.size + ".");
+                    });
+                }
+            }
+            yield return ApplyTextSize(TextSize.Standard);
+            Assert.That(found, Is.Empty, string.Join("\n", found));
+        }
+
         /// <summary>
         /// PR-10: a volume drag is heard as it moves and kept once it is let go - one write, not one a
         /// percent. The preference file holds the old share until the pointer comes up.

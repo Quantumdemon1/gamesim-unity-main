@@ -617,7 +617,14 @@ namespace Gamesim.Episode
 
             Anchor(ground, new Vector2(0, 1), new Vector2(0, 1), new Vector2(8f, -(IconRail.Top - 6f)),
                 new Vector2(IconRail.Width + 12f, y - IconRail.Top + 12f));
+            railFoot = y + 6f;
         }
+
+        /// <summary>
+        /// How far down from the canvas's top edge the left gutter's glass reaches, as this render
+        /// laid it out: the save confirmation reads it to stay off the gutter's foot.
+        /// </summary>
+        private float railFoot;
 
         private RectTransform RailGroup(string name, float top, int rows)
         {

@@ -234,16 +234,6 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// The head of Season Complete (MOCKUP-PASS M5): the season's number over the title, the
-        /// season's numbers in tiles, its counts in a line, and the card beside the house's rail
-        /// rather than over it at both text sizes - the rail dimmed down to the cast strip, the
-        /// corner under it dimmed as the house is, the scrim still taking every click, and the
-        /// brand line in that corner. The ways on in one row at the standard and the larger text; at
-        /// the largest, where one row cannot draw every caption whole, in the suite's literal rows for
-        /// the frame (<see cref="ReportFooterRowsLargest"/>), the season scrolling under them with its
-        /// scrollbar and its hint, photographed on the 16:9 frame and the 4:3 in a batch run.
-        /// </summary>
-        /// <summary>
         /// The rows Season Complete's four ways on stand in at the largest text, on the 16:9 frame and
         /// on the 4:3 (the batch canvas is 4:3): the suite's literals for the owner's contract of
         /// 2026-10-15, measured on 2026-10-16. At the standard and the larger text they are one row.
@@ -272,6 +262,16 @@ namespace Gamesim.Tests.PlayMode
             return ways.Select(way => Mathf.Round(Corner(way, 1).y)).Distinct().Count();
         }
 
+        /// <summary>
+        /// The head of Season Complete (MOCKUP-PASS M5): the season's number over the title, the
+        /// season's numbers in tiles, its counts in a line, and the card beside the house's rail
+        /// rather than over it at both text sizes - the rail dimmed down to the cast strip, the
+        /// corner under it dimmed as the house is, the scrim still taking every click, and the
+        /// brand line in that corner. The ways on in one row at the standard and the larger text; at
+        /// the largest, where one row cannot draw every caption whole, in the suite's literal rows for
+        /// the frame (<see cref="ReportFooterRowsLargest"/>), the season scrolling under them with its
+        /// scrollbar and its hint, photographed on the 16:9 frame and the 4:3 in a batch run.
+        /// </summary>
         [UnityTest]
         public IEnumerator EndScreens_TheHeadCarriesTheSeasonNumberAndTheCardStandsBesideTheRail()
         {
@@ -302,10 +302,12 @@ namespace Gamesim.Tests.PlayMode
                     "One winner a competition, the final parts included.");
                 foreach (var part in new[] { title, numbers, ReportPart(SeasonReport.FooterName) })
                     AssertDecisionCopyFits(part);
-                // The ways on: one row, or at the largest text on this 4:3 canvas the suite's rows.
+                // The ways on: one row, or at the largest text the suite's rows for the frame the
+                // report is laid out on (a batch run's canvas is 4:3), read from its canvas's shape.
                 bool largest = textSize == TextSize.Largest;
-                Assert.That(ReportFooterRows(size), Is.EqualTo(largest ? ReportFooterRowsLargest.At4x3 : 1),
-                    size + "the ways on stand in " + (largest ? ReportFooterRowsLargest.At4x3 + " rows" : "one row") + ".");
+                int rows = largest ? PagesOn(LargestFrameOf(ReportPart(SeasonReport.FooterName)), ReportFooterRowsLargest) : 1;
+                Assert.That(ReportFooterRows(size), Is.EqualTo(rows),
+                    size + "the ways on stand in " + (largest ? rows + " rows" : "one row") + ".");
                 if (largest)
                 {
                     // The season still scrolls, under the taller footer, and says so.

@@ -395,13 +395,29 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// Every assertion of <see cref="AssertFinalePage"/> - each part whole on one page and in
+        /// order, the six ways on once each, the highlights at their counts, every label box at least
+        /// 1.3 times its type, the ring - and of <see cref="AssertTheFinalePageOnTheFrame"/>, on the HUD
+        /// laid out for the 16:9 frame and for the 4:3, each at the suite's literal pages for that frame
+        /// (review S4C-R1: the 16:9 frame is the one that pages, and its ways on are a page of their own).
+        /// </summary>
+        private IEnumerator AssertFinalePageOnBothFrames(string where, (int At16x9, int At4x3) largestPages) =>
+            AtBothFrames(frame =>
+            {
+                string on = where + " on the " + frame + " frame";
+                AssertFinalePage(on, PagesOn(frame, largestPages));
+                AssertTheFinalePageOnTheFrame(on, frame == "16:9" ? 16f / 9f : 4f / 3f, PagesOn(frame, largestPages));
+            });
+
+        /// <summary>
         /// A season played to its end and loaded from its save: the page at both text sizes, with
         /// every assertion of <see cref="AssertFinalePage"/>; a face the keyboard is on seen by its
         /// lifted edge; the keyboard ring walked; and, in a batch run, photographed on the 16:9 frame
         /// at each size and on the 4:3 one at the resting size, held on each without a scroll. Laid
         /// for the 16:9 frame and the 4:3 at each size, it is one page at the standard and the larger
         /// text, and at the largest the suite's literal pages for each frame (<see cref="FinalePagesPlayed"/>),
-        /// each photographed in a batch run.
+        /// every page held to every assertion of <see cref="AssertFinalePage"/> on its frame, and each
+        /// photographed in a batch run.
         /// </summary>
         [UnityTest]
         public IEnumerator FinalePage_TheCardsTheTallyAndTheWaysOnHoldAtBothTextSizes()
@@ -413,9 +429,8 @@ namespace Gamesim.Tests.PlayMode
                 if (larger) { director.ClosePanels(); yield return ApplyTextSize(textSize); }
                 yield return OpenFinalePanel();
                 string where = "The finale page" + (larger ? " " + TextScales.At(textSize) : "");
-                AssertFinalePage(where, FinalePagesPlayed.At4x3);
-                yield return AtBothFrames(frame => AssertTheFinalePageOnTheFrame(where + " on the " + frame + " frame",
-                    frame == "16:9" ? 16f / 9f : 4f / 3f, PagesOn(frame, FinalePagesPlayed)));
+                AssertFinalePage(where + " on the run's canvas", PagesOnTheHudNow(FinalePagesPlayed));
+                yield return AssertFinalePageOnBothFrames(where, FinalePagesPlayed);
 
                 // A face the keyboard is on is seen: its edge steps up from the others' (HudEmphasis).
                 var faces = FinalePart(EpisodeHud.FinaleJuryCardName).GetComponentsInChildren<Button>().Where(button => button.IsActive()).ToList();
@@ -433,10 +448,161 @@ namespace Gamesim.Tests.PlayMode
                     inspect: frame => AssertTheFinalePageOnTheFrame(where + " at 16:9", 16f / 9f, FinalePagesPlayed.At16x9));
                 if (!larger)
                     yield return CaptureFraming("finale-page-43", inspect: frame => AssertTheFinalePageOnTheFrame(where + " at 4:3", 4f / 3f), width: 1200, height: 900);
-                if (textSize == TextSize.Largest) yield return CaptureLargestPages("finale-page", FinalePagesPlayed);
+                if (textSize == TextSize.Largest) yield return CaptureLargestPagesPerFrame("finale-page", FinalePagesPlayed);
             }
             director.ClosePanels();
             yield return ApplyTextSize(false);
+        }
+
+        /// <summary>
+        /// Runs <paramref name="steps"/> - real presses and the frames they take - on the HUD laid out
+        /// for a frame of this shape the whole time, where <see cref="AtFrame"/> lays it out for one
+        /// synchronous look: through the capture's lens on a target of that size, the HUD rendered for
+        /// it. The steps are driven here, nested enumerators and all, so a failure in one still closes
+        /// the lens; then the HUD is put back on the screen's own shape.
+        /// </summary>
+        private IEnumerator AtFrameThroughout(int width, int height, System.Func<IEnumerator> steps)
+        {
+            var lens = new CaptureLens(cameraRig.ViewCamera, width, height);
+            var running = new Stack<IEnumerator>();
+            try
+            {
+                Canvas.ForceUpdateCanvases();
+                yield return null; yield return null;
+                Canvas.ForceUpdateCanvases();
+                RenderHudForTheCurrentCanvas();
+                yield return null;
+                Canvas.ForceUpdateCanvases();
+                var root = ((RectTransform)HudCanvas().transform).rect;
+                Assert.That(root.width / root.height, Is.EqualTo((float)width / height).Within(.01f),
+                    "The HUD is laid out for the " + width + "x" + height + " frame: " + root.size + ".");
+                running.Push(steps());
+                while (running.Count > 0)
+                {
+                    var top = running.Peek();
+                    if (!top.MoveNext()) { running.Pop(); continue; }
+                    if (top.Current is IEnumerator nested) { running.Push(nested); continue; }
+                    yield return top.Current;
+                }
+            }
+            finally
+            {
+                while (running.Count > 0) (running.Pop() as System.IDisposable)?.Dispose();
+                lens.Dispose();
+            }
+            Canvas.ForceUpdateCanvases();
+            yield return null; yield return null;
+            Canvas.ForceUpdateCanvases();
+            RenderHudForTheCurrentCanvas();
+            yield return null;
+        }
+
+        /// <summary>
+        /// The owner's contract of 2026-10-15 on the target frame (1920x1080, 16:9) at the largest text,
+        /// where the finale is the suite's two pages (<see cref="FinalePagesPlayed"/>) and the season's
+        /// only exits - the six ways on - are the second (review S4C-R1). Laid out for the 16:9 frame
+        /// for the whole walk: the page opens on its first, with no way on on it. From where it opens,
+        /// Tab walks the ring to "Next page" and Enter turns to the ways on, each offered once, the
+        /// keyboard staying on the pager; Enter on "Previous page" turns back. Opened again, the d-pad
+        /// walks down from where it opens to "Next page" and the pad's A turns to the ways on, and the
+        /// d-pad walks on from the pager to "Season report", where A opens the report. Every walk and
+        /// turn leaves the season, both random streams and every save byte as they were.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FinalePage_AtTheLargestTextOnTheWideFrameTheWaysOnAreAPageTheKeyboardAndPadReach()
+        {
+            yield return InstallFinishedSeason();
+            director.SuspendNpcAutonomyForDiagnostics();
+            yield return ApplyTextSize(TextSize.Largest);
+            yield return OpenFinalePanel();
+            yield return AtFrameThroughout(1600, 900, ReachTheFinalesWaysOnOnTheWideFrame);
+            director.ClosePanels();
+            yield return ApplyTextSize(false);
+        }
+
+        /// <summary>The walk of <see cref="FinalePage_AtTheLargestTextOnTheWideFrameTheWaysOnAreAPageTheKeyboardAndPadReach"/>, on the HUD laid out for 16:9.</summary>
+        private IEnumerator ReachTheFinalesWaysOnOnTheWideFrame()
+        {
+            string where = "The finale page " + TextScales.At(TextSize.Largest) + " on the 16:9 frame";
+            Assert.That(LargestFrameOf(HudCanvas()), Is.EqualTo("16:9"), where + " is laid out for that frame.");
+            int pages = FinalePagesPlayed.At16x9;
+            Assert.That(pages, Is.EqualTo(2), where + ": the suite names two pages for it.");
+            yield return Frames(2);
+            Assert.That(LargestPageIndicator(), Is.EqualTo((1, pages)), where + ": the page opens on the first of its " + pages + ".");
+            foreach (var caption in FinaleWaysOn)
+                Assert.That(FinaleControlCount(caption), Is.EqualTo(0), where + ": '" + caption + "' is on the ways on's page, not the first.");
+            int revision = director.Snapshot.revision;
+            string Walk(List<string> walked) => " Walked: [" + string.Join(" | ", walked) + "].";
+
+            // The keyboard: Tab walks the ring from where the page opens to "Next page", and Enter turns to the ways on.
+            Assert.That(Selected(), Is.Not.Null, where + ": the page opens with the keyboard on a control.");
+            var before = FreeTimePagerStateNow11();
+            var walked = new List<string> { SelectedName() };
+            for (int step = 0; step < 40 && SelectedName() != EpisodeHud.NextPageCaption; step++)
+            {
+                yield return PressKey(UnityEngine.InputSystem.Key.Tab);
+                walked.Add(SelectedName());
+            }
+            Assert.That(SelectedName(), Is.EqualTo(EpisodeHud.NextPageCaption), where + ": Tab walks the ring to '" + EpisodeHud.NextPageCaption + "'." + Walk(walked));
+            Assert.That(LargestPageIndicator(), Is.EqualTo((1, pages)), where + ": walking to the pager turns nothing.");
+            yield return PressKey(UnityEngine.InputSystem.Key.Enter);
+            yield return Frames(2);
+            Assert.That(LargestPageIndicator(), Is.EqualTo((2, pages)), where + ": Enter on '" + EpisodeHud.NextPageCaption + "' turns to the ways on,");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(revision), where + ": committing nothing.");
+            FreeTimeAssertPagerNeutral11(before, where + ", Tab's walk and Enter on '" + EpisodeHud.NextPageCaption + "'");
+            foreach (var caption in FinaleWaysOn)
+                Assert.That(FinaleControlCount(caption), Is.EqualTo(1), where + ": the ways on's page offers '" + caption + "' once.");
+            Assert.That(SelectedName(), Is.EqualTo(EpisodeHud.PreviousPageCaption), where + ": the keyboard stays on the pager as it turns.");
+
+            // Enter on the way back turns back.
+            before = FreeTimePagerStateNow11();
+            yield return PressKey(UnityEngine.InputSystem.Key.Enter);
+            yield return Frames(2);
+            Assert.That(LargestPageIndicator(), Is.EqualTo((1, pages)), where + ": Enter on '" + EpisodeHud.PreviousPageCaption + "' turns back,");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(revision), where + ": committing nothing.");
+            FreeTimeAssertPagerNeutral11(before, where + ", Enter on '" + EpisodeHud.PreviousPageCaption + "'");
+            Assert.That(SelectedName(), Is.EqualTo(EpisodeHud.NextPageCaption), where + ": and the keyboard is on the way on again.");
+
+            // The pad, from where the page opens: the d-pad walks the ring down to the way on and A turns to the ways on.
+            director.ClosePanels();
+            yield return null;
+            yield return OpenFinalePanel();
+            yield return Frames(2);
+            Assert.That(LargestPageIndicator(), Is.EqualTo((1, pages)), where + ": opened again, the page is on its first.");
+            revision = director.Snapshot.revision;
+            before = FreeTimePagerStateNow11();
+            walked = new List<string> { SelectedName() };
+            for (int step = 0; step < 40 && SelectedName() != EpisodeHud.NextPageCaption; step++)
+            {
+                yield return PressOnPad(UnityEngine.InputSystem.LowLevel.GamepadButton.DpadDown);
+                walked.Add(SelectedName());
+            }
+            Assert.That(SelectedName(), Is.EqualTo(EpisodeHud.NextPageCaption), where + ": the d-pad walks down to '" + EpisodeHud.NextPageCaption + "'." + Walk(walked));
+            Assert.That(LargestPageIndicator(), Is.EqualTo((1, pages)), where + ": walking to the pager turns nothing.");
+            yield return PressOnPad(UnityEngine.InputSystem.LowLevel.GamepadButton.South);
+            yield return Frames(2);
+            Assert.That(LargestPageIndicator(), Is.EqualTo((2, pages)), where + ": the pad's A on '" + EpisodeHud.NextPageCaption + "' turns to the ways on,");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(revision), where + ": committing nothing.");
+            FreeTimeAssertPagerNeutral11(before, where + ", the d-pad's walk and A on '" + EpisodeHud.NextPageCaption + "'");
+
+            // On the ways on's page the d-pad walks on from the pager to "Season report", and A there opens the report.
+            before = FreeTimePagerStateNow11();
+            walked = new List<string> { SelectedName() };
+            for (int step = 0; step < 40 && SelectedName() != SeasonReportRowCaption; step++)
+            {
+                yield return PressOnPad(UnityEngine.InputSystem.LowLevel.GamepadButton.DpadDown);
+                walked.Add(SelectedName());
+            }
+            Assert.That(SelectedName(), Is.EqualTo(SeasonReportRowCaption), where + ": the d-pad walks from the pager to '" + SeasonReportRowCaption + "'." + Walk(walked));
+            Assert.That(LargestPageIndicator(), Is.EqualTo((2, pages)), where + ": walking the ways on's page turns nothing.");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(revision), where + ": the walk commits nothing.");
+            FreeTimeAssertPagerNeutral11(before, where + ", the d-pad's walk from the pager to '" + SeasonReportRowCaption + "'");
+            yield return PressOnPad(UnityEngine.InputSystem.LowLevel.GamepadButton.South);
+            yield return Frames(2);
+            Assert.That(director.IsSeasonReportOpen, Is.True, where + ": the pad's A on '" + SeasonReportRowCaption + "' opens the report.");
+            ReportButtons(SeasonReport.CloseCaption)[0].onClick.Invoke();
+            yield return null;
+            Assert.That(director.IsSeasonReportOpen, Is.False, where + ": and Close closes it.");
         }
 
         /// <summary>
@@ -491,7 +657,8 @@ namespace Gamesim.Tests.PlayMode
         /// in no more than three rows, inside the card, the page holding without a scroll, and the
         /// highlights at the fixture's known counts; in a batch run photographed on the 16:9 frame. Laid
         /// for the 16:9 frame and the 4:3, it is one page at the standard and the larger text, and at
-        /// the largest the suite's literal pages for each frame (<see cref="FinalePagesFourteen"/>).
+        /// the largest the suite's literal pages for each frame (<see cref="FinalePagesFourteen"/>),
+        /// every page held to every assertion of <see cref="AssertFinalePage"/> on its frame.
         /// Then the tie fixture: equal halves of the bar, the jury called tied, and the highlights'
         /// vote tile saying so. Then a player in the final two: "You" on the chips of the ballots
         /// for them and "VOTED YOU" over the reason, as every reader names the player.
@@ -507,9 +674,8 @@ namespace Gamesim.Tests.PlayMode
                 if (larger) { director.ClosePanels(); yield return ApplyTextSize(textSize); }
                 yield return OpenFinalePanel();
                 string where = "A jury of fourteen" + (larger ? " " + TextScales.At(textSize) : "");
-                AssertFinalePage(where, FinalePagesFourteen.At4x3);
-                yield return AtBothFrames(frame => AssertTheFinalePageOnTheFrame(where + " on the " + frame + " frame",
-                    frame == "16:9" ? 16f / 9f : 4f / 3f, PagesOn(frame, FinalePagesFourteen)));
+                AssertFinalePage(where + " on the run's canvas", PagesOnTheHudNow(FinalePagesFourteen));
+                yield return AssertFinalePageOnBothFrames(where, FinalePagesFourteen);
                 var jury = FinalePart(EpisodeHud.FinaleJuryCardName);
                 var faces = jury.GetComponentsInChildren<Button>().Where(button => button.IsActive()).ToList();
                 Assert.That(faces, Has.Count.EqualTo(14), where + ": fourteen faces.");

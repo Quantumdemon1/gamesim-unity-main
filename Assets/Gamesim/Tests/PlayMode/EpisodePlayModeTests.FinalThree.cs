@@ -284,12 +284,32 @@ namespace Gamesim.Tests.PlayMode
         private static int PagesOn(string frame, (int At16x9, int At4x3) pages) => frame == "16:9" ? pages.At16x9 : pages.At4x3;
 
         /// <summary>
+        /// The frame <paramref name="part"/> is laid out on now, by its root canvas's shape, in the
+        /// names AtBothFrames gives the frames and the suite's literals are kept under: "16:9" or "4:3"
+        /// (a batch run's canvas is 4:3; an editor's Game view may be either). Any other shape has no
+        /// literal, and fails saying so rather than borrowing one (review S4C-R3).
+        /// </summary>
+        private static string LargestFrameOf(Component part)
+        {
+            var root = ((RectTransform)part.GetComponentInParent<Canvas>().rootCanvas.transform).rect;
+            float aspect = root.width / root.height;
+            if (Mathf.Abs(aspect - 16f / 9f) < .02f) return "16:9";
+            if (Mathf.Abs(aspect - 4f / 3f) < .02f) return "4:3";
+            Assert.Fail("The suite names the largest text's pages for the 16:9 and 4:3 frames only; this canvas is " + root.size + ".");
+            return null;
+        }
+
+        /// <summary>A fixture's literal for the frame the HUD is laid out on now (<see cref="LargestFrameOf"/>), never the batch canvas's assumed.</summary>
+        private int PagesOnTheHudNow((int At16x9, int At4x3) pages) => PagesOn(LargestFrameOf(HudCanvas()), pages);
+
+        /// <summary>
         /// In a batch run at the largest text: the screen open now photographed on the 16:9 frame and on
         /// the 4:3, every one of the pages the suite names for each (<paramref name="pages"/>), as
         /// <c>{name}-largest-{16x9|4x3}-p{n}.png</c>, so the pages can be read as a player sees them;
-        /// each frame's pager is read to say that page of that many.
+        /// each frame's pager is read to say that page of that many. Named for its per-frame literals,
+        /// apart from the nomination suite's own capture helper.
         /// </summary>
-        private IEnumerator CaptureLargestPages(string name, (int At16x9, int At4x3) pages)
+        private IEnumerator CaptureLargestPagesPerFrame(string name, (int At16x9, int At4x3) pages)
         {
             foreach (var frame in new[] { (Width: 1600, Height: 900, Name: "16x9", Pages: pages.At16x9), (Width: 1200, Height: 900, Name: "4x3", Pages: pages.At4x3) })
                 for (int page = 1; page <= frame.Pages; page++)
@@ -340,7 +360,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return OpenFinalePanel();
                 yield return Frames(3);
                 string where = "The final choice" + (larger ? " " + TextScales.At(textSize) : "");
-                AssertTheFinalChoicePage(state, where + " on the batch canvas", FinalChoiceEightPages.At4x3);
+                AssertTheFinalChoicePage(state, where + " on the run's canvas", PagesOnTheHudNow(FinalChoiceEightPages));
                 yield return AtBothFrames(frame => AssertTheFinalChoicePage(state, where + " on the " + frame + " frame", PagesOn(frame, FinalChoiceEightPages)));
                 if (Application.isBatchMode)
                     yield return CaptureFraming("endgame-final-choice" + TextScales.Suffix(textSize), settle: false,
@@ -545,7 +565,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return OpenFinalePanel();
                 yield return Frames(3);
                 string where = "A jury of thirteen" + (larger ? " " + TextScales.At(textSize) : "");
-                AssertTheFinalChoicePage(state, where + " on the batch canvas", FinalChoiceThirteenPages.At4x3);
+                AssertTheFinalChoicePage(state, where + " on the run's canvas", PagesOnTheHudNow(FinalChoiceThirteenPages));
                 yield return AtBothFrames(frame => AssertTheFinalChoicePage(state, where + " on the " + frame + " frame", PagesOn(frame, FinalChoiceThirteenPages)));
                 // Every kind of chip on the first finalist's card, as the read says it.
                 var card = LastActive(EpisodeHud.FinalistCardPrefix + first.name);
@@ -560,7 +580,7 @@ namespace Gamesim.Tests.PlayMode
                     yield return CaptureFraming("endgame-final-choice-13", settle: false,
                         inspect: frame => AssertTheFinalChoicePage(state, where + " in the capture's 16:9 frame", FinalChoiceThirteenPages.At16x9));
                 if (Application.isBatchMode && textSize == TextSize.Largest)
-                    yield return CaptureLargestPages("endgame-final-choice-13", FinalChoiceThirteenPages);
+                    yield return CaptureLargestPagesPerFrame("endgame-final-choice-13", FinalChoiceThirteenPages);
                 director.ClosePanels();
                 yield return null;
             }
@@ -613,7 +633,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return OpenFinalePanel();
                 yield return Frames(3);
                 string where = "Every deal and a jury of thirteen" + (larger ? " " + TextScales.At(textSize) : "");
-                AssertTheFinalChoicePage(state, where + " on the batch canvas", FinalChoiceEveryDealPages.At4x3, consequenceMayGo: true);
+                AssertTheFinalChoicePage(state, where + " on the run's canvas", PagesOnTheHudNow(FinalChoiceEveryDealPages), consequenceMayGo: true);
                 yield return AtBothFrames(frame => AssertTheFinalChoicePage(state, where + " on the " + frame + " frame", PagesOn(frame, FinalChoiceEveryDealPages), consequenceMayGo: true));
                 // The breaches and the either-way line stand with the choice: on its page, where the largest text pages.
                 ShowPageWith(EpisodeHud.EitherWayName);
@@ -627,7 +647,7 @@ namespace Gamesim.Tests.PlayMode
                     yield return CaptureFraming("endgame-final-choice-every-deal", settle: false,
                         inspect: frame => AssertTheFinalChoicePage(state, where + " in the capture's 16:9 frame", FinalChoiceEveryDealPages.At16x9, consequenceMayGo: true));
                 if (Application.isBatchMode && textSize == TextSize.Largest)
-                    yield return CaptureLargestPages("endgame-final-choice-every-deal", FinalChoiceEveryDealPages);
+                    yield return CaptureLargestPagesPerFrame("endgame-final-choice-every-deal", FinalChoiceEveryDealPages);
                 director.ClosePanels();
                 yield return null;
             }
@@ -637,14 +657,18 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// The owner's contract of 2026-10-15 at the final choice, where it matters most: at the largest
-        /// text the worst case - every deal and a jury of thirteen - is two pages on the batch run's 4:3
-        /// canvas (<see cref="FinalChoiceEveryDealPages"/>) and its irreversible choice is on the second.
+        /// text the worst case - every deal and a jury of thirteen - is two pages on either frame
+        /// (<see cref="FinalChoiceEveryDealPages"/>, read for the frame the run is laid out on) and its
+        /// irreversible choice is on the second.
         /// The page opens on the first, which has no choice on it, with the keyboard on a control that
         /// commits nothing, so an Enter the player did not aim commits nothing and leaves the keyboard
         /// off the choices, wherever it turns. The mouse's press on "Next page" turns to
-        /// the choice and commits nothing, the keyboard staying on the pager and no card lit; Enter there
-        /// turns back, and the pad's A on "Next page" turns on again. Tab then takes the keyboard to a
-        /// choice, whose card lights, and Enter commits that one choice and nothing else.
+        /// the choice, the keyboard staying on the pager and no card lit; Enter there turns back. Opened
+        /// again, the d-pad walks the ring from where the page opens down to "Next page" and the pad's A
+        /// turns on again; on the choice's page the d-pad walks from the pager to a choice, whose card
+        /// lights, and on round the ring back to the pager. Every turn and walk leaves the season, both
+        /// random streams and every save byte as they were. Tab then takes the keyboard to a choice,
+        /// whose card lights, and Enter commits that one choice and nothing else.
         /// </summary>
         [UnityTest]
         public IEnumerator Endgame_AtTheLargestTextTheChoiceIsTheSecondPageAndTheMouseKeyboardAndPadReachIt()
@@ -654,8 +678,8 @@ namespace Gamesim.Tests.PlayMode
             var state = director.Snapshot;
             var others = FinalistRead.Others(state);
             Assert.That(others, Has.Count.EqualTo(2), "Two finalists to choose between.");
-            int pages = FinalChoiceEveryDealPages.At4x3;
-            Assert.That(pages, Is.EqualTo(2), "The worst case is two pages on the batch run's canvas.");
+            int pages = PagesOnTheHudNow(FinalChoiceEveryDealPages);
+            Assert.That(pages, Is.EqualTo(2), "The worst case is two pages on the frame this run is laid out on.");
             bool Lit(ContestantState finalist) => LastActive(EpisodeHud.FinalistCardPrefix + finalist.name).Find(EpisodeHud.ChosenEdgeName).gameObject.activeSelf;
             bool AnyChoiceLive() => director.GetComponentsInChildren<Button>().Any(button => button.IsActive() && button.IsInteractable() && IsFinalChoiceControl(button.name));
             yield return ApplyTextSize(TextSize.Largest);
@@ -678,13 +702,16 @@ namespace Gamesim.Tests.PlayMode
             ShowFirstPage();
             Assert.That(LargestPageIndicator(), Is.EqualTo((1, pages)), where + ": back on the first page.");
 
-            // The mouse: a press where "Next page" stands turns to the choice, committing nothing -
-            // once the last render has been drawn, as a player's press always comes after.
+            // The mouse: a press where "Next page" stands turns to the choice, committing nothing - the
+            // season, both random streams and every save byte as they were - once the last render has
+            // been drawn, as a player's press always comes after.
             yield return null; yield return null;
+            var before = FreeTimePagerStateNow11();
             var next = ButtonWithCaption(EpisodeHud.NextPageCaption);
             Assert.That(PressAt(ScreenCentre(next)), Is.SameAs(next.gameObject), where + ": the press lands on '" + EpisodeHud.NextPageCaption + "'.");
             Assert.That(LargestPageIndicator(), Is.EqualTo((2, pages)), where + ": the press turns to the choice's page,");
             Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision), "committing nothing.");
+            FreeTimeAssertPagerNeutral11(before, where + ", the mouse on '" + EpisodeHud.NextPageCaption + "'");
             Assert.That(AnyChoiceLive(), Is.True, where + ": the choice is on the second page.");
             yield return null; yield return null;
             var focus = EventSystem.current.currentSelectedGameObject;
@@ -693,15 +720,64 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(others.Any(Lit), Is.False, where + ": no card is lit as the choice's page opens.");
 
             // The keyboard: Enter on the way back turns back, and commits nothing.
+            before = FreeTimePagerStateNow11();
             yield return PressKey(Key.Enter);
             yield return null;
             Assert.That(LargestPageIndicator(), Is.EqualTo((1, pages)), where + ": Enter on '" + EpisodeHud.PreviousPageCaption + "' turns back,");
             Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision), "committing nothing.");
+            FreeTimeAssertPagerNeutral11(before, where + ", Enter on '" + EpisodeHud.PreviousPageCaption + "'");
 
-            // The pad: A on the way on.
-            yield return PadSubmitCaption(EpisodeHud.NextPageCaption);
+            // The pad, from where the page opens: the d-pad walks the panel's ring down to the way on -
+            // the pager is in the ring like any control, and the first page has no choice to pass - and
+            // A on it turns to the choice. Opened again on its first page, committing nothing.
+            director.ClosePanels();
+            yield return null;
+            yield return OpenFinalePanel();
+            yield return Frames(3);
+            Assert.That(LargestPageIndicator(), Is.EqualTo((1, pages)), where + ": opened again, the page is on its first.");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision), where + ": opening it again commits nothing.");
+            before = FreeTimePagerStateNow11();
+            var walked = new List<string> { SelectedName() };
+            for (int step = 0; step < 40 && SelectedName() != EpisodeHud.NextPageCaption; step++)
+            {
+                yield return PressOnPad(UnityEngine.InputSystem.LowLevel.GamepadButton.DpadDown);
+                walked.Add(SelectedName());
+            }
+            Assert.That(SelectedName(), Is.EqualTo(EpisodeHud.NextPageCaption),
+                where + ": the d-pad walks down to '" + EpisodeHud.NextPageCaption + "'. Walked: [" + string.Join(" | ", walked) + "].");
+            Assert.That(LargestPageIndicator(), Is.EqualTo((1, pages)), where + ": walking to the pager turns nothing.");
+            yield return PressOnPad(UnityEngine.InputSystem.LowLevel.GamepadButton.South);
+            yield return Frames(2);
             Assert.That(LargestPageIndicator(), Is.EqualTo((2, pages)), where + ": the pad's A on '" + EpisodeHud.NextPageCaption + "' turns to the choice.");
             Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision), "Still nothing committed.");
+            FreeTimeAssertPagerNeutral11(before, where + ", the d-pad's walk and A on '" + EpisodeHud.NextPageCaption + "'");
+            Assert.That(SelectedName(), Is.EqualTo(EpisodeHud.PreviousPageCaption), where + ": the pad's turn leaves the keyboard on the pager,");
+            Assert.That(others.Any(Lit), Is.False, where + ": and lights no card.");
+
+            // On the choice's page the d-pad walks from the pager to a choice - its card lights, and A is
+            // never pressed on it - and on round the ring back to the pager, turning and committing nothing.
+            before = FreeTimePagerStateNow11();
+            walked = new List<string> { SelectedName() };
+            for (int step = 0; step < 40 && !IsFinalChoiceControl(SelectedName()); step++)
+            {
+                yield return PressOnPad(UnityEngine.InputSystem.LowLevel.GamepadButton.DpadDown);
+                walked.Add(SelectedName());
+            }
+            Assert.That(IsFinalChoiceControl(SelectedName()), Is.True,
+                where + ": the d-pad walks from the pager to a choice. Walked: [" + string.Join(" | ", walked) + "].");
+            string padOn = SelectedName();
+            var padLit = others.Single(finalist => padOn == FinalChoiceWords.Caption(finalist.name, others.Single(other => other.id != finalist.id).name));
+            Assert.That(Lit(padLit), Is.True, where + ": the card of the choice the pad is on is lit.");
+            for (int step = 0; step < 40 && SelectedName() != EpisodeHud.PreviousPageCaption; step++)
+            {
+                yield return PressOnPad(UnityEngine.InputSystem.LowLevel.GamepadButton.DpadDown);
+                walked.Add(SelectedName());
+            }
+            Assert.That(SelectedName(), Is.EqualTo(EpisodeHud.PreviousPageCaption),
+                where + ": and on round the ring back to the pager. Walked: [" + string.Join(" | ", walked) + "].");
+            Assert.That(LargestPageIndicator(), Is.EqualTo((2, pages)), where + ": walking the choice's page turns nothing.");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision), "Still nothing committed.");
+            FreeTimeAssertPagerNeutral11(before, where + ", the d-pad's walk from the pager to a choice and back");
 
             // Tab to a choice: its card lights, and Enter commits that one and nothing else.
             GameObject selected = null;

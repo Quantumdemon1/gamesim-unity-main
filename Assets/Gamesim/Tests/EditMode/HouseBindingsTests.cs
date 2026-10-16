@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Gamesim.House;
 using Gamesim.Persistence;
 using Gamesim.Presentation;
 using NUnit.Framework;
 using UnityEngine.InputSystem;
+using UnityEngine.TestTools;
 
 namespace Gamesim.Tests.EditMode
 {
@@ -123,6 +125,8 @@ namespace Gamesim.Tests.EditMode
                     Assert.That(KeyBindings.Check(live, "Shortcuts", "Notebook", KeyBindings.GamepadScheme, "<Gamepad>/dpad/down"),
                         Is.EqualTo("D-pad down moves between a panel's controls, and Notebook works with a panel open. Notebook keeps its button."));
                     Assert.That(KeyBindings.Check(live, "Shortcuts", "Diary", KeyBindings.GamepadScheme, "<Gamepad>/dpad/left"), Is.Null);
+                    Assert.That(KeyBindings.Check(live, "Shortcuts", "Diary", KeyBindings.GamepadScheme, "<Gamepad>/dpad/down"),
+                        Is.EqualTo("D-pad down moves between the controls on screen. Diary keeps its button."), "but not its down, which walks the HUD's ring.");
                     Assert.That(KeyBindings.Check(HouseBindings.LiveBindings(actions, null), "Shortcuts", "Notebook", KeyBindings.GamepadScheme, "<Gamepad>/dpad/down"), Is.Null,
                         "Without the UI module's navigation, nothing the house reads refuses it: the check needs the module's.");
                     foreach (var target in KeyBindings.Targets)
@@ -131,6 +135,32 @@ namespace Gamesim.Tests.EditMode
                                 Assert.That(KeyBindings.Check(live, target, scheme, KeyBindings.ShippedPath(target, scheme)), Is.Null,
                                     target.Name + " on " + scheme + " may have its own back.");
                 }
+            }
+            finally { UnityEngine.Object.DestroyImmediate(ui.asset); }
+        }
+
+        /// <summary>
+        /// A choice kept before the panels' navigation was refused it (D4) - the notebook on the
+        /// D-pad's down, the diary on it - reads as shipped as the session loads, against the UI
+        /// module's Navigate, and says why; every other choice stands.
+        /// </summary>
+        [Test]
+        public void AChoiceKeptBeforeTheNavigationsRules_ReadsAsShippedAsItLoads()
+        {
+            const string kept = "{\"Shortcuts/Diary@Gamepad\":\"<Gamepad>/dpad/down\",\"Shortcuts/Interact@Gamepad\":\"<Gamepad>/dpad/left\","
+                + "\"Shortcuts/Notebook@Gamepad\":\"<Gamepad>/dpad/down\"}";
+            var ui = new DefaultInputActions();
+            try
+            {
+                LogAssert.Expect(UnityEngine.LogType.Warning, new Regex(
+                    @"^Gamesim controls read as shipped where they could not be read: .*\(Shortcuts/Notebook@Gamepad\).*\(Shortcuts/Diary@Gamepad\).*keeps its button\.$"));
+                HouseBindings.Load(new KeptBindings(kept), ui.UI.Navigate);
+                Assert.That(HouseBindings.Current.Count, Is.EqualTo(1));
+                Assert.That(HouseBindings.Current.Get("Shortcuts", "Interact", KeyBindings.GamepadScheme), Is.EqualTo("<Gamepad>/dpad/left"), "Interact keeps the D-pad's left,");
+                Assert.That(HouseBindings.Current.Get("Shortcuts", "Notebook", KeyBindings.GamepadScheme), Is.Null, "the notebook's D-pad down reads as shipped,");
+                Assert.That(HouseBindings.Current.Get("Shortcuts", "Diary", KeyBindings.GamepadScheme), Is.Null, "and the diary's.");
+                HouseBindings.Load(new KeptBindings(kept), null);
+                Assert.That(HouseBindings.Current.Count, Is.EqualTo(3), "Without the UI module's navigation to ask, the kept text stands as it reads.");
             }
             finally { UnityEngine.Object.DestroyImmediate(ui.asset); }
         }

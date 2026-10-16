@@ -395,6 +395,17 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsPanelOpen, Is.True);
             yield return null; yield return null;
 
+            // With no panel open the HUD's ring walks up and down with the D-pad, so its down is no
+            // house shortcut's to take either: the diary keeps its left (D4's review).
+            yield return PressPad(pad, GamepadButton.RightStick);
+            FindButton("Rebind Diary").onClick.Invoke();
+            yield return null;
+            Assert.That(HouseBindings.Listening, Is.True);
+            yield return PressPad(pad, GamepadButton.DpadDown);
+            Assert.That(RebindLineShown(), Is.EqualTo("D-pad down moves between the controls on screen. Diary keeps its button."));
+            Assert.That(HouseBindings.Current.Get("Shortcuts", "Diary", KeyBindings.GamepadScheme), Is.EqualTo("<Gamepad>/dpad/left"), "The diary keeps the D-pad's left.");
+            yield return null; yield return null;
+
             // B is the pad's way out, and is never taken: listening on the pad, B cancels (lane-input-5).
             yield return PressPad(pad, GamepadButton.RightStick);
             FindButton("Rebind Diary").onClick.Invoke();

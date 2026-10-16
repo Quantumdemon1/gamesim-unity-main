@@ -30,8 +30,10 @@ namespace Gamesim.Presentation
     /// whole control answers for its parts - the pan's left stick for each of its directions. The
     /// event system's navigation moves between a panel's controls in every panel, so an action the
     /// house answers to over a panel (<see cref="Target.OverPanels"/>) is refused its keys and
-    /// buttons too (<see cref="PanelMap"/>). An action's own key or button as shipped is always its
-    /// to take back, beside the bindings nobody rebinds that shared it as shipped.</item>
+    /// buttons too (<see cref="PanelMap"/>); and with no panel open it walks the HUD's ring up and
+    /// down, so no house shortcut may have its up or its down. An action's own key or button as
+    /// shipped is always its to take back, beside the bindings nobody rebinds that shared it as
+    /// shipped.</item>
     /// <item><b>Kept.</b> As one JSON object, "Map/Action@Scheme" - "Map/Action#Part@Scheme" for a
     /// composite's part - to the control's path, under <see cref="PreferenceKey"/>: PlayerPrefs, or a
     /// playtest root's own file (A13).</item>
@@ -67,8 +69,11 @@ namespace Gamesim.Presentation
             /// <summary>
             /// Whether the house answers to it while a panel is open: the notebook's key jumps to its
             /// page and the save's saves from inside any panel (EpisodeDirector.Update), where the
-            /// event system's navigation is moving between the panel's controls. The rest wait for
-            /// the panels to close: the diary, Interact, the overview and your moves, and the camera.
+            /// event system's navigation is moving between the panel's controls. The rest act with no
+            /// panel open - the diary, Interact, the overview and your moves, and the camera - but for
+            /// the house challenge's Hit, which is read over the timing bar's panel, a board no
+            /// shipped season plays (EpisodeDirector.StartTimingBarForDiagnostics); its ring walks up
+            /// and down only, as every house shortcut's navigation does (<see cref="PanelMap"/>).
             /// </summary>
             public bool OverPanels { get; }
             public Target(string map, string action, string name, string part = null, bool onPad = true, bool overPanels = false)
@@ -129,8 +134,13 @@ namespace Gamesim.Presentation
         /// check reads it beside the house's own bindings (HouseBindings.LiveBindings), and refuses
         /// its keys and buttons to an action the house answers to over a panel
         /// (<see cref="Target.OverPanels"/>): a D-pad press meant to move down a list must not open
-        /// the notebook. The rest act only with no panel open, as the overview's and your moves'
-        /// D-pad buttons always have.
+        /// the notebook. With no panel open the HUD keeps a control focused and its ring walks up
+        /// and down (EpisodeHud), so Navigate's up and down - the D-pad's, the left stick's, W, S
+        /// and the up and down arrows - are no house shortcut's either: a press meant to walk the
+        /// ring must not send the player to the diary. Left and right, which the rings never use,
+        /// stay free, as your moves' D-pad right always has; an action's own as shipped is its own
+        /// (the overview's D-pad up); and the camera's keys move the view beside the ring, as the
+        /// pan's WASD and arrows always have.
         /// </summary>
         public const string PanelMap = "UI", PanelNavigate = "Navigate";
 
@@ -234,7 +244,8 @@ namespace Gamesim.Presentation
         /// path is another device's, it is a way out the game keeps, or another binding of the same
         /// context already answers to it (<paramref name="live"/>, every binding as the actions hold it
         /// now - composites' parts included, and the event system's navigation,
-        /// <see cref="PanelMap"/>). A binding to a whole control answers for its parts: the pan's left
+        /// <see cref="PanelMap"/>: all of it for the notebook and the save, its up and down for every
+        /// other house shortcut). A binding to a whole control answers for its parts: the pan's left
         /// stick for each of its directions, the panels' D-pad for each of its four. An action's own
         /// binding, or the same part of its composite, is never a conflict with itself; and its own
         /// key or button as shipped is always its to take back - beside the bindings nobody rebinds
@@ -260,9 +271,13 @@ namespace Gamesim.Presentation
                     if (binding.Scheme != scheme || !Answers(binding.Path, path)) continue;
                     if (binding.Map == PanelMap)
                     {
-                        // The panels' navigation: only an action that works over a panel may not share it.
-                        if (target.OverPanels && !shipped)
+                        if (shipped) continue;
+                        // The panels' navigation: an action that works over a panel may share none of it,
+                        if (target.OverPanels)
                             return words + " moves between a panel's controls, and " + target.Name + " works with a panel open. " + keeps;
+                        // and no house shortcut its up or down, which walk the HUD's ring with no panel open.
+                        if (context == "House" && target.Part == null && Vertical(binding, path))
+                            return words + " moves between the controls on screen. " + keeps;
                         continue;
                     }
                     if (ContextOf(binding.Map) != context) continue;
@@ -275,6 +290,20 @@ namespace Gamesim.Presentation
                     return words + " already does something else " + (context == "House" ? "in the house" : "on a competition's board") + ". " + keeps;
                 }
             return null;
+        }
+
+        /// <summary>
+        /// Whether a navigation binding answers to <paramref name="chosen"/> as an up or a down - the
+        /// way the HUD's rings walk: a composite's up or down part (W, the up arrow, the left stick's
+        /// up), or the up or down of a whole control bound as one (the D-pad's).
+        /// </summary>
+        private static bool Vertical(Binding navigation, string chosen)
+        {
+            if (navigation.Part != null)
+                return string.Equals(navigation.Part, "up", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(navigation.Part, "down", StringComparison.OrdinalIgnoreCase);
+            string control = navigation.Path != null && navigation.Path.Length > chosen.Length ? navigation.Path : chosen;
+            return control.EndsWith("/up", StringComparison.OrdinalIgnoreCase) || control.EndsWith("/down", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -339,6 +368,31 @@ namespace Gamesim.Presentation
                 bindings.overrides[Key(target, scheme)] = path;
             }
             return bindings;
+        }
+
+        /// <summary>
+        /// Drops every choice the conflict check refuses against <paramref name="live"/>, and says
+        /// which and why, or null when every choice stands. A kept text cannot see the event system's
+        /// navigation (<see cref="PanelMap"/>), so a choice made before its rules - the notebook on
+        /// the D-pad's down, the diary on it - still reads; the editor drops it as it loads, against
+        /// the navigation alone, as every other rule was checked when the choice was made.
+        /// </summary>
+        public string DropRefused(IEnumerable<Binding> live)
+        {
+            var bindings = live != null ? new List<Binding>(live) : new List<Binding>();
+            string reason = null;
+            foreach (var target in Targets)
+                foreach (var scheme in new[] { KeyboardScheme, GamepadScheme })
+                {
+                    string path = Get(target, scheme);
+                    if (path == null) continue;
+                    string refusal = Check(bindings, target, scheme, path);
+                    if (refusal == null) continue;
+                    overrides.Remove(Key(target, scheme));
+                    string said = "a kept control (" + Key(target, scheme) + ") is not one a player may choose now: " + refusal.TrimEnd('.');
+                    reason = reason == null ? said : reason + "; " + said;
+                }
+            return reason;
         }
 
         private static bool IsReserved(string path)

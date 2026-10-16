@@ -54,11 +54,20 @@ namespace Gamesim.House
         private static bool Holds(int now, int stamped) => stamped != int.MinValue && now >= stamped && now - stamped <= 1;
 
         /// <summary>The session's choices from its store: PlayerPrefs, a root's own file, or the defaults. Applied at once everywhere.</summary>
-        public static void Load(IPreferenceStore store)
+        public static void Load(IPreferenceStore store) => Load(store, PanelNavigation());
+
+        /// <summary>
+        /// The session's choices from its store, less any the panels' navigation -
+        /// <paramref name="panelNavigation"/>, the UI module's Navigate - now refuses: a choice kept
+        /// before its rules (D4) is read as shipped, with the reason. Applied at once everywhere.
+        /// </summary>
+        public static void Load(IPreferenceStore store, InputAction panelNavigation)
         {
             Cancel();
             string json = store != null ? store.GetString(KeyBindings.PreferenceKey, "") : "";
             current = KeyBindings.Parse(json, out var reason);
+            string refused = current.DropRefused(LiveBindings(null, panelNavigation));
+            if (refused != null) reason = reason == null ? refused : reason + "; " + refused;
             if (reason != null) Debug.LogWarning("Gamesim controls read as shipped where they could not be read: " + reason + ".");
             ApplyEverywhere();
         }
@@ -154,7 +163,8 @@ namespace Gamesim.House
         /// <summary>
         /// Every binding of the actions as they stand, and <paramref name="panelNavigation"/>'s - the
         /// UI module's Navigate - as the <see cref="KeyBindings.PanelMap"/>'s: the D-pad, the sticks,
-        /// WASD and the arrows that move between a panel's controls (D4).
+        /// WASD and the arrows that move between a panel's controls, and up and down the HUD's ring
+        /// with no panel open (D4).
         /// </summary>
         public static List<KeyBindings.Binding> LiveBindings(HouseCameraActions actions, InputAction panelNavigation)
         {

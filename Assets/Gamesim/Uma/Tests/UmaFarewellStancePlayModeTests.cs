@@ -17,6 +17,10 @@ namespace Gamesim.Uma.Tests
     /// </summary>
     public sealed class UmaFarewellStancePlayModeTests
     {
+        // Wall-clock bounds on waits that end on a state. They decide only when a wait gives up, so they
+        // are generous: one stalled frame (a GC, an atlas, a shader) must not read as a behaviour failure.
+        private const float StateWait = 3f, TakeWait = 10f;
+
         private GameObject cast, holder;
         private CharacterPresentation body;
         private Animator animator;
@@ -32,8 +36,10 @@ namespace Gamesim.Uma.Tests
             person.id = "alex-chen";
             body = CharacterPresentation.Attach(holder, person, Color.white);
             body.SetReducedMotion(false);
+            // Bounded by the clock alone: a batchmode frame can be under a millisecond, so a frame count
+            // would give up long before a UMA body has assembled.
             float by = Time.realtimeSinceStartup + 30f;
-            for (int frame = 0; frame < 900 && Time.realtimeSinceStartup < by; frame++)
+            while (Time.realtimeSinceStartup < by)
             {
                 if (body.TryReadFarewell(out var pose) && pose.Idle) break;
                 yield return null;
@@ -64,7 +70,7 @@ namespace Gamesim.Uma.Tests
             body.React(CharacterPresentation.Reaction.Farewell);
             Assert.That(Holding(body), Is.True, "A farewell cued on a settled Idle takes hold of the stance.");
             bool entered = false, back = false;
-            float by = Time.realtimeSinceStartup + 3f;
+            float by = Time.realtimeSinceStartup + TakeWait;
             while (Time.realtimeSinceStartup < by)
             {
                 yield return null;
@@ -75,7 +81,7 @@ namespace Gamesim.Uma.Tests
             }
             Assert.That(entered && back, Is.True, "The actual take played and handed back to Idle.");
             // Still held on that first frame back: FarewellPair completes the transaction on it.
-            by = Time.realtimeSinceStartup + 3f;
+            by = Time.realtimeSinceStartup + TakeWait;
             while (Holding(body) && Time.realtimeSinceStartup < by)
             {
                 Assert.That(body.TryReadFarewell(out var pose) && pose.Idle, Is.True, "Let go in Idle, not before.");
@@ -119,15 +125,15 @@ namespace Gamesim.Uma.Tests
         public IEnumerator AnotherBeatTakesTheLegsBackAtOnce()
         {
             body.React(CharacterPresentation.Reaction.Farewell);
-            float by = Time.realtimeSinceStartup + .5f;
+            float by = Time.realtimeSinceStartup + StateWait;
             while ((!body.TryReadFarewell(out var pose) || !pose.InTake) && Time.realtimeSinceStartup < by) yield return null;
             Assert.That(body.TryReadFarewell(out var entered) && entered.InTake && Holding(body), Is.True, "The take is playing, held.");
             Assert.That(body.Supports(CharacterPresentation.Reaction.Shocked), Is.True);
             body.React(CharacterPresentation.Reaction.Shocked);
-            by = Time.realtimeSinceStartup + .5f;
+            by = Time.realtimeSinceStartup + StateWait;
             while (!Playing("ReactShocked") && Time.realtimeSinceStartup < by) yield return null;
             Assert.That(Playing("ReactShocked"), Is.True, "The newer beat actually took the body.");
-            by = Time.realtimeSinceStartup + 2f;
+            by = Time.realtimeSinceStartup + StateWait;
             while (Holding(body) && Time.realtimeSinceStartup < by) yield return null;
             Assert.That(Holding(body), Is.False, "The shocked beat has the legs, not the farewell's stance.");
             Assert.That(Playing("ReactShocked"), Is.True, "Let go while the other beat plays, not after it.");
@@ -137,7 +143,7 @@ namespace Gamesim.Uma.Tests
         public IEnumerator AFarewellCuedOutsideASettledIdleHoldsNothing()
         {
             body.React(CharacterPresentation.Reaction.Shocked);
-            float by = Time.realtimeSinceStartup + .5f;
+            float by = Time.realtimeSinceStartup + StateWait;
             while (!Playing("ReactShocked") && Time.realtimeSinceStartup < by) yield return null;
             Assert.That(Playing("ReactShocked"), Is.True);
             body.React(CharacterPresentation.Reaction.Farewell);

@@ -323,6 +323,197 @@ namespace Gamesim.Tests.PlayMode
                         }
         }
 
+        /// <summary>
+        /// The Detailed page's preview stage, as the owner's contract of 2026-10-15 holds it: at the
+        /// standard and the larger text on every supported frame, and at the largest on the 16:9
+        /// frames, the preview's status stands beside Retry preview and the camera's views stand on
+        /// one row, as they always have. At the largest on the 4:3 frame (1200x900), where the
+        /// creator is magnified into a canvas 1188 wide and the stage between the categories and the
+        /// choices is 262, the status's first sentence (125 at 13 points) does not fit the 106 beside
+        /// the button, so it stands under the button across the stage, and one row would give each
+        /// view 40, so Compare original stands on a row of its own under the others - literals per
+        /// frame and size, never a smaller type. At the largest on every frame the appearance panel
+        /// is at its least, 600, and its four actions stand on a row of their own under its heading
+        /// (beside it, "Randomize" was cut to "Randomiz"); at the other sizes they stand beside it.
+        /// Every caption on the stage's controls and the panel's actions is drawn whole inside its
+        /// control. The largest is photographed on the 4:3 and the 16:9 frame in the headless
+        /// harness.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CreatorEntry_TheDetailedStageKeepsItsStatusAndCaptionsWholeAtEveryTextSize()
+        {
+            yield return OpenCreator(detailed:false);
+            var creator=Creator();
+            try
+            {
+                foreach(var size in new[]{new Vector2Int(1280,720),new Vector2Int(1920,1080),new Vector2Int(1200,900)})
+                    using(var lens=new CaptureLens(cameraRig.ViewCamera,size.x,size.y))
+                        foreach(float scale in TextScales.All)
+                        {
+                            creator.FontScale=scale;yield return null;yield return null;
+                            yield return CreatorEntrySubmit(CharacterCreator.DetailedCaption);
+                            Assert.That(creator.Mode,Is.EqualTo(CharacterCreator.EntryMode.Detailed));
+                            string where="Detailed "+size+" at font scale "+scale;
+                            if(LargestPages.At(scale) && size.x!=1920)
+                                yield return PhotographThroughLens(lens,"creator-detailed-"+size.x+"x"+size.y+"-largest");
+                            Canvas.ForceUpdateCanvases();
+                            var root=(RectTransform)creator.transform;
+                            var stage=creator.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name=="Preview stage" && rect.gameObject.activeInHierarchy);
+                            var status=creator.GetComponentsInChildren<TMP_Text>().Single(t=>t.name=="Preview status" && t.gameObject.activeInHierarchy);
+                            var retry=creator.GetComponentsInChildren<UnityEngine.UI.Button>().Single(button=>button.IsActive()
+                                && button.GetComponentInChildren<TMP_Text>()?.text=="Retry preview");
+                            var statusBox=OwnBox(root,status.rectTransform);
+                            var retryBox=OwnBox(root,retry.transform);
+                            bool under=size==new Vector2Int(1200,900) && LargestPages.At(scale);
+                            if(under)
+                            {
+                                Assert.That(statusBox.max.y,Is.LessThanOrEqualTo(retryBox.min.y+.5f),where+": the status stands under Retry preview.");
+                                Assert.That(status.rectTransform.rect.width,Is.EqualTo(stage.rect.width-16f).Within(.01f),where+": across the stage.");
+                            }
+                            else
+                            {
+                                Assert.That(statusBox.max.x,Is.LessThanOrEqualTo(retryBox.min.x+.5f),where+": the status stands beside Retry preview,");
+                                Assert.That(statusBox.max.y,Is.GreaterThan(retryBox.min.y),where+": on its row.");
+                                Assert.That(status.rectTransform.rect.width,Is.EqualTo(stage.rect.width-156f).Within(.01f),where+": in the room the button leaves.");
+                            }
+                            var wanted=status.GetPreferredValues(CharacterStudioPreview.FallbackDisplayStatus,Mathf.Infinity,Mathf.Infinity);
+                            status.SetText(status.text);
+                            Assert.That(wanted.x,Is.LessThanOrEqualTo(status.rectTransform.rect.width),where+": both sentences fit at 13 points.");
+                            Assert.That(wanted.y,Is.LessThanOrEqualTo(status.rectTransform.rect.height),where+": on their two lines.");
+                            var front=OwnBox(root,stage.Find("Front"));
+                            var side=OwnBox(root,stage.Find("Side"));
+                            var compare=OwnBox(root,stage.Find("Compare original"));
+                            Assert.That(Mathf.Abs(side.center.y-front.center.y),Is.LessThan(.5f),where+": Front and Side share a row.");
+                            if(under)
+                                Assert.That(compare.max.y,Is.LessThanOrEqualTo(front.min.y+.5f),where+": the comparison stands on a row of its own under the views.");
+                            else
+                                Assert.That(Mathf.Abs(compare.center.y-front.center.y),Is.LessThan(.5f),where+": the comparison stands on the views' one row.");
+                            // The appearance panel's actions: beside its heading, or at the largest text on a row of their own under it.
+                            var panel=creator.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name=="Appearance panel");
+                            var heading=panel.GetComponentsInChildren<TMP_Text>().First(text=>text.text=="APPEARANCE");
+                            var headingBox=OwnBox(root,heading.rectTransform);
+                            var randomize=OwnBox(root,panel.Find("Randomize"));
+                            if(LargestPages.At(scale))
+                                Assert.That(randomize.max.y,Is.LessThanOrEqualTo(headingBox.min.y+.5f),where+": the panel's actions stand on a row of their own under its heading.");
+                            else
+                                Assert.That(randomize.min.y,Is.LessThan(headingBox.max.y),where+": the panel's actions stand beside its heading.");
+                            foreach(var label in stage.GetComponentsInChildren<UnityEngine.UI.Button>().Concat(panel.GetComponentsInChildren<UnityEngine.UI.Button>()
+                                    .Where(button=>button.transform.parent==panel))
+                                .SelectMany(button=>button.GetComponentsInChildren<TMP_Text>()).Where(text=>text.name=="Label" && text.enabled))
+                            {
+                                label.ForceMeshUpdate(true);
+                                int drawn=label.textInfo.characterInfo.Take(label.textInfo.characterCount).Count(glyph=>glyph.isVisible);
+                                Assert.That(label.isTextTruncated,Is.False,where+": '"+label.text+"' is cut at "+label.fontSize.ToString("0.#")+" points.");
+                                Assert.That(drawn,Is.EqualTo(label.text.Count(letter=>!char.IsWhiteSpace(letter))),where+": every letter of '"+label.text+"' is drawn.");
+                                Assert.That(label.textBounds.size.x,Is.LessThanOrEqualTo(label.rectTransform.rect.width+1f),
+                                    where+": '"+label.text+"' is drawn "+label.textBounds.size.x.ToString("0.#")+" wide at "+label.fontSize.ToString("0.#")
+                                    +" points in a box "+label.rectTransform.rect.width.ToString("0.#")+" wide.");
+                            }
+                            AssertCreatorFits(creator,where);
+                        }
+            }
+            finally{creator.FontScale=1f;}
+        }
+
+        /// <summary>
+        /// The appearance controls say when they hold more than they show at the largest text (the
+        /// owner's contract of 2026-10-15: a screen that scrolls there carries a visible indicator):
+        /// a bar in the panel's right margin, beside the list and as tall as it, its handle shorter
+        /// than its track, out of the keyboard's ring, and the bar moves the list - at its foot the
+        /// list's end, at its head its top. The standard and the larger text build no bar, as they
+        /// never have. Literally per build: with the modular catalogue the Body page holds more than
+        /// it shows on the 4:3 and the 16:9 frame, so the bar shows on both; without it the page is a
+        /// sentence and the starting looks, which fit, and the bar stands hidden. The largest is
+        /// photographed on 4:3 where the bar shows.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CreatorEntry_TheAppearanceListShowsItScrollsAtTheLargestText()
+        {
+#if GAMESIM_UMA
+            bool modular=true;
+#else
+            bool modular=false;
+#endif
+            yield return OpenCreator();
+            var creator=Creator();
+            try
+            {
+                foreach(var size in new[]{new Vector2Int(1200,900),new Vector2Int(1920,1080)})
+                    using(var lens=new CaptureLens(cameraRig.ViewCamera,size.x,size.y))
+                        foreach(float scale in TextScales.All)
+                        {
+                            creator.FontScale=scale;yield return null;yield return null;
+                            Assert.That(creator.Mode,Is.EqualTo(CharacterCreator.EntryMode.Detailed));
+                            Canvas.ForceUpdateCanvases();
+                            string where="The Body page "+size+" at font scale "+scale;
+                            var root=(RectTransform)creator.transform;
+                            var panel=creator.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name=="Appearance panel");
+                            var scroll=panel.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name=="Appearance controls viewport").GetComponent<ScrollRect>();
+                            var bars=panel.GetComponentsInChildren<Scrollbar>(true).Where(bar=>bar.name==CharacterCreator.AppearanceScrollbarName).ToArray();
+                            if(!LargestPages.At(scale))
+                            {
+                                Assert.That(bars,Is.Empty,where+": no bar, as there never was.");
+                                Assert.That(scroll.verticalScrollbar,Is.Null,where+": the list has no bar.");
+                                continue;
+                            }
+                            Assert.That(bars,Has.Length.EqualTo(1),where+": the list has its one bar.");
+                            var shown=bars[0];
+                            Assert.That(scroll.verticalScrollbar,Is.SameAs(shown),where+": the bar is the list's.");
+                            Assert.That(shown.navigation.mode,Is.EqualTo(Navigation.Mode.None),where+": out of the keyboard's ring.");
+                            float more=scroll.content.rect.height-scroll.viewport.rect.height;
+                            Assert.That(more>.01f,Is.EqualTo(modular),where+": the page holds "+more.ToString("0.#")+" more than it shows.");
+                            Assert.That(shown.gameObject.activeInHierarchy,Is.EqualTo(modular),where+": the bar shows exactly while the list holds more.");
+                            if(!modular) continue;
+                            var listBox=OwnBox(root,scroll.viewport);
+                            var barBox=OwnBox(root,shown.transform);
+                            var panelBox=OwnBox(root,panel);
+                            Assert.That(barBox.min.x,Is.GreaterThanOrEqualTo(listBox.max.x-.5f),where+": the bar stands beside the list, outside its mask,");
+                            Assert.That(barBox.max.x,Is.LessThanOrEqualTo(panelBox.max.x+.5f),where+": inside the panel,");
+                            Assert.That(barBox.max.y,Is.EqualTo(listBox.max.y).Within(.5f),where+": level with the list's top,");
+                            Assert.That(barBox.size.y,Is.EqualTo(listBox.size.y).Within(.5f),where+": and as tall as it.");
+                            Assert.That(shown.size,Is.GreaterThan(0f).And.LessThan(1f),where+": the handle says how much of the list shows.");
+                            if(size.x==1200) yield return PhotographThroughLens(lens,"creator-appearance-scroll-1200x900-largest");
+                            shown.value=0f;yield return null;
+                            Assert.That(scroll.content.anchoredPosition.y,Is.EqualTo(more).Within(1f),where+": the bar at its foot shows the list's end,");
+                            shown.value=1f;yield return null;
+                            Assert.That(scroll.content.anchoredPosition.y,Is.EqualTo(0f).Within(1f),where+": and at its head the list's top.");
+                        }
+            }
+            finally{creator.FontScale=1f;}
+        }
+
+        /// <summary>
+        /// <paramref name="rect"/>'s own box in <paramref name="root"/>'s space: its corners alone, not
+        /// the children a bounds query takes in with it - a pill's glow and border reach past its edge.
+        /// </summary>
+        private static Bounds OwnBox(RectTransform root,Transform rect)
+        {
+            var corners=new Vector3[4];
+            ((RectTransform)rect).GetWorldCorners(corners);
+            var box=new Bounds(root.InverseTransformPoint(corners[0]),Vector3.zero);
+            for(int i=1;i<4;i++) box.Encapsulate(root.InverseTransformPoint(corners[i]));
+            return box;
+        }
+
+        /// <summary>
+        /// The frame a lens the caller holds draws now, into <c>{name}.png</c> beside the project,
+        /// failing a frame that did not render; the headless harness only, as every framing capture.
+        /// </summary>
+        private IEnumerator PhotographThroughLens(CaptureLens lens,string name)
+        {
+            if(!Application.isBatchMode) yield break;
+            yield return lens.MakeSureTheCanvasesAreDrawn();
+            var frame=lens.Read();
+            try
+            {
+                var path=Path.GetFullPath(Path.Combine(Application.dataPath,"..",name+".png"));
+                File.WriteAllBytes(path,frame.EncodeToPNG());
+                Debug.Log("[Gamesim] framing capture -> "+path);
+                AssertNotBlank(frame,name);
+            }
+            finally{UnityEngine.Object.Destroy(frame);}
+        }
+
         private static void AssertCreatorEntryDraft(CharacterDraft expected, CharacterDraft actual)
         {
             Assert.That(actual.Name, Is.EqualTo(expected.Name)); Assert.That(actual.Age, Is.EqualTo(expected.Age));

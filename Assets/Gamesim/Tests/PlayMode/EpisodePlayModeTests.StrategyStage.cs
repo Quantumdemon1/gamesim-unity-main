@@ -89,6 +89,9 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// Opens the station's panel at the resting text size, then at the larger and the largest,
         /// running <paramref name="check"/> at each with whether the size is above the resting one.
+        /// The flag is true at both the larger and the largest, so a check names the size in its
+        /// messages from the director - <c>TextScales.At(director.TextSize)</c> - never from the
+        /// flag: "at the larger text" on a failure at the largest sent its reader to the wrong size.
         /// </summary>
         private IEnumerator AtEveryTextSize(System.Action<bool> check) => AtEachTextSize(size => check(size != TextSize.Standard));
 
@@ -125,7 +128,7 @@ namespace Gamesim.Tests.PlayMode
             bool lapses = EpisodeEngine.LapsingOnAdvance(before).Count > 0;
             yield return AtEveryTextSize(larger =>
             {
-                string where = "The nomination" + (larger ? " at the larger text" : "");
+                string where = "The nomination" + (larger ? " " + TextScales.At(director.TextSize) : "");
                 AssertOnTheStrategyStage("Continue episode", where);
                 var choices = ActiveRect(EpisodeHud.StoryChoicesName);
                 Assert.That(choices, Is.Not.Null, "The beat's choices are on the screen.");
@@ -164,7 +167,7 @@ namespace Gamesim.Tests.PlayMode
             });
             yield return AtEveryTextSize(larger =>
             {
-                AssertOnTheStrategyStage("Continue episode", "The veto's draw" + (larger ? " at the larger text" : ""));
+                AssertOnTheStrategyStage("Continue episode", "The veto's draw" + (larger ? " " + TextScales.At(director.TextSize) : ""));
                 Assert.That(ActiveRect(EpisodeHud.ChipBagName), Is.Not.Null, "The draw keeps its bag.");
                 Assert.That(ActiveRect(EpisodeHud.CeremonyTitleName).GetComponent<TMP_Text>().text, Is.EqualTo("Power of Veto Player Selection"));
             });
@@ -184,8 +187,8 @@ namespace Gamesim.Tests.PlayMode
             yield return InstallStrategySeason(47, state => AtVetoMeeting(state, false));
             yield return AtEveryTextSize(larger =>
             {
-                AssertOnTheStrategyStage("Continue episode", "The veto meeting" + (larger ? " at the larger text" : ""));
-                AssertTheBandNamesTheMeeting("The veto meeting" + (larger ? " at the larger text" : ""));
+                AssertOnTheStrategyStage("Continue episode", "The veto meeting" + (larger ? " " + TextScales.At(director.TextSize) : ""));
+                AssertTheBandNamesTheMeeting("The veto meeting" + (larger ? " " + TextScales.At(director.TextSize) : ""));
             });
             if (Application.isBatchMode)
             {
@@ -208,7 +211,7 @@ namespace Gamesim.Tests.PlayMode
             });
             yield return AtEveryTextSize(larger =>
             {
-                AssertOnTheStrategyStage("Close campaigning and open voting", "The campaign" + (larger ? " at the larger text" : ""));
+                AssertOnTheStrategyStage("Close campaigning and open voting", "The campaign" + (larger ? " " + TextScales.At(director.TextSize) : ""));
                 Assert.That(ActiveRect(EpisodeHud.CampaignVotersName), Is.Not.Null, "The campaign keeps its votes as cards.");
             });
             if (Application.isBatchMode)

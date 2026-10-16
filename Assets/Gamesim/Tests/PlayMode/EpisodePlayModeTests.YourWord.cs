@@ -419,7 +419,7 @@ namespace Gamesim.Tests.PlayMode
                 + WordFirst(seeded, partner) + "."));
             yield return AtEveryTextSize(larger =>
             {
-                string where = "The veto decision with a deal at stake" + (larger ? " at the larger text" : "");
+                string where = "The veto decision with a deal at stake" + (larger ? " " + TextScales.At(director.TextSize) : "");
                 AssertTheMeetingFits(where);
                 var strip = ActiveRect(EpisodeHud.BreachStripName);
                 Assert.That(strip, Is.Not.Null, where + " warns.");
@@ -478,7 +478,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(expected, Is.EqualTo("Naming " + WordFirst(before, named) + " as the replacement breaks your safety deal with " + WordThem(before, named) + "."));
             yield return AtEveryTextSize(larger =>
             {
-                string where = "Naming the replacement with a deal at stake" + (larger ? " at the larger text" : "");
+                string where = "Naming the replacement with a deal at stake" + (larger ? " " + TextScales.At(director.TextSize) : "");
                 AssertTheMeetingFits(where);
                 var strip = ActiveRect(EpisodeHud.BreachStripName);
                 Assert.That(strip, Is.Not.Null, where + " warns.");
@@ -541,7 +541,7 @@ namespace Gamesim.Tests.PlayMode
                 + "Naming " + WordFirst(before, promisedTo) + " as the replacement breaks your promise of safety to " + WordThem(before, promisedTo) + "."));
             yield return AtEveryTextSize(larger =>
             {
-                string where = "The Head of Household's veto decision with a word at stake" + (larger ? " at the larger text" : "");
+                string where = "The Head of Household's veto decision with a word at stake" + (larger ? " " + TextScales.At(director.TextSize) : "");
                 AssertTheMeetingFits(where);
                 var strip = ActiveRect(EpisodeHud.BreachStripName);
                 Assert.That(strip, Is.Not.Null, where + " warns.");
@@ -607,7 +607,7 @@ namespace Gamesim.Tests.PlayMode
                 "Three names, a sentence each: " + expected);
             yield return AtEveryTextSize(larger =>
             {
-                string where = "The strip in a house of " + EpisodeValidation.MaximumCast + (larger ? " at the larger text" : "");
+                string where = "The strip in a house of " + EpisodeValidation.MaximumCast + (larger ? " " + TextScales.At(director.TextSize) : "");
                 var content = ActiveRect("Episode content");
                 content.GetComponentInParent<ScrollRect>().verticalNormalizedPosition = 1f;
                 Canvas.ForceUpdateCanvases();

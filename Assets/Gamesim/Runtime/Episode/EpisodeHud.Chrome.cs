@@ -384,18 +384,31 @@ namespace Gamesim.Episode
         /// </summary>
         private void CompactObjective(EpisodeState state, bool recovery)
         {
+            // The next stop's box, and what the card grows by under it (CompactLargestNextStop).
+            float nextStop = LargestTextPages ? CompactLargestNextStop : 48f, grow = nextStop - 48f;
             var objective = Chrome("Objective", canvas.transform);
             Anchor(objective, new Vector2(0, 1), new Vector2(0, 1), new Vector2(LeftColumnX, -IconRail.Top),
-                new Vector2(ObjectiveWidth, 238f));
+                new Vector2(ObjectiveWidth, 238f + grow));
             string waiting = WaitingLine(state);
             var heading = CardHeading(objective, waiting ?? ObjectiveTitle(state));
             if (waiting != null) WaitingStyle(heading);
-            FixedText(objective, NextStop(state), 18, Paper, new Vector2(18f, -44f), new Vector2(294f, 48f));
-            ActionChip(objective, state, -94f);
-            FixedButton(objective,"Go to episode screen",new Vector2(18,-126),new Vector2(294,44),director.GoToStation);
-            FixedButton(objective,DiaryTravelCaption,new Vector2(18,-178),new Vector2(294,44),director.GoToDiary).interactable=
+            FixedText(objective, NextStop(state), 18, Paper, new Vector2(18f, -44f), new Vector2(294f, nextStop));
+            ActionChip(objective, state, -94f - grow);
+            FixedButton(objective,"Go to episode screen",new Vector2(18,-126 - grow),new Vector2(294,44),director.GoToStation);
+            FixedButton(objective,DiaryTravelCaption,new Vector2(18,-178 - grow),new Vector2(294,44),director.GoToDiary).interactable=
                 director.HasDiaryRoom && !recovery && state.Find(state.playerId)?.status==ContestantStatus.Active;
         }
+
+        /// <summary>
+        /// The compact objective's next stop at the largest text (the owner's contract of
+        /// 2026-10-15): a box two of its lines tall - 25 points, 1.32 times each - where the other
+        /// sizes keep the 48 that holds their one line, and the card grows by the difference, the
+        /// actions and the two ways on moving down with it. At 48 the line wrapped at 25 points
+        /// ("Next stop: episode screen" is wider than the card's 294 at that size), and two lines
+        /// did not fit 48, so it stepped itself down to 23.75 to fit one: short of the largest
+        /// text's 25, the size the compact HUD promises to keep.
+        /// </summary>
+        private const float CompactLargestNextStop = 66f;
 
         // ---------------------------------------------------------------- the endgame (ENDGAME-PLAN F1)
 

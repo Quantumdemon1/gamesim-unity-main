@@ -398,7 +398,10 @@ namespace Gamesim.Presentation
             // meeting's sentence with two long names in it was cut after "is the" at the larger text
             // while the status line that used to carry it stood down (UI-UX-PASS-PLAN V0 review).
             float room = Mathf.Max(80f, CanvasWidth() - LeftInset - RightInset - left - RightPad);
-            int lines = DetailLines(room, body);
+            // At the largest text the sentence keeps the largest text's size and the strip takes the
+            // lines it needs (LargestDetailLines); the standard and the larger text lay it out as
+            // they always have.
+            int lines = LargestPages.At(FontScale) ? LargestDetailLines(room, body) : DetailLines(room, body);
             float height = TopPad + headLine + Gap + lines * bodyLine + BottomPad;
 
             card.offsetMin = new Vector2(LeftInset, -(TopInset + height));
@@ -456,6 +459,41 @@ namespace Gamesim.Presentation
             float oneLine = detail.GetPreferredValues(detail.text).x;
             detail.enableAutoSizing = autoSize;
             return oneLine > room ? 2 : 1;
+        }
+
+        /// <summary>
+        /// The most lines the detail takes at the largest text: four, which hold the longest sentence
+        /// the strip says - a veto meeting's, with three of the cast's longest names in it - on the
+        /// 4:3 canvas. Four end the strip at 323 of the 900-tall reference (80 under the top bar,
+        /// 14 + 65 + 6 over the words, four lines of 36 and 14 under them), a banner in the top half
+        /// of the frame as it is held to be. Anything longer shrinks into the four, as a sentence
+        /// longer than two lines always has at the other sizes.
+        /// </summary>
+        public const int MostLargestLines = 4;
+
+        /// <summary>
+        /// How many lines the detail takes at the largest text (the owner's contract of 2026-10-15):
+        /// as many as its words wrap to in <paramref name="room"/> at the largest text's own
+        /// <paramref name="size"/>, up to <see cref="MostLargestLines"/>. Two lines and a shrink was
+        /// the strip's answer at the other sizes, and at the largest it was no answer: on the 4:3
+        /// canvas a veto meeting's sentence with three long names in it needs more than two lines of
+        /// room at the shrink's floor, so it wrapped to a third line at about the standard text's
+        /// size in a box made for two. Counted by the label itself, wrapped to the room in a box
+        /// tall enough for every line, before the strip is sized; the box is then stretched back.
+        /// </summary>
+        private int LargestDetailLines(float room, float size)
+        {
+            if (string.IsNullOrEmpty(detail.text)) return 1;
+            bool autoSize = detail.enableAutoSizing;
+            detail.enableAutoSizing = false;
+            detail.fontSize = size;
+            var rect = detail.rectTransform;
+            rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
+            rect.sizeDelta = new Vector2(room, size * 4f * (MostLargestLines + 1));
+            detail.ForceMeshUpdate(true);
+            int lines = detail.textInfo.lineCount;
+            detail.enableAutoSizing = autoSize;
+            return Mathf.Clamp(lines, 1, MostLargestLines);
         }
 
         private void LateUpdate()

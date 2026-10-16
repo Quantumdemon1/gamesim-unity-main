@@ -1069,6 +1069,12 @@ namespace Gamesim.Editor
         /// A quad facing <paramref name="normal"/> with its image's top toward <paramref name="up"/>:
         /// no collider, no shadow, no static flags. Unity's quad shows its image to a viewer on its
         /// local -z, so it looks along -normal.
+        ///
+        /// <para>Under the Room Finish root a quad stays that way: the lighting pass leaves the root
+        /// out of the bake (ROOM-FINISH-PLAN 4.3). The screens' idle boards hang under the screen
+        /// prop instead, so the lighting pass the full rebuild runs after this
+        /// (HouseLivingGallery.BuildFromCommandLine) marks them lightmap-static with the rest of the
+        /// set pieces, as every full rebuild before b1cfccdd left them.</para>
         /// </summary>
         private static GameObject Quad(Transform parent, string name, Material material, Vector3 centre, Vector2 size, Vector3 normal, Vector3 up)
         {

@@ -22,13 +22,16 @@ namespace Gamesim.Tests.PlayMode
         [Serializable]
         private sealed class FreeTimeMetric11
         {
-            public int schema = 2;
+            public int schema = 3;
             public string id, status;
             public float scale, canvasWidth, canvasHeight, contentHeight, viewportHeight, boardWidth, boardHeight;
             public float paddingTop, paddingBottom, spacing, postRenderRoomWithReserve2;
             public float heroFloor, cardFloor, photoFloor, moveHeightFloor, moveWidthFloor;
             public float heroHeight, budgetHeight, cardsHeight, movesHeight, budgetCopyFloorPreferredHeight;
             public int readablePerPage, visibleCards, moveRows, labelsObserved, partsObserved, controlsObserved;
+            /// <summary>The board's page this receipt observed, of how many, and the sections on it (H, S, T, M).</summary>
+            public int page, pages;
+            public string sections;
             public string verticalFit, horizontalFit;
             public bool controlChildWidth, controlChildHeight, forceExpandWidth, forceExpandHeight;
             public string[] failures;
@@ -203,12 +206,22 @@ namespace Gamesim.Tests.PlayMode
             FreeTimeIssue11(failures, FreeTimeWithin11(CanvasRect(panel), box)
                 && (!onBoard || (FreeTimeWithin11(CanvasRect(board), box) && FreeTimeWithin11(CanvasRect(viewport), box)))
                 && (!inFooterStrip || FreeTimeWithin11(CanvasRect(directParent), box)), "CopyAllocationOutside:" + path);
+            // An italic glyph's quad is sheared - its foot leans left of the pen and its head right of
+            // the advance, by the font's italic style - so for italic copy the glyph is held to the box
+            // its line was wrapped into: from its pen position to its advance, ascender to descender.
+            bool italic = (label.fontStyle & FontStyles.Italic) != 0;
             foreach (var glyph in visible)
             {
-                Rect drawn = GlyphRect(label, glyph);
-                FreeTimeIssue11(failures, glyph.textElement != null && FreeTimeWithin11(box, drawn) && FreeTimeWithin11(CanvasRect(panel), drawn)
-                    && (!onBoard || (FreeTimeWithin11(CanvasRect(board), drawn) && FreeTimeWithin11(CanvasRect(viewport), drawn)))
-                    && (!inFooterStrip || FreeTimeWithin11(CanvasRect(directParent), drawn)), "GlyphOutside:" + path);
+                Rect drawn = italic ? FreeTimeGlyphAdvance11(label, glyph) : GlyphRect(label, glyph);
+                var crossed = new List<string>();
+                if (!FreeTimeWithin11(box, drawn)) crossed.Add("box");
+                if (!FreeTimeWithin11(CanvasRect(panel), drawn)) crossed.Add("panel");
+                if (onBoard && !FreeTimeWithin11(CanvasRect(board), drawn)) crossed.Add("board");
+                if (onBoard && !FreeTimeWithin11(CanvasRect(viewport), drawn)) crossed.Add("viewport");
+                if (inFooterStrip && !FreeTimeWithin11(CanvasRect(directParent), drawn)) crossed.Add("strip");
+                FreeTimeIssue11(failures, glyph.textElement != null && crossed.Count == 0, "GlyphOutside:" + path + "[" + string.Join(",", crossed)
+                    + " '" + glyph.character + "' " + drawn.xMin.ToString("0.0", CultureInfo.InvariantCulture) + ".." + drawn.xMax.ToString("0.0", CultureInfo.InvariantCulture)
+                    + " in " + box.xMin.ToString("0.0", CultureInfo.InvariantCulture) + ".." + box.xMax.ToString("0.0", CultureInfo.InvariantCulture) + "]");
             }
             float minimum = label.enableAutoSizing ? label.fontSizeMin : label.fontSize;
             float requested = label.enableAutoSizing ? label.fontSizeMax : label.fontSize;
@@ -237,6 +250,15 @@ namespace Gamesim.Tests.PlayMode
             };
         }
 
+        /// <summary>A glyph's line box in the canvas's space: from its pen position to its advance, its line's descender to its ascender.</summary>
+        private static Rect FreeTimeGlyphAdvance11(TMP_Text label, TMP_CharacterInfo glyph)
+        {
+            var canvas = label.GetComponentInParent<Canvas>().rootCanvas.transform;
+            Vector3 a = canvas.InverseTransformPoint(label.transform.TransformPoint(new Vector3(glyph.origin, glyph.descender, 0f)));
+            Vector3 b = canvas.InverseTransformPoint(label.transform.TransformPoint(new Vector3(glyph.xAdvance, glyph.ascender, 0f)));
+            return Rect.MinMaxRect(Mathf.Min(a.x, b.x), Mathf.Min(a.y, b.y), Mathf.Max(a.x, b.x), Mathf.Max(a.y, b.y));
+        }
+
         private static RectTransform FreeTimeRequiredPart11(RectTransform board, string name, List<string> failures)
         {
             var found = board.GetComponentsInChildren<RectTransform>(true).Where(part => part.name == name).ToArray();
@@ -262,8 +284,16 @@ namespace Gamesim.Tests.PlayMode
             if (host == null) return; // Its required-part check already refused the missing host.
             var frames = host.GetComponentsInChildren<UnityEngine.UI.Image>(true).Where(image => image.transform.parent == host
                 && (image.name == "Art" || image.name == EndScreenKit.DrawnFrameName)).ToArray();
-            FreeTimeIssue11(failures, frames.Length == 1 && frames[0].enabled && frames[0].gameObject.activeInHierarchy
-                && frames[0].color.a > 0f, "RequiredActualFrame:" + host.name);
+            bool framed = frames.Length == 1 && frames[0].enabled && frames[0].gameObject.activeInHierarchy && frames[0].color.a > 0f;
+            if (frames.Length == 0)
+            {
+                // The HUD's glass chrome: the host's own image is its face, and its edge a child "Border".
+                var glass = host.GetComponent<UnityEngine.UI.Image>();
+                var edges = host.GetComponentsInChildren<UnityEngine.UI.Image>(true).Where(image => image.transform.parent == host && image.name == "Border").ToArray();
+                framed = glass != null && glass.enabled && glass.color.a > 0f && edges.Length == 1 && edges[0].enabled
+                    && edges[0].gameObject.activeInHierarchy && edges[0].color.a > 0f;
+            }
+            FreeTimeIssue11(failures, framed, "RequiredActualFrame:" + host.name);
         }
 
         private void FreeTimeRequiredControl11(string caption, List<string> failures)
@@ -293,9 +323,41 @@ namespace Gamesim.Tests.PlayMode
             public readonly List<TMP_Text> Labels = new List<TMP_Text>();
         }
 
+        /// <summary>
+        /// Which of the board's four sections the page on screen shows. One page shows all four; at
+        /// the largest text a board that cannot fit is dealt onto pages (EpisodeHud.LargestPages.cs),
+        /// and a section is required on its page and absent from the others - the walk over the pages
+        /// holds that each is on exactly one.
+        /// </summary>
+        private struct FreeTimeShown11
+        {
+            public bool Hero, Strip, Talk, Moves;
+            public override string ToString() => (Hero ? "H" : "") + (Strip ? "S" : "") + (Talk ? "T" : "") + (Moves ? "M" : "");
+        }
+
+        /// <summary>The sections on the page now on screen, by their roots: the hero row, the story strip, the cards' head, the moves' head.</summary>
+        private static FreeTimeShown11 FreeTimeShownNow11(RectTransform board)
+        {
+            bool Has(string name) => board.GetComponentsInChildren<RectTransform>().Any(part => part.name == name && part.parent == board);
+            return new FreeTimeShown11 { Hero = Has(EpisodeHud.FreeTimeHeroName), Strip = Has(EpisodeHud.StoryStripName),
+                Talk = Has(EpisodeHud.TalkHeadName), Moves = Has(EpisodeHud.MovesHeadName) };
+        }
+
+        /// <summary>A board part required on this page, or required absent from it when its section is on another.</summary>
+        private static RectTransform FreeTimePagePart11(RectTransform board, string name, bool shown, List<string> failures)
+        {
+            if (shown) return FreeTimeRequiredPart11(board, name, failures);
+            FreeTimeIssue11(failures, !board.GetComponentsInChildren<RectTransform>(true).Any(part => part.name == name && part.gameObject.activeInHierarchy),
+                "PartOffItsPage:" + name);
+            return null;
+        }
+
         // Source-backed required denominator: it is complete before any active/nonempty label filter.
+        // The cards' pages are the suite's literal for the frame (cardPages: how many on each), never
+        // the renderer's own arithmetic; the board's page and pages likewise.
         private FreeTimeInventory11 FreeTimeRequiredInventory11(RectTransform board, RectTransform panel, EpisodeState state,
-            IList<HouseMap.Room> capturedRooms, string[] everybody, int page, FreeTimeWaiting waiting, List<string> failures)
+            IList<HouseMap.Room> capturedRooms, string[] everybody, int page, FreeTimeWaiting waiting, List<string> failures,
+            int[] cardPages, FreeTimeShown11 shown, int boardPage = 0, int boardPages = 1)
         {
             var inventory = new FreeTimeInventory11();
             float scale = TextSizes.Scale(director.TextSize);
@@ -349,28 +411,28 @@ namespace Gamesim.Tests.PlayMode
             var content = Part(viewport, "Episode content", "current.content");
             var currentBoard = Part(content, EpisodeHud.FreeTimeBoardName, "current.board");
             FreeTimeIssue11(failures, board == currentBoard && board.IsChildOf(panel), "RequiredCurrentPanelOwnership");
-            var hero = Part(board, EpisodeHud.FreeTimeHeroName, "hero");
-            var strip = Part(board, EpisodeHud.StoryStripName, "storyStrip");
-            var cards = Part(board, EpisodeHud.HouseCardsName, "houseCards");
-            var moves = Part(board, EpisodeHud.HouseMovesName, "houseMoves");
-            var budget = Part(board, EpisodeHud.ScreenHeadName, "budget");
-            var talkHead = Part(board, EpisodeHud.TalkHeadName, "talkHead");
-            var movesHead = Part(board, EpisodeHud.MovesHeadName, "movesHead");
-            Copy(talkHead, "Head title", "TALK TO A HOUSEGUEST", "talkHead.title");
-            Copy(movesHead, "Head title", "OTHER WAYS TO SPEND YOUR TIME", "movesHead.title");
-            Copy(talkHead, "Head line", "Choose someone to approach, or select an action below.", "talkHead.subtitle", scale <= 1.05f);
-            Copy(movesHead, "Head line", "Explore the house, make a move, or find something to do.", "movesHead.subtitle", scale <= 1.05f);
+            var hero = Part(board, EpisodeHud.FreeTimeHeroName, "hero", shown.Hero);
+            var strip = Part(board, EpisodeHud.StoryStripName, "storyStrip", shown.Strip);
+            var cards = Part(board, EpisodeHud.HouseCardsName, "houseCards", shown.Talk);
+            var moves = Part(board, EpisodeHud.HouseMovesName, "houseMoves", shown.Moves);
+            var budget = Part(board, EpisodeHud.ScreenHeadName, "budget", shown.Hero);
+            var talkHead = Part(board, EpisodeHud.TalkHeadName, "talkHead", shown.Talk);
+            var movesHead = Part(board, EpisodeHud.MovesHeadName, "movesHead", shown.Moves);
+            Copy(talkHead, "Head title", "TALK TO A HOUSEGUEST", "talkHead.title", shown.Talk);
+            Copy(movesHead, "Head title", "OTHER WAYS TO SPEND YOUR TIME", "movesHead.title", shown.Moves);
+            Copy(talkHead, "Head line", "Choose someone to approach, or select an action below.", "talkHead.subtitle", shown.Talk && scale <= 1.05f);
+            Copy(movesHead, "Head line", "Explore the house, make a move, or find something to do.", "movesHead.subtitle", shown.Moves && scale <= 1.05f);
             int left = Mathf.Max(0, EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state));
-            Copy(budget, "Budget eyebrow", "FREE TIME", "budget.eyebrow");
-            Copy(budget, EpisodeHud.ActionsLeftCountName, left.ToString(), "budget.count");
-            Copy(budget, EpisodeHud.ActionsLeftWordName, left == 1 ? "ACTION LEFT" : "ACTIONS LEFT", "budget.word");
-            Copy(budget, EpisodeHud.BudgetRuleName, EpisodeDirector.BudgetRule(state), "budget.rule");
-            Copy(budget, EpisodeHud.BudgetCopyName, EpisodeDirector.FreeTimeCostLine(state), "budget.cost");
+            Copy(budget, "Budget eyebrow", "FREE TIME", "budget.eyebrow", shown.Hero);
+            Copy(budget, EpisodeHud.ActionsLeftCountName, left.ToString(), "budget.count", shown.Hero);
+            Copy(budget, EpisodeHud.ActionsLeftWordName, left == 1 ? "ACTION LEFT" : "ACTIONS LEFT", "budget.word", shown.Hero);
+            Copy(budget, EpisodeHud.BudgetRuleName, EpisodeDirector.BudgetRule(state), "budget.rule", shown.Hero);
+            Copy(budget, EpisodeHud.BudgetCopyName, EpisodeDirector.FreeTimeCostLine(state), "budget.cost", shown.Hero);
             string unused = EpisodeDirector.UnusedActionsNote(state);
-            Copy(budget, EpisodeHud.UnusedActionsNoteName, unused, "budget.unused", !string.IsNullOrEmpty(unused));
+            Copy(budget, EpisodeHud.UnusedActionsNoteName, unused, "budget.unused", shown.Hero && !string.IsNullOrEmpty(unused));
             bool canBuy = WebSocialVocabulary.PurchaseCeiling - state.boughtActionPoints > 0;
-            var buys = Part(budget, EpisodeHud.BuyActionsName, "budget.buys", canBuy);
-            if (canBuy)
+            var buys = Part(budget, EpisodeHud.BuyActionsName, "budget.buys", shown.Hero && canBuy);
+            if (canBuy && shown.Hero)
             {
                 var burn = Control(buys, EpisodeHud.BuyBurnOneCaption, "buy.burn");
                 Copy(burn, "Buy price", Mathf.Abs((int)WebSocialVocabulary.BurnOneCost) + " goodwill · choose a housemate", "buy.burn.price");
@@ -378,7 +440,7 @@ namespace Gamesim.Tests.PlayMode
                 Copy(spread, "Buy price", Mathf.Abs((int)WebSocialVocabulary.SpreadAllCost) + " goodwill with every housemate", "buy.spread.price");
                 Copy(budget, EpisodeHud.BoughtOutName, null, "budget.boughtOut", false);
             }
-            else Copy(budget, EpisodeHud.BoughtOutName, "You have bought as much time as the house will give you this "
+            else if (shown.Hero) Copy(budget, EpisodeHud.BoughtOutName, "You have bought as much time as the house will give you this "
                 + (EpisodeEngine.LeverRulesOn(state) ? "week" : "season") + ".", "budget.boughtOut");
 
             var open = EpisodeEngine.OpenStoryBeats(state);
@@ -389,8 +451,10 @@ namespace Gamesim.Tests.PlayMode
             var plays = EpisodeEngine.Plays(state).Where(play => play.ending == null).ToList();
             var running = plays.FirstOrDefault(play => play.takenOn) ?? plays.FirstOrDefault();
             var playOwner = !hasReply && !hasBeat ? hero : strip;
-            var playCard = Part(playOwner, EpisodeHud.CurrentPlayCardName, "currentPlay");
-            if (!hasReply && !hasBeat)
+            bool playShown = !hasReply && !hasBeat ? shown.Hero : shown.Strip;
+            var playCard = Part(playOwner, EpisodeHud.CurrentPlayCardName, "currentPlay", playShown);
+            if (!playShown) { }
+            else if (!hasReply && !hasBeat)
             {
                 var cycle = running != null ? state.storylines.FirstOrDefault(item => item.id == running.cycleId) : null;
                 var subject = cycle?.cast != null ? cycle.cast.Select(role => state.Find(role.contestantId)).FirstOrDefault(actor => actor != null && !actor.isPlayer) : null;
@@ -410,18 +474,19 @@ namespace Gamesim.Tests.PlayMode
                 Copy(playCard, "Segment value", running == null ? "None in motion" : running.title
                     + (running.progress.need > 1 ? " " + running.progress.have + "/" + running.progress.need : running.progress.Met ? " done" : ""), "play.segmentValue");
             }
-            var threads = Part(strip, EpisodeHud.ThreadsCardName, "threads");
-            Copy(threads, "Segment label", "THREADS", "threads.label");
-            Copy(threads, "Segment value", FreeTimeExpectedStoryLine11(state), "threads.value");
+            var threads = Part(strip, EpisodeHud.ThreadsCardName, "threads", shown.Strip);
+            Copy(threads, "Segment label", "THREADS", "threads.label", shown.Strip);
+            Copy(threads, "Segment value", FreeTimeExpectedStoryLine11(state), "threads.value", shown.Strip);
             Copy(strip, EpisodeHud.PreparationName, state.playerStudyBonus > 0 ? "Preparation " + state.playerStudyBonus + "/5" : null,
-                "preparation", state.playerStudyBonus > 0);
+                "preparation", shown.Strip && state.playerStudyBonus > 0);
             bool haveNot = HaveNots.Is(state, state.playerId);
             FreeTimeIssue11(failures, haveNot == (waiting == FreeTimeWaiting.HaveNot), "RequiredHaveNotFixture");
-            Copy(board, EpisodeHud.FreeTimeHaveNotName, EpisodeDirector.HaveNotLine, "haveNot", haveNot);
+            // The Have-Not line stands under the strip, on the strip's page.
+            Copy(board, EpisodeHud.FreeTimeHaveNotName, EpisodeDirector.HaveNotLine, "haveNot", haveNot && shown.Strip);
 
-            var banner = Part(hero, EpisodeHud.StoryBannerName, "banner", hasBeat);
-            var plea = Part(hero, EpisodeHud.FreeTimeReplyName, "reply", hasReply);
-            if (hasBeat)
+            var banner = Part(hero, EpisodeHud.StoryBannerName, "banner", hasBeat && shown.Hero);
+            var plea = Part(hero, EpisodeHud.FreeTimeReplyName, "reply", hasReply && shown.Hero);
+            if (hasBeat && shown.Hero)
             {
                 var beat = open[0];
                 bool free = !beat.choices.Any(choice => choice.costsAction);
@@ -435,10 +500,10 @@ namespace Gamesim.Tests.PlayMode
                 Control(banner, EpisodeDirector.AnswerBeatCaption, "beat.answer");
             }
             var waitingBeats = open.Skip(hasBeat ? 1 : 0).ToArray();
-            var waitingRow = Part(strip, EpisodeHud.WaitingBeatsName, "waitingBeats", waitingBeats.Length > 0);
-            Copy(waitingRow, "Segment label", "WAITING", "waitingBeats.label", waitingBeats.Length > 0);
-            foreach (var beat in waitingBeats) Control(waitingRow, StoryText.Title(beat), "waitingBeat." + beat.id);
-            if (hasReply)
+            var waitingRow = Part(strip, EpisodeHud.WaitingBeatsName, "waitingBeats", shown.Strip && waitingBeats.Length > 0);
+            Copy(waitingRow, "Segment label", "WAITING", "waitingBeats.label", shown.Strip && waitingBeats.Length > 0);
+            foreach (var beat in waitingBeats) Control(waitingRow, StoryText.Title(beat), "waitingBeat." + beat.id, shown.Strip);
+            if (hasReply && shown.Hero)
             {
                 Copy(plea, "Plea eyebrow", EpisodeHud.ReplyCardEyebrow, "reply.eyebrow");
                 Copy(plea, "Plea title", ReplyCards.Title(state, reply), "reply.title");
@@ -478,7 +543,7 @@ namespace Gamesim.Tests.PlayMode
             string[] captions = { EpisodeDirector.ExploreTheHouseCaption, EpisodeDirector.OverviewListenCaption,
                 EpisodeHud.RallyHouseCaption, EpisodeHud.AirLaundryCaption, EpisodeDirector.DoAnActivityCaption };
             string[] corners = { null, "Works 7 in 10", "Risky", EpisodeDirector.AiringRiskLabel(state), null };
-            for (int i = 0; i < captions.Length; i++)
+            for (int i = 0; i < captions.Length && shown.Moves; i++)
             {
                 var tile = Control(moves, captions[i], "move." + i);
                 bool free = i == 0 || i == 4, locked = !free && left <= 0;
@@ -487,16 +552,18 @@ namespace Gamesim.Tests.PlayMode
                 var button = tile != null ? tile.GetComponent<UnityEngine.UI.Button>() : null;
                 FreeTimeIssue11(failures, button != null && button.interactable == !locked, "MoveInteractable:" + i);
             }
+            if (!shown.Moves) foreach (string caption in captions) Control(board, caption, "move." + caption + ".offItsPage", false);
 
-            int perPage = Mathf.Clamp(Mathf.FloorToInt((board.rect.width + 12f * scale + .5f) / (112f * scale + 12f * scale)), 1, scale > 1.05f ? 8 : 10);
-            int pages = Mathf.CeilToInt(everybody.Length / (float)perPage);
-            FreeTimeIssue11(failures, everybody.Length == 7 && everybody.Distinct(StringComparer.Ordinal).Count() == 7 && page >= 0 && page < pages, "RequiredGenuinePageSet");
-            var shown = everybody.Skip(page * perPage).Take(perPage).ToArray();
+            // The cards' pages as the suite names them for this frame: how many on each, in order.
+            int pages = cardPages != null ? cardPages.Length : 0;
+            FreeTimeIssue11(failures, everybody.Length == 7 && everybody.Distinct(StringComparer.Ordinal).Count() == 7 && pages > 0
+                && cardPages.Sum() == everybody.Length && cardPages.All(count => count > 0) && page >= 0 && page < pages, "RequiredGenuinePageSet");
+            var shownCards = shown.Talk && page >= 0 && page < pages ? everybody.Skip(cardPages.Take(page).Sum()).Take(cardPages[page]).ToArray() : Array.Empty<string>();
             var actualCards = cards != null ? cards.Cast<Transform>().Select(card => card.name).ToArray() : Array.Empty<string>();
-            FreeTimeIssue11(failures, actualCards.SequenceEqual(shown), "RequiredCardOrderAndMembership");
+            FreeTimeIssue11(failures, actualCards.SequenceEqual(shownCards), "RequiredCardOrderAndMembership");
             var here = capturedRooms.FirstOrDefault(room => room.Occupants != null && room.Occupants.Any(person => person.IsPlayer));
             var hereIds = new HashSet<string>((here.Occupants ?? new List<HouseMap.Occupant>()).Where(person => !person.IsPlayer).Select(person => person.Id), StringComparer.Ordinal);
-            foreach (string name in shown)
+            foreach (string name in shownCards)
             {
                 var actor = state.Active.SingleOrDefault(person => !person.isPlayer && "Houseguest · " + person.name == name);
                 FreeTimeIssue11(failures, actor != null, "RequiredRealActor:" + name);
@@ -523,10 +590,16 @@ namespace Gamesim.Tests.PlayMode
                 var pill = Part(photo, "Role", "actor." + actor.id + ".role", !string.IsNullOrEmpty(role));
                 Copy(pill, "Text", role, "actor." + actor.id + ".roleCopy", !string.IsNullOrEmpty(role));
             }
-            var pager = Part(board, "Pager", "pager", pages > 1);
-            Copy(pager, EpisodeHud.BoardPageName, "Page " + (page + 1) + " of " + pages, "pager.count", pages > 1);
-            Control(pager, EpisodeHud.CampaignPreviousCaption, "pager.previous", page > 0);
-            Control(pager, EpisodeHud.CampaignNextCaption, "pager.next", page + 1 < pages);
+            var pager = Part(board, "Pager", "pager", shown.Talk && pages > 1);
+            Copy(pager, EpisodeHud.BoardPageName, "Page " + (page + 1) + " of " + pages, "pager.count", shown.Talk && pages > 1);
+            Control(pager, EpisodeHud.CampaignPreviousCaption, "pager.previous", shown.Talk && page > 0);
+            Control(pager, EpisodeHud.CampaignNextCaption, "pager.next", shown.Talk && page + 1 < pages);
+            // The largest text's pager at the board's foot, when the board pages: where the page is,
+            // and a way back and on, each exactly where there is somewhere to go.
+            var turner = Part(board, EpisodeHud.LargestPagerName, "boardPager", boardPages > 1);
+            Copy(turner, EpisodeHud.LargestPageCountName, "Page " + (boardPage + 1) + " of " + boardPages, "boardPager.count", boardPages > 1);
+            Control(turner, EpisodeHud.PreviousPageCaption, "boardPager.previous", boardPages > 1 && boardPage > 0);
+            Control(turner, EpisodeHud.NextPageCaption, "boardPager.next", boardPages > 1 && boardPage + 1 < boardPages);
 
             var primary = Control(panel, EpisodeDirector.BeginNextCompetitionCaption, "footer.primary");
             Copy(primary, EpisodeHud.DrawWayOnHeadlineName, EpisodeDirector.EndFreeTimeHeadline, "footer.primary.headline");
@@ -615,7 +688,7 @@ namespace Gamesim.Tests.PlayMode
                 .SelectMany(button => button.GetComponentsInChildren<TMP_Text>(true))).Distinct().Where(label => !string.IsNullOrEmpty(label.text)).ToArray();
         }
 
-        private FreeTimeMetric11 FreeTimeObserve11(string id, FreeTimeWaiting waiting)
+        private FreeTimeMetric11 FreeTimeObserve11(string id, FreeTimeWaiting waiting, int[] cardPages, int boardPage = 0, int boardPages = 1)
         {
             Canvas.ForceUpdateCanvases();
             var failures = new List<string>();
@@ -627,55 +700,66 @@ namespace Gamesim.Tests.PlayMode
             float scale = TextSizes.Scale(director.TextSize);
             FreeTimeIssue11(failures, director.TextSize == TextSize.Largest, "RequiredLargestSetting");
             var root = (RectTransform)board.GetComponentInParent<Canvas>().rootCanvas.transform;
+            var shown = FreeTimeShownNow11(board);
+            FreeTimeIssue11(failures, boardPages > 1 || (shown.Hero && shown.Strip && shown.Talk && shown.Moves), "OnePageShowsAllFour");
             var rowNames = new[] { EpisodeHud.FreeTimeHeroName, EpisodeHud.StoryStripName, EpisodeHud.HouseCardsName, EpisodeHud.HouseMovesName };
-            var rows = rowNames.Select(name => FreeTimeRequiredPart11(board, name, failures)).ToArray();
-            var budget = FreeTimeRequiredPart11(board, EpisodeHud.ScreenHeadName, failures);
+            var rowShown = new[] { shown.Hero, shown.Strip, shown.Talk, shown.Moves };
+            var rows = rowNames.Select((name, i) => FreeTimePagePart11(board, name, rowShown[i], failures)).ToArray();
+            var budget = FreeTimePagePart11(board, EpisodeHud.ScreenHeadName, shown.Hero, failures);
             FreeTimeRequiredFrame11(budget, failures);
-            var talkHead = FreeTimeRequiredPart11(board, EpisodeHud.TalkHeadName, failures);
-            var movesHead = FreeTimeRequiredPart11(board, EpisodeHud.MovesHeadName, failures);
+            var talkHead = FreeTimePagePart11(board, EpisodeHud.TalkHeadName, shown.Talk, failures);
+            var movesHead = FreeTimePagePart11(board, EpisodeHud.MovesHeadName, shown.Moves, failures);
             if (talkHead != null) FreeTimeRequiredCopy11(talkHead, "Head title", "TALK TO A HOUSEGUEST", failures);
             if (movesHead != null) FreeTimeRequiredCopy11(movesHead, "Head title", "OTHER WAYS TO SPEND YOUR TIME", failures);
-            FreeTimeRequiredPart11(board, EpisodeHud.ThreadsCardName, failures);
-            FreeTimeRequiredPart11(board, EpisodeHud.CurrentPlayCardName, failures);
+            FreeTimePagePart11(board, EpisodeHud.ThreadsCardName, shown.Strip, failures);
+            bool playInHero = waiting == FreeTimeWaiting.Nothing || waiting == FreeTimeWaiting.HaveNot;
+            FreeTimePagePart11(board, EpisodeHud.CurrentPlayCardName, playInHero ? shown.Hero : shown.Strip, failures);
             FreeTimeIssue11(failures, content.rect.height <= viewport.rect.height + .5f, "NO_SCROLL_HEIGHT");
             FreeTimeIssue11(failures, FreeTimeWithin11(CanvasRect(viewport), CanvasRect(board))
                 && FreeTimeWithin11(CanvasRect(panel), CanvasRect(board)), "BoardOutsideFrame");
+            RectTransform rowAbove = null;
             for (int i = 0; i < rows.Length; i++)
                 if (rows[i] != null)
                 {
                     FreeTimeIssue11(failures, FreeTimeWithin11(CanvasRect(board), CanvasRect(rows[i])), "RowOutside:" + rowNames[i]);
-                    if (i > 0 && rows[i - 1] != null)
-                        FreeTimeIssue11(failures, CanvasRect(rows[i]).yMax <= CanvasRect(rows[i - 1]).yMin + .5f, "RowOrder:" + rowNames[i]);
+                    if (rowAbove != null)
+                        FreeTimeIssue11(failures, CanvasRect(rows[i]).yMax <= CanvasRect(rowAbove).yMin + .5f, "RowOrder:" + rowNames[i]);
+                    rowAbove = rows[i];
                 }
             if (budget != null && rows[0] != null)
                 FreeTimeIssue11(failures, budget.IsChildOf(board) && FreeTimeWithin11(CanvasRect(board), CanvasRect(budget))
                     && Mathf.Abs(CanvasRect(budget).yMax - CanvasRect(rows[0]).yMax) < 1f
                     && CanvasRect(budget).xMin >= CanvasRect(rows[0]).xMax - .5f, "BudgetBesideHero");
             var state = director.Snapshot;
-            FreeTimeRequiredCopy11(board, EpisodeHud.BudgetRuleName, EpisodeDirector.BudgetRule(state), failures);
-            FreeTimeRequiredCopy11(board, EpisodeHud.BudgetCopyName, EpisodeDirector.FreeTimeCostLine(state), failures);
-            FreeTimeRequiredCopy11(board, EpisodeHud.UnusedActionsNoteName, EpisodeDirector.UnusedActionsNote(state), failures);
-            FreeTimeRequiredCopy11(board, "Budget eyebrow", "FREE TIME", failures);
             int left = Mathf.Max(0, EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state));
-            FreeTimeRequiredCopy11(board, EpisodeHud.ActionsLeftCountName, left.ToString(), failures);
-            FreeTimeRequiredCopy11(board, EpisodeHud.ActionsLeftWordName, left == 1 ? "ACTION LEFT" : "ACTIONS LEFT", failures);
+            if (shown.Hero)
+            {
+                FreeTimeRequiredCopy11(board, EpisodeHud.BudgetRuleName, EpisodeDirector.BudgetRule(state), failures);
+                FreeTimeRequiredCopy11(board, EpisodeHud.BudgetCopyName, EpisodeDirector.FreeTimeCostLine(state), failures);
+                FreeTimeRequiredCopy11(board, EpisodeHud.UnusedActionsNoteName, EpisodeDirector.UnusedActionsNote(state), failures);
+                FreeTimeRequiredCopy11(board, "Budget eyebrow", "FREE TIME", failures);
+                FreeTimeRequiredCopy11(board, EpisodeHud.ActionsLeftCountName, left.ToString(), failures);
+                FreeTimeRequiredCopy11(board, EpisodeHud.ActionsLeftWordName, left == 1 ? "ACTION LEFT" : "ACTIONS LEFT", failures);
+            }
             if (rows[0] != null) FreeTimeIssue11(failures, rows[0].rect.height >= 104f * scale - .5f, "HeroFloor");
             var expectedCards = FreeTimeExpectedEightCards11(out var capturedRooms);
-            int readable = Mathf.Clamp(Mathf.FloorToInt((board.rect.width + 12f * scale + .5f) / (112f * scale + 12f * scale)), 1, scale > 1.05f ? 8 : 10);
-            FreeTimeIssue11(failures, FreeTimeCards().SequenceEqual(expectedCards.Take(readable)), "RequiredFirstReadableCards");
+            // The first page of cards: as many as the suite names for this frame, never the renderer's arithmetic.
+            if (shown.Talk)
+                FreeTimeIssue11(failures, cardPages != null && cardPages.Length > 0 && FreeTimeCards().SequenceEqual(expectedCards.Take(cardPages[0])),
+                    "RequiredFirstReadableCards");
             if (rows[3] != null) FreeTimeIssue11(failures, rows[3].childCount == 5, "RequiredFiveMoveTiles");
             var haveNot = board.GetComponentsInChildren<RectTransform>(true).Where(part => part.name == EpisodeHud.FreeTimeHaveNotName).ToArray();
-            FreeTimeIssue11(failures, haveNot.Length == (waiting == FreeTimeWaiting.HaveNot ? 1 : 0), "HaveNotPartSet");
-            if (waiting == FreeTimeWaiting.HaveNot) FreeTimeRequiredCopy11(board, EpisodeHud.FreeTimeHaveNotName, EpisodeDirector.HaveNotLine, failures);
-            if (waiting == FreeTimeWaiting.Beat)
+            FreeTimeIssue11(failures, haveNot.Length == (waiting == FreeTimeWaiting.HaveNot && shown.Strip ? 1 : 0), "HaveNotPartSet");
+            if (waiting == FreeTimeWaiting.HaveNot && shown.Strip) FreeTimeRequiredCopy11(board, EpisodeHud.FreeTimeHaveNotName, EpisodeDirector.HaveNotLine, failures);
+            if (waiting == FreeTimeWaiting.Beat && shown.Hero)
             {
                 FreeTimeRequiredFrame11(FreeTimeRequiredPart11(board, EpisodeHud.StoryBannerName, failures), failures);
                 FreeTimeRequiredCopy11(board, "Banner title", FreeTimeBeatTitles[0], failures);
                 FreeTimeRequiredCopy11(board, "Banner narrative", FreeTimeBeat(state, 0).narrative, failures);
                 FreeTimeRequiredControl11(EpisodeDirector.AnswerBeatCaption, failures);
-                FreeTimeRequiredControl11(FreeTimeBeatTitles[1], failures);
             }
-            if (waiting == FreeTimeWaiting.Reply)
+            if (waiting == FreeTimeWaiting.Beat && shown.Strip) FreeTimeRequiredControl11(FreeTimeBeatTitles[1], failures);
+            if (waiting == FreeTimeWaiting.Reply && shown.Hero)
             {
                 var card = ReplyCards.Pending(state);
                 Assert.That(card, Is.Not.Null, "The existing reply fixture is required; no synthetic accepted reply.");
@@ -698,14 +782,20 @@ namespace Gamesim.Tests.PlayMode
                     FreeTimeRequiredCopy11((RectTransform)tiles[0], "Risk word", EpisodeHud.RiskTag(reply.Risk), failures);
                 }
             }
-            if (waiting == FreeTimeWaiting.Nothing || waiting == FreeTimeWaiting.HaveNot)
+            if (playInHero && shown.Hero)
                 FreeTimeRequiredFrame11(FreeTimeRequiredPart11(board, EpisodeHud.CurrentPlayCardName, failures), failures);
-            foreach (string caption in new[] { EpisodeDirector.ExploreTheHouseCaption, EpisodeDirector.OverviewListenCaption,
-                EpisodeHud.RallyHouseCaption, EpisodeHud.AirLaundryCaption, EpisodeDirector.DoAnActivityCaption,
-                EpisodeHud.BuyBurnOneCaption, EpisodeHud.BuySpreadCaption, EpisodeDirector.BeginNextCompetitionCaption, EpisodeDirector.StayInTheHouseCaption })
+            if (shown.Moves)
+                foreach (string caption in new[] { EpisodeDirector.ExploreTheHouseCaption, EpisodeDirector.OverviewListenCaption,
+                    EpisodeHud.RallyHouseCaption, EpisodeHud.AirLaundryCaption, EpisodeDirector.DoAnActivityCaption })
+                    FreeTimeRequiredControl11(caption, failures);
+            if (shown.Hero)
+                foreach (string caption in new[] { EpisodeHud.BuyBurnOneCaption, EpisodeHud.BuySpreadCaption })
+                    FreeTimeRequiredControl11(caption, failures);
+            foreach (string caption in new[] { EpisodeDirector.BeginNextCompetitionCaption, EpisodeDirector.StayInTheHouseCaption })
                 FreeTimeRequiredControl11(caption, failures);
             FreeTimeIssue11(failures, LiveButtonsCarrying(EpisodeDirector.BeginNextCompetitionCaption) == 1, "OneLiveWayOn");
-            var requiredInventory = FreeTimeRequiredInventory11(board, panel, state, capturedRooms, expectedCards, 0, waiting, failures);
+            var requiredInventory = FreeTimeRequiredInventory11(board, panel, state, capturedRooms, expectedCards, 0, waiting, failures,
+                cardPages, shown, boardPage, boardPages);
             var labelSource = requiredInventory.Labels.Concat(FreeTimeLabels11(board)).Distinct().ToArray();
             FreeTimeIssue11(failures, labelSource.Length <= 256, "LabelCap");
             var labels = labelSource.Take(256).Select(label => FreeTimeObserveLabel11(label, board, viewport, panel, failures)).ToArray();
@@ -747,9 +837,25 @@ namespace Gamesim.Tests.PlayMode
                         Rect drawn = FreeTimeImageMesh11(image, failures, path, out int count, out bool available);
                         parts.Add(new FreeTimePartMetric11 { path = path, role = "ImageMesh", active = true, meshAvailable = available, vertices = count,
                             culled = image.canvasRenderer.cull, x = drawn.x, y = drawn.y, width = drawn.width, height = drawn.height });
-                        if (available) FreeTimeIssue11(failures, FreeTimeWithin11(CanvasRect(board), drawn) && FreeTimeWithin11(CanvasRect(viewport), drawn)
-                            && FreeTimeWithin11(CanvasRect(panel), drawn) && (!(part.parent is RectTransform parent) || FreeTimeWithin11(CanvasRect(parent), drawn)),
-                            "ImageMeshOutside:" + path);
+                        if (available)
+                        {
+                            var host = part.parent as RectTransform;
+                            bool packArt = part.name == "Art";
+                            var crossed = new List<string>();
+                            if (!FreeTimeWithin11(CanvasRect(viewport), drawn)) crossed.Add("viewport");
+                            if (!FreeTimeWithin11(CanvasRect(panel), drawn)) crossed.Add("panel");
+                            if (packArt)
+                            {
+                                if (!FreeTimeWithin11(CanvasRect(part), drawn)) crossed.Add("own");
+                                if (host != null && host != board && !FreeTimeWithin11(CanvasRect(board), CanvasRect(host))) crossed.Add("hostOffBoard");
+                            }
+                            else
+                            {
+                                if (!FreeTimeWithin11(CanvasRect(board), drawn)) crossed.Add("board");
+                                if (host != null && !FreeTimeWithin11(CanvasRect(host), drawn)) crossed.Add("parent");
+                            }
+                            FreeTimeIssue11(failures, crossed.Count == 0, "ImageMeshOutside:" + path + "[" + string.Join(",", crossed) + "]");
+                        }
                         FreeTimeIssue11(failures, !image.canvasRenderer.cull, "CulledRequiredImage:" + path);
                     }
                     else parts.Add(new FreeTimePartMetric11 { path = path, role = "TransparentHitImage", active = true,
@@ -780,7 +886,7 @@ namespace Gamesim.Tests.PlayMode
             float other = children.Where(part => part != board).Sum(part => UnityEngine.UI.LayoutUtility.GetPreferredHeight(part));
             float copyLeast = labels.Where(label => label.path.EndsWith("/" + EpisodeHud.BudgetRuleName, StringComparison.Ordinal)
                 || label.path.EndsWith("/" + EpisodeHud.BudgetCopyName, StringComparison.Ordinal)).Sum(label => Mathf.Ceil(label.minimumPreferredHeight) + 2f);
-            var buy = FreeTimeRequiredPart11(board, EpisodeHud.BuyActionsName, failures);
+            var buy = FreeTimePagePart11(board, EpisodeHud.BuyActionsName, shown.Hero, failures);
             if (buy != null) FreeTimeIssue11(failures, buy.childCount == 2, "RequiredTwoBuyControls");
             if (buy != null) foreach (Transform button in buy) FreeTimeRequiredFrame11((RectTransform)button, failures);
             return new FreeTimeMetric11
@@ -793,14 +899,97 @@ namespace Gamesim.Tests.PlayMode
                 heroHeight = rows[0] != null ? rows[0].rect.height : -1f, budgetHeight = budget != null ? budget.rect.height : -1f,
                 cardsHeight = rows[2] != null ? rows[2].rect.height : -1f, movesHeight = rows[3] != null ? rows[3].rect.height : -1f,
                 budgetCopyFloorPreferredHeight = 24f * scale + copyLeast + 4f * scale + 8f * scale + (buy != null ? buy.rect.height : -1f),
-                readablePerPage = Mathf.Clamp(Mathf.FloorToInt((board.rect.width + 12f * scale + .5f) / (112f * scale + 12f * scale)), 1, scale > 1.05f ? 8 : 10),
-                visibleCards = FreeTimeCards().Length, moveRows = rows[3] != null ? rows[3].Cast<Transform>().Select(part => Mathf.RoundToInt(((RectTransform)part).anchoredPosition.y)).Distinct().Count() : -1,
+                readablePerPage = cardPages != null && cardPages.Length > 0 ? cardPages[0] : -1, page = boardPage + 1, pages = boardPages, sections = shown.ToString(),
+                visibleCards = rows[2] != null ? FreeTimeCards().Length : 0, moveRows = rows[3] != null ? rows[3].Cast<Transform>().Select(part => Mathf.RoundToInt(((RectTransform)part).anchoredPosition.y)).Distinct().Count() : -1,
                 labelsObserved = labelSource.Length, partsObserved = partSource.Length, controlsObserved = buttonSource.Length,
                 verticalFit = fitter != null ? fitter.verticalFit.ToString() : "MISSING", horizontalFit = fitter != null ? fitter.horizontalFit.ToString() : "MISSING",
                 controlChildWidth = layout != null && layout.childControlWidth, controlChildHeight = layout != null && layout.childControlHeight,
                 forceExpandWidth = layout != null && layout.childForceExpandWidth, forceExpandHeight = layout != null && layout.childForceExpandHeight,
                 labels = labels, parts = parts.Take(512).ToArray(), controls = controls, requiredSurfaces = requiredInventory.Required.ToArray(),
             };
+        }
+
+        /// <summary>
+        /// The board's pages at the largest text in a house of eight, per fixture and frame: the
+        /// suite's literals for the owner's contract (EpisodeHud.LargestPages.cs), measured on
+        /// 2026-10-15, never the renderer's arithmetic. Two for every fixture on both frames.
+        /// </summary>
+        private static int FreeTimeLargestPagesAt11(FreeTimeWaiting waiting, string frame) => FreeTimeLargestPages;
+
+        /// <summary>
+        /// How many cards each of a house of eight's card pages holds at the largest text on a frame:
+        /// the suite's literal - six then one on 4:3, all seven on 16:9 (D20).
+        /// </summary>
+        private static int[] FreeTimeLargestCardPagesAt11(string frame) => frame == "16x9" ? new[] { 7 } : new[] { 6, 1 };
+
+        /// <summary>The board's four sections by their roots on the board, in reading order, for the walk over the pages.</summary>
+        private static readonly string[] FreeTimeSectionRoots11 =
+            { EpisodeHud.FreeTimeHeroName, EpisodeHud.StoryStripName, EpisodeHud.TalkHeadName, EpisodeHud.MovesHeadName };
+
+        /// <summary>
+        /// One fixture on one frame at the largest text, walked page by page: a receipt for each page,
+        /// then the frame's own - FIT_OBSERVED for a board that is one page and passes, PAGED_OBSERVED
+        /// for one whose pages are the suite's literal count, each passing for the sections it shows,
+        /// every section on exactly one page and in order - else NO_FIT with every reason. A receipt
+        /// too large for the log is logged without its per-part rows; its status is the observation's.
+        /// </summary>
+        private FreeTimeMetric11 FreeTimeObserveFrame11(string id, FreeTimeWaiting waiting, string frame)
+        {
+            int boardPages = FreeTimeLargestPagesAt11(waiting, frame);
+            var cardPages = FreeTimeLargestCardPagesAt11(frame);
+            var reasons = new List<string>();
+            ShowFirstPage();
+            var indicator = LargestPageIndicator();
+            FreeTimeIssue11(reasons, indicator.Pages == boardPages, "BoardPageCount:" + indicator.Pages + "!=" + boardPages);
+            var pageOf = new Dictionary<string, int>(StringComparer.Ordinal);
+            FreeTimeMetric11 first = null;
+            for (int page = 0; page < boardPages; page++)
+            {
+                var observation = FreeTimeObserve11(id + "_p" + (page + 1), waiting, cardPages, page, boardPages);
+                first = first ?? observation;
+                foreach (string failure in observation.failures) FreeTimeIssue11(reasons, false, "p" + (page + 1) + ":" + failure);
+                var board = ActiveRect(EpisodeHud.FreeTimeBoardName);
+                foreach (string root in FreeTimeSectionRoots11)
+                    if (board != null && board.Cast<Transform>().Any(part => part.name == root && part.gameObject.activeInHierarchy))
+                    {
+                        FreeTimeIssue11(reasons, !pageOf.ContainsKey(root), "SectionOnTwoPages:" + root);
+                        pageOf[root] = page;
+                    }
+                FreeTimeLogReceipt11("[Gamesim][FreeTimeMetric11Page] ", observation);
+                if (page + 1 >= boardPages) break;
+                var next = LivePageControl(EpisodeHud.NextPageCaption);
+                FreeTimeIssue11(reasons, next != null, "NoWayOn:p" + (page + 1));
+                if (next == null) break;
+                next.onClick.Invoke();
+                Canvas.ForceUpdateCanvases();
+            }
+            for (int i = 0; i < FreeTimeSectionRoots11.Length; i++)
+            {
+                FreeTimeIssue11(reasons, pageOf.ContainsKey(FreeTimeSectionRoots11[i]), "SectionOnNoPage:" + FreeTimeSectionRoots11[i]);
+                if (i > 0 && pageOf.ContainsKey(FreeTimeSectionRoots11[i]) && pageOf.ContainsKey(FreeTimeSectionRoots11[i - 1]))
+                    FreeTimeIssue11(reasons, pageOf[FreeTimeSectionRoots11[i]] >= pageOf[FreeTimeSectionRoots11[i - 1]], "SectionOrder:" + FreeTimeSectionRoots11[i]);
+            }
+            ShowFirstPage();
+            var summary = first ?? new FreeTimeMetric11();
+            summary.id = id;
+            summary.pages = boardPages;
+            summary.failures = reasons.ToArray();
+            summary.status = reasons.Count > 0 ? "NO_FIT" : boardPages > 1 ? "PAGED_OBSERVED" : "FIT_OBSERVED";
+            return summary;
+        }
+
+        /// <summary>Logs a receipt; one past the log's cap is logged without its per-part rows, its status and failures as they are.</summary>
+        private static void FreeTimeLogReceipt11(string tag, FreeTimeMetric11 receipt)
+        {
+            string json = JsonUtility.ToJson(receipt);
+            if (Encoding.UTF8.GetByteCount(json) > 65536)
+            {
+                var labels = receipt.labels; var parts = receipt.parts; var controls = receipt.controls; var surfaces = receipt.requiredSurfaces;
+                receipt.labels = null; receipt.parts = null; receipt.controls = null; receipt.requiredSurfaces = null;
+                json = JsonUtility.ToJson(receipt);
+                receipt.labels = labels; receipt.parts = parts; receipt.controls = controls; receipt.requiredSurfaces = surfaces;
+            }
+            Debug.Log(tag + json);
         }
 
         [UnityTest]
@@ -821,16 +1010,9 @@ namespace Gamesim.Tests.PlayMode
                         yield return AtFrame(frame.Width, frame.Height, () =>
                         {
                             string variant = waiting == FreeTimeWaiting.Beat ? "TwoBeats" : waiting.ToString();
-                            var observation = FreeTimeObserve11("FT11_" + variant + "_" + frame.Name, waiting);
-                            string json = JsonUtility.ToJson(observation);
-                            if (Encoding.UTF8.GetByteCount(json) > 65536)
-                            {
-                                observation.status = "NO_FIT";
-                                observation.failures = new[] { "ReceiptCap" };
-                                json = JsonUtility.ToJson(new FreeTimeMetric11 { id = observation.id, status = "NO_FIT", failures = observation.failures });
-                            }
+                            var observation = FreeTimeObserveFrame11("FT11_" + variant + "_" + frame.Name, waiting, frame.Name);
                             observations.Add(observation);
-                            Debug.Log("[Gamesim][FreeTimeMetric11] " + json);
+                            FreeTimeLogReceipt11("[Gamesim][FreeTimeMetric11] ", observation);
                         });
                     director.ClosePanels();
                 }
@@ -844,8 +1026,9 @@ namespace Gamesim.Tests.PlayMode
                 "FT11_Nothing_4x3", "FT11_Nothing_16x9", "FT11_TwoBeats_4x3", "FT11_TwoBeats_16x9",
                 "FT11_Reply_4x3", "FT11_Reply_16x9", "FT11_HaveNot_4x3", "FT11_HaveNot_16x9" }));
             Assert.That(observations.Select(row => row.id), Is.Unique, "Each real native metric case is observed exactly once.");
-            Assert.That(observations.Where(row => row.status != "FIT_OBSERVED").Select(row => row.id), Is.Empty,
-                "NO_FIT is a retained failed diagnostic, not an expected-failure pass; all eight receipts precede this assertion.");
+            Assert.That(observations.Where(row => row.status != "FIT_OBSERVED" && row.status != "PAGED_OBSERVED")
+                    .Select(row => row.id + ": " + string.Join(", ", row.failures.Take(12))), Is.Empty,
+                "Every receipt is a fit or the largest text's paging contract; NO_FIT is a retained failed diagnostic, and all eight receipts precede this assertion.");
         }
 
         private sealed class FreeTimePagerState11
@@ -901,24 +1084,34 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(after.Files[pair.Key].SequenceEqual(pair.Value), Is.True, where + ": every isolated save byte is unchanged.");
         }
 
-        private void AssertFreeTimeEightReadablePages11(string where)
+        /// <summary>
+        /// A house of eight's cards at the largest text, walked page by page by the cards' own pager:
+        /// exactly the pages <paramref name="cardPages"/> names (how many cards on each - the suite's
+        /// literal for the frame, D20), the seven others each on exactly one in order, every page's
+        /// copy and controls whole, and each turn, forward and back, leaving the season, both random
+        /// streams and every save byte as they were. At the standard and the larger text the seven
+        /// are one page with no pager (FreeTimeBoard_NothingWaiting). A frame passes after each turn,
+        /// as a player's next look does, before the board is held to its contract again.
+        /// </summary>
+        private IEnumerator AssertFreeTimeEightReadablePages11(string where, int[] cardPages)
         {
             var everybody = FreeTimeExpectedEightCards11(out var capturedRooms);
             Assert.That(everybody, Has.Length.EqualTo(7), where + ": all seven real others are required.");
-            var board = ActiveRect(EpisodeHud.FreeTimeBoardName);
-            float scale = TextSizes.Scale(director.TextSize);
-            int perPage = Mathf.Clamp(Mathf.FloorToInt((board.rect.width + 12f * scale + .5f) / (112f * scale + 12f * scale)), 1, scale > 1.05f ? 8 : 10);
-            int pages = Mathf.CeilToInt(everybody.Length / (float)perPage);
-            Assert.That(pages, Is.InRange(1, 8), "Only the finite real readable house8 pages.");
+            Assert.That(cardPages.Sum(), Is.EqualTo(7), where + ": the suite's pages hold the seven.");
+            int pages = cardPages.Length;
+            int largestPages = FreeTimeLargestPages;
+            ShowPageWith(EpisodeHud.HouseCardsName);
             var first = FreeTimeCards();
             var seen = new List<string>();
             for (int page = 0; page < pages; page++)
             {
                 Canvas.ForceUpdateCanvases();
-                AssertFreeTimeBoard(where + ", readable page " + (page + 1));
+                AssertFreeTimeBoard(where + ", readable page " + (page + 1), largestPages);
+                ShowPageWith(EpisodeHud.HouseCardsName);
                 var current = FreeTimeCards();
-                Assert.That(current, Is.EqualTo(everybody.Skip(page * perPage).Take(perPage).ToArray()), "Preserve real actor order and readable page count.");
-                FreeTimeAssertEightPageCopy11(where, capturedRooms, everybody, page);
+                Assert.That(current, Is.EqualTo(everybody.Skip(cardPages.Take(page).Sum()).Take(cardPages[page]).ToArray()),
+                    where + ", card page " + (page + 1) + ": the suite's cards, in the house's order.");
+                FreeTimeAssertEightPageCopy11(where, capturedRooms, everybody, page, cardPages);
                 Assert.That(ButtonWithCaptionOrNull(EpisodeHud.CampaignPreviousCaption) != null, Is.EqualTo(page > 0), "Previous is a real page control exactly when needed.");
                 Assert.That(ButtonWithCaptionOrNull(EpisodeHud.CampaignNextCaption) != null, Is.EqualTo(page + 1 < pages), "Next is a real page control exactly when needed.");
                 seen.AddRange(current);
@@ -928,6 +1121,7 @@ namespace Gamesim.Tests.PlayMode
                     ButtonWithCaption(EpisodeHud.CampaignNextCaption).onClick.Invoke();
                     Canvas.ForceUpdateCanvases();
                     FreeTimeAssertPagerNeutral11(before, where + ", Next");
+                    yield return null; yield return null;
                 }
             }
             Assert.That(seen, Is.Unique, where + ": no actor is repeated across pages.");
@@ -938,8 +1132,10 @@ namespace Gamesim.Tests.PlayMode
                 ButtonWithCaption(EpisodeHud.CampaignPreviousCaption).onClick.Invoke();
                 Canvas.ForceUpdateCanvases();
                 FreeTimeAssertPagerNeutral11(before, where + ", Previous");
-                AssertFreeTimeBoard(where + ", return page " + page);
-                FreeTimeAssertEightPageCopy11(where + ", return page " + page, capturedRooms, everybody, page - 1);
+                yield return null; yield return null;
+                AssertFreeTimeBoard(where + ", return page " + page, largestPages);
+                ShowPageWith(EpisodeHud.HouseCardsName);
+                FreeTimeAssertEightPageCopy11(where + ", return page " + page, capturedRooms, everybody, page - 1, cardPages);
             }
             Assert.That(FreeTimeCards(), Is.EqualTo(first), where + ": every real Previous returns to the original page.");
         }
@@ -955,7 +1151,7 @@ namespace Gamesim.Tests.PlayMode
                 .Select(actor => "Houseguest · " + actor.name).ToArray();
         }
 
-        private void FreeTimeAssertEightPageCopy11(string where, IList<HouseMap.Room> capturedRooms, string[] everybody, int page)
+        private void FreeTimeAssertEightPageCopy11(string where, IList<HouseMap.Room> capturedRooms, string[] everybody, int page, int[] cardPages)
         {
             float scale = TextSizes.Scale(director.TextSize);
             var failures = new List<string>();
@@ -964,9 +1160,13 @@ namespace Gamesim.Tests.PlayMode
             var panel = ActiveRect("Episode panel");
             var board = ActiveRect(EpisodeHud.FreeTimeBoardName);
             var state = director.Snapshot;
-            FreeTimeRequiredCopy11(board, EpisodeHud.BudgetRuleName, EpisodeDirector.BudgetRule(state), failures);
-            FreeTimeRequiredCopy11(board, EpisodeHud.BudgetCopyName, EpisodeDirector.FreeTimeCostLine(state), failures);
-            FreeTimeRequiredCopy11(board, EpisodeHud.UnusedActionsNoteName, EpisodeDirector.UnusedActionsNote(state), failures);
+            var shown = FreeTimeShownNow11(board);
+            if (shown.Hero)
+            {
+                FreeTimeRequiredCopy11(board, EpisodeHud.BudgetRuleName, EpisodeDirector.BudgetRule(state), failures);
+                FreeTimeRequiredCopy11(board, EpisodeHud.BudgetCopyName, EpisodeDirector.FreeTimeCostLine(state), failures);
+                FreeTimeRequiredCopy11(board, EpisodeHud.UnusedActionsNoteName, EpisodeDirector.UnusedActionsNote(state), failures);
+            }
             foreach (Transform card in ActiveRect(EpisodeHud.HouseCardsName))
             {
                 var rect = (RectTransform)card;
@@ -982,7 +1182,9 @@ namespace Gamesim.Tests.PlayMode
                 FreeTimeRequiredControl11(EpisodeHud.CastTalkCaption((actor.name ?? "").Split(' ')[0]), failures);
                 FreeTimeRequiredCopy11((RectTransform)card, "Standing", RelationshipWeb.StandingWord(RelationshipWeb.KindOf(state, actor.id)), failures);
             }
-            var requiredInventory = FreeTimeRequiredInventory11(board, panel, state, capturedRooms, everybody, page, FreeTimeWaiting.Nothing, failures);
+            var boardPage = LargestPageIndicator();
+            var requiredInventory = FreeTimeRequiredInventory11(board, panel, state, capturedRooms, everybody, page, FreeTimeWaiting.Nothing, failures,
+                cardPages, shown, boardPage.Page - 1, boardPage.Pages);
             var labels = requiredInventory.Labels.Concat(FreeTimeLabels11(board)).Distinct().ToArray();
             Assert.That(labels.Length, Is.LessThanOrEqualTo(256), "The whole current page's copy is finite; excess cannot pass.");
             foreach (var label in labels) FreeTimeObserveLabel11(label, board, viewport, panel, failures);

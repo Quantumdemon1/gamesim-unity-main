@@ -51,6 +51,7 @@ namespace Gamesim.Tests.PlayMode
 
         [UnityTest]
         [Category("FarewellCalibratedIkFeasibility")]
+        [FarewellDiagnosticIkPass]
         public IEnumerator CalibratedIk_ProvidedSkeletonsFreezeTrainAndTestLocalHoldoutsBeforeStrictFarewell()
         {
             yield return GroundedFarewellCalibratedIkProbe.Observe(new[] { a, b }, "ordinary-provided-imported-skeleton", false);
@@ -58,6 +59,7 @@ namespace Gamesim.Tests.PlayMode
 
         [UnityTest]
         [Category("FarewellDynamicIkFeasibility")]
+        [FarewellDiagnosticIkPass]
         public IEnumerator DynamicIk_ProvidedSkeletonsTestPerEvaluationMappingAndOwnedRelease()
         {
             yield return GroundedFarewellDynamicIkFeasibilityProbe.Observe(new[] { a, b }, "ordinary-provided-imported-skeleton", false);
@@ -79,6 +81,7 @@ namespace Gamesim.Tests.PlayMode
 
         [UnityTest]
         [Category("FarewellPassiveIkDiagnostic")]
+        [FarewellDiagnosticIkPass]
         public IEnumerator PassiveIk_ProvidedSkeletonsRecordGoalsAndLateIdlePose()
         {
             yield return GroundedFarewellPassiveIkObserver.Observe(new[] { a, b }, "ordinary-provided-imported-skeleton");

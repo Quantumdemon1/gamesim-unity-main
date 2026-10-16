@@ -95,6 +95,49 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// PR-6, counted and at every size: an offer and a loyalty declaration from the same houseguest
+        /// read "2 waiting" on the Deals petal at the standard, larger and largest text, in the full HUD
+        /// and in the compact one, with every label on the topics drawn whole.
+        /// </summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator HudStatus_TheDealsTopicCountsWhatWaitsAtEveryTextSize()
+        {
+            string talker = null;
+            yield return InstallTalkingHouse(8, false, state =>
+            {
+                AtThreePacts(state);
+                talker = state.Active.First(c => !c.isPlayer && c.id != state.hohId && !state.nominees.Contains(c.id)
+                    && c.id != state.vetoHolderId).id;
+                // A loyalty declaration on offer as the engine leaves one: its milestone shown, not yet sworn.
+                state.shownOathMilestones.Add(talker);
+                state.oathOpportunities.Add(talker);
+            });
+            var listener = Listener(director.Snapshot);
+            Assert.That(listener.id, Is.EqualTo(talker), "The declaration is the listener's.");
+            Assert.That(NpcDeals.Pending(director.Snapshot).Count(deal => deal.proposerId == listener.id), Is.EqualTo(1), "One offer,");
+            Assert.That(director.Snapshot.oathOpportunities, Does.Contain(listener.id), "and one declaration.");
+            try
+            {
+                foreach (bool compact in new[] { false, true })
+                    foreach (var size in TextSizes.All)
+                    {
+                        yield return ApplyTextSize(size);
+                        director.SetCompactHud(compact);
+                        yield return TalkTo(listener.id);
+                        string where = (compact ? "The compact HUD " : "The full HUD ") + TextScales.At(size);
+                        Assert.That(director.CurrentConversationCategory, Is.Null, where + ": the conversation opens on its topics.");
+                        var petal = ButtonWithCaption(EpisodeDirector.DealsCategoryCaption);
+                        Assert.That(TagOn(petal), Is.EqualTo(EpisodeDirector.WaitingTag(2)), where + ": the petal counts both.");
+                        AssertEveryLabelDraws(ActiveRect(EpisodeHud.DialName), where + ", the topics with two things waiting");
+                        director.ClosePanels();
+                        yield return null;
+                    }
+            }
+            finally { if (director != null) director.SetCompactHud(false); }
+            yield return ApplyTextSize(TextSize.Standard);
+        }
+
+        /// <summary>
         /// PR-7: an invited offer's yes that the engine would refuse is drawn locked and carries no
         /// "free" - a locked control is not a move the player can make. The no keeps its tag.
         /// </summary>

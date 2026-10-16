@@ -29,7 +29,7 @@ namespace Gamesim.Tests.PlayMode
         /// D18: the invitation bubble has captions of its own, and it and the Story Pull never share the
         /// screen: whichever is up keeps the floor until it is answered. Here the invitation is up when a
         /// walk-in is found; the Pull waits, and comes up once the invitation is turned down - and no
-        /// other invitation comes up over it.
+        /// other invitation comes up over it, nor is sent for, for as long as it stays up.
         /// </summary>
         [UnityTest, Timeout(300000)]
         public IEnumerator HudStatus_TheInvitationBubbleAndTheStoryPullNeverShareTheScreen()
@@ -75,6 +75,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.GetComponentsInChildren<RectTransform>(true).Any(rect => rect.name == EpisodeHud.PullCardName), Is.True,
                 "The Pull's card is built in this view, so its being on screen can be seen.");
             var bubble = director.GetComponent<HouseNpcInvitationBubble>();
+            string firstInviter = director.CurrentNpcInvitationNpcId;
             Assert.That(FindButton(HouseNpcInvitationBubble.HearCaption), Is.SameAs(bubble.HearControl), "One control wears the bubble's yes.");
             Assert.That(FindButton(HouseNpcInvitationBubble.NotNowCaption), Is.SameAs(bubble.NotNowControl), "One control wears its no.");
 
@@ -114,6 +115,26 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.PullOffered, Is.EqualTo(EpisodeHud.StepInCaption), "The walk-in's Pull takes its turn,");
             Assert.That(ActiveRect(EpisodeHud.PullCardName), Is.Not.Null, "on screen,");
             Assert.That(director.NpcInvitationIsVisible, Is.False, "and no other invitation comes up over it.");
+
+            // The exclusion's other half (NpcInvitationHouseAvailable): while the Pull is up the next
+            // houseguest with an offer is held back - not even sent for. Let through, the invitation
+            // scan sends for them within its second and their bubble is up once they reach the player,
+            // so the watch is held well past both, and only while the Pull is on screen.
+            int sentFor = 0, shown = 0;
+            float watchedFrom = Time.realtimeSinceStartup, watchUntil = watchedFrom + 12f;
+            while (Time.realtimeSinceStartup < watchUntil && ActiveRect(EpisodeHud.PullCardName) != null)
+            {
+                yield return null; Sample();
+                if (director.CurrentNpcInvitationNpcId != null) sentFor++;
+                if (director.NpcInvitationIsVisible) shown++;
+            }
+            float watched = Time.realtimeSinceStartup - watchedFrom;
+            Assert.That(watched, Is.GreaterThanOrEqualTo(10f), "The unanswered Pull keeps the screen to be watched; it went after " + watched + " s.");
+            Assert.That(NpcDeals.Pending(director.Snapshot).Any(offer => offer.proposerId != firstInviter), Is.True,
+                "Somebody besides the first to come still has an offer to bring.");
+            Assert.That(sentFor, Is.Zero, "Under the Pull an invitation was sent for on " + sentFor + " frames.");
+            Assert.That(shown, Is.Zero, "Under the Pull an invitation was on screen on " + shown + " frames.");
+            Assert.That(together, Is.Zero, "The bubble and the Pull were on screen together on " + together + " of " + frames + " frames.");
         }
     }
 }

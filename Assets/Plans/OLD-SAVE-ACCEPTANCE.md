@@ -463,6 +463,7 @@ synthetic classes (PersistenceMigrationTests, V3 to V6) catch all four too, the 
   - **With the schema 2 to 5 fixtures**, at 70ba86a6: OldSaveAcceptanceTests, BallotPrivacyTests,
     PersistenceMigrationTests and PersistenceV3–V6MigrationTests, 393 of 393 pass. OldSaveAcceptanceTests is 151, the
     twelve new cases over 139, so the floor is 7999.
+  - **Full EditMode suite**, at f31b374f (with them): 7999 of 7999 pass, exactly the new floor.
 
 ## 5. Codex's 17 holds and L01–L16
 

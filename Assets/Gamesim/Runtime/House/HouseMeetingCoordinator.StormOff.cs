@@ -28,8 +28,9 @@ namespace Gamesim.House
         /// Takes a houseguest from a scene, a stroll or an activity and sends them to
         /// <paramref name="spot"/> at <paramref name="speed"/> metres a second (the house's own pace
         /// for zero): false, and nothing changed, when somebody else is storming, the house is staged
-        /// for something else, a meeting, a conversation or a staged act has them, or there is no
-        /// route there.
+        /// for something else, a meeting, a conversation, a staged act or any other borrow has them,
+        /// or there is no route there. All of that is asked before they are taken from anything: a
+        /// storm with nowhere to go leaves them in their scene, their stroll, their activity and their seat.
         /// </summary>
         public bool TryStormOff(string id, Vector3 spot, float speed = 0f)
         {
@@ -40,6 +41,11 @@ namespace Gamesim.House
             foreach (var lease in leases.Values)
                 if (lease.FirstId == id || lease.SecondId == id) return false;
             if (TalkHoldsActor(id) || ActHoldsActor(id)) return false;
+            // A lease nothing below lets go of (anybody else's borrow) refuses here, not after the yields.
+            var motion = actor.motion;
+            if (motion.LeaseId != null && !(storming == actor && motion.LeaseId == stormToken)
+                && !SceneOwnsMotion(motion) && !WanderOwnsMotion(motion) && !ActivityOwnsMotion(motion)) return false;
+            if (!motion.CanRouteTo(spot)) return false;
             ReleaseFromSceneStage(id);
             YieldWander(id);
             YieldActivity(id);
@@ -67,6 +73,25 @@ namespace Gamesim.House
         /// <summary>Whether the one storming off has reached where they were going.</summary>
         public bool StormArrived() =>
             storming != null && stormToken != null && storming.motion != null && storming.motion.HasArrivedAt(stormToken);
+
+        /// <summary>
+        /// The walk ran out of time short of its spot: the one storming off stops where they stand,
+        /// still the storm's - a fresh storm token reserved at their own feet, so nothing else takes
+        /// them and the route no longer walks them on. False, and the storm let go, when they cannot
+        /// be held there.
+        /// </summary>
+        public bool StormHoldHere()
+        {
+            if (storming?.motion == null || stormToken == null) return false;
+            var motion = storming.motion;
+            motion.Release(stormToken);
+            stormToken = null;
+            string token = "storm:" + storming.id + ":" + (++stormLegs);
+            if (token.Length > 128) token = "storm:" + storming.id.GetHashCode() + ":" + stormLegs;
+            if (!motion.TryReserveAndPath(token, motion.transform.position)) { EndStorm(); return false; }
+            stormToken = token;
+            return true;
+        }
 
         /// <summary>Lets them go: their route released and the house's pause theirs again.</summary>
         public void EndStorm()

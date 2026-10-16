@@ -205,10 +205,15 @@ namespace Gamesim.Tests.PlayMode
         /// row's two arcs casts them (the kitchen blow-up for a volatile pair, the silent treatment
         /// otherwise) started by the engine's own seam. Kept only where the player's peace holds -
         /// the option is a check, and the season's own dice decide it - tried on a copy first.
+        ///
+        /// <para>In the campaign; or, with <paramref name="diaryPending"/>, in the free time after an
+        /// eviction with the player's reflection on it left waiting in the Diary Room, which holds the
+        /// house's clock until it is answered (NpcSocialState.IsEligible). <paramref name="arrange"/>
+        /// changes the season found before it is saved, and must leave it valid.</para>
         /// </summary>
         private string peaceEventId, peaceOptionId, peaceFirstId, peaceSecondId;
 
-        private IEnumerator InstallPeaceFixture()
+        private IEnumerator InstallPeaceFixture(bool suspend = true, bool diaryPending = false, System.Action<EpisodeState> arrange = null)
         {
             EpisodeState fixture = null;
             for (uint seed = 1; seed <= 80 && fixture == null; seed++)
@@ -217,8 +222,24 @@ namespace Gamesim.Tests.PlayMode
                 for (int guard = 0; guard < 120 && fixture == null; guard++)
                 {
                     var current = engine.Snapshot;
-                    // Nothing waits on the week's house event: in the campaign one is always ready.
-                    if (current.phase == EpisodePhase.Campaign && current.week >= 2 && current.Active.Count() >= 4 && current.pendingDiary == null
+                    if (diaryPending && current.phase == EpisodePhase.Eviction && current.evictionResolved && current.pendingDiary != null
+                        && current.week >= 2)
+                    {
+                        // Into the free time with the reflection left for later, as a player may leave it:
+                        // the walk's own next step would skip it.
+                        var advanced = engine.Apply(new EpisodeCommand
+                        {
+                            id = "peace-diary-" + current.revision, actorId = current.playerId, kind = EpisodeCommandKind.Advance,
+                            expectedPhase = current.phase, expectedRevision = current.revision,
+                        });
+                        Assert.That(advanced.accepted, Is.True, advanced.reason);
+                        current = engine.Snapshot;
+                    }
+                    bool wanted = diaryPending
+                        ? current.phase == EpisodePhase.Social && current.pendingDiary != null
+                        // Nothing waits on the week's house event: in the campaign one is always ready.
+                        : current.phase == EpisodePhase.Campaign && current.pendingDiary == null;
+                    if (wanted && current.week >= 2 && current.Active.Count() >= 4
                         && current.Find(current.playerId).status == ContestantStatus.Active)
                     {
                         foreach (var arc in new[] { "kitchen-blowup", "cold-shoulder" })
@@ -245,18 +266,30 @@ namespace Gamesim.Tests.PlayMode
                             peaceSecondId = beat.cast.First(part => part.role == "TARGET").contestantId;
                             break;
                         }
-                        break;
+                        // The campaign's first chance per season, as it always was; a waiting reflection's
+                        // free time is rarer, and the season walks on to its next.
+                        if (fixture != null || !diaryPending) break;
                     }
                     if (current.phase == EpisodePhase.Finished) break;
                     Assert.That(engine.Apply(NextCommand(current)).accepted, Is.True);
                 }
             }
             Assert.That(fixture, Is.Not.Null, "No bounded legal fixture where the player's peace holds found.");
-            director.SuspendNpcAutonomyForDiagnostics();
+            if (arrange != null)
+            {
+                arrange(fixture);
+                Assert.That(EpisodeValidation.TryValidate(fixture, out string invalid), Is.True, invalid);
+            }
+            // With suspend off the house's world stays live (a scene stages and gathers in it), and
+            // the snapshot is not compared: the world may commit a tick of its own as the season loads.
+            if (suspend) director.SuspendNpcAutonomyForDiagnostics();
             new EpisodeSaveStore(director.SavePath).Save(fixture);
             yield return ReloadEpisode();
-            director.SuspendNpcAutonomyForDiagnostics();
-            AssertEquivalent(fixture, director.Snapshot);
+            if (suspend)
+            {
+                director.SuspendNpcAutonomyForDiagnostics();
+                AssertEquivalent(fixture, director.Snapshot);
+            }
             yield return null; yield return null;
         }
 
@@ -282,7 +315,7 @@ namespace Gamesim.Tests.PlayMode
                     "The installed provider's actual bodies must be used, not a primitive fallback.");
                 bool supports = first.Supports(CharacterPresentation.Reaction.Embrace)
                     && second.Supports(CharacterPresentation.Reaction.Embrace);
-                Assert.That(supports, Is.True, supports ? null : HugEndpoint(peaceFirstId, peaceSecondId, false));
+                Assert.That(supports, Is.True, supports ? null : HugEndpoint(peaceFirstId, peaceSecondId));
             }
             Assert.That(HouseRoomQuery.TryCreate(director.gameObject.scene, out var rooms, out var reason), Is.True, reason);
             var firstCapsule = firstNpc.GetComponent<CapsuleCollider>();
@@ -334,7 +367,7 @@ namespace Gamesim.Tests.PlayMode
             UvEquivalent(before, director.Snapshot);
             yield return WaitForHugEndpoint(() => !first.IsBodyAssembling && !second.IsBodyAssembling
                 && !first.IsChangingOutfit && !second.IsChangingOutfit && first.IsStill && second.IsStill,
-                1f, "The physically arranged existing bodies settle", peaceFirstId, peaceSecondId, false);
+                1f, "The physically arranged existing bodies settle", peaceFirstId, peaceSecondId);
             Assert.That(first.IsSeated || second.IsSeated, Is.False);
             Assert.That(first.Activity, Is.EqualTo(CharacterPresentation.BodyActivity.None));
             Assert.That(second.Activity, Is.EqualTo(CharacterPresentation.BodyActivity.None));
@@ -377,14 +410,14 @@ namespace Gamesim.Tests.PlayMode
                 && (primitive || director.CurrentEmbrace != null && director.CurrentEmbrace.Fired
                     && first.IsReacting && second.IsReacting),
                 EpisodeDirector.EmbraceGatherSeconds, "The actual ending requests the two beats after its card closes",
-                peaceFirstId, peaceSecondId, false);
+                peaceFirstId, peaceSecondId);
             Assert.That(first.LastReaction, Is.EqualTo(CharacterPresentation.Reaction.Embrace), "The one who started it embraces,");
             Assert.That(second.LastReaction, Is.EqualTo(CharacterPresentation.Reaction.Embrace), "and so does the other.");
             if (!primitive)
             {
                 Assert.That(director.CurrentEmbrace, Is.Not.Null);
                 bool fired = director.CurrentEmbrace.Fired;
-                Assert.That(fired, Is.True, fired ? null : HugEndpoint(peaceFirstId, peaceSecondId, false));
+                Assert.That(fired, Is.True, fired ? null : HugEndpoint(peaceFirstId, peaceSecondId));
                 Assert.That(director.CurrentEmbrace.First, Is.SameAs(first));
                 Assert.That(director.CurrentEmbrace.Second, Is.SameAs(second));
             }
@@ -394,6 +427,163 @@ namespace Gamesim.Tests.PlayMode
             UvEquivalent(committed, director.Snapshot);
             Assert.That(director.PendingEmbraceFirst, Is.Null, "and nothing is left waiting.");
         }
+
+        /// <summary>
+        /// A peace made while the house's world is paused still ends once its card closes: here the
+        /// player's reflection on the eviction waits in the Diary Room, which holds the house's clock
+        /// until it is answered. A paused house walks nobody together, so nobody is: the primitive rig
+        /// is told the beat, bodies that have the take embrace where they stand or not at all. The
+        /// peace once waited on the house before anything else, and so waited out the whole of free
+        /// time (S2D-R1).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StoryReactions_APeaceMadeWhileTheHouseIsPausedEndsRatherThanWaits()
+        {
+            Application.runInBackground = true;
+            Time.captureDeltaTime = 1f / 30f;
+            try
+            {
+                yield return InstallPeaceFixture(suspend: false, diaryPending: true);
+                Assert.That(director.Snapshot.pendingDiary, Is.Not.Null, "A reflection waits in the Diary Room.");
+                director.BuildNpcWorldForDiagnostics();
+                for (int frame = 0; frame < 600 && !director.NpcAutonomyReady; frame++) yield return null;
+                Assert.That(director.NpcAutonomyReady, Is.True, "The house's world is up: " + director.NpcAutonomyDiagnostic);
+                var house = StormCoordinator();
+                yield return WaitFor(() => house.IsPaused, 5f, "The waiting reflection holds the house.");
+
+                var beat = EpisodeEngine.OpenStoryBeats(director.Snapshot).Single(item => item.id == peaceEventId);
+                var option = beat.choices.Single(c => c.optionId == peaceOptionId);
+                Assert.That(director.OpenSceneCard(beat.id), Is.True);
+                yield return null;
+                ButtonWithCaption(EpisodeHud.EventChoiceCaption(option.label)).onClick.Invoke();
+                yield return Frames(2);
+                var line = director.Snapshot.storylines.Single(x => x.id == beat.cycleId);
+                Assert.That(line.endingId, Is.EqualTo(StoryReactions.Peace), "The player made peace between them.");
+                Assert.That(director.PendingEmbraceFirst, Is.EqualTo(peaceFirstId), "The two wait for the card to close.");
+                var first = StoryBody(peaceFirstId);
+                var second = StoryBody(peaceSecondId);
+                bool primitive = first.IsPrimitiveBody || second.IsPrimitiveBody;
+
+                ButtonWithCaption(EpisodeDirector.SceneCardDoneCaption).onClick.Invoke();
+                yield return null;
+                Assert.That(director.IsSceneCardOpen || director.IsPanelOpen, Is.False, "The card is down and no panel is up.");
+                bool pausedThroughout = true;
+                yield return WaitForHugEndpoint(() =>
+                    {
+                        pausedThroughout &= house.IsPaused;
+                        return director.PendingEmbraceFirst == null;
+                    }, EpisodeDirector.EmbraceGatherSeconds + 2f, "The peace ends though the house stays paused", peaceFirstId, peaceSecondId);
+                Assert.That(pausedThroughout && house.IsPaused, Is.True, "The house stayed paused throughout,");
+                Assert.That(director.Snapshot.pendingDiary, Is.Not.Null, "the reflection still waiting.");
+                if (primitive)
+                {
+                    Assert.That(first.LastReaction, Is.EqualTo(CharacterPresentation.Reaction.Embrace), "The primitive rig is told the beat:");
+                    Assert.That(second.LastReaction, Is.EqualTo(CharacterPresentation.Reaction.Embrace), "both of them.");
+                }
+                Assert.That(house.SceneHeldForEmbrace, Is.False, "No scene is left holding them.");
+            }
+            finally { Time.captureDeltaTime = 0f; }
+        }
+
+#if GAMESIM_UMA
+        // UMA only: the gather walks bodies that have the take. The primitive rig plays nothing and is
+        // never gathered; its case stays StoryReactions_TwoWhoMakePeaceEmbraceOnceTheCardCloses.
+        /// <summary>
+        /// The peace's whole path on bodies that have the take (the owner-protected 3.8 s embrace):
+        /// the house's world live, the scene staging the two who will make up farther apart than an
+        /// embrace can begin from, the player making the peace and closing the card - and the scene
+        /// walks them to about <see cref="EpisodeDirector.EmbraceApart"/>, they embrace (both beats
+        /// fired in one frame, both bodies playing the take), and once they let go the scene's hold
+        /// on them is gone.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StoryReactions_TwoWhoMakePeaceAreGatheredByTheirSceneAndEmbrace()
+        {
+            Application.runInBackground = true;
+            Time.captureDeltaTime = 1f / 30f;
+            try
+            {
+                yield return InstallPeaceFixture(suspend: false);
+                director.BuildNpcWorldForDiagnostics();
+                for (int frame = 0; frame < 600 && !director.NpcAutonomyReady; frame++) yield return null;
+                Assert.That(director.NpcAutonomyReady, Is.True, "The house's world is up.");
+                var house = StormCoordinator();
+
+                // The scene gathers its people in its room, as the house stages an open scene: this one
+                // open as the season loaded, and staged once the house could take it.
+                yield return WaitForSceneStage(peaceEventId, 30f, "The scene stages the two who will make up");
+                yield return WaitForHugEndpoint(() => house.SceneStageKey == peaceEventId && house.SceneActorsArrived(peaceFirstId, peaceSecondId),
+                    10f, "The scene's two reach their places", peaceFirstId, peaceSecondId);
+                yield return SettleCast();
+                var first = StoryBody(peaceFirstId);
+                var second = StoryBody(peaceSecondId);
+                Assert.That(first.IsPrimitiveBody || second.IsPrimitiveBody, Is.False, "UMA bodies, not the primitive rig.");
+                bool supports = first.Supports(CharacterPresentation.Reaction.Embrace) && second.Supports(CharacterPresentation.Reaction.Embrace);
+                Assert.That(supports, Is.True, supports ? null : HugEndpoint(peaceFirstId, peaceSecondId));
+                // Farther apart than an embrace can begin from - by the scene's own step where the ring
+                // stood them nearer - so only the gather can bring them in.
+                if (Flat(first.transform.position, second.transform.position) <= EmbracePair.FarthestApart + .2f)
+                {
+                    var centre = (first.transform.position + second.transform.position) * .5f;
+                    bool spread = false;
+                    foreach (float apartWanted in new[] { 2f, 1.8f, 1.6f })
+                        if (house.TryBringTogether(peaceEventId, peaceFirstId, peaceSecondId, centre, apartWanted)) { spread = true; break; }
+                    Assert.That(spread, Is.True, "The scene stands them apart.\n" + HugEndpoint(peaceFirstId, peaceSecondId));
+                    yield return WaitForHugEndpoint(() => house.SceneActorsArrived(peaceFirstId, peaceSecondId) && first.IsStill && second.IsStill,
+                        10f, "They stand apart", peaceFirstId, peaceSecondId);
+                }
+                float before = Flat(first.transform.position, second.transform.position);
+                Assert.That(before, Is.GreaterThan(EmbracePair.FarthestApart), "Farther apart than an embrace can begin from: " + before.ToString("F2") + " m.");
+
+                var beat = EpisodeEngine.OpenStoryBeats(director.Snapshot).Single(item => item.id == peaceEventId);
+                var option = beat.choices.Single(c => c.optionId == peaceOptionId);
+                Assert.That(director.OpenSceneCard(beat.id), Is.True);
+                yield return null;
+                ButtonWithCaption(EpisodeHud.EventChoiceCaption(option.label)).onClick.Invoke();
+                yield return Frames(2);
+                var line = director.Snapshot.storylines.Single(x => x.id == beat.cycleId);
+                Assert.That(line.endingId, Is.EqualTo(StoryReactions.Peace), "The player made peace between them.");
+                Assert.That(house.SceneHeldForEmbrace, Is.True, "Their scene holds them for what comes of it,");
+                Assert.That(director.PendingEmbraceFirst, Is.EqualTo(peaceFirstId), "and the two wait for the card to close.");
+                Assert.That(first.LastReaction, Is.Not.EqualTo(CharacterPresentation.Reaction.Embrace), "Nothing while the card is up.");
+                Assert.That(second.LastReaction, Is.Not.EqualTo(CharacterPresentation.Reaction.Embrace));
+
+                ButtonWithCaption(EpisodeDirector.SceneCardDoneCaption).onClick.Invoke();
+                float nearest = float.MaxValue, begun = -1f;
+                yield return WaitForHugEndpoint(() =>
+                    {
+                        float now = Flat(first.transform.position, second.transform.position);
+                        nearest = Mathf.Min(nearest, now);
+                        // Where the gather stood them: the roots on the frame the embrace begins, before
+                        // any of it plays (it turns and closes the visual bodies, never the roots).
+                        if (begun < 0f && director.CurrentEmbrace != null) begun = now;
+                        return director.CurrentEmbrace != null && director.CurrentEmbrace.Fired && first.IsReacting && second.IsReacting;
+                    }, EpisodeDirector.EmbraceGatherSeconds + 4f, "The scene gathers them and they embrace", peaceFirstId, peaceSecondId);
+                float apart = Flat(first.transform.position, second.transform.position);
+                string gathered = "Gathered from " + before.ToString("F3") + " m to " + begun.ToString("F3") + " m as the embrace began, "
+                    + apart.ToString("F3") + " m as it fired (nearest on the way " + nearest.ToString("F3") + " m; EmbraceApart "
+                    + EpisodeDirector.EmbraceApart.ToString("F2") + " m).";
+                TestContext.WriteLine("[S2d] " + gathered);
+                Assert.That(apart, Is.InRange(EmbracePair.NearestApart, EmbracePair.FarthestApart), gathered);
+                // The gather's own aim, not only the embrace's window (0.6-1.2 m), which Fired already
+                // says: from farther apart than the window, only the gather stands them about here.
+                Assert.That(Mathf.Abs(begun - EpisodeDirector.EmbraceApart), Is.LessThanOrEqualTo(.15f), "About EmbraceApart. " + gathered);
+                Assert.That(director.CurrentEmbrace.First, Is.SameAs(first), "The one who started it embraces");
+                Assert.That(director.CurrentEmbrace.Second, Is.SameAs(second), "the other.");
+                Assert.That(first.LastReaction, Is.EqualTo(CharacterPresentation.Reaction.Embrace));
+                Assert.That(second.LastReaction, Is.EqualTo(CharacterPresentation.Reaction.Embrace));
+
+                var pair = director.CurrentEmbrace;
+                yield return WaitForHugEndpoint(() => pair == null || pair.Released, 15f, "They let go", peaceFirstId, peaceSecondId);
+                Assert.That(pair == null || pair.ReleaseReason == "done", Is.True, "The take played out: " + (pair != null ? pair.ReleaseReason : "done") + ".");
+                yield return WaitForHugEndpoint(() => !house.SceneHeldForEmbrace && house.SceneStageKey != peaceEventId,
+                    5f, "The scene's hold clears once they let go", peaceFirstId, peaceSecondId);
+                Assert.That(house.SceneHoldsActor(peaceFirstId) || house.SceneHoldsActor(peaceSecondId), Is.False, "The house has them back,");
+                Assert.That(director.PendingEmbraceFirst, Is.Null, "and nothing is left waiting.");
+            }
+            finally { Time.captureDeltaTime = 0f; }
+        }
+#endif
 
         /// <summary>A walkable point about <paramref name="distance"/> from a body, on the floor.</summary>
         private static Vector3 PointBeside(Vector3 from, float distance)

@@ -716,7 +716,7 @@ namespace Gamesim.Editor
                 if (finish != null) { Quad(group, "Finish line", finish, new Vector3(lb.center.x, room.FloorTop + FloorLift + 0.004f, lb.max.z - 1.2f), new Vector2(1.2f, 0.6f), Vector3.up, Vector3.forward); count++; }
             }
             for (int i = 0; i < 3; i++)
-                if (Carton(group, "Flight case", Pack5 + "CompetitionKit/hazard_stripe_decal.png", new Vector3(0.9f, 0.5f, 0.5f),
+                if (PieceAt(group, "Flight case", "bb_set_flight_case",
                     new Vector3(room.Bounds.min.x + 1.0f + (i == 2 ? 1.1f : 0f), room.FloorTop + (i == 2 ? 0f : 0f), room.Bounds.center.z - 2.4f + i * 0.6f), i * 6f) != null) count++;
             return count;
         }

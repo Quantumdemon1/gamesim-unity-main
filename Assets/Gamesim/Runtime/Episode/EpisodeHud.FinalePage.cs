@@ -23,6 +23,14 @@ namespace Gamesim.Episode
     /// once. A juror's face is a control captioned with their name, and a press shows the reason
     /// they gave as the jury card's foot line; the whole of every reason stays in the season report
     /// and the jury's questions.</para>
+    ///
+    /// <para>At the largest text a page that cannot fit its frame pages instead (the owner's
+    /// contract of 2026-10-15; EpisodeHud.LargestPages.cs), decided before anything is built: its
+    /// three parts - the cards' row, the highlights, the ways on - are dealt whole, in reading order,
+    /// onto pages of the frame's height, the cards' row at the least that holds its faces, and on its
+    /// page it then takes what its portrait and faces want, up to what the page leaves it. The pager
+    /// stands at each page's foot. At the standard and the larger text the page is one, laid as it
+    /// always was.</para>
     /// </summary>
     public sealed partial class EpisodeHud
     {
@@ -75,6 +83,8 @@ namespace Gamesim.Episode
             public Action<string> PressJuror;
             public IList<FinaleStat> Highlights;
             public IList<FinaleWay> Ways, SecondRow;
+            /// <summary>Renders the page again: the largest text's pager has turned its page (EpisodeHud.LargestPages.cs). View state.</summary>
+            public Action Redraw;
         }
 
         // Sizes at the resting text size; each is multiplied by the text scale unless it is a picture.
@@ -138,6 +148,16 @@ namespace Gamesim.Episode
                 cards = Mathf.Max(cards, FinaleJuryFixed() + FinaleJuryArea(jurors, juryWidth, face));
             }
 
+            // Whether the page fits its frame on one page, decided here with the height known and
+            // nothing built. At the standard and the larger text the page is one, laid as it always
+            // was; at the largest a page that cannot fit is dealt onto pages (the owner's contract,
+            // EpisodeHud.LargestPages.cs).
+            if (LargestTextPages && cards + rest > room + .5f)
+            {
+                FinalePages(spec, state, board, width, room, highlights, captionLines, juryWidth, winnerWidth, twoWidth, faces);
+                return;
+            }
+
             // The winner's halo reaches past its card's top by what the room leaves over the cards, so
             // the scroll's mask never cuts it; the rows are lifted by as much.
             float lift = Mathf.Clamp(most - cards, 0f, FinaleHaloReach * s);
@@ -152,6 +172,64 @@ namespace Gamesim.Episode
             FinaleHighlights(board, lift + cards + gap, width, highlights, spec.Highlights, captionLines);
             var size = board.GetComponent<LayoutElement>();
             size.minHeight = size.preferredHeight = total;
+        }
+
+        /// <summary>
+        /// The finale's page at the largest text where it cannot fit its frame: its three parts - the
+        /// cards' row at the least that holds the jury's faces at their smallest, the highlights, and
+        /// the ways on's two rows - dealt whole, in reading order, onto pages of the frame's height less
+        /// the pager (<see cref="LargestPages.Breaks"/>), and only the shown page's parts built. On its
+        /// page the cards' row takes what the winner's portrait and the faces want, up to what the page
+        /// leaves it, and the faces step down a size as on the one page. Built in the same order: the
+        /// ways on, the cards, the highlights, then the pager at the page's foot.
+        /// </summary>
+        private void FinalePages(FinalePageSpec spec, EpisodeState state, RectTransform board, float width, float room, float highlights, int captionLines,
+            float juryWidth, float winnerWidth, float twoWidth, float[] faces)
+        {
+            float s = FontScale, gap = FinaleGap * s, ways = FinaleWayHeight * s, thin = FinaleThinHeight * s;
+            float waysPart = ways + FinaleRowGap * s + thin;
+            float pageRoom = Mathf.Max(0f, room - LargestPagerHeight);
+            int jurors = spec.Jurors != null ? spec.Jurors.Count : 0;
+            float cardsLeast = Mathf.Max(FinaleWinnerFixed() + FinalePortraitLeast, FinaleJuryFixed() + FinaleJuryArea(jurors, juryWidth, faces[faces.Length - 1]));
+            var breaks = LargestPages.Breaks(new[] { cardsLeast, highlights, waysPart }, gap, pageRoom);
+            int pages = LargestPages.Count(breaks), page = LargestPageOf(FinalePageName, pages);
+            bool showCards = breaks[0] == page, showHighlights = breaks[1] == page, showWays = breaks[2] == page;
+
+            // The cards' row on its page: what the portrait and the faces want, held to what the page
+            // leaves it and never under its least; the largest face that holds in the card.
+            float others = (showHighlights ? gap + highlights : 0f) + (showWays ? gap + waysPart : 0f);
+            float cardsRoom = Mathf.Max(cardsLeast, pageRoom - others);
+            float wanted = Mathf.Max(FinaleWinnerFixed() + FinalePortrait, FinaleJuryFixed() + FinaleJuryArea(jurors, juryWidth, faces[0]));
+            float cards = Mathf.Clamp(wanted, cardsLeast, cardsRoom);
+            float face = faces[faces.Length - 1];
+            foreach (float candidate in faces)
+                if (FinaleJuryArea(jurors, juryWidth, candidate) <= cards - FinaleJuryFixed() + .5f) { face = candidate; break; }
+            // The winner's halo reaches past its card's top by what the page leaves over the cards.
+            float lift = showCards ? Mathf.Clamp(cardsRoom - cards, 0f, FinaleHaloReach * s) : 0f;
+
+            float y = 0f, cardsY = 0f, highlightsY = 0f, waysY = 0f;
+            if (showCards) { cardsY = lift; y = lift + cards; }
+            if (showHighlights) { if (showCards) y += gap; highlightsY = y; y += highlights; }
+            if (showWays) { if (showCards || showHighlights) y += gap; waysY = y; y += waysPart; }
+
+            if (showWays)
+            {
+                FinaleWayRow(board, FinaleWaysName, waysY, width, ways, spec.Ways, true);
+                FinaleWayRow(board, FinaleSecondRowName, waysY + ways + FinaleRowGap * s, width, thin, spec.SecondRow, false);
+            }
+            if (showCards)
+            {
+                FinaleWinnerCard(board, 0f, cardsY, winnerWidth, cards, lift, spec, state);
+                FinaleFinalTwoCard(board, winnerWidth + gap, cardsY, twoWidth, cards, spec, state);
+                FinaleJuryCard(board, winnerWidth + gap + twoWidth + gap, cardsY, juryWidth, cards, face, spec, state);
+            }
+            if (showHighlights) FinaleHighlights(board, highlightsY, width, highlights, spec.Highlights, captionLines);
+            // The pager at the page's foot, where it stands on every page, so the press that turned one
+            // page can turn it back.
+            float height = Mathf.Max(room, y + LargestPagerHeight);
+            LargestPager(board, 0f, height - LargestPagerPill * s, width, FinalePageName, page, pages, spec.Redraw);
+            var size = board.GetComponent<LayoutElement>();
+            size.minHeight = size.preferredHeight = height;
         }
 
         // ------------------------------------------------------------ measuring

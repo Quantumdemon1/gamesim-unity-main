@@ -154,5 +154,88 @@ namespace Gamesim.Tests.PlayMode
             }
             finally { Time.captureDeltaTime = 0f; }
         }
+
+        /// <summary>
+        /// An invitation that is up keeps the floor until it is answered (D18), against a moment's
+        /// scene too. Since the one try waits for a house that could take a scene, it can come round
+        /// long after the moment opened - and staging then withdrew an invitation the player had
+        /// already been offered (S2D-R4). Here the house could take the scene while the bubble is up:
+        /// nothing is staged over it, the bubble stays, and once it is turned down the scene stages.
+        /// </summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator SceneStage_AnInvitationUpKeepsTheFloorUntilItIsAnswered()
+        {
+            Application.runInBackground = true;
+            Time.captureDeltaTime = 1f / 30f;
+            try
+            {
+                // The moment open as the season loads, and a houseguest outside its cast with a reason
+                // to ask the player something: the invitation flow's own motive (NpcInvitationFlow).
+                yield return InstallPeaceFixture(suspend: false, arrange: state =>
+                {
+                    foreach (var npc in state.Active.Where(person => !person.isPlayer))
+                    {
+                        state.relationships.Single(edge => edge.fromId == npc.id && edge.toId == state.playerId).score = 10;
+                        state.relationships.Single(edge => edge.fromId == state.playerId && edge.toId == npc.id).score = 60;
+                    }
+                    var asker = state.Active.Where(person => !person.isPlayer && person.id != peaceFirstId && person.id != peaceSecondId)
+                        .OrderBy(person => person.id, System.StringComparer.Ordinal).First();
+                    state.relationships.Single(edge => edge.fromId == asker.id && edge.toId == state.playerId).score = 90;
+                    NpcDeals.Propose(state);
+                    Assert.That(NpcInvitation.Available(state).Any(invitation => invitation.NpcId == asker.id), Is.True,
+                        asker.id + " has an offer to bring the player.");
+                });
+                director.BuildNpcWorldForDiagnostics();
+                Assert.That(director.NpcAutonomyDiagnostic, Is.Null);
+                var oneTry = typeof(EpisodeDirector).GetField("sceneStagedBeat", BindingFlags.Instance | BindingFlags.NonPublic);
+                Assert.That(oneTry, Is.Not.Null, "The director keeps a beat's one try.");
+                // The house's own floor, where an invitation comes to the player (NpcInvitationFlow).
+                Assert.That(director.ShowOverview(), Is.True);
+                // Whatever the season staged as it loaded is let go: a scene up holds every invitation back.
+                float deadline = Time.realtimeSinceStartup + 40f;
+                while (!director.NpcInvitationIsVisible && Time.realtimeSinceStartup < deadline)
+                {
+                    var staged = StormCoordinator();
+                    if (staged != null && staged.HasSceneStage) staged.EndSceneStage();
+                    yield return null;
+                }
+                Assert.That(director.NpcInvitationIsVisible, Is.True, "An invitation is up: " + SceneStageDiagnostic());
+                string asking = director.CurrentNpcInvitationNpcId;
+
+                // The moment's try unspent, as a moment that has just opened has its own.
+                oneTry.SetValue(director, null);
+                int couldTake = 0, frames = 0;
+                float until = Time.realtimeSinceStartup + 5f;
+                while (director.NpcInvitationIsVisible && couldTake < 30 && Time.realtimeSinceStartup < until)
+                {
+                    if (StormCoordinator().CanBeginSceneStage && !director.IsPanelOpen) couldTake++;
+                    yield return null;
+                    frames++;
+                    Assert.That(StormCoordinator().HasSceneStage, Is.False,
+                        "Nothing is staged over " + asking + "'s invitation while it is up (frame " + frames + "): " + SceneStageDiagnostic());
+                }
+                Assert.That(couldTake, Is.GreaterThan(0), "The house could have taken the scene while the invitation was up, over "
+                    + frames + " frames: " + SceneStageDiagnostic());
+                Assert.That(director.NpcInvitationIsVisible, Is.True, "The invitation keeps the floor.");
+                Assert.That(director.CurrentNpcInvitationNpcId, Is.EqualTo(asking), "The same one.");
+
+                var bubble = director.GetComponent<HouseNpcInvitationBubble>();
+                Assert.That(bubble, Is.Not.Null);
+                bubble.NotNowControl.onClick.Invoke();
+                Assert.That(director.NpcInvitationIsVisible, Is.False, "Turned down, the bubble goes,");
+                // and the moment is staged: at once if the house is free, or once any other offer that
+                // came up first has had its own answer.
+                int answered = 1;
+                float by = Time.realtimeSinceStartup + 40f;
+                while (StormCoordinator().SceneStageKey != peaceEventId && Time.realtimeSinceStartup < by)
+                {
+                    if (director.NpcInvitationIsVisible) { bubble.NotNowControl.onClick.Invoke(); answered++; }
+                    yield return null;
+                }
+                Assert.That(StormCoordinator().SceneStageKey, Is.EqualTo(peaceEventId),
+                    "Staged once the invitation was answered (" + answered + " answered): " + SceneStageDiagnostic());
+            }
+            finally { Time.captureDeltaTime = 0f; }
+        }
     }
 }

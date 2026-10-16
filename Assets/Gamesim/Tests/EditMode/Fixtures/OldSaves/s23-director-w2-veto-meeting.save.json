@@ -1,0 +1,2680 @@
+{
+  "format": "gamesim-unity-save",
+  "version": 1,
+  "savedAt": "2026-10-15T20:10:07.4479144Z",
+  "checksum": "25add62ce223f8209c269b62b8c927c6dde6b02dec49ea049768c5862b909803",
+  "state": {
+    "schemaVersion": 23,
+    "competitionRulesVersion": 4,
+    "sessionId": "oldsave-director-2301-6",
+    "seed": 2301,
+    "randomState": 3847381218,
+    "revision": 26,
+    "week": 2,
+    "nextSequence": 130,
+    "socialActions": 0,
+    "phase": 5,
+    "playerId": "player",
+    "hohId": "player",
+    "previousHohId": "casey-wilson",
+    "vetoHolderId": "player",
+    "winnerId": null,
+    "runnerUpId": null,
+    "finalPart1WinnerId": null,
+    "finalPart2WinnerId": null,
+    "competitionResolved": false,
+    "vetoResolved": false,
+    "evictionResolved": false,
+    "contestants": [
+      {
+        "id": "player",
+        "name": "You",
+        "pronouns": "they/them",
+        "motive": "Choose who to trust, survive the vote, and build a game you can explain.",
+        "homeRoom": "Living",
+        "occupation": "Houseguest",
+        "archetype": "The Newcomer",
+        "hometown": null,
+        "bio": null,
+        "sourceTemplateId": null,
+        "appearance": {
+          "version": 1,
+          "provider": "auto",
+          "presetId": "player",
+          "bodyId": "",
+          "fallbackId": "player",
+          "activeOutfit": "Everyday",
+          "dna": [],
+          "colors": [],
+          "outfits": []
+        },
+        "age": 30,
+        "mood": "Happy",
+        "stressLevel": "Relaxed",
+        "isPlayer": true,
+        "status": 0,
+        "stats": {
+          "physical": 6.0,
+          "mental": 6.0,
+          "endurance": 6.0,
+          "social": 6.0,
+          "luck": 6.0,
+          "competition": 6.0,
+          "strategic": 6.0,
+          "loyalty": 6.0
+        },
+        "traits": [],
+        "hohWins": 1,
+        "vetoWins": 2,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      },
+      {
+        "id": "alex-chen",
+        "name": "Alex Chen",
+        "pronouns": "he/him",
+        "motive": "Run the house from one seat behind it, and never be the name anyone says out loud.",
+        "homeRoom": "Private",
+        "occupation": "Marketing Executive",
+        "archetype": "The Mastermind",
+        "hometown": "San Francisco, CA",
+        "bio": "Strategic mastermind who excels at social manipulation and long-term planning. Always three steps ahead.",
+        "sourceTemplateId": "alex-chen",
+        "appearance": {
+          "version": 1,
+          "provider": "auto",
+          "presetId": "alex-chen",
+          "bodyId": "",
+          "fallbackId": "alex-chen",
+          "activeOutfit": "Everyday",
+          "dna": [],
+          "colors": [],
+          "outfits": []
+        },
+        "age": 28,
+        "mood": "Angry",
+        "stressLevel": "Tense",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4.0,
+          "mental": 8.0,
+          "endurance": 4.0,
+          "social": 8.0,
+          "luck": 6.0,
+          "competition": 4.0,
+          "strategic": 6.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Strategic",
+          "Social"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 1,
+        "nominationWeeks": [
+          2
+        ]
+      },
+      {
+        "id": "emma-brown",
+        "name": "Emma Brown",
+        "pronouns": "she/her",
+        "motive": "Test every claim she hears against what she has already seen before acting on it.",
+        "homeRoom": "Bedroom",
+        "occupation": "Scientist",
+        "archetype": "The Scientist",
+        "hometown": "Newark, NJ",
+        "bio": "Brilliant mind with a flair for the dramatic. Uses her analytical skills to outthink the competition while keeping everyone guessing.",
+        "sourceTemplateId": "emma-brown",
+        "appearance": {
+          "version": 1,
+          "provider": "auto",
+          "presetId": "emma-brown",
+          "bodyId": "",
+          "fallbackId": "emma-brown",
+          "activeOutfit": "Everyday",
+          "dna": [],
+          "colors": [],
+          "outfits": []
+        },
+        "age": 29,
+        "mood": "Angry",
+        "stressLevel": "Stressed",
+        "isPlayer": false,
+        "status": 2,
+        "stats": {
+          "physical": 4.0,
+          "mental": 10.0,
+          "endurance": 4.0,
+          "social": 4.0,
+          "luck": 4.0,
+          "competition": 4.0,
+          "strategic": 7.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Analytical",
+          "Strategic"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 1,
+        "nominationWeeks": [
+          1
+        ]
+      },
+      {
+        "id": "jordan-taylor",
+        "name": "Jordan Taylor",
+        "pronouns": "he/him",
+        "motive": "Be everyone's second-favourite person, because nobody targets their second favourite.",
+        "homeRoom": "Living",
+        "occupation": "Sales Representative",
+        "archetype": "The Charmer",
+        "hometown": "Chicago, IL",
+        "bio": "Charismatic charmer who can talk anyone into anything. Will do whatever it takes to win.",
+        "sourceTemplateId": "jordan-taylor",
+        "appearance": {
+          "version": 1,
+          "provider": "auto",
+          "presetId": "jordan-taylor",
+          "bodyId": "",
+          "fallbackId": "jordan-taylor",
+          "activeOutfit": "Everyday",
+          "dna": [],
+          "colors": [],
+          "outfits": []
+        },
+        "age": 31,
+        "mood": "Angry",
+        "stressLevel": "Tense",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4.0,
+          "mental": 6.0,
+          "endurance": 4.0,
+          "social": 8.0,
+          "luck": 6.0,
+          "competition": 4.0,
+          "strategic": 8.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Social",
+          "Sneaky"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 2,
+        "nominationWeeks": [
+          1,
+          2
+        ]
+      },
+      {
+        "id": "casey-wilson",
+        "name": "Casey Wilson",
+        "pronouns": "she/her",
+        "motive": "Keep conversations light, compare what people say, and avoid becoming the obvious target.",
+        "homeRoom": "Living",
+        "occupation": "Bartender",
+        "archetype": "The Party Animal",
+        "hometown": "New Orleans, LA",
+        "bio": "Life of the party with a surprisingly sharp strategic mind. Nobody suspects the fun one.",
+        "sourceTemplateId": "casey-wilson",
+        "appearance": {
+          "version": 1,
+          "provider": "auto",
+          "presetId": "casey-wilson",
+          "bodyId": "",
+          "fallbackId": "casey-wilson",
+          "activeOutfit": "Everyday",
+          "dna": [],
+          "colors": [],
+          "outfits": []
+        },
+        "age": 24,
+        "mood": "Content",
+        "stressLevel": "Relaxed",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4.0,
+          "mental": 8.0,
+          "endurance": 4.0,
+          "social": 8.0,
+          "luck": 6.0,
+          "competition": 4.0,
+          "strategic": 6.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Social",
+          "Strategic"
+        ],
+        "hohWins": 1,
+        "vetoWins": 0,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      },
+      {
+        "id": "riley-johnson",
+        "name": "Riley Johnson",
+        "pronouns": "he/him",
+        "motive": "Turn careful observation into one reliable partnership and a well-timed competition win.",
+        "homeRoom": "Bedroom",
+        "occupation": "Software Engineer",
+        "archetype": "The Brainiac",
+        "hometown": "Seattle, WA",
+        "bio": "Analytical genius who calculates every move. May struggle socially but never in puzzles.",
+        "sourceTemplateId": "riley-johnson",
+        "appearance": {
+          "version": 1,
+          "provider": "auto",
+          "presetId": "riley-johnson",
+          "bodyId": "",
+          "fallbackId": "riley-johnson",
+          "activeOutfit": "Everyday",
+          "dna": [],
+          "colors": [],
+          "outfits": []
+        },
+        "age": 29,
+        "mood": "Content",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4.0,
+          "mental": 10.0,
+          "endurance": 4.0,
+          "social": 4.0,
+          "luck": 4.0,
+          "competition": 4.0,
+          "strategic": 7.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Analytical",
+          "Strategic"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 1,
+        "nominationWeeks": [
+          1
+        ]
+      }
+    ],
+    "relationships": [
+      {
+        "fromId": "player",
+        "toId": "alex-chen",
+        "score": 8.2759141702204957,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "Alex Chen courted you before the nominations"
+        ],
+        "events": [
+          {
+            "sequence": 101,
+            "week": 2,
+            "type": "talk",
+            "description": "Alex Chen courted you before the nominations",
+            "impactScore": 3.4031823180615905,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "player",
+        "toId": "emma-brown",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "player",
+        "toId": "jordan-taylor",
+        "score": 34.783585691265763,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "You used POV to save Jordan Taylor",
+          "Jordan Taylor spent time with you",
+          "Jordan Taylor courted you before the nominations"
+        ],
+        "events": [
+          {
+            "sequence": 85,
+            "week": 1,
+            "type": "talk",
+            "description": "Jordan Taylor spent time with you",
+            "impactScore": 3.5987903129309418,
+            "decayable": true
+          },
+          {
+            "sequence": 104,
+            "week": 2,
+            "type": "talk",
+            "description": "Jordan Taylor courted you before the nominations",
+            "impactScore": 3.7007055763155225,
+            "decayable": true
+          },
+          {
+            "sequence": 128,
+            "week": 2,
+            "type": "deal_proposed",
+            "description": "Jordan Taylor put a veto commitment to you.",
+            "impactScore": 0.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "player",
+        "toId": "casey-wilson",
+        "score": 8.69070344865322,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "Casey Wilson courted you before the nominations"
+        ],
+        "events": [
+          {
+            "sequence": 107,
+            "week": 2,
+            "type": "talk",
+            "description": "Casey Wilson courted you before the nominations",
+            "impactScore": 4.6627347469329834,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "player",
+        "toId": "riley-johnson",
+        "score": -8.6428059651516378,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "You used POV forcing Riley Johnson on the block",
+          "Riley Johnson courted you before the nominations"
+        ],
+        "events": [
+          {
+            "sequence": 110,
+            "week": 2,
+            "type": "talk",
+            "description": "Riley Johnson courted you before the nominations",
+            "impactScore": 4.3983802888542414,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "alex-chen",
+        "toId": "player",
+        "score": 8.3502170957624919,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "Alex Chen courted you before the nominations"
+        ],
+        "events": [
+          {
+            "sequence": 100,
+            "week": 2,
+            "type": "talk",
+            "description": "Alex Chen courted you before the nominations",
+            "impactScore": 4.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "alex-chen",
+        "toId": "emma-brown",
+        "score": 11.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 44,
+            "week": 1,
+            "type": "campaign",
+            "description": "Emma Brown campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "alex-chen",
+        "toId": "jordan-taylor",
+        "score": 4.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 82,
+            "week": 1,
+            "type": "talk",
+            "description": "Alex Chen spent time with Jordan Taylor",
+            "impactScore": 4.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "alex-chen",
+        "toId": "casey-wilson",
+        "score": 25.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 13,
+            "week": 1,
+            "type": "talk",
+            "description": "Alex Chen courted Casey Wilson before the nominations",
+            "impactScore": 6.0,
+            "decayable": true
+          },
+          {
+            "sequence": 35,
+            "week": 1,
+            "type": "promise-made",
+            "description": "Alex Chen gave Casey Wilson their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 67,
+            "week": 1,
+            "type": "showmance",
+            "description": "Late nights together.",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 78,
+            "week": 1,
+            "type": "talk",
+            "description": "Alex Chen spent time with Casey Wilson",
+            "impactScore": 6.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "alex-chen",
+        "toId": "riley-johnson",
+        "score": 17.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 42,
+            "week": 1,
+            "type": "promise-made",
+            "description": "Riley Johnson gave Alex Chen their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 48,
+            "week": 1,
+            "type": "campaign",
+            "description": "Riley Johnson campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 90,
+            "week": 1,
+            "type": "talk",
+            "description": "Riley Johnson spent time with Alex Chen",
+            "impactScore": 6.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "emma-brown",
+        "toId": "player",
+        "score": 0.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "emma-brown",
+        "toId": "alex-chen",
+        "score": 14.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 43,
+            "week": 1,
+            "type": "campaign",
+            "description": "Emma Brown campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "emma-brown",
+        "toId": "jordan-taylor",
+        "score": 2.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 45,
+            "week": 1,
+            "type": "campaign",
+            "description": "Emma Brown campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "emma-brown",
+        "toId": "casey-wilson",
+        "score": 15.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 15,
+            "week": 1,
+            "type": "talk",
+            "description": "Emma Brown courted Casey Wilson before the nominations",
+            "impactScore": 6.0,
+            "decayable": true
+          },
+          {
+            "sequence": 37,
+            "week": 1,
+            "type": "promise-made",
+            "description": "Emma Brown gave Casey Wilson their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "emma-brown",
+        "toId": "riley-johnson",
+        "score": 12.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jordan-taylor",
+        "toId": "player",
+        "score": 33.0,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "You used POV to save Jordan Taylor",
+          "Jordan Taylor spent time with you",
+          "Jordan Taylor courted you before the nominations"
+        ],
+        "events": [
+          {
+            "sequence": 84,
+            "week": 1,
+            "type": "talk",
+            "description": "Jordan Taylor spent time with you",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 103,
+            "week": 2,
+            "type": "talk",
+            "description": "Jordan Taylor courted you before the nominations",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 127,
+            "week": 2,
+            "type": "deal_proposed",
+            "description": "Jordan Taylor put a veto commitment to you.",
+            "impactScore": 0.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "jordan-taylor",
+        "toId": "alex-chen",
+        "score": 10.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 83,
+            "week": 1,
+            "type": "talk",
+            "description": "Alex Chen spent time with Jordan Taylor",
+            "impactScore": 4.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "jordan-taylor",
+        "toId": "emma-brown",
+        "score": 5.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 46,
+            "week": 1,
+            "type": "campaign",
+            "description": "Emma Brown campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "jordan-taylor",
+        "toId": "casey-wilson",
+        "score": 0.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 17,
+            "week": 1,
+            "type": "talk",
+            "description": "Jordan Taylor courted Casey Wilson before the nominations",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 39,
+            "week": 1,
+            "type": "promise-made",
+            "description": "Jordan Taylor gave Casey Wilson their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 80,
+            "week": 1,
+            "type": "rumor",
+            "description": "Something Jordan Taylor heard about Casey Wilson",
+            "impactScore": -15.0,
+            "decayable": true
+          },
+          {
+            "sequence": 88,
+            "week": 1,
+            "type": "talk",
+            "description": "Casey Wilson spent time with Jordan Taylor",
+            "impactScore": 4.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "jordan-taylor",
+        "toId": "riley-johnson",
+        "score": 5.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 50,
+            "week": 1,
+            "type": "campaign",
+            "description": "Riley Johnson campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "player",
+        "score": 7.9180808722972866,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "Casey Wilson courted you before the nominations"
+        ],
+        "events": [
+          {
+            "sequence": 106,
+            "week": 2,
+            "type": "talk",
+            "description": "Casey Wilson courted you before the nominations",
+            "impactScore": 4.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "alex-chen",
+        "score": 25.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 14,
+            "week": 1,
+            "type": "talk",
+            "description": "Alex Chen courted Casey Wilson before the nominations",
+            "impactScore": 6.0,
+            "decayable": true
+          },
+          {
+            "sequence": 36,
+            "week": 1,
+            "type": "promise-made",
+            "description": "Alex Chen gave Casey Wilson their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 68,
+            "week": 1,
+            "type": "showmance",
+            "description": "Late nights together.",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 79,
+            "week": 1,
+            "type": "talk",
+            "description": "Alex Chen spent time with Casey Wilson",
+            "impactScore": 6.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "emma-brown",
+        "score": 12.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 16,
+            "week": 1,
+            "type": "talk",
+            "description": "Emma Brown courted Casey Wilson before the nominations",
+            "impactScore": 6.0,
+            "decayable": true
+          },
+          {
+            "sequence": 38,
+            "week": 1,
+            "type": "promise-made",
+            "description": "Emma Brown gave Casey Wilson their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "jordan-taylor",
+        "score": -6.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 18,
+            "week": 1,
+            "type": "talk",
+            "description": "Jordan Taylor courted Casey Wilson before the nominations",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 40,
+            "week": 1,
+            "type": "promise-made",
+            "description": "Jordan Taylor gave Casey Wilson their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 81,
+            "week": 1,
+            "type": "rumor",
+            "description": "Something Jordan Taylor heard about Casey Wilson",
+            "impactScore": -15.0,
+            "decayable": true
+          },
+          {
+            "sequence": 87,
+            "week": 1,
+            "type": "talk",
+            "description": "Casey Wilson spent time with Jordan Taylor",
+            "impactScore": 4.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "riley-johnson",
+        "score": -8.94958970323205,
+        "lastInteractionWeek": 1,
+        "notes": [
+          "Casey Wilson named Riley Johnson as replacement nominee"
+        ],
+        "events": [
+          {
+            "sequence": 20,
+            "week": 1,
+            "type": "talk",
+            "description": "Riley Johnson courted Casey Wilson before the nominations",
+            "impactScore": 6.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "player",
+        "score": -11.0,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "You used POV forcing Riley Johnson on the block",
+          "Riley Johnson courted you before the nominations"
+        ],
+        "events": [
+          {
+            "sequence": 109,
+            "week": 2,
+            "type": "talk",
+            "description": "Riley Johnson courted you before the nominations",
+            "impactScore": 4.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "alex-chen",
+        "score": 20.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 41,
+            "week": 1,
+            "type": "promise-made",
+            "description": "Riley Johnson gave Alex Chen their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 47,
+            "week": 1,
+            "type": "campaign",
+            "description": "Riley Johnson campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 89,
+            "week": 1,
+            "type": "talk",
+            "description": "Riley Johnson spent time with Alex Chen",
+            "impactScore": 6.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "emma-brown",
+        "score": 12.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "jordan-taylor",
+        "score": 2.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 49,
+            "week": 1,
+            "type": "campaign",
+            "description": "Riley Johnson campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "casey-wilson",
+        "score": -5.0,
+        "lastInteractionWeek": 1,
+        "notes": [
+          "Casey Wilson named Riley Johnson as replacement nominee"
+        ],
+        "events": [
+          {
+            "sequence": 19,
+            "week": 1,
+            "type": "talk",
+            "description": "Riley Johnson courted Casey Wilson before the nominations",
+            "impactScore": 6.0,
+            "decayable": true
+          }
+        ]
+      }
+    ],
+    "promises": [
+      {
+        "id": "promise-npc-35",
+        "fromId": "alex-chen",
+        "toId": "casey-wilson",
+        "targetId": null,
+        "kind": 0,
+        "status": 0,
+        "week": 1,
+        "expiresWeek": 2,
+        "impact": "medium",
+        "brokenById": null,
+        "settledWeek": 0
+      },
+      {
+        "id": "promise-npc-37",
+        "fromId": "emma-brown",
+        "toId": "casey-wilson",
+        "targetId": "riley-johnson",
+        "kind": 1,
+        "status": 3,
+        "week": 1,
+        "expiresWeek": 1,
+        "impact": "medium",
+        "brokenById": null,
+        "settledWeek": 0
+      },
+      {
+        "id": "promise-npc-39",
+        "fromId": "jordan-taylor",
+        "toId": "casey-wilson",
+        "targetId": null,
+        "kind": 0,
+        "status": 0,
+        "week": 1,
+        "expiresWeek": 2,
+        "impact": "medium",
+        "brokenById": null,
+        "settledWeek": 0
+      },
+      {
+        "id": "promise-npc-41",
+        "fromId": "riley-johnson",
+        "toId": "alex-chen",
+        "targetId": "emma-brown",
+        "kind": 1,
+        "status": 3,
+        "week": 1,
+        "expiresWeek": 1,
+        "impact": "medium",
+        "brokenById": null,
+        "settledWeek": 0
+      }
+    ],
+    "alliances": [],
+    "memories": [
+      {
+        "ownerId": "alex-chen",
+        "subjectId": "player",
+        "text": "We spent time talking in week 1.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "casey-wilson",
+        "subjectId": "player",
+        "text": "We spent time talking in week 1.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "jordan-taylor",
+        "subjectId": "casey-wilson",
+        "text": "Nominated me in week 1.",
+        "week": 1,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "emma-brown",
+        "subjectId": "casey-wilson",
+        "text": "Nominated me in week 1.",
+        "week": 1,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "riley-johnson",
+        "subjectId": "casey-wilson",
+        "text": "Nominated me in week 1.",
+        "week": 1,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "riley-johnson",
+        "subjectId": "alex-chen",
+        "text": "I overheard Alex Chen and Jordan Taylor in week 1. They sounded careful with each other.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "alex-chen",
+        "subjectId": "player",
+        "text": "Nominated me in week 2.",
+        "week": 2,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "jordan-taylor",
+        "subjectId": "player",
+        "text": "Nominated me in week 2.",
+        "week": 2,
+        "isPrivate": false
+      }
+    ],
+    "nominees": [
+      "alex-chen",
+      "jordan-taylor"
+    ],
+    "vetoPlayers": [
+      "player",
+      "alex-chen",
+      "jordan-taylor",
+      "casey-wilson",
+      "riley-johnson"
+    ],
+    "votes": [],
+    "ledger": {
+      "opportunities": [
+        {
+          "id": "read-1",
+          "kind": "read",
+          "anchor": "EvictionNight",
+          "source": null,
+          "response": "ignored",
+          "outcome": "na",
+          "currency": null,
+          "note": null,
+          "week": 1,
+          "payoff": 0.0,
+          "steps": []
+        }
+      ],
+      "competitions": [
+        {
+          "week": 1,
+          "field": 6,
+          "placement": 4,
+          "kind": "HoH",
+          "entry": "played",
+          "performance": 0.5,
+          "expectedWin": 0.16082675385196243
+        },
+        {
+          "week": 1,
+          "field": 6,
+          "placement": 1,
+          "kind": "Veto",
+          "entry": "played",
+          "performance": 0.5,
+          "expectedWin": 0.13097767558285062
+        },
+        {
+          "week": 2,
+          "field": 4,
+          "placement": 1,
+          "kind": "HoH",
+          "entry": "played",
+          "performance": 0.5,
+          "expectedWin": 0.17360218095776958
+        },
+        {
+          "week": 2,
+          "field": 5,
+          "placement": 1,
+          "kind": "Veto",
+          "entry": "played",
+          "performance": 0.5,
+          "expectedWin": 0.22492689875790364
+        }
+      ],
+      "power": [
+        {
+          "week": 1,
+          "hohId": "casey-wilson",
+          "vetoHolderId": "player",
+          "savedId": "jordan-taylor",
+          "replacementId": "riley-johnson",
+          "evicteeId": "emma-brown",
+          "backdoorTargetId": "player",
+          "backdoorResult": "missed",
+          "vetoUsed": true,
+          "nominees": [
+            "emma-brown",
+            "riley-johnson"
+          ],
+          "tally": [
+            3,
+            0
+          ]
+        }
+      ],
+      "ballots": [
+        {
+          "week": 1,
+          "voterId": "player",
+          "targetId": "emma-brown",
+          "readBefore": null,
+          "correct": false
+        }
+      ],
+      "claims": [],
+      "alliances": [],
+      "standings": [
+        {
+          "week": 1,
+          "fromId": "emma-brown",
+          "toId": "player",
+          "source": "juror",
+          "score": 0.0
+        }
+      ],
+      "replies": [],
+      "calls": [],
+      "dropped": 0
+    },
+    "readRulesStartWeek": 1,
+    "leverRulesStartWeek": 1,
+    "weekRulesStartWeek": 1,
+    "windowActions": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "economyRulesVersion": 1,
+    "moveInExtrasSpent": 0,
+    "agencyRulesStartWeek": 1,
+    "finaleRulesStartWeek": 1,
+    "commitmentRulesStartWeek": 1,
+    "competitionScores": [
+      {
+        "contestantId": "player",
+        "score": 7.8090271493420005
+      },
+      {
+        "contestantId": "alex-chen",
+        "score": 7.6974150182213634
+      },
+      {
+        "contestantId": "jordan-taylor",
+        "score": 5.7362594628706578
+      },
+      {
+        "contestantId": "casey-wilson",
+        "score": 4.5352926851483062
+      },
+      {
+        "contestantId": "riley-johnson",
+        "score": 2.8171224459307274
+      }
+    ],
+    "events": [
+      {
+        "sequence": 1,
+        "week": 1,
+        "phase": 0,
+        "kind": "arrival",
+        "text": "Six houseguests, one new game. Meet the cast, decide who to trust, and prepare for the first competition.",
+        "audienceIds": [
+          "player",
+          "alex-chen",
+          "emma-brown",
+          "jordan-taylor",
+          "casey-wilson",
+          "riley-johnson"
+        ]
+      },
+      {
+        "sequence": 2,
+        "week": 1,
+        "phase": 0,
+        "kind": "conversation",
+        "text": "You and Alex Chen talked about the game.",
+        "audienceIds": [
+          "player",
+          "alex-chen"
+        ]
+      },
+      {
+        "sequence": 3,
+        "week": 1,
+        "phase": 0,
+        "kind": "story-lore",
+        "text": "You learned something about Alex Chen: Runs brand campaigns for a tech firm. Knows exactly how a story gets sold, and to whom.",
+        "audienceIds": [
+          "player",
+          "alex-chen"
+        ]
+      },
+      {
+        "sequence": 4,
+        "week": 1,
+        "phase": 0,
+        "kind": "conversation",
+        "text": "You and Casey Wilson talked about the game.",
+        "audienceIds": [
+          "player",
+          "casey-wilson"
+        ]
+      },
+      {
+        "sequence": 5,
+        "week": 1,
+        "phase": 0,
+        "kind": "story-lore",
+        "text": "You learned something about Casey Wilson: Tends bar in New Orleans. Hears everybody's secrets and keeps every one.",
+        "audienceIds": [
+          "player",
+          "casey-wilson"
+        ]
+      },
+      {
+        "sequence": 6,
+        "week": 1,
+        "phase": 1,
+        "kind": "phase",
+        "text": "Week 1 · HoH",
+        "audienceIds": []
+      },
+      {
+        "sequence": 7,
+        "week": 1,
+        "phase": 1,
+        "kind": "competition-definition",
+        "text": "roll-the-dice-v4 · Roll the Dice · Luck. Three dice, up to three rolls. Every re-roll replaces the roll you have, so keep a good one when you see it. Your kept total, 3 to 18, is your score.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 8,
+        "week": 1,
+        "phase": 1,
+        "kind": "competition-standings",
+        "text": "Committed competition standings: 1. Casey Wilson 8.72; 2. Emma Brown 8.62; 3. Alex Chen 7.07; 4. You 6.76; 5. Riley Johnson 6.61; 6. Jordan Taylor 6.40.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 9,
+        "week": 1,
+        "phase": 1,
+        "kind": "have-nots",
+        "text": "This week's Have-Nots: Jordan Taylor and Riley Johnson. Slop, cold showers and the Have-Not room until the next Head of Household, and a point off their veto.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 10,
+        "week": 1,
+        "phase": 1,
+        "kind": "competition-performance",
+        "text": "Played: performance 50%. Your weighted stats: physical 0; mental 0.6; endurance 0; social 0; luck 4.68 (6 squeezed to 5.2). Chance -0.14 (sampled multiplier 0.973201); second roll +0.13 (0.041859 × 3); nominee 0; preparation 0; event 0; storyline 0; performance +1.5; rounding -0.01. Sum = 6.76. All displayed terms add to this committed score. Total player bonus +1.5. Zero performance can still win; full marks do not guarantee first place.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 11,
+        "week": 1,
+        "phase": 1,
+        "kind": "competition",
+        "text": "Competition winner: Casey Wilson · Luck.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 12,
+        "week": 1,
+        "phase": 2,
+        "kind": "phase",
+        "text": "Week 1 · Nomination",
+        "audienceIds": []
+      },
+      {
+        "sequence": 21,
+        "week": 1,
+        "phase": 2,
+        "kind": "nomination",
+        "text": "Casey Wilson nominates Jordan Taylor and Emma Brown.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 23,
+        "week": 1,
+        "phase": 3,
+        "kind": "phase",
+        "text": "Week 1 · VetoSelection",
+        "audienceIds": []
+      },
+      {
+        "sequence": 24,
+        "week": 1,
+        "phase": 3,
+        "kind": "veto-selection",
+        "text": "Everyone remaining in the house is eligible for the veto competition.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 25,
+        "week": 1,
+        "phase": 4,
+        "kind": "phase",
+        "text": "Week 1 · Veto",
+        "audienceIds": []
+      },
+      {
+        "sequence": 26,
+        "week": 1,
+        "phase": 4,
+        "kind": "competition-definition",
+        "text": "signal-sprint-v3 · Signal Sprint · Skill. A steady sequence of targets, each visible for 0.90 seconds. Timing does not change when you hit one.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 27,
+        "week": 1,
+        "phase": 4,
+        "kind": "competition-standings",
+        "text": "Committed competition standings: 1. You 8.03; 2. Emma Brown 7.44; 3. Jordan Taylor 6.96; 4. Alex Chen 6.55; 5. Casey Wilson 6.17; 6. Riley Johnson 5.07.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 28,
+        "week": 1,
+        "phase": 4,
+        "kind": "veto-prize",
+        "text": "Emma Brown came second in the veto and won $5,000.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 29,
+        "week": 1,
+        "phase": 4,
+        "kind": "veto-prize",
+        "text": "Riley Johnson finished last in the veto and takes a punishment: a Have-Not next week, whatever the competition says.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 30,
+        "week": 1,
+        "phase": 4,
+        "kind": "competition-performance",
+        "text": "Played: performance 50%. Your weighted stats: physical 1.8; mental 1.8; endurance 0.6; social 0; luck 1.8. Chance +0.53 (sampled multiplier 1.089124); nominee 0; preparation 0; event 0; storyline 0; performance +1.5; rounding 0. Sum = 8.03. All displayed terms add to this committed score. Total player bonus +1.5. Zero performance can still win; full marks do not guarantee first place.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 31,
+        "week": 1,
+        "phase": 4,
+        "kind": "competition",
+        "text": "Competition winner: You · Skill.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 32,
+        "week": 1,
+        "phase": 5,
+        "kind": "phase",
+        "text": "Week 1 · VetoMeeting",
+        "audienceIds": []
+      },
+      {
+        "sequence": 33,
+        "week": 1,
+        "phase": 5,
+        "kind": "veto",
+        "text": "You save Jordan Taylor; Riley Johnson is the replacement nominee.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 34,
+        "week": 1,
+        "phase": 6,
+        "kind": "phase",
+        "text": "Week 1 · Campaign",
+        "audienceIds": []
+      },
+      {
+        "sequence": 51,
+        "week": 1,
+        "phase": 6,
+        "kind": "campaign-close",
+        "text": "Campaigning has closed. The house votes privately to evict.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 52,
+        "week": 1,
+        "phase": 7,
+        "kind": "phase",
+        "text": "Week 1 · Eviction",
+        "audienceIds": []
+      },
+      {
+        "sequence": 53,
+        "week": 1,
+        "phase": 7,
+        "kind": "eviction-speech",
+        "text": "Emma Brown: I'd like to stay, and I'd rather ask you honestly than work you for it. That's my speech.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 54,
+        "week": 1,
+        "phase": 7,
+        "kind": "eviction-speech",
+        "text": "Riley Johnson: I've watched this house carefully, and I've told you what I saw. I'd like to keep being useful to you.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 55,
+        "week": 1,
+        "phase": 7,
+        "kind": "eviction-stage",
+        "text": "The house votes privately to evict.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 56,
+        "week": 1,
+        "phase": 7,
+        "kind": "private-vote",
+        "text": "Your eviction vote was recorded.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 57,
+        "week": 1,
+        "phase": 7,
+        "kind": "private-vote",
+        "text": "Your eviction vote was recorded.",
+        "audienceIds": [
+          "alex-chen"
+        ]
+      },
+      {
+        "sequence": 58,
+        "week": 1,
+        "phase": 7,
+        "kind": "private-vote",
+        "text": "Your eviction vote was recorded.",
+        "audienceIds": [
+          "jordan-taylor"
+        ]
+      },
+      {
+        "sequence": 59,
+        "week": 1,
+        "phase": 7,
+        "kind": "eviction",
+        "text": "Emma Brown is evicted and joins the jury. By a vote of 3 to 0.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 60,
+        "week": 1,
+        "phase": 7,
+        "kind": "vote-reveal",
+        "text": "You voted to evict Emma Brown. Player's decision",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 61,
+        "week": 1,
+        "phase": 7,
+        "kind": "vote-reveal",
+        "text": "Alex Chen voted to evict Emma Brown. Emma Brown is the bigger threat and needs to go.",
+        "audienceIds": [
+          "alex-chen"
+        ]
+      },
+      {
+        "sequence": 62,
+        "week": 1,
+        "phase": 7,
+        "kind": "vote-reveal",
+        "text": "Jordan Taylor voted to evict Emma Brown. Emma Brown is the bigger threat and needs to go.",
+        "audienceIds": [
+          "jordan-taylor"
+        ]
+      },
+      {
+        "sequence": 63,
+        "week": 1,
+        "phase": 7,
+        "kind": "diary-invitation",
+        "text": "A private post-eviction reflection is ready in the Diary Room. You may also skip it.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 64,
+        "week": 1,
+        "phase": 7,
+        "kind": "diary-skip",
+        "text": "You skipped this private reflection. No persona or impression change was applied.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 65,
+        "week": 1,
+        "phase": 0,
+        "kind": "phase",
+        "text": "Week 1 · Social",
+        "audienceIds": []
+      },
+      {
+        "sequence": 71,
+        "week": 1,
+        "phase": 0,
+        "kind": "story-thread",
+        "text": "Your bond with Jordan Taylor: Jordan Taylor could be the one person in this house you trust to the end.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 73,
+        "week": 1,
+        "phase": 0,
+        "kind": "story-thread",
+        "text": "Your rivalry with Riley Johnson: Riley Johnson has had it in for you from the start. It ends in peace or a showdown.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 76,
+        "week": 1,
+        "phase": 0,
+        "kind": "story",
+        "text": "Know Them. A play is on offer.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 77,
+        "week": 1,
+        "phase": 0,
+        "kind": "story-thread",
+        "text": "Your bond with Jordan Taylor: chapter 1, Know Them.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 86,
+        "week": 1,
+        "phase": 0,
+        "kind": "conversation",
+        "text": "Jordan Taylor sought you out this week.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 91,
+        "week": 1,
+        "phase": 0,
+        "kind": "house-ambient",
+        "text": "You notice Alex Chen making notes on a piece of paper in the hallway.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 92,
+        "week": 1,
+        "phase": 0,
+        "kind": "story-outcome",
+        "text": "Know Them: You left it for now.",
+        "audienceIds": [
+          "player",
+          "jordan-taylor"
+        ]
+      },
+      {
+        "sequence": 93,
+        "week": 2,
+        "phase": 1,
+        "kind": "phase",
+        "text": "Week 2 · HoH",
+        "audienceIds": []
+      },
+      {
+        "sequence": 94,
+        "week": 2,
+        "phase": 1,
+        "kind": "competition-definition",
+        "text": "house-memory-v3 · House Memory · Mental. Discover and match eight hidden pairs in 30 seconds. Remember the cards revealed by your earlier choices.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 95,
+        "week": 2,
+        "phase": 1,
+        "kind": "competition-standings",
+        "text": "Committed competition standings: 1. You 8.51; 2. Riley Johnson 7.81; 3. Alex Chen 5.71; 4. Jordan Taylor 5.35.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 96,
+        "week": 2,
+        "phase": 1,
+        "kind": "have-nots",
+        "text": "This week's Have-Nots: Jordan Taylor and Riley Johnson. Slop, cold showers and the Have-Not room until the next Head of Household, and a point off their veto.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 97,
+        "week": 2,
+        "phase": 1,
+        "kind": "competition-performance",
+        "text": "Played: performance 50%. Your weighted stats: physical 0; mental 3.6; endurance 0.6; social 0.6; luck 1.2. Chance +1.01 (sampled multiplier 1.167638); nominee 0; preparation 0; event 0; storyline 0; performance +1.5; rounding 0. Sum = 8.51. All displayed terms add to this committed score. Total player bonus +1.5. Zero performance can still win; full marks do not guarantee first place.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 98,
+        "week": 2,
+        "phase": 1,
+        "kind": "competition",
+        "text": "Competition winner: You · Mental.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 99,
+        "week": 2,
+        "phase": 2,
+        "kind": "phase",
+        "text": "Week 2 · Nomination",
+        "audienceIds": []
+      },
+      {
+        "sequence": 102,
+        "week": 2,
+        "phase": 2,
+        "kind": "conversation",
+        "text": "Alex Chen came to see you before the nominations.",
+        "audienceIds": [
+          "player",
+          "alex-chen"
+        ]
+      },
+      {
+        "sequence": 105,
+        "week": 2,
+        "phase": 2,
+        "kind": "conversation",
+        "text": "Jordan Taylor came to see you before the nominations.",
+        "audienceIds": [
+          "player",
+          "jordan-taylor"
+        ]
+      },
+      {
+        "sequence": 108,
+        "week": 2,
+        "phase": 2,
+        "kind": "conversation",
+        "text": "Casey Wilson came to see you before the nominations.",
+        "audienceIds": [
+          "player",
+          "casey-wilson"
+        ]
+      },
+      {
+        "sequence": 111,
+        "week": 2,
+        "phase": 2,
+        "kind": "conversation",
+        "text": "Riley Johnson came to see you before the nominations.",
+        "audienceIds": [
+          "player",
+          "riley-johnson"
+        ]
+      },
+      {
+        "sequence": 112,
+        "week": 2,
+        "phase": 2,
+        "kind": "story-whisper",
+        "text": "Word in the house: Alex Chen and Casey Wilson are more than friends.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 113,
+        "week": 2,
+        "phase": 2,
+        "kind": "story-thread",
+        "text": "Your bond with Jordan Taylor: Know Them never came to anything.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 114,
+        "week": 2,
+        "phase": 2,
+        "kind": "nomination",
+        "text": "You nominate Alex Chen and Jordan Taylor.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 116,
+        "week": 2,
+        "phase": 2,
+        "kind": "story-outcome",
+        "text": "a houseguest broke down in the bathroom, and came out a little lighter.",
+        "audienceIds": [
+          "jordan-taylor",
+          "casey-wilson"
+        ]
+      },
+      {
+        "sequence": 117,
+        "week": 2,
+        "phase": 3,
+        "kind": "phase",
+        "text": "Week 2 · VetoSelection",
+        "audienceIds": []
+      },
+      {
+        "sequence": 118,
+        "week": 2,
+        "phase": 3,
+        "kind": "veto-selection",
+        "text": "Everyone remaining in the house is eligible for the veto competition.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 119,
+        "week": 2,
+        "phase": 4,
+        "kind": "phase",
+        "text": "Week 2 · Veto",
+        "audienceIds": []
+      },
+      {
+        "sequence": 120,
+        "week": 2,
+        "phase": 4,
+        "kind": "competition-definition",
+        "text": "hold-your-ground-v3 · Hold Your Ground · Endurance. Steady pressure rises as the clock advances. Manage grip and hold for 19.5 seconds total to earn full marks.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 121,
+        "week": 2,
+        "phase": 4,
+        "kind": "competition-standings",
+        "text": "Committed competition standings: 1. You 7.81; 2. Alex Chen 7.70; 3. Jordan Taylor 5.74; 4. Casey Wilson 4.54; 5. Riley Johnson 2.82.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 122,
+        "week": 2,
+        "phase": 4,
+        "kind": "veto-prize",
+        "text": "Alex Chen came second in the veto and won a Have-Not pass.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 123,
+        "week": 2,
+        "phase": 4,
+        "kind": "veto-prize",
+        "text": "Riley Johnson finished last in the veto and takes a punishment: a Have-Not next week, whatever the competition says.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 124,
+        "week": 2,
+        "phase": 4,
+        "kind": "competition-performance",
+        "text": "Played: performance 50%. Your weighted stats: physical 1.8; mental 0.6; endurance 3; social 0; luck 0.6. Chance +0.31 (sampled multiplier 1.051505); nominee 0; preparation 0; event 0; storyline 0; performance +1.5; rounding 0. Sum = 7.81. All displayed terms add to this committed score. Total player bonus +1.5. Zero performance can still win; full marks do not guarantee first place.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 125,
+        "week": 2,
+        "phase": 4,
+        "kind": "competition",
+        "text": "Competition winner: You · Endurance.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 126,
+        "week": 2,
+        "phase": 5,
+        "kind": "phase",
+        "text": "Week 2 · VetoMeeting",
+        "audienceIds": []
+      },
+      {
+        "sequence": 129,
+        "week": 2,
+        "phase": 5,
+        "kind": "deal",
+        "text": "Jordan Taylor is on the block and wants your word on the veto.",
+        "audienceIds": [
+          "player",
+          "jordan-taylor"
+        ]
+      }
+    ],
+    "acceptedCommandIds": [
+      "generate-0001",
+      "generate-0002",
+      "generate-0003",
+      "generate-0004",
+      "generate-0005",
+      "generate-0006",
+      "generate-0007",
+      "generate-0008",
+      "generate-0009",
+      "generate-0010",
+      "generate-0011",
+      "generate-0012",
+      "generate-0013",
+      "generate-0014",
+      "generate-0015",
+      "generate-0016",
+      "generate-0017",
+      "generate-0018",
+      "generate-0019",
+      "generate-0020",
+      "generate-0021",
+      "generate-0022",
+      "generate-0023",
+      "generate-0024",
+      "generate-0025",
+      "generate-0026"
+    ],
+    "juryExchanges": [],
+    "juryQuestionIndex": 0,
+    "finalSpeeches": [],
+    "finalArgument": null,
+    "relationshipArcs": [
+      {
+        "npcId": "alex-chen",
+        "npcName": "Alex Chen",
+        "arcType": "neutral",
+        "intensity": 24.0,
+        "escalationLevel": 0,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": 4.0,
+            "reason": "Relationship changed by 4"
+          },
+          {
+            "week": 2,
+            "delta": 4.0,
+            "reason": "Alex Chen courted you before the nominations"
+          },
+          {
+            "week": 2,
+            "delta": -8.0,
+            "reason": "Nominated Alex Chen in week 2"
+          }
+        ]
+      },
+      {
+        "npcId": "casey-wilson",
+        "npcName": "Casey Wilson",
+        "arcType": "neutral",
+        "intensity": 27.0,
+        "escalationLevel": 1,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": 4.0,
+            "reason": "Relationship changed by 4"
+          },
+          {
+            "week": 1,
+            "delta": -20.0,
+            "reason": "Casey Wilson named Riley Johnson as replacement nominee"
+          },
+          {
+            "week": 2,
+            "delta": 4.0,
+            "reason": "Casey Wilson courted you before the nominations"
+          }
+        ]
+      },
+      {
+        "npcId": "jordan-taylor",
+        "npcName": "Jordan Taylor",
+        "arcType": "friendship",
+        "intensity": 39.0,
+        "escalationLevel": 1,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": 25.0,
+            "reason": "You used POV to save Jordan Taylor"
+          },
+          {
+            "week": 1,
+            "delta": 4.0,
+            "reason": "Jordan Taylor spent time with you"
+          },
+          {
+            "week": 2,
+            "delta": 4.0,
+            "reason": "Jordan Taylor courted you before the nominations"
+          },
+          {
+            "week": 2,
+            "delta": -8.0,
+            "reason": "Nominated Jordan Taylor in week 2"
+          }
+        ]
+      },
+      {
+        "npcId": "riley-johnson",
+        "npcName": "Riley Johnson",
+        "arcType": "rivalry",
+        "intensity": 36.0,
+        "escalationLevel": 1,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": -20.0,
+            "reason": "Casey Wilson named Riley Johnson as replacement nominee"
+          },
+          {
+            "week": 1,
+            "delta": -15.0,
+            "reason": "You used POV forcing Riley Johnson on the block"
+          },
+          {
+            "week": 2,
+            "delta": 4.0,
+            "reason": "Riley Johnson courted you before the nominations"
+          }
+        ]
+      }
+    ],
+    "playerPersona": {
+      "current": "Neutral",
+      "scores": [
+        {
+          "persona": "Neutral",
+          "score": 0
+        },
+        {
+          "persona": "Remorseful",
+          "score": 0
+        },
+        {
+          "persona": "Ruthless",
+          "score": 0
+        },
+        {
+          "persona": "Calculated",
+          "score": 0
+        },
+        {
+          "persona": "Social Butterfly",
+          "score": 0
+        }
+      ],
+      "history": []
+    },
+    "jurySentiment": {
+      "jurors": [
+        {
+          "jurorId": "emma-brown",
+          "jurorName": "Emma Brown",
+          "sentiment": 0.0,
+          "events": [
+            {
+              "week": 0,
+              "delta": 0.0,
+              "reason": "Entered jury"
+            }
+          ]
+        }
+      ],
+      "overallSentiment": 0.0
+    },
+    "pendingDiary": null,
+    "lastDiaryRoomWeek": 1,
+    "phaseEventSocialBonus": 0,
+    "phaseEventCompBonus": 0,
+    "resolvedDiaryIds": [
+      "diary-post_eviction-1"
+    ],
+    "loyaltyOaths": [],
+    "oathOpportunities": [],
+    "shownOathMilestones": [],
+    "playerStudyBonus": 0,
+    "blocRulesStartWeek": 1,
+    "npcSocial": {
+      "rulesStartWeek": 1,
+      "clockTick": 0,
+      "nextScanTick": 3,
+      "nextConversationSequence": 1,
+      "randomState": 1860020888,
+      "pending": [],
+      "cooldowns": [],
+      "pairMemory": []
+    },
+    "evictionStage": 0,
+    "evictionSpeeches": [],
+    "backdoorTargetId": null,
+    "outOfPhaseSocialActions": 0,
+    "openingBeatsSeen": [],
+    "socialBudgetRulesStartWeek": 1,
+    "deals": [
+      {
+        "id": "deal-veto-127",
+        "type": "veto_use",
+        "proposerId": "jordan-taylor",
+        "recipientId": "player",
+        "targetId": null,
+        "status": "proposed",
+        "week": 2,
+        "expiresWeek": 2,
+        "trustImpact": "critical",
+        "brokenById": null,
+        "settledWeek": 0,
+        "linkedDealId": null
+      }
+    ],
+    "dealRulesStartWeek": 1,
+    "boughtActionPoints": 0,
+    "houseEvents": [
+      {
+        "id": "house-event-75",
+        "kind": "story",
+        "title": "Know Them",
+        "narrative": "A play is on offer.",
+        "involvedIds": [
+          "jordan-taylor"
+        ],
+        "choices": [
+          {
+            "label": "Take it on",
+            "description": "Go after it.",
+            "risk": "low",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "take-it-on",
+            "glyph": null,
+            "approach": null,
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [],
+            "backfire": [],
+            "next": "talk",
+            "nextOnBackfire": null
+          },
+          {
+            "label": "Not now",
+            "description": "Leave it for now.",
+            "risk": "low",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "not-now",
+            "glyph": null,
+            "approach": null,
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": true,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [],
+            "backfire": [],
+            "next": "end:declined",
+            "nextOnBackfire": null
+          }
+        ],
+        "week": 1,
+        "resolved": true,
+        "chosenIndex": 1,
+        "outcome": "You left it for now.",
+        "contentId": "know-them:offer",
+        "cycleId": "story-74",
+        "closesAnchor": "eviction-night",
+        "surface": "approach",
+        "venue": "kitchen",
+        "lapseOptionId": "not-now",
+        "cast": [
+          {
+            "role": "SUBJECT",
+            "contestantId": "jordan-taylor"
+          }
+        ]
+      },
+      {
+        "id": "house-event-91",
+        "kind": "ambient",
+        "title": "In the house",
+        "narrative": "You notice Alex Chen making notes on a piece of paper in the hallway.",
+        "involvedIds": [
+          "alex-chen"
+        ],
+        "choices": [],
+        "week": 1,
+        "resolved": true,
+        "chosenIndex": -1,
+        "outcome": null,
+        "contentId": null,
+        "cycleId": null,
+        "closesAnchor": null,
+        "surface": null,
+        "venue": null,
+        "lapseOptionId": null,
+        "cast": []
+      }
+    ],
+    "eventRulesStartWeek": 1,
+    "storylines": [
+      {
+        "id": "story-22",
+        "templateId": "the-backdoor",
+        "category": "The Backdoor",
+        "title": "The Backdoor",
+        "eventId": null,
+        "status": "completed",
+        "week": 1,
+        "endedWeek": 1,
+        "beatId": "pawn-home",
+        "lane": "game",
+        "variant": 0,
+        "cast": [
+          {
+            "role": "HOH",
+            "contestantId": "casey-wilson"
+          },
+          {
+            "role": "PAWN1",
+            "contestantId": "jordan-taylor"
+          },
+          {
+            "role": "PAWN2",
+            "contestantId": "emma-brown"
+          }
+        ],
+        "path": [
+          {
+            "beatId": "plan",
+            "optionId": "quiet",
+            "result": "npc",
+            "week": 1,
+            "logSequence": 0
+          },
+          {
+            "beatId": "pawn-home",
+            "optionId": "reckoning",
+            "result": "npc",
+            "week": 1,
+            "logSequence": 0
+          }
+        ],
+        "vars": [
+          {
+            "key": "planned",
+            "value": 1
+          }
+        ],
+        "nextWeek": 0,
+        "nextAnchor": null,
+        "endingId": "done"
+      },
+      {
+        "id": "story-70",
+        "templateId": "thread-bond",
+        "category": "Your Story",
+        "title": "The Bond",
+        "eventId": null,
+        "status": "active",
+        "week": 1,
+        "endedWeek": 0,
+        "beatId": "thread",
+        "lane": "thread",
+        "variant": 0,
+        "cast": [
+          {
+            "role": "FRIEND",
+            "contestantId": "jordan-taylor"
+          }
+        ],
+        "path": [
+          {
+            "beatId": "begin",
+            "optionId": null,
+            "result": "plain",
+            "week": 1,
+            "logSequence": 71
+          },
+          {
+            "beatId": "chapter:know-them",
+            "optionId": "story-74",
+            "result": "lapsed",
+            "week": 2,
+            "logSequence": 113
+          }
+        ],
+        "vars": [],
+        "nextWeek": 0,
+        "nextAnchor": null,
+        "endingId": null
+      },
+      {
+        "id": "story-72",
+        "templateId": "thread-rivalry",
+        "category": "Your Story",
+        "title": "The Rivalry",
+        "eventId": null,
+        "status": "active",
+        "week": 1,
+        "endedWeek": 0,
+        "beatId": "thread",
+        "lane": "thread",
+        "variant": 0,
+        "cast": [
+          {
+            "role": "RIVAL",
+            "contestantId": "riley-johnson"
+          }
+        ],
+        "path": [
+          {
+            "beatId": "begin",
+            "optionId": null,
+            "result": "plain",
+            "week": 1,
+            "logSequence": 73
+          }
+        ],
+        "vars": [],
+        "nextWeek": 0,
+        "nextAnchor": null,
+        "endingId": null
+      },
+      {
+        "id": "story-74",
+        "templateId": "know-them",
+        "category": "Intel",
+        "title": "Know Them",
+        "eventId": "house-event-75",
+        "status": "completed",
+        "week": 1,
+        "endedWeek": 1,
+        "beatId": "offer",
+        "lane": "play",
+        "variant": 0,
+        "cast": [
+          {
+            "role": "SUBJECT",
+            "contestantId": "jordan-taylor"
+          }
+        ],
+        "path": [
+          {
+            "beatId": "offer",
+            "optionId": "not-now",
+            "result": "lapsed",
+            "week": 1,
+            "logSequence": 92
+          }
+        ],
+        "vars": [],
+        "nextWeek": 0,
+        "nextAnchor": null,
+        "endingId": "declined"
+      },
+      {
+        "id": "story-115",
+        "templateId": "breaking-point-npc",
+        "category": "Breaking Point",
+        "title": "Breaking Point",
+        "eventId": null,
+        "status": "completed",
+        "week": 2,
+        "endedWeek": 2,
+        "beatId": "breaking",
+        "lane": "production",
+        "variant": 0,
+        "cast": [
+          {
+            "role": "WHO",
+            "contestantId": "jordan-taylor"
+          },
+          {
+            "role": "NEAREST",
+            "contestantId": "casey-wilson"
+          }
+        ],
+        "path": [
+          {
+            "beatId": "breaking",
+            "optionId": "cry",
+            "result": "npc",
+            "week": 2,
+            "logSequence": 116
+          }
+        ],
+        "vars": [],
+        "nextWeek": 0,
+        "nextAnchor": null,
+        "endingId": "done"
+      }
+    ],
+    "activeModifiers": [],
+    "storyRulesStartWeek": 1,
+    "haveNotRulesStartWeek": 1,
+    "haveNots": [
+      "jordan-taylor",
+      "riley-johnson"
+    ],
+    "haveNotPasses": [
+      "alex-chen"
+    ],
+    "punishedHaveNots": [
+      "riley-johnson"
+    ],
+    "vetoPrizes": [
+      {
+        "week": 1,
+        "contestantId": "emma-brown",
+        "prizeId": "cash"
+      },
+      {
+        "week": 1,
+        "contestantId": "riley-johnson",
+        "prizeId": "have-not"
+      },
+      {
+        "week": 2,
+        "contestantId": "alex-chen",
+        "prizeId": "have-not-pass"
+      },
+      {
+        "week": 2,
+        "contestantId": "riley-johnson",
+        "prizeId": "have-not"
+      }
+    ],
+    "strategyRulesStartWeek": 1,
+    "lobbies": [],
+    "replyCards": [],
+    "story": {
+      "rulesStartWeek": 1,
+      "rulesVersion": 9,
+      "productionStrictness": 1,
+      "romanceStorylines": true,
+      "grudges": [
+        {
+          "holderId": "jordan-taylor",
+          "targetId": "casey-wilson",
+          "cause": "nominated",
+          "severity": 68.0,
+          "originWeek": 1,
+          "count": 1
+        },
+        {
+          "holderId": "emma-brown",
+          "targetId": "casey-wilson",
+          "cause": "nominated",
+          "severity": 68.0,
+          "originWeek": 1,
+          "count": 1
+        },
+        {
+          "holderId": "riley-johnson",
+          "targetId": "casey-wilson",
+          "cause": "replacement",
+          "severity": 68.0,
+          "originWeek": 1,
+          "count": 1
+        },
+        {
+          "holderId": "riley-johnson",
+          "targetId": "player",
+          "cause": "replacement-veto",
+          "severity": 38.0,
+          "originWeek": 1,
+          "count": 1
+        },
+        {
+          "holderId": "alex-chen",
+          "targetId": "player",
+          "cause": "nominated",
+          "severity": 70.0,
+          "originWeek": 2,
+          "count": 1
+        },
+        {
+          "holderId": "jordan-taylor",
+          "targetId": "player",
+          "cause": "nominated",
+          "severity": 70.0,
+          "originWeek": 2,
+          "count": 1
+        }
+      ],
+      "facts": [
+        {
+          "id": "fact-69",
+          "kind": "couple",
+          "actorId": "alex-chen",
+          "subjectId": "casey-wilson",
+          "refId": "bond-66",
+          "visibility": "whispered",
+          "week": 1,
+          "knowers": [
+            "alex-chen",
+            "casey-wilson",
+            "riley-johnson",
+            "player",
+            "jordan-taylor"
+          ]
+        }
+      ],
+      "bonds": [
+        {
+          "id": "bond-66",
+          "kind": "showmance",
+          "aId": "alex-chen",
+          "bId": "casey-wilson",
+          "status": "private",
+          "cycleId": null,
+          "sinceWeek": 1,
+          "endedWeek": 0
+        }
+      ],
+      "hooks": [],
+      "contacts": [
+        {
+          "npcId": "alex-chen",
+          "rapport": 2,
+          "weekCount": 0,
+          "lastWeek": 1
+        },
+        {
+          "npcId": "casey-wilson",
+          "rapport": 2,
+          "weekCount": 0,
+          "lastWeek": 1
+        }
+      ],
+      "lore": [
+        {
+          "contestantId": "alex-chen",
+          "sheetKey": "alex-chen",
+          "source": "authored",
+          "factIds": [
+            "alex-chen:origin",
+            "alex-chen:home",
+            "alex-chen:work",
+            "alex-chen:respects",
+            "alex-chen:unforgivable",
+            "alex-chen:hot-exposed",
+            "alex-chen:comfort",
+            "alex-chen:goal",
+            "alex-chen:conflict",
+            "alex-chen:romance",
+            "alex-chen:secret"
+          ]
+        },
+        {
+          "contestantId": "emma-brown",
+          "sheetKey": "emma-brown",
+          "source": "authored",
+          "factIds": [
+            "emma-brown:origin",
+            "emma-brown:home",
+            "emma-brown:work",
+            "emma-brown:respects",
+            "emma-brown:unforgivable",
+            "emma-brown:hot-rushed",
+            "emma-brown:comfort",
+            "emma-brown:goal",
+            "emma-brown:conflict",
+            "emma-brown:romance",
+            "emma-brown:secret"
+          ]
+        },
+        {
+          "contestantId": "jordan-taylor",
+          "sheetKey": "jordan-taylor",
+          "source": "authored",
+          "factIds": [
+            "jordan-taylor:origin",
+            "jordan-taylor:home",
+            "jordan-taylor:work",
+            "jordan-taylor:respects",
+            "jordan-taylor:unforgivable",
+            "jordan-taylor:hot-cornered",
+            "jordan-taylor:comfort",
+            "jordan-taylor:goal",
+            "jordan-taylor:conflict",
+            "jordan-taylor:romance",
+            "jordan-taylor:secret"
+          ]
+        },
+        {
+          "contestantId": "casey-wilson",
+          "sheetKey": "casey-wilson",
+          "source": "authored",
+          "factIds": [
+            "casey-wilson:origin",
+            "casey-wilson:home",
+            "casey-wilson:work",
+            "casey-wilson:respects",
+            "casey-wilson:unforgivable",
+            "casey-wilson:hot-party",
+            "casey-wilson:comfort",
+            "casey-wilson:goal",
+            "casey-wilson:conflict",
+            "casey-wilson:romance",
+            "casey-wilson:secret"
+          ]
+        },
+        {
+          "contestantId": "riley-johnson",
+          "sheetKey": "riley-johnson",
+          "source": "authored",
+          "factIds": [
+            "riley-johnson:origin",
+            "riley-johnson:home",
+            "riley-johnson:work",
+            "riley-johnson:respects",
+            "riley-johnson:unforgivable",
+            "riley-johnson:hot-teased",
+            "riley-johnson:comfort",
+            "riley-johnson:goal",
+            "riley-johnson:conflict",
+            "riley-johnson:romance",
+            "riley-johnson:secret"
+          ]
+        }
+      ],
+      "knownFacts": [
+        "alex-chen:work",
+        "casey-wilson:work"
+      ],
+      "conduct": [],
+      "removals": [],
+      "pendingRemovalId": null,
+      "cooldowns": [
+        {
+          "key": "tpl:breaking-point-npc",
+          "untilWeek": 3
+        },
+        {
+          "key": "pair:casey-wilson|jordan-taylor",
+          "untilWeek": 4
+        },
+        {
+          "key": "star:jordan-taylor",
+          "untilWeek": 3
+        }
+      ],
+      "reckonings": []
+    }
+  }
+}

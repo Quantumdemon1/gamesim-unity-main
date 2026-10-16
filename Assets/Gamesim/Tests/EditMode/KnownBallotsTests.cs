@@ -383,6 +383,30 @@ namespace Gamesim.Tests.EditMode
             Assert.That(KnownBallots.DealOutcomeKnown(s, withVoter), Is.False, "A voter's side of it is their ballot, and a 2-1 count proves neither of the other two.");
         }
 
+        /// <summary>
+        /// A vote deal of the player's settled in a week the record cannot place - no count, no claim
+        /// and no live box in its term, as in an old save whose ledger never kept that week - has no
+        /// sheet to learn the partner's ballot from, so how it ended stays unresolved. The old-save
+        /// acceptance's mutation run found nothing that reached this branch.
+        /// </summary>
+        [Test]
+        public void AVoteDealSettledInAWeekTheRecordCannotPlaceStaysUnresolved()
+        {
+            var s = PastWeek(2, 1);
+            var npcs = Npcs(s);
+            Own(s, 1, npcs[1].id);
+            var lost = new DealState { id = "l", type = DealKind.VoteEvict, proposerId = npcs[3].id, recipientId = s.playerId, targetId = npcs[1].id, status = DealStatus.Broken, week = 2, expiresWeek = 2 };
+            Assert.That(KnownBallots.DealSettledWeek(s, lost, npcs[3].id), Is.Zero, "No week of its term is on the record,");
+            Assert.That(KnownBallots.DealOutcomeKnown(s, lost), Is.False, "so how it ended stays unresolved.");
+            var bloc = new DealState { id = "t", type = DealKind.VoteTogether, proposerId = s.playerId, recipientId = npcs[4].id, status = DealStatus.Fulfilled, week = 2, expiresWeek = 2 };
+            Assert.That(KnownBallots.DealOutcomeKnown(s, bloc), Is.False, "A voting bloc kept in a week the record lost says nothing either.");
+            lost.week = lost.expiresWeek = 1;
+            Assert.That(KnownBallots.DealSettledWeek(s, lost, npcs[3].id), Is.EqualTo(1), "Its week back on the record,");
+            Assert.That(KnownBallots.DealOutcomeKnown(s, lost), Is.False, "it is the partner's unknown ballot that withholds it,");
+            Claim(s, 1, npcs[3].id, npcs[2].id, ClaimSource.Told, ClaimStatus.Lied);
+            Assert.That(KnownBallots.DealOutcomeKnown(s, lost), Is.True, "and once that is known, so is the ending.");
+        }
+
         /// <summary>The Head of Household's tie-break is a ballot the engine judges deals and promises by, and it is read live: a promise or a deal of theirs settles the week they broke the tie, and the player knows how.</summary>
         [Test]
         public void ATieBreakSettlesTheHeadOfHouseholdsPromiseAndDealInTheOpen()

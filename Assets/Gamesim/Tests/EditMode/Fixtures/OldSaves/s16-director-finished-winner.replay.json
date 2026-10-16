@@ -1,0 +1,17 @@
+{
+ "id": "s16-director-finished-winner",
+ "referenceBuild": "7f398b94",
+ "referenceSchema": 20,
+ "digest": "6d6f78898af9074c",
+ "checkpoints": [
+  {
+   "i": 0,
+   "week": 6,
+   "phase": "Finished",
+   "revision": 115,
+   "randomState": 3495435485,
+   "season": "e9be97f99caa5884"
+  }
+ ],
+ "commands": []
+}

@@ -1,0 +1,17 @@
+{
+ "id": "s19-director-finished",
+ "referenceBuild": "7f398b94",
+ "referenceSchema": 20,
+ "digest": "8198e52aa327eef8",
+ "checkpoints": [
+  {
+   "i": 0,
+   "week": 6,
+   "phase": "Finished",
+   "revision": 121,
+   "randomState": 3605706062,
+   "season": "38138a7ddd59cbe7"
+  }
+ ],
+ "commands": []
+}

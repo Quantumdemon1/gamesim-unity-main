@@ -1,0 +1,38 @@
+{
+  "format": "gamesim-unity-career",
+  "version": 1,
+  "savedAt": "2026-09-28T01:17:16.8880790Z",
+  "checksum": "34607e59681ea08ed12b5d12d9c687a369ea212724466832d9b21302f63a7246",
+  "record": {
+    "schemaVersion": 1,
+    "seasons": [
+      {
+        "sessionId": "9d91ca7da40249b7a21e7b9db7f559cd",
+        "seed": 4138342237,
+        "finishedAt": "2026-09-28T01:17:16.8813496Z",
+        "playerName": "You",
+        "cast": [
+          "You",
+          "Alex Chen",
+          "Emma Brown",
+          "Jordan Taylor",
+          "Casey Wilson",
+          "Riley Johnson",
+          "Jamie Roberts",
+          "Quinn Martinez"
+        ],
+        "houseSize": 8,
+        "weeks": 6,
+        "placement": 7,
+        "outcome": "Jury",
+        "spectated": true,
+        "hohWins": 1,
+        "vetoWins": 1,
+        "timesNominated": 1,
+        "weeksOnBlock": 1,
+        "juryVotesReceived": 0,
+        "winnerName": "Emma Brown"
+      }
+    ]
+  }
+}

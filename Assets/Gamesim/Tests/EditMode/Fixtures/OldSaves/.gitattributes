@@ -1,0 +1,3 @@
+# Byte-exact historical saves and their recorded replays: never normalise them.
+*.json -text -eol
+.gitattributes -text -eol

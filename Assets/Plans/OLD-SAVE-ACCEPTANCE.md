@@ -519,6 +519,9 @@ the frozen one none.
     PersistenceMigrationTests and PersistenceV3–V6MigrationTests, 393 of 393 pass. OldSaveAcceptanceTests is 151, the
     twelve new cases over 139, so the floor is 7999.
   - **Full EditMode suite**, at f31b374f (with them): 7999 of 7999 pass, exactly the new floor.
+  - **The F6 freeze**, at 7205dd5d: the same set as the green run at 7b1fbf66 (OldSaveAcceptanceTests,
+    BallotPrivacyTests, every Persistence*MigrationTests class and every FrozenEpisodeV23–V27 contract and corpus
+    class). 1858 of 1858 pass: 1846 plus the twelve schema 2 to 5 cases.
 
 ## 5. Codex's 17 holds and L01–L16
 

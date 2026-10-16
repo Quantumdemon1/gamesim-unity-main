@@ -324,7 +324,9 @@ namespace Gamesim.Editor
             }
 
             var layers = controller.layers;
-            layers[0].iKPass = true; // Passive native IK diagnostics; no state Foot IK or goal setters.
+            // No IK pass: it would run on every humanoid every frame, and nothing needs it. The farewell
+            // plants its feet by holding its stance (CharacterPresentation.TickFarewellStance), not by IK.
+            layers[0].iKPass = false;
             controller.layers = layers;
             var machine = layers[0].stateMachine;
             var states = new Dictionary<string, AnimatorState>();

@@ -17,14 +17,15 @@ namespace Gamesim.Tests.EditMode
             .OfType<AnimationClip>().Single(c => !c.name.StartsWith("__preview", StringComparison.Ordinal));
 
         [Test]
-        public void FarewellBaseLayerProvidesPassiveIkWithoutStateFootIk()
+        public void FarewellBaseLayerRunsNoIkPassAndNoStateFootIk()
         {
             var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(HumanoidClipWiring.Controller);
             Assert.That(controller, Is.Not.Null);
             Assert.That(controller.layers.Length, Is.EqualTo(1), "Exactly the real single base layer.");
-            Assert.That(controller.layers[0].iKPass, Is.True, "The explicit layer prerequisite for native passive callbacks.");
+            Assert.That(controller.layers[0].iKPass, Is.False,
+                "The farewell plants its feet by holding its stance; an IK pass on every humanoid is a cost nothing needs.");
             Assert.That(controller.layers[0].stateMachine.states.All(row => !row.state.iKOnFeet), Is.True,
-                "No state Foot IK, including Idle and the protected full Embrace, is enabled by this experiment.");
+                "No state Foot IK, including Idle and the protected full Embrace.");
         }
 
         [Test]

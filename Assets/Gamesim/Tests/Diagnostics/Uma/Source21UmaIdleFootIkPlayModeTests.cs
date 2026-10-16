@@ -123,6 +123,7 @@ namespace Gamesim.Uma.Tests.Diagnostics
 
         [UnityTest]
         [Category("FarewellIdleFootIkDiagnostic")]
+        [FarewellDiagnosticIkPass]
         public IEnumerator CopiedIdleFootIk_UmaBodiesKeepFourLandmarksAgainstOneBaseline()
         {
             yield return Source21UmaIdleFootIkObserver.Observe(ready,

@@ -70,6 +70,7 @@ namespace Gamesim.Tests.Diagnostics
 
         [UnityTest]
         [Category("FarewellIdleFootIkDiagnostic")]
+        [FarewellDiagnosticIkPass]
         public IEnumerator CopiedIdleFootIk_ProvidedSkeletonsKeepFourLandmarksAgainstOneBaseline()
         {
             yield return Source21ProvidedIdleFootIkObserver.Observe(ready,

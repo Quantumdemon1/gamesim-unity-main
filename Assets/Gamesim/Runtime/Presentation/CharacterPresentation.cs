@@ -656,6 +656,8 @@ namespace Gamesim.Presentation
                 return;
             }
             if ((reactionParams & (1 << (int)kind)) == 0) return;
+            // The farewell is played on planted feet: see TickFarewellStance.
+            if (kind == Reaction.Farewell) HoldFarewellStance();
             animator.SetTrigger(ReactionParams[(int)kind]);
             // Watched until the controller takes it (TickReaction): dropped if it waits too long, and
             // let go to the walk if a body that began it standing still is sent somewhere.
@@ -1110,6 +1112,7 @@ namespace Gamesim.Presentation
                 inspectedController = null;
             }
             AnimateModel();
+            TickFarewellStance();
         }
 
         private void AnimateModel()
@@ -1331,6 +1334,7 @@ namespace Gamesim.Presentation
             accentMaterial = null;
             visual = null;
             chest = head = leftArm = rightArm = leftLeg = rightLeg = leftKnee = rightKnee = null;
+            EndFarewellStance();
             animator = null;
             modelHead = null;
             providedBody = default;

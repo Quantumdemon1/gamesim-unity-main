@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
+using Gamesim.Tests.Diagnostics;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -78,6 +79,7 @@ namespace Gamesim.Uma.Tests.Diagnostics
 
         [UnityTest]
         [Category("FarewellCalibratedIkFeasibility")]
+        [FarewellDiagnosticIkPass]
         public IEnumerator CalibratedIk_UmaBodiesFreezeTrainAndTestLocalHoldoutsBeforeStrictFarewell()
         {
             yield return UmaFarewellCalibratedIkProbe.Observe(new[] { a, b }, "provided-UMA-actual-masculine-feminine-frames", true);
@@ -85,6 +87,7 @@ namespace Gamesim.Uma.Tests.Diagnostics
 
         [UnityTest]
         [Category("FarewellDynamicIkFeasibility")]
+        [FarewellDiagnosticIkPass]
         public IEnumerator DynamicIk_UmaBodiesTestPerEvaluationMappingAndOwnedRelease()
         {
             yield return UmaFarewellDynamicIkFeasibilityProbe.Observe(new[] { a, b }, "provided-UMA-actual-masculine-feminine-frames", true);
@@ -106,6 +109,7 @@ namespace Gamesim.Uma.Tests.Diagnostics
 
         [UnityTest]
         [Category("FarewellPassiveIkDiagnostic")]
+        [FarewellDiagnosticIkPass]
         public IEnumerator PassiveIk_UmaBodiesRecordGoalsAndLateIdlePose()
         {
             yield return UmaFarewellPassiveIkObserver.Observe(new[] { a, b }, "provided-UMA-actual-body-frame");

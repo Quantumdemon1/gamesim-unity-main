@@ -12,16 +12,21 @@
 Gamesim.EditModeTests 7846
 # 1197 = the 1218 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.DiagnosticsPlayModeTests
 # and the 14 farewell readiness tests that now compile only under GAMESIM_UMA (judged on the UMA cast).
+# It is the UMA-free count; the UMA build of the same assembly holds more (the 11 shipping readiness tests
+# and the other GAMESIM_UMA tests) and is held to this same line - a UMA-mode floor is the release run's.
 Gamesim.PlayModeTests 1197
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
-# 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests.
-Gamesim.Uma.PlayModeTests 82
+# 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
+# 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16).
+Gamesim.Uma.PlayModeTests 85
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
 # sync-and-run.sh or the locked runner); the UMA one needs GAMESIM_UMA too. Expected to fail while the
 # farewell's foot planting is open - the floor counts that they ran, not that they passed.
+# The UMA one: 7 probes + the 3 readiness tests that wait for a combination the cast never stands into
+# (FarewellReadinessDiagnosticPlayModeTests, moved from Gamesim.PlayModeTests on 2026-10-16) = 10.
 Gamesim.DiagnosticsPlayModeTests 7
-Gamesim.Uma.DiagnosticsPlayModeTests 7
+Gamesim.Uma.DiagnosticsPlayModeTests 10
 # Tools/SimulationTests: the Unity-free subset CI runs on every push (.github/workflows/ci.yml).
 # Most of it is cases generated from the web fixtures - a fixture that stops loading drops
 # hundreds of tests and would otherwise still read green.

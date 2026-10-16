@@ -210,22 +210,34 @@ namespace Gamesim.Tests.PlayMode
         // their walk has settled. At the goodbye they stand and finish that walk into WalkStop, while the
         // survivor, gathered at the summons and settled, stands into Idle. So the natural combination is
         // FIRST WalkStop, SECOND Idle: one Animator write and one Idle no-op. The tests below read that
-        // combination rather than request one, and still never force a state. The three that need a
-        // combination the cast never stands into (both WalkStop, both Idle, a stop exit already crossing
-        // before authorization) compile only with GAMESIM_DIAGNOSTICS: kept, never acceptance.
-        private sealed class FarewellReadinessRoute
+        // combination rather than request one, and still never force a state.
+        //
+        // The three that need a combination the cast never stands into (both WalkStop, both Idle, a stop
+        // exit already crossing before authorization) are diagnostics, never acceptance: by the lead's
+        // ruling (2026-10-16) they live in Gamesim.Uma.DiagnosticsPlayModeTests
+        // (FarewellReadinessDiagnosticPlayModeTests), which has its own floor. The product branches they
+        // name are acceptance-tested directly by Gamesim.Uma.PlayModeTests'
+        // UmaFarewellReadinessDecisionPlayModeTests, which forces each combination on the frame before the
+        // director authorizes. Both compose this fixture (LoadIsolatedEpisode / CleanUpIsolatedEpisode) and
+        // drive the same route through the PUBLIC members below - the shared helper, so one route and one
+        // set of witnesses serve every readiness test. Public only in the GAMESIM_UMA build; never a test.
+        public sealed class FarewellReadinessRoute
         {
-            internal object Stage;
-            internal CharacterPresentation First, Second;
+            public object Stage { get; internal set; }
+            public CharacterPresentation First { get; internal set; }
+            public CharacterPresentation Second { get; internal set; }
             internal HouseMeetingCoordinator Owner;
             internal HouseInteractionAnchor FirstPlace, SecondPlace;
             internal string FirstToken, SecondToken;
             internal JObject Saved;
-            internal float Deadline, GoodbyeEnd;
+            public float Deadline { get; internal set; }
+            public float GoodbyeEnd { get; internal set; }
         }
         private FarewellReadinessRoute farewellReadinessRoute;
+        /// <summary>The route the last <see cref="BeginProvidedFarewellReadiness"/> captured.</summary>
+        public FarewellReadinessRoute FarewellReadiness => farewellReadinessRoute;
 
-        private static object ReadFarewellField(object owner, string name)
+        public static object ReadFarewellField(object owner, string name)
         {
             Assert.That(owner, Is.Not.Null, "Missing actual captured owner for " + name);
             var field = owner.GetType().GetField(name, System.Reflection.BindingFlags.Instance
@@ -233,8 +245,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(field, Is.Not.Null, "Missing captured read-only field " + name);
             return field.GetValue(owner); // READ ONLY: no private field assignment or manual Tick.
         }
-        private static T ReadFarewellField<T>(object owner, string name) => (T)ReadFarewellField(owner, name);
-        private static Animator ReadFarewellAnimator(CharacterPresentation body)
+        public static T ReadFarewellField<T>(object owner, string name) => (T)ReadFarewellField(owner, name);
+        public static Animator ReadFarewellAnimator(CharacterPresentation body)
         {
             Assert.That(body != null && !body.IsPrimitiveBody && body.VisualRoot != null, Is.True,
                 "MISSING PROVIDED-BODY WITNESS; primitive diagnostics are not readiness coverage.");
@@ -243,7 +255,7 @@ namespace Gamesim.Tests.PlayMode
                 && animator.avatar != null && animator.avatar.isValid && animator.runtimeAnimatorController != null, Is.True);
             return animator;
         }
-        private static AnimationClip ReadFarewellIdleClip(Animator animator)
+        public static AnimationClip ReadFarewellIdleClip(Animator animator)
         {
             var handle = Resources.Load<AnimatorOverrideController>("Animation/GamesimHumanoid");
             Assert.That(handle != null && handle.runtimeAnimatorController != null
@@ -270,7 +282,7 @@ namespace Gamesim.Tests.PlayMode
             => Assert.That(JToken.DeepEquals(route.Saved, UvPayload(director.Snapshot)), Is.True,
                 "Every saved field/revision/RNG remains unchanged during presentation.");
 
-        private IEnumerator BeginProvidedFarewellReadiness(float validCardReadingSeconds = 0f)
+        public IEnumerator BeginProvidedFarewellReadiness(float validCardReadingSeconds = 0f)
         {
             yield return InstallStagedSeason(52, AtEviction);
             yield return PlayUntilTheCeremony();
@@ -312,7 +324,7 @@ namespace Gamesim.Tests.PlayMode
             farewellReadinessRoute = route;
         }
 
-        private IEnumerator WaitForFarewellAuthorization(FarewellReadinessRoute route)
+        public IEnumerator WaitForFarewellAuthorization(FarewellReadinessRoute route)
         {
             float observationBy = Time.realtimeSinceStartup + 2f;
             while (ReadFarewellField<int>(route.Stage, "farewellIdlePreparationFrame") < 0
@@ -323,7 +335,7 @@ namespace Gamesim.Tests.PlayMode
                     + director.GoodbyeFarewellFailure + " " + director.GoodbyeFarewellDiagnostic);
         }
 
-        private void AssertCapturedFarewellBranch(FarewellReadinessRoute route, bool firstIdle, bool secondIdle)
+        public void AssertCapturedFarewellBranch(FarewellReadinessRoute route, bool firstIdle, bool secondIdle)
         {
             var a = ReadFarewellField(route.Stage, "farewellIdleA");
             var b = ReadFarewellField(route.Stage, "farewellIdleB");
@@ -346,7 +358,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ReadFarewellField<int>(route.Stage, "farewellIdleCalls"), Is.EqualTo(required));
         }
 
-        private IEnumerator ObserveFarewellIdleBeforeCut(FarewellReadinessRoute route)
+        public IEnumerator ObserveFarewellIdleBeforeCut(FarewellReadinessRoute route)
         {
             int authorized = ReadFarewellField<int>(route.Stage, "farewellIdlePreparationFrame");
             int previousFrame = -1, samples = 0; float previousA = 0f, previousB = 0f;
@@ -387,7 +399,7 @@ namespace Gamesim.Tests.PlayMode
             AssertFarewellSave(route);
         }
 
-        private IEnumerator WaitForFarewellBeforeCommit(FarewellReadinessRoute route)
+        public IEnumerator WaitForFarewellBeforeCommit(FarewellReadinessRoute route)
         {
             float by = Time.realtimeSinceStartup + 2f;
             while (ReadFarewellField<int>(route.Stage, "farewellReadyFrames") < 1
@@ -398,7 +410,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(route.First.IsSeated || route.Second.IsSeated
                 || route.First.GetComponent<HouseNpcMotion>().IsParked || route.Second.GetComponent<HouseNpcMotion>().IsParked, Is.False);
         }
-        private void AssertNoFarewellPreparation(FarewellReadinessRoute route)
+        public void AssertNoFarewellPreparation(FarewellReadinessRoute route)
         {
             Assert.That(ReadFarewellField<bool>(route.Stage, "farewellIdleAttemptUsed"), Is.False);
             Assert.That(ReadFarewellField<int>(route.Stage, "farewellIdleCalls"), Is.Zero);
@@ -408,7 +420,7 @@ namespace Gamesim.Tests.PlayMode
                 || route.Second.LastReaction == CharacterPresentation.Reaction.Farewell, Is.False);
             AssertFarewellSave(route);
         }
-        private static AnimationClip ReadFarewellSelectedClip(Animator animator, string clipName)
+        public static AnimationClip ReadFarewellSelectedClip(Animator animator, string clipName)
         {
             var handle = Resources.Load<AnimatorOverrideController>("Animation/GamesimHumanoid");
             Assert.That(handle != null && handle.runtimeAnimatorController != null
@@ -586,21 +598,6 @@ namespace Gamesim.Tests.PlayMode
             AssertOriginalFarewellLeasesReleased(route); // BEFORE any Skip can supply cleanup.
         }
 
-#if GAMESIM_DIAGNOSTICS
-        // Diagnostic only: the UMA cast never stands into both WalkStop (see the note above), and this
-        // refuses to force it, so it cannot pass in the shipping suite. Kept for a gather that would.
-        [UnityTest, Category("FarewellProvidedReadiness")]
-        public IEnumerator GroundedFarewell_ReadinessBothWalkStopCallsOnlyOnce()
-        {
-            yield return BeginProvidedFarewellReadiness();
-            var route = farewellReadinessRoute;
-            yield return WaitForFarewellAuthorization(route);
-            AssertCapturedFarewellBranch(route, false, false);
-            yield return ObserveFarewellIdleBeforeCut(route);
-            AssertCapturedFarewellBranch(route, false, false);
-        }
-#endif
-
         [UnityTest, Category("FarewellProvidedReadiness")]
         public IEnumerator GroundedFarewell_ReadinessMixedIdleDoesNotResetTheIdleEndpoint()
         {
@@ -617,63 +614,6 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ReadFarewellField<float>(route.Stage, firstIdle ? "farewellIdlePhaseA" : "farewellIdlePhaseB"),
                 Is.GreaterThan(initialIdle), "The no-op Idle advances rather than resetting.");
         }
-
-#if GAMESIM_DIAGNOSTICS
-        // Diagnostic only: the evicted always stands into WalkStop on the UMA cast, so both Idle never
-        // occurs naturally, and this refuses to force it. Kept for a gather that would.
-        [UnityTest, Category("FarewellProvidedReadiness")]
-        public IEnumerator GroundedFarewell_ReadinessBothIdleStillRequiresNewEvaluations()
-        {
-            yield return BeginProvidedFarewellReadiness(.35f);
-            var route = farewellReadinessRoute;
-            yield return WaitForFarewellAuthorization(route);
-            AssertCapturedFarewellBranch(route, true, true);
-            yield return ObserveFarewellIdleBeforeCut(route);
-            AssertCapturedFarewellBranch(route, true, true);
-        }
-
-        // Diagnostic only: on the UMA cast the authorization comes while the evicted's WalkStop still
-        // plays, never after its exit to Idle has begun, so no global crossing exists to be observed
-        // first; this refuses to manufacture one. Kept for a timing that would.
-        [UnityTest, Category("FarewellProvidedReadiness")]
-        public IEnumerator GroundedFarewell_ReadinessDoesNotRestartAnExistingGlobalStopExit()
-        {
-            yield return BeginProvidedFarewellReadiness(.1f);
-            var route = farewellReadinessRoute;
-            Animator observed = null; float priorPhase = 0f;
-            float by = Time.realtimeSinceStartup + 2f;
-            while (observed == null && Time.realtimeSinceStartup < by && Time.unscaledTime <= route.Deadline)
-            {
-                foreach (var body in new[] { route.First, route.Second })
-                {
-                    var animator = ReadFarewellAnimator(body);
-                    if (animator.IsInTransition(0) && animator.GetCurrentAnimatorStateInfo(0).IsName("WalkStop")
-                        && animator.GetNextAnimatorStateInfo(0).IsName("Idle"))
-                    {
-                        var source = animator.GetCurrentAnimatorClipInfo(0);
-                        var incoming = animator.GetNextAnimatorClipInfo(0);
-                        var basis = Resources.Load<AnimatorOverrideController>("Animation/GamesimHumanoid").runtimeAnimatorController;
-                        var stop = basis.animationClips.Single(clip => clip != null && clip.name == "WalkStop");
-                        Assert.That(source.Length == 1 && incoming.Length == 1 && source[0].clip == stop
-                            && incoming[0].clip == ReadFarewellIdleClip(animator)
-                            && source[0].weight >= 0f && source[0].weight <= 1f
-                            && incoming[0].weight >= 0f && incoming[0].weight <= 1f, Is.True,
-                            "Exact actual global stop/Idle clip objects, not names or a fabricated crossing.");
-                        observed = animator; priorPhase = animator.GetAnimatorTransitionInfo(0).normalizedTime; break;
-                    }
-                }
-                if (observed == null) yield return null;
-            }
-            Assert.That(observed, Is.Not.Null, "MISSING genuine global transition witness; no local transition is manufactured.");
-            AssertNoFarewellPreparation(route);
-            yield return null;
-            if (observed.IsInTransition(0))
-                Assert.That(observed.GetAnimatorTransitionInfo(0).normalizedTime, Is.GreaterThanOrEqualTo(priorPhase),
-                    "The original crossing is not restarted.");
-            yield return WaitForFarewellAuthorization(route);
-            yield return ObserveFarewellIdleBeforeCut(route);
-        }
-#endif
 
         [UnityTest, Category("FarewellProvidedReadiness")]
         public IEnumerator GroundedFarewell_ReadinessOrdinaryUpdatesNeverRetryPreparation()

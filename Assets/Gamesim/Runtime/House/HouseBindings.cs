@@ -54,19 +54,23 @@ namespace Gamesim.House
         private static bool Holds(int now, int stamped) => stamped != int.MinValue && now >= stamped && now - stamped <= 1;
 
         /// <summary>The session's choices from its store: PlayerPrefs, a root's own file, or the defaults. Applied at once everywhere.</summary>
-        public static void Load(IPreferenceStore store) => Load(store, PanelNavigation());
+        public static void Load(IPreferenceStore store)
+        {
+            var (navigate, submit, cancel) = PanelActions();
+            Load(store, navigate, submit, cancel);
+        }
 
         /// <summary>
-        /// The session's choices from its store, less any the panels' navigation -
-        /// <paramref name="panelNavigation"/>, the UI module's Navigate - now refuses: a choice kept
-        /// before its rules (D4) is read as shipped, with the reason. Applied at once everywhere.
+        /// The session's choices from its store, less any the event system's own - the UI module's
+        /// Navigate (<paramref name="panelNavigation"/>), Submit and Cancel - now refuse: a choice kept
+        /// before their rules (D4) is read as shipped, with the reason. Applied at once everywhere.
         /// </summary>
-        public static void Load(IPreferenceStore store, InputAction panelNavigation)
+        public static void Load(IPreferenceStore store, InputAction panelNavigation, InputAction panelSubmit = null, InputAction panelCancel = null)
         {
             Cancel();
             string json = store != null ? store.GetString(KeyBindings.PreferenceKey, "") : "";
             current = KeyBindings.Parse(json, out var reason);
-            string refused = current.DropRefused(LiveBindings(null, panelNavigation));
+            string refused = current.DropRefused(LiveBindings(null, panelNavigation, panelSubmit, panelCancel));
             if (refused != null) reason = reason == null ? refused : reason + "; " + refused;
             if (reason != null) Debug.LogWarning("Gamesim controls read as shipped where they could not be read: " + reason + ".");
             ApplyEverywhere();
@@ -156,51 +160,89 @@ namespace Gamesim.House
 
         /// <summary>
         /// Every binding of the actions as they stand, composites' parts included, and the event
-        /// system's navigation beside them (<see cref="PanelNavigation"/>), for the conflict check.
+        /// system's own beside them (<see cref="PanelActions"/>), for the conflict check.
         /// </summary>
-        public static List<KeyBindings.Binding> LiveBindings(HouseCameraActions actions) => LiveBindings(actions, PanelNavigation());
+        public static List<KeyBindings.Binding> LiveBindings(HouseCameraActions actions)
+        {
+            var (navigate, submit, cancel) = PanelActions();
+            return LiveBindings(actions, navigate, submit, cancel);
+        }
 
         /// <summary>
-        /// Every binding of the actions as they stand, and <paramref name="panelNavigation"/>'s - the
-        /// UI module's Navigate - as the <see cref="KeyBindings.PanelMap"/>'s: the D-pad, the sticks,
-        /// WASD and the arrows that move between a panel's controls, and up and down the HUD's ring
-        /// with no panel open (D4).
+        /// Every binding of the actions as they stand, and the UI module's as the
+        /// <see cref="KeyBindings.PanelMap"/>'s (D4): <paramref name="panelNavigation"/>'s - its
+        /// Navigate: the D-pad, the sticks, WASD and the arrows that move between a panel's controls,
+        /// and around the HUD's ring with no panel open - and <paramref name="panelSubmit"/>'s and
+        /// <paramref name="panelCancel"/>'s, which press and close them, each usage a device answers
+        /// to it with ("*/{Submit}") read as that device's own controls (<see cref="ControlsOf"/>).
         /// </summary>
-        public static List<KeyBindings.Binding> LiveBindings(HouseCameraActions actions, InputAction panelNavigation)
+        public static List<KeyBindings.Binding> LiveBindings(HouseCameraActions actions, InputAction panelNavigation, InputAction panelSubmit = null, InputAction panelCancel = null)
         {
             var live = new List<KeyBindings.Binding>();
             if (actions?.Asset != null)
                 foreach (var map in actions.Asset.actionMaps)
                     foreach (var action in map.actions)
-                        AddBindings(live, map.name, action);
-            if (panelNavigation != null) AddBindings(live, KeyBindings.PanelMap, panelNavigation);
+                        AddBindings(live, map.name, action.name, action);
+            if (panelNavigation != null) AddBindings(live, KeyBindings.PanelMap, KeyBindings.PanelNavigate, panelNavigation);
+            if (panelSubmit != null) AddBindings(live, KeyBindings.PanelMap, KeyBindings.PanelSubmit, panelSubmit);
+            if (panelCancel != null) AddBindings(live, KeyBindings.PanelMap, KeyBindings.PanelCancel, panelCancel);
             return live;
         }
 
-        private static void AddBindings(List<KeyBindings.Binding> live, string map, InputAction action)
+        private static void AddBindings(List<KeyBindings.Binding> live, string map, string name, InputAction action)
         {
             foreach (var binding in action.bindings)
             {
                 if (binding.isComposite) continue;
                 foreach (var group in (binding.groups ?? "").Split(';'))
                     if (group == KeyBindings.KeyboardScheme || group == KeyBindings.GamepadScheme)
-                        live.Add(new KeyBindings.Binding(map, map == KeyBindings.PanelMap ? KeyBindings.PanelNavigate : action.name, group,
-                            binding.effectivePath, binding.isPartOfComposite ? binding.name : null));
+                        foreach (var path in ControlsOf(binding.effectivePath, group))
+                            live.Add(new KeyBindings.Binding(map, name, group, path, binding.isPartOfComposite ? binding.name : null));
             }
         }
 
         /// <summary>
-        /// The event system's navigation: the scene's UI module's Navigate, which moves between a
-        /// panel's controls in every panel, or null where there is no UI module to ask.
+        /// The controls a binding's path names on a scheme's device: the path itself, or - for a usage
+        /// on any device, as the UI module's Submit ("*/{Submit}") and Cancel are bound - each control
+        /// of the keyboard's or the pad's layout that carries the usage: Enter and A for Submit, Esc
+        /// and B for Cancel.
         /// </summary>
-        private static InputAction PanelNavigation()
+        private static IEnumerable<string> ControlsOf(string path, string scheme)
+        {
+            const string anyDevice = "*/{";
+            if (path == null || !path.StartsWith(anyDevice, StringComparison.Ordinal) || !path.EndsWith("}", StringComparison.Ordinal))
+            {
+                yield return path;
+                yield break;
+            }
+            string usage = path.Substring(anyDevice.Length, path.Length - anyDevice.Length - 1);
+            string device = scheme == KeyBindings.GamepadScheme ? "Gamepad" : "Keyboard";
+            var layout = InputSystem.LoadLayout(device);
+            if (layout == null) yield break;
+            foreach (var control in layout.controls)
+                foreach (var each in control.usages)
+                    if (string.Equals(each.ToString(), usage, StringComparison.OrdinalIgnoreCase))
+                    {
+                        yield return "<" + device + ">/" + control.name.ToString();
+                        break;
+                    }
+        }
+
+        /// <summary>
+        /// The event system's own: the scene's UI module's Navigate, which moves between a panel's
+        /// controls in every panel and around the HUD's ring with none open, and its Submit and
+        /// Cancel; each null where there is no UI module, or no such action, to ask.
+        /// </summary>
+        private static (InputAction Navigate, InputAction Submit, InputAction Cancel) PanelActions()
         {
             var events = EventSystem.current;
-            if (events == null) return null;
+            if (events == null) return (null, null, null);
             var module = events.currentInputModule as InputSystemUIInputModule;
             if (module == null) module = events.GetComponent<InputSystemUIInputModule>();
-            if (module == null || module.move == null) return null;
-            return module.move.action;
+            if (module == null) return (null, null, null);
+            return (module.move != null ? module.move.action : null,
+                module.submit != null ? module.submit.action : null,
+                module.cancel != null ? module.cancel.action : null);
         }
 
         /// <summary>

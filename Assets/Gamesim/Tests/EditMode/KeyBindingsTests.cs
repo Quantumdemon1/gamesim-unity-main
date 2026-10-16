@@ -303,7 +303,8 @@ namespace Gamesim.Tests.EditMode
                 "The pan's up is refused its left.");
             Assert.That(KeyBindings.Check(Shipped(), up, KeyBindings.KeyboardScheme, "<Keyboard>/leftArrow"), Is.EqualTo("Left is already Pan left's. Pan up keeps its key."),
                 "and the arrows' left: a part of the other composite is a binding of the house too.");
-            Assert.That(KeyBindings.Check(Shipped(), up, KeyBindings.KeyboardScheme, "<Keyboard>/upArrow"), Is.Null, "Up is up already: the same part of the pan.");
+            Assert.That(KeyBindings.Check(Shipped(), up, KeyBindings.KeyboardScheme, "<Keyboard>/upArrow"), Is.EqualTo("Up moves between the controls on screen. Pan up keeps its key."),
+                "The arrows' up pans up already, but it is the panels' navigation too: only its own W is the pan's up to have back (D4).");
             Assert.That(KeyBindings.Check(Shipped(), up, KeyBindings.KeyboardScheme, "<Keyboard>/w"), Is.Null, "Its own key again.");
             Assert.That(KeyBindings.Check(Shipped(), up, KeyBindings.KeyboardScheme, "<Keyboard>/i"), Is.Null);
             Assert.That(KeyBindings.Check(Shipped(), up, KeyBindings.KeyboardScheme, "<Keyboard>/j"), Is.EqualTo("J is already Notebook's. Pan up keeps its key."),
@@ -418,17 +419,19 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// A - the pad's Submit, with which the UI module presses the focused control - is a way out
-        /// the game keeps, as Enter is (D4): once the house challenge's Hit has left it, no other
-        /// action may take it. The challenge's Hit, which rebinds, was all that kept it before.
+        /// the game keeps, as Enter is (D4): were the house challenge's Hit ever to leave it, no other
+        /// action may take it. The challenge's Hit, which rebinds, was all that kept it before; the
+        /// D-pad is the panels' navigation now, so it has nowhere on the pad to go but A.
         /// </summary>
         [Test]
         public void APadsA_IsNeverTaken_OnceTheChallengesHitHasLeftIt()
         {
             Assert.That(KeyBindings.ReservedPaths, Does.Contain("<Gamepad>/buttonSouth"));
             var hit = KeyBindings.FindTarget("Shortcuts", "Hit");
-            Assert.That(KeyBindings.Check(Shipped(), hit, KeyBindings.GamepadScheme, "<Gamepad>/dpad/left"), Is.Null,
-                "The challenge's Hit may have the D-pad's left, which no ring walks.");
-            var live = Moved(Shipped(), "Shortcuts", "Hit", "<Gamepad>/buttonSouth", "<Gamepad>/dpad/left");
+            Assert.That(KeyBindings.Check(Shipped(), hit, KeyBindings.GamepadScheme, "<Gamepad>/dpad/left"),
+                Is.EqualTo("D-pad left moves between the controls on screen. Hit keeps its button."), "The D-pad's left is no spare for the challenge's Hit.");
+            // Had it left A - a choice kept from before these rules, say - A is still nobody else's.
+            var live = Moved(Shipped(), "Shortcuts", "Hit", "<Gamepad>/buttonSouth", "<Gamepad>/leftShoulder");
             Assert.That(KeyBindings.Check(live, "Shortcuts", "Notebook", KeyBindings.GamepadScheme, "<Gamepad>/buttonSouth"),
                 Is.EqualTo("A closes panels and presses controls, so it stays as it is. Notebook keeps its button."));
             Assert.That(KeyBindings.Check(live, "Shortcuts", "Diary", KeyBindings.GamepadScheme, "<Gamepad>/buttonSouth"), Does.Contain("stays as it is"));
@@ -439,9 +442,9 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// The panels' navigation - the D-pad, the sticks, WASD and the arrows - moves between a
         /// panel's controls in every panel, and the notebook's and the save's keys work with a panel
-        /// open: neither may take one of its keys or buttons (D4). The rest act with no panel open,
-        /// where the navigation walks the HUD's ring up and down: they may have its left and right
-        /// (<see cref="TheRingsUpAndDown_IsNoHouseShortcutsToTake_ButItsLeftAndRightAre"/>).
+        /// open: neither may take one of its keys or buttons, and its refusal says why (D4). The rest
+        /// are refused it all the same, for the HUD's ring it walks with no panel open
+        /// (<see cref="TheEventSystemsOwn_AreNoHouseActionsToTake_PanelsOpenOrNot"/>).
         /// </summary>
         [Test]
         public void ThePanelsNavigation_IsNeverTheNotebooksOrTheSaves()
@@ -453,8 +456,9 @@ namespace Gamesim.Tests.EditMode
                 Is.EqualTo("D-pad down moves between a panel's controls, and Notebook works with a panel open. Notebook keeps its button."));
             Assert.That(KeyBindings.Check(Shipped(), "Shortcuts", "Save", KeyBindings.GamepadScheme, "<Gamepad>/dpad/left"),
                 Is.EqualTo("D-pad left moves between a panel's controls, and Save works with a panel open. Save keeps its button."));
-            Assert.That(KeyBindings.Check(Shipped(), "Shortcuts", "Diary", KeyBindings.GamepadScheme, "<Gamepad>/dpad/left"), Is.Null,
-                "The diary acts with no panel open: the D-pad's left, which no ring walks, is its to take.");
+            Assert.That(KeyBindings.Check(Shipped(), "Shortcuts", "Diary", KeyBindings.GamepadScheme, "<Gamepad>/dpad/left"),
+                Is.EqualTo("D-pad left moves between the controls on screen. Diary keeps its button."),
+                "The diary acts with no panel open, where the D-pad walks the HUD's ring: the D-pad's left is no spare.");
             // A stick's direction is a part of the stick the camera reads.
             Assert.That(KeyBindings.Check(Shipped(), "Shortcuts", "Diary", KeyBindings.GamepadScheme, "<Gamepad>/leftStick/up"),
                 Is.EqualTo("Left stick up already does something else in the house. Diary keeps its button."));
@@ -469,69 +473,132 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// With no panel open the HUD keeps a control focused, and the panels' navigation walks its
-        /// ring up and down (EpisodeHud): the navigation's up and down - the D-pad's, the left
-        /// stick's, W, S and the up and down arrows - are no house shortcut's, or a press meant to
-        /// walk the ring would go to the diary too (D4's review). Left and right, which the rings
-        /// never use, stay free - the one pad button left for a shortcut of the player's - and an
-        /// action's own as shipped is its own, the overview's D-pad up among them. The camera's keys
-        /// move the view beside the ring, as the pan's WASD and arrows always have; and a board is
-        /// not the house.
+        /// The lead's ruling on D4: no house shortcut may be rebound onto the D-pad's down, which walks
+        /// the HUD's ring with no panel open and a panel's list with one, nor onto W, which the panels'
+        /// navigation answers to on the keyboard - as shipped W is the pan's up, and once the pan has
+        /// let it go it is still the navigation's.
+        /// </summary>
+        [TestCase("Diary")]
+        [TestCase("Interact")]
+        [TestCase("Overview")]
+        [TestCase("Hit")]
+        public void TheDPadsDownAndW_AreRefusedToAHouseShortcut(string action)
+        {
+            Assert.That(KeyBindings.Check(Shipped(), "Shortcuts", action, KeyBindings.GamepadScheme, "<Gamepad>/dpad/down"),
+                Is.EqualTo("D-pad down moves between the controls on screen. " + action + " keeps its button."));
+            Assert.That(KeyBindings.Check(Shipped(), "Shortcuts", action, KeyBindings.KeyboardScheme, "<Keyboard>/w"),
+                Is.EqualTo("W is already Pan up's. " + action + " keeps its key."), "As shipped W is the pan's up,");
+            var live = Moved(Shipped(), "Camera", "Pan", "<Keyboard>/w", "<Keyboard>/i");
+            Assert.That(KeyBindings.Check(live, "Shortcuts", action, KeyBindings.KeyboardScheme, "<Keyboard>/w"),
+                Is.EqualTo("W moves between the controls on screen. " + action + " keeps its key."), "and once the pan has let it go, the navigation's still.");
+        }
+
+        /// <summary>
+        /// The event system's own - its navigation, the D-pad, the sticks' directions, WASD and the
+        /// arrows, and its Submit and Cancel - are no house action's, panels open or not (D4, the
+        /// lead's ruling on its review): with no panel open the HUD keeps a control focused and walks
+        /// its ring with them, so a press meant for the ring would set off a shortcut too. Every house
+        /// action - the shortcuts, the recentre, the camera's keys - is refused every one of them; the
+        /// defaults that ship on them keep them (the overview's D-pad up, your moves' D-pad right, the
+        /// pan's W and S) and only a rebinding is refused. A competition's board is not the house.
         /// </summary>
         [Test]
-        public void TheRingsUpAndDown_IsNoHouseShortcutsToTake_ButItsLeftAndRightAre()
+        public void TheEventSystemsOwn_AreNoHouseActionsToTake_PanelsOpenOrNot()
         {
-            foreach (var target in KeyBindings.Targets.Where(each => each.Map == "Shortcuts" && !each.OverPanels))
-            {
-                Assert.That(KeyBindings.Check(Shipped(), target, KeyBindings.GamepadScheme, "<Gamepad>/dpad/down"),
-                    Is.EqualTo("D-pad down moves between the controls on screen. " + target.Name + " keeps its button."), target.Name);
-                Assert.That(KeyBindings.Check(Shipped(), target, KeyBindings.GamepadScheme, "<Gamepad>/dpad/left"), Is.Null, target.Name + " may have the D-pad's left.");
-            }
-            Assert.That(KeyBindings.Check(Shipped(), "Camera", "Recenter", KeyBindings.GamepadScheme, "<Gamepad>/dpad/down"),
-                Is.EqualTo("D-pad down moves between the controls on screen. Recenter keeps its button."), "The recentre is a press of the house's too.");
+            var pad = new[] { "<Gamepad>/dpad/up", "<Gamepad>/dpad/down", "<Gamepad>/dpad/left", "<Gamepad>/dpad/right", "<Gamepad>/leftStick/up", "<Gamepad>/rightStick/down" };
+            foreach (var target in KeyBindings.Targets.Where(each => KeyBindings.ContextOf(each.Map) == "House" && each.OnPad))
+                foreach (string path in pad)
+                {
+                    string refusal = KeyBindings.Check(Shipped(), target, KeyBindings.GamepadScheme, path);
+                    if (path == KeyBindings.ShippedPath(target, KeyBindings.GamepadScheme)) Assert.That(refusal, Is.Null, target.Name + " has its own " + path + " back.");
+                    else Assert.That(refusal, Does.EndWith(target.Name + " keeps its button."), target.Name + " may not have " + path + ".");
+                }
+            foreach (var target in KeyBindings.Targets.Where(each => each.Map == "Shortcuts" && !each.OverPanels && each.Action != "Emote"))
+                Assert.That(KeyBindings.Check(Shipped(), target, KeyBindings.GamepadScheme, "<Gamepad>/dpad/left"),
+                    Is.EqualTo("D-pad left moves between the controls on screen. " + target.Name + " keeps its button."), target.Name + ": left and right are the navigation's too.");
+            Assert.That(KeyBindings.Check(Shipped(), "Camera", "Recenter", KeyBindings.GamepadScheme, "<Gamepad>/dpad/left"),
+                Is.EqualTo("D-pad left moves between the controls on screen. Recenter keeps its button."), "The recentre is a press of the house's too.");
             Assert.That(KeyBindings.Check(Shipped(), "Shortcuts", "Overview", KeyBindings.GamepadScheme, "<Gamepad>/dpad/up"), Is.Null,
-                "The overview's D-pad up is its own as shipped.");
+                "The overview's D-pad up is its own as shipped,");
+            Assert.That(KeyBindings.Check(Shipped(), "Shortcuts", "Emote", KeyBindings.GamepadScheme, "<Gamepad>/dpad/right"), Is.Null, "and your moves' D-pad right.");
+            Assert.That(KeyBindings.Check(Shipped(), "Shortcuts", "Diary", KeyBindings.GamepadScheme, "<Gamepad>/dpad/up"), Is.EqualTo("D-pad up is already Overview's. Diary keeps its button."),
+                "Another house action's answer comes first.");
             Assert.That(KeyBindings.Check(Shipped(), "Shortcuts", "Notebook", KeyBindings.GamepadScheme, "<Gamepad>/dpad/left"),
-                Does.Contain("works with a panel open"), "The notebook and the save still have none of it.");
+                Does.Contain("works with a panel open"), "The notebook and the save say why it matters to them.");
 
-            // On the keyboard: W and S once the pan has let them go, but never A or D.
-            var live = Moved(Moved(Moved(Shipped(), "Camera", "Pan", "<Keyboard>/w", "<Keyboard>/i"), "Camera", "Pan", "<Keyboard>/a", "<Keyboard>/k"),
-                "Camera", "Pan", "<Keyboard>/s", "<Keyboard>/l");
-            Assert.That(KeyBindings.Check(live, "Shortcuts", "Diary", KeyBindings.KeyboardScheme, "<Keyboard>/w"),
-                Is.EqualTo("W moves between the controls on screen. Diary keeps its key."));
+            // On the keyboard, once the pan has let WASD go: none of them, nor the arrows, for any
+            // house action - the camera's keys among them - but a key's own as shipped.
+            var live = Moved(Moved(Moved(Moved(Shipped(), "Camera", "Pan", "<Keyboard>/w", "<Keyboard>/i"), "Camera", "Pan", "<Keyboard>/a", "<Keyboard>/k"),
+                "Camera", "Pan", "<Keyboard>/s", "<Keyboard>/l"), "Camera", "Pan", "<Keyboard>/d", "<Keyboard>/semicolon");
+            Assert.That(KeyBindings.Check(live, "Shortcuts", "Diary", KeyBindings.KeyboardScheme, "<Keyboard>/a"),
+                Is.EqualTo("A moves between the controls on screen. Diary keeps its key."));
             Assert.That(KeyBindings.Check(live, "Shortcuts", "Interact", KeyBindings.KeyboardScheme, "<Keyboard>/s"),
                 Is.EqualTo("S moves between the controls on screen. Interact keeps its key."));
-            Assert.That(KeyBindings.Check(live, "Shortcuts", "Diary", KeyBindings.KeyboardScheme, "<Keyboard>/a"), Is.Null, "A walks no ring.");
-            Assert.That(KeyBindings.Check(live, Camera("OrbitRate", "Left"), KeyBindings.KeyboardScheme, "<Keyboard>/w"), Is.Null,
-                "The camera's keys move the view beside the ring, as the pan's W did.");
-            Assert.That(KeyBindings.Check(live, Camera("Pan", "Down"), KeyBindings.KeyboardScheme, "<Keyboard>/s"), Is.Null, "and the pan's down has its own S back.");
+            Assert.That(KeyBindings.Check(live, "Camera", "Recenter", KeyBindings.KeyboardScheme, "<Keyboard>/rightArrow"),
+                Is.EqualTo("Right moves between the controls on screen. Recenter keeps its key."));
+            Assert.That(KeyBindings.Check(live, Camera("OrbitRate", "Left"), KeyBindings.KeyboardScheme, "<Keyboard>/w"),
+                Is.EqualTo("W moves between the controls on screen. Orbit left keeps its key."), "The camera's keys are the house's actions too.");
+            Assert.That(KeyBindings.Check(live, Camera("Pan", "Down"), KeyBindings.KeyboardScheme, "<Keyboard>/s"), Is.Null, "The pan's down has its own S back,");
+            Assert.That(KeyBindings.Check(live, Camera("Pan", "Right"), KeyBindings.KeyboardScheme, "<Keyboard>/d"), Is.Null, "and its right its D.");
+            Assert.That(KeyBindings.Check(live, Camera("Pan", "Down"), KeyBindings.KeyboardScheme, "<Keyboard>/w"),
+                Is.EqualTo("W moves between the controls on screen. Pan down keeps its key."), "but not another's.");
 
-            // A board is not the house: the ring is the house's.
+            // A board is not the house.
             Assert.That(KeyBindings.Check(Shipped(), KeyBindings.FindTarget("Competition", "Hold"), KeyBindings.GamepadScheme, "<Gamepad>/rightStick/up"), Is.Null);
         }
 
         /// <summary>
-        /// A kept text cannot see the panels' navigation, so a choice made before its rules - the
-        /// notebook on the D-pad's down, the diary on it - still reads; as the editor loads it, it is
-        /// dropped against the navigation, with the reason, and every choice the rules allow stays.
+        /// The UI module's Submit and Cancel, whatever they answer to, are no house action's either
+        /// (D4): HouseBindings reads them from the module beside its navigation, so a module whose
+        /// Submit took a key the reserved list does not name would still keep it. An action's own as
+        /// shipped keeps it, and a competition's board is not the house.
+        /// </summary>
+        [Test]
+        public void TheUiModulesSubmitAndCancel_AreNoHouseActionsToTake()
+        {
+            Assert.That(KeyBindings.PanelMap + "/" + KeyBindings.PanelSubmit + "," + KeyBindings.PanelMap + "/" + KeyBindings.PanelCancel, Is.EqualTo("UI/Submit,UI/Cancel"));
+            var live = Shipped();
+            live.Add(new KeyBindings.Binding(KeyBindings.PanelMap, KeyBindings.PanelSubmit, KeyBindings.KeyboardScheme, "<Keyboard>/k"));
+            live.Add(new KeyBindings.Binding(KeyBindings.PanelMap, KeyBindings.PanelCancel, KeyBindings.KeyboardScheme, "<Keyboard>/j"));
+            live.Add(new KeyBindings.Binding(KeyBindings.PanelMap, KeyBindings.PanelCancel, KeyBindings.GamepadScheme, "<Gamepad>/leftTrigger"));
+            Assert.That(KeyBindings.Check(live, "Shortcuts", "Notebook", KeyBindings.KeyboardScheme, "<Keyboard>/k"),
+                Is.EqualTo("K closes panels and presses controls, so it stays as it is. Notebook keeps its key."));
+            Assert.That(KeyBindings.Check(live, Camera("ZoomRate", "Negative"), KeyBindings.KeyboardScheme, "<Keyboard>/k"),
+                Is.EqualTo("K closes panels and presses controls, so it stays as it is. Zoom out keeps its key."));
+            Assert.That(KeyBindings.Check(live, "Shortcuts", "Diary", KeyBindings.GamepadScheme, "<Gamepad>/leftTrigger"),
+                Is.EqualTo("LT closes panels and presses controls, so it stays as it is. Diary keeps its button."));
+            Assert.That(KeyBindings.Check(live, "Shortcuts", "Notebook", KeyBindings.KeyboardScheme, "<Keyboard>/j"), Is.Null, "The notebook's own J as shipped is its own.");
+            Assert.That(KeyBindings.Check(live, KeyBindings.FindTarget("Competition", "Undo"), KeyBindings.GamepadScheme, "<Gamepad>/leftTrigger"), Is.Null,
+                "A competition's board is not the house.");
+        }
+
+        /// <summary>
+        /// A kept text cannot see the event system's own, so a choice made before their rules - the
+        /// notebook on the D-pad's down, the diary on it, Interact on its left - still reads; as the
+        /// editor loads it, it is dropped against them, with the reason, and every choice the rules
+        /// allow stays.
         /// </summary>
         [Test]
         public void AKeptChoiceTheNavigationNowRefuses_IsDroppedAsItLoads_WithTheReason()
         {
             var kept = KeyBindings.Parse("{\"Shortcuts/Notebook@Gamepad\":\"<Gamepad>/dpad/down\",\"Shortcuts/Diary@Gamepad\":\"<Gamepad>/dpad/down\","
-                + "\"Shortcuts/Interact@Gamepad\":\"<Gamepad>/dpad/left\",\"Shortcuts/Notebook@Keyboard&Mouse\":\"<Keyboard>/k\"}", out var reason);
+                + "\"Shortcuts/Interact@Gamepad\":\"<Gamepad>/dpad/left\",\"Shortcuts/Notebook@Keyboard&Mouse\":\"<Keyboard>/k\","
+                + "\"Competition/Undo@Gamepad\":\"<Gamepad>/dpad/up\"}", out var reason);
             Assert.That(reason, Is.Null);
-            Assert.That(kept.Count, Is.EqualTo(4), "The kept text alone reads every one.");
+            Assert.That(kept.Count, Is.EqualTo(5), "The kept text alone reads every one.");
             var navigation = Shipped().Where(binding => binding.Map == KeyBindings.PanelMap).ToList();
             string dropped = kept.DropRefused(navigation);
             Assert.That(kept.Count, Is.EqualTo(2));
             Assert.That(kept.Get("Shortcuts", "Notebook", KeyBindings.GamepadScheme), Is.Null, "The notebook's D-pad down is dropped,");
             Assert.That(kept.Get("Shortcuts", "Diary", KeyBindings.GamepadScheme), Is.Null, "and the diary's,");
-            Assert.That(kept.Get("Shortcuts", "Interact", KeyBindings.GamepadScheme), Is.EqualTo("<Gamepad>/dpad/left"), "while Interact keeps the D-pad's left,");
-            Assert.That(kept.Get("Shortcuts", "Notebook", KeyBindings.KeyboardScheme), Is.EqualTo("<Keyboard>/k"), "and the notebook its K.");
+            Assert.That(kept.Get("Shortcuts", "Interact", KeyBindings.GamepadScheme), Is.Null, "and Interact's D-pad left,");
+            Assert.That(kept.Get("Shortcuts", "Notebook", KeyBindings.KeyboardScheme), Is.EqualTo("<Keyboard>/k"), "while the notebook keeps its K,");
+            Assert.That(kept.Get(KeyBindings.FindTarget("Competition", "Undo"), KeyBindings.GamepadScheme), Is.EqualTo("<Gamepad>/dpad/up"),
+                "and the board its take-back: the event system's own are the house's, and a board is not the house.");
             Assert.That(dropped, Is.EqualTo("a kept control (Shortcuts/Notebook@Gamepad) is not one a player may choose now: D-pad down moves between a panel's controls, "
                 + "and Notebook works with a panel open. Notebook keeps its button; a kept control (Shortcuts/Diary@Gamepad) is not one a player may choose now: "
-                + "D-pad down moves between the controls on screen. Diary keeps its button"));
+                + "D-pad down moves between the controls on screen. Diary keeps its button; a kept control (Shortcuts/Interact@Gamepad) is not one a player may "
+                + "choose now: D-pad left moves between the controls on screen. Interact keeps its button"));
             Assert.That(kept.DropRefused(navigation), Is.Null, "What is left stands.");
             Assert.That(new KeyBindings().DropRefused(null), Is.Null);
         }

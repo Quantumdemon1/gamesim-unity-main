@@ -77,11 +77,14 @@ namespace Gamesim.Tests.PlayMode
         // Only selection is arranged by the fixture. The critical opening press is a queued device
         // event delivered by the existing EventSystem/InputSystemUIInputModule, never onClick or
         // ExecuteEvents. This is an input fixture, not evidence of a complete human season.
-        // The pad rebinds the diary: every pad button the notebook could take is another action's
-        // or, the D-pad's spare two, the panels' navigation, which the notebook may not share (D4).
+        // The pad rebinds the board's take-back: no house action may be rebound onto a pad button
+        // the UI module navigates or submits with (D4), and every other pad button is already
+        // another house action's, so a competition board's grip and take-back - a context of their
+        // own - are the pad's only rebindings that can land.
         private IEnumerator RealSubmitRebindingOpening(bool pad)
         {
-            string name = pad ? "Diary" : "Notebook", rebind = "Rebind " + name;
+            var target = pad ? KeyBindings.FindTarget("Competition", "Undo") : KeyBindings.FindTarget("Shortcuts", "Notebook");
+            string name = target.Name, rebind = target.Caption;
             EpisodeDirector.PreferencesBesideSaves = true;
             director.FreezeForReloadForDiagnostics();
             yield return ReloadEpisode();
@@ -119,7 +122,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(HouseBindings.ListeningFor.Name, Is.EqualTo(name));
             Assert.That(HouseBindings.Current.Count, Is.Zero);
             // Worded for the device that is listening: the pad's way out is B (lane-input-5).
-            Assert.That(RebindLineShown(), Is.EqualTo(pad ? "Press the new button for Diary. B cancels." : "Press the new key or button for Notebook. Esc cancels."));
+            Assert.That(RebindLineShown(), Is.EqualTo(pad ? "Press the new button for Take back letter. B cancels." : "Press the new key or button for Notebook. Esc cancels."));
             Assert.That(ShowsControl(EpisodeDirector.HideControlsCaption), Is.True,
                 "The opening press neither closes/cancels settings nor opens a shortcut panel.");
             UvEquivalent(graph, director.Snapshot);
@@ -133,18 +136,18 @@ namespace Gamesim.Tests.PlayMode
             UvEquivalent(graph, director.Snapshot);
             UvAssertImage(files);
 
-            if (pad) yield return PressPad(gamepad, GamepadButton.DpadLeft);
+            if (pad) yield return PressPad(gamepad, GamepadButton.North);
             else yield return PressKey(Key.K);
             yield return Frames(2);
             string scheme = pad ? KeyBindings.GamepadScheme : KeyBindings.KeyboardScheme;
-            string path = pad ? "<Gamepad>/dpad/left" : "<Keyboard>/k";
+            string path = pad ? "<Gamepad>/buttonNorth" : "<Keyboard>/k";
             Assert.That(HouseBindings.Listening, Is.False);
             Assert.That(HouseBindings.Current.Count, Is.EqualTo(1), "Exactly one replacement is accepted.");
-            Assert.That(HouseBindings.Current.Get("Shortcuts", name, scheme), Is.EqualTo(path));
-            Assert.That(RebindLineShown(), Is.EqualTo(pad ? "Diary is now D-pad left on the pad." : "Notebook is now K."));
+            Assert.That(HouseBindings.Current.Get(target, scheme), Is.EqualTo(path));
+            Assert.That(RebindLineShown(), Is.EqualTo(pad ? "Take back letter is now Y on the pad." : "Notebook is now K."));
             Assert.That(ShowsControl(EpisodeDirector.HideControlsCaption), Is.True, "The replacement opens no shortcut and leaves settings up.");
             Assert.That(ButtonWithCaption(rebind).name, Is.EqualTo(rebind));
-            Assert.That(cameraRig.Actions.Asset.FindAction("Shortcuts/" + name, true).bindings
+            Assert.That(cameraRig.Actions.Asset.FindAction(target.Path, true).bindings
                 .Any(binding => binding.effectivePath == path), Is.True, "The existing action receives the override.");
             Assert.That(cameraRig.Actions.Asset.actionMaps.SelectMany(map => map.actions.Select(action => map.name + "/" + action.name)),
                 Is.EqualTo(actionNames), "Action names and order are unchanged.");
@@ -167,15 +170,12 @@ namespace Gamesim.Tests.PlayMode
             yield return Frames(2);
             if (pad)
             {
-                var rail = ButtonWithCaption(EpisodeHud.DiaryTravelCaption);
-                Assert.That(rail.name, Is.EqualTo(EpisodeHud.DiaryTravelCaption));
-                var chip = rail.transform.Find(EpisodeHud.PadGlyphName);
-                Assert.That(chip, Is.Not.Null);
-                Assert.That(chip.GetComponentInChildren<TMP_Text>().text, Is.EqualTo("D-pad left"));
-                Assert.That(HouseBindings.Current.Get("Shortcuts", "Diary", KeyBindings.KeyboardScheme), Is.Null);
-                yield return PressPad(gamepad, GamepadButton.DpadLeft);
+                Assert.That(KeyBindings.BoardKey("Undo", true, "X"), Is.EqualTo("Y"), "The board's words name the take-back's new button.");
+                Assert.That(HouseBindings.Current.Get(KeyBindings.FindTarget("Shortcuts", "Diary"), KeyBindings.GamepadScheme), Is.Null,
+                    "The house's Y is the diary's still: a board is not the house.");
+                yield return PressPad(gamepad, GamepadButton.North);
                 Assert.That(director.StatusMessage, Is.EqualTo(InputGlossary.DiaryWayLine(director.LastTravel == EpisodeDirector.TravelKind.Warp, true)),
-                    "The replacement works after settings close: the player is on the way to the diary room.");
+                    "After settings close, Y in the house sends the player on the way to the diary room as shipped.");
             }
             else
             {
@@ -359,10 +359,20 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
         }
 
+        /// <summary>
+        /// A rebinding the pad asks for listens on the pad and says B cancels (lane-input-5). No house
+        /// action may be rebound onto a button the UI module navigates or submits with, panels open
+        /// or not (D4, the lead's ruling on its review): the D-pad walks the HUD's ring with no panel
+        /// open, so neither its left nor its down is the diary's to take, and the notebook, which
+        /// works over a panel, is told so in those words. Every other pad button is another house
+        /// action's already, so on the pad a competition board's take-back is what rebinds, and the
+        /// board's words name it.
+        /// </summary>
         [UnityTest]
         public IEnumerator Rebinding_APadButtonRebindsThePadsWay_AndTheHintsNameIt()
         {
             var pad = TestGamepad();
+            string card = InputGlossary.HelpCard(true);
             yield return OpenTheControlsSection();
             // The pad pressed last: the rebinding listens to the pad.
             yield return PressPad(pad, GamepadButton.RightStick);
@@ -372,19 +382,26 @@ namespace Gamesim.Tests.PlayMode
             FindButton("Rebind Diary").onClick.Invoke();
             yield return null;
             Assert.That(HouseBindings.Listening, Is.True);
+            Assert.That(RebindLineShown(), Is.EqualTo("Press the new button for Diary. B cancels."), "The pad is told the pad's way out.");
             yield return PressPad(pad, GamepadButton.DpadLeft);
-            Assert.That(RebindLineShown(), Is.EqualTo("Diary is now D-pad left on the pad."));
-            Assert.That(HouseBindings.Current.Get("Shortcuts", "Diary", KeyBindings.GamepadScheme), Is.EqualTo("<Gamepad>/dpad/left"));
-            Assert.That(HouseBindings.Current.Get("Shortcuts", "Diary", KeyBindings.KeyboardScheme), Is.Null, "The keyboard's R is untouched.");
-            Assert.That(InputGlossary.HelpCard(true), Does.Contain("D-pad left: diary"), "The pad's help card names the button the diary answers to now.");
-            director.ClosePanels();
+            Assert.That(RebindLineShown(), Is.EqualTo("D-pad left moves between the controls on screen. Diary keeps its button."),
+                "The D-pad's left is the HUD's navigation, no spare for the diary (D4).");
+            Assert.That(HouseBindings.Current.Count, Is.Zero, "Nothing was rebound.");
+            Assert.That(director.IsPanelOpen, Is.True);
             yield return null; yield return null;
-            var chip = FindButton(EpisodeHud.DiaryTravelCaption).transform.Find(EpisodeHud.PadGlyphName);
-            Assert.That(chip != null && chip.GetComponentInChildren<TMP_Text>().text == "D-pad left", Is.True, "The rail's chip names it too.");
+
+            // Nor its down, which walks the HUD's ring with no panel open.
+            yield return PressPad(pad, GamepadButton.RightStick);
+            FindButton("Rebind Diary").onClick.Invoke();
+            yield return null;
+            Assert.That(HouseBindings.Listening, Is.True);
+            yield return PressPad(pad, GamepadButton.DpadDown);
+            Assert.That(RebindLineShown(), Is.EqualTo("D-pad down moves between the controls on screen. Diary keeps its button."));
+            Assert.That(HouseBindings.Current.Get("Shortcuts", "Diary", KeyBindings.GamepadScheme), Is.Null, "The diary keeps its Y.");
+            yield return null; yield return null;
 
             // The notebook answers with a panel open, where the D-pad moves between the panel's
-            // controls: the D-pad's spare directions are not the notebook's to take (D4).
-            yield return OpenTheControlsSection();
+            // controls: the refusal says so (D4).
             yield return PressPad(pad, GamepadButton.RightStick);
             FindButton("Rebind Notebook").onClick.Invoke();
             yield return null;
@@ -395,17 +412,6 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsPanelOpen, Is.True);
             yield return null; yield return null;
 
-            // With no panel open the HUD's ring walks up and down with the D-pad, so its down is no
-            // house shortcut's to take either: the diary keeps its left (D4's review).
-            yield return PressPad(pad, GamepadButton.RightStick);
-            FindButton("Rebind Diary").onClick.Invoke();
-            yield return null;
-            Assert.That(HouseBindings.Listening, Is.True);
-            yield return PressPad(pad, GamepadButton.DpadDown);
-            Assert.That(RebindLineShown(), Is.EqualTo("D-pad down moves between the controls on screen. Diary keeps its button."));
-            Assert.That(HouseBindings.Current.Get("Shortcuts", "Diary", KeyBindings.GamepadScheme), Is.EqualTo("<Gamepad>/dpad/left"), "The diary keeps the D-pad's left.");
-            yield return null; yield return null;
-
             // B is the pad's way out, and is never taken: listening on the pad, B cancels (lane-input-5).
             yield return PressPad(pad, GamepadButton.RightStick);
             FindButton("Rebind Diary").onClick.Invoke();
@@ -414,8 +420,20 @@ namespace Gamesim.Tests.PlayMode
             yield return PressPad(pad, GamepadButton.East);
             Assert.That(HouseBindings.Listening, Is.False, "B cancels the rebinding,");
             Assert.That(RebindLineShown(), Is.EqualTo("Diary keeps its button."), "and says so,");
-            Assert.That(HouseBindings.Current.Get("Shortcuts", "Diary", KeyBindings.GamepadScheme), Is.EqualTo("<Gamepad>/dpad/left"), "with the diary's button as it was,");
+            Assert.That(HouseBindings.Current.Count, Is.Zero, "with every button as it was,");
             Assert.That(director.IsPanelOpen, Is.True, "and the B that cancelled closed nothing.");
+            yield return null; yield return null;
+
+            // A board's take-back is the pad's to move: Y, and the board's words name it.
+            yield return PressPad(pad, GamepadButton.RightStick);
+            FindButton("Rebind Take back letter").onClick.Invoke();
+            yield return null;
+            Assert.That(RebindLineShown(), Is.EqualTo("Press the new button for Take back letter. B cancels."));
+            yield return PressPad(pad, GamepadButton.North);
+            Assert.That(RebindLineShown(), Is.EqualTo("Take back letter is now Y on the pad."));
+            Assert.That(HouseBindings.Current.Get(KeyBindings.FindTarget("Competition", "Undo"), KeyBindings.GamepadScheme), Is.EqualTo("<Gamepad>/buttonNorth"));
+            Assert.That(KeyBindings.BoardKey("Undo", true, "X"), Is.EqualTo("Y"), "The board names the button its take-back answers to now,");
+            Assert.That(InputGlossary.HelpCard(true), Is.EqualTo(card), "and the house's help card, which names none of the board's, is as it was.");
             director.ClosePanels();
             yield return null;
         }

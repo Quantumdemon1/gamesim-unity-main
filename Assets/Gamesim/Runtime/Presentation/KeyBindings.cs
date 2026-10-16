@@ -28,12 +28,12 @@ namespace Gamesim.Presentation
     /// are one context (<see cref="Check(IEnumerable{Binding}, Target, string, string)"/>). A
     /// composite's parts are bindings too: the pan's up is refused the pan's left; and a binding to a
     /// whole control answers for its parts - the pan's left stick for each of its directions. The
-    /// event system's navigation moves between a panel's controls in every panel, so an action the
-    /// house answers to over a panel (<see cref="Target.OverPanels"/>) is refused its keys and
-    /// buttons too (<see cref="PanelMap"/>); and with no panel open it walks the HUD's ring up and
-    /// down, so no house shortcut may have its up or its down. An action's own key or button as
-    /// shipped is always its to take back, beside the bindings nobody rebinds that shared it as
-    /// shipped.</item>
+    /// event system's own are the house's too (<see cref="PanelMap"/>): its navigation moves between
+    /// a panel's controls, and with no panel open walks the HUD's ring, and its Submit and Cancel
+    /// press and close them, so no house action may be rebound onto any of their keys or buttons,
+    /// panels open or not (D4). An action's own key or button as shipped is always its to take back
+    /// - the defaults that ship on the navigation keep it - beside the bindings nobody rebinds that
+    /// shared it as shipped.</item>
     /// <item><b>Kept.</b> As one JSON object, "Map/Action@Scheme" - "Map/Action#Part@Scheme" for a
     /// composite's part - to the control's path, under <see cref="PreferenceKey"/>: PlayerPrefs, or a
     /// playtest root's own file (A13).</item>
@@ -69,11 +69,9 @@ namespace Gamesim.Presentation
             /// <summary>
             /// Whether the house answers to it while a panel is open: the notebook's key jumps to its
             /// page and the save's saves from inside any panel (EpisodeDirector.Update), where the
-            /// event system's navigation is moving between the panel's controls. The rest act with no
-            /// panel open - the diary, Interact, the overview and your moves, and the camera - but for
-            /// the house challenge's Hit, which is read over the timing bar's panel, a board no
-            /// shipped season plays (EpisodeDirector.StartTimingBarForDiagnostics); its ring walks up
-            /// and down only, as every house shortcut's navigation does (<see cref="PanelMap"/>).
+            /// event system's navigation is moving between the panel's controls. It says which way a
+            /// refusal of the navigation is worded ("... works with a panel open"); every house action
+            /// is refused the navigation alike, panels open or not (<see cref="PanelMap"/>).
             /// </summary>
             public bool OverPanels { get; }
             public Target(string map, string action, string name, string part = null, bool onPad = true, bool overPanels = false)
@@ -129,20 +127,21 @@ namespace Gamesim.Presentation
             { "<Keyboard>/escape", "<Keyboard>/enter", "<Keyboard>/numpadEnter", "<Gamepad>/start", "<Gamepad>/buttonEast", "<Gamepad>/buttonSouth" };
 
         /// <summary>
-        /// The event system's map and its navigation: the UI module moves between a panel's controls
-        /// with Navigate - the D-pad, the sticks, WASD and the arrows - in every panel. The conflict
-        /// check reads it beside the house's own bindings (HouseBindings.LiveBindings), and refuses
-        /// its keys and buttons to an action the house answers to over a panel
-        /// (<see cref="Target.OverPanels"/>): a D-pad press meant to move down a list must not open
-        /// the notebook. With no panel open the HUD keeps a control focused and its ring walks up
-        /// and down (EpisodeHud), so Navigate's up and down - the D-pad's, the left stick's, W, S
-        /// and the up and down arrows - are no house shortcut's either: a press meant to walk the
-        /// ring must not send the player to the diary. Left and right, which the rings never use,
-        /// stay free, as your moves' D-pad right always has; an action's own as shipped is its own
-        /// (the overview's D-pad up); and the camera's keys move the view beside the ring, as the
-        /// pan's WASD and arrows always have.
+        /// The event system's map and its actions: the UI module moves between a panel's controls
+        /// with Navigate - the D-pad, both sticks' directions, WASD and the arrows - and presses and
+        /// closes with Submit and Cancel, in every panel; and with no panel open the HUD keeps a
+        /// control focused and walks its ring with the same navigation (EpisodeHud). The conflict
+        /// check reads them beside the house's own bindings (HouseBindings.LiveBindings) and refuses
+        /// every key and button of theirs to every house action - the shortcuts, the recentre and the
+        /// camera's keys - panels open or not (D4, the lead's ruling on its review): a D-pad press
+        /// meant to move down a list or the ring must not open the notebook or set off to the diary.
+        /// The defaults that ship on them keep them, as an action's own as shipped always is - the
+        /// overview's D-pad up, your moves' D-pad right, the house challenge's Hit on A, the pan's
+        /// WASD - and only a rebinding is refused. That leaves the pad no button for a house action:
+        /// every one is another house action's or the UI module's, so on the pad only a competition
+        /// board's grip and take-back - a context of their own, untouched - can move.
         /// </summary>
-        public const string PanelMap = "UI", PanelNavigate = "Navigate";
+        public const string PanelMap = "UI", PanelNavigate = "Navigate", PanelSubmit = "Submit", PanelCancel = "Cancel";
 
         /// <summary>The target for an action's own binding, or null when it is not one a player may rebind.</summary>
         public static Target FindTarget(string map, string action) => FindTarget(map, action, null);
@@ -243,10 +242,10 @@ namespace Gamesim.Presentation
         /// in the player's words, or null when it can: the target takes nothing on that device, the
         /// path is another device's, it is a way out the game keeps, or another binding of the same
         /// context already answers to it (<paramref name="live"/>, every binding as the actions hold it
-        /// now - composites' parts included, and the event system's navigation,
-        /// <see cref="PanelMap"/>: all of it for the notebook and the save, its up and down for every
-        /// other house shortcut). A binding to a whole control answers for its parts: the pan's left
-        /// stick for each of its directions, the panels' D-pad for each of its four. An action's own
+        /// now - composites' parts included, and the event system's navigation, Submit and Cancel,
+        /// <see cref="PanelMap"/>, every one of them the house's). A binding to a whole control
+        /// answers for its parts: the pan's left stick for each of its directions, the panels' D-pad
+        /// for each of its four. An action's own
         /// binding, or the same part of its composite, is never a conflict with itself; and its own
         /// key or button as shipped is always its to take back - beside the bindings nobody rebinds
         /// that shared it as shipped (the board's Hit on the grip's Space), though never from another
@@ -271,14 +270,15 @@ namespace Gamesim.Presentation
                     if (binding.Scheme != scheme || !Answers(binding.Path, path)) continue;
                     if (binding.Map == PanelMap)
                     {
-                        if (shipped) continue;
-                        // The panels' navigation: an action that works over a panel may share none of it,
+                        // The event system's own are the house's, panels open or not; a default that
+                        // ships on one keeps it, and a competition's board is not the house.
+                        if (shipped || context != "House") continue;
+                        if (binding.Action == PanelSubmit || binding.Action == PanelCancel)
+                            return words + " closes panels and presses controls, so it stays as it is. " + keeps;
+                        // Its navigation: a panel's controls, and the HUD's ring with none open.
                         if (target.OverPanels)
                             return words + " moves between a panel's controls, and " + target.Name + " works with a panel open. " + keeps;
-                        // and no house shortcut its up or down, which walk the HUD's ring with no panel open.
-                        if (context == "House" && target.Part == null && Vertical(binding, path))
-                            return words + " moves between the controls on screen. " + keeps;
-                        continue;
+                        return words + " moves between the controls on screen. " + keeps;
                     }
                     if (ContextOf(binding.Map) != context) continue;
                     if (binding.Map == target.Map && binding.Action == target.Action && (target.Part == null || binding.Part == target.Part)) continue;
@@ -290,20 +290,6 @@ namespace Gamesim.Presentation
                     return words + " already does something else " + (context == "House" ? "in the house" : "on a competition's board") + ". " + keeps;
                 }
             return null;
-        }
-
-        /// <summary>
-        /// Whether a navigation binding answers to <paramref name="chosen"/> as an up or a down - the
-        /// way the HUD's rings walk: a composite's up or down part (W, the up arrow, the left stick's
-        /// up), or the up or down of a whole control bound as one (the D-pad's).
-        /// </summary>
-        private static bool Vertical(Binding navigation, string chosen)
-        {
-            if (navigation.Part != null)
-                return string.Equals(navigation.Part, "up", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(navigation.Part, "down", StringComparison.OrdinalIgnoreCase);
-            string control = navigation.Path != null && navigation.Path.Length > chosen.Length ? navigation.Path : chosen;
-            return control.EndsWith("/up", StringComparison.OrdinalIgnoreCase) || control.EndsWith("/down", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -373,9 +359,9 @@ namespace Gamesim.Presentation
         /// <summary>
         /// Drops every choice the conflict check refuses against <paramref name="live"/>, and says
         /// which and why, or null when every choice stands. A kept text cannot see the event system's
-        /// navigation (<see cref="PanelMap"/>), so a choice made before its rules - the notebook on
-        /// the D-pad's down, the diary on it - still reads; the editor drops it as it loads, against
-        /// the navigation alone, as every other rule was checked when the choice was made.
+        /// own (<see cref="PanelMap"/>), so a choice made before their rules - the notebook on the
+        /// D-pad's down, the diary on its left - still reads; the editor drops it as it loads, against
+        /// the event system's alone, as every other rule was checked when the choice was made.
         /// </summary>
         public string DropRefused(IEnumerable<Binding> live)
         {
@@ -420,8 +406,8 @@ namespace Gamesim.Presentation
         /// The choices as the player log's <c>keys=</c> says them, one word that reads back
         /// (<see cref="ParseSummary"/>): "default", or each choice in the settings' order, joined by
         /// commas - the action's name with its spaces as underscores, a colon, and the control's own
-        /// name, the path after its device, with "(pad)" after a pad's: "Notebook:k,Diary:dpad/left(pad),
-        /// Pan_up:i,Zoom_in:numpadPlus". A control's name never holds a space, an equals sign, a comma,
+        /// name, the path after its device, with "(pad)" after a pad's: "Notebook:k,Zoom_in:numpadPlus,
+        /// Pan_up:i,Take_back_letter:buttonNorth(pad)". A control's name never holds a space, an equals sign, a comma,
         /// a colon or a bracket, where the keys' printed labels do ("=", ",", "Left Shift").
         /// </summary>
         public string Summary()

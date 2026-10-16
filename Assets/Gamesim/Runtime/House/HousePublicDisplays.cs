@@ -141,7 +141,9 @@ namespace Gamesim.House
                 if(renderer.name==PhotoName)
                 {
                     photos.Add(renderer);
-                    var binding=renderer.GetComponent<CharacterPortraitMaterialBinding>()??renderer.gameObject.AddComponent<CharacterPortraitMaterialBinding>();
+                    // Explicitly: a missing component is Unity's fake null in the editor, which ?? keeps.
+                    var binding=renderer.GetComponent<CharacterPortraitMaterialBinding>();
+                    if(binding==null)binding=renderer.gameObject.AddComponent<CharacterPortraitMaterialBinding>();
                     if(hoh==null)
                     {
                         // With no current HoH, no family-placeholder or previous winner is a face.

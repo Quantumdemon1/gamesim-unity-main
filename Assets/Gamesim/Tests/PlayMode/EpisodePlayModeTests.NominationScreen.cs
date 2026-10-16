@@ -257,7 +257,7 @@ namespace Gamesim.Tests.PlayMode
                 var beat = EpisodeEngine.OpenStoryBeats(director.Snapshot).Single();
                 yield return AtEveryTextSize(larger =>
                 {
-                    string where = "A beat of " + options + " options in a house of " + houseguests + (larger ? " at the larger text" : "");
+                    string where = "A beat of " + options + " options in a house of " + houseguests + (larger ? " " + TextScales.At(director.TextSize) : "");
                     AssertNominationScreen(where, "Continue episode");
                     Assert.That(StepStanding("2. " + beat.title), Is.EqualTo("Current"), where + ": the beat is the step.");
                     Assert.That(StepStanding("3. " + NominationSteps.CeremonyTitle), Is.EqualTo("Next"), where);
@@ -558,7 +558,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return AtEveryTextSize(larger =>
                 {
                     string where = "The outcome" + (block == NominationBlock.Player ? " with the player on the block" : "")
-                        + " in a house of " + houseguests + (larger ? " at the larger text" : "");
+                        + " in a house of " + houseguests + (larger ? " " + TextScales.At(director.TextSize) : "");
                     AssertNominationScreen(where, "Continue episode");
                     Assert.That(ActiveRect(EpisodeHud.CeremonyTitleName).GetComponent<TMP_Text>().text, Is.EqualTo("Nominated for Eviction"), where);
                     Assert.That(StepStanding("2. " + NominationSteps.CeremonyTitle), Is.EqualTo("Complete"), where);

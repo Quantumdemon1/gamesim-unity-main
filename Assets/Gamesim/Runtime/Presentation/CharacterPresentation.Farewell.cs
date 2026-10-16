@@ -372,14 +372,24 @@ namespace Gamesim.Presentation
         /// <summary>Whether this body is holding its hips and legs where the farewell's cue found them.</summary>
         internal bool HoldsFarewellStance => farewellHold != null;
 
+        /// <summary>How much of the held stance is written over the animator's legs: 1 in full, falling as it lets go.</summary>
+        internal float FarewellStanceWeight => farewellHold != null ? farewellHoldWeight : 0f;
+
         /// <summary>
         /// Takes hold of the hips and both leg chains as they stand, on the frame the farewell is cued.
         /// Only a body settled in Idle is held: a cue that lands on anything else plays as it always has.
         /// </summary>
         private void HoldFarewellStance()
         {
-            // A cue repeated while its stance is still held keeps the stance it already has.
-            if (farewellHold != null && farewellHoldRelease <= 0f && animator == farewellHoldAnimator) return;
+            // A cue repeated while its stance is still held keeps the stance it already has, and watches
+            // its own take: the settle and the entry window count from this cue, not the last one, so
+            // a cue in the last take's settle cannot begin the release on its own first frame back.
+            if (farewellHold != null && farewellHoldRelease <= 0f && animator == farewellHoldAnimator)
+            {
+                farewellHoldAge = farewellHoldSettled = 0f;
+                farewellHoldEntered = farewellHoldBack = false;
+                return;
+            }
             if (animator == null || !TryReadFarewell(out var pose) || !pose.Idle) return;
             EndFarewellStance();
             var hips = animator.GetBoneTransform(HumanBodyBones.Hips);

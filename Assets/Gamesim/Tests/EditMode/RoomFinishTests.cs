@@ -503,8 +503,9 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(renderers.Count(r => r.name == "Finish line"), Is.EqualTo(3), "a finish line per lane.");
                 foreach (var line in renderers.Where(r => r.name == "Start line" || r.name == "Finish line"))
                     Assert.That(line.bounds.max.y, Is.LessThan(floor.max.y + 0.05f), line.name + " lies on the floor.");
-                Assert.That(renderers.Count(r => r.name == "Flight case"), Is.EqualTo(3), "Three cases by the west fence,");
-                foreach (var thing in renderers.Where(r => r.name == "Flight case"))
+                var cases = NamedChildren(yard, "Flight case");
+                Assert.That(cases.Length, Is.EqualTo(3), "Three case roots by the west fence,");
+                foreach (var thing in cases.SelectMany(c => c.GetComponentsInChildren<Renderer>(true)))
                     Assert.That(thing.bounds.center.x, Is.LessThan(floor.min.x + 3f), "at the edge, never in the middle.");
                 // The centre stays open: nothing the yard's finish placed stands within four metres of its middle.
                 var middle = new Vector2(floor.center.x, floor.center.z);
@@ -574,6 +575,15 @@ namespace Gamesim.Tests.EditMode
                     .OrderBy(s => s, StringComparer.Ordinal).ToArray();
                 Assert.That(after, Is.EqualTo(before), "A second run places what the first did, where it did, in the same materials.");
                 var rebuilt = Root(scene);
+                var cases = NamedChildren(rebuilt.Find("Competition yard"), "Flight case");
+                Assert.That(cases.Length, Is.EqualTo(3));
+                foreach (var item in cases)
+                {
+                    AssertAuthored(item, "bb_set_flight_case");
+                    Assert.That(item.GetComponentsInChildren<LODGroup>(true).Single().GetLODs().Length, Is.EqualTo(2));
+                    Assert.That(item.GetComponentsInChildren<Renderer>(true).Select(r => AssetDatabase.GetAssetPath(r.sharedMaterial)),
+                        Is.All.EqualTo("Assets/Gamesim/Art/Authored/SetPieces/Materials/bb_mat_flightcase_atlas.mat"));
+                }
                 AssertAuthored(NamedChildren(rebuilt.Find("Kitchen"), "Dish towel").Single(), "bb_set_towel");
                 AssertAuthored(NamedChildren(rebuilt.Find("HoH suite"), "HoH drink").Single(), "bb_set_bottle");
                 foreach (var book in NamedChildren(rebuilt.Find("Bedroom"), "Book")) AssertAuthored(book, "bb_set_bookstack");
@@ -658,6 +668,7 @@ namespace Gamesim.Tests.EditMode
                 .Select(AssetDatabase.GUIDToAssetPath)
                 .Where(p => p.StartsWith(HouseRoomFinish.MaterialFolder + "/", StringComparison.Ordinal)
                     && p.EndsWith(".mat", StringComparison.Ordinal))
+                .Concat(new[] { "Assets/Gamesim/Art/Authored/SetPieces/Materials/bb_mat_flightcase_atlas.mat" })
                 .Distinct(StringComparer.Ordinal).OrderBy(p => p, StringComparer.Ordinal).ToArray();
 
             private sealed class MaterialState

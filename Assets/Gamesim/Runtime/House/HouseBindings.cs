@@ -13,7 +13,7 @@ namespace Gamesim.House
     /// Rebinding in the house (PLAN A, A5): the player's choices (<see cref="KeyBindings"/>) applied
     /// to every copy of the game's actions - the rig's while one is up and the shared copy beside it
     /// (<see cref="HouseInput"/>) - kept in the session's preferences (A13), and the one press a
-    /// rebinding listens for. Esc cancels a rebinding, and B one listening on the pad; a key the rules
+    /// rebinding listens for. Esc cancels a rebinding, and B one the pad asked for; a key the rules
     /// refuse leaves the action as it was and says why; nothing else the press might mean in the house
     /// acts on it (<see cref="Busy"/>).
     /// </summary>
@@ -35,6 +35,13 @@ namespace Gamesim.House
 
         /// <summary>Whether the rebinding listening is listening to the pad: its words name the pad's way out, B.</summary>
         public static bool ListeningOnPad { get; private set; }
+
+        /// <summary>
+        /// Whether the pad's B cancels the rebinding listening: the pad asked for it, whichever device
+        /// it listens to - a camera key pressed for from the pad listens for a key, and B is still the
+        /// pad's way out (lane-input-5).
+        /// </summary>
+        public static bool PadCancels { get; private set; }
 
         /// <summary>
         /// Whether the house should leave this frame's presses alone: a rebinding is listening, or one
@@ -189,25 +196,30 @@ namespace Gamesim.House
         /// <summary>
         /// Listens for the next press on the keyboard (or the pad, <paramref name="pad"/>, for a target
         /// the pad has a binding of its own for: the camera's keys always listen to the keyboard) and
-        /// gives it to <paramref name="target"/>, if the rules allow; Esc cancels, and on the pad B, its
-        /// way out, as well (lane-input-5). <paramref name="done"/> is told the outcome in the player's
-        /// words, and whether anything changed. One rebinding at a time: asking for another while one
-        /// listens cancels the first.
+        /// gives it to <paramref name="target"/>, if the rules allow; Esc cancels, and when the pad
+        /// asked, B, its way out, as well - a camera key's rebinding among them (lane-input-5).
+        /// <paramref name="done"/> is told the outcome in the player's words, and whether anything
+        /// changed. One rebinding at a time: asking for another while one listens cancels the first.
         /// </summary>
         public static void Listen(KeyBindings.Target target, bool pad, IPreferenceStore store, Action<string, bool> done)
         {
             Cancel();
             if (target == null) return;
+            bool padAsked = pad;
             pad = pad && target.OnPad;
             string scheme = pad ? KeyBindings.GamepadScheme : KeyBindings.KeyboardScheme;
             string keeps = target.Name + " keeps its " + (pad ? "button" : "key") + ".";
             ListeningFor = target;
             ListeningOnPad = pad;
+            PadCancels = padAsked;
             // A probe of its own, never one of the game's actions: nothing the house reads is
             // switched off while it listens, and the probe is thrown away after.
             probe = new InputAction("Rebind " + target.Name, InputActionType.Button, pad ? "<Gamepad>/buttonSouth" : "<Keyboard>/space");
-            operation = probe.PerformInteractiveRebinding(0)
-                .WithControlsHavingToMatchPath(pad ? "<Gamepad>" : "<Keyboard>")
+            var listen = probe.PerformInteractiveRebinding(0)
+                .WithControlsHavingToMatchPath(pad ? "<Gamepad>" : "<Keyboard>");
+            // A key asked for from the pad listens to the pad's B as well, its way out: the paths add up.
+            if (padAsked && !pad) listen = listen.WithControlsHavingToMatchPath(PadWayOut);
+            operation = listen
                 .WithControlsExcluding("<Keyboard>/anyKey")
                 .WithControlsExcluding("<Mouse>")
                 .WithExpectedControlType("Button")
@@ -217,11 +229,11 @@ namespace Gamesim.House
                 {
                     string path = probe.bindings[0].effectivePath;
                     End();
-                    // The pad's B is its way out: listening on the pad, it cancels as Esc does. Only one
+                    // The pad's B is its way out: asked for from the pad, it cancels as Esc does. Only one
                     // control can cancel a rebinding, and "*/{Cancel}" would take the opening press's
                     // release on a pad whose A is its Cancel (the Switch's and iOS layouts), so B is
                     // read here, as the press the rebinding took.
-                    if (pad && string.Equals(path, PadWayOut, StringComparison.OrdinalIgnoreCase)) { done?.Invoke(keeps, false); return; }
+                    if (padAsked && string.Equals(path, PadWayOut, StringComparison.OrdinalIgnoreCase)) { done?.Invoke(keeps, false); return; }
                     string refusal = KeyBindings.Check(LiveBindings(HouseInput.Actions), target, scheme, path);
                     if (refusal != null) { done?.Invoke(refusal, false); return; }
                     current.Set(target, scheme, path);
@@ -256,7 +268,7 @@ namespace Gamesim.House
             End();
         }
 
-        /// <summary>The pad's B: Back and the panels' Cancel, which a rebinding on the pad takes as its cancel.</summary>
+        /// <summary>The pad's B: Back and the panels' Cancel, which a rebinding the pad asked for takes as its cancel.</summary>
         private const string PadWayOut = "<Gamepad>/buttonEast";
 
         private static void End()
@@ -264,6 +276,7 @@ namespace Gamesim.House
             settledFrame = Time.frameCount;
             ListeningFor = null;
             ListeningOnPad = false;
+            PadCancels = false;
             var finished = operation;
             operation = null;
             finished?.Dispose();
@@ -281,6 +294,7 @@ namespace Gamesim.House
             probe = null;
             ListeningFor = null;
             ListeningOnPad = false;
+            PadCancels = false;
             settledFrame = int.MinValue;
             current = new KeyBindings();
             KeyBindings.Show(null);

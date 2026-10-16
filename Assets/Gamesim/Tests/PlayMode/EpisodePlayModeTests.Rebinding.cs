@@ -412,7 +412,8 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The camera's own keys rebind too, on the keyboard alone (A5): the pad turns and pans with
         /// its sticks, so "Rebind Orbit left" pressed by the pad still listens for a key, and a pad
-        /// button pressed then is not one. Orbit left given Z turns the camera as Q did, and Q no
+        /// button pressed then is not one - but B, the pad's way out, cancels it as it says
+        /// (lane-input-5). Orbit left given Z turns the camera as Q did, and Q no
         /// longer does; the pan's up given I, the help card says "IASD/arrows: pan"; and "Reset all
         /// controls" puts Q and W back.
         /// </summary>
@@ -427,9 +428,18 @@ namespace Gamesim.Tests.PlayMode
             FindButton("Rebind Orbit left").onClick.Invoke();
             yield return null;
             Assert.That(HouseBindings.Listening, Is.True, "Pressed by the pad, a camera key still listens,");
-            Assert.That(RebindLineShown(), Is.EqualTo("Press the new key for Orbit left. Esc cancels."), "for a key.");
+            Assert.That(RebindLineShown(), Is.EqualTo("Press the new key for Orbit left. B cancels."), "for a key, and the pad's way out is B (lane-input-5).");
             yield return PressPad(pad, GamepadButton.North);
             Assert.That(HouseBindings.Listening, Is.True, "Y is not a key: it is still listening.");
+            yield return PressPad(pad, GamepadButton.East);
+            Assert.That(HouseBindings.Listening, Is.False, "B cancels it,");
+            Assert.That(RebindLineShown(), Is.EqualTo("Orbit left keeps its key."), "and says so,");
+            Assert.That(director.IsPanelOpen && ShowsControl("Rebind Orbit left"), Is.True, "and the B that cancelled closed nothing.");
+            Assert.That(HouseBindings.Current.Count, Is.Zero);
+            yield return null; yield return null;
+            FindButton("Rebind Orbit left").onClick.Invoke();
+            yield return null;
+            Assert.That(HouseBindings.Listening, Is.True);
             yield return PressKey(Key.Z);
             Assert.That(RebindLineShown(), Is.EqualTo("Orbit left is now Z."));
             Assert.That(HouseBindings.Current.Get(KeyBindings.FindTarget("Camera", "OrbitRate", "Left"), KeyBindings.KeyboardScheme), Is.EqualTo("<Keyboard>/z"));

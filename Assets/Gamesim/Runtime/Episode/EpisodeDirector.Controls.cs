@@ -125,14 +125,16 @@ namespace Gamesim.Episode
         /// <summary>
         /// The line under the heading: what to press while a rebinding listens, what the last one came
         /// to, or how it is done. Its way out follows the device (D16, lane-input-5): a rebinding
-        /// listening on the pad takes a pad button and B cancels it; otherwise Esc, as written.
+        /// listening on the pad takes a pad button and B cancels it, as it cancels a camera key's the
+        /// pad asked for; otherwise Esc, as written.
         /// </summary>
         private string RebindLine()
         {
             var listening = HouseBindings.ListeningFor;
             if (listening != null && HouseBindings.ListeningOnPad) return "Press the new button for " + listening.Name + ". B cancels.";
             // The camera's keys are the keyboard's alone: the pad turns, zooms and pans with its sticks.
-            if (listening != null) return "Press the new " + (listening.OnPad ? "key or button" : "key") + " for " + listening.Name + ". Esc cancels.";
+            if (listening != null)
+                return "Press the new " + (listening.OnPad ? "key or button" : "key") + " for " + listening.Name + ". " + (HouseBindings.PadCancels ? "B" : "Esc") + " cancels.";
             return rebindMessage ?? "Choose an action below, then press the key - or the pad button - it should answer to. " + (padHints ? "B" : "Esc") + " cancels.";
         }
 

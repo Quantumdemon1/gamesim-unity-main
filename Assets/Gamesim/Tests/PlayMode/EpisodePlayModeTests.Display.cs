@@ -16,6 +16,14 @@ namespace Gamesim.Tests.PlayMode
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
+        /// <summary>
+        /// The compact HUD keeps the objective, the cast and the chosen text size, and drops the
+        /// secondary chrome. Its objective card is a literal per size (the owner's contract of
+        /// 2026-10-15): 238 tall with a 48-unit next stop at the standard and the larger text, and at
+        /// the largest 256 with a 66-unit next stop, two of its 25-point lines, since the line wraps
+        /// there and 48 made it step down to 23.75 to fit one. The largest is photographed at 16:9 and
+        /// at 4:3 in the headless harness.
+        /// </summary>
         [UnityTest]
         public IEnumerator Display_CompactHudPreservesTheObjectiveCastAndLargeTextWithoutSecondaryChrome()
         {
@@ -26,6 +34,13 @@ namespace Gamesim.Tests.PlayMode
                 ButtonWithCaption("Use compact HUD").onClick.Invoke();
                 Assert.That(director.CompactHud,Is.True);
                 director.ClosePanels();yield return null;Canvas.ForceUpdateCanvases();
+                bool largest=textSize==TextSize.Largest;
+                if(largest && Application.isBatchMode)
+                {
+                    yield return CaptureFraming("compact-hud-largest");
+                    yield return CaptureFraming("compact-hud-largest-4x3",width:1200,height:900);
+                    yield return null;Canvas.ForceUpdateCanvases();
+                }
                 foreach(var name in new[]{"Objective","Navigation","Status",CastRail.RootName,"Exploration controls"})
                     Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect=>rect.name==name),Is.True,name);
                 foreach(var name in new[]{EpisodeHud.HouseVibeCardName,EpisodeHud.RecentEventsCardName,EpisodeDirector.LiveFeedCardName})
@@ -36,7 +51,12 @@ namespace Gamesim.Tests.PlayMode
                 foreach(var label in objective.GetComponentsInChildren<TMPro.TMP_Text>())
                 {label.ForceMeshUpdate();Assert.That(label.isTextOverflowing,Is.False,label.text);}
                 var destination=objective.GetComponentsInChildren<TMPro.TMP_Text>().Single(label=>label.text.StartsWith("Next stop:"));
-                Assert.That(destination.fontSize,Is.EqualTo(Mathf.RoundToInt(18*TextSizes.Scale(textSize))),"at the "+TextSizes.Name(textSize)+" text");
+                Assert.That(destination.fontSize,Is.EqualTo(Mathf.RoundToInt(18*TextSizes.Scale(textSize))),TextScales.At(textSize));
+                Assert.That(objective.rect.height,Is.EqualTo(largest?256f:238f),"The compact objective's height "+TextScales.At(textSize)+".");
+                Assert.That(destination.rectTransform.rect.height,Is.EqualTo(largest?66f:48f),"The next stop's box "+TextScales.At(textSize)+".");
+                if(largest)
+                    Assert.That(destination.rectTransform.rect.height,Is.GreaterThanOrEqualTo(2*destination.fontSize*1.3f),
+                        "The next stop holds two of its lines, 1.3 times each, "+TextScales.At(textSize)+".");
                 director.OpenSettings();ButtonWithCaption("Show full HUD").onClick.Invoke();
                 Assert.That(director.CompactHud,Is.False);director.ClosePanels();yield return null;
                 Assert.That(ActiveRect(EpisodeDirector.LiveFeedCardName),Is.Not.Null);

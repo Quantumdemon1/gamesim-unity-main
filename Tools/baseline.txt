@@ -9,13 +9,13 @@
 # Raise a floor in the same commit that adds tests; never lower one to make a red run green.
 #
 #   <assembly> <minimum tests>
-Gamesim.EditModeTests 8067
+Gamesim.EditModeTests 8073
 # 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7 farewell probes moved
 # to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now compile only under
 # GAMESIM_UMA (judged on the UMA cast). It is the UMA-free count; the UMA build of the same assembly holds
 # more (the 11 shipping readiness tests and the other GAMESIM_UMA tests) and is held to this same line - a
 # UMA-mode floor is the release run's.
-Gamesim.PlayModeTests 1222
+Gamesim.PlayModeTests 1224
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16).

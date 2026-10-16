@@ -83,7 +83,25 @@ namespace Gamesim.Presentation
         private bool Detailed => !libraryMode && !castSlotsMode;
         private float PanelWidth => Detailed ? Mathf.Clamp(Width * .34f, 360f, 450f) : 0f;
         private float GridWidth => Detailed ? Width - PanelWidth - PanelGap : Width;
-        private float CardWidth => (GridWidth - Gutter * (Columns - 1)) / Columns;
+        private float CardWidth => (GridWidth - Gutter * (gridColumns - 1)) / gridColumns;
+
+        /// <summary>
+        /// How many cards the grid stands to a row this layout: <see cref="Columns"/>, but for the
+        /// largest text (the owner's contract of 2026-10-15), where a frame can leave a card four to
+        /// a row too narrow for its traits - Taylor Kim's "Competitive" and "Confrontational" on 4:3
+        /// came to pills that cut the word short even at its least size. There the grid stands one
+        /// fewer to a row, decided before a card is built (<see cref="TraitsReadAt"/>), and runs a
+        /// row longer under its scrollbar, which says there is more. The standard and the larger
+        /// text are four to a row on every frame, laid as they always were.
+        /// </summary>
+        private int gridColumns = Columns;
+
+        /// <summary>
+        /// The text scale the screen is magnified by: the settings' size, exactly as
+        /// <see cref="FontScale"/> was given it, never read back from the reference resolution.
+        /// </summary>
+        private float TextScale => textScale;
+        private float textScale = 1f;
 
         /// <summary>The caption the start control carries. Tests and the tour find it by this text.</summary>
         public const string StartCaption = "Start this season";
@@ -228,6 +246,7 @@ namespace Gamesim.Presentation
             {
                 if (scaler == null) return;
                 float scale = Mathf.Clamp(value, 0.5f, 2f);
+                textScale = scale;
                 scaler.referenceResolution = new Vector2(1920f / scale, 1080f / scale);
             }
         }
@@ -655,9 +674,11 @@ namespace Gamesim.Presentation
                 return;
             }
             cursor = 6f;
+            gridColumns = Columns;
+            if (LargestPages.At(TextScale) && !TraitsReadAt(shown, CardWidth)) gridColumns = Columns - 1;
             for (int index = 0; index < shown.Count; index++)
             {
-                int column = index % Columns;
+                int column = index % gridColumns;
                 if (column == 0 && index > 0) cursor += CardHeight + Gutter;
                 Card(shown[index], column, -cursor);
             }
@@ -834,22 +855,7 @@ namespace Gamesim.Presentation
         {
             var words = template.Traits;
             if (words == null || words.Length == 0) return;
-            const float gap = 6f, margin = 6f;
-            var widths = new float[words.Length];
-            float sum = 0f;
-            for (int i = 0; i < words.Length; i++)
-            {
-                string word = Localisation.Text(words[i]);
-                widths[i] = Mathf.Max(50f, word.Length * height * .31f + 16f);
-                sum += widths[i];
-            }
-            float gaps = gap * (words.Length - 1), room = span - 2f * margin - gaps;
-            if (sum > room && room > 0f)
-            {
-                float k = room / sum;
-                for (int i = 0; i < words.Length; i++) widths[i] *= k;
-                sum = room;
-            }
+            var widths = TraitWidths(words, span, height, out float sum, out float gaps);
             float x = (span - sum - gaps) * .5f;
             for (int i = 0; i < words.Length; i++)
             {
@@ -864,9 +870,72 @@ namespace Gamesim.Presentation
                     label.textWrappingMode = TextWrappingModes.NoWrap;
                     label.enableAutoSizing = true;
                     label.fontSizeMax = label.fontSize;
-                    label.fontSizeMin = Mathf.Min(10f, label.fontSize);
+                    label.fontSizeMin = Mathf.Min(TraitLeast, label.fontSize);
                 }
-                x += widths[i] + gap;
+                x += widths[i] + TraitGap;
+            }
+        }
+
+        /// <summary>The gap between two trait pills, and the margin either side of the pair, on a card.</summary>
+        private const float TraitGap = 6f, TraitMargin = 6f;
+        /// <summary>The least a trait's word shrinks to before it is cut short.</summary>
+        private const float TraitLeast = 10f;
+
+        /// <summary>
+        /// The traits' pill widths across <paramref name="span"/>, as <see cref="Traits"/> lays them:
+        /// each word's own, and a pair of long words sharing the span less its margins.
+        /// <paramref name="sum"/> is their total and <paramref name="gaps"/> the gaps between them.
+        /// </summary>
+        private static float[] TraitWidths(string[] words, float span, float height, out float sum, out float gaps)
+        {
+            var widths = new float[words.Length];
+            sum = 0f;
+            for (int i = 0; i < words.Length; i++)
+            {
+                string word = Localisation.Text(words[i]);
+                widths[i] = Mathf.Max(50f, word.Length * height * .31f + 16f);
+                sum += widths[i];
+            }
+            gaps = TraitGap * (words.Length - 1);
+            float room = span - 2f * TraitMargin - gaps;
+            if (sum > room && room > 0f)
+            {
+                float k = room / sum;
+                for (int i = 0; i < words.Length; i++) widths[i] *= k;
+                sum = room;
+            }
+            return widths;
+        }
+
+        /// <summary>
+        /// Whether every card of <paramref name="shown"/>, <paramref name="cardWidth"/> wide, holds
+        /// its traits whole on one line: each word, at the least it shrinks to, inside the pill
+        /// <see cref="TraitWidths"/> gives it past the pill's own margins. Measured, before a card is
+        /// built, with the pill's own type.
+        /// </summary>
+        private bool TraitsReadAt(IList<CastTemplates.Template> shown, float cardWidth)
+        {
+            var probe = HudPrimitives.Label("Trait measure", content, TraitLeast, Color.white, TextAlignmentOptions.Center);
+            var medium = UiTheme.Font(UiTheme.Weight.Medium);
+            if (medium != null) probe.font = medium;
+            probe.textWrappingMode = TextWrappingModes.NoWrap;
+            try
+            {
+                foreach (var template in shown)
+                {
+                    var words = template.Traits;
+                    if (words == null || words.Length == 0) continue;
+                    var widths = TraitWidths(words, cardWidth, CardTraitHeight, out _, out _);
+                    // The pill's word stands 8 in from either end (HudPrimitives.Chip).
+                    for (int i = 0; i < words.Length; i++)
+                        if (probe.GetPreferredValues(Localisation.Text(words[i])).x > widths[i] - 16f) return false;
+                }
+                return true;
+            }
+            finally
+            {
+                probe.gameObject.SetActive(false);
+                Destroy(probe.gameObject);
             }
         }
 

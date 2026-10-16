@@ -208,10 +208,30 @@ namespace Gamesim.Tests.PlayMode
                 var hoh = state.Find(state.hohId);
                 string pointer = EpisodeDirector.WindowLine(state);
                 Assert.That(pointer, Does.EndWith("left in this window."), "Under the week's windows the count is the window's, and says so.");
-                yield return AtEveryTextSize(larger =>
+                yield return AtEachTextSize(size =>
                 {
-                    string where = "The ceremony in a house of " + houseguests + (larger ? " at the larger text" : "");
-                    AssertNominationScreen(where, "Continue episode");
+                    string where = "The ceremony in a house of " + houseguests + " " + TextScales.At(size);
+                    Assert.That(EventSystem.current.currentSelectedGameObject, Is.SameAs(FindButton("Continue episode").gameObject),
+                        where + " opens on the way on: the header holds no control, and the largest text's pager is not where it opens.");
+                    // The owner's contract (2026-10-15): one page at the standard and the larger text,
+                    // and at the largest exactly the pages this frame has, every face on one of them.
+                    var standing = new List<string>();
+                    AssertLargestPages(where, houseguests == 16 ? NominationPagesHere(CeremonyOfSixteenLargestPages) : 1, page =>
+                    {
+                        string here = where + (page > 1 ? ", page " + page : "");
+                        AssertNominationScreen(here, "Continue episode");
+                        Assert.That(StepStanding("2. " + NominationSteps.CeremonyTitle), Is.EqualTo("Current"), here);
+                        var shown = ActiveRect(EpisodeHud.CeremonyFacesName);
+                        Assert.That(shown, Is.Not.Null, here + " shows faces.");
+                        Assert.That(shown.IsChildOf(ActiveRect("Episode content")), Is.True, here + ": the faces are the step's.");
+                        standing.AddRange(shown.Cast<Transform>().Where(face => face.gameObject.activeSelf).Select(face => face.name));
+                        var said = FooterWords();
+                        Assert.That(said.name, Is.EqualTo(EpisodeHud.UpNextName), here + ": nothing lapses, so the strip says what comes next.");
+                        Assert.That(said.text, Does.StartWith("Up next: find out who " + hoh.name + " nominates."), here);
+                    });
+                    Assert.That(standing, Is.EquivalentTo(state.Active.Select(actor => "Face · " + actor.name)),
+                        where + ": every houseguest stands on the screen, on exactly one page.");
+                    // The ceremony's head is on its first page, where the walk of its pages ends.
                     Assert.That(ActiveRect(EpisodeHud.CeremonyTitleName).GetComponent<TMP_Text>().text, Is.EqualTo("Nomination Ceremony"), where);
                     Assert.That(StepStanding("1. " + NominationSteps.HeadOfHouseholdTitle), Is.EqualTo("Complete"), where);
                     Assert.That(StepStanding("2. " + NominationSteps.CeremonyTitle), Is.EqualTo("Current"), where);
@@ -220,16 +240,10 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(StatusValue("OBJECTIVE"), Is.EqualTo("Stay off the block"), where + ": an objective true by the rules alone.");
                     Assert.That(ShownText(), Does.Contain(pointer), where + " points the player at the Head of Household.");
                     var faces = ActiveRect(EpisodeHud.CeremonyFacesName);
-                    Assert.That(faces.IsChildOf(ActiveRect("Episode content")), Is.True, where + ": the faces are the step's.");
-                    foreach (var actor in state.Active)
-                        Assert.That(faces.Find("Face · " + actor.name), Is.Not.Null, where + ": " + actor.name + " stands on the screen.");
-                    var crown = faces.Find("Face · " + hoh.name).GetComponentsInChildren<RectTransform>().Single(rect => rect.name == "Role");
-                    Assert.That(crown.GetComponentInChildren<TMP_Text>().text, Is.EqualTo("HOH"), where + ": the crown on its Head.");
-                    var next = FooterWords();
-                    Assert.That(next.name, Is.EqualTo(EpisodeHud.UpNextName), where + ": nothing lapses, so the strip says what comes next.");
-                    Assert.That(next.text, Does.StartWith("Up next: find out who " + hoh.name + " nominates."), where);
-                    Assert.That(EventSystem.current.currentSelectedGameObject, Is.SameAs(FindButton("Continue episode").gameObject),
-                        where + " opens on the way on: the header holds no control.");
+                    var crown = faces.Find("Face · " + hoh.name);
+                    Assert.That(crown != null && crown.gameObject.activeSelf, Is.True, where + ": the Head of Household's face is on the first page.");
+                    Assert.That(crown.GetComponentsInChildren<RectTransform>().Single(rect => rect.name == "Role").GetComponentInChildren<TMP_Text>().text,
+                        Is.EqualTo("HOH"), where + ": the crown on its Head.");
                 });
                 if (Application.isBatchMode)
                 {
@@ -354,41 +368,50 @@ namespace Gamesim.Tests.PlayMode
                 candidates = EpisodeEngine.NominationCandidates(state).Select(c => new EpisodeHud.Option(c.id, c.name)).ToArray();
                 var you = state.Find(state.playerId);
                 var names = candidates.Select(c => c.Label).ToArray();
-                yield return AtEveryTextSize(larger =>
+                yield return AtEachTextSize(size =>
                 {
-                    string where = "The picker in a house of " + houseguests + (larger ? " at the larger text" : "");
-                    AssertNominationScreen(where, "Commit nominations", EpisodeHud.ShowCandidateContextCaption);
-                    Assert.That(StepStanding("2. " + NominationSteps.PickerTitle), Is.EqualTo("Current"), where + ": the picker is current while a story waits.");
-                    Assert.That(StepStanding("1. " + beat.title), Is.EqualTo("Waiting"), where + ": the story waits on the tracker.");
-                    var grid = ActiveRect(EpisodeHud.NomineeGridName);
-                    Assert.That(grid, Is.Not.Null, where + ": the candidates are a grid.");
-                    Assert.That(grid.GetComponentsInChildren<Button>().Select(card => card.name), Is.EquivalentTo(names),
-                        where + ": one card per candidate, named by the candidate.");
-                    var stage = ScreenRect(ActiveRect("Episode panel"));
-                    foreach (var card in grid.GetComponentsInChildren<Button>())
-                        AssertInside(stage, (RectTransform)card.transform, where + ": '" + card.name + "'");
-                    // Every name whole and at one size across the grid: onto a second line where the
-                    // row holds it, never ended in an ellipsis, no name larger than another's
-                    // ("Avery Thomp…" at ten beside "Taylor Kim" at fifteen; UI-UX-PASS-PLAN T0).
-                    var labels = grid.GetComponentsInChildren<TMP_Text>().Where(label => label.name == EpisodeHud.PickerNameName).ToList();
-                    Assert.That(labels, Has.Count.EqualTo(candidates.Length), where + ": a name a candidate.");
-                    foreach (var label in labels)
-                    {
-                        label.ForceMeshUpdate(true);
-                        Assert.That(label.isTextTruncated, Is.False, where + ": '" + label.text + "' is cut short at " + label.fontSize.ToString("0.#") + ".");
-                        Assert.That(label.textInfo.characterInfo.Take(label.textInfo.characterCount).Count(glyph => glyph.isVisible),
-                            Is.EqualTo(label.text.Count(ch => !char.IsWhiteSpace(ch))), where + ": '" + label.text + "' draws every letter.");
-                    }
-                    Assert.That(labels.Select(label => Mathf.Round(label.fontSize * 10f)).Distinct().Count(), Is.EqualTo(1),
-                        where + ": one size of name, not " + string.Join(", ", labels.Select(label => label.text + " at " + label.fontSize.ToString("0.#"))) + ".");
-                    Assert.That(FindButton("Commit nominations").transform.parent, Is.SameAs(ActiveRect("Episode panel")), where + ": the commit is pinned.");
-                    var warning = FooterWords();
-                    Assert.That(warning.name, Is.EqualTo(EpisodeDirector.AdvanceWarningName), where + ": the strip warns under the warning's name.");
-                    Assert.That(warning.text, Is.EqualTo("Committing lets 1 storyline pass: " + beat.title + " (Not now)."), where);
-                    Assert.That(StatusValue("HOH"), Is.EqualTo(HudPrimitives.WithYou(you.name, true)), where);
-                    Assert.That(StatusValue("OBJECTIVE"), Is.EqualTo("Name two nominees"), where);
+                    string where = "The picker in a house of " + houseguests + " " + TextScales.At(size);
                     var focus = EventSystem.current.currentSelectedGameObject;
-                    Assert.That(focus != null && focus.transform.IsChildOf(grid), Is.True, where + " opens on a candidate, not on the header.");
+                    var opened = ActiveRect(EpisodeHud.NomineeGridName);
+                    Assert.That(focus != null && opened != null && focus.transform.IsChildOf(opened), Is.True, where + " opens on a candidate, not on the header.");
+                    // The owner's contract (2026-10-15): one page at the standard and the larger text,
+                    // and at the largest exactly the pages this frame has, every card on one of them.
+                    var cards = new List<string>();
+                    var labels = new List<(string Text, float Size)>();
+                    AssertLargestPages(where, houseguests == 16 ? NominationPagesHere(PickerOfSixteenLargestPages) : 1, page =>
+                    {
+                        string here = where + (page > 1 ? ", page " + page : "");
+                        AssertNominationScreen(here, "Commit nominations", EpisodeHud.ShowCandidateContextCaption);
+                        Assert.That(StepStanding("2. " + NominationSteps.PickerTitle), Is.EqualTo("Current"), here + ": the picker is current while a story waits.");
+                        Assert.That(StepStanding("1. " + beat.title), Is.EqualTo("Waiting"), here + ": the story waits on the tracker.");
+                        var grid = ActiveRect(EpisodeHud.NomineeGridName);
+                        Assert.That(grid, Is.Not.Null, here + ": the candidates are a grid.");
+                        cards.AddRange(grid.GetComponentsInChildren<Button>().Select(card => card.name));
+                        var stage = ScreenRect(ActiveRect("Episode panel"));
+                        foreach (var card in grid.GetComponentsInChildren<Button>())
+                            AssertInside(stage, (RectTransform)card.transform, here + ": '" + card.name + "'");
+                        // Every name whole and at one size across the grid: onto a second line where the
+                        // row holds it, never ended in an ellipsis, no name larger than another's
+                        // ("Avery Thomp…" at ten beside "Taylor Kim" at fifteen; UI-UX-PASS-PLAN T0).
+                        foreach (var label in grid.GetComponentsInChildren<TMP_Text>().Where(label => label.name == EpisodeHud.PickerNameName))
+                        {
+                            label.ForceMeshUpdate(true);
+                            Assert.That(label.isTextTruncated, Is.False, here + ": '" + label.text + "' is cut short at " + label.fontSize.ToString("0.#") + ".");
+                            Assert.That(label.textInfo.characterInfo.Take(label.textInfo.characterCount).Count(glyph => glyph.isVisible),
+                                Is.EqualTo(label.text.Count(ch => !char.IsWhiteSpace(ch))), here + ": '" + label.text + "' draws every letter.");
+                            labels.Add((label.text, label.fontSize));
+                        }
+                        Assert.That(FindButton("Commit nominations").transform.parent, Is.SameAs(ActiveRect("Episode panel")), here + ": the commit is pinned.");
+                        var warning = FooterWords();
+                        Assert.That(warning.name, Is.EqualTo(EpisodeDirector.AdvanceWarningName), here + ": the strip warns under the warning's name.");
+                        Assert.That(warning.text, Is.EqualTo("Committing lets 1 storyline pass: " + beat.title + " (Not now)."), here);
+                        Assert.That(StatusValue("HOH"), Is.EqualTo(HudPrimitives.WithYou(you.name, true)), here);
+                        Assert.That(StatusValue("OBJECTIVE"), Is.EqualTo("Name two nominees"), here);
+                    });
+                    Assert.That(cards, Is.EquivalentTo(names), where + ": one card per candidate, named by the candidate, on exactly one page.");
+                    Assert.That(labels, Has.Count.EqualTo(candidates.Length), where + ": a name a candidate.");
+                    Assert.That(labels.Select(label => Mathf.Round(label.Size * 10f)).Distinct().Count(), Is.EqualTo(1),
+                        where + ": one size of name on every page, not " + string.Join(", ", labels.Select(label => label.Text + " at " + label.Size.ToString("0.#"))) + ".");
                 });
                 if (Application.isBatchMode)
                 {
@@ -469,16 +492,26 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
                 var candidates = EpisodeEngine.NominationCandidates(director.Snapshot).ToList();
                 int revision = director.Snapshot.revision;
+                // The picker and its backdoor plan in a house of sixteen are one page at the standard
+                // and the larger text, and at the largest the pages measured for this frame (the
+                // owner's contract of 2026-10-15), every aim on one of them.
+                bool largest = textSize == TextSize.Largest;
+                ShowPageWith(EpisodeHud.PlanBackdoorRowName);
                 ButtonWithCaption(EpisodeHud.PlanBackdoorCaption).onClick.Invoke();
                 yield return null;
-                AssertNominationScreen("The backdoor plan" + size, EpisodeHud.BackToNomineesCaption);
-                var aims = ActiveRect(EpisodeHud.BackdoorAimsName);
-                Assert.That(aims, Is.Not.Null, "The backdoor plan" + size + " is a grid.");
-                Assert.That(aims.GetComponentsInChildren<Button>().Select(aim => aim.name),
-                    Is.EquivalentTo(candidates.Select(candidate => "Aim this week at " + candidate.name)), "One aim for each candidate" + size + ".");
+                var aims = new List<string>();
+                AssertLargestPages("The backdoor plan" + size, NominationPagesHere(BackdoorOfSixteenLargestPages), page =>
+                {
+                    AssertNominationScreen("The backdoor plan" + size + (page > 1 ? ", page " + page : ""), EpisodeHud.BackToNomineesCaption);
+                    var grid = ActiveRect(EpisodeHud.BackdoorAimsName);
+                    Assert.That(grid, Is.Not.Null, "The backdoor plan" + size + " is a grid on every page.");
+                    aims.AddRange(grid.GetComponentsInChildren<Button>().Select(aim => aim.name));
+                });
+                Assert.That(aims, Is.EquivalentTo(candidates.Select(candidate => "Aim this week at " + candidate.name)), "One aim for each candidate" + size + ".");
                 ButtonWithCaption(EpisodeHud.BackToNomineesCaption).onClick.Invoke();
                 yield return null;
-                AssertNominationScreen("Back on the picker" + size, "Commit nominations", EpisodeHud.ShowCandidateContextCaption);
+                AssertLargestPages("Back on the picker" + size, NominationPagesHere(BarePickerOfSixteenLargestPages), page =>
+                    AssertNominationScreen("Back on the picker" + size + (page > 1 ? ", page " + page : ""), "Commit nominations", EpisodeHud.ShowCandidateContextCaption));
 
                 // Two picks compared, in the grid's place. The toggle swaps the views in place without
                 // a render, so the screen is measured in the same frame, before a body finishing its
@@ -488,7 +521,8 @@ namespace Gamesim.Tests.PlayMode
                 ButtonWithCaption(EpisodeHud.ShowCandidateContextCaption).onClick.Invoke();
                 AssertNominationScreen("The comparison" + size, "Commit nominations", EpisodeHud.HideCandidateContextCaption);
                 Assert.That(ActiveRect(EpisodeHud.CandidateContextName), Is.Not.Null, "The comparison" + size + " is up,");
-                Assert.That(ActiveRect(EpisodeHud.NomineeGridName), Is.Null, "in the grid's place.");
+                Assert.That(ActiveRect(EpisodeHud.NomineeGridName), Is.Null, "in the grid's place,");
+                Assert.That(LargestPagerNow(), Is.Null, "one view, with no pager" + size + ".");
                 Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "The picker's views commit nothing" + size + ".");
                 director.ClosePanels();
                 yield return null;
@@ -506,19 +540,43 @@ namespace Gamesim.Tests.PlayMode
                 revision = state.revision;
                 ButtonWithCaption(EpisodeHud.EventChoiceCaption(beat.choices[0].label)).onClick.Invoke();
                 yield return null;
-                AssertNominationScreen("The WHO? of the whole house" + size, "Continue episode");
-                var grid = ActiveRect(EpisodeHud.StoryPeopleName);
-                Assert.That(grid, Is.Not.Null, "Everybody it can name is a grid" + size + ".");
-                Assert.That(grid.IsChildOf(ActiveRect("Episode content")), Is.True, "inside the stage's column,");
-                Assert.That(grid.GetComponentsInChildren<Button>().Select(cell => cell.name), Is.EquivalentTo(people),
-                    "one cell for each, named by the name" + size + ".");
-                foreach (string id in beat.choices[0].eligibleIds)
+                // Fifteen names at the least a cell reads at are more than the stage holds at the
+                // largest text: the WHO? pages there, every name on one of its pages - the pages the
+                // suite names for the frame running, and at the largest the pages it names for the
+                // 16:9 and the 4:3 frame each, laid out as that frame lays them. On the screen's own
+                // frame each page is the whole nomination screen too.
+                void AssertTheWho(string what, int expected, bool screen)
                 {
-                    var face = grid.GetComponentsInChildren<Button>().Single(button => button.name == state.Find(id).name);
-                    Assert.That(face.GetComponentsInChildren<TMP_Text>().Single(text => text.name == "Reading").text,
-                        Is.EqualTo(RelationshipWeb.StandingWord(RelationshipWeb.KindOf(state, id)) + " · Trust " + state.Score(state.playerId, id).ToString("0")),
-                        face.name + "'s cell keeps the player's own reading of them, as the list it replaced did" + size + ".");
+                    var named = new List<string>();
+                    AssertLargestPages(what, expected, page =>
+                    {
+                        string here = what + (page > 1 ? ", page " + page : "");
+                        if (screen) AssertNominationScreen(here, "Continue episode");
+                        var grid = ActiveRect(EpisodeHud.StoryPeopleName);
+                        Assert.That(grid, Is.Not.Null, here + ": everybody it can name is a grid.");
+                        Assert.That(grid.IsChildOf(ActiveRect("Episode content")), Is.True, here + ": inside the stage's column,");
+                        foreach (var face in grid.GetComponentsInChildren<Button>())
+                        {
+                            named.Add(face.name);
+                            string id = beat.choices[0].eligibleIds.Single(eligible => state.Find(eligible).name == face.name);
+                            Assert.That(face.GetComponentsInChildren<TMP_Text>().Single(text => text.name == "Reading").text,
+                                Is.EqualTo(RelationshipWeb.StandingWord(RelationshipWeb.KindOf(state, id)) + " · Trust " + state.Score(state.playerId, id).ToString("0")),
+                                face.name + "'s cell keeps the player's own reading of them, as the list it replaced did" + size + ".");
+                        }
+                    });
+                    Assert.That(named, Is.EquivalentTo(people), what + ": one cell for each, named by the name, on exactly one page.");
                 }
+                AssertTheWho("The WHO? of the whole house" + size, NominationPagesHere(WhoOfSixteenLargestPages), true);
+                if (largest)
+                    foreach (var frame in new[] { (Width: 1600, Height: 900, Name: "16x9", Pages: WhoOfSixteenLargestPages.At16x9),
+                        (Width: 1200, Height: 900, Name: "4x3", Pages: WhoOfSixteenLargestPages.At4x3) })
+                        yield return AtFrame(frame.Width, frame.Height, () =>
+                        {
+                            string on = "The WHO? of the whole house" + size + " on the " + frame.Name + " frame";
+                            Assert.That(NominationFrameNow(), Is.EqualTo(frame.Name), on + " is laid out for that frame.");
+                            AssertTheWho(on, frame.Pages, false);
+                        });
+                ShowPageWith(EpisodeHud.StoryBackCaption);
                 ButtonWithCaption(EpisodeHud.StoryBackCaption).onClick.Invoke();
                 yield return null;
                 ButtonWithCaption(EpisodeHud.EventChoiceCaption(beat.choices[1].label)).onClick.Invoke();

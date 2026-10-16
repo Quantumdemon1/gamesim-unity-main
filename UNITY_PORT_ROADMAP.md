@@ -18,7 +18,11 @@ old to new.
 **Floors:** EditMode 7846, PlayMode 1197, UMA 82, the subset 5336, and the diagnostics assemblies 7 and 7.
 PlayMode and UMA dropped from 1218 and 89 only because probes moved to `Gamesim.DiagnosticsPlayModeTests` /
 `Gamesim.Uma.DiagnosticsPlayModeTests` (compiled under `GAMESIM_DIAGNOSTICS` only, own floors) and the 14
-farewell readiness tests are now judged on UMA bodies only; no test left the floor system.
+farewell readiness tests are now judged on UMA bodies only. Of those 14, the three asking for an
+Idle/WalkStop combination the UMA cast never stands into compile only with `GAMESIM_DIAGNOSTICS` as well
+and stay in `Gamesim.PlayModeTests` for its fixture: kept, outside every floor, never acceptance. On the
+UMA cast 12 of the 14 `GroundedFarewell_` tests of the UMA build pass; the other two are the farewell's
+foot drift (S5).
 
 **IK pass:** on in the shipping controller and pinned by an EditMode test; S5 adopts it with a 1080p/60
 FPS profile or reverts it.

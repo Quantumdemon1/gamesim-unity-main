@@ -197,9 +197,10 @@ namespace Gamesim.Editor
             new Prop("Bedroom floor", "pillowBlue",             0.28f,  0.45f, 180f, 0.10f, 0.52f),
             new Prop("Bedroom floor", "cabinetBedDrawer",      -0.05f,  0.42f,   0f, 0.52f),
             new Prop("Bedroom floor", "cabinetBedDrawer",       0.17f,  0.42f,   0f, 0.52f),
-            // Between the double beds below, against the west wall (HouseRoomArrangement): it stood
-            // at (-12.88, 2.20), by the wardrobe.
-            new Prop("Bedroom floor", "cabinetBedDrawer",      -0.478571f, -0.316f,  90f, 0.52f),
+            // Between the double beds below, against the west wall, a centimetre clear of each
+            // (HouseRoomArrangement): it stood at (-12.88, 2.20) by the wardrobe, then at
+            // (-13.70, 1.84) between the beds at their old size.
+            new Prop("Bedroom floor", "cabinetBedDrawer",      -0.478571f, -0.3434f,  90f, 0.52f),
             new Prop("Bedroom floor", "sideTableDrawers",      -0.34f,  0.02f,   0f, 0.62f),
             new Prop("Bedroom floor", "bb_set_photoframe",     -0.34f,  0.02f, 160f, 0f, 0.62f),
             new Prop("Bedroom floor", "lampSquareTable",       -0.34f,  0.02f,   0f, 0.45f, 0.62f),
@@ -215,11 +216,15 @@ namespace Gamesim.Editor
             new Prop("Bedroom floor", "trashcan",               0.40f, -0.42f,   0f, 0.55f),
             // The owner's arrangement (HouseRoomArrangement): the prototype's two double beds, which
             // stood side by side in the middle of the room, go into the south-west corner where the
-            // wardrobe stood, heads to the west wall, at the size the bed frames fitted them to
-            // (0.5 m, the frame's own height). No one sleeps in them: the beds the cast lie on are
-            // the singles and the bunks.
-            new Prop("Bedroom floor", "bedDouble",             -0.435714f, -0.411f,  90f, 0.50f),
-            new Prop("Bedroom floor", "bedDouble",             -0.437143f, -0.238f,  90f, 0.50f),
+            // wardrobe stood, heads to the west wall (on its skirting), the south one on the south
+            // wall's. The owner asked on 2026-10-16 for full-size doubles, about 1.4 x 2.0 m, where
+            // they stood at the 0.94 x 1.18 m the bed frames had fitted them to: these are the
+            // largest the corner takes, 1.20 x 1.50 m, three quarters of the authored 1.6 x 2.0 m bed
+            // (0.6375 m to the headboard's top). The lower bunk's sleeper walking in past the north
+            // bed's foot is what stops them growing; HouseRoomArrangement has the measurements. No
+            // one sleeps in them: the beds the cast lie on are the singles and the bunks.
+            new Prop("Bedroom floor", "bedDouble",             -0.436071f, -0.4255f, 90f, 0.6375f),
+            new Prop("Bedroom floor", "bedDouble",             -0.436071f, -0.2613f, 90f, 0.6375f),
 
             // ---------------------------------------------------------------- Private room
             new Prop("Private room floor", "lampRoundFloor",   -0.42f,  0.40f,   0f, 1.50f),
@@ -253,9 +258,10 @@ namespace Gamesim.Editor
             new Prop("HoH floor", "cabinetBedDrawer",           0.09f,  0.40f,   0f, 0.52f),
             new Prop("HoH floor", "lampSquareTable",            0.09f,  0.40f,   0f, 0.42f, 0.52f),
             new Prop("HoH floor", "rugRectangle",              -0.12f, -0.06f,   0f, -3.4f),
-            // Facing into the room, not the west wall: the owner's -86.80, measured, which is 3.2
-            // degrees from a right angle and so is not squared off (HouseRoomArrangement).
-            new Prop("HoH floor", "loungeDesignSofa",          -0.42f, -0.20f, 273.198f, 0.78f),
+            // Facing into the room, not the west wall, square to it: the owner left it at -86.80,
+            // 3.2 degrees off, outside the arrangement's three-degree rule, and on 2026-10-16 asked
+            // for it squared (HouseRoomArrangement).
+            new Prop("HoH floor", "loungeDesignSofa",          -0.42f, -0.20f, 270f, 0.78f),
             new Prop("HoH floor", "loungeChairRelax",          -0.14f, -0.34f,   0f, 0.88f),
             new Prop("HoH floor", "tableCoffee",               -0.30f, -0.34f,   0f, 0.42f),
             new Prop("HoH floor", "cabinetTelevision",         -0.12f, -0.44f, 180f, 0f),

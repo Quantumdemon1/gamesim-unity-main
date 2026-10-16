@@ -496,6 +496,13 @@ namespace Gamesim.Tests.PlayMode
         /// lines where one will not hold it, in a box 1.3 times its type a line, every letter drawn
         /// (UI-UX-PASS-PLAN V0 review: at 4:3 and the larger text it was cut after "is the" while the
         /// status line that used to carry it stood down). A short sentence keeps the one line.
+        ///
+        /// <para>At the largest text (the owner's contract of 2026-10-15) the sentence keeps the
+        /// largest text's own size, 27 points, and the strip takes the lines it needs, each frame's
+        /// count asserted as measured: four on the 4:3 canvas, where the words have 381 beside the
+        /// medallion, and two on the 16:9 frame, where they have 595. Held to one line or two on the
+        /// 4:3 canvas, it shrank to the shrink's floor and still wrapped to a third line, at about
+        /// the standard text's size, in a box made for two.</para>
         /// </summary>
         [UnityTest]
         public IEnumerator TheLongestVetoSentence_IsSaidWholeAtEveryTextSize([Values(1200, 1600)] int frameWidth)
@@ -525,11 +532,17 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(detail.isTextTruncated, Is.False, where + ": '" + longest + "' is cut at " + detail.fontSize.ToString("0.#") + " points.");
                 Assert.That(drawn, Is.EqualTo(longest.Count(letter => !char.IsWhiteSpace(letter))), where + ": every letter of the sentence is drawn.");
                 int lines = detail.textInfo.lineCount;
-                Assert.That(lines, Is.InRange(1, 2), where + ": the sentence takes one line or two.");
+                if (LargestPages.At(scale))
+                {
+                    Photograph("ceremony-sting-veto-largest-" + frameWidth + "x900");
+                    Assert.That(lines, Is.EqualTo(frameWidth == 1200 ? 4 : 2), where + ": the sentence takes the lines measured for this frame at the largest text.");
+                    Assert.That(detail.fontSize, Is.EqualTo(27f), where + ": the sentence is said at the largest text's own size, never shrunk toward the standard's.");
+                }
+                else Assert.That(lines, Is.InRange(1, 2), where + ": the sentence takes one line or two.");
                 Assert.That(detail.rectTransform.rect.height, Is.GreaterThanOrEqualTo(lines * detail.fontSize * 1.3f - .01f),
                     where + ": a box " + detail.rectTransform.rect.height.ToString("0.#") + " high holds " + lines + " lines of " + detail.fontSize.ToString("0.#") + " points.");
-                if (lines == 2)
-                    Assert.That(CardRect().rect.height, Is.GreaterThan(oneLine), where + ": the strip grows for the second line rather than cutting it.");
+                if (lines >= 2)
+                    Assert.That(CardRect().rect.height, Is.GreaterThan(oneLine), where + ": the strip grows for the lines past the first rather than cutting them.");
                 var box = InCard(CardRect(), detail.rectTransform);
                 Assert.That(box.yMin, Is.GreaterThanOrEqualTo(CardRect().rect.yMin - .5f), where + ": the sentence's box stands inside the strip.");
                 sting.Cancel();
@@ -537,6 +550,34 @@ namespace Gamesim.Tests.PlayMode
         }
 
         private TMP_Text Detail() => sting.GetComponentsInChildren<TMP_Text>(true).Single(label => label.name == "Sting detail");
+
+        /// <summary>
+        /// The strip as the frame's camera draws it (<see cref="OnAFrame"/>), into <c>{name}.png</c>
+        /// beside the project, for a person to read; the headless harness only, as the card's own
+        /// render is. The active render target is put back.
+        /// </summary>
+        private void Photograph(string name)
+        {
+            if (!Application.isBatchMode || frameCamera == null || frameTexture == null) return;
+            var readback = new Texture2D(frameTexture.width, frameTexture.height, TextureFormat.RGB24, false);
+            var previous = RenderTexture.active;
+            try
+            {
+                Canvas.ForceUpdateCanvases();
+                frameCamera.Render();
+                RenderTexture.active = frameTexture;
+                readback.ReadPixels(new Rect(0, 0, frameTexture.width, frameTexture.height), 0, 0);
+                readback.Apply();
+                var path = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "..", name + ".png"));
+                System.IO.File.WriteAllBytes(path, readback.EncodeToPNG());
+                Debug.Log("[Gamesim] strip capture -> " + path);
+            }
+            finally
+            {
+                RenderTexture.active = previous;
+                Object.Destroy(readback);
+            }
+        }
 
         /// <summary>A rect's box in the card's own space.</summary>
         private static Rect InCard(RectTransform card, RectTransform rect)

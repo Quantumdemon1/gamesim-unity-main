@@ -25,8 +25,12 @@ namespace Gamesim.Tests.EditMode
     /// which writing passes reword for every season on purpose. Ids, kinds, statuses, numbers, every list's length
     /// and order and the season's random state stay. <b>Season</b> is blind and leaves out the narrated log
     /// (<c>events</c>), whose lines and audiences presentation and privacy passes change for every season on purpose
-    /// (the ballot privacy of UI-UX-PASS-PLAN B0 among them); everything the rules read and write stays, so two
-    /// builds agree on it exactly when they played the same game. <b>Text</b> is the whole state verbatim.</para>
+    /// (the ballot privacy of UI-UX-PASS-PLAN B0 among them). Every other field stays. The engine does read the log -
+    /// recent evictions (EpisodeNpcSocial), alliance lines by audience (the story hooks), a negotiation's counter line
+    /// (the all-week rules) and its 256-line cap - so the season hash does not see the log itself: a rule that read it otherwise shows here only
+    /// through what it then changed in the rest of the state. The <b>state</b> hash (blind, the log included) and the
+    /// text hash are pinned to this build, so a change to an old season's log is caught there. <b>Text</b> is the
+    /// whole state verbatim.</para>
     ///
     /// <para><b>The digest</b> is the first sixteen hex of the SHA-256 of the checkpoint hashes, one a line, as
     /// the season digests write theirs: the loaded state first, then the state after every accepted command.</para>

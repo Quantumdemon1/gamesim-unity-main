@@ -9,6 +9,9 @@
 //   shape                                    every saved field path of that build (OLDSAVE_DEFINES=OLDSAVE_SHAPE_ONLY compiles only this)
 //   migrate <save> <out>                     the schema-28 payload this build's chain hands on (what a schema-29 step would validate)
 //   resave  <save> <out>                     load with that build's store and save again, as the next autosave would
+//   reseal22 <save> <out>                    a schema-22 file of the version's earlier shapes, given the two later fields as
+//                                            the literals FrozenEpisodeV22.WithLaterFields writes and sealed again, so a
+//                                            build of the last shape (d44bf492 on) can load it and be its reference
 //
 // Nothing here is read by the tests: they read the fixture, its script and its digests.
 using System;
@@ -46,6 +49,7 @@ namespace Gamesim.OldSaves
                     Console.WriteLine("resaved at schema " + state.schemaVersion + ": " + message);
                     return 0;
                 }
+                if (args.Length >= 3 && args[0] == "reseal22") return Reseal22(args[1], args[2]);
 #if !OLDSAVE_BEFORE_SCHEMA3
                 if (args.Length >= 3 && args[0] == "migrate")
                 {
@@ -260,6 +264,35 @@ namespace Gamesim.OldSaves
                     && element.Namespace.StartsWith("Gamesim", StringComparison.Ordinal))
                     Shape(element, here + (list ? "[]." : "."), depth + 1);
             }
+        }
+
+        /// <summary>
+        /// Schema 22's earlier shapes (no deals[].linkedDealId before c55a4535, no alliances[].playerJoined before d44bf492)
+        /// given the two fields as FrozenEpisodeV22.WithLaterFields gives them - null and false, on every row of a list
+        /// where every row lacks the field, nowhere else - and sealed again with this build's own SaveJson canonical form
+        /// and hash (by reflection, so the recorder compiles at every build). Nothing else in the file changes; the
+        /// result is what a last-shape build reads, so it can record the season as the reference.
+        /// </summary>
+        private static int Reseal22(string save, string outFile)
+        {
+            var json = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.SaveJson", true);
+            var envelope = (JObject)json.GetMethod("ParseObject").Invoke(null, new object[] { File.ReadAllText(save) });
+            var state = (JObject)envelope["state"];
+            if ((int)state["schemaVersion"] != 22) throw new InvalidDataException("reseal22 takes a schema-22 save.");
+            int linked = Complete(state["deals"] as JArray, "linkedDealId", JValue.CreateNull());
+            int joined = Complete(state["alliances"] as JArray, "playerJoined", new JValue(false));
+            string canonical = (string)json.GetMethod("Canonical").Invoke(null, new object[] { state });
+            envelope["checksum"] = (string)json.GetMethod("Hash").Invoke(null, new object[] { canonical });
+            File.WriteAllText(outFile, envelope.ToString(Formatting.Indented));
+            Console.WriteLine("resealed: linkedDealId added to " + linked + " deals, playerJoined to " + joined + " alliances");
+            return 0;
+        }
+
+        private static int Complete(JArray rows, string field, JValue literal)
+        {
+            if (rows == null || rows.Count == 0 || !rows.All(row => row is JObject o && o.Property(field) == null)) return 0;
+            foreach (JObject row in rows) row.Add(field, literal.DeepClone());
+            return rows.Count;
         }
 
         private static string Sha(byte[] bytes)

@@ -18,18 +18,22 @@ namespace Gamesim.Tests.EditMode
     /// <summary>
     /// Old-save acceptance (the owner's decision; Assets/Plans/OLD-SAVE-ACCEPTANCE.md): every committed save, one per
     /// save version and rules combination, loads in this build, migrates in memory, validates, replays the command script
-    /// its reference build recorded to that build's season digest, byte for byte, and every reader the screens use renders
-    /// it without an exception, a hidden ballot or a number for odds.
+    /// its reference build recorded to that build's season digest, byte for byte, and every simulation and presentation
+    /// reader the screens print through renders it without an exception, a hidden ballot or a number for odds. The
+    /// screens' own text assembly in the Runtime assembly (the director's notebook pages and diary room, the HUD's
+    /// roster) is not run here: it formats what these readers return.
     ///
     /// <para>The fixtures (Fixtures/OldSaves/manifest.json) are real saves the standalone verification walks wrote between
-    /// 2026-09-28 and 2026-10-10, copied byte for byte, and, for every cell no real file exists for, a save the schema's
-    /// own build generated: its Simulation and Persistence sources at that commit (for schemas 2 to 5, which no commit
-    /// here wrote, the Codex port's source snapshot that did), played by a fixed walker to mid-season and saved by its
-    /// own store. The reference build is the oldest build that plays the save as this one does: the
-    /// save's own schema's from 21 on, and for older saves the schema-20 build 7f398b94 - the migrations to 17, 18, 19 and
-    /// 20 start their rules the week after the save's, so an older build plays on under fewer of them by design - or a
-    /// later one where an unversioned change moved such a season (the plan lists each). Tools/OldSaves recorded every
-    /// script and digest with that build's own sources, under the editor's Mono.</para>
+    /// 2026-09-28 and 2026-10-10, copied byte for byte, and, for every cell no real mid-season file exists for, a save the
+    /// schema's own build generated: its Simulation and Persistence sources at that commit (for schemas 2 to 5, which no
+    /// commit here wrote, the Codex port's source snapshot that did), played by a fixed walker to mid-season and saved by
+    /// its own store. A save made at the finale or after it is read, never counted as its cell's replay. The reference
+    /// build is the oldest build that plays the save as this one does: the save's own schema's from 21 on, and for older
+    /// saves the schema-20 build 7f398b94 - the migrations to 17, 18, 19 and 20 start their rules the week after the
+    /// save's, so an older build plays on under fewer of them by design - or a later one where an unversioned change moved
+    /// such a season (the plan lists each). Schema 22's earlier shapes are recorded by the last-shape build c2725b53 from
+    /// the save given the two literals the migration writes. Tools/OldSaves recorded every script and digest with that
+    /// build's own sources, under the editor's Mono.</para>
     ///
     /// <para>Three digests (<see cref="OldSaveTrace"/>): the season's - the cross-build gate - must be the reference
     /// build's; the whole state's, blind to prose, and the verbatim text are this build's, pinned when the fixture was
@@ -68,12 +72,27 @@ namespace Gamesim.Tests.EditMode
             "s06-default-w2-social", "s07-director-w2-hoh", "s07-default-w2-social",
             "s09-director-w2-veto", "s09-default-w2-social", "s10-director-w2-nomination", "s11-director-w2-campaign",
             "s12-director-w3-hoh", "s13-director-w2-eviction", "s13-default-w2-social", "s14-director-w2-veto-meeting",
-            "s15-director-w2-campaign", "s20-director-w2-veto-meeting",
-            "s22-director-early-w2-campaign", "s22-director-late-w3-veto", "s22-default-w2-social",
+            "s15-director-w2-campaign", "s17-director-w2-nomination", "s19-director-w2-eviction", "s20-director-w2-veto-meeting",
+            "s22-director-early-w2-campaign", "s22-director-middle-w3-nomination", "s22-director-late-w3-veto", "s22-default-w2-social",
             "s23-director-w2-veto-meeting", "s23-default-w2-social", "s24-director-w3-nomination", "s24-default-w2-social",
-            "s25-director-w2-eviction", "s25-default-w2-social", "s27-mode1-w3-social", "s27-default-w2-social",
-            "s28-mode1-waved-off-w2-hoh", "s28-mode1-allweek-w2-campaign",
+            "s25-director-w2-eviction", "s25-default-w2-social", "s26-mode1-w2-veto", "s27-mode1-w3-social", "s27-default-w2-social",
+            "s28-mode1-waved-off-w2-hoh", "s28-mode1-leaks-w2-eviction", "s28-mode1-war-rooms-w3-veto-meeting",
+            "s28-mode1-allweek-w2-campaign", "s28-mode2-allweek-w3-campaign",
         };
+
+        /// <summary>
+        /// Fixtures saved at the finale or after it. Each reads a real end state - the finale's receipts, a final
+        /// argument, the jury - but plays little or nothing forward, so none counts as its cell's replay: every cell
+        /// has a fixture saved in a week, before the finale, whose script plays the season on from there.
+        /// </summary>
+        private static readonly string[] ReadOnly =
+        {
+            "s16-director-final-speeches", "s16-director-finished-winner", "s17-director-finished", "s19-director-finished",
+            "s20-director-finished-runner-up", "s26-mode1-finished", "s28-mode1-finished", "s28-mode2-finished",
+        };
+
+        private static readonly string[] FinalePhases =
+            { "FinalHoHPart1", "FinalHoHPart2", "FinalHoHPart3", "FinalEviction", "Jury", "JuryQuestioning", "FinalSpeeches", "Finished" };
 
         private static readonly string[] Careers = { "career-earliest", "career-latest" };
 
@@ -100,13 +119,17 @@ namespace Gamesim.Tests.EditMode
                     Assert.That((string)entry["writer"], Does.Match("^([0-9a-f]{8}|codex-port:unity-v[2-5]-source-202609(10|13))$"),
                         (string)entry["id"] + ": the build that wrote it, a commit or the Codex port's source snapshot.");
             }
-            // One fixture per cell of the plan's matrix: every schema a build wrote (not 1 or 8, which no surviving build
-            // did), in each profile it shipped - the director's fresh season and the default scene's; before 6 the director
-            // played the default scene's catalogue - with the unified commitment mode (uc) and the all-week rules where they
-            // branch, and schema 22's first shape and its last.
-            var cells = Manifest["episodes"].Select(e => (int)e["schema"] + "/" + (string)e["profile"] + "/uc" + ((int?)e["rules"]["unifiedCommitmentRulesVersion"] ?? 0)
-                + "/allweek" + Math.Min(1, (int?)e["rules"]["allWeekRulesStartWeek"] ?? 0)
-                + ((int)e["schema"] == 22 && (string)e["profile"] == "director" ? (((string)e["id"]).Contains("early") ? "/early" : "/late") : "")).Distinct().ToList();
+            // One replayed fixture per cell of the plan's matrix: every schema a build wrote (not 1 or 8, which no surviving
+            // build did), in each profile it shipped - the director's fresh season and the default scene's; before 6 the
+            // director played the default scene's catalogue - with the unified commitment mode (uc), the all-week rules,
+            // Wave D's leaks and war rooms where they branch, and schema 22's three shapes. A cell counts only a fixture
+            // saved in a week, before the finale, with a script to play: one saved at the finale or after it is read, never
+            // a cell's replay.
+            var replayed = Manifest["episodes"].Where(e => (int)e["commands"] > 0 && !FinalePhases.Contains((string)e["phase"])).ToList();
+            Assert.That(Manifest["episodes"].Except(replayed).Select(e => (string)e["id"]), Is.EquivalentTo(ReadOnly),
+                "A fixture saved at the finale or after it reads an end state; it is never a cell's replay.");
+            var cells = replayed.Select(Cell).ToList();
+            Assert.That(cells, Is.Unique, "One replayed fixture a cell.");
             Assert.That(cells, Is.EquivalentTo(new[]
             {
                 "2/default/uc0/allweek0", "3/default/uc0/allweek0", "4/default/uc0/allweek0", "5/default/uc0/allweek0",
@@ -117,12 +140,24 @@ namespace Gamesim.Tests.EditMode
                 "16/director/uc0/allweek0", "16/default/uc0/allweek0", "17/director/uc0/allweek0", "17/default/uc0/allweek0",
                 "18/director/uc0/allweek0", "18/default/uc0/allweek0", "19/director/uc0/allweek0", "19/default/uc0/allweek0",
                 "20/director/uc0/allweek0", "20/default/uc0/allweek0", "21/director/uc0/allweek0", "21/default/uc0/allweek0",
-                "22/director/uc0/allweek0/early", "22/director/uc0/allweek0/late", "22/default/uc0/allweek0",
+                "22/director/uc0/allweek0/early", "22/director/uc0/allweek0/middle", "22/director/uc0/allweek0/late", "22/default/uc0/allweek0",
                 "23/director/uc0/allweek0", "23/default/uc0/allweek0", "24/director/uc0/allweek0", "24/default/uc0/allweek0",
                 "25/director/uc0/allweek0", "25/default/uc0/allweek0",
                 "26/director/uc1/allweek0", "26/default/uc0/allweek0", "27/director/uc1/allweek0", "27/default/uc0/allweek0",
-                "28/director/uc1/allweek0", "28/director/uc1/allweek1", "28/director/uc2/allweek1", "28/default/uc0/allweek0",
+                "28/director/uc1/allweek0", "28/director/uc1/allweek0/leaks1/plans0", "28/director/uc1/allweek0/leaks1/plans1",
+                "28/director/uc1/allweek1/leaks1/plans1", "28/director/uc2/allweek1/leaks1/plans1", "28/default/uc0/allweek0",
             }));
+        }
+
+        /// <summary>A fixture's cell: schema, profile, the rules the readers branch on, and for the director's schema 22 which of its shapes.</summary>
+        private static string Cell(JToken e)
+        {
+            int On(string rule) => Math.Min(1, (int?)e["rules"][rule] ?? 0);
+            int schema = (int)e["schema"];
+            string profile = (string)e["profile"], id = (string)e["id"];
+            return schema + "/" + profile + "/uc" + ((int?)e["rules"]["unifiedCommitmentRulesVersion"] ?? 0) + "/allweek" + On("allWeekRulesStartWeek")
+                + (On("allianceLeakRulesStartWeek") + On("pactPlanRulesStartWeek") > 0 ? "/leaks" + On("allianceLeakRulesStartWeek") + "/plans" + On("pactPlanRulesStartWeek") : "")
+                + (schema == 22 && profile == "director" ? (id.Contains("-early-") ? "/early" : id.Contains("-middle-") ? "/middle" : "/late") : "");
         }
 
         // ------------------------------------------------------------------ load, migrate, validate, replay
@@ -136,12 +171,15 @@ namespace Gamesim.Tests.EditMode
             var payload = (JObject)JObject.Parse(File.ReadAllText(slot.Store.SavePath))["state"];
             Assert.That((int)payload["schemaVersion"], Is.EqualTo(schema));
 
+            // The current schema is OldSaveTrace.Newest, the newest the projection knows: a new schema adds its literals
+            // there (the plan's section 6, step 6) and every fixture here then migrates through the new step.
+            const int current = OldSaveTrace.Newest;
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            if (schema < 28) Assert.That(message, Does.Contain("Schema " + schema + " history was migrated to schema 28 in memory."));
+            if (schema < current) Assert.That(message, Does.Contain("Schema " + schema + " history was migrated to schema " + current + " in memory."));
             else Assert.That(message, Does.Not.Contain("migrated"));
             Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(slot.Original), "Loading never rewrites the save.");
             Assert.That(File.Exists(slot.Store.BackupPath), Is.False, "Loading neither creates nor rotates a backup.");
-            Assert.That(loaded.schemaVersion, Is.EqualTo(28));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(current));
             Assert.That(EpisodeValidation.TryValidate(loaded, out var error), Is.True, error);
             AssertRulesKept(payload, loaded);
 
@@ -158,7 +196,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(File.ReadAllBytes(slot.Store.BackupPath), Is.EqualTo(slot.Original), "The pre-migration bytes are kept as the backup.");
             Assert.That(slot.Store.TryLoad(out var again, out message), Is.True, message);
             Assert.That(message, Does.Not.Contain("migrated"));
-            Assert.That(OldSaveTrace.Checkpoint(again, 28), Is.EqualTo(OldSaveTrace.Checkpoint(loaded, 28)), "Saved and loaded again, the season is unchanged.");
+            Assert.That(OldSaveTrace.Checkpoint(again, current), Is.EqualTo(OldSaveTrace.Checkpoint(loaded, current)), "Saved and loaded again, the season is unchanged.");
         }
 
         /// <summary>
@@ -261,7 +299,8 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// Every line the readers give the screens for a state: the ballot sentinel's readers (Your week, the houseguest
+        /// Every line the simulation and presentation readers give the screens for a state (not the screens' own text
+        /// assembly, which formats these lines): the ballot sentinel's readers (Your week, the houseguest
         /// notes, the commitments, the finalist read, the jury house, the finale's receipts, the player-visible log and
         /// the player's memories, which the notebook, the diary room and a profile print), and beside them Your word,
         /// the alliance read, the vote read where it is available, the weekly recap of every week, the season report's
@@ -311,18 +350,26 @@ namespace Gamesim.Tests.EditMode
                 var sheet = KnownBallots.Read(s, s.week);
                 hidden.AddRange(s.votes.Where(v => v.voterId != s.playerId && !sheet.Knows(v.voterId)).Select(v => (s.week, v.voterId, v.targetId)));
             }
+            // The finalist read's juror leans, as the sentinel's readers print them ("Quinn · Emma · voted to evict them").
+            var leans = new HashSet<string>(FinalistRead.Others(s).SelectMany(finalist =>
+                FinalistRead.Read(s, finalist.id)?.jurors.Select(lean => finalist.name + " · " + lean.name + " · " + lean.reason) ?? Enumerable.Empty<string>()));
             foreach (var (week, voterId, targetId) in hidden)
             {
-                // An undated line ("Quinn · Emma · voted to evict them") may be telling the same voter's ballot against the
-                // same houseguest in a week the player does know (s21-director-w1-hoh: unknown in week 1, proven in week 4),
-                // or one a build before ballot privacy read to the whole house (s07-director-w2-hoh: public in week 1).
-                bool knownElsewhere = KnownBallots.Weeks(s).Any(other => other != week && KnownBallots.Read(s, other).TargetOf(voterId) == targetId)
-                    || s.events.Any(e => e.kind == "vote-reveal" && e.week != week && (e.audienceIds == null || e.audienceIds.Count == 0)
-                        && KnownBallots.ReadRevealLine(s, e.text, null) is KnownBallots.Ballot open && open.voterId == voterId && open.targetId == targetId);
+                // An undated line names no week, so the sentinel cannot tell which ballot it tells (F8). Two readers write
+                // such a line about a ballot the player does know, and only their lines are excused, only for that ballot:
+                // the finalist read's juror lean, when the same voter's ballot against the same houseguest is known in
+                // another week (s21-director-w1-hoh: unknown in week 1, proven in week 4); and a vote-reveal line a build
+                // before ballot privacy logged to the whole house in another week, printed as it was logged
+                // (s07-director-w2-hoh: public in week 1). Every other undated line is held against every hidden ballot.
+                bool knownElsewhere = KnownBallots.Weeks(s).Any(other => other != week && KnownBallots.Read(s, other).TargetOf(voterId) == targetId);
+                var publicElsewhere = s.events.Where(e => e.kind == "vote-reveal" && e.week != week && (e.audienceIds == null || e.audienceIds.Count == 0)
+                    && KnownBallots.ReadRevealLine(s, e.text, null) is KnownBallots.Ballot open && open.voterId == voterId && open.targetId == targetId)
+                    .Select(e => e.text).ToList();
                 foreach (var line in lines)
                 {
                     var dated = BallotPrivacyTests.WeekOf(line);
-                    if (dated != null ? dated != week : knownElsewhere) continue;
+                    if (dated != null && dated != week) continue;
+                    if (dated == null && ((knownElsewhere && leans.Contains(line)) || publicElsewhere.Contains(line))) continue;
                     Assert.That(BallotPrivacyTests.NamesTheBallot(s, line, voterId, targetId), Is.False,
                         id + ", week " + week + ": " + s.Find(voterId).name + "'s ballot is not the player's to know, and a reader says it: \"" + line + "\"");
                     Assert.That(KnownBallots.TellsAnUnknownBallot(s, voterId, BallotPrivacyTests.Unprefixed(line), week), Is.False,

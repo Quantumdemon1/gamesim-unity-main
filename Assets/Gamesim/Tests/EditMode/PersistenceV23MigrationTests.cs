@@ -194,6 +194,46 @@ namespace Gamesim.Tests.EditMode
             Assert.That(state.alliances.Select(a => a.playerJoined), Is.All.False, "and no pact was joined after its founder.");
         }
 
+        /// <summary>
+        /// Schema 22's middle shape (c55a4535 to d44bf492^, the last of them ce5b3d95): every deal carries C7's
+        /// linkedDealId, no alliance the C5 review fix's playerJoined. Such a file loads with its links kept and only
+        /// playerJoined added, false on every pact, and migrates exactly as the same season written by a last-shape build.
+        /// False keeps the middle builds' own founder reading: their FinalistRead.FoundedByPlayer read the row's reason and
+        /// the member order alone, and today's is that expression behind !playerJoined. Its real-shape fixture is
+        /// OldSaveAcceptanceTests' s22-director-middle-w3-nomination.
+        /// </summary>
+        [Test]
+        public void ASchema22SaveFromTheVersionsMiddleBuildsGainsOnlyTheJoinedLiteral()
+        {
+            var s = EconomyRulesTests.Fresh(enable: false);
+            EpisodeEngine.EnableCommitments(s);
+            var npcs = s.Active.Where(c => !c.isPlayer).Select(c => c.id).ToList();
+            s.deals.Add(new DealState { id = "pact", type = DealKind.SafetyAgreement, proposerId = s.playerId,
+                recipientId = npcs[0], status = DealStatus.Broken, trustImpact = DealTrust.High, week = 1,
+                expiresWeek = 2, brokenById = npcs[0], settledWeek = 1, linkedDealId = "deal-price-pact" });
+            s.deals.Add(new DealState { id = "deal-price-pact", type = DealKind.InformationSharing, proposerId = npcs[0],
+                recipientId = s.playerId, status = DealStatus.Active, trustImpact = DealTrust.Low, week = 1,
+                expiresWeek = 2, linkedDealId = "pact" });
+            s.alliances.Add(new AllianceState { id = "own", name = "Own pact", active = true, members = new List<string> { s.playerId, npcs[1] } });
+            s.alliances.Add(new AllianceState { id = "theirs", name = "Their pact", active = true, members = new List<string> { npcs[2], s.playerId } });
+            EpisodeSaveValidation.Validate(s);
+            var late = AsV22(s);
+            var middle = (JObject)late.DeepClone();
+            foreach (JObject alliance in (JArray)middle["alliances"]) alliance.Remove("playerJoined");
+            Assert.That(((JArray)middle["deals"]).All(d => d["linkedDealId"] != null), Is.True, "The middle shape keeps C7's field.");
+            string original = middle.ToString(Formatting.None);
+
+            var fromMiddle = EpisodeSaveMigrations.PrepareCurrentPayload(middle, out bool migrated);
+            Assert.That(migrated, Is.True);
+            Assert.That(middle.ToString(Formatting.None), Is.EqualTo(original), "The original payload is never changed.");
+            Assert.That(JToken.DeepEquals(fromMiddle, EpisodeSaveMigrations.PrepareCurrentPayload(late, out _)), Is.True,
+                "The middle shape migrates exactly as the last: playerJoined false is all that differs.");
+            var state = Read(middle);
+            Assert.That(state.deals.Select(d => d.linkedDealId), Is.EqualTo(new[] { "deal-price-pact", "pact" }), "A negotiation's links are kept.");
+            Assert.That(state.alliances.Select(a => a.playerJoined), Is.All.False, "No pact was joined after its founder.");
+            Assert.That(state.alliances.Select(a => a.members[0]), Is.EqualTo(new[] { s.playerId, npcs[2] }), "Each pact's founder is still first.");
+        }
+
         [TestCase(0)] [TestCase(27)] [TestCase(-1)]
         public void UnknownSchemasAreNeverGuessed(int schema)
         {

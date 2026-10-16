@@ -1,8 +1,8 @@
 {
  "id": "s22-director-early-w2-campaign",
- "referenceBuild": "current",
- "referenceSchema": 28,
- "digest": "07955e4bc8dfd1ea",
+ "referenceBuild": "c2725b53",
+ "referenceSchema": 22,
+ "digest": "1b8e50957e6a270f",
  "checkpoints": [
   {
    "i": 0,
@@ -10,7 +10,7 @@
    "phase": "Campaign",
    "revision": 26,
    "randomState": 1760050517,
-   "season": "e8fc00782d827db1"
+   "season": "fcf30da572969cb4"
   },
   {
    "i": 1,
@@ -18,7 +18,7 @@
    "phase": "Eviction",
    "revision": 27,
    "randomState": 1760050517,
-   "season": "d58a6a46876abc8d"
+   "season": "ff3473de2094d819"
   },
   {
    "i": 2,
@@ -26,7 +26,7 @@
    "phase": "Eviction",
    "revision": 28,
    "randomState": 1760050517,
-   "season": "f0090f339de885e4"
+   "season": "1f5bf694c1159942"
   },
   {
    "i": 3,
@@ -34,7 +34,7 @@
    "phase": "Eviction",
    "revision": 29,
    "randomState": 1760050517,
-   "season": "89afcb1d2fbae196"
+   "season": "d11c17f98f0255c2"
   },
   {
    "i": 4,
@@ -42,7 +42,7 @@
    "phase": "Eviction",
    "revision": 30,
    "randomState": 1760050517,
-   "season": "784850679a22b2e8"
+   "season": "369cb90a5c1cd3b3"
   },
   {
    "i": 5,
@@ -50,7 +50,7 @@
    "phase": "Eviction",
    "revision": 31,
    "randomState": 1760050517,
-   "season": "3fa13780165a5245"
+   "season": "3c612d6e9ed7d41a"
   },
   {
    "i": 6,
@@ -58,7 +58,7 @@
    "phase": "Social",
    "revision": 32,
    "randomState": 2264003793,
-   "season": "6ef9eac88b69196b"
+   "season": "36e0ba2c1e4a4c11"
   },
   {
    "i": 7,
@@ -66,7 +66,7 @@
    "phase": "Social",
    "revision": 33,
    "randomState": 4095569606,
-   "season": "2e1a90319e356f1f"
+   "season": "8da9bde5f94faccc"
   },
   {
    "i": 8,
@@ -74,7 +74,7 @@
    "phase": "HoH",
    "revision": 34,
    "randomState": 4095569606,
-   "season": "3993bef3067e85df"
+   "season": "eda3b326c80c133d"
   },
   {
    "i": 9,
@@ -82,7 +82,7 @@
    "phase": "HoH",
    "revision": 35,
    "randomState": 368496783,
-   "season": "21f5478e8a5847e4"
+   "season": "84b3a8ecf277cb13"
   },
   {
    "i": 10,
@@ -90,7 +90,7 @@
    "phase": "Nomination",
    "revision": 36,
    "randomState": 1504285729,
-   "season": "b493c929b8093c28"
+   "season": "3397d8efe64b410a"
   },
   {
    "i": 11,
@@ -98,7 +98,7 @@
    "phase": "Nomination",
    "revision": 37,
    "randomState": 1504285729,
-   "season": "5e136f1a3f9b6a99"
+   "season": "3e62884917f67fab"
   },
   {
    "i": 12,
@@ -106,7 +106,7 @@
    "phase": "VetoSelection",
    "revision": 38,
    "randomState": 1504285729,
-   "season": "f237c3e4e1193206"
+   "season": "bca6a05a26dd2b06"
   },
   {
    "i": 13,
@@ -114,7 +114,7 @@
    "phase": "Veto",
    "revision": 39,
    "randomState": 1504285729,
-   "season": "a93de9dfab6e31fb"
+   "season": "6f1919fd495a935d"
   },
   {
    "i": 14,
@@ -122,7 +122,7 @@
    "phase": "Veto",
    "revision": 40,
    "randomState": 3903746015,
-   "season": "4e3cbd18dbbfceca"
+   "season": "54e2b5740bcf05af"
   },
   {
    "i": 15,
@@ -130,7 +130,7 @@
    "phase": "VetoMeeting",
    "revision": 41,
    "randomState": 3903746015,
-   "season": "73428e4b2240c835"
+   "season": "af33b3d1256af560"
   },
   {
    "i": 16,
@@ -138,7 +138,7 @@
    "phase": "VetoMeeting",
    "revision": 42,
    "randomState": 3271910345,
-   "season": "0c156496578acd04"
+   "season": "539ed72ddef92935"
   },
   {
    "i": 17,
@@ -146,7 +146,7 @@
    "phase": "Campaign",
    "revision": 43,
    "randomState": 3271910345,
-   "season": "c741139cedb9cc48"
+   "season": "b37abe6c956794b0"
   },
   {
    "i": 18,
@@ -154,7 +154,7 @@
    "phase": "Eviction",
    "revision": 44,
    "randomState": 3271910345,
-   "season": "b302e7ba04acb2bd"
+   "season": "ea87da84f97a7c28"
   },
   {
    "i": 19,
@@ -162,7 +162,7 @@
    "phase": "Eviction",
    "revision": 45,
    "randomState": 3271910345,
-   "season": "84ed7cfdf70a3eff"
+   "season": "05a07f0a5c98e342"
   },
   {
    "i": 20,
@@ -170,7 +170,7 @@
    "phase": "Eviction",
    "revision": 46,
    "randomState": 3271910345,
-   "season": "7f0cbddfc6fb2d8d"
+   "season": "704424f078f7b9ef"
   },
   {
    "i": 21,
@@ -178,7 +178,7 @@
    "phase": "Eviction",
    "revision": 47,
    "randomState": 3271910345,
-   "season": "22ca7cc99d963696"
+   "season": "8a43734dba532982"
   },
   {
    "i": 22,
@@ -186,7 +186,7 @@
    "phase": "Social",
    "revision": 48,
    "randomState": 1312462138,
-   "season": "49c3b9ef5324f4e7"
+   "season": "4ed267cf59ea7ae9"
   },
   {
    "i": 23,
@@ -194,7 +194,7 @@
    "phase": "Social",
    "revision": 49,
    "randomState": 3144027951,
-   "season": "421718ba3308021d"
+   "season": "b5e806d36590a777"
   },
   {
    "i": 24,
@@ -202,7 +202,7 @@
    "phase": "HoH",
    "revision": 50,
    "randomState": 3144027951,
-   "season": "debe7fb3b641eee1"
+   "season": "686bd88ebc9ef391"
   },
   {
    "i": 25,
@@ -210,7 +210,7 @@
    "phase": "HoH",
    "revision": 51,
    "randomState": 616685271,
-   "season": "52014350abd6719a"
+   "season": "709c2eef35781699"
   },
   {
    "i": 26,
@@ -218,7 +218,7 @@
    "phase": "Nomination",
    "revision": 52,
    "randomState": 616685271,
-   "season": "fdf2c3734fa488c2"
+   "season": "c38b529388f2dd78"
   },
   {
    "i": 27,
@@ -226,7 +226,7 @@
    "phase": "Nomination",
    "revision": 53,
    "randomState": 616685271,
-   "season": "5076376f088e4af6"
+   "season": "00813c8c5e525103"
   },
   {
    "i": 28,
@@ -234,7 +234,7 @@
    "phase": "VetoSelection",
    "revision": 54,
    "randomState": 616685271,
-   "season": "91ac8ebaa3415632"
+   "season": "4e2777b172dfb4d5"
   },
   {
    "i": 29,
@@ -242,7 +242,7 @@
    "phase": "Veto",
    "revision": 55,
    "randomState": 616685271,
-   "season": "456de2be99e5e07f"
+   "season": "51180be18a8ea04d"
   },
   {
    "i": 30,
@@ -250,7 +250,7 @@
    "phase": "Veto",
    "revision": 56,
    "randomState": 1184579744,
-   "season": "428eb6c134b017d1"
+   "season": "c98881557c27ae76"
   },
   {
    "i": 31,
@@ -258,7 +258,7 @@
    "phase": "VetoMeeting",
    "revision": 57,
    "randomState": 1184579744,
-   "season": "e9441bf7789b0606"
+   "season": "b0c4a8f2fa8719f9"
   },
   {
    "i": 32,
@@ -266,7 +266,7 @@
    "phase": "VetoMeeting",
    "revision": 58,
    "randomState": 552744074,
-   "season": "d689f5c728fa9541"
+   "season": "45ee35b542079b09"
   },
   {
    "i": 33,
@@ -274,7 +274,7 @@
    "phase": "Campaign",
    "revision": 59,
    "randomState": 3584040030,
-   "season": "943ef706aecbdef2"
+   "season": "f301020c3bc3f191"
   },
   {
    "i": 34,
@@ -282,7 +282,7 @@
    "phase": "Eviction",
    "revision": 60,
    "randomState": 3584040030,
-   "season": "e3ce1fcfcf82b8d5"
+   "season": "a1edb2a5ddc96b52"
   },
   {
    "i": 35,
@@ -290,7 +290,7 @@
    "phase": "Eviction",
    "revision": 61,
    "randomState": 3584040030,
-   "season": "6eda78f3d25c5fec"
+   "season": "b5aed7d2582145b8"
   },
   {
    "i": 36,
@@ -298,7 +298,7 @@
    "phase": "Eviction",
    "revision": 62,
    "randomState": 3584040030,
-   "season": "b1fcba1bcc7a02cd"
+   "season": "ddbb29a71218ec86"
   },
   {
    "i": 37,
@@ -306,7 +306,7 @@
    "phase": "Eviction",
    "revision": 63,
    "randomState": 3584040030,
-   "season": "c14ca0a20a6756a1"
+   "season": "b7158bf8e263aa3e"
   },
   {
    "i": 38,
@@ -314,7 +314,7 @@
    "phase": "Eviction",
    "revision": 64,
    "randomState": 3584040030,
-   "season": "d8a3e3fdea8d870d"
+   "season": "59d3ae273c9e4dbe"
   },
   {
    "i": 39,
@@ -322,7 +322,7 @@
    "phase": "Social",
    "revision": 65,
    "randomState": 4087993306,
-   "season": "c69dc7b1f12746a1"
+   "season": "58144a8186102fc0"
   },
   {
    "i": 40,
@@ -330,7 +330,7 @@
    "phase": "Social",
    "revision": 66,
    "randomState": 1624591823,
-   "season": "be551773dde46b15"
+   "season": "32dea194e1805b29"
   },
   {
    "i": 41,
@@ -338,7 +338,7 @@
    "phase": "HoH",
    "revision": 67,
    "randomState": 1624591823,
-   "season": "7a4d7c8edfc0994e"
+   "season": "95af6f75cdb14fc7"
   },
   {
    "i": 42,
@@ -346,7 +346,7 @@
    "phase": "HoH",
    "revision": 68,
    "randomState": 2824321966,
-   "season": "3470d9b83b063a6a"
+   "season": "c66a95fb1b9a019c"
   },
   {
    "i": 43,
@@ -354,7 +354,7 @@
    "phase": "Nomination",
    "revision": 69,
    "randomState": 928814956,
-   "season": "08d39577eafc86e3"
+   "season": "40b9fcccf099ee1a"
   },
   {
    "i": 44,
@@ -362,7 +362,7 @@
    "phase": "Nomination",
    "revision": 70,
    "randomState": 928814956,
-   "season": "8cd5c4b4ab44a322"
+   "season": "03a5b6c5dd8eee6f"
   },
   {
    "i": 45,
@@ -370,7 +370,7 @@
    "phase": "VetoSelection",
    "revision": 71,
    "randomState": 928814956,
-   "season": "604044b8eb80de45"
+   "season": "2b9d39053d2349e7"
   },
   {
    "i": 46,
@@ -378,7 +378,7 @@
    "phase": "Veto",
    "revision": 72,
    "randomState": 928814956,
-   "season": "2f367927fab5650d"
+   "season": "f67779d70086dca7"
   },
   {
    "i": 47,
@@ -386,7 +386,7 @@
    "phase": "Veto",
    "revision": 73,
    "randomState": 3960110912,
-   "season": "cdb3976ef7a116e2"
+   "season": "906dc6a29e0c1233"
   },
   {
    "i": 48,
@@ -394,7 +394,7 @@
    "phase": "VetoMeeting",
    "revision": 74,
    "randomState": 3960110912,
-   "season": "10a2f3782399a5c8"
+   "season": "91573a6580db8b22"
   },
   {
    "i": 49,
@@ -402,7 +402,7 @@
    "phase": "VetoMeeting",
    "revision": 75,
    "randomState": 3328275242,
-   "season": "65bd1a7f66b7e87d"
+   "season": "a6cd5c0b0b6fbdd1"
   },
   {
    "i": 50,
@@ -410,7 +410,7 @@
    "phase": "Campaign",
    "revision": 76,
    "randomState": 3328275242,
-   "season": "826a3dfda8943331"
+   "season": "30f12aee18a1026a"
   },
   {
    "i": 51,
@@ -418,7 +418,7 @@
    "phase": "Eviction",
    "revision": 77,
    "randomState": 3328275242,
-   "season": "78edeb366c838ca6"
+   "season": "3629bcf94e292650"
   },
   {
    "i": 52,
@@ -426,7 +426,7 @@
    "phase": "Eviction",
    "revision": 78,
    "randomState": 3328275242,
-   "season": "6932bb17fd351173"
+   "season": "982def98fcfbc935"
   },
   {
    "i": 53,
@@ -434,7 +434,7 @@
    "phase": "Eviction",
    "revision": 79,
    "randomState": 2696439572,
-   "season": "362ac7062729ca06"
+   "season": "63b724f67d6268eb"
   },
   {
    "i": 54,
@@ -442,7 +442,7 @@
    "phase": "Eviction",
    "revision": 80,
    "randomState": 2696439572,
-   "season": "ce1a2fb2ff08be67"
+   "season": "bf91f82932732c8c"
   },
   {
    "i": 55,
@@ -450,7 +450,7 @@
    "phase": "Social",
    "revision": 81,
    "randomState": 800932562,
-   "season": "00d04b67e8fa8f45"
+   "season": "4cd89c57d3a16780"
   },
   {
    "i": 56,
@@ -458,7 +458,7 @@
    "phase": "Social",
    "revision": 82,
    "randomState": 2632498375,
-   "season": "90218945edd1e0e5"
+   "season": "17343242bd15613d"
   },
   {
    "i": 57,
@@ -466,7 +466,7 @@
    "phase": "FinalHoHPart1",
    "revision": 83,
    "randomState": 2632498375,
-   "season": "8079bba5c3c6591e"
+   "season": "ff3b38782e1b9ead"
   },
   {
    "i": 58,
@@ -474,7 +474,7 @@
    "phase": "FinalHoHPart1",
    "revision": 84,
    "randomState": 105155695,
-   "season": "4e79fe9448ca37d1"
+   "season": "76468262eb6aeed7"
   },
   {
    "i": 59,
@@ -482,7 +482,7 @@
    "phase": "FinalHoHPart2",
    "revision": 85,
    "randomState": 105155695,
-   "season": "09cb8046608628db"
+   "season": "371e98a65b9311b4"
   },
   {
    "i": 60,
@@ -490,7 +490,7 @@
    "phase": "FinalHoHPart2",
    "revision": 86,
    "randomState": 3768287321,
-   "season": "a4e5dcf1399fea2c"
+   "season": "6d88de6ad8431a7e"
   },
   {
    "i": 61,
@@ -498,7 +498,7 @@
    "phase": "FinalHoHPart3",
    "revision": 87,
    "randomState": 3768287321,
-   "season": "545829657c2b1700"
+   "season": "fff91d315bfb24ae"
   },
   {
    "i": 62,
@@ -506,7 +506,7 @@
    "phase": "FinalHoHPart3",
    "revision": 88,
    "randomState": 3136451651,
-   "season": "7f17929c0b990071"
+   "season": "6ad39e151ac1685d"
   },
   {
    "i": 63,
@@ -514,7 +514,7 @@
    "phase": "FinalEviction",
    "revision": 89,
    "randomState": 3136451651,
-   "season": "c9e127af56330c5d"
+   "season": "fc7678f63f746e24"
   },
   {
    "i": 64,
@@ -522,7 +522,7 @@
    "phase": "JuryQuestioning",
    "revision": 90,
    "randomState": 3136451651,
-   "season": "995943a34d702ce8"
+   "season": "7173e819d0917da4"
   },
   {
    "i": 65,
@@ -530,7 +530,7 @@
    "phase": "JuryQuestioning",
    "revision": 91,
    "randomState": 673050168,
-   "season": "9086197514ee2e98"
+   "season": "6ebc15b405ebc8cf"
   },
   {
    "i": 66,
@@ -538,7 +538,7 @@
    "phase": "JuryQuestioning",
    "revision": 92,
    "randomState": 673050168,
-   "season": "95a654d477b16408"
+   "season": "fc73bc1597bb8fbb"
   },
   {
    "i": 67,
@@ -546,7 +546,7 @@
    "phase": "JuryQuestioning",
    "revision": 93,
    "randomState": 2504615981,
-   "season": "2ec26c6fe2196cc8"
+   "season": "362b54def9471179"
   },
   {
    "i": 68,
@@ -554,7 +554,7 @@
    "phase": "FinalSpeeches",
    "revision": 94,
    "randomState": 1240944641,
-   "season": "77560aee5d832c1f"
+   "season": "2af3c889b520f51a"
   },
   {
    "i": 69,
@@ -562,7 +562,7 @@
    "phase": "Jury",
    "revision": 95,
    "randomState": 1240944641,
-   "season": "2b0691efc6ea07c2"
+   "season": "25cafa0a8b9c8142"
   },
   {
    "i": 70,
@@ -570,7 +570,7 @@
    "phase": "Jury",
    "revision": 96,
    "randomState": 1240944641,
-   "season": "179681be1071d869"
+   "season": "6f69a849139b6a40"
   },
   {
    "i": 71,
@@ -578,7 +578,7 @@
    "phase": "Finished",
    "revision": 97,
    "randomState": 2376733587,
-   "season": "48dcf31fa32b30a6"
+   "season": "e32cb35f84a47d1d"
   }
  ],
  "commands": [

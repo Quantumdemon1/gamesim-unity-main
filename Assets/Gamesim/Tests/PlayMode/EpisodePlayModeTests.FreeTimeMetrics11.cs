@@ -591,7 +591,14 @@ namespace Gamesim.Tests.PlayMode
                 Copy(pill, "Text", role, "actor." + actor.id + ".roleCopy", !string.IsNullOrEmpty(role));
             }
             var pager = Part(board, "Pager", "pager", shown.Talk && pages > 1);
-            Copy(pager, EpisodeHud.BoardPageName, "Page " + (page + 1) + " of " + pages, "pager.count", shown.Talk && pages > 1);
+            // On a board that pages, the cards' count says which houseguests are shown, so the board's
+            // own "Page 1 of 2" is the one page count on screen; else it is the cards' page.
+            int firstShown = page >= 0 && page < pages ? cardPages.Take(page).Sum() + 1 : 0;
+            int lastShown = page >= 0 && page < pages ? firstShown + cardPages[page] - 1 : 0;
+            string cardsCount = boardPages <= 1 ? "Page " + (page + 1) + " of " + pages
+                : lastShown > firstShown ? "Houseguests " + firstShown + "–" + lastShown + " of " + everybody.Length
+                : "Houseguest " + firstShown + " of " + everybody.Length;
+            Copy(pager, EpisodeHud.BoardPageName, cardsCount, "pager.count", shown.Talk && pages > 1);
             Control(pager, EpisodeHud.CampaignPreviousCaption, "pager.previous", shown.Talk && page > 0);
             Control(pager, EpisodeHud.CampaignNextCaption, "pager.next", shown.Talk && page + 1 < pages);
             // The largest text's pager at the board's foot, when the board pages: where the page is,

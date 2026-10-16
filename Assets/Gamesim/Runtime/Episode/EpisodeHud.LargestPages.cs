@@ -31,7 +31,9 @@ namespace Gamesim.Episode
     ///
     /// <para>The pager pages a screen's own sections. A row of houseguests that pages within its
     /// section keeps its own pager and its own captions ("Previous houseguests", "Next
-    /// houseguests"), as free time's cards and the campaign's tabs always have.</para>
+    /// houseguests"), as free time's cards and the campaign's tabs always have; on a screen that
+    /// pages too, its count says which houseguests it shows (<see cref="LargestRowCount"/>), so
+    /// "Page 1 of 2" is said once. Every pager draws the one row, <see cref="PagerRow"/>.</para>
     /// </summary>
     public sealed partial class EpisodeHud
     {
@@ -92,38 +94,17 @@ namespace Gamesim.Episode
         public RectTransform LargestPager(RectTransform parent, float x, float y, float width, string screen, int page, int pages, Action redraw)
         {
             if (parent == null || pages <= 1) return null;
-            float s = FontScale, gap = 8f * s, height = LargestPagerPill * s, right = width;
+            float s = FontScale, height = LargestPagerPill * s;
             var row = EndScreenKit.Box(LargestPagerName, parent, x, y, width, height);
-            var pills = new List<RectTransform>();
             void Turn(int to)
             {
                 ShowLargestPage(screen, to);
                 largestTurned = true;
                 redraw?.Invoke();
             }
-            if (page > 0)
-            {
-                int previous = page - 1;
-                pills.Add((RectTransform)FilterPill(row, PreviousPageCaption, false, () => Turn(previous), height).transform);
-            }
-            if (page < pages - 1)
-            {
-                int next = page + 1;
-                pills.Add((RectTransform)FilterPill(row, NextPageCaption, false, () => Turn(next), height).transform);
-            }
-            for (int i = pills.Count - 1; i >= 0; i--)
-            {
-                right -= pills[i].sizeDelta.x;
-                Anchor(pills[i], new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(right, 0f), pills[i].sizeDelta);
-                right -= gap;
-            }
-            // Where the page is, in a box 1.3 times its size or more, right against the pills.
-            float where = 110f * s;
-            var at = FixedText(row, "Page " + (page + 1) + " of " + pages, 12, UiTheme.Muted,
-                new Vector2(Mathf.Max(0f, right - where), -(height - 17f * s) * .5f), new Vector2(where, 17f * s));
-            at.name = LargestPageCountName;
-            at.alignment = TextAlignmentOptions.Right;
-            AutoSize(at, 9);
+            // The one pager row (PagerRow), with where the page is in a box 1.3 times its size or more.
+            PagerRow(row, width, height, 110f * s, PreviousPageCaption, NextPageCaption, LargestPageCountName,
+                "Page " + (page + 1) + " of " + pages, page, pages, Turn);
             // A turn keeps the keyboard on the pager: the control pressed when this page has it, else the other.
             if (largestTurned)
             {
@@ -136,5 +117,56 @@ namespace Gamesim.Episode
             }
             return row;
         }
+
+        /// <summary>
+        /// The one pager row the HUD draws, for every pager it has: the largest text's pages
+        /// (<see cref="LargestPager"/>), free time's cards and the campaign's tabs. On
+        /// <paramref name="parent"/>, at its top, across <paramref name="width"/>: pills
+        /// <paramref name="height"/> high - the way back before the way on, each only where there is
+        /// somewhere to go - laid from the right with a gap between, and left of them, right-aligned in
+        /// a box <paramref name="where"/> wide and 17 high at the text's scale (1.3 times its 12 or
+        /// more), where the player is: <paramref name="count"/>, named <paramref name="countName"/>.
+        /// A press asks <paramref name="choose"/> for that page and commits nothing of its own. Each
+        /// pager keeps its own captions, count name and box width, so sharing the row changes none of
+        /// them. Returns the width it took, the gap left of the count included.
+        /// </summary>
+        private float PagerRow(RectTransform parent, float width, float height, float where, string previousCaption, string nextCaption,
+            string countName, string count, int page, int pages, Action<int> choose)
+        {
+            float s = FontScale, gap = 8f * s, x = width;
+            // Made in reading order, the way back before the way on, and laid from the right.
+            var pills = new List<RectTransform>();
+            if (page > 0)
+            {
+                int previous = page - 1;
+                pills.Add((RectTransform)FilterPill(parent, previousCaption, false, () => choose?.Invoke(previous), height).transform);
+            }
+            if (page < pages - 1)
+            {
+                int next = page + 1;
+                pills.Add((RectTransform)FilterPill(parent, nextCaption, false, () => choose?.Invoke(next), height).transform);
+            }
+            for (int i = pills.Count - 1; i >= 0; i--)
+            {
+                x -= pills[i].sizeDelta.x;
+                Anchor(pills[i], new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(x, 0f), pills[i].sizeDelta);
+                x -= gap;
+            }
+            x -= where;
+            var at = FixedText(parent, count, 12, UiTheme.Muted, new Vector2(x, -(height - 17f * s) * .5f), new Vector2(where, 17f * s));
+            at.name = countName;
+            at.alignment = TextAlignmentOptions.Right;
+            AutoSize(at, 9);
+            return width - x + gap;
+        }
+
+        /// <summary>
+        /// Where a row of houseguests is when it pages inside a screen that pages too: which of them
+        /// it shows - "Houseguests 1–6 of 7", "Houseguest 7 of 7" - rather than a second "Page 1 of
+        /// 2", so the screen's own pager is the one page count on it, for the eye and for a screen
+        /// reader alike. Only the largest text pages a screen, so no other size ever shows it.
+        /// </summary>
+        private static string LargestRowCount(int first, int last, int total) =>
+            last > first ? "Houseguests " + first + "–" + last + " of " + total : "Houseguest " + first + " of " + total;
     }
 }

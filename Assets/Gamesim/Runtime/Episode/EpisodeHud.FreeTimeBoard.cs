@@ -287,7 +287,7 @@ namespace Gamesim.Episode
                 y += head + headGap;
                 shown = cards.Skip(page * perPage).Take(perPage).ToList();
                 BoardCards(board, y, width, cardsHeight, shown, cardWidth, cardGap, spec, state);
-                float reserve = BoardPager(board, talkY, width, page, pages, spec);
+                float reserve = BoardPager(board, talkY, width, page, pages, spec, paged, perPage, cards.Count);
                 BoardHead(board, TalkHeadName, "people", "TALK TO A HOUSEGUEST", "Choose someone to approach, or select an action below.",
                     talkY, width, head, lines, reserve);
                 y += cardsHeight + gap;
@@ -961,39 +961,22 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The pager at the talk head's right-hand end, when the house runs past one page: where the
-        /// page is, and a way back and on, each only where there is somewhere to go. Returns the width
-        /// it took. Pressing one is view state.
+        /// page is, and a way back and on, each only where there is somewhere to go - the one pager
+        /// row (PagerRow). On a board the largest text pages (<paramref name="nested"/>) it says which
+        /// houseguests it shows of how many (<paramref name="perPage"/> to a page, of
+        /// <paramref name="total"/>) rather than a second "Page 1 of 2" beside the board's own.
+        /// Returns the width it took. Pressing one is view state.
         /// </summary>
-        private float BoardPager(RectTransform board, float y, float width, int page, int pages, FreeTimeBoardSpec spec)
+        private float BoardPager(RectTransform board, float y, float width, int page, int pages, FreeTimeBoardSpec spec,
+            bool nested = false, int perPage = 0, int total = 0)
         {
             if (pages <= 1) return 0f;
-            float s = FontScale, gap = 8f * s, height = 26f * s, x = width;
+            float s = FontScale, height = 26f * s;
             var row = EndScreenKit.Box("Pager", board, 0f, y, width, height);
-            // Made in reading order, the way back before the way on, and laid from the right.
-            var pills = new List<RectTransform>();
-            if (page > 0)
-            {
-                int previous = page - 1;
-                pills.Add((RectTransform)FilterPill(row, CampaignPreviousCaption, false, () => spec.ChoosePage?.Invoke(previous), height).transform);
-            }
-            if (page < pages - 1)
-            {
-                int next = page + 1;
-                pills.Add((RectTransform)FilterPill(row, CampaignNextCaption, false, () => spec.ChoosePage?.Invoke(next), height).transform);
-            }
-            for (int i = pills.Count - 1; i >= 0; i--)
-            {
-                x -= pills[i].sizeDelta.x;
-                Anchor(pills[i], new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(x, 0f), pills[i].sizeDelta);
-                x -= gap;
-            }
-            float where = 96f * s;
-            x -= where;
-            var at = FixedText(row, "Page " + (page + 1) + " of " + pages, 12, UiTheme.Muted, new Vector2(x, -(height - 17f * s) * .5f), new Vector2(where, 17f * s));
-            at.name = BoardPageName;
-            at.alignment = TextAlignmentOptions.Right;
-            AutoSize(at, 9);
-            return width - x + gap;
+            string count = nested ? LargestRowCount(page * perPage + 1, Mathf.Min(total, (page + 1) * perPage), total)
+                : "Page " + (page + 1) + " of " + pages;
+            return PagerRow(row, width, height, (nested ? 170f : 96f) * s, CampaignPreviousCaption, CampaignNextCaption, BoardPageName,
+                count, page, pages, to => spec.ChoosePage?.Invoke(to));
         }
 
         // ------------------------------------------------------------ the cards

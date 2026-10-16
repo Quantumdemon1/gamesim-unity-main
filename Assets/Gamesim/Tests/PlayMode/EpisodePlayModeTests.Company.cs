@@ -79,6 +79,9 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
                 Assert.That(director.CompanionId, Is.Null);
                 Assert.That(director.StatusMessage ?? "", Does.Not.Contain("joins you in the hot tub"), "Nor does the house go on saying they have come.");
+                // Drawn, not only held (S2A-R1): the furniture's notice is let go once they are out,
+                // whatever the message said last, and the phase's own guidance is back on the line.
+                AssertThePhaseGuidanceIsDrawn("Out of the hot tub after company");
                 AssertPlayerSeasonUnchanged(before, director.Snapshot);
             }
             finally { Time.captureDeltaTime = 0f; }

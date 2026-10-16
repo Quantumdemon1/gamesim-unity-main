@@ -209,9 +209,13 @@ namespace Gamesim.Episode
             // In close enough to see what they are doing: from the far view a swimmer is a dot.
             cameraRig?.FocusSubject(player.transform);
             // Guidance in the device's words, as the diary's way in is: on the status line for as
-            // long as they are at it, never replaced by the phase's own line (D10).
+            // long as they are at it, never replaced by the phase's own line (D10). The notice keeps
+            // the line itself (S2A-R1): what the message says next while they are there - a
+            // housemate joining the hot tub, a move - is narration the bodies show, so it neither
+            // takes the line nor, by changing the message, keeps the notice from being let go.
             message=ActivityStatus(kind,PressWasPad);
             BeginSystemNotice();
+            activityNotice=message;
             Render();
         }
 
@@ -287,8 +291,11 @@ namespace Gamesim.Episode
                             playerActivityInHouse=false;
                             // Back into the day's clothes, behind the body getting up.
                             DressPlayer(projected);
-                            // Up again, the furniture's line goes, and the notice it was with it.
-                            if(IsActivityStatus(message,playerActivityKind)){message="";EndSystemNotice();}
+                            // Up again, the furniture's line goes, and the notice that kept it - whatever
+                            // the message has said since (S2A-R1). A newer notice let go of the
+                            // furniture's line as it began, and is left where it is.
+                            if(IsActivityStatus(message,playerActivityKind))message="";
+                            if(commandNotice && activityNotice!=null)EndSystemNotice();
                             // The click that got them up, now that they are up.
                             var click=clickAfterActivity;clickAfterActivity=null;
                             if(click.HasValue && player!=null)player.DispatchClick(click.Value,clickAfterActivityScreen);

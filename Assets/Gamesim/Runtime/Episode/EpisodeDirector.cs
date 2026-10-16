@@ -850,6 +850,7 @@ namespace Gamesim.Episode
             message = result.accepted ? StatusLine(result.state, visible) ?? "Decision committed." : result.reason;
             commandNotice = !result.accepted;
             systemNotice = null;
+            activityNotice = null;
             if (result.accepted)
             {
                 diaryDraft = null; // A draft never survives a different committed revision.

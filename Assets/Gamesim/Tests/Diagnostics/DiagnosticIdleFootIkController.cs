@@ -11,12 +11,15 @@ using Object = UnityEngine.Object;
 namespace Gamesim.Tests.Diagnostics
 {
     /// <summary>
-    /// An in-memory copy of the shipping humanoid controller in which only the Idle state has Foot IK on,
-    /// for the Source21 Idle Foot IK probes. Nothing touches the disk: the controller and every state
-    /// machine, state, transition and behaviour in it are non-persistent objects this copy owns and
-    /// destroys. An aborted run therefore leaves nothing under Assets/ for the next run to trip over, and a
-    /// legitimate edit to the shipping controller (a new take, a new state) changes the copy with it -
-    /// nothing here pins the shipping assets' bytes, state count or settings.
+    /// An in-memory copy of the shipping humanoid controller that differs from it in one flag, Foot IK on
+    /// the Idle state, for the Source21 Idle Foot IK probes. Nothing touches the disk: the controller and
+    /// every state machine, state, transition and behaviour in it are non-persistent objects this copy owns
+    /// and destroys, so an aborted run leaves nothing under Assets/ for the next run to trip over. Nothing
+    /// here pins the shipping assets' bytes, state count or IK pass, and a legitimate edit to the shipping
+    /// controller (a new take, a new state, Foot IK on some other state) changes the copy with it. What the
+    /// copy does need is the structure it knows how to copy, and Verify asserts it as the probe's
+    /// preconditions: one base layer, no nested state machines, no entry transitions or machine behaviours,
+    /// every state a direct clip, and the source's own Idle with Foot IK off (the one flag the probe turns on).
     /// </summary>
     public sealed class DiagnosticIdleFootIkController : IDisposable
     {
@@ -29,7 +32,7 @@ namespace Gamesim.Tests.Diagnostics
 
         private DiagnosticIdleFootIkController(AnimatorController source) { Source = source; }
 
-        /// <summary>Copies the controller, verifies the copy equals it with Foot IK off everywhere, turns
+        /// <summary>Copies the controller, verifies the copy equals it (Idle's Foot IK off in both), turns
         /// Foot IK on for Idle alone and verifies again.</summary>
         public static DiagnosticIdleFootIkController Build(AnimatorController source, string name)
         {
@@ -186,8 +189,10 @@ namespace Gamesim.Tests.Diagnostics
                 Assert.That(b, Is.Not.Null, "SOURCE21_COPY_STATE_NULL");
                 Assert.That(names.Add(a.name), Is.True, "SOURCE21_DUPLICATE_STATE_" + a.name);
                 Assert.That(b.name, Is.EqualTo(a.name), "SOURCE21_STATE_NAME_" + i);
-                Assert.That(a.iKOnFeet, Is.False, "SOURCE21_SOURCE_FOOT_IK_" + a.name);
-                Assert.That(b.iKOnFeet, Is.EqualTo(idleEnabled && b.name == "Idle"), "SOURCE21_COPY_FOOT_IK_" + b.name);
+                // Only the source's Idle must have Foot IK off (the probe compares it on against off); any other
+                // state's flag is the shipping controller's to choose, and the copy carries it unchanged.
+                if (a.name == "Idle") Assert.That(a.iKOnFeet, Is.False, "SOURCE21_SOURCE_FOOT_IK_" + a.name);
+                Assert.That(b.iKOnFeet, Is.EqualTo(b.name == "Idle" ? idleEnabled : a.iKOnFeet), "SOURCE21_COPY_FOOT_IK_" + b.name);
                 Assert.That(b.motion, Is.SameAs(a.motion), "SOURCE21_MOTION_" + b.name);
                 Assert.That(b.motion, Is.TypeOf<AnimationClip>(), "SOURCE21_DIRECT_CLIP_" + b.name);
                 Assert.That(cs[i].position, Is.EqualTo(ss[i].position), "SOURCE21_STATE_POSITION_" + b.name);

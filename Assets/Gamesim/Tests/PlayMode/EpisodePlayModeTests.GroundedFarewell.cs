@@ -497,12 +497,21 @@ namespace Gamesim.Tests.PlayMode
             return incoming.IsName(stateName) && clips.Length == 1 && clips[0].clip == motion && clips[0].weight == 0f;
         }
 
-        private static void AssertFarewellForeignHeld(CharacterPresentation body, int cue)
+        // Returns whether this frame was the handoff. The caller counts them: a window tolerates ONE such
+        // frame (as measured), so a cue held at zero weight for longer fails inside the window instead of
+        // passing every in-window check.
+        private static bool AssertFarewellForeignHeld(CharacterPresentation body, int cue)
         {
-            if (PendingOrCurrentFarewellForeign(body, cue)) return;
+            if (PendingOrCurrentFarewellForeign(body, cue)) return false;
             Assert.That(FarewellForeignHandoff(body, cue), Is.True,
                 "MISSING the exact newer cue inside its window, other than at its zero-weight handoff; natural expiry is not a substitute witness.");
+            return true;
         }
+
+        private static void AssertOneFarewellHandoffFrame(int handoffFrames)
+            => Assert.That(handoffFrames, Is.LessThanOrEqualTo(1),
+                "The zero-weight handoff is one frame; a newer cue read at zero weight on " + handoffFrames
+                    + " frames of its window is not held.");
 
         // At the after-first-write boundary: the FIRST captured endpoint is the WalkStop whose write just
         // returned, and the SECOND is whatever that body actually stood into (Idle on the UMA cast), both
@@ -833,13 +842,15 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(route.Second.Supports(CharacterPresentation.Reaction.Furious), Is.True);
             route.Second.React(CharacterPresentation.Reaction.Furious); // Next-frame AFTER BOTH, not AFTER FIRST.
             Assert.That(PendingOrCurrentFarewellForeign(route.Second, 0), Is.True);
-            int samples = 0; float by = Time.realtimeSinceStartup + .25f;
+            int samples = 0, handoffs = 0; float by = Time.realtimeSinceStartup + .25f;
             while (Time.realtimeSinceStartup < by)
             {
-                AssertFarewellForeignHeld(route.Second, 0);
+                if (AssertFarewellForeignHeld(route.Second, 0)) handoffs++;
+                AssertOneFarewellHandoffFrame(handoffs);
                 AssertNoNewFarewellTake(route, calls, true);
                 samples++; yield return null;
             }
+            TestContext.WriteLine("Newer cue window: " + samples + " frames, " + handoffs + " at the zero-weight handoff.");
             Assert.That(samples, Is.GreaterThan(0), "MISSING ordinary update with the exact newer owner.");
             Assert.That(PendingOrCurrentFarewellForeign(route.Second, 0), Is.True,
                 "MISSING surviving exact cue at cleanup; natural expiry is not a substitute witness.");
@@ -999,13 +1010,16 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(route.Second.Supports(CharacterPresentation.Reaction.Shocked), Is.True);
                     route.Second.React(CharacterPresentation.Reaction.Shocked);
                     Assert.That(PendingOrCurrentFarewellForeign(route.Second, 1), Is.True);
-                    int samples = 0; float cueBy = Time.realtimeSinceStartup + .25f;
+                    int samples = 0, handoffs = 0; float cueBy = Time.realtimeSinceStartup + .25f;
                     while (Time.realtimeSinceStartup < cueBy)
                     {
-                        AssertFarewellForeignHeld(route.Second, 1);
+                        if (AssertFarewellForeignHeld(route.Second, 1)) handoffs++;
+                        AssertOneFarewellHandoffFrame(handoffs);
                         AssertNoNewFarewellTake(route, afterFirst == 0 ? 0 : 1, afterFirst != 0);
                         samples++; yield return null;
                     }
+                    TestContext.WriteLine("Newer cue window (afterFirst=" + afterFirst + ", endpoint=" + endpoint + "): "
+                        + samples + " frames, " + handoffs + " at the zero-weight handoff.");
                     Assert.That(samples, Is.GreaterThan(0), "MISSING ordinary update with the exact newer owner.");
                     Assert.That(PendingOrCurrentFarewellForeign(route.Second, 1), Is.True,
                         "MISSING surviving exact cue at cleanup; natural expiry is not a substitute witness.");

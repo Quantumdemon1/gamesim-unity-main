@@ -153,20 +153,28 @@ namespace Gamesim.Tests.EditMode
             Assert.That(StoryPeople.Pronouns(Teller(state)).they, Is.EqualTo(subject), "The existing public pronoun fallback is unchanged.");
         }
 
+        /// <summary>
+        /// A singular teller, so the correction shows in the words: the exact authored sentence agrees ("he wants"), while the same
+        /// words inside other text keep the plain fill's ("he want") - "they want" would read alike either way.
+        /// </summary>
         [Test]
         public void CustomNamesAreLiteralAndCatalogueCorrectionRequiresAnExactTemplate()
         {
-            var state = Cast("ze/zir");
+            var state = Cast("he/him");
             Teller(state).name = "{HOH}";
             var cast = new[]
             {
                 new StoryRoleState { role = "SUBJECT", contestantId = Teller(state).id },
                 new StoryRoleState { role = "HOH", contestantId = Subject(state).id }
             };
-            Assert.That(StoryText.FillDisplay(state, "Ask {SUBJECT} what {SUBJECT.they} want out of this game.", cast),
-                Is.EqualTo("Ask {HOH} what they want out of this game."), "Names are never recursively treated as story tokens.");
-            Assert.That(StoryText.FillDisplay(state, "A quotation: Ask {SUBJECT} what {SUBJECT.they} want out of this game.", cast),
-                Is.EqualTo("A quotation: Ask {HOH} what they want out of this game."), "Only the exact authored sentence gets the correction.");
+            const string exact = "Ask {SUBJECT} what {SUBJECT.they} want out of this game.";
+            Assert.That(StoryText.Fill(state, exact, cast), Is.EqualTo("Ask {HOH} what he want out of this game."),
+                "Fixture: the plain fill keeps the authored verb.");
+            string corrected = StoryText.FillDisplay(state, exact, cast);
+            Assert.That(corrected, Is.EqualTo("Ask {HOH} what he wants out of this game."), "Names are never recursively treated as story tokens.");
+            string quoted = StoryText.FillDisplay(state, "A quotation: " + exact, cast);
+            Assert.That(quoted, Is.EqualTo("A quotation: Ask {HOH} what he want out of this game."), "Only the exact authored sentence gets the correction.");
+            Assert.That(quoted, Is.Not.EqualTo("A quotation: " + corrected), "The quotation is not the corrected sentence.");
         }
 
         [Test]

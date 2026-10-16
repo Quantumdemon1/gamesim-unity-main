@@ -281,6 +281,40 @@ namespace Gamesim.Presentation
         /// </summary>
         private bool ActionsUnderTheHeading(float actionWidth) => LargestPages.At(fontScale) && actionWidth < ActionLeast;
 
+        /// <summary>The appearance controls' scrollbar, which only the largest text builds (<see cref="ControlsScrollbar"/>).</summary>
+        public const string AppearanceScrollbarName = "Appearance controls scrollbar";
+
+        /// <summary>
+        /// At the largest text (the owner's contract of 2026-10-15: a screen that scrolls there says
+        /// so), a thin bar in the appearance panel's right margin beside its controls, showing only
+        /// while they hold more than the viewport shows: with the modular catalogue the Body, Face and
+        /// Accessories pages scroll at every size, and at the largest the actions' own row takes 48
+        /// more of the viewport (<see cref="ActionRowDrop"/>). The cast screen's grid bar
+        /// (CastSelect.GridScrollbar) in the same colours; outside the viewport, whose mask would clip
+        /// it, and out of the keyboard's way, as the list already scrolls to whatever is selected
+        /// (SetupScrollFocus). The standard and the larger text build no bar, as they never have.
+        /// </summary>
+        private static Scrollbar ControlsScrollbar(RectTransform box, float x, float y, float height)
+        {
+            var track = HudPrimitives.Fill(AppearanceScrollbarName, box, new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .14f), 3);
+            Place(track, x, y, 6f, height);
+            track.GetComponent<Image>().raycastTarget = true;
+            var area = new GameObject("Sliding area", typeof(RectTransform)).GetComponent<RectTransform>();
+            area.SetParent(track, false);
+            area.anchorMin = Vector2.zero; area.anchorMax = Vector2.one;
+            area.offsetMin = Vector2.zero; area.offsetMax = Vector2.zero;
+            var handle = HudPrimitives.Fill("Handle", area, new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, .7f), 3);
+            handle.offsetMin = Vector2.zero; handle.offsetMax = Vector2.zero;
+            var handleImage = handle.GetComponent<Image>();
+            handleImage.raycastTarget = true;
+            var bar = track.gameObject.AddComponent<Scrollbar>();
+            bar.handleRect = handle;
+            bar.targetGraphic = handleImage;
+            bar.direction = Scrollbar.Direction.BottomToTop;
+            bar.navigation = new Navigation { mode = Navigation.Mode.None };
+            return bar;
+        }
+
         /// <summary>The views' second row stands this far under the first: a 36-tall row and a gap of 6.</summary>
         private const float ViewRowPitch = 42f;
 
@@ -313,7 +347,7 @@ namespace Gamesim.Presentation
             x += chip + 6f;
             Pill(stage, "Side", new Rect(x, y, chip, 36f), Tone.Quiet, () => studioPreview.View(90f), size: 14f);
             x += chip + 6f;
-            GlyphButton(stage, "Zoom out", new Rect(x, y, zoom, zoom), "−", null, () => studioPreview.Zoom(-.1f));
+            GlyphButton(stage, "Zoom out", new Rect(x, y, zoom, zoom), "\u2212", null, () => studioPreview.Zoom(-.1f));
             x += zoom + 6f;
             GlyphButton(stage, "Zoom in", new Rect(x, y, zoom, zoom), "+", null, () => studioPreview.Zoom(.1f));
             float wide = Mathf.Min(width - 16f, 106f * 1.7f);
@@ -412,6 +446,11 @@ namespace Gamesim.Presentation
             viewport.gameObject.AddComponent<SetupScrollFocus>();
             scroll.content = studioControls; scroll.viewport = viewport; scroll.horizontal = false;
             scroll.movementType = ScrollRect.MovementType.Clamped; scroll.scrollSensitivity = 40f;
+            if (LargestPages.At(fontScale))
+            {
+                scroll.verticalScrollbar = ControlsScrollbar(box, r.width - 10f, 110f + below, r.height - 122f - below);
+                scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+            }
             studioCursor = 4f; studioWidth = r.width - 24f;
 
             if (Catalog == null)

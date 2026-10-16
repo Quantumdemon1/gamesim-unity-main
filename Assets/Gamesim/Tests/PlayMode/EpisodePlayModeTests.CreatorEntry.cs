@@ -416,6 +416,73 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// The appearance controls say when they hold more than they show at the largest text (the
+        /// owner's contract of 2026-10-15: a screen that scrolls there carries a visible indicator):
+        /// a bar in the panel's right margin, beside the list and as tall as it, its handle shorter
+        /// than its track, out of the keyboard's ring, and the bar moves the list - at its foot the
+        /// list's end, at its head its top. The standard and the larger text build no bar, as they
+        /// never have. Literally per build: with the modular catalogue the Body page holds more than
+        /// it shows on the 4:3 and the 16:9 frame, so the bar shows on both; without it the page is a
+        /// sentence and the starting looks, which fit, and the bar stands hidden. The largest is
+        /// photographed on 4:3 where the bar shows.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CreatorEntry_TheAppearanceListShowsItScrollsAtTheLargestText()
+        {
+#if GAMESIM_UMA
+            bool modular=true;
+#else
+            bool modular=false;
+#endif
+            yield return OpenCreator();
+            var creator=Creator();
+            try
+            {
+                foreach(var size in new[]{new Vector2Int(1200,900),new Vector2Int(1920,1080)})
+                    using(var lens=new CaptureLens(cameraRig.ViewCamera,size.x,size.y))
+                        foreach(float scale in TextScales.All)
+                        {
+                            creator.FontScale=scale;yield return null;yield return null;
+                            Assert.That(creator.Mode,Is.EqualTo(CharacterCreator.EntryMode.Detailed));
+                            Canvas.ForceUpdateCanvases();
+                            string where="The Body page "+size+" at font scale "+scale;
+                            var root=(RectTransform)creator.transform;
+                            var panel=creator.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name=="Appearance panel");
+                            var scroll=panel.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name=="Appearance controls viewport").GetComponent<ScrollRect>();
+                            var bars=panel.GetComponentsInChildren<Scrollbar>(true).Where(bar=>bar.name==CharacterCreator.AppearanceScrollbarName).ToArray();
+                            if(!LargestPages.At(scale))
+                            {
+                                Assert.That(bars,Is.Empty,where+": no bar, as there never was.");
+                                Assert.That(scroll.verticalScrollbar,Is.Null,where+": the list has no bar.");
+                                continue;
+                            }
+                            Assert.That(bars,Has.Length.EqualTo(1),where+": the list has its one bar.");
+                            var shown=bars[0];
+                            Assert.That(scroll.verticalScrollbar,Is.SameAs(shown),where+": the bar is the list's.");
+                            Assert.That(shown.navigation.mode,Is.EqualTo(Navigation.Mode.None),where+": out of the keyboard's ring.");
+                            float more=scroll.content.rect.height-scroll.viewport.rect.height;
+                            Assert.That(more>.01f,Is.EqualTo(modular),where+": the page holds "+more.ToString("0.#")+" more than it shows.");
+                            Assert.That(shown.gameObject.activeInHierarchy,Is.EqualTo(modular),where+": the bar shows exactly while the list holds more.");
+                            if(!modular) continue;
+                            var listBox=OwnBox(root,scroll.viewport);
+                            var barBox=OwnBox(root,shown.transform);
+                            var panelBox=OwnBox(root,panel);
+                            Assert.That(barBox.min.x,Is.GreaterThanOrEqualTo(listBox.max.x-.5f),where+": the bar stands beside the list, outside its mask,");
+                            Assert.That(barBox.max.x,Is.LessThanOrEqualTo(panelBox.max.x+.5f),where+": inside the panel,");
+                            Assert.That(barBox.max.y,Is.EqualTo(listBox.max.y).Within(.5f),where+": level with the list's top,");
+                            Assert.That(barBox.size.y,Is.EqualTo(listBox.size.y).Within(.5f),where+": and as tall as it.");
+                            Assert.That(shown.size,Is.GreaterThan(0f).And.LessThan(1f),where+": the handle says how much of the list shows.");
+                            if(size.x==1200) yield return PhotographThroughLens(lens,"creator-appearance-scroll-1200x900-largest");
+                            shown.value=0f;yield return null;
+                            Assert.That(scroll.content.anchoredPosition.y,Is.EqualTo(more).Within(1f),where+": the bar at its foot shows the list's end,");
+                            shown.value=1f;yield return null;
+                            Assert.That(scroll.content.anchoredPosition.y,Is.EqualTo(0f).Within(1f),where+": and at its head the list's top.");
+                        }
+            }
+            finally{creator.FontScale=1f;}
+        }
+
+        /// <summary>
         /// <paramref name="rect"/>'s own box in <paramref name="root"/>'s space: its corners alone, not
         /// the children a bounds query takes in with it - a pill's glow and border reach past its edge.
         /// </summary>

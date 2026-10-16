@@ -355,21 +355,17 @@ namespace Gamesim.Tests.EditMode
                 FinalistRead.Read(s, finalist.id)?.jurors.Select(lean => finalist.name + " · " + lean.name + " · " + lean.reason) ?? Enumerable.Empty<string>()));
             foreach (var (week, voterId, targetId) in hidden)
             {
-                // An undated line names no week, so the sentinel cannot tell which ballot it tells (F8). Two readers write
-                // such a line about a ballot the player does know, and only their lines are excused, only for that ballot:
-                // the finalist read's juror lean, when the same voter's ballot against the same houseguest is known in
-                // another week (s21-director-w1-hoh: unknown in week 1, proven in week 4); and a vote-reveal line a build
-                // before ballot privacy logged to the whole house in another week, printed as it was logged
-                // (s07-director-w2-hoh: public in week 1). Every other undated line is held against every hidden ballot.
+                // An undated line names no week, so the sentinel cannot tell which ballot it tells (F8). One reader writes
+                // such a line about a ballot the player does know, and only its line is excused, only for that ballot: the
+                // finalist read's juror lean, when the same voter's ballot against the same houseguest is known in another
+                // week (s21-director-w1-hoh: unknown in week 1, proven in week 4; also s19, s22 early and s25). Every other
+                // undated line is held against every hidden ballot.
                 bool knownElsewhere = KnownBallots.Weeks(s).Any(other => other != week && KnownBallots.Read(s, other).TargetOf(voterId) == targetId);
-                var publicElsewhere = s.events.Where(e => e.kind == "vote-reveal" && e.week != week && (e.audienceIds == null || e.audienceIds.Count == 0)
-                    && KnownBallots.ReadRevealLine(s, e.text, null) is KnownBallots.Ballot open && open.voterId == voterId && open.targetId == targetId)
-                    .Select(e => e.text).ToList();
                 foreach (var line in lines)
                 {
                     var dated = BallotPrivacyTests.WeekOf(line);
                     if (dated != null && dated != week) continue;
-                    if (dated == null && ((knownElsewhere && leans.Contains(line)) || publicElsewhere.Contains(line))) continue;
+                    if (dated == null && knownElsewhere && leans.Contains(line)) continue;
                     Assert.That(BallotPrivacyTests.NamesTheBallot(s, line, voterId, targetId), Is.False,
                         id + ", week " + week + ": " + s.Find(voterId).name + "'s ballot is not the player's to know, and a reader says it: \"" + line + "\"");
                     Assert.That(KnownBallots.TellsAnUnknownBallot(s, voterId, BallotPrivacyTests.Unprefixed(line), week), Is.False,

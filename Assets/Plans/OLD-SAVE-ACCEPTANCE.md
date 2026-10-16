@@ -240,16 +240,19 @@ schema 28's five director combinations (1.3).
 | Schema 28, mode 1 (lead4) and the default scene's | 42e34f4d |
 | Schema 28, mode 2 (lead6) | de88a8bb |
 
-**Size.** The fixture folder is 6,132,490 bytes (6.1 MB), plus the reused 28 KB V21 save. Schemas 2 to 5 added
-175,024 bytes.
+**Size.** The fixture folder is 7,048,241 bytes (7.0 MB), plus the reused 28 KB V21 save. Schemas 2 to 5 added
+175,024 bytes; the seven review fixtures (2026-10-16) 898,867.
 
 | Part | Size |
 | --- | --- |
-| 49 episode saves (48 here, one reused) and the refused one | 5,061,406 bytes |
-| Their 49 scripts and checkpoint lists | 974,399 bytes |
+| 56 episode saves (55 here, one reused) and the refused one | 5,794,910 bytes |
+| Their 56 scripts and checkpoint lists | 1,139,763 bytes |
 | The two careers | 1,968 bytes |
-| The manifest | 78,635 bytes |
-| The metas | 15,958 bytes |
+| The manifest | 93,306 bytes |
+| The metas and `.gitattributes` | 18,294 bytes |
+
+The eight read-only saves (made at the final speeches or after the finale) are 2,445,419 bytes of it. They stay: they
+are the only real files of the finale's readers, and the career test records one of them (review m7, not taken).
 
 ### 2.1 Schemas 2 to 5: the Codex port's own builds
 
@@ -501,8 +504,14 @@ report and is not listed here.
 - When a voter cast the same ballot twice, it flagged a line telling the week the player knows:
   - the finalist read's "Quinn · Emma · voted to evict them" (s21);
   - an old public reveal line (s07).
-- The acceptance test dates the weekly recap's lines and excuses an undated line only where the same ballot is known
-  in another week.
+- The acceptance test dates the weekly recap's lines. Since the review (m2, 2026-10-16) it excuses an undated line
+  only when it is the finalist read's juror lean and the same voter's ballot against the same houseguest is known in
+  another week. Every other undated line is held against every hidden ballot, whatever the player knows elsewhere.
+  - Until then any undated line was excused whenever the ballot was known or public in another week, so a reader that
+    leaked week w's ballot without a date passed if the voter happened to vote the same way in a known week.
+  - Measured under the Mono harness: taking the lean excuse away turns four fixtures red, each on a juror lean ("Quinn
+    Martinez · Emma · voted to evict them": s19, s21, s22 early, s25). The old public-reveal excuse is no longer
+    needed by any fixture (all 172 cases green without it), so it was removed.
 - `BallotPrivacyTests` itself is unchanged and could meet the same case.
 
 ## 4. The tests (`Assets/Gamesim/Tests/EditMode/OldSaveAcceptanceTests.cs`)
@@ -578,6 +587,11 @@ these readers' lines and needs a scene (review m9).
 | V3→V4 writes the study bonus as 1 (v4-study-bonus) | 6, s02 and s03 | "checkpoint 0 … is not the reference build's". Of the synthetic classes only PersistenceV4MigrationTests sees it. |
 | V4→V5 starts the voting blocs a week late (v5-bloc-late) | 9, s02 to s04 | "Voting-bloc activation week must be within the saved season boundary" |
 | V5→V6 starts the NPC conversations a week late (v6-npc-late) | 12, s02 to s05 | "Historical v6 scalar/collection contract is invalid: npcSocial.rulesStartWeek" |
+| F1's repair without its alliance half: no `playerJoined` added (v22-joined-off, 2026-10-16) | 3, all s22 middle | "Invalid historical schema 22 data". Only the middle-shape fixture holds a pact without the field. |
+| F1's repair without its deal half: no `linkedDealId` added (v22-linked-off) | 3, all s22 early | the same message |
+| A settled vote commitment moves one point more under mode 2, without a version (mode2-settle-retune: `UnifiedVotePromiseRecipe` and `UnifiedVoteNamedRecipe`) | 3, all s28-mode2-allweek-w3-campaign | "checkpoint … is not the reference build's". The finished mode-2 save stays green: before 2026-10-16 this retune, the kind B9 will make, passed every fixture. |
+| The sentinel without its juror-lean excuse (sentinel-no-lean, the test mutated) | 4 reader cases: s19, s21, s22 early, s25 | each a juror lean of a ballot known in another week (F8) |
+| The sentinel without the old public-reveal excuse (sentinel-no-public) | 0 | no fixture needs it, so it was removed (F8) |
 | An unknown settled week read as known (holds-outcome) | 0 here; 1 in the subset | Missed by every fixture: no player deal is settled by a ballot whose week is lost. KnownBallotsTests, EveryDealDoesSomethingTests, NegotiationTests and UnifiedSafetyOutcomeSummaryTests missed it too (153 subset cases, all green), so `KnownBallots.DealOutcomeKnown`'s `week == 0` branch had no test. `KnownBallotsTests.AVoteDealSettledInAWeekTheRecordCannotPlaceStaysUnresolved` now builds the case by hand: with the branch mutated it is red ("Expected: False But was: True"); the subset is 5337 of 5337 without. |
 
 The four early-step mutations turn red only the schema 2 to 5 fixtures: no other fixture crosses those steps. The
@@ -602,6 +616,13 @@ the frozen one none.
   - **The F6 freeze**, at 7205dd5d: the same set as the green run at 7b1fbf66 (OldSaveAcceptanceTests,
     BallotPrivacyTests, every Persistence*MigrationTests class and every FrozenEpisodeV23–V27 contract and corpus
     class). 1858 of 1858 pass: 1846 plus the twelve schema 2 to 5 cases.
+  - **The review fixes**, at 015fc720 (the seven mid-season fixtures, schema 22 re-referenced): OldSaveAcceptanceTests,
+    PersistenceV22MigrationTests, PersistenceV23MigrationTests and BallotPrivacyTests, 213 of 213 pass.
+    OldSaveAcceptanceTests is 172: 56 fixtures three ways, the manifest, the refused save and the two careers.
+- **Review fixes under the Mono harness** (2026-10-16): OldSaveAcceptanceTests 172 of 172 at 015fc720 and again with
+  the sentinel narrowed to the juror lean; PersistenceV23MigrationTests 26 of 26 apart from the two cases that read
+  `Application.dataPath`, which only fail outside Unity. The 49 earlier fixtures' seventeen-reader pins were
+  recomputed and all matched. The subset: 5337 of 5337.
 
 ## 5. Codex's 17 holds and L01–L16
 

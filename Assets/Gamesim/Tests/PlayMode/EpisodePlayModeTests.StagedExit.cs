@@ -184,8 +184,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.CeremonySkipShowing, Is.True, "the chip names the press that moves it on,");
             Assert.That(director.EvictionKeyLightShowing, Is.True, "and the key light is still on.");
             Assert.That(Presentation(leaving).IsSeated, Is.False, "They are up out of the chair.");
-            // The goodbye is noncontact (the owner's decision): watched on every frame this test
-            // holds, from the card going down to the house getting up, not only at the end.
+            // The goodbye is noncontact (the owner's decision): watched on every frame from the card
+            // going down to the house getting up - the farewell's own frames among them - not only at the end.
             string embraceSeen = null;
             void WatchTheGoodbye(string when)
             {
@@ -219,7 +219,17 @@ namespace Gamesim.Tests.PlayMode
                     2f, "the one who stays stands for the short reciprocal farewell", evicted, survivor);
             else Assert.That(survivorSeat.Active, Is.True, "The survivor, the player's body, is still in red.");
             if (director.GoodbyeFarewell != null)
-                yield return ObserveFarewellToIdle(director.GoodbyeFarewell, closedAt + EpisodeDirector.GoodbyeSeconds, farewellGraph);
+            {
+                // The farewell's own frames are watched too, each as it plays: an embrace begun and let
+                // go inside it would leave nothing for a later look to find (S2D-R3).
+                var farewell = ObserveFarewellToIdle(director.GoodbyeFarewell, closedAt + EpisodeDirector.GoodbyeSeconds, farewellGraph);
+                while (farewell.MoveNext())
+                {
+                    WatchTheGoodbye("during the farewell");
+                    Assert.That(embraceSeen, Is.Null, "The farewell is the short noncontact one: " + embraceSeen);
+                    yield return farewell.Current;
+                }
+            }
             var face = leaving.transform.position + Vector3.up * 1.55f;
             Assert.That(cameraRig.HasShot, Is.True, "The camera is the goodbye's,");
             Assert.That(Vector3.Distance(cameraRig.DesiredFocus, face), Is.LessThan(0.3f), "on the evicted's face.");

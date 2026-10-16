@@ -259,10 +259,11 @@ $script:ReviewDeadlineCapSeconds = 28800
 # Per-suite deadlines, each at least twice the longest whole-process time measured for that suite
 # (Unity start, import, compile, the tests and exit), so ordinary growth never reads as a late run:
 #   Gamesim.EditModeTests      2,305 s for 7,846 tests (NoUMA, 2026-10-14)                -> 7,200 s (3.1x)
-#   Gamesim.PlayModeTests      5,401 s for 1,218 tests (NoUMA, 2026-10-15); 4,305 s for 1,081
-#                              under GAMESIM_UMA (lead6), about 4,850 s at 1,218           -> 14,400 s (2.7x)
+#   Gamesim.PlayModeTests      5,557 s for 1,197 tests (NoUMA, 2026-10-15; 5,401 s for 1,218
+#                              earlier that day); 4,305 s for 1,081 under GAMESIM_UMA      -> 14,400 s (2.6x)
 #   Gamesim.Uma.PlayModeTests    308 s for 89 tests (2026-10-15)                           -> 3,600 s (11.7x)
-#   the two diagnostics assemblies: seven probes each, the longest probe run 135 s         -> 3,600 s
+#   Gamesim.DiagnosticsPlayModeTests 261 s, Gamesim.Uma.DiagnosticsPlayModeTests 294 s
+#                              (seven probes each, 2026-10-15)                             -> 3,600 s (12x)
 # An assembly not listed takes its platform's suite deadline. Player builds keep their own 5,400 s
 # (build-review-candidate.ps1; measured builds took 150-298 s).
 $script:ReviewSuiteDeadlines = @{

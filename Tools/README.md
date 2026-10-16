@@ -43,9 +43,9 @@ least twice the longest time measured for it (`Get-ReviewSuiteDeadline` in `revi
 | Assembly | Measured | Deadline |
 | --- | --- | --- |
 | `Gamesim.EditModeTests` | 2,305 s for 7,846 tests (NoUMA, 2026-10-14) | 7,200 s |
-| `Gamesim.PlayModeTests` | 5,401 s for 1,218 tests (NoUMA, 2026-10-15); 4,305 s for 1,081 under `GAMESIM_UMA` | 14,400 s |
+| `Gamesim.PlayModeTests` | 5,557 s for 1,197 tests (NoUMA, 2026-10-15; 5,401 s for 1,218 earlier that day); 4,305 s for 1,081 under `GAMESIM_UMA` | 14,400 s |
 | `Gamesim.Uma.PlayModeTests` | 308 s for 89 tests (2026-10-15) | 3,600 s |
-| `Gamesim.DiagnosticsPlayModeTests`, `Gamesim.Uma.DiagnosticsPlayModeTests` | the longest probe run, 135 s | 3,600 s |
+| `Gamesim.DiagnosticsPlayModeTests`, `Gamesim.Uma.DiagnosticsPlayModeTests` | 261 s and 294 s for seven probes each (2026-10-15) | 3,600 s |
 
 Any other assembly takes its platform's (EditMode 7,200 s, PlayMode 14,400 s); a player build keeps its
 5,400 s (measured builds 150-298 s). `-SuiteTimeoutSeconds` overrides every suite at once (the cap is

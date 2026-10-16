@@ -75,6 +75,27 @@ them:
 PlayMode 1197 (1218 less the 7 moved probes and the 14 readiness tests now UMA-only), UMA 82 (89 less 7),
 the subset 5336, and the new lines `Gamesim.DiagnosticsPlayModeTests` 7 and `Gamesim.Uma.DiagnosticsPlayModeTests` 7.
 
+**Measured on the S3 branch (d510cb92, 2026-10-15, through the locked runner).**
+- NoUMA `Gamesim.PlayModeTests`: 1197 run, 1177 passed, 20 failed, no test in a diagnostic category,
+  5,557 s for the Unity process. The 20 are the 19 Largest-text layouts (S4) and
+  `TwoActualTakesEnterTogetherStayPlantedAndReturnToIdle` (a 4.6 mm foot gap at the farewell blend, S5):
+  the earlier 32 less the 9 readiness and 3 probe failures that left.
+- UMA `Gamesim.Uma.PlayModeTests`: 82 run, 81 passed; the one failure is
+  `BothUmaBodiesGiveTheGroundedGestureAndReturnToIdle` (1.15 mm, S5). The four garment tests the editor
+  rewrite had broken pass on 515246bf's bytes.
+- The 17 `GroundedFarewell_` tests on UMA bodies (`Gamesim.PlayModeTests` under `GAMESIM_UMA`, filtered):
+  9 passed, 8 failed. Passed: the three always-compiled ones (both PTP-7 tests now on their provided-body
+  branch) and six readiness tests, the Dress case among them (the UMA catalog exists). Failed: two on the
+  farewell's foot drift (`KeepsActualCameraTakeAndWholeGoodbye`, `SkipAndReducedMotion...`, S5), and six
+  whose requested ordinary Idle/WalkStop combination did not occur naturally (`BothWalkStop`, `BothIdle`,
+  `AfterBothCalls`, `AfterFirstBoundary`, `DisabledPresentations`, `DoesNotRestartAnExistingGlobalStopExit`):
+  they refuse to force a state by design, so they depend on the walk's timing.
+- Diagnostics: 7 and 7 run (4 passed, 3 failed each: the dynamic-IK and inert-stream experiments and
+  Source21's landmark drift, as before the move), 261 s and 294 s. Source21's in-memory controller copy
+  plays like the old on-disk one (43 states, 122 transitions, the same 1 mm drift rate).
+- Nothing was written under `Assets/` by any of these runs; the 2026-10-15 run before them had imported
+  `__Source21NormalIdleFootIk{Provided,Uma}.controller` there.
+
 **IK pass: pending S5.** The shipping controller's base layer now has `iKPass` on
 (`HumanoidClipWiring`, `GamesimHumanoid.controller` `m_IKPass: 1`), and the EditMode
 `GroundedFarewellAnimationTests` pins it. Codex's record calls it diagnostic only. The farewell slice (S5)

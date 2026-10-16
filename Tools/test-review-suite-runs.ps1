@@ -26,8 +26,9 @@ try {
 
     # 1. Per-suite deadlines: each at least 1.5x (in fact 2x) the longest whole-process time measured
     #    for that suite, PlayMode at least three hours, all inside the raised cap.
-    $measured=@{'Gamesim.EditModeTests'=2305;'Gamesim.PlayModeTests'=5401;'Gamesim.Uma.PlayModeTests'=308;
-        'Gamesim.DiagnosticsPlayModeTests'=135;'Gamesim.Uma.DiagnosticsPlayModeTests'=135}
+    # The longest whole-process times measured (2026-10-14/15); raise them here when a run takes longer.
+    $measured=@{'Gamesim.EditModeTests'=2305;'Gamesim.PlayModeTests'=5557;'Gamesim.Uma.PlayModeTests'=308;
+        'Gamesim.DiagnosticsPlayModeTests'=261;'Gamesim.Uma.DiagnosticsPlayModeTests'=294}
     foreach ($assembly in $measured.Keys) {
         $platform=if ($assembly -like '*EditMode*') {'EditMode'} else {'PlayMode'}
         $deadline=Get-ReviewSuiteDeadline $assembly $platform

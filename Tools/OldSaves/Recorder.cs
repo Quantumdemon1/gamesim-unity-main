@@ -46,6 +46,7 @@ namespace Gamesim.OldSaves
                     Console.WriteLine("resaved at schema " + state.schemaVersion + ": " + message);
                     return 0;
                 }
+#if !OLDSAVE_BEFORE_SCHEMA3
                 if (args.Length >= 3 && args[0] == "migrate")
                 {
                     var envelope = JObject.Parse(File.ReadAllText(args[1]));
@@ -53,6 +54,7 @@ namespace Gamesim.OldSaves
                     File.WriteAllText(args[2], payload.ToString(Formatting.None));
                     return 0;
                 }
+#endif
 #if !OLDSAVE_SHAPE_ONLY
                 if (args.Length >= 3 && args[0] == "record") return Record(args[1], args[2]);
                 if (args.Length >= 3 && args[0] == "replay") return Replay(args[1], args[2]);
@@ -340,7 +342,12 @@ namespace Gamesim.OldSaves
 
         public IEnumerable<EpisodeCommand> Candidates(EpisodeState s, int step)
         {
+#if OLDSAVE_BEFORE_SCHEMA3
+            // Schema 2: no diary room, so nothing can be pending.
+            if (s.phase == EpisodePhase.Social)
+#else
             if (s.phase == EpisodePhase.Social && s.pendingDiary == null)
+#endif
             {
                 talks.TryGetValue(s.week, out int done);
                 var others = s.Active.Where(c => !c.isPlayer).OrderBy(c => c.id, StringComparer.Ordinal).ToList();
@@ -391,7 +398,11 @@ namespace Gamesim.OldSaves
         private EpisodeCommand Next(EpisodeState s)
         {
             var c = Command(s, EpisodeCommandKind.Advance);
+#if OLDSAVE_BEFORE_SCHEMA3
+            if (false) { }
+#else
             if (s.pendingDiary != null) { c.kind = EpisodeCommandKind.SkipDiary; c.targetId = s.pendingDiary.id; }
+#endif
             else if (EpisodeEngine.IsCompetition(s.phase) && !s.competitionResolved && EpisodeEngine.CompetitionPlayers(s).Any(p => p.isPlayer))
             { c.kind = EpisodeCommandKind.Compete; c.performance = 0.5; }
             else if (s.phase == EpisodePhase.Nomination && s.nominees.Count == 0 && s.hohId == s.playerId)

@@ -27,7 +27,10 @@ CSC=$(ls -d "$DATA"/DotNetSdk/sdk/*/Roslyn/bincore/csc.dll | head -1)
 win () { cygpath -m "$1"; }
 
 # OLDSAVE_SOURCE_TREE=1 builds from <worktree> as a plain folder, uncommitted edits included, with no git check
-# (a scratch copy holding a candidate fix); <commit> is then only a label.
+# (a scratch copy holding a candidate fix, or a copy of a Codex port source snapshot's Simulation and
+# Runtime/Persistence for schemas 2 to 5); <commit> is then only a label.
+# OLDSAVE_DEFINES adds compile symbols for builds older than the recorder's API: OLDSAVE_BEFORE_SEASON_BUILDER
+# (schemas 2 to 6), OLDSAVE_BEFORE_SCHEMA8 (2 to 7), OLDSAVE_BEFORE_SCHEMA3 (2), or OLDSAVE_SHAPE_ONLY (shape mode only).
 if [ -z "$OLDSAVE_SOURCE_TREE" ]; then
   if [ ! -d "$WT" ]; then
     "$GIT" -C "$REPO" worktree add --detach --no-checkout "$(win "$WT")" "$COMMIT"

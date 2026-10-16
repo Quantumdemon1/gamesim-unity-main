@@ -358,9 +358,16 @@ end.
 | Your word printing a percentage (word-odds) | 19 | "a reader shows a number for odds" |
 | A deal no ballot settles read as an unknown outcome (holds-outcome2) | 31 | all in the 17-reader test |
 | Mode 1's canonical safety deals dropped from CommitmentReferences.Deals (holds-mode1-deals) | 4 | the load refuses one mode-1 save, and the 17-reader test |
-| **Missed**: an unknown settled week read as known (holds-outcome) | 0 | No fixture reaches that branch: no player deal is settled by a ballot whose week is lost. KnownBallotsTests, EveryDealDoesSomethingTests, NegotiationTests and UnifiedSafetyOutcomeSummaryTests miss it too (153 subset cases, all green). An open gap: `KnownBallots.DealOutcomeKnown`'s `week == 0` branch has no test. |
+| An unknown settled week read as known (holds-outcome) | 0 here; 1 in the subset | Missed by every fixture: no player deal is settled by a ballot whose week is lost. KnownBallotsTests, EveryDealDoesSomethingTests, NegotiationTests and UnifiedSafetyOutcomeSummaryTests missed it too (153 subset cases, all green), so `KnownBallots.DealOutcomeKnown`'s `week == 0` branch had no test. `KnownBallotsTests.AVoteDealSettledInAWeekTheRecordCannotPlaceStaysUnresolved` now builds the case by hand: with the branch mutated it is red ("Expected: False But was: True"); the subset is 5337 of 5337 without. |
 
-- **Native runs** through the locked runner: the reports for w2saves-red and w2saves-green.
+- **Native runs** through the locked runner, EditMode, without UMA:
+  - **Red**, at 2940642e (the fixtures, before the fix), OldSaveAcceptanceTests, BallotPrivacyTests and
+    PersistenceV23MigrationTests: 123 of 125 pass. The two failures are s22-director-early-w2-campaign's load and
+    reader cases, "Local save could not be loaded: Invalid historical schema 22 data."
+  - **Green**, at 7b1fbf66 (the fix), OldSaveAcceptanceTests, BallotPrivacyTests, every Persistence*MigrationTests
+    class (V3 to V28) and every FrozenEpisodeV23–V27 contract and corpus class: 1846 of 1846 pass, among them
+    OldSaveAcceptanceTests' 139 and PersistenceV23MigrationTests' 25.
+  - The full EditMode suite has not been run natively on this branch; the floor counts the cases added here.
 
 ## 5. Codex's 17 holds and L01–L16
 

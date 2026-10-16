@@ -15,27 +15,49 @@ namespace Gamesim.Editor
     ///
     /// <para><b>How the hand-placed values were read.</b> A yaw within three degrees of a right
     /// angle is taken as that right angle: the rotate gizmo is imprecise and the plan places by
-    /// right angles. Any other yaw is the measured one. A position is the measured one unless it
-    /// would stand in a wall, another piece or a doorway, in which case it is the nearest clear
-    /// spot. The plan places a piece by the centre of its bounds; every piece here has its origin
-    /// under its centre, so the scene's positions are those centres.</para>
+    /// right angles. Any other yaw is the measured one, unless the owner has since squared it (the
+    /// suite's sofa). A position is the measured one unless it would stand in a wall, another piece
+    /// or a doorway, in which case it is the nearest clear spot. The plan places a piece by the
+    /// centre of its bounds; every piece here has its origin under its centre, so the scene's
+    /// positions are those centres. The owner's later calls (2026-10-16) are noted where they
+    /// apply: the double beds' size and the sofa's angle.</para>
     ///
     /// <para><b>The bedroom.</b> The two double beds - the prototype's bed frames, which stood
     /// side by side in the middle of the room at (-11, 6.5) and (-5, 6.5) - go into the south-west
-    /// corner at (-13.10, 0.89) and (-13.12, 2.62), heads to the west wall (yaw 90.14 and 91.31,
-    /// taken as 90), with the bedside drawer that stood at (-12.88, 2.20) moved between them to
-    /// (-13.70, 1.84). The wardrobe that stood in that corner is gone. The bookcase on the east
-    /// partition moves from (-0.98, 8.40) to (-0.48, 7.27) and turns from 270 to 90 (89.48): its
-    /// open front faced the partition, and now faces the room.</para>
+    /// corner, heads to the west wall (yaw 90.14 and 91.31, taken as 90), with the bedside drawer
+    /// that stood at (-12.88, 2.20) moved between them. The owner left them at (-13.10, 0.89) and
+    /// (-13.12, 2.62), with the drawer at (-13.70, 1.84), at the 0.94 x 1.18 m the bed frames had
+    /// fitted them to. On 2026-10-16 the owner asked for full-size doubles, about 1.4 x 2.0 m, if
+    /// they fit. They are 1.20 x 1.50 m, three quarters of the authored 1.6 x 2.0 m bed
+    /// (bb_set_doublebed.py) and the largest the corner takes (below): heads on the west wall's
+    /// skirting and the south bed on the south wall's, at (-13.105, 0.745) and (-13.105, 2.387), with the drawer a centimetre clear of
+    /// each at (-13.70, 1.566). The wardrobe that stood in that corner is gone. The bookcase on the
+    /// east partition moves from (-0.98, 8.40) to (-0.48, 7.27) and turns from 270 to 90 (89.48):
+    /// its open front faced the partition, and now faces the room.</para>
+    ///
+    /// <para><b>What sizes the double beds.</b> The corner runs 4.18 m from the south wall to the
+    /// lower bunk, and in front of the bunk is the aisle its sleeper lies down from: the approach
+    /// of bed-3, at (-12.88, 3.67). The house walks there from the living room's door, past the
+    /// north double bed's foot. Measured with the bake on a D: copy on 2026-10-16, the beds packed
+    /// into the corner at each size: a bed under the bake's 0.75 m step is a step it walks onto, so
+    /// a route does not go round a bed in its way but over it. The walk passed the old beds' foot
+    /// 0.30 m off and passes these 0.29 m off, which is where they stop: any larger and it passes
+    /// closer than it ever did, it would touch a 1.31 x 1.64 m bed, and at 1.40 x 1.75 m every route
+    /// from the living room, the kitchen and the south wing runs 0.15 m over the north bed's corner.
+    /// From 1.44 x 1.80 m up the bed stands in the aisle and the bunk's approach leaves the mesh, and
+    /// from 1.52 x 1.90 m the bed is too tall to climb at all and the bake's 0.5 m clearance closes
+    /// the aisle; the resolver, which backs off whatever box costs an approach, would switch the
+    /// bed's collision off to get it back. Full size wants the lower bunk, or the side its sleeper
+    /// walks in on, moved: the owner's call.</para>
     ///
     /// <para><b>The ensuite.</b> The toilet and the basin leave the east divider, where both faced
     /// the wall with their backs to the room, for the south wall: the toilet to (-5.96, -18.98), the
     /// basin to (-6.71, -19.15), both turned to 180 (179.79 and -178.31), facing into the suite.
     /// The shower moves from (-5.555, -13.60) to (-5.38, -13.04): the open leaf of the Head of
     /// Household's door swings through where it stood, and now passes it. The sofa on the west
-    /// wall turns from 90 to -86.80, which faces it into the room rather than the wall; that is
-    /// 3.2 degrees from a right angle, outside the three the rule allows, so it keeps the measured
-    /// angle.</para>
+    /// wall turns from 90 to face into the room rather than the wall. The owner left it at -86.80,
+    /// 3.2 degrees from a right angle, outside the three the rule allows, so it kept that angle
+    /// until the owner asked on 2026-10-16 for it squared: it stands at 270.</para>
     ///
     /// <para><b>The speaker.</b> The owner moved the nomination room's west speaker, which stood at
     /// (-3.87, -14.00) in front of the suite's doorway, into the ensuite, and left it 1.48 m under

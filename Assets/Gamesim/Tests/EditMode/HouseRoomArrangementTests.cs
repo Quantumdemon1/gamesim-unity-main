@@ -14,10 +14,12 @@ namespace Gamesim.Tests.EditMode
     /// <summary>
     /// The owner's arrangement of the bedroom, the Head of Household's ensuite and the game room's
     /// study (2026-09-23, re-created 2026-10-15; the editor's HouseRoomArrangement says where each
-    /// number came from), as the episode scene holds it. Pinned by where each piece's bounds are
-    /// centred and which way it faces, because those are what the owner placed; and with the rules
-    /// that let it stand: each moved piece carries its collision with it on the furniture layer,
-    /// stands clear of every wall, piece and doorway, and costs the house no route.
+    /// number came from), as the episode scene holds it, with the owner's calls of 2026-10-16: the
+    /// double beds as near full size as the corner allows, and the suite's sofa squared. Pinned by
+    /// where each piece's bounds are centred and which way it faces, because those are what the
+    /// owner placed, and the double beds by their footprint; and with the rules that let it stand:
+    /// each moved piece carries its collision with it on the furniture layer, stands clear of every
+    /// wall, piece and doorway, and costs the house no route.
     ///
     /// <para>Every check returns what it found wrong rather than asserting, so the arrangement can
     /// be broken on purpose and the checks shown to notice.</para>
@@ -44,18 +46,31 @@ namespace Gamesim.Tests.EditMode
 
         internal static readonly Placement[] Bedroom =
         {
-            new Placement("bedDouble", "Bedroom floor", -13.10f, 0.89f, 90f),
-            new Placement("bedDouble", "Bedroom floor", -13.12f, 2.62f, 90f),
-            new Placement("cabinetBedDrawer", "Bedroom floor", -13.70f, 1.84f, 90f),
+            new Placement("bedDouble", "Bedroom floor", -13.105f, 0.745f, 90f),
+            new Placement("bedDouble", "Bedroom floor", -13.105f, 2.387f, 90f),
+            new Placement("cabinetBedDrawer", "Bedroom floor", -13.70f, 1.566f, 90f),
             new Placement("bookcaseOpen", "Bedroom floor", -0.48f, 7.27f, 90f),
         };
+
+        /// <summary>
+        /// The double beds' footprint, across and head to foot: the owner asked on 2026-10-16 for
+        /// full-size doubles in place of 0.94 x 1.18, and this is the largest the corner takes
+        /// (HouseRoomArrangement says what stops them growing).
+        /// </summary>
+        internal const float DoubleBedWidth = 1.20f, DoubleBedLength = 1.50f;
+
+        /// <summary>How far a bed's head may stand off the west wall's face: the skirting's 0.02, and a centimetre.</summary>
+        private const float AgainstTheWall = 0.03f;
+
+        /// <summary>How far the lower bunk's sleeper stands clear of the double beds at the approach: a body's capsule.</summary>
+        private const float BodyClearance = 0.35f;
 
         internal static readonly Placement[] Ensuite =
         {
             new Placement("toilet", "HoH floor", -5.96f, -18.98f, 180f),
             new Placement("bathroomSink", "HoH floor", -6.71f, -19.15f, 180f),
             new Placement("showerRound", "HoH floor", -5.38f, -13.04f, 270f),
-            new Placement("loungeDesignSofa", "HoH floor", -13.249f, -17.00f, 273.198f),
+            new Placement("loungeDesignSofa", "HoH floor", -13.249f, -17.00f, 270f),
             new Placement("speaker", "HoH floor", -5.23f, -12.43f, 90f),
         };
 
@@ -110,9 +125,30 @@ namespace Gamesim.Tests.EditMode
                 // A bed's head is its local -z (every bed script puts the headboard there).
                 var head = bed.rotation * Vector3.back;
                 if (head.x > -0.99f) problems.Add("A double bed's head points " + head.ToString("F2") + ", not at the west wall.");
-                if (westWall.HasValue && Art(bed).min.x - westWall.Value.max.x > 0.25f)
+                if (westWall.HasValue && Art(bed).min.x - westWall.Value.max.x > AgainstTheWall)
                     problems.Add("A double bed stands " + (Art(bed).min.x - westWall.Value.max.x).ToString("F2", CultureInfo.InvariantCulture) + " m off the west wall.");
+                // Full-size, as far as the corner allows: across is the world z at yaw 90, head to foot the x.
+                var size = Art(bed).size;
+                if (Mathf.Abs(size.z - DoubleBedWidth) > Placed || Mathf.Abs(size.x - DoubleBedLength) > Placed)
+                    problems.Add("A double bed is " + size.z.ToString("F2", CultureInfo.InvariantCulture) + " x " + size.x.ToString("F2", CultureInfo.InvariantCulture)
+                        + " m, not " + DoubleBedWidth.ToString("F2", CultureInfo.InvariantCulture) + " x " + DoubleBedLength.ToString("F2", CultureInfo.InvariantCulture) + ".");
             }
+
+            // The lower bunk's sleeper lies down from the aisle in front of it, between the bunk and
+            // the north double bed: whoever stands at a bunk's approach stands clear of the double beds.
+            var bunkApproaches = All(scene).Select(t => t.GetComponent<HouseInteractionAnchor>())
+                .Where(a => a != null && a.gameObject.activeInHierarchy && a.transform.parent != null && a.transform.parent.name == "bedBunk").ToList();
+            if (bunkApproaches.Count == 0) problems.Add("No bunk has a sleep anchor to walk in to.");
+            foreach (var anchor in bunkApproaches)
+                foreach (var bed in beds)
+                {
+                    var b = Art(bed);
+                    float dx = Mathf.Max(b.min.x - anchor.Approach.x, 0f, anchor.Approach.x - b.max.x);
+                    float dz = Mathf.Max(b.min.z - anchor.Approach.z, 0f, anchor.Approach.z - b.max.z);
+                    float clear = Mathf.Sqrt(dx * dx + dz * dz);
+                    if (clear < BodyClearance)
+                        problems.Add(anchor.VenueId + "'s approach " + anchor.Approach.ToString("F2") + " is " + clear.ToString("F2", CultureInfo.InvariantCulture) + " m from a double bed.");
+                }
             var drawer = found.FirstOrDefault(p => p.Key.Name == "cabinetBedDrawer").Value;
             if (drawer != null && beds.Count == 2)
             {

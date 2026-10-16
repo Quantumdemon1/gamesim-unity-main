@@ -56,7 +56,9 @@ namespace Gamesim.Tests.PlayMode
         {
             Canvas.ForceUpdateCanvases();
             bool largest = director.TextSize == TextSize.Largest;
-            where += " " + TextScales.At(director.TextSize);
+            // The size in the message's words, once: a suite's own where may already name it.
+            string size = TextScales.At(director.TextSize);
+            if (!where.Contains(size)) where += " " + size;
             void Fits(string what)
             {
                 var content = ActiveRect("Episode content");

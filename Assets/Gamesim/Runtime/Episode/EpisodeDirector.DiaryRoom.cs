@@ -181,6 +181,9 @@ namespace Gamesim.Episode
         {
             if (!diaryOpen || expected == null || !ReferenceEquals(diaryDraft, expected)) return;
             diaryDraft = null; message = "Unconfirmed diary choice discarded. The episode is unchanged.";
+            // Said on the status line, as the diary's other notices are: otherwise the phase's own
+            // guidance stood in its place and the discard went unsaid (D10).
+            BeginSystemNotice();
             Render();
         }
 
@@ -198,7 +201,7 @@ namespace Gamesim.Episode
             var decision = diaryDraft;
             diaryDraft = null; // Clear before Submit renders; a double click cannot submit a second command.
             if (!IsCurrentDiaryRevision(decision.origin))
-            { message = "The episode changed. Review a new diary choice before confirming."; Render(); return; }
+            { message = "The episode changed. Review a new diary choice before confirming."; BeginSystemNotice(); Render(); return; }
             Commit(decision.origin, decision.kind, decision.target, decision.second, decision.useVeto);
         }
 
@@ -788,7 +791,7 @@ namespace Gamesim.Episode
                 {
                     if (privateRoom && (first == second || !candidates.Any(option => option.Id == first)
                         || !candidates.Any(option => option.Id == second)))
-                    { message = "Choose two different eligible nominees before reviewing the decision."; Render(); return; }
+                    { message = "Choose two different eligible nominees before reviewing the decision."; BeginSystemNotice(); Render(); return; }
                     OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.Nominate,
                         "Nominate " + state.Find(first)?.name + " and " + state.Find(second)?.name + ". Confirmed nominations become part of the episode record.", first, second);
                 }, privateRoom ? EpisodeHud.DiaryReviewNominationsCaption : "Commit nominations",

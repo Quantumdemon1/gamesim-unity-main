@@ -17,6 +17,15 @@ namespace Gamesim.Episode
         private bool commandNotice;
         private string systemNotice;
         private string persistenceNotice;
+
+        /// <summary>
+        /// A piece of furniture's line while it is the notice on the status line (D10, S2A-R1): kept
+        /// apart from the message, which the house goes on narrating into while the player sits - a
+        /// housemate joining the hot tub - so neither the narration nor the line it leaves empty
+        /// takes the notice's place, and getting up lets the notice go whatever the message says.
+        /// Any newer notice lets go of it as it begins.
+        /// </summary>
+        private string activityNotice;
         private float saveFeedbackUntil;
 
         public bool IsConversationExchangePlaying => conversationExchange != null;
@@ -132,6 +141,7 @@ namespace Gamesim.Episode
         {
             commandNotice = false;
             systemNotice = null;
+            activityNotice = null;
             persistenceNotice = null;
             saveFeedbackUntil = Time.unscaledTime + 4f;
         }
@@ -152,14 +162,29 @@ namespace Gamesim.Episode
             lastSocialDelta = 0d;
             commandNotice = true;
             systemNotice = displayNotice;
+            activityNotice = null;
             saveFeedbackUntil = 0f;
+        }
+
+        /// <summary>
+        /// Lets go of a notice that only said where the player was - a piece of furniture's line once
+        /// they are up - so the phase's own guidance comes back rather than an empty line.
+        /// </summary>
+        private void EndSystemNotice()
+        {
+            commandNotice = false;
+            systemNotice = null;
+            activityNotice = null;
         }
 
         /// <summary>State-derived guidance; conversation prose and save suffixes have other homes.</summary>
         private string HudStatusMessage(EpisodeState state)
         {
+            // A piece of furniture's line comes after a stopped save's notice, as the message did
+            // before it was kept apart, and before whatever the message says while they sit.
             if (blockedRecovery || commandNotice)
-                return NarrativeDisplay.Render(state, systemNotice ?? (npcSaveSuspended ? persistenceNotice : null) ?? WithoutSaveSuffix(message));
+                return NarrativeDisplay.Render(state, systemNotice ?? (npcSaveSuspended ? persistenceNotice : null)
+                    ?? (commandNotice ? activityNotice : null) ?? WithoutSaveSuffix(message));
             if (npcSaveSuspended)
                 return persistenceNotice ?? WithoutSaveSuffix(message);
             if (npcWorldFailed)

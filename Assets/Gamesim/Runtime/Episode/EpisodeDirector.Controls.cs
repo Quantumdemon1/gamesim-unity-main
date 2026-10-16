@@ -54,23 +54,32 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The status line in the other device's words, worded again for <paramref name="pad"/>: the
-        /// way to the episode screen or the diary, or a piece of furniture's line. Whether it changed.
+        /// way to the episode screen or the diary, or a piece of furniture's line - the message, and
+        /// the furniture's notice, which keeps its line apart from the message (S2A-R1). Whether
+        /// either changed.
         /// </summary>
         private bool RewordStatusForDevice(bool pad)
         {
-            if (string.IsNullOrEmpty(message)) return false;
+            string line = Reworded(message, pad), notice = Reworded(activityNotice, pad);
+            if (line != null) message = line;
+            if (notice != null) activityNotice = notice;
+            return line != null || (notice != null && commandNotice);
+        }
+
+        /// <summary>A line in the other device's words, worded for <paramref name="pad"/>; null when it is none of those lines, or already is.</summary>
+        private static string Reworded(string line, bool pad)
+        {
+            if (string.IsNullOrEmpty(line)) return null;
             string reworded = null;
             foreach (bool warp in new[] { true, false })
             {
-                if (message == InputGlossary.StationLine(warp, !pad)) reworded = InputGlossary.StationLine(warp, pad);
-                else if (message == InputGlossary.DiaryWayLine(warp, !pad)) reworded = InputGlossary.DiaryWayLine(warp, pad);
+                if (line == InputGlossary.StationLine(warp, !pad)) reworded = InputGlossary.StationLine(warp, pad);
+                else if (line == InputGlossary.DiaryWayLine(warp, !pad)) reworded = InputGlossary.DiaryWayLine(warp, pad);
             }
             if (reworded == null)
                 foreach (HouseFurnitureActivity kind in Enum.GetValues(typeof(HouseFurnitureActivity)))
-                    if (message == ActivityStatus(kind, !pad)) { reworded = ActivityStatus(kind, pad); break; }
-            if (reworded == null || reworded == message) return false;
-            message = reworded;
-            return true;
+                    if (line == ActivityStatus(kind, !pad)) { reworded = ActivityStatus(kind, pad); break; }
+            return reworded == null || reworded == line ? null : reworded;
         }
 
         /// <summary>The settings' disclosure that shows every control, and hides them again.</summary>

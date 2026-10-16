@@ -72,6 +72,15 @@ namespace Gamesim.Episode
 
         private bool BackConversationNavigation(bool toTopics = false)
         {
+            // Back while a line plays is one level, as everywhere in the conversation (PROGRAM.md:14):
+            // it skips the line, as the exchange's own Skip does, and leaves the player on the page it
+            // was said from. It used to fall through and close the whole conversation (PR-5).
+            if (!toTopics && focusedNpc != null && IsConversationExchangePlaying)
+            {
+                if (!ExchangeOwns(projected)) return false;
+                SkipConversationExchange(exchangeSession, exchangeRevision, exchangeStep);
+                return true;
+            }
             if (!conversationNavigationShowing || focusedNpc == null
                 || IsConversationExchangePlaying) return false;
             if (conversationCategory == null)
@@ -121,12 +130,18 @@ namespace Gamesim.Episode
                 hud.ConversationTopicsWheel(npc.id, 6, npc.name, npc.pronouns,
                     Standing(state, npc.id), ActionsLeft(state) + " left");
                 if (cameraRig != null) cameraRig.ConversationWindowOffset = 0f;
-                void Topic(string caption, string icon, UnityEngine.Color tint) =>
+                UnityEngine.UI.Button Topic(string caption, string icon, UnityEngine.Color tint) =>
                     hud.Petal(caption, icon, tint, () => ChooseConversationCategory(token, state, npc.id, caption));
                 Topic(ConnectCategoryCaption, "chat", UiTheme.Accent);
                 Topic(GameCategoryCaption, "bulb", UiTheme.Strategic);
                 Topic(LearnCategoryCaption, "eye", UiTheme.Muted);
-                Topic(DealsCategoryCaption, "handshake", UiTheme.Allied);
+                var deals = Topic(DealsCategoryCaption, "handshake", UiTheme.Allied);
+                // What waits under Deals is said at the topics, beside the petal and never in its
+                // caption: the oath, the counter, the plan and the offers used to be drawn first in
+                // the conversation, and behind a category a player could open and close it without
+                // learning any of them was there (PR-6).
+                int waiting = DealsWaiting(state, npc.id);
+                if (waiting > 0) hud.Tag(deals, WaitingTag(waiting), EpisodeHud.TagSeat.CardFoot);
                 Topic(PressureCategoryCaption, "gossip", UiTheme.Warning);
                 Topic(TogetherCategoryCaption, "star", UiTheme.Joke);
                 hud.GuardConversationChoices(() => ConversationNavigationCurrent(token, state, npc.id));
@@ -210,11 +225,33 @@ namespace Gamesim.Episode
             if (offer == null) { invitedDealId = null; return false; }
             hud.Heading("THEIR OFFER");
             hud.Paragraph(DealSentence(state, offer));
-            hud.Tag(OfferAccept(state, offer), FreeTag);
+            // A yes the engine would refuse is drawn locked, and a locked control is not a move the
+            // player can make: it carries no cost word, as DealPanel leaves its locked yes (PR-7).
+            var accept = OfferAccept(state, offer);
+            if (accept.interactable) hud.Tag(accept, FreeTag);
             string id = offer.id;
             hud.Tag(hud.ActionFor(id, EpisodeHud.DealDeclineCaption,
                 () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: "decline")), FreeTag);
             return true;
         }
+
+        /// <summary>
+        /// How many things this houseguest has put to the player that wait under Deals and promises:
+        /// each offer (the rows DealPanel and the invitation draw), a counter, a war room's open plan
+        /// and a loyalty declaration - the same readers the category draws them from, so the count is
+        /// only ever what the player could already see there.
+        /// </summary>
+        private static int DealsWaiting(EpisodeState state, string npcId)
+        {
+            if (state == null || string.IsNullOrEmpty(npcId)) return 0;
+            int waiting = NpcDeals.Pending(state).Count(offer => offer.proposerId == npcId);
+            if (Negotiation.OpenCounter(state, npcId) != null) waiting++;
+            if (PlanCardPact(state, npcId) != null) waiting++;
+            if (state.oathOpportunities != null && state.oathOpportunities.Contains(npcId)) waiting++;
+            return waiting;
+        }
+
+        /// <summary>The Deals petal's tag while something waits there: "1 waiting", "2 waiting".</summary>
+        public static string WaitingTag(int waiting) => waiting + " waiting";
     }
 }

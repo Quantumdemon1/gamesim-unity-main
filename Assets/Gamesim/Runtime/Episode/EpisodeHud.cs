@@ -305,10 +305,16 @@ namespace Gamesim.Episode
         /// </summary>
         public const float LeftColumnX = 14f + IconRail.Width + 12f;
 
-        public void Begin(EpisodeState state, string message, bool recovery, bool open)
+        /// <summary>
+        /// Rebuilds the chrome, and the panel when <paramref name="open"/>. <paramref name="recovery"/>
+        /// is a blocked save only: it builds the panel the recovery is made in and locks the travel.
+        /// <paramref name="warning"/> tints the status line amber - a stopped house world, a save
+        /// that failed - and changes nothing else.
+        /// </summary>
+        public void Begin(EpisodeState state, string message, bool recovery, bool open, bool warning = false)
         {
             statusGuidanceVisible = !string.IsNullOrEmpty(message);
-            statusNoticePriority = recovery;
+            statusNoticePriority = recovery || warning;
             var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
             // Whatever had the keyboard keeps it by name, chrome as well as panel. The HUD rebuilds
             // itself for reasons that have nothing to do with the player - a houseguest's body
@@ -401,10 +407,11 @@ namespace Gamesim.Episode
             if (message != lastStatusMessage) { HudReveal.Play(status,ReducedMotion,10f); lastStatusMessage = message; }
             // Lower third: a coloured rule leads the caption, and turns amber on recovery so the
             // state of the save is legible at a glance rather than only in the wording.
-            var rule = Panel("Caption rule",status,recovery ? UiTheme.Warning : Accent,2);
+            bool amber = recovery || warning;
+            var rule = Panel("Caption rule",status,amber ? UiTheme.Warning : Accent,2);
             Anchor(rule,new Vector2(0,.5f),new Vector2(0,.5f),new Vector2(16,0),new Vector2(4,28*FontScale));
             rule.GetComponent<Image>().raycastTarget = false;
-            var caption = FixedText(status,message,16,recovery ? UiTheme.Warning : Paper,new Vector2(32,-9),new Vector2(1150,48));
+            var caption = FixedText(status,message,16,amber ? UiTheme.Warning : Paper,new Vector2(32,-9),new Vector2(1150,48));
             AutoSize(caption,12);
             float wanted = caption.GetPreferredValues(caption.text).x + 64f;
             float statusWidth = Mathf.Clamp(wanted, Mathf.Min(420f, statusRoom), statusRoom);
@@ -1715,10 +1722,19 @@ namespace Gamesim.Episode
         }
         private readonly Dictionary<string, float> meterShown = new Dictionary<string, float>();
 
-        /// <summary>A literal whole-percent control; left/right adjust it, up/down leave it in the panel's focus ring.</summary>
-        public Slider VolumeSlider(string caption, int percent, Color tint, Action<int> changed)
+        /// <summary>
+        /// A literal whole-percent control; left/right adjust it, up/down leave it in the panel's focus
+        /// ring. <paramref name="changed"/> hears every value as it moves. <paramref name="settled"/>,
+        /// when given, hears a value once it is chosen: at once for a key, a pad or a value set in code,
+        /// and for a pointer drag only once it is let go - so what is kept is written once a drag, not
+        /// once a percent (PR-10).
+        /// </summary>
+        public Slider VolumeSlider(string caption, int percent, Color tint, Action<int> changed, Action<int> settled = null)
         {
             var row = Panel(caption + " slider", content, Surface);
+            // Before the slider, so it hears a press before the slider moves on it: the jump a click
+            // makes is part of the drag, not a value of its own.
+            var drag = settled != null ? row.gameObject.AddComponent<SliderSettle>() : null;
             row.gameObject.AddComponent<LayoutElement>().minHeight = Mathf.RoundToInt(78 * FontScale);
             var label = NewText(row, caption, 16, Paper);
             var count = NewText(row, SoundPictures.Clamp(percent) + "%", 16, tint);
@@ -1747,11 +1763,15 @@ namespace Gamesim.Episode
             slider.targetGraphic = handle.GetComponent<Image>(); slider.handleRect = handle; slider.fillRect = fill;
             slider.direction = Slider.Direction.LeftToRight; slider.minValue = 0; slider.maxValue = 100; slider.wholeNumbers = true;
             slider.SetValueWithoutNotify(SoundPictures.Clamp(percent));
+            if (drag != null) drag.Settled = () => settled(Mathf.RoundToInt(slider.value));
             slider.onValueChanged.AddListener(value =>
             {
                 int held = Mathf.RoundToInt(value);
                 count.text = held + "%";
                 changed?.Invoke(held);
+                if (drag == null) return;
+                if (drag.Dragging) drag.Pending = true;
+                else settled(held);
             });
             return slider;
         }

@@ -687,6 +687,9 @@ namespace Gamesim.Episode
                 // In the words of the device that pressed (A4f): a pad's A on the rail's button
                 // reaches here through the UI module, before this frame's NoteInputDevice.
                 message = InputGlossary.StationLine(LastTravel == TravelKind.Warp, PressWasPad);
+                // Travel guidance, as the diary's way in is: the key that opens the screen is the
+                // line's whole point, and phase guidance in its place said nothing of it (D10).
+                BeginSystemNotice();
             }
             Render();
         }
@@ -855,6 +858,7 @@ namespace Gamesim.Episode
             message = result.accepted ? StatusLine(result.state, visible) ?? "Decision committed." : result.reason;
             commandNotice = !result.accepted;
             systemNotice = null;
+            activityNotice = null;
             if (result.accepted)
             {
                 diaryDraft = null; // A draft never survives a different committed revision.
@@ -1356,7 +1360,13 @@ namespace Gamesim.Episode
             // there - a load, the vote begun - and takes the pause it put on the house with it.
             if (juryHouseOverHouse && !JuryStripDoorAvailable(state)) ClosePanelsInternal(false);
             string statusCopy = HudStatusMessage(state);
-            hud.Begin(state, statusCopy, blockedRecovery || npcSaveSuspended || npcWorldFailed, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen || houseActivitiesOpen || sceneCardOpen || juryHouseOverHouse);
+            // Only a blocked save is a recovery: it is what the panel (the settings, opened below)
+            // and the locked travel are for. A stopped house world or a save that failed is a
+            // warning - amber, and kept on the status line below - with nothing to draw a panel
+            // for: passed as a recovery it built the episode panel empty over the house, Close
+            // built it again, and the diary's way there went grey (D9).
+            hud.Begin(state, statusCopy, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen || houseActivitiesOpen || sceneCardOpen || juryHouseOverHouse,
+                warning: npcSaveSuspended || npcWorldFailed);
             hud.SetStatusGuidanceVisible(!string.IsNullOrEmpty(statusCopy), blockedRecovery || npcSaveSuspended || npcWorldFailed || commandNotice);
             hud.ShowSaveFeedback(!blockedRecovery && !npcSaveSuspended && !npcWorldFailed && !commandNotice && saveFeedbackUntil > Time.unscaledTime);
             // The Pull's card and the Nearby card are rebuilt hidden with the rest of the chrome, and a

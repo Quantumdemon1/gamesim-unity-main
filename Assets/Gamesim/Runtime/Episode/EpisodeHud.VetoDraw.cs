@@ -104,8 +104,9 @@ namespace Gamesim.Episode
             float s = FontScale, gap = FaceGap * s, sep = DrawSeparator * s, drawWidth = DrawColumnWidth * s;
             float width = ContentWidth(), top;
             int others = eligible != null ? eligible.Count : 0;
-            if (string.IsNullOrEmpty(playingHeading) || string.IsNullOrEmpty(drawHeading) || (others > 0 && string.IsNullOrEmpty(eligibleHeading)))
-                throw new System.InvalidOperationException("Veto draw required heading is unavailable.");
+            // This runs inside a render: an exception here left the HUD half-built every time the
+            // panel was drawn (PR-11). A heading it was not given is left out, as the draw always
+            // left an empty one out, and a measurement that cannot be taken falls back below.
 
             // What the step has left under the rows above it, measured as the column lays them out.
             LayoutRebuilder.ForceRebuildLayoutImmediate(content);
@@ -121,7 +122,11 @@ namespace Gamesim.Episode
             Vector2 frameBefore = -frameArt.rectTransform.offsetMin, frameAfter = frameArt.rectTransform.offsetMax;
             if (!(frameBefore.x >= 0f) || !(frameBefore.y >= 0f) || !(frameAfter.x >= 0f) || !(frameAfter.y >= 0f)
                 || float.IsInfinity(frameBefore.x) || float.IsInfinity(frameBefore.y) || float.IsInfinity(frameAfter.x) || float.IsInfinity(frameAfter.y))
-                throw new System.InvalidOperationException("Veto draw frame measurement is unavailable.");
+            {
+                // A frame whose overhang cannot be read is laid out as if it stood flush.
+                Debug.LogWarning("Veto draw: the bag's frame overhang could not be measured; laying it out flush.");
+                frameBefore = frameAfter = Vector2.zero;
+            }
             var playingLabel = VetoDrawColumnHeading(row, playingHeading);
             var drawLabel = VetoDrawColumnHeading(row, drawHeading);
             var eligibleLabel = others > 0 ? VetoDrawColumnHeading(row, eligibleHeading) : null;
@@ -387,11 +392,16 @@ namespace Gamesim.Episode
 
         private Vector2 VetoDrawHeadingMeasure(TMP_Text label)
         {
-            if (label == null) return Vector2.zero;
-            if (string.IsNullOrEmpty(label.text)) throw new System.InvalidOperationException("Veto draw measured copy is unavailable.");
+            // No copy takes no room: the heading or line it would have been is left out.
+            if (label == null || string.IsNullOrEmpty(label.text)) return Vector2.zero;
             Vector2 required = label.GetPreferredValues(label.text);
             if (!(required.x >= 0f) || !(required.y > 0f) || float.IsInfinity(required.x) || float.IsInfinity(required.y))
-                throw new System.InvalidOperationException("Veto draw full-copy measurement is unavailable.");
+            {
+                // A font that cannot measure its copy keeps the box the layout was drawn for,
+                // rather than throwing from inside the render (PR-11).
+                Debug.LogWarning("Veto draw: '" + label.text + "' could not be measured; keeping its resting box.");
+                return new Vector2(Mathf.Max(0f, label.rectTransform.rect.width), DrawHeadingBox * FontScale);
+            }
             return new Vector2(Mathf.Ceil(required.x) + 2f * FontScale, Mathf.Ceil(required.y));
         }
 

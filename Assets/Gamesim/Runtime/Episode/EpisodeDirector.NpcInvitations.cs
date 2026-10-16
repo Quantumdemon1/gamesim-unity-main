@@ -31,8 +31,11 @@ namespace Gamesim.Episode
         public bool NpcInvitationIsVisible => npcInvitationBubble != null && npcInvitationBubble.IsVisible;
         public string InvitedDealRecordId => focusedNpc != null ? invitedDealId : null;
 
+        // Never beside the Story Pull (D18): whichever of the two is up keeps the floor until it is
+        // answered. A Pull on screen holds an invitation back here; a visible invitation holds the
+        // Pull back in TickStoryPull.
         private bool NpcInvitationHouseAvailable => IsReady && isActiveAndEnabled && projected != null
-            && playerIsActive && !IsHouseUnderChrome && !FrontDoorUp && !TourIsUp
+            && playerIsActive && !IsHouseUnderChrome && !FrontDoorUp && !TourIsUp && !(hud != null && hud.PullShowing)
             && !durableCommitInProgress && !npcDiagnosticsSuspended && !npcSaveSuspended && !npcWorldFailed
             && !OpeningOwnsHouse && !IsCeremonyStaged && walkingOutId == null && !competitionArenaStaging
             && !challengeActive && headingToNpcId == null && !headingToStation && arrivingIn == null

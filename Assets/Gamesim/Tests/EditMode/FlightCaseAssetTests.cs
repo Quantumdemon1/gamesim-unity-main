@@ -367,10 +367,9 @@ namespace Gamesim.Tests.EditMode
 
         private static byte[] ReadPinned(string relative, string sha256, int cap)
         {
-            var path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(Application.dataPath), relative));
-            for (var item = new FileInfo(path) as FileSystemInfo; item != null;
-                item = item is FileInfo file ? file.Directory : ((DirectoryInfo)item).Parent)
-                Assert.That(item.Attributes & FileAttributes.ReparsePoint, Is.EqualTo((FileAttributes)0), "No reparse input " + item.FullName);
+            var project = Path.GetDirectoryName(Application.dataPath);
+            var path = Path.GetFullPath(Path.Combine(project, relative));
+            Assert.That(ReparseInput(path, project), Is.Null, "No reparse input inside the project.");
             byte[] bytes;
             using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
@@ -386,6 +385,23 @@ namespace Gamesim.Tests.EditMode
             using (var digest = SHA256.Create())
                 Assert.That(BitConverter.ToString(digest.ComputeHash(bytes)).Replace("-", "").ToLowerInvariant(), Is.EqualTo(sha256));
             return bytes;
+        }
+
+        /// <summary>
+        /// The first link (a reparse point: junction, symbolic link, redirected folder) on the way from
+        /// <paramref name="path"/> up to <paramref name="project"/>, the file itself included and the
+        /// project folder not, or null. Only the pinned path inside the project is the test's to refuse:
+        /// where the checkout itself is reached from is the machine's, and the sha256 pins the bytes.
+        /// A path outside the project is walked to its drive root.
+        /// </summary>
+        internal static string ReparseInput(string path, string project)
+        {
+            var root = Path.GetFullPath(project).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            for (var item = new FileInfo(Path.GetFullPath(path)) as FileSystemInfo;
+                item != null && !string.Equals(item.FullName.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), root, StringComparison.OrdinalIgnoreCase);
+                item = item is FileInfo file ? file.Directory : ((DirectoryInfo)item).Parent)
+                if ((item.Attributes & FileAttributes.ReparsePoint) != 0) return item.FullName;
+            return null;
         }
     }
 }

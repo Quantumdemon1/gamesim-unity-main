@@ -320,11 +320,6 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Nothing waiting, in a house of four, eight and sixteen at every text size: the board fits,
-        /// the play in motion is the hero, and move-in night's rule says what the night has. A house
-        /// of three's free time is the Final 3's window, which keeps Endgame Preparation (decision 17).
-        /// </summary>
-        /// <summary>
         /// The pages free time's board has at the largest text: the suite's literal for the owner's
         /// contract (EpisodeHud.LargestPages.cs), measured on 2026-10-15, never the renderer's
         /// arithmetic. Every fixture here, in a house of four, eight or sixteen, with nothing, a beat,
@@ -334,9 +329,44 @@ namespace Gamesim.Tests.PlayMode
         /// </summary>
         private const int FreeTimeLargestPages = 2;
 
-        /// <summary>A house of eight's cards at the largest text on the 4:3 canvas: six, then one (D20; one page of seven at the other two sizes).</summary>
-        private static readonly int[] FreeTimeLargestEightCardPages = { 6, 1 };
+        /// <summary>
+        /// The frame the HUD is laid out for now, by its canvas's shape, under the names the suite's
+        /// per-frame literals use: "16x9" or "4x3" (the batch run's canvas is 4:3). Any other shape
+        /// has no literal, and says so rather than borrowing one.
+        /// </summary>
+        private string FreeTimeFrameNow()
+        {
+            var root = ((RectTransform)HudCanvas().transform).rect;
+            float aspect = root.width / root.height;
+            if (Mathf.Abs(aspect - 16f / 9f) < .02f) return "16x9";
+            if (Mathf.Abs(aspect - 4f / 3f) < .02f) return "4x3";
+            Assert.Fail("The suite names free time's pages at the largest text for the 16:9 and 4:3 frames only; this canvas is " + root.size + ".");
+            return null;
+        }
 
+        /// <summary>
+        /// A house of eight's first page of cards at the largest text, as the suite names it for the
+        /// frame running (FreeTimeLargestCardPagesAt11: six then one on 4:3, all seven on 16:9; D20):
+        /// that many cards, and the way on to the rest exactly when the suite names more pages. Ends
+        /// on the board's first page.
+        /// </summary>
+        private void AssertFreeTimeEightFirstCardPage(string where)
+        {
+            var cardPages = FreeTimeLargestCardPagesAt11(FreeTimeFrameNow());
+            ShowPageWith(EpisodeHud.HouseCardsName);
+            Assert.That(FreeTimeCards().Length, Is.EqualTo(cardPages[0]), where + ": the first of the cards' pages the suite names for the frame,");
+            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.CampaignNextCaption) != null, Is.EqualTo(cardPages.Length > 1),
+                where + ": and the way on to the rest exactly when the suite names more than one.");
+            ShowFirstPage();
+        }
+
+        /// <summary>
+        /// Nothing waiting, in a house of four, eight and sixteen at every text size: the board fits,
+        /// the play in motion is the hero, and move-in night's rule says what the night has. A house
+        /// of eight's cards at the largest text are the pages the suite names, on the batch canvas and
+        /// on the 16:9 and 4:3 frames. A house of three's free time is the Final 3's window, which
+        /// keeps Endgame Preparation (decision 17).
+        /// </summary>
         [UnityTest]
         public IEnumerator FreeTimeBoard_NothingWaitingFitsInHousesOfFourEightAndSixteen()
         {
@@ -364,11 +394,7 @@ namespace Gamesim.Tests.PlayMode
                         Assert.That(FreeTimeCards().Length, Is.EqualTo(7), where + ": everybody else is a card on one page.");
                         Assert.That(ButtonWithCaptionOrNull(EpisodeHud.CampaignNextCaption), Is.Null, where + ": and nothing pages them.");
                     }
-                    else if (house == 8)
-                    {
-                        Assert.That(FreeTimeCards().Length, Is.EqualTo(FreeTimeLargestEightCardPages[0]), where + ": the first of the cards' pages the suite names,");
-                        Assert.That(ButtonWithCaptionOrNull(EpisodeHud.CampaignNextCaption), Is.Not.Null, "and the way on to the rest.");
-                    }
+                    else if (house == 8) AssertFreeTimeEightFirstCardPage(where);
                     else
                     {
                         Assert.That(FreeTimeCards().Length, Is.LessThan(house - 1), where + ": the house runs past one page,");
@@ -382,8 +408,17 @@ namespace Gamesim.Tests.PlayMode
                 yield return ApplyTextSize(Gamesim.Presentation.TextSize.Largest);
                 yield return OpenStation();
                 yield return null;
-                yield return AssertFreeTimeEightReadablePages11("Free time in a house of 8 " + TextScales.At(Gamesim.Presentation.TextSize.Largest),
-                    FreeTimeLargestEightCardPages);
+                string largestEight = "Free time in a house of 8 " + TextScales.At(Gamesim.Presentation.TextSize.Largest);
+                yield return AssertFreeTimeEightReadablePages11(largestEight, FreeTimeLargestCardPagesAt11(FreeTimeFrameNow()));
+                // And on each frame the suite names the cards' pages for, laid out as that frame lays
+                // them: the literal is the frame's, never the batch canvas's taken for every frame.
+                foreach (var frame in new[] { (Width: 1600, Height: 900, Name: "16x9"), (Width: 1200, Height: 900, Name: "4x3") })
+                    yield return AtFrame(frame.Width, frame.Height, () =>
+                    {
+                        string on = largestEight + " on the " + frame.Name + " frame";
+                        Assert.That(FreeTimeFrameNow(), Is.EqualTo(frame.Name), on + " is laid out for that frame.");
+                        AssertFreeTimeEightFirstCardPage(on);
+                    });
                 director.ClosePanels();
                 yield return ApplyTextSize(false);
             }
@@ -1049,8 +1084,10 @@ namespace Gamesim.Tests.PlayMode
         /// at the standard and the larger text each board suite asserts one page with no pager): at the
         /// largest the board opens on the first of its two pages, every control of the board is on
         /// exactly one of them, and the pager at the page's foot turns them by the mouse, by Enter and
-        /// by the pad's A, committing nothing, the keyboard staying on the pager as it turns, and the
-        /// ring walking the page turned to. The batch run photographs both pages on 16:9 and 4:3.
+        /// - walked to by the d-pad from where the board opens - by the pad's A, each turn leaving the
+        /// season, both random streams and every save byte as they were, the keyboard staying on the
+        /// pager as it turns, and the ring walking the page turned to. The batch run photographs both
+        /// pages on 16:9 and 4:3.
         /// </summary>
         [UnityTest]
         public IEnumerator FreeTimeBoard_AtTheLargestTextThePagerTurnsByMouseKeyboardAndPad()
@@ -1068,40 +1105,71 @@ namespace Gamesim.Tests.PlayMode
                 .GetComponentsInChildren<Button>().Where(button => button.IsActive() && button.name != EpisodeHud.NextPageCaption
                     && button.name != EpisodeHud.PreviousPageCaption).Select(button => button.name)));
             Assert.That(everyControl, Is.Unique, where + ": no control of the board is on two pages.");
-            // The cards' first page is on a board page - six of the seven at the largest text on this
-            // frame, the seventh behind the cards' own pager, which is on that page too (D20).
-            Assert.That(everyControl.Count(name => name.StartsWith("Talk to ")), Is.EqualTo(FreeTimeLargestEightCardPages[0]),
+            // The cards' first page is on a board page - as many as the suite names for the frame
+            // running, with the cards' own way on to the rest where it names more pages (D20).
+            var cardPages = FreeTimeLargestCardPagesAt11(FreeTimeFrameNow());
+            Assert.That(everyControl.Count(name => name.StartsWith("Talk to ")), Is.EqualTo(cardPages[0]),
                 where + ": the cards' first page is on a page of the board.");
-            Assert.That(everyControl, Does.Contain(EpisodeHud.CampaignNextCaption), where + ": with the way on to the rest of the house.");
+            Assert.That(everyControl.Contains(EpisodeHud.CampaignNextCaption), Is.EqualTo(cardPages.Length > 1),
+                where + ": with the way on to the rest of the house exactly when the suite names more than one page of cards.");
             foreach (string caption in new[] { EpisodeDirector.ExploreTheHouseCaption, EpisodeDirector.OverviewListenCaption, EpisodeHud.RallyHouseCaption,
                 EpisodeHud.AirLaundryCaption, EpisodeDirector.DoAnActivityCaption, EpisodeHud.BuyBurnOneCaption, EpisodeHud.BuySpreadCaption })
                 Assert.That(everyControl, Does.Contain(caption), where + ": '" + caption + "' is on a page.");
 
-            // The mouse: a press where "Next page" stands turns the page, and commits nothing - once
-            // the walk's last render has been drawn, as a player's press always comes after.
+            // The mouse: a press where "Next page" stands turns the page, and commits nothing - the
+            // season, both random streams and every save byte as they were - once the walk's last
+            // render has been drawn, as a player's press always comes after.
             yield return null; yield return null;
             int revision = director.Snapshot.revision;
+            var before = FreeTimePagerStateNow11();
             var next = ButtonWithCaption(EpisodeHud.NextPageCaption);
             Assert.That(PressAt(ScreenCentre(next)), Is.SameAs(next.gameObject), where + ": the press lands on '" + EpisodeHud.NextPageCaption + "'.");
             Assert.That(LargestPageIndicator(), Is.EqualTo((2, pages)), where + ": the press turns to the second page,");
             Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "committing nothing.");
+            FreeTimeAssertPagerNeutral11(before, where + ", the mouse on '" + EpisodeHud.NextPageCaption + "'");
             yield return null; yield return null;
             var focus = EventSystem.current.currentSelectedGameObject;
             Assert.That(focus != null ? focus.name : "nothing", Is.EqualTo(EpisodeHud.PreviousPageCaption),
                 where + ": the keyboard stays on the pager as it turns, on the way back the last page has.");
 
             // The keyboard: Enter on the way back turns back.
+            before = FreeTimePagerStateNow11();
             yield return PressKey(Key.Enter);
             yield return null;
             Assert.That(LargestPageIndicator(), Is.EqualTo((1, pages)), where + ": Enter on '" + EpisodeHud.PreviousPageCaption + "' turns back,");
             focus = EventSystem.current.currentSelectedGameObject;
             Assert.That(focus != null ? focus.name : "nothing", Is.EqualTo(EpisodeHud.NextPageCaption), "and the keyboard is on the way on again.");
             Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "Still nothing committed.");
+            FreeTimeAssertPagerNeutral11(before, where + ", Enter on '" + EpisodeHud.PreviousPageCaption + "'");
 
-            // The pad: A on the way on.
-            yield return PadSubmitCaption(EpisodeHud.NextPageCaption);
+            // The pad, from where the board opens: the d-pad walks the panel's ring down to the way
+            // on - the pager is in the ring like any control - and A on it turns the page; the walk
+            // and the turn commit nothing. Opening the panel may commit the house's elapsed time, so
+            // what stays as it was is read once it is open.
+            director.ClosePanels();
+            yield return null;
+            yield return OpenStation();
+            yield return null; yield return null;
+            Assert.That(LargestPageIndicator(), Is.EqualTo((1, pages)), where + ": opened again, the board is on its first page.");
+            revision = director.Snapshot.revision;
+            before = FreeTimePagerStateNow11();
+            var walked = new List<string> { SelectedName() };
+            int steps = 0;
+            do
+            {
+                yield return PressOnPad(UnityEngine.InputSystem.LowLevel.GamepadButton.DpadDown);
+                walked.Add(SelectedName());
+                steps++;
+            }
+            while (SelectedName() != EpisodeHud.NextPageCaption && steps < 60);
+            Assert.That(SelectedName(), Is.EqualTo(EpisodeHud.NextPageCaption),
+                where + ": the d-pad walks down to '" + EpisodeHud.NextPageCaption + "'. Walked: [" + string.Join(" | ", walked) + "].");
+            Assert.That(LargestPageIndicator(), Is.EqualTo((1, pages)), where + ": walking to the pager turns nothing.");
+            yield return PressOnPad(UnityEngine.InputSystem.LowLevel.GamepadButton.South);
+            yield return Frames(2);
             Assert.That(LargestPageIndicator(), Is.EqualTo((2, pages)), where + ": the pad's A on '" + EpisodeHud.NextPageCaption + "' turns the page.");
             Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "Still nothing committed.");
+            FreeTimeAssertPagerNeutral11(before, where + ", the d-pad's walk and A on '" + EpisodeHud.NextPageCaption + "'");
             yield return AssertKeyboardRing("free time's board, page 2 " + TextScales.At(Gamesim.Presentation.TextSize.Largest), ModalRoot);
 
             // The batch run photographs every page on the 16:9 frame and on a 4:3 one, as the pages

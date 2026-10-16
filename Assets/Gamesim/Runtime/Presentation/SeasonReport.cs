@@ -732,8 +732,17 @@ namespace Gamesim.Presentation
         /// <summary>The ways on's band at the foot of the card: its padding, and a button's height and widest.</summary>
         private const float FooterPad = 14f, WayHeight = 62f, WayMaxWidth = 380f;
 
-        /// <summary>What a way's caption gives up of its button's width to the glyph before it and the chevron after it (<see cref="ActionButton"/>).</summary>
-        private const float ActionButtonInsets = 48f + 40f;
+        /// <summary>
+        /// What a way's caption gives up of its button's width (<see cref="ActionButton"/>): the glyph
+        /// before it, or the padding where none is drawn, and the chevron after it, or the padding.
+        /// </summary>
+        private const float GlyphInset = 48f, NoGlyphInset = 14f, ChevronInset = 40f, NoChevronInset = 12f;
+
+        /// <summary>The chevron every way draws after its caption, the pack's only: without the pack, none.</summary>
+        private const string WayChevron = PackArt.KitIconChevronRight;
+
+        /// <summary>What a way's caption gives up of its button's width, with its glyph and chevron drawn or not: the insets <see cref="ActionButton"/> lays its caption by, summed for <see cref="CaptionsFit"/> (review S4C-R6).</summary>
+        private static float CaptionInsets(bool glyph, bool chevron) => (glyph ? GlyphInset : NoGlyphInset) + (chevron ? ChevronInset : NoChevronInset);
 
         /// <summary>The gold face's own ground, for a clone without the pack.</summary>
         private static readonly Color LegacyFill = new Color(.33f, .28f, .09f);
@@ -775,7 +784,7 @@ namespace Gamesim.Presentation
             }
             int perRow = ways.Count;
             if (LargestPages.At(TextScale) && ways.Count > 1
-                && !CaptionsFit(sheet, ways.Select(way => (way.caption, way.face == PackArt.SeasonButtonPrimary)).ToList(), Widths(0, ways.Count)))
+                && !CaptionsFit(sheet, ways.Select(way => (way.caption, way.face == PackArt.SeasonButtonPrimary, way.icon, way.fallback)).ToList(), Widths(0, ways.Count)))
                 perRow = (ways.Count + 1) / 2;
             int rows = (ways.Count + perRow - 1) / perRow;
 
@@ -812,23 +821,27 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// Whether every way's caption is drawn whole on one line at its least type, 12, in a button
-        /// of its width beside its glyph and chevron (<see cref="ActionButton"/>): measured on a probe
-        /// in each caption's own weight, before anything is built, and thrown away.
+        /// of its width beside its glyph and chevron as <see cref="ActionButton"/> draws them - each
+        /// only where its picture is there to draw (<see cref="EndScreenKit.PictureSprite"/>), by the
+        /// insets the two share (<see cref="CaptionInsets"/>): measured on a probe in each caption's
+        /// own weight, before anything is built, and thrown away.
         /// </summary>
-        private static bool CaptionsFit(RectTransform parent, IList<(string caption, bool primary)> ways, IList<float> widths)
+        private static bool CaptionsFit(RectTransform parent, IList<(string caption, bool primary, string icon, string fallback)> ways, IList<float> widths)
         {
             var probe = HudPrimitives.Label("Caption probe", parent, 12f, Color.clear);
             try
             {
                 probe.enableAutoSizing = false;
                 probe.textWrappingMode = TextWrappingModes.NoWrap;
+                bool chevron = EndScreenKit.PictureSprite(WayChevron, null, out _) != null;
                 for (int i = 0; i < ways.Count; i++)
                 {
                     var font = UiTheme.Font(ways[i].primary ? UiTheme.Weight.SemiBold : UiTheme.Weight.Medium);
                     if (font != null) probe.font = font;
                     probe.fontSize = 12f;
                     float need = probe.GetPreferredValues(Localisation.Text(ways[i].caption)).x;
-                    if (need > widths[i] - ActionButtonInsets - 2f) return false;
+                    bool glyph = EndScreenKit.PictureSprite(ways[i].icon, ways[i].fallback, out _) != null;
+                    if (need > widths[i] - CaptionInsets(glyph, chevron) - 2f) return false;
                 }
                 return true;
             }
@@ -931,9 +944,9 @@ namespace Gamesim.Presentation
             const float glyphSide = 22f, chevronSide = 16f;
             var glyph = EndScreenKit.Picture("Glyph", panel, icon, fallbackIcon, accent, new Vector2(26f, -height * .5f), glyphSide);
             if (glyph != null && glyph.sprite == UiTheme.Pack(icon)) glyph.color = accent;
-            var chevron = EndScreenKit.Picture("Chevron", panel, PackArt.KitIconChevronRight, null, accent, new Vector2(width - 22f, -height * .5f), chevronSide);
+            var chevron = EndScreenKit.Picture("Chevron", panel, WayChevron, null, accent, new Vector2(width - 22f, -height * .5f), chevronSide);
             if (chevron != null) chevron.color = new Color(accent.r, accent.g, accent.b, .8f);
-            float left = glyph != null ? 48f : 14f, right = chevron != null ? 40f : 12f;
+            float left = glyph != null ? GlyphInset : NoGlyphInset, right = chevron != null ? ChevronInset : NoChevronInset;
             float textWidth = Mathf.Max(40f, width - left - right);
 
             bool twoLines = !string.IsNullOrEmpty(subtitle);

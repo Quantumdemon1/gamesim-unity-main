@@ -175,7 +175,9 @@ namespace Gamesim.Episode
                     // Out of time short of the spot: they stop where they stand and sulk there, rather
                     // than sulk while the route walks them on. Where they cannot be held, the storm is over.
                     if (!arrived && !npcMeetings.StormHoldHere()) { EndStormHere(); return; }
-                    Sulk(visual, body);
+                    // Arrived, their back is to the room they reached; stopped on the way, to the row
+                    // they left, whose room is behind them - not to the room ahead, which would face it.
+                    Sulk(visual, body, arrived ? stormRoom : stormFromRoom);
                     stormStage = StormStage.Sulking;
                     stormClock = Time.unscaledTime + StormSulkSeconds;
                     break;
@@ -185,10 +187,13 @@ namespace Gamesim.Episode
             }
         }
 
-        /// <summary>Their back to the room's middle and their eyes on the floor in front of them.</summary>
-        private void Sulk(CharacterPresentation visual, Transform body)
+        /// <summary>
+        /// Their back to a room's middle and their eyes on the floor in front of them; with no such
+        /// room, the way they were walking.
+        /// </summary>
+        private void Sulk(CharacterPresentation visual, Transform body, string backTo)
         {
-            var marker = RoomMarker(stormRoom);
+            var marker = backTo != null ? RoomMarker(backTo) : null;
             var away = marker != null ? body.position - marker.transform.position : body.forward;
             away.y = 0f;
             if (away.sqrMagnitude < .01f) away = body.forward;

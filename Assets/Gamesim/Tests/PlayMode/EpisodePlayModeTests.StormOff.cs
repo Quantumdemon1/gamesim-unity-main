@@ -277,8 +277,8 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// A walk that runs out of time short of its spot stops where it stands: the sulk is stood,
-        /// not walked. The route they hold ends at their own feet, they stay put through the sulk,
-        /// and the storm still holds them.
+        /// not walked. The route they hold ends at their own feet, their back is to the row they left,
+        /// they stay put through the sulk, and the storm still holds them.
         /// </summary>
         [UnityTest]
         public IEnumerator StormOff_AWalkOutOfTimeStopsWhereItStandsToSulk()
@@ -298,6 +298,21 @@ namespace Gamesim.Tests.PlayMode
                 float onward = Flat(motion.ReservedDestination, stoodAt);
                 Assert.That(onward, Is.LessThan(.3f), "and the route they hold ends at their own feet, not at the spot "
                     + onward.ToString("F2") + " m on.");
+                // Their back to the row they left, whose room is behind them on the way: turned from the
+                // room ahead, a body stopped short of it would face the row (S2D-R2).
+                var row = SceneComponents<HouseRoomMarker>().First(marker => marker.isActiveAndEnabled && marker.RoomName == stormFrom);
+                var ahead = SceneComponents<HouseRoomMarker>().First(marker => marker.isActiveAndEnabled && marker.RoomName == director.StormRoom);
+                var fromRow = stoodAt - row.transform.position;
+                fromRow.y = 0f;
+                var fromAhead = stoodAt - ahead.transform.position;
+                fromAhead.y = 0f;
+                Assert.That(fromRow.magnitude, Is.GreaterThan(.5f), "They stand off the " + stormFrom + "'s middle, so their back can be to it.");
+                float facing = StoryBody(stormTarget).FacingYaw;
+                float awayFromRow = Quaternion.LookRotation(fromRow).eulerAngles.y;
+                Assert.That(Mathf.Abs(Mathf.DeltaAngle(facing, awayFromRow)), Is.LessThan(10f),
+                    "They sulk with their back to the " + stormFrom + ", the row they left: facing " + facing.ToString("F0")
+                    + " deg, away from it " + awayFromRow.ToString("F0") + " deg, away from the " + director.StormRoom + " ahead "
+                    + Quaternion.LookRotation(fromAhead).eulerAngles.y.ToString("F0") + " deg.");
                 // A game second at the pinned 1/30 s: the storm's 2.6 m/s would carry a walking body 2.6 m.
                 yield return Frames(30);
                 Assert.That(director.StormNow, Is.EqualTo(EpisodeDirector.StormStage.Sulking), "Still sulking,");

@@ -216,7 +216,7 @@ namespace Gamesim.Tests.PlayMode
                     // The owner's contract (2026-10-15): one page at the standard and the larger text,
                     // and at the largest exactly the pages this frame has, every face on one of them.
                     var standing = new List<string>();
-                    AssertLargestPages(where, houseguests == 16 ? CeremonyOfSixteenLargestPages : 1, page =>
+                    AssertLargestPages(where, houseguests == 16 ? NominationPagesHere(CeremonyOfSixteenLargestPages) : 1, page =>
                     {
                         string here = where + (page > 1 ? ", page " + page : "");
                         AssertNominationScreen(here, "Continue episode");
@@ -378,7 +378,7 @@ namespace Gamesim.Tests.PlayMode
                     // and at the largest exactly the pages this frame has, every card on one of them.
                     var cards = new List<string>();
                     var labels = new List<(string Text, float Size)>();
-                    AssertLargestPages(where, houseguests == 16 ? PickerOfSixteenLargestPages : 1, page =>
+                    AssertLargestPages(where, houseguests == 16 ? NominationPagesHere(PickerOfSixteenLargestPages) : 1, page =>
                     {
                         string here = where + (page > 1 ? ", page " + page : "");
                         AssertNominationScreen(here, "Commit nominations", EpisodeHud.ShowCandidateContextCaption);
@@ -500,7 +500,7 @@ namespace Gamesim.Tests.PlayMode
                 ButtonWithCaption(EpisodeHud.PlanBackdoorCaption).onClick.Invoke();
                 yield return null;
                 var aims = new List<string>();
-                AssertLargestPages("The backdoor plan" + size, largest ? BackdoorOfSixteenLargestPages : 1, page =>
+                AssertLargestPages("The backdoor plan" + size, NominationPagesHere(BackdoorOfSixteenLargestPages), page =>
                 {
                     AssertNominationScreen("The backdoor plan" + size + (page > 1 ? ", page " + page : ""), EpisodeHud.BackToNomineesCaption);
                     var grid = ActiveRect(EpisodeHud.BackdoorAimsName);
@@ -510,7 +510,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(aims, Is.EquivalentTo(candidates.Select(candidate => "Aim this week at " + candidate.name)), "One aim for each candidate" + size + ".");
                 ButtonWithCaption(EpisodeHud.BackToNomineesCaption).onClick.Invoke();
                 yield return null;
-                AssertLargestPages("Back on the picker" + size, largest ? BarePickerOfSixteenLargestPages : 1, page =>
+                AssertLargestPages("Back on the picker" + size, NominationPagesHere(BarePickerOfSixteenLargestPages), page =>
                     AssertNominationScreen("Back on the picker" + size + (page > 1 ? ", page " + page : ""), "Commit nominations", EpisodeHud.ShowCandidateContextCaption));
 
                 // Two picks compared, in the grid's place. The toggle swaps the views in place without
@@ -541,25 +541,41 @@ namespace Gamesim.Tests.PlayMode
                 ButtonWithCaption(EpisodeHud.EventChoiceCaption(beat.choices[0].label)).onClick.Invoke();
                 yield return null;
                 // Fifteen names at the least a cell reads at are more than the stage holds at the
-                // largest text: the WHO? pages there, every name on one of its pages.
-                var named = new List<string>();
-                AssertLargestPages("The WHO? of the whole house" + size, largest ? WhoOfSixteenLargestPages : 1, page =>
+                // largest text: the WHO? pages there, every name on one of its pages - the pages the
+                // suite names for the frame running, and at the largest the pages it names for the
+                // 16:9 and the 4:3 frame each, laid out as that frame lays them. On the screen's own
+                // frame each page is the whole nomination screen too.
+                void AssertTheWho(string what, int expected, bool screen)
                 {
-                    string here = "The WHO? of the whole house" + size + (page > 1 ? ", page " + page : "");
-                    AssertNominationScreen(here, "Continue episode");
-                    var grid = ActiveRect(EpisodeHud.StoryPeopleName);
-                    Assert.That(grid, Is.Not.Null, here + ": everybody it can name is a grid.");
-                    Assert.That(grid.IsChildOf(ActiveRect("Episode content")), Is.True, here + ": inside the stage's column,");
-                    foreach (var face in grid.GetComponentsInChildren<Button>())
+                    var named = new List<string>();
+                    AssertLargestPages(what, expected, page =>
                     {
-                        named.Add(face.name);
-                        string id = beat.choices[0].eligibleIds.Single(eligible => state.Find(eligible).name == face.name);
-                        Assert.That(face.GetComponentsInChildren<TMP_Text>().Single(text => text.name == "Reading").text,
-                            Is.EqualTo(RelationshipWeb.StandingWord(RelationshipWeb.KindOf(state, id)) + " · Trust " + state.Score(state.playerId, id).ToString("0")),
-                            face.name + "'s cell keeps the player's own reading of them, as the list it replaced did" + size + ".");
-                    }
-                });
-                Assert.That(named, Is.EquivalentTo(people), "one cell for each, named by the name, on exactly one page" + size + ".");
+                        string here = what + (page > 1 ? ", page " + page : "");
+                        if (screen) AssertNominationScreen(here, "Continue episode");
+                        var grid = ActiveRect(EpisodeHud.StoryPeopleName);
+                        Assert.That(grid, Is.Not.Null, here + ": everybody it can name is a grid.");
+                        Assert.That(grid.IsChildOf(ActiveRect("Episode content")), Is.True, here + ": inside the stage's column,");
+                        foreach (var face in grid.GetComponentsInChildren<Button>())
+                        {
+                            named.Add(face.name);
+                            string id = beat.choices[0].eligibleIds.Single(eligible => state.Find(eligible).name == face.name);
+                            Assert.That(face.GetComponentsInChildren<TMP_Text>().Single(text => text.name == "Reading").text,
+                                Is.EqualTo(RelationshipWeb.StandingWord(RelationshipWeb.KindOf(state, id)) + " · Trust " + state.Score(state.playerId, id).ToString("0")),
+                                face.name + "'s cell keeps the player's own reading of them, as the list it replaced did" + size + ".");
+                        }
+                    });
+                    Assert.That(named, Is.EquivalentTo(people), what + ": one cell for each, named by the name, on exactly one page.");
+                }
+                AssertTheWho("The WHO? of the whole house" + size, NominationPagesHere(WhoOfSixteenLargestPages), true);
+                if (largest)
+                    foreach (var frame in new[] { (Width: 1600, Height: 900, Name: "16x9", Pages: WhoOfSixteenLargestPages.At16x9),
+                        (Width: 1200, Height: 900, Name: "4x3", Pages: WhoOfSixteenLargestPages.At4x3) })
+                        yield return AtFrame(frame.Width, frame.Height, () =>
+                        {
+                            string on = "The WHO? of the whole house" + size + " on the " + frame.Name + " frame";
+                            Assert.That(NominationFrameNow(), Is.EqualTo(frame.Name), on + " is laid out for that frame.");
+                            AssertTheWho(on, frame.Pages, false);
+                        });
                 ShowPageWith(EpisodeHud.StoryBackCaption);
                 ButtonWithCaption(EpisodeHud.StoryBackCaption).onClick.Invoke();
                 yield return null;

@@ -474,9 +474,14 @@ namespace Gamesim.Episode
             float s = FontScale;
             NominationTitle(NominationSteps.PickerTitle, null, UiTheme.Gold, false);
             string Label(string id) => id == null ? "—" : Array.Find(options, o => o.Id == id).Label ?? "—";
-            string Selected() => first == null && second == null ? "Choose two houseguests below." : "Selected: " + Label(first) + " and " + Label(second);
-            var selection = FlowText(Selected(), 17, Accent);
+            // The picks as a line: at the step's head, or at a paged step's foot under the cards.
+            string Selected(bool atFoot) => first == null && second == null ? (atFoot ? ChooseTwoAtTheFootWords : "Choose two houseguests below.")
+                : "Selected: " + Label(first) + " and " + Label(second);
+            var selection = FlowText(Selected(false), 17, Accent);
             selection.name = SelectedNomineesName;
+            // At the largest text a paged picker stands the line at each page's foot, so a pick on
+            // any page is named on it (EpisodeHud.NominationPages.cs).
+            PagedStepFootLine(selection, Selected);
             // Same framing the notebook uses, so a trust number is never mistaken for fact.
             FlowText("Trust readings are your own perspective; another housemate may feel differently.", 13, UiTheme.Muted);
             if (!string.IsNullOrEmpty(aimLine)) FlowText(aimLine, 15, UiTheme.Gold);
@@ -560,7 +565,7 @@ namespace Gamesim.Episode
                     else if (second == captured.Id) second = null;
                     else if (first == null) first = captured.Id;
                     else second = captured.Id;
-                    selection.text = Localisation.Text(Selected());
+                    selection.text = Localisation.Text(Selected(AtPagedStepFoot(selection)));
                     foreach (var pair in built) MarkNominee(pair.Value, pair.Key == first || pair.Key == second);
                     picked?.Invoke(first, second);
                     refresh();

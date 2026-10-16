@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Gamesim.Presentation;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -21,14 +22,25 @@ namespace Gamesim.Episode
     /// <para>Nothing is built smaller for it and nothing is left out: a card keeps the size the
     /// one-page layout gave it (its least), every face and every candidate is on exactly one page,
     /// and the pinned footer - the way on, its secondary and the strip - is the same on every page.
-    /// The pager is not where the panel opens: the step's first control does, else the way on
-    /// (<see cref="IsLargestPagerControl"/>). Which page is shown is the pager's view state: a
+    /// A step's pager is not where the panel opens: the step's first control does, else the way on
+    /// (<see cref="IsStepPagerControl"/>). Which page is shown is the pager's view state: a
     /// rebuild keeps it, another step starts on its first, and turning one commits nothing.</para>
+    ///
+    /// <para>The Head of Household's picks are said on every page: a paged picker stands its
+    /// "Selected: A and B" line at each page's foot, left of the pager, in the band the pager
+    /// already takes from the page (<see cref="PagedStepFootLine"/>), so a pick on any page is
+    /// named where it was made. The comparison, one view, has it back at the step's head.</para>
     /// </summary>
     public sealed partial class EpisodeHud
     {
         /// <summary>The row at a paged step's foot that holds the pager, by the name a test finds it by.</summary>
         public const string StepPagesRowName = "Step pages";
+
+        /// <summary>
+        /// What the picker's selection line says at a paged step's foot while nothing is picked: the
+        /// cards stand over it there, so not the head's "Choose two houseguests below."
+        /// </summary>
+        public const string ChooseTwoAtTheFootWords = "Choose two houseguests.";
 
         /// <summary>One unit of a paged step: a row of the column, or one line of a grid row's cards, and its page.</summary>
         private sealed class StepUnit
@@ -44,6 +56,37 @@ namespace Gamesim.Episode
         private int stepPage;
 
         /// <summary>
+        /// The line a step asks to stand at its foot when it pages (the picker's selection), and its
+        /// words there or at the head: registered as the step is built, taken by
+        /// <see cref="PageNominationStep"/>, and kept only while the step pages.
+        /// </summary>
+        private TMP_Text stepFootLine;
+        private Func<bool, string> stepFootWords;
+        /// <summary>The line's place in the column, its look there, and where it stands at the foot: this render's.</summary>
+        private int stepFootIndex;
+        private float stepFootSize, stepFootLeast, stepFootTop, stepFootWidth, stepFootHeight;
+        private bool stepFootAutoSized;
+        private TextWrappingModes stepFootWrapping;
+        private TextAlignmentOptions stepFootAlignment;
+        private Vector2 stepFootPivot;
+
+        /// <summary>
+        /// Asks for <paramref name="line"/> to stand at the step's foot, left of the pager, on every
+        /// page should the step page at the largest text, saying <paramref name="words"/>(true)
+        /// there and <paramref name="words"/>(false) at the step's head. Nothing changes where the
+        /// step is one page. Call it as the step is built, before <see cref="PageNominationStep"/>.
+        /// </summary>
+        public void PagedStepFootLine(TMP_Text line, Func<bool, string> words)
+        {
+            stepFootLine = line;
+            stepFootWords = words;
+        }
+
+        /// <summary>Whether <paramref name="line"/> stands at this render's paged step's foot now.</summary>
+        public bool AtPagedStepFoot(TMP_Text line) =>
+            line != null && stepPagesRow != null && line.transform.parent == stepPagesRow;
+
+        /// <summary>
         /// Deals the step just built onto the largest text's pages when it cannot fit the stage on
         /// one, shows the page kept for <paramref name="screen"/>, and stands the pager at its foot,
         /// turning through <paramref name="redraw"/>. False, with nothing touched, at the other text
@@ -52,7 +95,12 @@ namespace Gamesim.Episode
         public bool PageNominationStep(string screen, Action redraw)
         {
             stepUnits = null; stepPagesRow = null;
+            // This render's foot line, if its step asked for one: taken here, whatever comes of it.
+            var footLine = stepFootLine;
+            var footWords = stepFootWords;
+            stepFootLine = null; stepFootWords = null;
             if (!LargestTextPages || content == null || modal == null || string.IsNullOrEmpty(screen)) return false;
+            if (footLine != null && (footWords == null || footLine.transform.parent != content)) footLine = null;
             var column = content.GetComponent<VerticalLayoutGroup>();
             float spacing = column != null ? column.spacing : 12f, width = ContentWidth();
             // The room NominationRoomLeft lays every step to, with the margin it keeps.
@@ -61,11 +109,15 @@ namespace Gamesim.Episode
             var heights = new List<float>();
             var gaps = new List<float>();
             var keep = new List<bool>();
+            int rows = 0, footIndex = -1;
             foreach (Transform child in content)
             {
                 if (!child.gameObject.activeSelf || !(child is RectTransform row)) continue;
                 float height = ColumnRowHeight(row, width);
-                total += (units.Count > 0 ? spacing : 0f) + height;
+                // The one page's height, the foot line's row and all, decides whether the step pages.
+                total += (rows++ > 0 ? spacing : 0f) + height;
+                // The foot line is no page's row: it stands in the pager's band on every page.
+                if (footLine != null && row == footLine.rectTransform) { footIndex = row.GetSiblingIndex(); continue; }
                 var grid = row.GetComponent<GridLayoutGroup>();
                 int cells = grid != null ? ActiveChildren(row) : 0;
                 if (grid != null && grid.constraint == GridLayoutGroup.Constraint.FixedColumnCount && grid.constraintCount > 0
@@ -101,7 +153,6 @@ namespace Gamesim.Episode
             stepPage = page;
             stepPagesRow = new GameObject(StepPagesRowName, typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
             stepPagesRow.SetParent(content, false);
-            ShowStepPage(false);
             // The pager at the page's foot - the row takes what the page leaves - so it stands at the
             // same place on every page and the press that turned one can turn it back.
             float used = 0f;
@@ -115,15 +166,74 @@ namespace Gamesim.Episode
             float foot = Mathf.Max(pager, room - used - spacing);
             var element = stepPagesRow.GetComponent<LayoutElement>();
             element.minHeight = element.preferredHeight = foot;
-            LargestPager(stepPagesRow, 0f, foot - pager, width, screen, page, pages, redraw);
+            var turner = LargestPager(stepPagesRow, 0f, foot - pager, width, screen, page, pages, redraw);
+            // The foot line in the pager's band, left of where the page is, on every page.
+            if (footLine != null && footIndex >= 0 && turner != null)
+            {
+                float left = width;
+                foreach (Transform part in turner)
+                    if (part is RectTransform placed) left = Mathf.Min(left, placed.anchoredPosition.x);
+                stepFootLine = footLine;
+                stepFootWords = footWords;
+                stepFootIndex = footIndex;
+                stepFootTop = foot - pager;
+                stepFootHeight = pager;
+                stepFootWidth = Mathf.Max(0f, left - 8f * FontScale);
+                stepFootSize = footLine.fontSize;
+                stepFootLeast = footLine.fontSizeMin;
+                stepFootAutoSized = footLine.enableAutoSizing;
+                stepFootWrapping = footLine.textWrappingMode;
+                stepFootAlignment = footLine.alignment;
+                stepFootPivot = footLine.rectTransform.pivot;
+            }
+            ShowStepPage(false);
             return true;
+        }
+
+        /// <summary>The least the foot line's type shrinks to, where its names run long beside the pager.</summary>
+        private const float StepFootLineLeast = 12f;
+
+        /// <summary>
+        /// Stands this render's foot line at the paged step's foot, left of the pager - its words
+        /// on one line, shrinking toward <see cref="StepFootLineLeast"/> before any is cut - or, for
+        /// the comparison, back at its place in the step's head, as the one-page step has it.
+        /// Nothing when the step has no foot line.
+        /// </summary>
+        private void PlaceStepFootLine(bool atFoot)
+        {
+            var line = stepFootLine;
+            if (line == null || stepPagesRow == null || stepFootWords == null) return;
+            var rect = line.rectTransform;
+            if (atFoot)
+            {
+                rect.SetParent(stepPagesRow, false);
+                EndScreenKit.Place(rect, 0f, stepFootTop, stepFootWidth, stepFootHeight);
+                line.textWrappingMode = TextWrappingModes.NoWrap;
+                line.alignment = TextAlignmentOptions.MidlineLeft;
+                line.fontSize = stepFootSize;
+                AutoSize(line, StepFootLineLeast);
+            }
+            else
+            {
+                rect.SetParent(content, false);
+                rect.SetSiblingIndex(stepFootIndex);
+                rect.pivot = stepFootPivot;
+                line.enableAutoSizing = stepFootAutoSized;
+                line.fontSizeMin = stepFootLeast;
+                line.fontSizeMax = stepFootSize;
+                line.fontSize = stepFootSize;
+                line.textWrappingMode = stepFootWrapping;
+                line.alignment = stepFootAlignment;
+            }
+            line.text = Localisation.Text(stepFootWords(atFoot));
         }
 
         /// <summary>
         /// Shows the paged step's page: each row on it, and of a grid only the lines on it, sized to
-        /// them. <paramref name="comparing"/> is the picker's comparison, which takes the grid's place
-        /// in the step without a render: the rows that head the step stay, nothing past them, and no
-        /// pager - the comparison is one view, not a page of the grid.
+        /// them, and the foot line beside the pager. <paramref name="comparing"/> is the picker's
+        /// comparison, which takes the grid's place in the step without a render: the rows that head
+        /// the step stay, the foot line back among them, nothing past them, and no pager - the
+        /// comparison is one view, not a page of the grid.
         /// </summary>
         private void ShowStepPage(bool comparing)
         {
@@ -155,6 +265,7 @@ namespace Gamesim.Episode
                 row.gameObject.SetActive(count > 0);
             }
             if (stepPagesRow != null) stepPagesRow.gameObject.SetActive(!comparing);
+            PlaceStepFootLine(!comparing);
         }
 
         /// <summary>
@@ -167,9 +278,13 @@ namespace Gamesim.Episode
             ShowStepPage(comparing);
         }
 
-        /// <summary>Whether a control is one of the largest text's pager's: never the control a panel opens on.</summary>
-        private static bool IsLargestPagerControl(Selectable item) =>
-            item != null && item.transform.parent != null && item.transform.parent.name == LargestPagerName;
+        /// <summary>
+        /// Whether a control is this render's paged step's own pager's: never the control a panel
+        /// opens on, so a step with nothing to press - the ceremony - opens on its way on. Only the
+        /// nomination's steps ask: every other screen's pager opens as the shared pager does.
+        /// </summary>
+        private bool IsStepPagerControl(Selectable item) =>
+            item != null && stepPagesRow != null && item.transform.IsChildOf(stepPagesRow);
 
         private static int ActiveChildren(Transform row)
         {

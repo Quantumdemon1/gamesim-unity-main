@@ -96,8 +96,12 @@ namespace Gamesim.Presentation
         /// </summary>
         private int gridColumns = Columns;
 
-        /// <summary>The text scale the screen is magnified by: the settings' size, as <see cref="FontScale"/> set it.</summary>
-        private float TextScale => scaler != null && scaler.referenceResolution.x > 1f ? 1920f / scaler.referenceResolution.x : 1f;
+        /// <summary>
+        /// The text scale the screen is magnified by: the settings' size, exactly as
+        /// <see cref="FontScale"/> was given it, never read back from the reference resolution.
+        /// </summary>
+        private float TextScale => textScale;
+        private float textScale = 1f;
 
         /// <summary>The caption the start control carries. Tests and the tour find it by this text.</summary>
         public const string StartCaption = "Start this season";
@@ -242,6 +246,7 @@ namespace Gamesim.Presentation
             {
                 if (scaler == null) return;
                 float scale = Mathf.Clamp(value, 0.5f, 2f);
+                textScale = scale;
                 scaler.referenceResolution = new Vector2(1920f / scale, 1080f / scale);
             }
         }

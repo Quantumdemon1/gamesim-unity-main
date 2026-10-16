@@ -307,8 +307,9 @@ namespace Gamesim.Editor
             new Prop("Games floor", "stoolBar",                 0.20f, -0.06f,  90f, 0.78f),
             new Prop("Games floor", "stoolBar",                 0.20f, -0.18f,  90f, 0.78f),
             // Turned out of the west divider's face and into the room (it stood at 70), and 0.115 m
-            // east of where it stood: turned, its corner still reached a stride into the divider's
-            // doorway (HouseRoomArrangement).
+            // east of where it stood (-0.40): turned, its corner still reached 0.105 m into the
+            // stride kept clear in front of the divider's doorway, though not into the gap itself
+            // (HouseRoomArrangement). An owner's call: -0.40f puts it back on the owner's spot.
             new Prop("Games floor", "loungeChairRelax",        -0.387744f, 0.16f, 270f, 0.88f),
             new Prop("Games floor", "bookcaseOpen",            -0.42f,  0.40f,  90f, 1.05f),
             // The study corner faces itself (HouseRoomArrangement): the laptop's screen to the chair,

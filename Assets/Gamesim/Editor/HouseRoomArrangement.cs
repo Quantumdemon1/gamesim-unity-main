@@ -51,7 +51,11 @@ namespace Gamesim.Editor
     /// divider turns from 70 to 270 (-87.79), out of the wall's face and into the room. Turned, its
     /// corner still reached 0.105 m into the stride in front of the divider's doorway (it reached
     /// further at 70), so it stands 0.115 m east of its measured (5.705, -13.40), at (5.82, -13.40):
-    /// the nearest clear spot, a centimetre clear.</para>
+    /// the nearest clear spot, a centimetre clear. The stride is the margin this pass keeps clear
+    /// in front of a doorway's gap, not the gap: a bake with the chair on the owner's spot reached
+    /// the same room pairs, approaches and bindings and backed off nothing more, so the 0.115 m is
+    /// the owner's to take back: its row's -0.40, the pin's 5.705, and a doorway margin in
+    /// HouseRoomArrangementTests that stops short of the chair.</para>
     ///
     /// <para><b>The corkboard.</b> The room finish (2026-09-28, after the owner's session) hung its
     /// corkboard and polaroids in the middle of the east partition's north segment, where the owner

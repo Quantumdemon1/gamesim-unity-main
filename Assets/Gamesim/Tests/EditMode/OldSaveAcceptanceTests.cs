@@ -166,7 +166,7 @@ namespace Gamesim.Tests.EditMode
         /// voting blocs, the NPC conversations, the action budget, deals, house events, storylines, the story world, the
         /// read, the levers, the week and agency the week after the save's (schemas 5, 6, 9 to 12 and 16 to 20); the
         /// competition rules at 1 (13); the Have-Nots, the strategy windows and every rule from schema 21 on switched off.
-        /// The story world a migration opens (16) plays this build's story rules, as a new season does.
+        /// The story world a migration opens (16) plays story rules 9, the step's literal, whatever a new season plays.
         /// </summary>
         private static void AssertRulesKept(JObject payload, EpisodeState loaded)
         {
@@ -194,7 +194,7 @@ namespace Gamesim.Tests.EditMode
             else
             {
                 Assert.That(loaded.story.rulesStartWeek, Is.EqualTo(week + 1), "The story world opens the week after the save's.");
-                Assert.That(loaded.story.rulesVersion, Is.EqualTo(StoryRules.Current));
+                Assert.That(loaded.story.rulesVersion, Is.EqualTo(StoryRules.Threads), "The story world opens under the step's own rules, not a new season's.");
             }
             if (payload["npcSocial"] is JObject npcSocial)
                 Assert.That(loaded.npcSocial.rulesStartWeek, Is.EqualTo((int)npcSocial["rulesStartWeek"]));

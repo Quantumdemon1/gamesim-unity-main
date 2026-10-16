@@ -19,7 +19,10 @@ Where it stands (lane W2-saves, 2026-10-15):
   build (finding F1).
 - **Two unversioned replay breaks found** in the history, both accepted fixes. The fixtures record them and are
   referenced past them (F2, F3).
-- **One schema number has two meanings**: the story-arcs line's own 14. This build refuses it whole (F4).
+- **One schema number has two meanings**: the story-arcs line's own 14. This build refuses it whole (F4, the owner's
+  call).
+- **Schema 16's step is frozen** (F6, 2026-10-16). It writes story rules 9 as a literal. Before, the next story
+  milestone would have had every schema 2 to 15 save refused.
 - **Codex's 17 reader holds** map to a test here that pins all seventeen readers on every fixture. **L01 to L16** are
   custody of Codex's native capture host and are closed as process only (section 5).
 - **The Frozen28 reader compiles and passes**: under net10 with warnings as errors, 4,781 of 4,781 cases, and it
@@ -71,7 +74,7 @@ The main line is the consolidation's first-parent history.
 | 13 | 74091da0 (09-20) | competition rules 1, template and appearance null | none committed; 4 in the owner's local saves (2.2) | generated, director and default |
 | 14 | 7fc031fb (09-26, game-flow line). The main line's own "14" is 52cb23df, story-arcs: F4 | Have-Nots, inert | none | generated, director (game-flow); story-arcs 14 refused |
 | 15 | 0b474234 (09-26, game-flow line only) | strategy, inert | none | generated, director |
-| 16 | 76654f3b (09-26, the lines' merge) | story world opened +1 week with the live story rules (F6) | 7 director, defaults | real: director at w1 HoH, at the final speeches, finished as winner; default |
+| 16 | 76654f3b (09-26, the lines' merge) | story world opened +1 week under story rules 9, frozen (F6) | 7 director, defaults | real: director at w1 HoH, at the final speeches, finished as winner; default |
 | 17 | 923fb299 (09-28) | ledger; read rules +1 week | 1 director, defaults | real: director finished; default |
 | 18 | fae01079 (09-28) | ledger lists; levers +1 week | 3 director, defaults | real: director at w1 eviction; default |
 | 19 | b465d93c (09-28; branch commit 3bab3743) | windows +1 week | 1 director, defaults | real: director finished; default |
@@ -97,7 +100,7 @@ The main line is the consolidation's first-parent history.
 | `economyRulesVersion` | 0 or 1 (from 23) | `EconomyRulesOn` | EpisodeEngine.Week.cs:46 |
 | `finaleRulesStartWeek` | 0, or ≥ 1 (from 21) | `FinaleOn`, `FinaleQuestions`, `FinalArgument`, `AnswerJury` | EpisodeFinale.cs:63 |
 | read, lever, week, agency start weeks (17–20) | 0, 1, or the migration's week + 1 | VoteRead, levers, windows, agency | EpisodeSaveMigrations V16→V20 |
-| `story.rulesStartWeek` and `story.rulesVersion` | 0/0; 1 with 6, 7, 8 or 9; a migration's week + 1 with the live version | the story system | StoryState.cs `StoryRules` |
+| `story.rulesStartWeek` and `story.rulesVersion` | 0/0; 1 with 6, 7, 8 or 9; a migration's week + 1 with 9 (F6) | the story system | StoryState.cs `StoryRules` |
 | competition, Have-Nots, strategy, bloc, budget, deals, events, storylines | each 0 or 1, or a migration's week + 1 | their own systems | ShippedRules.Fields |
 
 These fields do not vary freely. In practice they move together in the combinations a build could write:
@@ -339,6 +342,30 @@ repository is public. Every cell they fall in already has a fixture.
   `AnOldSaveFromABranchsOwnSchemaNumberIsRefusedAndLeftAsItWas` holds that.
 - **Owner's call.** Supporting such a file needs its own route, 14-story to 16 with the Have-Not and strategy
   literals. It would only ever carry saves from one day's branch builds.
+- **What such a file holds** (the committed `s14-storyline-director-w2-social`, written by 52cb23df, read
+  2026-10-16):
+  - It is schema 13 plus one `story` bundle. The bundle has schema 16's sixteen fields and one more, `story.haveNots`:
+    production's own Have-Nots, three houseguests in that save's week. The merge folded them into the game-flow
+    line's Have-Nots, so they have no place in schema 16.
+  - Its house events, choices and storylines carry schema 16's story fields (5 events and 3 storylines in the
+    fixture). Its story rules are 6, from week 1.
+  - It has none of schema 14's Have-Not fields (`haveNotRulesStartWeek`, `haveNots`, `haveNotPasses`,
+    `punishedHaveNots`, `vetoPrizes`) or schema 15's strategy fields (`strategyRulesStartWeek`, `lobbies`,
+    `replyCards`).
+- **What loading it would take:**
+  - Tell the two 14s apart by the `story` key.
+  - Add a frozen contract for the story-arcs 14 shape.
+  - Add a step to 16 that adds the Have-Not and strategy fields switched off and keeps the story bundle.
+  - Decide what `story.haveNots` becomes. There are two choices, and both change the save's week:
+    - Drop the rows: that week loses its Have-Nots.
+    - Move them to the top-level `haveNots`: this switches on the game-flow Have-Not rules, which the season never
+      played.
+  - Add a fixture whose reference is the build that lands the route. No build both wrote such a file and plays it
+    on, because the merge changed the rules under it.
+- **What happens today in the game:**
+  - The store refuses the file with the reason, leaves it untouched and writes no backup.
+  - It refuses to save over the file: "Choose backup recovery or another slot before saving".
+  - The player starts a season in another slot.
 
 **F5. By design, older saves continue differently on older builds.**
 
@@ -348,14 +375,39 @@ repository is public. Every cell they fall in already has a fixture.
 - That is why the reference for those saves is 7f398b94, the first build whose migration ends with this build's rule
   set.
 
-**F6. Schema 16's step is not frozen.**
+**F6. Schema 16's step was not frozen. Frozen at story rules 9 (2026-10-16).**
 
-- `UpgradeV15ToV16` opens the story world with the live `EpisodeEngine.EnableStory` and `StoryRules.Current`.
-- So a schema 6 to 15 save's continuation depends on the build loading it. A later `StoryRules.Current` bump would move
-  every such season.
-- The acceptance test pins today's value (`AssertRulesKept`).
-- **Recommendation.** Freeze the step's story rules version at 9, as every other step's literals are frozen. This is
-  a code change for the persistence owner, not made here.
+- **Before:** `UpgradeV15ToV16` opened the story world with `EpisodeEngine.EnableStory`. That method gives a new season
+  `StoryRules.Current`, so the step's story rules followed the build that loaded the save.
+- **What the next story milestone would have done.** Measured by bumping `StoryRules.Current` to 10 in a mutation copy:
+  - Every schema 2 to 15 save would have been refused on load with "Unsupported story rules version." The seasons
+    would not have moved; they would not have loaded at all.
+  - The cause: the step would write 10. On its way to 28 the payload passes the frozen schema-24 and 25 contracts
+    (`FrozenV24Validator`, `FrozenV25Validator`, pinned at 6ea7d2ec), which allow story rules up to 9 only.
+  - This corrects the first version of this finding, which said the seasons would move.
+- **The change:**
+  - The step still calls `EnableStory`, for the start week and the lore cast from the saved cards. `Lore.Cast` does
+    not read the rules version.
+  - The step then writes `rulesVersion = 9`, a literal like every other step's.
+  - Only range checks and a new season's rules (`ShippedRules.ApplyFresh`) follow a `Current` constant; a frozen step
+    names its version.
+  - 9 is what the step has written since threads landed (a8122c7b), and every fixture was recorded under it. So
+    nothing moves today.
+- **The tests** now hold the literal 9 (`StoryRules.Threads`), not `StoryRules.Current`:
+  - `AssertRulesKept`;
+  - `PersistenceV16MigrationTests.MigrationAddsTheBundleFromNextWeekAndMovesNothingElse`.
+- **Proof**, under the Mono harness, on OldSaveAcceptanceTests, PersistenceMigrationTests and PersistenceV13 to
+  V16MigrationTests (232 cases). With `StoryRules.Current` bumped to 10:
+  - **The step as it was:** 67 red, all with that message.
+    - OldSaveAcceptanceTests: 48, the 16 schema 2 to 15 fixtures three ways.
+    - PersistenceV13MigrationTests 5, V14 3, V15 4, V16 3 and PersistenceMigrationTests 4.
+    - The suite at aacf4dfd, whose tests still said `Current`, gives the same 67.
+  - **The frozen step:** 0 red; all 232 pass.
+  - **Without the bump:** the frozen step passes all 232 too.
+- **Still live in the step, deliberately:**
+  - The lore cast. It is content, and a change to it moves new seasons as well, which the season digests catch.
+  - The bundle's shape, written from the live `StoryWorldState`. A new field there would be refused by the next step's
+    `FrozenEpisodeV16` field set, so every schema 2 to 15 fixture would go red at once.
 
 **F7. Presentation passes reach old seasons on purpose.**
 
@@ -451,6 +503,9 @@ end.
 The four early-step mutations turn red only the schema 2 to 5 fixtures: no other fixture crosses those steps. The
 synthetic classes (PersistenceMigrationTests, V3 to V6) catch all four too, the study bonus only in its own class
 (PersistenceV4MigrationTests). Until now they were those steps' only cover.
+
+The F6 freeze is proved in section 3 (F6). With `StoryRules.Current` bumped to 10, the old step turns 67 cases red and
+the frozen one none.
 
 - **Native runs** through the locked runner, EditMode, without UMA:
   - **Red**, at 2940642e (the fixtures, before the fix), OldSaveAcceptanceTests, BallotPrivacyTests and
@@ -583,17 +638,16 @@ The live pin `ShippedRulesTests.TheLiveSchemaStaysAt28UntilFrozenEpisodeV28Freez
 
 - The schema 1 and 8 cells cannot have a build-written fixture: no build that wrote schema 1 survives, and no build
   ever wrote schema 8 (2.1). They stay covered by synthetic payload tests.
-- Owner decisions. Neither blocks this gate; each is a question only the owner can answer:
+- One owner decision. It does not block this gate:
   - **F4**: should a story-arcs-14 file load?
     - No (today): it is refused whole and left untouched. It only ever came from one day's branch builds
       (52cb23df, 2026-09-26), and no such file is among the owner's 98 local saves or the GamesimVerify saves.
     - Yes: a route from story-14 to 16 with the Have-Not and strategy literals, plus a fixture. That is new migration
       code for one branch's files.
-  - **F6**: should the schema-16 step freeze its story rules version?
-    - Today: the step opens the story world with the live `StoryRules.Current`, so the next bump of that constant
-      would move every schema 2 to 15 season played on from a save, with no schema change to show it. The fixtures'
-      season digests would catch it, so it cannot happen silently.
-    - Freezing at today's value would change nothing now, and would keep those seasons fixed after a bump. It is a
-      change to a frozen migration step, which the persistence owner should make deliberately.
+    - Either way, `story.haveNots` decides that save's week (F4): dropped or moved to the game-flow Have-Nots.
+- **F6 is closed** (2026-10-16): the schema-16 step writes story rules 9 as a literal.
+  - Before, the next story milestone would have had every schema 2 to 15 save refused.
+  - Reverting it is one commit. The old step is not a real alternative, though: it would break those saves at the
+    next milestone.
 - The B9 tuning and the All-Star rebuild may proceed past this gate only with schema 29 claimed, and with this
   acceptance extended as in section 6, step 6.

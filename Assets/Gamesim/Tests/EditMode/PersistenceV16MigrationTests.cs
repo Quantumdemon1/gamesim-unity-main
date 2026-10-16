@@ -42,7 +42,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That((int)migrated["schemaVersion"], Is.EqualTo(28));
             int week = (int)old["week"];
             Assert.That((int)migrated["story"]["rulesStartWeek"], Is.EqualTo(week + 1));
-            Assert.That((int)migrated["story"]["rulesVersion"], Is.EqualTo(StoryRules.Current));
+            Assert.That((int)migrated["story"]["rulesVersion"], Is.EqualTo(StoryRules.Threads), "The step's own literal, never a new season's StoryRules.Current.");
             Assert.That(((JArray)migrated["story"]["lore"]).Count, Is.EqualTo(((JArray)old["contestants"]).Count(c => !(bool)c["isPlayer"])));
             foreach (var list in new[] { "grudges", "facts", "bonds", "hooks", "contacts", "knownFacts", "conduct", "removals", "cooldowns", "reckonings" })
                 Assert.That(((JArray)migrated["story"][list]).Count, Is.Zero, list);

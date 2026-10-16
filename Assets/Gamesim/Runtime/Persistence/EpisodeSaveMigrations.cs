@@ -475,6 +475,13 @@ namespace Gamesim.Persistence
             var cast = result.ToObject<EpisodeState>(serializer);
             cast.story = new StoryWorldState();
             EpisodeEngine.EnableStory(cast, checked(week + 1));
+            // Under story rules 9 (threads), a literal like every other step's. EnableStory gives a new
+            // season StoryRules.Current; were the step to keep that, the next story milestone would have
+            // every schema 2 to 15 save refused, since the frozen schema-24 and 25 contracts this payload
+            // passes on its way up allow story rules up to 9 only. 9 is what this step has opened since
+            // threads landed (a8122c7b), and what every old-save fixture was recorded under
+            // (Assets/Plans/OLD-SAVE-ACCEPTANCE.md, F6). Lore.Cast does not read the version.
+            cast.story.rulesVersion = 9;
             result.Add("story", JObject.FromObject(cast.story, serializer));
             result["schemaVersion"] = 16;
             return result;

@@ -170,6 +170,22 @@ them:
 - r3s3b, with `GAMESIM_DIAGNOSTICS`: `Gamesim.Uma.DiagnosticsPlayModeTests` 10 run, 5 passed, 220 s. The
   seven probes as before the move (four pass; dynamic IK, inert stream and Source21's landmark drift fail),
   Source21 among them after its relaxed precondition (e6e7c597); the three readiness diagnostics as above.
+- r3s3c, the UMA-free copy with `GAMESIM_DIAGNOSTICS`: `Gamesim.DiagnosticsPlayModeTests` 7 run, 4 passed,
+  121 s; the same three failures as before the move (dynamic IK, inert stream, and Source21's landmark
+  drift, which it reaches past the relaxed precondition, as on the UMA copy).
+- r3s3d, mutations of the product (applied together, each pinned by its own witness, then restored byte for
+  byte: `EpisodeDirector.Farewell.cs` sha256 271e6b2d..., `CharacterPresentation.Farewell.cs` 6e3ef7f2...):
+  M2, the second endpoint's preparation is checked but its WalkStop write never made; M3, with nothing
+  written the observation lets the cut through at once; M4, `TryCaptureFarewellIdle` no longer waits out a
+  transition. All three decision tests went red on their own witnesses: `BothWalkStop...` on "Endpoint 1:
+  the director's write ... must cross it into Idle" (M2), `BothIdle...` on a cut at the frame after the
+  authorization (M3), `AnExistingStopExit...` on an attempt spent during the crossing (M4). The 14
+  `GroundedFarewell_` tests of the UMA build ran beside them: M2 and M3 cannot act on the cast's natural
+  endpoints (its second endpoint is the Idle no-op, and the evicted's WalkStop always spends the attempt),
+  and none of those tests failed beyond the two foot-drift failures but one: M4 also turned
+  `RefusesSecondForeignOwnersBeforeCommit` red (the shrug's zero-weight handoff, captured as Idle). So the
+  transition guard was already covered for a foreign cue, the other two branches only by the moved
+  diagnostics, which acceptance never runs; the decision tests now cover all three.
 
 **For the lead and the later lanes (review S3-3, S3-6, S3-8).**
 - The ratified readiness tests read the cast's natural endpoints, and the evicted's WalkStop comes from the

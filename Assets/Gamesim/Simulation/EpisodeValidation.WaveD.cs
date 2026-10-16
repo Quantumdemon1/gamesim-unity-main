@@ -34,6 +34,11 @@ namespace Gamesim.Simulation
             if (s.relationships.Any(r => r.events.Any(e => EpisodeEngine.AllWeekRecord(e.type)
                     && (s.allWeekRulesStartWeek == 0 || e.week < s.allWeekRulesStartWeek))))
                 return Fail(out error, "A season without the all-week rules has none of their records.");
+            // Both write them only between two houseguests: a change with the player keeps the engine's own path, which records
+            // none of them, as it has since each was introduced (the consolidation check's ARCS2-4), so no season the engine
+            // played holds one on an edge of the player's.
+            if (s.relationships.Any(r => (r.fromId == s.playerId || r.toId == s.playerId) && r.events.Any(e => EpisodeEngine.AllWeekRecord(e.type))))
+                return Fail(out error, "The all-week rules' records are only ever between two houseguests.");
             return true;
         }
 

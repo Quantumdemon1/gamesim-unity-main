@@ -470,7 +470,7 @@ namespace Gamesim.Episode
             {
                 bool mine = promise.fromId == state.playerId;
                 lines.Add("Week " + promise.week + ": " + (mine ? "You promised " + first : first + " promised you")
-                    + " " + RelationshipWeb.PromiseWord(promise.kind) + " \u00b7 " + PromiseStanding(promise.status));
+                    + " " + RelationshipWeb.PromiseWord(promise.kind) + " \u00b7 " + KnownPromiseStanding(state, promise));
                 personal++;
             }
             foreach (var alliance in state.alliances.Where(a => a.members.Contains(state.playerId) && a.members.Contains(actor.id)))

@@ -355,7 +355,9 @@ namespace Gamesim.Simulation
         /// and <see cref="KnownBallots.YourKeepTellsTheirBallot"/> read it - read from the week's ballots, not the deal, because a
         /// partnership the player kept stands with no status or settlement week (C1), so no settled deal says so. Its voter decides
         /// it alone and its partner is the nominee, so a partnership the player kept is always theirs to read (the consolidation
-        /// check's D5).</para>
+        /// check's D5). Under mode 2 a partnership is the only kind that reaches this gate (a vote deal's line is its row's), so the
+        /// settled-deal clause after the ballot check is reached by no partnership the engine keeps (C1 leaves it Active): it
+        /// stands for a record of a settled deal only.</para>
         /// </summary>
         private static bool KeepingTellsTheirBallot(EpisodeState s, int week, string partner, string type, bool kept)
         {

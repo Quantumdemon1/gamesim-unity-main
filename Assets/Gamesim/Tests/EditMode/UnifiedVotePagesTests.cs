@@ -275,6 +275,82 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// The other side of D5's gate, in mode 2 (mode 1's is EveryDealDoesSomethingTests' C1 keep): the player is on the block
+        /// and struck a partnership with a voter, who voted the other nominee out - kept it, by a ballot the count does not place
+        /// (a second voter voted the player out) and the player holds no claim of. The keep tells that ballot, so Your week says
+        /// the partnership is unresolved, in mode 2 as in mode 1, though the player's record holds the keep.
+        /// </summary>
+        [Test]
+        public void APartnershipThePartnersHiddenBallotKeptIsNotTheirsToReadAsInModeOne()
+        {
+            var reveal = PartnershipKeptOnTheBlock(out string partner);
+            int week = reveal.Mode2.week;
+            Assert.That(reveal.Mode2.nominees.Contains(reveal.Mode2.playerId), Is.True, "Fixture: the player is on the block,");
+            Assert.That(reveal.Mode2.Find(reveal.Mode2.playerId).status, Is.EqualTo(ContestantStatus.Active), "and stays.");
+            Assert.That(reveal.Mode2.votes.Single(v => v.voterId == partner).targetId, Is.Not.EqualTo(reveal.Mode2.playerId),
+                "Fixture: the partner voted the other nominee out.");
+            Assert.That(reveal.Mode2.ledger.claims.Any(k => k.week == week && k.voterId == partner), Is.False, "Fixture: the player holds no claim of the partner's,");
+            foreach (var season in new[] { reveal.Mode1, reveal.Mode2 })
+                Assert.That(KnownBallots.Knows(season, week, partner), Is.False, "and the count does not place their ballot.");
+            string keep = reveal.Mode2.Find(partner).name + " honoured a " + DealKind.Title(DealKind.Partnership).ToLowerInvariant()
+                + " with " + reveal.Mode2.Find(reveal.Mode2.playerId).name + ".";
+            foreach (var season in new[] { reveal.Mode1, reveal.Mode2 })
+                Assert.That(Record(season, partner, week, gated: false).Select(entry => entry.Item1), Does.Contain(keep),
+                    "Fixture: the player's record of the partner holds the keep, in both modes.");
+
+            string name = reveal.Mode2.Find(partner).name;
+            var two = YourWeek.Build(reveal.Mode2, week).word;
+            Assert.That(two.Select(line => (line.kind, line.verdict, line.byId, line.text)), Is.EqualTo(new[]
+            {
+                (YourWeek.Kinds.Deal, YourWeek.Verdicts.NotKnown, (string)null, "The partnership with " + name + " is " + KnownBallots.Unresolved + "."),
+            }), "The partner's keep waits for their ballot.");
+            Assert.That(Json(two), Is.EqualTo(Json(YourWeek.Build(reveal.Mode1, week).word)), "As mode 1 lists it.");
+            Assert.That(Json(YourWeek.Build(reveal.Projection, week)), Is.EqualTo(Json(YourWeek.Build(reveal.Mode2, week))),
+                "The projection of mode 1's season reads as mode 2's.");
+        }
+
+        /// <summary>
+        /// A first campaign with the player on the block beside at least three voting houseguests: a partnership with the first
+        /// voter, proposed in the real command and agreed by the season's next draw, then the real Advances to the open vote and
+        /// the whole box pinned (the player casts no ballot) - the partner and the rest against the other nominee, the second
+        /// voter against the player - and the counting Advance played through the public mode-1 engine and its mode-2 twin.
+        /// </summary>
+        private static ModeTwoReaderSweep.Revealed PartnershipKeptOnTheBlock(out string partner)
+        {
+            string found = null;
+            var campaign = ProspectiveVoteTwins.Find("a first campaign with the player on the block beside three voters, a partnership open with the first",
+                seed =>
+                {
+                    var s = ProspectiveVoteTwins.Walk(seed, x => x.phase == EpisodePhase.Campaign && x.nominees.Count == 2
+                        && x.nominees.Contains(x.playerId) && PinnedVoteSeason.NpcVoters(x).Count() >= 3);
+                    if (s == null || !PlayerDeals.CanPropose(s, PinnedVoteSeason.NpcVoters(s).First(), DealKind.Partnership, null, out _)) return null;
+                    found = PinnedVoteSeason.NpcVoters(s).First();
+                    return s;
+                });
+            partner = found;
+            var struck = ModeTwoReaderSweep.Strike(campaign, found, DealKind.Partnership);
+            var engine = new EpisodeEngine(ProspectiveVoteTwins.Valid(struck));
+            EpisodeEngineTests.OpenTheVote(engine);
+            var pinned = engine.Snapshot;
+            Assert.That(PinnedVoteSeason.OpenVote(pinned) && !PinnedVoteSeason.PlayerVotes(pinned) && pinned.votes.Count == 0, Is.True,
+                "Fixture: the open vote, the player on the block, no ballot cast.");
+            var voters = PinnedVoteSeason.NpcVoters(pinned).ToList();
+            string other = pinned.nominees.Single(id => id != pinned.playerId), against = voters[1];
+            foreach (string voter in voters)
+                pinned.votes.Add(new VoteState { voterId = voter, targetId = voter == against ? pinned.playerId : other, reason = PinnedVoteSeason.PinnedReason });
+            var owners = ProspectiveVoteTwins.Owners(pinned);
+            var count = EpisodeEngineTests.Command(pinned, EpisodeCommandKind.Advance);
+            var mode1 = new EpisodeEngine(ProspectiveVoteTwins.Valid(pinned)).Apply(count);
+            var mode2 = ProspectiveVoteFacade.Engine(ProspectiveVoteTwins.Twin(pinned)).Apply(count);
+            Assert.That(mode1.accepted && mode2.accepted && mode1.state.evictionResolved && mode2.state.evictionResolved, Is.True,
+                mode1.reason + " / " + mode2.reason);
+            var frame = new UnifiedVoteRevealState { week = mode1.state.week, ballots = mode1.state.votes
+                .Select(v => new UnifiedVoteBallotState { voterId = v.voterId, targetId = v.targetId }).ToList() };
+            return new ModeTwoReaderSweep.Revealed { Mode1 = mode1.state, Mode2 = mode2.state,
+                Projection = PinnedVoteSeason.Project(mode1.state, owners, new[] { frame }) };
+        }
+
+        /// <summary>
         /// The jury flow's receipt of the player's word: the player promised a voter their vote and broke it. In mode 2 that word
         /// is a canonical Vote row, the owner of its incident, and the voter - asked as a juror - has it as the accountability
         /// receipt, with the receipt line and the kicker mode 1 gives its raw promise; a promise kept to another voter is their

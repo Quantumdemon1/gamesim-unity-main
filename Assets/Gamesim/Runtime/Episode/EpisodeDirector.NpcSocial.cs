@@ -183,10 +183,19 @@ namespace Gamesim.Episode
 
         private void TickNpcSocialRuntime(float delta)
         {
-            // Hide an existing caption every frame when its physical witness proof
-            // expires. Topic selection/showing remains on the 10 Hz world cadence.
-            if (npcShownLease != null && (!NpcCanAdvance || !npcMeetings.CanWitness(player, npcShownLease)))
-            { npcCaption?.Hide(); npcShownLease = null; }
+            // Every frame, the witness of the line on screen is checked again (topic selection and
+            // showing stay on the 10 Hz world cadence). The house stopping - a panel, a load, a pause -
+            // takes the line down at once; the pair leaving sight lets it go, to stay up until it has
+            // been read (A10, D3): it used to be hidden here the same frame, before the 10 Hz pass
+            // could release it. Either way the witness is over, and the Nearby card goes with it now.
+            if (npcShownLease != null)
+            {
+                bool ended = true;
+                if (!NpcCanAdvance) npcCaption?.Hide();
+                else if (!npcMeetings.CanWitness(player, npcShownLease)) npcCaption?.Release();
+                else ended = false;
+                if (ended) { npcShownLease = null; TickNearby(); }
+            }
             if (!IsReady || npcDiagnosticsSuspended) return;
             if (competitionArenaStaging) { TickCompetitionArena(); return; }
             EnsureNpcSocialWorld();

@@ -31,6 +31,8 @@ namespace Gamesim.Tests.PlayMode
             "Gamesim.CompactHud", "Gamesim.CameraSpeed", "Gamesim.InvertY", "Gamesim.VSync", "Gamesim.DisplayMode", "Gamesim.Resolution",
             // The text size as 0 to 2 (A8) and the caption reading time (A10).
             TextSizes.SizeKey, CaptionTiming.Key,
+            // The three volumes beside the master (A11) and the player's own keys (A5).
+            SoundPictures.MusicVolumeKey, SoundPictures.EffectsVolumeKey, SoundPictures.InterfaceVolumeKey, KeyBindings.PreferenceKey,
         };
 
         /// <summary>The machine's PlayerPrefs for every settings key: present or not, and what each holds as text and as a number.</summary>
@@ -93,6 +95,13 @@ namespace Gamesim.Tests.PlayMode
                 yield return ReloadEpisode();
                 Assert.That(director.TextSize, Is.EqualTo(TextSize.Largest), "The largest text survives the reload.");
                 Assert.That(director.CaptionTimeSetting, Is.EqualTo(CaptionTime.Longer), "and so does the longer caption time.");
+
+                // The guard below watches every key the settings keep: each one the root's own file
+                // holds is one it compares (lane-input-7) - a setting added later is caught here.
+                var kept = PreferenceFile.Parse(File.ReadAllText(file), out var unreadable);
+                Assert.That(unreadable, Is.Null);
+                Assert.That(kept.Values.Keys.Where(key => !SettingKeys.Contains(key)).ToArray(), Is.Empty,
+                    "Keys the root keeps that the PlayerPrefs guard does not watch.");
             }
             finally
             {

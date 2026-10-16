@@ -238,8 +238,40 @@ namespace Gamesim.Tests.PlayMode
         /// season's numbers in tiles, its counts in a line, and the card beside the house's rail
         /// rather than over it at both text sizes - the rail dimmed down to the cast strip, the
         /// corner under it dimmed as the house is, the scrim still taking every click, and the
-        /// brand line in that corner.
+        /// brand line in that corner. The ways on in one row at the standard and the larger text; at
+        /// the largest, where one row cannot draw every caption whole, in the suite's literal rows for
+        /// the frame (<see cref="ReportFooterRowsLargest"/>), the season scrolling under them with its
+        /// scrollbar and its hint, photographed on the 16:9 frame and the 4:3 in a batch run.
         /// </summary>
+        /// <summary>
+        /// The rows Season Complete's four ways on stand in at the largest text, on the 16:9 frame and
+        /// on the 4:3 (the batch canvas is 4:3): the suite's literals for the owner's contract of
+        /// 2026-10-15, measured on 2026-10-16. At the standard and the larger text they are one row.
+        /// </summary>
+        private static readonly (int At16x9, int At4x3) ReportFooterRowsLargest = (1, 2);
+
+        /// <summary>
+        /// How many rows the report's ways on stand in, each way inside the footer and the ways read in
+        /// their order, row by row: measured in the footer's own units, so it holds in a capture's frame.
+        /// </summary>
+        private int ReportFooterRows(string where)
+        {
+            var footer = ReportPart(SeasonReport.FooterName);
+            Assert.That(footer, Is.Not.Null, where + "the ways on have their footer.");
+            var ways = footer.GetComponentsInChildren<Button>().Where(button => button.IsActive()).ToList();
+            var corners = new Vector3[4];
+            Vector2 Corner(Button way, int index)
+            {
+                ((RectTransform)way.transform).GetWorldCorners(corners);
+                return footer.InverseTransformPoint(corners[index]);
+            }
+            foreach (var way in ways)
+                Assert.That(Inside(footer, (RectTransform)way.transform), Is.True, where + "'" + way.name + "' is inside the footer.");
+            var reading = ways.OrderByDescending(way => Mathf.Round(Corner(way, 1).y)).ThenBy(way => Corner(way, 0).x).Select(way => way.name).ToList();
+            Assert.That(reading, Is.EqualTo(ways.Select(way => way.name).ToList()), where + "the ways on read in their order, row by row.");
+            return ways.Select(way => Mathf.Round(Corner(way, 1).y)).Distinct().Count();
+        }
+
         [UnityTest]
         public IEnumerator EndScreens_TheHeadCarriesTheSeasonNumberAndTheCardStandsBesideTheRail()
         {
@@ -270,6 +302,22 @@ namespace Gamesim.Tests.PlayMode
                     "One winner a competition, the final parts included.");
                 foreach (var part in new[] { title, numbers, ReportPart(SeasonReport.FooterName) })
                     AssertDecisionCopyFits(part);
+                // The ways on: one row, or at the largest text on this 4:3 canvas the suite's rows.
+                bool largest = textSize == TextSize.Largest;
+                Assert.That(ReportFooterRows(size), Is.EqualTo(largest ? ReportFooterRowsLargest.At4x3 : 1),
+                    size + "the ways on stand in " + (largest ? ReportFooterRowsLargest.At4x3 + " rows" : "one row") + ".");
+                if (largest)
+                {
+                    // The season still scrolls, under the taller footer, and says so.
+                    var scroll = Report().GetComponentsInChildren<ScrollRect>().First();
+                    Assert.That(scroll.content.rect.height, Is.GreaterThan(scroll.viewport.rect.height), size + "the season scrolls under the ways on.");
+                    Assert.That(scroll.verticalScrollbar != null && scroll.verticalScrollbar.gameObject.activeInHierarchy, Is.True,
+                        size + "its scrollbar shows there is more.");
+                    Assert.That(ReportPart("Scroll hint"), Is.Not.Null, size + "and the line under the tabs says how to move through it.");
+                    var view = new Vector3[4]; var foot = new Vector3[4];
+                    scroll.viewport.GetWorldCorners(view); ReportPart(SeasonReport.FooterName).GetWorldCorners(foot);
+                    Assert.That(view[0].y, Is.GreaterThanOrEqualTo(foot[1].y - .5f), size + "the season's view ends over the ways on.");
+                }
 
                 // Clear of the rail's ground, which runs 8 to 220 HUD units whatever the text size.
                 var sheet = ReportPart("Report card");
@@ -299,6 +347,19 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(brandRect.yMax, Is.LessThanOrEqualTo(ScreenRect(stripDim.rectTransform).yMax + .5f), size + "the brand line stands in the dark corner.");
                 Assert.That(brandRect.xMax, Is.LessThanOrEqualTo(ScreenRect(stripDim.rectTransform).xMax + .5f), size + "the brand line stands in the dark corner.");
                 if (Application.isBatchMode) yield return CaptureFraming("season-complete-head" + TextScales.Suffix(textSize));
+                // At the largest text the report laid again for the 16:9 frame and the 4:3, and
+                // photographed on each: its ways on in the suite's rows for the frame, every caption whole.
+                if (Application.isBatchMode && largest)
+                    foreach (var frame in new[] { (Width: 1600, Height: 900, Name: "16x9", Rows: ReportFooterRowsLargest.At16x9),
+                        (Width: 1200, Height: 900, Name: "4x3", Rows: ReportFooterRowsLargest.At4x3) })
+                        yield return CaptureFraming("season-complete-head-largest-" + frame.Name, width: frame.Width, height: frame.Height,
+                            arrange: () => Report().Show(state, _ => null, () => { }, null, () => { }, () => { }, () => { }, 3),
+                            inspect: picture =>
+                            {
+                                string there = size + "on the " + frame.Name + " frame, ";
+                                Assert.That(ReportFooterRows(there), Is.EqualTo(frame.Rows), there + "the ways on stand in the suite's " + frame.Rows + " rows.");
+                                AssertDecisionCopyFits(ReportPart(SeasonReport.FooterName));
+                            });
                 Report().Hide();
             }
             Report().FontScale = 1f;

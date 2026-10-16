@@ -732,6 +732,9 @@ namespace Gamesim.Presentation
         /// <summary>The ways on's band at the foot of the card: its padding, and a button's height and widest.</summary>
         private const float FooterPad = 14f, WayHeight = 62f, WayMaxWidth = 380f;
 
+        /// <summary>What a way's caption gives up of its button's width to the glyph before it and the chevron after it (<see cref="ActionButton"/>).</summary>
+        private const float ActionButtonInsets = 48f + 40f;
+
         /// <summary>The gold face's own ground, for a clone without the pack.</summary>
         private static readonly Color LegacyFill = new Color(.33f, .28f, .09f);
 
@@ -742,6 +745,12 @@ namespace Gamesim.Presentation
         /// caption word for word, a glyph, a chevron and a line under the caption saying where it
         /// goes; the main menu wears the pack's gold 'Continue to Legacy' face (decision 21), since
         /// the main menu is where the career line is. Returns the band's height.
+        ///
+        /// <para>At the largest text a row too narrow to draw every caption whole on one line at its
+        /// least type stands in two rows instead (the owner's contract of 2026-10-15), decided before
+        /// anything is built: the first half of the ways over the rest, in the same order, and the
+        /// season scrolls under a footer a row taller, its scrollbar and its hint saying so as ever. At
+        /// the standard and the larger text the row is one, laid as it always was.</para>
         /// </summary>
         private float Footer(RectTransform sheet, Action onReview)
         {
@@ -755,7 +764,22 @@ namespace Gamesim.Presentation
                 ways.Add((MainMenuCaption, () => { Hide(); shownMainMenu(); }, PackArt.SeasonButtonLegacy, PackArt.KitIconHome, "house", "Your career record"));
             ways.Add((CloseCaption, Close, ways.Count == 0 ? PackArt.SeasonButtonPrimary : PackArt.SeasonButton, PackArt.KitIconCross, "exit", "Return to the house"));
 
-            float height = WayHeight + FooterPad * 2f;
+            // The primary a little wider than the rest; a short row is centred, not stretched.
+            const float gap = 12f;
+            float Weight(string face) => face == PackArt.SeasonButtonPrimary ? 1.3f : 1f;
+            List<float> Widths(int from, int count)
+            {
+                float room = Width - Pad * 2f - gap * (count - 1);
+                float weights = ways.Skip(from).Take(count).Sum(way => Weight(way.face));
+                return ways.Skip(from).Take(count).Select(way => Mathf.Min(WayMaxWidth * Weight(way.face), room * Weight(way.face) / weights)).ToList();
+            }
+            int perRow = ways.Count;
+            if (LargestPages.At(TextScale) && ways.Count > 1
+                && !CaptionsFit(sheet, ways.Select(way => (way.caption, way.face == PackArt.SeasonButtonPrimary)).ToList(), Widths(0, ways.Count)))
+                perRow = (ways.Count + 1) / 2;
+            int rows = (ways.Count + perRow - 1) / perRow;
+
+            float height = WayHeight * rows + gap * (rows - 1) + FooterPad * 2f;
             var band = new GameObject(FooterName, typeof(RectTransform)).GetComponent<RectTransform>();
             band.SetParent(sheet, false);
             band.anchorMin = band.anchorMax = new Vector2(.5f, 0f);
@@ -768,20 +792,51 @@ namespace Gamesim.Presentation
             rule.color = new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .3f);
             rule.raycastTarget = false;
 
-            // The primary a little wider than the rest; a short row is centred, not stretched.
-            const float gap = 12f;
-            float Weight(string face) => face == PackArt.SeasonButtonPrimary ? 1.3f : 1f;
-            float room = Width - Pad * 2f - gap * (ways.Count - 1);
-            float weights = ways.Sum(way => Weight(way.face));
-            var widths = ways.Select(way => Mathf.Min(WayMaxWidth * Weight(way.face), room * Weight(way.face) / weights)).ToList();
-            float x = (Width - widths.Sum() - gap * (ways.Count - 1)) * .5f;
-            for (int i = 0; i < ways.Count; i++)
+            for (int row = 0; row < rows; row++)
             {
-                var way = ways[i];
-                ActionButton(band, way.caption, x, FooterPad, widths[i], WayHeight, way.act, way.face, way.icon, way.fallback, way.subtitle);
-                x += widths[i] + gap;
+                int from = row * perRow, count = Mathf.Min(perRow, ways.Count - from);
+                var widths = Widths(from, count);
+                float x = (Width - widths.Sum() - gap * (count - 1)) * .5f, y = FooterPad + row * (WayHeight + gap);
+                for (int i = 0; i < count; i++)
+                {
+                    var way = ways[from + i];
+                    ActionButton(band, way.caption, x, y, widths[i], WayHeight, way.act, way.face, way.icon, way.fallback, way.subtitle);
+                    x += widths[i] + gap;
+                }
             }
             return height;
+        }
+
+        /// <summary>The report's text size: its reference width against the resting 1920 (<see cref="FontScale"/>).</summary>
+        private float TextScale => scaler != null && scaler.referenceResolution.x > 0f ? 1920f / scaler.referenceResolution.x : 1f;
+
+        /// <summary>
+        /// Whether every way's caption is drawn whole on one line at its least type, 12, in a button
+        /// of its width beside its glyph and chevron (<see cref="ActionButton"/>): measured on a probe
+        /// in each caption's own weight, before anything is built, and thrown away.
+        /// </summary>
+        private static bool CaptionsFit(RectTransform parent, IList<(string caption, bool primary)> ways, IList<float> widths)
+        {
+            var probe = HudPrimitives.Label("Caption probe", parent, 12f, Color.clear);
+            try
+            {
+                probe.enableAutoSizing = false;
+                probe.textWrappingMode = TextWrappingModes.NoWrap;
+                for (int i = 0; i < ways.Count; i++)
+                {
+                    var font = UiTheme.Font(ways[i].primary ? UiTheme.Weight.SemiBold : UiTheme.Weight.Medium);
+                    if (font != null) probe.font = font;
+                    probe.fontSize = 12f;
+                    float need = probe.GetPreferredValues(Localisation.Text(ways[i].caption)).x;
+                    if (need > widths[i] - ActionButtonInsets - 2f) return false;
+                }
+                return true;
+            }
+            finally
+            {
+                probe.gameObject.SetActive(false);
+                Destroy(probe.gameObject);
+            }
         }
 
         /// <summary>

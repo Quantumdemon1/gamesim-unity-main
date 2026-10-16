@@ -138,6 +138,9 @@ namespace Gamesim.Editor
                 // The room finish is probe-lit dressing on a lightmapped set (ROOM-FINISH-PLAN 4.3): it
                 // stays out of the bake, whichever pass ran last.
                 if (UnderRoomFinish(go.transform)) continue;
+                // The yard's roped entrance is set dressing with no static flag by design, so that
+                // placing it needs no bake (HouseSetPieces.Entrance); the full pass keeps it so.
+                if (UnderEntrance(go.transform)) continue;
                 GameObjectUtility.SetStaticEditorFlags(go, flags);
                 renderer.receiveGI = ReceiveGI.Lightmaps;
                 // Small clutter takes a fraction of the atlas; the shell takes its full share.
@@ -191,6 +194,14 @@ namespace Gamesim.Editor
         {
             for (var t = node; t != null; t = t.parent)
                 if (t.name == HouseRoomFinish.RootName) return true;
+            return false;
+        }
+
+        /// <summary>Whether a node is part of the set pieces' roped entrance group.</summary>
+        private static bool UnderEntrance(Transform node)
+        {
+            for (var t = node; t != null; t = t.parent)
+                if (t.name == HouseSetPieces.EntranceGroup && t.parent != null && t.parent.name == HouseSetPieces.RootName) return true;
             return false;
         }
 

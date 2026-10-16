@@ -83,15 +83,17 @@ namespace Gamesim.Presentation
         public static void Bind(RawImage image, ContestantState contestant)
         {
             if (image == null || contestant == null) return;
-            var binding = image.GetComponent<CharacterPortraitBinding>() ?? image.gameObject.AddComponent<CharacterPortraitBinding>();
+            // Explicitly: a missing component is Unity's fake null in the editor, which ?? keeps.
+            var binding = image.GetComponent<CharacterPortraitBinding>();
+            if (binding == null) binding = image.gameObject.AddComponent<CharacterPortraitBinding>();
             binding.Set(contestant);
         }
 
         public static void Bind(Renderer renderer, ContestantState contestant)
         {
             if (renderer == null || contestant == null) return;
-            var binding = renderer.GetComponent<CharacterPortraitMaterialBinding>()
-                ?? renderer.gameObject.AddComponent<CharacterPortraitMaterialBinding>();
+            var binding = renderer.GetComponent<CharacterPortraitMaterialBinding>();
+            if (binding == null) binding = renderer.gameObject.AddComponent<CharacterPortraitMaterialBinding>();
             binding.Set(contestant);
         }
 

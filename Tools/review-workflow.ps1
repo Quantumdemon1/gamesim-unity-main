@@ -170,9 +170,12 @@ function Get-ReviewGitIdentity([string]$Root) {
         return [pscustomobject]@{head='not-a-git-worktree';status=@()}
     }
     [void](Assert-ReviewPlainPath $marker)
-    $head=& git -C $Root rev-parse HEAD 2>$null
+    # --no-optional-locks: a status probe must never refresh and rewrite the source's .git/index. That
+    # rewrite is invisible to the Assets/ProjectSettings/Packages/ArtSource/Tools manifest, yet it moves
+    # the index bytes any custody check of the source pins.
+    $head=& git --no-optional-locks -C $Root rev-parse HEAD 2>$null
     if ($LASTEXITCODE -ne 0) { throw 'Cannot capture source Git HEAD.' }
-    $status=& git -C $Root status --porcelain=v1 2>$null
+    $status=& git --no-optional-locks -C $Root status --porcelain=v1 2>$null
     if ($LASTEXITCODE -ne 0) { throw 'Cannot capture source Git status.' }
     return [pscustomobject]@{head=($head -join '');status=@($status)}
 }
@@ -251,37 +254,70 @@ function Read-ReviewSuiteReport([string]$Path,[string]$Assembly,[int]$Minimum,[N
         inconclusive=$inconclusive;exit=$ExitCode;filtered=$Filtered;accepted=$success;fullSuite=($success -and -not $Filtered);
         report=$Path;reportSha256=(Get-ReviewHash $Path);testNames=@($cases | ForEach-Object {$_.GetAttribute('fullname')} | Sort-Object)}
 }
-function Invoke-ReviewOwnedProcess([string]$Executable,[string[]]$Arguments,[int]$Seconds,[string]$ReceiptPath) {
-    if ($Seconds -lt 1 -or $Seconds -gt 7200) { throw 'Owned process deadline must be between 1 and 7200 seconds.' }
+# The longest deadline any owned process may declare: eight hours.
+$script:ReviewDeadlineCapSeconds = 28800
+# Per-suite deadlines, each at least twice the longest whole-process time measured for that suite
+# (Unity start, import, compile, the tests and exit), so ordinary growth never reads as a late run:
+#   Gamesim.EditModeTests      2,305 s for 7,846 tests (NoUMA, 2026-10-14)                -> 7,200 s (3.1x)
+#   Gamesim.PlayModeTests      5,557 s for 1,197 tests (NoUMA, 2026-10-15; 5,401 s for 1,218
+#                              earlier that day); 4,305 s for 1,081 under GAMESIM_UMA      -> 14,400 s (2.6x)
+#   Gamesim.Uma.PlayModeTests    308 s for 89 tests (2026-10-15; 208 s for 85 on 10-16)   -> 3,600 s (11.7x)
+#   Gamesim.DiagnosticsPlayModeTests 261 s, Gamesim.Uma.DiagnosticsPlayModeTests 294 s
+#                              (seven probes each, 2026-10-15; the UMA one 220 s for ten) -> 3,600 s (12x)
+# An assembly not listed takes its platform's suite deadline. Player builds keep their own 5,400 s
+# (build-review-candidate.ps1; measured builds took 150-298 s).
+$script:ReviewSuiteDeadlines = @{
+    'Gamesim.EditModeTests'=7200; 'Gamesim.PlayModeTests'=14400; 'Gamesim.Uma.PlayModeTests'=3600
+    'Gamesim.DiagnosticsPlayModeTests'=3600; 'Gamesim.Uma.DiagnosticsPlayModeTests'=3600
+}
+function Get-ReviewSuiteDeadline([string]$Assembly,[string]$Platform) {
+    if ($script:ReviewSuiteDeadlines.ContainsKey($Assembly)) { return [int]$script:ReviewSuiteDeadlines[$Assembly] }
+    if ($Platform -ceq 'EditMode') { return 7200 }
+    if ($Platform -ceq 'PlayMode') { return 14400 }
+    throw "No suite deadline for $Assembly on $Platform."
+}
+# Never kills what it started. Past its deadline a process is recorded late (timedOut) and failed,
+# then left to exit on its own: a Unity run past its deadline is usually still writing its results or
+# shutting down, and killing an exiting run leaves children holding the copy. If it has still not
+# exited after a further grace period (the deadline again, by default) it is abandoned while running,
+# and the failure names its pid for an operator; the sync and the suites refuse to start while any
+# Unity process holds the copy.
+function Invoke-ReviewOwnedProcess([string]$Executable,[string[]]$Arguments,[int]$Seconds,[string]$ReceiptPath,[int]$LateGraceSeconds=-1) {
+    if ($Seconds -lt 1 -or $Seconds -gt $script:ReviewDeadlineCapSeconds) { throw "Owned process deadline must be between 1 and $($script:ReviewDeadlineCapSeconds) seconds." }
+    if ($LateGraceSeconds -lt 0) { $LateGraceSeconds = $Seconds }
+    if ($LateGraceSeconds -gt $script:ReviewDeadlineCapSeconds) { throw "Late grace must be at most $($script:ReviewDeadlineCapSeconds) seconds." }
     [void](Assert-ReviewPlainPath $Executable)
     $executableHash=Get-ReviewHash $Executable
-    $receipt = [ordered]@{executable=$Executable;executableSha256=$executableHash;arguments=$Arguments;deadlineSeconds=$Seconds;cleanupWaitSeconds=5;pid=$null;
-        startedUtc=$null;exitedUtc=$null;exit=$null;kernelSignaled=$false;timedOut=$false;stopped=$false;closed=$false;failure=$null}
-    $process = $null; $started = $false; $cleanupAttempted = $false
+    $receipt = [ordered]@{executable=$Executable;executableSha256=$executableHash;arguments=$Arguments;deadlineSeconds=$Seconds;lateGraceSeconds=$LateGraceSeconds;pid=$null;
+        startedUtc=$null;exitedUtc=$null;exit=$null;kernelSignaled=$false;timedOut=$false;late=$false;abandoned=$false;stopped=$false;closed=$false;
+        executableChanged=$false;failure=$null}
+    $process = $null
     try {
         $process = Start-Process -FilePath $Executable -ArgumentList $Arguments -WindowStyle Hidden -PassThru -ErrorAction Stop
-        $started = $true; [void]$process.Handle
+        [void]$process.Handle
         $receipt.pid = $process.Id; $receipt.startedUtc = $process.StartTime.ToUniversalTime().ToString('o')
         $clock = [Diagnostics.Stopwatch]::StartNew()
         while (-not $process.WaitForExit(0)) {
-            if ($clock.Elapsed.TotalSeconds -ge $Seconds) { $receipt.timedOut=$true; throw 'The owned process exceeded its declared deadline.' }
+            if (-not $receipt.late -and $clock.Elapsed.TotalSeconds -ge $Seconds) {
+                $receipt.timedOut=$true; $receipt.late=$true
+                Write-Warning "The owned process $($process.Id) passed its $Seconds s deadline. It is recorded late and failed, and left to exit on its own; it is never killed."
+            }
+            if ($receipt.late -and $clock.Elapsed.TotalSeconds -ge $Seconds + $LateGraceSeconds) {
+                $receipt.abandoned=$true
+                throw "The owned process $($process.Id) is still running $($Seconds + $LateGraceSeconds) s after it started. It was left running, never killed; nothing may use the copy until it exits."
+            }
             Start-Sleep -Milliseconds 200
         }
         $receipt.kernelSignaled=$true; $receipt.closed=$true; $receipt.exit=$process.ExitCode
         $receipt.exitedUtc=$process.ExitTime.ToUniversalTime().ToString('o')
-        if (($process.ExitTime.ToUniversalTime()-$process.StartTime.ToUniversalTime()).TotalSeconds -gt $Seconds) { $receipt.timedOut=$true; throw 'Owned process exited after its declared deadline.' }
+        if (($process.ExitTime.ToUniversalTime()-$process.StartTime.ToUniversalTime()).TotalSeconds -gt $Seconds) { $receipt.timedOut=$true; $receipt.late=$true }
+        if ($receipt.late) { throw "The owned process exited after its $Seconds s deadline; the run is recorded late and failed." }
     } catch { $receipt.failure=$_.Exception.Message }
     finally {
+        # No Kill(), ever: stopped stays false. A process still running here was abandoned above.
         try {
-            if ($started -and -not $process.WaitForExit(0) -and -not $cleanupAttempted) {
-                $cleanupAttempted=$true; $receipt.stopped=$true
-                $process.Kill(); $receipt.closed=$process.WaitForExit(5000); $receipt.kernelSignaled=$receipt.closed
-                if ($receipt.closed) { $receipt.exit=$process.ExitCode; $receipt.exitedUtc=$process.ExitTime.ToUniversalTime().ToString('o') }
-            }
-        } catch { $receipt.failure = ($receipt.failure+'; held cleanup: '+$_.Exception.Message) }
-        try {
-            if ((Get-ReviewHash $Executable) -cne $executableHash) { $receipt.failure=($receipt.failure+'; executable bytes changed') }
-        } catch { $receipt.failure=($receipt.failure+'; executable audit: '+$_.Exception.Message) }
+            if ((Get-ReviewHash $Executable) -cne $executableHash) { $receipt.executableChanged=$true; $receipt.failure=($receipt.failure+'; executable bytes changed') }
+        } catch { $receipt.executableChanged=$true; $receipt.failure=($receipt.failure+'; executable audit: '+$_.Exception.Message) }
         try { Write-ReviewNewJson $receipt $ReceiptPath } finally { if ($process) { $process.Dispose() } }
     }
     return [pscustomobject]$receipt

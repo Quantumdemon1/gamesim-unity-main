@@ -1,6 +1,12 @@
 # One destination lease spans snapshot, mirror, owned suites, and final audits.
+# Every planned suite runs and is recorded; the gate fails at the end if any of them failed. Only a
+# missing or malformed report, a floor shortfall, or a Unity that never exited stops the plan early.
+# -SuiteTimeoutSeconds 0 (the default) gives each suite its own measured deadline (Get-ReviewSuiteDeadline);
+# a run past it is recorded late and failed, never killed. -Diagnostics (or GAMESIM_DIAGNOSTICS=1)
+# adds the GAMESIM_DIAGNOSTICS define to the copy so the diagnostics assemblies compile; it is
+# refused for a full acceptance plan.
 param([Parameter(Mandatory=$true)][string]$Name,[switch]$WithoutUma,[switch]$RetainInstalledUma,
-    [string]$ApprovedMetaDrift,[string]$SuiteSpecifications,[int]$SuiteTimeoutSeconds=5400)
+    [string]$ApprovedMetaDrift,[string]$SuiteSpecifications,[int]$SuiteTimeoutSeconds=0,[switch]$Diagnostics)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'review-evidence.ps1')
 . (Join-Path $PSScriptRoot 'review-workflow.ps1')
@@ -15,16 +21,18 @@ $aliasPath=Join-Path $destination "Logs/$Name-summary.json"
 try {
     $plan=Get-ReviewSuitePlan ([bool]$WithoutUma) $SuiteSpecifications
     $suites=@($plan.suites); $diagnostic=$plan.diagnostic
+    $diagnosticsDefine=[bool]$Diagnostics -or $env:GAMESIM_DIAGNOSTICS -ceq '1'
+    if ($diagnosticsDefine -and -not $diagnostic) { throw 'GAMESIM_DIAGNOSTICS compiles the diagnostics assemblies; use it with -SuiteSpecifications (sync-and-run.sh), never for full acceptance.' }
     $lease=Enter-ReviewLease $destination
     Assert-ReviewEditorIdle $destination
     if (Test-Path -LiteralPath $aliasPath) { throw 'Use a fresh artifact name; prior summary and logs are retained.' }
-    if ($SuiteTimeoutSeconds -lt 1 -or $SuiteTimeoutSeconds -gt 7200) { throw 'Suite deadline must be 1..7200 seconds.' }
+    if ($SuiteTimeoutSeconds -lt 0 -or $SuiteTimeoutSeconds -gt $script:ReviewDeadlineCapSeconds) { throw "Suite deadline must be 0 (each suite's own) or 1..$($script:ReviewDeadlineCapSeconds) seconds." }
     $snapshot=New-ReviewSnapshot $projectRoot $runRoot
     $baselinePath=Join-Path $snapshot.root 'Tools/baseline.txt'; $baselineSha256=Get-ReviewHash $baselinePath
     $approvals=@(Read-ReviewApproval $ApprovedMetaDrift)
     Write-ReviewNewJson $approvals (Join-Path $runRoot 'import-approvals.json')
     foreach ($suite in $suites) { $suiteFloors[$suite.assembly]=Get-ReviewSuiteFloor $baselinePath $suite.assembly }
-    & (Join-Path $PSScriptRoot 'sync-acceptance.ps1') -DisableGpuResidentDrawer -WithoutUma:$WithoutUma -RetainInstalledUma:$RetainInstalledUma -ValidationLease $lease -Snapshot $snapshot
+    & (Join-Path $PSScriptRoot 'sync-acceptance.ps1') -DisableGpuResidentDrawer -WithoutUma:$WithoutUma -RetainInstalledUma:$RetainInstalledUma -Diagnostics:$diagnosticsDefine -ValidationLease $lease -Snapshot $snapshot
     Assert-ReviewConfiguration $destination ([bool]$WithoutUma) 0
     $before=New-ReviewInputManifest -ProjectRoot $destination -WorkflowRoot $snapshot.root -WithoutUma:$WithoutUma -RetainInstalledUma:$RetainInstalledUma -MetaArchive (Join-Path $runRoot 'meta-before')
     Write-ReviewNewJson $before $manifestPath
@@ -40,17 +48,28 @@ try {
         $arguments=@('-batchmode','-accept-apiupdate','-projectPath',('"'+$destination+'"'),'-runTests',
             '-testPlatform',$suite.platform,'-assemblyNames',$suite.assembly,'-testResults',('"'+$xmlPath+'"'),'-logFile',('"'+$logPath+'"'))
         if ($suite.filter) { $arguments+=@('-testFilter',$suite.filter) }
-        Write-Output "Running $($suite.assembly); retained evidence: $runRoot"
-        $process=Invoke-ReviewOwnedProcess $unity $arguments $SuiteTimeoutSeconds (Join-Path $runRoot ($suite.id+'-process.json'))
-        if ($process.failure -or -not $process.closed -or $process.stopped -or $process.timedOut) { throw "Owned suite failed: $($process.failure)" }
+        $deadline=if ($SuiteTimeoutSeconds -gt 0) {$SuiteTimeoutSeconds} else {Get-ReviewSuiteDeadline $suite.assembly $suite.platform}
+        Write-Output "Running $($suite.assembly) (deadline $deadline s); retained evidence: $runRoot"
+        $process=Invoke-ReviewOwnedProcess $unity $arguments $deadline (Join-Path $runRoot ($suite.id+'-process.json'))
+        # A Unity that never exited, never started, or whose executable changed ends the plan: there is
+        # no report to read, and nothing may use the copy while Unity holds it. A late run that exited
+        # on its own is read and recorded like any other, then counted as failed.
+        if (-not $process.closed -or $process.stopped -or $process.executableChanged -or ($process.failure -and -not $process.late)) {
+            throw "Owned suite failed: $($process.failure)"
+        }
         $entry=Read-ReviewSuiteReport $xmlPath $suite.assembly $suiteFloors[$suite.assembly] $process.exit ([bool]$suite.filter)
         if (-not (Test-Path -LiteralPath $logPath -PathType Leaf)) { throw 'Missing owned suite log.' }
         $entry | Add-Member log $logPath
         $entry | Add-Member logSha256 (Get-ReviewHash $logPath)
+        $entry | Add-Member deadlineSeconds $deadline
+        $entry | Add-Member late ([bool]$process.late)
+        if ($process.late) { $entry.accepted=$false; $entry.fullSuite=$false }
         $summaries+=$entry
-        Write-Output "$($entry.suite): $($entry.passed)/$($entry.total) passed; $($entry.failed) failed; $($entry.skipped) skipped; exit $($entry.exit)"
-        if (-not $entry.accepted) { throw 'Suite failed, skipped/inconclusive, or exited nonzero.' }
+        Write-Output ("$($entry.suite): $($entry.passed)/$($entry.total) passed; $($entry.failed) failed; $($entry.skipped) skipped; exit $($entry.exit)" +
+            $(if ($process.late) {"; LATE, past its $deadline s deadline"} else {''}))
     }
+    $rejected=@($summaries | Where-Object {-not $_.accepted} | ForEach-Object {$_.suite})
+    if ($rejected.Count) { throw ('Every suite ran; these failed, skipped, were inconclusive, exited nonzero or ran late: '+($rejected -join ', ')) }
 } catch { $failure=$_.Exception.Message }
 finally {
     try {

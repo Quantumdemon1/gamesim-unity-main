@@ -138,7 +138,9 @@ namespace Gamesim.Episode
         private bool FrameDiaryChair()
         {
             if (cameraRig == null || diaryAnchor==null || !diaryAnchor.isActiveAndEnabled) return false;
-            diarySeat=player.GetComponent<DiarySeatPose>() ?? player.gameObject.AddComponent<DiarySeatPose>();
+            // Explicitly: a missing component is Unity's fake null in the editor, which ?? keeps.
+            diarySeat=player.GetComponent<DiarySeatPose>();
+            if(diarySeat==null)diarySeat=player.gameObject.AddComponent<DiarySeatPose>();
             if(!diarySeat.Begin(diaryAnchor,cameraRig,()=>this!=null && diaryOpen,()=>
             {
                 if(this==null || !diaryOpen)return;

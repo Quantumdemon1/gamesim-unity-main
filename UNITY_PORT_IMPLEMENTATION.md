@@ -1,5 +1,278 @@
 # Integrated Unity port — implementation and acceptance record
 
+## Consolidation - 2026-10-15
+
+Every agent's work now has one line: branch `claude/consolidation` (a4fdfa38) holds GitHub main, the
+lead branch (waves A-D, vote V1-V6, input A0-A13, balance B0-B7), the lanes V7 (through a3d116db),
+input's later group, arcs2 and the art reactions, and Codex's phase-and-dialogue work. The wave-1 lanes
+branch from it; the lead lands them. The entries below this one are the historical record and are not
+rewritten.
+
+**Codex's phase-and-dialogue work** (`D:\GamesimIntegration20261010`, uncommitted on top of 515246bf)
+was ported byte for byte by 4cef3e0b: 213 of its 221 entries, each copy's sha256 checked.
+- Separate phase guidance, system and save feedback, and accepted dialogue. The grammar repairs are
+  display-time only (`NarrativeDisplay`, `StoryText.FillDisplay`): recorded narration and saved Fill text
+  are never rewritten.
+- Six conversation categories with only the chosen surface shown, nested person and plea choices, and
+  spoken player and NPC turns for accepted receipts (`ConversationExchange`), behind the knowledge gate:
+  only receipts the player was shown, filtered by `KnownBallots.TellsAnUnknownBallot`, never odds.
+  Command costs are unchanged.
+- Physical invitations from real pending NPC offers (`NpcInvitation`, `HouseNpcInvitationBubble`).
+- The farewell as a noncontact one-second beat (the owner's decision), with the original 3.8 s Embrace
+  and its regression coverage kept; the veto draw's heading reservation; the creator verifier's nine
+  captures with their test; the Free Time metrics (FT11).
+- `YourWeek` under mode 2: an information-sharing deal's breach, which the vote's settlement writes
+  afterwards, keeps its recorded place after the reveal's lane (the `afterVote` list).
+- **A removed caption, at the owner's request (2026-10-15):** the radial's "More ways to talk" petal
+  (`EpisodeHud.MorePetalCaption`) and `RevealBeyondRadial` are gone with the category redesign. This is an
+  accepted caption-contract change, the only removal; no other caption changed or was appended to.
+
+Eight files keep 515246bf's bytes, not the candidate's: the six HouseGarments slot and overlay assets,
+the UMA asset index and the URP global settings. An editor opened without Assets/UMA had rewritten them
+(the KnitCrew slot then read half its bones-per-vertex; the URP runtime list was emptied).
+
+**Nine PlayMode tests were renamed by the redesign** (old full name, then new; all in
+`Gamesim.Tests.PlayMode.EpisodePlayModeTests`), so a reconciliation of failures across runs can follow
+them:
+
+| Old | New |
+| --- | --- |
+| `Chrome_TheTwoSpendTimePetalsAreToldApart` | `Chrome_TheTwoSpendTimeChoicesAreToldApartInsideConnect` |
+| `Chrome_ConversationDialSeatsSevenPetalsAndKeepsEveryCaption` | `Chrome_ConversationDialSeatsSixCategoriesAndHidesLeafLists` |
+| `Chrome_MorePetalMovesTheKeyboardToTheRowsBeneathTheDial` | `Chrome_CategoryOpensItsChoicesAndBackReturnsToTheWheelWithoutCost` |
+| `ConversationGroups_FourGroupsUnderTheDialAndEachVerbIsOneRow` | `ConversationGroups_EachCategoryHoldsItsOwnVerbsAndTargetsStayFolded` |
+| `ConversationGroups_InAStrategyWindowTheGroupsHoldWhatTheWindowAllows` | `ConversationGroups_InAStrategyWindowTheCategoriesHoldWhatTheWindowAllows` |
+| `ConversationIntent_FreshDialHasSixNonoverlappingPetalsAndThePlainTalkRowAtBothTextSizes` | `ConversationIntent_FreshRootHasSixNonoverlappingCategoriesAndConnectKeepsThePlainTalkChoice` |
+| `ConversationIntent_LegacyKeepsSevenPetalsAndItsOriginalPersonalWarmthTag` | `ConversationIntent_LegacyUsesTheSameCategoriesAndKeepsItsOriginalPersonalWarmthTag` |
+| `Conversation_TheRingsFootLeadsToTheRowsAndTheRowsLeadBack` | `Conversation_KeyboardEntersACategoryAndBackReturnsToTheRoot` |
+| `Conversation_ATalkThatMovesThemSaysWhereTheyStandNow` | `Conversation_ATalkThatMovesThemKeepsTheChangedStandingAndSpeaksItsAcknowledgementOnce` |
+
+**The suites (lane S3).** Tests that cannot pass by design left the shipping suites:
+- The farewell's feasibility and diagnostic probes moved, unchanged, to two assemblies that compile only
+  under `GAMESIM_DIAGNOSTICS` (a diagnostic run adds it to the test copy; it is never committed), each with
+  its own floor: `Gamesim.DiagnosticsPlayModeTests` (`Gamesim.Tests.Diagnostics`) and
+  `Gamesim.Uma.DiagnosticsPlayModeTests` (`Gamesim.Uma.Tests.Diagnostics`, also `GAMESIM_UMA`). Old to new:
+  `Gamesim.Tests.PlayMode.GroundedFarewellPlumbingPlayModeTests.{CalibratedIk_*, DynamicIk_*, InertStream_*,
+  StreamTopology_*, PassiveIk_*, UntouchedIdle_*}` to `Gamesim.Tests.Diagnostics.GroundedFarewellDiagnosticPlayModeTests`
+  (same method names); `Gamesim.Uma.Tests.UmaGroundedFarewellPlayModeTests.{the same six}` to
+  `Gamesim.Uma.Tests.Diagnostics.UmaGroundedFarewellDiagnosticPlayModeTests`; `Gamesim.Tests.PlayMode.Source21ProvidedIdleFootIkPlayModeTests`
+  to `Gamesim.Tests.Diagnostics.Source21ProvidedIdleFootIkPlayModeTests`; `Gamesim.Uma.Tests.Source21UmaIdleFootIkPlayModeTests`
+  to `Gamesim.Uma.Tests.Diagnostics.Source21UmaIdleFootIkPlayModeTests`. Source21 now builds its Idle Foot IK
+  controller in memory (nothing is written under Assets/) and no longer pins the shipping controller's
+  SHA, state count or IK pass.
+- The 14 farewell readiness tests (`FarewellProvidedReadiness`, `FarewellReadinessControlledNegative`)
+  compile only under `GAMESIM_UMA` and are judged on the UMA cast. The UMA-free fixture that borrowed the
+  mesh-less animation skeleton as the cast is gone (the owner's decision: UMA bodies only).
+- On the UMA cast the staged eviction always stands its two principals into the same endpoints: the
+  evicted into WalkStop, the survivor into Idle. The evicted left the committed state at the commit, so
+  the summons cannot send them (`Not gathered: taylor-kim (no body to walk)`); the stage's retry sends them
+  late and `SeatArrivals` seats them the frame they reach their mark (`IsOnMark`), before `HouseNpcMotion`
+  has counted its two settled frames, so their motion is still `Walking` under the seat and they finish
+  that walk into WalkStop when they stand. The survivor, gathered at the summons and `Arrived`, stands into
+  Idle. Six readiness tests requested another combination and refuse, by design, to force one (9e983425):
+  - Three now read the combination the cast stands into and keep what they are about.
+    `AfterBothCallsPreservesANewerCue`: after the preparation completes (at least one returned write, the
+    exact captured clips and call count) a newer cue survives the stale cleanup.
+    `AfterFirstBoundaryIsOnceOnlyAndDoesNotDriveSecond`: at the after-first-write boundary the first endpoint
+    is a captured WalkStop and the second whatever it stood into; for the activity and fresh-token cases
+    the refusal must come from the recheck between the endpoints ("Idle preparation interrupted after first
+    endpoint"), because a second write that never came says nothing when the second endpoint is an Idle
+    no-op. `DisabledPresentationsCannotWriteOrEraseANewerOwner`: before control both endpoints stand in a
+    positive, nontransitioning Idle or WalkStop on its exact clip and a write is due, so the disabled
+    component is the only refusal cause. The newer-cue windows in the first and third now sample every
+    frame and tolerate a miss only on the natural zero-weight handoff (`FarewellForeignHandoff`: crossing
+    into the cue's exact state and clip at weight 0, frames 3518 and 27842 of run w1s3c1); any other miss
+    fails, and the cue must still be held at cleanup. Since e6e7c597 (review S3-2) a window counts its
+    handoff frames and fails on a second one; every one of the five windows of run r3s3a read exactly one.
+  - Three wait for a combination the cast does not reliably stand into: `BothWalkStopCallsOnlyOnce`,
+    `BothIdleStillRequiresNewEvaluations` and `DoesNotRestartAnExistingGlobalStopExit` (the authorization
+    comes while the evicted's WalkStop still plays, never after its exit to Idle has begun). Kept for a
+    gather that would produce them, never acceptance. 9e983425 left them in `Gamesim.PlayModeTests`
+    behind `GAMESIM_DIAGNOSTICS`, outside every floor; by the lead's ruling below they are now in
+    `Gamesim.Uma.DiagnosticsPlayModeTests`, and the branches they name are acceptance-tested directly.
+  - So the UMA build of `Gamesim.PlayModeTests` holds 11 of the 14; the UMA-free build holds none, and its
+    floor is unchanged. No floor line counts those 11: `Gamesim.PlayModeTests 1197` is the UMA-free count,
+    and the UMA run of the same assembly is held to it, a gap every `GAMESIM_UMA` test in that assembly
+    already shared. 463a865c's "every moved test keeps a floor" holds for the moved probes, not for these
+    (review S3-4). A UMA-mode floor for `Gamesim.PlayModeTests` is the release run's (R1) to measure and add.
+- Kept in the shipping suites: the behaviour tests, among them `TwoActualTakesEnterTogetherStayPlantedAndReturnToIdle`
+  and `BothUmaBodiesGiveTheGroundedGestureAndReturnToIdle`, and FT11, which asserts the eight Largest
+  receipts fit (the Free Time slice fixes the board). Its receipts are the acceptance measure of lane S4a,
+  which owns FT11 and makes it assert the owner's Largest contract (a fit, or a page or scroll with a
+  visible indicator) with Standard and Larger unchanged; a plain fit would assert the wrong contract
+  (review S3-7, for the lead to confirm).
+- The review runner gives each suite a deadline at least twice its measured duration (PlayMode 14,400 s)
+  and never kills a late Unity; it runs every suite before failing. `Tools/README.md` has the table and
+  the diagnostics run commands.
+
+**The lead's ruling on the readiness tests (2026-10-16, review S3-1), applied in 4911cf63.**
+1. The three readiness tests that wait for an Idle/WalkStop combination the cast does not reliably stand
+   into left the shipping assembly for `Gamesim.Uma.DiagnosticsPlayModeTests`:
+   `Gamesim.Uma.Tests.Diagnostics.FarewellReadinessDiagnosticPlayModeTests` (category
+   `FarewellReadinessDiagnostic`), same method names. That assembly compiles under `GAMESIM_UMA` and
+   `GAMESIM_DIAGNOSTICS`, the two conditions the tests need, and its floor now counts them (7 to 10). The
+   bodies are the old ones but for reaching the fixture through its helper (a script checked them
+   identical after that substitution). The shared helper is composition: the new fixtures construct an
+   `EpisodePlayModeTests` and run its own `LoadIsolatedEpisode` / `CleanUpIsolatedEpisode`, and the
+   readiness route and its witnesses (`BeginProvidedFarewellReadiness`, `FarewellReadiness`,
+   `WaitForFarewellBeforeCommit`, `WaitForFarewellAuthorization`, `AssertCapturedFarewellBranch`,
+   `ObserveFarewellIdleBeforeCut`, `AssertNoFarewellPreparation`, `ReadFarewellField`,
+   `ReadFarewellAnimator`, `ReadFarewellIdleClip`, `ReadFarewellSelectedClip`) are public in the
+   `GAMESIM_UMA` build. A derived fixture was not an option: NUnit runs a base fixture's tests again in a
+   derived one. No test in `Gamesim.PlayModeTests` is behind `GAMESIM_DIAGNOSTICS` any more. On the UMA
+   copy (run r3s3b) `BothIdleStillRequiresNewEvaluations` passed: the evicted settled into Idle within its
+   .35 s card reading, which it had not in w1s3b1 or w1s3c1. So the combinations are rare and
+   timing-dependent rather than impossible, which is why they are diagnostics; the other two failed as
+   before: "MISSING requested SECOND ordinary state combination", and, for the crossing, a preparation
+   already attempted (the only WalkStop-to-Idle crossing it found was the director's own write).
+2. The three tests 9e983425 rewrote each still assert their product branch, and are ratified:
+   - `AfterFirstBoundaryIsOnceOnlyAndDoesNotDriveSecond`: the recheck between the endpoints refuses before
+     the second endpoint is asked ("Idle preparation interrupted after first endpoint"), the preparation
+     never completes, one write and no retry. Mutation M1 turned it red on exactly that witness.
+   - `DisabledPresentationsCannotWriteOrEraseANewerOwner`: before control a write is due (the evicted's
+     WalkStop), so no call with either component disabled shows the dual preflight refuses before any
+     write; after the first write the recheck refuses; the newer cue survives the old cleanup. M1 turned it
+     red.
+   - `AfterBothCallsPreservesANewerCue`: the preparation completed (the attempt spent, at least one
+     returned write, the exact captured clips and call count), and afterwards the stale ceremony never
+     writes again: the newer cue is held on every frame of its window and through the same-frame cleanup,
+     with no new take and no retry. On the cast the cue lands on the survivor, whose endpoint was the Idle
+     no-op rather than a written crossing; the product's path after the preparation (the observation
+     refuses, the cleanup releases only its own cue) is the same either way.
+3. The three branches the moved tests named are acceptance-tested directly:
+   `Gamesim.Uma.Tests.UmaFarewellReadinessDecisionPlayModeTests` (category `FarewellReadinessDecision`) in
+   `Gamesim.Uma.PlayModeTests`, whose floor counts them (82 to 85). Each stages the real eviction and, on
+   the frame before the director authorizes (`farewellReadyFrames == 1`), puts the two principals'
+   Animators into its combination (`Animator.Play` and a zero-length `Animator.Update`), then lets the
+   unchanged director decide. The code allows it: the decision reads only the live Animator, so no product
+   change was needed.
+   - `BothWalkStopEndpointsAreEachWrittenOnceAndNeverAgain`: one attempt and exactly two writes; on the next
+     evaluation both bodies cross from a WalkStop still short of its own .55 exit into Idle, and neither
+     crossing is ever begun again (50 frames in r3s3a); then two new Idle evaluations, the cut, still two
+     writes.
+   - `BothIdleEndpointsWriteNothingAndStillWaitForTwoNewEvaluations`: no attempt and no write; neither body
+     crosses, each Idle runs on from its captured phase, there is no cut on the first evaluation after the
+     authorization, and the cut follows two new evaluated Idle frames.
+   - `AnExistingStopExitIsWaitedOutAndNeverRestarted`: the evicted's WalkStop is evaluated across its own
+     .55 exit, so the controller's WalkStop-to-Idle crossing already runs; the director tries and is
+     refused at the first endpoint's capture on every frame of the crossing it reaches (5 of 6 in r3s3a; the
+     first precedes its second standing frame), writes nothing, the crossing never goes back, and the
+     endpoint is captured as the Idle it lands in.
+   Each forced its combination with about 0.79 s of the original 1.5 s readiness window left, and the
+   crossing case was authorized with 0.64 s left.
+4. This record.
+
+**Measured after the ruling (2026-10-16, locked runner, the UMA copy unless named).**
+- r3s3a: the three decision tests 3/3; the 14 `GroundedFarewell_` tests of the UMA build of
+  `Gamesim.PlayModeTests` 12 passed, the same two foot-drift failures as before (S5); the full
+  `Gamesim.Uma.PlayModeTests` 85 run, 84 passed, the one failure `BothUmaBodiesGiveTheGroundedGestureAndReturnToIdle`
+  (1.09 mm, S5), 208 s for the Unity process.
+- r3s3b, with `GAMESIM_DIAGNOSTICS`: `Gamesim.Uma.DiagnosticsPlayModeTests` 10 run, 5 passed, 220 s. The
+  seven probes as before the move (four pass; dynamic IK, inert stream and Source21's landmark drift fail),
+  Source21 among them after its relaxed precondition (e6e7c597); the three readiness diagnostics as above.
+- r3s3c, the UMA-free copy with `GAMESIM_DIAGNOSTICS`: `Gamesim.DiagnosticsPlayModeTests` 7 run, 4 passed,
+  121 s; the same three failures as before the move (dynamic IK, inert stream, and Source21's landmark
+  drift, which it reaches past the relaxed precondition, as on the UMA copy).
+- r3s3d, mutations of the product (applied together, each pinned by its own witness, then restored byte for
+  byte: `EpisodeDirector.Farewell.cs` sha256 271e6b2d..., `CharacterPresentation.Farewell.cs` 6e3ef7f2...):
+  M2, the second endpoint's preparation is checked but its WalkStop write never made; M3, with nothing
+  written the observation lets the cut through at once; M4, `TryCaptureFarewellIdle` no longer waits out a
+  transition. All three decision tests went red on their own witnesses: `BothWalkStop...` on "Endpoint 1:
+  the director's write ... must cross it into Idle" (M2), `BothIdle...` on a cut at the frame after the
+  authorization (M3), `AnExistingStopExit...` on an attempt spent during the crossing (M4). The 14
+  `GroundedFarewell_` tests of the UMA build ran beside them: M2 and M3 cannot act on the cast's natural
+  endpoints (its second endpoint is the Idle no-op, and the evicted's WalkStop always spends the attempt),
+  and none of those tests failed beyond the two foot-drift failures but one: M4 also turned
+  `RefusesSecondForeignOwnersBeforeCommit` red (the shrug's zero-weight handoff, captured as Idle). So the
+  transition guard was already covered for a foreign cue, the other two branches only by the moved
+  diagnostics, which acceptance never runs; the decision tests now cover all three.
+
+**For the lead and the later lanes (review S3-3, S3-6, S3-8).**
+- The ratified readiness tests read the cast's natural endpoints, and the evicted's WalkStop comes from the
+  stage: seated the frame they reach their mark while their motion is still `Walking`, they finish that
+  walk into WalkStop when they stand. `AfterFirstBoundary` and `DisabledPresentations` (after the first
+  write) need that WalkStop as the first endpoint, and `AfterBothCalls` needs one written WalkStop.
+  Whoever changes ceremony seating or settling (S5 or the stage's owner) re-judges those three in the same
+  change; the decision tests force their states and do not depend on it.
+- The UMA-mode deadline of `Gamesim.PlayModeTests` (14,400 s) rests on 4,305 s measured for 1,081 tests on
+  an older source. No full UMA-mode run of that assembly has run on this source, which adds the 11
+  readiness tests (452 s together on the UMA copy, run r3s3a). R1's combined UMA run records its
+  whole-process time and updates `Tools/README.md`, the `review-workflow.ps1` comment and
+  `test-review-suite-runs.ps1`.
+- Merge hotspots: `Tools/baseline.txt` (recompute floors arithmetically at landing: this lane's 85 and 10
+  plus what other lanes add); the re-indented teardown in `EpisodePlayModeTests.cs`; the inserts at the top
+  of this file and the roadmap; and the plumbing files that lost the moved probes (port any incoming probe
+  edit to `Assets/Gamesim/Tests/Diagnostics`). `EpisodePlayModeTests.GroundedFarewell.cs` now has public
+  readiness helpers that two other assemblies call: a lane renaming one breaks
+  `Gamesim.Uma.PlayModeTests`. Land S3 before S5.
+
+**Floors** (`Tools/baseline.txt`): at 4cef3e0b the counts observed on that source, EditMode 7846, PlayMode
+1218, UMA 89, the subset 5336 (the candidate's file said 7840/1211/89/5336). After S3: EditMode 7846,
+PlayMode 1197 (1218 less the 7 moved probes and the 14 readiness tests now UMA-only), UMA 82 (89 less 7),
+the subset 5336, and the new lines `Gamesim.DiagnosticsPlayModeTests` 7 and `Gamesim.Uma.DiagnosticsPlayModeTests` 7.
+After the lead's ruling (2026-10-16): UMA 85 (82 and the three readiness decision tests) and
+`Gamesim.Uma.DiagnosticsPlayModeTests` 10 (7 and the three moved readiness tests), both measured (runs
+r3s3a and r3s3b); the rest unchanged.
+
+**Measured on the S3 branch (d510cb92, 2026-10-15, through the locked runner).**
+- NoUMA `Gamesim.PlayModeTests`: 1197 run, 1177 passed, 20 failed, no test in a diagnostic category,
+  5,557 s for the Unity process. The 20 are the 19 Largest-text layouts (S4) and
+  `TwoActualTakesEnterTogetherStayPlantedAndReturnToIdle` (a 4.6 mm foot gap at the farewell blend, S5):
+  the earlier 32 less the 9 readiness and 3 probe failures that left.
+- UMA `Gamesim.Uma.PlayModeTests`: 82 run, 81 passed; the one failure is
+  `BothUmaBodiesGiveTheGroundedGestureAndReturnToIdle` (1.15 mm, S5). The four garment tests the editor
+  rewrite had broken pass on 515246bf's bytes.
+- The 17 `GroundedFarewell_` tests on UMA bodies (`Gamesim.PlayModeTests` under `GAMESIM_UMA`, filtered):
+  9 passed, 8 failed. Passed: the three always-compiled ones (both PTP-7 tests now on their provided-body
+  branch) and six readiness tests, the Dress case among them (the UMA catalog exists). Failed: two on the
+  farewell's foot drift (`KeepsActualCameraTakeAndWholeGoodbye`, `SkipAndReducedMotion...`, S5), and six
+  whose requested ordinary Idle/WalkStop combination did not occur naturally (`BothWalkStop`, `BothIdle`,
+  `AfterBothCalls`, `AfterFirstBoundary`, `DisabledPresentations`, `DoesNotRestartAnExistingGlobalStopExit`):
+  they refuse to force a state by design, so they depend on the walk's timing. The three rewritten and
+  the three made diagnostic-only above answer these six; see the next item.
+- After that (4de38b4e, run w1s3c2, the UMA copy without the diagnostics define): the 14 `GroundedFarewell_`
+  tests of the UMA build, 12 passed. `AfterBothCalls` and `DisabledPresentations`, red in w1s3c1 on the
+  zero-weight handoff, pass; `AfterFirstBoundary` passes all four scenarios with the second endpoint a
+  captured Idle. The two failures are the farewell's foot drift, S5's: `KeepsActualCameraTakeAndWholeGoodbye`
+  (the take is released at 2% progress with a toe 10.4 mm off its base, "actual foot drift") and
+  `SkipAndReducedMotionKeepTheirOriginalWindows` (no pair stays playing long enough to be cancelled).
+  Mutation (run w1s3d1, the UMA copy): with the recheck between the endpoints removed from
+  `EpisodeDirector.Farewell.cs`, `AfterFirstBoundary` fails on its new witness ("second Idle preparation
+  refused" where the recheck's refusal is required; every earlier assertion, the old witness among them,
+  held) and `DisabledPresentations` fails ("Idle preparation lost authority after commit"). The file was
+  restored byte for byte (sha256 271e6b2d...).
+- The three diagnostic-only readiness tests compile with `GAMESIM_UMA` and `GAMESIM_DIAGNOSTICS` (an
+  offline compile of `Gamesim.PlayModeTests` from 4de38b4e's sources, all three present).
+- Diagnostics: 7 and 7 run (4 passed, 3 failed each: the dynamic-IK and inert-stream experiments and
+  Source21's landmark drift, as before the move), 261 s and 294 s. Source21's in-memory controller copy
+  plays like the old on-disk one (43 states, 122 transitions, the same 1 mm drift rate).
+- Nothing was written under `Assets/` by any of these runs; the 2026-10-15 run before them had imported
+  `__Source21NormalIdleFootIk{Provided,Uma}.controller` there.
+
+**IK pass: pending S5.** The shipping controller's base layer now has `iKPass` on
+(`HumanoidClipWiring`, `GamesimHumanoid.controller` `m_IKPass: 1`), and the EditMode
+`GroundedFarewellAnimationTests` pins it. Codex's record calls it diagnostic only. The farewell slice (S5)
+either adopts it with a 1080p/60 FPS profile (owner gate O4) or reverts it to 0 and drops the pin.
+
+**Fake null (PTP-13 and the product).** Besides the three test sites, four product sites added a component
+as `GetComponent<T>() ?? AddComponent<T>()`: the diary seat (`EpisodeDirector.DiaryRoom.cs`,
+`FrameDiaryChair`), both `CharacterPortraits.Bind` overloads, and the HoH photo in
+`HousePublicDisplays.Refresh`. Each now adds on an explicit `== null` (4de38b4e). The change is defensive:
+a red-first EditMode test (bind a RawImage twice outside Play mode, expect one binding) passed against the
+unfixed code (run w1s3c1): in edit mode Unity 6000.6 handed the missing component back as a true null.
+Only edit mode was measured. Play mode was not, and this project's own record has `??` failing PlayMode
+tests through a CanvasGroup (2026-09-26), so the sites may matter there; 4de38b4e's message, which says
+"in edit mode as in Play mode", claims more than was measured (review S3-5). The red-first test cannot tell
+the fix from the bug and was not kept. The diary-seat hunk is in `EpisodeDirector.DiaryRoom.cs`, which lane
+S2a also edits: check it against S2a's hunks at landing, as a tooling lane touched product files. Eight PlayMode tests over
+those sites (the diary seat and room, the public displays, the event context, the profile portraits) pass
+on the UMA-free copy (run w1s3c3b).
+
+**Still open** (the check report's sections 4 and 5): Largest-text layouts (19 tests, S4), two feet 1-4 mm
+off at the farewell blend (S5; on the UMA cast it also fails the two readiness tests that need a take to
+play, `KeepsActualCameraTakeAndWholeGoodbye` and `SkipAndReducedMotionKeepTheirOriginalWindows`), the HUD,
+input, reader and art defects of wave 1, and the release run.
+
 **Later V06 closure, 2026-10-11 UTC:** bound V06 root3684 closed exit1 before
 run-directory creation/compiler/game capture, reporting a SequenceEqual overload
 error. The exact old compiler-name expression reproduces that error with

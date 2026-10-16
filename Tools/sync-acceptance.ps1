@@ -1,9 +1,13 @@
 # Mirrors only named project folders into the pre-existing, idle acceptance copy.
+# -Diagnostics adds the GAMESIM_DIAGNOSTICS Standalone define to the copy (never to the source), so
+# the diagnostics test assemblies compile there; without it the copy never carries that define. When
+# the switch is not passed, GAMESIM_DIAGNOSTICS=1 in the environment asks for it.
 param([switch]$DisableGpuResidentDrawer, [switch]$WithoutUma, [switch]$RetainInstalledUma,
-    [object]$ValidationLease, [object]$Snapshot)
+    [object]$ValidationLease, [object]$Snapshot, [switch]$Diagnostics)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'review-evidence.ps1')
 . (Join-Path $PSScriptRoot 'review-workflow.ps1')
+$diagnosticsDefine = if ($PSBoundParameters.ContainsKey('Diagnostics')) { [bool]$Diagnostics } else { $env:GAMESIM_DIAGNOSTICS -ceq '1' }
 $sourceRoot = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot)).TrimEnd('\','/')
 $originalSource = $sourceRoot
 $destinationRoot = Get-ReviewDestination $sourceRoot
@@ -46,7 +50,7 @@ if (-not $WithoutUma -and (Test-Path -LiteralPath (Join-Path $destinationRoot 'A
 if ($RetainInstalledUma -and ($WithoutUma -or -not (Test-Path -LiteralPath (Join-Path $destinationRoot 'Assets/UMA') -PathType Container))) {
     throw 'Retained UMA mode requires the separately installed destination vendor, and cannot be used for NoUMA.'
 }
-$projection = New-ReviewInputManifest -ProjectRoot $sourceRoot -WorkflowRoot $sourceRoot -PreviewSync -RetainedRoot $destinationRoot -WithoutUma:$WithoutUma -RetainInstalledUma:$RetainInstalledUma
+$projection = New-ReviewInputManifest -ProjectRoot $sourceRoot -WorkflowRoot $sourceRoot -PreviewSync -RetainedRoot $destinationRoot -WithoutUma:$WithoutUma -RetainInstalledUma:$RetainInstalledUma -Diagnostics:$diagnosticsDefine
 if ($syncEvidence) { Write-ReviewNewJson $projection (Join-Path $syncEvidence 'projection-before.json') }
 $projectUmaOverrides = @(Get-ReviewProjectUmaOverrides -ProjectRoot $sourceRoot -WithoutUma:$WithoutUma)
 if ($WithoutUma) {
@@ -139,7 +143,7 @@ foreach ($relativeOverride in $projectUmaOverrides) {
     Copy-Item -LiteralPath $sourceOverride -Destination $destinationOverride -Force
 }
 $settings = Join-Path $destinationRoot 'ProjectSettings\ProjectSettings.asset'
-$content = ConvertTo-ReviewAcceptanceSettings ([IO.File]::ReadAllText($settings)) ([bool]$WithoutUma) ([bool]$RetainInstalledUma)
+$content = ConvertTo-ReviewAcceptanceSettings ([IO.File]::ReadAllText($settings)) ([bool]$WithoutUma) ([bool]$RetainInstalledUma) ([bool]$diagnosticsDefine)
 [IO.File]::WriteAllText($settings,$content,[Text.UTF8Encoding]::new($false))
 if ($DisableGpuResidentDrawer) {
     $pipeline = Join-Path $destinationRoot 'Assets\Settings\PC_RPAsset.asset'
@@ -160,7 +164,7 @@ if (@($projectionDrift | Where-Object {-not $_.allowed}).Count) {
 }
 Assert-ReviewSnapshot $Snapshot
 $synced = $true
-Write-Output "Snapshot ready: $destinationRoot; GPU Resident Drawer disabled for tests: $DisableGpuResidentDrawer"
+Write-Output "Snapshot ready: $destinationRoot; GPU Resident Drawer disabled for tests: $DisableGpuResidentDrawer; GAMESIM_DIAGNOSTICS: $diagnosticsDefine"
 } catch { $syncFailure = $_.Exception.Message; throw }
 finally {
     try {
@@ -169,7 +173,7 @@ finally {
             try { Assert-ReviewManifestEqual $Snapshot.original (New-ReviewRawManifest $originalSource); Assert-ReviewSourceIdentity $Snapshot }
             catch { $sourceDrift = $_.Exception.Message; $synced = $false }
             Write-ReviewNewJson ([ordered]@{schema=1;status=$(if ($synced) {'Synced'} else {'Failed'});destination=$destinationRoot;
-                snapshot=$(if ($Snapshot) {$Snapshot.root} else {$null});retainedInstalledUma=[bool]$RetainInstalledUma;
+                snapshot=$(if ($Snapshot) {$Snapshot.root} else {$null});retainedInstalledUma=[bool]$RetainInstalledUma;diagnostics=[bool]$diagnosticsDefine;
                 failure=$syncFailure;sourceFailure=$sourceDrift;nativeTestsExecuted=$false;leaseToken=$(if ($ValidationLease) {$ValidationLease.token} else {$null})}) (Join-Path $syncEvidence 'sync-receipt.json')
             if ($sourceDrift -and -not $syncFailure) { throw $sourceDrift }
         }

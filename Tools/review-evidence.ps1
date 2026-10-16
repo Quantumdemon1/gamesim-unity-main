@@ -103,12 +103,15 @@ function Compare-ReviewBuildTree([string]$Root, $RecordedFiles) {
 function Write-ReviewJson($Value, [string]$Path) {
     ConvertTo-Json -InputObject $Value -Depth 12 | Set-Content -LiteralPath $Path -Encoding utf8
 }
-function ConvertTo-ReviewAcceptanceSettings([string]$Text, [bool]$WithoutUma, [bool]$EnableRetainedUma=$false) {
+# GAMESIM_DIAGNOSTICS compiles the diagnostics test assemblies (Assets/Gamesim/Tests/Diagnostics). The
+# copy carries it only when a diagnostic run asks for it ($EnableDiagnostics), and loses it otherwise,
+# even if a developer has it set in the source settings, so no shipping run ever compiles the probes.
+function ConvertTo-ReviewAcceptanceSettings([string]$Text, [bool]$WithoutUma, [bool]$EnableRetainedUma=$false, [bool]$EnableDiagnostics=$false) {
     if ($EnableRetainedUma -and $WithoutUma) { throw 'Retained UMA activation cannot be used for NoUMA.' }
-    if ($EnableRetainedUma) {
+    if ($EnableRetainedUma -or $EnableDiagnostics) {
         $blocks=[regex]::Matches($Text,'(?m)^(  scriptingDefineSymbols:\r?\n)((?:    [^\r\n]*(?:\r?\n|$))*)')
         if ($blocks.Count -ne 1 -or [regex]::Matches($blocks[0].Groups[2].Value,'(?m)^    Standalone: [^\r\n]*').Count -ne 1) {
-            throw 'Explicit retained UMA activation requires one existing Standalone scripting define entry.'
+            throw 'Explicit retained UMA or diagnostics activation requires one existing Standalone scripting define entry.'
         }
     }
     # The installed inference package removes its editor analytics symbol on batch startup.
@@ -118,9 +121,13 @@ function ConvertTo-ReviewAcceptanceSettings([string]$Text, [bool]$WithoutUma, [b
         $defines = [regex]::Replace($block.Groups[2].Value, '(?m)^(    Standalone: )([^\r\n]*)', [Text.RegularExpressions.MatchEvaluator]{
             param($match)
             $tokens = @($match.Groups[2].Value.Split(';') | Where-Object {
-                $_ -cne 'SENTIS_ANALYTICS_ENABLED' -and (-not $WithoutUma -or $_ -cne 'GAMESIM_UMA')
+                $_ -cne 'SENTIS_ANALYTICS_ENABLED' -and (-not $WithoutUma -or $_ -cne 'GAMESIM_UMA') -and
+                    ($EnableDiagnostics -or $_ -cne 'GAMESIM_DIAGNOSTICS')
             })
             if ($EnableRetainedUma -and $tokens -cnotcontains 'GAMESIM_UMA') { $tokens += 'GAMESIM_UMA' }
+            if ($EnableDiagnostics -and $tokens -cnotcontains 'GAMESIM_DIAGNOSTICS') {
+                $tokens = @($tokens | Where-Object { $_ -cne '' }) + 'GAMESIM_DIAGNOSTICS'
+            }
             $match.Groups[1].Value + ($tokens -join ';')
         })
         $block.Groups[1].Value + $defines
@@ -155,7 +162,7 @@ function ConvertTo-ReviewBuildSettings([string]$Text) {
 }
 function New-ReviewInputManifest {
     param([string]$ProjectRoot, [string]$WorkflowRoot, [switch]$WithoutUma,
-        [string]$RetainedRoot, [switch]$PreviewSync, [string]$MetaArchive, [switch]$RetainInstalledUma)
+        [string]$RetainedRoot, [switch]$PreviewSync, [string]$MetaArchive, [switch]$RetainInstalledUma, [switch]$Diagnostics)
     $ProjectRoot = [IO.Path]::GetFullPath($ProjectRoot).TrimEnd('\','/')
     if ($MetaArchive -and (Test-Path -LiteralPath $MetaArchive)) { throw 'Use a fresh metadata archive; previous evidence is never overwritten.' }
     $records = [Collections.Generic.List[object]]::new()
@@ -205,10 +212,11 @@ function New-ReviewInputManifest {
             if ($path -eq 'ProjectSettings/ProjectSettings.asset') {
                 $content = [IO.File]::ReadAllText($file.FullName)
                 if ($PreviewSync) {
-                    $content = ConvertTo-ReviewAcceptanceSettings $content ([bool]$WithoutUma) ([bool]$RetainInstalledUma)
+                    $content = ConvertTo-ReviewAcceptanceSettings $content ([bool]$WithoutUma) ([bool]$RetainInstalledUma) ([bool]$Diagnostics)
                     $record.sha256 = Get-ReviewTextHash $content
                     $record.bytes = [Text.Encoding]::UTF8.GetByteCount($content)
                     $record.explicitRetainedUmaProjection = [bool]$RetainInstalledUma
+                    if ($Diagnostics) { $record.diagnosticsProjection = $true }
                 }
                 $record.buildSettingsSha256 = Get-ReviewTextHash (ConvertTo-ReviewBuildSettings $content)
                 $record.configuredBuildSettings = ($content -match '(?m)^  defaultScreenWidth: 1600\r?$' -and

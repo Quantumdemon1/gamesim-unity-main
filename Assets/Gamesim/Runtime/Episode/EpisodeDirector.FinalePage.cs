@@ -185,6 +185,8 @@ namespace Gamesim.Episode
                 Highlights = new List<EpisodeHud.FinaleStat>(),
                 Ways = new List<EpisodeHud.FinaleWay>(),
                 SecondRow = new List<EpisodeHud.FinaleWay>(),
+                // The largest text's pager turns the page and renders it again; nothing is committed.
+                Redraw = Render,
             };
             // The jury in cast order, a face a ballot.
             foreach (var juror in state.contestants)

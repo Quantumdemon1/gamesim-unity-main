@@ -94,9 +94,7 @@ namespace Gamesim.Presentation
         public static Image Picture(string name, RectTransform parent, string path, string fallbackIcon, Color tint,
             Vector2 centre, float side)
         {
-            var sprite = UiTheme.Pack(path);
-            bool pack = sprite != null;
-            if (!pack) sprite = string.IsNullOrEmpty(fallbackIcon) ? null : UiTheme.Icon(fallbackIcon);
+            var sprite = PictureSprite(path, fallbackIcon, out bool pack);
             if (sprite == null) return null;
             var image = new GameObject(name, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
             var rect = image.rectTransform;
@@ -113,6 +111,20 @@ namespace Gamesim.Presentation
             image.preserveAspect = true;
             image.raycastTarget = false;
             return image;
+        }
+
+        /// <summary>
+        /// The sprite <see cref="Picture"/> draws for <paramref name="path"/>: the pack's, else the
+        /// generated glyph <paramref name="fallbackIcon"/>, else null - when Picture draws nothing.
+        /// <paramref name="pack"/> says whether it is the pack's. A layout that leaves room for a
+        /// picture asks this before anything is built.
+        /// </summary>
+        public static Sprite PictureSprite(string path, string fallbackIcon, out bool pack)
+        {
+            var sprite = UiTheme.Pack(path);
+            pack = sprite != null;
+            if (!pack) sprite = string.IsNullOrEmpty(fallbackIcon) ? null : UiTheme.Icon(fallbackIcon);
+            return sprite;
         }
 
         /// <summary>

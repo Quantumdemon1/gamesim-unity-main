@@ -7,7 +7,7 @@ namespace Gamesim.Editor
     /// The owner's arrangement of the bedroom, the Head of Household's ensuite and the game room's
     /// study, as the owner left it by hand in the editor on 2026-09-23 and asked for again on
     /// 2026-10-15 ("Yes, re-create it"). It survived only as a crash-recovery scene saved against
-    /// acec3bda (archived under D:\ClaudeScratchArchive\2026-10-15-consolidation\recovery-scene);
+    /// acec3bda (the consolidation ledger's decision D8 records it, outside the repository);
     /// it is re-created here, in the placement pass, and never by copying that scene, which
     /// predates three weeks of scene work. The pieces themselves are rows of
     /// <see cref="HouseSetPieces"/>' plan; this is what the pass does around them, before the

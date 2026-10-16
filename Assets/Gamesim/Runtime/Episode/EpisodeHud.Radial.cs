@@ -268,7 +268,8 @@ namespace Gamesim.Episode
                     if (petal != null) return petal;
                 }
             }
-            return eligible.FirstOrDefault(item => content != null && item.transform.IsChildOf(content));
+            // Never the largest text's pager: a step with nothing to press opens on its way on.
+            return eligible.FirstOrDefault(item => content != null && item.transform.IsChildOf(content) && !IsLargestPagerControl(item));
         }
 
         /// <summary>

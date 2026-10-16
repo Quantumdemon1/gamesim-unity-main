@@ -502,6 +502,12 @@ namespace Gamesim.Episode
             if (cards) { cellWidth = NomineeCardWidth * scale; cellHeight = NomineeCardHeight * scale; columns = tallColumns; }
             else SolveCardGrid(count, width, fit, 168f * s, 320f * s, PickerRowShortest * s, 104f * s, gap, out cellWidth, out cellHeight, out columns);
             int gridRows = Mathf.CeilToInt(options.Length / (float)columns);
+            // At the largest text a grid of rows too tall for the step even at their least is dealt
+            // onto pages (EpisodeHud.NominationPages.cs), decided here before a row is built: there
+            // a row need not be its least, which cut "Avery Thompson" short on one line, and each
+            // is as tall as a name on two lines and the whole reading under it.
+            if (!cards && LargestTextPages && gridRows * cellHeight + (gridRows - 1) * gap > fit + .5f)
+                cellHeight = Mathf.Min(104f * s, Mathf.Ceil(PickerRowReadsWhole * s));
 
             var grid = new GameObject(NomineeGridName, typeof(RectTransform), typeof(GridLayoutGroup), typeof(LayoutElement)).GetComponent<RectTransform>();
             grid.SetParent(content, false);
@@ -590,6 +596,9 @@ namespace Gamesim.Episode
                 // hidden, and come back with the picks they had.
                 grid.gameObject.SetActive(!expanded);
                 if (planRow != null) planRow.gameObject.SetActive(!expanded);
+                // At the largest text a paged picker shows its page again around the records
+                // (EpisodeHud.NominationPages.cs).
+                StepComparing(expanded);
                 refresh();
                 LayoutStrategyFooter();
                 // The ring holds the cards just hidden; it is wired again from what is on screen.
@@ -800,6 +809,12 @@ namespace Gamesim.Episode
         private const float PickerRowFull = 76f;
         /// <summary>The shortest a candidate's row goes: a name over the standing word and the reading, on one line.</summary>
         private const float PickerRowShortest = 62f;
+        /// <summary>
+        /// A candidate's row with two lines of name and the whole reading under them - the word, the
+        /// track and the number - at the resting text size: <see cref="PickerRow"/>'s two lines of
+        /// 15 at 1.3, its 40 of reading and its 10 of air.
+        /// </summary>
+        private const float PickerRowReadsWhole = 2f * 15f * 1.3f + 40f + 10f;
         /// <summary>The least room a row's name has beside the photo, and the least its type goes to, at the resting text size.</summary>
         private const float PickerNameRoom = 75f, PickerNameFloor = 12f;
 

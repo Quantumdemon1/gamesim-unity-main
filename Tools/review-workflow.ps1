@@ -111,7 +111,9 @@ function Get-ReviewFileRecord([string]$Path,[string]$Relative,[string]$CopyTo) {
     $outputStream = $null; $algorithm = [Security.Cryptography.SHA256]::Create()
     try {
         $length = $inputStream.Length
-        if ($length -lt 0 -or $length -gt 536870912) { throw "Input file exceeds 512 MiB: $Relative" }
+        # A bound on a single input, not a memory limit: the file is hashed (and copied) in 64 KiB blocks. The
+        # player's resources.assets.resS has been 828 MiB since the UMA wardrobe came into Resources.
+        if ($length -lt 0 -or $length -gt 4294967296) { throw "Input file exceeds 4 GiB: $Relative" }
         if ($CopyTo) {
             [void](Assert-ReviewPlainPath $CopyTo)
             [void][IO.Directory]::CreateDirectory((Split-Path -Parent $CopyTo))

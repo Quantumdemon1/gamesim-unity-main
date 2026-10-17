@@ -201,7 +201,15 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(tour.CurrentAnchors, Is.EqualTo(new[] { "Episode panel" }),
                     "The current decision is the phase step's first choice.");
                 panel.gameObject.SetActive(false);
+                var shown = TourChrome("Objective");
+                Assert.That(shown != null, Is.True, "The HUD shows a current objective before the rebuild.");
                 RenderHudForTheCurrentCanvas();
+                // Begin retires every child of the HUD canvas inside the call (SetActive(false), then a
+                // deferred Destroy), so the objective that was showing is switched off now only if the
+                // forced Render really rebuilt the HUD. Render can return early; without this check the
+                // witness below would hold with no rebuild at all.
+                Assert.That(shown != null && !shown.gameObject.activeSelf, Is.True,
+                    "The forced Render rebuilt the HUD: the objective it was showing is retired.");
                 // Longer than the tour's .25 s re-lookup, so the step has looked again after the rebuild.
                 yield return TourRealSeconds(.3f);
                 Assert.That(tour.CurrentAnchors, Is.EqualTo(new[] { "Objective" }),

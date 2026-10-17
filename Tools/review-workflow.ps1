@@ -1,4 +1,12 @@
 # Shared validation ownership and bounded evidence. Dot-source; never launches on import.
+# The floor line (Tools/baseline.txt) a suite is held to. The UMA build of Gamesim.PlayModeTests also
+# runs the tests that compile only under GAMESIM_UMA, so a plan built with UMA reads that build's own
+# line, a key that names no real assembly; a UMA-free plan reads the assembly's own line.
+$script:ReviewUmaBuildFloorKeys = @{'Gamesim.PlayModeTests'='Gamesim.PlayModeTests.UmaBuild'}
+function Get-ReviewSuiteFloorKey([string]$Assembly,[bool]$UmaBuild) {
+    if ($UmaBuild -and $script:ReviewUmaBuildFloorKeys.ContainsKey($Assembly)) { return $script:ReviewUmaBuildFloorKeys[$Assembly] }
+    return $Assembly
+}
 function Get-ReviewSuitePlan([bool]$WithoutUma,[string]$Specifications) {
     $suites=@(@{id='edit';platform='EditMode';assembly='Gamesim.EditModeTests';filter=''},
         @{id='play';platform='PlayMode';assembly='Gamesim.PlayModeTests';filter=''})
@@ -21,6 +29,7 @@ function Get-ReviewSuitePlan([bool]$WithoutUma,[string]$Specifications) {
         }
         if ($suites.Count -lt 1 -or $suites.Count -gt 16) { throw 'Request between 1 and 16 diagnostic suites.' }
     }
+    foreach ($suite in $suites) { $suite.floorKey=Get-ReviewSuiteFloorKey $suite.assembly (-not $WithoutUma) }
     return [pscustomobject]@{diagnostic=$diagnostic;suites=$suites}
 }
 function Assert-ReviewPlainPath([string]$Path) {
@@ -216,7 +225,7 @@ function Assert-ReviewEvidenceFile([string]$Path,[string]$RunRoot,[string]$Hash)
         -not (Test-Path -LiteralPath $path -PathType Leaf) -or $Hash -notmatch '^[a-f0-9]{64}$' -or
         (Get-ReviewHash $path) -cne $Hash) { throw 'Missing, escaped, or changed retained evidence.' }
 }
-function Read-ReviewSuiteReport([string]$Path,[string]$Assembly,[int]$Minimum,[Nullable[int]]$ExitCode,[bool]$Filtered=$false) {
+function Read-ReviewSuiteReport([string]$Path,[string]$Assembly,[int]$Minimum,[Nullable[int]]$ExitCode,[bool]$Filtered=$false,[string]$FloorKey='') {
     if ($null -eq $ExitCode) { throw 'An actual owned process exit code is required.' }
     [void](Assert-ReviewPlainPath $Path)
     $info = Get-Item -LiteralPath $Path -ErrorAction Stop
@@ -247,10 +256,11 @@ function Read-ReviewSuiteReport([string]$Path,[string]$Assembly,[int]$Minimum,[N
     if ($cases.Count -eq 0 -or $cases.Count -ne $counters.total -or $passed -ne $counters.passed -or
         $failed -ne $counters.failed -or $skipped -ne $counters.skipped -or $inconclusive -ne $counters.inconclusive -or
         $cases.Count -ne ($passed+$failed+$skipped+$inconclusive)) { throw 'Test discovery/leaves and report counters disagree.' }
-    if (-not $Filtered) { Assert-ReviewSuiteMinimum $Assembly $cases.Count $Minimum }
+    if (-not $FloorKey) { $FloorKey = $Assembly }
+    if (-not $Filtered) { Assert-ReviewSuiteMinimum $Assembly $cases.Count $Minimum $FloorKey }
     $success = $ExitCode -eq 0 -and $failed -eq 0 -and $skipped -eq 0 -and $inconclusive -eq 0 -and $passed -eq $cases.Count -and
         $run.GetAttribute('result') -ceq 'Passed' -and $assemblies[0].GetAttribute('result') -ceq 'Passed'
-    return [pscustomobject]@{suite=$Assembly;minimumCount=$Minimum;total=$cases.Count;passed=$passed;failed=$failed;skipped=$skipped;
+    return [pscustomobject]@{suite=$Assembly;floorKey=$FloorKey;minimumCount=$Minimum;total=$cases.Count;passed=$passed;failed=$failed;skipped=$skipped;
         inconclusive=$inconclusive;exit=$ExitCode;filtered=$Filtered;accepted=$success;fullSuite=($success -and -not $Filtered);
         report=$Path;reportSha256=(Get-ReviewHash $Path);testNames=@($cases | ForEach-Object {$_.GetAttribute('fullname')} | Sort-Object)}
 }
@@ -258,12 +268,16 @@ function Read-ReviewSuiteReport([string]$Path,[string]$Assembly,[int]$Minimum,[N
 $script:ReviewDeadlineCapSeconds = 28800
 # Per-suite deadlines, each at least twice the longest whole-process time measured for that suite
 # (Unity start, import, compile, the tests and exit), so ordinary growth never reads as a late run:
-#   Gamesim.EditModeTests      2,305 s for 7,846 tests (NoUMA, 2026-10-14)                -> 7,200 s (3.1x)
-#   Gamesim.PlayModeTests      5,557 s for 1,197 tests (NoUMA, 2026-10-15; 5,401 s for 1,218
-#                              earlier that day); 4,305 s for 1,081 under GAMESIM_UMA      -> 14,400 s (2.6x)
-#   Gamesim.Uma.PlayModeTests    308 s for 89 tests (2026-10-15; 208 s for 85 on 10-16)   -> 3,600 s (11.7x)
-#   Gamesim.DiagnosticsPlayModeTests 261 s, Gamesim.Uma.DiagnosticsPlayModeTests 294 s
-#                              (seven probes each, 2026-10-15; the UMA one 220 s for ten) -> 3,600 s (12x)
+#   Gamesim.EditModeTests      2,848 s for 8,073 tests (NoUMA, r1, 2026-10-16)             -> 7,200 s (2.5x)
+#   Gamesim.PlayModeTests      6,400 s for 1,270 tests on the UMA build and 5,240 s for 1,230
+#                              on NoUMA (r1, 2026-10-16). The UMA build is the suite closest
+#                              to its deadline: raise it to 18,000 s if another 100 or more
+#                              UMA-only tests arrive                                        -> 14,400 s (2.25x)
+#   Gamesim.Uma.PlayModeTests    261 s for 90 tests (r1, 2026-10-16); the longest, 308 s
+#                              for 89 (2026-10-15)                                          -> 3,600 s (11.7x)
+#   Gamesim.DiagnosticsPlayModeTests 124 s for 7, Gamesim.Uma.DiagnosticsPlayModeTests 227 s
+#                              for 10 (r1, 2026-10-16); the longest, 261 s and 294 s for
+#                              seven probes each (2026-10-15)                               -> 3,600 s (12x)
 # An assembly not listed takes its platform's suite deadline. Player builds keep their own 5,400 s
 # (build-review-candidate.ps1; measured builds took 150-298 s).
 $script:ReviewSuiteDeadlines = @{

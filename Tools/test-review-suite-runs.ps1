@@ -1,6 +1,7 @@
 # Isolated fixtures for how the review controller runs its suites: per-suite deadlines, a late run
-# recorded and never killed, every suite run before the gate fails, the diagnostics define, and a
-# source status probe that never rewrites .git/index. A fake Unity (a .cmd that writes NUnit XML) stands
+# recorded and never killed, every suite run before the gate fails, the diagnostics define, a source
+# status probe that never rewrites .git/index, and the UMA build's own floor (a SHORTFALL naming it). A
+# fake Unity (a .cmd that writes NUnit XML, two cases or GAMESIM_FAKE_COUNT's number) stands
 # in for the editor; nothing here starts Unity or touches a real acceptance copy.
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'review-evidence.ps1')
@@ -8,7 +9,7 @@ $ErrorActionPreference='Stop'
 $fixtureBase=Assert-ReviewPlainPath (Join-Path ([IO.Path]::GetTempPath()) 'GamesimWorkflowFixtures')
 $fixture=Join-Path $fixtureBase ([Guid]::NewGuid().ToString('N'))
 $checks=[Collections.Generic.List[string]]::new(); $fixtureSucceeded=$false
-$saved=@{}; foreach ($name in @('GAMESIM_ACCEPTANCE','GAMESIM_UNITY','GAMESIM_DIAGNOSTICS','GAMESIM_FAKE_FAIL','GAMESIM_FAKE_SLEEP','GIT_OPTIONAL_LOCKS','PATH')) { $saved[$name]=[Environment]::GetEnvironmentVariable($name) }
+$saved=@{}; foreach ($name in @('GAMESIM_ACCEPTANCE','GAMESIM_UNITY','GAMESIM_DIAGNOSTICS','GAMESIM_FAKE_FAIL','GAMESIM_FAKE_SLEEP','GAMESIM_FAKE_COUNT','GIT_OPTIONAL_LOCKS','PATH')) { $saved[$name]=[Environment]::GetEnvironmentVariable($name) }
 function Put([string]$Root,[string]$Relative,[string]$Text) {
     $path=Join-Path $Root $Relative; [void][IO.Directory]::CreateDirectory((Split-Path -Parent $path))
     [IO.File]::WriteAllText($path,$Text,[Text.UTF8Encoding]::new($false))
@@ -26,8 +27,10 @@ try {
 
     # 1. Per-suite deadlines: each at least 1.5x (in fact 2x) the longest whole-process time measured
     #    for that suite, PlayMode at least three hours, all inside the raised cap.
-    # The longest whole-process times measured (2026-10-14/15); raise them here when a run takes longer.
-    $measured=@{'Gamesim.EditModeTests'=2305;'Gamesim.PlayModeTests'=5557;'Gamesim.Uma.PlayModeTests'=308;
+    # The longest whole-process times measured; raise them here when a run takes longer. EditMode and
+    # PlayMode are r1's (2026-10-16): 2,848 s for 8,073, and 6,400 s for the UMA build's 1,270 (NoUMA's
+    # 1,230 took 5,240 s). The others are still 2026-10-15's: r1 took 261 s, 124 s and 227 s.
+    $measured=@{'Gamesim.EditModeTests'=2848;'Gamesim.PlayModeTests'=6400;'Gamesim.Uma.PlayModeTests'=308;
         'Gamesim.DiagnosticsPlayModeTests'=261;'Gamesim.Uma.DiagnosticsPlayModeTests'=294}
     foreach ($assembly in $measured.Keys) {
         $platform=if ($assembly -like '*EditMode*') {'EditMode'} else {'PlayMode'}
@@ -109,12 +112,19 @@ $assembly=$named['-assemblyNames']
 foreach ($rule in @("$env:GAMESIM_FAKE_SLEEP".Split(';') | Where-Object {$_})) {
     $parts=$rule.Split('='); if ($parts[0] -ceq $assembly) { Start-Sleep -Seconds ([int]$parts[1]) }
 }
+$count=2
+foreach ($rule in @("$env:GAMESIM_FAKE_COUNT".Split(';') | Where-Object {$_})) {
+    $parts=$rule.Split('='); if ($parts[0] -ceq $assembly) { $count=[int]$parts[1] }
+}
 $failed=@("$env:GAMESIM_FAKE_FAIL".Split(';')) -ccontains $assembly
 $second=if ($failed) {'Failed'} else {'Passed'}; $status=if ($failed) {'Failed'} else {'Passed'}
-$xml='<test-run result="'+$status+'" total="2" passed="'+$(if ($failed) {1} else {2})+'" failed="'+$(if ($failed) {1} else {0})+'" skipped="0" inconclusive="0">'+
-    '<test-suite type="Assembly" name="'+$assembly+'.dll" result="'+$status+'">'+
-    '<test-case id="1" fullname="fixture.'+$assembly+'.one" result="Passed" /><test-case id="2" fullname="fixture.'+$assembly+'.two" result="'+$second+'" />'+
-    '</test-suite></test-run>'
+$cases=[Text.StringBuilder]::new()
+for ($i=1; $i -le $count; $i++) {
+    $result=if ($i -eq $count) {$second} else {'Passed'}
+    [void]$cases.Append('<test-case id="'+$i+'" fullname="fixture.'+$assembly+'.case'+$i+'" result="'+$result+'" />')
+}
+$xml='<test-run result="'+$status+'" total="'+$count+'" passed="'+$(if ($failed) {$count-1} else {$count})+'" failed="'+$(if ($failed) {1} else {0})+'" skipped="0" inconclusive="0">'+
+    '<test-suite type="Assembly" name="'+$assembly+'.dll" result="'+$status+'">'+$cases.ToString()+'</test-suite></test-run>'
 [IO.File]::WriteAllText($named['-testResults'],$xml)
 [IO.File]::WriteAllText($named['-logFile'],"fake Unity ran $assembly")
 exit $(if ($failed) {2} else {0})
@@ -162,6 +172,59 @@ exit $(if ($failed) {2} else {0})
     $env:GAMESIM_DIAGNOSTICS=$null
     & (Join-Path $source 'Tools/run-review-suites.ps1') -Name 'ordinary-plan' -WithoutUma -SuiteSpecifications 'play:PlayMode:Gamesim.PlayModeTests' | Out-Null
     Check 'The next ordinary sync takes the define off the copy' ([IO.File]::ReadAllText((Join-Path $destination 'ProjectSettings/ProjectSettings.asset')) -cnotmatch 'GAMESIM_DIAGNOSTICS')
+
+    # 8. The UMA build's own floor. A plan built with UMA holds Gamesim.PlayModeTests to the line of its
+    #    UMA build (Gamesim.PlayModeTests.UmaBuild, a key that names no real assembly); a UMA-free plan
+    #    keeps the assembly's own line. The floors are r1's.
+    function Throws([scriptblock]$Action,[string]$Like) { try { & $Action | Out-Null; return $false } catch { return $_.Exception.Message -like $Like } }
+    $floors="Gamesim.EditModeTests 2`nGamesim.PlayModeTests 1230`nGamesim.PlayModeTests.UmaBuild 1270`nGamesim.Uma.PlayModeTests 2`nGamesim.DiagnosticsPlayModeTests 2"
+    $umaSource=Join-Path $fixture 'uma-source'; $umaDestination=Join-Path $fixture 'uma-destination'
+    foreach ($root in @($umaSource,$umaDestination)) {
+        Put $root 'ProjectSettings/ProjectVersion.txt' 'm_EditorVersion: fixture'
+        Put $root 'ProjectSettings/ProjectSettings.asset' "  scriptingDefineSymbols:`n    Standalone: KEEP`n"
+        Put $root 'Assets/Settings/PC_RPAsset.asset' "  m_GPUResidentDrawerMode: 1`n"
+        Put $root 'Packages/manifest.json' '{}'; Put $root 'ArtSource/source.txt' 'authored'
+    }
+    # A vendor-free worktree against a copy with UMA installed, as the release run's UMA build is tested.
+    Put $umaDestination 'Assets/UMA/installed.asset' 'installed vendor'
+    Put $umaSource 'Tools/baseline.txt' $floors
+    foreach ($scriptName in @('review-evidence.ps1','review-workflow.ps1','sync-acceptance.ps1','run-review-suites.ps1','verify-review-candidate.ps1')) {
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot $scriptName) -Destination (Join-Path $umaSource ('Tools/'+$scriptName))
+    }
+    function UmaSummary([string]$Name) { Get-Content -LiteralPath (Join-Path $umaDestination "Logs/$Name-summary.json") -Raw | ConvertFrom-Json }
+    $env:GAMESIM_ACCEPTANCE=$umaDestination; $env:GAMESIM_FAKE_FAIL=$null; $env:GAMESIM_FAKE_SLEEP=$null
+    $env:GAMESIM_FAKE_COUNT='Gamesim.PlayModeTests=1269'
+    Check 'A UMA-build plan that runs 1269 of Gamesim.PlayModeTests fails the gate' (Refused {& (Join-Path $umaSource 'Tools/verify-review-candidate.ps1') -Name 'uma-shortfall' -RetainInstalledUma})
+    $umaShort=UmaSummary 'uma-shortfall'
+    Check 'The UMA-build shortfall is a SHORTFALL naming the UMA build floor' ($umaShort.status -ceq 'Failed' -and
+        $umaShort.failure -clike '*SHORTFALL: Gamesim.PlayModeTests ran 1269, floor is 1270 (Gamesim.PlayModeTests.UmaBuild in Tools/baseline.txt)*')
+    Check 'The UMA-build plan recorded the UMA build floor and the shared ones' ($umaShort.umaEnabled -and $umaShort.suiteFloors.'Gamesim.PlayModeTests' -eq 1270 -and
+        $umaShort.suiteFloors.'Gamesim.EditModeTests' -eq 2 -and $umaShort.suiteFloors.'Gamesim.Uma.PlayModeTests' -eq 2)
+    Check 'A shortfall still stops the plan at once' (@($umaShort.suites).Count -eq 1 -and @($umaShort.suites)[0].suite -ceq 'Gamesim.EditModeTests')
+    $env:GAMESIM_FAKE_COUNT='Gamesim.PlayModeTests=1270'
+    & (Join-Path $umaSource 'Tools/verify-review-candidate.ps1') -Name 'uma-floor' -RetainInstalledUma | Out-Null
+    $umaGreen=UmaSummary 'uma-floor'; $umaPlay=@($umaGreen.suites | Where-Object {$_.suite -ceq 'Gamesim.PlayModeTests'})
+    Check 'A UMA-build plan that runs 1270 passes at its floor' ($umaGreen.status -ceq 'Passed' -and $umaGreen.fullSuiteAcceptance -and @($umaGreen.suites).Count -eq 3 -and
+        $umaPlay.Count -eq 1 -and $umaPlay[0].total -eq 1270 -and $umaPlay[0].minimumCount -eq 1270 -and $umaPlay[0].floorKey -ceq 'Gamesim.PlayModeTests.UmaBuild')
+    $env:GAMESIM_ACCEPTANCE=$destination; $env:GAMESIM_FAKE_COUNT='Gamesim.PlayModeTests=1269'
+    Put $source 'Tools/baseline.txt' $floors
+    & (Join-Path $source 'Tools/verify-review-candidate.ps1') -Name 'nouma-floor' -WithoutUma | Out-Null
+    $plainGreen=Summary 'nouma-floor'; $plainPlay=@($plainGreen.suites | Where-Object {$_.suite -ceq 'Gamesim.PlayModeTests'})
+    Check 'A NoUMA plan still reads 1230 for Gamesim.PlayModeTests' ($plainGreen.status -ceq 'Passed' -and $plainGreen.suiteFloors.'Gamesim.PlayModeTests' -eq 1230 -and
+        $plainPlay.Count -eq 1 -and $plainPlay[0].total -eq 1269 -and $plainPlay[0].minimumCount -eq 1230 -and $plainPlay[0].floorKey -ceq 'Gamesim.PlayModeTests')
+    $env:GAMESIM_FAKE_COUNT=$null
+    # The build's floor evidence reads the same line as the run that produced it.
+    $umaBaseline=Join-Path $umaSource 'Tools/baseline.txt'; $umaBaselineHash=Get-ReviewHash $umaBaseline
+    $bound=[pscustomobject]@{files=@([pscustomobject]@{path='Tools/baseline.txt';sha256=$umaBaselineHash})}
+    function Evidence([bool]$Uma,[int]$Floor,[int]$Total) {
+        [pscustomobject]@{baselineSha256=$umaBaselineHash;umaEnabled=$Uma;suiteFloors=[pscustomobject]@{'Gamesim.PlayModeTests'=$Floor};
+            suites=@([pscustomobject]@{suite='Gamesim.PlayModeTests';minimumCount=$Floor;total=$Total})}
+    }
+    Check 'Build evidence from a UMA run is held to the UMA build floor' ((Assert-ReviewSuiteFloorEvidence (Evidence $true 1270 1270) $umaBaseline @('Gamesim.PlayModeTests') $bound $bound) -ceq $umaBaselineHash)
+    Check 'Build evidence from a UMA run held to the shared 1230 is refused' (Throws {Assert-ReviewSuiteFloorEvidence (Evidence $true 1230 1269) $umaBaseline @('Gamesim.PlayModeTests') $bound $bound} '*does not match*Gamesim.PlayModeTests.UmaBuild*')
+    Check 'Build evidence from a NoUMA run keeps 1230' ((Assert-ReviewSuiteFloorEvidence (Evidence $false 1230 1269) $umaBaseline @('Gamesim.PlayModeTests') $bound $bound) -ceq $umaBaselineHash)
+    Put $fixture 'no-uma-line.txt' "Gamesim.PlayModeTests 1230"
+    Check 'A baseline without the UMA build line refuses a UMA plan, never falls back to the shared line' (Throws {Get-ReviewSuiteFloor (Join-Path $fixture 'no-uma-line.txt') (Get-ReviewSuiteFloorKey 'Gamesim.PlayModeTests' $true)} '*No suite floor for Gamesim.PlayModeTests.UmaBuild*')
 
     $fixtureSucceeded=$true
     Write-Output ("{0} suite-run checks passed; temporary fixtures and a fake Unity only." -f $checks.Count)

@@ -31,7 +31,8 @@ try {
     $baselinePath=Join-Path $snapshot.root 'Tools/baseline.txt'; $baselineSha256=Get-ReviewHash $baselinePath
     $approvals=@(Read-ReviewApproval $ApprovedMetaDrift)
     Write-ReviewNewJson $approvals (Join-Path $runRoot 'import-approvals.json')
-    foreach ($suite in $suites) { $suiteFloors[$suite.assembly]=Get-ReviewSuiteFloor $baselinePath $suite.assembly }
+    # Each suite's own floor line: a plan built with UMA holds Gamesim.PlayModeTests to its UMA build's.
+    foreach ($suite in $suites) { $suiteFloors[$suite.assembly]=Get-ReviewSuiteFloor $baselinePath $suite.floorKey }
     & (Join-Path $PSScriptRoot 'sync-acceptance.ps1') -DisableGpuResidentDrawer -WithoutUma:$WithoutUma -RetainInstalledUma:$RetainInstalledUma -Diagnostics:$diagnosticsDefine -ValidationLease $lease -Snapshot $snapshot
     Assert-ReviewConfiguration $destination ([bool]$WithoutUma) 0
     $before=New-ReviewInputManifest -ProjectRoot $destination -WorkflowRoot $snapshot.root -WithoutUma:$WithoutUma -RetainInstalledUma:$RetainInstalledUma -MetaArchive (Join-Path $runRoot 'meta-before')
@@ -57,7 +58,7 @@ try {
         if (-not $process.closed -or $process.stopped -or $process.executableChanged -or ($process.failure -and -not $process.late)) {
             throw "Owned suite failed: $($process.failure)"
         }
-        $entry=Read-ReviewSuiteReport $xmlPath $suite.assembly $suiteFloors[$suite.assembly] $process.exit ([bool]$suite.filter)
+        $entry=Read-ReviewSuiteReport $xmlPath $suite.assembly $suiteFloors[$suite.assembly] $process.exit ([bool]$suite.filter) $suite.floorKey
         if (-not (Test-Path -LiteralPath $logPath -PathType Leaf)) { throw 'Missing owned suite log.' }
         $entry | Add-Member log $logPath
         $entry | Add-Member logSha256 (Get-ReviewHash $logPath)

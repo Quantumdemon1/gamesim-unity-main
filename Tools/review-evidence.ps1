@@ -19,8 +19,10 @@ function Get-ReviewSuiteFloor([string]$Path, [string]$Assembly) {
     if (-not $floors.ContainsKey($Assembly)) { throw "No suite floor for $Assembly in $Path" }
     return $floors[$Assembly]
 }
-function Assert-ReviewSuiteMinimum([string]$Assembly, [int]$Total, [int]$Minimum) {
-    if ($Total -lt $Minimum) { throw "SHORTFALL: $Assembly ran $Total, floor is $Minimum (Tools/baseline.txt). This is not a pass." }
+function Assert-ReviewSuiteMinimum([string]$Assembly, [int]$Total, [int]$Minimum, [string]$FloorKey = '') {
+    # A floor read from a build's own line (Get-ReviewSuiteFloorKey) names that line.
+    $line = if ($FloorKey -and $FloorKey -cne $Assembly) { "$FloorKey in Tools/baseline.txt" } else { 'Tools/baseline.txt' }
+    if ($Total -lt $Minimum) { throw "SHORTFALL: $Assembly ran $Total, floor is $Minimum ($line). This is not a pass." }
 }
 function Assert-ReviewSuiteFloorEvidence($Summary, [string]$BaselinePath, [string[]]$ExpectedSuites, $TestedBefore, $TestedAfter) {
     $hash = Get-ReviewHash $BaselinePath
@@ -34,12 +36,15 @@ function Assert-ReviewSuiteFloorEvidence($Summary, [string]$BaselinePath, [strin
         }
     }
     foreach ($assembly in $ExpectedSuites) {
-        $minimum = Get-ReviewSuiteFloor $BaselinePath $assembly
+        # The floor line the run was held to: the UMA build's own where it has one
+        # (Get-ReviewSuiteFloorKey, review-workflow.ps1, which every caller dot-sources too).
+        $key = Get-ReviewSuiteFloorKey $assembly ([bool]$Summary.umaEnabled)
+        $minimum = Get-ReviewSuiteFloor $BaselinePath $key
         $entries = @($Summary.suites | Where-Object suite -eq $assembly)
         if ($entries.Count -ne 1 -or $Summary.suiteFloors.$assembly -ne $minimum -or $entries[0].minimumCount -ne $minimum) {
-            throw "The summary's recorded floor does not match the current floor for $assembly."
+            throw "The summary's recorded floor does not match the current floor for $assembly ($key)."
         }
-        Assert-ReviewSuiteMinimum $assembly $entries[0].total $minimum
+        Assert-ReviewSuiteMinimum $assembly $entries[0].total $minimum $key
     }
     if ((Get-ReviewHash $BaselinePath) -ne $hash) { throw 'Suite baseline changed during validation.' }
     return $hash

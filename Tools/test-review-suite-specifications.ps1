@@ -26,6 +26,15 @@ Check 'Full NoUMA default is not diagnostic' (-not $plain.diagnostic)
 Check 'Full NoUMA default has only Edit and Play' ($plain.suites.Count -eq 2 -and ($plain.suites[0].assembly -ceq 'Gamesim.EditModeTests') -and ($plain.suites[1].assembly -ceq 'Gamesim.PlayModeTests'))
 $explicit=Get-ReviewSuitePlan $false "edit:EditMode:Gamesim.EditModeTests`nplay:PlayMode:Gamesim.PlayModeTests`numa:PlayMode:Gamesim.Uma.PlayModeTests"
 Check 'Explicit even-unfiltered complete plan remains diagnostic' ($explicit.diagnostic -and $explicit.suites.Count -eq 3)
+# Each suite's floor line (Tools/baseline.txt): the UMA build of Gamesim.PlayModeTests has its own.
+Check 'Full UMA default holds Gamesim.PlayModeTests to its UMA build line' ((@($all.suites | ForEach-Object {$_.floorKey}) -join ',') -ceq 'Gamesim.EditModeTests,Gamesim.PlayModeTests.UmaBuild,Gamesim.Uma.PlayModeTests')
+Check 'Full NoUMA default keeps every assembly''s own line' ((@($plain.suites | ForEach-Object {$_.floorKey}) -join ',') -ceq 'Gamesim.EditModeTests,Gamesim.PlayModeTests')
+Check 'A UMA diagnostic plan reads the UMA build line too' ((@($explicit.suites | ForEach-Object {$_.floorKey}) -join ',') -ceq 'Gamesim.EditModeTests,Gamesim.PlayModeTests.UmaBuild,Gamesim.Uma.PlayModeTests')
+Check 'A NoUMA diagnostic plan keeps the shared line' ((Get-ReviewSuitePlan $true 'play:PlayMode:Gamesim.PlayModeTests:Tour_').suites[0].floorKey -ceq 'Gamesim.PlayModeTests')
+Check 'Only Gamesim.PlayModeTests has a UMA build line' ((Get-ReviewSuiteFloorKey 'Gamesim.Uma.DiagnosticsPlayModeTests' $true) -ceq 'Gamesim.Uma.DiagnosticsPlayModeTests' -and
+    (Get-ReviewSuiteFloorKey 'Gamesim.EditModeTests' $true) -ceq 'Gamesim.EditModeTests')
+Check 'The UMA build line is read only by a plan built with UMA' ((Get-ReviewSuiteFloorKey 'Gamesim.PlayModeTests' $true) -ceq 'Gamesim.PlayModeTests.UmaBuild' -and
+    (Get-ReviewSuiteFloorKey 'Gamesim.PlayModeTests' $false) -ceq 'Gamesim.PlayModeTests')
 $emptyFilter=Get-ReviewSuitePlan $true 'scope:EditMode:Gamesim.EditModeTests:'
 Check 'Explicit empty optional filter remains diagnostic' ($emptyFilter.diagnostic -and $emptyFilter.suites[0].filter -ceq '')
 foreach ($filter in @('Gamesim.Tests.Fixture.Test','^Fixture\.(Foo|Bar).*','Fixture[0-9]+','Fixture\s+Name','Fixture\\','Fixture;Other','^Fixture[-_A-Z]+$')) {

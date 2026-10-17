@@ -74,7 +74,9 @@ namespace Gamesim.Uma.Tests.Diagnostics
         // Diagnostic only: on the UMA cast the authorization comes while the evicted's WalkStop still
         // plays, so the WalkStop to Idle crossing is seen only after the director has used its Idle
         // attempt (r3s3b, r1). A crossing counts as the witness only while that attempt is unused; one seen
-        // after it, or none at all, is Inconclusive, and this refuses to manufacture one.
+        // after it is Inconclusive. No crossing at all inside the observation window has never been seen
+        // and stays a hard failure (the triage's D2 makes only the late crossing Inconclusive), and this
+        // refuses to manufacture one.
         [UnityTest, Category("FarewellReadinessDiagnostic")]
         public IEnumerator GroundedFarewell_ReadinessDoesNotRestartAnExistingGlobalStopExit()
         {
@@ -107,9 +109,10 @@ namespace Gamesim.Uma.Tests.Diagnostics
                 }
                 if (observed == null) yield return null;
             }
-            if (observed == null)
-                Assert.Inconclusive("NOT MEASURED: no WalkStop to Idle crossing occurred within the 2 s window ("
-                    + CapturedEndpoints(route) + "). No crossing is manufactured.");
+            Assert.That(observed != null, Is.True,
+                "MISSING genuine global transition witness within the observation window (2 s or the farewell's "
+                + "1.5 s deadline, whichever came first; " + CapturedEndpoints(route)
+                + "); no local transition is manufactured.");
             if (afterTheAttempt)
                 Assert.Inconclusive("NOT MEASURED: the crossing came after authorization, once the director had already used its "
                     + "Idle attempt (" + CapturedEndpoints(route) + "); a crossing before any preparation did not occur.");

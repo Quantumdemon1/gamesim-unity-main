@@ -33,7 +33,10 @@ its floor but one test; its triage found no failure from a lane merge. Its slice
   (`FarewellReadinessDiagnosticPlayModeTests`) read the director's captured endpoints without asserting them;
   when the requested combination is not what occurred they are `Assert.Inconclusive`, naming the endpoints
   that did, and `DoesNotRestart` accepts a WalkStop to Idle crossing as its witness only while
-  `farewellIdleAttemptUsed` is still false (a crossing after it, or none, is Inconclusive). Every assertion after
+  `farewellIdleAttemptUsed` is still false (a crossing after it is Inconclusive; no crossing at all inside the
+  observation window, 2 s or the farewell's 1.5 s deadline, whichever comes first, stays the hard "MISSING
+  genuine global transition witness" failure it was, since it has never been seen and the triage made only the
+  late crossing Inconclusive). Every assertion after
   a combination occurs stays hard; `AssertCapturedFarewellBranch`, the shipping tests' check, is unchanged.
   Run r1fix-d12umadiag (and again r1fix-d1mutu): `BothWalkStop` Inconclusive, "the requested combination,
   evicted=WalkStop survivor=WalkStop, did not occur; the endpoints that did: evicted=WalkStop survivor=Idle";

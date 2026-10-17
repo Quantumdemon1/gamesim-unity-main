@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Gamesim.Persistence;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
@@ -72,6 +73,65 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(screen.IsOpen, Is.False);
             Assert.That(director.IsWeeklyRecapOpen, Is.False);
             Assert.That(player.InputEnabled, Is.True, "Dismissing has to give the house back.");
+        }
+
+        /// <summary>
+        /// The recap after an eviction that commits into a full log. The season's log keeps its last
+        /// 256 lines (EpisodeEngine.Log), so from then on a commit pushes out as many lines as it
+        /// adds, and the director counted from where the log had ended to find what was new: it found
+        /// nothing, so the eviction had no reveal and the week no recap - a twelve-person house from
+        /// about week six, and the eight-person walk's final four once the house's own turns had
+        /// filled it (rc1, and r2-walk's first walk: "The week 4 recap never opened"). Found by
+        /// number now (EpisodeDirector.CommittedEvents). The season is a legal one, played by this
+        /// fixture's own driver up to that commit.
+        /// </summary>
+        [UnityTest, Timeout(180000)]
+        public IEnumerator WeeklyRecap_OpensAfterAnEvictionThatCommitsIntoAFullLog()
+        {
+            EpisodeState fixture = null;
+            for (uint seed = 1; seed <= 12 && fixture == null; seed++)
+            {
+                var engine = new EpisodeEngine(SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 12 }, seed));
+                for (int guard = 0; guard < 400; guard++)
+                {
+                    var current = engine.Snapshot;
+                    if (current.phase == EpisodePhase.Finished) break;
+                    var result = engine.Apply(NextCommand(current));
+                    Assert.That(result.accepted, Is.True, result.reason);
+                    if (result.state.events.Count == current.events.Count
+                        && result.state.events.Any(entry => entry.kind == "eviction" && entry.sequence >= current.nextSequence))
+                    { fixture = current; break; }
+                }
+            }
+            Assert.That(fixture, Is.Not.Null, "A bounded legal twelve-person season fills its log before an eviction.");
+            new EpisodeSaveStore(director.SavePath).Save(fixture);
+            yield return ReloadEpisode();
+            AssertEquivalent(fixture, director.Snapshot);
+            // Nothing of the house's own may commit under the reveal: the recap drops itself then, rightly.
+            HoldTheHouseForTheFixture();
+            var screen = director.GetComponentInChildren<WeeklyRecapScreen>(true);
+            Assert.That(screen.IsOpen, Is.False, "Nothing has closed yet.");
+
+            var before = director.Snapshot;
+            bool inputBefore = player.InputEnabled;
+            var committed = director.Submit(NextCommand(before));
+            Assert.That(committed.accepted, Is.True, committed.reason);
+            Assert.That(committed.state.events.Count, Is.EqualTo(before.events.Count), "The log was full: the commit's lines pushed out as many as they added.");
+            Assert.That(committed.state.events.Any(entry => entry.kind == "eviction" && entry.sequence >= before.nextSequence), Is.True,
+                "The commit evicted somebody: its own lines, by number.");
+            float deadline = Time.realtimeSinceStartup + 30f;
+            while (!screen.IsOpen && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(screen.IsOpen, Is.True, "The week's recap opens once the eviction is narrated, full log or not. Reveal playing: "
+                + (SceneComponents<VoteReveal>().FirstOrDefault()?.IsPlaying.ToString() ?? "no reveal"));
+            Assert.That(screen.OpenWeek, Is.EqualTo(before.week));
+            Assert.That(screen.Lines, Does.Contain("Evicted: " + WeeklyRecap.Build(director.Snapshot, before.week).evicted));
+            ButtonWithCaption(WeeklyRecapScreen.ContinueCaption).onClick.Invoke();
+            yield return null;
+            Assert.That(screen.IsOpen, Is.False);
+            Assert.That(director.IsWeeklyRecapOpen, Is.False);
+            // What the house held before the night's commit, it holds after the recap: an eviction
+            // night loaded at the vote is not the free roam the first-week test dismisses into.
+            Assert.That(player.InputEnabled, Is.EqualTo(inputBefore), "Dismissing gives back what the recap took.");
         }
 
         [UnityTest]

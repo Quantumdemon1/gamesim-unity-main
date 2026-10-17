@@ -52,7 +52,12 @@ namespace Gamesim.Episode
 
             if (!seasonDirector.IsWeeklyRecapOpen)
             {
-                RequireSeason(!owed, "The week " + (state.week - 1) + " recap never opened after its eviction.");
+                // At the night's results the week has not moved on yet, so the recap owed is this
+                // week's; in the next week's social phase it is last week's. (rc1 and r2-walk's first
+                // walk both said "week 4" for the final four's week 5.)
+                int owedWeek = state.phase == EpisodePhase.Eviction ? state.week : state.week - 1;
+                RequireSeason(!owed, "The week " + owedWeek + " recap never opened after its eviction (revision "
+                    + state.revision + ", " + state.events.Count + " lines in the season's log).");
                 yield break;
             }
 
@@ -340,7 +345,7 @@ namespace Gamesim.Episode
                 // the proposal is a committed command either way: one revision, and the house says
                 // something about it. The first standalone run to reach this branch failed here for
                 // demanding a record of a deal the housemate had turned down.
-                bool said = after.events.Skip(before.events.Count).Any(e => e.kind == "deal");
+                bool said = EpisodeDirector.CommittedEvents(after, before.nextSequence).Any(e => e.kind == "deal");
                 RequireSeason(after.revision == before.revision + 1 && said,
                     "A proposal control must commit the proposal it names: " + chosenKind
                     + " (revision " + before.revision + " -> " + after.revision + "; status: " + seasonDirector.StatusMessage + ")");

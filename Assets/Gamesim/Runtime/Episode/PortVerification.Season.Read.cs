@@ -74,7 +74,8 @@ namespace Gamesim.Episode
             RequireSeason(EpisodeEngine.SocialActionsSpent(after) == EpisodeEngine.SocialActionsSpent(before), "Asking and reading are free.");
             if (asking)
             {
-                RequireSeason(after.events.Skip(before.events.Count).Any(e => e.kind == "vote-read"), "Asking about the vote must say what came of it.");
+                // By number, not by count: a full log keeps its length (EpisodeDirector.CommittedEvents).
+                RequireSeason(EpisodeDirector.CommittedEvents(after, before.nextSequence).Any(e => e.kind == "vote-read"), "Asking about the vote must say what came of it.");
                 seasonReport.votesAsked++;
             }
             else seasonReport.peopleRead++;

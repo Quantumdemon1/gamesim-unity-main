@@ -807,9 +807,12 @@ namespace Gamesim.Episode
             if (blockedRecovery) return new CommandResult { reason = "Recover the save or start a new slot before playing.", state = Snapshot };
             var exchangeBefore = engine.Snapshot;
             bool wasYard = EpisodeEngine.IsCompetition(projected.phase);
-            // A single command can append several events. Remembering where the log ended lets the
-            // ceremony card look at everything this commit produced rather than only its last line.
-            int knownEvents = engine.Snapshot.events.Count;
+            // A single command can append several events. Remembering where the log's numbering stood
+            // lets the ceremony card look at everything this commit produced rather than only its
+            // last line (CommittedEvents). Never where the log ended: it keeps its last 256 lines
+            // (EpisodeEngine.Log), so once it is full a commit's lines push out as many as they add,
+            // and counting from the old end found none of them - no reveal, no card, no recap.
+            int knownSequence = exchangeBefore.nextSequence;
             // Who was still playing before this command. An eviction event says what happened
             // but not to whom, and diffing is more reliable than parsing the sentence back.
             var wasPhase = engine.Snapshot.phase;
@@ -893,7 +896,7 @@ namespace Gamesim.Episode
                 // reach the block and the result, and a commit that played the result's sound first
                 // announced it before the card had counted to it. A beat of the opening is
                 // bookkeeping and makes none; an introduction clicks through the opening's own hook.
-                var commitCue = CommitCue(result.state.events.Skip(knownEvents)
+                var commitCue = CommitCue(CommittedEvents(result.state, knownSequence)
                     .Where(entry => entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId))
                     .Select(entry => entry.kind));
                 bool revealed = false, vetoStaged = false;
@@ -904,7 +907,7 @@ namespace Gamesim.Episode
                 // card carries words.
                 // A competition is not a CeremonySting kind — it has no strip — so it is searched
                 // for separately. Same audience rule: the standings name everyone who competed.
-                var competition = result.state.events.Skip(knownEvents)
+                var competition = CommittedEvents(result.state, knownSequence)
                     .LastOrDefault(entry => entry.kind == "competition"
                         && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
                 if (competition != null)
@@ -926,7 +929,7 @@ namespace Gamesim.Episode
                 }
 
                 // The veto field. Previously the one phase the episode passed through in silence.
-                var field = result.state.events.Skip(knownEvents)
+                var field = CommittedEvents(result.state, knownSequence)
                     .LastOrDefault(entry => entry.kind == CeremonyTakeover.VetoSelectionKind
                         && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
                 if (field != null && takeover != null)
@@ -941,7 +944,7 @@ namespace Gamesim.Episode
                             VetoField(result.state), reducedMotion, null, VetoFieldLine(result.state));
                 }
 
-                var ceremony = result.state.events.Skip(knownEvents)
+                var ceremony = CommittedEvents(result.state, knownSequence)
                     .LastOrDefault(entry => CeremonySting.IsCeremony(entry.kind)
                         && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
                 if (ceremony != null)
@@ -1022,7 +1025,7 @@ namespace Gamesim.Episode
                 else
                 {
                     // Fallout (plan §5.1): a story's ceremony, when the show's own has not taken the screen.
-                    var fallout = result.state.events.Skip(knownEvents)
+                    var fallout = CommittedEvents(result.state, knownSequence)
                         .LastOrDefault(entry => StoryFallout.IsFallout(entry.kind)
                             && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
                     if (fallout != null) PlayFallout(result.state, fallout, wasActive);
@@ -1050,6 +1053,16 @@ namespace Gamesim.Episode
             BeginConversationExchange(exchangeBefore, result, command);
             Render(); return result;
         }
+
+        /// <summary>
+        /// The lines a commit appended to the season's log, in order: those numbered from where the
+        /// log's numbering stood before it (<paramref name="fromSequence"/>, that state's
+        /// <c>nextSequence</c>). The log keeps only its last 256 lines, so the commit that fills it
+        /// leaves it no longer than before, and a count of what was there says nothing about what
+        /// is new; the numbers do.
+        /// </summary>
+        public static IEnumerable<EpisodeEvent> CommittedEvents(EpisodeState after, int fromSequence) =>
+            after.events.Where(entry => entry.sequence >= fromSequence);
 
         /// <summary>
         /// The generic card for a ceremony: the takeover opens the scene, the strip reports the

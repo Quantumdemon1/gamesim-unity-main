@@ -213,8 +213,8 @@ namespace Gamesim.Tests.PlayMode
         // combination rather than request one, and still never force a state.
         //
         // The three that wait for a combination the cast does not reliably stand into (both WalkStop, both
-        // Idle, a stop exit already crossing before authorization; only both Idle has been seen, once, when
-        // the evicted settled within the card reading) are diagnostics, never acceptance: by the lead's
+        // Idle, a stop exit already crossing before authorization; only both Idle has been seen, in r3s3b
+        // and r1, when the evicted settled within the card reading) are diagnostics, never acceptance: by the lead's
         // ruling (2026-10-16) they live in Gamesim.Uma.DiagnosticsPlayModeTests
         // (FarewellReadinessDiagnosticPlayModeTests), which has its own floor. The product branches they
         // name are acceptance-tested directly by Gamesim.Uma.PlayModeTests'

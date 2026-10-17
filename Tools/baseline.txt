@@ -37,13 +37,16 @@ Gamesim.Uma.PlayModeTests 90
 #     when either changes: InertStream_*RefuseAtTheSwapBoundary* (inert-attachment:unexpected-node-membership
 #     at swap-boundary) and CopiedIdleFootIk_*DriftPastOneMillimetre* (LANDMARK_DRIFT_<n> inside the 2 s
 #     window, the foot goals unweighted: the Idle itself moves a foot past 1 mm);
-#   UMA, the expected reds: GroundedFarewell_ReadinessBothWalkStopCallsOnlyOnce (the survivor stands into
-#     Idle, so the WalkStop pair never occurs) and ...DoesNotRestartAnExistingGlobalStopExit (the WalkStop to
-#     Idle crossing comes only after the director has used its Idle attempt).
+#   UMA, Inconclusive (no measurement, not a pass): GroundedFarewell_ReadinessBothWalkStopCallsOnlyOnce
+#     (the survivor stands into Idle, so the WalkStop pair never occurs) and
+#     ...DoesNotRestartAnExistingGlobalStopExit (the WalkStop to Idle crossing comes only after the director
+#     has used its Idle attempt); each names the endpoints that did occur (D2).
 # The UMA one: 7 probes + the 3 readiness tests (FarewellReadinessDiagnosticPlayModeTests, moved from
 # Gamesim.PlayModeTests on 2026-10-16) = 10. The readiness tests wait for a natural Idle/WalkStop
-# combination and never force one. BothIdle's does occur, on some runs only: it passed at r3s3b and r1 and
-# missed at w1s3b1 and w1s3c1.
+# combination and never force one: a combination that does not occur is Inconclusive, and every assertion
+# after one does occur is hard. BothIdle's does occur, on some runs only: it passed at r3s3b and r1 and
+# missed at w1s3b1 and w1s3c1, so it passes or is Inconclusive. An Inconclusive reports failed=0 and exit
+# 2: read the cases by name, never the exit code alone.
 Gamesim.DiagnosticsPlayModeTests 7
 Gamesim.Uma.DiagnosticsPlayModeTests 10
 # Tools/SimulationTests: the Unity-free subset CI runs on every push (.github/workflows/ci.yml).

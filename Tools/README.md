@@ -82,7 +82,12 @@ GAMESIM_DIAGNOSTICS=1 GAMESIM_RETAIN_INSTALLED_UMA=1 Tools/sync-and-run.sh umadi
 The UMA one also holds three farewell readiness tests (`FarewellReadinessDiagnosticPlayModeTests`:
 `GroundedFarewell_ReadinessBothWalkStopCallsOnlyOnce`, `...BothIdleStillRequiresNewEvaluations` and
 `...DoesNotRestartAnExistingGlobalStopExit`) that wait for an Idle/WalkStop combination the UMA cast does
-not reliably stand into and refuse to force one; its floor counts them. They reach the episode fixture by
+not reliably stand into and refuse to force one; its floor counts them. A combination that did not occur,
+or (`DoesNotRestart`) a crossing seen only after the director used its Idle attempt, is reported
+`Inconclusive` with the endpoints that did occur ("NOT MEASURED: ... evicted=WalkStop survivor=Idle");
+every assertion after the combination occurs is hard. At r1 `BothWalkStop` and `DoesNotRestart` are
+Inconclusive and `BothIdle` passes or is Inconclusive. An Inconclusive reports failed=0 and exit 2, so list
+the non-Passed cases by name. They reach the episode fixture by
 composing `EpisodePlayModeTests` and calling its public readiness helper (lead ruling, 2026-10-16). The
 decisions they name are acceptance-tested by forcing each combination, in `Gamesim.Uma.PlayModeTests`
 (`UmaFarewellReadinessDecisionPlayModeTests`). The readiness tests that ship in `Gamesim.PlayModeTests`

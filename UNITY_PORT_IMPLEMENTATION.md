@@ -29,6 +29,18 @@ its floor but one test; its triage found no failure from a lane merge. Its slice
   expected as `inert-attachment:unexpected-node`, the code as `ROOT_DRIFT`), exactly the four mutated tests
   went red, each on its own message, and nothing else changed (r1fix-d1mut, r1fix-d1mutu). The diagnostics
   floors stay 7 and 10.
+- **D2: a natural combination that did not occur is no measurement.** The three UMA readiness diagnostics
+  (`FarewellReadinessDiagnosticPlayModeTests`) read the director's captured endpoints without asserting them;
+  when the requested combination is not what occurred they are `Assert.Inconclusive`, naming the endpoints
+  that did, and `DoesNotRestart` accepts a WalkStop to Idle crossing as its witness only while
+  `farewellIdleAttemptUsed` is still false (a crossing after it, or none, is Inconclusive). Every assertion after
+  a combination occurs stays hard; `AssertCapturedFarewellBranch`, the shipping tests' check, is unchanged.
+  Run r1fix-d12umadiag (and again r1fix-d1mutu): `BothWalkStop` Inconclusive, "the requested combination,
+  evicted=WalkStop survivor=WalkStop, did not occur; the endpoints that did: evicted=WalkStop survivor=Idle";
+  `DoesNotRestart` Inconclusive, "the crossing came after authorization, once the director had already used
+  its Idle attempt (evicted=WalkStop survivor=Idle)"; `BothIdle` passed both times. An Inconclusive hides a
+  regression as failed=0 and exit 2 (it is acceptable only because these are diagnostics and the forced
+  decision tests in `Gamesim.Uma.PlayModeTests` carry acceptance), so read these runs by case name.
 
 ## Consolidation - 2026-10-15
 

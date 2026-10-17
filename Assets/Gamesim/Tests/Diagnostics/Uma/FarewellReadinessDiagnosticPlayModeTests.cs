@@ -13,14 +13,16 @@ namespace Gamesim.Uma.Tests.Diagnostics
     /// refuse to force one: both WalkStop, both Idle, and a WalkStop exit already crossing before the
     /// authorization. On the UMA cast the evicted ordinarily stands into WalkStop and the survivor into
     /// Idle, so whether a test's combination occurs depends on how the walk's timing falls: in runs
-    /// w1s3b1 and w1s3c1 none occurred, in run r3s3b both Idle did (the evicted settled within BothIdle's
-    /// .35 s card reading) and the other two did not. They are diagnostics, never acceptance: a pass is a
-    /// measurement, and a "MISSING requested ... combination" failure is not a product defect. Moved here
-    /// from Gamesim.Tests.PlayMode.EpisodePlayModeTests (where they compiled behind GAMESIM_DIAGNOSTICS
-    /// with no floor) by the lead's ruling of 2026-10-16, unchanged but for reaching the fixture through
-    /// its shared readiness helper, so this assembly's floor counts them. The product branches they name
-    /// are acceptance-tested directly, by forcing each combination, in
-    /// Gamesim.Uma.Tests.UmaFarewellReadinessDecisionPlayModeTests.
+    /// w1s3b1 and w1s3c1 none occurred, in runs r3s3b and r1 both Idle did (the evicted settled within
+    /// BothIdle's .35 s card reading) and the other two did not. They are diagnostics, never acceptance: a
+    /// pass is a measurement, and a combination that did not occur is no measurement at all, so it is
+    /// reported Inconclusive with the endpoints that did occur (the r1 triage's D2, 2026-10-16), never as
+    /// a failure. Once the requested combination does occur, every assertion after it is hard. An
+    /// Inconclusive reports failed=0 and exit 2, so read the cases by name. Moved here from
+    /// Gamesim.Tests.PlayMode.EpisodePlayModeTests (where they compiled behind GAMESIM_DIAGNOSTICS with no
+    /// floor) by the lead's ruling of 2026-10-16, reaching the fixture through its shared readiness helper,
+    /// so this assembly's floor counts them. The product branches they name are acceptance-tested
+    /// directly, by forcing each combination, in Gamesim.Uma.Tests.UmaFarewellReadinessDecisionPlayModeTests.
     /// </summary>
     public sealed class FarewellReadinessDiagnosticPlayModeTests
     {
@@ -40,42 +42,47 @@ namespace Gamesim.Uma.Tests.Diagnostics
             episode = null;
         }
 
-        // Diagnostic only: the UMA cast's survivor stands into Idle, so both WalkStop has not occurred, and
-        // this refuses to force it.
+        // Diagnostic only: the UMA cast's survivor stands into Idle, so both WalkStop has not occurred
+        // (Inconclusive, naming the endpoints that did), and this refuses to force it.
         [UnityTest, Category("FarewellReadinessDiagnostic")]
         public IEnumerator GroundedFarewell_ReadinessBothWalkStopCallsOnlyOnce()
         {
             yield return episode.BeginProvidedFarewellReadiness();
             var route = episode.FarewellReadiness;
             yield return episode.WaitForFarewellAuthorization(route);
+            RequireTheNaturalCombination(route, false, false);
             episode.AssertCapturedFarewellBranch(route, false, false);
             yield return episode.ObserveFarewellIdleBeforeCut(route);
             episode.AssertCapturedFarewellBranch(route, false, false);
         }
 
         // Diagnostic only: the evicted ordinarily stands into WalkStop on the UMA cast, so both Idle occurs
-        // only when the evicted settles within the card reading (it did in r3s3b, not in w1s3b1 or w1s3c1),
-        // and this refuses to force it.
+        // only when the evicted settles within the card reading (it did in r3s3b and r1, not in w1s3b1 or
+        // w1s3c1); otherwise it is Inconclusive, and this refuses to force it.
         [UnityTest, Category("FarewellReadinessDiagnostic")]
         public IEnumerator GroundedFarewell_ReadinessBothIdleStillRequiresNewEvaluations()
         {
             yield return episode.BeginProvidedFarewellReadiness(.35f);
             var route = episode.FarewellReadiness;
             yield return episode.WaitForFarewellAuthorization(route);
+            RequireTheNaturalCombination(route, true, true);
             episode.AssertCapturedFarewellBranch(route, true, true);
             yield return episode.ObserveFarewellIdleBeforeCut(route);
             episode.AssertCapturedFarewellBranch(route, true, true);
         }
 
         // Diagnostic only: on the UMA cast the authorization comes while the evicted's WalkStop still
-        // plays, never after its exit to Idle has begun, so no global crossing exists to be observed
-        // first; this refuses to manufacture one.
+        // plays, so the WalkStop to Idle crossing is seen only after the director has used its Idle
+        // attempt (r3s3b, r1). A crossing counts as the witness only while that attempt is unused; one seen
+        // after it is Inconclusive. No crossing at all inside the observation window has never been seen
+        // and stays a hard failure (the triage's D2 makes only the late crossing Inconclusive), and this
+        // refuses to manufacture one.
         [UnityTest, Category("FarewellReadinessDiagnostic")]
         public IEnumerator GroundedFarewell_ReadinessDoesNotRestartAnExistingGlobalStopExit()
         {
             yield return episode.BeginProvidedFarewellReadiness(.1f);
             var route = episode.FarewellReadiness;
-            Animator observed = null; float priorPhase = 0f;
+            Animator observed = null; float priorPhase = 0f; bool afterTheAttempt = false;
             float by = Time.realtimeSinceStartup + 2f;
             while (observed == null && Time.realtimeSinceStartup < by && Time.unscaledTime <= route.Deadline)
             {
@@ -94,12 +101,21 @@ namespace Gamesim.Uma.Tests.Diagnostics
                             && source[0].weight >= 0f && source[0].weight <= 1f
                             && incoming[0].weight >= 0f && incoming[0].weight <= 1f, Is.True,
                             "Exact actual global stop/Idle clip objects, not names or a fabricated crossing.");
-                        observed = animator; priorPhase = animator.GetAnimatorTransitionInfo(0).normalizedTime; break;
+                        observed = animator; priorPhase = animator.GetAnimatorTransitionInfo(0).normalizedTime;
+                        // Read in the frame the crossing is seen: only a crossing before any preparation is the witness.
+                        afterTheAttempt = EpisodePlayModeTests.ReadFarewellField<bool>(route.Stage, "farewellIdleAttemptUsed");
+                        break;
                     }
                 }
                 if (observed == null) yield return null;
             }
-            Assert.That(observed, Is.Not.Null, "MISSING genuine global transition witness; no local transition is manufactured.");
+            Assert.That(observed != null, Is.True,
+                "MISSING genuine global transition witness within the observation window (2 s or the farewell's "
+                + "1.5 s deadline, whichever came first; " + CapturedEndpoints(route)
+                + "); no local transition is manufactured.");
+            if (afterTheAttempt)
+                Assert.Inconclusive("NOT MEASURED: the crossing came after authorization, once the director had already used its "
+                    + "Idle attempt (" + CapturedEndpoints(route) + "); a crossing before any preparation did not occur.");
             episode.AssertNoFarewellPreparation(route);
             yield return null;
             if (observed.IsInTransition(0))
@@ -108,6 +124,33 @@ namespace Gamesim.Uma.Tests.Diagnostics
             yield return episode.WaitForFarewellAuthorization(route);
             yield return episode.ObserveFarewellIdleBeforeCut(route);
         }
+
+        /// <summary>
+        /// Whether the combination a test requests occurred at the authorization, read from the director's
+        /// own capture without asserting it (AssertCapturedFarewellBranch, the shipping tests' check, is
+        /// unchanged). One that did not is Inconclusive and names the endpoints that did: the evicted
+        /// (farewellIdleA) first, the survivor (farewellIdleB) second.
+        /// </summary>
+        private static void RequireTheNaturalCombination(EpisodePlayModeTests.FarewellReadinessRoute route, bool evictedIdle, bool survivorIdle)
+        {
+            if (CapturedIdle(route, "farewellIdleA") == evictedIdle && CapturedIdle(route, "farewellIdleB") == survivorIdle) return;
+            Assert.Inconclusive("NOT MEASURED: the requested combination, evicted=" + Endpoint(evictedIdle) + " survivor="
+                + Endpoint(survivorIdle) + ", did not occur; the endpoints that did: " + CapturedEndpoints(route)
+                + ". No state is forced.");
+        }
+
+        private static string CapturedEndpoints(EpisodePlayModeTests.FarewellReadinessRoute route)
+        {
+            if (EpisodePlayModeTests.ReadFarewellField<int>(route.Stage, "farewellIdlePreparationFrame") < 0)
+                return "no authorization yet, so no endpoints captured";
+            return "evicted=" + Endpoint(CapturedIdle(route, "farewellIdleA"))
+                + " survivor=" + Endpoint(CapturedIdle(route, "farewellIdleB"));
+        }
+
+        private static bool CapturedIdle(EpisodePlayModeTests.FarewellReadinessRoute route, string field) =>
+            EpisodePlayModeTests.ReadFarewellField<bool>(EpisodePlayModeTests.ReadFarewellField(route.Stage, field), "WasIdle");
+
+        private static string Endpoint(bool idle) => idle ? "Idle" : "WalkStop";
     }
 }
 #endif

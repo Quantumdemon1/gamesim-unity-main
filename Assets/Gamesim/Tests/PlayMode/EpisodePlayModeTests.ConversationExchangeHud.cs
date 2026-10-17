@@ -8,6 +8,7 @@ using NUnit.Framework;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 
 namespace Gamesim.Tests.PlayMode
@@ -171,16 +172,27 @@ namespace Gamesim.Tests.PlayMode
             }
         }
 
+        /// <summary>
+        /// The phase step lights the decision while one is up and falls back to the current objective.
+        ///
+        /// <para>The stand-in decision lives on a canvas of the test's own. The HUD empties its canvas
+        /// on every rebuild, whoever owns the children (EpisodeHud.Begin), and on the UMA cast it
+        /// rebuilds whenever a body finishes assembling, so a stand-in hung under the HUD was destroyed
+        /// mid-test on the UMA build only (r1, 2026-10-16). The rebuild after the panel closes is forced
+        /// here, the same Render a body arrival makes, so both builds prove the fallback survives one.</para>
+        /// </summary>
         [UnityTest]
         public IEnumerator Tour_PhaseStepPrefersTheDecisionAndFallsBackToTheCurrentObjective()
         {
             director.ClosePanels();
-            yield return null;
+            yield return SettleCast();
             var tour = DirectorTour();
-            var objective = TourChrome("Objective");
-            Assert.That(objective, Is.Not.Null);
+            Assert.That(TourChrome("Objective"), Is.Not.Null);
+            var host = new GameObject("Tour test panel host", typeof(RectTransform), typeof(Canvas));
+            SceneManager.MoveGameObjectToScene(host, director.gameObject.scene);
+            host.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
             var panel = new GameObject("Episode panel", typeof(RectTransform)).GetComponent<RectTransform>();
-            panel.SetParent(objective.parent, false);
+            panel.SetParent(host.transform, false);
             panel.sizeDelta = new Vector2(700f, 300f);
             try
             {
@@ -189,16 +201,28 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(tour.CurrentAnchors, Is.EqualTo(new[] { "Episode panel" }),
                     "The current decision is the phase step's first choice.");
                 panel.gameObject.SetActive(false);
+                var shown = TourChrome("Objective");
+                Assert.That(shown != null, Is.True, "The HUD shows a current objective before the rebuild.");
+                RenderHudForTheCurrentCanvas();
+                // Begin retires every child of the HUD canvas inside the call (SetActive(false), then a
+                // deferred Destroy), so the objective that was showing is switched off now only if the
+                // forced Render really rebuilt the HUD. Render can return early; without this check the
+                // witness below would hold with no rebuild at all.
+                Assert.That(shown != null && !shown.gameObject.activeSelf, Is.True,
+                    "The forced Render rebuilt the HUD: the objective it was showing is retired.");
+                // Longer than the tour's .25 s re-lookup, so the step has looked again after the rebuild.
                 yield return TourRealSeconds(.3f);
                 Assert.That(tour.CurrentAnchors, Is.EqualTo(new[] { "Objective" }),
-                    "A closed panel points to the current objective, never the latest status report.");
+                    "A closed panel points to the current objective, never the latest status report, "
+                    + "and a HUD rebuild while the step is up still points at the current objective.");
+                Assert.That(panel != null, Is.True, "The HUD's rebuild leaves a canvas it does not own alone.");
                 Assert.That(TourText(tour, "Body"), Does.Contain("A phase is the part of the week"));
                 Assert.That(TourText(tour, "Body"), Does.Contain("action has already happened"));
             }
             finally
             {
                 tour.Skip();
-                Object.Destroy(panel.gameObject);
+                if (host != null) Object.Destroy(host);
             }
         }
 

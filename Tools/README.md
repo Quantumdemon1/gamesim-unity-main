@@ -9,7 +9,7 @@ Unity (it sits outside `Assets/`). Machine-specific paths are derived or overrid
 | --- | --- | --- |
 | `offline-compile.ps1` | Smoke-compiles all eight owned assemblies from current source lists using cached editor references. Missing assemblies/configuration mismatches fail; outputs and dependencies are unique to this invocation. `-OutputRoot <directory>` retains fresh outputs on another drive. `-WithoutUma` requires matching UMA-free cached responses. Changed asmdef dependencies require a freshly regenerated Unity Bee graph; stale cached references are not acceptance. | seconds |
 | `player-compile.ps1` | Same for all three player assemblies (two with `-WithoutUma`); validates player/UMA defines and refuses stale dependency outputs. Cached compiler checks do not replace Unity tests/builds. | seconds |
-| `verify-review-candidate.ps1 -Name <fresh-name>` | Runs every owned suite - a failing suite no longer stops the ones after it - records each, then fails at the end if any failed. Enforces each assembly's minimum in `baseline.txt`, and retains before/after complete input manifests, exact `.meta` archives, XML/log hashes and individual test names. Missing/malformed XML, short suites (floor shortfall), a Unity that never exits and unexpected product-input drift still stop it at once. Each suite has its own deadline (see *Deadlines* below); a late run is recorded failed and never killed. `-WithoutUma` requires the existing separate UMA-free copy. | depends on suites and input hashing |
+| `verify-review-candidate.ps1 -Name <fresh-name>` | Runs every owned suite - a failing suite no longer stops the ones after it - records each, then fails at the end if any failed. Enforces each assembly's minimum in `baseline.txt` (without `-WithoutUma`, the UMA build of `Gamesim.PlayModeTests` is held to its own line, `Gamesim.PlayModeTests.UmaBuild`, which also counts the tests that compile only under `GAMESIM_UMA`), and retains before/after complete input manifests, exact `.meta` archives, XML/log hashes and individual test names. Missing/malformed XML, short suites (floor shortfall), a Unity that never exits and unexpected product-input drift still stop it at once. Each suite has its own deadline (see *Deadlines* below); a late run is recorded failed and never killed. `-WithoutUma` requires the existing separate UMA-free copy. | depends on suites and input hashing |
 | `build-review-candidate.ps1 -TestName <passing-name>` | Requires a passing complete same-configuration test summary. Checks live and synced inputs, builds Review13, checks final inputs, retains a timestamped report and hashes the entire build tree. Supports `-WithoutUma`. | depends on changed assets |
 | `profile-candidate.ps1 [-Executable <Gamesim.exe>] [-BuildEvidence <build evidence.json>]` | The performance evidence for the owner's 1920x1080 / 60 fps target: three clean 300 s `--gamesim-verify` profiles of the built player, one at a time, each into its own fresh save root - six, twelve and the sixteen-person verification-only stress house (`--gamesim-stress-roster`). Windowed, uncapped, never `-batchmode`; blocks competing Unity/Gamesim processes and records any that start mid-run. Only the exactly identified installed Unity Hub `resources/unity.exe` quoted `serve` helper is exempt, with a separate sanitized receipt; incomplete or unexpected identities still block. This inventory does not establish global CPU/GPU quietness. Writes `profile-summary.json`/`.md`; each valid run's `performanceAcceptance` (p95 <= 16.7 ms, p99 <= 33.3 ms) is the verdict, never its `Passed`; invalid runs read "Not assessed". Exit 0 (evidence complete) also needs `-BuildEvidence` to match the player's whole build tree file by file and one `buildGuid` across the three reports. | about 20 min |
 | `test-profile-evidence.ps1` | Exercises the pure profile predicates, bounded closure/verdict conditions and exact Hub helper identity against 42 synthetic cases. No player or hardware measurement. | seconds |
@@ -18,7 +18,7 @@ Unity (it sits outside `Assets/`). Machine-specific paths are derived or overrid
 | `sync-acceptance.ps1` | Holds the shared destination file lease, verifies an immutable byte snapshot, then checks every mirror against the exact UMA/NoUMA projection. GPU Resident Drawer is disabled only for explicit test mode. | depends on input hashing |
 | `sync-and-run.sh` | Routes `name:Platform:Assembly[:filter]` to the same held PowerShell controller. Retains unique evidence; failures/skips/nonzero exits/shortfalls fail. Always diagnostic evidence, never a build gate. | depends on suites |
 | `test-review-workflow.ps1` | Isolated lock/snapshot/XML/failure-retention fixtures, including real controller refusal paths. No Unity or real acceptance-copy access. | seconds |
-| `test-review-suite-runs.ps1` | 46 isolated fixtures for how the controller runs suites, with a fake Unity (a `.cmd` writing NUnit XML): per-suite deadlines at least twice their measured durations, a late process recorded late and never killed (and abandoned, still running, past its grace), every suite run after a failure, the `GAMESIM_DIAGNOSTICS` define (refused for full acceptance, added to and taken off the copy), and a source status probe that leaves `.git/index` byte for byte. | about a minute |
+| `test-review-suite-runs.ps1` | 56 isolated fixtures for how the controller runs suites, with a fake Unity (a `.cmd` writing NUnit XML): per-suite deadlines at least twice their measured durations, a late process recorded late and never killed (and abandoned, still running, past its grace), every suite run after a failure, the `GAMESIM_DIAGNOSTICS` define (refused for full acceptance, added to and taken off the copy), a source status probe that leaves `.git/index` byte for byte, and the UMA build's own floor (a UMA-build plan that runs 1269 stops with a SHORTFALL naming `Gamesim.PlayModeTests.UmaBuild`; a NoUMA plan still reads 1230). | about a minute |
 | `test-asset-metadata.ps1` | Twelve isolated fixtures for metadata, GUID and binary-attribute enforcement, including the same Unity-ignored hidden-path missing-meta exemption as CI. No source or acceptance-copy mutation. | seconds |
 | `OldSaves/build.sh <commit> <temporary worktree> <out>` | Compiles the old-save recorder (`OldSaves/Recorder.cs` with `Assets/Gamesim/Tests/EditMode/OldSaveTrace.cs`) against one historical commit's own `Simulation` and `Runtime/Persistence`, in a detached sparse worktree it creates, with the editor's Roslyn; run the result with the editor's Mono (`record`, `replay`, `generate`, `shape`, `migrate`, `resave`; `Recorder.cs` says what each does). `OLDSAVE_SOURCE_TREE=1` builds a plain folder instead of a commit. How the old-save fixtures were recorded: `Assets/Plans/OLD-SAVE-ACCEPTANCE.md`. Remove the worktree with `git worktree remove --force` afterwards. | about 20 s a build |
 | `build-and-verify.sh` | Retired and fail-closed. It never builds, launches an old executable, or recursively removes a named output folder. Use the current PowerShell runners. | immediate |
@@ -43,10 +43,10 @@ least twice the longest time measured for it (`Get-ReviewSuiteDeadline` in `revi
 
 | Assembly | Measured | Deadline |
 | --- | --- | --- |
-| `Gamesim.EditModeTests` | 2,305 s for 7,846 tests (NoUMA, 2026-10-14) | 7,200 s |
-| `Gamesim.PlayModeTests` | 5,557 s for 1,197 tests (NoUMA, 2026-10-15; 5,401 s for 1,218 earlier that day); 4,305 s for 1,081 under `GAMESIM_UMA` | 14,400 s |
-| `Gamesim.Uma.PlayModeTests` | 308 s for 89 tests (2026-10-15); 208 s for 85 (2026-10-16) | 3,600 s |
-| `Gamesim.DiagnosticsPlayModeTests`, `Gamesim.Uma.DiagnosticsPlayModeTests` | 261 s and 294 s for seven probes each (2026-10-15); the UMA one 220 s for ten tests (2026-10-16) | 3,600 s |
+| `Gamesim.EditModeTests` | 2,848 s for 8,073 tests (NoUMA, r1, 2026-10-16) | 7,200 s (2.5x) |
+| `Gamesim.PlayModeTests` | 6,400 s for 1,270 tests on the UMA build and 5,240 s for 1,230 on NoUMA (r1, 2026-10-16). The UMA build is the suite closest to its deadline: raise it to 18,000 s if another 100 or more UMA-only tests arrive | 14,400 s (2.25x) |
+| `Gamesim.Uma.PlayModeTests` | 261 s for 90 tests (r1, 2026-10-16); the longest, 308 s for 89 (2026-10-15) | 3,600 s |
+| `Gamesim.DiagnosticsPlayModeTests`, `Gamesim.Uma.DiagnosticsPlayModeTests` | 124 s for seven and 227 s for ten (r1, 2026-10-16); the longest, 261 s and 294 s for seven probes each (2026-10-15) | 3,600 s |
 
 Any other assembly takes its platform's (EditMode 7,200 s, PlayMode 14,400 s); a player build keeps its
 5,400 s (measured builds 150-298 s). `-SuiteTimeoutSeconds` overrides every suite at once (the cap is
@@ -64,7 +64,13 @@ passive-IK, untouched-Idle and Source21 Idle Foot IK probes - live in their own 
 under the `GAMESIM_DIAGNOSTICS` define (the UMA one also needs `GAMESIM_UMA`), which is never committed:
 a diagnostic run adds it to the test copy only, and the next ordinary sync takes it off again. Each has
 its own floor in `baseline.txt`; the floor counts that the probes ran, not that they passed. `[Explicit]`
-would not keep them out, because the batch runner executes Explicit tests.
+would not keep them out, because the batch runner executes Explicit tests. Two probe families whose
+premise the measurements refuted assert the outcome they measure instead (the lead's decision D1(b),
+2026-10-16), in both assemblies: the inert-stream probes (`InertStream_*RefuseAtTheSwapBoundary*`) expect
+`inert-attachment:unexpected-node-membership` at `swap-boundary`, with the graph valid and the body held
+afterwards, and Source21's copied-Idle Foot IK probes (`CopiedIdleFootIk_*DriftPastOneMillimetre*`) expect
+`LANDMARK_DRIFT_<n>` inside the 2 s window on the first landmark past 1 mm, with every foot goal at zero
+weight. Green means Unity and the Idle still behave as measured; a red there is a change in either.
 
 ```bash
 # UMA-free copy: the skeleton probes
@@ -76,7 +82,12 @@ GAMESIM_DIAGNOSTICS=1 GAMESIM_RETAIN_INSTALLED_UMA=1 Tools/sync-and-run.sh umadi
 The UMA one also holds three farewell readiness tests (`FarewellReadinessDiagnosticPlayModeTests`:
 `GroundedFarewell_ReadinessBothWalkStopCallsOnlyOnce`, `...BothIdleStillRequiresNewEvaluations` and
 `...DoesNotRestartAnExistingGlobalStopExit`) that wait for an Idle/WalkStop combination the UMA cast does
-not reliably stand into and refuse to force one; its floor counts them. They reach the episode fixture by
+not reliably stand into and refuse to force one; its floor counts them. A combination that did not occur,
+or (`DoesNotRestart`) a crossing seen only after the director used its Idle attempt, is reported
+`Inconclusive` with the endpoints that did occur ("NOT MEASURED: ... evicted=WalkStop survivor=Idle");
+every assertion after the combination occurs is hard. At r1 `BothWalkStop` and `DoesNotRestart` are
+Inconclusive and `BothIdle` passes or is Inconclusive. An Inconclusive reports failed=0 and exit 2, so list
+the non-Passed cases by name. They reach the episode fixture by
 composing `EpisodePlayModeTests` and calling its public readiness helper (lead ruling, 2026-10-16). The
 decisions they name are acceptance-tested by forcing each combination, in `Gamesim.Uma.PlayModeTests`
 (`UmaFarewellReadinessDecisionPlayModeTests`). The readiness tests that ship in `Gamesim.PlayModeTests`

@@ -27,7 +27,8 @@ namespace Gamesim.Uma.Tests.Diagnostics
     /// Foot IK flag and deliberately retains the Source20 far-park/AlwaysAnimate fixture. The copy is
     /// built in memory (DiagnosticIdleFootIkController): no run writes a controller under Assets/, and no
     /// SHA, state count or IK-pass setting of the shipping controller is pinned. Moved from
-    /// Gamesim.Uma.Tests to this GAMESIM_DIAGNOSTICS assembly.
+    /// Gamesim.Uma.Tests to this GAMESIM_DIAGNOSTICS assembly. Its hypothesis is refuted, so its test
+    /// asserts the drift it measures (see the test).
     /// </summary>
     public sealed class Source21UmaIdleFootIkPlayModeTests
     {
@@ -121,10 +122,25 @@ namespace Gamesim.Uma.Tests.Diagnostics
             Assert.That(HashAsset(HandlePath), Is.EqualTo(handleHash), "SOURCE21_HANDLE_DIRTIED_AFTER_ATTACH");
         }
 
+        /// <summary>
+        /// A refuted probe, pinned to what it measures (the lead's decision D1(b), r1 triage, 2026-10-16).
+        ///
+        /// <para>The probe asked whether the copied Idle's Foot IK alone keeps the four foot landmarks of
+        /// two UMA bodies within 1 mm of one baseline for 2 s. It cannot: UMA's Idle itself moves a foot
+        /// 21 mm over a loop (S5's measurement), and the goals report zero position and rotation weight, so
+        /// Foot IK pins nothing. Every run on record failed with LANDMARK_DRIFT_ (r1: body 0 landmark 0,
+        /// 1.0006 mm at 0.178 s); only which body and landmark crosses first varies with the Idle's phase.
+        /// The farewell plants its feet with S5's stance hold instead.</para>
+        ///
+        /// <para>So this asserts that outcome: a LANDMARK_DRIFT_ failure inside the 2 s window, on the
+        /// first landmark past 1 mm, with every foot goal unweighted. Any other code (SAME_FRAME_LATE,
+        /// ROOT_DRIFT, a set-up's SOURCE21_ failure) stays red, and so does a window the landmarks hold or
+        /// a goal Unity starts to weight.</para>
+        /// </summary>
         [UnityTest]
         [Category("FarewellIdleFootIkDiagnostic")]
         [FarewellDiagnosticIkPass]
-        public IEnumerator CopiedIdleFootIk_UmaBodiesKeepFourLandmarksAgainstOneBaseline()
+        public IEnumerator CopiedIdleFootIk_UmaBodiesDriftPastOneMillimetreWithTheFootGoalsUnweighted()
         {
             yield return Source21UmaIdleFootIkObserver.Observe(ready,
                 "source21-uma-far-always-animate-idle-footik-only");
@@ -493,17 +509,37 @@ namespace Gamesim.Uma.Tests.Diagnostics
                 Debug.Log(session.Finish(readers));
                 foreach (var reader in readers) if (reader != null) Object.Destroy(reader);
             }
-            Assert.That(session.Failure, Is.Null, session.Failure);
+            // The refutation, pinned (the lead's decision D1(b), r1 triage, 2026-10-16): with only the
+            // copied Idle's Foot IK on, the four landmarks do not hold within 1 mm of one baseline for 2 s.
+            // The UMA Idle itself moves a foot (21 mm over a loop, S5), and the native goals report zero
+            // position and rotation weight, so Foot IK pins nothing. The first sample in which a landmark
+            // passes 1 mm fails with LANDMARK_DRIFT_<that landmark>; which body and landmark varies with the
+            // Idle's phase. Every other code stays a failure.
+            Assert.That(session.FailureCode, Does.Match("^LANDMARK_DRIFT_[0-3]$"),
+                "SOURCE21_REFUTATION_CHANGED: " + (session.Failure ?? "every landmark held for the whole window"));
+            Assert.That(session.FailureSampled, Is.True, "SOURCE21_REFUTATION_SAMPLE_MISSING");
+            Assert.That(session.Started, Is.True, "SOURCE21_BASELINE_MISSING");
+            Assert.That(session.FailureElapsed, Is.GreaterThanOrEqualTo(0f).And.LessThan(Window), "SOURCE21_REFUTATION_OUTSIDE_THE_WINDOW");
+            var failing = readers[session.FailureBody];
+            int landmark = session.FailureCode[session.FailureCode.Length - 1] - '0';
+            Assert.That(failing.samples, Is.GreaterThan(0), "SOURCE21_NO_WINDOW_SAMPLES");
+            Assert.That(failing.landmarkDrift[landmark], Is.GreaterThan(.001f), "SOURCE21_REFUTATION_LANDMARK_UNDER_1MM");
+            for (int earlier = 0; earlier < landmark; earlier++)
+                Assert.That(failing.landmarkDrift[earlier], Is.LessThanOrEqualTo(.001f), "SOURCE21_REFUTATION_NOT_THE_FIRST_LANDMARK_" + earlier);
             foreach (var reader in readers)
             {
                 Assert.That(reader.baseline, Is.True, "SOURCE21_BASELINE_MISSING");
-                Assert.That(reader.complete, Is.True, "SOURCE21_ENDPOINT_MISSING");
-                Assert.That(reader.samples, Is.GreaterThan(0), "SOURCE21_NO_WINDOW_SAMPLES");
                 Assert.That(reader.baselinePhase, Is.GreaterThan(reader.initialPhase), "SOURCE21_BASELINE_DID_NOT_ADVANCE");
-                Assert.That(reader.phase, Is.GreaterThan(reader.baselinePhase), "SOURCE21_WINDOW_IDLE_DID_NOT_ADVANCE");
-                Assert.That(reader.endpointFrame, Is.GreaterThan(session.BaselineFrame));
-                Assert.That(reader.endpointElapsed, Is.GreaterThanOrEqualTo(Window), "SOURCE21_ENDPOINT_BEFORE_WINDOW");
+                for (int goal = 0; goal < Goals.Length; goal++)
+                {
+                    Assert.That(reader.goalSamples[goal], Is.GreaterThan(0), "SOURCE21_GOAL_UNREAD_" + reader.index + "_" + goal);
+                    Assert.That(reader.nonzeroPositionWeight[goal] || reader.nonzeroRotationWeight[goal], Is.False,
+                        "SOURCE21_REFUTATION_CHANGED: Foot IK weighted goal " + goal + " of body " + reader.index);
+                }
             }
+            for (int goal = 0; goal < Goals.Length; goal++)
+                Assert.That(failing.positionWeight[goal] == 0f && failing.rotationWeight[goal] == 0f, Is.True,
+                    "SOURCE21_REFUTATION_CHANGED: the failing sample's goal " + goal + " is weighted");
         }
 
         private void Bind(Source21UmaReadyBody value, int bodyIndex, Session owner)
@@ -713,7 +749,12 @@ namespace Gamesim.Uma.Tests.Diagnostics
             }
 
             internal void Register(int index, Source21UmaIdleFootIkObserver reader) { readers[index] = reader; }
-            internal void Fail(int body, string code) { if (Failure == null) Failure = "body=" + body + " code=" + code; }
+            internal int FailureBody { get; private set; } = -1;
+            internal string FailureCode { get; private set; }
+            internal bool FailureSampled { get; private set; }
+            internal float FailureElapsed { get; private set; } = -1f;
+            internal void Fail(int body, string code)
+            { if (Failure == null) { Failure = "body=" + body + " code=" + code; FailureBody = body; FailureCode = code; } }
             internal void Line(string value, bool row)
             { if (!report.Append(value, row)) Fail(-1, row ? "REPORT_ROW_OR_BYTE_CAP" : "REPORT_BYTE_CAP"); }
 
@@ -766,6 +807,7 @@ namespace Gamesim.Uma.Tests.Diagnostics
                 row.Append('\n');
                 failureSample = Encoding.UTF8.GetByteCount(row.ToString()) <= 2048
                     ? row.ToString() : "FAIL_SAMPLE code=" + code + " body=" + reader.index + " detail=FAIL_SAMPLE_CAP\n";
+                FailureSampled = true; FailureElapsed = elapsed;
                 Fail(reader.index, code);
             }
 

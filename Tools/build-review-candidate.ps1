@@ -35,7 +35,7 @@ try {
     foreach ($suite in $summary.suites) {
         Assert-ReviewEvidenceFile $suite.report $testedRoot $suite.reportSha256
         Assert-ReviewEvidenceFile $suite.log $testedRoot $suite.logSha256
-        $actual=Read-ReviewSuiteReport $suite.report $suite.suite $suite.minimumCount $suite.exit ([bool]$suite.filtered)
+        $actual=Read-ReviewSuiteReport $suite.report $suite.suite $suite.minimumCount $suite.exit ([bool]$suite.filtered) ([string]$suite.floorKey)
         if (-not $actual.fullSuite -or $actual.total -ne $suite.total -or $actual.passed -ne $suite.passed) { throw 'Not complete passing suite evidence.' }
     }
     $baselineSha256=Assert-ReviewSuiteFloorEvidence $summary (Join-Path $PSScriptRoot 'baseline.txt') $expected $testedBefore $testedAfter

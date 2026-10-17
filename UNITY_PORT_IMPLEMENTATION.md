@@ -1,5 +1,50 @@
 # Integrated Unity port — implementation and acceptance record
 
+## Release candidate r1: the triage's fixes - 2026-10-16
+
+The release-candidate validation r1 of `claude/consolidation` (5d824c73) passed every shipping suite at
+its floor but one test; its triage found no failure from a lane merge. Its slices, on `claude/r1-fixes`:
+
+- **T1 (8552f6ed).** `Tour_PhaseStepPrefersTheDecisionAndFallsBackToTheCurrentObjective` hung its stand-in
+  decision under the HUD's canvas, which `EpisodeHud.Begin` empties on every rebuild; on the UMA cast a body
+  finishing assembly rebuilds it mid-test, so it failed in every UMA run that held it. The stand-in now lives
+  on a canvas of the test's own, and a forced rebuild after the panel closes is a permanent witness. Red
+  first on NoUMA (run r1fix-t1red: 12 of the 13 `Tour_` tests passed and the phase step failed, on the same
+  `MissingReferenceException` in its finally; the commit message's "failed 12 of 13" is a slip for that),
+  then 13 of 13 on NoUMA (r1fix-t1green) and on the UMA copy (r1fix-t1greenu).
+- **F (1711bcb1).** The UMA build of `Gamesim.PlayModeTests` has its own floor, `Gamesim.PlayModeTests.UmaBuild
+  1270` (r1 ran 1270 against the shared 1230: 40 tests compile only under `GAMESIM_UMA`), read by a plan built
+  without `-WithoutUma`; the deadline table and the fixture's `$measured` carry r1's whole-process times.
+  Tooling and comments only.
+- **D1, the lead's choice (b): the two refuted probe families assert what they measure.** The inert-stream
+  probes (`InertStream_*RefuseAtTheSwapBoundaryBecauseTheAnimatorRebuildsItsGraph`) expect
+  `inert-attachment:unexpected-node-membership` at `swap-boundary` on body 0, the probe's own cleanup refused,
+  and the graph valid and the body held afterwards. Source21's copied-Idle Foot IK probes
+  (`CopiedIdleFootIk_*DriftPastOneMillimetreWithTheFootGoalsUnweighted`) expect `LANDMARK_DRIFT_<n>` inside the
+  2 s window on the first landmark past 1 mm, with every foot goal at zero position and rotation weight. Why:
+  every run on record, both builds, measured exactly these outcomes; the farewell no longer needs either route
+  (S5's stance hold plants the feet); and an expected red hides a new one, where a pinned measurement turns red
+  when Unity or the Idle changes. Runs: NoUMA diagnostics 7 of 7 (r1fix-d1diag); UMA diagnostics 8 passed and
+  2 Inconclusive, the D2 readiness tests (r1fix-d12umadiag). With each pinned expectation mutated (the refusal
+  expected as `inert-attachment:unexpected-node`, the code as `ROOT_DRIFT`), exactly the four mutated tests
+  went red, each on its own message, and nothing else changed (r1fix-d1mut, r1fix-d1mutu). The diagnostics
+  floors stay 7 and 10.
+- **D2: a natural combination that did not occur is no measurement.** The three UMA readiness diagnostics
+  (`FarewellReadinessDiagnosticPlayModeTests`) read the director's captured endpoints without asserting them;
+  when the requested combination is not what occurred they are `Assert.Inconclusive`, naming the endpoints
+  that did, and `DoesNotRestart` accepts a WalkStop to Idle crossing as its witness only while
+  `farewellIdleAttemptUsed` is still false (a crossing after it is Inconclusive; no crossing at all inside the
+  observation window, 2 s or the farewell's 1.5 s deadline, whichever comes first, stays the hard "MISSING
+  genuine global transition witness" failure it was, since it has never been seen and the triage made only the
+  late crossing Inconclusive). Every assertion after
+  a combination occurs stays hard; `AssertCapturedFarewellBranch`, the shipping tests' check, is unchanged.
+  Run r1fix-d12umadiag (and again r1fix-d1mutu): `BothWalkStop` Inconclusive, "the requested combination,
+  evicted=WalkStop survivor=WalkStop, did not occur; the endpoints that did: evicted=WalkStop survivor=Idle";
+  `DoesNotRestart` Inconclusive, "the crossing came after authorization, once the director had already used
+  its Idle attempt (evicted=WalkStop survivor=Idle)"; `BothIdle` passed both times. An Inconclusive hides a
+  regression as failed=0 and exit 2 (it is acceptable only because these are diagnostics and the forced
+  decision tests in `Gamesim.Uma.PlayModeTests` carry acceptance), so read these runs by case name.
+
 ## Consolidation - 2026-10-15
 
 Every agent's work now has one line: branch `claude/consolidation` (a4fdfa38) holds GitHub main, the

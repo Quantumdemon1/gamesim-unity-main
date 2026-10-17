@@ -64,7 +64,13 @@ passive-IK, untouched-Idle and Source21 Idle Foot IK probes - live in their own 
 under the `GAMESIM_DIAGNOSTICS` define (the UMA one also needs `GAMESIM_UMA`), which is never committed:
 a diagnostic run adds it to the test copy only, and the next ordinary sync takes it off again. Each has
 its own floor in `baseline.txt`; the floor counts that the probes ran, not that they passed. `[Explicit]`
-would not keep them out, because the batch runner executes Explicit tests.
+would not keep them out, because the batch runner executes Explicit tests. Two probe families whose
+premise the measurements refuted assert the outcome they measure instead (the lead's decision D1(b),
+2026-10-16), in both assemblies: the inert-stream probes (`InertStream_*RefuseAtTheSwapBoundary*`) expect
+`inert-attachment:unexpected-node-membership` at `swap-boundary`, with the graph valid and the body held
+afterwards, and Source21's copied-Idle Foot IK probes (`CopiedIdleFootIk_*DriftPastOneMillimetre*`) expect
+`LANDMARK_DRIFT_<n>` inside the 2 s window on the first landmark past 1 mm, with every foot goal at zero
+weight. Green means Unity and the Idle still behave as measured; a red there is a change in either.
 
 ```bash
 # UMA-free copy: the skeleton probes

@@ -13,8 +13,9 @@ namespace Gamesim.Tests.Diagnostics
 {
     /// <summary>
     /// Feasibility and diagnostic probes of the imported mocap Idle and farewell take, on the animation
-    /// library's own skeleton. They measure and report; they are not acceptance, and the IK feasibility
-    /// probes fail by design while the farewell's foot planting is open. This assembly compiles only under
+    /// library's own skeleton. They measure and report; they are not acceptance. The farewell's foot
+    /// planting is closed (S5's stance hold); the inert-stream probe, whose premise the measurements
+    /// refuted, asserts the refusal it measures (see its test). This assembly compiles only under
     /// GAMESIM_DIAGNOSTICS, so none of it runs in, or counts toward, the shipping Gamesim.PlayModeTests
     /// suite; its floor is its own line in Tools/baseline.txt. Moved unchanged from
     /// Gamesim.Tests.PlayMode.GroundedFarewellPlumbingPlayModeTests, which keeps the behaviour tests.
@@ -70,11 +71,54 @@ namespace Gamesim.Tests.Diagnostics
             yield return GroundedFarewellDynamicIkFeasibilityProbe.Observe(new[] { a, b }, "ordinary-provided-imported-skeleton", false);
         }
 
+        /// <summary>
+        /// A refuted probe, pinned to what it measures (the lead's decision D1(b), r1 triage, 2026-10-16).
+        ///
+        /// <para>The probe asked whether a body's Animator would carry one inert owned node spliced in
+        /// front of its output and give it back exactly. On Unity 6000.6 it does not. Body 0 creates its
+        /// node, connects it, weights it and swaps the output's source to it; two frames later, at
+        /// swap-boundary, the whole-graph inventory is no longer the baseline plus the owned node: the
+        /// Animator re-initialised its controller playable when its output source was replaced (the Idle's
+        /// normalized time jumps backwards in the same frame). The probe refuses with
+        /// inert-attachment:unexpected-node-membership, its own cleanup refuses too, and the graph and body
+        /// are left valid and held for the fixture's teardown. Every run on record, both builds, before
+        /// and after the IK pass, measured exactly this. The product no longer needs the route: the
+        /// farewell plants its feet with S5's stance hold.</para>
+        ///
+        /// <para>So this asserts that refusal, its stage and what the cleanup left. It is green while
+        /// Unity behaves as measured and turns red on any other refusal, another body or stage, a probe
+        /// that completes, or a graph the refusal leaves invalid.</para>
+        /// </summary>
         [UnityTest]
         [Category("FarewellInertStreamDiagnostic")]
-        public IEnumerator InertStream_ProvidedSkeletonsAttachAndRestoreOnlyTheirOwnedNode()
+        public IEnumerator InertStream_ProvidedSkeletonsRefuseAtTheSwapBoundaryBecauseTheAnimatorRebuildsItsGraph()
         {
-            yield return GroundedFarewellInertStreamAdapter.Observe(new[] { a, b }, "ordinary-provided-imported-skeleton");
+            var outcome = new GroundedFarewellInertStreamAdapter.Outcome();
+            var probe = GroundedFarewellInertStreamAdapter.Observe(new[] { a, b }, "ordinary-provided-imported-skeleton", outcome);
+            System.Exception refusal = null;
+            while (true)
+            {
+                // Driven by hand so the probe's refusal is caught as a measurement (no yield inside a catch).
+                try { if (!probe.MoveNext()) break; }
+                catch (System.Exception error) { refusal = error; break; }
+                yield return probe.Current;
+            }
+            AssertTheMeasuredRefusal(refusal, outcome);
+        }
+
+        internal static void AssertTheMeasuredRefusal(System.Exception refusal, GroundedFarewellInertStreamAdapter.Outcome outcome)
+        {
+            Assert.That(refusal, Is.Not.Null, "INERT_REFUTATION_CHANGED: the probe completed; Unity now carries an owned node through an output swap.");
+            Assert.That(refusal, Is.TypeOf<System.InvalidOperationException>(), "INERT_REFUTATION_CHANGED: " + refusal);
+            Assert.That(refusal.Message, Is.EqualTo("inert-attachment:unexpected-node-membership"), "INERT_REFUTATION_CHANGED: another refusal.");
+            Assert.That(outcome.Stage[0], Is.EqualTo("swap-boundary"), "The refusal comes two frames after body 0's output swap.");
+            Assert.That(outcome.CreateAttempt[0] && outcome.SwapAttempt[0], Is.True, "Body 0 reached its swap.");
+            Assert.That(outcome.SwapReached[0], Is.False, "The swap was never observed held.");
+            Assert.That(outcome.CreateAttempt[1], Is.False, "Body 1 never attached: the probe stopped at body 0.");
+            Assert.That(outcome.CleanupBlocked[0] && !outcome.Restored[0], Is.True, "The probe's own cleanup refuses too.");
+            Assert.That(outcome.Containment[0], Is.EqualTo("FAILED_UNQUALIFIED-original-fixture-teardown-only"));
+            Assert.That(outcome.RetainedGraphValid[0], Is.EqualTo((bool?)true), "The refusal leaves the body's graph valid.");
+            Assert.That(outcome.RetainedBodyHeld[0], Is.EqualTo((bool?)true), "The refusal leaves the body held for the fixture's teardown.");
         }
 
         [UnityTest]
@@ -987,7 +1031,19 @@ namespace Gamesim.Tests.Diagnostics
             internal Snapshot scan;
             internal bool ownedValid, connected, swapped;
         }
-        internal static IEnumerator Observe(CharacterPresentation[] bodies, string provenance)
+        /// <summary>
+        /// What one run measured, per body, for a test that pins it: the stage each body had reached when
+        /// the probe stopped (read before any cleanup), and the read-only facts its cleanup left. Copied
+        /// out of the probe's own readers in its finally; never a write or a cleanup authority.
+        /// </summary>
+        internal sealed class Outcome
+        {
+            internal readonly string[] Stage = new string[2], Containment = new string[2];
+            internal readonly bool[] CreateAttempt = new bool[2], SwapAttempt = new bool[2], SwapReached = new bool[2];
+            internal readonly bool[] CleanupBlocked = new bool[2], Restored = new bool[2];
+            internal readonly bool?[] RetainedGraphValid = new bool?[2], RetainedBodyHeld = new bool?[2];
+        }
+        internal static IEnumerator Observe(CharacterPresentation[] bodies, string provenance, Outcome outcome = null)
         {
             Need(bodies != null && bodies.Length == 2, "two-genuine-bodies");
             var readers = new Reader[2];
@@ -1057,7 +1113,15 @@ namespace Gamesim.Tests.Diagnostics
                 for (int i = readers.Length - 1; i >= 0; i--)
                 {
                     var reader = readers[i]; if (reader == null) continue;
+                    if (outcome != null) outcome.Stage[i] = reader.stage;
                     if (reader.createAttempt && !reader.restored && !reader.cleanupBlocked) Cleanup(reader);
+                    if (outcome != null)
+                    {
+                        outcome.CreateAttempt[i] = reader.createAttempt; outcome.SwapAttempt[i] = reader.swapAttempt;
+                        outcome.SwapReached[i] = reader.swapReached; outcome.CleanupBlocked[i] = reader.cleanupBlocked;
+                        outcome.Restored[i] = reader.restored; outcome.Containment[i] = reader.containment;
+                        outcome.RetainedGraphValid[i] = reader.retainedGraphValid; outcome.RetainedBodyHeld[i] = reader.retainedBodyHeld;
+                    }
                     reader.Finish(i);
                 }
             }

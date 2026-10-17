@@ -31,14 +31,15 @@ Gamesim.Uma.PlayModeTests 90
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
 # sync-and-run.sh or the locked runner); the UMA one needs GAMESIM_UMA too. The floor counts that they
-# ran, not that they passed. The farewell's foot planting is closed (S5's stance hold); the reds expected
-# at r1 (2026-10-16) are measurements, not open work:
-#   both builds: InertStream_* (inert-attachment:unexpected-node-membership at swap-boundary) and
-#     CopiedIdleFootIk_* (LANDMARK_DRIFT_<n>: the Idle itself moves a foot past 1 mm), two probe families
-#     whose premise the measurements refuted;
-#   UMA: GroundedFarewell_ReadinessBothWalkStopCallsOnlyOnce (the survivor stands into Idle, so the WalkStop
-#     pair never occurs) and ...DoesNotRestartAnExistingGlobalStopExit (the WalkStop to Idle crossing comes
-#     only after the director has used its Idle attempt).
+# ran, not that they passed. The farewell's foot planting is closed (S5's stance hold). At r1 (2026-10-16):
+#   both builds: two probe families whose premise the measurements refuted now assert what they measure
+#     (the lead's decision D1(b)), so they pass while Unity and the Idle behave as measured and turn red
+#     when either changes: InertStream_*RefuseAtTheSwapBoundary* (inert-attachment:unexpected-node-membership
+#     at swap-boundary) and CopiedIdleFootIk_*DriftPastOneMillimetre* (LANDMARK_DRIFT_<n> inside the 2 s
+#     window, the foot goals unweighted: the Idle itself moves a foot past 1 mm);
+#   UMA, the expected reds: GroundedFarewell_ReadinessBothWalkStopCallsOnlyOnce (the survivor stands into
+#     Idle, so the WalkStop pair never occurs) and ...DoesNotRestartAnExistingGlobalStopExit (the WalkStop to
+#     Idle crossing comes only after the director has used its Idle attempt).
 # The UMA one: 7 probes + the 3 readiness tests (FarewellReadinessDiagnosticPlayModeTests, moved from
 # Gamesim.PlayModeTests on 2026-10-16) = 10. The readiness tests wait for a natural Idle/WalkStop
 # combination and never force one. BothIdle's does occur, on some runs only: it passed at r3s3b and r1 and

@@ -190,6 +190,153 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator Creator_TendencyButtonsAreDrawnWholeAndReachableAtEveryScaleAndFrame()
+        {
+            yield return OpenCreator();
+            var creator = Creator();
+            var original = creator.Draft.Copy();
+            try
+            {
+                foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1920, 1080),
+                    new Vector2Int(1200, 900), new Vector2Int(2560, 1080) })
+                    using (var lens = new CaptureLens(cameraRig.ViewCamera, size.x, size.y))
+                        // Largest first: the red oracle is the observed circle/mask clipping,
+                        // before any capture readiness checks on a fitting summary page.
+                        foreach (float scale in TextScales.All.Reverse())
+                        {
+                            creator.FontScale = scale;
+                            yield return null; yield return null;
+                            CastButtons("Personality").Single().onClick.Invoke();
+                            yield return null; yield return null;
+                            var panel = creator.GetComponentsInChildren<RectTransform>().Single(rect => rect.name == "Tendencies");
+                            var scroll = panel.GetComponentsInChildren<ScrollRect>().SingleOrDefault();
+                            var clip = scroll == null ? panel : scroll.viewport;
+                            var buttons = panel.GetComponentsInChildren<Button>();
+                            string where = "Tendency circles " + size + " at " + scale;
+                            Assert.That(buttons, Has.Length.EqualTo(16), where + ": all eight unchanged pairs exist.");
+                            foreach (string stat in WebTraits.StatNames)
+                                foreach (string caption in new[] { "Lower " + stat, "Raise " + stat })
+                                {
+                                    var button = buttons.Single(item => item.name == caption);
+                                    Assert.That(button.GetComponentsInChildren<TMPro.TMP_Text>(true)
+                                        .Single(label => label.name == "Label").text, Is.EqualTo(caption),
+                                        where + ": the accessible command caption is unchanged.");
+                                }
+                            if (scroll != null)
+                            {
+                                Assert.That(scroll.content.name, Is.EqualTo("Tendency rows"), where);
+                                Assert.That(clip.rect.width, Is.EqualTo(panel.rect.width - 48f).Within(.1f),
+                                    where + ": the viewport keeps both 24-unit margins.");
+                                Assert.That(scroll.content.rect.width, Is.EqualTo(clip.rect.width).Within(.1f), where);
+                                scroll.StopMovement();
+                                scroll.verticalNormalizedPosition = 1f;
+                            }
+                            var traitScroll = creator.GetComponentsInChildren<ScrollRect>().Single(item => item.content.name == "Traits");
+                            Assert.That(traitScroll.viewport.rect.width,
+                                Is.EqualTo(((RectTransform)traitScroll.viewport.parent).rect.width - 48f).Within(.1f), where);
+                            Assert.That(traitScroll.content.rect.width, Is.EqualTo(traitScroll.viewport.rect.width).Within(.1f), where);
+                            var first = buttons.Single(button => button.name == "Raise physical");
+                            var last = buttons.Single(button => button.name == "Raise loyalty");
+                            Assert.That(first.IsInteractable() && last.IsInteractable(), Is.True, where);
+                            first.Select();
+                            yield return null; yield return null;
+                            yield return lens.MakeSureTheCanvasesAreDrawn();
+                            Canvas.ForceUpdateCanvases();
+                            // This checks the drawn circle before any new layout policy. The original
+                            // scrolling branch places its first button seven units above the mask.
+                            AssertCreatorTendencyRowInk(buttons, "physical", clip, where + " / first");
+                            AssertCreatorFits(creator, where);
+                            string capture = "creator-tendency-buttons-" + size.x + "x" + size.y
+                                + (Mathf.Approximately(scale, 1f) ? "-standard" : TextScales.Suffix(scale));
+                            bool expectPhoto = size.x == 2560 || Mathf.Approximately(scale, 1f)
+                                || (size.x != 1200 && scale < 1.3f);
+                            yield return PhotographCreatorPersonalityThroughLens(lens, capture + "-first", expectPhoto);
+
+                            var events = UnityEngine.EventSystems.EventSystem.current;
+                            int limit = creator.GetComponentsInChildren<Selectable>().Length + 1;
+                            for (int step = 0; step < limit && events.currentSelectedGameObject != last.gameObject; step++)
+                            {
+                                yield return PressKey(UnityEngine.InputSystem.Key.Tab);
+                                yield return null;
+                                Assert.That(events.currentSelectedGameObject?.GetComponent<Scrollbar>(), Is.Null,
+                                    where + ": the scrollbar is not an extra keyboard stop.");
+                            }
+                            Assert.That(events.currentSelectedGameObject, Is.SameAs(last.gameObject),
+                                where + ": actual Tab navigation reaches the final tendency.");
+                            yield return null; yield return null;
+                            yield return lens.MakeSureTheCanvasesAreDrawn();
+                            Canvas.ForceUpdateCanvases();
+                            AssertCreatorTendencyRowInk(buttons, "loyalty", clip, where + " / last");
+                            if (scroll != null)
+                            {
+                                Assert.That(scroll.content.anchoredPosition.y, Is.GreaterThan(1f),
+                                    where + ": reaching the final pair really scrolls.");
+                                Assert.That(scroll.verticalScrollbar.value, Is.LessThan(.99f), where);
+                            }
+                            yield return PhotographCreatorPersonalityThroughLens(lens, capture + "-last", expectPhoto);
+                            // Returning to the top must not leave the first circle or its focus ring clipped.
+                            events.SetSelectedGameObject(null);
+                            if (scroll != null) { scroll.StopMovement(); scroll.verticalNormalizedPosition = 1f; }
+                            first.Select();
+                            yield return null; yield return null;
+                            yield return lens.MakeSureTheCanvasesAreDrawn();
+                            Canvas.ForceUpdateCanvases();
+                            AssertCreatorTendencyRowInk(buttons, "physical", clip, where + " / return");
+                            AssertCreatorEntryDraft(original, creator.Draft);
+                        }
+            }
+            finally { creator.FontScale = 1f; }
+            AssertCreatorEntryDraft(original, creator.Draft);
+        }
+
+        private static void AssertCreatorTendencyRowInk(Button[] buttons, string stat, RectTransform clip, string where)
+        {
+            foreach (string verb in new[] { "Lower ", "Raise " })
+            {
+                var button = buttons.Single(item => item.name == verb + stat);
+                var rectangle = (RectTransform)button.transform;
+                Assert.That(rectangle.rect.width, Is.EqualTo(40f).Within(.01f), where + ": hit-target width.");
+                Assert.That(rectangle.rect.height, Is.EqualTo(40f).Within(.01f), where + ": hit-target height.");
+                var circle = button.targetGraphic as Image;
+                Assert.That(circle, Is.Not.Null, where + ": the actual circular target is present.");
+                AssertCreatorTendencyImageInk(circle, clip, where + " / " + button.name + " / circle");
+                var border = button.GetComponentsInChildren<Image>(true).Single(image => image.name == "Border");
+                AssertCreatorTendencyImageInk(border, clip, where + " / " + button.name + " / normal border");
+                var glyph = button.GetComponentsInChildren<TMPro.TMP_Text>().Single(text => text.name == "Glyph");
+                AssertCreatorTraitTextInk(glyph, verb == "Raise " ? "+" : "−", rectangle, clip,
+                    where + " / " + button.name + " / command glyph");
+                var focus = button.GetComponentsInChildren<Image>(true).Single(image => image.name == "Focus ring");
+                bool selected = UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject == button.gameObject;
+                Assert.That(focus.isActiveAndEnabled, Is.EqualTo(selected), where + ": focus follows real selection.");
+                if (selected) AssertCreatorTendencyImageInk(focus, clip, where + " / " + button.name + " / focus ring");
+            }
+        }
+
+        private static void AssertCreatorTendencyImageInk(Image image, RectTransform clip, string where)
+        {
+            Assert.That(image.isActiveAndEnabled && !image.canvasRenderer.cull && image.color.a > 0f, Is.True,
+                where + ": the actual graphic is drawn.");
+            Assert.That(image.sprite, Is.Not.Null, where);
+            var mesh = image.canvasRenderer.GetMesh(); // Borrowed geometry: never mutate or destroy it.
+            Assert.That(mesh, Is.Not.Null, where + ": a rect alone is not drawn-ink evidence.");
+            Assert.That(mesh.isReadable, Is.True, where);
+            Assert.That(mesh.vertexCount, Is.InRange(4, 4096), where);
+            var vertices = new List<Vector3>(mesh.vertexCount);
+            mesh.GetVertices(vertices);
+            Assert.That(vertices, Has.Count.EqualTo(mesh.vertexCount), where);
+            foreach (Vector3 vertex in vertices)
+            {
+                Vector3 point = clip.InverseTransformPoint(image.transform.TransformPoint(vertex));
+                Assert.That(float.IsNaN(point.x) || float.IsInfinity(point.x)
+                    || float.IsNaN(point.y) || float.IsInfinity(point.y), Is.False, where + ": finite mesh.");
+                Assert.That(point.x, Is.InRange(clip.rect.xMin - .25f, clip.rect.xMax + .25f),
+                    where + ": complete drawn geometry clears the side mask.");
+                Assert.That(point.y, Is.InRange(clip.rect.yMin - .25f, clip.rect.yMax + .25f),
+                    where + ": complete drawn geometry clears the top/bottom mask.");
+            }
+        }
+
+        [UnityTest]
         public IEnumerator Creator_TraitDescriptionsAreDrawnWholeAndReadableAtEveryScaleAndFrame()
         {
             yield return OpenCreator();

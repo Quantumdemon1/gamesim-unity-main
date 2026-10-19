@@ -26,14 +26,15 @@ Gamesim.EditModeTests 8133
 # presentation, and the locked-veto guard under a result overlay (1233 + 3 = 1236).
 # Creator overflow/keyboard reachability add two and titled-name plates add one (1236 + 3 = 1239).
 # Trait effect ink adds one shared all-frame/all-scale regression (1239 + 1 = 1240).
+# Tendency button/focus ink adds one shared all-frame/all-scale regression (1240 + 1 = 1241).
 # A plan built with -WithoutUma reads this line. These are required run minima, not a claim of a pass.
-Gamesim.PlayModeTests 1240
-# The UMA build of the same assembly, read by a plan built without -WithoutUma. 1280 = the 1240 above + the
+Gamesim.PlayModeTests 1241
+# The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
 # Director, Effects, HouseActivities, Moves, OpeningStage and StoryReactions. A shared test raises both
 # lines; a GAMESIM_UMA-only test raises this one.
-Gamesim.PlayModeTests.UmaBuild 1280
+Gamesim.PlayModeTests.UmaBuild 1281
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);

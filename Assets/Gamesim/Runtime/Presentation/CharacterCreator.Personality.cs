@@ -31,6 +31,8 @@ namespace Gamesim.Presentation
             { "luck", "star" }, { "competition", "trophy" }, { "strategic", "target" }, { "loyalty", "handshake" },
         };
 
+        private const float TendencyButtonSize = 40f, TendencyRowCentre = 13f;
+
         private void BuildPersonalityPage(RectTransform scrim)
         {
             var area = PageArea;
@@ -194,21 +196,28 @@ namespace Gamesim.Presentation
             // under the footer.
             float available = r.height - y - 16f, row = Mathf.Min(86f, available / WebTraits.StatNames.Length);
             Transform host = box;
-            float left = x;
+            float left = x, rightInset = 0f;
             if (row < 54f)
             {
                 row = 54f;
-                host = ScrollArea(box, "Tendency rows", new Rect(x, y, width, available), row * WebTraits.StatNames.Length);
-                left = 0f; y = 0f;
+                // Keep the circle and the selected control's existing focus decoration inside
+                // the mask. Fitting rows keep their original placement; only scrolling content
+                // gets derived inner clearance, without narrowing the row or the viewport.
+                rightInset = draft.PreserveStats ? 0f : CreatorFocusOutset + 1f;
+                float topInset = draft.PreserveStats ? 0f
+                    : Mathf.Max(0f, TendencyButtonSize * .5f + CreatorFocusOutset - TendencyRowCentre) + 1f;
+                host = ScrollArea(box, "Tendency rows", new Rect(x, y, width, available),
+                    row * WebTraits.StatNames.Length + topInset);
+                left = 0f; y = topInset;
             }
             foreach (var stat in WebTraits.StatNames)
             {
-                StatRow(host, stat, new Rect(left, y, width, row - 8f));
+                StatRow(host, stat, new Rect(left, y, width, row - 8f), rightInset);
                 y += row;
             }
         }
 
-        private void StatRow(Transform parent, string stat, Rect r)
+        private void StatRow(Transform parent, string stat, Rect r, float rightInset)
         {
             double value = WebTraits.Get(draft.Stats, stat);
             float glyph = 26f;
@@ -220,11 +229,12 @@ namespace Gamesim.Presentation
             if (boosters.Count > 0 && r.height >= 60f)
                 Words(parent, "Boosted by " + string.Join(", ", boosters), 12f, UiTheme.Heading, new Rect(r.x + glyph + 12f, r.y + 28f, 200f, 18f), name: "Stat boost")
                     .overflowMode = TextOverflowModes.Ellipsis;
-            float buttons = draft.PreserveStats ? 0f : 40f;
-            float barLeft = r.x + glyph + 12f + 190f, barRight = r.x + r.width - 50f - (buttons > 0f ? 2f * buttons + 16f : 0f);
+            float buttons = draft.PreserveStats ? 0f : TendencyButtonSize;
+            float right = r.x + r.width - rightInset;
+            float barLeft = r.x + glyph + 12f + 190f, barRight = right - 50f - (buttons > 0f ? 2f * buttons + 16f : 0f);
             float barWidth = Mathf.Max(60f, barRight - barLeft);
             // Ten segments, lit up to the value: the mockup's meter, read at a glance.
-            float segment = (barWidth - 9f * 4f) / 10f, centre = r.y + 13f;
+            float segment = (barWidth - 9f * 4f) / 10f, centre = r.y + TendencyRowCentre;
             for (int i = 0; i < 10; i++)
             {
                 bool lit = i < Math.Round(value);
@@ -235,7 +245,7 @@ namespace Gamesim.Presentation
             var number = Words(parent, value.ToString("0"), 22f, Color.white, new Rect(barLeft + barWidth + 8f, r.y - 2f, 42f, 30f), TextAlignmentOptions.Center, "Value");
             var bold = UiTheme.Font(UiTheme.Weight.Bold); if (bold != null) number.font = bold;
             if (draft.PreserveStats) return;
-            float bx = r.x + r.width - 2f * buttons - 8f;
+            float bx = right - 2f * buttons - 8f;
             Enable(GlyphButton(parent, LowerCaption(stat), new Rect(bx, centre - buttons * .5f, buttons, buttons), "−", null,
                 () => { draft.Lower(stat); Rebuild(); }), draft.CanLower(stat));
             Enable(GlyphButton(parent, RaiseCaption(stat), new Rect(bx + buttons + 8f, centre - buttons * .5f, buttons, buttons), "+", null,

@@ -397,6 +397,8 @@ namespace Gamesim.Presentation
             return button;
         }
 
+        private const float CreatorFocusOutset = 4f;
+
         /// <summary>
         /// Focus that can be seen. Unity's default tint darkens a selected control by four percent,
         /// which on dark glass or a colour swatch is nothing: the keyboard or the pad on a control
@@ -412,7 +414,8 @@ namespace Gamesim.Presentation
             UiTheme.AddBorder(rect, radius, UiTheme.Glow);
             var ring = rect.GetChild(rect.childCount - 1).GetComponent<Image>();
             ring.name = "Focus ring";
-            ring.rectTransform.offsetMin = new Vector2(-4f, -4f); ring.rectTransform.offsetMax = new Vector2(4f, 4f);
+            ring.rectTransform.offsetMin = new Vector2(-CreatorFocusOutset, -CreatorFocusOutset);
+            ring.rectTransform.offsetMax = new Vector2(CreatorFocusOutset, CreatorFocusOutset);
             ring.enabled = false;
             button.gameObject.AddComponent<CreatorFocus>().Ring = ring;
         }

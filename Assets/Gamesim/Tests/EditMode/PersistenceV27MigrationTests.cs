@@ -101,9 +101,14 @@ namespace Gamesim.Tests.EditMode
             Assert.That(migrated, Is.False); Assert.That(again, Is.Not.SameAs(now)); Assert.That(Text(again), Is.EqualTo(before));
             again["contestants"][0]["name"] = "A detached current caller"; Assert.That(Text(now), Is.EqualTo(before));
             now["unifiedVoteReveals"] = JValue.CreateNull(); before = Text(now);
-            again = EpisodeSaveMigrations.PrepareCurrentPayload(now, out migrated); Assert.That(migrated, Is.False);
-            Assert.That(again["unifiedVoteReveals"].Type, Is.EqualTo(JTokenType.Null));
-            Assert.Throws<InvalidDataException>(() => Current(again)); Assert.That(Text(now), Is.EqualTo(before));
+            var refusal = Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(now, out _),
+                "The frozen current-28 gate refuses corrupt storage before returning a clone; it never repairs it.");
+            Assert.That(refusal.Message, Is.EqualTo("Unified Vote evidence is not enabled in this build."));
+            Assert.That(Text(now), Is.EqualTo(before), "Dispatch refusal preserves the malformed input and its property order.");
+            Assert.That(now["unifiedVoteReveals"].Type, Is.EqualTo(JTokenType.Null));
+            Assert.Throws<InvalidDataException>(() => Current(now));
+            Assert.That(Text(now), Is.EqualTo(before), "The live storage refusal also leaves the input unchanged.");
+            Assert.That(Text(former), Is.EqualTo(original27), "The original historical 27 payload remains untouched.");
             FrozenV26TestCorpus.AssertPhysicalUnchanged();
         }
 

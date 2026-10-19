@@ -615,7 +615,7 @@ namespace Gamesim.Presentation
                 var fill = Disc("Initial", frame, UiTheme.SurfaceRaised);
                 fill.anchorMin = Vector2.zero; fill.anchorMax = Vector2.one;
                 fill.offsetMin = Vector2.zero; fill.offsetMax = Vector2.zero;
-                var glyph = Label(frame, string.IsNullOrEmpty(actor.name) ? "?" : actor.name.Substring(0, 1),
+                var glyph = Label(frame, CharacterNames.Initial(actor.name),
                     19, standing.Dim ? UiTheme.Muted : UiTheme.Paper, scale, font, TextAlignmentOptions.Center);
                 glyph.rectTransform.anchorMin = Vector2.zero;
                 glyph.rectTransform.anchorMax = Vector2.one;
@@ -625,9 +625,7 @@ namespace Gamesim.Presentation
 
             // Given name only. Surnames double the width of the rail, and a player refers to these
             // people the way the house does.
-            string given = actor.name ?? string.Empty;
-            int nameSpace = given.IndexOf(' ');
-            if (nameSpace > 0) given = given.Substring(0, nameSpace);
+            string given = CharacterNames.FirstName(actor.name);
 
             var name = Label(entry, given, 12, standing.Dim ? UiTheme.Muted : UiTheme.Paper, scale, font, TextAlignmentOptions.Top);
             name.rectTransform.anchorMin = new Vector2(0f, 1f);
@@ -801,7 +799,7 @@ namespace Gamesim.Presentation
             }
             else
             {
-                var glyph = Label(frame, string.IsNullOrEmpty(actor.name) ? "?" : actor.name.Substring(0, 1),
+                var glyph = Label(frame, CharacterNames.Initial(actor.name),
                     22, standing.Dim ? UiTheme.Muted : UiTheme.Paper, scale, font, TextAlignmentOptions.Center);
                 glyph.rectTransform.anchorMin = Vector2.zero; glyph.rectTransform.anchorMax = Vector2.one;
                 glyph.rectTransform.offsetMin = Vector2.zero; glyph.rectTransform.offsetMax = Vector2.zero;
@@ -842,9 +840,7 @@ namespace Gamesim.Presentation
                 badgeChip.sizeDelta = new Vector2(Mathf.Min(photoWidth * scale, Mathf.Max(BadgeWidth * scale, word)), BadgeHeight * scale);
             }
 
-            string given = actor.name ?? string.Empty;
-            int nameSpace = given.IndexOf(' ');
-            if (nameSpace > 0) given = given.Substring(0, nameSpace);
+            string given = CharacterNames.FirstName(actor.name);
             var name = Label(entry, given, 14, standing.Dim ? UiTheme.Muted : UiTheme.Paper, scale, font, TextAlignmentOptions.Left);
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (semibold != null) name.font = semibold;

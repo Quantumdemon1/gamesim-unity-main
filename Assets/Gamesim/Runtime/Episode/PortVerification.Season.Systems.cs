@@ -77,6 +77,13 @@ namespace Gamesim.Episode
                 && seasonDirector.Snapshot.revision == before.revision,
                 "Continuing past the recap must return the player to the house without committing anything.");
             seasonReport.weeklyRecaps++;
+            int closedWeek = state.phase == EpisodePhase.Eviction ? state.week : state.week - 1;
+            var observed = seasonReport.evictions.LastOrDefault(item => item.week == closedWeek && !item.recapObserved);
+            if (observed != null)
+            {
+                observed.recapObserved = true;
+                if (observed.entriesBefore == 256) seasonReport.fullLogEvictionRecaps++;
+            }
             // Seen for this week: at the results stage the week has not advanced yet, so the next
             // week's social phase must not wait for it again.
             recapWeekSeen = state.phase == EpisodePhase.Eviction ? state.week + 1 : state.week;

@@ -237,7 +237,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(kind, Is.Not.Null, "The ordinary generated house offers a legal proposal.");
                 var engine = new EpisodeEngine(candidate);
                 var answer = PortConversationPrehistoryCommand(engine, EpisodeCommandKind.ProposeDeal, ContentCatalog.MayaId, kind);
-                if (answer.state.events.Skip(candidate.events.Count).Any(entry => entry.kind == "deal")
+                if (answer.state.events.Where(entry => entry.sequence >= candidate.nextSequence).Any(entry => entry.kind == "deal")
                     && !CommitmentReferences.Deals(answer.state).Any(deal => deal.proposerId == candidate.playerId))
                     fixture = candidate;
             }
@@ -252,7 +252,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(PortConversationReport<string>(runner, "dealOutcome"), Is.EqualTo("Refused"));
                 Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1));
                 Assert.That(director.Snapshot.acceptedCommandIds.Count, Is.EqualTo(before.acceptedCommandIds.Count + 1));
-                Assert.That(director.Snapshot.events.Skip(before.events.Count).Any(entry => entry.kind == "deal"), Is.True);
+                Assert.That(director.Snapshot.events.Any(entry => entry.sequence >= before.nextSequence && entry.kind == "deal"), Is.True);
                 Assert.That(director.IsConversationExchangePlaying, Is.False);
                 AssertIntentDurable(director.Snapshot);
             }
@@ -319,7 +319,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(PortConversationReport<string>(runner, "oathOutcome"), Is.EqualTo("Legally earned and declared"));
                 Assert.That(director.Snapshot.loyaltyOaths.Any(oath => oath.playerId == before.playerId
                     && oath.targetId == ContentCatalog.MayaId), Is.True);
-                Assert.That(director.Snapshot.events.Skip(before.events.Count).Any(entry => entry.kind == "relationship-milestone"), Is.True);
+                Assert.That(director.Snapshot.events.Any(entry => entry.sequence >= before.nextSequence && entry.kind == "relationship-milestone"), Is.True);
                 Assert.That(director.Snapshot.alliances.Count, Is.EqualTo(before.alliances.Count + 1),
                     "The unchanged policy makes its one legal alliance proposal through Deals.");
                 int social = PortConversationReport<int>(runner, "optionalSocialCommands");

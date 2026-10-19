@@ -292,11 +292,13 @@ namespace Gamesim.Presentation
         /// more of the viewport (<see cref="ActionRowDrop"/>). The cast screen's grid bar
         /// (CastSelect.GridScrollbar) in the same colours; outside the viewport, whose mask would clip
         /// it, and out of the keyboard's way, as the list already scrolls to whatever is selected
-        /// (SetupScrollFocus). The standard and the larger text build no bar, as they never have.
+        /// (SetupScrollFocus). Appearance keeps Standard and Larger bar-free; shared ScrollArea
+        /// callers reuse the same indicator at every text size, visible only while content overflows.
         /// </summary>
-        private static Scrollbar ControlsScrollbar(RectTransform box, float x, float y, float height)
+        private static Scrollbar ControlsScrollbar(RectTransform box, float x, float y, float height,
+            string name = AppearanceScrollbarName)
         {
-            var track = HudPrimitives.Fill(AppearanceScrollbarName, box, new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .14f), 3);
+            var track = HudPrimitives.Fill(name, box, new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .14f), 3);
             Place(track, x, y, 6f, height);
             track.GetComponent<Image>().raycastTarget = true;
             var area = new GameObject("Sliding area", typeof(RectTransform)).GetComponent<RectTransform>();
@@ -753,7 +755,7 @@ namespace Gamesim.Presentation
             {
                 string id = ids[i];
                 var template = CastTemplates.Find(id);
-                string label = template != null ? template.Name.Split(' ')[0] : "You";
+                string label = template != null ? CharacterNames.FirstName(template.Name) : "You";
                 Thumbnail(studioControls, "Starting look " + label, label, new Rect(x, studioCursor, face, face + 18f), i == current, null,
                     null, "houseguest", () => ChangeAppearance(() => draft.Appearance = StartingAppearance(id)),
                     template != null ? CastTemplates.ToContestant(template, false) : null);

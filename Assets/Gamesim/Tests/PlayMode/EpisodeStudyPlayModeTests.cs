@@ -70,7 +70,7 @@ namespace Gamesim.Tests.PlayMode
                 Is.EqualTo(before.memories.Select(memory => memory.ownerId + ":" + memory.text)));
             Assert.That(JsonUtility.ToJson(after.playerPersona), Is.EqualTo(JsonUtility.ToJson(before.playerPersona)));
             Assert.That(JsonUtility.ToJson(after.jurySentiment), Is.EqualTo(JsonUtility.ToJson(before.jurySentiment)));
-            var addedEvents = after.events.Skip(before.events.Count).ToArray();
+            var addedEvents = after.events.Where(entry => entry.sequence >= before.nextSequence).ToArray();
             Assert.That(addedEvents, Has.Length.EqualTo(1));
             Assert.That(addedEvents[0].audienceIds, Is.EquivalentTo(new[] { before.playerId }));
             Assert.That(director.HasDiaryDecisionDraft, Is.False);

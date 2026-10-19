@@ -14,6 +14,7 @@ namespace Gamesim.Episode
 
         private void ObserveBlocTransition(EpisodeState before, EpisodeState after)
         {
+            blocReport.status = "Running";
             RequireSeason(before.blocRulesStartWeek == 1 && after.blocRulesStartWeek == 1,
                 "A genuinely new verification season must retain its fresh-game bloc rules marker.");
             blocReport.markerChecks++;
@@ -133,8 +134,8 @@ namespace Gamesim.Episode
 
         [Serializable] private sealed class BlocReport
         {
-            public bool requested = true;
-            public string status = "Running";
+            public bool requested;
+            public string status = "Not requested";
             public string workload = "Observe regular NPC ballots committed by actual UI during a genuine new season; compare source caller targets/public reasons, unchanged prior ballots and detached RNG, reveal privacy, rule-marker reloads. Optional pact influence is reported only when reached. No fabricated cast, seed, roles, relationships or ballots.";
             public int markerChecks, markerReloadChecks, roundPlans, planningNoMutationChecks, coordinatedRoundPlans,
                 npcBallotChecks, changedNpcChoices, existingBallotChecks, pendingPrivacyChecks, revealPrivacyChecks, npcTieBreaks;

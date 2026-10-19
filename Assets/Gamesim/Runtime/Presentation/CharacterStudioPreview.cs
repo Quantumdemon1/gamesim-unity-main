@@ -21,6 +21,8 @@ namespace Gamesim.Presentation
         private double buildStartedAt;
         public float BuildTimeoutSeconds { get; set; } = 20f;
         public bool CanRetry { get; private set; }
+        /// <summary>Original body state immediately before fallback releases it; null after a new request.</summary>
+        public string LastFailureDiagnostic { get; private set; }
         public Texture Texture => texture;
         public bool IsBuilding => dirty || building;
         public string Status { get; private set; }
@@ -98,6 +100,7 @@ namespace Gamesim.Presentation
             string key = appearance.ContentKey();
             if (key == requestedKey) return;
             requestedKey = key;
+            LastFailureDiagnostic = null;
             pending = appearance.Clone();
             revision++;
             requestedAt = Time.realtimeSinceStartupAsDouble;
@@ -178,6 +181,16 @@ namespace Gamesim.Presentation
         /// </summary>
         private void UseFallback(string reason)
         {
+            // Capture before disabling the original: disabling can cancel provider work and destroy its evidence.
+            var state = subject == null ? null : subject.GetComponent<CharacterBodyBuildState>();
+            LastFailureDiagnostic = "frame=" + Time.frameCount + "; revision=" + revision
+                + "; body=" + (subject == null ? "0" : subject.GetEntityId().ToString())
+                + "; bodyActive=" + (subject != null && subject.activeInHierarchy)
+                + "; stateRevision=" + (state == null ? "missing" : state.Revision.ToString())
+                + "; stateReady=" + (state == null ? "missing" : state.Ready.ToString())
+                + "; renderers=" + (subject == null ? 0 : subject.GetComponentsInChildren<Renderer>().Length)
+                + "; buildElapsedMs=" + ((Time.realtimeSinceStartupAsDouble - buildStartedAt) * 1000)
+                    .ToString("F3", System.Globalization.CultureInfo.InvariantCulture);
             ReleaseBody();
             buildRoot = new GameObject("Preview fallback " + revision);
             buildRoot.transform.SetParent(transform, false);
@@ -192,7 +205,7 @@ namespace Gamesim.Presentation
 
         private void ReleaseBody()
         {
-            if (buildRoot != null) { buildRoot.SetActive(false); Destroy(buildRoot); }
+            if (buildRoot != null) { buildRoot.SetActive(false); DestroyOwned(buildRoot); }
             buildRoot = null;
             subject = null;
         }
@@ -234,7 +247,17 @@ namespace Gamesim.Presentation
         {
             ReleaseBody();
             if (cameraRig != null) cameraRig.targetTexture = null;
-            if (texture != null) { texture.Release(); Destroy(texture); texture = null; }
+            if (texture != null) { texture.Release(); DestroyOwned(texture); texture = null; }
+        }
+
+        /// <summary>Only the revision root and target created by this studio; never a borrowed asset.</summary>
+        private static void DestroyOwned(UnityEngine.Object owned)
+        {
+            if (owned == null) return;
+            // During Play, preserve deferred cleanup. After Play exits there is no player loop
+            // to drain Destroy, so owned transient objects must be released immediately.
+            if (Application.isPlaying) Destroy(owned);
+            else DestroyImmediate(owned);
         }
     }
 }

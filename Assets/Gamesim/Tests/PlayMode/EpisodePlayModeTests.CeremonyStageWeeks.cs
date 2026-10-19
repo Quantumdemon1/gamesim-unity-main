@@ -89,7 +89,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(before.phase, Is.Not.EqualTo(EpisodePhase.Finished), what + ": the season ended first.");
                 var result = director.Submit(NextCommand(before));
                 Assert.That(result.accepted, Is.True, before.phase + ": " + result.reason);
-                var ceremony = director.Snapshot.events.Skip(before.events.Count).LastOrDefault(entry =>
+                var ceremony = director.Snapshot.events.Where(entry => entry.sequence >= before.nextSequence).LastOrDefault(entry =>
                     (entry.kind == CeremonySting.NominationKind || entry.kind == CeremonySting.EvictionKind)
                     && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(before.playerId)));
                 if (ceremony == null)

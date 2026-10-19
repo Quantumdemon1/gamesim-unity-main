@@ -437,6 +437,93 @@ namespace Gamesim.Tests.EditMode
             Assert.That(((IList)report.GetType().GetField("errors").GetValue(report)).Count, Is.EqualTo(1));
         }
 
+        [TestCase(false, false, false)]
+        [TestCase(false, false, true)]
+        [TestCase(false, true, false)]
+        [TestCase(false, true, true)]
+        [TestCase(true, false, false)]
+        [TestCase(true, false, true)]
+        [TestCase(true, true, false)]
+        [TestCase(true, true, true)]
+        public void OptionalSeasonReceiptsNameRequestsWithoutInventingExecution(bool study, bool blocs, bool autonomy)
+        {
+            var receipt = InitializeSeasonReceipt(study, blocs, autonomy);
+            Assert.That((int)receipt["castSize"], Is.Zero, "No cast has been created by this report-only fixture.");
+            Assert.That((string)receipt["workload"], Does.Contain("not yet created").And.Not.Contain("six-person"));
+            InstallProfileEvidence();
+            var profile = ProfileReport();
+            foreach (var item in new[] { (name: "study", requested: study), (name: "blocs", requested: blocs), (name: "autonomy", requested: autonomy) })
+            {
+                string expected = item.requested ? "Not run" : "Not requested";
+                Assert.That((bool)receipt[item.name]["requested"], Is.EqualTo(item.requested), item.name);
+                Assert.That((string)receipt[item.name]["status"], Is.EqualTo(expected), item.name);
+                Assert.That((bool)profile[item.name + "Requested"], Is.EqualTo(item.requested), item.name);
+                Assert.That((string)profile[item.name + "Status"], Is.EqualTo(expected), item.name);
+            }
+            Assert.That((int)receipt["study"]["confirmations"], Is.Zero);
+            Assert.That((int)receipt["blocs"]["roundPlans"], Is.Zero);
+            Assert.That((int)receipt["autonomy"]["completedConversations"], Is.Zero);
+            Assert.That((string)profile["status"], Is.EqualTo("Passed"), "Synthetic profile contract only, not a measured run.");
+            Assert.That((string)profile["overallStatus"], Is.EqualTo("Failed"), "The requested season has not run.");
+        }
+
+        [TestCase(6)]
+        [TestCase(8)]
+        [TestCase(12)]
+        public void FunctionalSeasonIdentityUsesItsOwnCreatedSnapshotNotTheProfileCast(int count)
+        {
+            InitializeSeasonReceipt(true, true, true);
+            InstallProfileEvidence();
+            Field("houseSize").SetValue(runner, 16);
+            Field("measuredHouseSize").SetValue(runner, 16);
+            var fresh = Gamesim.Simulation.SeasonBuilder.Create(
+                new Gamesim.Simulation.SeasonBuilder.Choice { HouseSize = count }, 4000000000u);
+            string before = JsonUtility.ToJson(fresh);
+            typeof(PortVerification).GetMethod("RecordSeasonIdentity", PrivateInstance).Invoke(runner, new object[] { fresh });
+            var receipt = SeasonReceipt();
+            Assert.That((int)receipt["castSize"], Is.EqualTo(fresh.contestants.Count).And.EqualTo(count));
+            Assert.That((string)receipt["sessionId"], Is.EqualTo(fresh.sessionId));
+            Assert.That((string)receipt["seed"], Is.EqualTo("4000000000"));
+            Assert.That((string)receipt["workload"], Does.StartWith("One legally created " + count + "-person season ")
+                .And.Contain("Study opt-in:").And.Contain("Bloc opt-in:").And.Contain("Not a performance sample, human playtest"));
+            Assert.That((string)receipt["workload"], Does.Not.Contain("not yet created"));
+            Assert.That((int)ProfileReport()["houseSize"], Is.EqualTo(16), "The separate measured profile is not relabeled.");
+            Assert.That(JsonUtility.ToJson(fresh), Is.EqualTo(before), "Reporting must not mutate the source snapshot.");
+        }
+
+        [TestCase("study", "FinishStudyVerification")]
+        [TestCase("blocs", "FinishBlocVerification")]
+        [TestCase("autonomy", "FinishAutonomyVerification")]
+        public void RequestedButUnrunOptionalCoverageFailsItsExistingCompletionGate(string name, string finish)
+        {
+            InitializeSeasonReceipt(name == "study", name == "blocs", name == "autonomy");
+            var report = Field("seasonReport").GetValue(runner);
+            report.GetType().GetField("finished").SetValue(report, true);
+            report.GetType().GetField("saveReloadChecks").SetValue(report, 3);
+            typeof(PortVerification).GetMethod(finish, PrivateInstance).Invoke(runner, null);
+            Assert.That((string)SeasonReceipt()[name]["status"], Is.EqualTo("Failed"),
+                "Finishing the base season cannot certify missing opt-in evidence.");
+            Assert.That(((List<string>)Field("seasonErrors").GetValue(runner)).Count, Is.EqualTo(1),
+                "The real completion gate must record a season failure, not merely change a label.");
+            InstallProfileEvidence();
+            var profile = ProfileReport();
+            Assert.That((string)profile[name + "Status"], Is.EqualTo("Failed"));
+            Assert.That((string)profile["overallStatus"], Is.EqualTo("Failed"));
+        }
+
+        private JObject InitializeSeasonReceipt(bool study, bool blocs, bool autonomy)
+        {
+            Field("verifySeason").SetValue(runner, true);
+            Field("verifyStudy").SetValue(runner, study);
+            Field("verifyBlocs").SetValue(runner, blocs);
+            Field("verifyAutonomy").SetValue(runner, autonomy);
+            Field("outputDirectory").SetValue(runner, temporary);
+            typeof(PortVerification).GetMethod("InitializeSeasonReport", PrivateInstance).Invoke(runner, new object[] { false });
+            return SeasonReceipt();
+        }
+
+        private JObject SeasonReceipt() => JObject.Parse(JsonUtility.ToJson(Field("seasonReport").GetValue(runner)));
+
         private static FieldInfo Field(string name)
         {
             var field = typeof(PortVerification).GetField(name, PrivateInstance);

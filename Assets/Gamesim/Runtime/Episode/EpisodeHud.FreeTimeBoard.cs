@@ -315,7 +315,7 @@ namespace Gamesim.Episode
             // houseguest. Never a reply's answer, a move, a way to buy time or the way on.
             var first = shown.Count > 0 ? state.Find(shown[0].Id) : null;
             if (spec.Hero == FreeTimeHero.Beat && showHero) FocusWhenWired(EpisodeDirector.AnswerBeatCaption);
-            else if (first != null) FocusWhenWired(CastTalkCaption((first.name ?? "").Split(' ')[0]));
+            else if (first != null) FocusWhenWired(CastTalkCaption(CharacterNames.FirstName(first.name ?? "")));
         }
 
         // ------------------------------------------------------------ measuring

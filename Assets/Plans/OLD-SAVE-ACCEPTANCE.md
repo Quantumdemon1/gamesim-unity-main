@@ -32,8 +32,8 @@ Where it stands (lane W2-saves, 2026-10-15; review fixes 2026-10-16):
   milestone would have had every schema 2 to 15 save refused.
 - **Codex's 17 reader holds** map to a test here that pins all seventeen readers on every fixture. **L01 to L16** are
   custody of Codex's native capture host and are closed as process only (section 5).
-- **The Frozen28 reader compiles and passes**: under net10 with warnings as errors, 4,781 of 4,781 cases, and it
-  accepts every fixture. What landing it takes is in section 6.
+- **Prior external Frozen28 proof**: under net10 with warnings as errors, 4,781 of 4,781 cases, and every fixture
+  accepted. This does not prove the integrated candidate; its pending B+ persistence gate is in section 6.
 
 Sources: `Assets/Gamesim/Runtime/Persistence` (EpisodeSaveStore, EpisodeSaveMigrations, FrozenEpisodeV*, CareerLedger),
 `Assets/Gamesim/Simulation/ShippedRules.cs`, the history of `EpisodeState.cs`, and `Tools/OldSaves` runs against
@@ -694,7 +694,7 @@ runs in the Unity Test Framework and Tools/OldSaves. So every case is custody or
 
 ## 6. The Frozen28 reader (ledger D2)
 
-**What was done.**
+**Prior external proof (not proof of the integrated candidate).**
 
 - `frozen28-literal-reader-combined-code12-20261013`, with `vote-domain11`, was copied to a scratch folder and built
   as it stands.
@@ -711,10 +711,15 @@ runs in the Unity Test Framework and Tools/OldSaves. So every case is custody or
   `FrozenEpisodeV28.Validate`, input unchanged. That includes both mode-2 saves, the repaired first- and middle-shape
   schema-22 saves and the schema 2 to 5 saves. (Scratch test `OldSaveFixtureTests.cs`; rerun 2026-10-16 with the
   seven review fixtures: 56 of 56.)
-- **Basis**: built from 515246bf's schema-28 image.
-  - From there to ae294b35 the only Simulation changes are new display readers (ConversationExchange,
-    NarrativeDisplay, NpcInvitation) and edits to Plays, StoryText and YourWeek.
-  - None of them is copied by the frozen reader. No validator, migration or saved type changed.
+- **Basis**: built from 515246bf's retained schema-28 image. The 2026-10-18 re-diff against consolidation
+  `76371982` found one copied semantic change: `EpisodeValidation.TryValidateWaveD` now refuses all-week record
+  types on either direction of a player relationship (4abb5b8c). The integrated copy carries that exact guard;
+  the other 17 production files are byte-for-byte copies. No saved DTO or other copied validator changed.
+  - The schema-22 missing-field completion and schema-16 story-rules literal-9 fixes are outside this copied
+    closure and stay intact. The staged archive is not edited.
+  - Source preservation includes 94 inherited strict patch-whitespace diagnostics: 88 trailing-whitespace
+    lines and six final blank lines. Ordinary patch applicability passes; the strict whitespace check does not.
+    None comes from the new guard, dispatcher or documentation. The archived contract is not normalized.
 
 **Compared with FrozenEpisodeV27:**
 
@@ -724,37 +729,47 @@ runs in the Unity Test Framework and Tools/OldSaves. So every case is custody or
 | What it covers | Hands a detached projection to V26, then V25's whole frozen validator | Every semantic domain: safety, hearings, the mode-2 vote family, references, social history |
 | Why | Schema 27's delta is small | Mode 2 joined schema 28 without a version, so no overlay on 27 can describe it |
 | Shape | BCL and Newtonsoft, never a live DTO | The same |
-| Registration | Wired into the chain | No loader or migration route |
+| Registration | Wired into the chain | B+ schema-28 dispatch integration prepared below; integrated proof pending |
 
 The live pin `ShippedRulesTests.TheLiveSchemaStaysAt28UntilFrozenEpisodeV28FreezesTheModeTwoCore` is exactly this.
 
-**What landing it takes when schema 29 is claimed.** Do not do this before the claim.
+**2026-10-18 sequencing amendment: close the real persistence gate at schema 28 first (B+).**
 
-1. **Claim 29** jointly with the story session (memory "Two sessions share the branch"). Not claimed here.
-2. **Re-diff the frozen copies** against the live schema-28 contract at that commit. Today nothing they copy has moved
-   since 515246bf. A later W1 or W2 change to a validator or saved type means re-staging that file.
-3. **Copy the 18 production files** into `Assets/Gamesim/Runtime/Persistence`, each with a two-line meta. They are
-   about 0.5 MB of C# in `Gamesim.Runtime`.
-4. **Place the 10 test files.** They use internal types, which the EditMode assembly cannot see (no InternalsVisibleTo,
-   by the lead's decision). Either:
-   - put them in the dotnet subset with the production files, beside the existing explicit list of frozen contracts,
-     and give Unity a reflection-based contract test as FrozenEpisodeV27ContractTests does; or
-   - compile them out of Unity with `#if !UNITY_5_3_OR_NEWER`.
-   Raise the subset floor by the measured count (4,781 cases).
-5. **Wire it**: `UpgradeV28ToV29` (`FrozenEpisodeV28.Validate(original)` first, then schema 29's literals),
-   `PrepareV28Payload`, the dispatch in `PrepareCurrentPayload`, `EpisodeState.schemaVersion = 29`, and move the
-   ShippedRulesTests pin.
-6. **Extend old-save acceptance**:
-   - schema 29's additions go into `OldSaveTrace.Additions` with their literal values, and `OldSaveTrace.Newest`
-     becomes 29. Every fixture here then keeps replaying to its digest through the new step.
-   - `Newest` is the only place the current schema is written in the old-save tests (review m5):
-     `AnOldSaveLoadsMigratesValidatesAndReplaysToItsRecordedDigest` reads it for the migration message ("migrated to
-     schema N in memory"), the loaded schema and the reload's checkpoint. Bumping the live schema without it turns
-     every fixture's load case red on the message, which is the reminder.
-   - `Tools/OldSaves` compiles `OldSaveTrace.cs` into every historical recorder, so the new additions must stay plain
-     literals over JSON, as they are now.
-   - Then add a schema-29 fixture written by the new build.
-7. **Native proof**: the full EditMode run with the new floors, and the old-save tests through the locked runner.
+The owner confirmed no other chat is working on schema 29; this task coordinates that next boundary.
+Schema 29 is for the reviewed role/dialogue/time contract, not a persistence-only header bump or speculative fields.
+This section records the integration increment and its pending gates, not an accepted or tested delivery.
+
+1. **Integrate the fixed reader while keeping the live schema at 28.** The 18 production files belong in
+   `Assets/Gamesim/Runtime/Persistence`, with two-line metas. Only the copied Wave D guard above changes;
+   historical staging comments remain as provenance, not as the current integration status.
+   `PrepareCurrentPayload` validates direct-28 input with `FrozenEpisodeV28.Validate(original)` before cloning,
+   and validates the older chain's completed schema-28 result before returning it. The schema-22 and schema-16
+   fixes, current DTO/validators, rule defaults, schema pin and `OldSaveTrace.Newest = 28` remain unchanged.
+2. **Preserve the independent tests.** Place the ten archived internal-type tests in
+   `Tools/SimulationTests/Frozen28`, outside Unity, and explicitly compile them and the 18 production sources
+   in the subset. Add reflection-based Unity contract/integration tests as `FrozenEpisodeV27ContractTests`
+   does; do not add `InternalsVisibleTo`. Preserve all 4,781 archived cases and add measured new regression
+   cases. Keep the separate warnings-as-errors compile proof: the ordinary subset's warning settings are not it.
+3. **Close actual dispatch and SaveStore acceptance before new gameplay.** Prove direct-28 and older-chain
+   dispatch, the Wave D refusal and legitimate NPC controls, and all fixture replay/reader checks. A direct
+   `PrepareCurrentPayload` malformed-28 test must fail if the fixed-reader call is removed; live validation
+   catching the same bad save is not proof of that wiring. `EpisodeSaveStore` itself is unchanged: checksum
+   verification precedes dispatch, and load, backup checks, recovery and the temporary file checked before
+   installation all use `TryRead`. Prove real save/reload/recovery, failed installation preserving the primary
+   and backup, unchanged input tokens, and the mode-2 pending/completed vote histories through those paths.
+   Measure any added save-path cost. Run the independent subset and native EditMode gates with their own floors.
+   **These integrated checks are pending; the external results above do not close them.**
+4. **Only after that gate, implement the reviewed schema-29 feature contract.** Review the final bounded
+   role/dialogue/time records and legacy-off literals in `ROLE_DIALOGUE_ECONOMY_20261012.md`'s versioned increment.
+   Then add `PrepareV28Payload` and `UpgradeV28ToV29` (fixed28 validation first, detached migration second),
+   update current dispatch/schema validation and the schema pin, and select new rules only for a fresh season.
+   No new field, migration default, role entitlement or action-point rule belongs to the B+ increment.
+5. **Extend acceptance with that feature version, not before it exists.** Add schema 29's actual literal
+   additions to `OldSaveTrace.Additions`, set `Newest` to 29, and add genuine new-build schema-29 fixtures for
+   its shipped cells. The old fixture scripts, bytes and recorded digests remain evidence, never re-recorded to
+   hide a change. `Tools/OldSaves` compiles `OldSaveTrace.cs` into historical recorders, so its additions remain
+   plain literals over JSON. Re-run old-save/replay/readers and actual persistence for the new version; measure
+   the role/AP candidate's B9 cohorts, then complete the combined native acceptance gates.
 
 ## 7. Remaining
 

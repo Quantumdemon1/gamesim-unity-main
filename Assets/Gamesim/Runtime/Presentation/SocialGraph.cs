@@ -1,3 +1,4 @@
+using Gamesim.Simulation;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -131,9 +132,7 @@ namespace Gamesim.Presentation
             rim.pivot = new Vector2(.5f, .5f);
             rim.anchoredPosition = position;
 
-            string given = actor.name ?? string.Empty;
-            int space = given.IndexOf(' ');
-            if (space > 0) given = given.Substring(0, space);
+            string given = CharacterNames.FirstName(actor.name);
 
             var label = Label(root, isPlayer ? "YOU" : given, isPlayer ? 12 : 13,
                 isPlayer ? UiTheme.Accent : UiTheme.Paper, scale, font);

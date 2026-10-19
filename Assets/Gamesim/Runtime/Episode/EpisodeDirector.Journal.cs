@@ -54,7 +54,7 @@ namespace Gamesim.Episode
         private static string CompanyLine(HouseMap.Room room, bool firstNames)
         {
             var others = (room.Occupants ?? new List<HouseMap.Occupant>()).Where(person => !person.IsPlayer)
-                .Select(person => firstNames ? person.Name.Split(' ')[0] : person.Name).ToArray();
+                .Select(person => firstNames ? CharacterNames.FirstName(person.Name) : person.Name).ToArray();
             return others.Length == 0
                 ? "You have this room to yourself."
                 : others.Length + (others.Length == 1 ? " houseguest here: " : " houseguests here: ") + string.Join(", ", others);
@@ -448,7 +448,7 @@ namespace Gamesim.Episode
             string target = EpisodeEngine.MoodTarget(state, actor.id, out _);
             var about = target != null ? state.Find(target) : null;
             if (about == null) return "Mood: " + actor.mood;
-            string name = about.id == state.playerId ? "you" : (about.name ?? "").Split(' ')[0];
+            string name = about.id == state.playerId ? "you" : CharacterNames.FirstName(about.name ?? "");
             return "Mood: " + actor.mood + " at " + name;
         }
 
@@ -492,7 +492,7 @@ namespace Gamesim.Episode
         private static string Times(int count) => count == 1 ? "once" : count + " times";
 
         private static string FirstName(string name) =>
-            string.IsNullOrEmpty(name) ? string.Empty : name.Split(' ')[0];
+            CharacterNames.FirstName(name);
 
         /// <summary>Which half of the vote page is showing. View state, like the filters.</summary>
         private enum VotesTab { Results, Ballots, Read }

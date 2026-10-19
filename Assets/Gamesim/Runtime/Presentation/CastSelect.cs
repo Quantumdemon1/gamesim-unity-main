@@ -1204,12 +1204,7 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>A houseguest's given name, skipping an honorific: "Dr. Will Kirby" plays as Will.</summary>
-        internal static string FirstName(string name)
-        {
-            if (string.IsNullOrEmpty(name)) return string.Empty;
-            var words = name.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            return words.FirstOrDefault(word => !word.EndsWith(".", StringComparison.Ordinal)) ?? words[0];
-        }
+        internal static string FirstName(string name) => CharacterNames.FirstName(name);
 
         /// <summary>Turns the live model under a drag.</summary>
         private sealed class ModelTurntable : MonoBehaviour, IDragHandler

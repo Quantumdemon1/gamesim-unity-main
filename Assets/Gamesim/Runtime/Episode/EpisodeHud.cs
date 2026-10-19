@@ -974,7 +974,7 @@ namespace Gamesim.Episode
                 // Trimmed: a room holding the whole house is a line of eight names, and this row is
                 // 192 px wide beside the room's mark, at a size that has nowhere left to shrink to.
                 string who = room.Occupants.Count == 0 ? "empty"
-                    : Excerpt(string.Join(", ", room.Occupants.Select(o => o.Name.Split(' ')[0])), 30);
+                    : Excerpt(string.Join(", ", room.Occupants.Select(o => CharacterNames.FirstName(o.Name))), 30);
                 FixedText(column, who, 13, UiTheme.Muted, new Vector2(40, y - 19), new Vector2(RightColumnWidth - 56f, 18));
             }
         }

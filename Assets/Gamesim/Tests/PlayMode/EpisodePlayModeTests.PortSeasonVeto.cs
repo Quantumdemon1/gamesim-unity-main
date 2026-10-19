@@ -1,6 +1,8 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Episode;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
@@ -36,7 +38,10 @@ namespace Gamesim.Tests.PlayMode
                 var before = director.Snapshot;
                 // What the screen offers a locked holder: the lock's line and the way to keep the
                 // block, and nothing that uses the veto - no save, no pick, no replacement's name.
-                Assert.That(PanelWords(ActiveRect("Episode panel")), Has.Some.Contains(EpisodeDirector.VetoLockedLine));
+                var words = PanelWords(ActiveRect("Episode panel"));
+                Assert.That(words, Has.Some.Contains(EpisodeDirector.VetoLockedLine));
+                Assert.That(words, Has.Some.Contains("at the final four these nominations must stay."));
+                Assert.That(words, Has.None.Contains("you name the replacement too"));
                 Assert.That(MeetingButton("Do not use the veto"), Is.Not.Null);
                 foreach (var candidate in EpisodeEngine.ReplacementCandidates(before))
                     Assert.That(MeetingButton(candidate.name), Is.Null, "A locked veto names no replacement: " + candidate.name);
@@ -88,6 +93,67 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(EpisodeValidation.TryValidate(after, out var reason), Is.True, reason);
             }
             finally { UnityEngine.Object.Destroy(owner); }
+        }
+
+        [UnityTest, Timeout(180000)]
+        public IEnumerator PortSeasonWalk_LockedVetoGuardRejectsAnIllegalChoiceBehindResults()
+        {
+            yield return InstallDiaryFixture(state => state.phase == EpisodePhase.VetoMeeting && !state.vetoResolved
+                && state.hohId == state.playerId && state.vetoHolderId == state.playerId
+                && EpisodeEngine.VetoIsLockedAtFinalFour(state) && EpisodeEngine.ReplacementCandidates(state).Any(),
+                "a legal locked veto meeting for the overlay guard");
+            HoldTheHouseForTheFixture();
+            player.Agent.speed = 25f; player.Agent.acceleration = 100f;
+            var runner = BindPortConversationVerifier(out var owner);
+            GameObject injected = null;
+            CompetitionResult resultCard = null;
+            var stack = new Stack<IEnumerator>();
+            try
+            {
+                yield return PortConversationRoutine(runner, "OpenSeasonStation");
+                var before = director.Snapshot;
+                var primary = System.IO.File.ReadAllBytes(director.SavePath);
+                var backup = PortConversationBackupBytes();
+                string illegalCaption = EpisodeEngine.ReplacementCandidates(before).First().name;
+                // Fault only the displayed controls, never the authoritative history or command.
+                var keep = MeetingButton("Do not use the veto");
+                var extra = UnityEngine.Object.Instantiate(keep, keep.transform.parent);
+                injected = extra.gameObject;
+                extra.name = illegalCaption;
+                extra.onClick = new Button.ButtonClickedEvent();
+                foreach (var label in extra.GetComponentsInChildren<TMP_Text>()) label.text = illegalCaption;
+                Assert.That(MeetingButton(illegalCaption), Is.Not.Null);
+                resultCard = SceneComponents<CompetitionResult>().Single();
+                Assert.That(resultCard.Play("Veto", "Guard fixture", before.week,
+                    new[] { new CompetitionResult.Standing(before.Find(before.playerId).name, 1, true, true, null) }, true), Is.True);
+                Assert.That(resultCard.IsPlaying, Is.True);
+
+                stack.Push(PortConversationRoutine(runner, "PerformSeasonDecision", before, false));
+                System.Exception failure = null;
+                for (int step = 0; stack.Count > 0 && step < 5000 && failure == null; step++)
+                {
+                    var top = stack.Peek();
+                    bool moved = false;
+                    try { moved = top.MoveNext(); }
+                    catch (System.Exception error) { failure = error; }
+                    if (failure != null) break;
+                    if (!moved) { (stack.Pop() as System.IDisposable)?.Dispose(); continue; }
+                    if (top.Current is IEnumerator child) stack.Push(child);
+                    else yield return top.Current;
+                }
+                Assert.That(failure, Is.TypeOf<System.InvalidOperationException>());
+                Assert.That(failure.Message, Does.Contain("must offer no way to use it"));
+                Assert.That(resultCard.IsPlaying, Is.False, "The guard must inspect the meeting after dismissing the result.");
+                Assert.That(MeetingButton(illegalCaption), Is.Not.Null, "The offending control was actually exposed.");
+                AssertPortConversationUnchanged(before, primary, backup);
+            }
+            finally
+            {
+                while (stack.Count > 0) (stack.Pop() as System.IDisposable)?.Dispose();
+                if (resultCard != null) resultCard.Cancel();
+                if (injected != null) UnityEngine.Object.Destroy(injected);
+                UnityEngine.Object.Destroy(owner);
+            }
         }
 
         /// <summary>A live, pressable control in the episode panel carrying these words, or null: the meeting's own, not the house's chrome.</summary>

@@ -40,7 +40,7 @@ namespace Gamesim.Tests.PlayMode
 
             var after = director.Snapshot;
             Assert.That(after.revision, Is.EqualTo(before.revision + 1), "A proposal is a committed command.");
-            Assert.That(after.events.Skip(before.events.Count).Any(e => e.kind == "deal"), Is.True,
+            Assert.That(after.events.Where(entry => entry.sequence >= before.nextSequence).Any(e => e.kind == "deal"), Is.True,
                 "The house should have said something either way.");
 
             var struck = after.deals.Where(d => d.proposerId == after.playerId).ToList();

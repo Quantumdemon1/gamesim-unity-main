@@ -499,7 +499,7 @@ namespace Gamesim.Tests.PlayMode
         /// The frame a lens the caller holds draws now, into <c>{name}.png</c> beside the project,
         /// failing a frame that did not render; the headless harness only, as every framing capture.
         /// </summary>
-        private IEnumerator PhotographThroughLens(CaptureLens lens,string name)
+        private IEnumerator PhotographThroughLens(CaptureLens lens,string name, System.Action<Texture2D> inspect = null)
         {
             if(!Application.isBatchMode) yield break;
             yield return lens.MakeSureTheCanvasesAreDrawn();
@@ -510,6 +510,7 @@ namespace Gamesim.Tests.PlayMode
                 File.WriteAllBytes(path,frame.EncodeToPNG());
                 Debug.Log("[Gamesim] framing capture -> "+path);
                 AssertNotBlank(frame,name);
+                inspect?.Invoke(frame);
             }
             finally{UnityEngine.Object.Destroy(frame);}
         }

@@ -11,20 +11,29 @@
 #   <assembly> <minimum tests>
 # A key may also name one build of an assembly (<assembly>.UmaBuild): a key that names no real assembly,
 # read in the assembly's place by a plan built with UMA (Get-ReviewSuiteFloorKey in review-workflow.ps1).
-Gamesim.EditModeTests 8073
+# Display-name contracts add 17 cases to the R2 baseline (8073 + 17).
+# Verifier receipt identity/opt-in reporting adds 14 native Edit cases (8090 + 14).
+# Studio shutdown ownership adds three native Edit cases (8104 + 3).
+# Frozen28 dispatch/SaveStore integration adds 23 native cases (8107 + 23 = 8130).
+# Frozen28 resolver cache safety adds three shared native/pure cases (8130 + 3 = 8133).
+Gamesim.EditModeTests 8133
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
 # S4d's 4. R2 adds three shared, unparameterized UnityTests: two PortSeasonWalk final-four veto
 # regressions and WeeklyRecap_OpensAfterAnEvictionThatCommitsIntoAFullLog (1230 + 3 = 1233).
+# The R2 follow-up adds three shared regressions: full-log walk evidence, full-log competition
+# presentation, and the locked-veto guard under a result overlay (1233 + 3 = 1236).
+# Creator overflow/keyboard reachability add two and titled-name plates add one (1236 + 3 = 1239).
+# Trait effect ink adds one shared all-frame/all-scale regression (1239 + 1 = 1240).
 # A plan built with -WithoutUma reads this line. These are required run minima, not a claim of a pass.
-Gamesim.PlayModeTests 1233
-# The UMA build of the same assembly, read by a plan built without -WithoutUma. 1273 = the 1233 above + the
+Gamesim.PlayModeTests 1240
+# The UMA build of the same assembly, read by a plan built without -WithoutUma. 1280 = the 1240 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
 # Director, Effects, HouseActivities, Moves, OpeningStage and StoryReactions. A shared test raises both
 # lines; a GAMESIM_UMA-only test raises this one.
-Gamesim.PlayModeTests.UmaBuild 1273
+Gamesim.PlayModeTests.UmaBuild 1280
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -54,4 +63,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # Tools/SimulationTests: the Unity-free subset CI runs on every push (.github/workflows/ci.yml).
 # Most of it is cases generated from the web fixtures - a fixture that stops loading drops
 # hundreds of tests and would otherwise still read green.
-Gamesim.SimulationTests 5358
+# The same 17 display-name cases are included in this subset (5358 + 17).
+# Frozen28 retains 4781 archived cases plus 26 independent literal cases (5375 + 4781 + 26 = 10182).
+# The same three resolver cache cases are additive here (10182 + 3 = 10185).
+Gamesim.SimulationTests 10185

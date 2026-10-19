@@ -118,9 +118,15 @@ namespace Gamesim.Tests.EditMode
             Assert.That(migrated, Is.False); Assert.That(again, Is.Not.SameAs(current)); Assert.That(Text(again), Is.EqualTo(before));
             again["contestants"][0]["name"] = "Detached caller"; Assert.That(Text(current), Is.EqualTo(before));
             current["unifiedVoteReveals"] = JValue.CreateNull(); before = Text(current);
-            again = EpisodeSaveMigrations.PrepareCurrentPayload(current, out migrated); Assert.That(migrated, Is.False);
-            Assert.That(again["unifiedVoteReveals"].Type, Is.EqualTo(JTokenType.Null));
-            var state = again.ToObject<EpisodeState>(Serializer()); Assert.Throws<InvalidDataException>(() => EpisodeSaveValidation.Validate(state));
+            // Current28 now validates its frozen contract before cloning; invalid input must
+            // still be rejected independently by the live validator and remain untouched.
+            migrated = true;
+            var refusal = Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(current, out migrated));
+            Assert.That(refusal.Message, Is.EqualTo("Unified Vote evidence is not enabled in this build."));
+            Assert.That(migrated, Is.False);
+            Assert.That(current["unifiedVoteReveals"].Type, Is.EqualTo(JTokenType.Null));
+            Assert.That(Text(current), Is.EqualTo(before));
+            var state = current.ToObject<EpisodeState>(Serializer()); Assert.Throws<InvalidDataException>(() => EpisodeSaveValidation.Validate(state));
             Assert.That(Text(current), Is.EqualTo(before)); PackageUnchanged(package);
         }
 

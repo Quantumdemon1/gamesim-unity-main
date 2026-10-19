@@ -46,16 +46,15 @@ namespace Gamesim.Tests.PlayMode
                 var before = director.Snapshot;
                 if (before.phase == EpisodePhase.Finished) break;
 
-                // Where the log ended before this command. A ceremony is frequently not the last
-                // line a commit writes — an eviction is followed by a vote-reveal per voter — so
-                // looking only at the final entry misses the beat entirely.
-                int known = before.events.Count;
+                // Sequence numbers survive the capped log trimming older entries. A ceremony may
+                // precede other lines in this command, such as a private vote-reveal per voter.
+                int known = before.nextSequence;
                 var result = director.Submit(NextCommand(before));
                 yield return null;
                 if (!result.accepted) continue;
 
                 var after = director.Snapshot;
-                var committed = after.events.Skip(known).LastOrDefault(entry =>
+                var committed = after.events.Where(entry => entry.sequence >= known).LastOrDefault(entry =>
                     outstanding.Contains(entry.kind)
                     && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(after.playerId)));
                 if (committed == null) continue;
@@ -264,9 +263,9 @@ namespace Gamesim.Tests.PlayMode
         /// Why a ceremony beat may not have had its card on screen when it was asked for: what the
         /// commit contained, what the reveal made of it, and whether the cards settled at all.
         /// </summary>
-        private string CeremonyDiagnosis(EpisodeState after, int known, VoteReveal reveal)
+        private string CeremonyDiagnosis(EpisodeState after, int fromSequence, VoteReveal reveal)
         {
-            var kinds = string.Join(", ", after.events.Skip(known).Select(e => e.kind));
+            var kinds = string.Join(", ", after.events.Where(e => e.sequence >= fromSequence).Select(e => e.kind));
             var group = reveal == null ? null : reveal.GetComponent<CanvasGroup>();
             return " · the commit carried [" + kinds + "]"
                 + " · block " + (after.nominees == null ? 0 : after.nominees.Count)

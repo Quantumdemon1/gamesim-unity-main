@@ -21,9 +21,14 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
-            if (version == 28) return (JObject)original.DeepClone();
+            if (version == 28)
+            {
+                FrozenEpisodeV28.Validate(original);
+                return (JObject)original.DeepClone();
+            }
             if (version < 1 || version > 27) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV27ToV28(version == 27 ? original : PrepareV27Payload(original, out _));
+            FrozenEpisodeV28.Validate(result);
             migrated = true;
             return result;
         }

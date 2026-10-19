@@ -31,25 +31,7 @@ namespace Gamesim.Episode
         {
             seasonRunning = true;
             seasonStarted = Time.realtimeSinceStartupAsDouble;
-            studyReport = verifyStudy ? new StudyReport() : null;
-            blocReport = verifyBlocs ? new BlocReport() : null;
-            seasonReport = new SeasonReport
-            {
-                status = "Running", startedUtc = DateTime.UtcNow.ToString("O"), graphical = graphical, batchMode = Application.isBatchMode,
-                artifactId = Guid.NewGuid().ToString("N"), saveDirectory = outputDirectory,
-                workload = "One legally created six-person season using actual active uGUI buttons, real NavMesh routes, diary confirmations, eligible finale choices, and save/reload. Interaction activation uses the same director methods as E; floor movement is API-driven, not simulated mouse input. Assisted competitions are used. Not a performance sample, human playtest, pacing measure, or exhaustive role-branch test."
-            };
-            if (verifyStudy)
-            {
-                seasonReport.study = studyReport;
-                seasonReport.workload = seasonReport.workload.Replace("Assisted competitions are used.",
-                    "Study opt-in: eligible weekly competitions use weighted simulation; finale retains the assisted/watch route. Study coverage is reported separately.");
-            }
-            if (verifyBlocs)
-            {
-                seasonReport.blocs = blocReport;
-                seasonReport.workload += " Bloc opt-in: observe source-round NPC targets, public-only reasons and marker persistence; optional actual alliance influence is reported only when reached.";
-            }
+            InitializeSeasonReport(graphical);
             // Flatten nested iterators so a failed action cannot strand the standalone process.
             var stack = new Stack<IEnumerator>(); stack.Push(SeasonChecks(graphical));
             while (stack.Count > 0)
@@ -100,6 +82,40 @@ namespace Gamesim.Episode
             seasonRunning = false;
         }
 
+        // Keep unrequested reports explicit: Unity's inline serializer can materialize null
+        // nested classes using their field defaults, which formerly claimed Running/requested.
+        private void InitializeSeasonReport(bool graphical)
+        {
+            studyReport = new StudyReport { requested = verifyStudy, status = verifyStudy ? "Not run" : "Not requested" };
+            blocReport = new BlocReport { requested = verifyBlocs, status = verifyBlocs ? "Not run" : "Not requested" };
+            autonomyReport = new AutonomyReport { requested = verifyAutonomy, status = verifyAutonomy ? "Not run" : "Not requested" };
+            seasonReport = new SeasonReport
+            {
+                status = "Running", startedUtc = DateTime.UtcNow.ToString("O"), graphical = graphical, batchMode = Application.isBatchMode,
+                artifactId = Guid.NewGuid().ToString("N"), saveDirectory = outputDirectory,
+                workload = SeasonWorkload(0), study = studyReport, blocs = blocReport, autonomy = autonomyReport,
+            };
+        }
+
+        private string SeasonWorkload(int actualCastSize)
+        {
+            string identity = actualCastSize > 0 ? "One legally created " + actualCastSize + "-person season" : "Planned legal season (not yet created)";
+            string workload = identity + " using actual active uGUI buttons, real NavMesh routes, diary confirmations, eligible finale choices, and save/reload. Interaction activation uses the same director methods as E; floor movement is API-driven, not simulated mouse input. Assisted competitions are used. Not a performance sample, human playtest, pacing measure, or exhaustive role-branch test.";
+            if (verifyStudy)
+                workload = workload.Replace("Assisted competitions are used.",
+                    "Study opt-in: eligible weekly competitions use weighted simulation; finale retains the assisted/watch route. Study coverage is reported separately.");
+            if (verifyBlocs)
+                workload += " Bloc opt-in: observe source-round NPC targets, public-only reasons and marker persistence; optional actual alliance influence is reported only when reached.";
+            return workload;
+        }
+
+        private void RecordSeasonIdentity(EpisodeState fresh)
+        {
+            seasonReport.sessionId = fresh.sessionId; seasonReport.seed = fresh.seed.ToString();
+            seasonReport.castSize = fresh.contestants.Count;
+            seasonReport.workload = SeasonWorkload(seasonReport.castSize);
+        }
+
         private IEnumerator SeasonChecks(bool graphical)
         {
             seasonDirector = FindAnyObjectByType<EpisodeDirector>();
@@ -144,7 +160,7 @@ namespace Gamesim.Episode
             // A lost EnableAllWeek would leave the house's turns all at the social week's opening (WAVE-D D2).
             RequireSeason(fresh.allWeekRulesStartWeek == 1,"The cast screen's season must play the house's turns all week from its first week.");
             CheckSaveIsIsolated();
-            seasonReport.sessionId = fresh.sessionId; seasonReport.seed = fresh.seed.ToString();
+            RecordSeasonIdentity(fresh);
             seasonReport.profileSavePath = previousSlot; seasonReport.seasonSavePath = seasonDirector.SavePath;
             seasonReport.navigationSpeed = seasonPlayer.Agent.speed;
             yield return SaveReloadSeason("fresh-season");
@@ -260,7 +276,14 @@ namespace Gamesim.Episode
                 // (EpisodePlayModeTests.NextCommand); this is the same rule. The walk presses what the
                 // screen offers, and holds the screen to offering nothing else.
                 bool locked = EpisodeEngine.VetoIsLockedAtFinalFour(state);
-                if (locked) RequireSeason(!SeasonVetoUseOffered(state),"A veto locked at the final four must offer no way to use it.");
+                if (locked)
+                {
+                    // Observe the meeting itself: a result overlay hides every meeting control.
+                    yield return DismissSeasonCompetitionResult();
+                    RequireSeason(HasSeasonButtonText("Do not use the veto"),
+                        "A locked veto meeting must expose its keep-the-block control before checking its choices.");
+                    RequireSeason(!SeasonVetoUseOffered(state),"A veto locked at the final four must offer no way to use it.");
+                }
                 if (replacement == null || locked) { yield return ClickSeasonButton("Do not use the veto"); yield break; }
                 if (state.hohId == state.playerId) yield return ClickSeasonButton(replacement.name,true);
                 else yield return ClickSeasonButton(EpisodeDirector.VetoSaveCaption(state, state.nominees[0]));
@@ -513,6 +536,7 @@ namespace Gamesim.Episode
             RequireSeason(!seasonDirector.IsPanelOpen && seasonDirector.StatusMessage.StartsWith("Local episode loaded and validated.",StringComparison.Ordinal),"Reload must report a validated install, not silently preserve an unsaved in-memory snapshot." + " Panel open: " + seasonDirector.IsPanelOpen + "; status: " + seasonDirector.StatusMessage);
             if (verifyBlocs)
             {
+                blocReport.status = "Running";
                 RequireSeason(seasonDirector.Snapshot.blocRulesStartWeek == 1,"Fresh-season rule marker must survive the actual save/reload UI.");
                 blocReport.markerReloadChecks++;
             }
@@ -587,6 +611,23 @@ namespace Gamesim.Episode
             var after = seasonDirector.Snapshot;
             seasonReport.buttons.Add(new SeasonButton { caption = caption, phase = before.phase.ToString(), revisionBefore = before.revision,
                 revisionAfter = after.revision, elapsedSeconds = Time.realtimeSinceStartupAsDouble - seasonStarted });
+            ObserveSeasonEvictions(before, after);
+        }
+
+        /// <summary>Report the log at the actual decision boundary, not only its final retained length.</summary>
+        private void ObserveSeasonEvictions(EpisodeState before, EpisodeState after)
+        {
+            foreach (var entry in after.events.Where(item => item.sequence >= before.nextSequence && item.kind == "eviction"))
+            {
+                if (seasonReport.evictions.Any(item => item.eventSequence == entry.sequence)) continue;
+                seasonReport.evictions.Add(new SeasonEviction
+                {
+                    week = entry.week, eventSequence = entry.sequence,
+                    revisionBefore = before.revision, revisionAfter = after.revision,
+                    entriesBefore = before.events.Count, entriesAfter = after.events.Count
+                });
+                if (before.events.Count == 256) seasonReport.fullLogEvictions++;
+            }
         }
 
         /// <summary>Every live, pressable control showing this caption.</summary>
@@ -641,6 +682,11 @@ namespace Gamesim.Episode
 
         [Serializable] private sealed class SeasonRoute { public string label; public double seconds; public bool completed, required; }
         [Serializable] private sealed class SeasonButton { public string caption, phase; public int revisionBefore, revisionAfter; public double elapsedSeconds; }
+        [Serializable] private sealed class SeasonEviction
+        {
+            public int week, eventSequence, revisionBefore, revisionAfter, entriesBefore, entriesAfter;
+            public bool recapObserved;
+        }
         [Serializable] private sealed class SeasonReport
         {
             public string status, startedUtc, finishedUtc, workload, artifactId, sessionId, seed, saveDirectory,
@@ -652,8 +698,13 @@ namespace Gamesim.Episode
             public AutonomyReport autonomy;
             public double elapsedSeconds;
             public float navigationSpeed;
+            // Zero means creation was not reached; populated only from the actual fresh snapshot.
+            public int castSize;
             public int commands, optionalSocialCommands, diaryReflections, finalistAnswers, jurorQuestions, saveReloadChecks, blockSpeeches;
             public int weeklyRecaps, houseEventsResolved, dealsProposed, dealsAnswered, minigameInputs, storylinesBegun, houseEventsSeen, dealsRecorded, modifiersCarried;
+            // Zero is missing coverage, not a failed season: the legal walk does not force a full log.
+            public int fullLogEvictions, fullLogEvictionRecaps;
+            public List<SeasonEviction> evictions = new List<SeasonEviction>();
             public int replyCardsAnswered;
             public int votesAsked, peopleRead;
             public int conversationNavigations, conversationPlaybackControls;

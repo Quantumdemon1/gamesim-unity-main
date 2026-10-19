@@ -86,7 +86,9 @@ jobs:
   #
   # The floor matters as much as the pass. Most of these tests are cases generated from the web
   # fixtures, so a fixture that stopped being copied beside the binary would drop a few hundred
-  # tests and still report green. The count is checked against Tools/baseline.txt for that reason.
+  # tests and still report green. The executed count is checked against Tools/baseline.txt.
+  # TRX total includes discovered Explicit cases that were not run; they cannot fill the floor.
+  # The test command must still pass independently of this count check.
   simulation:
     name: Simulation tests (no Unity)
     runs-on: ubuntu-latest
@@ -109,12 +111,12 @@ jobs:
         run: |
           trx="$RUNNER_TEMP/results/simulation.trx"
           [ -f "$trx" ] || { echo "::error::no results file - the build failed or the run died. This is NOT a pass."; exit 1; }
-          ran=$(grep -o '<Counters [^>]*' "$trx" | grep -o ' total="[0-9]*"' | grep -o '[0-9]*')
+          ran=$(grep -o '<Counters [^>]*' "$trx" | grep -o ' executed="[0-9]*"' | grep -o '[0-9]*')
           floor=$(awk '$1=="Gamesim.SimulationTests" {print $2}' Tools/baseline.txt)
-          echo "ran ${ran:-0}, floor ${floor:-unset}"
+          echo "executed ${ran:-0}, floor ${floor:-unset}"
           [ -n "$floor" ] || { echo "::error file=Tools/baseline.txt::no Gamesim.SimulationTests floor"; exit 1; }
           if [ "${ran:-0}" -lt "$floor" ]; then
-            echo "::error file=Tools/baseline.txt::ran ${ran:-0} simulation tests, the floor is $floor. This is not a pass."
+            echo "::error file=Tools/baseline.txt::executed ${ran:-0} simulation tests, the floor is $floor. This is not a pass."
             exit 1
           fi
 

@@ -16,44 +16,339 @@ namespace Gamesim.Tests.PlayMode
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
+        private CreatorPreviewReadinessObserver creatorPreviewObservation;
         private static readonly string[] CreatorPages = { "Appearance", "Identity", "Personality", "My Houseguests", "Review" };
         private static readonly string[] CreatorCategories = { "Body", "Face", "Hair", "Clothing", "Accessories", "Colors" };
 
         [UnityTest]
         public IEnumerator Creator_EveryPageFitsTheFrameAndIsCapturedForReview()
         {
-            yield return OpenCreator();
-            var creator = Creator();
-            // A saved houseguest, so My Houseguests has a card and its bar to lay out.
-            var saved = creator.Draft.Copy();
-            saved.Name = "Review Guest";
-            Assert.That(creator.ProfileStore.Save(CharacterProfile.FromDraft(System.Guid.NewGuid().ToString("N"), saved), out var error), Is.True, error);
-            foreach (float scale in TextScales.All)
+            // Start before OpenCreator: the first build can already have timed out before capture preparation.
+            using (creatorPreviewObservation = CreatorPreviewReadinessObserver.Begin(Creator()))
             {
-                creator.FontScale = scale;
-                yield return null; yield return null;
-                foreach (string page in CreatorPages)
+                yield return OpenCreator();
+                var creator = Creator();
+                // A saved houseguest, so My Houseguests has a card and its bar to lay out.
+                var saved = creator.Draft.Copy();
+                saved.Name = "Review Guest";
+                Assert.That(creator.ProfileStore.Save(CharacterProfile.FromDraft(System.Guid.NewGuid().ToString("N"), saved), out var error), Is.True, error);
+                foreach (float scale in TextScales.All)
                 {
-                    CastButtons(page)[0].onClick.Invoke();
-                    yield return null;
-                    if (page == "Appearance")
-                        foreach (string category in CreatorCategories)
-                        {
-                            CastButtons(category)[0].onClick.Invoke();
-                            yield return null;
-                            AssertCreatorFits(creator, page + " / " + category + " at " + scale);
-                            if (scale == 1f && Application.isBatchMode) yield return CaptureCreatorFraming("creator-appearance-" + category.ToLowerInvariant());
-                        }
-                    else
+                    creator.FontScale = scale;
+                    yield return null; yield return null;
+                    foreach (string page in CreatorPages)
                     {
-                        AssertCreatorFits(creator, page + " at " + scale);
-                        if (scale == 1f && Application.isBatchMode)
-                            yield return CaptureCreatorFraming("creator-" + page.ToLowerInvariant().Replace(' ', '-'),
-                                expectPreview: page == "Identity" || page == "Review");
+                        CastButtons(page)[0].onClick.Invoke();
+                        yield return null;
+                        if (page == "Appearance")
+                            foreach (string category in CreatorCategories)
+                            {
+                                CastButtons(category)[0].onClick.Invoke();
+                                yield return null;
+                                AssertCreatorFits(creator, page + " / " + category + " at " + scale);
+                                if (scale == 1f && Application.isBatchMode) yield return CaptureCreatorFraming("creator-appearance-" + category.ToLowerInvariant());
+                            }
+                        else
+                        {
+                            AssertCreatorFits(creator, page + " at " + scale);
+                            if (scale == 1f && Application.isBatchMode)
+                                yield return CaptureCreatorFraming("creator-" + page.ToLowerInvariant().Replace(' ', '-'),
+                                    expectPreview: page == "Identity" || page == "Review");
+                        }
                     }
                 }
+                creator.FontScale = 1f;
             }
-            creator.FontScale = 1f;
+        }
+
+        [UnityTest]
+        public IEnumerator Creator_PersonalityShowsItsOverflowAtEveryTextSizeWithoutNarrowingTheCards()
+        {
+            yield return OpenCreator();
+            var creator = Creator();
+            try
+            {
+                foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1920, 1080),
+                    new Vector2Int(1200, 900), new Vector2Int(2560, 1080) })
+                    using (var lens = new CaptureLens(cameraRig.ViewCamera, size.x, size.y))
+                        foreach (float scale in TextScales.All)
+                        {
+                            creator.FontScale = scale;
+                            yield return null; yield return null;
+                            CastButtons("Personality").Single().onClick.Invoke();
+                            yield return null; yield return null;
+                            Canvas.ForceUpdateCanvases();
+                            string where = "Personality " + size + " at " + scale;
+                            var scrolls = creator.GetComponentsInChildren<UnityEngine.UI.ScrollRect>()
+                                .Where(scroll => scroll.content.name == "Traits" || scroll.content.name == "Tendency rows").ToArray();
+                            Assert.That(scrolls.Any(scroll => scroll.content.name == "Traits"), Is.True, where);
+                            if (LargestPages.At(scale))
+                                Assert.That(scrolls, Has.Length.EqualTo(2), where + ": both lists overflow on these frames.");
+                            foreach (var scroll in scrolls)
+                            {
+                                var panel = (RectTransform)scroll.viewport.parent;
+                                Assert.That(scroll.viewport.rect.width, Is.EqualTo(panel.rect.width - 48f).Within(.1f),
+                                    where + ": the original 24-unit margins and card width stay unchanged.");
+                                Assert.That(scroll.content.rect.width, Is.EqualTo(scroll.viewport.rect.width).Within(.1f), where);
+                                AssertCreatorScrollIndicator(creator, scroll, where);
+                                if (scroll.content.rect.height > scroll.viewport.rect.height + .01f)
+                                {
+                                    float more = scroll.content.rect.height - scroll.viewport.rect.height;
+                                    scroll.verticalScrollbar.value = 0f;
+                                    yield return null;
+                                    Assert.That(scroll.content.anchoredPosition.y, Is.EqualTo(more).Within(1f), where + ": bar reaches the end.");
+                                    scroll.verticalScrollbar.value = 1f;
+                                    yield return null;
+                                    Assert.That(scroll.content.anchoredPosition.y, Is.EqualTo(0f).Within(1f), where + ": bar returns to the top.");
+                                }
+                            }
+                            AssertCreatorFits(creator, where);
+                            if (LargestPages.At(scale))
+                                yield return PhotographCreatorPersonalityThroughLens(lens,
+                                    "creator-personality-scroll-" + size.x + "x" + size.y + "-largest", expectPhoto: size.x == 2560);
+                        }
+            }
+            finally { creator.FontScale = 1f; }
+        }
+
+        [UnityTest]
+        public IEnumerator Creator_SharedIndicatorsHideForFittingContentAndTabReachesTheLastTrait()
+        {
+            yield return OpenCreator();
+            var creator = Creator();
+            try
+            {
+                using (var lens = new CaptureLens(cameraRig.ViewCamera, 1200, 900))
+                {
+                    Assert.That(creator.ProfileStore.List(), Is.Empty, "This test uses the fresh isolated profile library.");
+                    foreach (float scale in TextScales.All)
+                    {
+                        creator.FontScale = scale;
+                        yield return null; yield return null;
+                        CastButtons("My Houseguests").Single().onClick.Invoke();
+                        yield return null; yield return null;
+                        var fitting = creator.GetComponentsInChildren<UnityEngine.UI.ScrollRect>()
+                            .Single(scroll => scroll.content.name == "Profile cards");
+                        Assert.That(fitting.content.rect.height, Is.LessThan(fitting.viewport.rect.height), "Empty library at " + scale);
+                        AssertCreatorScrollIndicator(creator, fitting, "Empty library at " + scale);
+                        Assert.That(fitting.verticalScrollbar.gameObject.activeInHierarchy, Is.False, "No false overflow cue at " + scale);
+                        CastButtons("Personality").Single().onClick.Invoke();
+                        yield return null; yield return null;
+                        var overflow = creator.GetComponentsInChildren<UnityEngine.UI.ScrollRect>().Single(scroll => scroll.content.name == "Traits");
+                        Assert.That(overflow.content.rect.height, Is.GreaterThan(overflow.viewport.rect.height + .01f), "Actual overflow at " + scale);
+                        AssertCreatorScrollIndicator(creator, overflow, "Traits at " + scale);
+                        Assert.That(overflow.verticalScrollbar.gameObject.activeInHierarchy, Is.True, "An overflowing list says so at " + scale);
+                    }
+                    creator.FontScale = TextSizes.Scale(TextSize.Largest);
+                    yield return null; yield return null;
+                    CastButtons("My Houseguests").Single().onClick.Invoke();
+                    yield return null; yield return null;
+                    foreach (string page in new[] { "Identity", CharacterCreator.QuickCaption })
+                    {
+                        CastButtons(page).Single().onClick.Invoke();
+                        yield return null; yield return null;
+                        var scroll = creator.GetComponentsInChildren<UnityEngine.UI.ScrollRect>().Single();
+                        AssertCreatorScrollIndicator(creator, scroll, page);
+                        Assert.That(scroll.verticalScrollbar.gameObject.activeInHierarchy, Is.True, page + ": this actual form overflows.");
+                    }
+                    CastButtons(CharacterCreator.DetailedCaption).Single().onClick.Invoke();
+                    yield return null; yield return null;
+                    CastButtons("Personality").Single().onClick.Invoke();
+                    yield return null; yield return null;
+                    var traits = creator.GetComponentsInChildren<UnityEngine.UI.ScrollRect>().Single(scroll => scroll.content.name == "Traits");
+                    var buttons = traits.content.GetComponentsInChildren<UnityEngine.UI.Button>().Where(button => button.IsInteractable()).ToArray();
+                    Assert.That(buttons.Length, Is.EqualTo(WebTraits.Boosts.Count), "Every actual trait card is on the keyboard route.");
+                    var last = buttons.Last();
+                    Assert.That(OwnBox(traits.viewport, last.transform).min.y, Is.LessThan(traits.viewport.rect.yMin),
+                        "The final trait starts clipped; reaching it must really scroll the list.");
+                    var beforeTraits = creator.Draft.Traits.ToArray();
+                    var beforeStats = WebTraits.StatNames.Select(stat => WebTraits.Get(creator.Draft.Stats, stat)).ToArray();
+                    buttons[0].Select();
+                    yield return null;
+                    int limit = creator.GetComponentsInChildren<UnityEngine.UI.Selectable>().Length + 1;
+                    var events = UnityEngine.EventSystems.EventSystem.current;
+                    for (int step = 0; step < limit && events.currentSelectedGameObject != last.gameObject; step++)
+                    {
+                        yield return PressKey(UnityEngine.InputSystem.Key.Tab);
+                        yield return null;
+                        Assert.That(events.currentSelectedGameObject?.GetComponent<UnityEngine.UI.Scrollbar>(), Is.Null,
+                            "The indicator never becomes an extra keyboard stop.");
+                    }
+                    Assert.That(events.currentSelectedGameObject, Is.SameAs(last.gameObject), "Tab reaches the last actual trait.");
+                    var visible = OwnBox(traits.viewport, last.transform);
+                    Assert.That(visible.min.y, Is.GreaterThanOrEqualTo(traits.viewport.rect.yMin - 1f), "Selected trait is above the clip edge.");
+                    Assert.That(visible.max.y, Is.LessThanOrEqualTo(traits.viewport.rect.yMax + 1f), "Selected trait is below the top edge.");
+                    Assert.That(traits.content.anchoredPosition.y, Is.GreaterThan(1f), "Keyboard focus moved the content.");
+                    Assert.That(traits.verticalScrollbar.value, Is.LessThan(.99f), "The indicator follows the keyboard's scroll.");
+                    AssertCreatorTraitInk(last, traits.viewport, lens.Lens, "Tab reaches every glyph of the last trait");
+                    Assert.That(creator.Draft.Traits, Is.EqualTo(beforeTraits), "Navigation chooses no trait.");
+                    Assert.That(WebTraits.StatNames.Select(stat => WebTraits.Get(creator.Draft.Stats, stat)), Is.EqualTo(beforeStats),
+                        "Navigation spends no stat points.");
+                }
+            }
+            finally { creator.FontScale = 1f; }
+        }
+
+        [UnityTest]
+        public IEnumerator Creator_TraitDescriptionsAreDrawnWholeAndReadableAtEveryScaleAndFrame()
+        {
+            yield return OpenCreator();
+            var creator = Creator();
+            var original = creator.Draft.Copy();
+            try
+            {
+                // First reproduce the photographed defect, before imposing the new font-size policy.
+                // This literal first-card effect must clear its border at Largest on the 720p frame.
+                using (var baselineLens = new CaptureLens(cameraRig.ViewCamera, 1280, 720))
+                {
+                    creator.FontScale = TextSizes.Scale(TextSize.Largest);
+                    yield return null; yield return null;
+                    CastButtons("Personality").Single().onClick.Invoke();
+                    yield return null; yield return null;
+                    var baselineScroll = creator.GetComponentsInChildren<ScrollRect>().Single(item => item.content.name == "Traits");
+                    var competitive = baselineScroll.content.GetComponentsInChildren<Button>().Single(button => button.name == "Competitive");
+                    competitive.Select();
+                    yield return null; yield return null;
+                    Canvas.ForceUpdateCanvases();
+                    var effect = competitive.GetComponentsInChildren<TMPro.TMP_Text>().Single(label => label.name == "Trait effect");
+                    AssertCreatorTraitTextInk(effect, "+2 Physical  ·  +1 Endurance", (RectTransform)competitive.transform,
+                        baselineScroll.viewport, "Photographed baseline: 1280x720 Largest / Competitive effect");
+                }
+                foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1920, 1080),
+                    new Vector2Int(1200, 900), new Vector2Int(2560, 1080) })
+                    using (var lens = new CaptureLens(cameraRig.ViewCamera, size.x, size.y))
+                    {
+                        var standardGlyphHeights = new Dictionary<string, float>();
+                        foreach (float scale in TextScales.All)
+                        {
+                            creator.FontScale = scale;
+                            yield return null; yield return null;
+                            CastButtons("Personality").Single().onClick.Invoke();
+                            yield return null; yield return null;
+                            Canvas.ForceUpdateCanvases();
+                            string where = "Trait ink " + size + " at " + scale;
+                            var scroll = creator.GetComponentsInChildren<ScrollRect>().Single(item => item.content.name == "Traits");
+                            var cards = scroll.content.GetComponentsInChildren<Button>().Where(button => button.IsInteractable()).ToArray();
+                            Assert.That(cards.Select(card => card.name), Is.EquivalentTo(WebTraits.Boosts.Keys), where);
+                            foreach (var card in cards)
+                            {
+                                // Follow the real focus scroller. Hidden rows are not accepted merely because
+                                // their control rectangles exist: every actual letter must reach the viewport.
+                                card.Select();
+                                yield return null; yield return null;
+                                Canvas.ForceUpdateCanvases();
+                                float glyphHeight = AssertCreatorTraitInk(card, scroll.viewport, lens.Lens, where);
+                                if (Mathf.Approximately(scale, 1f)) standardGlyphHeights.Add(card.name, glyphHeight);
+                                else Assert.That(glyphHeight / standardGlyphHeights[card.name], Is.EqualTo(scale).Within(.08f),
+                                    where + " / " + card.name + ": the drawn plus glyph magnifies once with the canvas.");
+                            }
+                            AssertCreatorEntryDraft(original, creator.Draft);
+                            string capture = "creator-personality-text-" + size.x + "x" + size.y
+                                + (Mathf.Approximately(scale, 1f) ? "-standard" : TextScales.Suffix(scale));
+                            // This is the authored four-frame matrix, not an observed-child shortcut:
+                            // the 4:3 summary fits only Standard; 16:9 fits Standard/Larger; 21:9 fits all.
+                            bool expectPhoto = size.x == 2560 || Mathf.Approximately(scale, 1f)
+                                || (size.x != 1200 && scale < 1.3f);
+                            if (LargestPages.At(scale))
+                                yield return PhotographCreatorPersonalityThroughLens(lens, capture + "-last", expectPhoto);
+                            UnityEngine.EventSystems.EventSystem.current.SetSelectedGameObject(null);
+                            scroll.verticalNormalizedPosition = 1f;
+                            cards[0].Select();
+                            yield return null; yield return null;
+                            AssertCreatorTraitInk(cards[0], scroll.viewport, lens.Lens, where + " / return to top");
+                            yield return PhotographCreatorPersonalityThroughLens(lens, capture, expectPhoto);
+                        }
+                    }
+            }
+            finally { creator.FontScale = 1f; }
+            AssertCreatorEntryDraft(original, creator.Draft);
+        }
+
+        /// <summary>Each literal character's generated quad, not only its RectTransform or the card's control bounds.</summary>
+        private static float AssertCreatorTraitInk(Button card, RectTransform viewport, Camera eye, string where)
+        {
+            string trait = card.name;
+            where += " / " + trait;
+            var labels = card.GetComponentsInChildren<TMPro.TMP_Text>();
+            var caption = labels.Single(label => label.name == "Label");
+            var effect = labels.Single(label => label.name == "Trait effect");
+            var boost = WebTraits.Boosts[trait];
+            string primary = char.ToUpperInvariant(boost.Primary[0]) + boost.Primary.Substring(1);
+            string secondary = char.ToUpperInvariant(boost.Secondary[0]) + boost.Secondary.Substring(1);
+            string reception = TraitAffinity.Reception.TryGetValue(trait, out int liked)
+                ? (liked > 0 ? "  ·  liked" : "  ·  disliked") : "";
+            string expected = "+" + WebTraits.PrimaryBoost + " " + primary + "  ·  +"
+                + WebTraits.SecondaryBoost + " " + secondary + reception;
+            AssertCreatorTraitTextInk(caption, trait, (RectTransform)card.transform, viewport, where);
+            AssertCreatorTraitTextInk(effect, expected, (RectTransform)card.transform, viewport, where);
+            Assert.That(effect.fontSize, Is.GreaterThanOrEqualTo(14f), where + ": effects may wrap, not shrink below body copy.");
+            Assert.That(effect.enableAutoSizing, Is.False, where + ": shrinking must not hide a missing line budget.");
+            Assert.That(effect.rectTransform.rect.height,
+                Is.GreaterThanOrEqualTo(effect.GetPreferredValues(effect.text, effect.rectTransform.rect.width, 0f).y + 3f),
+                where + ": the actual font's longest wrapped effect has a measured line budget.");
+            var first = effect.textInfo.characterInfo.Take(effect.textInfo.characterCount).First(glyph => glyph.isVisible);
+            Assert.That(first.character, Is.EqualTo('+'), where);
+            float bottom = float.MaxValue, top = float.MinValue;
+            foreach (var corner in new[] { first.bottomLeft, first.topLeft, first.topRight, first.bottomRight })
+            {
+                var screen = eye.WorldToScreenPoint(effect.transform.TransformPoint(corner));
+                Assert.That(screen.z, Is.GreaterThan(0f), where + ": ink is in front of the capture lens.");
+                bottom = Mathf.Min(bottom, screen.y); top = Mathf.Max(top, screen.y);
+            }
+            Assert.That(top - bottom, Is.GreaterThan(0f), where + ": the drawn glyph has height.");
+            return top - bottom;
+        }
+
+        private static void AssertCreatorTraitTextInk(TMPro.TMP_Text text, string expected, RectTransform card,
+            RectTransform viewport, string where)
+        {
+            text.ForceMeshUpdate();
+            Assert.That(text.text, Is.EqualTo(expected), where + ": no shortened trait or effect caption.");
+            Assert.That(text.isTextTruncated, Is.False, where + " / " + text.name);
+            Assert.That(text.isTextOverflowing, Is.False, where + " / " + text.name);
+            Assert.That(text.isActiveAndEnabled && !text.canvasRenderer.cull && text.color.a > .5f, Is.True, where + ": visible ink.");
+            var drawn = text.textInfo.characterInfo.Take(text.textInfo.characterCount).Where(glyph => glyph.isVisible).ToArray();
+            Assert.That(new string(drawn.Select(glyph => glyph.character).ToArray()),
+                Is.EqualTo(new string(expected.Where(character => !char.IsWhiteSpace(character)).ToArray())),
+                where + " / " + text.name + ": every non-space character has an actual generated quad.");
+            foreach (var glyph in drawn)
+                foreach (var corner in new[] { glyph.bottomLeft, glyph.topLeft, glyph.topRight, glyph.bottomRight })
+                {
+                    Vector3 world = text.transform.TransformPoint(corner);
+                    Vector3 onCard = card.InverseTransformPoint(world);
+                    Vector3 inList = viewport.InverseTransformPoint(world);
+                    Assert.That(onCard.x, Is.InRange(card.rect.xMin + 4f, card.rect.xMax - 4f),
+                        where + " / " + text.name + ": glyph clears the side borders.");
+                    Assert.That(onCard.y, Is.InRange(card.rect.yMin + 4f, card.rect.yMax - 4f),
+                        where + " / " + text.name + ": glyph clears the top and bottom borders.");
+                    Assert.That(inList.x, Is.InRange(viewport.rect.xMin - .75f, viewport.rect.xMax + .75f),
+                        where + " / " + text.name + ": selected glyph is inside the horizontal clip.");
+                    Assert.That(inList.y, Is.InRange(viewport.rect.yMin - .75f, viewport.rect.yMax + .75f),
+                        where + " / " + text.name + ": selected glyph is inside the vertical clip.");
+                }
+        }
+
+        private static void AssertCreatorScrollIndicator(CharacterCreator creator, UnityEngine.UI.ScrollRect scroll, string where)
+        {
+            Canvas.ForceUpdateCanvases();
+            var bar = scroll.verticalScrollbar;
+            Assert.That(bar, Is.Not.Null, where + ": the shared scrolling area has an indicator.");
+            Assert.That(bar.name, Is.EqualTo(scroll.content.name + " scrollbar"), where);
+            Assert.That(bar.navigation.mode, Is.EqualTo(UnityEngine.UI.Navigation.Mode.None), where + ": no keyboard stop.");
+            Assert.That(scroll.verticalScrollbarVisibility, Is.EqualTo(UnityEngine.UI.ScrollRect.ScrollbarVisibility.AutoHide), where);
+            bool overflow = scroll.content.rect.height > scroll.viewport.rect.height + .01f;
+            Assert.That(bar.gameObject.activeInHierarchy, Is.EqualTo(overflow), where + ": visibility follows actual content bounds.");
+            if (!overflow) return;
+            var root = (RectTransform)creator.transform;
+            var list = OwnBox(root, scroll.viewport);
+            var indicator = OwnBox(root, bar.transform);
+            var panel = OwnBox(root, scroll.viewport.parent);
+            Assert.That(indicator.min.x, Is.GreaterThanOrEqualTo(list.max.x + 3.5f), where + ": outside the content mask.");
+            Assert.That(indicator.max.x, Is.LessThanOrEqualTo(panel.max.x), where + ": inside the existing panel margin.");
+            Assert.That(indicator.max.y, Is.EqualTo(list.max.y).Within(.5f), where);
+            Assert.That(indicator.size.y, Is.EqualTo(list.size.y).Within(.5f), where);
+            Assert.That(bar.size, Is.GreaterThan(0f).And.LessThan(1f), where + ": the handle communicates overflow.");
+            Assert.That(bar.targetGraphic.color.a, Is.GreaterThan(0f), where + ": visible ink.");
         }
 
         private IEnumerator CaptureCreatorFraming(string name, bool expectPreview = true, int width = 1600, int height = 900,
@@ -117,9 +412,36 @@ namespace Gamesim.Tests.PlayMode
             throw new System.InvalidOperationException(failure);
         }
 
-        private IEnumerator PrepareCreatorFrame(string name)
+        /// <summary>
+        /// A narrow Personality page intentionally has no summary; the wide fixture must have one.
+        /// Check that explicit expectation, then the ready avatar and its actual captured pixels.
+        /// </summary>
+        private IEnumerator PhotographCreatorPersonalityThroughLens(CaptureLens lens, string name, bool expectPhoto)
         {
-            float deadline = Time.realtimeSinceStartup + 25f;
+            if (!Application.isBatchMode) yield break;
+            yield return lens.MakeSureTheCanvasesAreDrawn();
+            RawImage[] Photos() => Creator().GetComponentsInChildren<RawImage>().Where(item =>
+                item.name == "Face" && item.transform.parent.name == "Live photo").ToArray();
+            Assert.That(Photos(), Has.Length.EqualTo(expectPhoto ? 1 : 0), name + ": this fixture's expected summary layout.");
+            // Settle the final lens before waiting. A nonblank page alone previously accepted an
+            // empty portrait frame, and silently skipping a missing expected photo would repeat it.
+            if (expectPhoto) yield return PrepareCreatorFrame(name, livePhoto: true);
+            yield return PhotographThroughLens(lens, name, frame =>
+            {
+                var photos = Photos();
+                Assert.That(photos, Has.Length.EqualTo(expectPhoto ? 1 : 0), name + ": the photographed summary layout.");
+                if (!expectPhoto) return;
+                AssertCreatorFrameReady(name, livePhoto: true);
+                AssertRegionHasContent(frame, CaptureRectOf(photos[0].transform, .6f, .6f),
+                    name + ": the interior of the actual live photo, excluding its frame");
+            });
+        }
+
+        private IEnumerator PrepareCreatorFrame(string name, bool livePhoto = false)
+        {
+            if (creatorPreviewObservation != null) creatorPreviewObservation.MarkPreparation();
+            float started = Time.realtimeSinceStartup;
+            float deadline = started + 25f;
             while (Time.realtimeSinceStartup < deadline)
             {
                 var creator = Creator();
@@ -130,22 +452,29 @@ namespace Gamesim.Tests.PlayMode
             }
             // The preview's completion and the status text update occur in separate Update calls.
             yield return null;
-            AssertCreatorFrameReady(name);
+            TestContext.WriteLine(name + ": preview preparation waited " +
+                (Time.realtimeSinceStartup - started).ToString("F3", System.Globalization.CultureInfo.InvariantCulture)
+                + " seconds; " + CreatorPreviewDiagnostic(Creator()));
+            AssertCreatorFrameReady(name, livePhoto);
         }
 
-        private void AssertCreatorFrameReady(string name)
+        private void AssertCreatorFrameReady(string name, bool livePhoto = false)
         {
             var creator = Creator();
-            var preview = creator.StudioPreview;
-            Assert.That(creator.IsShowing && preview != null && preview.gameObject.activeInHierarchy && !preview.IsBuilding,
-                Is.True, name + ": the displayed preview must complete before the frame is read.");
-            Assert.That(preview.CompletedKey, Is.EqualTo(creator.Draft.Appearance.ContentKey()), name + ": capture the current draft.");
+            var preview = creator == null ? null : creator.StudioPreview;
+            string evidence = " [" + CreatorPreviewDiagnostic(creator) + "]";
+            Assert.That(creator != null && creator.IsShowing && preview != null && preview.gameObject.activeInHierarchy && !preview.IsBuilding,
+                Is.True, name + ": the displayed preview must complete before the frame is read." + evidence);
+            Assert.That(preview.CompletedKey, Is.EqualTo(creator.Draft.Appearance.ContentKey()), name + ": capture the current draft." + evidence);
             if (CharacterBodySource.Provider != null)
-                Assert.That(preview.CanRetry, Is.False, name + ": installed content must render its own avatar, rather than a fallback.");
-            var image = creator.GetComponentsInChildren<RawImage>().Single(item => item.name == "Live character preview");
+                Assert.That(preview.CanRetry, Is.False, name + ": installed content must render its own avatar, rather than a fallback." + evidence);
+            var image = creator.GetComponentsInChildren<RawImage>().SingleOrDefault(item => livePhoto
+                ? item.name == "Face" && item.transform.parent.name == "Live photo"
+                : item.name == "Live character preview");
+            Assert.That(image, Is.Not.Null, name + ": the current page must contain its actual preview image." + evidence);
             var texture = preview.Texture as RenderTexture;
             Assert.That(image.isActiveAndEnabled && !image.canvasRenderer.cull && image.color.a >= .5f && image.texture == texture
-                && texture != null && texture.IsCreated(), Is.True, name + ": the actual visible image must bind the ready studio.");
+                && texture != null && texture.IsCreated(), Is.True, name + ": the actual visible image must bind the ready studio." + evidence);
             var previous = RenderTexture.active;
             var resolved = RenderTexture.GetTemporary(texture.width, texture.height, 0, RenderTextureFormat.ARGB32);
             var pixels = new Texture2D(texture.width, texture.height, TextureFormat.RGBA32, false);
@@ -171,6 +500,26 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(maxY - minY + 1, Is.GreaterThanOrEqualTo(16), name + ": foreground has visible height.");
             }
             finally { RenderTexture.active = previous; RenderTexture.ReleaseTemporary(resolved); Object.Destroy(pixels); }
+        }
+
+        private static string CreatorPreviewDiagnostic(CharacterCreator creator)
+        {
+            string provider = CharacterBodySource.Provider?.GetType().FullName ?? "none";
+            if (creator == null) return "creator=missing; provider=" + provider;
+            var preview = creator.StudioPreview;
+            if (preview == null) return "preview=missing; showing=" + creator.IsShowing + "; provider=" + provider;
+            var states = preview.GetComponentsInChildren<CharacterBodyBuildState>(true)
+                .Select(state => "revision=" + state.Revision + ",ready=" + state.Ready);
+            return "provider=" + provider + "; showing=" + creator.IsShowing
+                + "; active=" + preview.gameObject.activeInHierarchy + "; building=" + preview.IsBuilding
+                + "; canRetry=" + preview.CanRetry + "; status=" + (preview.Status ?? "<null>")
+                + "; lastBuildMs=" + preview.LastBuildMilliseconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)
+                + "; timeoutSeconds=" + preview.BuildTimeoutSeconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)
+                + "; completedKey=" + (preview.CompletedKey ?? "<null>")
+                + "; draftKey=" + creator.Draft.Appearance.ContentKey()
+                + "; originalFailure=[" + (preview.LastFailureDiagnostic ?? "none") + "]"
+                + "; bodyStates=[" + string.Join(";", states) + "]"
+                + "; renderers=" + preview.GetComponentsInChildren<Renderer>(true).Length;
         }
 
         /// <summary>

@@ -34,11 +34,11 @@ namespace Gamesim.Tests.PlayMode
             {
                 var before = director.Snapshot;
                 if (before.phase == EpisodePhase.Finished) break;
-                int known = before.events.Count;
+                int fromSequence = before.nextSequence;
                 var result = director.Submit(NextCommand(before));
                 yield return null;
                 if (!result.accepted) continue;
-                if (result.state.events.Skip(known).Any(e => e.kind == "eviction")) closedWeek = before.week;
+                if (result.state.events.Any(e => e.sequence >= fromSequence && e.kind == "eviction")) closedWeek = before.week;
             }
             Assert.That(closedWeek, Is.GreaterThan(0), "The season should have reached an eviction.");
 
@@ -132,6 +132,90 @@ namespace Gamesim.Tests.PlayMode
             // What the house held before the night's commit, it holds after the recap: an eviction
             // night loaded at the vote is not the free roam the first-week test dismisses into.
             Assert.That(player.InputEnabled, Is.EqualTo(inputBefore), "Dismissing gives back what the recap took.");
+        }
+
+        [UnityTest, Timeout(180000)]
+        public IEnumerator PortSeasonWalk_RecordsAFullLogEvictionAndItsObservedRecap()
+        {
+            var fixture = FullLogCommitFixture("eviction", state =>
+                state.phase == EpisodePhase.Eviction && !state.evictionResolved
+                && NextCommand(state).kind == EpisodeCommandKind.Advance);
+            new EpisodeSaveStore(director.SavePath).Save(fixture);
+            yield return ReloadEpisode();
+            AssertEquivalent(fixture, director.Snapshot);
+            HoldTheHouseForTheFixture();
+            player.Agent.speed = 25f; player.Agent.acceleration = 100f;
+            var runner = BindPortConversationVerifier(out var owner);
+            var previousPace = director.CeremonyPaceSetting;
+            try
+            {
+                // The inert companion deliberately never runs Start. Match the standalone
+                // workload's Quick pace before exercising its bounded recap observer.
+                director.SetCeremonyPace(CeremonyPace.Quick);
+                yield return PortConversationRoutine(runner, "OpenSeasonStation");
+                var before = director.Snapshot;
+                AssertEquivalent(fixture, before);
+                Assert.That(PortConversationReport<int>(runner, "fullLogEvictions"), Is.Zero,
+                    "Opening the actual station is not an eviction.");
+                yield return PortConversationRoutine(runner, "PerformSeasonDecision", before, false);
+                var after = director.Snapshot;
+                Assert.That(SceneComponents<VoteReveal>().Single().Pace, Is.EqualTo(CeremonyPace.Quick),
+                    "The actual reveal must use the standalone verifier's initialized pace.");
+                Assert.That(after.revision, Is.EqualTo(before.revision + 1));
+                var eviction = after.events.Single(entry => entry.sequence >= before.nextSequence && entry.kind == "eviction");
+                Assert.That(before.events.Count, Is.EqualTo(256));
+                Assert.That(after.events.Count, Is.EqualTo(256));
+                Assert.That(PortConversationReport<int>(runner, "fullLogEvictions"), Is.EqualTo(1));
+                Assert.That(PortConversationReport<int>(runner, "fullLogEvictionRecaps"), Is.Zero,
+                    "A committed eviction is not evidence that the walk observed its recap.");
+                var observations = PortConversationReport<IList>(runner, "evictions");
+                Assert.That(observations.Count, Is.EqualTo(1));
+                var observed = observations[0];
+                var type = observed.GetType();
+                Assert.That(type.GetField("eventSequence").GetValue(observed), Is.EqualTo(eviction.sequence));
+                Assert.That(type.GetField("revisionBefore").GetValue(observed), Is.EqualTo(before.revision));
+                Assert.That(type.GetField("revisionAfter").GetValue(observed), Is.EqualTo(after.revision));
+                Assert.That(type.GetField("entriesBefore").GetValue(observed), Is.EqualTo(256));
+                Assert.That(type.GetField("entriesAfter").GetValue(observed), Is.EqualTo(256));
+                Assert.That(type.GetField("recapObserved").GetValue(observed), Is.EqualTo(false));
+
+                yield return PortConversationRoutine(runner, "DismissWeeklyRecap", after, false);
+                Assert.That(director.IsWeeklyRecapOpen, Is.False);
+                AssertEquivalent(after, director.Snapshot);
+                Assert.That(PortConversationReport<int>(runner, "fullLogEvictionRecaps"), Is.EqualTo(1));
+                Assert.That(type.GetField("recapObserved").GetValue(observed), Is.EqualTo(true));
+                // Visiting the same state again cannot manufacture another observation.
+                yield return PortConversationRoutine(runner, "DismissWeeklyRecap", after, false);
+                Assert.That(PortConversationReport<int>(runner, "fullLogEvictions"), Is.EqualTo(1));
+                Assert.That(PortConversationReport<int>(runner, "fullLogEvictionRecaps"), Is.EqualTo(1));
+                Assert.That(PortConversationReport<int>(runner, "weeklyRecaps"), Is.EqualTo(1));
+            }
+            finally
+            {
+                director.SetCeremonyPace(previousPace);
+                UnityEngine.Object.Destroy(owner);
+            }
+        }
+
+        /// <summary>A bounded, legally played history; no hand-edited phase, role or log records.</summary>
+        private static EpisodeState FullLogCommitFixture(string eventKind, System.Func<EpisodeState, bool> eligible)
+        {
+            for (uint seed = 1; seed <= 12; seed++)
+            {
+                var engine = new EpisodeEngine(SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 12 }, seed));
+                for (int guard = 0; guard < 400; guard++)
+                {
+                    var before = engine.Snapshot;
+                    if (before.phase == EpisodePhase.Finished) break;
+                    var result = engine.Apply(NextCommand(before));
+                    Assert.That(result.accepted, Is.True, result.reason);
+                    if (before.events.Count == 256 && eligible(before)
+                        && result.state.events.Any(entry => entry.sequence >= before.nextSequence && entry.kind == eventKind))
+                        return before;
+                }
+            }
+            Assert.Fail("No bounded legal full-log history for " + eventKind + ".");
+            return null;
         }
 
         [UnityTest]

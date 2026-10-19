@@ -94,9 +94,10 @@ namespace Gamesim.Tests.EditMode
             Assert.That(migrated, Is.False); Assert.That(again, Is.Not.SameAs(now)); Assert.That(Text(again), Is.EqualTo(before));
             again["npcSocial"]["beatPlan"] = new JArray("a detached caller"); Assert.That(Text(now), Is.EqualTo(before));
             now["npcSocial"]["beatsFired"] = 1; ((JArray)now["ledger"]["plans"]).Add(JValue.CreateNull()); before = Text(now);
-            again = EpisodeSaveMigrations.PrepareCurrentPayload(now, out migrated); Assert.That(migrated, Is.False);
-            Assert.That(Text(again), Is.EqualTo(before), "The current dispatch never repairs what it was given.");
-            Assert.Throws<InvalidDataException>(() => Current(again)); Assert.That(Text(now), Is.EqualTo(before));
+            Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(now, out _),
+                "The frozen current-28 gate refuses corruption before returning a clone; it never repairs it.");
+            Assert.That(Text(now), Is.EqualTo(before), "Refusal preserves the malformed source exactly.");
+            Assert.Throws<InvalidDataException>(() => Current(now));
         }
 
         [TestCase("null-input")] [TestCase("missing-header")] [TestCase("null-header")] [TestCase("text-header")]

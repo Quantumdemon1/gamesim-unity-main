@@ -55,7 +55,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(pending.votes[0].targetId, Is.EqualTo(BlocTaylorId),
                 "An inferred pact directive must never override the human's actual ballot.");
             AssertBlocPrivateMechanicsUnchanged(before, pending);
-            var ballotEvents = pending.events.Skip(before.events.Count).ToArray();
+            var ballotEvents = pending.events.Where(entry => entry.sequence >= before.nextSequence).ToArray();
             Assert.That(ballotEvents, Has.Length.EqualTo(1));
             Assert.That(ballotEvents[0].kind, Is.EqualTo("private-vote"));
             Assert.That(ballotEvents[0].audienceIds, Is.EquivalentTo(new[] { pending.playerId }));

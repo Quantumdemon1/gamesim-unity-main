@@ -778,7 +778,7 @@ namespace Gamesim.Episode
         {
             var who = state?.Find(id);
             if (who == null) return string.Empty;
-            string name = who.name.Split(' ')[0];
+            string name = CharacterNames.FirstName(who.name);
             bool atTheDoor = moment == GoodbyeMoment.Doorway;
             string opener;
             switch (GoodbyeTone(state, id))

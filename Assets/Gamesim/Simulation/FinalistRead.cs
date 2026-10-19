@@ -325,14 +325,9 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// The name a line calls someone by: the first word that is not a title ("Dr. Will Kirby"
-        /// is Will), as the cast screen's CastSelect.FirstName has it.
+        /// is Will). The shared formatter also serves the cast screen and HUD.
         /// </summary>
-        public static string FirstName(string name)
-        {
-            if (string.IsNullOrEmpty(name)) return string.Empty;
-            var words = name.Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
-            return words.FirstOrDefault(word => !word.EndsWith(".", System.StringComparison.Ordinal)) ?? words[0];
-        }
+        public static string FirstName(string name) => CharacterNames.FirstName(name);
 
         // ------------------------------------------------------------ the player on the jury
 

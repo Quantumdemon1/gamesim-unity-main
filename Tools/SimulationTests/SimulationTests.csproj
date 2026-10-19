@@ -152,7 +152,7 @@
     <!--
       Independent fixed JSON contracts ONLY: a source-bound test observer validates a separate
       public-field view, while legacy digest traces retain their getters and original bytes.
-      These seventeen immutable BCL/Newtonsoft sources are not growing Persistence. This pure
+      These explicitly listed immutable BCL/Newtonsoft sources are not growing Persistence. This pure
       structural/historical inverse is distinct from actual native SaveJson/migration/disk tests.
       Never replace these explicit entries with a Persistence wildcard or add Unity stubs.
     -->
@@ -173,6 +173,43 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.Storage.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.Story.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV25Validator.Vocabulary.cs" />
+    <!--
+      B+ frozen28 whole reader: 18 fixed production files and the 10 preserved internal test
+      sources (4,781 archived cases), plus independent literal fixture/edge controls.
+      These tests stay outside Unity; native migration/SaveStore wiring has its own suite.
+      No growing Persistence wildcard, current DTO facade or InternalsVisibleTo.
+      Frozen28/Frozen28.Tests.csproj separately holds this reader to warnings-as-errors.
+    -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenEpisodeV28.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV28CommitmentReferences.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV28Data.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV28Input.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV28ReadOnly.Core.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV28ReadOnly.Leaves.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV28ReadOnly.LiteralRows.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV28ReadOnly.Privacy.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV28ReadOnly.Safety.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV28ReferenceRows.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV28SafetyStorage.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV28Shape.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV28SocialHistory.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV28VoteStorage.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV28ReadOnly.VoteHistory.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV28UnifiedVoteCompletedReveal.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV28UnifiedVoteFamilyValidation.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV28UnifiedVoteRevealArchive.cs" />
+    <Compile Include="Frozen28/FrozenV28DataShapeTests.cs" />
+    <Compile Include="Frozen28/FrozenV28InputTests.cs" />
+    <Compile Include="Frozen28/FrozenV28ReadOnly.SemanticTests.cs" />
+    <Compile Include="Frozen28/FrozenV28ReferenceTests.cs" />
+    <Compile Include="Frozen28/FrozenV28SafetyStorageTests.cs" />
+    <Compile Include="Frozen28/FrozenV28SocialHistoryTests.cs" />
+    <Compile Include="Frozen28/FrozenV28VoteStorageTests.cs" />
+    <Compile Include="Frozen28/FrozenV28WholeBoundaryTests.cs" />
+    <Compile Include="Frozen28/FrozenV28VoteAggregateTests.cs" />
+    <Compile Include="Frozen28/FrozenV28VoteHistoryTests.cs" />
+    <Compile Include="Frozen28/Frozen28LiteralFixtureTests.cs" />
+    <Compile Include="$(EditMode)FrozenV28SerializerCacheTests.cs" />
     <!-- Explicit, and compiled out of Unity: the final Head of Household's choice over sampled seasons (C9), run on demand. -->
     <Compile Include="$(EditMode)FinalChoiceSeasonHarness.cs" />
     <Compile Include="$(EditMode)CampaignBriefTests.cs" />
@@ -197,6 +234,7 @@
     <Compile Include="$(EditMode)NpcAgencyTests.cs" />
     <Compile Include="$(EditMode)CastTemplateTests.cs" />
     <Compile Include="$(EditMode)CharacterDraftTests.cs" />
+    <Compile Include="$(EditMode)CharacterNamesTests.cs" />
     <Compile Include="$(EditMode)DealResolutionTests.cs" />
     <Compile Include="$(EditMode)EpisodeBallotPrivacyTests.cs" />
     <Compile Include="$(EditMode)EpisodeEngineTests.cs" />
@@ -346,6 +384,7 @@
       UNITY_EDITOR they read their fixture from beside the test binary. Put them there.
     -->
     <None Include="$(EditMode)Fixtures/*.json" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(EditMode)Fixtures/OldSaves/*.json" Link="OldSaves/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

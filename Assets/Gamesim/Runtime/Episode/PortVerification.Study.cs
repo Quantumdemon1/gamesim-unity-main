@@ -16,6 +16,7 @@ namespace Gamesim.Episode
 
         private IEnumerator ExerciseSeasonStudy(bool graphical)
         {
+            studyReport.status = "Running";
             var original = seasonDirector.Snapshot;
             RequireSeason(original.phase == EpisodePhase.Social && original.week == 1
                 && original.Find(original.playerId).status == ContestantStatus.Active
@@ -263,8 +264,8 @@ namespace Gamesim.Episode
         }
         [Serializable] private sealed class StudyReport
         {
-            public bool requested = true;
-            public string status = "Running";
+            public bool requested;
+            public string status = "Not requested";
             public string workload = "Five legal actual-UI memorize confirmations after a non-mutating review/cancel, each one of the window's actions (the rest of move-in night's bought through the board first), private-state checks and save/reload; eligible weekly weighted simulations; no invented seed, role or preparation. Separate functional coverage, not profile samples.";
             public bool cancelPreservedFullSnapshot, noRollBeforeConfirmation, trustPersonaMemoriesPreserved, preparationCapReached;
             public int actionsBought;

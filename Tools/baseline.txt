@@ -85,4 +85,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # The same32 source-bound observer controls are additive here (10215 + 32).
 # The same13 typed current-only observer controls are additive here (10247 + 13).
 # 10431 = what dotnet test Tools/SimulationTests ran on the 22 Oct PC push (the dialogue V2 source).
-Gamesim.SimulationTests 10431
+# 10445 = 10431 + the 14 CharacterNamesTests cases pinning FinalistRead.FirstName's saved-text split.
+Gamesim.SimulationTests 10445

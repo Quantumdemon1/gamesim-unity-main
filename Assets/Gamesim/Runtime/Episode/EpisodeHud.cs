@@ -109,7 +109,7 @@ namespace Gamesim.Episode
                 || !NpcDeals.Pending(state).Any(row => row.id == offer.id && row.proposerId == offer.proposerId
                     && row.recipientId == offer.recipientId)
                 || !button.GetComponentsInChildren<TMP_Text>().Any(label =>
-                    label.text == (accept ? DealAcceptCaption : DealDeclineCaption)))
+                    label.text == Localisation.Text(accept ? DealAcceptCaption : DealDeclineCaption)))
                 throw new InvalidOperationException("Only a current HUD-rendered proposed offer may describe its control.");
             offerControls.Add(button, new OfferControlDescription(offer, accept, offerRenderSession,
                 offerRenderRevision, offerRenderPhase, offerRenderGeneration));

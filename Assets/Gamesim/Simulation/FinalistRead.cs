@@ -325,9 +325,17 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// The name a line calls someone by: the first word that is not a title ("Dr. Will Kirby"
-        /// is Will). The shared formatter also serves the cast screen and HUD.
+        /// is Will). It splits on spaces only, as it did when the seasons now saved were played:
+        /// its words go into saved log text (Negotiation.PriceWords), so a name with a tab or an
+        /// ideographic space must give the same line it gave then. Display text, which is not
+        /// saved, uses <see cref="CharacterNames.FirstName"/>, which splits on any whitespace.
         /// </summary>
-        public static string FirstName(string name) => CharacterNames.FirstName(name);
+        public static string FirstName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return string.Empty;
+            var words = name.Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
+            return words.FirstOrDefault(word => !word.EndsWith(".", System.StringComparison.Ordinal)) ?? words[0];
+        }
 
         // ------------------------------------------------------------ the player on the jury
 

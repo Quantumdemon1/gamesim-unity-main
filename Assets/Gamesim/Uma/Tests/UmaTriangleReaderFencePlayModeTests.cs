@@ -190,6 +190,10 @@ namespace Gamesim.Uma.Tests
             }
             finally
             {
+                // The decoys are freed while the private list is still installed, so the vendor's
+                // own removal never walks the live registry.
+                first.DisposeNativeTriangles(true);
+                last.DisposeNativeTriangles(true);
                 // Mirror only the owned cache's membership, as the call left the field.
                 var left = SubMeshTriangles.nativeTrianglesAllocated ?? new List<SubMeshTriangles>();
                 SubMeshTriangles.nativeTrianglesAllocated = live;
@@ -201,8 +205,6 @@ namespace Gamesim.Uma.Tests
                         !ReferenceEquals(item, last))
                         live.Add(item);
                 }
-                first.DisposeNativeTriangles(true);
-                last.DisposeNativeTriangles(true);
             }
             var restored = live.FindAll(item => !ReferenceEquals(item, owned));
             Assert.That(restored.Count, Is.EqualTo(foreign.Count),
